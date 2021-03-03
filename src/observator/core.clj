@@ -1,4 +1,4 @@
-;; # Hello observator!!!
+;; # Hello observator!!
 (ns observator.core
   (:require [clojure.string :as str]
             [rewrite-clj.parser :as p]
@@ -20,19 +20,21 @@
 
 (defn make-syntax-pane
   "Create a new syntax-highlighting enabled text area set up for Clojure code."
-  [code]
-  (doto (javax.swing.JScrollPane.
-         (doto (org.fife.ui.rsyntaxtextarea.RSyntaxTextArea. code (inc (count (clojure.string/split-lines code))) 80)
-           (.setPreferredSize (java.awt.Dimension. (count (clojure.string/split-lines code)) 80))
-           (.setFont (java.awt.Font. "Fira Code" java.awt.Font/PLAIN 16))
-           (.setSyntaxEditingStyle org.fife.ui.rsyntaxtextarea.SyntaxConstants/SYNTAX_STYLE_CLOJURE)
-           (.setHighlightCurrentLine false)
-           (.setBackground (java.awt.Color. 245 245 245))
-           (.setBorder (javax.swing.BorderFactory/createEmptyBorder 12 12 12 12))
-           ;;(.setBorder (javax.swing.border.LineBorder. java.awt.Color/black))
-           (.setEditable false)))
-    (.setBorder (javax.swing.BorderFactory/createEmptyBorder))
-    (.setVerticalScrollBarPolicy javax.swing.ScrollPaneConstants/VERTICAL_SCROLLBAR_NEVER)))
+  ([code]
+   (make-syntax-pane code nil))
+  ([code {:keys [background?]}]
+   (doto (javax.swing.JScrollPane.
+          (doto (org.fife.ui.rsyntaxtextarea.RSyntaxTextArea. code (inc (count (clojure.string/split-lines code))) 80)
+            (.setPreferredSize (java.awt.Dimension. (count (clojure.string/split-lines code)) 80))
+            (.setFont (java.awt.Font. "Fira Code" java.awt.Font/PLAIN 16))
+            (.setSyntaxEditingStyle org.fife.ui.rsyntaxtextarea.SyntaxConstants/SYNTAX_STYLE_CLOJURE)
+            (.setHighlightCurrentLine false)
+            (#(when background? (.setBackground %(java.awt.Color. 245 245 245))))
+            (.setBorder (javax.swing.BorderFactory/createEmptyBorder 12 12 12 12))
+            ;;(.setBorder (javax.swing.border.LineBorder. java.awt.Color/black))
+            (.setEditable false)))
+     (.setBorder (javax.swing.BorderFactory/createEmptyBorder))
+     (.setVerticalScrollBarPolicy javax.swing.ScrollPaneConstants/VERTICAL_SCROLLBAR_NEVER))))
 
 (defn make-html-pane
   "Create a new text area that understands basic HTML formatting and looks not completely terrible."
@@ -103,7 +105,7 @@
     (if-let [node (first nodes)]
       (recur (cond
                (= :list (n/tag node)) (do (.add panel
-                                                (make-syntax-pane (n/string node)))
+                                                (make-syntax-pane (n/string node) {:background? true}))
                                           (.add panel
                                                 (make-syntax-pane (read+eval-cached (n/string node))))
                                           (rest nodes))
