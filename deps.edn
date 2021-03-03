@@ -1,0 +1,6 @@
+{:paths ["src" "resources"]
+ :deps {org.clojure/clojure {:mvn/version "1.10.2"}
+        funcool/datoteka {:mvn/version "1.0.0"}
+        rewrite-clj/rewrite-clj {:mvn/version "0.6.1"}
+        com.fifesoft/rsyntaxtextarea {:mvn/version "3.1.2"}
+        org.commonmark/commonmark  {:mvn/version "0.17.1"}}}
