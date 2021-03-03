@@ -1,6 +1,9 @@
+;; # Hello observator!!!
 (ns observator.core
-  (:require [rewrite-clj.parser :as p]
-            [rewrite-clj.node :as n]))
+  (:require [clojure.string :as str]
+            [rewrite-clj.parser :as p]
+            [rewrite-clj.node :as n]
+            [datoteka.core :as fs]))
 
 ;; Dogfooding the system while constructing it, I'll try to make a
 ;; little bit of literate commentary.
@@ -18,7 +21,7 @@
 (defn make-syntax-pane
   "Create a new syntax-highlighting enabled text area set up for Clojure code."
   [code]
-  (doto (javax.swing.JScrollPane. 
+  (doto (javax.swing.JScrollPane.
          (doto (org.fife.ui.rsyntaxtextarea.RSyntaxTextArea. code (inc (count (clojure.string/split-lines code))) 80)
            (.setPreferredSize (java.awt.Dimension. (count (clojure.string/split-lines code)) 80))
            (.setFont (java.awt.Font. "Fira Code" java.awt.Font/PLAIN 16))
@@ -34,7 +37,7 @@
 (defn make-html-pane
   "Create a new text area that understands basic HTML formatting and looks not completely terrible."
   [html]
-  (doto (javax.swing.JScrollPane. 
+  (doto (javax.swing.JScrollPane.
          (doto (javax.swing.JTextPane.)
            (.setPreferredSize (java.awt.Dimension. (inc (count (clojure.string/split-lines html))) 80))
            (.putClientProperty javax.swing.JEditorPane/HONOR_DISPLAY_PROPERTIES true)
@@ -49,14 +52,14 @@
 ;; convenient for them to be so during development. Ultimately, we
 ;; probably want multiple frame support to watch multiple files.
 
-(def panel
+(defonce panel
   (let [p (javax.swing.JPanel.)]
     (doto p
       (.setBackground java.awt.Color/WHITE)
       (.setBorder (javax.swing.BorderFactory/createEmptyBorder 12 12 12 12))
       (.setLayout (javax.swing.BoxLayout. p javax.swing.BoxLayout/Y_AXIS)))))
 
-(def frame
+(defonce frame
   (let [frame (javax.swing.JFrame.)]
     (.add (.getContentPane frame)
           (javax.swing.JScrollPane. panel))
@@ -68,6 +71,30 @@
 (defn remove-leading-semicolons [s]
   (clojure.string/replace s #"^[;]+" ""))
 
+
+(defn sha1-base64 [s]
+  (String. (.encode (java.util.Base64/getUrlEncoder)
+                    (.digest (java.security.MessageDigest/getInstance "SHA-1") (.getBytes s)))))
+
+(comment
+  (sha1-base64 "hello"))
+
+(defn read+eval-cached [code-string]
+  (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")
+        cache-file (str cache-dir fs/*sep* (sha1-base64 code-string))]
+    (fs/create-dir cache-dir)
+    (if (fs/exists? cache-file)
+      (slurp cache-file)
+      (let [r (pr-str (eval (read-string code-string)))]
+        (spit cache-file r)
+        r))))
+
+(comment
+  (read+eval-cached "(+ 1 2)"))
+
+(def slow-thing
+  (str/split-lines (slurp "/usr/share/dict/words")))
+
 (defn code->panel
   "Converts the Clojure source test in `code` to a series of text or syntax panes and causes `panel` to contain them."
   [panel code]
@@ -77,6 +104,8 @@
       (recur (cond
                (= :list (n/tag node)) (do (.add panel
                                                 (make-syntax-pane (n/string node)))
+                                          (.add panel
+                                                (make-syntax-pane (read+eval-cached (n/string node))))
                                           (rest nodes))
                (n/comment? node) (do (.add panel (make-html-pane
                                                   (md->html
@@ -92,7 +121,6 @@
 ;; pieces of code with which to pilot the system during development.
 
 (comment
-  
-  (code->panel panel (slurp "src/observator/core.clj"))
 
+  (code->panel panel (slurp "src/observator/core.clj"))
   )
