@@ -1,4 +1,4 @@
-;; # Hello observator!!
+;; # Hello observator!!! 👋
 (ns observator.core
   (:require [clojure.string :as str]
             [rewrite-clj.parser :as p]
@@ -7,6 +7,11 @@
 
 ;; Dogfooding the system while constructing it, I'll try to make a
 ;; little bit of literate commentary.
+(def slow-thing
+  (str/split-lines (slurp "/usr/share/dict/words")))
+
+
+(count slow-thing)
 
 (def md->html
   "Convert markdown to HTML."
@@ -24,15 +29,17 @@
    (make-syntax-pane code nil))
   ([code {:keys [background?]}]
    (doto (javax.swing.JScrollPane.
-          (doto (org.fife.ui.rsyntaxtextarea.RSyntaxTextArea. code (inc (count (clojure.string/split-lines code))) 80)
-            (.setPreferredSize (java.awt.Dimension. (count (clojure.string/split-lines code)) 80))
-            (.setFont (java.awt.Font. "Fira Code" java.awt.Font/PLAIN 16))
-            (.setSyntaxEditingStyle org.fife.ui.rsyntaxtextarea.SyntaxConstants/SYNTAX_STYLE_CLOJURE)
-            (.setHighlightCurrentLine false)
-            (#(when background? (.setBackground %(java.awt.Color. 245 245 245))))
-            (.setBorder (javax.swing.BorderFactory/createEmptyBorder 12 12 12 12))
-            ;;(.setBorder (javax.swing.border.LineBorder. java.awt.Color/black))
-            (.setEditable false)))
+          (let [textarea (org.fife.ui.rsyntaxtextarea.RSyntaxTextArea. code (inc (count (clojure.string/split-lines code))) 80)]
+            (when background?
+              (.setBackground textarea (java.awt.Color. 245 245 245)))
+            (doto textarea
+              (.setPreferredSize (java.awt.Dimension. (count (clojure.string/split-lines code)) 80))
+              (.setFont (java.awt.Font. "Fira Code" java.awt.Font/PLAIN 16))
+              (.setSyntaxEditingStyle org.fife.ui.rsyntaxtextarea.SyntaxConstants/SYNTAX_STYLE_CLOJURE)
+              (.setHighlightCurrentLine false)
+              (.setBorder (javax.swing.BorderFactory/createEmptyBorder 12 12 12 12))
+              ;;(.setBorder (javax.swing.border.LineBorder. java.awt.Color/black))
+              (.setEditable false))))
      (.setBorder (javax.swing.BorderFactory/createEmptyBorder))
      (.setVerticalScrollBarPolicy javax.swing.ScrollPaneConstants/VERTICAL_SCROLLBAR_NEVER))))
 
@@ -86,16 +93,30 @@
         cache-file (str cache-dir fs/*sep* (sha1-base64 code-string))]
     (fs/create-dir cache-dir)
     (if (fs/exists? cache-file)
-      (slurp cache-file)
-      (let [r (pr-str (eval (read-string code-string)))]
-        (spit cache-file r)
-        r))))
+      (read-string (slurp cache-file))
+      (let [r (eval (read-string code-string))
+            v (cond-> r (var? r) deref)]
+        (if (fn? v)
+          r
+          (do (spit cache-file (pr-str v))
+              v))))))
 
 (comment
-  (read+eval-cached "(+ 1 2)"))
+  (fs/delete (str fs/*cwd* fs/*sep* ".cache")))
 
-(def slow-thing
-  (str/split-lines (slurp "/usr/share/dict/words")))
+(range 1000)
+
+(comment
+  (let [r (defn foo [] :bar)
+        v (cond-> r (var? r) deref)]
+    (fn? v)))
+
+(defn format-eval-output [form]
+  (binding [*print-length* 10]
+    (pr-str form)))
+
+(comment
+  (format-eval-output (read+eval-cached "(+ 1 2 3)")))
 
 (defn code->panel
   "Converts the Clojure source test in `code` to a series of text or syntax panes and causes `panel` to contain them."
@@ -107,7 +128,7 @@
                (= :list (n/tag node)) (do (.add panel
                                                 (make-syntax-pane (n/string node) {:background? true}))
                                           (.add panel
-                                                (make-syntax-pane (read+eval-cached (n/string node))))
+                                                (make-syntax-pane (format-eval-output (read+eval-cached (n/string node)))))
                                           (rest nodes))
                (n/comment? node) (do (.add panel (make-html-pane
                                                   (md->html
