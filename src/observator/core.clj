@@ -6,9 +6,11 @@
             [datoteka.core :as fs]))
 
 ;; Dogfooding the system while constructing it, I'll try to make a
-;; little bit of literate commentary.
+;; little bit of literate commentary. This is *literate* programming.
 (def slow-thing
-  (str/split-lines (slurp "/usr/share/dict/words")))
+  (do
+    (Thread/sleep 5000)
+    (str/split-lines (slurp "/usr/share/dict/words"))))
 
 
 (count slow-thing)
@@ -88,6 +90,11 @@
 (comment
   (sha1-base64 "hello"))
 
+;; TODO:
+;; Use metadata to:
+;; signal do not cache
+;; add function to force re-evaluation
+;; show results as they come in
 (defn read+eval-cached [code-string]
   (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")
         cache-file (str cache-dir fs/*sep* (sha1-base64 code-string))]
