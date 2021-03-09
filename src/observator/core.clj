@@ -5,15 +5,25 @@
             [rewrite-clj.node :as n]
             [datoteka.core :as fs]))
 
+(defn fix-case [s]
+  #_
+  (str/upper-case s)
+  (str/lower-case s))
+
 ;; Dogfooding the system while constructing it, I'll try to make a
 ;; little bit of literate commentary. This is *literate* programming.
 (def slow-thing
   (do
     (Thread/sleep 5000)
-    (str/split-lines (slurp "/usr/share/dict/words"))))
-
+    (map fix-case (str/split-lines (slurp "/usr/share/dict/words")))))
 
 (count slow-thing)
+
+(def ^:observator/no-cache random-thing
+  (rand-int 1000))
+
+(def random-cached-thing
+  (rand-int 1000))
 
 (def md->html
   "Convert markdown to HTML."
@@ -90,26 +100,38 @@
 (comment
   (sha1-base64 "hello"))
 
-;; TODO:
-;; Use metadata to:
-;; signal do not cache
-;; add function to force re-evaluation
-;; show results as they come in
+(defonce var->cache-file
+  (atom {}))
+
 (defn read+eval-cached [code-string]
   (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")
         cache-file (str cache-dir fs/*sep* (sha1-base64 code-string))]
     (fs/create-dir cache-dir)
     (if (fs/exists? cache-file)
       (read-string (slurp cache-file))
-      (let [r (eval (read-string code-string))
-            v (cond-> r (var? r) deref)]
-        (if (fn? v)
-          r
-          (do (spit cache-file (pr-str v))
-              v))))))
+      (let [result (eval (read-string code-string))
+            var-value (cond-> result (var? result) deref)]
+        (if (fn? var-value)
+          result
+          (do (when-not (-> result meta :observator/no-cache)
+                (when (var? result)
+                  (swap! var->cache-file assoc result cache-file))
+                (spit cache-file (pr-str var-value)))
+              var-value))))))
 
-(comment
-  (fs/delete (str fs/*cwd* fs/*sep* ".cache")))
+(defn clear-cache!
+  ([]
+   (reset! var->cache-file {})
+   (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")]
+     (when (fs/exists? cache-dir)
+       (fs/delete (str fs/*cwd* fs/*sep* ".cache")))))
+  ([sym]
+   (let [var (resolve sym)]
+     (when-let [cache-file (get @var->cache-file var)]
+       (when (fs/exists? cache-file)
+         (fs/delete cache-file)))
+     (swap! var->cache-file dissoc var))))
+
 
 (range 1000)
 
@@ -153,4 +175,8 @@
 (comment
 
   (code->panel panel (slurp "src/observator/core.clj"))
+
+  ;; clear cache
+  (clear-cache!)
+  (clear-cache! 'random-cached-thing)
   )
