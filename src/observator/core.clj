@@ -1,14 +1,15 @@
 ;; # Hello observator!!! 👋
 (ns observator.core
   (:refer-clojure :exclude [hash])
-  (:require [clojure.string :as str]
+  (:require [babashka.pods :as pods]
+            [clojure.string :as str]
             [rewrite-clj.parser :as p]
             [rewrite-clj.node :as n]
             [datoteka.core :as fs]))
 
 (defn fix-case [s]
   (str/upper-case s)
-  #_
+
   (str/lower-case s))
 
 ;; **Dogfooding** the system while constructing it, I'll try to make a
@@ -197,12 +198,25 @@
   (.validate (.getContentPane frame))
   (.repaint frame))
 
-  ;; And, as is the culture of our people, a commend block containing
-  ;; pieces of code with which to pilot the system during development.
+(defn start-file-watcher! [file]
+  (pods/load-pod 'org.babashka/fswatcher "0.0.2")
+  (require '[pod.babashka.fswatcher :as fw])
+  (def file-watcher
+    (fw/watch file
+              (fn [{:keys [type]}]
+                (when (= :write type)
+                  (binding [*ns* (find-ns 'observator.core)]
+                    (code->panel panel (slurp file)))))
+              {:delay-ms 5})))
 
-  (comment
+;; And, as is the culture of our people, a commend block containing
+;; pieces of code with which to pilot the system during development.
+
+(comment
 
   (code->panel panel (slurp "src/observator/core.clj"))
+
+  (start-file-watcher! "src/observator/core.clj")
 
   ;; Clear cache
   (clear-cache!)
