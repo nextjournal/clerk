@@ -1,15 +1,20 @@
-;; # Hello observator!!! 👋
+;; # Hello observator!! 👋
 (ns observator.core
   (:refer-clojure :exclude [hash])
-  (:require [babashka.pods :as pods]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
+            [juxt.dirwatch :as dirwatch]
             [rewrite-clj.parser :as p]
             [rewrite-clj.node :as n]
             [datoteka.core :as fs]))
 
+;; I'd like to
+;; * go over dependency tracking & hashing
+;; * look over ns stuff
+
 (defn fix-case [s]
   (str/upper-case s)
 
+  #_
   (str/lower-case s))
 
 ;; **Dogfooding** the system while constructing it, I'll try to make a
@@ -106,7 +111,7 @@
 (comment
   (sha1-base64 "hello"))
 
-(defonce var->hash
+(defonce !var->hash
   (atom {}))
 
 (defn dependencies-hashes
@@ -118,21 +123,23 @@
        (tree-seq sequential? seq)
        (keep #(get var->hash (and (symbol? %)
                                   (resolve %))))
-       distinct
-       sort
-       vec))
+       (into #{})))
 
 (comment
-  (dependencies-hashes '(def foo (do slow-thing)) {(resolve 'slow-thing) "fd2343"}))
+  (dependencies-hashes '(def foo [slow-thing (do slow-thing
+                                                 sha1-base64)]) {(resolve 'slow-thing) "fd2343"
+                                                                 (resolve 'sha1-base64) "abc"}))
 
 (defn hash [form var->hash]
-  (sha1-base64 (pr-str (conj form (dependencies-hashes form var->hash) form))))
+  (sha1-base64 (pr-str (conj (dependencies-hashes form var->hash) form))))
 
+(comment
+  (hash '(def foo (do slow-thing)) {(resolve 'slow-thing) "fd234c"}))
 
 (defn read+eval-cached [code-string]
   (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")
         form (read-string code-string)
-        hash (hash form @var->hash)
+        hash (hash form @!var->hash)
         cache-file (str cache-dir fs/*sep* hash)]
     (fs/create-dir cache-dir)
     (if (fs/exists? cache-file)
@@ -140,7 +147,7 @@
       (let [result (eval form)
             var-value (cond-> result (var? result) deref)]
         (when (var? result)
-          (swap! var->hash assoc result hash))
+          (swap! !var->hash assoc result hash))
         (if (fn? var-value)
           result
           (do (when-not (or (-> result meta :observator/no-cache)
@@ -150,16 +157,16 @@
 
 (defn clear-cache!
   ([]
-   (reset! var->hash {})
+   (reset! !var->hash {})
    (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")]
      (when (fs/exists? cache-dir)
        (fs/delete (str fs/*cwd* fs/*sep* ".cache")))))
   ([sym]
    (let [var (resolve sym)]
-     (when-let [cache-file (get @var->hash var)]
+     (when-let [cache-file (get @!var->hash var)]
        (when (fs/exists? cache-file)
          (fs/delete cache-file)))
-     (swap! var->hash dissoc var))))
+     (swap! !var->hash dissoc var))))
 
 
 (range 1000)
@@ -198,25 +205,22 @@
   (.validate (.getContentPane frame))
   (.repaint frame))
 
-(defn start-file-watcher! [file]
-  (pods/load-pod 'org.babashka/fswatcher "0.0.2")
-  (require '[pod.babashka.fswatcher :as fw])
-  (def file-watcher
-    (fw/watch file
-              (fn [{:keys [type]}]
-                (when (= :write type)
-                  (binding [*ns* (find-ns 'observator.core)]
-                    (code->panel panel (slurp file)))))
-              {:delay-ms 5})))
+(defn file-event [{:keys [action file]}]
+  (when (and (= action :modify)
+             (= (str file) "/Users/mk/Downloads/observator/src/observator/core.clj"))
+    (binding [*ns* (find-ns 'observator.core)]
+      (code->panel panel (slurp file)))))
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
 
 (comment
+  (def dirwatcher
+    (dirwatch/watch-dir #(file-event %) (fs/file (str fs/*cwd* fs/*sep* "src"))))
+
+  (dirwatch/close-watcher dirwatcher)
 
   (code->panel panel (slurp "src/observator/core.clj"))
-
-  (start-file-watcher! "src/observator/core.clj")
 
   ;; Clear cache
   (clear-cache!)

@@ -2,8 +2,7 @@
  :deps {org.clojure/clojure {:mvn/version "1.10.2"}
 
         funcool/datoteka {:mvn/version "1.0.0"}
-        babashka/fs {:mvn/version "0.0.1"}
-        babashka/pods {:git/url "https://github.com/babashka/pods" :sha "a033bccaf0024b279480f2a7ac4b446621629b73"}
+        juxt/dirwatch {:mvn/version "0.2.5"}
 
         mvxcvi/alphabase {:mvn/version "2.1.0"}
         mvxcvi/clj-cbor {:mvn/version "1.1.0"}
