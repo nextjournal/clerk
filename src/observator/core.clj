@@ -10,14 +10,18 @@
   (str/upper-case s)
   (str/lower-case s))
 
-;; Dogfooding the system while constructing it, I'll try to make a
+;; **Dogfooding** the system while constructing it, I'll try to make a
 ;; little bit of literate commentary. This is *literate* programming.
 (def slow-thing
   (do
-    (Thread/sleep 5000)
+    (Thread/sleep 500)
     (map fix-case (str/split-lines (slurp "/usr/share/dict/words")))))
 
 (count slow-thing)
+
+(do ;; slow as well
+  (Thread/sleep 500)
+  42)
 
 (def ^:observator/no-cache random-thing
   (rand-int 1000))
@@ -100,37 +104,64 @@
 (comment
   (sha1-base64 "hello"))
 
-(defonce var->cache-file
+(defonce var->hash
   (atom {}))
+
+(defn dependencies
+  "Takes a form and returns the vars the form depends on."
+  [form]
+  (->> form
+       (drop (if (contains? '#{def defn} (first form)) 2 0))
+       (tree-seq sequential? seq)
+       (keep #(when-let [var (and (symbol? %)
+                                  (when-let [var (resolve %)]
+                                    (when (and (var? var)
+                                               (= (-> *ns* ns-name str)
+                                                  (namespace (symbol var))))
+                                      var)))]
+                var))
+       distinct))
+
+(defn hash [form var->hash]
+  (sha1-base64 (pr-str (conj (->> form
+                                  dependencies
+                                  (map var->hash)
+                                  sort
+                                  vec)
+                             form))))
+
 
 (defn read+eval-cached [code-string]
   (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")
-        cache-file (str cache-dir fs/*sep* (sha1-base64 code-string))]
+        form (read-string code-string)
+        hash (hash form @var->hash)
+        cache-file (str cache-dir fs/*sep* hash)]
     (fs/create-dir cache-dir)
     (if (fs/exists? cache-file)
       (read-string (slurp cache-file))
-      (let [result (eval (read-string code-string))
+      (let [result (eval form)
             var-value (cond-> result (var? result) deref)]
+        (when (var? result)
+          (swap! var->hash assoc result hash))
         (if (fn? var-value)
           result
-          (do (when-not (-> result meta :observator/no-cache)
-                (when (var? result)
-                  (swap! var->cache-file assoc result cache-file))
+          (do (when-not (or (-> result meta :observator/no-cache)
+                            (instance? clojure.lang.IDeref var-value))
                 (spit cache-file (pr-str var-value)))
               var-value))))))
 
 (defn clear-cache!
   ([]
-   (reset! var->cache-file {})
+   (reset! var->hash {})
    (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")]
      (when (fs/exists? cache-dir)
        (fs/delete (str fs/*cwd* fs/*sep* ".cache")))))
   ([sym]
    (let [var (resolve sym)]
-     (when-let [cache-file (get @var->cache-file var)]
+     (when-let [cache-file (get @var->hash var)]
        (when (fs/exists? cache-file)
          (fs/delete cache-file)))
-     (swap! var->cache-file dissoc var))))
+     (swap! var->hash dissoc var))))
 
 
 (range 1000)
@@ -169,14 +200,14 @@
   (.validate (.getContentPane frame))
   (.repaint frame))
 
-;; And, as is the culture of our people, a commend block containing
-;; pieces of code with which to pilot the system during development.
+  ;; And, as is the culture of our people, a commend block containing
+  ;; pieces of code with which to pilot the system during development.
 
-(comment
+  (comment
 
   (code->panel panel (slurp "src/observator/core.clj"))
 
-  ;; clear cache
+  ;; Clear cache
   (clear-cache!)
   (clear-cache! 'random-cached-thing)
   )
