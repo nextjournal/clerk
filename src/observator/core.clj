@@ -1,13 +1,14 @@
 ;; # Hello observator!!! 👋
 (ns observator.core
+  (:refer-clojure :exclude [hash])
   (:require [clojure.string :as str]
             [rewrite-clj.parser :as p]
             [rewrite-clj.node :as n]
             [datoteka.core :as fs]))
 
 (defn fix-case [s]
-  #_
   (str/upper-case s)
+  #_
   (str/lower-case s))
 
 ;; **Dogfooding** the system while constructing it, I'll try to make a
@@ -107,28 +108,24 @@
 (defonce var->hash
   (atom {}))
 
-(defn dependencies
-  "Takes a form and returns the vars the form depends on."
-  [form]
+(defn dependencies-hashes
+  "Takes a `form` and a mapping `var->hash` returns a sorted vector of the hashes of the vars
+  it depends on."
+  [form var->hash]
   (->> form
        (drop (if (contains? '#{def defn} (first form)) 2 0))
        (tree-seq sequential? seq)
-       (keep #(when-let [var (and (symbol? %)
-                                  (when-let [var (resolve %)]
-                                    (when (and (var? var)
-                                               (= (-> *ns* ns-name str)
-                                                  (namespace (symbol var))))
-                                      var)))]
-                var))
-       distinct))
+       (keep #(get var->hash (and (symbol? %)
+                                  (resolve %))))
+       distinct
+       sort
+       vec))
+
+(comment
+  (dependencies-hashes '(def foo (do slow-thing)) {(resolve 'slow-thing) "fd2343"}))
 
 (defn hash [form var->hash]
-  (sha1-base64 (pr-str (conj (->> form
-                                  dependencies
-                                  (map var->hash)
-                                  sort
-                                  vec)
-                             form))))
+  (sha1-base64 (pr-str (conj form (dependencies-hashes form var->hash) form))))
 
 
 (defn read+eval-cached [code-string]
