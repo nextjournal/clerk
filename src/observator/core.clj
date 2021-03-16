@@ -6,14 +6,14 @@
             [rewrite-clj.parser :as p]
             [rewrite-clj.node :as n]
             [datoteka.core :as fs]))
-
-;; I'd like to
-;; * go over dependency tracking & hashing
-;; * look over ns stuff
+;; TODO
+;; * fix issue when var is renamed: hash stays the same, dependents don't see new name
+;; * identify symbols that point to libraries, first for Clojure, e.g. `{rewrite-clj.parser rewrite-clj/rewrite-clj}`
+;; * research mapping of requires to library coords
+;; * use `clojure.reflect/reflect` to figure out
 
 (defn fix-case [s]
   (str/upper-case s)
-
   #_
   (str/lower-case s))
 
