@@ -1,4 +1,4 @@
-;; # Hello observator!! 👋
+;; # Hello observator!!! 👋
 (ns observator.core
   (:refer-clojure :exclude [hash])
   (:require [clojure.string :as str]
@@ -205,10 +205,11 @@
   (.validate (.getContentPane frame))
   (.repaint frame))
 
+
 (defn file-event [{:keys [action file]}]
-  (when (and (= action :modify)
-             (= (str file) "/Users/mk/Downloads/observator/src/observator/core.clj"))
-    (binding [*ns* (find-ns 'observator.core)]
+  (when-let [ns-part (and (= action :modify)
+                          (second (re-find #".*/src/(.*)\.clj" (str file))))]
+    (binding [*ns* (find-ns (symbol (str/replace ns-part fs/*sep* ".")))]
       (code->panel panel (slurp file)))))
 
 ;; And, as is the culture of our people, a commend block containing
