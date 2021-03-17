@@ -2,7 +2,7 @@
 (ns observator.core
   (:refer-clojure :exclude [hash])
   (:require [clojure.string :as str]
-            [juxt.dirwatch :as dirwatch]
+            [nextjournal.directory-watcher :as dw]
             [rewrite-clj.parser :as p]
             [rewrite-clj.node :as n]
             [datoteka.core :as fs]))
@@ -14,8 +14,20 @@
 
 (defn fix-case [s]
   (str/upper-case s)
-  #_
+  #_ider
   (str/lower-case s))
+
+(comment
+  (ns-aliases *ns*)
+  (resolve 's)
+  (read-string "(defn fix-case [s]
+
+          (str/upper-case s)
+::foo)")
+  (macroexpand '(defn fix-case [s]
+                  (let [r
+                        (str/upper-case s)]
+                    r))))
 
 ;; **Dogfooding** the system while constructing it, I'll try to make a
 ;; little bit of literate commentary. This is *literate* programming.
@@ -206,20 +218,21 @@
   (.repaint frame))
 
 
-(defn file-event [{:keys [action file]}]
-  (when-let [ns-part (and (= action :modify)
-                          (second (re-find #".*/src/(.*)\.clj" (str file))))]
+(defn file-event [{:keys [type path]}]
+  (when-let [ns-part (and (= type :modify)
+                          (second (re-find #".*/src/(.*)\.clj" (str path))))]
     (binding [*ns* (find-ns (symbol (str/replace ns-part fs/*sep* ".")))]
-      (code->panel panel (slurp file)))))
+      (code->panel panel (slurp path)))))
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
 
 (comment
-  (def dirwatcher
-    (dirwatch/watch-dir #(file-event %) (fs/file (str fs/*cwd* fs/*sep* "src"))))
+  (def watcher
+    (doto (dw/create #(file-event %) "src")
+      dw/watch))
 
-  (dirwatch/close-watcher dirwatcher)
+  (dw/stop watcher)
 
   (code->panel panel (slurp "src/observator/core.clj"))
 

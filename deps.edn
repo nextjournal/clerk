@@ -2,9 +2,7 @@
  :deps {org.clojure/clojure {:mvn/version "1.10.2"}
 
         funcool/datoteka {:mvn/version "1.0.0"}
-        juxt/dirwatch {:git/url "https://github.com/mk/dirwatch"
-                       :deps/manifest :deps
-                       :sha "5c35552574bf2dd8be3cc3e92586ecf37be67004"}
+        com.nextjournal/directory-watcher {:mvn/version "1.0.0"}
 
         mvxcvi/alphabase {:mvn/version "2.1.0"}
         mvxcvi/clj-cbor {:mvn/version "1.1.0"}
