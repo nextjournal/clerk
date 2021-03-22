@@ -1,33 +1,26 @@
-;; # Hello observator!!! 👋
+;; # Hello observator!!!! 👋
 (ns observator.core
   (:refer-clojure :exclude [hash])
-  (:require [clojure.string :as str]
+  (:require [clojure.java.classpath :as cp]
+            [clojure.java.io :as io]
+            [clojure.reflect :as reflect]
+            [clojure.string :as str]
+            [clojure.tools.analyzer.jvm :as ana]
+            [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef]
+            [observator.lib :as obs.lib]
             [nextjournal.directory-watcher :as dw]
             [rewrite-clj.parser :as p]
             [rewrite-clj.node :as n]
             [datoteka.core :as fs]))
+
 ;; TODO
 ;; * fix issue when var is renamed: hash stays the same, dependents don't see new name
 ;; * identify symbols that point to libraries, first for Clojure, e.g. `{rewrite-clj.parser rewrite-clj/rewrite-clj}`
-;; * research mapping of requires to library coords
+;; * research mapping of requires to library coords (no mapping, look into jar)
 ;; * use `clojure.reflect/reflect` to figure out
 
 (defn fix-case [s]
-  (str/upper-case s)
-  #_ider
-  (str/lower-case s))
-
-(comment
-  (ns-aliases *ns*)
-  (resolve 's)
-  (read-string "(defn fix-case [s]
-
-          (str/upper-case s)
-::foo)")
-  (macroexpand '(defn fix-case [s]
-                  (let [r
-                        (str/upper-case s)]
-                    r))))
+  (obs.lib/fix-case s))
 
 ;; **Dogfooding** the system while constructing it, I'll try to make a
 ;; little bit of literate commentary. This is *literate* programming.
@@ -123,24 +116,96 @@
 (comment
   (sha1-base64 "hello"))
 
+(defn var-name
+  "Takes a `form` and returns the name of the var, if it exists."
+  [form]
+  (and (list? form)
+       (contains? '#{def defn} (first form))
+       (second form)))
+
+(comment
+  (var-name '(def hello :world)))
+
 (defonce !var->hash
   (atom {}))
+
+(defn find-source
+  "Searches the classpath for the source of a given var for a symbol `sym`.
+  Returns either a path to the jar file or file."
+  [sym]
+  (some (fn [path]
+          (if (cp/jar-file? path)
+            (let [declaring-classes (->> @(resolve sym)
+                                         reflect/reflect
+                                         :members
+                                         (map :declaring-class)
+                                         (map #(str (str/replace % "." fs/*sep*) ".class"))
+                                         set)]
+              (some #(when (contains? declaring-classes %) path)
+                    (cp/filenames-in-jar (java.util.jar.JarFile. (io/file path)))))
+            (some (fn [ext]
+                    (let [file (str path fs/*sep* (str/replace (namespace sym) "." fs/*sep*) ext)]
+                      (when (fs/exists? file)
+                        file))) [".cljc" ".clj"]))) (cp/classpath)))
+
+(comment
+  (nth (cp/classpath) 10)
+
+  (find-source 'clojure.core/inc)
+  (find-source 'observator.lib/fix-case))
+
 
 (defn dependencies-hashes
   "Takes a `form` and a mapping `var->hash` returns a sorted vector of the hashes of the vars
   it depends on."
   [form var->hash]
   (->> form
-       (drop (if (contains? '#{def defn} (first form)) 2 0))
+       (drop (if (var-name form) 2 0))
        (tree-seq sequential? seq)
        (keep #(get var->hash (and (symbol? %)
                                   (resolve %))))
        (into #{})))
 
+
 (comment
+
+
   (dependencies-hashes '(def foo [slow-thing (do slow-thing
                                                  sha1-base64)]) {(resolve 'slow-thing) "fd2343"
-                                                                 (resolve 'sha1-base64) "abc"}))
+                                                                 (resolve 'sha1-base64) "abc"})
+
+  ;; resolving symbols and performing macroexpansion via tools.analyzer
+  (-> '(defn fix-case [str] (-> str str/upper-case str/trim))
+      ana/analyze
+      (ana.passes.ef/emit-form #{:qualified-symbols}))
+
+  (-> '(ns observator.core
+         (:require [observator.lib :as obs.lib]))
+      ana/analyze
+      (ana.passes.ef/emit-form #{:qualified-symbols}))
+
+  (-> '(ns observator.core
+         (:require [observator.lib :as obs.lib]))
+      ana/analyze
+      (ana.passes.ef/emit-form #{:qualified-symbols}))
+
+
+  (-> '(do (require '[observator.lib :as obs.lib])
+           (require 'observator.demo))
+      ana/analyze
+      (ana.passes.ef/emit-form #{:qualified-symbols}))
+  ;; how to hash dependent function?
+  (reflect/reflect obs.lib/fix-case)
+  (reflect/reflect clojure.string/upper-case)
+
+  (cp/classpath)
+  (let [jar (nth (cp/classpath-jarfiles) 8)]
+    (cp/filenames-in-jar jar)
+    #_
+    (some (partial re-matches #".*pom.xml") (cp/filenames-in-jar jar))
+    #_jar)
+
+  )
 
 (defn hash [form var->hash]
   (sha1-base64 (pr-str (conj (dependencies-hashes form var->hash) form))))
@@ -166,6 +231,11 @@
                             (instance? clojure.lang.IDeref var-value))
                 (spit cache-file (pr-str var-value)))
               var-value))))))
+
+(comment
+  (def slow-thing-1 (do (Thread/sleep 500) 42))
+  (inc slow-thing-1))
+
 
 (defn clear-cache!
   ([]
