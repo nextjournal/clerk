@@ -5,6 +5,7 @@
             [clojure.java.io :as io]
             [clojure.reflect :as reflect]
             [clojure.string :as str]
+            [clojure.set :as set]
             [clojure.tools.analyzer.jvm :as ana]
             [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef]
             [observator.lib :as obs.lib]
@@ -154,6 +155,34 @@
   (find-source 'clojure.core/inc)
   (find-source 'observator.lib/fix-case))
 
+(defn required-namespaces
+  "Takes a `form` and returns a set of the namespaces it requires."
+  [form]
+  (->> form
+       ana/analyze
+       (#(ana.passes.ef/emit-form % #{:qualified-symbols}))
+       (tree-seq sequential? seq)
+       (keep (fn [form]
+               (when (and (sequential? form)
+                          (= (first form) 'clojure.core/require))
+                 (into #{}
+                       (map #(let [f (second %)]
+                               (cond-> f (sequential? f) first)))
+                       (rest form)))))
+       (apply set/union)))
+
+
+(comment
+  (required-namespaces '(ns observator.core
+                          (:require [observator.lib :as obs.lib]
+                                    observator.demo)))
+
+  (required-namespaces '(do (require '[observator.lib :as obs.lib]
+                                     'observator.demo2)
+                            (require 'observator.demo)))
+  ;; TODO
+  (required-namespaces '(require '(clojure zip [set :as s]))))
+
 
 (defn dependencies-hashes
   "Takes a `form` and a mapping `var->hash` returns a sorted vector of the hashes of the vars
@@ -169,31 +198,10 @@
 
 (comment
 
-
   (dependencies-hashes '(def foo [slow-thing (do slow-thing
                                                  sha1-base64)]) {(resolve 'slow-thing) "fd2343"
                                                                  (resolve 'sha1-base64) "abc"})
 
-  ;; resolving symbols and performing macroexpansion via tools.analyzer
-  (-> '(defn fix-case [str] (-> str str/upper-case str/trim))
-      ana/analyze
-      (ana.passes.ef/emit-form #{:qualified-symbols}))
-
-  (-> '(ns observator.core
-         (:require [observator.lib :as obs.lib]))
-      ana/analyze
-      (ana.passes.ef/emit-form #{:qualified-symbols}))
-
-  (-> '(ns observator.core
-         (:require [observator.lib :as obs.lib]))
-      ana/analyze
-      (ana.passes.ef/emit-form #{:qualified-symbols}))
-
-
-  (-> '(do (require '[observator.lib :as obs.lib])
-           (require 'observator.demo))
-      ana/analyze
-      (ana.passes.ef/emit-form #{:qualified-symbols}))
   ;; how to hash dependent function?
   (reflect/reflect obs.lib/fix-case)
   (reflect/reflect clojure.string/upper-case)
