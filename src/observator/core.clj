@@ -4,7 +4,6 @@
   (:require [clojure.java.classpath :as cp]
             [clojure.java.io :as io]
             [clojure.reflect :as reflect]
-            [clojure.repl :as repl]
             [clojure.string :as str]
             [clojure.set :as set]
             [clojure.tools.analyzer.jvm :as ana]
@@ -22,6 +21,9 @@
 ;; * identify symbols that point to libraries, first for Clojure, e.g. `{rewrite-clj.parser rewrite-clj/rewrite-clj}`
 ;; * research mapping of requires to library coords (no mapping, look into jar)
 ;; * use `clojure.reflect/reflect` to figure out
+
+;; plot things with aeroic
+;; recurse with try block but return an identifiable error
 
 (defn fix-case [s]
   (obs.lib/fix-case s))
@@ -132,6 +134,11 @@
 
 (defonce !var->hash
   (atom {}))
+
+(comment
+  {#'observator.demo/fix-case "duyPOA0UFJm5y9k3ZyDtC8veRak="}
+
+  @!var->hash)
 
 (defn declaring-classfiles [sym]
   (->> sym
@@ -279,16 +286,20 @@
   (drop-var-name '(range 10)))
 
 (defn var-dependencies [form]
-  (->> form
-       analyze+qualify
-       drop-var-name
-       (tree-seq sequential? seq)
-       (keep #(when (symbol? %)
-                (resolve %)))
-       (into #{})))
+  (let [form (analyze+qualify form)
+        var-name (var-name form)]
+    (->> form
+         (tree-seq sequential? seq)
+         (keep #(when (and (symbol? %)
+                           (not= var-name %))
+                  (resolve %)))
+         (into #{}))))
 
 
 (comment
+  (var-dependencies '(defn foo
+                       ([] (foo #{}))
+                       ([vis] :bar)))
   (into {} (map (juxt identity identity)) #{#'clojure.string/includes? #'observator.lib/fix-case})
 
   (var-dependencies '(defn test? [s]
@@ -317,48 +328,42 @@
               (read read-opts (PushbackReader. pbr)))
             (str text)))))))
 
-(defn hash-var [var->hash var]
-  (when-not (str/starts-with? (-> var meta :ns str) "clojure.")
+(defn hash-var [var->hash visited var]
+  (when-not (or (str/starts-with? (-> var meta :ns str) "clojure.")
+                (visited var))
+    (prn var visited (visited var))
     (when-let [code-string (and (var? var)
                                 (-> var
                                     symbol
                                     source-fn))]
       (binding [*ns* (-> var meta :ns)]
-        (hash var->hash code-string)
-        code-string))))
+        (hash var->hash (conj visited var) (-> code-string read-string analyze+qualify))))))
 
 
 (comment
 
+  (symbol #'observator.core/hash-var)
+  (#{#'observator.core/hash-var #'observator.core/hash #'observator.core/hash-dependencies} #'observator.core/hash-var)
 
-  (hash-var {} (repl/source-fn 'observator.lib/fix-case)))
+  (hash-var {} #{} #'observator.lib/fix-case))
 
 (defn hash-dependencies
   "Takes a `form` and a mapping `var->hash` returns a sorted vector of the hashes of the vars
   it depends on."
-  [var->hash form]
-  (prn :f form)
+  [var->hash visited form]
+  #_(prn :f form)
   (into {}
-        (map (juxt identity (partial hash-var var->hash)))
+        (map (juxt identity (partial hash-var var->hash visited)))
         (var-dependencies form)))
 
-(comment
-  (hash-dependencies {} '(def foo obs.lib/fix-case))
-  (into {} (map (juxt identity (partial hash-var {})) #{#'observator.lib/fix-case})))
+#_(hash-dependencies {} #{} '(def foo obs.lib/fix-case))
 
 
-
-(comment
-  (hash-dependencies '(defn fix-case [s]
-                        (obs.lib/fix-case s)) {})
-
-  (hash-dependencies '(def foo [slow-thing (do slow-thing
-                                               sha1-base64)]) {})
-
-  )
-
-(defn hash [var->hash form]
-  (sha1-base64 (pr-str (conj (-> (hash-dependencies var->hash form) vals set) form))))
+(defn hash
+  ([var->hash form]
+   (hash var->hash #{} form))
+  ([var->hash visited form]
+   (sha1-base64 (pr-str (conj (-> (hash-dependencies var->hash visited form) vals set) form)))))
 
 (comment
   (hash '(def foo (do slow-thing)) {(resolve 'slow-thing) "fd234c"}))
@@ -453,7 +458,6 @@
       dw/watch))
 
   (dw/stop watcher)
-
   (time (code->panel panel (slurp "src/observator/core.clj")))
 
   ;; Clear cache

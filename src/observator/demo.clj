@@ -26,3 +26,10 @@
 
 
 (range 1000)
+
+(comment
+  (require '[observator.core :as obs])
+  (binding [*ns* (find-ns 'observator.demo)]
+    (->> '(defn fix-case [s]
+            (obs.lib/fix-case s))
+         (obs/hash-dependencies {}))))
