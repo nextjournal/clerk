@@ -272,19 +272,6 @@
          (take 2))))
 
 
-(comment
-  (keys @!var->hash)
-  (get @!var->hash #'observator.lib/fix-case)
-  (hash-var {} #'observator.lib/fix-case))
-
-(defn drop-var-name [form]
-  (cond->> form
-    (var-name form) (drop 2)))
-
-(comment
-  (drop-var-name '(def fix-case bar))
-  (drop-var-name '(range 10)))
-
 (defn var-dependencies [form]
   (let [form (analyze+qualify form)
         var-name (var-name form)]
@@ -295,15 +282,9 @@
                   (resolve %)))
          (into #{}))))
 
-
-(comment
-  (var-dependencies '(defn foo
-                       ([] (foo #{}))
-                       ([vis] :bar)))
-  (into {} (map (juxt identity identity)) #{#'clojure.string/includes? #'observator.lib/fix-case})
-
-  (var-dependencies '(defn test? [s]
-                       (str/includes? (obs.lib/fix-case s) "hi"))))
+#_(var-dependencies '(defn foo
+                       ([] (foo "s"))
+                       ([s] (str/includes? (obs.lib/fix-case s) "hi"))))
 
 (declare hash)
 
@@ -331,7 +312,6 @@
 (defn hash-var [var->hash visited var]
   (when-not (or (str/starts-with? (-> var meta :ns str) "clojure.")
                 (visited var))
-    (prn var visited (visited var))
     (when-let [code-string (and (var? var)
                                 (-> var
                                     symbol
@@ -341,17 +321,12 @@
 
 
 (comment
-
-  (symbol #'observator.core/hash-var)
-  (#{#'observator.core/hash-var #'observator.core/hash #'observator.core/hash-dependencies} #'observator.core/hash-var)
-
-  (hash-var {} #{} #'observator.lib/fix-case))
+  (hash-var {} #{} #'observator.core/fix-case))
 
 (defn hash-dependencies
   "Takes a `form` and a mapping `var->hash` returns a sorted vector of the hashes of the vars
   it depends on."
   [var->hash visited form]
-  #_(prn :f form)
   (into {}
         (map (juxt identity (partial hash-var var->hash visited)))
         (var-dependencies form)))
