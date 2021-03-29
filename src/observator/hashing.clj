@@ -52,15 +52,6 @@
              (contains? '#{def defn} (first form)))
     (second form)))
 
-(comment
-  ;; TODO:
-  (let [var #'observator.lib/fix-case
-        {:keys [file line]} (meta var)
-        lines (-> file io/resource io/reader line-seq)]
-    (->> lines
-         (drop (dec line))
-         (take 2))))
-
 
 (defn var-dependencies [form]
   (let [form (analyze+qualify form)
@@ -100,7 +91,7 @@
         (map (juxt identity (partial hash-var var->hash visited)))
         (var-dependencies form)))
 
-#_(hash-dependencies {} #{} '(def foo obs.lib/fix-case))
+#_(hash-dependencies {} #{} '(def foo observator.lib/fix-case))
 
 
 (defn hash
