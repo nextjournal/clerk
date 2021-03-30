@@ -5,7 +5,7 @@
             [clojure.tools.analyzer.jvm :as ana]
             [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef])
   (:import (java.io FileInputStream LineNumberReader InputStreamReader PushbackReader)
-           (clojure.lang RT)))
+           (clojure.lang RT ExceptionInfo)))
 
 (defn source-fn
   "Same as clojure.repl/source-fn but can handle absolute paths."
@@ -77,7 +77,14 @@
                                     symbol
                                     source-fn))]
       (binding [*ns* (-> var meta :ns)]
-        (hash var->hash (conj visited var) (-> code-string read-string analyze+qualify))))))
+        (try
+          (hash var->hash (conj visited var) (-> code-string read-string analyze+qualify))
+          (catch ExceptionInfo e
+            (doto {:ex/source #'hash-var
+                   :ex/data (ex-data e)
+                   :ex/message (.getMessage e)
+                   :ex/var var}
+              prn)))))))
 
 
 (comment
