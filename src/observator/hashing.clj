@@ -4,9 +4,15 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.analyzer.jvm :as ana]
-            [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef])
+            [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef]
+            [observator.lib :as obs.lib])
   (:import (java.io FileInputStream LineNumberReader InputStreamReader PushbackReader)
            (clojure.lang RT ExceptionInfo)))
+
+(def long-thing
+  (map obs.lib/fix-case (str/split-lines (slurp "/usr/share/dict/words"))))
+
+(take 3 long-thing)
 
 (defn source-fn
   "Same as clojure.repl/source-fn but can handle absolute paths."
@@ -90,7 +96,10 @@
 
 
 (comment
-  (hash-var {} #{} #'observator.core/fix-case))
+  (= (hash-var {} #{} #'observator.lib/fix-case)
+     (hash-var {} #{} #'observator.lib/fix-case-2))
+
+  (hash-var {} #{} #'observator.lib/fix-case-3))
 
 (defn hash-dependencies
   "Takes a `form` and a mapping `var->hash` returns a sorted vector of the hashes of the vars
@@ -107,7 +116,9 @@
   ([var->hash form]
    (hash var->hash #{} form))
   ([var->hash visited form]
-   (sha1-base64 (pr-str (conj (-> (hash-dependencies var->hash visited form) vals set) form)))))
+   (sha1-base64 (pr-str (conj (->> form (hash-dependencies var->hash visited) vals set)
+                              (cond->> form
+                                (var-name form) (drop 2)))))))
 
 (comment
   (hash '(def foo (do slow-thing)) {(resolve 'slow-thing) "fd234c"}))

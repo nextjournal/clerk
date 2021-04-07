@@ -199,7 +199,7 @@
 
   (beholder/stop watcher)
   (code->panel panel (slurp "src/observator/core.clj"))
-  (code->panel panel (slurp "src/observator/lib.clj"))
+  (code->panel panel (slurp "src/observator/demo.clj"))
 
   ;; Clear cache
   (clear-cache!)
