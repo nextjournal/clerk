@@ -1,3 +1,4 @@
+;; # Hashing Things!!!!
 (ns observator.hashing
   (:refer-clojure :exclude [hash])
   (:require [clojure.java.io :as io]
@@ -13,7 +14,8 @@
   (when-let [v (resolve x)]
     (when-let [filepath (:file (meta v))]
       (when-let [strm (or (.getResourceAsStream (RT/baseLoader) filepath)
-                          (FileInputStream. (io/file filepath)))]
+                          (when (not= filepath "NO_SOURCE_PATH")
+                            (FileInputStream. (io/file filepath))))]
         strm
         (with-open [rdr (LineNumberReader. (InputStreamReader. strm))]
           (dotimes [_ (dec (:line (meta v)))] (.readLine rdr))

@@ -1,4 +1,4 @@
-;; # Hello observator! 👋
+;; # Hello observator!!! 👋
 (ns observator.core
   (:require [clojure.string :as str]
             [observator.lib :as obs.lib]
@@ -187,7 +187,8 @@
   (when-let [ns-part (and (= type :modify)
                           (second (re-find #".*/src/(.*)\.clj" (str path))))]
     (binding [*ns* (find-ns (symbol (str/replace ns-part fs/*sep* ".")))]
-      (observator.core/code->panel panel (slurp path)))))
+      (observator.core/code->panel observator.core/panel (slurp path)))))
+
 
 
 ;; And, as is the culture of our people, a commend block containing
