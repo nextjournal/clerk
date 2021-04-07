@@ -5,7 +5,9 @@
             [clojure.string :as str]
             [clojure.tools.analyzer.jvm :as ana]
             [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef]
-            [observator.lib :as obs.lib])
+            [observator.lib :as obs.lib]
+            [rewrite-clj.parser :as p]
+            [rewrite-clj.node :as n])
   (:import (java.io FileInputStream LineNumberReader InputStreamReader PushbackReader)
            (clojure.lang RT ExceptionInfo)))
 
@@ -123,14 +125,23 @@
 (comment
   (hash '(def foo (do slow-thing)) {(resolve 'slow-thing) "fd234c"}))
 
+(defn hash-vars
+  "Hashes the defined vars found in the code string (normally a namespace)."
+  [code-string]
+  (loop [{:keys [var->hash nodes] :as r} {:nodes (:children (p/parse-string-all code-string))
+                                          :visited #{}
+                                          :var->hash {}}]
+    (if-let [node (first nodes)]
+      (recur (cond
+               (= :list (n/tag node)) (let [form (-> node n/string read-string analyze+qualify)
+                                            var-name (var-name form)]
+                                        (cond-> (update r :nodes rest)
+                                          var-name
+                                          (assoc-in [:var->hash var-name] (hash var->hash form))))
+               :else (update r :nodes rest)))
+      var->hash)))
 
-;; (defn eval+cache [code]
-;;   (loop [nodes (:children (p/parse-string-all code))]
-;;     (if-let [node (first nodes)]
-;;       (recur (cond
-;;                (= :list (n/tag node)) (do (read+eval-cached (n/string node))
-;;                                           (rest nodes))
-;;                :else (rest nodes))))))
+#_(hash-vars (slurp "src/observator/lib.clj"))
 
 ;; (defn declaring-classfiles [sym]
 ;;   (->> sym
