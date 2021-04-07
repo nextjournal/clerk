@@ -1,3 +1,4 @@
+;; # Observator.Lib
 (ns observator.lib
   (:require [clojure.string :as str]))
 

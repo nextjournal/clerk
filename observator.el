@@ -6,6 +6,6 @@
                         (buffer-file-name)))
                     (when filename
                       (cider-interactive-eval
-                       (concat "(observator.core/code->panel observator.core/panel (slurp \"" filename "\"))"))))))
+                       (concat "(observator.core/file->panel observator.core/panel \"" filename "\")"))))))
 
 (provide 'observator)

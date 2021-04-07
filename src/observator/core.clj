@@ -106,21 +106,16 @@
   (clojure.string/replace s #"^[;]+" ""))
 
 
-(defonce !var->hash
-  (atom {}))
-
-(defn read+eval-cached [code-string]
+(defn read+eval-cached [var->hash code-string]
   (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")
         form (-> code-string read-string hashing/analyze+qualify)
-        hash (hashing/hash @!var->hash form)
+        hash (hashing/hash var->hash form)
         cache-file (str cache-dir fs/*sep* hash)]
     (fs/create-dir cache-dir)
     (if (fs/exists? cache-file)
       (read-string (slurp cache-file))
       (let [result (eval form)
             var-value (cond-> result (var? result) deref)]
-        (when (var? result)
-          (swap! !var->hash assoc result hash))
         (if (fn? var-value)
           result
           (do (when-not (or (-> result meta :observator/no-cache)
@@ -135,16 +130,9 @@
 
 (defn clear-cache!
   ([]
-   (reset! !var->hash {})
    (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")]
      (when (fs/exists? cache-dir)
-       (fs/delete (str fs/*cwd* fs/*sep* ".cache")))))
-  ([sym]
-   (let [var (resolve sym)]
-     (when-let [cache-file (get @!var->hash var)]
-       (when (fs/exists? cache-file)
-         (fs/delete cache-file)))
-     (swap! !var->hash dissoc var))))
+       (fs/delete (str fs/*cwd* fs/*sep* ".cache"))))))
 
 
 (range 1000)
@@ -159,26 +147,27 @@
     (pr-str form)))
 
 (comment
-  (format-eval-output (read+eval-cached "(+ 1 2 3)")))
+  (format-eval-output (read+eval-cached {} "(+ 1 2 3)")))
 
-(defn code->panel
+(defn file->panel
   "Converts the Clojure source test in `code` to a series of text or syntax panes and causes `panel` to contain them."
-  [panel code]
+  [panel file]
   (.removeAll panel)
-  (loop [nodes (:children (p/parse-string-all code))]
-    (if-let [node (first nodes)]
-      (recur (cond
-               (= :list (n/tag node)) (do (.add panel
-                                                (make-syntax-pane (n/string node) {:background? true}))
-                                          (.add panel
-                                                (make-syntax-pane (format-eval-output (read+eval-cached (n/string node)))))
-                                          (rest nodes))
-               (n/comment? node) (do (.add panel (make-html-pane
-                                                  (md->html
-                                                   (apply str (map (comp remove-leading-semicolons n/string)
-                                                                   (take-while n/comment? nodes))))))
-                                     (drop-while n/comment? nodes))
-               :else (rest nodes)))))
+  (let [var->hash (hashing/hash-vars file)]
+    (loop [nodes (:children (p/parse-string-all (slurp file)))]
+      (if-let [node (first nodes)]
+        (recur (cond
+                 (= :list (n/tag node)) (do (.add panel
+                                                  (make-syntax-pane (n/string node) {:background? true}))
+                                            (.add panel
+                                                  (make-syntax-pane (format-eval-output (read+eval-cached var->hash (n/string node)))))
+                                            (rest nodes))
+                 (n/comment? node) (do (.add panel (make-html-pane
+                                                    (md->html
+                                                     (apply str (map (comp remove-leading-semicolons n/string)
+                                                                     (take-while n/comment? nodes))))))
+                                       (drop-while n/comment? nodes))
+                 :else (rest nodes))))))
   (.add panel (javax.swing.JTextPane.))
   (.validate (.getContentPane frame))
   (.repaint frame))
@@ -187,8 +176,7 @@
   (when-let [ns-part (and (= type :modify)
                           (second (re-find #".*/src/(.*)\.clj" (str path))))]
     (binding [*ns* (find-ns (symbol (str/replace ns-part fs/*sep* ".")))]
-      (observator.core/code->panel observator.core/panel (slurp path)))))
-
+      (observator.core/file->panel observator.core/panel path))))
 
 
 ;; And, as is the culture of our people, a commend block containing
@@ -198,10 +186,11 @@
     (beholder/watch #(file-event %) "src"))
 
   (beholder/stop watcher)
-  (code->panel panel (slurp "src/observator/core.clj"))
-  (code->panel panel (slurp "src/observator/demo.clj"))
+  (file->panel panel "src/observator/lib.clj")
+  (file->panel panel "src/observator/demo.clj")
+  (file->panel panel "src/observator/core.clj")
 
   ;; Clear cache
   (clear-cache!)
-  (clear-cache! 'random-cached-thing)
+
   )

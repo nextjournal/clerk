@@ -1,44 +1,20 @@
 ;; # Hashing Things!!!!
 (ns observator.hashing
   (:refer-clojure :exclude [hash])
-  (:require [clojure.java.io :as io]
+  (:require [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.analyzer.jvm :as ana]
             [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef]
+            [datoteka.core :as fs]
             [observator.lib :as obs.lib]
             [rewrite-clj.parser :as p]
-            [rewrite-clj.node :as n])
-  (:import (java.io FileInputStream LineNumberReader InputStreamReader PushbackReader)
-           (clojure.lang RT ExceptionInfo)))
+            [rewrite-clj.node :as n]))
 
 (def long-thing
   (map obs.lib/fix-case (str/split-lines (slurp "/usr/share/dict/words"))))
 
 (take 3 long-thing)
 
-(defn source-fn
-  "Same as clojure.repl/source-fn but can handle absolute paths."
-  [x]
-  (when-let [v (resolve x)]
-    (when-let [filepath (:file (meta v))]
-      (when-let [strm (or (.getResourceAsStream (RT/baseLoader) filepath)
-                          (when (not= filepath "NO_SOURCE_PATH")
-                            (FileInputStream. (io/file filepath))))]
-        strm
-        (with-open [rdr (LineNumberReader. (InputStreamReader. strm))]
-          (dotimes [_ (dec (:line (meta v)))] (.readLine rdr))
-          (let [text (StringBuilder.)
-                pbr (proxy [PushbackReader] [rdr]
-                      (read [] (let [i (proxy-super read)]
-                                 (.append text (char i))
-                                 i)))
-                read-opts (if (.endsWith ^String filepath "cljc") {:read-cond :allow} {})]
-            (if (= :unknown *read-eval*)
-              (throw (IllegalStateException. "Unable to read source while *read-eval* is :unknown."))
-              (read read-opts (PushbackReader. pbr)))
-            (str text)))))))
-
-#_(source-fn 'source-fn)
 
 (defn analyze+qualify [form]
   (-> form
@@ -46,7 +22,6 @@
       (ana.passes.ef/emit-form #{:qualified-symbols})))
 
 #_(analyze+qualify 'analyze+qualify)
-
 
 (defn sha1-base64 [s]
   (String. (.encode (java.util.Base64/getUrlEncoder)
@@ -62,6 +37,7 @@
              (contains? '#{def defn} (first form)))
     (second form)))
 
+#_(var-name '(def foo :bar))
 
 (defn var-dependencies [form]
   (let [form (analyze+qualify form)
@@ -77,71 +53,75 @@
                        ([] (foo "s"))
                        ([s] (str/includes? (obs.lib/fix-case s) "hi"))))
 
-(declare hash)
+(defn +deps
+  [form]
+  (let [form (cond->> form
+               (var-name form) (drop 2))]
+    {:form form
+     :deps (var-dependencies form)}))
 
-(defn hash-var [var->hash visited var]
-  (when-not (or (str/starts-with? (-> var meta :ns str) "clojure.")
-                (visited var))
-    (when-let [code-string (and (var? var)
-                                (-> var
-                                    symbol
-                                    source-fn))]
-      (binding [*ns* (-> var meta :ns)]
-        (try
-          (hash var->hash (conj visited var) (-> code-string read-string analyze+qualify))
-          (catch ExceptionInfo e
-            (doto {:ex/source #'hash-var
-                   :ex/data (ex-data e)
-                   :ex/message (.getMessage e)
-                   :ex/var var}
-              prn)))))))
+(defn hash-vars
+  "Hashes the defined vars found in the file (normally a namespace).
 
+  Recursively hashes depedency vars as well as given they can be found
+  in the classpath."
+  ([file]
+   (hash-vars {} file))
+  ([var->hash file]
+   (hash-vars var->hash #{} file))
+  ([var->hash visited file]
+   (let [var->hash
+         (loop [{:keys [var->hash nodes] :as r} {:nodes (:children (p/parse-string-all (slurp file)))
+                                                 :visited #{}
+                                                 :var->hash var->hash}]
+           (if-let [node (first nodes)]
+             (recur (cond
+                      (= :list (n/tag node)) (let [form (-> node n/string read-string)
+                                                   _ (when (= "ns" (-> node n/children first n/string))
+                                                       (eval form))
+                                                   form (analyze+qualify form)
+                                                   var-name (var-name form)]
+                                               (cond-> (update r :nodes rest)
+                                                 var-name
+                                                 (assoc-in [:var->hash var-name] (+deps form))))
+                      :else (update r :nodes rest)))
+             var->hash))
 
-(comment
-  (= (hash-var {} #{} #'observator.lib/fix-case)
-     (hash-var {} #{} #'observator.lib/fix-case-2))
+         visited
+         (set/union visited (into #{} (map (comp :ns meta resolve)) (keys var->hash)))
 
-  (hash-var {} #{} #'observator.lib/fix-case-3))
+         deps
+         (set/difference (into #{}
+                               (comp (mapcat :deps)
+                                     (filter (fn [var] (not (str/starts-with? (-> var meta :ns str) "clojure.")))))
+                               (vals var->hash))
+                         (-> var->hash keys set))
 
-(defn hash-dependencies
-  "Takes a `form` and a mapping `var->hash` returns a sorted vector of the hashes of the vars
-  it depends on."
-  [var->hash visited form]
-  (into {}
-        (map (juxt identity (partial hash-var var->hash visited)))
-        (var-dependencies form)))
+         deps-ns
+         (into #{} (comp (filter (complement visited))
+                         (map (comp :ns meta))) deps)
 
-#_(hash-dependencies {} #{} '(def foo observator.lib/fix-case))
+         files-to-hash
+         (into #{}
+               (comp (map #(str "src/" (str/replace % "." fs/*sep*) ".clj"))
+                     (filter fs/exists?))
+               (set/difference deps-ns visited))]
+     (reduce #(hash-vars %1 visited %2) var->hash files-to-hash))))
+
+#_(keys (hash-vars "src/observator/demo.clj"))
 
 
 (defn hash
-  ([var->hash form]
-   (hash var->hash #{} form))
-  ([var->hash visited form]
-   (sha1-base64 (pr-str (conj (->> form (hash-dependencies var->hash visited) vals set)
-                              (cond->> form
-                                (var-name form) (drop 2)))))))
+  [var->hash form]
+  (sha1-base64
+   (pr-str (conj (into #{} (map var->hash) (var-dependencies form))
+                 (cond->> form
+                   (var-name form) (drop 2))))))
+
+
 
 (comment
-  (hash '(def foo (do slow-thing)) {(resolve 'slow-thing) "fd234c"}))
-
-(defn hash-vars
-  "Hashes the defined vars found in the code string (normally a namespace)."
-  [code-string]
-  (loop [{:keys [var->hash nodes] :as r} {:nodes (:children (p/parse-string-all code-string))
-                                          :visited #{}
-                                          :var->hash {}}]
-    (if-let [node (first nodes)]
-      (recur (cond
-               (= :list (n/tag node)) (let [form (-> node n/string read-string analyze+qualify)
-                                            var-name (var-name form)]
-                                        (cond-> (update r :nodes rest)
-                                          var-name
-                                          (assoc-in [:var->hash var-name] (hash var->hash form))))
-               :else (update r :nodes rest)))
-      var->hash)))
-
-#_(hash-vars (slurp "src/observator/lib.clj"))
+  (hash {} '(def foo observator.lib/fix-case)))
 
 ;; (defn declaring-classfiles [sym]
 ;;   (->> sym
