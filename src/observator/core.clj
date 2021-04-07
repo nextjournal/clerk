@@ -1,9 +1,9 @@
-;; # Hello observator!!!! 👋
+;; # Hello observator! 👋
 (ns observator.core
   (:require [clojure.string :as str]
             [observator.lib :as obs.lib]
             [observator.hashing :as hashing]
-            [nextjournal.directory-watcher :as dw]
+            [nextjournal.beholder :as beholder]
             [rewrite-clj.parser :as p]
             [rewrite-clj.node :as n]
             [datoteka.core :as fs]))
@@ -187,18 +187,18 @@
   (when-let [ns-part (and (= type :modify)
                           (second (re-find #".*/src/(.*)\.clj" (str path))))]
     (binding [*ns* (find-ns (symbol (str/replace ns-part fs/*sep* ".")))]
-      (code->panel panel (slurp path)))))
+      (observator.core/code->panel panel (slurp path)))))
+
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
-
 (comment
   (def watcher
-    (doto (dw/create #(file-event %) "src")
-      dw/watch))
+    (beholder/watch #(file-event %) "src"))
 
-  (dw/stop watcher)
-  (time (code->panel panel (slurp "src/observator/core.clj")))
+  (beholder/stop watcher)
+  (code->panel panel (slurp "src/observator/core.clj"))
+  (code->panel panel (slurp "src/observator/lib.clj"))
 
   ;; Clear cache
   (clear-cache!)
