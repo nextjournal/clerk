@@ -24,14 +24,6 @@
              (contains? '#{def defn} (first form)))
     (second form)))
 
-(defn analyze+qualify [form]
-  (let [form (-> form
-                 ana/analyze
-                 (ana.passes.ef/emit-form #{:qualified-symbols}))
-        ]
-    form))
-
-#_(analyze+qualify 'analyze+qualify)
 
 (defn sha1-base64 [s]
   (String. (.encode (java.util.Base64/getUrlEncoder)
@@ -40,11 +32,9 @@
 (comment
   (sha1-base64 "hello"))
 
-#_(var-name '(def foo :bar))
 
 (defn var-dependencies [form]
-  (let [form (analyze+qualify form)
-        var-name (var-name form)]
+  (let [var-name (var-name form)]
     (->> form
          (tree-seq sequential? seq)
          (keep #(when (and (symbol? %)
@@ -57,7 +47,9 @@
                        ([s] (str/includes? (obs.lib/fix-case s) "hi"))))
 
 (defn analyze [form]
-  (let [form (analyze+qualify form)
+  (let [form (-> form
+                 ana/analyze
+                 (ana.passes.ef/emit-form #{:qualified-symbols}))
         var (some-> form var-name resolve)
         deps (var-dependencies form)]
     (cond-> {:form (cond->> form var (drop 2))}
@@ -87,11 +79,7 @@
                       (= :list (n/tag node)) (let [form (-> node n/string read-string)
                                                    _ (when (= "ns" (-> node n/children first n/string))
                                                        (eval form))
-                                                   form (analyze+qualify form)
-                                                   var (some-> form var-name resolve)
-                                                   form (cond->> form
-                                                          (var-name form) (drop 2))
-                                                   deps (var-dependencies form)]
+                                                   {:keys [var deps form]} (analyze form)]
                                                (cond-> (update g :nodes rest)
                                                  var
                                                  (assoc-in [:var->hash var] {:file file
@@ -129,29 +117,21 @@
 #_(dep/transitive-dependencies (:graph (build-graph "src/observator/demo.clj")) #'observator.demo/fix-case)
 
 
-
 (defn hash
-  [var->hash {:keys [var form deps]}]
-  (let [hashed-deps (into #{} (map var->hash) deps)]
-    (sha1-base64 (pr-str (conj hashed-deps form)))))
+  ([file]
+   (let [{vars :var->hash :keys [graph]} (build-graph file)]
+     (reduce (fn [vars->hash var]
+               (if-let [info (get vars var)]
+                 (assoc vars->hash var (hash vars->hash (assoc info :var var)))
+                 vars->hash))
+             {}
+             (dep/topo-sort graph))))
+  ([var->hash {:keys [form deps]}]
+   (let [hashed-deps (into #{} (map var->hash) deps)]
+     (sha1-base64 (pr-str (conj hashed-deps form))))))
 
-(defn hash-graph [{vars :var->hash :keys [graph]}]
-  (reduce (fn [vars->hash var]
-            (if-let [info (get vars var)]
-              (assoc vars->hash var (hash vars->hash (assoc info :var var)))
-              vars->hash))
-          {}
-          (dep/topo-sort graph)))
+#_(hash "src/observator/demo.clj")
 
-#_(hash-graph (build-graph "src/observator/demo.clj"))
-
-
-
-
-
-
-(comment
-  (hash {} '(def foo observator.lib/fix-case)))
 
 ;; (defn declaring-classfiles [sym]
 ;;   (->> sym

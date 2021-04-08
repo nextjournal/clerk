@@ -154,7 +154,7 @@
   "Converts the Clojure source test in `code` to a series of text or syntax panes and causes `panel` to contain them."
   [panel file]
   (.removeAll panel)
-  (let [vars->hash (hashing/hash-graph (hashing/build-graph file))]
+  (let [vars->hash (hashing/hash file)]
     (loop [nodes (:children (p/parse-string-all (slurp file)))]
       (if-let [node (first nodes)]
         (recur (cond
