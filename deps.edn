@@ -3,6 +3,7 @@
         org.clojure/java.classpath {:mvn/version "1.0.0"}
         org.clojure/tools.analyzer.jvm {:mvn/version "1.1.0"}
         org.clojure/tools.deps.alpha {:mvn/version "0.11.905"}
+        weavejester/dependency {:mvn/version "0.2.1"}
 
         funcool/datoteka {:mvn/version "1.0.0"}
         com.nextjournal/beholder {:mvn/version "1.0.0"}

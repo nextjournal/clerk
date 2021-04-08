@@ -24,7 +24,7 @@
 (def slow-thing
   (do
     (Thread/sleep 500)
-    (map fix-case (str/split-lines (slurp "/usr/share/dict/words")))))
+    (into [] (map fix-case) (str/split-lines (slurp "/usr/share/dict/words")))))
 
 (count slow-thing)
 
@@ -106,10 +106,10 @@
   (clojure.string/replace s #"^[;]+" ""))
 
 
-(defn read+eval-cached [var->hash code-string]
+(defn read+eval-cached [vars->hash code-string]
   (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")
         form (read-string code-string)
-        hash (hashing/hash var->hash form)
+        hash (hashing/hash vars->hash (hashing/analyze form))
         cache-file (str cache-dir fs/*sep* hash)]
     (fs/create-dir cache-dir)
     (if (fs/exists? cache-file)
@@ -154,14 +154,14 @@
   "Converts the Clojure source test in `code` to a series of text or syntax panes and causes `panel` to contain them."
   [panel file]
   (.removeAll panel)
-  (let [var->hash (hashing/hash-vars file)]
+  (let [vars->hash (hashing/hash-graph (hashing/build-graph file))]
     (loop [nodes (:children (p/parse-string-all (slurp file)))]
       (if-let [node (first nodes)]
         (recur (cond
                  (= :list (n/tag node)) (do (.add panel
                                                   (make-syntax-pane (n/string node) {:background? true}))
                                             (.add panel
-                                                  (make-syntax-pane (format-eval-output (read+eval-cached var->hash (n/string node)))))
+                                                  (make-syntax-pane (format-eval-output (read+eval-cached vars->hash (n/string node)))))
                                             (rest nodes))
                  (n/comment? node) (do (.add panel (make-html-pane
                                                     (md->html

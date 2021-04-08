@@ -8,7 +8,8 @@
             [datoteka.core :as fs]
             [observator.lib :as obs.lib]
             [rewrite-clj.parser :as p]
-            [rewrite-clj.node :as n]))
+            [rewrite-clj.node :as n]
+            [weavejester.dependency :as dep]))
 
 (def long-thing
   (map obs.lib/fix-case (str/split-lines (slurp "/usr/share/dict/words"))))
@@ -16,10 +17,19 @@
 (take 3 long-thing)
 
 
+(defn var-name
+  "Takes a `form` and returns the name of the var, if it exists."
+  [form]
+  (when (and (sequential? form)
+             (contains? '#{def defn} (first form)))
+    (second form)))
+
 (defn analyze+qualify [form]
-  (-> form
-      ana/analyze
-      (ana.passes.ef/emit-form #{:qualified-symbols})))
+  (let [form (-> form
+                 ana/analyze
+                 (ana.passes.ef/emit-form #{:qualified-symbols}))
+        ]
+    form))
 
 #_(analyze+qualify 'analyze+qualify)
 
@@ -29,13 +39,6 @@
 
 (comment
   (sha1-base64 "hello"))
-
-(defn var-name
-  "Takes a `form` and returns the name of the var, if it exists."
-  [form]
-  (when (and (sequential? form)
-             (contains? '#{def defn} (first form)))
-    (second form)))
 
 #_(var-name '(def foo :bar))
 
@@ -53,42 +56,54 @@
                        ([] (foo "s"))
                        ([s] (str/includes? (obs.lib/fix-case s) "hi"))))
 
-(defn +deps
-  [form]
-  (let [form (cond->> form
-               (var-name form) (drop 2))]
-    {:form form
-     :deps (var-dependencies form)}))
+(defn analyze [form]
+  (let [form (analyze+qualify form)
+        var (some-> form var-name resolve)
+        deps (var-dependencies form)]
+    (cond-> {:form (cond->> form var (drop 2))}
+      var (assoc :var var)
+      (seq deps) (assoc :deps deps))))
 
-(defn hash-vars
-  "Hashes the defined vars found in the file (normally a namespace).
+#_(analyze '(defn foo [s] (str/includes? (obs.lib/fix-case s) "hi")))
 
-  Recursively hashes depedency vars as well as given they can be found
-  in the classpath."
+
+(defn build-graph
+  "Analyzes the forms in the given file and builds a dependency graph of the vars.
+
+  Recursively decends into depedency vars as well as given they can be found in the classpath.
+
+  Future improvements:
+  * Also analyze files found in jars
+  * Handle cljc files
+  * Handle compiled java code
+  "
   ([file]
-   (hash-vars {} file))
-  ([var->hash file]
-   (hash-vars var->hash #{} file))
-  ([var->hash visited file]
-   (let [var->hash
-         (loop [{:keys [var->hash nodes] :as r} {:nodes (:children (p/parse-string-all (slurp file)))
-                                                 :visited #{}
-                                                 :var->hash var->hash}]
+   (build-graph {:graph (dep/graph) :var->hash {} :visited #{}} file))
+  ([{:as g :keys [_graph _var->hash _visited]} file]
+   (let [{:as g :keys [_graph var->hash visited]}
+         (loop [{:keys [graph nodes] :as g} (assoc g :nodes (:children (p/parse-string-all (slurp file))))]
            (if-let [node (first nodes)]
              (recur (cond
                       (= :list (n/tag node)) (let [form (-> node n/string read-string)
                                                    _ (when (= "ns" (-> node n/children first n/string))
                                                        (eval form))
                                                    form (analyze+qualify form)
-                                                   var-name (var-name form)]
-                                               (cond-> (update r :nodes rest)
-                                                 var-name
-                                                 (assoc-in [:var->hash var-name] (+deps form))))
-                      :else (update r :nodes rest)))
-             var->hash))
+                                                   var (some-> form var-name resolve)
+                                                   form (cond->> form
+                                                          (var-name form) (drop 2))
+                                                   deps (var-dependencies form)]
+                                               (cond-> (update g :nodes rest)
+                                                 var
+                                                 (assoc-in [:var->hash var] {:file file
+                                                                             :form form
+                                                                             :deps deps})
+                                                 (and var (seq deps))
+                                                 (assoc :graph (reduce #(dep/depend %1 var %2) graph deps))))
+                      :else (update g :nodes rest)))
+             (dissoc g :nodes)))
 
          visited
-         (set/union visited (into #{} (map (comp :ns meta resolve)) (keys var->hash)))
+         (set/union visited (into #{} (map (comp :ns meta)) (keys var->hash)))
 
          deps
          (set/difference (into #{}
@@ -106,17 +121,32 @@
                (comp (map #(str "src/" (str/replace % "." fs/*sep*) ".clj"))
                      (filter fs/exists?))
                (set/difference deps-ns visited))]
-     (reduce #(hash-vars %1 visited %2) var->hash files-to-hash))))
+     (reduce #(build-graph %1 %2) (assoc g :var->hash var->hash :visited visited) files-to-hash))))
 
-#_(keys (hash-vars "src/observator/demo.clj"))
+#_(keys (build-graph "src/observator/demo.clj"))
+#_(dep/topo-sort (:graph (build-graph "src/observator/demo.clj")))
+#_(dep/immediate-dependencies (:graph (build-graph "src/observator/demo.clj")) #'observator.demo/fix-case)
+#_(dep/transitive-dependencies (:graph (build-graph "src/observator/demo.clj")) #'observator.demo/fix-case)
+
 
 
 (defn hash
-  [var->hash form]
-  (sha1-base64
-   (pr-str (conj (into #{} (map var->hash) (var-dependencies form))
-                 (cond->> form
-                   (var-name form) (drop 2))))))
+  [var->hash {:keys [var form deps]}]
+  (let [hashed-deps (into #{} (map var->hash) deps)]
+    (sha1-base64 (pr-str (conj hashed-deps form)))))
+
+(defn hash-graph [{vars :var->hash :keys [graph]}]
+  (reduce (fn [vars->hash var]
+            (if-let [info (get vars var)]
+              (assoc vars->hash var (hash vars->hash (assoc info :var var)))
+              vars->hash))
+          {}
+          (dep/topo-sort graph)))
+
+#_(hash-graph (build-graph "src/observator/demo.clj"))
+
+
+
 
 
 
