@@ -58,28 +58,58 @@
 
 #_(analyze '(defn foo [s] (str/includes? (obs.lib/fix-case s) "hi")))
 
-(defn analyze-file
+
+(defn remove-leading-semicolons [s]
+  (clojure.string/replace s #"^[;]+" ""))
+
+
+(defn parse-file
   ([file]
-   (analyze-file {:graph (dep/graph)} file))
-  ([{:as g :keys [_graph _var->hash]} file]
-   (loop [{:keys [graph nodes] :as g} (assoc g :nodes (:children (p/parse-string-all (slurp file))))]
+   (parse-file {} file))
+  ([{:as _opts :keys [markdown?]} file]
+   (loop [{:as state :keys [doc nodes]} {:nodes (:children (p/parse-file-all file))
+                                         :doc []}]
      (if-let [node (first nodes)]
        (recur (cond
-                (= :list (n/tag node)) (let [form (-> node n/string read-string)
-                                             _ (when (= "ns" (-> node n/children first n/string))
-                                                 (eval form))
-                                             {:keys [var deps form]} (analyze form)]
-                                         (cond-> (update g :nodes rest)
-                                           var
-                                           (assoc-in [:var->hash var] {:file file
-                                                                       :form form
-                                                                       :deps deps})
-                                           (and var (seq deps))
-                                           (assoc :graph (reduce #(dep/depend %1 var %2) graph deps))))
-                :else (update g :nodes rest)))
-       (dissoc g :nodes)))))
+                (= :list (n/tag node)) (-> state
+                                           (update :nodes rest)
+                                           (update :doc (fnil conj []) {:type :list :text (n/string node)}))
+                (and markdown? (n/comment? node)) (-> state
+                                                      (assoc :nodes (drop-while n/comment? nodes))
+                                                      (update :doc conj {:type :markdown :text (apply str (map (comp remove-leading-semicolons n/string)
+                                                                                                               (take-while n/comment? nodes)))}))
+                :else (update state :nodes rest)))
+       doc))))
 
-#_(analyze-file "src/observator/demo.clj")
+#_(parse-file "src/observator/demo.clj")
+#_(parse-file {:markdown? true} "src/observator/demo.clj")
+
+
+(defn analyze-file
+  ([file]
+   (analyze-file {} {:graph (dep/graph)} file))
+  ([state file]
+   (analyze-file {} state file))
+  ([{:as opts :keys [markdown?]} {:as acc :keys [graph _var->hash]} file]
+   (let [doc (parse-file opts file)]
+     (reduce (fn [acc {:keys [type text]}]
+               (if (= type :list)
+                 (let [form (read-string text)
+                       _ (when (= 'ns (first form))
+                           (eval form))
+                       {:keys [var deps form]} (analyze form)]
+                   (cond-> acc
+                     var
+                     (assoc-in [:var->hash var] {:file file
+                                                 :form form
+                                                 :deps deps})
+                     (and var (seq deps))
+                     (assoc :graph (reduce #(dep/depend %1 var %2) graph deps))))
+                 acc))
+             (cond-> acc markdown? (assoc :doc doc))
+             doc))))
+
+#_(:var->hash (analyze-file {:markdown? true} {:graph (dep/graph)} "src/observator/demo.clj"))
 
 (defn build-graph
   "Analyzes the forms in the given file and builds a dependency graph of the vars.
