@@ -58,6 +58,28 @@
 
 #_(analyze '(defn foo [s] (str/includes? (obs.lib/fix-case s) "hi")))
 
+(defn analyze-file
+  ([file]
+   (analyze-file {:graph (dep/graph)} file))
+  ([{:as g :keys [_graph _var->hash]} file]
+   (loop [{:keys [graph nodes] :as g} (assoc g :nodes (:children (p/parse-string-all (slurp file))))]
+     (if-let [node (first nodes)]
+       (recur (cond
+                (= :list (n/tag node)) (let [form (-> node n/string read-string)
+                                             _ (when (= "ns" (-> node n/children first n/string))
+                                                 (eval form))
+                                             {:keys [var deps form]} (analyze form)]
+                                         (cond-> (update g :nodes rest)
+                                           var
+                                           (assoc-in [:var->hash var] {:file file
+                                                                       :form form
+                                                                       :deps deps})
+                                           (and var (seq deps))
+                                           (assoc :graph (reduce #(dep/depend %1 var %2) graph deps))))
+                :else (update g :nodes rest)))
+       (dissoc g :nodes)))))
+
+#_(analyze-file "src/observator/demo.clj")
 
 (defn build-graph
   "Analyzes the forms in the given file and builds a dependency graph of the vars.
@@ -69,26 +91,12 @@
   * Handle cljc files
   * Handle compiled java code
   "
+  ;; TODO: break it up into pieces
   ([file]
    (build-graph {:graph (dep/graph) :var->hash {} :visited #{}} file))
   ([{:as g :keys [_graph _var->hash _visited]} file]
    (let [{:as g :keys [_graph var->hash visited]}
-         (loop [{:keys [graph nodes] :as g} (assoc g :nodes (:children (p/parse-string-all (slurp file))))]
-           (if-let [node (first nodes)]
-             (recur (cond
-                      (= :list (n/tag node)) (let [form (-> node n/string read-string)
-                                                   _ (when (= "ns" (-> node n/children first n/string))
-                                                       (eval form))
-                                                   {:keys [var deps form]} (analyze form)]
-                                               (cond-> (update g :nodes rest)
-                                                 var
-                                                 (assoc-in [:var->hash var] {:file file
-                                                                             :form form
-                                                                             :deps deps})
-                                                 (and var (seq deps))
-                                                 (assoc :graph (reduce #(dep/depend %1 var %2) graph deps))))
-                      :else (update g :nodes rest)))
-             (dissoc g :nodes)))
+         (analyze-file g file)
 
          visited
          (set/union visited (into #{} (map (comp :ns meta)) (keys var->hash)))
@@ -111,7 +119,7 @@
                (set/difference deps-ns visited))]
      (reduce #(build-graph %1 %2) (assoc g :var->hash var->hash :visited visited) files-to-hash))))
 
-#_(keys (build-graph "src/observator/demo.clj"))
+#_(keys (:var->hash (build-graph "src/observator/demo.clj")))
 #_(dep/topo-sort (:graph (build-graph "src/observator/demo.clj")))
 #_(dep/immediate-dependencies (:graph (build-graph "src/observator/demo.clj")) #'observator.demo/fix-case)
 #_(dep/transitive-dependencies (:graph (build-graph "src/observator/demo.clj")) #'observator.demo/fix-case)
