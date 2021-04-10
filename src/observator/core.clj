@@ -4,8 +4,6 @@
             [observator.lib :as obs.lib]
             [observator.hashing :as hashing]
             [nextjournal.beholder :as beholder]
-            [rewrite-clj.parser :as p]
-            [rewrite-clj.node :as n]
             [datoteka.core :as fs]))
 
 ;; TODO
@@ -51,8 +49,8 @@
 (defn make-syntax-pane
   "Create a new syntax-highlighting enabled text area set up for Clojure code."
   ([code]
-   (make-syntax-pane code nil))
-  ([code {:keys [background?]}]
+   (make-syntax-pane {} code))
+  ([{:keys [background?]} code]
    (doto (javax.swing.JScrollPane.
           (let [textarea (org.fife.ui.rsyntaxtextarea.RSyntaxTextArea. code (inc (count (clojure.string/split-lines code))) 80)]
             (when background?
@@ -151,24 +149,17 @@
   (format-eval-output (read+eval-cached {} "(+ 1 2 3)")))
 
 (defn file->panel
-  "Converts the Clojure source test in `code` to a series of text or syntax panes and causes `panel` to contain them."
+  "Converts the Clojure source test in file to a series of text or syntax panes and causes `panel` to contain them."
   [panel file]
   (.removeAll panel)
-  (let [vars->hash (hashing/hash file)]
-    (loop [nodes (:children (p/parse-string-all (slurp file)))]
-      (if-let [node (first nodes)]
-        (recur (cond
-                 (= :list (n/tag node)) (do (.add panel
-                                                  (make-syntax-pane (n/string node) {:background? true}))
-                                            (.add panel
-                                                  (make-syntax-pane (format-eval-output (read+eval-cached vars->hash (n/string node)))))
-                                            (rest nodes))
-                 (n/comment? node) (do (.add panel (make-html-pane
-                                                    (md->html
-                                                     (apply str (map (comp remove-leading-semicolons n/string)
-                                                                     (take-while n/comment? nodes))))))
-                                       (drop-while n/comment? nodes))
-                 :else (rest nodes))))))
+  (let [vars->hash (hashing/hash file)
+        cells (hashing/parse-file {:markdown? true} file)]
+    (doseq [{:keys [type text]} cells]
+      (.add panel (case type
+                    :code (make-syntax-pane {:background? true} text)
+                    :markdown (make-html-pane (md->html text))))
+      (when (= :code type)
+        (.add panel (make-syntax-pane (format-eval-output (read+eval-cached vars->hash text)))))))
   (.add panel (javax.swing.JTextPane.))
   (.validate (.getContentPane frame))
   (.repaint frame))

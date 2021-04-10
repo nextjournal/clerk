@@ -73,7 +73,7 @@
        (recur (cond
                 (= :list (n/tag node)) (-> state
                                            (update :nodes rest)
-                                           (update :doc (fnil conj []) {:type :list :text (n/string node)}))
+                                           (update :doc (fnil conj []) {:type :code :text (n/string node)}))
                 (and markdown? (n/comment? node)) (-> state
                                                       (assoc :nodes (drop-while n/comment? nodes))
                                                       (update :doc conj {:type :markdown :text (apply str (map (comp remove-leading-semicolons n/string)
@@ -93,7 +93,7 @@
   ([{:as opts :keys [markdown?]} {:as acc :keys [graph _var->hash]} file]
    (let [doc (parse-file opts file)]
      (reduce (fn [acc {:keys [type text]}]
-               (if (= type :list)
+               (if (= type :code)
                  (let [form (read-string text)
                        _ (when (= 'ns (first form))
                            (eval form))
