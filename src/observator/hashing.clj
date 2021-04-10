@@ -111,6 +111,26 @@
 
 #_(:var->hash (analyze-file {:markdown? true} {:graph (dep/graph)} "src/observator/demo.clj"))
 
+(defn unhashed-deps [var->hash]
+  (set/difference (into #{}
+                        (comp (mapcat :deps)
+                              (filter (fn [var] (not (str/starts-with? (-> var meta :ns str) "clojure.")))))
+                        (vals var->hash))
+                  (-> var->hash keys set)))
+
+#_(unhashed-deps {#'observator.demo/fix-case {:deps #{#'observator.lib/fix-case}}})
+
+(defn ns->file [ns]
+  (let [f (str "src/" (str/replace ns "." fs/*sep*) ".clj")]
+    (when (fs/exists? f)
+      f)))
+
+(def var->ns
+  (comp :ns meta))
+
+#_(ns->file (find-ns 'observator.core))
+#_(ns->file (find-ns 'clojure.core))
+
 (defn build-graph
   "Analyzes the forms in the given file and builds a dependency graph of the vars.
 
@@ -121,33 +141,15 @@
   * Handle cljc files
   * Handle compiled java code
   "
-  ;; TODO: break it up into pieces
   ([file]
-   (build-graph {:graph (dep/graph) :var->hash {} :visited #{}} file))
+   (build-graph {:graph (dep/graph) :var->hash {} :visited-ns #{}} file))
   ([{:as g :keys [_graph _var->hash _visited]} file]
-   (let [{:as g :keys [_graph var->hash visited]}
-         (analyze-file g file)
-
-         visited
-         (set/union visited (into #{} (map (comp :ns meta)) (keys var->hash)))
-
-         deps
-         (set/difference (into #{}
-                               (comp (mapcat :deps)
-                                     (filter (fn [var] (not (str/starts-with? (-> var meta :ns str) "clojure.")))))
-                               (vals var->hash))
-                         (-> var->hash keys set))
-
-         deps-ns
-         (into #{} (comp (filter (complement visited))
-                         (map (comp :ns meta))) deps)
-
-         files-to-hash
-         (into #{}
-               (comp (map #(str "src/" (str/replace % "." fs/*sep*) ".clj"))
-                     (filter fs/exists?))
-               (set/difference deps-ns visited))]
-     (reduce #(build-graph %1 %2) (assoc g :var->hash var->hash :visited visited) files-to-hash))))
+   (let [{:as g :keys [_graph var->hash visited-ns]} (analyze-file g file)
+         visited-ns (set/union visited-ns (into #{} (map var->ns) (keys var->hash)))
+         deps-ns (into #{} (comp (map var->ns)
+                                 (filter (complement visited-ns))) (unhashed-deps var->hash))]
+     (reduce #(build-graph %1 %2) (assoc g :var->hash var->hash :visited-ns visited-ns)
+             (into #{} (keep ns->file) deps-ns)))))
 
 #_(keys (:var->hash (build-graph "src/observator/demo.clj")))
 #_(dep/topo-sort (:graph (build-graph "src/observator/demo.clj")))

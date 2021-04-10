@@ -1,4 +1,4 @@
-;; # Observator Demo!!
+;; # Observator Demo!!!
 (ns observator.demo
   (:require [clojure.string :as str]
             [observator.lib :as obs.lib]))
@@ -10,12 +10,14 @@
   (obs.lib/fix-case s))
 
 (def long-thing
-  (map fix-case (str/split-lines (slurp "/usr/share/dict/words"))))
+  (do
+    (Thread/sleep 1000)
+    (map fix-case (str/split-lines (slurp "/usr/share/dict/words")))))
 
 (count long-thing)
 
 (do ;; slow as well
-  (Thread/sleep 5000)
+  (Thread/sleep 1000)
   42)
 
 (def ^:observator/no-cache random-thing
