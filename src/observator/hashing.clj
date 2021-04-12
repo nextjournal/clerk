@@ -90,9 +90,9 @@
    (analyze-file {} {:graph (dep/graph)} file))
   ([state file]
    (analyze-file {} state file))
-  ([{:as opts :keys [markdown?]} {:as acc :keys [graph _var->hash]} file]
+  ([{:as opts :keys [markdown?]} acc file]
    (let [doc (parse-file opts file)]
-     (reduce (fn [acc {:keys [type text]}]
+     (reduce (fn [{:as acc :keys [graph]} {:keys [type text]}]
                (if (= type :code)
                  (let [form (read-string text)
                        _ (when (= 'ns (first form))
@@ -109,7 +109,8 @@
              (cond-> acc markdown? (assoc :doc doc))
              doc))))
 
-#_(:var->hash (analyze-file {:markdown? true} {:graph (dep/graph)} "src/observator/demo.clj"))
+#_(:graph (analyze-file {:markdown? true} {:graph (dep/graph)} "src/observator/demo.clj"))
+
 
 (defn unhashed-deps [var->hash]
   (set/difference (into #{}
