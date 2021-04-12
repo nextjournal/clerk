@@ -121,6 +121,7 @@
 
 #_(unhashed-deps {#'observator.demo/fix-case {:deps #{#'observator.lib/fix-case}}})
 
+;; TODO: handle cljc files
 (defn ns->file [ns]
   (let [f (str "src/" (str/replace ns "." fs/*sep*) ".clj")]
     (when (fs/exists? f)
@@ -139,18 +140,13 @@
 
   Future improvements:
   * Also analyze files found in jars
-  * Handle cljc files
   * Handle compiled java code
   "
   ([file]
    (build-graph {:graph (dep/graph) :var->hash {} :visited-ns #{}} file))
-  ([{:as g :keys [_graph _var->hash _visited]} file]
-   (let [{:as g :keys [_graph var->hash visited-ns]} (analyze-file g file)
-         visited-ns (set/union visited-ns (into #{} (map var->ns) (keys var->hash)))
-         deps-ns (into #{} (comp (map var->ns)
-                                 (filter (complement visited-ns))) (unhashed-deps var->hash))]
-     (reduce #(build-graph %1 %2) (assoc g :var->hash var->hash :visited-ns visited-ns)
-             (into #{} (keep ns->file) deps-ns)))))
+  ([g file]
+   (let [{:as g :keys [var->hash]} (analyze-file g file)]
+     (reduce #(build-graph %1 %2) g (into #{} (keep (comp ns->file var->ns)) (unhashed-deps var->hash))))))
 
 #_(keys (:var->hash (build-graph "src/observator/demo.clj")))
 #_(dep/topo-sort (:graph (build-graph "src/observator/demo.clj")))
