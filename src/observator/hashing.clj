@@ -65,7 +65,7 @@
 
 
 (defn remove-leading-semicolons [s]
-  (clojure.string/replace s #"^[;]+" ""))
+  (str/replace s #"^[;]+" ""))
 
 
 (defn parse-file
