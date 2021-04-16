@@ -12,6 +12,7 @@
         mvxcvi/clj-cbor {:mvn/version "1.1.0"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
 
+        arrowic/arrowic {:mvn/version "0.1.1"}
         rewrite-clj/rewrite-clj {:mvn/version "0.6.1"}
         com.fifesoft/rsyntaxtextarea {:mvn/version "3.1.2"}
         org.commonmark/commonmark  {:mvn/version "0.17.1"}}}

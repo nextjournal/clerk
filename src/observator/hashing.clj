@@ -1,7 +1,8 @@
 ;; # Hashing Things!!!!
 (ns observator.hashing
   (:refer-clojure :exclude [hash])
-  (:require [clojure.set :as set]
+  (:require [arrowic.core :as arrowic]
+            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.analyzer.jvm :as ana]
             [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef]
@@ -15,7 +16,6 @@
   (map obs.lib/fix-case (str/split-lines (slurp "/usr/share/dict/words"))))
 
 (take 3 long-thing)
-
 
 (defn var-name
   "Takes a `form` and returns the name of the var, if it exists."
@@ -169,6 +169,20 @@
 
 #_(hash "src/observator/demo.clj")
 
+(defonce viewer
+  (arrowic/create-viewer (arrowic/create-graph)))
+
+(defn show-graph [{:keys [graph var->hash]}]
+  (arrowic/view viewer
+                (arrowic/with-graph (arrowic/create-graph)
+                  (let [vars->verticies (into {} (map (juxt identity arrowic/insert-vertex!)) (keys var->hash))]
+                    (doseq [var (keys var->hash)]
+                      (doseq [dep (dep/immediate-dependencies graph var)]
+                        (when (and (vars->verticies var)
+                                   (vars->verticies dep))
+                          (arrowic/insert-edge! (vars->verticies var) (vars->verticies dep)))))))))
+
+#_(-> "src/observator/demo.clj" build-graph show-graph)
 
 ;; (defn declaring-classfiles [sym]
 ;;   (->> sym
