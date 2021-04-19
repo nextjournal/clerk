@@ -131,7 +131,13 @@
         (cp/classpath-directories)))
 
 #_(ns->file (find-ns 'observator.hashing))
-#_(ns->file (find-ns 'clojure.core))
+
+;; TODO: handle class files
+(defn ns->jar [ns]
+  (let [path (str (str/replace ns "." fs/*sep*) ".clj")]
+    (some #(.getJarEntry % path) (cp/classpath-jarfiles))))
+
+#_(ns->jar (find-ns 'clojure.core))
 
 (def var->ns
   (comp :ns meta))
