@@ -2,6 +2,7 @@
 (ns observator.hashing
   (:refer-clojure :exclude [hash])
   (:require [arrowic.core :as arrowic]
+            [clojure.java.classpath :as cp]
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.analyzer.jvm :as ana]
@@ -123,15 +124,18 @@
 
 ;; TODO: handle cljc files
 (defn ns->file [ns]
-  (let [f (str "src/" (str/replace ns "." fs/*sep*) ".clj")]
-    (when (fs/exists? f)
-      f)))
+  (some (fn [dir]
+          (let [path (str dir fs/*sep* (str/replace ns "." fs/*sep*) ".clj")]
+            (when (fs/exists? path)
+              path)))
+        (cp/classpath-directories)))
+
+#_(ns->file (find-ns 'observator.hashing))
+#_(ns->file (find-ns 'clojure.core))
 
 (def var->ns
   (comp :ns meta))
 
-#_(ns->file (find-ns 'observator.core))
-#_(ns->file (find-ns 'clojure.core))
 
 (defn build-graph
   "Analyzes the forms in the given file and builds a dependency graph of the vars.
@@ -183,6 +187,7 @@
                           (arrowic/insert-edge! (vars->verticies var) (vars->verticies dep)))))))))
 
 #_(-> "src/observator/demo.clj" build-graph show-graph)
+
 
 ;; (defn declaring-classfiles [sym]
 ;;   (->> sym
