@@ -125,7 +125,8 @@
 ;; TODO: handle cljc files
 (defn ns->file [ns]
   (some (fn [dir]
-          (let [path (str dir fs/*sep* (str/replace ns "." fs/*sep*) ".clj")]
+          ;; TODO: fix case upstream when ns can be nil because var can contain java classes like java.lang.String
+          (when-let [path (and ns (str dir fs/*sep* (str/replace ns "." fs/*sep*) ".clj"))]
             (when (fs/exists? path)
               path)))
         (cp/classpath-directories)))
