@@ -100,8 +100,6 @@
       (.setSize 800 1200)
       (.setVisible true))))
 
-(defn remove-leading-semicolons [s]
-  (clojure.string/replace s #"^[;]+" ""))
 
 
 (defn read+eval-cached [vars->hash code-string]
