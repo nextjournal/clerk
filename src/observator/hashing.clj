@@ -177,17 +177,15 @@
 
   Recursively decends into depedency vars as well as given they can be found in the classpath.
   "
-  ([file]
-   (build-graph {:graph (dep/graph) :var->hash {}} file))
-  ([g file]
-   (let [{:as g :keys [var->hash]} (analyze-file g file)]
-     (reduce (fn [g [source symbols]]
-               (if (or (nil? source)
-                       (str/ends-with? source ".jar"))
-                 (update g :var->hash merge (into {} (map (juxt identity (constantly source))) symbols))
-                 (analyze-file g source)))
-             g
-             (group-by find-location (unhashed-deps var->hash))))))
+  [file]
+  (let [{:as g :keys [var->hash]} (analyze-file file)]
+    (reduce (fn [g [source symbols]]
+              (if (or (nil? source)
+                      (str/ends-with? source ".jar"))
+                (update g :var->hash merge (into {} (map (juxt identity (constantly (if source {:jar source} {})))) symbols))
+                (analyze-file g source)))
+            g
+            (group-by find-location (unhashed-deps var->hash)))))
 
 #_(keys (:var->hash (build-graph "src/observator/demo.clj")))
 #_(dep/immediate-dependencies (:graph (build-graph "src/observator/demo.clj"))  #'observator.demo/fix-case)
@@ -208,11 +206,12 @@
                  vars->hash))
              {}
              (dep/topo-sort graph))))
-  ([var->hash {:keys [form deps]}]
+  ([var->hash {:keys [jar form deps]}]
    (let [hashed-deps (into #{} (map var->hash) deps)]
-     (sha1-base64 (pr-str (conj hashed-deps form))))))
+     (sha1-base64 (pr-str (conj hashed-deps (if form form jar)))))))
 
 #_(hash "src/observator/demo.clj")
+#_(hash "src/observator/hashing.clj")
 
 
 (defonce viewer
