@@ -115,8 +115,7 @@
 
 (defn unhashed-deps [var->hash]
   (set/difference (into #{}
-                        (comp (mapcat :deps)
-                              (filter (fn [var] (not (str/starts-with? (-> var meta :ns str) "clojure.")))))
+                        (mapcat :deps)
                         (vals var->hash))
                   (-> var->hash keys set)))
 
@@ -133,36 +132,71 @@
 
 #_(ns->file (find-ns 'observator.hashing))
 
-;; TODO: handle class files
-(defn ns->jar [ns]
-  (let [path (str (str/replace ns "." fs/*sep*) ".clj")]
-    (some #(.getJarEntry % path) (cp/classpath-jarfiles))))
-
-#_(ns->jar (find-ns 'clojure.core))
-
 (def var->ns
   (comp :ns meta))
 
+#_(var->ns #'inc)
+
+(defn ns->jar [ns]
+  (let [path (str (str/replace ns "." "/"))]
+    (some #(when (or (.getJarEntry % (str path ".clj"))
+                     (.getJarEntry % (str path ".cljc")))
+             (.getName %))
+          (cp/classpath-jarfiles))))
+
+#_(ns->jar (var->ns #'dep/depend))
+
+(defn symbol->jar [sym]
+  (some-> (if (instance? Class sym)
+            sym
+            (class (cond-> sym (var? sym) deref)))
+          .getProtectionDomain
+          .getCodeSource
+          .getLocation
+          .getFile))
+
+#_(symbol->jar com.mxgraph.view.mxGraph)
+#_(symbol->jar #'inc)
+
+
+(defn find-location [sym]
+  (if (var? sym)
+    (let [ns (var->ns sym)]
+      (or (ns->file ns)
+          (ns->jar ns)
+          (symbol->jar sym)))
+    (symbol->jar sym)))
+
+#_(find-location #'inc)
+#_(find-location #'dep/depend)
+#_(find-location com.mxgraph.view.mxGraph)
+#_(find-location String)
 
 (defn build-graph
   "Analyzes the forms in the given file and builds a dependency graph of the vars.
 
   Recursively decends into depedency vars as well as given they can be found in the classpath.
-
-  Future improvements:
-  * Also analyze files found in jars
-  * Handle compiled java code
   "
   ([file]
-   (build-graph {:graph (dep/graph) :var->hash {} :visited-ns #{}} file))
+   (build-graph {:graph (dep/graph) :var->hash {}} file))
   ([g file]
    (let [{:as g :keys [var->hash]} (analyze-file g file)]
-     (reduce #(build-graph %1 %2) g (into #{} (keep (comp ns->file var->ns)) (unhashed-deps var->hash))))))
+     (reduce (fn [g [source symbols]]
+               (if (or (nil? source)
+                       (str/ends-with? source ".jar"))
+                 (update g :var->hash merge (into {} (map (juxt identity (constantly source))) symbols))
+                 (analyze-file g source)))
+             g
+             (group-by find-location (unhashed-deps var->hash))))))
 
 #_(keys (:var->hash (build-graph "src/observator/demo.clj")))
-#_(dep/topo-sort (:graph (build-graph "src/observator/demo.clj")))
-#_(dep/immediate-dependencies (:graph (build-graph "src/observator/demo.clj")) #'observator.demo/fix-case)
-#_(dep/transitive-dependencies (:graph (build-graph "src/observator/demo.clj")) #'observator.demo/fix-case)
+#_(dep/immediate-dependencies (:graph (build-graph "src/observator/demo.clj"))  #'observator.demo/fix-case)
+#_(dep/transitive-dependencies (:graph (build-graph "src/observator/demo.clj"))  #'observator.demo/fix-case)
+
+#_(keys (:var->hash (build-graph "src/observator/hashing.clj")))
+#_(dep/topo-sort (:graph (build-graph "src/observator/hashing.clj")))
+#_(dep/immediate-dependencies (:graph (build-graph "src/observator/hashing.clj"))  #'observator.hashing/long-thing)
+#_(dep/transitive-dependencies (:graph (build-graph "src/observator/hashing.clj"))  #'observator.hashing/long-thing)
 
 
 (defn hash
@@ -180,8 +214,10 @@
 
 #_(hash "src/observator/demo.clj")
 
+
 (defonce viewer
   (arrowic/create-viewer (arrowic/create-graph)))
+
 
 (defn show-graph [{:keys [graph var->hash]}]
   (arrowic/view viewer
@@ -194,15 +230,9 @@
                           (arrowic/insert-edge! (vars->verticies var) (vars->verticies dep)))))))))
 
 #_(-> "src/observator/demo.clj" build-graph show-graph)
+#_(-> "src/observator/hashing.clj" build-graph show-graph)
 
 
-;; (defn declaring-classfiles [sym]
-;;   (->> sym
-;;        reflect/reflect
-;;        :members
-;;        (map :declaring-class)
-;;        (map #(str (str/replace % "." fs/*sep*) ".class"))
-;;        set))
 
 ;; (comment
 ;;   (declaring-classfiles clojure.core/add-tap)

@@ -180,6 +180,7 @@
   (beholder/stop watcher)
   (file->panel panel "src/observator/lib.clj")
   (file->panel panel "src/observator/demo.clj")
+  (file->panel panel "src/observator/hashing.clj")
   (file->panel panel "src/observator/core.clj")
 
   ;; Clear cache
