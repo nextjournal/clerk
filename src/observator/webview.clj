@@ -70,6 +70,9 @@
 
 (defonce frame (setup-web-view!))
 
+(defn +html-head [html]
+  (str "<html><head>"
+       "</head><body>" html "</body></html>"))
 
 (defn file->html
   [file]
@@ -82,6 +85,7 @@
                           :markdown (obs/md->html text))
                   (= :code type)
                   (str "<pre>" (obs/format-eval-output (obs/read+eval-cached var->hash text)) "</pre>"))))
-         (str/join))))
+         str/join
+         +html-head)))
 
 #_(set-html! (file->html "src/observator/demo.clj"))
