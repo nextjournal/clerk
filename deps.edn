@@ -8,6 +8,12 @@
         funcool/datoteka {:mvn/version "1.0.0"}
         com.nextjournal/beholder {:mvn/version "1.0.0"}
 
+        org.openjfx/javafx-controls {:mvn/version "15.0.1"}
+        org.openjfx/javafx-base {:mvn/version "15.0.1"}
+        org.openjfx/javafx-graphics {:mvn/version "15.0.1"}
+        org.openjfx/javafx-swing {:mvn/version "15.0.1"} ;; really needed?
+        org.openjfx/javafx-web {:mvn/version "15.0.1"}
+
         mvxcvi/alphabase {:mvn/version "2.1.0"}
         mvxcvi/clj-cbor {:mvn/version "1.1.0"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
