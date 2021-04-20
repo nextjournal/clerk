@@ -1,4 +1,11 @@
 (ns observator.webview
+  "Sets up a JavaFX WebView.
+
+  Mostly taken from https://gist.github.com/jackrusher/626e0d97282c089cf56e"
+  (:require [clojure.string :as str]
+            [observator.lib :as obs.lib]
+            [observator.core :as obs]
+            [observator.hashing :as hashing])
   (:import (javafx.scene Scene)
            (javafx.scene.web WebView)))
 
@@ -64,4 +71,17 @@
 (defonce frame (setup-web-view!))
 
 
-#_(set-html! "<h1>Hello Engine!!!</h1>")
+(defn file->html
+  [file]
+  (let [var->hash (hashing/hash file)]
+    (->> file
+         (hashing/parse-file {:markdown? true})
+         (map (fn [{:keys [type text]}]
+                (cond-> (case type
+                          :code (str "<pre>" text "</pre>")
+                          :markdown (obs/md->html text))
+                  (= :code type)
+                  (str "<pre>" (obs/format-eval-output (obs/read+eval-cached var->hash text)) "</pre>"))))
+         (str/join))))
+
+#_(set-html! (file->html "src/observator/demo.clj"))
