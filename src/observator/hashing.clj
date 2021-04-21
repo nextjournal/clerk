@@ -25,6 +25,8 @@
              (contains? '#{def defn} (first form)))
     (second form)))
 
+(defn no-cache? [form]
+  (-> form var-name meta :observator/no-cache boolean))
 
 (defn sha1-base64 [s]
   (String. (.encode (java.util.Base64/getUrlEncoder)

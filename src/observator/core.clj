@@ -106,15 +106,16 @@
   (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")
         form (read-string code-string)
         hash (hashing/hash vars->hash (hashing/analyze form))
-        cache-file (str cache-dir fs/*sep* hash)]
+        cache-file (str cache-dir fs/*sep* hash)
+        no-cache? (hashing/no-cache? form)]
     (fs/create-dir cache-dir)
-    (if (fs/exists? cache-file)
+    (if (and (not no-cache?) (fs/exists? cache-file))
       (read-string (slurp cache-file))
       (let [result (eval form)
             var-value (cond-> result (var? result) deref)]
         (if (fn? var-value)
           result
-          (do (when-not (or (-> result meta :observator/no-cache)
+          (do (when-not (or no-cache?
                             (instance? clojure.lang.IDeref var-value)
                             (contains? #{'ns 'in-ns 'require} (first form)))
                 (spit cache-file (pr-str var-value)))
