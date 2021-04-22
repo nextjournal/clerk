@@ -2,9 +2,7 @@
   "Sets up a JavaFX WebView.
 
   Mostly taken from https://gist.github.com/jackrusher/626e0d97282c089cf56e"
-  (:require [clojure.string :as str]
-            [glow.core :as glow]
-            [observator.lib :as obs.lib]
+  (:require [glow.core :as glow]
             [observator.core :as obs]
             [observator.hashing :as hashing])
   (:import (javafx.scene Scene)
@@ -49,6 +47,9 @@
 (defn set-html! [html]
   (run-later (.loadContent @engine html)))
 
+(defn load-url! [url]
+  (run-later (.load @engine url)))
+
 (defonce web-view-panel (javafx.embed.swing.JFXPanel.))
 
 (defn make-frame! [panel]
@@ -71,15 +72,38 @@
 
 (defonce frame (setup-web-view!))
 
-(defn +html-head [html]
-  (str "<html><head><style>"
-       "
+(defn doc->viewer [var->hash doc]
+  (into ^{:nextjournal/viewer :flex-col} []
+        (mapcat (fn [{:keys [type text]}]
+                  (case type
+                    :markdown [{:nextjournal/viewer type :nextjournal/value text}]
+                    ;; TODO: bring back syntax highlighting via glow
+                    :code [{:nextjournal/viewer :html :nextjournal/value (str "<pre class='code'>" (glow/highlight-html text) "</pre>")}
+                           (obs/read+eval-cached var->hash text)])))
+        doc))
+
+(defn ->edn [x]
+  (binding [*print-meta* true
+            *print-namespace-maps* false]
+    (pr-str x)))
+
+#_(->edn (let [file "src/observator/demo.clj"]
+           (doc->viewer (hashing/hash file) (hashing/parse-file {:markdown? true} file))))
+
+(defn ->html [viewer]
+  (str "<!DOCTYPE html>
+<html><head>
+<meta charset=\"UTF-8\">
+<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/gh/tonsky/FiraCode@5.2/distr/fira_code.css\">
+<link rel=\"stylesheet\" href=\"https://cdn.nextjournal.com/data/QmRqugy58UfVG5j9Lo2ccKpkV6tJ2pDDfrZXViRApUKG4v?filename=viewer-a098a51e8ec9999fae7673b325889dbccafad583.css&content-type=text/css\"/>
+<script src=\"https://cdn.nextjournal.com/data/QmPxet4ijyt6s3pRrkqKn1JfV9DEvMTVhQ6p5qz1DhGjEF?filename=viewer.js&content-type=application/x-javascript\"></script>
+<style>
 body {
   font: 20px Georgia;
   padding: 0.5em;
 }
 pre {
-  font: 16px 'Fira Code';  
+  font: 16px 'Fira Code';
 }
 .code {
   background-color: rgb(245, 245, 245);
@@ -114,20 +138,25 @@ span.character { color: #2CAB76; }
 
 span.string { color: #C7877B; }
 span.variable { color: #268bd2; }"
-       "</style></head><body>" html "</body></html>"))
+       "</style></head><body>"
+       "<script>
+nextjournal.viewer.inspect_into(document.body, nextjournal.viewer.read_string(" (-> viewer ->edn pr-str) "))
+</script>"
+       "</body></html>\n"))
 
 (defn file->html
   [file]
   (let [var->hash (hashing/hash file)]
     (->> file
          (hashing/parse-file {:markdown? true})
-         (map (fn [{:keys [type text]}]
-                (cond-> (case type
-                          :code (str "<pre class='code'>" (glow/highlight-html text) "</pre>")
-                          :markdown (obs/md->html text))
-                  (= :code type)
-                  (str "<pre class='result'>" (obs/format-eval-output (obs/read+eval-cached var->hash text)) "</pre>"))))
-         str/join
-         +html-head)))
+         (doc->viewer var->hash)
+         ->html)))
+
+#_(let [out "demo.html"]
+    (->> "src/observator/demo.clj" file->html (spit out))
+    (clojure.java.browse/browse-url out)
+    #_
+    (load-url! (str "file:/Users/mk/dev/observator/" out)))
 
 #_(set-html! (file->html "src/observator/demo.clj"))
+#_(set-html! "<h1>hello world</h1>")

@@ -118,7 +118,7 @@
           (do (when-not (or no-cache?
                             (instance? clojure.lang.IDeref var-value)
                             (contains? #{'ns 'in-ns 'require} (first form)))
-                (spit cache-file (pr-str var-value)))
+                (spit cache-file (binding [*print-meta* true] (pr-str var-value))))
               var-value))))))
 
 (comment
