@@ -155,7 +155,6 @@ nextjournal.viewer.inspect_into(document.body, nextjournal.viewer.read_string(" 
 #_(let [out "demo.html"]
     (->> "src/observator/demo.clj" file->html (spit out))
     (clojure.java.browse/browse-url out)
-    #_
     (load-url! (str "file:/Users/mk/dev/observator/" out)))
 
 #_(set-html! (file->html "src/observator/demo.clj"))

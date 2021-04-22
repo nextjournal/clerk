@@ -1,18 +1,10 @@
-;; # Observator Demo!!!!!!
+;; # Introducing Observator 👋
+;; Like the idea of notebooks, but hate leaving your favorite editor? We present Observator, a tool that enables a rich, local-first notebook experience using standard Clojure namespaces.
 (ns observator.demo
   (:require [clojure.string :as str]
             [observator.lib :as obs.lib]))
 
-;; **Dogfooding** the system while constructing it, I'll try to make a
-;; little bit of literate commentary. This is *literate* programming.
-(def vega-unemployment-map
-  ^{:nextjournal/viewer :vega-lite}
-  {:width 650 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
-                                 :format {:type "topojson" :feature "counties"}}
-   :transform [{:lookup "id" :from {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
-                                    :key "id" :fields ["rate"]}}]
-   :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}})
-
+;; Observator uses static analysis and a tiny bit of data flow to avoid needless recomputation.
 (defn fix-case [s]
   (obs.lib/fix-case s))
 
@@ -21,12 +13,22 @@
     (Thread/sleep 1000)
     (take 40 (map fix-case (str/split-lines (slurp "/usr/share/dict/words"))))))
 
+;; It comes with full-support for the [Nextjournal viewer api](https://nextjournal.com/help/clojure-viewer-api), for example `vega-lite`:
+(def vega-unemployment-map
+  ^{:nextjournal/viewer :vega-lite}
+  {:width 650 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
+                                 :format {:type "topojson" :feature "counties"}}
+   :transform [{:lookup "id" :from {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
+                                    :key "id" :fields ["rate"]}}]
+   :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}})
+
 (count long-thing)
 
 ;; We can opt out of caching by tagging a var with `^:observator/no-cache` metadata.
 (def ^:observator/no-cache random-thing
   (rand-int 1000))
 
+;; Other examples of viewers are `plotly` & `latex`.
 (def plotly
   ^{:nextjournal/viewer :plotly}
   {:data [{:y (shuffle (range 10)) :name "The Federation"}
