@@ -2,9 +2,7 @@
   "Sets up a JavaFX WebView.
 
   Mostly taken from https://gist.github.com/jackrusher/626e0d97282c089cf56e"
-  (:require [glow.core :as glow]
-            [observator.core :as obs]
-            [observator.hashing :as hashing])
+  (:require [glow.core :as glow])
   (:import (javafx.scene Scene)
            (javafx.scene.web WebView)))
 
@@ -65,6 +63,7 @@
   (run-now
    (reset! web-view (doto (WebView.) (.setPrefHeight 900)))
    (reset! engine (.getEngine @web-view))
+   ;; TODO: overwrite console.log and pass in java object
    (set-html! "<h1>Hello Engine</h1>")
    (.setScene web-view-panel
               (Scene.  @web-view 900 1200))
@@ -72,15 +71,16 @@
 
 (defonce frame (setup-web-view!))
 
-(defn doc->viewer [var->hash doc]
+(defn doc->viewer [doc]
   (into ^{:nextjournal/viewer :flex-col} []
-        (mapcat (fn [{:keys [type text]}]
+        (mapcat (fn [{:keys [type text result]}]
                   (case type
                     :markdown [{:nextjournal/viewer type :nextjournal/value text}]
-                    ;; TODO: bring back syntax highlighting via glow
-                    :code [{:nextjournal/viewer :html :nextjournal/value (str "<pre class='code'>" (glow/highlight-html text) "</pre>")}
-                           (obs/read+eval-cached var->hash text)])))
+                    :code (cond-> [{:nextjournal/viewer :html :nextjournal/value (str "<pre class='code'>" (glow/highlight-html text) "</pre>")}]
+                            result (conj result)))))
         doc))
+
+#_(doc->viewer (observator.core/eval-file "src/observator/demo.clj"))
 
 (defn ->edn [x]
   (binding [*print-meta* true
@@ -91,6 +91,7 @@
            (doc->viewer (hashing/hash file) (hashing/parse-file {:markdown? true} file))))
 
 (defn ->html [viewer]
+  ;; TODO: bring in hiccup
   (str "<!DOCTYPE html>
 <html><head>
 <meta charset=\"UTF-8\">
@@ -139,23 +140,26 @@ span.character { color: #2CAB76; }
 span.string { color: #C7877B; }
 span.variable { color: #268bd2; }"
        "</style></head><body>"
+
        "<script>
 nextjournal.viewer.inspect_into(document.body, nextjournal.viewer.read_string(" (-> viewer ->edn pr-str) "))
 </script>"
+
        "</body></html>\n"))
+;; document.body.innerHTML = String(nextjournal.viewer);
 
-(defn file->html
-  [file]
-  (let [var->hash (hashing/hash file)]
-    (->> file
-         (hashing/parse-file {:markdown? true})
-         (doc->viewer var->hash)
-         ->html)))
 
-#_(let [out "demo.html"]
-    (->> "src/observator/demo.clj" file->html (spit out))
+(defn doc->html
+  [doc]
+  (->html (doc->viewer doc)))
+
+#_(doc->html (observator.core/eval-file "src/observator/demo.clj"))
+
+(defn show-doc! [doc]
+  (let [html (->html (doc->viewer doc))
+        out "test.html"]
+    (spit out html)
     (clojure.java.browse/browse-url out)
-    (load-url! (str "file:/Users/mk/dev/observator/" out)))
+    (set-html! html)))
 
-#_(set-html! (file->html "src/observator/demo.clj"))
-#_(set-html! "<h1>hello world</h1>")
+#_(show-doc! (observator.core/eval-file "src/observator/demo.clj"))

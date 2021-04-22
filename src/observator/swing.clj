@@ -86,3 +86,6 @@
   (.add panel (javax.swing.JTextPane.))
   (.validate (.getContentPane frame))
   (.repaint frame))
+
+(defn show-doc! [doc]
+  (doc->panel panel doc))

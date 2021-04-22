@@ -1,10 +1,11 @@
 ;; # Hello observator!!! 👋
 (ns observator.core
   (:require [clojure.string :as str]
-            [observator.swing :as swing]
-            [observator.hashing :as hashing]
+            [datoteka.core :as fs]
             [nextjournal.beholder :as beholder]
-            [datoteka.core :as fs]))
+            [observator.hashing :as hashing]
+            [observator.swing :as swing]
+            [observator.webview :as webview]))
 
 (defn read+eval-cached [vars->hash code-string]
   (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")
@@ -42,13 +43,20 @@
 
 #_(+eval-results {} [{:type :markdown :text "# Hi"} {:type :code :text "(+ 39 3)"}])
 
+(defn eval-file [file]
+  (->> file
+       (hashing/parse-file {:markdown? true})
+       (+eval-results (hashing/hash file))))
+
+#_(eval-file "src/observator/demo.clj")
+
 (defn show-file!
   "Converts the Clojure source test in file to a series of text or syntax panes and causes `panel` to contain them."
   [file]
-  (let [evaluated-doc (->> file
-                           (hashing/parse-file {:markdown? true})
-                           (+eval-results (hashing/hash file)))]
-    (swing/doc->panel swing/panel evaluated-doc)))
+  (doto (eval-file file)
+    swing/show-doc!
+    webview/show-doc!)
+  :done)
 
 (defn file-event [{:keys [type path]}]
   (when-let [ns-part (and (= type :modify)
