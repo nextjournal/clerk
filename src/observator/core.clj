@@ -167,7 +167,7 @@
   (when-let [ns-part (and (= type :modify)
                           (second (re-find #".*/src/(.*)\.clj" (str path))))]
     (binding [*ns* (find-ns (symbol (str/replace ns-part fs/*sep* ".")))]
-      (observator.core/file->panel observator.core/panel path))))
+      (observator.core/file->panel observator.core/panel (str path)))))
 
 
 ;; And, as is the culture of our people, a commend block containing
