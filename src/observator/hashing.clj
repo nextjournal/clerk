@@ -53,12 +53,15 @@
                  ana/analyze
                  (ana.passes.ef/emit-form #{:qualified-symbols}))
         var (some-> form var-name resolve)
-        deps (var-dependencies form)]
+        deps (cond-> (var-dependencies form) var (disj var))]
     (cond-> {:form (cond->> form var (drop 2))}
       var (assoc :var var)
       (seq deps) (assoc :deps deps))))
 
 #_(analyze '(defn foo [s] (str/includes? (obs.lib/fix-case s) "hi")))
+#_(analyze '(defn segments [s]
+              (let [segments (str/split s)]
+                (str/join segments))))
 
 
 (defn remove-leading-semicolons [s]
