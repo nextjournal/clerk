@@ -4,8 +4,8 @@
             [datoteka.core :as fs]
             [nextjournal.beholder :as beholder]
             [observator.hashing :as hashing]
-            [observator.swing :as swing]
             [observator.webview :as webview]))
+
 
 (defn read+eval-cached [vars->hash code-string]
   (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")
@@ -13,6 +13,7 @@
         hash (hashing/hash vars->hash (hashing/analyze form))
         cache-file (str cache-dir fs/*sep* hash)
         no-cache? (hashing/no-cache? form)]
+    #_(prn :hash hash :eval form :cached? (boolean (and (not no-cache?) (fs/exists? cache-file))))
     (fs/create-dir cache-dir)
     (if (and (not no-cache?) (fs/exists? cache-file))
       (read-string (slurp cache-file))
@@ -22,6 +23,7 @@
           result
           (do (when-not (or no-cache?
                             (instance? clojure.lang.IDeref var-value)
+                            (instance? clojure.lang.MultiFn var-value)
                             (contains? #{'ns 'in-ns 'require} (first form)))
                 (spit cache-file (binding [*print-meta* true] (pr-str var-value))))
               var-value))))))
@@ -53,17 +55,16 @@
 (defn show-file!
   "Converts the Clojure source test in file to a series of text or syntax panes and causes `panel` to contain them."
   [file]
-  (doto (eval-file file)
-    swing/show-doc!
-    webview/show-doc!)
-  :done)
+  (and (time (doto (time (eval-file file))
+               #_observator.swing/show-doc!
+               webview/show-doc!))
+       :done))
 
 (defn file-event [{:keys [type path]}]
   (when-let [ns-part (and (= type :modify)
                           (second (re-find #".*/src/(.*)\.clj" (str path))))]
     (binding [*ns* (find-ns (symbol (str/replace ns-part fs/*sep* ".")))]
       (observator.core/show-file! (str path)))))
-
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
