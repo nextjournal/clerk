@@ -13,6 +13,20 @@
     (Thread/sleep 1000)
     (take 40 (map fix-case (str/split-lines (slurp "/usr/share/dict/words"))))))
 
+(defn fib
+  ([]
+   (fib 1 1))
+  ([a b]
+   (lazy-seq (cons a (fib b (+ a b))))))
+
+(def fib-10
+  (take 10 (fib)))
+
+(def fib-10-inc
+  (map inc fib-10))
+
+(map (comp inc inc) fib-10)
+
 ;; It comes with full-support for the [Nextjournal viewer api](https://nextjournal.com/help/clojure-viewer-api), for example `vega-lite`:
 (def vega-unemployment-map
   ^{:nextjournal/viewer :vega-lite}
