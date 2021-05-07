@@ -2,7 +2,9 @@
   "Sets up a JavaFX WebView.
 
   Mostly taken from https://gist.github.com/jackrusher/626e0d97282c089cf56e"
-  (:require [glow.core :as glow])
+  (:require [glow.core :as glow]
+            [hiccup.page :as hiccup]
+            [clojure.java.browse :as browse])
   (:import (javafx.scene Scene)
            (javafx.scene.web WebView)))
 
@@ -90,16 +92,8 @@
 #_(->edn (let [file "src/observator/demo.clj"]
            (doc->viewer (hashing/hash file) (hashing/parse-file {:markdown? true} file))))
 
-(defn ->html [viewer]
-  ;; TODO: bring in hiccup
-  (str "<!DOCTYPE html>
-<html><head>
-<meta charset=\"UTF-8\">
-<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/gh/tonsky/FiraCode@5.2/distr/fira_code.css\">
-<link rel=\"stylesheet\" href=\"https://cdn.nextjournal.com/data/QmRqugy58UfVG5j9Lo2ccKpkV6tJ2pDDfrZXViRApUKG4v?filename=viewer-a098a51e8ec9999fae7673b325889dbccafad583.css&content-type=text/css\"/>
-<script src=\"https://cdn.nextjournal.com/data/QmPxet4ijyt6s3pRrkqKn1JfV9DEvMTVhQ6p5qz1DhGjEF?filename=viewer.js&content-type=application/x-javascript\"></script>
-<style>
-body {
+(def inline-style
+  "body {
   font: 20px Georgia;
   padding: 0.5em;
 }
@@ -138,14 +132,18 @@ span.conditional { color: #2CAB76; }
 span.character { color: #2CAB76; }
 
 span.string { color: #C7877B; }
-span.variable { color: #268bd2; }"
-       "</style></head><body>"
+span.variable { color: #268bd2; }")
 
-       "<script>
-nextjournal.viewer.inspect_into(document.body, nextjournal.viewer.read_string(" (-> viewer ->edn pr-str) "))
-</script>"
-
-       "</body></html>\n"))
+(defn ->html [viewer]
+  (hiccup/html5
+   [:head
+    [:meta {:charset "UTF-8"}]
+    (hiccup/include-css "https://cdn.jsdelivr.net/gh/tonsky/FiraCode@5.2/distr/fira_code.css")
+    (hiccup/include-css "https://cdn.nextjournal.com/data/QmRqugy58UfVG5j9Lo2ccKpkV6tJ2pDDfrZXViRApUKG4v?filename=viewer-a098a51e8ec9999fae7673b325889dbccafad583.css&content-type=text/css")
+    (hiccup/include-js "https://cdn.nextjournal.com/data/QmPxet4ijyt6s3pRrkqKn1JfV9DEvMTVhQ6p5qz1DhGjEF?filename=viewer.js&content-type=application/x-javascript")
+    [:style inline-style]]
+   [:body
+    [:script "nextjournal.viewer.inspect_into(document.body, nextjournal.viewer.read_string(" (-> viewer ->edn pr-str) "))"]]))
 ;; document.body.innerHTML = String(nextjournal.viewer);
 
 
@@ -159,7 +157,7 @@ nextjournal.viewer.inspect_into(document.body, nextjournal.viewer.read_string(" 
   (let [html (->html (doc->viewer doc))
         out "test.html"]
     (spit out html)
-    (clojure.java.browse/browse-url out)
+    (browse/browse-url out)
     (set-html! html)))
 
 #_(show-doc! (observator.core/eval-file "src/observator/demo.clj"))
