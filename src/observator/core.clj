@@ -45,9 +45,14 @@
 
 #_(+eval-results {} [{:type :markdown :text "# Hi"} {:type :code :text "(+ 39 3)"}])
 
+(defn parse-file [file]
+  (hashing/parse-file {:markdown? true} file))
+
+#_(parse-file "src/observator/demo.clj")
+
 (defn eval-file [file]
   (->> file
-       (hashing/parse-file {:markdown? true})
+       parse-file
        (+eval-results (hashing/hash file))))
 
 #_(eval-file "src/observator/demo.clj")
