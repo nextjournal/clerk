@@ -21,8 +21,7 @@
             {:status 200 :body "upgrading..."}
             (httpkit/as-channel req {:on-open (fn [ch]
                                                 (swap! !clients conj ch)
-                                                ;; TODO: handle file
-                                                (let [file "src/observator/demo.clj"
+                                                (let [file (:query-string req)
                                                       doc (with-bindings {#'*ns* (find-ns 'observator.core)}
                                                             (observator/eval-file file))]
                                                   (httpkit/send! ch (-> doc webview/doc->viewer webview/->edn))))

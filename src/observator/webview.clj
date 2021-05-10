@@ -143,7 +143,8 @@ span.variable { color: #268bd2; }")
     (hiccup/include-js "https://cdn.nextjournal.com/data/QmPxet4ijyt6s3pRrkqKn1JfV9DEvMTVhQ6p5qz1DhGjEF?filename=viewer.js&content-type=application/x-javascript")
     [:style inline-style]]
    [:body
-    [:script "const ws = new WebSocket('ws://localhost:7777/_ws');
+    [:script "const url = 'ws://localhost:7777/_ws?' + window.location.pathname.replace('/notebook/', '');
+const ws = new WebSocket(url);
 ws.onmessage = msg => nextjournal.viewer.inspect_into(document.body, nextjournal.viewer.read_string(msg.data));"]
     [:script "nextjournal.viewer.inspect_into(document.body, nextjournal.viewer.read_string(" (-> viewer ->edn pr-str) "))"]]))
 ;; document.body.innerHTML = String(nextjournal.viewer);
