@@ -6,8 +6,11 @@
 
 (def !clients (atom #{}))
 
-#_(doseq [ch @!clients]
-    (httpkit/send! ch (webview/->edn [{:random (rand-int 10000) :range (range 100)}])))
+(defn broadcast! [msg]
+  (doseq [ch @!clients]
+    (httpkit/send! ch (webview/->edn msg))))
+
+#_(broadcast! [{:random (rand-int 10000) :range (range 100)}])
 
 (defn app [{:as req :keys [uri]}]
   (case (get (re-matches #"/([^/]*).*" uri) 1)
@@ -20,10 +23,10 @@
     "_ws" (if-not (:websocket? req)
             {:status 200 :body "upgrading..."}
             (httpkit/as-channel req {:on-open (fn [ch]
-                                                (swap! !clients conj ch)
                                                 (let [file (:query-string req)
                                                       doc (with-bindings {#'*ns* (find-ns 'observator.core)}
                                                             (observator/eval-file file))]
+                                                  (swap! !clients conj ch)
                                                   (httpkit/send! ch (-> doc webview/doc->viewer webview/->edn))))
                                      :on-close (fn [ch reason]
                                                  (pr :on-close ch reason)
@@ -38,3 +41,6 @@
 (defonce server (atom nil))
 
 (reset! server (httpkit/run-server #'app {:port 7777}))
+(add-tap broadcast!)
+
+#_(tap> (shuffle (range 100)))
