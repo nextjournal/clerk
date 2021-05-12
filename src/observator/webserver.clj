@@ -1,10 +1,9 @@
 (ns observator.webserver
   (:require [org.httpkit.server :as httpkit]
-            [org.httpkit.timer :as httpkit.timer]
-            [observator.webview :as webview]
-            [observator.core :as observator]))
+            [observator.webview :as webview]))
 
 (def !clients (atom #{}))
+(def !doc (atom [{:type :markdown :text "waiting for `send-file`..."}]))
 
 (defn broadcast! [msg]
   (doseq [ch @!clients]
@@ -14,25 +13,20 @@
 
 (defn app [{:as req :keys [uri]}]
   (case (get (re-matches #"/([^/]*).*" uri) 1)
-    "notebook" (let [[_ file] (re-matches #"/notebook/(.*)" uri)
-                     doc (with-bindings {#'*ns* (find-ns 'observator.core)}
-                           (observator/parse-file file))]
-                 {:status  200
-                  :headers {"Content-Type" "text/html"}
-                  :body    (webview/doc->html doc)})
     "_ws" (if-not (:websocket? req)
             {:status 200 :body "upgrading..."}
             (httpkit/as-channel req {:on-open (fn [ch]
-                                                (let [file (:query-string req)
-                                                      doc (with-bindings {#'*ns* (find-ns 'observator.core)}
-                                                            (observator/eval-file file))]
-                                                  (swap! !clients conj ch)
-                                                  (httpkit/send! ch (-> doc webview/doc->viewer webview/->edn))))
+                                                (swap! !clients conj ch)
+                                                (httpkit/send! ch (-> @!doc webview/doc->viewer webview/->edn)))
                                      :on-close (fn [ch reason]
                                                  (pr :on-close ch reason)
                                                  (swap! !clients disj ch))}))
-    {:status 302
-     :headers {"Location" "/notebook/src/observator/demo.clj"}}))
+    {:status  200
+     :headers {"Content-Type" "text/html"}
+     :body    (webview/doc->html @!doc)}))
+
+(defn update-doc! [doc]
+  (broadcast! (webview/doc->viewer (reset! !doc doc))))
 
 ;; # dynamic requirements
 ;; * load notebook without results

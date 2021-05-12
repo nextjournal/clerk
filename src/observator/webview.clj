@@ -50,6 +50,9 @@
 (defn load-url! [url]
   (run-later (.load @engine url)))
 
+#_(load-url! "https://nextjournal.com/nextjournal/environments")
+#_(load-url! "http://localhost:7777/")
+
 (defonce web-view-panel (javafx.embed.swing.JFXPanel.))
 
 (defn make-frame! [panel]

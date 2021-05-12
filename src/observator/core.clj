@@ -4,7 +4,7 @@
             [datoteka.core :as fs]
             [nextjournal.beholder :as beholder]
             [observator.hashing :as hashing]
-            [observator.webview :as webview]))
+            [observator.webserver :as webserver]))
 
 
 (defn read+eval-cached [vars->hash code-string]
@@ -60,10 +60,9 @@
 (defn show-file!
   "Converts the Clojure source test in file to a series of text or syntax panes and causes `panel` to contain them."
   [file]
-  (and (time (doto (time (eval-file file))
-               #_observator.swing/show-doc!
-               webview/show-doc!))
-       :done))
+  (let [doc (parse-file file)]
+    (webserver/update-doc! doc)
+    (webserver/update-doc! (+eval-results (hashing/hash file) doc))))
 
 (defn file-event [{:keys [type path]}]
   (when-let [ns-part (and (= type :modify)

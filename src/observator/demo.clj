@@ -11,7 +11,7 @@
 (def long-thing
   (do
     (Thread/sleep 1000)
-    (take 40 (map fix-case (str/split-lines (slurp "/usr/share/dict/words"))))))
+    (take 400 (map fix-case (str/split-lines (slurp "/usr/share/dict/words"))))))
 
 (defn fib
   ([]
