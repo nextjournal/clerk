@@ -8,12 +8,6 @@
         funcool/datoteka {:mvn/version "1.0.0"}
         com.nextjournal/beholder {:mvn/version "1.0.0"}
 
-        org.openjfx/javafx-controls {:mvn/version "17-ea+7"}
-        org.openjfx/javafx-base {:mvn/version "17-ea+7"}
-        org.openjfx/javafx-graphics {:mvn/version "17-ea+7"}
-        org.openjfx/javafx-swing {:mvn/version "17-ea+7"} ;; really needed?
-        org.openjfx/javafx-web {:mvn/version "17-ea+7"}
-
         venantius/glow {:mvn/version "0.1.6"}
         http-kit/http-kit {:mvn/version "2.5.3"}
         hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
@@ -23,6 +17,4 @@
         mvxcvi/multihash {:mvn/version "2.0.3"}
 
         arrowic/arrowic {:mvn/version "0.1.1"}
-        rewrite-clj/rewrite-clj {:mvn/version "0.6.1"}
-        com.fifesoft/rsyntaxtextarea {:mvn/version "3.1.2"}
-        org.commonmark/commonmark  {:mvn/version "0.17.1"}}}
+        rewrite-clj/rewrite-clj {:mvn/version "0.6.1"}}}

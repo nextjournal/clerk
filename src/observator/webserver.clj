@@ -1,13 +1,13 @@
 (ns observator.webserver
   (:require [org.httpkit.server :as httpkit]
-            [observator.webview :as webview]))
+            [observator.view :as view]))
 
 (def !clients (atom #{}))
 (def !doc (atom [{:type :markdown :text "waiting for `send-file`..."}]))
 
 (defn broadcast! [msg]
   (doseq [ch @!clients]
-    (httpkit/send! ch (webview/->edn msg))))
+    (httpkit/send! ch (view/->edn msg))))
 
 #_(broadcast! [{:random (rand-int 10000) :range (range 100)}])
 
@@ -17,16 +17,18 @@
             {:status 200 :body "upgrading..."}
             (httpkit/as-channel req {:on-open (fn [ch]
                                                 (swap! !clients conj ch)
-                                                (httpkit/send! ch (-> @!doc webview/doc->viewer webview/->edn)))
+                                                (httpkit/send! ch (-> @!doc view/doc->viewer view/->edn)))
                                      :on-close (fn [ch reason]
                                                  (pr :on-close ch reason)
                                                  (swap! !clients disj ch))}))
     {:status  200
      :headers {"Content-Type" "text/html"}
-     :body    (webview/doc->html @!doc)}))
+     :body    (view/doc->html @!doc)}))
 
 (defn update-doc! [doc]
-  (broadcast! (webview/doc->viewer (reset! !doc doc))))
+  (broadcast! (view/doc->viewer (reset! !doc doc))))
+
+#_(clojure.java.browse/browse-url "http://localhost:7777")
 
 ;; # dynamic requirements
 ;; * load notebook without results
