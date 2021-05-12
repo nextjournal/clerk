@@ -13,6 +13,8 @@
 
 (defn app [{:as req :keys [uri]}]
   (case (get (re-matches #"/([^/]*).*" uri) 1)
+    "js" {:status 302
+          :headers {"Location" (str "http://localhost:8003" uri)}}
     "_ws" (if-not (:websocket? req)
             {:status 200 :body "upgrading..."}
             (httpkit/as-channel req {:on-open (fn [ch]
