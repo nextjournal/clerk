@@ -3,7 +3,7 @@
             [observator.view :as view]))
 
 (def !clients (atom #{}))
-(def !doc (atom [{:type :markdown :text "waiting for `send-file`..."}]))
+(def !doc (atom [{:type :markdown :text "Use `observator.core/show!` to make your notebook appear…"}]))
 
 (defn broadcast! [msg]
   (doseq [ch @!clients]
@@ -34,9 +34,8 @@
 ;; * load notebook without results
 ;; * allow page reload
 
-(defonce server (atom nil))
+(defonce server (atom (httpkit/run-server #'app {:port 7777})))
 
-(reset! server (httpkit/run-server #'app {:port 7777}))
 (add-tap broadcast!)
 
 #_(tap> (shuffle (range 100)))

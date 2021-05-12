@@ -57,7 +57,7 @@
 
 #_(eval-file "src/observator/demo.clj")
 
-(defn show-file!
+(defn show!
   "Converts the Clojure source test in file to a series of text or syntax panes and causes `panel` to contain them."
   [file]
   (let [doc (parse-file file)]
@@ -68,7 +68,7 @@
   (when-let [ns-part (and (= type :modify)
                           (second (re-find #".*/src/(.*)\.clj" (str path))))]
     (binding [*ns* (find-ns (symbol (str/replace ns-part fs/*sep* ".")))]
-      (observator.core/show-file! (str path)))))
+      (observator.core/show! (str path)))))
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
@@ -78,9 +78,9 @@
 
   (beholder/stop watcher)
 
-  (show-file! "src/observator/demo.clj")
-  (show-file! "src/observator/hashing.clj")
-  (show-file! "src/observator/core.clj")
+  (show! "src/observator/demo.clj")
+  (show! "src/observator/hashing.clj")
+  (show! "src/observator/core.clj")
 
   ;; Clear cache
   (clear-cache!)
