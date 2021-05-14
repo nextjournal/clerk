@@ -5,6 +5,8 @@
 (def !clients (atom #{}))
 (def !doc (atom [{:type :markdown :text "Use `observator.core/show!` to make your notebook appear…"}]))
 
+#_(reset! !doc [{:type :markdown :text "Use `observator.core/show!` to make your notebook appear…"}])
+
 (defn broadcast! [msg]
   (doseq [ch @!clients]
     (httpkit/send! ch (view/->edn msg))))

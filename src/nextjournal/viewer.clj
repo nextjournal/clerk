@@ -45,3 +45,6 @@
   (with-viewer data viewer))
 
 #_(view-as :latex "a^2+b^2=c^2")
+
+(defn html [x]
+  (with-viewer x (if (string? x) :html :hiccup)))

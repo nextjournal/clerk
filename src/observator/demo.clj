@@ -2,7 +2,30 @@
 ;; Like the idea of notebooks, but hate leaving your favorite editor? We present Observator, a tool that enables a rich, local-first notebook experience using standard Clojure namespaces.
 (ns observator.demo
   (:require [clojure.string :as str]
-            [observator.lib :as obs.lib]))
+            [observator.lib :as obs.lib]
+            [nextjournal.viewer :as v]))
+
+(let [rule30 {[1 1 1] 0
+              [1 1 0] 0
+              [1 0 1] 0
+              [1 0 0] 1
+              [0 1 1] 1
+              [0 1 0] 1
+              [0 0 1] 1
+              [0 0 0] 0}
+      n 33
+      g1 (assoc (vec (repeat n 0)) (/ (dec n) 2) 1)
+      evolve #(mapv rule30 (partition 3 1 (repeat 0) (cons 0 %)))]
+  (v/with-viewer
+    (->> g1 (iterate evolve) (take 17))
+    '(fn [board]
+       (let [cell (fn [c] (vector :div.inline-block
+                                  {:class (if (zero? c)
+                                            "bg-white border-solid border-2 border-black"
+                                            "bg-black")
+                                   :style {:width 16 :height 16}}))
+             row (fn [r] (into [:div.flex.inline-flex] (map cell) r))]
+         (v/html (into [:div.flex.flex-col] (map row) board))))))
 
 ;; Observator uses static analysis and a tiny bit of data flow to avoid needless recomputation.
 (defn fix-case [s]
@@ -38,6 +61,8 @@
 
 (count long-thing)
 
+(v/html [:h1 "Ohai Hiccup 👋👋👋"])
+
 ;; We can opt out of caching by tagging a var with `^:observator/no-cache` metadata.
 (def ^:observator/no-cache random-thing
   (rand-int 1000))
@@ -53,7 +78,7 @@
    :nextjournal/value "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}"})
 
 (do ;; slow as well
-  (Thread/sleep 1000)
+  (Thread/sleep 3000)
   42)
 
 (def random-cached-thing

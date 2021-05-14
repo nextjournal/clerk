@@ -61,7 +61,8 @@
   "Converts the Clojure source test in file to a series of text or syntax panes and causes `panel` to contain them."
   [file]
   (let [doc (parse-file file)]
-    (webserver/update-doc! doc)
+    ;; TODO diff to avoid flickering
+    #_(webserver/update-doc! doc)
     (webserver/update-doc! (+eval-results (hashing/hash file) doc))))
 
 (defn file-event [{:keys [type path]}]
