@@ -86,8 +86,8 @@
                 :else (update state :nodes rest)))
        doc))))
 
-#_(parse-file "src/nextjournal/clerk/demo.clj")
-#_(parse-file {:markdown? true} "src/nextjournal/clerk/demo.clj")
+#_(parse-file "notebooks/elements.clj")
+#_(parse-file {:markdown? true} "notebooks/elements.clj")
 
 
 (defn analyze-file
@@ -114,7 +114,7 @@
              (cond-> acc markdown? (assoc :doc doc))
              doc))))
 
-#_(:graph (analyze-file {:markdown? true} {:graph (dep/graph)} "src/nextjournal/clerk/demo.clj"))
+#_(:graph (analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/elements.clj"))
 
 
 (defn unhashed-deps [var->hash]
@@ -191,9 +191,9 @@
             g
             (group-by find-location (unhashed-deps var->hash)))))
 
-#_(keys (:var->hash (build-graph "src/nextjournal/clerk/demo.clj")))
-#_(dep/immediate-dependencies (:graph (build-graph "src/nextjournal/clerk/demo.clj"))  #'nextjournal.clerk.demo/fix-case)
-#_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/demo.clj"))  #'nextjournal.clerk.demo/fix-case)
+#_(keys (:var->hash (build-graph "notebooks/elements.clj")))
+#_(dep/immediate-dependencies (:graph (build-graph "notebooks/elements.clj"))  #'nextjournal.clerk.demo/fix-case)
+#_(dep/transitive-dependencies (:graph (build-graph "notebooks/elements.clj"))  #'nextjournal.clerk.demo/fix-case)
 
 #_(keys (:var->hash (build-graph "src/nextjournal/clerk/hashing.clj")))
 #_(dep/topo-sort (:graph (build-graph "src/nextjournal/clerk/hashing.clj")))
@@ -214,7 +214,7 @@
    (let [hashed-deps (into #{} (map var->hash) deps)]
      (sha1-base64 (pr-str (conj hashed-deps (if form form jar)))))))
 
-#_(hash "src/nextjournal/clerk/demo.clj")
+#_(hash "notebooks/elements.clj")
 #_(hash "src/nextjournal/clerk/hashing.clj")
 
 

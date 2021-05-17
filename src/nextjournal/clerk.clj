@@ -48,14 +48,14 @@
 (defn parse-file [file]
   (hashing/parse-file {:markdown? true} file))
 
-#_(parse-file "src/nextjournal/clerk/demo.clj")
+#_(parse-file "notebooks/elements.clj")
 
 (defn eval-file [file]
   (->> file
        parse-file
        (+eval-results (hashing/hash file))))
 
-#_(eval-file "src/nextjournal/clerk/demo.clj")
+#_(eval-file "notebooks/elements.clj")
 
 (defn show!
   "Converts the Clojure source test in file to a series of text or syntax panes and causes `panel` to contain them."
@@ -79,7 +79,7 @@
 
   (beholder/stop watcher)
 
-  (show! "src/nextjournal/clerk/demo.clj")
+  (show! "notebooks/elements.clj")
   (show! "src/nextjournal/clerk/hashing.clj")
   (show! "src/nextjournal/clerk/core.clj")
 

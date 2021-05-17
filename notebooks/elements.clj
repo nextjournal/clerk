@@ -1,6 +1,6 @@
-;; # Introducing Clerk! 👋
+;; # Elements of Clerk
 ;; Like the idea of notebooks, but hate leaving your favorite editor? We present Clerk, a tool that enables a rich, local-first notebook experience using standard Clojure namespaces.
-(ns nextjournal.clerk.demo
+(ns elements
   (:require [clojure.string :as str]
             [nextjournal.clerk.lib :as obs.lib]
             [nextjournal.viewer :as v]))

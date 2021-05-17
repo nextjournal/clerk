@@ -11,14 +11,14 @@
                             result (conj result)))))
         doc))
 
-#_(doc->viewer (nextjournal.clerk/eval-file "src/nextjournal/clerk/demo.clj"))
+#_(doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj"))
 
 (defn ->edn [x]
   (binding [*print-meta* true
             *print-namespace-maps* false]
     (pr-str x)))
 
-#_(->edn (let [file "src/nextjournal/clerk/demo.clj"]
+#_(->edn (let [file "notebooks/elements.clj"]
            (doc->viewer (hashing/hash file) (hashing/parse-file {:markdown? true} file))))
 
 (def live-js?
@@ -48,9 +48,9 @@ ws.onmessage = msg => nextjournal.viewer.notebook.reset_state(nextjournal.viewer
   [doc]
   (->html (doc->viewer doc)))
 
-#_(doc->html (nextjournal.clerk/eval-file "src/nextjournal/clerk/demo.clj"))
+#_(doc->html (nextjournal.clerk/eval-file "notebooks/elements.clj"))
 
-#_(let [doc (nextjournal.clerk/eval-file "src/nextjournal/clerk/demo.clj")
+#_(let [doc (nextjournal.clerk/eval-file "notebooks/elements.clj")
         out "test.html"]
     (spit out (->html doc))
     (clojure.java.browse/browse-url out))
