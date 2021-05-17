@@ -1,4 +1,4 @@
-;; # Hashing Things!!!!
+f;; # Hashing Things!!!!
 (ns nextjournal.clerk.hashing
   (:refer-clojure :exclude [hash])
   (:require [clojure.java.classpath :as cp]
@@ -7,15 +7,9 @@
             [clojure.tools.analyzer.jvm :as ana]
             [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef]
             [datoteka.core :as fs]
-            [nextjournal.clerk.lib :as clerk.lib]
             [rewrite-clj.parser :as p]
             [rewrite-clj.node :as n]
             [weavejester.dependency :as dep]))
-
-(def long-thing
-  (map clerk.lib/fix-case (str/split-lines (slurp "/usr/share/dict/words"))))
-
-(take 3 long-thing)
 
 (defn var-name
   "Takes a `form` and returns the name of the var, if it exists."
@@ -46,7 +40,7 @@
 
 #_(var-dependencies '(defn foo
                        ([] (foo "s"))
-                       ([s] (str/includes? (clerk.lib/fix-case s) "hi"))))
+                       ([s] (str/includes? (p/parse-string-all s) "hi"))))
 
 (defn analyze [form]
   (let [form (-> form
@@ -58,7 +52,7 @@
       var (assoc :var var)
       (seq deps) (assoc :deps deps))))
 
-#_(analyze '(defn foo [s] (str/includes? (clerk.lib/fix-case s) "hi")))
+#_(analyze '(defn foo [s] (str/includes? (p/parse-string-all s) "hi")))
 #_(analyze '(defn segments [s]
               (let [segments (str/split s)]
                 (str/join segments))))
@@ -123,7 +117,7 @@
                         (vals var->hash))
                   (-> var->hash keys set)))
 
-#_(unhashed-deps {#'nextjournal.clerk.demo/fix-case {:deps #{#'nextjournal.clerk.lib/fix-case}}})
+#_(unhashed-deps {#'elements/fix-case {:deps #{#'rewrite-clj.node/tag}}})
 
 ;; TODO: handle cljc files
 (defn ns->file [ns]
@@ -247,7 +241,6 @@
 ;;   ;; clojure var precompiled in jar
 
 ;;   (-> #'nextjournal.directory-watcher/create meta)
-;;   (-> #'nextjournal.clerk.lib/fix-case meta)
 ;;   (-> #'clojure.core/add-tap meta)
 
 ;;   (resolve 'io.methvin.watcher.DirectoryChangeEvent$EventType)

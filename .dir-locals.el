@@ -1,8 +1,9 @@
 ;;; Directory Local Variables
 ;;; For more information see (info "(emacs) Directory Variables")
-((nil . ((eval . ((lambda ()
-                    (when (not (featurep 'observator))
-                      (let ((init-file-path (expand-file-name "observator.el" default-directory)))
+((nil . ((cider-clojure-cli-global-options . "-A:demo")
+         (eval . ((lambda ()
+                    (when (not (featurep 'clerk))
+                      (let ((init-file-path (expand-file-name "clerk.el" default-directory)))
                         (when (file-exists-p init-file-path)
                           (load init-file-path)
-                          (require 'observator))))))))))
+                          (require 'clerk))))))))))

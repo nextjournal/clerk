@@ -1,4 +1,4 @@
-(ns nextjournal.clerk.lib
+(ns demo.lib
   (:require [clojure.string :as str]))
 
 (defn fix-case [s]

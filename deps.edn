@@ -12,4 +12,6 @@
         hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
 
         arrowic/arrowic {:mvn/version "0.1.1"}
-        rewrite-clj/rewrite-clj {:mvn/version "0.6.1"}}}
+        rewrite-clj/rewrite-clj {:mvn/version "0.6.1"}}
+
+ :aliases {:demo {:extra-paths ["notebooks/src"]}}}

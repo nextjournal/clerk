@@ -1,7 +1,6 @@
 ;; # Introducing Clerk 👋
 (ns nextjournal.clerk
-  (:require [clojure.string :as str]
-            [datoteka.core :as fs]
+  (:require [datoteka.core :as fs]
             [nextjournal.beholder :as beholder]
             [nextjournal.clerk.hashing :as hashing]
             [nextjournal.clerk.webserver :as webserver]))
@@ -66,16 +65,15 @@
     (webserver/update-doc! (+eval-results (hashing/hash file) doc))))
 
 (defn file-event [{:keys [type path]}]
-  (when-let [ns-part (and (= type :modify)
-                          (second (re-find #".*/src/(.*)\.clj" (str path))))]
-    (binding [*ns* (find-ns (symbol (str/replace ns-part fs/*sep* ".")))]
+  (when (contains? #{:modify :create} type)
+    (binding [*ns* (find-ns 'nextjournal.clerk)]
       (nextjournal.clerk/show! (str path)))))
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
 (comment
   (def watcher
-    (beholder/watch #(file-event %) "src"))
+    (beholder/watch #(file-event %) "notebooks" "src"))
 
   (beholder/stop watcher)
 
