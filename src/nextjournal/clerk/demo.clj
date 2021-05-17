@@ -1,8 +1,8 @@
-;; # Introducing Observator 👋
-;; Like the idea of notebooks, but hate leaving your favorite editor? We present Observator, a tool that enables a rich, local-first notebook experience using standard Clojure namespaces.
-(ns observator.demo
+;; # Introducing Clerk! 👋
+;; Like the idea of notebooks, but hate leaving your favorite editor? We present Clerk, a tool that enables a rich, local-first notebook experience using standard Clojure namespaces.
+(ns nextjournal.clerk.demo
   (:require [clojure.string :as str]
-            [observator.lib :as obs.lib]
+            [nextjournal.clerk.lib :as obs.lib]
             [nextjournal.viewer :as v]))
 
 (let [rule30 {[1 1 1] 0
@@ -27,7 +27,7 @@
              row (fn [r] (into [:div.flex.inline-flex] (map cell) r))]
          (v/html (into [:div.flex.flex-col] (map row) board))))))
 
-;; Observator uses static analysis and a tiny bit of data flow to avoid needless recomputation.
+;; Clerk uses static analysis and a tiny bit of data flow to avoid needless recomputation.
 (defn fix-case [s]
   (obs.lib/fix-case s))
 
@@ -63,8 +63,8 @@
 
 (v/html [:h1 "Ohai Hiccup 👋👋👋"])
 
-;; We can opt out of caching by tagging a var with `^:observator/no-cache` metadata.
-(def ^:observator/no-cache random-thing
+;; We can opt out of caching by tagging a var with `^:clerk/no-cache` metadata.
+(def ^:clerk/no-cache random-thing
   (rand-int 1000))
 
 ;; Other examples of viewers are `plotly` & `latex`.

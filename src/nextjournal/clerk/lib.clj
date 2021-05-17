@@ -1,5 +1,4 @@
-;; # Observator.Lib
-(ns observator.lib
+(ns nextjournal.clerk.lib
   (:require [clojure.string :as str]))
 
 (defn fix-case [s]

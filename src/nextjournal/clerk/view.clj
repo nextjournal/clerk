@@ -1,4 +1,4 @@
-(ns observator.view
+(ns nextjournal.clerk.view
   (:require [nextjournal.viewer :as v]
             [hiccup.page :as hiccup]))
 
@@ -11,14 +11,14 @@
                             result (conj result)))))
         doc))
 
-#_(doc->viewer (observator.core/eval-file "src/observator/demo.clj"))
+#_(doc->viewer (nextjournal.clerk/eval-file "src/nextjournal/clerk/demo.clj"))
 
 (defn ->edn [x]
   (binding [*print-meta* true
             *print-namespace-maps* false]
     (pr-str x)))
 
-#_(->edn (let [file "src/observator/demo.clj"]
+#_(->edn (let [file "src/nextjournal/clerk/demo.clj"]
            (doc->viewer (hashing/hash file) (hashing/parse-file {:markdown? true} file))))
 
 (def live-js?
@@ -48,9 +48,9 @@ ws.onmessage = msg => nextjournal.viewer.notebook.reset_state(nextjournal.viewer
   [doc]
   (->html (doc->viewer doc)))
 
-#_(doc->html (observator.core/eval-file "src/observator/demo.clj"))
+#_(doc->html (nextjournal.clerk/eval-file "src/nextjournal/clerk/demo.clj"))
 
-#_(let [doc (observator.core/eval-file "src/observator/demo.clj")
+#_(let [doc (nextjournal.clerk/eval-file "src/nextjournal/clerk/demo.clj")
         out "test.html"]
     (spit out (->html doc))
     (clojure.java.browse/browse-url out))

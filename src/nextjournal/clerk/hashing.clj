@@ -1,5 +1,5 @@
 ;; # Hashing Things!!!!
-(ns observator.hashing
+(ns nextjournal.clerk.hashing
   (:refer-clojure :exclude [hash])
   (:require [clojure.java.classpath :as cp]
             [clojure.set :as set]
@@ -7,13 +7,13 @@
             [clojure.tools.analyzer.jvm :as ana]
             [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef]
             [datoteka.core :as fs]
-            [observator.lib :as obs.lib]
+            [nextjournal.clerk.lib :as clerk.lib]
             [rewrite-clj.parser :as p]
             [rewrite-clj.node :as n]
             [weavejester.dependency :as dep]))
 
 (def long-thing
-  (map obs.lib/fix-case (str/split-lines (slurp "/usr/share/dict/words"))))
+  (map clerk.lib/fix-case (str/split-lines (slurp "/usr/share/dict/words"))))
 
 (take 3 long-thing)
 
@@ -25,7 +25,7 @@
     (second form)))
 
 (defn no-cache? [form]
-  (-> form var-name meta :observator/no-cache boolean))
+  (-> form var-name meta :clerk/no-cache boolean))
 
 (defn sha1-base64 [s]
   (String. (.encode (java.util.Base64/getUrlEncoder)
@@ -46,7 +46,7 @@
 
 #_(var-dependencies '(defn foo
                        ([] (foo "s"))
-                       ([s] (str/includes? (obs.lib/fix-case s) "hi"))))
+                       ([s] (str/includes? (clerk.lib/fix-case s) "hi"))))
 
 (defn analyze [form]
   (let [form (-> form
@@ -58,7 +58,7 @@
       var (assoc :var var)
       (seq deps) (assoc :deps deps))))
 
-#_(analyze '(defn foo [s] (str/includes? (obs.lib/fix-case s) "hi")))
+#_(analyze '(defn foo [s] (str/includes? (clerk.lib/fix-case s) "hi")))
 #_(analyze '(defn segments [s]
               (let [segments (str/split s)]
                 (str/join segments))))
@@ -86,8 +86,8 @@
                 :else (update state :nodes rest)))
        doc))))
 
-#_(parse-file "src/observator/demo.clj")
-#_(parse-file {:markdown? true} "src/observator/demo.clj")
+#_(parse-file "src/nextjournal/clerk/demo.clj")
+#_(parse-file {:markdown? true} "src/nextjournal/clerk/demo.clj")
 
 
 (defn analyze-file
@@ -114,7 +114,7 @@
              (cond-> acc markdown? (assoc :doc doc))
              doc))))
 
-#_(:graph (analyze-file {:markdown? true} {:graph (dep/graph)} "src/observator/demo.clj"))
+#_(:graph (analyze-file {:markdown? true} {:graph (dep/graph)} "src/nextjournal/clerk/demo.clj"))
 
 
 (defn unhashed-deps [var->hash]
@@ -123,7 +123,7 @@
                         (vals var->hash))
                   (-> var->hash keys set)))
 
-#_(unhashed-deps {#'observator.demo/fix-case {:deps #{#'observator.lib/fix-case}}})
+#_(unhashed-deps {#'nextjournal.clerk.demo/fix-case {:deps #{#'nextjournal.clerk.lib/fix-case}}})
 
 ;; TODO: handle cljc files
 (defn ns->file [ns]
@@ -134,7 +134,7 @@
               path)))
         (cp/classpath-directories)))
 
-#_(ns->file (find-ns 'observator.hashing))
+#_(ns->file (find-ns 'nextjournal.clerk.hashing))
 
 (def var->ns
   (comp :ns meta))
@@ -191,14 +191,14 @@
             g
             (group-by find-location (unhashed-deps var->hash)))))
 
-#_(keys (:var->hash (build-graph "src/observator/demo.clj")))
-#_(dep/immediate-dependencies (:graph (build-graph "src/observator/demo.clj"))  #'observator.demo/fix-case)
-#_(dep/transitive-dependencies (:graph (build-graph "src/observator/demo.clj"))  #'observator.demo/fix-case)
+#_(keys (:var->hash (build-graph "src/nextjournal/clerk/demo.clj")))
+#_(dep/immediate-dependencies (:graph (build-graph "src/nextjournal/clerk/demo.clj"))  #'nextjournal.clerk.demo/fix-case)
+#_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/demo.clj"))  #'nextjournal.clerk.demo/fix-case)
 
-#_(keys (:var->hash (build-graph "src/observator/hashing.clj")))
-#_(dep/topo-sort (:graph (build-graph "src/observator/hashing.clj")))
-#_(dep/immediate-dependencies (:graph (build-graph "src/observator/hashing.clj"))  #'observator.hashing/long-thing)
-#_(dep/transitive-dependencies (:graph (build-graph "src/observator/hashing.clj"))  #'observator.hashing/long-thing)
+#_(keys (:var->hash (build-graph "src/nextjournal/clerk/hashing.clj")))
+#_(dep/topo-sort (:graph (build-graph "src/nextjournal/clerk/hashing.clj")))
+#_(dep/immediate-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
+#_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 
 
 (defn hash
@@ -214,8 +214,8 @@
    (let [hashed-deps (into #{} (map var->hash) deps)]
      (sha1-base64 (pr-str (conj hashed-deps (if form form jar)))))))
 
-#_(hash "src/observator/demo.clj")
-#_(hash "src/observator/hashing.clj")
+#_(hash "src/nextjournal/clerk/demo.clj")
+#_(hash "src/nextjournal/clerk/hashing.clj")
 
 
 ;; (comment
@@ -247,8 +247,7 @@
 ;;   ;; clojure var precompiled in jar
 
 ;;   (-> #'nextjournal.directory-watcher/create meta)
-;;   (-> #'observator.lib/fix-case meta)
-;;   (-> #'observator.core/fix-case meta)
+;;   (-> #'nextjournal.clerk.lib/fix-case meta)
 ;;   (-> #'clojure.core/add-tap meta)
 
 ;;   (resolve 'io.methvin.watcher.DirectoryChangeEvent$EventType)
@@ -277,19 +276,6 @@
 ;;                        (rest form)))))
 ;;        (apply set/union)))
 
-
-;; (comment
-;;   (meta (find-ns 'observator.demo))
-
-;;   (required-namespaces '(ns observator.core
-;;                           (:require [observator.lib :as obs.lib]
-;;                                     observator.demo)))
-
-;;   (required-namespaces '(do (require '[observator.lib :as obs.lib]
-;;                                      'observator.demo2)
-;;                             (require 'observator.demo)))
-;;   ;; TODO
-;;   (required-namespaces '(require '(clojure zip [set :as s]))))
 
 ;; (defn file-resource [var]
 ;;   (some-> var

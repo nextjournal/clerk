@@ -1,10 +1,10 @@
-;; # Hello observator!!! 👋
-(ns observator.core
+;; # Introducing Clerk 👋
+(ns nextjournal.clerk
   (:require [clojure.string :as str]
             [datoteka.core :as fs]
             [nextjournal.beholder :as beholder]
-            [observator.hashing :as hashing]
-            [observator.webserver :as webserver]))
+            [nextjournal.clerk.hashing :as hashing]
+            [nextjournal.clerk.webserver :as webserver]))
 
 
 (defn read+eval-cached [vars->hash code-string]
@@ -48,14 +48,14 @@
 (defn parse-file [file]
   (hashing/parse-file {:markdown? true} file))
 
-#_(parse-file "src/observator/demo.clj")
+#_(parse-file "src/nextjournal/clerk/demo.clj")
 
 (defn eval-file [file]
   (->> file
        parse-file
        (+eval-results (hashing/hash file))))
 
-#_(eval-file "src/observator/demo.clj")
+#_(eval-file "src/nextjournal/clerk/demo.clj")
 
 (defn show!
   "Converts the Clojure source test in file to a series of text or syntax panes and causes `panel` to contain them."
@@ -69,7 +69,7 @@
   (when-let [ns-part (and (= type :modify)
                           (second (re-find #".*/src/(.*)\.clj" (str path))))]
     (binding [*ns* (find-ns (symbol (str/replace ns-part fs/*sep* ".")))]
-      (observator.core/show! (str path)))))
+      (nextjournal.clerk/show! (str path)))))
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
@@ -79,9 +79,9 @@
 
   (beholder/stop watcher)
 
-  (show! "src/observator/demo.clj")
-  (show! "src/observator/hashing.clj")
-  (show! "src/observator/core.clj")
+  (show! "src/nextjournal/clerk/demo.clj")
+  (show! "src/nextjournal/clerk/hashing.clj")
+  (show! "src/nextjournal/clerk/core.clj")
 
   ;; Clear cache
   (clear-cache!)

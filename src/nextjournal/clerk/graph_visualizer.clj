@@ -1,4 +1,4 @@
-(ns observator.graph-visualizer
+(ns nextjournal.clerk.graph-visualizer
   (:require [arrowic.core :as arrowic]
             [weavejester.dependency :as dep]))
 
@@ -16,5 +16,5 @@
                                    (vars->verticies dep))
                           (arrowic/insert-edge! (vars->verticies var) (vars->verticies dep)))))))))
 
-#_(-> "src/observator/demo.clj" observator.hashing/build-graph show-graph)
-#_(-> "src/observator/hashing.clj" observator.hashing/build-graph show-graph)
+#_(-> "src/nextjournal/clerk/demo.clj" nextjournal.clerk.hashing/build-graph show-graph)
+#_(-> "src/nextjournal/clerk/hashing.clj" nextjournal.clerk.hashing/build-graph show-graph)

@@ -1,11 +1,14 @@
-(ns observator.webserver
+(ns nextjournal.clerk.webserver
   (:require [org.httpkit.server :as httpkit]
-            [observator.view :as view]))
+            [nextjournal.clerk.view :as view]))
+
+(def help-doc
+  [{:type :markdown :text "Use `nextjournal.clerk/show!` to make your notebook appear…"}])
 
 (def !clients (atom #{}))
-(def !doc (atom [{:type :markdown :text "Use `observator.core/show!` to make your notebook appear…"}]))
+(def !doc (atom help-doc))
 
-#_(reset! !doc [{:type :markdown :text "Use `observator.core/show!` to make your notebook appear…"}])
+#_(reset! !doc help-doc)
 
 (defn broadcast! [msg]
   (doseq [ch @!clients]
