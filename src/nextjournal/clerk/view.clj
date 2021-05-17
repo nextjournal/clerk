@@ -3,7 +3,7 @@
             [hiccup.page :as hiccup]))
 
 (defn doc->viewer [doc]
-  (into ^{:nextjournal/viewer :flex-col} []
+  (into ^{:nextjournal/viewer :notebook} []
         (mapcat (fn [{:keys [type text result]}]
                   (case type
                     :markdown [(v/view-as :markdown text)]
@@ -23,7 +23,7 @@
 
 (def live-js?
   "Load dynamic js from shadow or static bundle from cdn."
-  false)
+  true)
 
 (defn ->html [viewer]
   (hiccup/html5
@@ -44,7 +44,7 @@
        "/js/out/viewer.js"
        "https://cdn.nextjournal.com/data/Qmeo8gbH53vBr3r47JBdYbwKwboWQCDKui5pfsEgxvgEpy?filename=viewer.js&content-type=application/x-javascript"))]
    [:body
-    [:div#app.notebook-content.main-content]
+    [:div#app]
     [:script "nextjournal.viewer.notebook.mount(document.getElementById('app'))
 nextjournal.viewer.notebook.reset_state(nextjournal.viewer.notebook.read_string(" (-> viewer ->edn pr-str) "))"]
     [:script "const ws = new WebSocket('ws://localhost:7777/_ws')
