@@ -1,4 +1,4 @@
-f;; # Hashing Things!!!!
+;; # Hashing Things!!!!
 (ns nextjournal.clerk.hashing
   (:refer-clojure :exclude [hash])
   (:require [clojure.java.classpath :as cp]
