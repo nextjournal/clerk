@@ -28,16 +28,23 @@
 (defn ->html [viewer]
   (hiccup/html5
    [:head
-    [:style
-     ".cm-editor { background-color: #eee; }"]
     [:meta {:charset "UTF-8"}]
     (hiccup/include-css "https://cdn.jsdelivr.net/gh/tonsky/FiraCode@5.2/distr/fira_code.css")
-    (hiccup/include-css "https://cdn.nextjournal.com/data/QmRqugy58UfVG5j9Lo2ccKpkV6tJ2pDDfrZXViRApUKG4v?filename=viewer-a098a51e8ec9999fae7673b325889dbccafad583.css&content-type=text/css")
-    (hiccup/include-js (if live-js?
-                         "/js/out/viewer.js"
-                         "https://cdn.nextjournal.com/data/Qmeo8gbH53vBr3r47JBdYbwKwboWQCDKui5pfsEgxvgEpy?filename=viewer.js&content-type=application/x-javascript"))]
+    (hiccup/include-css
+     (if live-js?
+       "https://cdn.dev.nextjournal.com:8888/build/stylesheets/nextjournal.css"
+       "https://cdn.nextjournal.com/data/QmT83tykSqNhth4cSkuo8j9Z6mkWTJDGJ7FuaZTwBYQaNP?filename=nextjournal.css&content-type=text/css"))
+    (hiccup/include-css
+     (if live-js?
+       "https://cdn.dev.nextjournal.com:8888/build/stylesheets/viewer.css"
+       "https://cdn.nextjournal.com/data/QmPKsreb65rQu51tuxQkLjkKGp3DxuFHPUbmUV1rehMA21?filename=viewer.css&content-type=text/css"))
+
+    (hiccup/include-js
+     (if live-js?
+       "/js/out/viewer.js"
+       "https://cdn.nextjournal.com/data/Qmeo8gbH53vBr3r47JBdYbwKwboWQCDKui5pfsEgxvgEpy?filename=viewer.js&content-type=application/x-javascript"))]
    [:body
-    [:div#app]
+    [:div#app.notebook-content.main-content]
     [:script "nextjournal.viewer.notebook.mount(document.getElementById('app'))
 nextjournal.viewer.notebook.reset_state(nextjournal.viewer.notebook.read_string(" (-> viewer ->edn pr-str) "))"]
     [:script "const ws = new WebSocket('ws://localhost:7777/_ws')
