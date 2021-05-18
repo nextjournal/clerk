@@ -4,41 +4,50 @@
 
 ;; We start by defining custom viewers for `:number`, `:vector` and `:list`.
 (def viewers
-  {:number `(fn [x options]
-              (v/html
-               [:div.inline-block {:class (if (zero? x)
-                                            "bg-white border-solid border-2 border-black"
-                                            "bg-black")
-                                   :style {:width 16 :height 16}}]))
-   :vector `(fn [x options]
-              (v/html (into [:div.flex.inline-flex] (map (partial v/inspect options)) x)))
-   :list `(fn [x options]
-            (v/html (into [:div.flex.flex-col] (map (partial v/inspect options)) x)))})
+  (v/view-as `(let [viewers {:number (fn [x options]
+                                       (v/html
+                                        [:div.inline-block {:class (if (zero? x)
+                                                                     "bg-white border-solid border-2 border-black"
+                                                                     "bg-black")
+                                                            :style {:width 16 :height 16}}]))
+                             :vector (fn [x options]
+                                       (v/html (into [:div.flex.inline-flex] (map (partial v/inspect options)) x)))
+                             :list (fn [x options]
+                                     (v/html (into [:div.flex.flex-col] (map (partial v/inspect options)) x)))}]
+                (v/register-viewers! viewers)
+                (constantly viewers))
+             ::v/registered))
 
-;; **TODO** `v/with-viewers` will be removed once Clerk supports global viewer registration.
-(v/with-viewers 0 viewers)
+;; Our `:number` viewer is defined such that zero renders as a white square.
+(int 0)
 
-(v/with-viewers 1 viewers)
+;; And any non-zero number renders as a black square.
+(int 1)
 
-(v/with-viewers [0 1 0] viewers)
+;; A vector is displayed as a row.
+(vector 0 1 0)
 
-(v/with-viewers '([0 1 0]
-                  [1 0 1]) viewers)
+;; A list is displayed as a grid of rows.
+(list [0 1 0]
+      [1 0 1])
+
+;; Now let's define Rule 30 as a map. It maps a vector of three cells to a new value for a cell. Notice how the map viewer can be used as-is and uses our number and vector viewers.
+(def rule-30
+  {[1 1 1] 0
+   [1 1 0] 0
+   [1 0 1] 0
+   [1 0 0] 1
+   [0 1 1] 1
+   [0 1 0] 1
+   [0 0 1] 1
+   [0 0 0] 0})
 
 
-(def rule
-  (v/with-viewers
-    {[1 1 1] 0
-     [1 1 0] 0
-     [1 0 1] 0
-     [1 0 0] 1
-     [0 1 1] 1
-     [0 1 0] 1
-     [0 0 1] 1
-     [0 0 0] 0}
-    viewers))
+;; Our first generation is a row with 33 elements. The element at the center is a black square, all other squares are white.
+(def first-generation
+  (let [n 33]
+    (assoc (vec (repeat n 0)) (/ (dec n) 2) 1)))
 
-(let [n 33
-      g1 (assoc (vec (repeat n 0)) (/ (dec n) 2) 1)
-      evolve #(mapv rule (partition 3 1 (repeat 0) (cons 0 %)))]
-  (v/with-viewers (->> g1 (iterate evolve) (take 17)) viewers))
+;; Finally, we can evolve the board.
+(let [evolve #(mapv rule-30 (partition 3 1 (repeat 0) (cons 0 %)))]
+  (->> first-generation (iterate evolve) (take 17)))
