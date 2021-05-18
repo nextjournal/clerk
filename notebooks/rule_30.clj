@@ -2,21 +2,17 @@
 (ns rule-30
   (:require [nextjournal.viewer :as v]))
 
-;; We start by defining custom viewers for `:number`, `:vector` and `:list`.
-(def viewers
-  (v/view-as `(let [viewers {:number (fn [x options]
-                                       (v/html
-                                        [:div.inline-block {:class (if (zero? x)
-                                                                     "bg-white border-solid border-2 border-black"
-                                                                     "bg-black")
-                                                            :style {:width 16 :height 16}}]))
-                             :vector (fn [x options]
-                                       (v/html (into [:div.flex.inline-flex] (map (partial v/inspect options)) x)))
-                             :list (fn [x options]
-                                     (v/html (into [:div.flex.flex-col] (map (partial v/inspect options)) x)))}]
-                (v/register-viewers! viewers)
-                (constantly viewers))
-             ::v/registered))
+;; We start by registering custom viewers for `:number`, `:vector` and `:list`.
+(v/register-viewers!
+ {:number #(v/html
+            [:div.inline-block {:class (if (zero? %)
+                                         "bg-white border-solid border-2 border-black"
+                                         "bg-black")
+                                :style {:width 16 :height 16}}])
+  :vector (fn [x options]
+            (v/html (into [:div.flex.inline-flex] (map (partial v/inspect options)) x)))
+  :list (fn [x options]
+          (v/html (into [:div.flex.flex-col] (map (partial v/inspect options)) x)))})
 
 ;; Our `:number` viewer is defined such that zero renders as a white square.
 (int 0)

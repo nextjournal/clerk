@@ -48,3 +48,15 @@
 
 (defn html [x]
   (with-viewer x (if (string? x) :html :hiccup)))
+
+
+(defmacro register-viewers! [v]
+  `(with-viewer
+     ::register!
+     (quote (let [viewers# ~v]
+              (nextjournal.viewer/register-viewers! viewers#)
+              (constantly viewers#)))))
+
+#_
+(macroexpand-1 (register-viewers! {:vector (fn [x options]
+                                             (html (into [:div.flex.inline-flex] (map (partial inspect options)) x)))}))
