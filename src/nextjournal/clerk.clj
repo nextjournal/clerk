@@ -60,10 +60,14 @@
 (defn show!
   "Converts the Clojure source test in file to a series of text or syntax panes and causes `panel` to contain them."
   [file]
-  (let [doc (parse-file file)]
-    ;; TODO diff to avoid flickering
-    #_(webserver/update-doc! doc)
-    (webserver/update-doc! (+eval-results (hashing/hash file) doc))))
+  (try
+    (let [doc (parse-file file)]
+      ;; TODO diff to avoid flickering
+      #_(webserver/update-doc! doc)
+      (webserver/update-doc! (+eval-results (hashing/hash file) doc)))
+    (catch Exception e
+      (webserver/show-error! e)
+      (pr :e e))))
 
 (defn file-event [{:keys [type path]}]
   (when (contains? #{:modify :create} type)

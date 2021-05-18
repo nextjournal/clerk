@@ -11,6 +11,11 @@
                             result (conj result)))))
         doc))
 
+(defn ex->viewer [e]
+  (into ^{:nextjournal/viewer :notebook}
+        [(v/view-as :code (pr-str (Throwable->map e)))]))
+
+
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj"))
 
 (defn ->edn [x]

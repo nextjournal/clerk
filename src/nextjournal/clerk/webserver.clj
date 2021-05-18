@@ -35,6 +35,9 @@
 (defn update-doc! [doc]
   (broadcast! (view/doc->viewer (reset! !doc doc))))
 
+(defn show-error! [e]
+  (broadcast! (view/ex->viewer e)))
+
 #_(clojure.java.browse/browse-url "http://localhost:7777")
 
 ;; # dynamic requirements
