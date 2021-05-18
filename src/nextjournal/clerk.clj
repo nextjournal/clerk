@@ -80,6 +80,7 @@
 
   (show! "notebooks/elements.clj")
   (show! "notebooks/rule_30.clj")
+  (show! "notebooks/how_clerk_works.clj")
   (show! "src/nextjournal/clerk/hashing.clj")
   (show! "src/nextjournal/clerk/core.clj")
 
