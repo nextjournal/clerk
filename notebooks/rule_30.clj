@@ -15,17 +15,17 @@
           (v/html (into [:div.flex.flex-col] (map (partial v/inspect options)) x)))})
 
 ;; Our `:number` viewer is defined such that zero renders as a white square.
-(int 0)
+0
 
 ;; And any non-zero number renders as a black square.
-(int 1)
+1
 
 ;; A vector is displayed as a row.
-(vector 0 1 0)
+[0 1 0]
 
 ;; A list is displayed as a grid of rows.
-(list [0 1 0]
-      [1 0 1])
+'([0 1 0]
+  [1 0 1])
 
 ;; Now let's define Rule 30 as a map. It maps a vector of three cells to a new value for a cell. Notice how the map viewer can be used as-is and uses our number and vector viewers.
 (def rule-30
@@ -37,7 +37,6 @@
    [0 1 0] 1
    [0 0 1] 1
    [0 0 0] 0})
-
 
 ;; Our first generation is a row with 33 elements. The element at the center is a black square, all other squares are white.
 (def first-generation

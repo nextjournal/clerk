@@ -24,7 +24,7 @@
           (do (when-not (or no-cache?
                             (instance? clojure.lang.IDeref var-value)
                             (instance? clojure.lang.MultiFn var-value)
-                            (contains? #{'ns 'in-ns 'require} (first form)))
+                            (contains? #{'ns 'in-ns 'require} (when (seq? form) (first form))))
                 (spit cache-file (binding [*print-meta* true] (pr-str var-value))))
               var-value))))))
 

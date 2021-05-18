@@ -70,9 +70,9 @@
                                          :doc []}]
      (if-let [node (first nodes)]
        (recur (cond
-                (= :list (n/tag node)) (-> state
-                                           (update :nodes rest)
-                                           (update :doc (fnil conj []) {:type :code :text (n/string node)}))
+                (#{:list :vector :map :token :quote} (n/tag node)) (-> state
+                                                                       (update :nodes rest)
+                                                                       (update :doc (fnil conj []) {:type :code :text (n/string node)}))
                 (and markdown? (n/comment? node)) (-> state
                                                       (assoc :nodes (drop-while n/comment? nodes))
                                                       (update :doc conj {:type :markdown :text (apply str (map (comp remove-leading-semicolons n/string)
@@ -81,7 +81,7 @@
        doc))))
 
 #_(parse-file "notebooks/elements.clj")
-#_(parse-file {:markdown? true} "notebooks/elements.clj")
+#_(parse-file {:markdown? true} "notebooks/rule_30.clj")
 
 
 (defn analyze-file
@@ -94,7 +94,7 @@
      (reduce (fn [{:as acc :keys [graph]} {:keys [type text]}]
                (if (= type :code)
                  (let [form (read-string text)
-                       _ (when (= 'ns (first form))
+                       _ (when (and (seq? form) (= 'ns (first form)))
                            (eval form))
                        {:keys [var deps form]} (analyze form)]
                    (cond-> acc
@@ -109,6 +109,7 @@
              doc))))
 
 #_(:graph (analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/elements.clj"))
+#_(analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/rule_30.clj")
 
 
 (defn unhashed-deps [var->hash]
