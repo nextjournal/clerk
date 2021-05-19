@@ -70,9 +70,9 @@
                                          :doc []}]
      (if-let [node (first nodes)]
        (recur (cond
-                (#{:list :vector :map :token :quote :meta} (n/tag node)) (-> state
-                                                                             (update :nodes rest)
-                                                                             (update :doc (fnil conj []) {:type :code :text (n/string node)}))
+                (#{:map :meta :list :quote :token :var :vector} (n/tag node)) (-> state
+                                                                                  (update :nodes rest)
+                                                                                  (update :doc (fnil conj []) {:type :code :text (n/string node)}))
                 (and markdown? (n/comment? node)) (-> state
                                                       (assoc :nodes (drop-while n/comment? nodes))
                                                       (update :doc conj {:type :markdown :text (apply str (map (comp remove-leading-semicolons n/string)
