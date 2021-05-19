@@ -2,8 +2,8 @@
 ;; Notes about what currently breaks 💥 and what could be better tomorrow.
 (ns errors)
 
-;; - [ ] Lists spacing is broken
-;; - [ ] Nested lists are not formatted correctly
+;; - [x] Lists spacing is broken
+;; - [x] Nested lists are not formatted correctly
 ;; - [ ] Markdown should support Nextjournal Flavored Markdown including:
 ;;   - [ ] TODO lists 😹
 ;;   - [ ] Inline Formulas $E^2=m^2+\vec{p}^2$
