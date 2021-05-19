@@ -67,7 +67,7 @@
       (webserver/update-doc! (+eval-results (hashing/hash file) doc)))
     (catch Exception e
       (webserver/show-error! e)
-      (pr :e e))))
+      (throw e))))
 
 (defn file-event [{:keys [type path]}]
   (when (contains? #{:modify :create} type)
