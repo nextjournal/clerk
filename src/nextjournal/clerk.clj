@@ -11,7 +11,8 @@
 (defn read+eval-cached [vars->hash code-string]
   (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")
         form (read-string code-string)
-        hash (hashing/hash vars->hash (hashing/analyze form))
+        {:as analyzed-form :keys [var]} (hashing/analyze form)
+        hash (hashing/hash vars->hash analyzed-form)
         cache-file (str cache-dir fs/*sep* hash)
         no-cache? (hashing/no-cache? form)]
     #_(prn :hash hash :eval form :cached? (boolean (and (not no-cache?) (fs/exists? cache-file))))
@@ -19,7 +20,10 @@
     (or (when (and (not no-cache?)
                    (fs/exists? cache-file))
           (try
-            (read-string (slurp cache-file))
+            (let [value (read-string (slurp cache-file))]
+              (when var
+                (intern *ns* (-> var symbol name symbol) value))
+              value)
             (catch Exception e
               ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
               (prn :read-error e)
