@@ -1,8 +1,7 @@
-;; # Rule 30
-(ns rule-30
-  (:require [nextjournal.viewer :as v]))
+;; # Rule 30 🕹
+;; Let's explore cellular automata in a Clerk Notebook. We start by requiring the custom viewers.
+(ns rule-30 (:require [nextjournal.viewer :as v]))
 
-;; We start by registering custom viewers for `:number`, `:vector` and `:list`.
 (v/register-viewers!
  {:number #(v/html
             [:div.inline-block {:class (if (zero? %)
@@ -13,15 +12,6 @@
             (v/html (into [:div.flex.inline-flex] (map (partial v/inspect options)) x)))
   :list (fn [x options]
           (v/html (into [:div.flex.flex-col] (map (partial v/inspect options)) x)))})
-
-;; Our `:number` viewer is defined such that zero renders as a white square.
-0
-
-;; And any non-zero number renders as a black square.
-1
-
-;; A vector is displayed as a row.
-[0 1 0]
 
 ;; A list is displayed as a grid of rows.
 '([0 1 0]

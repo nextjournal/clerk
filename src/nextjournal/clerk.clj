@@ -2,7 +2,6 @@
 (ns nextjournal.clerk
   (:require [clojure.string :as str]
             [datoteka.core :as fs]
-            [nextjournal.printer :as printer]
             [nextjournal.beholder :as beholder]
             [nextjournal.clerk.hashing :as hashing]
             [nextjournal.clerk.webserver :as webserver]))
@@ -37,7 +36,7 @@
                               (instance? clojure.lang.MultiFn var-value)
                               (instance? clojure.lang.Namespace (find-ns 'user))
                               (contains? #{'ns 'in-ns 'require} (when (seq? form) (first form))))
-                  (spit cache-file (binding [*print-meta* true] (printer/pr-str var-value))))
+                  (spit cache-file (binding [*print-meta* true] (pr-str var-value))))
                 var-value))))))
 
 (defn clear-cache!

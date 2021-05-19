@@ -1,4 +1,4 @@
-(global-set-key (kbd "<f13>")
+(global-set-key (kbd "<f12>")
                 (lambda ()
                   (interactive)
                   (let
