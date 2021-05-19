@@ -7,8 +7,8 @@
 ;; - [ ] Markdown should support Nextjournal Flavored Markdown including:
 ;;   - [ ] TODO lists 😹
 ;;   - [ ] Inline Formulas $E^2=m^2+\vec{p}^2$
-;; - [ ] Errors are global, but should be local
-;; - [ ] Printing a var
+;; - [x] Errors are global, but should be local
+;; - [x] Printing a var
 
 
 ;; ## Details
@@ -17,4 +17,4 @@
 #'inc
 
 ;; Error: _No reader function for tag namespace._ Splice the comment to see the error.
-(comment (find-ns 'clojure.core))
+(find-ns 'clojure.core)

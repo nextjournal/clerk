@@ -35,6 +35,7 @@
             (do (when-not (or no-cache?
                               (instance? clojure.lang.IDeref var-value)
                               (instance? clojure.lang.MultiFn var-value)
+                              (instance? clojure.lang.Namespace (find-ns 'user))
                               (contains? #{'ns 'in-ns 'require} (when (seq? form) (first form))))
                   (spit cache-file (binding [*print-meta* true] (printer/pr-str var-value))))
                 var-value))))))
