@@ -15,18 +15,24 @@
         no-cache? (hashing/no-cache? form)]
     #_(prn :hash hash :eval form :cached? (boolean (and (not no-cache?) (fs/exists? cache-file))))
     (fs/create-dir cache-dir)
-    (if (and (not no-cache?) (fs/exists? cache-file))
-      (read-string (slurp cache-file))
-      (let [result (eval form)
-            var-value (cond-> result (var? result) deref)]
-        (if (fn? var-value)
-          result
-          (do (when-not (or no-cache?
-                            (instance? clojure.lang.IDeref var-value)
-                            (instance? clojure.lang.MultiFn var-value)
-                            (contains? #{'ns 'in-ns 'require} (when (seq? form) (first form))))
-                (spit cache-file (binding [*print-meta* true] (pr-str var-value))))
-              var-value))))))
+    (or (when (and (not no-cache?)
+                   (fs/exists? cache-file))
+          (try
+            (read-string (slurp cache-file))
+            (catch Exception e
+              ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
+              (prn :read-error e)
+              nil)))
+        (let [result (eval form)
+              var-value (cond-> result (var? result) deref)]
+          (if (fn? var-value)
+            result
+            (do (when-not (or no-cache?
+                              (instance? clojure.lang.IDeref var-value)
+                              (instance? clojure.lang.MultiFn var-value)
+                              (contains? #{'ns 'in-ns 'require} (when (seq? form) (first form))))
+                  (spit cache-file (binding [*print-meta* true] (pr-str var-value))))
+                var-value))))))
 
 (defn clear-cache!
   ([]
