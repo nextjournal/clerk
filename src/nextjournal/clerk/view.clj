@@ -35,11 +35,6 @@
   (hiccup/html5
    [:head
     [:meta {:charset "UTF-8"}]
-    (hiccup/include-css "https://cdn.jsdelivr.net/gh/tonsky/FiraCode@5.2/distr/fira_code.css")
-    (hiccup/include-css
-     (if live-js?
-       "https://cdn.dev.nextjournal.com:8888/build/stylesheets/nextjournal.css"
-       "https://cdn.nextjournal.com/data/QmT83tykSqNhth4cSkuo8j9Z6mkWTJDGJ7FuaZTwBYQaNP?filename=nextjournal.css&content-type=text/css"))
     (hiccup/include-css
      (if live-js?
        "https://cdn.dev.nextjournal.com:8888/build/stylesheets/viewer.css"
