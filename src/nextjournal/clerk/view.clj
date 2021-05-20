@@ -5,11 +5,11 @@
 
 (defn doc->viewer [doc]
   (into (v/view-as :clerk/notebook [])
-        (mapcat (fn [{:keys [type text result]}]
+        (mapcat (fn [{:as x :keys [type text result]}]
                   (case type
                     :markdown [(v/view-as :markdown text)]
                     :code (cond-> [(v/view-as :code text)]
-                            result (conj result)))))
+                            (contains? x :result) (conj result)))))
         doc))
 
 (defn ex->viewer [e]

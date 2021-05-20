@@ -19,7 +19,7 @@
     (second form)))
 
 (defn no-cache? [form]
-  (-> form var-name meta :clerk/no-cache boolean))
+  (-> (if-let [vn (var-name form)] vn form) meta :clerk/no-cache boolean))
 
 (defn sha1-base64 [s]
   (String. (.encode (java.util.Base64/getUrlEncoder)
