@@ -44,7 +44,13 @@
 ;; * load notebook without results
 ;; * allow page reload
 
-(defonce server (atom (httpkit/run-server #'app {:port 7777})))
+(defonce server (atom nil))
+
+(defn start! [{:keys [port] :or {port 7777}}]
+  (println "Starting server on " port)
+  (if @server
+    (println "Server already started")
+    (reset! server (httpkit/run-server #'app {:port port}))))
 
 (add-tap broadcast!)
 
