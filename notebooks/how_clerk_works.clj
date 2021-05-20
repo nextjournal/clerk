@@ -2,6 +2,8 @@
 (ns how-clerk-works
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.hashing :as h]
+            [nextjournal.viewer :as v]
+            [next.jdbc :as jdbc]
             [weavejester.dependency :as dep]))
 
 ;; ## File Watching 👀
@@ -56,8 +58,7 @@
 
 ;; For side effectful functions that should be cached, like a database query, you can add a value like this `#inst` to control when evaluation should happen.
 (def query-results
-  (let [_run-at #inst "2021-05-20T08:28:29.445-00:00"]
-    #_
-    (let [my-datasource (jdbc/get-datasource {:dbtype "..." :dbname "..."})]
-      (with-open [connection (jdbc/get-connection my-datasource)]
-        (jdbc/execute! connection [...])))))
+  (let [_run-at #inst "2021-05-20T08:28:29.445-00:00"
+        ds (next.jdbc/get-datasource {:dbtype "sqlite" :dbname "chinook.db"})]
+    (with-open [conn (next.jdbc/get-connection ds)]
+      (nextjournal.viewer/table (next.jdbc/execute! conn ["SELECT * FROM tracks ORDER BY UnitPrice DESC LIMIT 10 OFFSET 2000 "])))))

@@ -61,6 +61,11 @@
 (defn tex [x]
   (with-viewer x :latex))
 
+(defn table [xs]
+  (view-as :table
+           (into []
+                 (map #(into {} %))
+                 xs)))
 
 (defmacro register-viewers! [v]
   `(with-viewer

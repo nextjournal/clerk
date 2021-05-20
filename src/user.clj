@@ -30,4 +30,6 @@
   (show! "notebooks/viewers/markdown.clj")
   (show! "notebooks/viewers/html.clj")
 
+  (clerk/clear-cache!)
+
   )

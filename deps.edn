@@ -14,4 +14,7 @@
         arrowic/arrowic {:mvn/version "0.1.1"}
         rewrite-clj/rewrite-clj {:mvn/version "0.6.1"}}
 
- :aliases {:demo {:extra-paths ["notebooks/src"]}}}
+ :aliases {:demo {:extra-paths ["notebooks/src"]
+                  :extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
+                               org.xerial/sqlite-jdbc {:mvn/version "3.34.0"}
+                               org.clojure/data.csv {:mvn/version "1.0.0"}}}}}
