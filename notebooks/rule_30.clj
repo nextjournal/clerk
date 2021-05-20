@@ -1,21 +1,7 @@
 ;; # Rule 30 🕹
 ;; Let's explore cellular automata in a Clerk Notebook. We start by requiring the custom viewers.
-(ns rule-30 (:require [nextjournal.viewer :as v]))
-
-(v/register-viewers!
- {:number #(v/html
-            [:div.inline-block {:class (if (zero? %)
-                                         "bg-white border-solid border-2 border-black"
-                                         "bg-black")
-                                :style {:width 16 :height 16}}])
-  :vector (fn [x options]
-            (v/html (into [:div.flex.inline-flex] (map (partial v/inspect options)) x)))
-  :list (fn [x options]
-          (v/html (into [:div.flex.flex-col] (map (partial v/inspect options)) x)))})
-
-;; A list is displayed as a grid of rows.
-'([0 1 0]
-  [1 0 1])
+(ns rule-30
+  (:require [nextjournal.viewer :as v]))
 
 ;; Now let's define Rule 30 as a map. It maps a vector of three cells to a new value for a cell. Notice how the map viewer can be used as-is and uses our number and vector viewers.
 (def rule-30
@@ -36,3 +22,20 @@
 ;; Finally, we can evolve the board.
 (let [evolve #(mapv rule-30 (partition 3 1 (repeat 0) (cons 0 %)))]
   (->> first-generation (iterate evolve) (take 17)))
+
+
+(v/register-viewers! {#_#_#_#_#_#_
+                      :list ::board
+                      :vector ::row
+                      :number ::cell})
+
+(v/register-viewers!
+ {::cell #(v/html
+           [:div.inline-block {:class (if (zero? %)
+                                        "bg-white border-solid border-2 border-black"
+                                        "bg-black")
+                               :style {:width 16 :height 16}}])
+  ::row (fn [x options]
+          (v/html (into [:div.flex.inline-flex] (map (partial v/inspect options)) x)))
+  ::board (fn [x options]
+            (v/html (into [:div.flex.flex-col] (map (partial v/inspect options)) x)))})
