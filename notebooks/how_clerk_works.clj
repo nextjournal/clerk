@@ -37,11 +37,19 @@
 
 ;; ### Step 3: Hashing
 ;; Then we can use this information to hash each expression.
-
-(nextjournal.clerk.hashing/hash "notebooks/how_clerk_works.clj")
+(def hashes
+  (nextjournal.clerk.hashing/hash "notebooks/how_clerk_works.clj"))
 
 ;; ### Step 4: Caching
 ;; Clerk uses the hashes as filenames and only re-evaluates forms that haven't been seen before. The cache is currently using edn with `pr-str` and `read-string`.
+(def rand-three
+  (shuffle (range 3)))
+
+;; We can look up the cache key using the var name in the hashes map.
+(->> (get hashes #'how-clerk-works/rand-three)
+     (str ".cache/")
+     slurp
+     read-string)
 
 ;; As an escape hatch, you can tag a form or var with `:clerk/no-cache` to always reevalaute it. he following form will never be cached.
 ^:clerk/no-cache (shuffle (range 42))
@@ -49,4 +57,7 @@
 ;; For side effectful functions that should be cached, like a database query, you can add a value like this `#inst` to control when evaluation should happen.
 (def query-results
   (let [_run-at #inst "2021-05-20T08:28:29.445-00:00"]
-    ))
+    #_
+    (let [my-datasource (jdbc/get-datasource {:dbtype "..." :dbname "..."})]
+      (with-open [connection (jdbc/get-connection my-datasource)]
+        (jdbc/execute! connection [...])))))
