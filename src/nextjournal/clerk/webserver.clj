@@ -47,10 +47,13 @@
 (defonce server (atom nil))
 
 (defn start! [{:keys [port] :or {port 7777}}]
-  (println "Starting server on " port)
+  (println "Starting server on " port "...")
   (if @server
     (println "Server already started")
-    (reset! server (httpkit/run-server #'app {:port port}))))
+    (try
+      (reset! server (httpkit/run-server #'app {:port port}))
+      (catch java.net.BindException _e
+        (println "Port ""not avaible, server not started!")))))
 
 (add-tap broadcast!)
 
