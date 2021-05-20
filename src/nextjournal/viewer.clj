@@ -49,6 +49,18 @@
 (defn html [x]
   (with-viewer x (if (string? x) :html :hiccup)))
 
+(defn vl [x]
+  (with-viewer x :vega-lite))
+
+(defn plotly [x]
+  (with-viewer x :plotly))
+
+(defn md [x]
+  (with-viewer x :markdown))
+
+(defn tex [x]
+  (with-viewer x :latex))
+
 
 (defmacro register-viewers! [v]
   `(with-viewer
