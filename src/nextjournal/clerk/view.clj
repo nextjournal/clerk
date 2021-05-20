@@ -1,10 +1,10 @@
 (ns nextjournal.clerk.view
   (:require [nextjournal.viewer :as v]
-            [nextjournal.printer :as printer]
-            [hiccup.page :as hiccup]))
+            [hiccup.page :as hiccup]
+            [clojure.walk :as w]))
 
 (defn doc->viewer [doc]
-  (into ^{:nextjournal/viewer :notebook} []
+  (into (v/view-as :clerk/notebook [])
         (mapcat (fn [{:keys [type text result]}]
                   (case type
                     :markdown [(v/view-as :markdown text)]
@@ -14,15 +14,25 @@
 
 (defn ex->viewer [e]
   (into ^{:nextjournal/viewer :notebook}
-        [(v/view-as :code (printer/pr-str (Throwable->map e)))]))
+        [(v/view-as :code (pr-str (Throwable->map e)))]))
 
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj"))
 
+(defn var->data [v]
+  (v/view-as :clerk/var (symbol v)))
+
+#_(var->data #'var->data)
+
+(defn datafy-vars [x]
+  (w/prewalk #(cond-> % (var? %) var->data) x))
+
+#_(datafy-vars [{:x #'var->data}])
+
 (defn ->edn [x]
   (binding [*print-meta* true
             *print-namespace-maps* false]
-    (printer/pr-str x)))
+    (pr-str (datafy-vars x))))
 
 #_(->edn (let [file "notebooks/elements.clj"]
            (doc->viewer (hashing/hash file) (hashing/parse-file {:markdown? true} file))))
