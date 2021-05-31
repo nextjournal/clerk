@@ -9,12 +9,13 @@
 ;;   - [ ] Inline Formulas $E^2=m^2+\vec{p}^2$
 ;; - [x] Errors are global, but should be local
 ;; - [x] Printing a var
+;; - [ ] Error display
+;; - [ ] Fix jar hashing (contents, not filename)
+;; - [ ] Make viewer api open with predicates
+;; - [ ] Printing of very large values
+;; - [ ] Datafy + Nav
+;; - [ ] Allow to pin notebook
 
-
-;; ## Details
-
-;; Printing a var:
-#'inc
 
 ;; Error: _No reader function for tag namespace._ Splice the comment to see the error.
 (find-ns 'clojure.core)

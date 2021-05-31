@@ -42,7 +42,7 @@
 (def hashes
   (nextjournal.clerk.hashing/hash "notebooks/how_clerk_works.clj"))
 
-;; ### Step 4: Caching
+;; ### Step 4: Evaluation
 ;; Clerk uses the hashes as filenames and only re-evaluates forms that haven't been seen before. The cache is currently using edn with `pr-str` and `read-string`.
 (def rand-three
   (shuffle (range 3)))
@@ -61,4 +61,4 @@
   (let [_run-at #inst "2021-05-20T08:28:29.445-00:00"
         ds (next.jdbc/get-datasource {:dbtype "sqlite" :dbname "chinook.db"})]
     (with-open [conn (next.jdbc/get-connection ds)]
-      (nextjournal.viewer/table (next.jdbc/execute! conn ["SELECT * FROM tracks ORDER BY UnitPrice DESC LIMIT 10 OFFSET 2000 "])))))
+      (nextjournal.viewer/table (next.jdbc/execute! conn ["SELECT AlbumId, Bytes, Name, TrackID, UnitPrice FROM tracks"])))))

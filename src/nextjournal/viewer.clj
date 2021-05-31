@@ -61,11 +61,19 @@
 (defn tex [x]
   (with-viewer x :latex))
 
+;; TODO: hack for talk to make sql result display as table, propery support SQL results as tables and remove
+(defn ->table
+  "converts a sequence of maps into a table with the first row containing the column names."
+  [xs]
+  (let [cols (sort (keys (first xs)))]
+    (into [cols]
+          (map (fn [row] (map #(get row %) cols)))
+          xs)))
+
+#_(->table [{:a 1 :b 2 :c 3} {:a 3 :b 0 :c 2}])
+
 (defn table [xs]
-  (view-as :table
-           (into []
-                 (map #(into {} %))
-                 xs)))
+  (view-as :table (->table xs)))
 
 (defmacro register-viewers! [v]
   `(with-viewer
