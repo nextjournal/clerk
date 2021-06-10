@@ -10,6 +10,7 @@
 
         http-kit/http-kit {:mvn/version "2.5.3"}
         hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
+        lambdaisland/uri {:mvn/version "1.4.70"}
 
         arrowic/arrowic {:mvn/version "0.1.1"}
         rewrite-clj/rewrite-clj {:mvn/version "0.6.1"}}

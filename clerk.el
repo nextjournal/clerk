@@ -1,4 +1,9 @@
-(global-set-key (kbd "<f12>")
+(global-set-key (kbd "<f13>")
+                (lambda ()
+                  (interactive)
+                  (shell-command "/Users/mk/bin/reload_brave.sh")))
+
+(global-set-key (kbd "<f14>")
                 (lambda ()
                   (interactive)
                   (let
