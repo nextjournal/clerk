@@ -9,7 +9,11 @@
                   (case type
                     :markdown [(v/view-as :markdown text)]
                     :code (cond-> [(v/view-as :code text)]
-                            (contains? x :result) (conj result)))))
+                            (contains? x :result)
+                            (conj (if (and (instance? clojure.lang.IMeta result)
+                                           (contains? (meta result) :blob/id))
+                                    (v/view-as :clerk/blob (select-keys (meta result) [:blob/id]))
+                                    result))))))
         doc))
 
 (defn ex->viewer [e]

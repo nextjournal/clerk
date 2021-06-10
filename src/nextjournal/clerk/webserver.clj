@@ -1,5 +1,7 @@
 (ns nextjournal.clerk.webserver
-  (:require [org.httpkit.server :as httpkit]
+  (:require [clojure.string :as str]
+            [datoteka.core :as fs]
+            [org.httpkit.server :as httpkit]
             [nextjournal.clerk.view :as view]))
 
 (def help-doc
@@ -16,10 +18,19 @@
 
 #_(broadcast! [{:random (rand-int 10000) :range (range 100)}])
 
+(defn serve-blob [uri]
+  (let [file (str/replace uri "/_blob/" ".cache/")]
+    (if (fs/exists? file)
+      {:status 200
+       :headers {"Content-Type" "application/edn"}
+       :body (slurp file)}
+      {:status 404})))
+
 (defn app [{:as req :keys [uri]}]
   (case (get (re-matches #"/([^/]*).*" uri) 1)
     "js" {:status 302
           :headers {"Location" (str "http://localhost:8003" uri)}}
+    "_blob" (serve-blob uri)
     "_ws" (if-not (:websocket? req)
             {:status 200 :body "upgrading..."}
             (httpkit/as-channel req {:on-open (fn [ch]

@@ -7,6 +7,13 @@
             [nextjournal.clerk.webserver :as webserver]))
 
 
+(defn add-blob
+  "Tries to add the blob id to metadata of a given result."
+  [result id]
+  (cond-> result
+    (instance? clojure.lang.IObj result)
+    (vary-meta assoc :blob/id id)))
+
 (defn read+eval-cached [vars->hash code-string]
   (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")
         form (read-string code-string)
@@ -19,7 +26,7 @@
     (or (when (and (not no-cache?)
                    (fs/exists? cache-file))
           (try
-            (let [value (read-string (slurp cache-file))]
+            (let [value (add-blob (read-string (slurp cache-file)) hash)]
               (when var
                 (intern *ns* (-> var symbol name symbol) value))
               value)
@@ -37,7 +44,9 @@
                               (instance? clojure.lang.Namespace var-value)
                               (and (seq? form) (contains? #{'ns 'in-ns 'require} (first form))))
                   (spit cache-file (binding [*print-meta* true] (pr-str var-value))))
-                var-value))))))
+                (add-blob var-value hash)))))))
+
+
 
 (defn clear-cache!
   ([]
