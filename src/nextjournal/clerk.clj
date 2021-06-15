@@ -4,7 +4,8 @@
             [datoteka.core :as fs]
             [nextjournal.beholder :as beholder]
             [nextjournal.clerk.hashing :as hashing]
-            [nextjournal.clerk.webserver :as webserver]))
+            [nextjournal.clerk.webserver :as webserver]
+            [taoensso.nippy :as nippy]))
 
 
 (defn add-blob
@@ -26,7 +27,7 @@
     (or (when (and (not no-cache?)
                    (fs/exists? cache-file))
           (try
-            (let [value (add-blob (read-string (slurp cache-file)) hash)]
+            (let [value (add-blob (nippy/thaw-from-file cache-file) hash)]
               (when var
                 (intern *ns* (-> var symbol name symbol) value))
               value)
@@ -43,7 +44,7 @@
                               (instance? clojure.lang.MultiFn var-value)
                               (instance? clojure.lang.Namespace var-value)
                               (and (seq? form) (contains? #{'ns 'in-ns 'require} (first form))))
-                  (spit cache-file (binding [*print-meta* true] (pr-str var-value))))
+                  (nippy/freeze-to-file cache-file var-value))
                 (add-blob var-value hash)))))))
 
 

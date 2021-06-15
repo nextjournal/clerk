@@ -7,6 +7,7 @@
 
         funcool/datoteka {:mvn/version "1.0.0"}
         com.nextjournal/beholder {:mvn/version "1.0.0"}
+        com.taoensso/nippy {:mvn/version "3.1.1"}
 
         http-kit/http-kit {:mvn/version "2.5.3"}
         hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
