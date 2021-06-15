@@ -20,15 +20,17 @@
 
 #_(broadcast! [{:random (rand-int 10000) :range (range 100)}])
 
-(defn paginate [data {:as opts :keys [start n] :or {start 0 n 20}}]
-  (if-let [count (and (not (map? data))
-                      (counted? data)
-                      (count data))]
-    (with-meta (->> data (drop start) (take n) doall) (assoc opts :count count))
-    (doall data)))
+(defn paginate [result {:as opts :keys [start n] :or {start 0 n 20}}]
+  (if-let [count (and (not (or (map? result)
+                               (set? result)))
+                      (counted? result)
+                      (count result))]
+    (with-meta (->> result (drop start) (take n) doall) (assoc opts :count count))
+    result))
 
 #_(meta (paginate (range 100) {}))
 #_(meta (paginate (zipmap (range 100) (range 100)) {}))
+#_(paginate #{1 2 3} {})
 
 (defn update-if [m k f]
   (if (k m)
@@ -48,14 +50,13 @@
 #_(get-pagination-opts "foo=bar&n=42&start=20")
 
 (defn serve-blob [{:keys [uri query-string]}]
-  (let [file (str/replace uri "/_blob/" ".cache/")]
-    (if (fs/exists? file)
-      (let [data (-> file slurp read-string)]
-        {:status 200
-         #_#_ ;; leaving this out for now so I can open it directly
-         :headers {"Content-Type" "application/edn"}
-         :body (binding [*print-meta* true]
-                 (pr-str (paginate data (get-pagination-opts query-string))))})
+  (let [blob->result (meta @!doc)
+        blob-id (str/replace uri "/_blob/" "")]
+    (if (contains? blob->result blob-id)
+      {:status 200
+       #_#_ ;; leaving this out for now so I can open it directly
+       :headers {"Content-Type" "application/edn"}
+       :body (view/->edn (paginate (blob->result blob-id) (get-pagination-opts query-string)))}
       {:status 404})))
 
 (defn app [{:as req :keys [uri query-string]}]

@@ -21,7 +21,7 @@
         hash (hashing/hash vars->hash analyzed-form)
         cache-file (str cache-dir fs/*sep* hash)
         no-cache? (hashing/no-cache? form)]
-    #_(prn :hash hash :eval form :cached? (boolean (and (not no-cache?) (fs/exists? cache-file))))
+    (prn :hash hash :eval form :cached? (boolean (and (not no-cache?) (fs/exists? cache-file))))
     (fs/create-dir cache-dir)
     (or (when (and (not no-cache?)
                    (fs/exists? cache-file))
@@ -55,15 +55,19 @@
        (fs/delete (str fs/*cwd* fs/*sep* ".cache"))))))
 
 
-(defn +eval-results [vars->hash doc]
-  (into []
-        (map (fn [{:as cell :keys [type text]}]
-               (cond-> cell
-                 (= :code type)
-                 (assoc :result (read+eval-cached vars->hash text)))))
-        doc))
+(defn blob->result [doc]
+  (into {} (comp (keep :result)
+                 (filter meta)
+                 (map (juxt (comp :blob/id meta) identity))) doc))
 
-#_(+eval-results {} [{:type :markdown :text "# Hi"} {:type :code :text "(+ 39 3)"}])
+(defn +eval-results [vars->hash doc]
+  (let [doc (into [] (map (fn [{:as cell :keys [type text]}]
+                            (cond-> cell
+                              (= :code type)
+                              (assoc :result (read+eval-cached vars->hash text))))) doc)]
+    (with-meta doc (blob->result doc))))
+
+#_(meta (+eval-results {} [{:type :markdown :text "# Hi"} {:type :code :text "[1]"} {:type :code :text "(+ 39 3)"}]))
 
 (defn parse-file [file]
   (hashing/parse-file {:markdown? true} file))
