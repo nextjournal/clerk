@@ -6,8 +6,8 @@
             [clojure.string :as str]
             [clojure.tools.analyzer.jvm :as ana]
             [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef]
-            [clojure.walk :as w]
             [datoteka.core :as fs]
+            [edamame.core :as edamame]
             [rewrite-clj.parser :as p]
             [rewrite-clj.node :as n]
             [weavejester.dependency :as dep]))
@@ -43,33 +43,17 @@
                        ([] (foo "s"))
                        ([s] (str/includes? (p/parse-string-all s) "hi"))))
 
-(defn deterministic-anon-fn-locals [form]
-  (let [rename (->> form
-                    (tree-seq sequential? seq)
-                    (keep #(when (and (symbol? %)
-                                      (= \# (last (name %))))
-                             %))
-                    (into #{})
-                    (sort)
-                    (into {} (map-indexed (fn [idx sym] [sym (symbol (str "p__" idx "#"))]))))]
-    (w/prewalk #(cond-> % (contains? rename %) rename) form)))
-
-#_(deterministic-anon-fn-locals (read-string "#(identity %)"))
-;; (fn* [p__0#] (identity p__0#))
-
 (defn analyze [form]
-  (let [form (-> form
-                 deterministic-anon-fn-locals
-                 ana/analyze
-                 (ana.passes.ef/emit-form #{:hygenic :qualified-symbols}))
-        var (some-> form var-name resolve)
-        deps (cond-> (var-dependencies form) var (disj var))]
+  (let [analyzed-form (-> form
+                          ana/analyze
+                          (ana.passes.ef/emit-form #{:hygenic :qualified-symbols}))
+        var (some-> analyzed-form var-name resolve)
+        deps (cond-> (var-dependencies analyzed-form) var (disj var))]
     (cond-> {:form (cond->> form var (drop 2))}
       var (assoc :var var)
       (seq deps) (assoc :deps deps))))
 
-
-#_(analyze '#(identity %))
+#_(analyze '(let [x 2] x))
 #_(analyze '(defn foo [s] (str/includes? (p/parse-string-all s) "hi")))
 #_(analyze '(defn segments [s] (let [segments (str/split s)]
                                  (str/join segments))))
@@ -101,6 +85,12 @@
 #_(parse-file {:markdown? true} "notebooks/rule_30.clj")
 
 
+(defn auto-resolves [ns]
+  (as-> (ns-aliases ns) $
+    (assoc $ :current (ns-name *ns*))
+    (zipmap (keys $)
+            (map ns-name (vals $)))))
+
 (defn analyze-file
   ([file]
    (analyze-file {} {:graph (dep/graph)} file))
@@ -110,7 +100,8 @@
    (let [doc (parse-file opts file)]
      (reduce (fn [{:as acc :keys [graph]} {:keys [type text]}]
                (if (= type :code)
-                 (let [form (read-string text)
+                 (let [form (edamame/parse-string text {:all true
+                                                        :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))})
                        _ (when (and (seq? form) (= 'ns (first form)))
                            (eval form))
                        {:keys [var deps form]} (analyze form)]
@@ -127,7 +118,6 @@
 
 #_(:graph (analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/elements.clj"))
 #_(analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/rule_30.clj")
-
 
 (defn unhashed-deps [var->hash]
   (set/difference (into #{}
@@ -229,6 +219,14 @@
 #_(hash "notebooks/elements.clj")
 #_(hash "src/nextjournal/clerk/hashing.clj")
 
+(comment
+  (require 'clojure.data)
+  (let [file "notebooks/cache.clj"
+        g1 (build-graph file)
+        g2 (build-graph file)]
+    (= g1 g2)
+    (clojure.data/diff g1 g2)
+    g1))
 
 ;; (comment
 ;;   (declaring-classfiles clojure.core/add-tap)

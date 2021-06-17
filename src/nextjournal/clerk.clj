@@ -20,8 +20,12 @@
   (alter-var-root   #'nippy/*thaw-serializable-allowlist* (fn [_] "allow-and-record"))
   (nippy/get-recorded-serializable-classes))
 
-(alter-var-root #'nippy/*thaw-serializable-allowlist* (conj nippy/default-thaw-serializable-allowlist "java.io.File"))
-#_(-> [(clojure.java.io/file "notebooks")] nippy/freeze nippy/thaw)
+(alter-var-root #'nippy/*thaw-serializable-allowlist* (fn [_] (conj nippy/default-thaw-serializable-allowlist "java.io.File" "clojure.lang.Var" "clojure.lang.Namespace")))
+
+#_(-> [(clojure.java.io/file "notebooks" (var inc))] nippy/freeze nippy/thaw)
+
+(def thaw-from-file nippy/thaw-from-file)
+(def freeze-to-file nippy/freeze-to-file)
 
 (defn read+eval-cached [vars->hash code-string]
   (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")
@@ -35,13 +39,13 @@
     (or (when (and (not no-cache?)
                    (fs/exists? cache-file))
           (try
-            (let [value (add-blob (nippy/thaw-from-file cache-file) hash)]
+            (let [value (add-blob (thaw-from-file cache-file) hash)]
               (when var
                 (intern *ns* (-> var symbol name symbol) value))
               value)
             (catch Exception e
               ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
-              (prn :read-error e)
+              (prn :thaw-error e)
               nil)))
         (let [result (eval form)
               var-value (cond-> result (var? result) deref)]
@@ -52,7 +56,11 @@
                               (instance? clojure.lang.MultiFn var-value)
                               (instance? clojure.lang.Namespace var-value)
                               (and (seq? form) (contains? #{'ns 'in-ns 'require} (first form))))
-                  (nippy/freeze-to-file cache-file var-value))
+                  (try
+                    (freeze-to-file cache-file var-value)
+                    (catch Exception e
+                      (prn :freeze-error e)
+                      nil)))
                 (add-blob var-value hash)))))))
 
 (defn clear-cache!

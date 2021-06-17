@@ -44,14 +44,14 @@
 
 ;; ### Step 4: Evaluation
 ;; Clerk uses the hashes as filenames and only re-evaluates forms that haven't been seen before. The cache is currently using edn with `pr-str` and `read-string`.
-(def rand-three
-  (shuffle (range 3)))
+(def rand-fifteen
+  (shuffle (range 15)))
 
 ;; We can look up the cache key using the var name in the hashes map.
-(->> (get hashes #'how-clerk-works/rand-three)
+;; TODO: make this work again without a fully qualified `nextjournal.clerk` namespace.
+(->> (get hashes #'how-clerk-works/rand-fifteen)
      (str ".cache/")
-     slurp
-     read-string)
+     nextjournal.clerk/thaw-from-file)
 
 ;; As an escape hatch, you can tag a form or var with `:clerk/no-cache` to always reevalaute it. he following form will never be cached.
 ^:clerk/no-cache (shuffle (range 42))
