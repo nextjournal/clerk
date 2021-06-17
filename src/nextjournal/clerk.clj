@@ -15,6 +15,14 @@
     (instance? clojure.lang.IObj result)
     (vary-meta assoc :blob/id id)))
 
+(comment
+  (alter-var-root #'nippy/*freeze-serializable-allowlist* (fn [_] "allow-and-record"))
+  (alter-var-root   #'nippy/*thaw-serializable-allowlist* (fn [_] "allow-and-record"))
+  (nippy/get-recorded-serializable-classes))
+
+(alter-var-root #'nippy/*thaw-serializable-allowlist* (conj nippy/default-thaw-serializable-allowlist "java.io.File"))
+#_(-> [(clojure.java.io/file "notebooks")] nippy/freeze nippy/thaw)
+
 (defn read+eval-cached [vars->hash code-string]
   (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")
         form (read-string code-string)
@@ -46,8 +54,6 @@
                               (and (seq? form) (contains? #{'ns 'in-ns 'require} (first form))))
                   (nippy/freeze-to-file cache-file var-value))
                 (add-blob var-value hash)))))))
-
-
 
 (defn clear-cache!
   ([]
