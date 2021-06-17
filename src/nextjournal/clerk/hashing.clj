@@ -6,6 +6,7 @@
             [clojure.string :as str]
             [clojure.tools.analyzer.jvm :as ana]
             [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef]
+            [clojure.walk :as w]
             [datoteka.core :as fs]
             [rewrite-clj.parser :as p]
             [rewrite-clj.node :as n]
@@ -42,20 +43,36 @@
                        ([] (foo "s"))
                        ([s] (str/includes? (p/parse-string-all s) "hi"))))
 
+(defn deterministic-anon-fn-locals [form]
+  (let [rename (->> form
+                    (tree-seq sequential? seq)
+                    (keep #(when (and (symbol? %)
+                                      (= \# (last (name %))))
+                             %))
+                    (into #{})
+                    (sort)
+                    (into {} (map-indexed (fn [idx sym] [sym (symbol (str "p__" idx "#"))]))))]
+    (w/prewalk #(cond-> % (contains? rename %) rename) form)))
+
+#_(deterministic-anon-fn-locals (read-string "#(identity %)"))
+;; (fn* [p__0#] (identity p__0#))
+
 (defn analyze [form]
   (let [form (-> form
+                 deterministic-anon-fn-locals
                  ana/analyze
-                 (ana.passes.ef/emit-form #{:qualified-symbols}))
+                 (ana.passes.ef/emit-form #{:hygenic :qualified-symbols}))
         var (some-> form var-name resolve)
         deps (cond-> (var-dependencies form) var (disj var))]
     (cond-> {:form (cond->> form var (drop 2))}
       var (assoc :var var)
       (seq deps) (assoc :deps deps))))
 
+
+#_(analyze '#(identity %))
 #_(analyze '(defn foo [s] (str/includes? (p/parse-string-all s) "hi")))
-#_(analyze '(defn segments [s]
-              (let [segments (str/split s)]
-                (str/join segments))))
+#_(analyze '(defn segments [s] (let [segments (str/split s)]
+                                 (str/join segments))))
 
 
 (defn remove-leading-semicolons [s]
