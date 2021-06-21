@@ -43,7 +43,7 @@
 
 (def live-js?
   "Load dynamic js from shadow or static bundle from cdn."
-  true)
+  false)
 
 (defn ->html [viewer]
   (hiccup/html5
@@ -52,12 +52,12 @@
     (hiccup/include-css
      (if live-js?
        "https://cdn.dev.nextjournal.com:8888/build/stylesheets/viewer.css"
-       "https://cdn.nextjournal.com/data/QmPKsreb65rQu51tuxQkLjkKGp3DxuFHPUbmUV1rehMA21?filename=viewer.css&content-type=text/css"))
+       "https://cdn-beta.nextjournal.com/data/QmZc2Rhp7GqGAuZFp8SH6yVLLh3sz3cyjDwZtR5Q8PGcye?filename=viewer-a098a51e8ec9999fae7673b325889dbccafad583.css&content-type=text/css"))
 
     (hiccup/include-js
      (if live-js?
        "/js/out/viewer.js"
-       "https://cdn.nextjournal.com/data/Qmeo8gbH53vBr3r47JBdYbwKwboWQCDKui5pfsEgxvgEpy?filename=viewer.js&content-type=application/x-javascript"))]
+       "https://cdn.nextjournal.com/data/QmTRQtJzUyqsFmTSgQCGgHQ3F8UTowBiZxZrharffJemb5?filename=viewer.js&content-type=application/x-javascript"))]
    [:body
     [:div#app]
     [:script "nextjournal.viewer.notebook.mount(document.getElementById('app'))

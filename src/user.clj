@@ -10,13 +10,15 @@
 
   (webserver/start! {}))
 
-(defn toggle-dev! []
-  (alter-var-root #'nextjournal.clerk.view/live-js? not))
+(defn set-dev!
+  "Set this to `true` to load the css + js from a running instance for css + viewer dev. "
+  [enabled?]
+  (alter-var-root #'nextjournal.clerk.view/live-js? (constantly enabled?)))
 
 (comment
   (go)
 
-  (toggle-dev!)
+  (set-dev! true)
 
   (beholder/stop watcher)
 
@@ -26,12 +28,15 @@
   (show! "notebooks/onwards.clj")
   (show! "notebooks/how_clerk_works.clj")
   (show! "notebooks/pagination.clj")
+  (show! "notebooks/cache.clj")
 
   (show! "notebooks/viewers/vega.clj")
   (show! "notebooks/viewers/plotly.clj")
   (show! "notebooks/viewers/tex.clj")
   (show! "notebooks/viewers/markdown.clj")
   (show! "notebooks/viewers/html.clj")
+
+  (show! "/Users/mk/dev/ductile/repl_sessions/edifact_bucket_analysis.clj")
 
   (clerk/clear-cache!)
 
