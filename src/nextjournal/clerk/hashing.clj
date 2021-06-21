@@ -101,7 +101,8 @@
      (reduce (fn [{:as acc :keys [graph]} {:keys [type text]}]
                (if (= type :code)
                  (let [form (edamame/parse-string text {:all true
-                                                        :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))})
+                                                        :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))
+                                                        :readers *data-readers*})
                        _ (when (and (seq? form) (= 'ns (first form)))
                            (eval form))
                        {:keys [var deps form]} (analyze form)]
