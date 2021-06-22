@@ -29,15 +29,16 @@
 
 (defn read+eval-cached [vars->hash code-string]
   (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")
-        form (read-string code-string)
-        {:as analyzed-form :keys [var]} (hashing/analyze form)
-        hash (hashing/hash vars->hash analyzed-form)
+        form (hashing/read-string code-string)
+        {:as analyzed :keys [var]} (hashing/analyze form)
+        hash (hashing/hash vars->hash analyzed)
         cache-file (str cache-dir fs/*sep* hash)
-        no-cache? (hashing/no-cache? form)]
-    (prn :hash hash :eval form :cached? (boolean (and (not no-cache?) (fs/exists? cache-file))))
+        no-cache? (hashing/no-cache? form)
+        cached? (fs/exists? cache-file)]
+    (prn :cached? (cond no-cache? :no-cache cached? true :else :no-cache-file) :hash hash :form form)
     (fs/create-dir cache-dir)
     (or (when (and (not no-cache?)
-                   (fs/exists? cache-file))
+                   cached?)
           (try
             (let [value (add-blob (thaw-from-file cache-file) hash)]
               (when var

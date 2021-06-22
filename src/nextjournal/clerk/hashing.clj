@@ -1,7 +1,8 @@
 ;; # Hashing Things!!!!
 (ns nextjournal.clerk.hashing
-  (:refer-clojure :exclude [hash])
+  (:refer-clojure :exclude [hash read-string])
   (:require [clojure.java.classpath :as cp]
+            [clojure.core :as core]
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.analyzer.jvm :as ana]
@@ -91,6 +92,16 @@
     (zipmap (keys $)
             (map ns-name (vals $)))))
 
+#_(auto-resolves (find-ns 'rule-30))
+
+
+(defn read-string [s]
+  (edamame/parse-string s {:all true
+                           :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))
+                           :readers *data-readers*}))
+
+#_(read-string "(ns rule-30 (:require [nextjournal.viewer :as v]))")
+
 (defn analyze-file
   ([file]
    (analyze-file {} {:graph (dep/graph)} file))
@@ -100,9 +111,7 @@
    (let [doc (parse-file opts file)]
      (reduce (fn [{:as acc :keys [graph]} {:keys [type text]}]
                (if (= type :code)
-                 (let [form (edamame/parse-string text {:all true
-                                                        :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))
-                                                        :readers *data-readers*})
+                 (let [form (read-string text)
                        _ (when (and (seq? form) (= 'ns (first form)))
                            (eval form))
                        {:keys [var deps form]} (analyze form)]
@@ -218,16 +227,16 @@
      (sha1-base64 (pr-str (conj hashed-deps (if form form jar)))))))
 
 #_(hash "notebooks/elements.clj")
-#_(hash "src/nextjournal/clerk/hashing.clj")
+#_(clojure.data/diff (hash "notebooks/how_clerk_works.clj")
+                     (hash "notebooks/how_clerk_works.clj"))
 
 (comment
   (require 'clojure.data)
   (let [file "notebooks/cache.clj"
         g1 (build-graph file)
         g2 (build-graph file)]
-    (= g1 g2)
-    (clojure.data/diff g1 g2)
-    g1))
+    [:= (= g1 g2)
+     :diff (clojure.data/diff g1 g2)]))
 
 ;; (comment
 ;;   (declaring-classfiles clojure.core/add-tap)
