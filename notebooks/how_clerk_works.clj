@@ -49,9 +49,11 @@
 
 ;; We can look up the cache key using the var name in the hashes map.
 ;; TODO: make this work again without a fully qualified `nextjournal.clerk` namespace.
+#_
 (->> (get hashes #'how-clerk-works/rand-fifteen)
      (str ".cache/")
      nextjournal.clerk/thaw-from-file)
+
 
 ;; As an escape hatch, you can tag a form or var with `:clerk/no-cache` to always reevalaute it. he following form will never be cached.
 ^:clerk/no-cache (shuffle (range 42))

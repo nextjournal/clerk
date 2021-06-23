@@ -9,6 +9,8 @@
             [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef]
             [datoteka.core :as fs]
             [edamame.core :as edamame]
+            [multihash.core :as multihash]
+            [multihash.digest :as digest]
             [rewrite-clj.parser :as p]
             [rewrite-clj.node :as n]
             [weavejester.dependency :as dep]))
@@ -23,12 +25,11 @@
 (defn no-cache? [form]
   (-> (if-let [vn (var-name form)] vn form) meta :clerk/no-cache boolean))
 
-(defn sha1-base64 [s]
-  (String. (.encode (java.util.Base64/getUrlEncoder)
-                    (.digest (java.security.MessageDigest/getInstance "SHA-1") (.getBytes s)))))
 
-(comment
-  (sha1-base64 "hello"))
+(defn sha1-base58 [s]
+  (-> s digest/sha1 multihash/base58))
+
+#_(sha1-base58 "hello")
 
 
 (defn var-dependencies [form]
@@ -224,7 +225,7 @@
              (dep/topo-sort graph))))
   ([var->hash {:keys [jar form deps]}]
    (let [hashed-deps (into #{} (map var->hash) deps)]
-     (sha1-base64 (pr-str (conj hashed-deps (if form form jar)))))))
+     (sha1-base58 (pr-str (conj hashed-deps (if form form jar)))))))
 
 #_(hash "notebooks/elements.clj")
 #_(clojure.data/diff (hash "notebooks/how_clerk_works.clj")

@@ -59,8 +59,7 @@
        :body (view/->edn (paginate (blob->result blob-id) (get-pagination-opts query-string)))}
       {:status 404})))
 
-(defn app [{:as req :keys [uri query-string]}]
-  (prn :q query-string)
+(defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
     (httpkit/as-channel req {:on-open (fn [ch]
                                         (swap! !clients conj ch)

@@ -1,19 +1,14 @@
 ;; # Introducing Clerk 👋
 (ns nextjournal.clerk
   (:require [clojure.string :as str]
+            [clojure.java.io :as io]
             [datoteka.core :as fs]
             [nextjournal.beholder :as beholder]
             [nextjournal.clerk.hashing :as hashing]
             [nextjournal.clerk.webserver :as webserver]
+            [multihash.core :as multihash]
+            [multihash.digest :as digest]
             [taoensso.nippy :as nippy]))
-
-
-(defn add-blob
-  "Tries to add the blob id to metadata of a given result."
-  [result id]
-  (cond-> result
-    (instance? clojure.lang.IObj result)
-    (vary-meta assoc :blob/id id)))
 
 (comment
   (alter-var-root #'nippy/*freeze-serializable-allowlist* (fn [_] "allow-and-record"))
@@ -21,44 +16,81 @@
   (nippy/get-recorded-serializable-classes))
 
 (alter-var-root #'nippy/*thaw-serializable-allowlist* (fn [_] (conj nippy/default-thaw-serializable-allowlist "java.io.File" "clojure.lang.Var" "clojure.lang.Namespace")))
+#_(-> [(clojure.java.io/file "notebooks") (find-ns 'user)] nippy/freeze nippy/thaw)
 
-#_(-> [(clojure.java.io/file "notebooks" (var inc))] nippy/freeze nippy/thaw)
+(defn ->cache-file [hash]
+  (str ".cache/" hash))
 
-(def thaw-from-file nippy/thaw-from-file)
-(def freeze-to-file nippy/freeze-to-file)
+(def cache-dir
+  (str fs/*cwd* fs/*sep* ".cache"))
+
+(defn hash->digest-file [hash]
+  (str cache-dir fs/*sep* "@" hash))
+
+(defn add-blob [result hash]
+  (cond-> result
+    (instance? clojure.lang.IObj result)
+    (vary-meta assoc :blob/id (cond-> hash (not (string? hash)) multihash/base58))))
+
+#_(meta (add-blob {} "foo"))
+
+(defn hash+store-in-cas! [x]
+  (let [^bytes ba (nippy/freeze x)
+        multihash (multihash/base58 (digest/sha2-512 ba))
+        file (->cache-file multihash)]
+    (when-not (fs/exists? file)
+      (with-open [out (io/output-stream (io/file file))]
+        (.write out ba)))
+    multihash))
+
+(defn thaw-from-cas [hash]
+  ;; TODO: validate hash and retry or re-compute in case of a mismatch
+  (nippy/thaw-from-file (->cache-file hash)))
+
+
+#_(thaw-from-cas (hash+store-in-cas! (range 42)))
+#_(thaw-from-cas "8Vv6q6La171HEs28ZuTdsn9Ukg6YcZwF5WRFZA1tGk2BP5utzRXNKYq9Jf9HsjFa6Y4L1qAAHzMjpZ28TCj1RTyAdx")
 
 (defn read+eval-cached [vars->hash code-string]
-  (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")
-        form (hashing/read-string code-string)
+  (let [form (hashing/read-string code-string)
         {:as analyzed :keys [var]} (hashing/analyze form)
         hash (hashing/hash vars->hash analyzed)
-        cache-file (str cache-dir fs/*sep* hash)
+        digest-file (->cache-file (str "@" hash))
         no-cache? (hashing/no-cache? form)
-        cached? (fs/exists? cache-file)]
-    (prn :cached? (cond no-cache? :no-cache cached? true :else :no-cache-file) :hash hash :form form)
+        cas-hash (when (fs/exists? digest-file)
+                   (slurp digest-file))
+        cached? (boolean (and cas-hash (-> cas-hash ->cache-file fs/exists?)))]
+    (prn :cached? (cond no-cache? :no-cache
+                        cached? true
+                        (fs/exists? digest-file) :no-cas-file
+                        :else :no-digest-file)
+         :hash hash
+         :cas-hash cas-hash
+         :form form)
     (fs/create-dir cache-dir)
     (or (when (and (not no-cache?)
                    cached?)
           (try
-            (let [value (add-blob (thaw-from-file cache-file) hash)]
+            (let [value (add-blob (thaw-from-cas cas-hash) hash)]
               (when var
                 (intern *ns* (-> var symbol name symbol) value))
               value)
-            (catch Exception e
+            (catch Exception _e
               ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
-              (prn :thaw-error e)
+              #_(prn :thaw-error e)
               nil)))
         (let [result (eval form)
               var-value (cond-> result (var? result) deref)]
           (if (fn? var-value)
             result
             (do (when-not (or no-cache?
+                              (fn? var-value)
                               (instance? clojure.lang.IDeref var-value)
                               (instance? clojure.lang.MultiFn var-value)
                               (instance? clojure.lang.Namespace var-value)
                               (and (seq? form) (contains? #{'ns 'in-ns 'require} (first form))))
                   (try
-                    (freeze-to-file cache-file var-value)
+                    (spit digest-file (hash+store-in-cas! var-value))
                     (catch Exception e
                       (prn :freeze-error e)
                       nil)))
@@ -67,8 +99,11 @@
 (defn clear-cache!
   ([]
    (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")]
-     (when (fs/exists? cache-dir)
-       (fs/delete (str fs/*cwd* fs/*sep* ".cache"))))))
+     (if (fs/exists? cache-dir)
+       (do
+         (fs/delete (str fs/*cwd* fs/*sep* ".cache"))
+         (prn :cache-dir/deleted cache-dir))
+       (prn :cache-dir/does-not-exist cache-dir)))))
 
 
 (defn blob->result [doc]
@@ -125,6 +160,7 @@
   (show! "notebooks/elements.clj")
   (show! "notebooks/rule_30.clj")
   (show! "notebooks/onwards.clj")
+  (show! "notebooks/cache.clj")
   (show! "notebooks/how_clerk_works.clj")
   (show! "src/nextjournal/clerk/hashing.clj")
   (show! "src/nextjournal/clerk/core.clj")

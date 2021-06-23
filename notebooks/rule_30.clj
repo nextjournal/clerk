@@ -24,8 +24,7 @@
   (->> first-generation (iterate evolve) (take 17)))
 
 
-(v/register-viewers! {#_#_#_#_#_#_
-                      :list ::board
+(v/register-viewers! {:list ::board
                       :vector ::row
                       :number ::cell})
 
