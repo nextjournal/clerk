@@ -64,9 +64,7 @@
                         cached? true
                         (fs/exists? digest-file) :no-cas-file
                         :else :no-digest-file)
-         :hash hash
-         :cas-hash cas-hash
-         :form form)
+         :hash hash :cas-hash cas-hash :form form)
     (fs/create-dir cache-dir)
     (or (when (and (not no-cache?)
                    cached?)
@@ -94,7 +92,7 @@
                     (catch Exception e
                       (prn :freeze-error e)
                       nil)))
-                (add-blob var-value hash)))))))
+                (add-blob var-value (if no-cache? (multihash/base58 (digest/sha1 (str (java.util.UUID/randomUUID)))) hash))))))))
 
 (defn clear-cache!
   ([]
@@ -122,8 +120,6 @@
 
 (defn parse-file [file]
   (hashing/parse-file {:markdown? true} file))
-
-#_(parse-file "notebooks/elements.clj")
 
 (defn eval-file [file]
   (->> file
@@ -160,10 +156,10 @@
   (show! "notebooks/elements.clj")
   (show! "notebooks/rule_30.clj")
   (show! "notebooks/onwards.clj")
-  (show! "notebooks/cache.clj")
+  (show! "notebooks/pagination.clj")
   (show! "notebooks/how_clerk_works.clj")
   (show! "src/nextjournal/clerk/hashing.clj")
-  (show! "src/nextjournal/clerk/core.clj")
+  (show! "src/nextjournal/clerk.clj")
 
   ;; Clear cache
   (clear-cache!)
