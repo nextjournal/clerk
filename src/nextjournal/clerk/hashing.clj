@@ -2,6 +2,7 @@
 (ns nextjournal.clerk.hashing
   (:refer-clojure :exclude [hash read-string])
   (:require [clojure.java.classpath :as cp]
+            [clojure.java.io :as io]
             [clojure.core :as core]
             [clojure.set :as set]
             [clojure.string :as str]
@@ -189,6 +190,12 @@
 #_(find-location com.mxgraph.view.mxGraph)
 #_(find-location String)
 
+(def hash-jar
+  (memoize (fn [f]
+             {:jar f :hash (sha1-base58 (io/input-stream f))})))
+
+#_(hash-jar (find-location #'dep/depend))
+
 (defn build-graph
   "Analyzes the forms in the given file and builds a dependency graph of the vars.
 
@@ -199,7 +206,7 @@
     (reduce (fn [g [source symbols]]
               (if (or (nil? source)
                       (str/ends-with? source ".jar"))
-                (update g :var->hash merge (into {} (map (juxt identity (constantly (if source {:jar source} {})))) symbols))
+                (update g :var->hash merge (into {} (map (juxt identity (constantly (if source (hash-jar source) {})))) symbols))
                 (analyze-file g source)))
             g
             (group-by find-location (unhashed-deps var->hash)))))
@@ -223,9 +230,9 @@
                  vars->hash))
              {}
              (dep/topo-sort graph))))
-  ([var->hash {:keys [jar form deps]}]
+  ([var->hash {:keys [hash form deps]}]
    (let [hashed-deps (into #{} (map var->hash) deps)]
-     (sha1-base58 (pr-str (conj hashed-deps (if form form jar)))))))
+     (sha1-base58 (pr-str (conj hashed-deps (if form form hash)))))))
 
 #_(hash "notebooks/elements.clj")
 #_(clojure.data/diff (hash "notebooks/how_clerk_works.clj")

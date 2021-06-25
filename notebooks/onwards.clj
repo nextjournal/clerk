@@ -13,7 +13,7 @@
 ;;   - [ ] TODO lists 😹
 ;;   - [ ] Inline Formulas $E^2=m^2+\vec{p}^2$
 ;; - [ ] Error display
-;; - [ ] Fix jar hashing (contents, not filename)
+;; - [x] Fix jar hashing (contents, not filename)
 ;; - [x] Printing of very large values
 ;; - [ ] Datafy + Nav
 ;; - [ ] Allow to pin notebook
