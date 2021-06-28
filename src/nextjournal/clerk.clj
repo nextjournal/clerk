@@ -51,6 +51,20 @@
 #_(thaw-from-cas (hash+store-in-cas! (range 42)))
 #_(thaw-from-cas "8Vv6q6La171HEs28ZuTdsn9Ukg6YcZwF5WRFZA1tGk2BP5utzRXNKYq9Jf9HsjFa6Y4L1qAAHzMjpZ28TCj1RTyAdx")
 
+(defmacro time-ms
+  "Pure version of `clojure.core/time`. Returns a map with `:result` and `:time-ms` keys."
+  [expr]
+  `(let [start# (. System (nanoTime))
+         ret# ~expr]
+     {:result ret#
+      :time-ms (/ (double (- (. System (nanoTime)) start#)) 1000000.0)}))
+
+(defn worth-caching? [time-ms]
+  (<= 1.0 time-ms))
+
+#_(worth-caching? 0.1)
+
+
 (defn read+eval-cached [vars->hash code-string]
   (let [form (hashing/read-string code-string)
         {:as analyzed :keys [var]} (hashing/analyze form)
@@ -77,12 +91,15 @@
               ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
               #_(prn :thaw-error e)
               nil)))
-        (let [result (eval form)
+        (let [{:keys [result time-ms]} (time-ms (eval form))
+              no-cache? (or no-cache?
+                            (let [no-cache? (not (worth-caching? time-ms))]
+                              (when no-cache? (prn :not-worth-caching time-ms))
+                              no-cache?))
               var-value (cond-> result (var? result) deref)]
           (if (fn? var-value)
             result
             (do (when-not (or no-cache?
-                              (fn? var-value)
                               (instance? clojure.lang.IDeref var-value)
                               (instance? clojure.lang.MultiFn var-value)
                               (instance? clojure.lang.Namespace var-value)

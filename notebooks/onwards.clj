@@ -7,7 +7,7 @@
 ;; - [x] Switch to fast serialization using Nippy
 ;; - [x] Store results as CAS files, only write when needed
 ;; - [ ] Don't thaw result if it's already in memory
-;; - [ ] Don't cache things that are fast to evaluate
+;; - [x] Don't cache things that are fast to evaluate
 ;; - [ ] Figure out distributed caching using CAS + cloud bucket
 ;; - [ ] Markdown should support Nextjournal Flavored Markdown including:
 ;;   - [ ] TODO lists 😹
