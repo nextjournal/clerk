@@ -62,7 +62,7 @@
     [:div#app]
     [:script "nextjournal.viewer.notebook.mount(document.getElementById('app'))
 nextjournal.viewer.notebook.reset_state(nextjournal.viewer.notebook.read_string(" (-> viewer ->edn pr-str) "))"]
-    [:script "const ws = new WebSocket('ws://localhost:7777/_ws')
+    [:script "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
 ws.onmessage = msg => nextjournal.viewer.notebook.reset_state(nextjournal.viewer.notebook.read_string(msg.data))"]]))
 
 
