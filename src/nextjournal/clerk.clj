@@ -24,9 +24,6 @@
 (def cache-dir
   (str fs/*cwd* fs/*sep* ".cache"))
 
-(defn hash->digest-file [hash]
-  (str cache-dir fs/*sep* "@" hash))
-
 (defn add-blob [result hash]
   (cond-> result
     (instance? clojure.lang.IObj result)
@@ -65,7 +62,7 @@
 #_(worth-caching? 0.1)
 
 
-(defn read+eval-cached [vars->hash code-string]
+(defn read+eval-cached [results-last-run vars->hash code-string]
   (let [form (hashing/read-string code-string)
         {:as analyzed :keys [var]} (hashing/analyze form)
         hash (hashing/hash vars->hash analyzed)
@@ -83,7 +80,8 @@
     (or (when (and (not no-cache?)
                    cached?)
           (try
-            (let [value (add-blob (thaw-from-cas cas-hash) hash)]
+            (let [value (add-blob (or (get results-last-run hash)
+                                      (thaw-from-cas cas-hash)) hash)]
               (when var
                 (intern *ns* (-> var symbol name symbol) value))
               value)
@@ -126,33 +124,31 @@
                  (filter meta)
                  (map (juxt (comp :blob/id meta) identity))) doc))
 
-(defn +eval-results [vars->hash doc]
+(defn +eval-results [results-last-run vars->hash doc]
   (let [doc (into [] (map (fn [{:as cell :keys [type text]}]
                             (cond-> cell
                               (= :code type)
-                              (assoc :result (read+eval-cached vars->hash text))))) doc)]
+                              (assoc :result (read+eval-cached results-last-run vars->hash text))))) doc)]
     (with-meta doc (blob->result doc))))
 
-#_(meta (+eval-results {} [{:type :markdown :text "# Hi"} {:type :code :text "[1]"} {:type :code :text "(+ 39 3)"}]))
+#_(let [doc (+eval-results {} {} [{:type :markdown :text "# Hi"} {:type :code :text "[1]"} {:type :code :text "(+ 39 3)"}])
+        blob->result (meta doc)]
+    (+eval-results blob->result {} doc))
 
 (defn parse-file [file]
   (hashing/parse-file {:markdown? true} file))
 
-(defn eval-file [file]
-  (->> file
-       parse-file
-       (+eval-results (hashing/hash file))))
-
-#_(eval-file "notebooks/elements.clj")
+#_(parse-file "notebooks/elements.clj")
 
 (defn show!
   "Converts the Clojure source test in file to a series of text or syntax panes and causes `panel` to contain them."
   [file]
   (try
-    (let [doc (parse-file file)]
+    (let [doc (parse-file file)
+          results-last-run (meta @webserver/!doc)]
       ;; TODO diff to avoid flickering
       #_(webserver/update-doc! doc)
-      (webserver/update-doc! (+eval-results (hashing/hash file) doc)))
+      (webserver/update-doc! (+eval-results results-last-run (hashing/hash file) doc)))
     (catch Exception e
       (webserver/show-error! e)
       (throw e))))

@@ -6,7 +6,7 @@
 ;; - [x] Printing a var
 ;; - [x] Switch to fast serialization using Nippy
 ;; - [x] Store results as CAS files, only write when needed
-;; - [ ] Don't thaw result if it's already in memory
+;; - [x] Don't thaw result if it's already in memory
 ;; - [x] Don't cache things that are fast to evaluate
 ;; - [ ] Let the viewer opt into pagination
 ;; - [ ] Return complete datastructure if reasonably small (larger than the 20 elements we currently serve)
