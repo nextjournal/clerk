@@ -24,17 +24,12 @@
   (->> first-generation (iterate evolve) (take 17)))
 
 
-(v/register-viewers! {:list ::board
-                      :vector ::row
-                      :number ::cell})
-
 (v/register-viewers!
- {::cell #(v/html
-           [:div.inline-block {:class (if (zero? %)
-                                        "bg-white border-solid border-2 border-black"
-                                        "bg-black")
-                               :style {:width 16 :height 16}}])
-  ::row (fn [x options]
-          (v/html (into [:div.flex.inline-flex] (map (partial v/inspect options)) x)))
-  ::board (fn [x options]
-            (v/html (into [:div.flex.flex-col] (map (partial v/inspect options)) x)))})
+ {:number #(v/html [:div.inline-block {:class (if (zero? %)
+                                                "bg-white border-solid border-2 border-black"
+                                                "bg-black")
+                                       :style {:width 16 :height 16}}])
+  :vector (fn [x options]
+            (v/html (into [:div.flex.inline-flex] (map (partial v/inspect options)) x)))
+  :list (fn [x options]
+          (v/html (into [:div.flex.flex-col] (map (partial v/inspect options)) x)))})
