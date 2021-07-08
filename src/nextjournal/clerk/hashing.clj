@@ -74,18 +74,25 @@
                                          :doc []}]
      (if-let [node (first nodes)]
        (recur (cond
-                (#{:map :meta :list :quote :token :var :vector} (n/tag node)) (-> state
-                                                                                  (update :nodes rest)
-                                                                                  (update :doc (fnil conj []) {:type :code :text (n/string node)}))
-                (and markdown? (n/comment? node)) (-> state
-                                                      (assoc :nodes (drop-while n/comment? nodes))
-                                                      (update :doc conj {:type :markdown :text (apply str (map (comp remove-leading-semicolons n/string)
-                                                                                                               (take-while n/comment? nodes)))}))
-                :else (update state :nodes rest)))
+                (#{:map :meta :list :quote :reader-macro :token :var :vector} (n/tag node))
+                (-> state
+                    (update :nodes rest)
+                    (update :doc (fnil conj []) {:type :code :text (n/string node)}))
+
+                (and markdown? (n/comment? node))
+                (-> state
+                    (assoc :nodes (drop-while n/comment? nodes))
+                    (update :doc conj {:type :markdown :text (apply str (map (comp remove-leading-semicolons n/string)
+                                                                             (take-while n/comment? nodes)))}))
+                :else
+                (do
+                  (prn :tag (n/tag node))
+                  (update state :nodes rest))))
        doc))))
 
 #_(parse-file "notebooks/elements.clj")
 #_(parse-file {:markdown? true} "notebooks/rule_30.clj")
+#_(parse-file "notebooks/src/demo/lib.cljc")
 
 
 (defn auto-resolves [ns]
@@ -100,7 +107,9 @@
 (defn read-string [s]
   (edamame/parse-string s {:all true
                            :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))
-                           :readers *data-readers*}))
+                           :readers *data-readers*
+                           :read-cond :allow
+                           :features #{:clj}}))
 
 #_(read-string "(ns rule-30 (:require [nextjournal.viewer :as v]))")
 

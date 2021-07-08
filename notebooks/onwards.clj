@@ -8,6 +8,7 @@
 ;; - [x] Store results as CAS files, only write when needed
 ;; - [x] Don't thaw result if it's already in memory
 ;; - [x] Don't cache things that are fast to evaluate
+;; - [x] Handle conditional read in cljc files
 ;; - [ ] Let the viewer opt into pagination
 ;; - [ ] Return complete datastructure if reasonably small (larger than the 20 elements we currently serve)
 ;; - [ ] A browser refresh is currently needed to reset a viewer override like in `notebooks/rule_30.clj`, otherwise it will carry over the viewer override to other notebooks that do no specify an override

@@ -171,6 +171,7 @@
   (show! "notebooks/onwards.clj")
   (show! "notebooks/pagination.clj")
   (show! "notebooks/how_clerk_works.clj")
+  (show! "notebooks/conditional_read.cljc")
   (show! "src/nextjournal/clerk/hashing.clj")
   (show! "src/nextjournal/clerk.clj")
 
