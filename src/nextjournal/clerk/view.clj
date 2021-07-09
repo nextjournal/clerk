@@ -41,9 +41,10 @@
 #_(->edn (let [file "notebooks/elements.clj"]
            (doc->viewer (hashing/hash file) (hashing/parse-file {:markdown? true} file))))
 
-(def live-js?
-  "Load dynamic js from shadow or static bundle from cdn."
+(defonce ^{:doc "Load dynamic js from shadow or static bundle from cdn."}
+  live-js?
   false)
+
 
 (defn ->html [viewer]
   (hiccup/html5
