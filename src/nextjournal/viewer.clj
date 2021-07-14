@@ -106,6 +106,9 @@
                                              (html (into [:div.flex.inline-flex] (map (partial inspect options)) x)))}))
 
 
+(defn registration? [x]
+  (-> x meta :nextjournal/value (partial = ::register!)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Pagination + Lazy Loading
 (defn describe [result]

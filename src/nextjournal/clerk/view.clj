@@ -11,7 +11,8 @@
                     :code (cond-> [(v/view-as :code text)]
                             (contains? x :result)
                             (conj (if (and (instance? clojure.lang.IMeta result)
-                                           (contains? (meta result) :blob/id))
+                                           (contains? (meta result) :blob/id)
+                                           (not (v/registration? result)))
                                     (v/view-as :clerk/blob (v/describe result))
                                     result))))))
         doc))
@@ -54,12 +55,12 @@
     (hiccup/include-css
      (if live-js?
        "https://cdn.dev.nextjournal.com:8888/build/stylesheets/viewer.css"
-       "https://cdn-beta.nextjournal.com/data/QmZc2Rhp7GqGAuZFp8SH6yVLLh3sz3cyjDwZtR5Q8PGcye?filename=viewer-a098a51e8ec9999fae7673b325889dbccafad583.css&content-type=text/css"))
+       "https://cdn.nextjournal.com/data/QmZc2Rhp7GqGAuZFp8SH6yVLLh3sz3cyjDwZtR5Q8PGcye?filename=viewer-a098a51e8ec9999fae7673b325889dbccafad583.css&content-type=text/css"))
 
     (hiccup/include-js
      (if live-js?
        "/js/out/viewer.js"
-       "https://cdn.nextjournal.com/data/QmTRQtJzUyqsFmTSgQCGgHQ3F8UTowBiZxZrharffJemb5?filename=viewer.js&content-type=application/x-javascript"))]
+       "https://cdn.nextjournal.com/data/Qmc5rjhjB6irjrJnCgsB4JU3Vvict3DEHeV4Zvq7GJQv4F?filename=viewer.js&content-type=application/x-javascript"))]
    [:body
     [:div#app]
     [:script "nextjournal.viewer.notebook.mount(document.getElementById('app'))
