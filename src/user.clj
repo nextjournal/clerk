@@ -18,6 +18,8 @@
 (comment
   (go)
 
+  nextjournal.clerk.view/live-js?
+
   (set-dev! true)
 
   (beholder/stop watcher)

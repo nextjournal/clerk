@@ -12,7 +12,7 @@
                             (contains? x :result)
                             (conj (if (and (instance? clojure.lang.IMeta result)
                                            (contains? (meta result) :blob/id))
-                                    (v/view-as :clerk/blob (select-keys (meta result) [:blob/id]))
+                                    (v/view-as :clerk/blob (v/describe result))
                                     result))))))
         doc))
 
@@ -29,7 +29,9 @@
 #_(var->data #'var->data)
 
 (defn datafy-vars [x]
-  (w/prewalk #(cond-> % (var? %) var->data) x))
+  (let [m (meta x)]
+    (cond-> (w/prewalk #(cond-> % (var? %) var->data) x)
+      m (with-meta m))))
 
 #_(datafy-vars [{:x #'var->data}])
 
@@ -38,8 +40,7 @@
             *print-namespace-maps* false]
     (pr-str (datafy-vars x))))
 
-#_(->edn (let [file "notebooks/elements.clj"]
-           (doc->viewer (hashing/hash file) (hashing/parse-file {:markdown? true} file))))
+#_(->edn {:foo #'->edn})
 
 (defonce ^{:doc "Load dynamic js from shadow or static bundle from cdn."}
   live-js?

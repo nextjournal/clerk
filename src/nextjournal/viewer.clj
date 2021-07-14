@@ -26,6 +26,25 @@
 (defn vary-meta [data f & args]
   (with-meta data (apply f (meta data) args)))
 
+(defn type-key [value]
+  (cond
+    (var? value) :var
+    (instance? clojure.lang.IDeref value) :derefable
+    (map? value) :map
+    (set? value) :set
+    (vector? value) :vector
+    (list? value) :list
+    (seq? value) :list
+    (fn? value) :fn
+    (uuid? value) :uuid
+    (string? value) :string
+    (keyword? value) :keyword
+    (symbol? value) :symbol
+    (nil? value) :nil
+    (boolean? value) :boolean
+    (inst? value) :inst
+    :else :untyped))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Viewers (built on metadata)
 
@@ -76,7 +95,7 @@
   (view-as :table (->table xs)))
 
 (defmacro register-viewers! [v]
-  `(with-viewer
+  `(nextjournal.viewer/with-viewer
      ::register!
      (quote (let [viewers# ~v]
               (nextjournal.viewer/register-viewers! viewers#)
@@ -85,3 +104,27 @@
 #_
 (macroexpand-1 (register-viewers! {:vector (fn [x options]
                                              (html (into [:div.flex.inline-flex] (map (partial inspect options)) x)))}))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Pagination + Lazy Loading
+(defn describe [result]
+  (cond-> {:nextjournal/type-key (type-key result) :blob/id (-> result core/meta :blob/id)}
+    (counted? result)
+    (assoc :count (count result))))
+
+#_(describe (vec (range 100)))
+
+(defn paginate [result {:as opts :keys [start n] :or {start 0}}]
+  (if (and (number? n)
+           (pos? n)
+           (not (or (map? result)
+                    (set? result)))
+           (counted? result))
+    (core/with-meta (->> result (drop start) (take n) doall) (merge opts (describe result)))
+    result))
+
+#_(meta (paginate (vec (range 10)) {:n 20}))
+#_(meta (paginate (vec (range 100)) {:n 20}))
+#_(meta (paginate (zipmap (range 100) (range 100)) {:n 20}))
+#_(paginate #{1 2 3} {:n 20})

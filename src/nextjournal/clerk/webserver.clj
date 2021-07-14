@@ -1,16 +1,16 @@
 (ns nextjournal.clerk.webserver
   (:require [clojure.string :as str]
             [clojure.pprint :as pprint]
-            [datoteka.core :as fs]
             [org.httpkit.server :as httpkit]
             [nextjournal.clerk.view :as view]
+            [nextjournal.viewer :as v]
             [lambdaisland.uri :as uri]))
 
 (def help-doc
   [{:type :markdown :text "Use `nextjournal.clerk/show!` to make your notebook appear…"}])
 
-(def !clients (atom #{}))
-(def !doc (atom help-doc))
+(defonce !clients (atom #{}))
+(defonce !doc (atom help-doc))
 
 #_(reset! !doc help-doc)
 
@@ -20,25 +20,12 @@
 
 #_(broadcast! [{:random (rand-int 10000) :range (range 100)}])
 
-(defn paginate [result {:as opts :keys [start n] :or {start 0 n 20}}]
-  (if-let [count (and (not (or (map? result)
-                               (set? result)))
-                      (counted? result)
-                      (count result))]
-    (with-meta (->> result (drop start) (take n) doall) (assoc opts :count count))
-    result))
-
-#_(meta (paginate (range 100) {}))
-#_(meta (paginate (zipmap (range 100) (range 100)) {}))
-#_(paginate #{1 2 3} {})
-
 (defn update-if [m k f]
   (if (k m)
     (update m k f)
     m))
 
-#_(maybe-parse-int {:n "42"} :n)
-#_(maybe-parse-int {} :n)
+#_(update-if {:n "42"} :n #(Integer/parseInt %))
 
 (defn get-pagination-opts [query-string]
   (-> query-string
@@ -56,7 +43,7 @@
       {:status 200
        #_#_ ;; leaving this out for now so I can open it directly
        :headers {"Content-Type" "application/edn"}
-       :body (view/->edn (paginate (blob->result blob-id) (get-pagination-opts query-string)))}
+       :body (view/->edn (v/paginate (blob->result blob-id) (get-pagination-opts query-string)))}
       {:status 404})))
 
 (defn app [{:as req :keys [uri]}]
