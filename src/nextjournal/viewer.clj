@@ -107,7 +107,7 @@
 
 
 (defn registration? [x]
-  (-> x meta :nextjournal/value (partial = ::register!)))
+  (boolean (-> x meta :nextjournal/value #{::register!})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Pagination + Lazy Loading

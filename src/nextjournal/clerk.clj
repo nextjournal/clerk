@@ -140,6 +140,11 @@
 
 #_(parse-file "notebooks/elements.clj")
 
+(defn eval-file [file]
+  (+eval-results {} (hashing/hash file) (parse-file file)))
+
+#_(eval-file {} "notebooks/pagination.clj")
+
 (defn show!
   "Converts the Clojure source test in file to a series of text or syntax panes and causes `panel` to contain them."
   [file]

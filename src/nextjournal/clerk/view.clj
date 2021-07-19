@@ -3,19 +3,25 @@
             [hiccup.page :as hiccup]
             [clojure.walk :as w]))
 
-(defn doc->viewer [doc]
-  (into (v/view-as :clerk/notebook [])
-        (mapcat (fn [{:as x :keys [type text result]}]
-                  (case type
-                    :markdown [(v/view-as :markdown text)]
-                    :code (cond-> [(v/view-as :code text)]
-                            (contains? x :result)
-                            (conj (if (and (instance? clojure.lang.IMeta result)
-                                           (contains? (meta result) :blob/id)
-                                           (not (v/registration? result)))
-                                    (v/view-as :clerk/blob (v/describe result))
-                                    result))))))
-        doc))
+(defn doc->viewer
+  ([doc] (doc->viewer {} doc))
+  ([{:keys [inline-results?] :or {inline-results? false}} doc]
+   (into (v/view-as :clerk/notebook [])
+         (mapcat (fn [{:as x :keys [type text result]}]
+                   (case type
+                     :markdown [(v/view-as :markdown text)]
+                     :code (cond-> [(v/view-as :code text)]
+                             (contains? x :result)
+                             (conj (if (and (not inline-results?)
+                                            (instance? clojure.lang.IMeta result)
+                                            (contains? (meta result) :blob/id)
+                                            (not (v/registration? result)))
+                                     (v/view-as :clerk/blob (v/describe result))
+                                     result))))))
+         doc)))
+
+
+#_(doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj"))
 
 (defn ex->viewer [e]
   (into ^{:nextjournal/viewer :notebook}
@@ -48,7 +54,7 @@
   false)
 
 
-(defn ->html [viewer]
+(defn ->html [{:keys [conn-ws?] :or {conn-ws? true}} viewer]
   (hiccup/html5
    [:head
     [:meta {:charset "UTF-8"}]
@@ -65,17 +71,17 @@
     [:div#app]
     [:script "nextjournal.viewer.notebook.mount(document.getElementById('app'))
 nextjournal.viewer.notebook.reset_state(nextjournal.viewer.notebook.read_string(" (-> viewer ->edn pr-str) "))"]
-    [:script "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
-ws.onmessage = msg => nextjournal.viewer.notebook.reset_state(nextjournal.viewer.notebook.read_string(msg.data))"]]))
+    (when conn-ws?
+      [:script "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
+ws.onmessage = msg => nextjournal.viewer.notebook.reset_state(nextjournal.viewer.notebook.read_string(msg.data))"])]))
 
 
-(defn doc->html
-  [doc]
-  (->html (doc->viewer doc)))
+(defn doc->html [doc]
+  (->html {} (doc->viewer {} doc)))
 
-#_(doc->html (nextjournal.clerk/eval-file "notebooks/elements.clj"))
+(defn doc->static-html [doc]
+  (->html {:conn-ws? false} (doc->viewer {:inline-results? true} doc)))
 
-#_(let [doc (nextjournal.clerk/eval-file "notebooks/elements.clj")
-        out "test.html"]
-    (spit out (->html doc))
+#_(let [out "test.html"]
+    (spit out (doc->static-html (nextjournal.clerk/eval-file "notebooks/pagination.clj")))
     (clojure.java.browse/browse-url out))
