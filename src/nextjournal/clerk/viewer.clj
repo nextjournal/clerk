@@ -1,4 +1,4 @@
-(ns nextjournal.viewer
+(ns nextjournal.clerk.viewer
   (:refer-clojure :exclude [meta with-meta vary-meta])
   (:require [clojure.core :as core]))
 
@@ -95,7 +95,7 @@
   (view-as :table (->table xs)))
 
 (defmacro register-viewers! [v]
-  `(nextjournal.viewer/with-viewer
+  `(nextjournal.clerk.viewer/with-viewer
      ::register!
      (quote (let [viewers# ~v]
               (nextjournal.viewer/register-viewers! viewers#)

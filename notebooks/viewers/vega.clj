@@ -1,5 +1,5 @@
 ;; # Vega Lite 🗺
-(require '[nextjournal.viewer :as v])
+(require '[nextjournal.clerk.viewer :as v])
 
 (v/vl {:width 650 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
                                      :format {:type "topojson" :feature "counties"}}

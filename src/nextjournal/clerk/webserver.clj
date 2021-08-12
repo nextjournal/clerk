@@ -3,7 +3,7 @@
             [clojure.pprint :as pprint]
             [org.httpkit.server :as httpkit]
             [nextjournal.clerk.view :as view]
-            [nextjournal.viewer :as v]
+            [nextjournal.clerk.viewer :as v]
             [lambdaisland.uri :as uri]))
 
 (def help-doc

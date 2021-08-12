@@ -1,5 +1,5 @@
 ;; # HTML & Hiccup 🧙‍♀️
-(require '[nextjournal.viewer :as v])
+(require '[nextjournal.clerk.viewer :as v])
 
 (v/html "<h3>Ohai, HTML! 👋</h3>")
 

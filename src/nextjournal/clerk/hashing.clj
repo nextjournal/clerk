@@ -111,7 +111,7 @@
                            :read-cond :allow
                            :features #{:clj}}))
 
-#_(read-string "(ns rule-30 (:require [nextjournal.viewer :as v]))")
+#_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
 
 (defn analyze-file
   ([file]

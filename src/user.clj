@@ -38,8 +38,6 @@
   (show! "notebooks/viewers/markdown.clj")
   (show! "notebooks/viewers/html.clj")
 
-  (show! "/Users/mk/dev/ductile/repl_sessions/edifact_bucket_analysis.clj")
-
   (clerk/clear-cache!)
 
   )

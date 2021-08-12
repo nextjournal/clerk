@@ -1,5 +1,5 @@
 ;; # Plotly 📈
-(require '[nextjournal.viewer :as v])
+(require '[nextjournal.clerk.viewer :as v])
 
 (v/plotly {:data [{:z [[1 2 3]
                        [3 2 1]]

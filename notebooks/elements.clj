@@ -3,7 +3,7 @@
 (ns elements
   (:require [clojure.string :as str]
             [demo.lib :as lib]
-            [nextjournal.viewer :as v]))
+            [nextjournal.clerk.viewer :as v]))
 
 (let [rule30 {[1 1 1] 0
               [1 1 0] 0

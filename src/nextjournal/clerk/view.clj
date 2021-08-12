@@ -1,5 +1,5 @@
 (ns nextjournal.clerk.view
-  (:require [nextjournal.viewer :as v]
+  (:require [nextjournal.clerk.viewer :as v]
             [hiccup.page :as hiccup]
             [clojure.walk :as w]))
 

@@ -1,5 +1,5 @@
 ;; # Pagination
-#_(require '[nextjournal.viewer :as v])
+#_(require '[nextjournal.clerk.viewer :as v])
 
 (def notebooks
   (clojure.java.io/file "notebooks"))

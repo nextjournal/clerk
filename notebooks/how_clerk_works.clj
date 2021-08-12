@@ -2,7 +2,7 @@
 (ns how-clerk-works
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.hashing :as h]
-            [nextjournal.viewer :as v]
+            [nextjournal.clerk.viewer :as v]
             [next.jdbc :as jdbc]
             [weavejester.dependency :as dep]))
 
@@ -63,4 +63,4 @@
   (let [_run-at #inst "2021-05-20T08:28:29.445-00:00"
         ds (next.jdbc/get-datasource {:dbtype "sqlite" :dbname "chinook.db"})]
     (with-open [conn (next.jdbc/get-connection ds)]
-      (nextjournal.viewer/table (next.jdbc/execute! conn ["SELECT AlbumId, Bytes, Name, TrackID, UnitPrice FROM tracks"])))))
+      (v/table (next.jdbc/execute! conn ["SELECT AlbumId, Bytes, Name, TrackID, UnitPrice FROM tracks"])))))
