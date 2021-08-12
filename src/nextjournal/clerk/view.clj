@@ -35,19 +35,25 @@
 
 #_(var->data #'var->data)
 
-(defn datafy-vars [x]
-  (let [m (meta x)]
-    (cond-> (w/prewalk #(cond-> % (var? %) var->data) x)
-      m (with-meta m))))
+(defn fn->data [_]
+  {:nextjournal/value 'fn :nextjournal/type-key :fn})
 
-#_(datafy-vars [{:x #'var->data}])
+#_(fn->data (fn []))
+
+(defn make-printable [x]
+  (cond-> x
+    (var? x) var->data
+    (meta x) (vary-meta #(w/prewalk make-printable %))
+    (fn? x) fn->data))
+
+#_(meta (make-printable ^{:f (fn [])} []))
 
 (defn ->edn [x]
   (binding [*print-meta* true
             *print-namespace-maps* false]
-    (pr-str (datafy-vars x))))
+    (pr-str (w/prewalk make-printable x))))
 
-#_(->edn {:foo #'->edn})
+#_(->edn [:vec (with-meta [] {'clojure.core.protocols/datafy (fn [x] x)}) :var #'->edn])
 
 (defonce ^{:doc "Load dynamic js from shadow or static bundle from cdn."}
   live-js?
