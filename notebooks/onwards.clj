@@ -9,13 +9,14 @@
 ;; - [x] Don't thaw result if it's already in memory
 ;; - [x] Don't cache things that are fast to evaluate
 ;; - [x] Handle conditional read in cljc files
+;; - [x] Add README
 ;; - [ ] Make viewer registration local (on form + namespace)
-;; - [ ] Let the viewer opt into pagination
+;; - [x] Let the viewer opt into pagination
 ;; - [ ] Return complete datastructure if reasonably small (larger than the 20 elements we currently serve)
 ;; - [ ] A browser refresh is currently needed to reset a viewer override like in `notebooks/rule_30.clj`, otherwise it will carry over the viewer override to other notebooks that do no specify an override
 ;; - [ ] Evaluation error messages are poorly formatted
 ;; - [ ] Viewer errors are not displayed correctly
-;; - [ ] `first-generation` in `notebooks/rule_30.clj` renders incorrectly because of pagination type coercion from vector to list
+;; - [x] `first-generation` in `notebooks/rule_30.clj` renders incorrectly because of pagination type coercion from vector to list
 ;; - [ ] `(def r (range 100))` in `notebooks/pagination.clj` shows incorrect `count`
 ;; - [ ] Figure out distributed caching using CAS + cloud bucket
 ;; - [ ] Markdown should support Nextjournal Flavored Markdown including:
