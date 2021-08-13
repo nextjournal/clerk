@@ -3,4 +3,7 @@
 .cpcache/
 .lsp/
 .nrepl-port
+/node_modules/
+/public/js/
+/.shadow-cljs/
 

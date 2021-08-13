@@ -19,7 +19,22 @@
         arrowic/arrowic {:mvn/version "0.1.1"}
         rewrite-clj/rewrite-clj {:mvn/version "0.6.1"}}
 
- :aliases {:demo {:extra-paths ["notebooks/src"]
+ :aliases {:sci {:extra-deps  {nextjournal/clojure-mode    {:git/url "https://github.com/nextjournal/clojure-mode"
+                                                            :sha "a83c87cd2bd2049b70613f360336a096d15c5518"}
+                               nextjournal/freerange       {:git/url "https://github.com/nextjournal/freerange"
+                                                            :sha "8cf68c30722a4c6f8f948a134c900d7a656ecad4"}
+                               nextjournal/devcards        {:local/root "/Users/mk/dev/devcards"
+                                                            #_#_#_#_:git/url "https://github.com/nextjournal/devcards"
+                                                            :sha ""}
+
+                               #_#_
+                               nextjournal/markdown        {:local/root "../markdown"}
+
+                               borkdude/sci                {:mvn/version "0.2.6"}
+                               applied-science/js-interop  {:mvn/version "0.3.0"}}}
+           :shadow {:extra-deps {thheller/shadow-cljs {:mvn/version "2.14.6"}}
+                    :main-opts ["-m" "shadow.cljs.devtools.cli"]}
+           :demo {:extra-paths ["notebooks/src"]
                   :extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
                                org.xerial/sqlite-jdbc {:mvn/version "3.34.0"}
                                org.clojure/data.csv {:mvn/version "1.0.0"}}}}}
