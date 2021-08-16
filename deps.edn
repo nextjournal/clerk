@@ -19,10 +19,8 @@
         arrowic/arrowic {:mvn/version "0.1.1"}
         rewrite-clj/rewrite-clj {:mvn/version "0.6.1"}}
 
- :aliases {:sci {:extra-deps  {io.github.nextjournal/clojure-mode    {:git/url "https://github.com/nextjournal/clojure-mode.git"
-                                                                      :git/sha "a83c87cd2bd2049b70613f360336a096d15c5518"}
-                               io.github.nextjournal/freerange       {:git/url "https://github.com/nextjournal/freerange.git"
-                                                                      :git/sha "8cf68c30722a4c6f8f948a134c900d7a656ecad4"}
+ :aliases {:sci {:extra-deps  {io.github.nextjournal/clojure-mode    {:git/sha "a83c87cd2bd2049b70613f360336a096d15c5518"}
+                               io.github.nextjournal/freerange       {:git/sha "8cf68c30722a4c6f8f948a134c900d7a656ecad4"}
                                io.github.nextjournal/devcards        {:git/url "git@github.com:nextjournal/viewers.git"
                                                                       :git/sha "7ebeda33652309157c1337f84aba1206441eacd2"
                                                                       :deps/root "modules/devcards"}
