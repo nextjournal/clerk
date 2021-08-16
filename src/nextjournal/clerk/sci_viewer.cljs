@@ -5,6 +5,8 @@
             [clojure.core :as core]
             [goog.object]
             [nextjournal.devcards :as dc]
+            [nextjournal.devcards-ui :as devcards-ui]
+            [nextjournal.devcards.routes :as devcards-routes]
             #_#_#_#_#_#_#_
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
@@ -856,3 +858,14 @@
                                                    (view-as :plotly
                                                             {:data [{:y (shuffle (range 10)) :name "The Federation" }
                                                                     {:y (shuffle (range 10)) :name "The Empire"}]})]])
+(defn current-page []
+  (if-let [{:as match :keys [data]} @devcards-routes/match]
+    (do
+      (js/console.log :match match :data data :view (:view data))
+      [(:view data) match])
+    [:pre "missing\n" (pr-str devcards-routes/match) "\n" (pr-str (type devcards-routes/match))]))
+
+(defn ^:export devcards [el]
+  (js/console.log "HELLO")
+  (devcards-routes/start)
+  (r/render [current-page] el))

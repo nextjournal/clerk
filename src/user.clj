@@ -20,7 +20,7 @@
 
   nextjournal.clerk.view/live-js?
 
-  (set-dev! true)
+  (set-dev! false)
 
   (beholder/stop watcher)
 
@@ -38,6 +38,8 @@
   (show! "notebooks/viewers/tex.clj")
   (show! "notebooks/viewers/markdown.clj")
   (show! "notebooks/viewers/html.clj")
+
+  (show! "/Users/mk/dev/ductile/repl_sessions/edifact_bucket_analysis.clj")
 
   (clerk/clear-cache!)
 

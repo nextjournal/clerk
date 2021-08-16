@@ -1,13 +1,12 @@
 {:deps {:aliases [:sci]}
- :dev-http {8003 "public"}
- :builds
- {:browser {:target     :browser
-            :output-to  "public/js/viewer.js"
-            :output-dir "public/js/out"
-            :asset-path "/js/out"
-            :modules    {:viewer {:entries [nextjournal.clerk.sci-viewer]}}
+ :dev-http {7778 "public"}
+ :builds {:browser {:target     :browser
+                    :output-to  "public/js/viewer.js"
+                    :output-dir "public/js"
+                    #_#_
+                    :asset-path "/js/out"
+                    :modules    {:viewer {:entries [nextjournal.clerk.sci-viewer]}}
 
-            :js-options {:output-feature-set :es8}
+                    :js-options {:output-feature-set :es8}
 
-            :release {:output-dir "release/js/"
-                      :compiler-options {:source-map false}}}}}
+                    :release {:output-dir "build/"}}}}
