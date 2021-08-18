@@ -24,7 +24,7 @@
 
   (beholder/stop watcher)
 
-
+  (show! "notebooks/onwards.clj")
   (show! "notebooks/elements.clj")
   (show! "notebooks/rule_30.clj")
   (show! "notebooks/onwards.clj")

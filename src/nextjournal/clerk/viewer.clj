@@ -2,8 +2,87 @@
   (:refer-clojure :exclude [meta with-meta vary-meta])
   (:require [clojure.core :as core]))
 
+;; - a name
+;; - a predicate function
+;; - a view function
+;; - ordering!
+(declare view-as)
+
+(view-as '#(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                       :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
+black")}]) 1)
+
+(def default-viewers
+  '[{:pred number?
+     :fn #(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                      :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
+black")}])}
+    {:pred vector? :fn #(v/html (into [:div.flex.inline-flex] (map v/inspect) %1))}
+    {:pred list? :fn #(v/html (into [:div.flex.flex-col] (map v/inspect) %1))}])
+
+(do
+  (def map-100
+    (zipmap (range 100) (range 100)))
+
+  (def dict-words
+    (vec (take 100 (clojure.string/split-lines (slurp "/usr/share/dict/words")))))
+
+  (def long-string
+    (clojure.string/join dict-words))
+
+  (def complex-thing
+    (-> (zipmap (range 100) (range 100))
+        (assoc 0 dict-words)
+        (assoc :words dict-words)
+        (assoc-in [:map :deep] (zipmap (range 100) (range 100)))
+        (assoc 1 long-string))))
+
+(comment
+  (def n 20)
+  (defn fetch
+    ([xs]
+     (fetch [] {} xs))
+    ([path path->opts xs]
+     (cond (map? xs) (into {} (map fetch (take n xs)))
+           ;; TODO: debug why error reportig is broken when removing the following line
+           (vector? xs) (into [] (map fetch (take n xs)))
+           (sequential? xs) (map fetch (take n xs))
+           (and (string? xs) (< n (count xs))) (subs xs 0 n)
+           :else xs)))
+
+  (fetch complex-thing))
+
+(comment
+  (defn describe
+    ([xs]
+     (describe [] xs))
+    ([path xs]
+     (cond (map? xs) (let [children (remove (comp empty? :children)
+                                            (map #(describe (conj path %1) %2) (range) xs))]
+                       (cond-> {:pred 'map?
+                                :count (count xs)
+                                :path path}
+                         (seq children) (assoc :children children)))
+           ;; TODO: debug why error reportig is broken when removing the following line
+           (vector? xs) {:pred 'vector?
+                         :path path
+                         :count (count xs)
+                         :children (remove nil? (map #(describe (conj path %1) %2) (range) xs))}
+           (and (string? xs) (< n (count xs))) {:pred 'string?
+                                                :path path
+                                                :count (count xs)}
+           :else nil)))
+  (describe complex-thing))
+
+;; Homework
+;; - make `fetch` symmetric to `describe` with `path`
+;; - make `fetch` work with `path->opts`
+;; - use `path` as a react key on the frontend
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Custom metadata handling - supporting any cljs value - not compatible with core meta
+
+
 
 (defn meta? [x] (and (map? x) (contains? x :nextjournal/value)))
 
