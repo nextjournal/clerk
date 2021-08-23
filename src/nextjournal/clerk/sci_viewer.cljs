@@ -5,7 +5,6 @@
             [clojure.core :as core]
             [goog.object]
             [nextjournal.devcards :as dc]
-            [nextjournal.devcards-ui :as devcards-ui]
             [nextjournal.devcards.routes :as devcards-routes]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
@@ -243,8 +242,8 @@
                {:class "syntax-tag"}
                k ": "]
               [inspect (update options :path conj k)  (value-of obj k)]]))
-         #_(when (and (not (or empty? short?)) (> count @visible-nb-items))
-             [more-button visible-nb-items {:expanded? expanded? :count count}])
+         (when (and (not (or empty? short?)) (> count @visible-nb-items))
+           [more-button visible-nb-items {:expanded? expanded? :count count}])
          (when-not short?
            [:span.inspected-value
             "}"])]))))
@@ -307,7 +306,6 @@
            :flex-col (fn [xs] (view-as :hiccup (into [:div.flex.flex-col] (map (fn [x] [inspect x])) xs)))
            :reagent #(r/as-element (cond-> % (fn? %) vector))
            :html (fn [html-str] (view-as :hiccup [:div {:dangerouslySetInnerHTML {:__html html-str}}]))
-           #_#_#_#_#_#_#_#_#_#_#_#_
            :latex (fn [s] (view-as :html (katex/to-html-string s)))
            :mathjax mathjax/viewer
            :plotly plotly/viewer
