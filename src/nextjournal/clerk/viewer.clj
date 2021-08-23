@@ -8,6 +8,7 @@
 ;; - ordering!
 (declare view-as)
 
+#_
 (view-as '#(v/html [:div.inline-block {:style {:width 16 :height 16}
                                        :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
 black")}]) 1)
@@ -38,17 +39,20 @@ black")}])}
         (assoc 1 long-string))))
 
 (comment
-  (def n 20)
+  (defn get-fetch-n [path->opts path]
+    20)
+
   (defn fetch
     ([xs]
-     (fetch [] {} xs))
-    ([path path->opts xs]
-     (cond (map? xs) (into {} (map fetch (take n xs)))
-           ;; TODO: debug why error reportig is broken when removing the following line
-           (vector? xs) (into [] (map fetch (take n xs)))
-           (sequential? xs) (map fetch (take n xs))
-           (and (string? xs) (< n (count xs))) (subs xs 0 n)
-           :else xs)))
+     (fetch {} [] xs))
+    ([path->opts path xs]
+     (let [n (get-fetch-n path->opts path)]
+       (cond (map? xs) (into {} (map #(fetch path->opts (conj path %1) %2) (range) (take n xs)))
+             ;; TODO: debug why error reportig is broken when removing the following line
+             (vector? xs) (into [] (map #(fetch path->opts (conj path %1) %2) (range) (take n xs)))
+             (sequential? xs) (map #(fetch path->opts (conj path %1) %2) (range) (take n xs))
+             (and (string? xs) (< n (count xs))) (subs xs 0 n)
+             :else xs))))
 
   (fetch complex-thing))
 

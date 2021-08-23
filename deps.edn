@@ -22,17 +22,13 @@
  :aliases {:sci {:extra-deps  {io.github.nextjournal/clojure-mode    {:git/sha "a83c87cd2bd2049b70613f360336a096d15c5518"}
                                io.github.nextjournal/freerange       {:git/sha "8cf68c30722a4c6f8f948a134c900d7a656ecad4"}
                                io.github.nextjournal/devcards        {:git/url "git@github.com:nextjournal/viewers.git"
-                                                                      :git/sha "7ebeda33652309157c1337f84aba1206441eacd2"
+                                                                      :git/sha "94ed40c941c785f2572f4ac14fe8b96e5b7503d5"
                                                                       :deps/root "modules/devcards"}
-                               io.github.nextjournal/markdown        {:git/url "git@github.com:nextjournal/viewers.git"
-                                                                      :git/sha "7ebeda33652309157c1337f84aba1206441eacd2" ;; https://github.com/nextjournal/viewers/pull/1
-                                                                      :deps/root "modules/markdown"}
-
                                metosin/reitit-frontend     {:mvn/version "0.5.15"}
                                borkdude/sci                {:mvn/version "0.2.6"}
                                applied-science/js-interop  {:mvn/version "0.3.0"}}}
            :shadow {:extra-deps {thheller/shadow-cljs {:mvn/version "2.14.6"}}
-                    :main-opts ["-m" "shadow.cljs.devtools.cli"]}
+                    :main-opts ["-m" "shadow.cljs.devtools.cli" "watch" "browser"]}
            :demo {:extra-paths ["notebooks/src"]
                   :extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
                                org.xerial/sqlite-jdbc {:mvn/version "3.34.0"}

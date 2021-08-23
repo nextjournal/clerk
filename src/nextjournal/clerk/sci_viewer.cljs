@@ -7,7 +7,6 @@
             [nextjournal.devcards :as dc]
             [nextjournal.devcards-ui :as devcards-ui]
             [nextjournal.devcards.routes :as devcards-routes]
-            #_#_#_#_#_#_#_
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.markdown :as markdown]
@@ -185,17 +184,16 @@
                                  (keys visible-items)
                                  visible-items))))
          (when (and (not short?) (> count (:num @!opts)))
-           ;; TODO
-           #_[context/consume :fetch!
-              (fn [fetch!]
-                [more-button (fn []
-                               (rf/bind-frame frame
-                                 (when (fn? fetch!)
-                                   (fetch! {:n (+ increase-items item-count)}))
-                                 (swap! !opts #(-> %
-                                                   (update :num + increase-items)
-                                                   (update :offset + increase-items)))))
-                 {:expanded? expanded? :count count :num (- count (:num @!opts))}])])
+           [context/consume :fetch!
+            (fn [fetch!]
+              [more-button (fn []
+                             (rf/bind-frame frame
+                                            (when (fn? fetch!)
+                                              (fetch! {:n (+ increase-items item-count)}))
+                                            (swap! !opts #(-> %
+                                                              (update :num + increase-items)
+                                                              (update :offset + increase-items)))))
+               {:expanded? expanded? :count count :num (- count (:num @!opts))}])])
          (when-not short? [:span.inspected-value close])]))))
 
 (defn value-of
@@ -245,8 +243,8 @@
                {:class "syntax-tag"}
                k ": "]
               [inspect (update options :path conj k)  (value-of obj k)]]))
-         (when (and (not (or empty? short?)) (> count @visible-nb-items))
-           [more-button visible-nb-items {:expanded? expanded? :count count}])
+         #_(when (and (not (or empty? short?)) (> count @visible-nb-items))
+             [more-button visible-nb-items {:expanded? expanded? :count count}])
          (when-not short?
            [:span.inspected-value
             "}"])]))))
@@ -858,14 +856,7 @@
                                                    (view-as :plotly
                                                             {:data [{:y (shuffle (range 10)) :name "The Federation" }
                                                                     {:y (shuffle (range 10)) :name "The Empire"}]})]])
-(defn current-page []
-  (if-let [{:as match :keys [data]} @devcards-routes/match]
-    (do
-      (js/console.log :match match :data data :view (:view data))
-      [(:view data) match])
-    [:pre "missing\n" (pr-str devcards-routes/match) "\n" (pr-str (type devcards-routes/match))]))
 
-(defn ^:export devcards [el]
+(defn ^:export devcards []
   (js/console.log "HELLO")
-  (devcards-routes/start)
-  (r/render [current-page] el))
+  (devcards-routes/start))
