@@ -25,8 +25,17 @@
                                metosin/reitit-frontend     {:mvn/version "0.5.15"}
                                borkdude/sci                {:mvn/version "0.2.6"}
                                applied-science/js-interop  {:mvn/version "0.3.0"}}}
+
            :shadow {:extra-deps {thheller/shadow-cljs {:mvn/version "2.14.6"}}
                     :main-opts ["-m" "shadow.cljs.devtools.cli" "watch" "browser"]}
+
+           :girouette {:extra-deps {girouette/processor {:mvn/version "0.0.4"}}
+                       :ns-default girouette.processor
+                       :exec-fn process
+                       :exec-args {:css {:output-file "public/girouette.css"}
+                                   :watch? true
+                                   :input {:source-paths ["src"]}}}
+
            :demo {:extra-paths ["notebooks/src"]
                   :extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
                                org.xerial/sqlite-jdbc {:mvn/version "3.34.0"}

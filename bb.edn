@@ -1,3 +1,14 @@
-{:tasks {watch:cljs {:doc "Starts shadow-cljs server"
-                     :task (clojure "-M:sci:demo:shadow")}}
+{:tasks {yarn-install {:doc "Installs and updates npm dependencies"
+                       :task (shell "yarn install")}
+
+         watch:cljs {:doc "Starts shadow-cljs server"
+                     :task (clojure "-M:sci:demo:shadow")
+                     :depends [yarn-install]}
+
+         watch:css {:doc "Starts a watcher for css using girouette"
+                    :task (clojure "-X:girouette")}
+
+         -dev {:depends [watch:cljs watch:css]}
+         dev {:doc "Start app in dev mode, compiles cljs and css"
+              :task (run '-dev {:parallel true})}}
  :min-bb-version "0.5.1"}
