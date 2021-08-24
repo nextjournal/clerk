@@ -131,7 +131,8 @@
    {:name :clerk/blob :fn blob}
 
 
-   {:pred (constantly true) :fn #(html [:span.bg-red-200 "no matching viewer"])}])
+   {:pred (constantly true) :fn #(html [:span.bg-red-200.rounded-sm.text-xs.text-red-600.px-1
+                                        "no matching viewer"])}])
 
 
 (def ^:dynamic *eval-form* nil)
