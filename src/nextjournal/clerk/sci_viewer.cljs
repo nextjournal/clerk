@@ -128,14 +128,16 @@
 
    {:name :clerk/notebook :fn notebook}
    {:name :clerk/var :fn var}
-   {:name :clerk/blob :fn blob}
-
-
-   {:pred (constantly true) :fn #(html [:span.bg-red-100.rounded-sm.text-xs.text-red-400.px-1
-                                        "no matching viewer"])}])
+   {:name :clerk/blob :fn blob}])
 
 
 (def ^:dynamic *eval-form* nil)
+
+(defn error-badge [& content]
+  [:div.bg-red-50.rounded-sm.text-xs.text-red-400.px-2.py-1.items-center.sans-serif.inline-flex
+   [:svg.h-4.w-4.text-red-400 {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :aria-hidden "true"}
+    [:path {:fill-rule "evenodd" :d "M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" :clip-rule "evenodd"}]]
+   (into [:div.ml-2.font-bold] content)])
 
 (defn inspect
   ([viewers x]
@@ -149,11 +151,7 @@
           (cond (keyword? selected-viewer)
                 (if-let [fn (get (into {} (map (juxt :name :fn)) default-viewers) selected-viewer)]
                   [fn x]
-                  [:div.bg-red-50.rounded-sm.text-sm.text-red-400.p-2.flex.items-center.sans-serif
-                   [:svg.h-5.w-5.text-red-400 {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :aria-hidden "true"}
-                    [:path {:fill-rule "evenodd" :d "M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" :clip-rule "evenodd"}]]
-                   [:div.ml-2.font-bold
-                    "cannot find viewer named " (str selected-viewer)]])
+                  [error-badge "cannot find viewer named " (str selected-viewer)])
                 (fn? selected-viewer)
                 [selected-viewer x]
                 (list? selected-viewer)
@@ -164,10 +162,7 @@
             (if (and pred fn (pred x))
               [fn x]
               (recur (rest v)))
-            [:div.bg-red-50.rounded-sm.text-sm.text-red-400.p-2.flex.items-center
-             [:svg.h-5.w-5.text-red-400 {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :aria-hidden "true"}
-              [:path {:fill-rule "evenodd" :d "M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" :clip-rule "evenodd"}]]
-             [:div.ml-2.font-bold "no matching viewer"]]))))]))
+            [error-badge "no matching viewer"]))))]))
 
 (dc/defcard inspect-values
   (into [:div]
@@ -459,6 +454,7 @@
 
 
 (defn describe [result]
+  #_
   (cond-> {:nextjournal/type-key (value-type result) :blob/id (-> result meta :blob/id)}
     (counted? result)
     (assoc :count (count result))))
@@ -504,6 +500,7 @@
       (.catch #(reset! !result {:error %}))))
 
 (defn get-fetch-opts [{:keys [nextjournal/type-key count]}]
+  #_
   (cond
     (and (number? count)
          (pos? count)
@@ -539,6 +536,7 @@
   {'html html
    'view-as view-as
    'inspect inspect
+   #_#_#_#_
    'register-viewer! register-viewer!
    'register-viewers! register-viewers!
    'with-viewer with-viewer
