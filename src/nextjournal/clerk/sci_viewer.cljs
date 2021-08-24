@@ -22,6 +22,7 @@
             [sci.core :as sci]
             [sci.impl.vars]))
 
+(declare inspect-sci)
 
 (defn edn-type [tag value]
   (case tag
@@ -288,8 +289,107 @@
   [viewer data]
   (with-viewer data viewer))
 
+(declare notebook)
+(declare var)
+(declare blob)
+
 (defn html [v]
   (with-viewer v (if (string? v) :html :hiccup)))
+
+(defn coll-viewer [{:keys [open close]} xs]
+  (html [:span.inspected-value open (interpose " " (map inspect xs)) close]))
+
+(def default-viewers
+  [{:pred string? :fn #(html [:span.syntax-string.inspected-value "\"" % "\""])}
+   {:pred number? :fn #(html [:span.syntax-number.inspected-value
+                              (if (js/Number.isNaN %) "NaN" (str %))])}
+   {:pred symbol? :fn #(html [:span.syntax-symbol.inspected-value %])}
+   {:pred keyword? :fn #(html [:span.syntax-keyword.inspected-value (str %)])}
+   {:pred nil? :fn #(html [:span.syntax-nil.inspected-value "nil"])}
+   {:pred boolean? :fn #(html [:span.syntax-bool.inspected-value (str %)])}
+   {:pred uuid? :fn #(html [:span.inspected-value
+                            [:span.syntax-tag "#uuid"]
+                            [inspect (str %)]])}
+   {:pred fn? :fn #(html [:span.inspected-value [:span.syntax-tag "ƒ"] "()"])}
+   {:pred vector? :fn (partial coll-viewer {:open "[" :close "]"})}
+   {:pred list? :fn (partial coll-viewer {:open "(" :close ")"})}
+   {:pred set? :fn (partial coll-viewer {:open "#{" :close "}"})}
+   {:pred map? :fn (partial coll-viewer {:open "{" :close "}"})}
+   {:pred array? :fn (partial coll-viewer {:open (list [:span.syntax-tag "#js "] "[") :close "]"})}
+   {:pred object? :fn #(coll-viewer {:open (list [:span.syntax-tag "#js "] "{") :close "}"} (js->clj %1))}
+
+   ;; named viewers
+   {:name :latex :pred string? :fn #(html (katex/to-html-string %))}
+   {:name :mathjax :pred string? :fn mathjax/viewer}
+   {:name :html :pred string? :fn #(html [:div {:dangerouslySetInnerHTML {:__html %}}])}
+   {:name :hiccup :fn #(r/as-element %)}
+   {:name :plotly :pred map? :fn plotly/viewer}
+   {:name :vega-lite :pred map? :fn vega-lite/viewer}
+   {:name :markdown :pred string? :fn markdown/viewer}
+   {:name :code :pred string? :fn code/viewer}
+   {:name :reagent :fn #(r/as-element (cond-> % (fn? %) vector))}
+
+   {:name :clerk/notebook :fn notebook}
+   {:name :clerk/var :fn var}
+   {:name :clerk/blob :fn blob}
+
+
+   {:pred (constantly true) :fn #(html [:span.bg-red-200 "no matching viewer"])}])
+
+
+(def ^:dynamic *eval-form* nil)
+
+(defn inspect
+  ([viewers x]
+   [context/provide {:viewers viewers}
+    [inspect x]])
+  ([x]
+   [context/consume :viewers
+    (fn [viewers]
+      (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
+        (let [x (:nextjournal/value x x)]
+          (cond (keyword? selected-viewer)
+                (if-let [fn (get (into {} (map (juxt :name :fn)) default-viewers) selected-viewer)]
+                  [fn x]
+                  [:pre "cannot find viewer named " (str selected-viewer)])
+                (fn? selected-viewer)
+                [selected-viewer x]
+                (list? selected-viewer)
+                (let [fn (*eval-form* selected-viewer)]
+                  [fn x])))
+        (loop [v viewers]
+          (if-let [{:keys [pred fn]} (first v)]
+            (if (and pred fn (pred x))
+              [fn x]
+              (recur (rest v)))
+            [:pre "no matching viewer"]))))]))
+
+(dc/defcard inspect-values
+  (into [:div]
+        (for [value [123
+                     ##NaN
+                     'symbol
+                     ::keyword
+                     "a string"
+                     nil
+                     true
+                     false
+                     {:some "map"}
+                     '[vector of symbols]
+                     '(:list :of :keywords)
+                     #js {:js "object"}
+                     #js ["a" "js" "array"]
+                     (js/Date.)
+                     (random-uuid)
+                     (fn a-function [_foo])
+                     (atom "an atom")
+                     #_#_#_
+                     ^{:nextjournal/tag 'object} ['clojure.lang.Atom 0x2c42b421 {:status :ready, :val 1}]
+                     ^{:nextjournal/tag 'var} ['user/a {:foo :bar}]
+                     ^{:nextjournal/tag 'object} ['clojure.lang.Ref 0x73aff8f1 {:status :ready, :val 1}]]]
+          [:div.mb-3.result-viewer
+           [:pre [:code.inspected-value (binding [*print-meta* true] (pr-str value))]] [:span.inspected-value " => "]
+           [inspect default-viewers value]])))
 
 (def !viewers
   ;; viewers registered here can be invoked via `:nextjournal/viewer` metadata
@@ -325,8 +425,6 @@
 
 (declare inspect)
 
-(def ^:dynamic *eval-form* nil)
-
 (defn render-with-viewer [options viewer value]
   ((cond (keyword? viewer) (or
                             (get-in options [:nextjournal/viewers viewer])
@@ -342,104 +440,6 @@
    value
    options))
 
-(defn ^:export inspect
-  ([data]
-   (inspect {} data))
-  ([options data]
-   (let [{:as options :keys [path expanded]} (cond-> options (not (:path options)) (merge {:path [] :expanded (r/state-atom (r/current-component))}))
-         {:as value-meta
-          :nextjournal/keys [value tag type-key]} (meta data)
-         options (update options :nextjournal/viewers merge (:nextjournal/viewers value-meta))
-         type-key (cond
-                    type-key type-key
-                    tag (edn-type tag value)
-                    :else (value-type value))
-         viewer-key (:nextjournal/viewer value-meta type-key)
-         viewer (or (when (or (fn? viewer-key) (list? viewer-key)) viewer-key)
-                    (get-in options [:nextjournal/viewers viewer-key])
-                    (@!viewers viewer-key))]
-     (cond
-       (react/isValidElement data) data
-       viewer (inspect options (render-with-viewer options viewer value))
-       :else
-       (case type-key
-         :edn-var [:span.inspected-value
-                   [:span.syntax-tag "#'" (str (first value)) " "]
-                   [inspect options (second value)]]
-         :edn-atom [:span.inspected-value
-                    [:span.syntax-tag 'clojure.lang.Atom " "]
-                    [inspect options (:val (get value 2))]]
-         :edn-object [:span.inspected-value
-                      [:span.syntax-tag "#" (str tag) " "]
-                      [:span "["
-                       [:span.syntax-tag (first value)] " "
-                       [:span "0x" (.toString (second value) 16)] " "
-                       [inspect options (nth value 2)] "]"]]
-         :edn-empty [:span.inspected-value
-                     [:span.syntax-tag "#"]]
-         :edn-unknown-tag [:span.inspected-value
-                           [:span.syntax-tag "#" (str tag) " "]
-                           [inspect options (let [m (select-keys value-meta [:nextjournal/truncated?])]
-                                              (cond-> value (seq m) (vary-meta merge m)))]]
-         :var
-         [:span.inspected-value
-          "#'" [inspect options (.-sym ^clj data)]
-          " "
-          [inspect options @data]]
-
-         :derefable
-         [:span.inspected-value
-          [:span.syntax-tag (-> data type pr-str) " "]
-          [inspect options @data]]
-
-         (:map
-          #_:object
-          :array
-          :set
-          :list
-          :vector)
-         [inspect-coll type-key options data]
-
-         :fn
-         [:span.inspected-value
-          [:span.syntax-tag "ƒ"] "()"]
-
-         :uuid
-         [:span.inspected-value
-          [:span.syntax-tag "#uuid "]
-          [inspect options (str data)]]
-
-         :string
-         [:span.syntax-string.inspected-value "\"" data "\""]
-
-         :number
-         [:span.syntax-number.inspected-value
-          (if (js/Number.isNaN data)
-            "NaN"
-            (str data))]
-
-         :keyword
-         [:span.syntax-keyword.inspected-value (str data)]
-
-         :symbol
-         [:span.syntax-symbol.inspected-value (str data)]
-
-         :nil
-         [:span.syntax-nil.inspected-value "nil"]
-
-         :boolean
-         [:span.syntax-bool.inspected-value (str data)]
-
-         :inst
-         [:span.inspected-value
-          [:span.syntax-tag "#inst "]
-          [inspect options (.toISOString data)]]
-
-         :object
-         [inspect-object inspect options data]
-
-         :untyped
-         [:span.syntax-untyped.inspected-value (str (type data) "[" data "]")])))))
 
 
 (comment
@@ -462,6 +462,7 @@
 ;;                :d true
 ;;                :e false}})
 
+#_
 (defn inspect-xf
   "Takes a data value with possibly metadata on it and returns a transducer
   that will calls `inspect` on every collection element. Use this in custom
@@ -563,31 +564,6 @@
                       row #(into [:div.flex.inline-flex] (map cell) %)]
                   (v/html (into [:div.flex.flex-col] (map row) board)))))])
 
-(dc/defcard inspect-values
-  (into [:div]
-        (for [value [123
-                     ##NaN
-                     'symbol
-                     ::keyword
-                     "a string"
-                     nil
-                     true
-                     false
-                     {:some "map"}
-                     '[vector of symbols]
-                     '(:list :of :keywords)
-                     #js {:js "object"}
-                     #js ["array"]
-                     (js/Date.)
-                     (random-uuid)
-                     (fn a-function [_foo])
-                     (atom "an atom")
-                     ^{:nextjournal/tag 'object} ['clojure.lang.Atom 0x2c42b421 {:status :ready, :val 1}]
-                     ^{:nextjournal/tag 'var} ['user/a {:foo :bar}]
-                     ^{:nextjournal/tag 'object} ['clojure.lang.Ref 0x73aff8f1 {:status :ready, :val 1}]]]
-          [:div.mb-3.result-viewer
-           [:pre [:code.inspected-value (binding [*print-meta* true] (pr-str value))]] [:span.inspected-value " => "]
-           [inspect {} value]])))
 
 (dc/defcard inspect-in-process
   "Different datastructures that live in-process in the browser. More values can just be displayed without needing to fetch more data."
@@ -598,16 +574,15 @@
 
 (dc/defcard inspect-large-values
   "Defcard for larger datastructures clj and json, we make use of the db viewer."
-  [:div]
-  (fn []
-    (let [gen-keyword #(keyword (gensym))
-          generate-ds (fn [x val-fun]
-                        (loop [x x res {}]
-                          (cond
-                            (= x 0) res
-                            :else (recur (dec x) (assoc res (gen-keyword) (val-fun))))))
-          value-1 (generate-ds 42 gen-keyword)]
-      (generate-ds 42 (fn [] (clj->js value-1))))))
+  [:div
+   (let [gen-keyword #(keyword (gensym))
+         generate-ds (fn [x val-fun]
+                       (loop [x x res {}]
+                         (cond
+                           (= x 0) res
+                           :else (recur (dec x) (assoc res (gen-keyword) (val-fun))))))
+         value-1 (generate-ds 42 gen-keyword)]
+     [inspect (generate-ds 42 (fn [] (clj->js value-1)))])])
 
 (dc/defcard viewer-reagent-atom
   [inspect (r/atom {:hello :world})])
@@ -639,7 +614,7 @@
                     {:data [{:y (shuffle (range 10)) :name "The Federation" }
                             {:y (shuffle (range 10)) :name "The Empire"}]})])
 
-(dc/defcard viewer-katex
+(dc/defcard viewer-latex
   [inspect (view-as :latex
                     "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")])
 
@@ -672,27 +647,27 @@
   "Show how to use a function as a viewer, supports both one and two artity versions."
   [:div
    [inspect (with-viewer 0.33
-              #(view-as :hiccup
-                        [:div.relative.pt-1
-                         [:div.overflow-hidden.h-2.mb-4-text-xs.flex.rounded.bg-teal-200
-                          [:div.shadow-none.flex.flex-col.text-center.whitespace-nowrap.text-white.bg-teal-500
-                           {:style {:width (-> %
-                                               (* 100)
-                                               int
-                                               (max 0)
-                                               (min 100)
-                                               (str "%"))}}]]]))]
+              #(html
+                [:div.relative.pt-1
+                 [:div.overflow-hidden.h-2.mb-4-text-xs.flex.rounded.bg-teal-200
+                  [:div.shadow-none.flex.flex-col.text-center.whitespace-nowrap.text-white.bg-teal-500
+                   {:style {:width (-> %
+                                       (* 100)
+                                       int
+                                       (max 0)
+                                       (min 100)
+                                       (str "%"))}}]]]))]
    [inspect (with-viewer 0.35
-              (fn [v _opts] (view-as :hiccup
-                                     [:div.relative.pt-1
-                                      [:div.overflow-hidden.h-2.mb-4-text-xs.flex.rounded.bg-teal-200
-                                       [:div.shadow-none.flex.flex-col.text-center.whitespace-nowrap.text-white.bg-teal-500
-                                        {:style {:width (-> v
-                                                            (* 100)
-                                                            int
-                                                            (max 0)
-                                                            (min 100)
-                                                            (str "%"))}}]]])))]])
+              (fn [v _opts] (html
+                             [:div.relative.pt-1
+                              [:div.overflow-hidden.h-2.mb-4-text-xs.flex.rounded.bg-teal-200
+                               [:div.shadow-none.flex.flex-col.text-center.whitespace-nowrap.text-white.bg-teal-500
+                                {:style {:width (-> v
+                                                    (* 100)
+                                                    int
+                                                    (max 0)
+                                                    (min 100)
+                                                    (str "%"))}}]]])))]])
 
 
 (defn notebook [xs]
@@ -756,6 +731,14 @@
 #_(meta (paginate (zipmap (range 100) (range 100)) {:n 20}))
 #_(paginate #{1 2 3} {:n 20})
 
+(rf/reg-sub
+ ::blobs
+ (fn [db [blob-key id :as v]]
+   (if id
+     (get-in db v)
+     (get db blob-key))))
+
+
 (defn fetch! [!result {:blob/keys [id]} opts]
   #_(log/trace :fetch! opts)
   (-> (js/fetch (str "_blob/" id (when (seq opts)
@@ -766,7 +749,7 @@
 
 (defn in-process-fetch! [!result {:blob/keys [id]} opts]
   (-> (js/Promise. (fn [resolve _reject]
-                     (resolve @(rf/subscribe [:db/get-in [:blobs id]]))))
+                     (resolve @(rf/subscribe [::blobs id]))))
       (.then #(paginate % opts))
       (.then #(reset! !result {:value (doto % #_(log/info :in-process-fetch!/value))}))
       (.catch #(reset! !result {:error %}))))
@@ -793,16 +776,11 @@
             error (html [:span.red "error" (str error)])
             loading? (html "loading…")))))
 
-(register-viewers! {:clerk/notebook notebook
-                    :clerk/var var
-                    :clerk/blob blob})
-
-#_
 (dc/defcard blob-in-process-fetch
   "Dev affordance that performs fetch in-process."
   (into [:div]
         (map (fn [[blob-id v]] [:div [inspect (view-as :clerk/blob (assoc (describe (with-meta v {:blob/id blob-id})) :blob/fetch! in-process-fetch!))]]))
-        @(rf/subscribe [:db/get :blobs]))
+        @(rf/subscribe [::blobs]))
   {:blobs (hash-map (random-uuid) (vec (drop 500 (range 1000)))
                     (random-uuid) (range 1000)
                     (random-uuid) (zipmap (range 1000) (range 1000)))})
@@ -856,5 +834,19 @@
                                                                     {:y (shuffle (range 10)) :name "The Empire"}]})]])
 
 (defn ^:export devcards []
-  (js/console.log "HELLO")
   (devcards-routes/start))
+
+(def ^:dynamic *viewers* nil)
+
+
+
+(dc/defcard inspect-rule-30-sci
+  []
+  [inspect
+   [{:pred number?
+     :fn #(html [:div.inline-block {:style {:width 16 :height 16}
+                                    :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
+black")}])}
+    {:pred vector? :fn #(html (into [:div.flex.inline-flex] (map inspect) %1))}
+    {:pred list? :fn #(html (into [:div.flex.flex-col] (map inspect) %1))}]
+   '([0 1 0] [1 0 1])])

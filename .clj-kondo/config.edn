@@ -1,0 +1,19 @@
+{:lint-as {applied-science.js-interop/defn clojure.core/defn
+           applied-science.js-interop/fn clojure.core/fn
+           applied-science.js-interop/let clojure.core/let
+           cljs.core/specify! cljs.core/reify
+           reagent.core/with-let clojure.core/let
+           nextjournal.view/defview clojure.core/defn
+           nextjournal.devcards/defcard clj-kondo.lint-as/def-catch-all}
+ :skip-comments true
+ :linters {:consistent-alias {:aliases {datomic.api datomic
+                                        nextjournal.log log
+                                        clojure.string str
+                                        clojure.spec.alpha s}}
+           :unresolved-symbol {:exclude [(cljs.core.match/match)
+                                         (cljs.test/is [match?])
+                                         (clojure.test/is [match?])
+                                         (clojure.core.match/match)]}
+           :unused-namespace {:exclude [clojure.string
+                                        nextjournal.devcards
+                                        nextjournal.log]}}}
