@@ -1,0 +1,3 @@
+{:tasks {watch:cljs {:doc "Starts shadow-cljs server"
+                     :task (clojure "-M:sci:demo:shadow")}}
+ :min-bb-version "0.5.1"}
