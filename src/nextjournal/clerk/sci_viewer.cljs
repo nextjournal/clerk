@@ -22,62 +22,6 @@
             [sci.core :as sci]
             [sci.impl.vars]))
 
-(declare inspect-sci)
-
-(defn edn-type [tag value]
-  (case tag
-    var :edn-var
-    object (if (= (first value) 'clojure.lang.Atom)
-             :edn-atom
-             :edn-object)
-    nextjournal/empty :edn-empty
-    :edn-unknown-tag))
-
-(defprotocol ITypeKey
-  (-type-key [x] "Returns type name as keyword"))
-
-(defn value-type [value]
-  (cond (and (exists? js/Element)
-             (instance? js/Element value)) :element
-        (satisfies? ITypeKey value) (-type-key value)
-        (var? value) :var
-        (implements? IDeref value) :derefable
-        (map? value) :map
-        (array? value) :array
-        (set? value) :set
-        (vector? value) :vector
-        (list? value) :list
-        (seq? value) :list
-        (fn? value) :fn
-        (uuid? value) :uuid
-        (string? value) :string
-        (or (number? value) (= "bigint" (goog/typeOf value))) :number
-        (keyword? value) :keyword
-        (symbol? value) :symbol
-        (nil? value) :nil
-        (boolean? value) :boolean
-        (inst? value) :inst
-        (goog/isObject value) :object
-        :else :untyped))
-
-(defn obj->clj
-  [obj]
-  (-> (fn [result key]
-        (let [v (aget obj key)]
-          (if (= "function" (goog/typeOf v))
-            result
-            (assoc result key v))))
-      (reduce {} (goog.object/getKeys obj))))
-
-(defn coll-decoration [type]
-  (case type
-    (:vector :array) ["[" "]"]
-    :set ["#{" "}"]
-    :list ["(" ")"]
-    (:map :object) ["{" "}"]))
-
-(def increase-items 20)
-
 (defn color-classes [selected?]
   {:value-color (if selected? "white-90" "dark-green")
    :symbol-color (if selected? "white-90" "dark-blue")
@@ -85,116 +29,9 @@
    :label-color (if selected? "white-90" "black-60")
    :badge-background-color (if selected? "bg-white-20" "bg-black-10")})
 
-(defn count-badge [selected? coll]
-  (let [{:keys [badge-background-color label-color]} (color-classes selected?)]
-    [:span.text-center.flex.items-center
-     {:class (str badge-background-color " " label-color)
-      :style {:padding-left "0.5em" :padding-right "0.5em" :height "1.1em" :border-radius 7}}
-     (count coll)]))
-
-(defn more-button [on-click {:keys [expanded? count num] :as _opts}]
-  [(if expanded? :div.result-data-field :span)
-   {:on-click on-click}
-   [:span.monospace
-    (if expanded?
-      {:class "p-1 mt-3 -ml-1 hover:bg-gray-200 rounded cursor-pointer"
-       :style {:font-size 12}}
-      {:class "pl-2 text-gray-500 inspected-value"})
-    num
-    [:span " more…"]]])
-
-(defn browsify-button [path {:nextjournal/keys [dispatch]} view]
-  [:span.browsify-button
-   {:class "hover:bg-gray-200 cursor-pointer rounded"
-    :on-click #(dispatch {:kind :nav :path path})}
-   view])
-
-(defn navigable-key?
-  "Check if we allow the key to be navibable based on the type.
-  Currently we only support primitive types, except symbols."
-  [item]
-  (or (number? item) (string? item) (keyword? item)))
-
-(defn navigable-item?
-  "Determines whether an item should be made clickable for datafy/nav. Is the view
-  editable? The runtime active? Does the runtime support datafy/nav? Did the node
-  execute since start of the runtime? ..."
-  [options path item]
-  (and (empty? path)
-       (:nextjournal/navigable? options)
-       (navigable-key? item)))
 
 (declare inspect)
 
-(defn inspect-coll [_type _options _coll]
-  (let [!opts (r/atom {:num increase-items :offset 0})]
-    (fn [type {:as options :keys [expanded path]} coll]
-      (let [truncated? (:nextjournal/truncated? (core/meta coll))
-            expanded? (get @expanded path)
-            parent (vec (drop-last path))
-            short? (and (seq path) (not (get @expanded parent)))
-            items (cond-> coll
-                    (object? coll) js->clj)
-            item-count (count items)
-            count (:count (core/meta coll) item-count)
-            visible-items (take (:num @!opts) items)
-            map-like? (case type (:map :object) true false)
-            [open close] (coll-decoration type)
-            frame (rf/current-frame)]
-        [:span {:class (if expanded? "result-data-expanded" "result-data-collapsed")}
-         [:span
-          (when-not short?
-            {:class "pointer"
-             :on-click (fn []
-                         (swap! expanded update path not)
-                         (when-let [on-expand (:on-expand options)]
-                           (js/requestAnimationFrame on-expand)))})
-          (when-not (or (empty? items) short?)
-            [:div.disclose {:class (when-not expanded? "collapsed")}])
-          [:span.inspected-value
-           (case type
-             :map "Map"
-             :object "Object"
-             :array "Array"
-             :set "Set"
-             :list "List"
-             :vector "Vector")]
-          (when (or (not map-like?) truncated?)
-            [:span.inspected-value
-             "(" count (when truncated? "+") ")"])]
-         (when-not short? [:span.inspected-value open])
-         (when-not (or (empty? items) short?)
-           (doall (map-indexed (fn [i item]
-                                 ^{:key i}
-                                 [(if expanded? :div.result-data-field :span)
-                                  (when (or expanded? map-like?)
-                                    (let [item (if (or map-like? (set? coll)) item i)]
-                                      (cond->> [:span.inspected-value
-                                                {:class (if map-like? "syntax-key" "syntax-index")}
-                                                (if map-like? [inspect (update options :path conj i) item] i) ": "]
-                                        (navigable-item? options path item)
-                                        (conj [browsify-button (conj (:nav/path options) item) options]))))
-                                  (let [item (cond (map? coll) (get coll item)
-                                                   (object? coll) (goog.object/get coll item)
-                                                   :else item)]
-                                    [inspect (update options :path conj i) item])
-                                  (when (or (> count (:num @!opts)) (< i (dec count)))
-                                    [:span.inspected-value ", "])])
-                               (if map-like?
-                                 (keys visible-items)
-                                 visible-items))))
-         (when (and (not short?) (> count (:num @!opts)))
-           [context/consume :fetch!
-            (fn [fetch!]
-              [more-button (fn []
-                             (rf/bind-frame frame
-                                            (when (fn? fetch!)
-                                              (fetch! {:n (+ increase-items item-count)}))
-                                            (swap! !opts #(-> %
-                                                              (update :num + increase-items)
-                                                              (update :offset + increase-items)))))
-               {:expanded? expanded? :count count :num (- count (:num @!opts))}])])
-         (when-not short? [:span.inspected-value close])]))))
 
 (defn value-of
   "Safe access to a value at key a js object.
@@ -208,46 +45,6 @@
       v)
     (catch js/Error ^js _
       'forbidden)))
-
-(defn inspect-object [_inspect _options _obj]
-  (let [visible-nb-items (r/atom 20)]
-    (fn [inspect {:as options :keys [expanded path]} obj]
-      (let [expanded? (get @expanded path)
-            parent (vec (drop-last path))
-            short? (and (seq path) (not (get @expanded parent)))
-            empty? (goog.object/isEmpty obj)
-            counter (atom -1)
-            t (type obj)
-            items (js-keys obj)
-            count (count items)]
-        [:span {:class (if expanded? "result-data-expanded" "result-data-collapsed")}
-         [:span.inspected-value
-          (when-not short?
-            {:class "pointer"
-             :on-click (fn []
-                         (swap! expanded update path not)
-                         (when-let [on-expand (:on-expand options)]
-                           (js/requestAnimationFrame on-expand)))})
-          (when-not (or empty? short?)
-            [:div.disclose {:class (when-not expanded? "collapsed")}])
-          (if t (.-name t) "Object")]
-         (when-not short? [:span.inspected-value " {"])
-         (when-not (or empty? short?)
-           (for [k (take @visible-nb-items items)
-                 :when (or (not t) (.hasOwnProperty obj k))
-                 :let [i (swap! counter inc)]]
-             ^{:key i}
-             [(if expanded? :div.result-data-field :span)
-              (when (and (not expanded?) (< 0 i)) [:span.inspected-value ", "])
-              [:span.inspected-value
-               {:class "syntax-tag"}
-               k ": "]
-              [inspect (update options :path conj k)  (value-of obj k)]]))
-         (when (and (not (or empty? short?)) (> count @visible-nb-items))
-           [more-button visible-nb-items {:expanded? expanded? :count count}])
-         (when-not short?
-           [:span.inspected-value
-            "}"])]))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Custom metadata handling - supporting any cljs value - not compatible with core meta
@@ -392,54 +189,8 @@
            [:pre [:code.inspected-value (binding [*print-meta* true] (pr-str value))]] [:span.inspected-value " => "]
            [inspect default-viewers value]])))
 
-(def !viewers
-  ;; viewers registered here can be invoked via `:nextjournal/viewer` metadata
-  ;; (as returned by view-as, with-viewer, and with-viewers)
-  (r/atom {:hiccup #(r/as-element %)
-           :element (fn [v]
-                      ;; Should we do something else here?
-                      (if (j/get v :parentNode)
-                        "DOM Element"
-                        (view-as :reagent [:div {:ref #(when %
-                                                         (when-let [childElement (.-firstChild %)]
-                                                           (.removeChild % childElement))
-                                                         (.appendChild % v))}])))
-           :flex-col (fn [xs] (view-as :hiccup (into [:div.flex.flex-col] (map (fn [x] [inspect x])) xs)))
-           :reagent #(r/as-element (cond-> % (fn? %) vector))
-           :html (fn [html-str] (view-as :hiccup [:div {:dangerouslySetInnerHTML {:__html html-str}}]))
-           :latex (fn [s] (view-as :html (katex/to-html-string s)))
-           :mathjax mathjax/viewer
-           :plotly plotly/viewer
-           :vega-lite vega-lite/viewer
-           :markdown markdown/viewer
-           :code code/viewer}))
-
-(defn register-viewer!
-  "Registers a viewer function under a given name."
-  [name viewer]
-  (swap! !viewers assoc name viewer))
-
-(defn register-viewers!
-  "Registers a viewers map."
-  [viewers]
-  (swap! !viewers merge viewers))
-
 (declare inspect)
 
-(defn render-with-viewer [options viewer value]
-  ((cond (keyword? viewer) (or
-                            (get-in options [:nextjournal/viewers viewer])
-                            (@!viewers viewer)
-                            (prn :viewer-not-found viewer)
-                            inspect)
-         (fn? viewer) viewer
-         (list? viewer) (if (fn? *eval-form*)
-                          (*eval-form* viewer)
-                          (throw (js/Error. "Viewer is a list but `*eval-form*` is not bound to a function.")))
-         :else
-         (throw (js/Error. (str "Viewer is not a keyword or function or list: " viewer))))
-   value
-   options))
 
 
 
@@ -462,17 +213,6 @@
 ;;                :c 3
 ;;                :d true
 ;;                :e false}})
-
-#_
-(defn inspect-xf
-  "Takes a data value with possibly metadata on it and returns a transducer
-  that will calls `inspect` on every collection element. Use this in custom
-  viewers for e.g. vectors to ensure custom viewers are passed down to the
-  children."
-  [x]
-  (map (cond-> inspect
-         (-> x meta :nextjournal/viewers seq)
-         (partial (meta x)))))
 
 
 (dc/when-enabled
@@ -853,96 +593,96 @@ black")}])}
    '([0 1 0] [1 0 1])])
 
 (dc/defcard clj-long
-            []
-            [inspect
-             default-viewers
-             '({:verts [[-0.5 -0.5] [0.5 -0.5] [0.5 0.5] [-0.5 0.5]],
-                :invert? true}
-               {:verts
-                [[-0.32999999999999996 -0.5]
-                 [-0.3383203922298239 -0.44746711095625896]
-                 [-0.36246711095625894 -0.40007650711027953]
-                 [-0.40007650711027953 -0.36246711095625894]
-                 [-0.4474671109562589 -0.3383203922298239]
-                 [-0.5 -0.32999999999999996]
-                 [-0.5525328890437411 -0.3383203922298239]
-                 [-0.5999234928897205 -0.36246711095625894]
-                 [-0.6375328890437411 -0.40007650711027953]
-                 [-0.6616796077701761 -0.4474671109562589]
-                 [-0.67 -0.5]
-                 [-0.6616796077701761 -0.5525328890437411]
-                 [-0.6375328890437411 -0.5999234928897205]
-                 [-0.5999234928897205 -0.6375328890437411]
-                 [-0.5525328890437411 -0.6616796077701761]
-                 [-0.5 -0.67]
-                 [-0.44746711095625896 -0.6616796077701761]
-                 [-0.4000765071102796 -0.6375328890437411]
-                 [-0.36246711095625894 -0.5999234928897205]
-                 [-0.3383203922298239 -0.5525328890437411]],
-                :invert? true}
-               {:verts
-                [[0.67 0.5]
-                 [0.6616796077701761 0.5525328890437411]
-                 [0.6375328890437411 0.5999234928897205]
-                 [0.5999234928897205 0.6375328890437411]
-                 [0.5525328890437411 0.6616796077701761]
-                 [0.5 0.67]
-                 [0.44746711095625896 0.6616796077701761]
-                 [0.4000765071102796 0.6375328890437411]
-                 [0.36246711095625894 0.5999234928897205]
-                 [0.3383203922298239 0.5525328890437411]
-                 [0.32999999999999996 0.5]
-                 [0.3383203922298239 0.4474671109562589]
-                 [0.36246711095625894 0.4000765071102796]
-                 [0.40007650711027953 0.36246711095625894]
-                 [0.4474671109562589 0.3383203922298239]
-                 [0.49999999999999994 0.32999999999999996]
-                 [0.552532889043741 0.3383203922298239]
-                 [0.5999234928897204 0.36246711095625894]
-                 [0.6375328890437411 0.40007650711027953]
-                 [0.6616796077701761 0.4474671109562589]],
-                :invert? true}
-               {:verts
-                [[-0.32999999999999996 0.5]
-                 [-0.3383203922298239 0.5525328890437411]
-                 [-0.36246711095625894 0.5999234928897205]
-                 [-0.40007650711027953 0.6375328890437411]
-                 [-0.4474671109562589 0.6616796077701761]
-                 [-0.5 0.67]
-                 [-0.5525328890437411 0.6616796077701761]
-                 [-0.5999234928897205 0.6375328890437411]
-                 [-0.6375328890437411 0.5999234928897205]
-                 [-0.6616796077701761 0.5525328890437411]
-                 [-0.67 0.5]
-                 [-0.6616796077701761 0.4474671109562589]
-                 [-0.6375328890437411 0.4000765071102796]
-                 [-0.5999234928897205 0.36246711095625894]
-                 [-0.5525328890437411 0.3383203922298239]
-                 [-0.5 0.32999999999999996]
-                 [-0.44746711095625896 0.3383203922298239]
-                 [-0.4000765071102796 0.36246711095625894]
-                 [-0.36246711095625894 0.40007650711027953]
-                 [-0.3383203922298239 0.4474671109562589]],
-                :invert? true}
-               {:verts
-                [[0.67 -0.5]
-                 [0.6616796077701761 -0.44746711095625896]
-                 [0.6375328890437411 -0.40007650711027953]
-                 [0.5999234928897205 -0.36246711095625894]
-                 [0.5525328890437411 -0.3383203922298239]
-                 [0.5 -0.32999999999999996]
-                 [0.44746711095625896 -0.3383203922298239]
-                 [0.4000765071102796 -0.36246711095625894]
-                 [0.36246711095625894 -0.40007650711027953]
-                 [0.3383203922298239 -0.4474671109562589]
-                 [0.32999999999999996 -0.5]
-                 [0.3383203922298239 -0.5525328890437411]
-                 [0.36246711095625894 -0.5999234928897205]
-                 [0.40007650711027953 -0.6375328890437411]
-                 [0.4474671109562589 -0.6616796077701761]
-                 [0.49999999999999994 -0.67]
-                 [0.552532889043741 -0.6616796077701761]
-                 [0.5999234928897204 -0.6375328890437411]
-                 [0.6375328890437411 -0.5999234928897205]
-                 [0.6616796077701761 -0.5525328890437411]],
-                :invert? true})])
+  []
+  [inspect
+   default-viewers
+   '({:verts [[-0.5 -0.5] [0.5 -0.5] [0.5 0.5] [-0.5 0.5]],
+      :invert? true}
+     {:verts
+      [[-0.32999999999999996 -0.5]
+       [-0.3383203922298239 -0.44746711095625896]
+       [-0.36246711095625894 -0.40007650711027953]
+       [-0.40007650711027953 -0.36246711095625894]
+       [-0.4474671109562589 -0.3383203922298239]
+       [-0.5 -0.32999999999999996]
+       [-0.5525328890437411 -0.3383203922298239]
+       [-0.5999234928897205 -0.36246711095625894]
+       [-0.6375328890437411 -0.40007650711027953]
+       [-0.6616796077701761 -0.4474671109562589]
+       [-0.67 -0.5]
+       [-0.6616796077701761 -0.5525328890437411]
+       [-0.6375328890437411 -0.5999234928897205]
+       [-0.5999234928897205 -0.6375328890437411]
+       [-0.5525328890437411 -0.6616796077701761]
+       [-0.5 -0.67]
+       [-0.44746711095625896 -0.6616796077701761]
+       [-0.4000765071102796 -0.6375328890437411]
+       [-0.36246711095625894 -0.5999234928897205]
+       [-0.3383203922298239 -0.5525328890437411]],
+      :invert? true}
+     {:verts
+      [[0.67 0.5]
+       [0.6616796077701761 0.5525328890437411]
+       [0.6375328890437411 0.5999234928897205]
+       [0.5999234928897205 0.6375328890437411]
+       [0.5525328890437411 0.6616796077701761]
+       [0.5 0.67]
+       [0.44746711095625896 0.6616796077701761]
+       [0.4000765071102796 0.6375328890437411]
+       [0.36246711095625894 0.5999234928897205]
+       [0.3383203922298239 0.5525328890437411]
+       [0.32999999999999996 0.5]
+       [0.3383203922298239 0.4474671109562589]
+       [0.36246711095625894 0.4000765071102796]
+       [0.40007650711027953 0.36246711095625894]
+       [0.4474671109562589 0.3383203922298239]
+       [0.49999999999999994 0.32999999999999996]
+       [0.552532889043741 0.3383203922298239]
+       [0.5999234928897204 0.36246711095625894]
+       [0.6375328890437411 0.40007650711027953]
+       [0.6616796077701761 0.4474671109562589]],
+      :invert? true}
+     {:verts
+      [[-0.32999999999999996 0.5]
+       [-0.3383203922298239 0.5525328890437411]
+       [-0.36246711095625894 0.5999234928897205]
+       [-0.40007650711027953 0.6375328890437411]
+       [-0.4474671109562589 0.6616796077701761]
+       [-0.5 0.67]
+       [-0.5525328890437411 0.6616796077701761]
+       [-0.5999234928897205 0.6375328890437411]
+       [-0.6375328890437411 0.5999234928897205]
+       [-0.6616796077701761 0.5525328890437411]
+       [-0.67 0.5]
+       [-0.6616796077701761 0.4474671109562589]
+       [-0.6375328890437411 0.4000765071102796]
+       [-0.5999234928897205 0.36246711095625894]
+       [-0.5525328890437411 0.3383203922298239]
+       [-0.5 0.32999999999999996]
+       [-0.44746711095625896 0.3383203922298239]
+       [-0.4000765071102796 0.36246711095625894]
+       [-0.36246711095625894 0.40007650711027953]
+       [-0.3383203922298239 0.4474671109562589]],
+      :invert? true}
+     {:verts
+      [[0.67 -0.5]
+       [0.6616796077701761 -0.44746711095625896]
+       [0.6375328890437411 -0.40007650711027953]
+       [0.5999234928897205 -0.36246711095625894]
+       [0.5525328890437411 -0.3383203922298239]
+       [0.5 -0.32999999999999996]
+       [0.44746711095625896 -0.3383203922298239]
+       [0.4000765071102796 -0.36246711095625894]
+       [0.36246711095625894 -0.40007650711027953]
+       [0.3383203922298239 -0.4474671109562589]
+       [0.32999999999999996 -0.5]
+       [0.3383203922298239 -0.5525328890437411]
+       [0.36246711095625894 -0.5999234928897205]
+       [0.40007650711027953 -0.6375328890437411]
+       [0.4474671109562589 -0.6616796077701761]
+       [0.49999999999999994 -0.67]
+       [0.552532889043741 -0.6616796077701761]
+       [0.5999234928897204 -0.6375328890437411]
+       [0.6375328890437411 -0.5999234928897205]
+       [0.6616796077701761 -0.5525328890437411]],
+      :invert? true})])

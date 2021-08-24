@@ -3,8 +3,6 @@
  :builds {:browser {:target     :browser
                     :output-to  "public/js/viewer.js"
                     :output-dir "public/js"
-                    #_#_
-                    :asset-path "/js/out"
                     :modules    {:viewer {:entries [nextjournal.clerk.sci-viewer]}}
 
                     :js-options {:output-feature-set :es8}
