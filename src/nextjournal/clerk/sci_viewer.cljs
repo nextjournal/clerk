@@ -32,20 +32,6 @@
 
 (declare inspect)
 
-
-(defn value-of
-  "Safe access to a value at key a js object.
-
-   Returns `'forbidden` if reading the property would result in a `SecurityError`.
-   https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy"
-  [obj k]
-  (try
-    (let [v (j/get obj k)]
-      (.-constructor v) ;; test for SecurityError
-      v)
-    (catch js/Error ^js _
-      'forbidden)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Custom metadata handling - supporting any cljs value - not compatible with core meta
 
@@ -86,15 +72,44 @@
   [viewer data]
   (with-viewer data viewer))
 
+(defn html [v]
+  (with-viewer v (if (string? v) :html :hiccup)))
+
+(defn value-of
+  "Safe access to a value at key a js object.
+
+   Returns `'forbidden` if reading the property would result in a `SecurityError`.
+   https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy"
+  [obj k]
+  (try
+    (let [v (j/get obj k)]
+      (.-constructor v) ;; test for SecurityError
+      v)
+    (catch js/Error ^js _
+      'forbidden)))
+
+(defn obj->clj [x]
+  (-> (fn [result key]
+        (let [v (aget x key)]
+          (if (= "function" (goog/typeOf v))
+            result
+            (assoc result key v))))
+      (reduce {} (goog.object/getKeys x))))
+
+(defn object-viewer [x]
+  (let [x' (obj->clj x)]
+    (html [:span.inspected-value "#js {" (interpose " " (map #(list [inspect %] " " [inspect (value-of x %)]) (keys x'))) "}"])))
+
+
 (declare notebook)
 (declare var)
 (declare blob)
 
-(defn html [v]
-  (with-viewer v (if (string? v) :html :hiccup)))
-
 (defn coll-viewer [{:keys [open close]} xs]
   (html [:span.inspected-value open (interpose " " (map inspect xs)) close]))
+
+(defn map-viewer [xs]
+  (html [:span.inspected-value "{" (interpose " " (map #(list (inspect %) " " (xs %)) (keys xs))) "}"]))
 
 (def default-viewers
   [{:pred string? :fn #(html [:span.syntax-string.inspected-value "\"" % "\""])}
@@ -111,9 +126,9 @@
    {:pred vector? :fn (partial coll-viewer {:open "[" :close "]"})}
    {:pred list? :fn (partial coll-viewer {:open "(" :close ")"})}
    {:pred set? :fn (partial coll-viewer {:open "#{" :close "}"})}
-   {:pred map? :fn #(coll-viewer {:open "{" :close "}"} (apply concat %))}
+   {:pred map? :fn map-viewer}
    {:pred array? :fn (partial coll-viewer {:open (list [:span.syntax-tag "#js "] "[") :close "]"})}
-   {:pred object? :fn #(coll-viewer {:open (list [:span.syntax-tag "#js "] "{") :close "}"} (apply concat (js->clj %)))}
+   {:pred goog/isObject :fn object-viewer}
 
    ;; named viewers
    {:name :latex :pred string? :fn #(html (katex/to-html-string %))}
@@ -140,29 +155,25 @@
    (into [:div.ml-2.font-bold] content)])
 
 (defn inspect
+  ([x] (inspect default-viewers x))
   ([viewers x]
-   [context/provide {:viewers viewers}
-    [inspect x]])
-  ([x]
-   [context/consume :viewers
-    (fn [viewers]
-      (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
-        (let [x (:nextjournal/value x x)]
-          (cond (keyword? selected-viewer)
-                (if-let [fn (get (into {} (map (juxt :name :fn)) default-viewers) selected-viewer)]
-                  [fn x]
-                  [error-badge "cannot find viewer named " (str selected-viewer)])
-                (fn? selected-viewer)
-                [selected-viewer x]
-                (list? selected-viewer)
-                (let [fn (*eval-form* selected-viewer)]
-                  [fn x])))
-        (loop [v viewers]
-          (if-let [{:keys [pred fn]} (first v)]
-            (if (and pred fn (pred x))
-              [fn x]
-              (recur (rest v)))
-            [error-badge "no matching viewer"]))))]))
+   (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
+     (let [x (:nextjournal/value x x)]
+       (cond (keyword? selected-viewer)
+             (if-let [fn (get (into {} (map (juxt :name :fn)) viewers) selected-viewer)]
+               [fn x]
+               [error-badge "cannot find viewer named " (str selected-viewer)])
+             (fn? selected-viewer)
+             [selected-viewer x]
+             (list? selected-viewer)
+             (let [fn (*eval-form* selected-viewer)]
+               [fn x])))
+     (loop [v viewers]
+       (if-let [{:keys [pred fn]} (first v)]
+         (if (and pred fn (pred x))
+           [fn x]
+           (recur (rest v)))
+         [error-badge "no matching viewer"])))))
 
 (dc/defcard inspect-values
   (into [:div]
