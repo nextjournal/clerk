@@ -8,3 +8,6 @@
 /.shadow-cljs/
 .idea/
 clerk.iml
+public/girouette.css
+public/images/
+yarn.lock
