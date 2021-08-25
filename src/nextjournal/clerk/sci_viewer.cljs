@@ -4,6 +4,7 @@
             [cljs.reader]
             [clojure.core :as core]
             [goog.object]
+            [goog.string :as gstring]
             [nextjournal.devcards :as dc]
             [nextjournal.devcards.routes :as devcards-routes]
             [nextjournal.viewer.code :as code]
@@ -109,7 +110,13 @@
   (html [:span.inspected-value open (interpose " " (map inspect xs)) close]))
 
 (defn map-viewer [xs]
-  (html [:span.inspected-value "{" (interpose " " (map #(list (inspect %) " " (xs %)) (keys xs))) "}"]))
+  (html [:span.inspected-value "{" (interpose " " (map #(list (inspect %) " " (inspect (xs %))) (keys xs))) "}"]))
+
+(defn tagged-value [tag value]
+  [:span.inspected-value
+   [:span.syntax-tag tag]
+   (gstring/unescapeEntities "&nbsp;")
+   value])
 
 (def default-viewers
   [{:pred string? :fn #(html [:span.syntax-string.inspected-value "\"" % "\""])}
@@ -119,15 +126,15 @@
    {:pred keyword? :fn #(html [:span.syntax-keyword.inspected-value (str %)])}
    {:pred nil? :fn #(html [:span.syntax-nil.inspected-value "nil"])}
    {:pred boolean? :fn #(html [:span.syntax-bool.inspected-value (str %)])}
-   {:pred uuid? :fn #(html [:span.inspected-value
-                            [:span.syntax-tag "#uuid"]
-                            [inspect (str %)]])}
    {:pred fn? :fn #(html [:span.inspected-value [:span.syntax-tag "ƒ"] "()"])}
    {:pred vector? :fn (partial coll-viewer {:open "[" :close "]"})}
    {:pred list? :fn (partial coll-viewer {:open "(" :close ")"})}
    {:pred set? :fn (partial coll-viewer {:open "#{" :close "}"})}
    {:pred map? :fn map-viewer}
    {:pred array? :fn (partial coll-viewer {:open (list [:span.syntax-tag "#js "] "[") :close "]"})}
+   {:pred uuid? :fn #(html (tagged-value "#uuid" [inspect (str %)]))}
+   {:pred inst? :fn #(html (tagged-value "#inst" [inspect (str %)]))}
+   ;; TODO {:pred #(implements? IDeref %) :fn #(html (tagged-value "#atom" (inspect [%])))}
    {:pred goog/isObject :fn object-viewer}
 
    ;; named viewers
@@ -608,6 +615,18 @@ black")}])}
     {:pred vector? :fn #(html (into [:div.flex.inline-flex] (map inspect) %1))}
     {:pred list? :fn #(html (into [:div.flex.flex-col] (map inspect) %1))}]
    '([0 1 0] [1 0 1])])
+
+
+(dc/defcard clj-small
+  []
+  [inspect
+   '({:verts [[-0.5 -0.5] [0.5 -0.5] [0.5 0.5] [-0.5 0.5]],
+      :invert? true}
+     {:verts
+      [[0.67 -0.5]
+       [0.6616796077701761 -0.44746711095625896]
+       [0.6375328890437411 -0.40007650711027953]],
+      :invert? true})])
 
 (dc/defcard clj-long
   []
