@@ -6,4 +6,5 @@
 /node_modules/
 /public/js/
 /.shadow-cljs/
-
+.idea/
+clerk.iml
