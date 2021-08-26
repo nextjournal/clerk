@@ -30,6 +30,7 @@
   (show! "notebooks/onwards.clj")
   (show! "notebooks/how_clerk_works.clj")
   (show! "notebooks/pagination.clj")
+  (show! "notebooks/recursive.clj")
   (show! "notebooks/cache.clj")
 
   (show! "notebooks/viewers/vega.clj")

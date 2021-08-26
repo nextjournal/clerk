@@ -139,6 +139,7 @@
 
 #_(:graph (analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/elements.clj"))
 #_(analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/rule_30.clj")
+#_(analyze-file {:graph (dep/graph)} "notebooks/recursive.clj")
 
 (defn unhashed-deps [var->hash]
   (set/difference (into #{}
