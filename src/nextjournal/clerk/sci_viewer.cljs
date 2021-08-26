@@ -110,10 +110,18 @@
 (declare var)
 (declare blob)
 
+(defn toggle-expanded [expanded-at path event]
+  (js/console.log (.-target event) (pr-str path))
+  (.preventDefault event)
+  (.stopPropagation event)
+  (swap! expanded-at update path not))
+
 (defn coll-viewer [{:keys [open close]} xs {:as opts :keys [expanded-at path] :or {path []}}]
   (let [expanded? (some-> expanded-at deref (get path))]
-    (html [:span.inspected-value.hover:bg-indigo-50.bg-opacity-70.cursor-pointer.rounded-sm
-           open
+    (html [:span.inspected-value
+           [:span.hover:bg-indigo-50.bg-opacity-70.cursor-pointer.rounded-sm
+            {:on-click (partial toggle-expanded expanded-at path)}
+            open]
            (into [:<>]
                  (comp (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)]))
                        (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) nbsp)] nbsp)))
@@ -121,8 +129,11 @@
 
 (defn map-viewer [xs {:as opts :keys [expanded-at path] :or {path []}}]
   (let [expanded? (some-> expanded-at deref (get path))]
-    (html [:span.inspected-value.hover:bg-indigo-50.bg-opacity-70.cursor-pointer.rounded-sm
-           "{"
+    (html [:span.inspected-value
+           {:on-click (partial toggle-expanded expanded-at path)}
+           [:span.hover:bg-indigo-50.bg-opacity-70.cursor-pointer.rounded-sm
+            {:on-click (partial toggle-expanded expanded-at path)}
+            "{"]
            (into [:<>]
                  (comp (map-indexed (fn [idx [k v]]
                                       [:<>
@@ -183,7 +194,7 @@
    (into [:div.ml-2.font-bold] content)])
 
 (defn inspect
-  ([x] (inspect x {:viewers default-viewers :expanded-at (r/atom {})}))
+  ([x] (inspect x {:viewers default-viewers :expanded-at (r/atom {}) :path []}))
   ([x {:as opts :keys [viewers]}]
    (prn (:expanded-at opts))
    (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
@@ -755,9 +766,11 @@ black")}])}
       [:div.mb-4.overflow-x-hidden
        [inspect x]]
       [:div.mb-4.overflow-x-hidden
-       [inspect x {:viewers default-viewers :expanded-at (r/atom {[] true
-                                                                  [0] true
-                                                                  [1] true})}]]
+       [inspect x {:viewers default-viewers
+                   :path []
+                   :expanded-at (r/atom {[] true
+                                         [0] true
+                                         [1] true})}]]
       #_#_[:div.mb-4.overflow-x-hidden
            [inspect x]]
       [:div.mb-4.overflow-x-hidden
