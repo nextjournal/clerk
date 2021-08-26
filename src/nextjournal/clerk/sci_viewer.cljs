@@ -97,20 +97,41 @@
             (assoc result key v))))
       (reduce {} (goog.object/getKeys x))))
 
+(def nbsp
+  (gstring/unescapeEntities "&nbsp;"))
+
 (defn object-viewer [x]
   (let [x' (obj->clj x)]
-    (html [:span.inspected-value "#js {" (interpose " " (map #(list [inspect %] " " [inspect (value-of x %)]) (keys x'))) "}"])))
+    (html [:span.inspected-value "#js {"
+           (into [:<>] (interpose nbsp (map #(list [inspect %] nbsp [inspect (value-of x %)]) (keys x')))) "}"])))
 
 
 (declare notebook)
 (declare var)
 (declare blob)
 
-(defn coll-viewer [{:keys [open close]} xs]
-  (html [:span.inspected-value open (interpose " " (map inspect xs)) close]))
+(defn coll-viewer [{:keys [open close]} xs {:as opts :keys [expanded-at path] :or {path []}}]
+  (let [expanded? (some-> expanded-at deref (get path))]
+    (html [:span.inspected-value.hover:bg-indigo-50.bg-opacity-70.cursor-pointer.rounded-sm
+           open
+           (into [:<>]
+                 (comp (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)]))
+                       (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) nbsp)] nbsp)))
+                 xs) close])))
 
-(defn map-viewer [xs]
-  (html [:span.inspected-value "{" (interpose " " (map #(list (inspect %) " " (inspect (xs %))) (keys xs))) "}"]))
+(defn map-viewer [xs {:as opts :keys [expanded-at path] :or {path []}}]
+  (let [expanded? (some-> expanded-at deref (get path))]
+    (html [:span.inspected-value.hover:bg-indigo-50.bg-opacity-70.cursor-pointer.rounded-sm
+           "{"
+           (into [:<>]
+                 (comp (map-indexed (fn [idx [k v]]
+                                      [:<>
+                                       [inspect k (update opts :path conj idx)]
+                                       nbsp
+                                       [inspect v (update opts :path conj idx)]]))
+                       (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) nbsp)] nbsp)))
+                 xs)
+           "}"])))
 
 (defn tagged-value [tag value]
   [:span.inspected-value
@@ -162,23 +183,24 @@
    (into [:div.ml-2.font-bold] content)])
 
 (defn inspect
-  ([x] (inspect default-viewers x))
-  ([viewers x]
+  ([x] (inspect x {:viewers default-viewers :expanded-at (r/atom {})}))
+  ([x {:as opts :keys [viewers]}]
+   (prn (:expanded-at opts))
    (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
      (let [x (:nextjournal/value x x)]
        (cond (keyword? selected-viewer)
              (if-let [fn (get (into {} (map (juxt :name :fn)) viewers) selected-viewer)]
-               [fn x]
+               [fn x opts]
                [error-badge "cannot find viewer named " (str selected-viewer)])
              (fn? selected-viewer)
-             [selected-viewer x]
+             [selected-viewer x opts]
              (list? selected-viewer)
              (let [fn (*eval-form* selected-viewer)]
-               [fn x])))
+               [fn x opts])))
      (loop [v viewers]
        (if-let [{:keys [pred fn]} (first v)]
          (if (and pred fn (pred x))
-           [fn x]
+           [fn x opts]
            (recur (rest v)))
          [error-badge "no matching viewer"])))))
 
@@ -208,7 +230,7 @@
                      ^{:nextjournal/tag 'object} ['clojure.lang.Ref 0x73aff8f1 {:status :ready, :val 1}]]]
           [:div.mb-3.result-viewer
            [:pre [:code.inspected-value (binding [*print-meta* true] (pr-str value))]] [:span.inspected-value " => "]
-           [inspect default-viewers value]])))
+           [inspect value]])))
 
 (declare inspect)
 
@@ -616,22 +638,9 @@ black")}])}
     {:pred list? :fn #(html (into [:div.flex.flex-col] (map inspect) %1))}]
    '([0 1 0] [1 0 1])])
 
-
-(dc/defcard clj-small
-  []
-  [inspect
-   '({:verts [[-0.5 -0.5] [0.5 -0.5] [0.5 0.5] [-0.5 0.5]],
-      :invert? true}
-     {:verts
-      [[0.67 -0.5]
-       [0.6616796077701761 -0.44746711095625896]
-       [0.6375328890437411 -0.40007650711027953]],
-      :invert? true})])
-
 (dc/defcard clj-long
   []
   [inspect
-   default-viewers
    '({:verts [[-0.5 -0.5] [0.5 -0.5] [0.5 0.5] [-0.5 0.5]],
       :invert? true}
      {:verts
@@ -722,3 +731,34 @@ black")}])}
        [0.6375328890437411 -0.5999234928897205]
        [0.6616796077701761 -0.5525328890437411]],
       :invert? true})])
+
+
+(dc/defcard clj-small
+  []
+  (let [x '({:verts [[-0.5 -0.5] [0.5 -0.5] [0.5 0.5] [-0.5 0.5]],
+             :invert? true}
+            {:verts
+             [[0.67 -0.5]
+              [0.6616796077701761 -0.44746711095625896]
+              [0.6375328890437411 -0.40007650711027953]],
+             :invert? true})
+        y '({:verts [[-0.5 -0.5] [0.5 -0.5] [0.5 0.5] [-0.5 0.5]],
+             :invert? true})]
+    [:<>
+     #_[:div.mb-4
+        [map-viewer '{1 ● 2 ■ 3 ▲}]]
+     #_[:div.mb-4
+        [inspect {[[[[1 2]]]] [1 2]}]]
+
+     [:div
+      {:style {:margin-right -12}}
+      [:div.mb-4.overflow-x-hidden
+       [inspect x]]
+      [:div.mb-4.overflow-x-hidden
+       [inspect x {:viewers default-viewers :expanded-at (r/atom {[] true
+                                                                  [0] true
+                                                                  [1] true})}]]
+      #_#_[:div.mb-4.overflow-x-hidden
+           [inspect x]]
+      [:div.mb-4.overflow-x-hidden
+       [inspect y]]]]))
