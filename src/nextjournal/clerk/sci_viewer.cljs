@@ -119,13 +119,16 @@
 (defn coll-viewer [{:keys [open close]} xs {:as opts :keys [expanded-at path] :or {path []}}]
   (let [expanded? (some-> expanded-at deref (get path))]
     (html [:span.inspected-value
-           [:span.hover:bg-indigo-50.bg-opacity-70.cursor-pointer.rounded-sm
-            {:on-click (partial toggle-expanded expanded-at path)}
-            open]
-           (into [:<>]
-                 (comp (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)]))
-                       (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) nbsp)] nbsp)))
-                 xs) close])))
+           {:class (when expanded? "inline-flex")}
+           [:span
+            [:span.hover:bg-indigo-50.bg-opacity-70.cursor-pointer.rounded-sm
+             {:on-click (partial toggle-expanded expanded-at path)}
+             open]
+            (into [:<>]
+                  (comp (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)]))
+                        (interpose (if expanded? [:<> [:br] nbsp] nbsp)))
+                  xs)
+            close]])))
 
 (defn map-viewer [xs {:as opts :keys [expanded-at path] :or {path []}}]
   (let [expanded? (some-> expanded-at deref (get path))]
@@ -770,7 +773,8 @@ black")}])}
                    :path []
                    :expanded-at (r/atom {[] true
                                          [0] true
-                                         [1] true})}]]
+                                         [1] true
+                                         [0 0] true})}]]
       #_#_[:div.mb-4.overflow-x-hidden
            [inspect x]]
       [:div.mb-4.overflow-x-hidden
