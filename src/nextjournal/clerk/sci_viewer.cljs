@@ -203,8 +203,14 @@
     [:path {:fill-rule "evenodd" :d "M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" :clip-rule "evenodd"}]]
    (into [:div.ml-2.font-bold] content)])
 
+(def default-inspect-opts
+  {:viewers default-viewers :expanded-at (r/atom {}) :path []})
+
+(defn map-inspect-xf [opts]
+  (map (fn [x] [inspect x opts])))
+
 (defn inspect
-  ([x] (inspect x {:viewers default-viewers :expanded-at (r/atom {}) :path []}))
+  ([x] (inspect x default-inspect-opts))
   ([x {:as opts :keys [viewers]}]
    (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
      (let [x (:nextjournal/value x x)]
@@ -277,7 +283,7 @@
 ;;                :d true
 ;;                :e false}})
 
-#_#_#_#_
+
 (dc/when-enabled
  (def rule-30-state
    (let [rule30 {[1 1 1] 0
@@ -293,6 +299,7 @@
          evolve #(mapv rule30 (partition 3 1 (repeat 0) (cons 0 %)))]
      (->> g1 (iterate evolve) (take 17)))))
 
+#_
 (dc/defcard rule-30-types
   "Rule 30 using viewers based on types. Also shows how to use a named viewer for a number."
   [state]
@@ -307,17 +314,17 @@
                                                    :style {:width 16 :height 16}}])
                :vector (fn [x options]
                          (->> x
-                              (map (partial inspect options))
+                              (map (fn [x] [inspect x options]))
                               (into [:div.flex.inline-flex])
                               (view-as :hiccup)))
                :list (fn [x options]
                        (->> x
-                            (map (partial inspect options))
+                            (map (fn [x] [inspect x options]))
                             (into [:div.flex.flex-col])
                             (view-as :hiccup)))})]]
   {::dc/state rule-30-state})
 
-
+#_
 (dc/defcard rule-30-child-options
   "Rule 30 using viewers based on viewer options (without overriding global types) and passing the viewer option down to child components."
   [state]
@@ -647,17 +654,18 @@
 
 (def ^:dynamic *viewers* nil)
 
-#_
 (dc/defcard inspect-rule-30-sci
   []
   [inspect
-   [{:pred number?
-     :fn #(html [:div.inline-block {:style {:width 16 :height 16}
-                                    :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
+   '([0 1 0] [1 0 1])
+   (assoc default-inspect-opts
+          :viewers
+          [{:pred number?
+            :fn #(html [:div.inline-block {:style {:width 16 :height 16}
+                                           :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
 black")}])}
-    {:pred vector? :fn #(html (into [:div.flex.inline-flex] (map inspect) %1))}
-    {:pred list? :fn #(html (into [:div.flex.flex-col] (map inspect) %1))}]
-   '([0 1 0] [1 0 1])])
+           {:pred vector? :fn #(html (into [:div.flex.inline-flex] (map-inspect-xf %2) %1))}
+           {:pred list? :fn #(html (into [:div.flex.flex-col] (map-inspect-xf %2) %1))}])])
 
 (dc/defcard clj-long
   []
