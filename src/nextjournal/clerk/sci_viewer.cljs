@@ -100,10 +100,18 @@
 (def nbsp
   (gstring/unescapeEntities "&nbsp;"))
 
-(defn object-viewer [x]
-  (let [x' (obj->clj x)]
+(defn object-viewer [x {:as opts :keys [expanded-at path]}]
+  (let [x' (obj->clj x)
+        expanded? (some-> expanded-at deref (get path))]
     (html [:span.inspected-value "#js {"
-           (into [:<>] (interpose nbsp (map #(list [inspect %] nbsp [inspect (value-of x %)]) (keys x')))) "}"])))
+           (into [:<>]
+                 (comp (map-indexed (fn [idx k]
+                                      [:<>
+                                       [inspect k (update opts :path conj idx)]
+                                       nbsp
+                                       [inspect (value-of x k) (update opts :path conj idx)]]))
+                       (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) nbsp)] nbsp)))
+                 (keys x')) "}"])))
 
 
 (declare notebook)
@@ -111,7 +119,6 @@
 (declare blob)
 
 (defn toggle-expanded [expanded-at path event]
-  (js/console.log (.-target event) (pr-str path))
   (.preventDefault event)
   (.stopPropagation event)
   (swap! expanded-at update path not))
@@ -166,7 +173,7 @@
    {:pred list? :fn (partial coll-viewer {:open "(" :close ")"})}
    {:pred set? :fn (partial coll-viewer {:open "#{" :close "}"})}
    {:pred map? :fn map-viewer}
-   {:pred array? :fn (partial coll-viewer {:open (list [:span.syntax-tag "#js "] "[") :close "]"})}
+   {:pred array? :fn (partial coll-viewer {:open [:<> [:span.syntax-tag "#js "] "["] :close "]"})}
    {:pred uuid? :fn #(html (tagged-value "#uuid" [inspect (str %)]))}
    {:pred inst? :fn #(html (tagged-value "#inst" [inspect (str %)]))}
    ;; TODO {:pred #(implements? IDeref %) :fn #(html (tagged-value "#atom" (inspect [%])))}
@@ -199,7 +206,6 @@
 (defn inspect
   ([x] (inspect x {:viewers default-viewers :expanded-at (r/atom {}) :path []}))
   ([x {:as opts :keys [viewers]}]
-   (prn (:expanded-at opts))
    (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
      (let [x (:nextjournal/value x x)]
        (cond (keyword? selected-viewer)
@@ -210,7 +216,6 @@
              [selected-viewer x opts]
              (list? selected-viewer)
              (let [fn (*eval-form* selected-viewer)]
-               (prn :e fn)
                [fn x opts])))
      (loop [v viewers]
        (if-let [{:keys [pred fn]} (first v)]
@@ -264,7 +269,7 @@
 ;;    [inspect (with-viewers @state
 ;;               {:number #(str/join (take % (repeat "*")))
 ;;                :boolean #(view-as :hiccup
-;;                                   [:div.inline-block {:style {:width 12 :height 12}
+;;                                   [:div.inline-block {:stle {:width 12 :height 12}
 ;;                                                       :class (if % "bg-red" "bg-green")}])})]]
 ;;   {::dc/state {:a 1
 ;;                :b 2
@@ -272,7 +277,7 @@
 ;;                :d true
 ;;                :e false}})
 
-
+#_#_#_#_
 (dc/when-enabled
  (def rule-30-state
    (let [rule30 {[1 1 1] 0
@@ -620,7 +625,7 @@
   "Viewers that are lists are evaluated using sci."
   [inspect (with-viewer "Hans" '(fn [x] (v/with-viewer [:h3 "Ohai, " x "! 👋"] :hiccup)))])
 
-
+#_
 (dc/defcard notebook
   "Shows how to display a notebook document"
   [state]
@@ -642,7 +647,7 @@
 
 (def ^:dynamic *viewers* nil)
 
-
+#_
 (dc/defcard inspect-rule-30-sci
   []
   [inspect
