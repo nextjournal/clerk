@@ -6,7 +6,7 @@
             [goog.object]
             [goog.string :as gstring]
             [nextjournal.devcards :as dc]
-            [nextjournal.devcards.routes :as devcards-routes]
+            [nextjournal.devcards.main :as devcards-main]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.markdown :as markdown]
@@ -351,7 +351,7 @@
                                     (html (into [:div.flex.flex-col] (map row) board)))))]]
   {::dc/state rule-30-state})
 
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_
 (dc/defcard rule-30-sci-eval
   "Rule 30 using viewers based on sci eval."
   [inspect (with-viewer '([0 1 0] [1 0 1])
@@ -468,6 +468,7 @@
                                                     (max 0)
                                                     (min 100)
                                                     (str "%"))}}]]])))]])
+
 
 
 (defn notebook [xs]
@@ -636,11 +637,10 @@
                                                             {:data [{:y (shuffle (range 10)) :name "The Federation" }
                                                                     {:y (shuffle (range 10)) :name "The Empire"}]})]])
 
-(defn ^:export devcards []
-  (devcards-routes/start))
+(defn ^:export ^:dev/after-load devcards []
+  (devcards-main/init))
 
 (def ^:dynamic *viewers* nil)
-
 
 
 (dc/defcard inspect-rule-30-sci

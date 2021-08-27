@@ -16,11 +16,12 @@
         hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
         lambdaisland/uri {:mvn/version "1.4.70"}
 
+
         arrowic/arrowic {:mvn/version "0.1.1"}
         rewrite-clj/rewrite-clj {:mvn/version "0.6.1"}}
 
  :aliases {:sci {:extra-deps  {io.github.nextjournal/devcards        {:git/url "git@github.com:nextjournal/viewers.git"
-                                                                      :git/sha "6aae39c81f2e58555851f11ab0998502aa5f29f9"
+                                                                      :git/sha "3827f7185340d41a056c61ee3e2d352ff68cd0a6"
                                                                       :deps/root "modules/devcards"}
                                metosin/reitit-frontend     {:mvn/version "0.5.15"}
                                borkdude/sci                {:mvn/version "0.2.6"}
