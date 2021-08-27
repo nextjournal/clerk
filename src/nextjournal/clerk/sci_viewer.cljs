@@ -210,6 +210,7 @@
              [selected-viewer x opts]
              (list? selected-viewer)
              (let [fn (*eval-form* selected-viewer)]
+               (prn :e fn)
                [fn x opts])))
      (loop [v viewers]
        (if-let [{:keys [pred fn]} (first v)]
@@ -350,6 +351,7 @@
                                     (html (into [:div.flex.flex-col] (map row) board)))))]]
   {::dc/state rule-30-state})
 
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 (dc/defcard rule-30-sci-eval
   "Rule 30 using viewers based on sci eval."
   [inspect (with-viewer '([0 1 0] [1 0 1])
