@@ -1,5 +1,13 @@
 (ns noteboks.recursive)
 
+(declare nodd?)
+
+(defn neven? [n]
+  (if (zero? n) true (nodd? (dec n))))
+
+(defn nodd? [n]
+  (if (zero? n) false (neven? (dec n))))
+
 (declare is-prime)
 
 (def odds (iterate #(+ % 2) 3))

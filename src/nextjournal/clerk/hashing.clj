@@ -120,7 +120,7 @@
    (analyze-file {} state file))
   ([{:as opts :keys [markdown?]} acc file]
    (let [doc (parse-file opts file)]
-     (reduce (fn [{:as acc :keys [graph]} {:keys [type text]}]
+     (reduce (fn [acc {:keys [type text]}]
                (if (= type :code)
                  (let [form (read-string text)
                        _ (when (and (seq? form) (= 'ns (first form)))
@@ -132,7 +132,20 @@
                                                  :form form
                                                  :deps deps})
                      (and var (seq deps))
-                     (assoc :graph (reduce #(dep/depend %1 var %2) graph deps))))
+                     (#(reduce (fn [{:as acc :keys [graph]} dep]
+                                 (try (assoc acc :graph (dep/depend graph var dep))
+                                      (catch Exception e
+                                        (when-not (-> e ex-data :reason #{::dep/circular-dependency})
+                                          (throw e))
+                                        (let [{:keys [node dependency]} (ex-data e)
+                                              rec-form (concat '(do) [form (get-in acc [:var->hash dependency :form])])
+                                              rec-var (symbol (str var "+" dep))]
+                                          (-> acc
+                                              (assoc :graph (-> graph
+                                                                (dep/remove-edge dependency node)
+                                                                (dep/depend var rec-var)
+                                                                (dep/depend dep rec-var)))
+                                              (assoc-in [:var->hash rec-var :form] rec-form)))))) % deps))))
                  acc))
              (cond-> acc markdown? (assoc :doc doc))
              doc))))
