@@ -20,9 +20,8 @@
         arrowic/arrowic {:mvn/version "0.1.1"}
         rewrite-clj/rewrite-clj {:mvn/version "0.6.1"}}
 
- :aliases {:sci {:extra-deps  {io.github.nextjournal/devcards        {:git/url "git@github.com:nextjournal/viewers.git"
-                                                                      :git/sha "3827f7185340d41a056c61ee3e2d352ff68cd0a6"
-                                                                      :deps/root "modules/devcards"}
+ :aliases {:sci {:extra-deps  {io.github.nextjournal/viewers {:git/url "git@github.com:nextjournal/viewers.git"
+                                                              :git/sha "4f4f1f782948a55105f9d2c204889385efa7000a"}
                                metosin/reitit-frontend     {:mvn/version "0.5.15"}
                                borkdude/sci                {:mvn/version "0.2.6"}
                                applied-science/js-interop  {:mvn/version "0.3.0"}}}
@@ -30,7 +29,13 @@
            :shadow {:extra-deps {thheller/shadow-cljs {:mvn/version "2.14.6"}}
                     :main-opts ["-m" "shadow.cljs.devtools.cli" "watch" "browser"]}
 
-           :girouette {:extra-deps {girouette/processor {:mvn/version "0.0.4"}}
+           :girouette {:replace-paths []
+                       :replace-deps {girouette/girouette {:deps/root "lib/girouette"
+                                                           :git/url "https://github.com/green-coder/girouette.git"
+                                                           :git/sha "6de4cd20b65de582cf238e9c8b381477ca772caf"}
+                                      girouette/processor {:deps/root "lib/processor"
+                                                           :git/url "https://github.com/green-coder/girouette.git"
+                                                           :git/sha "6de4cd20b65de582cf238e9c8b381477ca772caf"}}
                        :ns-default girouette.processor
                        :exec-fn process
                        :exec-args {:css {:output-file "public/girouette.css"}

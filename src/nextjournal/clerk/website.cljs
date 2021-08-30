@@ -22,12 +22,12 @@
 
 (dc/defcard website
   [:div.sans-serif.pb-8.bg-black
-   [:div.bg-black.bg-contain.bg-no-repeat
+   [:div.bg-black.bg-no-repeat
     {:style {:height 300
              :background-size "100%"
              :background-image "url(/images/clerk.png)"
              :background-position "center center"}}]
-   [:div.mx-auto.px-8.mt-8.text-gray-100.max-w-56rem
+   [:div.mx-auto.px-8.mt-8.text-gray-100
     [:h1.text-2xl.font-bold.text-center
      "Local-first Notebooks for Clojure"]
     [:p.mt-3.text-lg.text-center
