@@ -1,12 +1,18 @@
-{:tasks {yarn-install {:doc "Installs and updates npm dependencies"
+{:tasks {:init (def tailwind-build-cmd "npx tailwindcss --input stylesheets/app.css  --output public/css/app.css")
+         yarn-install {:doc "Installs and updates npm dependencies"
                        :task (shell "yarn install")}
 
          watch:cljs {:doc "Starts shadow-cljs server"
                      :task (clojure "-M:sci:demo:shadow")
                      :depends [yarn-install]}
 
-         watch:css {:doc "Starts a watcher for css using girouette"
-                    :task (clojure "-X:girouette")}
+         watch:css {:doc  "Starts a watcher for css files tailwindcss"
+                    :task (shell (str tailwind-build-cmd " --watch"))
+                    :depends [yarn-install]}
+
+         build:css {:doc  "Builds the css files with tailwindcss"
+                    :task (shell tailwind-build-cmd)
+                    :depends [yarn-install]}
 
          -dev {:depends [watch:cljs watch:css]}
          dev {:doc "Start app in dev mode, compiles cljs and css"

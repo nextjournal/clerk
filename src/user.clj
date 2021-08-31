@@ -20,7 +20,7 @@
 
   nextjournal.clerk.view/live-js?
 
-  (set-dev! false)
+  (set-dev! true)
 
   (beholder/stop watcher)
 

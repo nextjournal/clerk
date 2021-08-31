@@ -1,9 +1,11 @@
 {:deps {:aliases [:sci]}
- :dev-http {7778 "public"}
+ :dev-http {7778 ["public" "classpath:public"]}
  :builds {:browser {:target :browser
                     :output-to "public/js/viewer.js"
                     :output-dir "public/js"
-                    :modules {:viewer {:entries [nextjournal.clerk.sci-viewer nextjournal.clerk.website]}}
+                    :modules {:viewer {:entries [nextjournal.clerk.sci-viewer
+                                                 nextjournal.clerk.website
+                                                 nextjournal.viewer.notebook]}}
 
                     :js-options {:output-feature-set :es8}
 

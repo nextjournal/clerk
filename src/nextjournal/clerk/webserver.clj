@@ -56,8 +56,8 @@
                                          (swap! !clients disj ch))})
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
-        "js" {:status 302
-              :headers {"Location" (str "http://localhost:8003" uri)}}
+        ("css" "js") {:status 302
+                      :headers {"Location" (str "http://localhost:7778" uri)}}
         "_blob" (serve-blob req)
         "_ws" {:status 200 :body "upgrading..."}
         {:status  200
