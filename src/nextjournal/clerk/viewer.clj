@@ -2,86 +2,6 @@
   (:refer-clojure :exclude [meta with-meta vary-meta])
   (:require [clojure.core :as core]))
 
-;; - a name
-;; - a predicate function
-;; - a view function
-;; - ordering!
-(declare view-as)
-
-#_
-(view-as '#(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                       :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
-black")}]) 1)
-
-(def default-viewers
-  '[{:pred number?
-     :fn #(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                      :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
-black")}])}
-    {:pred vector? :fn #(v/html (into [:div.flex.inline-flex] (map v/inspect) %1))}
-    {:pred list? :fn #(v/html (into [:div.flex.flex-col] (map v/inspect) %1))}])
-
-(do
-  (def map-100
-    (zipmap (range 100) (range 100)))
-
-  (def dict-words
-    (vec (take 100 (clojure.string/split-lines (slurp "/usr/share/dict/words")))))
-
-  (def long-string
-    (clojure.string/join dict-words))
-
-  (def complex-thing
-    (-> (zipmap (range 100) (range 100))
-        (assoc 0 dict-words)
-        (assoc :words dict-words)
-        (assoc-in [:map :deep] (zipmap (range 100) (range 100)))
-        (assoc 1 long-string))))
-
-(comment
-  (defn get-fetch-n [path->opts path]
-    20)
-
-  (defn fetch
-    ([xs]
-     (fetch {} [] xs))
-    ([path->opts path xs]
-     (let [n (get-fetch-n path->opts path)]
-       (cond (map? xs) (into {} (map #(fetch path->opts (conj path %1) %2) (range) (take n xs)))
-             ;; TODO: debug why error reportig is broken when removing the following line
-             (vector? xs) (into [] (map #(fetch path->opts (conj path %1) %2) (range) (take n xs)))
-             (sequential? xs) (map #(fetch path->opts (conj path %1) %2) (range) (take n xs))
-             (and (string? xs) (< n (count xs))) (subs xs 0 n)
-             :else xs))))
-
-  (fetch complex-thing))
-
-(comment
-  (defn describe
-    ([xs]
-     (describe [] xs))
-    ([path xs]
-     (cond (map? xs) (let [children (remove (comp empty? :children)
-                                            (map #(describe (conj path %1) %2) (range) xs))]
-                       (cond-> {:pred 'map?
-                                :count (count xs)
-                                :path path}
-                         (seq children) (assoc :children children)))
-           ;; TODO: debug why error reportig is broken when removing the following line
-           (vector? xs) {:pred 'vector?
-                         :path path
-                         :count (count xs)
-                         :children (remove nil? (map #(describe (conj path %1) %2) (range) xs))}
-           (and (string? xs) (< n (count xs))) {:pred 'string?
-                                                :path path
-                                                :count (count xs)}
-           :else nil)))
-  (describe complex-thing))
-
-;; Homework
-;; - make `fetch` symmetric to `describe` with `path`
-;; - make `fetch` work with `path->opts`
-;; - use `path` as a react key on the frontend
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Custom metadata handling - supporting any cljs value - not compatible with core meta
@@ -108,6 +28,163 @@ black")}])}
 
 (defn vary-meta [data f & args]
   (with-meta data (apply f (meta data) args)))
+
+
+;; - a name
+;; - a predicate function
+;; - a view function
+;; - ordering!
+(declare view-as)
+
+
+
+#_
+(view-as '#(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                       :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
+black")}]) 1)
+
+(def default-viewers
+  ;; maybe make this a sorted-map
+  [{:pred string?}
+   {:pred number?}
+   {:pred symbol?}
+   {:pred keyword?}
+   {:pred nil?}
+   {:pred boolean?}
+   {:pred fn?}
+   {:pred vector? :fetch-opts {:n 20}}
+   {:pred list? :fetch-opts {:n 20}}
+   {:pred set? :fetch-opts {:n 20}}
+   {:pred map? :fetch-opts {:n 20}}
+   {:pred uuid?}
+   {:pred inst?}])
+
+(def preds->viewers
+  (into {} (map (juxt :pred identity)) default-viewers))
+
+(def map-100
+  (zipmap (range 100) (range 100)))
+
+(def dict-words
+  (vec (take 100 (clojure.string/split-lines (slurp "/usr/share/dict/words")))))
+
+(def long-string
+  (clojure.string/join dict-words))
+
+(def complex-thing
+  (-> (zipmap (range 100) (range 100))
+      (assoc 0 dict-words)
+      (assoc :words dict-words)
+      (assoc-in [:map :deep] (zipmap (range 100) (range 100)))
+      (assoc 1 long-string)))
+
+(def elided
+  :nextjournal/…)
+
+(def elide-string-length 20)
+
+(defn drop+take-xf [{:keys [n offset]
+                     :or {offset 0}}]
+  (comp (drop offset)
+        (take n)))
+
+#_(sequence (drop+take-xf {:n 10}) (range 100))
+#_(sequence (drop+take-xf {:n 10 :offset 10}) (range 100))
+
+(do
+  (defn fetch
+    ([opts xs]
+     (fetch opts [] xs))
+    ([{:as opts :keys [path n]} current-path xs]
+     #_(prn :current-path current-path :path path :xs xs)
+     (if (< (count current-path)
+            (count path))
+       (let [idx (first (drop (count current-path) path))]
+         #_(prn :idx idx)
+         (fetch opts
+                (conj current-path idx)
+                (cond (map? xs) (nth (seq xs) idx)
+                      (associative? xs) (get xs idx)
+                      (sequential? xs) (nth xs idx))))
+       (cond
+         (and (not= (count path)
+                    (count current-path))
+              (or (associative? xs)
+                  (sequential? xs)
+                  (and (string? xs) (< elide-string-length (count xs))))) elided
+         (map? xs) (into {} (comp (drop+take-xf opts) (map-indexed #(fetch opts (conj current-path %1) %2))) xs)
+         ;; TODO: debug why error reportig is broken when removing the following line
+         (vector? xs) (into [] (comp (drop+take-xf opts) (map-indexed #(fetch opts (conj current-path %1) %2))) xs)
+         (sequential? xs) (sequence (comp (drop+take-xf opts) (map-indexed #(fetch opts (conj current-path %1) %2))) xs)
+         (and (string? xs) (< elide-string-length (count xs))) (subs xs 0 n)
+         :else xs))))
+
+  (fetch {:n 10 :path [0 1]} {[1 2 3] [4 [5 6 7] 8] 3 4})
+  #_(fetch {:n 10 :path [2]} '(1 2 (1 2 3) 4 5))
+  #_(fetch {:n 10 :path [2]} [1 2 [1 2 3] 4 5]))
+
+(def n 20)
+
+(do
+
+  (defn describe
+    ([xs]
+     (describe [] xs))
+    ([path xs]
+     (cond (map? xs) (let [children (remove (comp empty? :children)
+                                            (map #(describe (conj path %1) %2) (range) xs))]
+                       (cond-> {:count (count xs) :path path}
+                         (seq children) (assoc :children children)))
+           (map-entry? xs) {:path path}
+           (counted? xs) {:path path :count (count xs)
+                          :children (remove nil? (map #(describe (conj path %1) %2) (range) xs))}
+           (and (string? xs) (< n (count xs))) {:path path :count (count xs)}
+           :else nil)))
+  #_
+  (describe complex-thing)
+  (describe {:one [1 2 3] 1 2 3 4})
+  (describe [1 2 [1 2 3] 4 5]))
+
+
+(defn select-viewer
+  ([x] (select-viewer x default-viewers))
+  ([x viewers]
+   (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
+     (let [x (:nextjournal/value x x)]
+       (cond (keyword? selected-viewer)
+             (if-let [viewer (get (into {} (map (juxt :name identity)) viewers) selected-viewer)]
+               viewer
+               (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x x :viewers viewers})))))
+     (loop [v viewers]
+       (if-let [{:as matching-viewer :keys [pred]} (first v)]
+         (if (and pred (pred x))
+           matching-viewer
+           (recur (rest v)))
+         (throw (ex-info (str "cannot find matchting viewer") {:viewers viewers :x x})))))))
+
+#_(select-viewer {:one :two})
+#_(select-viewer [1 2 3])
+
+
+(let [x complex-thing
+      desc (describe x)
+      {:as root-viewer :keys [fetch-opts]} (select-viewer x)]
+  root-viewer)
+
+;; request first 20 map elements
+{:count 20
+ :offset 0
+ :path []}
+
+{:path [0 1]
+ :count 20
+ :offset 0}
+
+
+;; Homework
+;; - make `fetch` symmetric to `describe` with `path`
+;; - make `fetch` work with `path->opts`
+;; - use `path` as a react key on the frontend
 
 (defn type-key [value]
   (cond
