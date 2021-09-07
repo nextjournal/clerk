@@ -1,6 +1,8 @@
 (ns nextjournal.clerk.viewer
   (:refer-clojure :exclude [meta with-meta vary-meta])
-  (:require [clojure.core :as core]))
+  (:require [clojure.core :as core]
+            [clojure.string :as str]))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -10,16 +12,20 @@
 
 (defn meta? [x] (and (map? x) (contains? x :nextjournal/value)))
 
+(defn supports-meta? [x]
+  #?(:cljs (satisfies? IWithMeta x)
+     :clj (instance? clojure.lang.IMeta x)))
+
 (defn meta [data]
   (if (meta? data)
     data
     (assoc (core/meta data)
            :nextjournal/value (cond-> data
-                                (instance? clojure.lang.IMeta data) (core/with-meta {})))))
+                                (supports-meta? data) (core/with-meta {})))))
 
 (defn with-meta [data m]
   (cond (meta? data) (assoc m :nextjournal/value (:nextjournal/value data))
-        (instance? clojure.lang.IMeta data) (core/with-meta data m)
+        (supports-meta? data) (core/with-meta data m)
         :else
         (assoc m :nextjournal/value data)))
 
@@ -46,21 +52,20 @@ black")}]) 1)
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
-  [{:pred map? :fetch-opts {:n 3}}
-
-   {:pred string?}
-   {:pred number?}
-   {:pred symbol?}
-   {:pred keyword?}
-   {:pred nil?}
-   {:pred boolean?}
-   {:pred fn?}
-   {:pred vector? :fetch-opts {:n 20}}
-   {:pred list? :fetch-opts {:n 20}}
-   {:pred set? :fetch-opts {:n 20}}
-   {:pred map? :fetch-opts {:n 20}}
-   {:pred uuid?}
-   {:pred inst?}])
+  [{:pred string? :fn '(fn [x] (v/html [:span.syntax-string.inspected-value "\"" x "\""]))}
+   {:pred number? :fn '(fn [x] (v/html [:span.syntax-number.inspected-value
+                                        (if (js/Number.isNaN x) "NaN" (str x))]))}
+   {:pred symbol? :fn '(fn [x] (v/html [:span.syntax-symbol.inspected-value x]))}
+   {:pred keyword? :fn '(fn [x] (v/html [:span.syntax-keyword.inspected-value (str x)]))}
+   {:pred nil? :fn '(fn [_] (v/html [:span.syntax-nil.inspected-value "nil"]))}
+   {:pred boolean? :fn '(fn [x] (v/html [:span.syntax-bool.inspected-value (str x)]))}
+   {:pred fn? :fn '(fn [_] (v/html [:span.inspected-value [:span.syntax-tag "ƒ"] "()"]))}
+   {:pred vector? :fn '(partial v/coll-viewer {:open "[" :close "]"}) :fetch-opts {:n 20}}
+   {:pred list? :fn '(partial v/coll-viewer {:open "(" :close ")"})  :fetch-opts {:n 20}}
+   {:pred set? :fn '(partial v/coll-viewer {:open "#{" :close "}"}) :fetch-opts {:n 20}}
+   {:pred map? :fn '(partial v/map-viewer) :fetch-opts {:n 20}}
+   {:pred uuid? :fn '(fn [x] (v/html (v/tagged-value "#uuid" ['nextjournal.clerk.sci-viewer/inspect (str x)])))}
+   {:pred inst? :fn '(fn [x] (v/html (v/tagged-value "#inst" ['nextjournal.clerk.sci-viewer/inspect (str x)])))}])
 
 (def preds->viewers
   (into {} (map (juxt :pred identity)) default-viewers))
@@ -69,10 +74,10 @@ black")}]) 1)
   (zipmap (range 100) (range 100)))
 
 (def dict-words
-  (vec (take 100 (clojure.string/split-lines (slurp "/usr/share/dict/words")))))
+  (vec (take 100 #?(:cljs (range) :clj (str/split-lines (slurp "/usr/share/dict/words"))))))
 
 (def long-string
-  (clojure.string/join dict-words))
+  (str/join dict-words))
 
 (def complex-thing
   (-> (zipmap (range 100) (range 100))
@@ -94,40 +99,39 @@ black")}]) 1)
 #_(sequence (drop+take-xf {:n 10}) (range 100))
 #_(sequence (drop+take-xf {:n 10 :offset 10}) (range 100))
 
-(do
-  (defn fetch
-    ([opts xs]
-     (fetch opts [] xs))
-    ([{:as opts :keys [path n]} current-path xs]
-     #_(prn :current-path current-path :path path :xs xs)
-     (if (< (count current-path)
-            (count path))
-       (let [idx (first (drop (count current-path) path))]
-         #_(prn :idx idx)
-         (fetch opts
-                (conj current-path idx)
-                (cond (map? xs) (nth (seq xs) idx)
-                      (associative? xs) (get xs idx)
-                      (sequential? xs) (nth xs idx))))
-       (cond
-         (and (not= (count path)
-                    (count current-path))
-              (not (map-entry? xs))
-              (or (associative? xs)
-                  (sequential? xs)
-                  (and (string? xs) (< elide-string-length (count xs))))) elided
-         (map? xs) (into {} (comp (drop+take-xf opts) (map-indexed #(fetch opts (conj current-path %1) %2))) xs)
-         ;; TODO: debug why error reportig is broken when removing the following line
-         (vector? xs) (into [] (comp (drop+take-xf opts) (map-indexed #(fetch opts (conj current-path %1) %2))) xs)
-         (sequential? xs) (sequence (comp (drop+take-xf opts) (map-indexed #(fetch opts (conj current-path %1) %2))) xs)
-         (and (string? xs) (< elide-string-length (count xs))) (subs xs 0 n)
-         :else xs))))
+(defn fetch
+  ([opts xs]
+   (fetch opts [] xs))
+  ([{:as opts :keys [path n]} current-path xs]
+   #_(prn :current-path current-path :path path :xs xs)
+   (if (< (count current-path)
+          (count path))
+     (let [idx (first (drop (count current-path) path))]
+       #_(prn :idx idx)
+       (fetch opts
+              (conj current-path idx)
+              (cond (map? xs) (nth (seq xs) idx)
+                    (associative? xs) (get xs idx)
+                    (sequential? xs) (nth xs idx))))
+     (cond
+       (and (not= (count path)
+                  (count current-path))
+            (not (map-entry? xs))
+            (or (associative? xs)
+                (sequential? xs)
+                (and (string? xs) (< elide-string-length (count xs))))) elided
+       (map? xs) (into {} (comp (drop+take-xf opts) (map-indexed #(fetch opts (conj current-path %1) %2))) xs)
+       ;; TODO: debug why error reportig is broken when removing the following line
+       (vector? xs) (into [] (comp (drop+take-xf opts) (map-indexed #(fetch opts (conj current-path %1) %2))) xs)
+       (sequential? xs) (sequence (comp (drop+take-xf opts) (map-indexed #(fetch opts (conj current-path %1) %2))) xs)
+       (and (string? xs) (< elide-string-length (count xs))) (subs xs 0 n)
+       :else xs))))
 
-  (fetch {:n 10 :path []} {1 2})
-  #_(fetch {:n 10 :path [0]} {[1 2 3]
-                              [4 [5 6 7] 8] 3 4})
-  #_(fetch {:n 10 :path [2]} '(1 2 (1 2 3) 4 5))
-  #_(fetch {:n 10 :path [2]} [1 2 [1 2 3] 4 5]))
+#_(fetch {:n 10 :path []} {1 2})
+#_(fetch {:n 10 :path [0]} {[1 2 3]
+                            [4 [5 6 7] 8] 3 4})
+#_(fetch {:n 10 :path [2]} '(1 2 (1 2 3) 4 5))
+#_(fetch {:n 10 :path [2]} [1 2 [1 2 3] 4 5])
 
 
 (let [xs {1 2}
@@ -160,30 +164,29 @@ black")}]) 1)
 
 (def n 20)
 
-(do
 
-  (defn describe
-    ([xs]
-     (describe [] xs))
-    ([path xs]
-     (let [viewer (select-viewer xs)]
-       (cond (map? xs) (let [children (remove (comp empty? :children)
-                                              (map #(describe (conj path %1) %2) (range) xs))]
-                         (cond-> {:count (count xs)
-                                  :path path
-                                  :viewer viewer}
-                           (seq children) (assoc :children children)))
-             (counted? xs) (let [children (remove nil? (map #(describe (conj path %1) %2) (range) xs))]
-                             (cond-> {:path path
-                                      :count (count xs)
-                                      :viewer viewer}
-                               (seq children) (assoc :children children)))
-             (and (string? xs) (< n (count xs))) {:path path :count (count xs) :viewer viewer}
-             :else nil))))
+(defn describe
+  ([xs]
+   (describe [] xs))
+  ([path xs]
+   (let [viewer (select-viewer xs)]
+     (cond (map? xs) (let [children (remove (comp empty? :children)
+                                            (map #(describe (conj path %1) %2) (range) xs))]
+                       (cond-> {:count (count xs)
+                                :path path
+                                :viewer viewer}
+                         (seq children) (assoc :children children)))
+           (counted? xs) (let [children (remove nil? (map #(describe (conj path %1) %2) (range) xs))]
+                           (cond-> {:path path
+                                    :count (count xs)
+                                    :viewer viewer}
+                             (seq children) (assoc :children children)))
+           (and (string? xs) (< n (count xs))) {:path path :count (count xs) :viewer viewer}
+           :else nil))))
 
-  (describe complex-thing)
-  #_(describe {:one [1 2 3] 1 2 3 4})
-  #_(describe [1 2 [1 2 3] 4 5]))
+#_(describe complex-thing)
+#_(describe {:one [1 2 3] 1 2 3 4})
+#_(describe [1 2 [1 2 3] 4 5])
 
 ;; maybe sort maps
 
@@ -205,26 +208,7 @@ black")}]) 1)
 ;; Homework
 ;; - make `fetch` symmetric to `describe` with `path`
 ;; - make `fetch` work with `path->opts`
-;; - use `path` as a react key on the frontend
-
-(defn type-key [value]
-  (cond
-    (var? value) :var
-    (instance? clojure.lang.IDeref value) :derefable
-    (map? value) :map
-    (set? value) :set
-    (vector? value) :vector
-    (list? value) :list
-    (seq? value) :list
-    (fn? value) :fn
-    (uuid? value) :uuid
-    (string? value) :string
-    (keyword? value) :keyword
-    (symbol? value) :symbol
-    (nil? value) :nil
-    (boolean? value) :boolean
-    (inst? value) :inst
-    :else :untyped))
+;; - use `path` as a react key on the
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Viewers (built on metadata)
@@ -289,26 +273,3 @@ black")}]) 1)
 
 (defn registration? [x]
   (boolean (-> x meta :nextjournal/value #{::register!})))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Pagination + Lazy Loading
-(defn describe [result]
-  (cond-> {:nextjournal/type-key (type-key result) :blob/id (-> result core/meta :blob/id)}
-    (counted? result)
-    (assoc :count (count result))))
-
-#_(describe (vec (range 100)))
-
-(defn paginate [result {:as opts :keys [start n] :or {start 0}}]
-  (if (and (number? n)
-           (pos? n)
-           (not (or (map? result)
-                    (set? result)))
-           (counted? result))
-    (core/with-meta (->> result (drop start) (take n) doall) (merge opts (describe result)))
-    result))
-
-#_(meta (paginate (vec (range 10)) {:n 20}))
-#_(meta (paginate (vec (range 100)) {:n 20}))
-#_(meta (paginate (zipmap (range 100) (range 100)) {:n 20}))
-#_(paginate #{1 2 3} {:n 20})

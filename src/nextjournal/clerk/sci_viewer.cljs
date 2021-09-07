@@ -7,6 +7,7 @@
             [goog.string :as gstring]
             [nextjournal.devcards :as dc]
             [nextjournal.devcards.main :as devcards-main]
+            [nextjournal.clerk.viewer :as viewer]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.markdown :as markdown]
@@ -22,6 +23,7 @@
             [clojure.string :as str]
             [sci.core :as sci]
             [sci.impl.vars]))
+
 
 (defn color-classes [selected?]
   {:value-color (if selected? "white-90" "dark-green")
@@ -160,26 +162,8 @@
    (gstring/unescapeEntities "&nbsp;")
    value])
 
-(def default-viewers
-  [{:pred string? :fn #(html [:span.syntax-string.inspected-value "\"" % "\""])}
-   {:pred number? :fn #(html [:span.syntax-number.inspected-value
-                              (if (js/Number.isNaN %) "NaN" (str %))])}
-   {:pred symbol? :fn #(html [:span.syntax-symbol.inspected-value %])}
-   {:pred keyword? :fn #(html [:span.syntax-keyword.inspected-value (str %)])}
-   {:pred nil? :fn #(html [:span.syntax-nil.inspected-value "nil"])}
-   {:pred boolean? :fn #(html [:span.syntax-bool.inspected-value (str %)])}
-   {:pred fn? :fn #(html [:span.inspected-value [:span.syntax-tag "ƒ"] "()"])}
-   {:pred vector? :fn (partial coll-viewer {:open "[" :close "]"}) :fetch-opts {:n 20}}
-   {:pred list? :fn (partial coll-viewer {:open "(" :close ")"})  :fetch-opts {:n 20}}
-   {:pred set? :fn (partial coll-viewer {:open "#{" :close "}"}) :fetch-opts {:n 20}}
-   {:pred map? :fn map-viewer :fetch-opts {:n 20}}
-   {:pred array? :fn (partial coll-viewer {:open [:<> [:span.syntax-tag "#js "] "["] :close "]"})}
-   {:pred uuid? :fn #(html (tagged-value "#uuid" [inspect (str %)]))}
-   {:pred inst? :fn #(html (tagged-value "#inst" [inspect (str %)]))}
-   ;; TODO {:pred #(implements? IDeref %) :fn #(html (tagged-value "#atom" (inspect [%])))}
-   {:pred goog/isObject :fn object-viewer}
-
-   ;; named viewers
+(def named-viewers
+  [;; named viewers
    {:name :latex :pred string? :fn #(html (katex/to-html-string %))}
    {:name :mathjax :pred string? :fn mathjax/viewer}
    {:name :html :pred string? :fn #(html [:div {:dangerouslySetInnerHTML {:__html %}}])}
@@ -194,8 +178,40 @@
    {:name :clerk/var :fn var}
    {:name :clerk/blob :fn blob}])
 
+(def js-viewers
+  [{:pred goog/isObject :fn object-viewer}
+   {:pred array? :fn (partial coll-viewer {:open [:<> [:span.syntax-tag "#js "] "["] :close "]"})}])
 
-(def ^:dynamic *eval-form* nil)
+(def sci-viewer-namespace
+  {'html html
+   'view-as view-as
+   'inspect inspect
+   'coll-viewer coll-viewer
+   'map-viewer map-viewer
+   'tagged-value tagged-value
+   #_#_#_#_
+   'register-viewer! register-viewer!
+   'register-viewers! register-viewers!
+   'with-viewer with-viewer
+   'with-viewers with-viewers})
+
+(defonce ctx
+  (sci/init {:async? true
+             :disable-arity-checks true
+             :classes {'js goog/global
+                       :allow :all}
+             :bindings {'atom ratom/atom}
+             :namespaces {'nextjournal.viewer sci-viewer-namespace
+                          'v sci-viewer-namespace}}))
+
+
+(defn eval-form [f]
+  (sci/eval-form ctx f))
+
+(def ^:dynamic *eval-form* eval-form)
+
+(def default-viewers
+  (concat viewer/default-viewers js-viewers named-viewers))
 
 (defn error-badge [& content]
   [:div.bg-red-50.rounded-sm.text-xs.text-red-400.px-2.py-1.items-center.sans-serif.inline-flex
@@ -225,7 +241,7 @@
                [fn x opts])))
      (loop [v viewers]
        (if-let [{:keys [pred fn]} (first v)]
-         (if (and pred fn (pred x))
+         (if-let [fn (and pred fn (pred x) (if (list? fn) (*eval-form* fn) fn))]
            [fn x opts]
            (recur (rest v)))
          [error-badge "no matching viewer"])))))
@@ -258,9 +274,10 @@
            [:pre [:code.inspected-value (binding [*print-meta* true] (pr-str value))]] [:span.inspected-value " => "]
            [inspect value]])))
 
+(dc/defcard inspect-mini
+  [inspect {:hello :world}])
+
 (declare inspect)
-
-
 
 
 (comment
@@ -600,32 +617,6 @@
                     (random-uuid) (range 1000)
                     (random-uuid) (zipmap (range 1000) (range 1000)))})
 
-
-(def sci-viewer-namespace
-  {'html html
-   'view-as view-as
-   'inspect inspect
-   #_#_#_#_
-   'register-viewer! register-viewer!
-   'register-viewers! register-viewers!
-   'with-viewer with-viewer
-   'with-viewers with-viewers})
-
-
-(defonce ctx
-  (sci/init {:async? true
-             :disable-arity-checks true
-             :classes {'js goog/global
-                       :allow :all}
-             :bindings {'atom ratom/atom}
-             :namespaces {'nextjournal.viewer sci-viewer-namespace
-                          'v sci-viewer-namespace}}))
-
-
-(defn eval-form [f]
-  (sci/eval-form ctx f))
-
-(set! *eval-form* eval-form)
 
 
 (dc/defcard eval-viewer
