@@ -169,10 +169,10 @@
    {:pred nil? :fn #(html [:span.syntax-nil.inspected-value "nil"])}
    {:pred boolean? :fn #(html [:span.syntax-bool.inspected-value (str %)])}
    {:pred fn? :fn #(html [:span.inspected-value [:span.syntax-tag "ƒ"] "()"])}
-   {:pred vector? :fn (partial coll-viewer {:open "[" :close "]"})}
-   {:pred list? :fn (partial coll-viewer {:open "(" :close ")"})}
-   {:pred set? :fn (partial coll-viewer {:open "#{" :close "}"})}
-   {:pred map? :fn map-viewer}
+   {:pred vector? :fn (partial coll-viewer {:open "[" :close "]"}) :fetch-opts {:n 20}}
+   {:pred list? :fn (partial coll-viewer {:open "(" :close ")"})  :fetch-opts {:n 20}}
+   {:pred set? :fn (partial coll-viewer {:open "#{" :close "}"}) :fetch-opts {:n 20}}
+   {:pred map? :fn map-viewer :fetch-opts {:n 20}}
    {:pred array? :fn (partial coll-viewer {:open [:<> [:span.syntax-tag "#js "] "["] :close "]"})}
    {:pred uuid? :fn #(html (tagged-value "#uuid" [inspect (str %)]))}
    {:pred inst? :fn #(html (tagged-value "#inst" [inspect (str %)]))}

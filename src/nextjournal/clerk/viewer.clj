@@ -43,9 +43,12 @@
                                        :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
 black")}]) 1)
 
+;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
-  [{:pred string?}
+  [{:pred map? :fetch-opts {:n 3}}
+
+   {:pred string?}
    {:pred number?}
    {:pred symbol?}
    {:pred keyword?}
@@ -109,6 +112,7 @@ black")}]) 1)
        (cond
          (and (not= (count path)
                     (count current-path))
+              (not (map-entry? xs))
               (or (associative? xs)
                   (sequential? xs)
                   (and (string? xs) (< elide-string-length (count xs))))) elided
@@ -119,32 +123,19 @@ black")}]) 1)
          (and (string? xs) (< elide-string-length (count xs))) (subs xs 0 n)
          :else xs))))
 
-  (fetch {:n 10 :path [0 1]} {[1 2 3] [4 [5 6 7] 8] 3 4})
+  (fetch {:n 10 :path []} {1 2})
+  #_(fetch {:n 10 :path [0]} {[1 2 3]
+                              [4 [5 6 7] 8] 3 4})
   #_(fetch {:n 10 :path [2]} '(1 2 (1 2 3) 4 5))
   #_(fetch {:n 10 :path [2]} [1 2 [1 2 3] 4 5]))
 
-(def n 20)
 
-(do
-
-  (defn describe
-    ([xs]
-     (describe [] xs))
-    ([path xs]
-     (cond (map? xs) (let [children (remove (comp empty? :children)
-                                            (map #(describe (conj path %1) %2) (range) xs))]
-                       (cond-> {:count (count xs) :path path}
-                         (seq children) (assoc :children children)))
-           (map-entry? xs) {:path path}
-           (counted? xs) {:path path :count (count xs)
-                          :children (remove nil? (map #(describe (conj path %1) %2) (range) xs))}
-           (and (string? xs) (< n (count xs))) {:path path :count (count xs)}
-           :else nil)))
+(let [xs {1 2}
+      opts {:n 10}
+      current-path []]
   #_
-  (describe complex-thing)
-  (describe {:one [1 2 3] 1 2 3 4})
-  (describe [1 2 [1 2 3] 4 5]))
-
+  (into {} (comp (drop+take-xf opts) (map-indexed #(fetch opts (conj current-path %1) %2))) xs)
+  #_#_into [] (map-indexed #(fetch opts (conj current-path %1) %2) xs))
 
 (defn select-viewer
   ([x] (select-viewer x default-viewers))
@@ -162,14 +153,44 @@ black")}]) 1)
            (recur (rest v)))
          (throw (ex-info (str "cannot find matchting viewer") {:viewers viewers :x x})))))))
 
+
 #_(select-viewer {:one :two})
 #_(select-viewer [1 2 3])
 
 
+(def n 20)
+
+(do
+
+  (defn describe
+    ([xs]
+     (describe [] xs))
+    ([path xs]
+     (let [viewer (select-viewer xs)]
+       (cond (map? xs) (let [children (remove (comp empty? :children)
+                                              (map #(describe (conj path %1) %2) (range) xs))]
+                         (cond-> {:count (count xs)
+                                  :path path
+                                  :viewer viewer}
+                           (seq children) (assoc :children children)))
+             (counted? xs) (let [children (remove nil? (map #(describe (conj path %1) %2) (range) xs))]
+                             (cond-> {:path path
+                                      :count (count xs)
+                                      :viewer viewer}
+                               (seq children) (assoc :children children)))
+             (and (string? xs) (< n (count xs))) {:path path :count (count xs) :viewer viewer}
+             :else nil))))
+
+  (describe complex-thing)
+  #_(describe {:one [1 2 3] 1 2 3 4})
+  #_(describe [1 2 [1 2 3] 4 5]))
+
+;; maybe sort maps
+
+
 (let [x complex-thing
-      desc (describe x)
-      {:as root-viewer :keys [fetch-opts]} (select-viewer x)]
-  root-viewer)
+      {:as desc :keys [path]} (describe x)]
+  (fetch {:path [0 1] :n 20} x))
 
 ;; request first 20 map elements
 {:count 20
