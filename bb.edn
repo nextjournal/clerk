@@ -10,9 +10,9 @@
                     :task (shell (str tailwind-build-cmd " --watch"))
                     :depends [yarn-install]}
 
-         build:css {:doc  "Builds the css files with tailwindcss"
-                    :task (shell tailwind-build-cmd)
-                    :depends [yarn-install]}
+         release:css {:doc  "Builds the css files with tailwindcss for release"
+                      :task (shell tailwind-build-cmd {:extra-env {"NODE_ENV" "production"}})
+                      :depends [yarn-install]}
 
          -dev {:depends [watch:cljs watch:css]}
          dev {:doc "Start app in dev mode, compiles cljs and css"
