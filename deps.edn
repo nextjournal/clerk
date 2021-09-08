@@ -30,19 +30,6 @@
                                  cider/cider-nrepl {:mvn/version "0.26.0"}}
                     :main-opts ["-m" "shadow.cljs.devtools.cli" "watch" "browser"]}
 
-           :girouette {:replace-paths []
-                       :replace-deps {girouette/girouette {:deps/root "lib/girouette"
-                                                           :git/url "https://github.com/green-coder/girouette.git"
-                                                           :git/sha "6de4cd20b65de582cf238e9c8b381477ca772caf"}
-                                      girouette/processor {:deps/root "lib/processor"
-                                                           :git/url "https://github.com/green-coder/girouette.git"
-                                                           :git/sha "6de4cd20b65de582cf238e9c8b381477ca772caf"}}
-                       :ns-default girouette.processor
-                       :exec-fn process
-                       :exec-args {:css {:output-file "public/girouette.css"}
-                                   :watch? true
-                                   :input {:source-paths ["src"]}}}
-
            :demo {:extra-paths ["notebooks/src"]
                   :extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
                                org.xerial/sqlite-jdbc {:mvn/version "3.34.0"}
