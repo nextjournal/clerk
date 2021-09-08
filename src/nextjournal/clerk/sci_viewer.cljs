@@ -6,7 +6,7 @@
             [goog.object]
             [goog.string :as gstring]
             [nextjournal.devcards :as dc]
-            [nextjournal.devcards.main :as devcards-main]
+            [nextjournal.devcards.main]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
@@ -125,7 +125,12 @@
   (.stopPropagation event)
   (swap! expanded-at update path not))
 
-(defn coll-viewer [{:keys [open close]} xs {:as opts :keys [expanded-at path desc fetch-opts] :or {path []}}]
+(defn concat-into [xs ys]
+  (if (or (vector? xs) (set? xs) (map? xs))
+    (into xs ys)
+    (concat xs ys)))
+
+(defn coll-viewer [{:keys [open close]} xs {:as opts :keys [!x expanded-at path desc] :or {path []}}]
   (let [expanded? (some-> expanded-at deref (get path))]
     (html [:span.inspected-value
            {:class (when expanded? "inline-flex")}
@@ -136,9 +141,17 @@
             (into [:<>]
                   (comp (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)]))
                         (interpose (if expanded? [:<> [:br] nbsp] nbsp)))
-                  ;; TODO: render fetch more items
                   xs)
-            [:span {:on-click #((:fetch-fn desc) (assoc fetch-opts :offset (count xs)))} "Load more…"]
+
+            (when-some [more (let [more (- (:count desc) (count xs))]
+                               (when (pos? more) more))]
+              (let [fetch-opts (-> desc :viewer :fetch-opts)
+                    {:keys [fetch-fn]} desc]
+                [:<> nbsp
+                 [:span.bg-gray-200.hover:bg-gray-200.cursor-pointer.sans-serif.relative
+                  {:style {:border-radius 2 :padding "1px 3px" :font-size 11 :top -1}
+                   :on-click (fn [_e] (.then (fetch-fn (assoc fetch-opts :offset (count xs)))
+                                             #(swap! !x update path concat-into %)))} more " more…"]]))
             close]])))
 
 (defn map-viewer [xs {:as opts :keys [expanded-at path] :or {path []}}]
@@ -222,45 +235,53 @@
    (into [:div.ml-2.font-bold] content)])
 
 (def default-inspect-opts
-  {:viewers default-viewers :expanded-at (r/atom {}) :path []})
+  {:viewers default-viewers :path []})
 
 (defn map-inspect-xf [opts]
   (map (fn [x] [inspect x opts])))
 
+(defn inspect-class []
+  (r/create-class
+   {:component-did-mount (fn [c _])
+    :render (fn [])}))
+
 (defn inspect
   ([x]
    ;; TODO: normalize things here, evaluate viewers
-   (inspect x default-inspect-opts))
-  ([x {:as opts :keys [viewers fetch-fn]}]
-   ;; use viewer from description
-   ;; how to pass description
-   #_
-   (when-not x
-     (do :fetch-fn))
-   ;; TODO: local ratom to store what is fetched
    [context/consume :desc
-    (fn [{:as desc :keys [path fetch-fn viewer]}]
-      (when-not (seq path)
-        (let [v (fetch-fn (:fetch-opts viewer))]
-          (js/console.log :v v :opts (:fetch-opts viewer))))
-      (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
-        (let [x (:nextjournal/value x x)]
-          ;; TODO: pass whole viewer map
-          (cond (keyword? selected-viewer)
-                (if-let [{:keys [fn fetch-opts]} (get (into {} (map (juxt :name identity)) viewers) selected-viewer)]
-                  [fn x (assoc opts :fetch-opts fetch-opts)]
-                  [error-badge "cannot find viewer named " (str selected-viewer)])
-                (fn? selected-viewer)
-                [selected-viewer x opts]
-                (list? selected-viewer)
-                (let [fn (*eval-form* selected-viewer)]
-                  [fn x opts])))
-        (loop [v viewers]
-          (if-let [{:keys [pred fn]} (first v)]
-            (if-let [fn (and pred fn (pred x) (if (list? fn) (*eval-form* fn) fn))]
-              [fn x opts]
-              (recur (rest v)))
-            [error-badge "no matching viewer"]))))]))
+    (fn [{:as desc :keys [fetch-fn path viewer]}]
+      (let [{:as opts :keys [!x]} (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}) :desc desc)]
+        (js/console.log :init desc :x x)
+        (r/create-class
+         {:component-did-mount (fn [_c _]
+                                 (when-not x
+                                   (-> (fetch-fn (:fetch-opts viewer))
+                                       (.then (fn [x] (swap! !x assoc path x)))
+                                       (.catch (fn [e] (js/console.error e))))))
+          :render (fn []
+                    [inspect x opts])})))])
+  ([x {:as opts :keys [!x viewers path]}]
+   ;; TODO use viewer from description
+   (let [x (or x (some-> !x deref (get path)))]
+     (js/console.log :render x)
+     (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
+       (let [x (:nextjournal/value x x)]
+         ;; TODO: pass whole viewer map
+         (cond (keyword? selected-viewer)
+               (if-let [{:keys [fn fetch-opts]} (get (into {} (map (juxt :name identity)) viewers) selected-viewer)]
+                 [fn x (assoc opts :fetch-opts fetch-opts)]
+                 [error-badge "cannot find viewer named " (str selected-viewer)])
+               (fn? selected-viewer)
+               [selected-viewer x opts]
+               (list? selected-viewer)
+               (let [fn (*eval-form* selected-viewer)]
+                 [fn x opts])))
+       (loop [v viewers]
+         (if-let [{:keys [pred fn]} (first v)]
+           (if-let [fn (and pred fn (pred x) (if (list? fn) (*eval-form* fn) fn))]
+             [fn x opts]
+             (recur (rest v)))
+           [error-badge "no matching viewer"]))))))
 
 (dc/defcard inspect-values
   (into [:div]
@@ -600,27 +621,31 @@
             error (html [:span.red "error" (str error)])
             loading? (html "loading…")))))
 
+(defn in-process-fetch [xs opts]
+  (js/console.log :fetch opts)
+  (.resolve js/Promise (viewer/fetch xs opts)))
+
 (dc/defcard blob-in-process-fetch-vector
-  "Dev affordance that performs fetch in-process."
   []
   [:div
-   (when-let [v @(rf/subscribe [::blobs :vector])]
-     ;; TODO: move :fetch-fn to `describe`
-     [context/provide {:desc (assoc (viewer/describe v) :fetch-fn (partial viewer/fetch v))}
+   (when-let [xs @(rf/subscribe [::blobs :vector])]
+     [context/provide {:desc (assoc (viewer/describe xs) :fetch-fn (partial in-process-fetch xs))}
       [inspect nil]])]
-  {::blobs {:vector (vec (drop 500 (range 1000)))}})
+  {::blobs {:vector (vec (range 30))}})
 
 (dc/defcard blob-in-process-fetch
   "Dev affordance that performs fetch in-process."
   []
   [:div
-   (map (fn [[blob-id v]]
-          (js/console.log :blob-id (str blob-id) :desc (viewer/describe v))
-          ^{:key blob-id} [:div [inspect (viewer/describe v)]])
+   (map (fn [[blob-id xs]]
+          ^{:key blob-id}
+          [:div
+           [context/provide {:desc (assoc (viewer/describe xs) :fetch-fn (partial in-process-fetch xs))}
+            [inspect nil]]])
         @(rf/subscribe [::blobs]))]
-  {::blobs (hash-map (random-uuid) (vec (drop 500 (range 200)))
-                     (random-uuid) (range 200)
-                     (random-uuid) (zipmap (range 200) (range 200)))})
+  {::blobs (hash-map (random-uuid) (vec (range 30))
+                     (random-uuid) (range 40)
+                     #_#_(random-uuid) (zipmap (range 50) (range 50)))})
 
 
 
@@ -645,8 +670,6 @@
                                                             {:data [{:y (shuffle (range 10)) :name "The Federation" }
                                                                     {:y (shuffle (range 10)) :name "The Empire"}]})]])
 
-(defn ^:export  ^:dev/after-load devcards []
-  (devcards-main/init))
 
 (def ^:dynamic *viewers* nil)
 

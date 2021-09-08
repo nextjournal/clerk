@@ -117,12 +117,12 @@ black")}]) 1)
      (cond
        (and (not= (count path)
                   (count current-path))
-            (not (map-entry? xs))
+            (not (number? xs))
             (or (associative? xs)
                 (sequential? xs)
                 (and (string? xs) (< elide-string-length (count xs))))) elided
        (or (map? xs)
-           (vector? xs)) (into (empty xs)  (comp (drop+take-xf opts) (map-indexed #(fetch %2 opts (conj current-path %1)))) xs)
+           (vector? xs)) (into (empty xs) (comp (drop+take-xf opts) (map-indexed #(fetch %2 opts (conj current-path %1)))) xs)
        (sequential? xs) (sequence (comp (drop+take-xf opts) (map-indexed #(fetch %2 opts (conj current-path %1)))) xs)
        (and (string? xs) (< elide-string-length (count xs))) (subs xs 0 n)
        :else xs))))
@@ -130,7 +130,7 @@ black")}]) 1)
 
 #_(fetch {1 2} {:n 10 :path []})
 #_(fetch {[1 2 3]
-          [4 [5 6 7] 8] 3 4} {:n 10 :path [0]})
+          [4 [5 6 7] 8] 3 4} {:n 10 :path [0 1]})
 #_(fetch '(1 2 (1 2 3) 4 5) {:n 10 :path [2]})
 #_(fetch [1 2 [1 2 3] 4 5] {:n 10 :path [2]})
 #_(fetch (range 200) {:n 20 :path [] :offset 60})
