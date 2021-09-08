@@ -65,6 +65,8 @@
    [:head
     [:meta {:charset "UTF-8"}]
     (hiccup/include-css
+      "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
+    (hiccup/include-css
       (if live-js?
         "/css/app.css"
         "TODO"))
