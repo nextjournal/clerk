@@ -61,8 +61,8 @@ black")}]) 1)
    {:pred boolean? :fn '(fn [x] (v/html [:span.syntax-bool.inspected-value (str x)]))}
    {:pred fn? :fn '(fn [_] (v/html [:span.inspected-value [:span.syntax-tag "ƒ"] "()"]))}
    {:pred vector? :fn '(partial v/coll-viewer {:open "[" :close "]"}) :fetch-opts {:n 20}}
-   {:pred list? :fn '(partial v/coll-viewer {:open "(" :close ")"})  :fetch-opts {:n 20}}
    {:pred set? :fn '(partial v/coll-viewer {:open "#{" :close "}"}) :fetch-opts {:n 20}}
+   {:pred (some-fn list? sequential?) :fn '(partial v/coll-viewer {:open "(" :close ")"})  :fetch-opts {:n 20}}
    {:pred map? :fn '(partial v/map-viewer) :fetch-opts {:n 20}}
    {:pred uuid? :fn '(fn [x] (v/html (v/tagged-value "#uuid" ['nextjournal.clerk.sci-viewer/inspect (str x)])))}
    {:pred inst? :fn '(fn [x] (v/html (v/tagged-value "#inst" ['nextjournal.clerk.sci-viewer/inspect (str x)])))}])
@@ -93,26 +93,27 @@ black")}]) 1)
 
 (defn drop+take-xf [{:keys [n offset]
                      :or {offset 0}}]
+  (assert (pos-int? n) "n must be a positive integer")
   (comp (drop offset)
         (take n)))
 
 #_(sequence (drop+take-xf {:n 10}) (range 100))
 #_(sequence (drop+take-xf {:n 10 :offset 10}) (range 100))
-
 (defn fetch
-  ([opts xs]
-   (fetch opts [] xs))
-  ([{:as opts :keys [path n]} current-path xs]
-   #_(prn :current-path current-path :path path :xs xs)
+  ([xs opts]
+   #_(prn :start-fetch xs :opts opts)
+   (fetch xs opts []))
+  ([xs {:as opts :keys [path n]} current-path]
+   #_(prn :xs xs :opts opts :current-path current-path)
    (if (< (count current-path)
           (count path))
      (let [idx (first (drop (count current-path) path))]
        #_(prn :idx idx)
-       (fetch opts
-              (conj current-path idx)
-              (cond (map? xs) (nth (seq xs) idx)
+       (fetch (cond (map? xs) (nth (seq xs) idx)
                     (associative? xs) (get xs idx)
-                    (sequential? xs) (nth xs idx))))
+                    (sequential? xs) (nth xs idx))
+              opts
+              (conj current-path idx)))
      (cond
        (and (not= (count path)
                   (count current-path))
@@ -120,18 +121,19 @@ black")}]) 1)
             (or (associative? xs)
                 (sequential? xs)
                 (and (string? xs) (< elide-string-length (count xs))))) elided
-       (map? xs) (into {} (comp (drop+take-xf opts) (map-indexed #(fetch opts (conj current-path %1) %2))) xs)
-       ;; TODO: debug why error reportig is broken when removing the following line
-       (vector? xs) (into [] (comp (drop+take-xf opts) (map-indexed #(fetch opts (conj current-path %1) %2))) xs)
-       (sequential? xs) (sequence (comp (drop+take-xf opts) (map-indexed #(fetch opts (conj current-path %1) %2))) xs)
+       (or (map? xs)
+           (vector? xs)) (into (empty xs)  (comp (drop+take-xf opts) (map-indexed #(fetch %2 opts (conj current-path %1)))) xs)
+       (sequential? xs) (sequence (comp (drop+take-xf opts) (map-indexed #(fetch %2 opts (conj current-path %1)))) xs)
        (and (string? xs) (< elide-string-length (count xs))) (subs xs 0 n)
        :else xs))))
 
-#_(fetch {:n 10 :path []} {1 2})
-#_(fetch {:n 10 :path [0]} {[1 2 3]
-                            [4 [5 6 7] 8] 3 4})
-#_(fetch {:n 10 :path [2]} '(1 2 (1 2 3) 4 5))
-#_(fetch {:n 10 :path [2]} [1 2 [1 2 3] 4 5])
+
+#_(fetch {1 2} {:n 10 :path []})
+#_(fetch {[1 2 3]
+          [4 [5 6 7] 8] 3 4} {:n 10 :path [0]})
+#_(fetch '(1 2 (1 2 3) 4 5) {:n 10 :path [2]})
+#_(fetch [1 2 [1 2 3] 4 5] {:n 10 :path [2]})
+#_(fetch (range 200) {:n 20 :path [] :offset 60})
 
 
 (let [xs {1 2}
@@ -160,7 +162,7 @@ black")}]) 1)
 
 #_(select-viewer {:one :two})
 #_(select-viewer [1 2 3])
-
+#_(select-viewer (range 3))
 
 (def n 20)
 
@@ -184,6 +186,8 @@ black")}]) 1)
            (and (string? xs) (< n (count xs))) {:path path :count (count xs) :viewer viewer}
            :else nil))))
 
+(select-viewer (range 10))
+
 #_(describe complex-thing)
 #_(describe {:one [1 2 3] 1 2 3 4})
 #_(describe [1 2 [1 2 3] 4 5])
@@ -191,9 +195,10 @@ black")}]) 1)
 ;; maybe sort maps
 
 
-(let [x complex-thing
-      {:as desc :keys [path]} (describe x)]
-  (fetch {:path [0 1] :n 20} x))
+(comment
+  (let [x complex-thing
+        {:as desc :keys [path]} (describe x)]
+    (fetch x {:path [0 1] :n 20})))
 
 ;; request first 20 map elements
 {:count 20
@@ -273,3 +278,6 @@ black")}]) 1)
 
 (defn registration? [x]
   (boolean (-> x meta :nextjournal/value #{::register!})))
+
+(defn ^:deprecated paginate [x]
+  x)

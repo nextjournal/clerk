@@ -125,7 +125,7 @@
   (.stopPropagation event)
   (swap! expanded-at update path not))
 
-(defn coll-viewer [{:keys [open close]} xs {:as opts :keys [expanded-at path] :or {path []}}]
+(defn coll-viewer [{:keys [open close]} xs {:as opts :keys [expanded-at path desc fetch-opts] :or {path []}}]
   (let [expanded? (some-> expanded-at deref (get path))]
     (html [:span.inspected-value
            {:class (when expanded? "inline-flex")}
@@ -136,7 +136,9 @@
             (into [:<>]
                   (comp (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)]))
                         (interpose (if expanded? [:<> [:br] nbsp] nbsp)))
+                  ;; TODO: render fetch more items
                   xs)
+            [:span {:on-click #((:fetch-fn desc) (assoc fetch-opts :offset (count xs)))} "Load more…"]
             close]])))
 
 (defn map-viewer [xs {:as opts :keys [expanded-at path] :or {path []}}]
@@ -226,25 +228,39 @@
   (map (fn [x] [inspect x opts])))
 
 (defn inspect
-  ([x] (inspect x default-inspect-opts))
-  ([x {:as opts :keys [viewers]}]
-   (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
-     (let [x (:nextjournal/value x x)]
-       (cond (keyword? selected-viewer)
-             (if-let [fn (get (into {} (map (juxt :name :fn)) viewers) selected-viewer)]
-               [fn x opts]
-               [error-badge "cannot find viewer named " (str selected-viewer)])
-             (fn? selected-viewer)
-             [selected-viewer x opts]
-             (list? selected-viewer)
-             (let [fn (*eval-form* selected-viewer)]
-               [fn x opts])))
-     (loop [v viewers]
-       (if-let [{:keys [pred fn]} (first v)]
-         (if-let [fn (and pred fn (pred x) (if (list? fn) (*eval-form* fn) fn))]
-           [fn x opts]
-           (recur (rest v)))
-         [error-badge "no matching viewer"])))))
+  ([x]
+   ;; TODO: normalize things here, evaluate viewers
+   (inspect x default-inspect-opts))
+  ([x {:as opts :keys [viewers fetch-fn]}]
+   ;; use viewer from description
+   ;; how to pass description
+   #_
+   (when-not x
+     (do :fetch-fn))
+   ;; TODO: local ratom to store what is fetched
+   [context/consume :desc
+    (fn [{:as desc :keys [path fetch-fn viewer]}]
+      (when-not (seq path)
+        (let [v (fetch-fn (:fetch-opts viewer))]
+          (js/console.log :v v :opts (:fetch-opts viewer))))
+      (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
+        (let [x (:nextjournal/value x x)]
+          ;; TODO: pass whole viewer map
+          (cond (keyword? selected-viewer)
+                (if-let [{:keys [fn fetch-opts]} (get (into {} (map (juxt :name identity)) viewers) selected-viewer)]
+                  [fn x (assoc opts :fetch-opts fetch-opts)]
+                  [error-badge "cannot find viewer named " (str selected-viewer)])
+                (fn? selected-viewer)
+                [selected-viewer x opts]
+                (list? selected-viewer)
+                (let [fn (*eval-form* selected-viewer)]
+                  [fn x opts])))
+        (loop [v viewers]
+          (if-let [{:keys [pred fn]} (first v)]
+            (if-let [fn (and pred fn (pred x) (if (list? fn) (*eval-form* fn) fn))]
+              [fn x opts]
+              (recur (rest v)))
+            [error-badge "no matching viewer"]))))]))
 
 (dc/defcard inspect-values
   (into [:div]
@@ -538,36 +554,11 @@
 
 #_(opts->query {:s 10 :num 42})
 
-
-(defn describe [result]
-  #_
-  (cond-> {:nextjournal/type-key (value-type result) :blob/id (-> result meta :blob/id)}
-    (counted? result)
-    (assoc :count (count result))))
-
-#_(describe (vec (range 100)))
-
-(defn paginate [result {:as opts :keys [start n] :or {start 0}}]
-  #_(log/info :paginate {:start start :n n :result result})
-  (if (and (number? n)
-           (pos? n)
-           (not (or (map? result)
-                    (set? result)))
-           (counted? result))
-    (with-meta (->> result (drop start) (take n) doall) (merge opts (describe result)))
-    result))
-
-#_(meta (paginate (vec (range 10)) {:n 20}))
-#_(meta (paginate (vec (range 100)) {:n 20}))
-#_(meta (paginate (zipmap (range 100) (range 100)) {:n 20}))
-#_(paginate #{1 2 3} {:n 20})
-
 (rf/reg-sub
  ::blobs
- (fn [db [blob-key id :as v]]
-   (if id
-     (get-in db v)
-     (get db blob-key))))
+ (fn [db [blob-key id :as q]]
+   (cond-> (get db blob-key)
+     id (get id))))
 
 
 (defn fetch! [!result {:blob/keys [id]} opts]
@@ -577,7 +568,7 @@
       (.then #(.text %))
       (.then #(reset! !result {:value (read-string %)}))
       (.catch #(reset! !result {:error %}))))
-
+#_
 (defn in-process-fetch! [!result {:blob/keys [id]} opts]
   (-> (js/Promise. (fn [resolve _reject]
                      (resolve @(rf/subscribe [::blobs id]))))
@@ -596,6 +587,7 @@
 #_(get-fetch-opts {})
 #_(get-fetch-opts {:type-key :vector :count 1000})
 
+#_
 (defn blob [blob]
   (r/with-let [!result (r/atom {:loading? true})
                fetch! (partial (:blob/fetch! blob fetch!) !result blob)
@@ -608,14 +600,27 @@
             error (html [:span.red "error" (str error)])
             loading? (html "loading…")))))
 
+(dc/defcard blob-in-process-fetch-vector
+  "Dev affordance that performs fetch in-process."
+  []
+  [:div
+   (when-let [v @(rf/subscribe [::blobs :vector])]
+     ;; TODO: move :fetch-fn to `describe`
+     [context/provide {:desc (assoc (viewer/describe v) :fetch-fn (partial viewer/fetch v))}
+      [inspect nil]])]
+  {::blobs {:vector (vec (drop 500 (range 1000)))}})
+
 (dc/defcard blob-in-process-fetch
   "Dev affordance that performs fetch in-process."
-  (into [:div]
-        (map (fn [[blob-id v]] [:div [inspect (view-as :clerk/blob (assoc (describe (with-meta v {:blob/id blob-id})) :blob/fetch! in-process-fetch!))]]))
-        @(rf/subscribe [::blobs]))
-  {:blobs (hash-map (random-uuid) (vec (drop 500 (range 1000)))
-                    (random-uuid) (range 1000)
-                    (random-uuid) (zipmap (range 1000) (range 1000)))})
+  []
+  [:div
+   (map (fn [[blob-id v]]
+          (js/console.log :blob-id (str blob-id) :desc (viewer/describe v))
+          ^{:key blob-id} [:div [inspect (viewer/describe v)]])
+        @(rf/subscribe [::blobs]))]
+  {::blobs (hash-map (random-uuid) (vec (drop 500 (range 200)))
+                     (random-uuid) (range 200)
+                     (random-uuid) (zipmap (range 200) (range 200)))})
 
 
 
@@ -640,7 +645,7 @@
                                                             {:data [{:y (shuffle (range 10)) :name "The Federation" }
                                                                     {:y (shuffle (range 10)) :name "The Empire"}]})]])
 
-(defn ^:export ^:dev/after-load devcards []
+(defn ^:export  ^:dev/after-load devcards []
   (devcards-main/init))
 
 (def ^:dynamic *viewers* nil)
