@@ -6,7 +6,8 @@
             [goog.object]
             [goog.string :as gstring]
             [nextjournal.devcards :as dc]
-            [nextjournal.devcards.main]
+            [nextjournal.devcards.routes :as router]
+            [nextjournal.devcards-ui :as devcards-ui]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
@@ -14,17 +15,16 @@
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
             [nextjournal.viewer.vega-lite :as vega-lite]
-            [nextjournal.view.context :as context]
-            [nextjournal.view :refer [defview]]
-            [react :as react]
             [reagent.core :as r]
             [reagent.ratom :as ratom]
             [reagent.dom :as rdom]
+            [reitit.frontend]
+            [reitit.frontend.easy :as rfe]
+            [reitit.frontend.history :as rfh]
             [re-frame.context :as rf]
             [clojure.string :as str]
             [sci.core :as sci]
             [sci.impl.vars]))
-
 
 (defn color-classes [selected?]
   {:value-color (if selected? "white-90" "dark-green")
@@ -45,9 +45,9 @@
   (if (meta? data)
     data
     (assoc (core/meta data)
-      :nextjournal/value (cond-> data
-                           ;; IMeta is a protocol in cljs
-                           (satisfies? IWithMeta data) (core/with-meta {})))))
+           :nextjournal/value (cond-> data
+                                ;; IMeta is a protocol in cljs
+                                (satisfies? IWithMeta data) (core/with-meta {})))))
 
 (defn with-meta [data m]
   (cond (meta? data) (assoc m :nextjournal/value (:nextjournal/value data))
@@ -311,8 +311,6 @@
            [:pre [:code.inspected-value (binding [*print-meta* true] (pr-str value))]] [:span.inspected-value " => "]
            [inspect value]])))
 
-(dc/defcard inspect-mini
-  [inspect {:hello :world}])
 
 (declare inspect)
 
@@ -812,3 +810,20 @@ black")}])}
            [inspect x]]
       [:div.mb-4.overflow-x-hidden
        [inspect y]]]]))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; routing workaround
+;; TODO: remove me when fixed upstream
+
+(defn devcards []
+  (if-let [{:keys [data path-params]} @router/match]
+    [devcards-ui/layout (merge data path-params)]
+    [:pre "no match!"]))
+
+(defn ^:dev/after-load mount-app []
+  (r/render [devcards] (js/document.getElementById "app")))
+
+(defn ^:export init []
+  (rfe/start! router/router #(reset! router/match %1) {:use-fragment @router/use-fragment?})
+  (mount-app))
