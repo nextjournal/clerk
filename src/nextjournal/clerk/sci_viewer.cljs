@@ -131,7 +131,7 @@
     (into xs ys)
     (concat xs ys)))
 
-(defn coll-viewer [{:keys [open close]} xs {:as opts :keys [!x expanded-at path desc] :or {path []}}]
+(defn coll-viewer [{:keys [open close]} xs {:as opts :keys [!x expanded-at path desc path->count] :or {path []}}]
   (let [expanded? (some-> expanded-at deref (get path))]
     (html [:span.inspected-value
            {:class (when expanded? "inline-flex")}
@@ -143,8 +143,7 @@
                   (comp (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)]))
                         (interpose (if expanded? [:<> [:br] nbsp] nbsp)))
                   xs)
-
-            (when-some [more (let [more (- (:count desc) (count xs))]
+            (when-some [more (let [more (- (get path->count path) (count xs))]
                                (when (pos? more) more))]
               (let [fetch-opts (-> desc :viewer :fetch-opts)
                     {:keys [fetch-fn]} desc]
@@ -154,6 +153,14 @@
                    :on-click (fn [_e] (.then (fetch-fn (assoc fetch-opts :offset (count xs)))
                                              #(swap! !x update path concat-into %)))} more " more…"]]))
             close]])))
+
+(defn elision-viewer [_ {:as opts :keys [!x path desc] :or {path []}}]
+  (let [fetch-opts (-> desc :viewer :fetch-opts)
+        {:keys [fetch-fn]} desc]
+    [:span.bg-gray-200.hover:bg-gray-200.cursor-pointer.sans-serif.relative
+     {:style {:border-radius 2 :padding "1px 3px" :font-size 11 :top -1}
+      :on-click (fn [_e] (.then (fetch-fn (assoc fetch-opts :path path))
+                                (fn [x] (swap! !x assoc path x))))} "…"]))
 
 (defn map-viewer [xs {:as opts :keys [expanded-at path] :or {path []}}]
   (let [expanded? (some-> expanded-at deref (get path))]
@@ -198,6 +205,7 @@
   [{:pred goog/isObject :fn object-viewer}
    {:pred array? :fn (partial coll-viewer {:open [:<> [:span.syntax-tag "#js "] "["] :close "]"})}])
 
+
 (def sci-viewer-namespace
   {'html html
    'view-as view-as
@@ -227,7 +235,7 @@
 (def ^:dynamic *eval-form* eval-form)
 
 (def default-viewers
-  (concat viewer/default-viewers js-viewers named-viewers))
+  (concat [{:pred (partial = :nextjournal/…) :fn elision-viewer}] viewer/default-viewers js-viewers named-viewers))
 
 (defn error-badge [& content]
   [:div.bg-red-50.rounded-sm.text-xs.text-red-400.px-2.py-1.items-center.sans-serif.inline-flex
@@ -246,7 +254,7 @@
    (inspect x (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}))))
   ([x {:as opts :keys [!x viewers path]}]
    ;; TODO use viewer from description
-   (let [x (or x (some-> !x deref (get path)))]
+   (let [x (or (some-> !x deref (get path)) x)]
      (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
        (let [x (:nextjournal/value x x)]
          ;; TODO: pass whole viewer map
@@ -267,7 +275,7 @@
            [error-badge "no matching viewer"]))))))
 
 (defn inspect-lazy [{:as desc :keys [fetch-fn]}]
-  (let [{:as opts :keys [path !x]} (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}) :desc desc)
+  (let [{:as opts :keys [path !x]} (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}) :desc desc :path->count (viewer/path->count desc))
         {:keys [viewer]} desc]
     (r/create-class
      {:display-name "inspect-lazy"
@@ -575,7 +583,7 @@
 
 (rf/reg-sub
  ::blobs
- (fn [db [blob-key id :as q]]
+ (fn [db [blob-key id]]
    (cond-> (get db blob-key)
      id (get id))))
 
@@ -627,9 +635,11 @@
 (dc/defcard blob-in-process-fetch-single
   []
   [:div
-   (when-let [xs @(rf/subscribe [::blobs :map])]
+   (when-let [xs @(rf/subscribe [::blobs :vector-nested-taco])]
      [inspect-lazy (assoc (viewer/describe xs) :fetch-fn (partial in-process-fetch xs))])]
   {::blobs {:vector (vec (range 30))
+            :vector-nested [1 [2] 3]
+            :vector-nested-taco '[l [l [l [l [🌮] r] r] r] r]
             :list (range 30)
             :map-1 {:hello :world}
             :map (zipmap (range 30) (range 30))}})

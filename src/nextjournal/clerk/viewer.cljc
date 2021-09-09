@@ -137,6 +137,10 @@ black")}]) 1)
 #_(fetch [1 2 [1 2 3] 4 5] {:n 10 :path [2]})
 #_(fetch (range 200) {:n 20 :path [] :offset 60})
 #_(fetch {[1] [1] [2] [2]} {:n 10}) ;; TODO
+#_(let [xs [1 [2] 3]
+        path [1]]
+    (-> (fetch xs {:n 3 :path []})
+        (assoc-in path (fetch xs {:n 3 :path path}))))
 
 
 (let [xs {1 2}
@@ -169,7 +173,6 @@ black")}]) 1)
 
 (def n 20)
 
-
 (defn describe
   ([xs]
    (describe [] xs))
@@ -189,11 +192,15 @@ black")}]) 1)
            (and (string? xs) (< n (count xs))) {:path path :count (count xs) :viewer viewer}
            :else nil))))
 
-(select-viewer (range 10))
-
 #_(describe complex-thing)
 #_(describe {:one [1 2 3] 1 2 3 4})
 #_(describe [1 2 [1 2 3] 4 5])
+
+(defn path->count [desc]
+  (into {} (map (juxt :path :count)) (tree-seq (some-fn sequential? map?) :children desc)))
+
+#_(path->count (describe [1 [2] 3]))
+
 
 ;; maybe sort maps
 
