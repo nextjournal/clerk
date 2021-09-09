@@ -624,12 +624,15 @@
   (js/console.log :fetch opts)
   (.resolve js/Promise (viewer/fetch xs opts)))
 
-(dc/defcard blob-in-process-fetch-vector
+(dc/defcard blob-in-process-fetch-single
   []
   [:div
-   (when-let [xs @(rf/subscribe [::blobs :vector])]
+   (when-let [xs @(rf/subscribe [::blobs :map])]
      [inspect-lazy (assoc (viewer/describe xs) :fetch-fn (partial in-process-fetch xs))])]
-  {::blobs {:vector (assoc (vec (range 30)) 3 3 #_(vec (range 10)))}})
+  {::blobs {:vector (vec (range 30))
+            :list (range 30)
+            :map-1 {:hello :world}
+            :map (zipmap (range 30) (range 30))}})
 
 (dc/defcard blob-in-process-fetch
   "Dev affordance that performs fetch in-process."
