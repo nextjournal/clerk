@@ -15,6 +15,7 @@
             [nextjournal.viewer.plotly :as plotly]
             [nextjournal.viewer.vega-lite :as vega-lite]
             [nextjournal.view.context :as context]
+            [nextjournal.view :refer [defview]]
             [react :as react]
             [reagent.core :as r]
             [reagent.ratom :as ratom]
@@ -240,30 +241,12 @@
 (defn map-inspect-xf [opts]
   (map (fn [x] [inspect x opts])))
 
-(defn inspect-class []
-  (r/create-class
-   {:component-did-mount (fn [c _])
-    :render (fn [])}))
-
 (defn inspect
   ([x]
-   ;; TODO: normalize things here, evaluate viewers
-   [context/consume :desc
-    (fn [{:as desc :keys [fetch-fn path viewer]}]
-      (let [{:as opts :keys [!x]} (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}) :desc desc)]
-        (js/console.log :init desc :x x)
-        (r/create-class
-         {:component-did-mount (fn [_c _]
-                                 (when-not x
-                                   (-> (fetch-fn (:fetch-opts viewer))
-                                       (.then (fn [x] (swap! !x assoc path x)))
-                                       (.catch (fn [e] (js/console.error e))))))
-          :render (fn []
-                    [inspect x opts])})))])
+   (inspect x (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}))))
   ([x {:as opts :keys [!x viewers path]}]
    ;; TODO use viewer from description
    (let [x (or x (some-> !x deref (get path)))]
-     (js/console.log :render x)
      (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
        (let [x (:nextjournal/value x x)]
          ;; TODO: pass whole viewer map
@@ -272,7 +255,7 @@
                  [fn x (assoc opts :fetch-opts fetch-opts)]
                  [error-badge "cannot find viewer named " (str selected-viewer)])
                (fn? selected-viewer)
-               [selected-viewer x opts]
+               (selected-viewer x opts)
                (list? selected-viewer)
                (let [fn (*eval-form* selected-viewer)]
                  [fn x opts])))
@@ -282,6 +265,23 @@
              [fn x opts]
              (recur (rest v)))
            [error-badge "no matching viewer"]))))))
+
+(defn inspect-lazy [{:as desc :keys [fetch-fn]}]
+  (let [{:as opts :keys [path !x]} (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}) :desc desc)
+        {:keys [viewer]} desc]
+    (r/create-class
+     {:display-name "inspect-lazy"
+      :component-did-mount
+      (fn [_this]
+        (-> (fetch-fn (:fetch-opts viewer))
+            (.then (fn [x] (swap! !x assoc path x)))
+            (.catch (fn [e] (js/console.error e)))))
+
+      :reagent-render
+      (fn render-inspect-lazy [_]
+        (if (seq @!x)
+          [inspect nil opts]
+          [:span "loading…"]))})))
 
 (dc/defcard inspect-values
   (into [:div]
@@ -621,6 +621,7 @@
             error (html [:span.red "error" (str error)])
             loading? (html "loading…")))))
 
+
 (defn in-process-fetch [xs opts]
   (js/console.log :fetch opts)
   (.resolve js/Promise (viewer/fetch xs opts)))
@@ -629,9 +630,8 @@
   []
   [:div
    (when-let [xs @(rf/subscribe [::blobs :vector])]
-     [context/provide {:desc (assoc (viewer/describe xs) :fetch-fn (partial in-process-fetch xs))}
-      [inspect nil]])]
-  {::blobs {:vector (vec (range 30))}})
+     [inspect-lazy (assoc (viewer/describe xs) :fetch-fn (partial in-process-fetch xs))])]
+  {::blobs {:vector (assoc (vec (range 30)) 3 3 #_(vec (range 10)))}})
 
 (dc/defcard blob-in-process-fetch
   "Dev affordance that performs fetch in-process."
@@ -640,8 +640,7 @@
    (map (fn [[blob-id xs]]
           ^{:key blob-id}
           [:div
-           [context/provide {:desc (assoc (viewer/describe xs) :fetch-fn (partial in-process-fetch xs))}
-            [inspect nil]]])
+           [inspect-lazy (assoc (viewer/describe xs) :fetch-fn (partial in-process-fetch xs))]])
         @(rf/subscribe [::blobs]))]
   {::blobs (hash-map (random-uuid) (vec (range 30))
                      (random-uuid) (range 40)
