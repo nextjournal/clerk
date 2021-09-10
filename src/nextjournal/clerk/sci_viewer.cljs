@@ -18,9 +18,7 @@
             [reagent.core :as r]
             [reagent.ratom :as ratom]
             [reagent.dom :as rdom]
-            [reitit.frontend]
             [reitit.frontend.easy :as rfe]
-            [reitit.frontend.history :as rfh]
             [re-frame.context :as rf]
             [clojure.string :as str]
             [sci.core :as sci]
@@ -632,11 +630,14 @@
   (js/console.log :fetch opts)
   (.resolve js/Promise (viewer/fetch xs opts)))
 
+(defn lazy-inspect-in-process [xs]
+  [inspect-lazy (assoc (viewer/describe xs) :fetch-fn (partial in-process-fetch xs))])
+
 (dc/defcard blob-in-process-fetch-single
   []
   [:div
    (when-let [xs @(rf/subscribe [::blobs :vector-nested-taco])]
-     [inspect-lazy (assoc (viewer/describe xs) :fetch-fn (partial in-process-fetch xs))])]
+     [lazy-inspect-in-process xs])]
   {::blobs {:vector (vec (range 30))
             :vector-nested [1 [2] 3]
             :vector-nested-taco '[l [l [l [l [🌮] r] r] r] r]
@@ -651,11 +652,11 @@
    (map (fn [[blob-id xs]]
           ^{:key blob-id}
           [:div
-           [inspect-lazy (assoc (viewer/describe xs) :fetch-fn (partial in-process-fetch xs))]])
+           [lazy-inspect-in-process xs]])
         @(rf/subscribe [::blobs]))]
   {::blobs (hash-map (random-uuid) (vec (range 30))
                      (random-uuid) (range 40)
-                     #_#_(random-uuid) (zipmap (range 50) (range 50)))})
+                     (random-uuid) (zipmap (range 50) (range 50)))})
 
 
 
@@ -812,6 +813,8 @@ black")}])}
       {:style {:margin-right -12}}
       [:div.mb-4.overflow-x-hidden
        [inspect x]]
+      [:div.mb-4.overflow-x-hidden
+       [lazy-inspect-in-process x]]
       [:div.mb-4.overflow-x-hidden
        [inspect x {:viewers default-viewers
                    :path []
