@@ -117,7 +117,7 @@
 
 (declare notebook)
 (declare var)
-(declare blob)
+(declare result)
 
 (defn toggle-expanded [expanded-at path event]
   (.preventDefault event)
@@ -197,7 +197,7 @@
 
    {:name :clerk/notebook :fn notebook}
    {:name :clerk/var :fn var}
-   {:name :clerk/blob :fn blob}])
+   {:name :clerk/result :fn result}])
 
 (def js-viewers
   [{:pred goog/isObject :fn object-viewer}
@@ -274,6 +274,7 @@
 
 (defn inspect-lazy [{:as desc :keys [fetch-fn]}]
   (let [{:as opts :keys [path->info !x]} (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}) :desc desc :path->info (viewer/path->info desc))]
+    (js/console.log :lazy desc)
     (r/create-class
      {:display-name "inspect-lazy"
       :component-did-mount
@@ -586,13 +587,12 @@
      id (get id))))
 
 
-(defn fetch! [!result {:blob/keys [id]} opts]
-  #_(log/trace :fetch! opts)
-  (-> (js/fetch (str "_blob/" id (when (seq opts)
-                                   (str "?" (opts->query opts)))))
+(defn fetch! [{:keys [blob-id]} opts]
+  (js/console.log :fetch! blob-id opts)
+  (-> (js/fetch (str "_blob/" blob-id (when (seq opts)
+                                        (str "?" (opts->query opts)))))
       (.then #(.text %))
-      (.then #(reset! !result {:value (read-string %)}))
-      (.catch #(reset! !result {:error %}))))
+      (.then #(read-string %))))
 #_
 (defn in-process-fetch! [!result {:blob/keys [id]} opts]
   (-> (js/Promise. (fn [resolve _reject]
@@ -612,18 +612,10 @@
 #_(get-fetch-opts {})
 #_(get-fetch-opts {:type-key :vector :count 1000})
 
-#_
-(defn blob [blob]
-  (r/with-let [!result (r/atom {:loading? true})
-               fetch! (partial (:blob/fetch! blob fetch!) !result blob)
-               _ (fetch! (get-fetch-opts blob))]
-    (let [{:keys [value error loading?]} @!result]
-      (cond value (view-as :reagent [inspect value]
-                           ;; TODO
-                           #_[context/provide {:fetch! fetch!}
-                              [inspect value]])
-            error (html [:span.red "error" (str error)])
-            loading? (html "loading…")))))
+
+(defn result [desc]
+  (js/console.log :result desc)
+  [inspect-lazy (assoc desc :fetch-fn (partial fetch! desc))])
 
 
 (defn in-process-fetch [xs opts]

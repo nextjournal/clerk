@@ -195,6 +195,8 @@ black")}]) 1)
 #_(describe complex-thing)
 #_(describe {:one [1 2 3] 1 2 3 4})
 #_(describe [1 2 [1 2 3] 4 5])
+
+
 (defn extract-info [{:as desc :keys [path]}]
   (-> desc
       (select-keys [:count])

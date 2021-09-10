@@ -27,11 +27,11 @@
 
 #_(update-if {:n "42"} :n #(Integer/parseInt %))
 
-(defn get-pagination-opts [query-string]
+(defn get-fetch-opts [query-string]
   (-> query-string
       uri/query-string->map
       (update-if :n #(Integer/parseInt %))
-      (update-if :start #(Integer/parseInt %))))
+      (update-if :offset #(Integer/parseInt %))))
 
 #_(get-pagination-opts "")
 #_(get-pagination-opts "foo=bar&n=42&start=20")
@@ -40,10 +40,11 @@
   (let [blob->result (meta @!doc)
         blob-id (str/replace uri "/_blob/" "")]
     (if (contains? blob->result blob-id)
-      {:status 200
-       #_#_ ;; leaving this out for now so I can open it directly
-       :headers {"Content-Type" "application/edn"}
-       :body (view/->edn (v/paginate (blob->result blob-id) (get-pagination-opts query-string)))}
+      (do
+        {:status 200
+         #_#_ ;; leaving this out for now so I can open it directly
+         :headers {"Content-Type" "application/edn"}
+         :body (view/->edn (v/fetch (blob->result blob-id) (get-fetch-opts query-string)))})
       {:status 404})))
 
 (defn app [{:as req :keys [uri]}]

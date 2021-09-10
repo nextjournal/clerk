@@ -16,7 +16,7 @@
                                             (instance? clojure.lang.IMeta result)
                                             (contains? (meta result) :blob/id)
                                             (not (v/registration? result)))
-                                     (v/view-as :clerk/blob (v/describe result))
+                                     (v/view-as :clerk/result (assoc (v/describe result) :blob-id (-> result meta :blob/id)))
                                      result))))))
          doc)))
 
