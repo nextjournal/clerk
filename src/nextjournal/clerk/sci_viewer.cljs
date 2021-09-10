@@ -129,7 +129,7 @@
     (into xs ys)
     (concat xs ys)))
 
-(defn coll-viewer [{:keys [open close]} xs {:as opts :keys [!x expanded-at path desc path->count] :or {path []}}]
+(defn coll-viewer [{:keys [open close]} xs {:as opts :keys [!x expanded-at path desc path->info] :or {path []}}]
   (let [expanded? (some-> expanded-at deref (get path))]
     (html [:span.inspected-value
            {:class (when expanded? "inline-flex")}
@@ -141,7 +141,7 @@
                   (comp (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)]))
                         (interpose (if expanded? [:<> [:br] nbsp] nbsp)))
                   xs)
-            (when-some [more (let [more (- (get path->count path) (count xs))]
+            (when-some [more (let [more (- (get-in path->info [path :count]) (count xs))]
                                (when (pos? more) more))]
               (let [fetch-opts (-> desc :viewer :fetch-opts)
                     {:keys [fetch-fn]} desc]
@@ -273,15 +273,15 @@
            [error-badge "no matching viewer"]))))))
 
 (defn inspect-lazy [{:as desc :keys [fetch-fn]}]
-  (let [{:as opts :keys [path !x]} (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}) :desc desc :path->count (viewer/path->count desc))
-        {:keys [viewer]} desc]
+  (let [{:as opts :keys [path->info !x]} (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}) :desc desc :path->info (viewer/path->info desc))]
     (r/create-class
      {:display-name "inspect-lazy"
       :component-did-mount
       (fn [_this]
-        (-> (fetch-fn (:fetch-opts viewer))
-            (.then (fn [x] (swap! !x assoc path x)))
-            (.catch (fn [e] (js/console.error e)))))
+        (doseq [[path {:keys [fetch-opts]}] path->info]
+          (-> (fetch-fn fetch-opts)
+              (.then (fn [x] (swap! !x assoc path x)))
+              (.catch (fn [e] (js/console.error e))))))
 
       :reagent-render
       (fn render-inspect-lazy [_]

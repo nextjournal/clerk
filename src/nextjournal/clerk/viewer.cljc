@@ -195,11 +195,17 @@ black")}]) 1)
 #_(describe complex-thing)
 #_(describe {:one [1 2 3] 1 2 3 4})
 #_(describe [1 2 [1 2 3] 4 5])
+(defn extract-info [{:as desc :keys [path]}]
+  (-> desc
+      (select-keys [:count])
+      (assoc :fetch-opts (-> desc
+                             (get-in [:viewer :fetch-opts])
+                             (assoc :path path)))))
 
-(defn path->count [desc]
-  (into {} (map (juxt :path :count)) (tree-seq (some-fn sequential? map?) :children desc)))
+(defn path->info [desc]
+  (into {} (map (juxt :path extract-info)) (tree-seq (some-fn sequential? map?) :children desc)))
 
-#_(path->count (describe [1 [2] 3]))
+#_(path->info (describe [1 [2] 3]))
 
 
 ;; maybe sort maps
