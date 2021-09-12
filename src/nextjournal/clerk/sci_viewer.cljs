@@ -15,6 +15,7 @@
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
             [nextjournal.viewer.vega-lite :as vega-lite]
+            [nextjournal.viewer.notebook :as notebook]
             [reagent.core :as r]
             [reagent.ratom :as ratom]
             [reagent.dom :as rdom]
@@ -253,6 +254,7 @@
   ([x {:as opts :keys [!x viewers path]}]
    ;; TODO use viewer from description
    (let [x (or (some-> !x deref (get path)) x)]
+     (js/console.log :inspect x :viewer (-> x meta :nextjournal/viewer))
      (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
        (let [x (:nextjournal/value x x)]
          ;; TODO: pass whole viewer map
@@ -544,16 +546,19 @@
 
 (defn notebook [xs]
   (html
-   [:div.notebook-viewer
-    (into [:div.p-4.lg:px-0.md:py-8.md:max-w-2xl.mx-auto.flex.flex-col]
-          (map #(html
-                 (let [viewer (-> % meta :nextjournal/viewer)]
-                   [:div {:class (case viewer
-                                   :code "viewer viewer-code"
-                                   (:markdown :latex) "viewer viewer-markdown"
-                                   (:plotly :vega-lite) "viewer viewer-plot"
-                                   "viewer viewer-data overflow-x-auto")}
-                    (cond-> [inspect %] (:blob/id %) (vary-meta assoc :key (:blob/id %)))]))) xs)]))
+   (into [:div.flex.flex-col.items-center.viewer-notebook]
+         (map #(html
+                (let [{:as ks :nextjournal/keys [viewer width]} (meta %)]
+                  [:div {:class ["viewer"
+                                 (when (keyword? viewer)
+                                   (str "viewer-" (name viewer)))
+                                 (case (or width (case viewer
+                                                   :code :wide
+                                                   :prose))
+                                   :wide "w-full max-w-wide px-8"
+                                   :full "w-full"
+                                   "w-full max-w-prose px-8 overflow-x-auto")]}
+                   (cond-> [inspect %] (:blob/id %) (vary-meta assoc :key (:blob/id %)))]))) xs)))
 
 (defn var [x]
   (html [:span.inspected-value
@@ -561,12 +566,14 @@
 
 (defonce state (ratom/atom nil))
 (defn root []
+  (js/console.log :root @state)
   [inspect @state])
 
 (def ^:export read-string
   (partial cljs.reader/read-string {:default identity}))
 
 (defn ^:export mount [el]
+  (js/console.log :mount el)
   (rdom/render [root] el))
 
 (defn ^:export reset-state [new-state]
@@ -593,25 +600,6 @@
                                         (str "?" (opts->query opts)))))
       (.then #(.text %))
       (.then #(read-string %))))
-#_
-(defn in-process-fetch! [!result {:blob/keys [id]} opts]
-  (-> (js/Promise. (fn [resolve _reject]
-                     (resolve @(rf/subscribe [::blobs id]))))
-      (.then #(paginate % opts))
-      (.then #(reset! !result {:value (doto % #_(log/info :in-process-fetch!/value))}))
-      (.catch #(reset! !result {:error %}))))
-
-(defn get-fetch-opts [{:keys [nextjournal/type-key count]}]
-  #_
-  (cond
-    (and (number? count)
-         (pos? count)
-         (contains? #{:list :vector} type-key)
-         (not (@!viewers type-key))) {:n increase-items}))
-
-#_(get-fetch-opts {})
-#_(get-fetch-opts {:type-key :vector :count 1000})
-
 
 (defn result [desc]
   (js/console.log :result desc)
@@ -656,7 +644,6 @@
   "Viewers that are lists are evaluated using sci."
   [inspect (with-viewer "Hans" '(fn [x] (v/with-viewer [:h3 "Ohai, " x "! 👋"] :hiccup)))])
 
-#_
 (dc/defcard notebook
   "Shows how to display a notebook document"
   [state]
@@ -828,6 +815,7 @@ black")}])}
   (if-let [{:keys [data path-params]} @router/match]
     [devcards-ui/layout (merge data path-params)]
     [:pre "no match!"]))
+
 
 (defn ^:dev/after-load mount-app []
   (r/render [devcards] (js/document.getElementById "app")))

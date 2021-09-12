@@ -16,7 +16,7 @@
                                             (instance? clojure.lang.IMeta result)
                                             (contains? (meta result) :blob/id)
                                             (not (v/registration? result)))
-                                     (v/view-as :clerk/result (assoc (v/describe result) :blob-id (-> result meta :blob/id)))
+                                     (v/view-as :clerk/result (assoc (v/describe result) :blob/id (-> result meta :blob/id)))
                                      result))))))
          doc)))
 
@@ -80,11 +80,11 @@
        "https://cdn.nextjournal.com/data/Qmc5rjhjB6irjrJnCgsB4JU3Vvict3DEHeV4Zvq7GJQv4F?filename=viewer.js&content-type=application/x-javascript"))]
    [:body
     [:div#app]
-    [:script "nextjournal.viewer.notebook.mount(document.getElementById('app'))
-nextjournal.viewer.notebook.reset_state(nextjournal.viewer.notebook.read_string(" (-> viewer ->edn pr-str) "))"]
+    [:script "nextjournal.clerk.sci_viewer.mount(document.getElementById('app'))
+nextjournal.clerk.sci_viewer.reset_state(nextjournal.clerk.sci_viewer.read_string(" (-> viewer ->edn pr-str) "))"]
     (when conn-ws?
       [:script "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
-ws.onmessage = msg => nextjournal.viewer.notebook.reset_state(nextjournal.viewer.notebook.read_string(msg.data))"])]))
+ws.onmessage = msg => nextjournal.clerk.sci_viewer.reset_state(nextjournal.clerk.sci_viewer.read_string(msg.data))"])]))
 
 
 (defn doc->html [doc]
