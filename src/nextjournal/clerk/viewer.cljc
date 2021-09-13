@@ -170,6 +170,7 @@ black")}]) 1)
 #_(select-viewer {:one :two})
 #_(select-viewer [1 2 3])
 #_(select-viewer (range 3))
+#_(select-viewer (clojure.java.io/file "notebooks"))
 
 (def n 20)
 
@@ -177,12 +178,14 @@ black")}]) 1)
   ([xs]
    (describe [] xs))
   ([path xs]
-   (let [viewer (select-viewer xs)]
+   (let [viewer (try (select-viewer xs)
+                     (catch #?(:clj Exception :cljs js/Error) _ex
+                       nil))]
      (cond (map? xs) (let [children (remove (comp empty? :children)
                                             (map #(describe (conj path %1) %2) (range) xs))]
                        (cond-> {:count (count xs)
-                                :path path
-                                :viewer viewer}
+                                :path path}
+                         viewer (assoc :viewer viewer)
                          (seq children) (assoc :children children)))
            (counted? xs) (let [children (remove nil? (map #(describe (conj path %1) %2) (range) xs))]
                            (cond-> {:path path
@@ -195,6 +198,7 @@ black")}]) 1)
 #_(describe complex-thing)
 #_(describe {:one [1 2 3] 1 2 3 4})
 #_(describe [1 2 [1 2 3] 4 5])
+#_(describe (clojure.java.io/file "notebooks"))
 
 
 (defn extract-info [{:as desc :keys [path]}]
