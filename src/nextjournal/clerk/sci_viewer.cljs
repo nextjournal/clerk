@@ -139,10 +139,19 @@
   (html [:span.inspected-value
          [:span.syntax-tag "#'" (str x)]]))
 
-(declare read-string)
-(declare opts->query)
+(def ^:export read-string
+  (partial cljs.reader/read-string {:default identity}))
 
-(defn fetch! [{:keys [blob-id]} opts]
+(defn opts->query [opts]
+  (->> opts
+       (map #(update % 0 name))
+       (map (partial str/join "="))
+       (str/join "&")))
+
+#_(opts->query {:s 10 :num 42})
+
+
+(defn fetch! [{blob-id :blob/id} opts]
   (js/console.log :fetch! blob-id opts)
   (-> (js/fetch (str "_blob/" blob-id (when (seq opts)
                                         (str "?" (opts->query opts)))))
@@ -153,9 +162,12 @@
   (js/console.log :fetch opts)
   (.resolve js/Promise (viewer/fetch xs opts)))
 
-(defn result [desc opts]
-  (js/console.log :result desc opts)
-  [inspect-lazy (assoc desc :fetch-fn (partial fetch! desc))])
+(defn result [{:as desc :keys [blob/id]} opts]
+  (js/console.log :desc desc :id id)
+  (html [inspect-lazy (-> desc
+                          (assoc :path->info (viewer/path->info desc))
+                          (assoc :fetch-fn (partial fetch! desc))
+                          (with-meta {})) opts]))
 
 (defn toggle-expanded [expanded-at path event]
   (.preventDefault event)
@@ -315,13 +327,15 @@
                  (recur (rest v)))
                (error-badge "no matching viewer"))))))))
 
-(defn inspect-lazy [{:as desc :keys [fetch-fn]}]
-  (let [{:as opts :keys [path->info !x]} (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}) :desc desc :path->info (viewer/path->info desc))]
+(defn inspect-lazy [{:as desc :keys [fetch-fn]} opts]
+  (let [path->info (viewer/path->info desc)
+        {:as opts :keys [!x]} (or opts (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}) :desc desc :path->info path->info))]
     (js/console.log :lazy desc)
     (r/create-class
      {:display-name "inspect-lazy"
       :component-did-mount
       (fn [_this]
+        (js/console.log :did-mount path->info)
         (doseq [[path {:keys [fetch-opts]}] path->info]
           (-> (fetch-fn fetch-opts)
               (.then (fn [x] (swap! !x assoc path x)))
@@ -329,6 +343,7 @@
 
       :reagent-render
       (fn render-inspect-lazy [_]
+        (js/console.log :render-lazy)
         (if (seq @!x)
           [inspect nil opts]
           [:span "loading…"]))})))
@@ -585,23 +600,12 @@
   (js/console.log :root @state)
   [inspect @state])
 
-(def ^:export read-string
-  (partial cljs.reader/read-string {:default identity}))
-
 (defn ^:export mount [el]
   (js/console.log :mount el)
   (rdom/render [root] el))
 
 (defn ^:export reset-state [new-state]
   (reset! state new-state))
-
-(defn opts->query [opts]
-  (->> opts
-       (map #(update % 0 name))
-       (map (partial str/join "="))
-       (str/join "&")))
-
-#_(opts->query {:s 10 :num 42})
 
 (rf/reg-sub
  ::blobs
@@ -643,9 +647,10 @@
   "Viewers that are lists are evaluated using sci."
   [inspect (with-viewer "Hans" '(fn [x] (v/with-viewer [:h3 "Ohai, " x "! 👋"] :hiccup)))])
 
-#_
-(view-as :clerk/result
-         {:path [], :count 49, :viewer {#_#_:pred {:nextjournal/value 'fn, :nextjournal/type-key :fn}, :fn '(partial v/coll-viewer {:open "[", :close "]"}), :fetch-opts {:n 20}}, :blob/id "5dqpVeeZvAkHU546wCpFjr6GDHxkZh"})
+
+(dc/defcard result
+  [inspect (view-as :clerk/result
+                    {:path [], :count 49, :blob/id "5dqpVeeZvAkHU546wCpFjr6GDHxkZh"})])
 
 (dc/defcard notebook
   "Shows how to display a notebook document"
@@ -814,7 +819,7 @@ black")}])}
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; routing workaround
-;; TODO: remove me when fixed upstream
+;; TODO: remove me when fixed upstrem
 
 (defn devcards []
   (if-let [{:keys [data path-params]} @router/match]
