@@ -16,6 +16,7 @@
             [nextjournal.viewer.plotly :as plotly]
             [nextjournal.viewer.vega-lite :as vega-lite]
             [nextjournal.viewer.notebook :as notebook]
+            [react :as react]
             [reagent.core :as r]
             [reagent.ratom :as ratom]
             [reagent.dom :as rdom]
@@ -254,25 +255,26 @@
   ([x {:as opts :keys [!x viewers path]}]
    ;; TODO use viewer from description
    (let [x (or (some-> !x deref (get path)) x)]
-     (js/console.log :inspect x :viewer (-> x meta :nextjournal/viewer))
-     (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
-       (let [x (:nextjournal/value x x)]
-         ;; TODO: pass whole viewer map
-         (cond (keyword? selected-viewer)
-               (if-let [{:keys [fn fetch-opts]} (get (into {} (map (juxt :name identity)) viewers) selected-viewer)]
-                 [fn x (assoc opts :fetch-opts fetch-opts)]
-                 [error-badge "cannot find viewer named " (str selected-viewer)])
-               (fn? selected-viewer)
-               (selected-viewer x opts)
-               (list? selected-viewer)
-               (let [fn (*eval-form* selected-viewer)]
-                 [fn x opts])))
-       (loop [v viewers]
-         (if-let [{:keys [pred fn]} (first v)]
-           (if-let [fn (and pred fn (pred x) (if (list? fn) (*eval-form* fn) fn))]
-             [fn x opts]
-             (recur (rest v)))
-           [error-badge "no matching viewer"]))))))
+     (or (when (react/isValidElement x) x)
+         (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
+           (let [x (:nextjournal/value x x)]
+             ;; TODO: pass whole viewer map
+             #_(js/console.log :inspect x :viewer selected-viewer)
+             (inspect (cond (keyword? selected-viewer)
+                            (if-let [{:keys [fn fetch-opts]} (get (into {} (map (juxt :name identity)) viewers) selected-viewer)]
+                              (fn x (assoc opts :fetch-opts fetch-opts))
+                              (error-badge "cannot find viewer named " (str selected-viewer)))
+                            (fn? selected-viewer)
+                            (selected-viewer x opts)
+                            (list? selected-viewer)
+                            (let [fn (*eval-form* selected-viewer)]
+                              (fn x opts)))))
+           (loop [v viewers]
+             (if-let [{:keys [pred fn]} (first v)]
+               (if-let [fn (and pred fn (pred x) (if (list? fn) (*eval-form* fn) fn))]
+                 (fn x opts)
+                 (recur (rest v)))
+               (error-badge "no matching viewer"))))))))
 
 (defn inspect-lazy [{:as desc :keys [fetch-fn]}]
   (let [{:as opts :keys [path->info !x]} (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}) :desc desc :path->info (viewer/path->info desc))]
