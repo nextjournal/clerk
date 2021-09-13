@@ -152,20 +152,16 @@
 
 
 (defn fetch! [{blob-id :blob/id} opts]
-  (js/console.log :fetch! blob-id opts)
   (-> (js/fetch (str "_blob/" blob-id (when (seq opts)
                                         (str "?" (opts->query opts)))))
       (.then #(.text %))
       (.then #(read-string %))))
 
 (defn in-process-fetch [xs opts]
-  (js/console.log :fetch opts)
   (.resolve js/Promise (viewer/fetch xs opts)))
 
-(defn result [{:as desc :keys [blob/id]} opts]
-  (js/console.log :desc desc :id id)
+(defn result [desc opts]
   (html [inspect-lazy (-> desc
-                          (assoc :path->info (viewer/path->info desc))
                           (assoc :fetch-fn (partial fetch! desc))
                           (with-meta {})) opts]))
 
@@ -199,7 +195,7 @@
                  [:span.bg-gray-200.hover:bg-gray-200.cursor-pointer.sans-serif.relative
                   {:style {:border-radius 2 :padding "1px 3px" :font-size 11 :top -1}
                    :on-click (fn [_e] (.then (fetch-fn (assoc fetch-opts :offset (count xs)))
-                                             #(swap! !x update path concat-into %)))} more " more…"]]))
+                                             #(swap! !x update path concat-into %)))} more nbsp "more…"]]))
             close]])))
 
 (defn elision-viewer [_ {:as opts :keys [!x path desc] :or {path []}}]
@@ -329,13 +325,11 @@
 
 (defn inspect-lazy [{:as desc :keys [fetch-fn]} opts]
   (let [path->info (viewer/path->info desc)
-        {:as opts :keys [!x]} (or opts (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}) :desc desc :path->info path->info))]
-    (js/console.log :lazy desc)
+        {:as opts :keys [!x]} (assoc (or opts default-inspect-opts) :expanded-at (r/atom {}) :!x (r/atom {}) :desc desc :path->info path->info)]
     (r/create-class
      {:display-name "inspect-lazy"
       :component-did-mount
       (fn [_this]
-        (js/console.log :did-mount path->info)
         (doseq [[path {:keys [fetch-opts]}] path->info]
           (-> (fetch-fn fetch-opts)
               (.then (fn [x] (swap! !x assoc path x)))
@@ -343,7 +337,6 @@
 
       :reagent-render
       (fn render-inspect-lazy [_]
-        (js/console.log :render-lazy)
         (if (seq @!x)
           [inspect nil opts]
           [:span "loading…"]))})))
@@ -597,11 +590,9 @@
 
 (defonce state (ratom/atom nil))
 (defn root []
-  (js/console.log :root @state)
   [inspect @state])
 
 (defn ^:export mount [el]
-  (js/console.log :mount el)
   (rdom/render [root] el))
 
 (defn ^:export reset-state [new-state]
