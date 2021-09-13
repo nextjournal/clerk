@@ -21,7 +21,7 @@
         rewrite-clj/rewrite-clj {:mvn/version "0.6.1"}}
 
  :aliases {:sci {:extra-deps  {io.github.nextjournal/viewers {:git/url "git@github.com:nextjournal/viewers.git"
-                                                              :git/sha "c77c09528bfcd6c3b9a64586fcc7800ad0a6b2eb"}
+                                                              :git/sha "0f3d00b6c51cde1bab6b85fba5ad4344a5279e48"}
                                metosin/reitit-frontend     {:mvn/version "0.5.15"}
                                borkdude/sci                {:mvn/version "0.2.6"}
                                applied-science/js-interop  {:mvn/version "0.3.0"}}}
