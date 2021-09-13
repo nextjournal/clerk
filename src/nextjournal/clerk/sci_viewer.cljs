@@ -35,6 +35,7 @@
 
 
 (declare inspect)
+(declare inspect-lazy)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Custom metadata handling - supporting any cljs value - not compatible with core meta
@@ -117,9 +118,44 @@
                  (keys x')) "}"])))
 
 
-(declare notebook)
-(declare var)
-(declare result)
+
+(defn notebook [xs]
+  (html
+   (into [:div.flex.flex-col.items-center.viewer-notebook]
+         (map #(html
+                (let [{:as ks :nextjournal/keys [viewer width]} (meta %)]
+                  [:div {:class ["viewer"
+                                 (when (keyword? viewer)
+                                   (str "viewer-" (name viewer)))
+                                 (case (or width (case viewer
+                                                   :code :wide
+                                                   :prose))
+                                   :wide "w-full max-w-wide px-8"
+                                   :full "w-full"
+                                   "w-full max-w-prose px-8 overflow-x-auto")]}
+                   (cond-> [inspect %] (:blob/id %) (vary-meta assoc :key (:blob/id %)))]))) xs)))
+
+(defn var [x]
+  (html [:span.inspected-value
+         [:span.syntax-tag "#'" (str x)]]))
+
+(declare read-string)
+(declare opts->query)
+
+(defn fetch! [{:keys [blob-id]} opts]
+  (js/console.log :fetch! blob-id opts)
+  (-> (js/fetch (str "_blob/" blob-id (when (seq opts)
+                                        (str "?" (opts->query opts)))))
+      (.then #(.text %))
+      (.then #(read-string %))))
+
+(defn in-process-fetch [xs opts]
+  (js/console.log :fetch opts)
+  (.resolve js/Promise (viewer/fetch xs opts)))
+
+(defn result [desc opts]
+  (js/console.log :result desc opts)
+  [inspect-lazy (assoc desc :fetch-fn (partial fetch! desc))])
 
 (defn toggle-expanded [expanded-at path event]
   (.preventDefault event)
@@ -202,7 +238,8 @@
    {:name :clerk/result :fn result}])
 
 (def js-viewers
-  [{:pred goog/isObject :fn object-viewer}
+  [{:pred #(implements? IDeref %) :fn #(tagged-value (-> %1 type pr-str) (inspect (deref %1) %2))}
+   {:pred goog/isObject :fn object-viewer}
    {:pred array? :fn (partial coll-viewer {:open [:<> [:span.syntax-tag "#js "] "["] :close "]"})}])
 
 
@@ -262,7 +299,9 @@
              #_(js/console.log :inspect x :viewer selected-viewer)
              (inspect (cond (keyword? selected-viewer)
                             (if-let [{:keys [fn fetch-opts]} (get (into {} (map (juxt :name identity)) viewers) selected-viewer)]
-                              (fn x (assoc opts :fetch-opts fetch-opts))
+                              (if-not fn
+                                (error-badge "no render function for viewer named " (str selected-viewer))
+                                (fn x (assoc opts :fetch-opts fetch-opts)))
                               (error-badge "cannot find viewer named " (str selected-viewer)))
                             (fn? selected-viewer)
                             (selected-viewer x opts)
@@ -426,7 +465,7 @@
                                     (html (into [:div.flex.flex-col] (map row) board)))))]]
   {::dc/state rule-30-state})
 
-#_#_#_#_#_#_#_#_#_#_#_#_#_
+
 (dc/defcard rule-30-sci-eval
   "Rule 30 using viewers based on sci eval."
   [inspect (with-viewer '([0 1 0] [1 0 1])
@@ -440,13 +479,7 @@
                   (v/html (into [:div.flex.flex-col] (map row) board)))))])
 
 
-(dc/defcard inspect-in-process
-  "Different datastructures that live in-process in the browser. More values can just be displayed without needing to fetch more data."
-  [:div
-   [:div [inspect (range 1000)]]
-   [:div [inspect (vec (range 1000))]]
-   [:div [inspect (zipmap (range 1000) (range 1000))]]])
-
+#_ ;; commented out because it's slow since it renders all values, re-enable once we don't display all results
 (dc/defcard inspect-large-values
   "Defcard for larger datastructures clj and json, we make use of the db viewer."
   [:div
@@ -460,8 +493,10 @@
      [inspect (generate-ds 42 (fn [] (clj->js value-1)))])])
 
 (dc/defcard viewer-reagent-atom
+  ;; TODO
   [inspect (r/atom {:hello :world})])
 
+#_ ;; commented out because recursive window prop will cause a loop
 (dc/defcard viewer-js-window []
   [inspect js/window])
 
@@ -545,27 +580,6 @@
                                                     (str "%"))}}]]])))]])
 
 
-
-(defn notebook [xs]
-  (html
-   (into [:div.flex.flex-col.items-center.viewer-notebook]
-         (map #(html
-                (let [{:as ks :nextjournal/keys [viewer width]} (meta %)]
-                  [:div {:class ["viewer"
-                                 (when (keyword? viewer)
-                                   (str "viewer-" (name viewer)))
-                                 (case (or width (case viewer
-                                                   :code :wide
-                                                   :prose))
-                                   :wide "w-full max-w-wide px-8"
-                                   :full "w-full"
-                                   "w-full max-w-prose px-8 overflow-x-auto")]}
-                   (cond-> [inspect %] (:blob/id %) (vary-meta assoc :key (:blob/id %)))]))) xs)))
-
-(defn var [x]
-  (html [:span.inspected-value
-         [:span.syntax-tag "#'" (str x)]]))
-
 (defonce state (ratom/atom nil))
 (defn root []
   (js/console.log :root @state)
@@ -594,23 +608,6 @@
  (fn [db [blob-key id]]
    (cond-> (get db blob-key)
      id (get id))))
-
-
-(defn fetch! [{:keys [blob-id]} opts]
-  (js/console.log :fetch! blob-id opts)
-  (-> (js/fetch (str "_blob/" blob-id (when (seq opts)
-                                        (str "?" (opts->query opts)))))
-      (.then #(.text %))
-      (.then #(read-string %))))
-
-(defn result [desc]
-  (js/console.log :result desc)
-  [inspect-lazy (assoc desc :fetch-fn (partial fetch! desc))])
-
-
-(defn in-process-fetch [xs opts]
-  (js/console.log :fetch opts)
-  (.resolve js/Promise (viewer/fetch xs opts)))
 
 (defn lazy-inspect-in-process [xs]
   [inspect-lazy (assoc (viewer/describe xs) :fetch-fn (partial in-process-fetch xs))])
@@ -646,21 +643,27 @@
   "Viewers that are lists are evaluated using sci."
   [inspect (with-viewer "Hans" '(fn [x] (v/with-viewer [:h3 "Ohai, " x "! 👋"] :hiccup)))])
 
+#_
+(view-as :clerk/result
+         {:path [], :count 49, :viewer {#_#_:pred {:nextjournal/value 'fn, :nextjournal/type-key :fn}, :fn '(partial v/coll-viewer {:open "[", :close "]"}), :fetch-opts {:n 20}}, :blob/id "5dqpVeeZvAkHU546wCpFjr6GDHxkZh"})
+
 (dc/defcard notebook
   "Shows how to display a notebook document"
   [state]
-  [inspect ^{:nextjournal/viewer :clerk/notebook} [(view-as :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
-                                                   [1 2 3 4]
-                                                   (view-as :code "(shuffle (range 10))")
-                                                   {:hello [0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9]}
-                                                   (view-as :markdown "# And some more\n And some more [markdown](https://daringfireball.net/projects/markdown/).")
-                                                   (view-as :code "(shuffle (range 10))")
-                                                   (view-as :markdown "## Some math \n This is a formula.")
-                                                   (view-as :latex
-                                                            "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")
-                                                   (view-as :plotly
-                                                            {:data [{:y (shuffle (range 10)) :name "The Federation" }
-                                                                    {:y (shuffle (range 10)) :name "The Empire"}]})]])
+  [inspect ^{:nextjournal/viewer :clerk/notebook}
+   [(view-as :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
+    [1 2 3 4]
+    (view-as :code "(shuffle (range 10))")
+    {:hello [0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9]}
+    (view-as :markdown "# And some more\n And some more [markdown](https://daringfireball.net/projects/markdown/).")
+    (view-as :code "(shuffle (range 10))")
+    (view-as :markdown "## Some math \n This is a formula.")
+    (view-as :latex
+             "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")
+    (view-as :plotly
+             {:data [{:y (shuffle (range 10)) :name "The Federation" }
+                     {:y (shuffle (range 10)) :name "The Empire"}]})]]
+  {::dc/class "p-0"})
 
 
 (def ^:dynamic *viewers* nil)
