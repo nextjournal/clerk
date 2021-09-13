@@ -17,15 +17,14 @@
 ;; - [ ] Evaluation error messages are poorly formatted
 ;; - [ ] Viewer errors are not displayed correctly
 ;; - [x] `first-generation` in `notebooks/rule_30.clj` renders incorrectly because of pagination type coercion from vector to list
-;; - [ ] `(def r (range 100))` in `notebooks/pagination.clj` shows incorrect `count`
+;; - [x] `(def r (range 100))` in `notebooks/pagination.clj` shows incorrect `count`
 ;; - [ ] Figure out distributed caching using CAS + cloud bucket
-;; - [ ] Markdown should support Nextjournal Flavored Markdown including:
-;;   - [ ] TODO lists 😹
-;;   - [ ] Inline Formulas $E^2=m^2+\vec{p}^2$
-;; - [ ] Better Error display
+;; - [x] Markdown should support Nextjournal Flavored Markdown including:
+;;   - [x] TODO lists 😹
+;;   - [x] Inline Formulas $E^2=m^2+\vec{p}^2$
 ;; - [x] Fix jar hashing (contents, not filename)
 ;; - [x] Printing of very large values
+;; - [x] Make viewer api open with predicates
 ;; - [ ] Status log
 ;; - [ ] Datafy + Nav
 ;; - [ ] Allow to pin notebook
-;; - [ ] Make viewer api open with predicates
