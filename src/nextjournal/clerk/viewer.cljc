@@ -93,12 +93,14 @@ black")}]) 1)
 
 (defn drop+take-xf [{:keys [n offset]
                      :or {offset 0}}]
-  (assert (pos-int? n) "n must be a positive integer")
-  (comp (drop offset)
-        (take n)))
+  (cond-> (drop offset)
+    (pos-int? n)
+    (comp (take n))))
 
 #_(sequence (drop+take-xf {:n 10}) (range 100))
 #_(sequence (drop+take-xf {:n 10 :offset 10}) (range 100))
+#_(sequence (drop+take-xf {}) (range 9))
+
 (defn fetch
   ([xs opts]
    #_(prn :start-fetch xs :opts opts)
@@ -214,28 +216,8 @@ black")}]) 1)
 #_(path->info (describe [1 [2] 3]))
 
 
-;; maybe sort maps
+;; TODO: maybe sort maps
 
-
-(comment
-  (let [x complex-thing
-        {:as desc :keys [path]} (describe x)]
-    (fetch x {:path [0 1] :n 20})))
-
-;; request first 20 map elements
-{:count 20
- :offset 0
- :path []}
-
-{:path [0 1]
- :count 20
- :offset 0}
-
-
-;; Homework
-;; - make `fetch` symmetric to `describe` with `path`
-;; - make `fetch` work with `path->opts`
-;; - use `path` as a react key on the
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Viewers (built on metadata)
@@ -288,18 +270,25 @@ black")}]) 1)
 
 (defmacro register-viewers! [v]
   `(nextjournal.clerk.viewer/with-viewer
-     ::register!
+     :nextjournal.viewer/register!
      (quote (let [viewers# ~v]
               (nextjournal.viewer/register-viewers! viewers#)
               (constantly viewers#)))))
 
 #_
-(macroexpand-1 (register-viewers! {:vector (fn [x options]
-                                             (html (into [:div.flex.inline-flex] (map (partial inspect options)) x)))}))
+(macroexpand-1 '(register-viewers! {:vector (fn [x options]
+                                              (html (into [:div.flex.inline-flex] (map (partial inspect options)) x)))}))
 
+
+(defmacro set-viewers! [ns viewers]
+  `(nextjournal.clerk.viewer/with-viewer
+     :nextjournal.viewer/register!
+     (quote (let [viewers# ~viewers]
+              (nextjournal.viewer/set-viewers! {:namespace :foo} viewers#)
+              (constantly viewers#)))))
 
 (defn registration? [x]
-  (boolean (-> x meta :nextjournal/value #{::register!})))
+  (boolean (-> x meta :nextjournal/value #{:nextjournal.viewer/register!})))
 
 (defn ^:deprecated paginate [x]
   x)

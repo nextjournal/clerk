@@ -251,6 +251,19 @@
    {:pred array? :fn (partial coll-viewer {:open [:<> [:span.syntax-tag "#js "] "["] :close "]"})}])
 
 
+(def default-viewers
+  (concat [{:pred (partial = :nextjournal/…) :fn elision-viewer}] viewer/default-viewers js-viewers named-viewers))
+
+(defonce state (ratom/atom {:viewers {:default default-viewers}}))
+(defonce doc (r/cursor state [:doc]))
+(defonce viewers (r/cursor state [:viewers]))
+
+(defn set-viewers! [{:as scope :keys [namespace var]} viewers]
+  (js/console.log :set-viewers scope viewers)
+  (if-let [scope (or var namespace)]
+    (swap! viewers assoc scope viewers)
+    (prn :set-viewers!/missing-scope scope)))
+
 (def sci-viewer-namespace
   {'html html
    'view-as view-as
@@ -261,6 +274,7 @@
    #_#_#_#_
    'register-viewer! register-viewer!
    'register-viewers! register-viewers!
+   'set-viewers! set-viewers!
    'with-viewer with-viewer
    'with-viewers with-viewers})
 
@@ -278,9 +292,6 @@
   (sci/eval-form ctx f))
 
 (def ^:dynamic *eval-form* eval-form)
-
-(def default-viewers
-  (concat [{:pred (partial = :nextjournal/…) :fn elision-viewer}] viewer/default-viewers js-viewers named-viewers))
 
 (defn error-badge [& content]
   [:div.bg-red-50.rounded-sm.text-xs.text-red-400.px-2.py-1.items-center.sans-serif.inline-flex
@@ -588,15 +599,11 @@
                                                     (str "%"))}}]]])))]])
 
 
-(defonce state (ratom/atom nil))
 (defn root []
-  [inspect @state])
+  [inspect @doc])
 
-(defn ^:export mount [el]
-  (rdom/render [root] el))
-
-(defn ^:export reset-state [new-state]
-  (reset! state new-state))
+(defn ^:export reset-doc [new-doc]
+  (reset! doc new-doc))
 
 (rf/reg-sub
  ::blobs
@@ -818,9 +825,12 @@ black")}])}
     [:pre "no match!"]))
 
 
-(defn ^:dev/after-load mount-app []
-  (r/render [devcards] (js/document.getElementById "app")))
+(defn ^:export ^:dev/after-load mount []
+  (if-let [el (js/document.getElementById "clerk")]
+    (rdom/render [root] el)
+    (when-let [el (js/document.getElementById "app")]
+      (r/render [devcards] el))))
 
 (defn ^:export init []
   (rfe/start! router/router #(reset! router/match %1) {:use-fragment @router/use-fragment?})
-  (mount-app))
+  (mount))

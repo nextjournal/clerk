@@ -57,7 +57,7 @@
 
 (defonce ^{:doc "Load dynamic js from shadow or static bundle from cdn."}
   live-js?
-  false)
+  true)
 
 
 (defn ->html [{:keys [conn-ws?] :or {conn-ws? true}} viewer]
@@ -65,11 +65,11 @@
    [:head
     [:meta {:charset "UTF-8"}]
     (hiccup/include-css
-      "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
+     "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
     (hiccup/include-css
-      (if live-js?
-        "/css/app.css"
-        "TODO"))
+     (if live-js?
+       "/css/app.css"
+       "TODO"))
     (hiccup/include-css
      (if live-js?
        "/css/viewer.css"
@@ -79,12 +79,13 @@
        "/js/viewer.js"
        "https://cdn.nextjournal.com/data/Qmc5rjhjB6irjrJnCgsB4JU3Vvict3DEHeV4Zvq7GJQv4F?filename=viewer.js&content-type=application/x-javascript"))]
    [:body
-    [:div#app]
-    [:script "nextjournal.clerk.sci_viewer.mount(document.getElementById('app'))
-nextjournal.clerk.sci_viewer.reset_state(nextjournal.clerk.sci_viewer.read_string(" (-> viewer ->edn pr-str) "))"]
-    (when conn-ws?
-      [:script "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
-ws.onmessage = msg => nextjournal.clerk.sci_viewer.reset_state(nextjournal.clerk.sci_viewer.read_string(msg.data))"])]))
+    [:div#clerk]
+    [:script "let viewer = nextjournal.clerk.sci_viewer
+viewer.mount(document.getElementById('clerk'))
+viewer.reset_doc(viewer.read_string(" (-> viewer ->edn pr-str) "))\n"
+     (when conn-ws?
+       "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
+ws.onmessage = msg => viewer.reset_doc(viewer.read_string(msg.data))")]]))
 
 
 (defn doc->html [doc]
