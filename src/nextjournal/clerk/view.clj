@@ -7,22 +7,23 @@
   ([doc] (doc->viewer {} doc))
   ([{:keys [inline-results?] :or {inline-results? false}} doc]
    (let [{:keys [ns]} (meta doc)]
-     (into (v/view-as :clerk/notebook [])
-           (mapcat (fn [{:as x :keys [type text result]}]
-                     (case type
-                       :markdown [(v/view-as :markdown text)]
-                       :code (cond-> [(v/view-as :code text)]
-                               (contains? x :result)
-                               (conj (if (and (not inline-results?)
-                                              (instance? clojure.lang.IMeta result)
-                                              (contains? (meta result) :blob/id)
-                                              (not (v/registration? result)))
-                                       (v/view-as :clerk/result (assoc (v/describe {:viewers (v/get-viewers ns)} result) :blob/id (-> result meta :blob/id)))
-                                       result))))))
-           doc))))
+     (-> []
+         (into (mapcat (fn [{:as x :keys [type text result]}]
+                         (case type
+                           :markdown [(v/view-as :markdown text)]
+                           :code (cond-> [(v/view-as :code text)]
+                                   (contains? x :result)
+                                   (conj (if (and (not inline-results?)
+                                                  (instance? clojure.lang.IMeta result)
+                                                  (contains? (meta result) :blob/id)
+                                                  (not (v/registration? result)))
+                                           (v/view-as :clerk/result (assoc (v/describe {:viewers (v/get-viewers ns)} result) :blob/id (-> result meta :blob/id)))
+                                           result))))))
+               doc)
+         (with-meta {:scope (v/datafy-scope ns) :nextjournal/viewer :clerk/notebook})))))
 
 
-#_(doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj"))
+#_(meta (doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj")))
 
 (defn ex->viewer [e]
   (into ^{:nextjournal/viewer :notebook}

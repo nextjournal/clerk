@@ -262,8 +262,9 @@
 (def ^:dynamic *eval-form*)
 
 (defn set-viewers! [scope viewers]
+  (js/console.log :EVAL (pr-str viewers) :SCOPE (pr-str scope))
   (let [viewers (vec (concat (*eval-form* viewers) default-viewers))]
-    (js/console.log :set-viewers scope viewers)
+    (js/console.log :set-viewers! scope :num-viewers (count viewers))
     (swap! !viewers assoc scope viewers)))
 
 (defn inspect-children [opts]
@@ -327,8 +328,9 @@
     [inspect x (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}))]])
   ([x {:as opts :keys [!x !viewers viewers path]}]
    ;; TODO use viewer from description
-   (js/console.log :inspect x :!viewers @!viewers)
    (let [x (or (some-> !x deref (get path)) x)]
+     (when-not (seq path)
+       (js/console.log :inspect x :!viewers @!viewers))
      (or (when (react/isValidElement x) x)
          (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
            (let [x (:nextjournal/value x x)]
@@ -343,18 +345,20 @@
                             (fn? selected-viewer)
                             (selected-viewer x opts)
                             (list? selected-viewer)
-                            (let [fn (*eval-form* selected-viewer)]
+                            (let [{:keys [fn]} (*eval-form* selected-viewer)]
+                              (js/console.log :eval (pr-str selected-viewer))
                               (fn x opts)))))
-           (loop [v (get @!viewers [:namespace "rule-30"])]
+           (loop [v viewers]
              (if-let [{:keys [pred fn]} (first v)]
                (do #_(js/console.log :trying-x x :pred pred :pred? (and pred fn (pred x)) :fn? (fn? fn))
                    (if-let [fn (and pred fn (pred x) (if (list? fn) (*eval-form* fn) fn))]
                      (do
-                       (js/console.log :match! pred :x x)
+                       (js/console.log :match! pred :x x :fn fn :str (pr-str fn))
                        (fn x opts))
                      (recur (rest v))))
                (error-badge "no matching viewer"))))))))
 
+(js/console.log :M (core/meta @doc))
 
 (defn inspect-lazy [{:as desc :keys [fetch-fn]} opts]
   (let [path->info (viewer/path->info desc)
@@ -625,7 +629,9 @@
   [inspect @doc])
 
 (defn ^:export reset-doc [new-doc]
-  (reset! doc new-doc))
+  (js/console.log :meta (meta new-doc))
+  (reset! doc new-doc)
+  (js/console.log :meta-on-atom (meta @doc)))
 
 (rf/reg-sub
  ::blobs

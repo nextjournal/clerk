@@ -299,22 +299,18 @@ black")}]) 1)
 
 #?(:clj
    (defn set-viewers!- [scope viewers]
-     `(do
-        (prn :set-viewers! ~scope ~viewers)
-        (assert (or (#{:root} ~scope)
-                    (instance? clojure.lang.Namespace ~scope)
-                    (instance? clojure.lang.Var ~scope)))
-        (update-viewers! ~scope ~viewers)
-        (nextjournal.clerk.viewer/with-viewer
-          :nextjournal.viewer/set-viewers!
-          (quote (let [viewers# ~viewers]
-                   (nextjournal.viewer/set-viewers! ~(datafy-scope scope) viewers#)
-                   (constantly viewers#)))))))
+     (prn :set-viewers! (datafy-scope scope) viewers)
+     (assert (or (#{:root} scope)
+                 (instance? clojure.lang.Namespace scope)
+                 (instance? clojure.lang.Var scope)))
+     (update-viewers! scope viewers)
+     `'(v/set-viewers! ~(datafy-scope scope) ~viewers)))
 
 #?(:clj
    (defn get-viewers [scope]
      (let [v (@!viewers scope)]
-       (prn :get-viewers v :s scope))))
+       (prn :get-viewers v :s scope)
+       v)))
 
 (defmacro set-viewers!
  ([viewers] (set-viewers!- *ns* viewers))
@@ -322,9 +318,10 @@ black")}]) 1)
 
 #_(set-viewers! [])
 #_(set-viewers! #'update-viewers! [])
+#_(macroexpand '(set-viewers! []))
 
 (defn registration? [x]
-  (boolean (-> x meta :nextjournal/value #{:nextjournal.viewer/set-viewers!})))
+  (boolean (and (list? x) (= (first x) 'v/set-viewers!))))
 
 #_(registration? (set-viewers! []))
 

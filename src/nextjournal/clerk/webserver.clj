@@ -13,6 +13,8 @@
 (defonce !clients (atom #{}))
 (defonce !doc (atom help-doc))
 
+
+#_(view/doc->viewer @!doc)
 #_(reset! !doc help-doc)
 
 (defn broadcast! [msg]

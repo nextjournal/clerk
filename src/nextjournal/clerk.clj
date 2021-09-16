@@ -128,10 +128,8 @@
   (let [doc (into [] (map (fn [{:as cell :keys [type text]}]
                             (cond-> cell
                               (= :code type)
-                              (assoc :result (read+eval-cached results-last-run vars->hash text))))) doc)
-        ns (or (find-ns 'rule-30) (create-ns 'rule-30))] ;; TODO: extract ns from source
-    (with-meta doc (-> (blob->result doc)
-                       (assoc :ns ns)))))
+                              (assoc :result (read+eval-cached results-last-run vars->hash text))))) doc)]
+    (with-meta doc (-> doc blob->result (assoc :ns *ns*)))))
 
 #_(let [doc (+eval-results {} {} [{:type :markdown :text "# Hi"} {:type :code :text "[1]"} {:type :code :text "(+ 39 3)"}])
         blob->result (meta doc)]
