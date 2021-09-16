@@ -6,19 +6,20 @@
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([{:keys [inline-results?] :or {inline-results? false}} doc]
-   (into (v/view-as :clerk/notebook [])
-         (mapcat (fn [{:as x :keys [type text result]}]
-                   (case type
-                     :markdown [(v/view-as :markdown text)]
-                     :code (cond-> [(v/view-as :code text)]
-                             (contains? x :result)
-                             (conj (if (and (not inline-results?)
-                                            (instance? clojure.lang.IMeta result)
-                                            (contains? (meta result) :blob/id)
-                                            (not (v/registration? result)))
-                                     (v/view-as :clerk/result (assoc (v/describe result) :blob/id (-> result meta :blob/id)))
-                                     result))))))
-         doc)))
+   (let [{:keys [ns]} (meta doc)]
+     (into (v/view-as :clerk/notebook [])
+           (mapcat (fn [{:as x :keys [type text result]}]
+                     (case type
+                       :markdown [(v/view-as :markdown text)]
+                       :code (cond-> [(v/view-as :code text)]
+                               (contains? x :result)
+                               (conj (if (and (not inline-results?)
+                                              (instance? clojure.lang.IMeta result)
+                                              (contains? (meta result) :blob/id)
+                                              (not (v/registration? result)))
+                                       (v/view-as :clerk/result (assoc (v/describe {:viewers (v/get-viewers ns)} result) :blob/id (-> result meta :blob/id)))
+                                       result))))))
+           doc))))
 
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj"))
@@ -74,9 +75,10 @@
      (if live-js?
        "/css/viewer.css"
        "https://cdn.nextjournal.com/data/QmZc2Rhp7GqGAuZFp8SH6yVLLh3sz3cyjDwZtR5Q8PGcye?filename=viewer-a098a51e8ec9999fae7673b325889dbccafad583.css&content-type=text/css"))
-    (if live-js?
-      "/js/viewer.js"
-      "https://cdn.nextjournal.com/data/Qmc5rjhjB6irjrJnCgsB4JU3Vvict3DEHeV4Zvq7GJQv4F?filename=viewer.js&content-type=application/x-javascript")]
+    (hiccup/include-js
+     (if live-js?
+       "/js/viewer.js"
+       "https://cdn.nextjournal.com/data/Qmc5rjhjB6irjrJnCgsB4JU3Vvict3DEHeV4Zvq7GJQv4F?filename=viewer.js&content-type=application/x-javascript"))]
    [:body
     [:div#clerk]
     [:script "let viewer = nextjournal.clerk.sci_viewer

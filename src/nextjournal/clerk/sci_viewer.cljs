@@ -24,7 +24,8 @@
             [re-frame.context :as rf]
             [clojure.string :as str]
             [sci.core :as sci]
-            [sci.impl.vars]))
+            [sci.impl.vars]
+            [sci.impl.namespaces]))
 
 (defn color-classes [selected?]
   {:value-color (if selected? "white-90" "dark-green")
@@ -256,13 +257,14 @@
 
 (defonce state (ratom/atom nil))
 (defonce doc (r/cursor state [:doc]))
-(defonce !viewers viewer/viewers)
+(defonce !viewers viewer/!viewers)
 
 (def ^:dynamic *eval-form*)
 
 (defn set-viewers! [scope viewers]
-  (js/console.log :set-viewers scope viewers)
-  (swap! !viewers assoc scope (*eval-form* viewers)))
+  (let [viewers (vec (concat (*eval-form* viewers) default-viewers))]
+    (js/console.log :set-viewers scope viewers)
+    (swap! !viewers assoc scope viewers)))
 
 (defn inspect-children [opts]
   (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)])))
@@ -325,7 +327,7 @@
     [inspect x (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}))]])
   ([x {:as opts :keys [!x !viewers viewers path]}]
    ;; TODO use viewer from description
-   (js/console.log :!viewers !viewers :x x)
+   (js/console.log :inspect x :!viewers @!viewers)
    (let [x (or (some-> !x deref (get path)) x)]
      (or (when (react/isValidElement x) x)
          (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
@@ -343,12 +345,12 @@
                             (list? selected-viewer)
                             (let [fn (*eval-form* selected-viewer)]
                               (fn x opts)))))
-           (loop [v (:root @!viewers)]
+           (loop [v (get @!viewers [:namespace "rule-30"])]
              (if-let [{:keys [pred fn]} (first v)]
-               (do (js/console.log :trying-x x :pred pred :pred? (and pred fn (pred x)) :fn? (fn? fn))
+               (do #_(js/console.log :trying-x x :pred pred :pred? (and pred fn (pred x)) :fn? (fn? fn))
                    (if-let [fn (and pred fn (pred x) (if (list? fn) (*eval-form* fn) fn))]
                      (do
-                       (js/console.log :match!)
+                       (js/console.log :match! pred :x x)
                        (fn x opts))
                      (recur (rest v))))
                (error-badge "no matching viewer"))))))))

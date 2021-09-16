@@ -128,8 +128,10 @@
   (let [doc (into [] (map (fn [{:as cell :keys [type text]}]
                             (cond-> cell
                               (= :code type)
-                              (assoc :result (read+eval-cached results-last-run vars->hash text))))) doc)]
-    (with-meta doc (blob->result doc))))
+                              (assoc :result (read+eval-cached results-last-run vars->hash text))))) doc)
+        ns (or (find-ns 'rule-30) (create-ns 'rule-30))] ;; TODO: extract ns from source
+    (with-meta doc (-> (blob->result doc)
+                       (assoc :ns ns)))))
 
 #_(let [doc (+eval-results {} {} [{:type :markdown :text "# Hi"} {:type :code :text "[1]"} {:type :code :text "(+ 39 3)"}])
         blob->result (meta doc)]
@@ -143,7 +145,7 @@
 (defn eval-file [file]
   (+eval-results {} (hashing/hash file) (parse-file file)))
 
-#_(eval-file {} "notebooks/pagination.clj")
+#_(eval-file "notebooks/pagination.clj")
 
 (defn show!
   "Converts the Clojure source test in file to a series of text or syntax panes and causes `panel` to contain them."

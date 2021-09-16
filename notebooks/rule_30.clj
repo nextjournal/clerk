@@ -5,14 +5,11 @@
 
 #_(nextjournal.clerk/show! "notebooks/rule_30.clj")
 
-(v/set! :root
-        [{:pred 'number? :fn '(fn [x] (v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                                  :class (if (pos? x) "bg-black" "bg-white border-solid border-2 border-black")}]))}
-         {:pred 'vector? :fn '(fn [x opts]
-                                (js/console.log :vec x :opts opts)
-                                (v/html (into [:div.flex.inline-flex] (v/inspect-children opts) x)))}
-         {:pred 'list? :fn '(fn [x opts] (v/html (into [:div.flex.flex-col] (v/inspect-children opts) x)))}
-         {:pred '(constantly true) :fn '(fn [x] (pr-str x))}])
+(v/set-viewers! [{:pred number? :fn '(fn [x] (v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                                         :class (if (pos? x) "bg-black" "bg-white border-solid border-2 border-black")}]))}
+                 {:pred vector? :fn '(fn [x opts]
+                                       (v/html (into [:div.flex.inline-flex] (v/inspect-children opts) x)))}
+                 {:pred list? :fn '(fn [x opts] (v/html (into [:div.flex.flex-col] (v/inspect-children opts) x)))}])
 
 0
 

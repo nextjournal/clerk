@@ -2,6 +2,8 @@
   (:refer-clojure :exclude [meta with-meta vary-meta])
   (:require [clojure.core :as core]
             [clojure.string :as str]
+            [sci.impl.vars]
+            [sci.impl.namespaces]
             #?(:cljs [reagent.ratom :as ratom])))
 
 
@@ -179,18 +181,19 @@ black")}]) 1)
 
 (defn describe
   ([xs]
-   (describe [] xs))
-  ([path xs]
-   (let [viewer (try (select-viewer xs)
+   (describe {} xs))
+  ([opts xs]
+   (let [{:keys [viewers path]} (merge {:viewers default-viewers :path []} opts)
+         viewer (try (select-viewer xs viewers)
                      (catch #?(:clj Exception :cljs js/Error) _ex
                        nil))]
      (cond (map? xs) (let [children (remove (comp empty? :children)
-                                            (map #(describe (conj path %1) %2) (range) xs))]
+                                            (map #(describe (update opts :path conj %1) %2) (range) xs))]
                        (cond-> {:count (count xs)
                                 :path path}
                          viewer (assoc :viewer viewer)
                          (seq children) (assoc :children children)))
-           (counted? xs) (let [children (remove nil? (map #(describe (conj path %1) %2) (range) xs))]
+           (counted? xs) (let [children (remove nil? (map #(describe (update opts :path conj %1) %2) (range) xs))]
                            (cond-> {:path path
                                     :count (count xs)
                                     :viewer viewer}
@@ -202,6 +205,7 @@ black")}]) 1)
 #_(describe {:one [1 2 3] 1 2 3 4})
 #_(describe [1 2 [1 2 3] 4 5])
 #_(describe (clojure.java.io/file "notebooks"))
+#_(describe {:viewers [{:pred sequential? :fn pr-str}]} (range 100))
 
 
 (defn extract-info [{:as desc :keys [path]}]
@@ -268,7 +272,7 @@ black")}]) 1)
 (defn table [xs]
   (view-as :table (->table xs)))
 
-(defonce viewers
+(defonce !viewers
   (#?(:clj atom :cljs ratom/atom) {:root default-viewers}))
 
 (defmacro register-viewers! [v]
@@ -283,26 +287,46 @@ black")}]) 1)
                                               (html (into [:div.flex.inline-flex] (map (partial inspect options)) x)))}))
 
 
-;; 1. register viewer in clojure either for `:root`, namespace or var
+(defn update-viewers! [scope viewers]
+  (swap! !viewers assoc scope (vec (concat viewers default-viewers))))
 
+#?(:clj
+   (defn datafy-scope [scope]
+     (cond
+       (instance? clojure.lang.Namespace scope) {:namespace (str scope)}
+       (instance? clojure.lang.Namespace scope) {:var (str scope)}
+       :else :root)))
 
+#?(:clj
+   (defn set-viewers!- [scope viewers]
+     `(do
+        (prn :set-viewers! ~scope ~viewers)
+        (assert (or (#{:root} ~scope)
+                    (instance? clojure.lang.Namespace ~scope)
+                    (instance? clojure.lang.Var ~scope)))
+        (update-viewers! ~scope ~viewers)
+        (nextjournal.clerk.viewer/with-viewer
+          :nextjournal.viewer/set-viewers!
+          (quote (let [viewers# ~viewers]
+                   (nextjournal.viewer/set-viewers! ~(datafy-scope scope) viewers#)
+                   (constantly viewers#)))))))
 
-(defmacro set! [scope viewers]
-  `(do
-     (prn :set-viewers! ~scope ~viewers)
-     (assert (or (#{:root} ~scope)
-                 (instance? clojure.lang.Namespace ~scope)
-                 (instance? clojure.lang.Var ~scope)))
-     (nextjournal.clerk.viewer/with-viewer
-       :nextjournal.viewer/register!
-       (quote (let [viewers# ~viewers]
-                (nextjournal.viewer/set-viewers! ~scope viewers#)
-                (constantly viewers#))))))
+#?(:clj
+   (defn get-viewers [scope]
+     (let [v (@!viewers scope)]
+       (prn :get-viewers v :s scope))))
 
+(defmacro set-viewers!
+ ([viewers] (set-viewers!- *ns* viewers))
+ ([var viewers] (set-viewers!- var viewers)))
 
+#_(set-viewers! [])
+#_(set-viewers! #'update-viewers! [])
 
 (defn registration? [x]
-  (boolean (-> x meta :nextjournal/value #{:nextjournal.viewer/register!})))
+  (boolean (-> x meta :nextjournal/value #{:nextjournal.viewer/set-viewers!})))
+
+#_(registration? (set-viewers! []))
 
 (defn ^:deprecated paginate [x]
   x)
