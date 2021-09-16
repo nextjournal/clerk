@@ -74,10 +74,9 @@
      (if live-js?
        "/css/viewer.css"
        "https://cdn.nextjournal.com/data/QmZc2Rhp7GqGAuZFp8SH6yVLLh3sz3cyjDwZtR5Q8PGcye?filename=viewer-a098a51e8ec9999fae7673b325889dbccafad583.css&content-type=text/css"))
-    (hiccup/include-js
-     (if live-js?
-       "/js/viewer.js"
-       "https://cdn.nextjournal.com/data/Qmc5rjhjB6irjrJnCgsB4JU3Vvict3DEHeV4Zvq7GJQv4F?filename=viewer.js&content-type=application/x-javascript"))]
+    (if live-js?
+      "/js/viewer.js"
+      "https://cdn.nextjournal.com/data/Qmc5rjhjB6irjrJnCgsB4JU3Vvict3DEHeV4Zvq7GJQv4F?filename=viewer.js&content-type=application/x-javascript")]
    [:body
     [:div#clerk]
     [:script "let viewer = nextjournal.clerk.sci_viewer

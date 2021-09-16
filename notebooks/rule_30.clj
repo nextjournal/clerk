@@ -3,12 +3,22 @@
 (ns rule-30
   (:require [nextjournal.clerk.viewer :as v]))
 
-(v/set-viewers!
- *ns*
- [{:name :number :fn '(fn [x] (v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                          :class (if (pos? x) "bg-black" "bg-white border-solid border-2 border-black")}]))}
-  {:name :vector :fn '(fn [x opts] (v/html (into [:div.flex.inline-flex] (map (partial v/inspect opts)) x)))}
-  {:name :list :fn '(fn [x opts] (v/html (into [:div.flex.flex-col] (map (partial v/inspect opts)) x)))}])
+#_(nextjournal.clerk/show! "notebooks/rule_30.clj")
+
+(v/set! :root
+        [{:pred 'number? :fn '(fn [x] (v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                                  :class (if (pos? x) "bg-black" "bg-white border-solid border-2 border-black")}]))}
+         {:pred 'vector? :fn '(fn [x opts]
+                                (js/console.log :vec x :opts opts)
+                                (v/html (into [:div.flex.inline-flex] (v/inspect-children opts) x)))}
+         {:pred 'list? :fn '(fn [x opts] (v/html (into [:div.flex.flex-col] (v/inspect-children opts) x)))}
+         {:pred '(constantly true) :fn '(fn [x] (pr-str x))}])
+
+0
+
+1
+
+[0 1 0]
 
 ;; Now let's define Rule 30 as a map. It maps a vector of three cells to a new value for a cell. Notice how the map viewer can be used as-is and uses our number and vector viewers.
 (def rule-30
@@ -20,7 +30,7 @@
    [0 1 0] 1
    [0 0 1] 1
    [0 0 0] 0})
-#_#_
+
 ;; Our first generation is a row with 33 elements. The element at the center is a black square, all other squares are white.
 (def first-generation
   (let [n 33]

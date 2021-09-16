@@ -254,15 +254,18 @@
 (def default-viewers
   (concat [{:pred (partial = :nextjournal/…) :fn elision-viewer}] viewer/default-viewers js-viewers named-viewers))
 
-(defonce state (ratom/atom {:viewers {:default default-viewers}}))
+(defonce state (ratom/atom nil))
 (defonce doc (r/cursor state [:doc]))
-(defonce viewers (r/cursor state [:viewers]))
+(defonce !viewers viewer/viewers)
 
-(defn set-viewers! [{:as scope :keys [namespace var]} viewers]
+(def ^:dynamic *eval-form*)
+
+(defn set-viewers! [scope viewers]
   (js/console.log :set-viewers scope viewers)
-  (if-let [scope (or var namespace)]
-    (swap! viewers assoc scope viewers)
-    (prn :set-viewers!/missing-scope scope)))
+  (swap! !viewers assoc scope (*eval-form* viewers)))
+
+(defn inspect-children [opts]
+  (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)])))
 
 (def sci-viewer-namespace
   {'html html
@@ -271,6 +274,7 @@
    'coll-viewer coll-viewer
    'map-viewer map-viewer
    'tagged-value tagged-value
+   'inspect-children inspect-children
    #_#_#_#_
    'register-viewer! register-viewer!
    'register-viewers! register-viewers!
@@ -291,7 +295,7 @@
 (defn eval-form [f]
   (sci/eval-form ctx f))
 
-(def ^:dynamic *eval-form* eval-form)
+(set! *eval-form* eval-form)
 
 (defn error-badge [& content]
   [:div.bg-red-50.rounded-sm.text-xs.text-red-400.px-2.py-1.items-center.sans-serif.inline-flex
@@ -300,16 +304,28 @@
    (into [:div.ml-2.font-bold] content)])
 
 (def default-inspect-opts
-  {:viewers default-viewers :path []})
+  {:!viewers !viewers :viewers default-viewers :path []})
 
-(defn map-inspect-xf [opts]
-  (map (fn [x] [inspect x opts])))
+(defn error-boundary [& children]
+  (let [error (r/atom nil)]
+    (r/create-class
+     {:constructor (fn [this props])
+      :component-did-catch (fn [this e info])
+      :get-derived-state-from-error (fn [e]
+                                      (reset! error e)
+                                      #js {})
+      :reagent-render (fn [& children]
+                        (if @error
+                          (error-badge "rendering error")
+                          (into [:<>] children)))})))
 
 (defn inspect
   ([x]
-   (inspect x (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}))))
-  ([x {:as opts :keys [!x viewers path]}]
+   [error-boundary
+    [inspect x (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}))]])
+  ([x {:as opts :keys [!x !viewers viewers path]}]
    ;; TODO use viewer from description
+   (js/console.log :!viewers !viewers :x x)
    (let [x (or (some-> !x deref (get path)) x)]
      (or (when (react/isValidElement x) x)
          (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
@@ -327,12 +343,16 @@
                             (list? selected-viewer)
                             (let [fn (*eval-form* selected-viewer)]
                               (fn x opts)))))
-           (loop [v viewers]
+           (loop [v (:root @!viewers)]
              (if-let [{:keys [pred fn]} (first v)]
-               (if-let [fn (and pred fn (pred x) (if (list? fn) (*eval-form* fn) fn))]
-                 (fn x opts)
-                 (recur (rest v)))
+               (do (js/console.log :trying-x x :pred pred :pred? (and pred fn (pred x)) :fn? (fn? fn))
+                   (if-let [fn (and pred fn (pred x) (if (list? fn) (*eval-form* fn) fn))]
+                     (do
+                       (js/console.log :match!)
+                       (fn x opts))
+                     (recur (rest v))))
                (error-badge "no matching viewer"))))))))
+
 
 (defn inspect-lazy [{:as desc :keys [fetch-fn]} opts]
   (let [path->info (viewer/path->info desc)
@@ -349,7 +369,7 @@
       :reagent-render
       (fn render-inspect-lazy [_]
         (if (seq @!x)
-          [inspect nil opts]
+          [error-boundary [inspect nil opts]]
           [:span "loading…"]))})))
 
 (dc/defcard inspect-values
@@ -676,13 +696,15 @@
   [inspect
    '([0 1 0] [1 0 1])
    (assoc default-inspect-opts
-          :viewers
-          [{:pred number?
-            :fn #(html [:div.inline-block {:style {:width 16 :height 16}
-                                           :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
+          :!viewers
+          (r/atom
+           {:root
+            [{:pred number?
+              :fn #(html [:div.inline-block {:style {:width 16 :height 16}
+                                             :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
 black")}])}
-           {:pred vector? :fn #(html (into [:div.flex.inline-flex] (map-inspect-xf %2) %1))}
-           {:pred list? :fn #(html (into [:div.flex.flex-col] (map-inspect-xf %2) %1))}])])
+             {:pred vector? :fn #(html (into [:div.flex.inline-flex] (inspect-children %2) %1))}
+             {:pred list? :fn #(html (into [:div.flex.flex-col] (inspect-children %2) %1))}]}))])
 
 (dc/defcard clj-long
   []

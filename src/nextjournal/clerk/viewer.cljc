@@ -1,7 +1,8 @@
 (ns nextjournal.clerk.viewer
   (:refer-clojure :exclude [meta with-meta vary-meta])
   (:require [clojure.core :as core]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            #?(:cljs [reagent.ratom :as ratom])))
 
 
 
@@ -218,7 +219,6 @@ black")}]) 1)
 
 ;; TODO: maybe sort maps
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Viewers (built on metadata)
 
@@ -268,8 +268,11 @@ black")}]) 1)
 (defn table [xs]
   (view-as :table (->table xs)))
 
+(defonce viewers
+  (#?(:clj atom :cljs ratom/atom) {:root default-viewers}))
+
 (defmacro register-viewers! [v]
-  `(nextjournal.clerk.viewer/with-viewer
+  `(with-viewer
      :nextjournal.viewer/register!
      (quote (let [viewers# ~v]
               (nextjournal.viewer/register-viewers! viewers#)
@@ -280,12 +283,23 @@ black")}]) 1)
                                               (html (into [:div.flex.inline-flex] (map (partial inspect options)) x)))}))
 
 
-(defmacro set-viewers! [ns viewers]
-  `(nextjournal.clerk.viewer/with-viewer
-     :nextjournal.viewer/register!
-     (quote (let [viewers# ~viewers]
-              (nextjournal.viewer/set-viewers! {:namespace :foo} viewers#)
-              (constantly viewers#)))))
+;; 1. register viewer in clojure either for `:root`, namespace or var
+
+
+
+(defmacro set! [scope viewers]
+  `(do
+     (prn :set-viewers! ~scope ~viewers)
+     (assert (or (#{:root} ~scope)
+                 (instance? clojure.lang.Namespace ~scope)
+                 (instance? clojure.lang.Var ~scope)))
+     (nextjournal.clerk.viewer/with-viewer
+       :nextjournal.viewer/register!
+       (quote (let [viewers# ~viewers]
+                (nextjournal.viewer/set-viewers! ~scope viewers#)
+                (constantly viewers#))))))
+
+
 
 (defn registration? [x]
   (boolean (-> x meta :nextjournal/value #{:nextjournal.viewer/register!})))
