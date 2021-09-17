@@ -1,51 +1,14 @@
 (ns nextjournal.clerk.viewer
-  (:refer-clojure :exclude [meta with-meta vary-meta])
-  (:require [clojure.core :as core]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [sci.impl.vars]
             [sci.impl.namespaces]
             #?(:cljs [reagent.ratom :as ratom])))
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Custom metadata handling - supporting any cljs value - not compatible with core meta
-
-
-
-(defn meta? [x] (and (map? x) (contains? x :nextjournal/value)))
-
-(defn supports-meta? [x]
-  #?(:cljs (satisfies? IWithMeta x)
-     :clj (instance? clojure.lang.IMeta x)))
-
-(defn meta [data]
-  (if (meta? data)
-    data
-    (assoc (core/meta data)
-           :nextjournal/value (cond-> data
-                                (supports-meta? data) (core/with-meta {})))))
-
-(defn with-meta [data m]
-  (cond (meta? data) (assoc m :nextjournal/value (:nextjournal/value data))
-        (supports-meta? data) (core/with-meta data m)
-        :else
-        (assoc m :nextjournal/value data)))
-
-#_(with-meta {:hello :world} {:foo :bar})
-#_(with-meta "foo" {:foo :bar})
-
-(defn vary-meta [data f & args]
-  (with-meta data (apply f (meta data) args)))
-
 
 ;; - a name
 ;; - a predicate function
 ;; - a view function
 ;; - ordering!
 (declare view-as)
-
-
 
 #_
 (view-as '#(v/html [:div.inline-block {:style {:width 16 :height 16}
@@ -223,18 +186,15 @@ black")}]) 1)
 
 ;; TODO: maybe sort maps
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Viewers (built on metadata)
-
 (defn with-viewer
   "The given viewer will be used to display data"
-  [data viewer]
-  (vary-meta data assoc :nextjournal/viewer viewer))
+  [x viewer]
+  {:nextjournal/viewer viewer :nextjournal/value x})
 
 (defn with-viewers
   "Binds viewers to types, eg {:boolean view-fn}"
-  [data viewers]
-  (vary-meta data assoc :nextjournal/viewers viewers))
+  [x viewers]
+  {:nextjournal/viewers viewers :nextjournal/value x})
 
 (defn view-as
   "Like `with-viewer` but takes viewer as 1st argument"
@@ -242,6 +202,27 @@ black")}]) 1)
   (with-viewer data viewer))
 
 #_(view-as :latex "a^2+b^2=c^2")
+
+(defn value [x]
+  (if (map? x)
+    (:nextjournal/value x x)
+    x))
+
+#_(value (with-viewer '(+ 1 2 3) :eval!))
+#_(value 123)
+
+(defn viewer [x]
+  (when (map? x)
+    (:nextjournal/viewer x)))
+
+#_(viewer (with-viewer '(+ 1 2 3) :eval!))
+#_(viewer "123")
+
+#_
+(value {:nextjournal/viewer :clerk/notebook,
+        :nextjournal/value
+        [#:nextjournal{:viewer :code, :value "(+ 1 2)"} 3],
+        :scope {:namespace "shadow.user"}})
 
 (defn html [x]
   (with-viewer x (if (string? x) :html :hiccup)))
@@ -267,7 +248,7 @@ black")}]) 1)
           (map (fn [row] (map #(get row %) cols)))
           xs)))
 
-#_(->table [{:a 1 :b 2 :c 3} {:a 3 :b 0 :c 2}])
+  #_(->table [{:a 1 :b 2 :c 3} {:a 3 :b 0 :c 2}])
 
 (defn table [xs]
   (view-as :table (->table xs)))
@@ -282,7 +263,7 @@ black")}]) 1)
               (nextjournal.viewer/register-viewers! viewers#)
               (constantly viewers#)))))
 
-#_
+  #_
 (macroexpand-1 '(register-viewers! {:vector (fn [x options]
                                               (html (into [:div.flex.inline-flex] (map (partial inspect options)) x)))}))
 
@@ -304,7 +285,7 @@ black")}]) 1)
                  (instance? clojure.lang.Namespace scope)
                  (instance? clojure.lang.Var scope)))
      (update-viewers! scope viewers)
-     `'(v/set-viewers! ~(datafy-scope scope) ~viewers)))
+     (with-viewer `'(v/set-viewers! ~(datafy-scope scope) ~viewers) :eval!)))
 
 #?(:clj
    (defn get-viewers [scope]
@@ -313,15 +294,17 @@ black")}]) 1)
        v)))
 
 (defmacro set-viewers!
- ([viewers] (set-viewers!- *ns* viewers))
- ([var viewers] (set-viewers!- var viewers)))
+  ([viewers] (set-viewers!- *ns* viewers))
+  ([var viewers] (set-viewers!- var viewers)))
 
 #_(set-viewers! [])
 #_(set-viewers! #'update-viewers! [])
 #_(macroexpand '(set-viewers! []))
 
+#_(nextjournal.clerk/show! "notebooks/rule_30_small.clj")
+
 (defn registration? [x]
-  (boolean (and (list? x) (= (first x) 'v/set-viewers!))))
+  (boolean (and (map? x) (-> x :nextjournal/viewer #{:eval!}))))
 
 #_(registration? (set-viewers! []))
 

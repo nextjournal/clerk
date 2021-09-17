@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.view
   (:require [nextjournal.clerk.viewer :as v]
             [hiccup.page :as hiccup]
+            [clojure.pprint :as pprint]
             [clojure.walk :as w]))
 
 (defn doc->viewer
@@ -20,7 +21,8 @@
                                            (v/view-as :clerk/result (assoc (v/describe {:viewers (v/get-viewers ns)} result) :blob/id (-> result meta :blob/id)))
                                            result))))))
                doc)
-         (with-meta {:scope (v/datafy-scope ns) :nextjournal/viewer :clerk/notebook})))))
+         (v/with-viewer :clerk/notebook)
+         (assoc :scope (v/datafy-scope ns))))))
 
 
 #_(meta (doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj")))
@@ -51,7 +53,7 @@
 #_(meta (make-printable ^{:f (fn [])} []))
 
 (defn ->edn [x]
-  (binding [*print-meta* true
+  (binding [#_#_*print-meta* true
             *print-namespace-maps* false]
     (pr-str (w/prewalk make-printable x))))
 
@@ -62,7 +64,7 @@
   true)
 
 
-(defn ->html [{:keys [conn-ws?] :or {conn-ws? true}} viewer]
+(defn ->html [{:keys [conn-ws?] :or {conn-ws? true}} doc]
   (hiccup/html5
    [:head
     [:meta {:charset "UTF-8"}]
@@ -82,11 +84,14 @@
        "https://cdn.nextjournal.com/data/Qmc5rjhjB6irjrJnCgsB4JU3Vvict3DEHeV4Zvq7GJQv4F?filename=viewer.js&content-type=application/x-javascript"))]
    [:body
     [:div#clerk]
+    (prn :doc doc)
+
     [:script "let viewer = nextjournal.clerk.sci_viewer
-viewer.mount(document.getElementById('clerk'))
-viewer.reset_doc(viewer.read_string(" (-> viewer ->edn pr-str) "))\n"
-     (when conn-ws?
-       "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
+let doc = " (with-out-str (-> doc ->edn pprint/pprint)) "
+viewer.reset_doc(viewer.read_string(doc))
+viewer.mount(document.getElementById('clerk'))\n"
+     #_ (when conn-ws?
+          "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
 ws.onmessage = msg => viewer.reset_doc(viewer.read_string(msg.data))")]]))
 
 

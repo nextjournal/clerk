@@ -53,10 +53,8 @@
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
     (httpkit/as-channel req {:on-open (fn [ch]
-                                        (swap! !clients conj ch)
-                                        (httpkit/send! ch (-> @!doc view/doc->viewer view/->edn)))
+                                        (swap! !clients conj ch))
                              :on-close (fn [ch reason]
-                                         (pr :on-close ch reason)
                                          (swap! !clients disj ch))})
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)

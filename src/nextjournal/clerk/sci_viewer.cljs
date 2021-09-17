@@ -1,21 +1,18 @@
 (ns nextjournal.clerk.sci-viewer
-  (:refer-clojure :exclude [meta with-meta vary-meta])
   (:require [applied-science.js-interop :as j]
             [cljs.reader]
-            [clojure.core :as core]
             [goog.object]
             [goog.string :as gstring]
             [nextjournal.devcards :as dc]
             [nextjournal.devcards.routes :as router]
             [nextjournal.devcards-ui :as devcards-ui]
-            [nextjournal.clerk.viewer :as viewer]
+            [nextjournal.clerk.viewer :as viewer :refer [html with-viewer with-viewers view-as]]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.markdown :as markdown]
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
             [nextjournal.viewer.vega-lite :as vega-lite]
-            [nextjournal.viewer.notebook :as notebook]
             [react :as react]
             [reagent.core :as r]
             [reagent.ratom :as ratom]
@@ -37,49 +34,6 @@
 
 (declare inspect)
 (declare inspect-lazy)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Custom metadata handling - supporting any cljs value - not compatible with core meta
-
-(defn meta? [x] (contains? x :nextjournal/value))
-
-(defn meta [data]
-  (if (meta? data)
-    data
-    (assoc (core/meta data)
-           :nextjournal/value (cond-> data
-                                ;; IMeta is a protocol in cljs
-                                (satisfies? IWithMeta data) (core/with-meta {})))))
-
-(defn with-meta [data m]
-  (cond (meta? data) (assoc m :nextjournal/value (:nextjournal/value data))
-        (satisfies? IWithMeta data) (core/with-meta data m)
-        :else
-        (assoc m :nextjournal/value data)))
-
-(defn vary-meta [data f & args]
-  (with-meta data (apply f (meta data) args)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Viewers (built on metadata)
-
-(defn with-viewer
-  "The given viewer will be used to display data"
-  [data viewer]
-  (vary-meta data assoc :nextjournal/viewer viewer))
-
-(defn with-viewers
-  "Binds viewers to types, eg {:boolean view-fn}"
-  [data viewers]
-  (vary-meta data assoc :nextjournal/viewers viewers))
-
-(defn view-as
-  "Like `with-viewer` but takes viewer as 1st argument"
-  [viewer data]
-  (with-viewer data viewer))
-
-(defn html [v]
-  (with-viewer v (if (string? v) :html :hiccup)))
 
 (defn value-of
   "Safe access to a value at key a js object.
@@ -121,10 +75,13 @@
 
 
 (defn notebook [xs]
+  (js/console.log :render-notebook xs)
   (html
    (into [:div.flex.flex-col.items-center.viewer-notebook]
-         (map #(html
-                (let [{:as ks :nextjournal/keys [viewer width]} (meta %)]
+         (map (fn [x]
+                (let [viewer (viewer/viewer x)
+                      width (:nextjournal/width x)]
+                  (js/console.log :render-notebook-map :viewer viewer :width width :value (viewer/value x) :x x)
                   [:div {:class ["viewer"
                                  (when (keyword? viewer)
                                    (str "viewer-" (name viewer)))
@@ -134,7 +91,10 @@
                                    :wide "w-full max-w-wide px-8"
                                    :full "w-full"
                                    "w-full max-w-prose px-8 overflow-x-auto")]}
-                   (cond-> [inspect %] (:blob/id %) (vary-meta assoc :key (:blob/id %)))]))) xs)))
+                   [inspect x]
+                   #_
+                   (cond-> (inspect %) (:blob/id %) (vary-meta assoc :key (:blob/id %)))])))
+         xs)))
 
 (defn var [x]
   (html [:span.inspected-value
@@ -163,8 +123,7 @@
 
 (defn result [desc opts]
   (html [inspect-lazy (-> desc
-                          (assoc :fetch-fn (partial fetch! desc))
-                          (with-meta {})) opts]))
+                          (assoc :fetch-fn (partial fetch! desc))) opts]))
 
 (defn toggle-expanded [expanded-at path event]
   (.preventDefault event)
@@ -230,17 +189,25 @@
    (gstring/unescapeEntities "&nbsp;")
    value])
 
+(def ^:dynamic *eval-form*)
+
+(defn normalize-viewer [x]
+  (if-let [viewer (-> x meta :nextjournal/viewer)]
+    (viewer/with-viewer x viewer)
+    x))
+
 (def named-viewers
   [;; named viewers
    {:name :latex :pred string? :fn #(html (katex/to-html-string %))}
    {:name :mathjax :pred string? :fn mathjax/viewer}
    {:name :html :pred string? :fn #(html [:div {:dangerouslySetInnerHTML {:__html %}}])}
-   {:name :hiccup :fn #(r/as-element %)}
-   {:name :plotly :pred map? :fn plotly/viewer}
-   {:name :vega-lite :pred map? :fn vega-lite/viewer}
+   {:name :hiccup :fn r/as-element}
+   {:name :plotly :pred map? :fn (comp normalize-viewer plotly/viewer)}
+   {:name :vega-lite :pred map? :fn (comp normalize-viewer vega-lite/viewer)}
    {:name :markdown :pred string? :fn markdown/viewer}
-   {:name :code :pred string? :fn code/viewer}
+   {:name :code :pred string? :fn (comp normalize-viewer code/viewer)}
    {:name :reagent :fn #(r/as-element (cond-> % (fn? %) vector))}
+   {:name :eval! :fn *eval-form*}
 
    {:name :clerk/notebook :fn notebook}
    {:name :clerk/var :fn var}
@@ -259,13 +226,14 @@
 (defonce doc (r/cursor state [:doc]))
 (defonce !viewers viewer/!viewers)
 
-(def ^:dynamic *eval-form*)
+
 
 (defn set-viewers! [scope viewers]
-  (js/console.log :EVAL (pr-str viewers) :SCOPE (pr-str scope))
-  (let [viewers (vec (concat (*eval-form* viewers) default-viewers))]
-    (js/console.log :set-viewers! scope :num-viewers (count viewers))
-    (swap! !viewers assoc scope viewers)))
+  (js/console.log :set-viewers {:scope scope viewers viewers})
+  (let [new-viewers (vec (concat viewers default-viewers))]
+    (js/console.log :set-viewers! scope :num-viewers (count new-viewers) :num-new (count viewers))
+    #_(swap! !viewers assoc scope new-viewers)
+    :viewers-set))
 
 (defn inspect-children [opts]
   (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)])))
@@ -296,6 +264,7 @@
 
 
 (defn eval-form [f]
+  #_(js/console.log :eval-form f)
   (sci/eval-form ctx f))
 
 (set! *eval-form* eval-form)
@@ -328,41 +297,39 @@
     [inspect x (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}))]])
   ([x {:as opts :keys [!x !viewers viewers path]}]
    ;; TODO use viewer from description
-   (let [x (or (some-> !x deref (get path)) x)]
-     (when-not (seq path)
-       (js/console.log :inspect x :!viewers @!viewers))
+   (let [x' (or (some-> !x deref (get path)) x)
+         selected-viewer (viewer/viewer x)
+         x (viewer/value x')]
+     (js/console.log :inspect x :viewer selected-viewer)
      (or (when (react/isValidElement x) x)
-         (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
-           (let [x (:nextjournal/value x x)]
-             ;; TODO: pass whole viewer map
-             #_(js/console.log :inspect x :viewer selected-viewer)
-             (inspect (cond (keyword? selected-viewer)
-                            (if-let [{:keys [fn fetch-opts]} (get (into {} (map (juxt :name identity)) viewers) selected-viewer)]
-                              (if-not fn
-                                (error-badge "no render function for viewer named " (str selected-viewer))
-                                (fn x (assoc opts :fetch-opts fetch-opts)))
-                              (error-badge "cannot find viewer named " (str selected-viewer)))
-                            (fn? selected-viewer)
-                            (selected-viewer x opts)
-                            (list? selected-viewer)
-                            (let [{:keys [fn]} (*eval-form* selected-viewer)]
-                              (js/console.log :eval (pr-str selected-viewer))
-                              (fn x opts)))))
+         (if selected-viewer
+           (inspect (cond (keyword? selected-viewer)
+                          (if-let [{render-fn :fn :keys [fetch-opts]} (get (into {} (map (juxt :name identity)) viewers) selected-viewer)]
+                            (if-not render-fn
+                              (error-badge "no render function for viewer named " (str selected-viewer))
+                              (render-fn x (assoc opts :fetch-opts fetch-opts)))
+                            (error-badge "cannot find viewer named " (str selected-viewer)))
+                          (fn? selected-viewer)
+                          [selected-viewer x opts]
+                          (list? selected-viewer)
+                          (let [{:keys [fn]} (*eval-form* selected-viewer)]
+                            (js/console.log :eval (pr-str selected-viewer))
+                            [fn x opts])))
+
            (loop [v viewers]
              (if-let [{:keys [pred fn]} (first v)]
-               (do #_(js/console.log :trying-x x :pred pred :pred? (and pred fn (pred x)) :fn? (fn? fn))
-                   (if-let [fn (and pred fn (pred x) (if (list? fn) (*eval-form* fn) fn))]
-                     (do
-                       (js/console.log :match! pred :x x :fn fn :str (pr-str fn))
-                       (fn x opts))
-                     (recur (rest v))))
-               (error-badge "no matching viewer"))))))))
+               (if-let [fn (and pred fn (pred x) (if (list? fn) (*eval-form* fn) fn))]
+                 (do
+                   (js/console.log :match! pred :x x :fn fn :r (fn x opts))
+                   (viewer/value (fn x opts)))
+                 (recur (rest v)))
+               [error-badge "no matching viewer"])))))))
 
-(js/console.log :M (core/meta @doc))
 
 (defn inspect-lazy [{:as desc :keys [fetch-fn]} opts]
   (let [path->info (viewer/path->info desc)
         {:as opts :keys [!x]} (assoc (or opts default-inspect-opts) :expanded-at (r/atom {}) :!x (r/atom {}) :desc desc :path->info path->info)]
+    (js/console.log :inspect-lazy desc)
     (r/create-class
      {:display-name "inspect-lazy"
       :component-did-mount
@@ -625,13 +592,13 @@
                                                     (str "%"))}}]]])))]])
 
 
+
 (defn root []
   [inspect @doc])
 
 (defn ^:export reset-doc [new-doc]
-  (js/console.log :meta (meta new-doc))
-  (reset! doc new-doc)
-  (js/console.log :meta-on-atom (meta @doc)))
+  (js/console.log :reset-doc new-doc)
+  (reset! doc new-doc))
 
 (rf/reg-sub
  ::blobs
