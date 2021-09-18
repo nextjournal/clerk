@@ -289,9 +289,8 @@ black")}]) 1)
 
 #?(:clj
    (defn get-viewers [scope]
-     (let [v (@!viewers scope)]
-       (prn :get-viewers v :s scope)
-       v)))
+     (or (@!viewers scope)
+         (@!viewers :root))))
 
 (defmacro set-viewers!
   ([viewers] (set-viewers!- *ns* viewers))
