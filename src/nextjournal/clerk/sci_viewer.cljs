@@ -75,13 +75,11 @@
 
 
 (defn notebook [xs]
-  (js/console.log :render-notebook xs)
   (html
    (into [:div.flex.flex-col.items-center.viewer-notebook]
          (map (fn [x]
                 (let [viewer (viewer/viewer x)
                       width (:nextjournal/width x)]
-                  (js/console.log :render-notebook-map :viewer viewer :width width :value (viewer/value x) :x x)
                   [:div {:class ["viewer"
                                  (when (keyword? viewer)
                                    (str "viewer-" (name viewer)))
@@ -207,7 +205,7 @@
    {:name :markdown :pred string? :fn markdown/viewer}
    {:name :code :pred string? :fn (comp normalize-viewer code/viewer)}
    {:name :reagent :fn #(r/as-element (cond-> % (fn? %) vector))}
-   {:name :eval! :fn *eval-form*}
+   {:name :eval! :fn #(*eval-form* %)}
 
    {:name :clerk/notebook :fn notebook}
    {:name :clerk/var :fn var}
@@ -229,7 +227,7 @@
   (js/console.log :set-viewers! {:scope scope :viewers viewers})
   (let [new-viewers (vec (concat viewers default-viewers))]
     (swap! !viewers assoc scope new-viewers)
-    :viewers-set))
+    'set-viewers!))
 
 (defn inspect-children [opts]
   (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)])))
@@ -295,7 +293,7 @@
    (let [x' (or (some-> !x deref (get path)) x)
          selected-viewer (viewer/viewer x)
          x (viewer/value x')]
-     #_(js/console.log :inspect x :viewer selected-viewer)
+     (js/console.log :inspect x :viewer selected-viewer)
      (or (when (react/isValidElement x) x)
          (if selected-viewer
            (inspect (cond (keyword? selected-viewer)
@@ -322,7 +320,6 @@
 (defn inspect-lazy [{:as desc :keys [fetch-fn]} opts]
   (let [path->info (viewer/path->info desc)
         {:as opts :keys [!x]} (assoc (or opts default-inspect-opts) :expanded-at (r/atom {}) :!x (r/atom {}) :desc desc :path->info path->info)]
-    (js/console.log :inspect-lazy desc)
     (r/create-class
      {:display-name "inspect-lazy"
       :component-did-mount
