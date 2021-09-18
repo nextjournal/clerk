@@ -222,17 +222,13 @@
 (def default-viewers
   (concat [{:pred (partial = :nextjournal/…) :fn elision-viewer}] viewer/default-viewers js-viewers named-viewers))
 
-(defonce state (ratom/atom nil))
-(defonce doc (r/cursor state [:doc]))
+(defonce !doc (ratom/atom nil))
 (defonce !viewers viewer/!viewers)
 
-
-
 (defn set-viewers! [scope viewers]
-  (js/console.log :set-viewers {:scope scope viewers viewers})
+  (js/console.log :set-viewers! {:scope scope :viewers viewers})
   (let [new-viewers (vec (concat viewers default-viewers))]
-    (js/console.log :set-viewers! scope :num-viewers (count new-viewers) :num-new (count viewers))
-    #_(swap! !viewers assoc scope new-viewers)
+    (swap! !viewers assoc scope new-viewers)
     :viewers-set))
 
 (defn inspect-children [opts]
@@ -264,7 +260,6 @@
 
 
 (defn eval-form [f]
-  #_(js/console.log :eval-form f)
   (sci/eval-form ctx f))
 
 (set! *eval-form* eval-form)
@@ -300,7 +295,7 @@
    (let [x' (or (some-> !x deref (get path)) x)
          selected-viewer (viewer/viewer x)
          x (viewer/value x')]
-     (js/console.log :inspect x :viewer selected-viewer)
+     #_(js/console.log :inspect x :viewer selected-viewer)
      (or (when (react/isValidElement x) x)
          (if selected-viewer
            (inspect (cond (keyword? selected-viewer)
@@ -316,15 +311,13 @@
                             (js/console.log :eval (pr-str selected-viewer))
                             [fn x opts])))
 
-           (loop [v viewers]
-             (if-let [{:keys [pred fn]} (first v)]
-               (if-let [fn (and pred fn (pred x) (if (list? fn) (*eval-form* fn) fn))]
-                 (do
-                   (js/console.log :match! pred :x x :fn fn :r (fn x opts))
-                   (viewer/value (fn x opts)))
+           (loop [v (or (@!viewers (:scope @!doc))
+                        (@!viewers :root))]
+             (if-let [{render-fn :fn :keys [pred]} (first v)]
+               (if-let [render-fn (and pred render-fn (pred x) (if (list? render-fn) (*eval-form* render-fn) render-fn))]
+                 (viewer/value (render-fn x opts))
                  (recur (rest v)))
                [error-badge "no matching viewer"])))))))
-
 
 (defn inspect-lazy [{:as desc :keys [fetch-fn]} opts]
   (let [path->info (viewer/path->info desc)
@@ -594,11 +587,10 @@
 
 
 (defn root []
-  [inspect @doc])
+  [inspect @!doc])
 
 (defn ^:export reset-doc [new-doc]
-  (js/console.log :reset-doc new-doc)
-  (reset! doc new-doc))
+  (reset! !doc new-doc))
 
 (rf/reg-sub
  ::blobs
