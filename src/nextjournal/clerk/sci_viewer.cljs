@@ -240,9 +240,6 @@
    'map-viewer map-viewer
    'tagged-value tagged-value
    'inspect-children inspect-children
-   #_#_#_#_
-   'register-viewer! register-viewer!
-   'register-viewers! register-viewers!
    'set-viewers! set-viewers!
    'with-viewer with-viewer
    'with-viewers with-viewers})

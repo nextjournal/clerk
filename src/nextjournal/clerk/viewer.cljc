@@ -4,16 +4,20 @@
             [sci.impl.namespaces]
             #?(:cljs [reagent.ratom :as ratom])))
 
-;; - a name
-;; - a predicate function
-;; - a view function
-;; - ordering!
-(declare view-as)
+(defn value [x]
+  (if (map? x)
+    (:nextjournal/value x x)
+    x))
 
-#_
-(view-as '#(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                       :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
-black")}]) 1)
+#_(value (with-viewer '(+ 1 2 3) :eval!))
+#_(value 123)
+
+(defn viewer [x]
+  (when (map? x)
+    (:nextjournal/viewer x)))
+
+#_(viewer (with-viewer '(+ 1 2 3) :eval!))
+#_(viewer "123")
 
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
@@ -104,19 +108,7 @@ black")}]) 1)
 #_(fetch '(1 2 (1 2 3) 4 5) {:n 10 :path [2]})
 #_(fetch [1 2 [1 2 3] 4 5] {:n 10 :path [2]})
 #_(fetch (range 200) {:n 20 :path [] :offset 60})
-#_(fetch {[1] [1] [2] [2]} {:n 10}) ;; TODO
-#_(let [xs [1 [2] 3]
-        path [1]]
-    (-> (fetch xs {:n 3 :path []})
-        (assoc-in path (fetch xs {:n 3 :path path}))))
-
-
-(let [xs {1 2}
-      opts {:n 10}
-      current-path []]
-  #_
-  (into {} (comp (drop+take-xf opts) (map-indexed #(fetch opts (conj current-path %1) %2))) xs)
-  #_#_into [] (map-indexed #(fetch opts (conj current-path %1) %2) xs))
+#_(fetch {[1] [1] [2] [2]} {:n 10})
 
 (defn select-viewer
   ([x] (select-viewer x default-viewers))
@@ -134,14 +126,17 @@ black")}]) 1)
            (recur (rest v)))
          (throw (ex-info (str "cannot find matchting viewer") {:viewers viewers :x x})))))))
 
-
 #_(select-viewer {:one :two})
 #_(select-viewer [1 2 3])
 #_(select-viewer (range 3))
 #_(select-viewer (clojure.java.io/file "notebooks"))
 
+;; TODO: remove
 (def n 20)
 
+;; TODO:
+;; - sort maps if possible
+;; - handle lazy seqs
 (defn describe
   ([xs]
    (describe {} xs))
@@ -170,7 +165,6 @@ black")}]) 1)
 #_(describe (clojure.java.io/file "notebooks"))
 #_(describe {:viewers [{:pred sequential? :fn pr-str}]} (range 100))
 
-
 (defn extract-info [{:as desc :keys [path]}]
   (-> desc
       (select-keys [:count])
@@ -182,9 +176,6 @@ black")}]) 1)
   (into {} (map (juxt :path extract-info)) (tree-seq (some-fn sequential? map?) :children desc)))
 
 #_(path->info (describe [1 [2] 3]))
-
-
-;; TODO: maybe sort maps
 
 (defn with-viewer
   "The given viewer will be used to display data"
@@ -202,27 +193,6 @@ black")}]) 1)
   (with-viewer data viewer))
 
 #_(view-as :latex "a^2+b^2=c^2")
-
-(defn value [x]
-  (if (map? x)
-    (:nextjournal/value x x)
-    x))
-
-#_(value (with-viewer '(+ 1 2 3) :eval!))
-#_(value 123)
-
-(defn viewer [x]
-  (when (map? x)
-    (:nextjournal/viewer x)))
-
-#_(viewer (with-viewer '(+ 1 2 3) :eval!))
-#_(viewer "123")
-
-#_
-(value {:nextjournal/viewer :clerk/notebook,
-        :nextjournal/value
-        [#:nextjournal{:viewer :code, :value "(+ 1 2)"} 3],
-        :scope {:namespace "shadow.user"}})
 
 (defn html [x]
   (with-viewer x (if (string? x) :html :hiccup)))
@@ -256,18 +226,6 @@ black")}]) 1)
 (defonce !viewers
   (#?(:clj atom :cljs ratom/atom) {:root default-viewers}))
 
-(defmacro register-viewers! [v]
-  `(with-viewer
-     :nextjournal.viewer/register!
-     (quote (let [viewers# ~v]
-              (nextjournal.viewer/register-viewers! viewers#)
-              (constantly viewers#)))))
-
-  #_
-(macroexpand-1 '(register-viewers! {:vector (fn [x options]
-                                              (html (into [:div.flex.inline-flex] (map (partial inspect options)) x)))}))
-
-
 (defn update-viewers! [scope viewers]
   (swap! !viewers assoc scope (vec (concat viewers default-viewers))))
 
@@ -284,7 +242,7 @@ black")}]) 1)
      (assert (or (#{:root} scope)
                  (instance? clojure.lang.Namespace scope)
                  (instance? clojure.lang.Var scope)))
-     (update-viewers! scope viewers)
+     (update-viewers! scope (eval viewers))
      (with-viewer `'(v/set-viewers! ~(datafy-scope scope) ~viewers) :eval!)))
 
 #?(:clj
@@ -300,12 +258,7 @@ black")}]) 1)
 #_(set-viewers! #'update-viewers! [])
 #_(macroexpand '(set-viewers! []))
 
-#_(nextjournal.clerk/show! "notebooks/rule_30_small.clj")
-
 (defn registration? [x]
-  (boolean (and (map? x) (-> x :nextjournal/viewer #{:eval!}))))
+  (and (map? x) (contains? #{:eval!} (viewer x))))
 
 #_(registration? (set-viewers! []))
-
-(defn ^:deprecated paginate [x]
-  x)

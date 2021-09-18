@@ -4,18 +4,16 @@
 ;; - [ ] Convert viewers to sorted map
 ;; - [ ] Fix map display
 ;; - [ ] Fix viewer display
-
 (ns rule-30
   (:require [nextjournal.clerk.viewer :as v]))
 
 #_(nextjournal.clerk/show! "notebooks/rule_30.clj")
 
-(v/set-viewers! [{:pred number? :fn '(fn [x] (v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                                         :class (if (pos? x) "bg-black" "bg-white border-solid border-2 border-black")}]))}
-                 {:pred vector? :fn '(fn [x opts]
-                                       (v/html (into [:div.flex.inline-flex] (v/inspect-children opts) x)))}
-                 {:pred list? :fn '(fn [x opts] (v/html (into [:div.flex.flex-col] (v/inspect-children opts) x)))}])
-
+(v/set-viewers! [{:pred number? :fn (fn [x] (v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                                        :class (if (pos? x) "bg-black" "bg-white border-solid border-2 border-black")}]))}
+                 {:pred vector? :fn (fn [x opts]
+                                      (v/html (into [:div.flex.inline-flex] (v/inspect-children opts) x)))}
+                 {:pred list? :fn (fn [x opts] (v/html (into [:div.flex.flex-col] (v/inspect-children opts) x)))}])
 0
 
 1

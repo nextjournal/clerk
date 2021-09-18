@@ -10,21 +10,25 @@
 ;; - [x] Don't cache things that are fast to evaluate
 ;; - [x] Handle conditional read in cljc files
 ;; - [x] Add README
-;; - [ ] Make viewer registration local (on form + namespace)
-;; - [x] Let the viewer opt into pagination
-;; - [ ] Return complete datastructure if reasonably small (larger than the 20 elements we currently serve)
-;; - [ ] A browser refresh is currently needed to reset a viewer override like in `notebooks/rule_30.clj`, otherwise it will carry over the viewer override to other notebooks that do no specify an override
-;; - [ ] Evaluation error messages are poorly formatted
-;; - [ ] Viewer errors are not displayed correctly
-;; - [x] `first-generation` in `notebooks/rule_30.clj` renders incorrectly because of pagination type coercion from vector to list
-;; - [x] `(def r (range 100))` in `notebooks/pagination.clj` shows incorrect `count`
-;; - [ ] Figure out distributed caching using CAS + cloud bucket
 ;; - [x] Markdown should support Nextjournal Flavored Markdown including:
 ;;   - [x] TODO lists 😹
 ;;   - [x] Inline Formulas $E^2=m^2+\vec{p}^2$
-;; - [x] Fix jar hashing (contents, not filename)
-;; - [x] Printing of very large values
+;; ## Viewers
 ;; - [x] Make viewer api open with predicates
-;; - [ ] Status log
+;; - [x] Make viewer registration local on namespace
+;; - [ ] Lazy seqs
+;; - [ ] Sort maps
 ;; - [ ] Datafy + Nav
+;; - [ ] Metadata viewer
+;; - [ ] Review viewer registration api
+;; - [x] Let the viewer opt into pagination
+;; - [ ] Viewer errors are not displayed correctly
+;; - [x] A browser refresh is currently needed to reset a viewer override like in `notebooks/rule_30.clj`, otherwise it will carry over the viewer override to other notebooks that do no specify an override
+;; - [ ] Evaluation error messages are poorly formatted
+;; - [x] `first-generation` in `notebooks/rule_30.clj` renders incorrectly because of pagination type coercion from vector to list
+;; - [x] `(def r (range 100))` in `notebooks/pagination.clj` shows incorrect `count`
+;; - [x] Printing of very large values
+;; ## Ideas
+;; - [ ] Hook up distributed caching using CAS + cloud bucket
+;; - [ ] Status log
 ;; - [ ] Allow to pin notebook

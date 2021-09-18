@@ -8,7 +8,6 @@
 
 (into #{} (map str) (file-seq notebooks))
 
-
 (def r (range 100))
 
 (map inc r)
