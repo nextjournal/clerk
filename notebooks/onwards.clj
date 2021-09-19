@@ -13,6 +13,7 @@
 ;; - [x] Markdown should support Nextjournal Flavored Markdown including:
 ;;   - [x] TODO lists 😹
 ;;   - [x] Inline Formulas $E^2=m^2+\vec{p}^2$
+;; - [ ] Fix analyzer error for aliases requires w/o ns (e.g. in viewers notebooks)
 ;; ## Viewers
 ;; - [x] Make viewer api open with predicates
 ;; - [x] Make viewer registration local on namespace
@@ -20,6 +21,7 @@
 ;; - [ ] Sort maps
 ;; - [ ] Datafy + Nav
 ;; - [ ] Metadata viewer
+;; - [ ] Persist viewer expansion state across reloads
 ;; - [ ] Review viewer registration api
 ;; - [x] Let the viewer opt into pagination
 ;; - [ ] Viewer errors are not displayed correctly
