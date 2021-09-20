@@ -133,7 +133,18 @@
     (into xs ys)
     (concat xs ys)))
 
-(defn coll-viewer [{:keys [open close]} xs {:as opts :keys [!x expanded-at path desc path->info] :or {path []}}]
+(defn more-button [count {:keys [!x path desc path->info]}]
+  (when-some [more (let [more (- (get-in path->info [path :count]) count)]
+                     (when (pos? more) more))]
+    (let [fetch-opts (-> desc :viewer :fetch-opts)
+          {:keys [fetch-fn unbounded?]} desc]
+      [:<> nbsp
+       [:span.bg-gray-200.hover:bg-gray-200.cursor-pointer.sans-serif.relative
+        {:style {:border-radius 2 :padding "1px 3px" :font-size 11 :top -1}
+         :on-click (fn [_e] (.then (fetch-fn (assoc fetch-opts :offset count))
+                                   #(swap! !x update path concat-into %)))} more (when unbounded? "+") nbsp "more…"]])))
+
+(defn coll-viewer [{:keys [open close]} xs {:as opts :keys [expanded-at path] :or {path []}}]
   (let [expanded? (some-> expanded-at deref (get path))]
     (html [:span.inspected-value
            {:class (when expanded? "inline-flex")}
@@ -145,15 +156,7 @@
                   (comp (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)]))
                         (interpose (if expanded? [:<> [:br] nbsp] nbsp)))
                   xs)
-            (when-some [more (let [more (- (get-in path->info [path :count]) (count xs))]
-                               (when (pos? more) more))]
-              (let [fetch-opts (-> desc :viewer :fetch-opts)
-                    {:keys [fetch-fn unbounded?]} desc]
-                [:<> nbsp
-                 [:span.bg-gray-200.hover:bg-gray-200.cursor-pointer.sans-serif.relative
-                  {:style {:border-radius 2 :padding "1px 3px" :font-size 11 :top -1}
-                   :on-click (fn [_e] (.then (fetch-fn (assoc fetch-opts :offset (count xs)))
-                                             #(swap! !x update path concat-into %)))} more (when unbounded? "+") nbsp "more…"]]))
+            (more-button (count xs) opts)
             close]])))
 
 (defn elision-viewer [_ {:as opts :keys [!x path desc] :or {path []}}]
@@ -179,6 +182,7 @@
                                        [inspect v (update opts :path conj idx)]]))
                        (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) nbsp)] nbsp)))
                  xs)
+           (more-button (count xs) opts)
            "}"])))
 
 (defn tagged-value [tag value]
