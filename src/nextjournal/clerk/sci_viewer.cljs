@@ -138,7 +138,7 @@
     (html [:span.inspected-value
            {:class (when expanded? "inline-flex")}
            [:span
-            [:span.hover:bg-indigo-50.bg-opacity-70.cursor-pointer.rounded-sm
+            [:span.hover:bg-indigo-50.bg-opacity-70.cursor-pointer.rounded-sm.whitespace-nowrap
              {:on-click (partial toggle-expanded expanded-at path)}
              open]
             (into [:<>]
