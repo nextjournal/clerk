@@ -146,9 +146,17 @@
        (some->> xs viewer (contains? named-viewers)) xs
        (map-entry? xs) [(fetch (key xs) opts (conj current-path 0))
                         (fetch (val xs) opts (conj current-path 1))]
-       (or (map? xs) ;; TODO: use vectors for maps
-           (vector? xs)) (into (empty xs) (comp (drop+take-xf opts) (map-indexed #(fetch %2 opts (conj current-path %1)))) xs)
-       (sequential? xs) (sequence (comp (drop+take-xf opts) (map-indexed #(fetch %2 opts (conj current-path %1)))) xs)
+       (or (map? xs)
+           (vector? xs)) (into (if (map? xs) [] (empty xs))
+                               (comp (drop+take-xf opts)
+                                     (map-indexed #(fetch %2 opts (conj current-path %1))))
+                               (cond->> xs
+                                 (and (map? xs) (not (sorted? xs))) (into (sorted-map))))
+       (or (sequential? xs)
+           (set? xs)) (sequence (comp (drop+take-xf opts)
+                                      (map-indexed #(fetch %2 opts (conj current-path %1))))
+                                (cond->> xs
+                                  (and (set? xs) (not (sorted? xs))) (into (sorted-set))))
        (and (string? xs) (< elide-string-length (count xs))) (subs xs 0 n)
        :else xs))))
 
@@ -228,8 +236,9 @@
 #_(describe (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
 
 (defn extract-info [{:as desc :keys [path]}]
+  ;; TODO: drop `:fetch-opts` key once we read it from `:viewer` in frontend
   (-> desc
-      (select-keys [:count])
+      (select-keys [:count :viewer])
       (assoc :fetch-opts (-> desc
                              (get-in [:viewer :fetch-opts])
                              (assoc :path path)))))

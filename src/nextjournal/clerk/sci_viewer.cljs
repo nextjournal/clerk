@@ -285,38 +285,40 @@
                           (error-badge "rendering error")
                           (into [:<>] children)))})))
 
+(defn render-with-viewer [{:as opts :keys [viewers]} viewer x]
+  #_(js/console.log :render-with-viewer #_opts viewer x)
+  (cond (keyword? viewer)
+        (if-let [{render-fn :fn :keys [fetch-opts]} (get (into {} (map (juxt :name identity)) viewers) viewer)]
+          (if-not render-fn
+            (error-badge "no render function for viewer named " (str viewer))
+            (render-fn x (assoc opts :fetch-opts fetch-opts)))
+          (error-badge "cannot find viewer named " (str viewer)))
+        (fn? viewer)
+        (viewer x opts)
+        (list? viewer)
+        (let [render-fn (*eval-form* viewer)]
+          (js/console.log :eval viewer :render-fn render-fn)
+          (render-fn x opts))))
+
 (defn inspect
   ([x]
    [error-boundary
     [inspect x (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}))]])
-  ([x {:as opts :keys [!x !viewers viewers path]}]
-   ;; TODO use viewer from description
+  ([x {:as opts :keys [!x !viewers desc path path->info]}]
    (let [x (or (some-> !x deref (get path)) x)
-         selected-viewer (viewer/viewer x)
+         selected-viewer (or (viewer/viewer x) (get-in path->info [path :viewer :fn]))
          x (viewer/value x)]
-     #_(js/console.log :inspect x :viewer selected-viewer)
+     #_(js/console.log :inspect x :viewer selected-viewer :type (type selected-viewer) :info-for-path (get path->info path))
      (or (when (react/isValidElement x) x)
-         (if selected-viewer
-           (inspect (cond (keyword? selected-viewer)
-                          (if-let [{render-fn :fn :keys [fetch-opts]} (get (into {} (map (juxt :name identity)) viewers) selected-viewer)]
-                            (if-not render-fn
-                              (error-badge "no render function for viewer named " (str selected-viewer))
-                              (render-fn x (assoc opts :fetch-opts fetch-opts)))
-                            (error-badge "cannot find viewer named " (str selected-viewer)))
-                          (fn? selected-viewer)
-                          [selected-viewer x opts]
-                          (list? selected-viewer)
-                          (let [{:keys [fn]} (*eval-form* selected-viewer)]
-                            (js/console.log :eval (pr-str selected-viewer))
-                            [fn x opts])))
-
-           (loop [v (or (@!viewers (:scope @!doc))
-                        (@!viewers :root))]
-             (if-let [{render-fn :fn :keys [pred]} (first v)]
-               (if-let [render-fn (and pred render-fn (pred x) (if (list? render-fn) (*eval-form* render-fn) render-fn))]
-                 (viewer/value (render-fn x opts))
-                 (recur (rest v)))
-               [error-badge "no matching viewer"])))))))
+         (when selected-viewer
+           (inspect (render-with-viewer opts selected-viewer x)))
+         (loop [v (or (@!viewers (:scope @!doc))
+                      (@!viewers :root))]
+           (if-let [{render-fn :fn :keys [pred]} (first v)]
+             (if-let [render-fn (and pred render-fn (pred x) (if (list? render-fn) (*eval-form* render-fn) render-fn))]
+               (viewer/value (render-fn x opts))
+               (recur (rest v)))
+             (error-badge "no matching viewer")))))))
 
 (defn inspect-lazy [{:as desc :keys [fetch-fn]} opts]
   (let [path->info (viewer/path->info desc)

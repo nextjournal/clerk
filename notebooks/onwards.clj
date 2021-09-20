@@ -18,9 +18,10 @@
 ;; - [x] Make viewer api open with predicates
 ;; - [x] Make viewer registration local on namespace
 ;; - [x] Make js-only viewers like plotly & vega work
-;; - [ ] Fix maps
-;; - [ ] Sort maps
+;; - [x] Fix maps
+;; - [x] Sort maps
 ;; - [x] Lazy seqs
+;; - [ ] Restrict string length
 ;; - [ ] Datafy + Nav
 ;; - [ ] Metadata viewer
 ;; - [ ] Persist viewer expansion state across reloads
