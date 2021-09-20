@@ -148,12 +148,12 @@
             (when-some [more (let [more (- (get-in path->info [path :count]) (count xs))]
                                (when (pos? more) more))]
               (let [fetch-opts (-> desc :viewer :fetch-opts)
-                    {:keys [fetch-fn]} desc]
+                    {:keys [fetch-fn unbounded?]} desc]
                 [:<> nbsp
                  [:span.bg-gray-200.hover:bg-gray-200.cursor-pointer.sans-serif.relative
                   {:style {:border-radius 2 :padding "1px 3px" :font-size 11 :top -1}
                    :on-click (fn [_e] (.then (fetch-fn (assoc fetch-opts :offset (count xs)))
-                                             #(swap! !x update path concat-into %)))} more nbsp "more…"]]))
+                                             #(swap! !x update path concat-into %)))} more (when unbounded? "+") nbsp "more…"]]))
             close]])))
 
 (defn elision-viewer [_ {:as opts :keys [!x path desc] :or {path []}}]

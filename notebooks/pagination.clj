@@ -1,8 +1,13 @@
 ;; # Pagination
 #_(nextjournal.clerk/show! "notebooks/pagination.clj")
 
+(range)
+
 (def notebooks
   (clojure.java.io/file "notebooks"))
+
+#_
+(slurp "/usr/share/dict/words")
 
 [notebooks]
 

@@ -22,7 +22,7 @@
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
-  [{:pred string? :fn '(fn [x] (v/html [:span.syntax-string.inspected-value "\"" x "\""]))}
+  [{:pred string? :fn '(fn [x] (v/html [:span.syntax-string.inspected-value "\"" x "\""])) :fetch-opts {:n 100}}
    {:pred number? :fn '(fn [x] (v/html [:span.syntax-number.inspected-value
                                         (if (js/Number.isNaN x) "NaN" (str x))]))}
    {:pred symbol? :fn '(fn [x] (v/html [:span.syntax-symbol.inspected-value x]))}
@@ -36,6 +36,7 @@
    {:pred map? :fn '(partial v/map-viewer) :fetch-opts {:n 20}}
    {:pred uuid? :fn '(fn [x] (v/html (v/tagged-value "#uuid" ['nextjournal.clerk.sci-viewer/inspect (str x)])))}
    {:pred inst? :fn '(fn [x] (v/html (v/tagged-value "#inst" ['nextjournal.clerk.sci-viewer/inspect (str x)])))}])
+
 
 (def preds->viewers
   (into {} (map (juxt :pred identity)) default-viewers))
@@ -96,7 +97,7 @@
                 (and (string? xs) (< elide-string-length (count xs))))) elided
        (map-entry? xs) [(fetch (key xs) opts (conj current-path 0))
                         (fetch (val xs) opts (conj current-path 1))]
-       (or (map? xs)
+       (or (map? xs) ;; TODO: use vectors for maps
            (vector? xs)) (into (empty xs) (comp (drop+take-xf opts) (map-indexed #(fetch %2 opts (conj current-path %1)))) xs)
        (sequential? xs) (sequence (comp (drop+take-xf opts) (map-indexed #(fetch %2 opts (conj current-path %1)))) xs)
        (and (string? xs) (< elide-string-length (count xs))) (subs xs 0 n)
@@ -109,6 +110,7 @@
 #_(fetch [1 2 [1 2 3] 4 5] {:n 10 :path [2]})
 #_(fetch (range 200) {:n 20 :path [] :offset 60})
 #_(fetch {[1] [1] [2] [2]} {:n 10})
+#_(fetch [[1] [1]] {:n 10})
 
 (defn select-viewer
   ([x] (select-viewer x default-viewers))
@@ -131,32 +133,34 @@
 #_(select-viewer (range 3))
 #_(select-viewer (clojure.java.io/file "notebooks"))
 
-;; TODO: remove
-(def n 20)
-
 ;; TODO:
 ;; - sort maps if possible
-;; - handle lazy seqs
+
 (defn describe
   ([xs]
    (describe {} xs))
   ([opts xs]
    (let [{:keys [viewers path]} (merge {:viewers default-viewers :path []} opts)
-         viewer (try (select-viewer xs viewers)
-                     (catch #?(:clj Exception :cljs js/Error) _ex
-                       nil))]
+         {:as viewer :keys [fetch-opts]} (try (select-viewer xs viewers)
+                                              (catch #?(:clj Exception :cljs js/Error) _ex
+                                                nil))]
      (cond (map? xs) (let [children (remove (comp empty? :children)
                                             (map #(describe (update opts :path conj %1) %2) (range) xs))]
-                       (cond-> {:count (count xs)
-                                :path path}
+                       (cond-> {:count (count xs) :path path}
                          viewer (assoc :viewer viewer)
                          (seq children) (assoc :children children)))
            (counted? xs) (let [children (remove nil? (map #(describe (update opts :path conj %1) %2) (range) xs))]
-                           (cond-> {:path path
-                                    :count (count xs)
-                                    :viewer viewer}
+                           (cond-> {:path path :count (count xs) :viewer viewer}
                              (seq children) (assoc :children children)))
-           (and (string? xs) (< n (count xs))) {:path path :count (count xs) :viewer viewer}
+           ;; uncounted sequences assumed to be lazy
+           (seq? xs) (let [{:keys [n]} fetch-opts
+                           limit (+ n 10000)
+                           count (bounded-count limit xs)
+                           children (remove nil? (map #(describe (update opts :path conj %1) %2) (range) (sequence (drop+take-xf fetch-opts) xs)))]
+                       (cond-> {:path path :count count :viewer viewer}
+                         (= count limit) (assoc :unbounded? true)
+                         (seq children) (assoc :children children)))
+           (and (string? xs) (< (:n fetch-opts 20) (count xs))) {:path path :count (count xs) :viewer viewer}
            :else nil))))
 
 #_(describe complex-thing)
@@ -164,6 +168,9 @@
 #_(describe [1 2 [1 2 3] 4 5])
 #_(describe (clojure.java.io/file "notebooks"))
 #_(describe {:viewers [{:pred sequential? :fn pr-str}]} (range 100))
+#_(describe (map vector (range)))
+#_(describe (slurp "/usr/share/dict/words"))
+
 
 (defn extract-info [{:as desc :keys [path]}]
   (-> desc
@@ -226,9 +233,6 @@
 (defonce !viewers
   (#?(:clj atom :cljs ratom/atom) {:root default-viewers}))
 
-(defn update-viewers! [scope viewers]
-  (swap! !viewers assoc scope (vec (concat viewers default-viewers))))
-
 #?(:clj
    (defn datafy-scope [scope]
      (cond
@@ -241,7 +245,7 @@
      (assert (or (#{:root} scope)
                  (instance? clojure.lang.Namespace scope)
                  (instance? clojure.lang.Var scope)))
-     (update-viewers! scope (into [] (map #(update % :pred eval)) viewers))
+     (swap! !viewers assoc scope (into [] (map #(update % :pred eval)) viewers))
      (with-viewer `'(v/set-viewers! ~(datafy-scope scope) ~viewers) :eval!)))
 
 #?(:clj
