@@ -146,7 +146,7 @@
 
 (defn coll-viewer [{:keys [open close]} xs {:as opts :keys [expanded-at path] :or {path []}}]
   (let [expanded? (some-> expanded-at deref (get path))]
-    (html [:span.inspected-value
+    (html [:span.inspected-value.whitespace-nowrap
            {:class (when expanded? "inline-flex")}
            [:span
             [:span.hover:bg-indigo-50.bg-opacity-70.cursor-pointer.rounded-sm.whitespace-nowrap
@@ -169,7 +169,7 @@
 
 (defn map-viewer [xs {:as opts :keys [expanded-at path] :or {path []}}]
   (let [expanded? (some-> expanded-at deref (get path))]
-    (html [:span.inspected-value
+    (html [:span.inspected-value.whitespace-nowrap
            {:on-click (partial toggle-expanded expanded-at path)}
            [:span.hover:bg-indigo-50.bg-opacity-70.cursor-pointer.rounded-sm
             {:on-click (partial toggle-expanded expanded-at path)}
@@ -186,7 +186,7 @@
            "}"])))
 
 (defn tagged-value [tag value]
-  [:span.inspected-value
+  [:span.inspected-value.whitespace-nowrap
    [:span.syntax-tag tag]
    (gstring/unescapeEntities "&nbsp;")
    value])
