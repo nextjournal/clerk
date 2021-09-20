@@ -238,11 +238,10 @@
 
 #?(:clj
    (defn set-viewers!- [scope viewers]
-     (prn :set-viewers! (datafy-scope scope) viewers)
      (assert (or (#{:root} scope)
                  (instance? clojure.lang.Namespace scope)
                  (instance? clojure.lang.Var scope)))
-     (update-viewers! scope (eval viewers))
+     (update-viewers! scope (into [] (map #(update % :pred eval)) viewers))
      (with-viewer `'(v/set-viewers! ~(datafy-scope scope) ~viewers) :eval!)))
 
 #?(:clj
