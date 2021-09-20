@@ -185,29 +185,33 @@
 
 ;; TODO:
 ;; - sort maps if possible
-
 (defn describe
   ([xs]
    (describe {} xs))
   ([opts xs]
-   (let [{:keys [viewers path]} (merge {:viewers default-viewers :path []} opts)
+   (let [{:as opts :keys [viewers path]} (merge {:viewers default-viewers :path []} opts)
          {:as viewer :keys [fetch-opts]} (try (select-viewer xs viewers)
                                               (catch #?(:clj Exception :cljs js/Error) _ex
                                                 nil))]
-     (cond (nil? fetch-opts) {:path path} ;; fetch everything
-           (map? xs) (let [children (remove (comp empty? :children)
-                                            (map #(describe (update opts :path conj %1) %2) (range) xs))]
+     #_(prn :xs xs :viewer viewer)
+     (cond (and (empty? path) (nil? fetch-opts)) {:path path} ;; fetch everything
+           (map? xs) (let [children (sequence (comp (map-indexed #(describe (update opts :path conj %1) %2))
+                                                    (remove (comp empty? :children))) xs)]
+                       (prn :children children :FOO)
                        (cond-> {:count (count xs) :path path}
                          viewer (assoc :viewer viewer)
                          (seq children) (assoc :children children)))
-           (counted? xs) (let [children (remove nil? (map #(describe (update opts :path conj %1) %2) (range) xs))]
+           (counted? xs) (let [children (sequence (comp (map-indexed #(describe (update opts :path conj %1) %2))
+                                                        (remove nil?))  xs)]
                            (cond-> {:path path :count (count xs) :viewer viewer}
                              (seq children) (assoc :children children)))
            ;; uncounted sequences assumed to be lazy
            (seq? xs) (let [{:keys [n]} fetch-opts
                            limit (+ n 10000)
                            count (bounded-count limit xs)
-                           children (remove nil? (map #(describe (update opts :path conj %1) %2) (range) (sequence (drop+take-xf fetch-opts) xs)))]
+                           children (sequence (comp (drop+take-xf fetch-opts)
+                                                    (map-indexed #(describe (update opts :path conj %1) %2))
+                                                    (remove nil?)) xs)]
                        (cond-> {:path path :count count :viewer viewer}
                          (= count limit) (assoc :unbounded? true)
                          (seq children) (assoc :children children)))
