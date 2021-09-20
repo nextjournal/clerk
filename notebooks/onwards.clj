@@ -17,14 +17,14 @@
 ;; ## Viewers
 ;; - [x] Make viewer api open with predicates
 ;; - [x] Make viewer registration local on namespace
-;; - [ ] Make js-only viewers like plotly & vega work
+;; - [x] Make js-only viewers like plotly & vega work
 ;; - [ ] Fix maps
 ;; - [ ] Sort maps
 ;; - [x] Lazy seqs
 ;; - [ ] Datafy + Nav
 ;; - [ ] Metadata viewer
 ;; - [ ] Persist viewer expansion state across reloads
-;; - [ ] Review viewer registration api
+;; - [x] Review viewer registration api
 ;; - [x] Let the viewer opt into pagination
 ;; - [ ] Viewer errors are not displayed correctly
 ;; - [x] A browser refresh is currently needed to reset a viewer override like in `notebooks/rule_30.clj`, otherwise it will carry over the viewer override to other notebooks that do no specify an override

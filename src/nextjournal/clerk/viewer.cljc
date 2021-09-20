@@ -4,6 +4,40 @@
             [sci.impl.namespaces]
             #?(:cljs [reagent.ratom :as ratom])))
 
+
+(defn with-viewer
+  "The given viewer will be used to display data"
+  [x viewer]
+  {:nextjournal/viewer viewer :nextjournal/value x})
+
+(defn with-viewers
+  "Binds viewers to types, eg {:boolean view-fn}"
+  [x viewers]
+  {:nextjournal/viewers viewers :nextjournal/value x})
+
+(defn view-as
+  "Like `with-viewer` but takes viewer as 1st argument"
+  [viewer data]
+  (with-viewer data viewer))
+
+#_(view-as :latex "a^2+b^2=c^2")
+
+(defn html [x]
+  (with-viewer x (if (string? x) :html :hiccup)))
+
+(defn vl [x]
+  (with-viewer x :vega-lite))
+
+(defn plotly [x]
+  (with-viewer x :plotly))
+
+(defn md [x]
+  (with-viewer x :markdown))
+
+(defn tex [x]
+  (with-viewer x :latex))
+
+
 (defn value [x]
   (if (map? x)
     (:nextjournal/value x x)
@@ -19,10 +53,12 @@
 #_(viewer (with-viewer '(+ 1 2 3) :eval!))
 #_(viewer "123")
 
+(def elide-string-length 100)
+
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
-  [{:pred string? :fn '(fn [x] (v/html [:span.syntax-string.inspected-value "\"" x "\""])) :fetch-opts {:n 100}}
+  [{:pred string? :fn '(fn [x] (v/html [:span.syntax-string.inspected-value "\"" x "\""])) :fetch-opts {:n elide-string-length}}
    {:pred number? :fn '(fn [x] (v/html [:span.syntax-number.inspected-value
                                         (if (js/Number.isNaN x) "NaN" (str x))]))}
    {:pred symbol? :fn '(fn [x] (v/html [:span.syntax-symbol.inspected-value x]))}
@@ -37,6 +73,20 @@
    {:pred uuid? :fn '(fn [x] (v/html (v/tagged-value "#uuid" ['nextjournal.clerk.sci-viewer/inspect (str x)])))}
    {:pred inst? :fn '(fn [x] (v/html (v/tagged-value "#inst" ['nextjournal.clerk.sci-viewer/inspect (str x)])))}])
 
+(def named-viewers
+  #{:html
+    :hiccup
+    :plotly
+    :code
+    :eval!
+    :markdown
+    :mathjax
+    :latex
+    :reagent
+    :vega-lite
+    :clerk/notebook
+    :clerk/var
+    :clerk/result})
 
 (def preds->viewers
   (into {} (map (juxt :pred identity)) default-viewers))
@@ -59,8 +109,6 @@
 
 (def elided
   :nextjournal/…)
-
-(def elide-string-length 20)
 
 (defn drop+take-xf [{:keys [n offset]
                      :or {offset 0}}]
@@ -95,6 +143,7 @@
             (or (associative? xs)
                 (sequential? xs)
                 (and (string? xs) (< elide-string-length (count xs))))) elided
+       (some->> xs viewer (contains? named-viewers)) xs
        (map-entry? xs) [(fetch (key xs) opts (conj current-path 0))
                         (fetch (val xs) opts (conj current-path 1))]
        (or (map? xs) ;; TODO: use vectors for maps
@@ -111,16 +160,16 @@
 #_(fetch (range 200) {:n 20 :path [] :offset 60})
 #_(fetch {[1] [1] [2] [2]} {:n 10})
 #_(fetch [[1] [1]] {:n 10})
+#_(fetch (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}) {})
 
 (defn select-viewer
   ([x] (select-viewer x default-viewers))
   ([x viewers]
-   (if-let [selected-viewer (-> x meta :nextjournal/viewer)]
-     (let [x (:nextjournal/value x x)]
-       (cond (keyword? selected-viewer)
-             (if-let [viewer (get (into {} (map (juxt :name identity)) viewers) selected-viewer)]
-               viewer
-               (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x x :viewers viewers})))))
+   (if-let [selected-viewer (viewer x)]
+     (cond (keyword? selected-viewer)
+           (if (named-viewers selected-viewer)
+             selected-viewer
+             (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers}))))
      (loop [v viewers]
        (if-let [{:as matching-viewer :keys [pred]} (first v)]
          (if (and pred (pred x))
@@ -132,6 +181,7 @@
 #_(select-viewer [1 2 3])
 #_(select-viewer (range 3))
 #_(select-viewer (clojure.java.io/file "notebooks"))
+#_(select-viewer (md "# Hello"))
 
 ;; TODO:
 ;; - sort maps if possible
@@ -144,7 +194,8 @@
          {:as viewer :keys [fetch-opts]} (try (select-viewer xs viewers)
                                               (catch #?(:clj Exception :cljs js/Error) _ex
                                                 nil))]
-     (cond (map? xs) (let [children (remove (comp empty? :children)
+     (cond (nil? fetch-opts) {:path path} ;; fetch everything
+           (map? xs) (let [children (remove (comp empty? :children)
                                             (map #(describe (update opts :path conj %1) %2) (range) xs))]
                        (cond-> {:count (count xs) :path path}
                          viewer (assoc :viewer viewer)
@@ -170,7 +221,7 @@
 #_(describe {:viewers [{:pred sequential? :fn pr-str}]} (range 100))
 #_(describe (map vector (range)))
 #_(describe (slurp "/usr/share/dict/words"))
-
+#_(describe (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
 
 (defn extract-info [{:as desc :keys [path]}]
   (-> desc
@@ -183,38 +234,7 @@
   (into {} (map (juxt :path extract-info)) (tree-seq (some-fn sequential? map?) :children desc)))
 
 #_(path->info (describe [1 [2] 3]))
-
-(defn with-viewer
-  "The given viewer will be used to display data"
-  [x viewer]
-  {:nextjournal/viewer viewer :nextjournal/value x})
-
-(defn with-viewers
-  "Binds viewers to types, eg {:boolean view-fn}"
-  [x viewers]
-  {:nextjournal/viewers viewers :nextjournal/value x})
-
-(defn view-as
-  "Like `with-viewer` but takes viewer as 1st argument"
-  [viewer data]
-  (with-viewer data viewer))
-
-#_(view-as :latex "a^2+b^2=c^2")
-
-(defn html [x]
-  (with-viewer x (if (string? x) :html :hiccup)))
-
-(defn vl [x]
-  (with-viewer x :vega-lite))
-
-(defn plotly [x]
-  (with-viewer x :plotly))
-
-(defn md [x]
-  (with-viewer x :markdown))
-
-(defn tex [x]
-  (with-viewer x :latex))
+#_(path->info (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
 
 ;; TODO: hack for talk to make sql result display as table, propery support SQL results as tables and remove
 (defn ->table
@@ -265,3 +285,5 @@
   (and (map? x) (contains? #{:eval!} (viewer x))))
 
 #_(registration? (set-viewers! []))
+
+#_(nextjournal.clerk/show! "notebooks/viewers/vega.clj")

@@ -287,10 +287,10 @@
     [inspect x (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}))]])
   ([x {:as opts :keys [!x !viewers viewers path]}]
    ;; TODO use viewer from description
-   (let [x' (or (some-> !x deref (get path)) x)
+   (let [x (or (some-> !x deref (get path)) x)
          selected-viewer (viewer/viewer x)
-         x (viewer/value x')]
-     (js/console.log :inspect x :viewer selected-viewer)
+         x (viewer/value x)]
+     #_(js/console.log :inspect x :viewer selected-viewer)
      (or (when (react/isValidElement x) x)
          (if selected-viewer
            (inspect (cond (keyword? selected-viewer)
