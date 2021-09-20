@@ -634,19 +634,20 @@
 (dc/defcard notebook
   "Shows how to display a notebook document"
   [state]
-  [inspect ^{:nextjournal/viewer :clerk/notebook}
-   [(view-as :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
-    [1 2 3 4]
-    (view-as :code "(shuffle (range 10))")
-    {:hello [0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9]}
-    (view-as :markdown "# And some more\n And some more [markdown](https://daringfireball.net/projects/markdown/).")
-    (view-as :code "(shuffle (range 10))")
-    (view-as :markdown "## Some math \n This is a formula.")
-    (view-as :latex
-             "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")
-    (view-as :plotly
-             {:data [{:y (shuffle (range 10)) :name "The Federation" }
-                     {:y (shuffle (range 10)) :name "The Empire"}]})]]
+  [inspect
+   (view-as :clerk/notebook
+            [(view-as :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
+             [1 2 3 4]
+             (view-as :code "(shuffle (range 10))")
+             {:hello [0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9]}
+             (view-as :markdown "# And some more\n And some more [markdown](https://daringfireball.net/projects/markdown/).")
+             (view-as :code "(shuffle (range 10))")
+             (view-as :markdown "## Some math \n This is a formula.")
+             (view-as :latex
+                      "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")
+             (view-as :plotly
+                      {:data [{:y (shuffle (range 10)) :name "The Federation"}
+                              {:y (shuffle (range 10)) :name "The Empire"}]})])]
   {::dc/class "p-0"})
 
 
