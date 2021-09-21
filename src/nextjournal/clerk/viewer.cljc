@@ -197,8 +197,8 @@
   ([xs]
    (describe {} xs))
   ([opts xs]
-   (let [{:as opts :keys [viewers path]} (merge {:viewers default-viewers :path []} opts)
-         {:as viewer :keys [fetch-opts]} (try (select-viewer xs viewers)
+   (let [{:as opts :keys [viewers path]} (merge {:path []} opts)
+         {:as viewer :keys [fetch-opts]} (try (select-viewer xs (concat viewers default-viewers))
                                               (catch #?(:clj Exception :cljs js/Error) _ex
                                                 nil))]
      #_(prn :xs xs :viewer viewer)

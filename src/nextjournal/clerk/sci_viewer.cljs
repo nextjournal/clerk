@@ -159,6 +159,9 @@
             (more-button (count xs) opts)
             close]])))
 
+(def elision-pred
+  (partial = :nextjournal/…))
+
 (defn elision-viewer [_ {:as opts :keys [!x path desc] :or {path []}}]
   (let [fetch-opts (-> desc :viewer :fetch-opts)
         {:keys [fetch-fn]} desc]
@@ -222,13 +225,13 @@
 
 
 (def default-viewers
-  (concat [{:pred (partial = :nextjournal/…) :fn elision-viewer}] viewer/default-viewers js-viewers named-viewers))
+  (concat viewer/default-viewers js-viewers named-viewers))
 
 (defonce !doc (ratom/atom nil))
 (defonce !viewers viewer/!viewers)
 
 (defn set-viewers! [scope viewers]
-  (js/console.log :set-viewers! {:scope scope :viewers viewers})
+  #_(js/console.log :set-viewers! {:scope scope :viewers viewers})
   (let [new-viewers (vec (concat viewers default-viewers))]
     (swap! !viewers assoc scope new-viewers)
     'set-viewers!))
@@ -297,16 +300,18 @@
         (viewer x opts)
         (list? viewer)
         (let [render-fn (*eval-form* viewer)]
-          (js/console.log :eval viewer :render-fn render-fn)
+          #_(js/console.log :eval viewer :render-fn render-fn)
           (render-fn x opts))))
 
 (defn inspect
   ([x]
    [error-boundary
     [inspect x (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}))]])
-  ([x {:as opts :keys [!x !viewers desc path path->info]}]
+  ([x {:as opts :keys [!x !viewers path path->info]}]
    (let [x (or (some-> !x deref (get path)) x)
-         selected-viewer (or (viewer/viewer x) (get-in path->info [path :viewer :fn]))
+         selected-viewer (or (viewer/viewer x)
+                             (when (elision-pred x) elision-viewer)
+                             (get-in path->info [path :viewer :fn]))
          x (viewer/value x)]
      #_(js/console.log :inspect x :viewer selected-viewer :type (type selected-viewer) :info-for-path (get path->info path))
      (or (when (react/isValidElement x) x)
