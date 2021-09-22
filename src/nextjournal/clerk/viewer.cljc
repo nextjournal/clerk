@@ -12,16 +12,17 @@
 #_(wrap-value 123)
 #_(wrap-value {:nextjournal/value 456})
 
-(defn value [x]
-  (if (map? x)
-    (:nextjournal/value x x)
-    x))
-#_(value (with-viewer '(+ 1 2 3) :eval!))
-#_(value 123)
-
 (defn wrapped-value? [x]
   (and (map? x)
        (contains? x :nextjournal/value)))
+
+
+(defn value [x]
+  (if (wrapped-value? x)
+    (:nextjournal/value x)
+    x))
+#_(value (with-viewer '(+ 1 2 3) :eval!))
+#_(value 123)
 
 (defn with-viewer
   "The given viewer will be used to display data"
@@ -215,16 +216,16 @@
 #_(select-viewer (md "# Hello"))
 #_(select-viewer (html [:h1 "hi"]))
 
-;; TODO:
-;; - sort maps if possible
 (defn describe
   ([xs]
    (describe {} xs))
   ([opts xs]
-   (let [{:as opts :keys [viewers path]} (merge {:path []} opts)
-         {:as viewer :keys [fetch-opts]} (try (select-viewer xs (concat (viewers xs) viewers default-viewers))
+   (let [viewers-xs (viewers xs)
+         {:as opts :keys [viewers path]} (merge {:path []} opts)
+         {:as viewer :keys [fetch-opts]} (try (select-viewer xs (concat viewers-xs viewers default-viewers))
                                               (catch #?(:clj Exception :cljs js/Error) _ex
-                                                nil))]
+                                                nil))
+         xs (value xs)]
      #_(prn :xs xs :viewer viewer)
      (cond (and (empty? path) (nil? fetch-opts)) {:path path} ;; fetch everything
            (map? xs) (let [children (sequence (comp (map-indexed #(describe (update opts :path conj %1) %2))
@@ -249,6 +250,8 @@
            (and (string? xs) (< (:n fetch-opts 20) (count xs))) {:path path :count (count xs) :viewer viewer}
            :else nil))))
 
+(describe {1 2})
+
 #_(describe complex-thing)
 #_(describe {:one [1 2 3] 1 2 3 4})
 #_(describe [1 2 [1 2 3] 4 5])
@@ -257,7 +260,7 @@
 #_(describe (map vector (range)))
 #_(describe (slurp "/usr/share/dict/words"))
 #_(describe (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
-(describe (with-viewer [:h1 "hi"] :html))
+#_(describe (with-viewer [:h1 "hi"] :html))
 
 (defn extract-info [{:as desc :keys [path]}]
   ;; TODO: drop `:fetch-opts` key once we read it from `:viewer` in frontend

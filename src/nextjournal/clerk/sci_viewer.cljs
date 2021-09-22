@@ -79,7 +79,8 @@
    (into [:div.flex.flex-col.items-center.viewer-notebook]
          (map (fn [x]
                 (let [viewer (viewer/viewer x)
-                      width (:nextjournal/width x)]
+                      width (:nextjournal/width x)
+                      blob-id (:blob-id (viewer/value x))]
                   [:div {:class ["viewer"
                                  (when (keyword? viewer)
                                    (str "viewer-" (name viewer)))
@@ -89,9 +90,8 @@
                                    :wide "w-full max-w-wide px-8"
                                    :full "w-full"
                                    "w-full max-w-prose px-8 overflow-x-auto")]}
-                   [inspect x]
-                   #_
-                   (cond-> (inspect %) (:blob/id %) (vary-meta assoc :key (:blob/id %)))])))
+                   (cond-> [inspect x]
+                     blob-id (with-meta {:key blob-id}))])))
          xs)))
 
 (defn var [x]

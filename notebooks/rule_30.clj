@@ -1,9 +1,5 @@
 ;; # Rule 30 🕹
 ;; Let's explore cellular automata in a Clerk Notebook. We start by requiring the custom viewers.
-;; #### TODO
-;; - [ ] Convert viewers to sorted map
-;; - [ ] Fix map display
-;; - [ ] Fix viewer display
 (ns rule-30
   (:require [nextjournal.clerk.viewer :as v]))
 
