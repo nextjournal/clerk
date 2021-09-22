@@ -62,14 +62,14 @@
 (defn object-viewer [x {:as opts :keys [expanded-at path]}]
   (let [x' (obj->clj x)
         expanded? (some-> expanded-at deref (get path))]
-    (html [:span.inspected-value "#js {"
+    (html [:span.inspected-value.whitespace-nowrap "#js {"
            (into [:<>]
                  (comp (map-indexed (fn [idx k]
                                       [:<>
                                        [inspect k (update opts :path conj idx)]
-                                       nbsp
+                                       " "
                                        [inspect (value-of x k) (update opts :path conj idx)]]))
-                       (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) nbsp)] nbsp)))
+                       (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) " ")] " ")))
                  (keys x')) "}"])))
 
 
@@ -138,11 +138,11 @@
                      (when (pos? more) more))]
     (let [fetch-opts (-> desc :viewer :fetch-opts)
           {:keys [fetch-fn unbounded?]} desc]
-      [:<> nbsp
-       [:span.bg-gray-200.hover:bg-gray-200.cursor-pointer.sans-serif.relative
+      [:<> " "
+       [:span.bg-gray-200.hover:bg-gray-200.cursor-pointer.sans-serif.relative.whitespace-nowrap
         {:style {:border-radius 2 :padding "1px 3px" :font-size 11 :top -1}
          :on-click (fn [_e] (.then (fetch-fn (assoc fetch-opts :offset count))
-                                   #(swap! !x update path concat-into %)))} more (when unbounded? "+") nbsp "more…"]])))
+                                   #(swap! !x update path concat-into %)))} more (when unbounded? "+") " more…"]])))
 
 (defn coll-viewer [{:keys [open close]} xs {:as opts :keys [expanded-at path] :or {path []}}]
   (let [expanded? (some-> expanded-at deref (get path))]
@@ -154,7 +154,7 @@
              open]
             (into [:<>]
                   (comp (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)]))
-                        (interpose (if expanded? [:<> [:br] nbsp] nbsp)))
+                        (interpose (if expanded? [:<> [:br] nbsp] " ")))
                   xs)
             (more-button (count xs) opts)
             close]])))
@@ -181,9 +181,9 @@
                  (comp (map-indexed (fn [idx [k v]]
                                       [:<>
                                        [inspect k (update opts :path conj idx)]
-                                       nbsp
+                                       " "
                                        [inspect v (update opts :path conj idx)]]))
-                       (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) nbsp)] nbsp)))
+                       (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) nbsp)] " ")))
                  xs)
            (more-button (count xs) opts)
            "}"])))
