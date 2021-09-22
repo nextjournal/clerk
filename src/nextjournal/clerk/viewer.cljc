@@ -296,7 +296,7 @@
 #?(:clj
    (defn datafy-scope [scope]
      (cond
-       (instance? clojure.lang.Namespace scope) (-> scope str symbol)
+       (instance? clojure.lang.Namespace scope) {:namespace (-> scope str keyword)}
        (nil? scope) :root
        :else (throw (ex-info (str "Unsupported scope " scope) {:scope scope})))))
 
@@ -318,7 +318,7 @@
 
 (defmacro set-viewers!
   ([viewers] (set-viewers!- *ns* viewers))
-  ([var viewers] (set-viewers!- var viewers)))
+  ([scope viewers] (set-viewers!- scope viewers)))
 
 #_(set-viewers! [])
 #_(set-viewers! #'update-viewers! [])
