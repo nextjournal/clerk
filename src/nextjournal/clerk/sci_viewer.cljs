@@ -144,13 +144,24 @@
          :on-click (fn [_e] (.then (fetch-fn (assoc fetch-opts :offset count))
                                    #(swap! !x update path concat-into %)))} more (when unbounded? "+") " more…"]])))
 
+(defn expanded-path? [expanded-at path]
+  (some-> expanded-at deref (get path)))
+
+(defn expandable-path? [expanded-at path]
+  (or
+    (= path [])
+    (expanded-path? expanded-at (vec (drop-last path)))))
+
 (defn coll-viewer [{:keys [open close]} xs {:as opts :keys [expanded-at path] :or {path []}}]
-  (let [expanded? (some-> expanded-at deref (get path))]
+  (let [expanded? (expanded-path? expanded-at path)
+        expandable? (expandable-path? expanded-at path)]
     (html [:span.inspected-value.whitespace-nowrap
            {:class (when expanded? "inline-flex")}
            [:span
-            [:span.hover:bg-indigo-50.bg-opacity-70.cursor-pointer.rounded-sm.whitespace-nowrap
-             {:on-click (partial toggle-expanded expanded-at path)}
+            [:span.bg-opacity-70.rounded-sm.whitespace-nowrap
+             (when expandable?
+               {:on-click (partial toggle-expanded expanded-at path)
+                :class ["cursor-pointer" "hover:bg-indigo-50"]})
              open]
             (into [:<>]
                   (comp (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)]))
@@ -171,11 +182,15 @@
                                 (fn [x] (swap! !x assoc path x))))} "…"]))
 
 (defn map-viewer [xs {:as opts :keys [expanded-at path] :or {path []}}]
-  (let [expanded? (some-> expanded-at deref (get path))]
+  (let [expanded? (expanded-path? expanded-at path)
+        expandable? (expandable-path? expanded-at path)]
     (html [:span.inspected-value.whitespace-nowrap
-           {:on-click (partial toggle-expanded expanded-at path)}
-           [:span.hover:bg-indigo-50.bg-opacity-70.cursor-pointer.rounded-sm
-            {:on-click (partial toggle-expanded expanded-at path)}
+           (when expandable?
+             {:on-click (partial toggle-expanded expanded-at path)})
+           [:span.bg-opacity-70.rounded-sm
+            (when expandable?
+              {:on-click (partial toggle-expanded expanded-at path)
+               :class ["cursor-pointer" "hover:bg-indigo-50"]})
             "{"]
            (into [:<>]
                  (comp (map-indexed (fn [idx [k v]]
