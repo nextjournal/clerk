@@ -219,7 +219,7 @@
 (def named-viewers
   [;; named viewers
    {:name :latex :pred string? :fn #(html (katex/to-html-string %))}
-   {:name :mathjax :pred string? :fn mathjax/viewer}
+   {:name :mathjax :pred string? :fn (comp normalize-viewer mathjax/viewer)}
    {:name :html :pred string? :fn #(html [:div {:dangerouslySetInnerHTML {:__html %}}])}
    {:name :hiccup :fn r/as-element}
    {:name :plotly :pred map? :fn (comp normalize-viewer plotly/viewer)}
