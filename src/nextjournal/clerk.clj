@@ -29,7 +29,7 @@
     (instance? clojure.lang.IObj result)
     (vary-meta assoc :blob/id (cond-> hash (not (string? hash)) multihash/base58))))
 
-#_(meta (add-blob {} "foo"))
+#_(meta (add-blob #{:test} "foo"))
 
 (defn hash+store-in-cas! [x]
   (let [^bytes ba (nippy/freeze x)

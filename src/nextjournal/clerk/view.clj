@@ -2,14 +2,24 @@
   (:require [nextjournal.clerk.viewer :as v]
             [hiccup.page :as hiccup]
             [clojure.pprint :as pprint]
+            [clojure.string :as str]
             [clojure.walk :as w]))
+
+(defn described-result [ns result]
+  (-> (v/describe {:viewers (v/get-viewers ns (v/viewers result))} result)
+      (assoc :blob-id (-> result meta :blob/id))
+      (v/with-viewer :clerk/result)))
+
+
+#_(v/with-viewers (range 3) [{:pred number? :fn '(fn [x] (v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                                                     :class (if (pos? x) "bg-black" "bg-white border-solid border-2 border-black")}]))}])
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([{:keys [inline-results?] :or {inline-results? false}} doc]
    (let [{:keys [ns]} (meta doc)]
-     (-> []
-         (into (mapcat (fn [{:as x :keys [type text result]}]
+     (-> (into []
+               (mapcat (fn [{:as x :keys [type text result]}]
                          (case type
                            :markdown [(v/view-as :markdown text)]
                            :code (cond-> [(v/view-as :code text)]
@@ -18,19 +28,17 @@
                                                   (instance? clojure.lang.IMeta result)
                                                   (contains? (meta result) :blob/id)
                                                   (not (v/registration? result)))
-                                           (v/view-as :clerk/result (assoc (v/describe {:viewers (v/get-viewers ns)} result) :blob/id (-> result meta :blob/id)))
+                                           (described-result ns result)
                                            result))))))
                doc)
          (v/with-viewer :clerk/notebook)
          (assoc :scope (v/datafy-scope ns))))))
-
 
 #_(meta (doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj")))
 
 (defn ex->viewer [e]
   (into ^{:nextjournal/viewer :notebook}
         [(v/view-as :code (pr-str (Throwable->map e)))]))
-
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj"))
 

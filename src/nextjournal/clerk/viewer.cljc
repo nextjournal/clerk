@@ -4,16 +4,42 @@
             [sci.impl.namespaces]
             #?(:cljs [reagent.ratom :as ratom])))
 
+(defn wrap-value [x]
+  (if (and (map? x) (:nextjournal/value x))
+    x
+    {:nextjournal/value x}))
+
+#_(wrap-value 123)
+#_(wrap-value {:nextjournal/value 456})
+
+(defn value [x]
+  (if (map? x)
+    (:nextjournal/value x x)
+    x))
+#_(value (with-viewer '(+ 1 2 3) :eval!))
+#_(value 123)
+
+(defn wrapped-value? [x]
+  (and (map? x)
+       (contains? x :nextjournal/value)))
 
 (defn with-viewer
   "The given viewer will be used to display data"
   [x viewer]
-  {:nextjournal/viewer viewer :nextjournal/value x})
+  (-> x
+      wrap-value
+      (assoc :nextjournal/viewer viewer)))
+
+#_(with-viewer "x^2" :latex)
 
 (defn with-viewers
   "Binds viewers to types, eg {:boolean view-fn}"
   [x viewers]
-  {:nextjournal/viewers viewers :nextjournal/value x})
+  (-> x
+      wrap-value
+      (assoc :nextjournal/viewers viewers)))
+
+#_(-> "x^2" (with-viewer :latex) (with-viewers [{:name :latex :fn :mathjax}]))
 
 (defn view-as
   "Like `with-viewer` but takes viewer as 1st argument"
@@ -37,21 +63,16 @@
 (defn tex [x]
   (with-viewer x :latex))
 
-
-(defn value [x]
-  (if (map? x)
-    (:nextjournal/value x x)
-    x))
-
-#_(value (with-viewer '(+ 1 2 3) :eval!))
-#_(value 123)
-
 (defn viewer [x]
   (when (map? x)
     (:nextjournal/viewer x)))
 
 #_(viewer (with-viewer '(+ 1 2 3) :eval!))
 #_(viewer "123")
+
+(defn viewers [x]
+  (when (map? x)
+    (:nextjournal/viewers x)))
 
 (def elide-string-length 100)
 
@@ -91,21 +112,22 @@
 (def preds->viewers
   (into {} (map (juxt :pred identity)) default-viewers))
 
-(def map-100
-  (zipmap (range 100) (range 100)))
+(comment
+  (def map-100
+    (zipmap (range 100) (range 100)))
 
-(def dict-words
-  (vec (take 100 #?(:cljs (range) :clj (str/split-lines (slurp "/usr/share/dict/words"))))))
+  (def dict-words
+    (vec (take 100 #?(:cljs (range) :clj (str/split-lines (slurp "/usr/share/dict/words"))))))
 
-(def long-string
-  (str/join dict-words))
+  (def long-string
+    (str/join dict-words))
 
-(def complex-thing
-  (-> (zipmap (range 100) (range 100))
-      (assoc 0 dict-words)
-      (assoc :words dict-words)
-      (assoc-in [:map :deep] (zipmap (range 100) (range 100)))
-      (assoc 1 long-string)))
+  (def complex-thing
+    (-> (zipmap (range 100) (range 100))
+        (assoc 0 dict-words)
+        (assoc :words dict-words)
+        (assoc-in [:map :deep] (zipmap (range 100) (range 100)))
+        (assoc 1 long-string))))
 
 (def elided
   :nextjournal/…)
@@ -143,7 +165,8 @@
             (or (associative? xs)
                 (sequential? xs)
                 (and (string? xs) (< elide-string-length (count xs))))) elided
-       (some->> xs viewer (contains? named-viewers)) xs
+       (or (wrapped-value? xs)
+           (some->> xs viewer (contains? named-viewers))) xs
        (map-entry? xs) [(fetch (key xs) opts (conj current-path 0))
                         (fetch (val xs) opts (conj current-path 1))]
        (or (map? xs)
@@ -190,6 +213,7 @@
 #_(select-viewer (range 3))
 #_(select-viewer (clojure.java.io/file "notebooks"))
 #_(select-viewer (md "# Hello"))
+#_(select-viewer (html [:h1 "hi"]))
 
 ;; TODO:
 ;; - sort maps if possible
@@ -198,14 +222,13 @@
    (describe {} xs))
   ([opts xs]
    (let [{:as opts :keys [viewers path]} (merge {:path []} opts)
-         {:as viewer :keys [fetch-opts]} (try (select-viewer xs (concat viewers default-viewers))
+         {:as viewer :keys [fetch-opts]} (try (select-viewer xs (concat (viewers xs) viewers default-viewers))
                                               (catch #?(:clj Exception :cljs js/Error) _ex
                                                 nil))]
      #_(prn :xs xs :viewer viewer)
      (cond (and (empty? path) (nil? fetch-opts)) {:path path} ;; fetch everything
            (map? xs) (let [children (sequence (comp (map-indexed #(describe (update opts :path conj %1) %2))
                                                     (remove (comp empty? :children))) xs)]
-                       (prn :children children :FOO)
                        (cond-> {:count (count xs) :path path}
                          viewer (assoc :viewer viewer)
                          (seq children) (assoc :children children)))
@@ -234,6 +257,7 @@
 #_(describe (map vector (range)))
 #_(describe (slurp "/usr/share/dict/words"))
 #_(describe (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
+(describe (with-viewer [:h1 "hi"] :html))
 
 (defn extract-info [{:as desc :keys [path]}]
   ;; TODO: drop `:fetch-opts` key once we read it from `:viewer` in frontend
@@ -269,22 +293,25 @@
 #?(:clj
    (defn datafy-scope [scope]
      (cond
-       (instance? clojure.lang.Namespace scope) {:namespace (str scope)}
-       (instance? clojure.lang.Namespace scope) {:var (str scope)}
-       :else :root)))
+       (instance? clojure.lang.Namespace scope) (-> scope str symbol)
+       (nil? scope) :root
+       :else (throw (ex-info (str "Unsupported scope " scope) {:scope scope})))))
+
+#_(datafy-scope *ns*)
+#_(datafy-scope #'datafy-scope)
 
 #?(:clj
    (defn set-viewers!- [scope viewers]
      (assert (or (#{:root} scope)
                  (instance? clojure.lang.Namespace scope)
-                 (instance? clojure.lang.Var scope)))
+                 (var? scope)))
      (swap! !viewers assoc scope (into [] (map #(update % :pred eval)) viewers))
      (with-viewer `'(v/set-viewers! ~(datafy-scope scope) ~viewers) :eval!)))
 
-#?(:clj
-   (defn get-viewers [scope]
-     (or (@!viewers scope)
-         (@!viewers :root))))
+(defn get-viewers
+  ([scope] (get-viewers scope nil))
+  ([scope viewers]
+   (concat viewers (@!viewers scope) (@!viewers :root))))
 
 (defmacro set-viewers!
   ([viewers] (set-viewers!- *ns* viewers))

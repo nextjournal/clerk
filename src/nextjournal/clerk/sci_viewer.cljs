@@ -110,7 +110,8 @@
 #_(opts->query {:s 10 :num 42})
 
 
-(defn fetch! [{blob-id :blob/id} opts]
+(defn fetch! [{:keys [blob-id]} opts]
+  #_(js/console.log :fetch blob-id opts)
   (-> (js/fetch (str "_blob/" blob-id (when (seq opts)
                                         (str "?" (opts->query opts)))))
       (.then #(.text %))
@@ -327,18 +328,20 @@
          selected-viewer (or (viewer/viewer x)
                              (when (elision-pred x) elision-viewer)
                              (get-in path->info [path :viewer :fn]))
-         x (viewer/value x)]
-     #_(js/console.log :inspect x :viewer selected-viewer :type (type selected-viewer) :info-for-path (get path->info path))
-     (or (when (react/isValidElement x) x)
+         val (viewer/value x)]
+     #_(js/console.log :inspect val :viewer selected-viewer :type (type selected-viewer))
+     (or (when (react/isValidElement val) val)
          (when selected-viewer
-           (inspect (render-with-viewer opts selected-viewer x)))
-         (loop [v (or (@!viewers (:scope @!doc))
-                      (@!viewers :root))]
-           (if-let [{render-fn :fn :keys [pred]} (first v)]
-             (if-let [render-fn (and pred render-fn (pred x) (if (list? render-fn) (*eval-form* render-fn) render-fn))]
-               (viewer/value (render-fn x opts))
-               (recur (rest v)))
-             (error-badge "no matching viewer")))))))
+           (inspect (render-with-viewer opts selected-viewer val)))
+         (let [scope (:scope @!doc)]
+           (loop [v (concat (some-> x :nextjournal/viewers *eval-form*)
+                            (@!viewers scope)
+                            (@!viewers :root))]
+             (if-let [{render-fn :fn :keys [pred]} (first v)]
+               (if-let [render-fn (and pred render-fn (pred val) (if (list? render-fn) (*eval-form* render-fn) render-fn))]
+                 (viewer/value (render-fn x opts))
+                 (recur (rest v)))
+               (error-badge "no matching viewer"))))))))
 
 (defn inspect-lazy [{:as desc :keys [fetch-fn]} opts]
   (let [path->info (viewer/path->info desc)
@@ -354,6 +357,7 @@
 
       :reagent-render
       (fn render-inspect-lazy [_]
+        #_(js/console.log :inspect-lazy opts :desc desc)
         (if (seq @!x)
           [error-boundary [inspect nil opts]]
           [:span "loading…"]))})))
@@ -655,7 +659,7 @@
 
 (dc/defcard result
   [inspect (view-as :clerk/result
-                    {:path [], :count 49, :blob/id "5dqpVeeZvAkHU546wCpFjr6GDHxkZh"})])
+                    {:path [], :count 49, :blob-id "5dqpVeeZvAkHU546wCpFjr6GDHxkZh"})])
 
 (dc/defcard notebook
   "Shows how to display a notebook document"
