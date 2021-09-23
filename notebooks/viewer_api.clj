@@ -58,5 +58,8 @@
 
 (v/with-viewers
   [0 1]
-  [{:pred number? :fn '(fn [x] (v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                           :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}]))}])
+  [{:pred 'number? :fn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                     :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}])
+
+
+#_(nextjournal.clerk/show! "notebooks/viewer_api.clj")

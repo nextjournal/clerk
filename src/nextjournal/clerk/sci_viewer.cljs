@@ -301,7 +301,7 @@
                           (into [:<>] children)))})))
 
 (defn render-with-viewer [{:as opts :keys [viewers]} viewer x]
-  (js/console.log :render-with-viewer #_opts viewer viewers x)
+  #_(js/console.log :render-with-viewer #_opts viewer viewers x)
   (cond (keyword? viewer)
         (if-let [{render-fn :fn :keys [fetch-opts]} (get (into {} (map (juxt :name identity)) viewers) viewer)]
           (if-not render-fn
@@ -329,9 +329,7 @@
      #_(js/console.log :val val :path path :viewer selected-viewer :type-val (type val) :react? (react/isValidElement val) :type (type selected-viewer)  :viewers-count (some-> viewers count) :viewers viewers :local-viewers (viewer/viewers x))
      (or (when (react/isValidElement val) val)
          (when selected-viewer
-           (inspect (let [r (render-with-viewer (assoc opts :viewers all-viewers) selected-viewer val)]
-                      (js/console.log :rendered r)
-                      r) (dissoc opts :path)))
+           (inspect (render-with-viewer (assoc opts :viewers all-viewers) selected-viewer val) (dissoc opts :path)))
          (loop [v all-viewers]
            #_(js/console.log :loop v )
            (if-let [{render-fn :fn :keys [pred]} (first v)]
