@@ -17,6 +17,7 @@
             [react :as react]
             [reagent.core :as r]
             [reagent.ratom :as ratom]
+            [reagent.dom :as rdom]
             [sci.core :as sci]
             [sci.impl.namespaces]
             [sci.impl.vars]))
@@ -820,3 +821,7 @@ black")}])}
            [inspect x]]
       [:div.mb-4.overflow-x-hidden
        [inspect y]]]]))
+
+(defn ^:export ^:dev/after-load mount []
+  (when-let [el (js/document.getElementById "clerk")]
+    (rdom/render [root] el)))
