@@ -252,12 +252,15 @@
            ;; uncounted sequences assumed to be lazy
            (seq? xs) (let [{:keys [n]} fetch-opts
                            limit (+ n 10000)
-                           count (bounded-count limit xs)
+                           count (try (bounded-count limit xs)
+                                      (catch #?(:clj Exception :cljs js/Error) _
+                                        nil))
                            children (sequence (comp (drop+take-xf fetch-opts)
                                                     (map-indexed #(describe (update opts :path conj %1) %2))
                                                     (remove nil?)) xs)]
-                       (cond-> {:path path :count count :viewer viewer}
-                         (= count limit) (assoc :unbounded? true)
+                       (cond-> {:path path :viewer viewer}
+                         count (assoc :count count)
+                         (or (not count) (= count limit)) (assoc :unbounded? true)
                          (seq children) (assoc :children children)))
            (and (string? xs) (< (:n fetch-opts 20) (count xs))) {:path path :count (count xs) :viewer viewer}
            :else nil))))

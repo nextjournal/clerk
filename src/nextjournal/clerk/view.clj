@@ -92,8 +92,6 @@
        "https://cdn.nextjournal.com/data/Qmc5rjhjB6irjrJnCgsB4JU3Vvict3DEHeV4Zvq7GJQv4F?filename=viewer.js&content-type=application/x-javascript"))]
    [:body
     [:div#clerk]
-    (prn :doc doc)
-
     [:script "let viewer = nextjournal.clerk.sci_viewer
 let doc = " (with-out-str (-> doc ->edn pprint/pprint)) "
 viewer.reset_doc(viewer.read_string(doc))

@@ -8,8 +8,12 @@
 ;; The default set of viewers are able to render Clojure data.
 {:hello "world 👋" :num [1 2 3]}
 
-;; And can handle lazy infinte sequences, only partially loading data by default with the ability to
-;;`(def fib (lazy-cat [0 1] (map + fib (rest fib))))`
+
+
+;; And can handle lazy infinte sequences, only partially loading data by default with the ability to load more data on request.
+(range)
+
+(def fib (lazy-cat [0 1] (map + fib (rest fib))))
 
 ;; In addition, there's a number of built-in viewers.
 ;; ### 🕸 Hiccup
