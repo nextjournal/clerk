@@ -1,28 +1,25 @@
 (ns nextjournal.clerk.sci-viewer
   (:require [applied-science.js-interop :as j]
             [cljs.reader]
+            [clojure.string :as str]
             [goog.object]
             [goog.string :as gstring]
-            [nextjournal.devcards :as dc]
-            [nextjournal.devcards.routes :as router]
-            [nextjournal.devcards-ui :as devcards-ui]
             [nextjournal.clerk.viewer :as viewer :refer [html with-viewer with-viewers view-as]]
+            [nextjournal.devcards :as dc]
+            [nextjournal.devcards.main]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.markdown :as markdown]
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
             [nextjournal.viewer.vega-lite :as vega-lite]
+            [re-frame.context :as rf]
             [react :as react]
             [reagent.core :as r]
             [reagent.ratom :as ratom]
-            [reagent.dom :as rdom]
-            [reitit.frontend.easy :as rfe]
-            [re-frame.context :as rf]
-            [clojure.string :as str]
             [sci.core :as sci]
-            [sci.impl.vars]
-            [sci.impl.namespaces]))
+            [sci.impl.namespaces]
+            [sci.impl.vars]))
 
 (defn color-classes [selected?]
   {:value-color (if selected? "white-90" "dark-green")
@@ -823,24 +820,3 @@ black")}])}
            [inspect x]]
       [:div.mb-4.overflow-x-hidden
        [inspect y]]]]))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; routing workaround
-;; TODO: remove me when fixed upstrem
-
-(defn devcards []
-  (if-let [{:keys [data path-params]} @router/match]
-    [devcards-ui/layout (merge data path-params)]
-    [:pre "no match!"]))
-
-
-(defn ^:export ^:dev/after-load mount []
-  (if-let [el (js/document.getElementById "clerk")]
-    (rdom/render [root] el)
-    (when-let [el (js/document.getElementById "app")]
-      (r/render [devcards] el))))
-
-(defn ^:export init []
-  (rfe/start! router/router #(reset! router/match %1) {:use-fragment @router/use-fragment?})
-  (mount))
