@@ -206,12 +206,13 @@
            (if (named-viewers selected-viewer)
              selected-viewer
              (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers}))))
-     (loop [v viewers]
-       (if-let [{:as matching-viewer :keys [pred]} (first v)]
-         (if (and pred (pred x))
-           matching-viewer
-           (recur (rest v)))
-         (throw (ex-info (str "cannot find matchting viewer") {:viewers viewers :x x})))))))
+     (let [val (value x)]
+       (loop [v viewers]
+         (if-let [{:as matching-viewer :keys [pred]} (first v)]
+           (if (and pred (pred val))
+             matching-viewer
+             (recur (rest v)))
+           (throw (ex-info (str "cannot find matchting viewer") {:viewers viewers :x val}))))))))
 
 #_(select-viewer {:one :two})
 #_(select-viewer [1 2 3])
@@ -223,11 +224,10 @@
 (defonce !viewers
   (#?(:clj atom :cljs ratom/atom) {:root default-viewers}))
 
-
 (defn get-viewers
   ([scope] (get-viewers scope nil))
   ([scope viewers]
-   (concat viewers (@!viewers scope) (@!viewers :root))))
+   (vec (concat viewers (@!viewers scope) (@!viewers :root)))))
 
 (defn describe
   ([xs]
@@ -262,9 +262,6 @@
            (and (string? xs) (< (:n fetch-opts 20) (count xs))) {:path path :count (count xs) :viewer viewer}
            :else nil))))
 
-(describe {:viewers (get-viewers (find-ns 'rule-30-small))} (list (vector 1 2 3)))
-(describe {:viewers [{:pred number?} {:pred vector?} {:pred list?}]} (list (vector 1 2 3)))
-
 #_(describe complex-thing)
 #_(describe {:one [1 2 3] 1 2 3 4})
 #_(describe [1 2 [1 2 3] 4 5])
@@ -298,7 +295,7 @@
           (map (fn [row] (map #(get row %) cols)))
           xs)))
 
-  #_(->table [{:a 1 :b 2 :c 3} {:a 3 :b 0 :c 2}])
+#_(->table [{:a 1 :b 2 :c 3} {:a 3 :b 0 :c 2}])
 
 (defn table [xs]
   (view-as :table (->table xs)))

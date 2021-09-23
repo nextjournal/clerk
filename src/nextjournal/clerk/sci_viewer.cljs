@@ -59,9 +59,9 @@
 (def nbsp
   (gstring/unescapeEntities "&nbsp;"))
 
-(defn object-viewer [x {:as opts :keys [expanded-at path]}]
+(defn object-viewer [x {:as opts :keys [!expanded-at path]}]
   (let [x' (obj->clj x)
-        expanded? (some-> expanded-at deref (get path))]
+        expanded? (some-> !expanded-at deref (get path))]
     (html [:span.inspected-value.whitespace-nowrap "#js {"
            (into [:<>]
                  (comp (map-indexed (fn [idx k]
@@ -124,10 +124,10 @@
   (html [inspect-lazy (-> desc
                           (assoc :fetch-fn (partial fetch! desc))) opts]))
 
-(defn toggle-expanded [expanded-at path event]
+(defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
   (.stopPropagation event)
-  (swap! expanded-at update path not))
+  (swap! !expanded-at update path not))
 
 (defn concat-into [xs ys]
   (if (or (vector? xs) (set? xs) (map? xs))
@@ -145,23 +145,23 @@
          :on-click (fn [_e] (.then (fetch-fn (assoc fetch-opts :offset count))
                                    #(swap! !x update path concat-into %)))} more (when unbounded? "+") " more…"]])))
 
-(defn expanded-path? [expanded-at path]
-  (some-> expanded-at deref (get path)))
+(defn expanded-path? [!expanded-at path]
+  (some-> !expanded-at deref (get path)))
 
-(defn expandable-path? [expanded-at path]
+(defn expandable-path? [!expanded-at path]
   (or
-    (= path [])
-    (expanded-path? expanded-at (vec (drop-last path)))))
+   (= path [])
+   (expanded-path? !expanded-at (vec (drop-last path)))))
 
-(defn coll-viewer [{:keys [open close]} xs {:as opts :keys [expanded-at path] :or {path []}}]
-  (let [expanded? (expanded-path? expanded-at path)
-        expandable? (expandable-path? expanded-at path)]
+(defn coll-viewer [{:keys [open close]} xs {:as opts :keys [!expanded-at path] :or {path []}}]
+  (let [expanded? (expanded-path? !expanded-at path)
+        expandable? (expandable-path? !expanded-at path)]
     (html [:span.inspected-value.whitespace-nowrap
            {:class (when expanded? "inline-flex")}
            [:span
             [:span.bg-opacity-70.rounded-sm.whitespace-nowrap
              (when expandable?
-               {:on-click (partial toggle-expanded expanded-at path)
+               {:on-click (partial toggle-expanded !expanded-at path)
                 :class ["cursor-pointer" "hover:bg-indigo-50"]})
              open]
             (into [:<>]
@@ -182,15 +182,15 @@
       :on-click (fn [_e] (.then (fetch-fn (assoc fetch-opts :path path))
                                 (fn [x] (swap! !x assoc path x))))} "…"]))
 
-(defn map-viewer [xs {:as opts :keys [expanded-at path] :or {path []}}]
-  (let [expanded? (expanded-path? expanded-at path)
-        expandable? (expandable-path? expanded-at path)]
+(defn map-viewer [xs {:as opts :keys [!expanded-at path] :or {path []}}]
+  (let [expanded? (expanded-path? !expanded-at path)
+        expandable? (expandable-path? !expanded-at path)]
     (html [:span.inspected-value.whitespace-nowrap
            (when expandable?
-             {:on-click (partial toggle-expanded expanded-at path)})
+             {:on-click (partial toggle-expanded !expanded-at path)})
            [:span.bg-opacity-70.rounded-sm
             (when expandable?
-              {:on-click (partial toggle-expanded expanded-at path)
+              {:on-click (partial toggle-expanded !expanded-at path)
                :class ["cursor-pointer" "hover:bg-indigo-50"]})
             "{"]
            (into [:<>]
@@ -240,17 +240,16 @@
    {:pred array? :fn (partial coll-viewer {:open [:<> [:span.syntax-tag "#js "] "["] :close "]"})}])
 
 
-(def default-viewers
-  (concat viewer/default-viewers js-viewers named-viewers))
+(reset! viewer/!viewers
+        {:root (into [] (concat viewer/default-viewers js-viewers named-viewers))})
 
 (defonce !doc (ratom/atom nil))
 (defonce !viewers viewer/!viewers)
 
 (defn set-viewers! [scope viewers]
   #_(js/console.log :set-viewers! {:scope scope :viewers viewers})
-  (let [new-viewers (vec (concat viewers default-viewers))]
-    (swap! !viewers assoc scope new-viewers)
-    'set-viewers!))
+  (swap! !viewers assoc scope (vec viewers))
+  'set-viewers!)
 
 (defn inspect-children [opts]
   (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)])))
@@ -288,9 +287,6 @@
     [:path {:fill-rule "evenodd" :d "M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" :clip-rule "evenodd"}]]
    (into [:div.ml-2.font-bold] content)])
 
-(def default-inspect-opts
-  {:!viewers !viewers :viewers default-viewers :path []})
-
 (defn error-boundary [& children]
   (let [error (r/atom nil)]
     (r/create-class
@@ -305,7 +301,7 @@
                           (into [:<>] children)))})))
 
 (defn render-with-viewer [{:as opts :keys [viewers]} viewer x]
-  #_(js/console.log :render-with-viewer #_opts viewer x)
+  (js/console.log :render-with-viewer #_opts viewer viewers x)
   (cond (keyword? viewer)
         (if-let [{render-fn :fn :keys [fetch-opts]} (get (into {} (map (juxt :name identity)) viewers) viewer)]
           (if-not render-fn
@@ -321,31 +317,35 @@
 
 (defn inspect
   ([x]
-   [error-boundary
-    [inspect x (assoc default-inspect-opts :expanded-at (r/atom {}) :!x (r/atom {}))]])
-  ([x {:as opts :keys [!x !viewers path path->info]}]
+   (inspect x {:path [] :!expanded-at (r/atom {}) :!x (r/atom {})}))
+  ([x {:as opts :keys [!x viewers path path->info]}]
    (let [x (or (some-> !x deref (get path)) x)
+         {:as opts :keys [viewers]} (assoc opts :viewers (vec (concat (viewer/viewers x) viewers)))
+         all-viewers (viewer/get-viewers (:scope @!doc) viewers)
          selected-viewer (or (viewer/viewer x)
                              (when (elision-pred x) elision-viewer)
                              (get-in path->info [path :viewer :fn]))
          val (viewer/value x)]
-     #_(js/console.log :inspect val :viewer selected-viewer :type (type selected-viewer))
+     #_(js/console.log :val val :path path :viewer selected-viewer :type-val (type val) :react? (react/isValidElement val) :type (type selected-viewer)  :viewers-count (some-> viewers count) :viewers viewers :local-viewers (viewer/viewers x))
      (or (when (react/isValidElement val) val)
          (when selected-viewer
-           (inspect (render-with-viewer opts selected-viewer val)))
-         (let [scope (:scope @!doc)]
-           (loop [v (concat (some-> x :nextjournal/viewers *eval-form*)
-                            (@!viewers scope)
-                            (@!viewers :root))]
-             (if-let [{render-fn :fn :keys [pred]} (first v)]
-               (if-let [render-fn (and pred render-fn (pred val) (if (list? render-fn) (*eval-form* render-fn) render-fn))]
+           (inspect (let [r (render-with-viewer (assoc opts :viewers all-viewers) selected-viewer val)]
+                      (js/console.log :rendered r)
+                      r) (dissoc opts :path)))
+         (loop [v all-viewers]
+           #_(js/console.log :loop v )
+           (if-let [{render-fn :fn :keys [pred]} (first v)]
+             (let [render-fn (cond-> render-fn (not (fn? render-fn)) *eval-form*)
+                   pred (cond-> pred (not (fn? pred)) *eval-form*)]
+               #_(js/console.log :pred pred :match? (and pred render-fn (pred val)) :r (render-fn x opts))
+               (if (and pred render-fn (pred val))
                  (viewer/value (render-fn x opts))
-                 (recur (rest v)))
-               (error-badge "no matching viewer"))))))))
+                 (recur (rest v))))
+             (error-badge "no matching viewer")))))))
 
 (defn inspect-lazy [{:as desc :keys [fetch-fn]} opts]
   (let [path->info (viewer/path->info desc)
-        {:as opts :keys [!x]} (assoc (or opts default-inspect-opts) :expanded-at (r/atom {}) :!x (r/atom {}) :desc desc :path->info path->info)]
+        {:as opts :keys [!x]} (assoc (or opts {:path []}) :expanded-at (r/atom {}) :!x (r/atom {}) :desc desc :path->info path->info)]
     (r/create-class
      {:display-name "inspect-lazy"
       :component-did-mount
@@ -357,7 +357,6 @@
 
       :reagent-render
       (fn render-inspect-lazy [_]
-        #_(js/console.log :inspect-lazy opts :desc desc)
         (if (seq @!x)
           [error-boundary [inspect nil opts]]
           [:span "loading…"]))})))
@@ -687,7 +686,7 @@
   []
   [inspect
    '([0 1 0] [1 0 1])
-   (assoc default-inspect-opts
+   (assoc {:path []}
           :!viewers
           (r/atom
            {:root
@@ -817,8 +816,7 @@ black")}])}
       [:div.mb-4.overflow-x-hidden
        [lazy-inspect-in-process x]]
       [:div.mb-4.overflow-x-hidden
-       [inspect x {:viewers default-viewers
-                   :path []
+       [inspect x {:path []
                    :expanded-at (r/atom {[] true
                                          [0] true
                                          [1] true
