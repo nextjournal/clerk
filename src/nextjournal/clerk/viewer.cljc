@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.viewer
   (:require [clojure.string :as str]
+            [clojure.pprint :as pprint]
             [sci.impl.vars]
             [sci.impl.namespaces]
             #?(:cljs [reagent.ratom :as ratom])))
@@ -67,6 +68,9 @@
 (defn viewer [x]
   (when (map? x)
     (:nextjournal/viewer x)))
+
+(defn code [x]
+  (with-viewer (if (string? x) x (with-out-str (pprint/pprint x))) :code))
 
 #_(viewer (with-viewer '(+ 1 2 3) :eval!))
 #_(viewer "123")
@@ -216,18 +220,26 @@
 #_(select-viewer (md "# Hello"))
 #_(select-viewer (html [:h1 "hi"]))
 
+(defonce !viewers
+  (#?(:clj atom :cljs ratom/atom) {:root default-viewers}))
+
+
+(defn get-viewers
+  ([scope] (get-viewers scope nil))
+  ([scope viewers]
+   (concat viewers (@!viewers scope) (@!viewers :root))))
+
 (defn describe
   ([xs]
-   (describe {} xs))
+   (describe {:viewers (get-viewers *ns* (viewers xs))} xs))
   ([opts xs]
-   (let [viewers-xs (viewers xs)
-         {:as opts :keys [viewers path]} (merge {:path []} opts)
-         {:as viewer :keys [fetch-opts]} (try (select-viewer xs (concat viewers-xs viewers default-viewers))
+   (let [{:as opts :keys [viewers path]} (merge {:path []} opts)
+         {:as viewer :keys [fetch-opts]} (try (select-viewer xs viewers)
                                               (catch #?(:clj Exception :cljs js/Error) _ex
                                                 nil))
          xs (value xs)]
      #_(prn :xs xs :viewer viewer)
-     (cond (and (empty? path) (nil? fetch-opts)) {:path path} ;; fetch everything
+     (cond #_#_(and (empty? path) (nil? fetch-opts)) (cond-> {:path path} viewer (assoc :viewer viewer)) ;; fetch everything
            (map? xs) (let [children (sequence (comp (map-indexed #(describe (update opts :path conj %1) %2))
                                                     (remove (comp empty? :children))) xs)]
                        (cond-> {:count (count xs) :path path}
@@ -250,7 +262,8 @@
            (and (string? xs) (< (:n fetch-opts 20) (count xs))) {:path path :count (count xs) :viewer viewer}
            :else nil))))
 
-(describe {1 2})
+(describe {:viewers (get-viewers (find-ns 'rule-30-small))} (list (vector 1 2 3)))
+(describe {:viewers [{:pred number?} {:pred vector?} {:pred list?}]} (list (vector 1 2 3)))
 
 #_(describe complex-thing)
 #_(describe {:one [1 2 3] 1 2 3 4})
@@ -290,9 +303,6 @@
 (defn table [xs]
   (view-as :table (->table xs)))
 
-(defonce !viewers
-  (#?(:clj atom :cljs ratom/atom) {:root default-viewers}))
-
 #?(:clj
    (defn datafy-scope [scope]
      (cond
@@ -311,10 +321,6 @@
      (swap! !viewers assoc scope (into [] (map #(update % :pred eval)) viewers))
      (with-viewer `'(v/set-viewers! ~(datafy-scope scope) ~viewers) :eval!)))
 
-(defn get-viewers
-  ([scope] (get-viewers scope nil))
-  ([scope viewers]
-   (concat viewers (@!viewers scope) (@!viewers :root))))
 
 (defmacro set-viewers!
   ([viewers] (set-viewers!- *ns* viewers))
