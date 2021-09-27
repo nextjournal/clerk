@@ -315,7 +315,7 @@
 
 (defn inspect
   ([x]
-   (inspect x {:path [] :!expanded-at (r/atom {}) :!x (r/atom {})}))
+   [inspect x {:path [] :!expanded-at (r/atom {}) :!x (r/atom {})}])
   ([x {:as opts :keys [!x viewers path path->info]}]
    (let [x (or (some-> !x deref (get path)) x)
          {:as opts :keys [viewers]} (assoc opts :viewers (vec (concat (viewer/viewers x) viewers)))
