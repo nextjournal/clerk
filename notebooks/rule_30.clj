@@ -3,10 +3,12 @@
 (ns rule-30
   (:require [nextjournal.clerk.viewer :as v]))
 
-(v/set-viewers! [{:pred number? :fn #(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                                 :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}
-                 {:pred vector? :fn #(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1))}
-                 {:pred list? :fn #(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1))}])
+(v/set-viewers!
+ [{:pred number? :fn #(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                  :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}
+  {:pred map-entry? :fn #(v/html (into [:<>] (comp (v/inspect-children %2) (interpose " ")) %1))}
+  {:pred vector? :fn #(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1))}
+  {:pred list? :fn #(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1))}])
 
 0
 
@@ -38,4 +40,3 @@
   (->> first-generation (iterate evolve) (take 17) (apply list)))
 
 #_(nextjournal.clerk/show! "notebooks/rule_30.clj")
-#_(nextjournal.clerk/clear-cache!)
