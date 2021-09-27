@@ -151,6 +151,9 @@
    (= path [])
    (expanded-path? !expanded-at (vec (drop-last path)))))
 
+(defn inspect-children [opts]
+  (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)])))
+
 (defn coll-viewer [{:keys [open close]} xs {:as opts :keys [!expanded-at path] :or {path []}}]
   (let [expanded? (expanded-path? !expanded-at path)
         expandable? (expandable-path? !expanded-at path)]
@@ -163,7 +166,7 @@
                 :class ["cursor-pointer" "hover:bg-indigo-50"]})
              open]
             (into [:<>]
-                  (comp (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)]))
+                  (comp (inspect-children opts)
                         (interpose (if expanded? [:<> [:br] nbsp] " ")))
                   xs)
             (more-button (count xs) opts)
@@ -192,11 +195,7 @@
                :class ["cursor-pointer" "hover:bg-indigo-50"]})
             "{"]
            (into [:<>]
-                 (comp (map-indexed (fn [idx [k v]]
-                                      [:<>
-                                       [inspect k (update opts :path conj idx)]
-                                       " "
-                                       [inspect v (update opts :path conj idx)]]))
+                 (comp (inspect-children opts)
                        (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) nbsp)] " ")))
                  xs)
            (more-button (count xs) opts)
@@ -249,36 +248,6 @@
   (swap! !viewers assoc scope (vec viewers))
   'set-viewers!)
 
-(defn inspect-children [opts]
-  (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)])))
-
-(def sci-viewer-namespace
-  {'html html
-   'view-as view-as
-   'inspect inspect
-   'coll-viewer coll-viewer
-   'map-viewer map-viewer
-   'tagged-value tagged-value
-   'inspect-children inspect-children
-   'set-viewers! set-viewers!
-   'with-viewer with-viewer
-   'with-viewers with-viewers})
-
-(defonce ctx
-  (sci/init {:async? true
-             :disable-arity-checks true
-             :classes {'js goog/global
-                       :allow :all}
-             :bindings {'atom ratom/atom}
-             :namespaces {'nextjournal.viewer sci-viewer-namespace
-                          'v sci-viewer-namespace}}))
-
-
-(defn eval-form [f]
-  (sci/eval-form ctx f))
-
-(set! *eval-form* eval-form)
-
 (defn error-badge [& content]
   [:div.bg-red-50.rounded-sm.text-xs.text-red-400.px-2.py-1.items-center.sans-serif.inline-flex
    [:svg.h-4.w-4.text-red-400 {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :aria-hidden "true"}
@@ -299,7 +268,7 @@
                           (into [:<>] children)))})))
 
 (defn render-with-viewer [{:as opts :keys [viewers]} viewer x]
-  #_(js/console.log :render-with-viewer #_opts viewer viewers x)
+  #_(js/console.log :render-with-viewer #_opts x viewer viewers)
   (cond (keyword? viewer)
         (if-let [{render-fn :fn :keys [fetch-opts]} (get (into {} (map (juxt :name identity)) viewers) viewer)]
           (if-not render-fn
@@ -315,16 +284,18 @@
 
 (defn inspect
   ([x]
-   [inspect x {:path [] :!expanded-at (r/atom {}) :!x (r/atom {})}])
+   (r/with-let [!expanded-at (r/atom {})
+                !x (r/atom {})]
+     (inspect x {:path [] :!expanded-at !expanded-at :!x !x})))
   ([x {:as opts :keys [!x viewers path path->info]}]
    (let [x (or (some-> !x deref (get path)) x)
          {:as opts :keys [viewers]} (assoc opts :viewers (vec (concat (viewer/viewers x) viewers)))
          all-viewers (viewer/get-viewers (:scope @!doc) viewers)
          selected-viewer (or (viewer/viewer x)
-                             (when (elision-pred x) elision-viewer)
+                             (when (elision-pred x) elision-viewer) ;; TODO: move elision handling out
                              (get-in path->info [path :viewer :fn]))
          val (viewer/value x)]
-     #_(js/console.log :val val :path path :viewer selected-viewer :type-val (type val) :react? (react/isValidElement val) :type (type selected-viewer)  :viewers-count (some-> viewers count) :viewers viewers :local-viewers (viewer/viewers x))
+     #_(js/console.log :val val :path path :viewer selected-viewer :type-val (type val) :react? (react/isValidElement val) :type (type selected-viewer))
      (or (when (react/isValidElement val) val)
          (when selected-viewer
            (inspect (render-with-viewer (assoc opts :viewers all-viewers) selected-viewer val) (dissoc opts :path)))
@@ -341,7 +312,7 @@
 
 (defn inspect-lazy [{:as desc :keys [fetch-fn]} opts]
   (let [path->info (viewer/path->info desc)
-        {:as opts :keys [!x]} (assoc (or opts {:path []}) :expanded-at (r/atom {}) :!x (r/atom {}) :desc desc :path->info path->info)]
+        {:as opts :keys [!x]} (assoc (or opts {:path []}) :!expanded-at (r/atom {}) :!x (r/atom {}) :desc desc :path->info path->info)]
     (r/create-class
      {:display-name "inspect-lazy"
       :component-did-mount
@@ -623,13 +594,13 @@
 (dc/defcard blob-in-process-fetch-single
   []
   [:div
-   (when-let [xs @(rf/subscribe [::blobs :vector-nested-taco])]
+   (when-let [xs @(rf/subscribe [::blobs :map-1])]
      [lazy-inspect-in-process xs])]
   {::blobs {:vector (vec (range 30))
             :vector-nested [1 [2] 3]
             :vector-nested-taco '[l [l [l [l [🌮] r] r] r] r]
             :list (range 30)
-            :map-1 {:hello :world}
+            :map-1 {:hello [:world]}
             :map (zipmap (range 30) (range 30))}})
 
 (dc/defcard blob-in-process-fetch
@@ -825,3 +796,32 @@ black")}])}
 (defn ^:export ^:dev/after-load mount []
   (when-let [el (js/document.getElementById "clerk")]
     (rdom/render [root] el)))
+
+
+
+(def sci-viewer-namespace
+  {'html html
+   'view-as view-as
+   'inspect inspect
+   'coll-viewer coll-viewer
+   'map-viewer map-viewer
+   'tagged-value tagged-value
+   'inspect-children inspect-children
+   'set-viewers! set-viewers!
+   'with-viewer with-viewer
+   'with-viewers with-viewers})
+
+(defonce ctx
+  (sci/init {:async? true
+             :disable-arity-checks true
+             :classes {'js goog/global
+                       :allow :all}
+             :bindings {'atom ratom/atom}
+             :namespaces {'nextjournal.viewer sci-viewer-namespace
+                          'v sci-viewer-namespace}}))
+
+
+(defn eval-form [f]
+  (sci/eval-form ctx f))
+
+(set! *eval-form* eval-form)

@@ -22,6 +22,7 @@
   (if (wrapped-value? x)
     (:nextjournal/value x)
     x))
+
 #_(value (with-viewer '(+ 1 2 3) :eval!))
 #_(value 123)
 
@@ -42,6 +43,7 @@
       (assoc :nextjournal/viewers viewers)))
 
 #_(-> "x^2" (with-viewer :latex) (with-viewers [{:name :latex :fn :mathjax}]))
+
 
 (defn view-as
   "Like `with-viewer` but takes viewer as 1st argument"
@@ -92,6 +94,7 @@
    {:pred nil? :fn '(fn [_] (v/html [:span.syntax-nil.inspected-value "nil"]))}
    {:pred boolean? :fn '(fn [x] (v/html [:span.syntax-bool.inspected-value (str x)]))}
    {:pred fn? :fn '(fn [_] (v/html [:span.inspected-value [:span.syntax-tag "ƒ"] "()"]))}
+   {:pred map-entry? :fn '(fn [x opts] (v/html [:<> (v/inspect (first x) (update opts :path conj 0)) " " (v/inspect (second x) (update opts :path conj 1))]))}
    {:pred vector? :fn '(partial v/coll-viewer {:open "[" :close "]"}) :fetch-opts {:n 20}}
    {:pred set? :fn '(partial v/coll-viewer {:open "#{" :close "}"}) :fetch-opts {:n 20}}
    {:pred (some-fn list? sequential?) :fn '(partial v/coll-viewer {:open "(" :close ")"})  :fetch-opts {:n 20}}
@@ -165,8 +168,7 @@
      (cond
        (and (not= (count path)
                   (count current-path))
-            (not (or (number? xs)
-                     (map-entry? xs)))
+            (not (number? xs))
             (or (associative? xs)
                 (sequential? xs)
                 (and (string? xs) (< elide-string-length (count xs))))) elided
@@ -197,6 +199,8 @@
 #_(fetch {[1] [1] [2] [2]} {:n 10})
 #_(fetch [[1] [1]] {:n 10})
 #_(fetch (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}) {})
+#_(fetch {[1] [2]} {:n 10 :path [0]})
+#_(fetch [2 [1]] {:path []})
 
 (defn select-viewer
   ([x] (select-viewer x default-viewers))
@@ -238,7 +242,7 @@
                                               (catch #?(:clj Exception :cljs js/Error) _ex
                                                 nil))
          xs (value xs)]
-     #_(prn :xs xs :viewer viewer)
+     #_(prn :xs xs :type (type xs) :viewer viewer)
      (cond #_#_(and (empty? path) (nil? fetch-opts)) (cond-> {:path path} viewer (assoc :viewer viewer)) ;; fetch everything
            (map? xs) (let [children (sequence (comp (map-indexed #(describe (update opts :path conj %1) %2))
                                                     (remove (comp empty? :children))) xs)]
@@ -246,8 +250,9 @@
                          viewer (assoc :viewer viewer)
                          (seq children) (assoc :children children)))
            (counted? xs) (let [children (sequence (comp (map-indexed #(describe (update opts :path conj %1) %2))
-                                                        (remove nil?))  xs)]
-                           (cond-> {:path path :count (count xs) :viewer viewer}
+                                                        (remove nil?)) xs)]
+                           (cond-> {:path path :count (count xs)}
+                             viewer (assoc :viewer viewer)
                              (seq children) (assoc :children children)))
            ;; uncounted sequences assumed to be lazy
            (seq? xs) (let [{:keys [n]} fetch-opts
@@ -265,15 +270,18 @@
            (and (string? xs) (< (:n fetch-opts 20) (count xs))) {:path path :count (count xs) :viewer viewer}
            :else nil))))
 
-#_(describe complex-thing)
-#_(describe {:one [1 2 3] 1 2 3 4})
-#_(describe [1 2 [1 2 3] 4 5])
-#_(describe (clojure.java.io/file "notebooks"))
-#_(describe {:viewers [{:pred sequential? :fn pr-str}]} (range 100))
-#_(describe (map vector (range)))
-#_(describe (slurp "/usr/share/dict/words"))
-#_(describe (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
-#_(describe (with-viewer [:h1 "hi"] :html))
+(comment
+  (describe complex-thing)
+  (describe {:one [1 2 3] 1 2 3 4})
+  (describe [1 2 [1 2 3] 4 5])
+  (describe (clojure.java.io/file "notebooks"))
+  (describe {:viewers [{:pred sequential? :fn pr-str}]} (range 100))
+  (describe (map vector (range)))
+  (describe (slurp "/usr/share/dict/words"))
+  (describe (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
+  (describe (with-viewer [:h1 "hi"] :html))
+  (describe  {1 [2]}))
+
 
 (defn extract-info [{:as desc :keys [path]}]
   ;; TODO: drop `:fetch-opts` key once we read it from `:viewer` in frontend
@@ -288,6 +296,12 @@
 
 #_(path->info (describe [1 [2] 3]))
 #_(path->info (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
+
+#_
+(let [x {2 [1]}
+      desc (describe x)
+      opts (map (comp :fetch-opts second) (path->info desc))]
+  (into {} (map #(vector (:path %) (fetch x %))) opts))
 
 ;; TODO: hack for talk to make sql result display as table, propery support SQL results as tables and remove
 (defn ->table
