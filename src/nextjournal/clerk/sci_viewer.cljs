@@ -175,10 +175,10 @@
 (defn elision-viewer [_ {:as opts :keys [!x path desc] :or {path []}}]
   (let [fetch-opts (-> desc :viewer :fetch-opts)
         {:keys [fetch-fn]} desc]
-    [:span.bg-gray-200.hover:bg-gray-200.cursor-pointer.sans-serif.relative
-     {:style {:border-radius 2 :padding "1px 3px" :font-size 11 :top -1}
-      :on-click (fn [_e] (.then (fetch-fn (assoc fetch-opts :path path))
-                                (fn [x] (swap! !x assoc path x))))} "…"]))
+    (html [:span.bg-gray-200.hover:bg-gray-200.cursor-pointer.sans-serif.relative
+           {:style {:border-radius 2 :padding "1px 3px" :font-size 11 :top -1}
+            :on-click (fn [_e] (.then (fetch-fn (assoc fetch-opts :path path))
+                                      (fn [x] (swap! !x assoc path x))))} "…"])))
 
 (defn map-viewer [xs {:as opts :keys [!expanded-at path] :or {path []}}]
   (let [expanded? (expanded-path? !expanded-at path)
