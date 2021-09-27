@@ -109,7 +109,7 @@
 
 
 (defn fetch! [{:keys [blob-id]} opts]
-  #_(js/console.log :fetch blob-id opts)
+  #_(js/console.log :fetch! blob-id opts)
   (-> (js/fetch (str "_blob/" blob-id (when (seq opts)
                                         (str "?" (opts->query opts)))))
       (.then #(.text %))
@@ -319,7 +319,7 @@
       (fn [_this]
         (doseq [[path {:keys [fetch-opts]}] path->info]
           (-> (fetch-fn fetch-opts)
-              (.then (fn [x] (swap! !x assoc path x)))
+              (.then (fn [x] (swap! !x assoc (or path []) x)))
               (.catch (fn [e] (js/console.error e))))))
 
       :reagent-render
