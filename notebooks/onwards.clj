@@ -24,7 +24,7 @@
 ;; - [x] Fix Rule 30 maps
 ;; - [x] Drop vector brackets when lazy load map element
 ;; - [ ] Keep expanded state when lazy loading
-;; - [ ] Restrict string length
+;; - [x] Restrict string length + enable lazy loading
 ;; - [ ] Datafy + Nav
 ;; - [ ] Metadata viewer
 ;; - [ ] Persist viewer expansion state across reloads

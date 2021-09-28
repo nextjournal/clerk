@@ -132,9 +132,11 @@
   (swap! !expanded-at update path not))
 
 (defn concat-into [xs ys]
-  (if (or (vector? xs) (set? xs) (map? xs))
-    (into xs ys)
-    (concat xs ys)))
+  (cond (or (vector? xs)
+            (set? xs)
+            (map? xs)) (into xs ys)
+        (string? xs) (str xs ys)
+        :else (concat xs ys)))
 
 (defn more-button [count {:keys [!x path desc path->info]}]
   (when-some [more (let [more (- (get-in path->info [path :count]) count)]
@@ -204,6 +206,9 @@
                  xs)
            (more-button (count xs) opts)
            "}"])))
+
+(defn string-viewer [s opts]
+  (html [:span.syntax-string.inspected-value "\"" s (more-button (count s) opts) "\""]))
 
 (defn tagged-value [tag value]
   [:span.inspected-value.whitespace-nowrap
@@ -816,9 +821,11 @@ black")}])}
    'inspect inspect
    'coll-viewer coll-viewer
    'map-viewer map-viewer
+   'more-button more-button
    'tagged-value tagged-value
    'inspect-children inspect-children
    'set-viewers! set-viewers!
+   'string-viewer string-viewer
    'with-viewer with-viewer
    'with-viewers with-viewers})
 

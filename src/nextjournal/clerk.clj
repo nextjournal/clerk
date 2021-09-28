@@ -5,6 +5,7 @@
             [datoteka.core :as fs]
             [nextjournal.beholder :as beholder]
             [nextjournal.clerk.hashing :as hashing]
+            [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]
             [multihash.core :as multihash]
             [multihash.digest :as digest]
@@ -25,11 +26,11 @@
   (str fs/*cwd* fs/*sep* ".cache"))
 
 (defn add-blob [result hash]
-  (cond-> result
-    (instance? clojure.lang.IObj result)
-    (vary-meta assoc :blob/id (cond-> hash (not (string? hash)) multihash/base58))))
+  (-> result
+      v/wrap-value
+      (assoc :nextjournal/blob-id (cond-> hash (not (string? hash)) multihash/base58))))
 
-#_(meta (add-blob #{:test} "foo"))
+#_(add-blob :test "foo")
 
 (defn hash+store-in-cas! [x]
   (let [^bytes ba (nippy/freeze x)
@@ -80,11 +81,11 @@
     (or (when (and (not no-cache?)
                    cached?)
           (try
-            (let [value (add-blob (or (get results-last-run hash)
-                                      (thaw-from-cas cas-hash)) hash)]
+            (let [value+blob (add-blob (or (get results-last-run hash)
+                                           (thaw-from-cas cas-hash)) hash)]
               (when var
-                (intern *ns* (-> var symbol name symbol) value))
-              value)
+                (intern *ns* (-> var symbol name symbol) (v/value value+blob)))
+              value+blob)
             (catch Exception _e
               ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
               #_(prn :thaw-error e)
@@ -109,6 +110,8 @@
                       nil)))
                 (add-blob var-value (if no-cache? (multihash/base58 (digest/sha1 (str (java.util.UUID/randomUUID)))) hash))))))))
 
+#_(read+eval-cached {} {} "(subs (slurp \"/usr/share/dict/words\") 0 1000)")
+
 (defn clear-cache!
   ([]
    (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")]
@@ -121,8 +124,9 @@
 
 (defn blob->result [doc]
   (into {} (comp (keep :result)
-                 (filter meta)
-                 (map (juxt (comp :blob/id meta) identity))) doc))
+                 (map (juxt :nextjournal/blob-id :nextjournal/value))) doc))
+
+#_(blob->result @nextjournal.clerk.webserver/!doc)
 
 (defn +eval-results [results-last-run vars->hash doc]
   (let [doc (into [] (map (fn [{:as cell :keys [type text]}]
@@ -144,6 +148,7 @@
   (+eval-results {} (hashing/hash file) (parse-file file)))
 
 #_(eval-file "notebooks/pagination.clj")
+#_(eval-file "notebooks/test.clj")
 
 (defn show!
   "Converts the Clojure source test in file to a series of text or syntax panes and causes `panel` to contain them."
@@ -183,6 +188,8 @@
   (show! "notebooks/conditional_read.cljc")
   (show! "src/nextjournal/clerk/hashing.clj")
   (show! "src/nextjournal/clerk.clj")
+
+  (show! "notebooks/test.clj")
 
   ;; Clear cache
   (clear-cache!)

@@ -6,8 +6,7 @@
 (def notebooks
   (clojure.java.io/file "notebooks"))
 
-#_
-(slurp "/usr/share/dict/words")
+(subs (slurp "/usr/share/dict/words") 0 10100)
 
 [notebooks]
 

@@ -7,7 +7,7 @@
 
 (defn described-result [ns result]
   (-> (v/describe {:viewers (v/get-viewers ns (v/viewers result))} result)
-      (assoc :blob-id (-> result meta :blob/id))
+      (assoc :blob-id (:nextjournal/blob-id result))
       (v/with-viewer :clerk/result)))
 
 
@@ -25,8 +25,8 @@
                            :code (cond-> [(v/view-as :code text)]
                                    (contains? x :result)
                                    (conj (if (and (not inline-results?)
-                                                  (instance? clojure.lang.IMeta result)
-                                                  (contains? (meta result) :blob/id)
+                                                  (v/wrapped-value? result)
+                                                  (contains? result :nextjournal/blob-id)
                                                   (not (v/registration? result)))
                                            (described-result ns result)
                                            result))))))

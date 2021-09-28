@@ -94,7 +94,7 @@
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
-  [{:pred string? :fn '(fn [x] (v/html [:span.syntax-string.inspected-value "\"" x "\""])) :fetch-opts {:n elide-string-length}}
+  [{:pred string? :fn '(partial v/string-viewer) :fetch-opts {:n elide-string-length}}
    {:pred number? :fn '(fn [x] (v/html [:span.syntax-number.inspected-value
                                         (if (js/Number.isNaN x) "NaN" (str x))]))}
    {:pred symbol? :fn '(fn [x] (v/html [:span.syntax-symbol.inspected-value x]))}
@@ -196,7 +196,7 @@
                                       (map-indexed #(fetch %2 opts (conj current-path %1))))
                                 (cond->> xs
                                   (and (set? xs) (not (sorted? xs))) (into (sorted-set))))
-       (and (string? xs) (< elide-string-length (count xs))) (subs xs 0 n)
+       (and (string? xs) (< elide-string-length (count xs))) (let [offset (opts :offset 0)] (subs xs offset (+ offset n)))
        :else xs))))
 
 
@@ -211,6 +211,7 @@
 #_(fetch (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}) {})
 #_(fetch {[1] [2]} {:n 10 :path [0]})
 #_(fetch [2 [1]] {:path []})
+#_(fetch (subs (slurp "/usr/share/dict/words") 0 10000) {:n 100 :offset 100})
 
 (defn select-viewer
   ([x] (select-viewer x default-viewers))
@@ -242,8 +243,6 @@
   ([scope] (get-viewers scope nil))
   ([scope viewers]
    (vec (concat viewers (@!viewers scope) (@!viewers :root)))))
-
-
 
 (defn describe
   ([xs]
@@ -290,11 +289,10 @@
   (describe (clojure.java.io/file "notebooks"))
   (describe {:viewers [{:pred sequential? :fn pr-str}]} (range 100))
   (describe (map vector (range)))
-  (describe (slurp "/usr/share/dict/words"))
+  (describe (subs (slurp "/usr/share/dict/words") 0 1000))
   (describe (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
   (describe (with-viewer [:h1 "hi"] :html))
   (describe  {1 [2]}))
-
 
 (defn extract-info [{:as desc :keys [path]}]
   ;; TODO: drop `:fetch-opts` key once we read it from `:viewer` in frontend
