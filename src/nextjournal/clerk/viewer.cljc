@@ -83,6 +83,14 @@
 
 (def elide-string-length 100)
 
+(defn map-entry-or-parent?
+  ([x] (map-entry-or-parent? x {}))
+  ([x {:keys [path->info path]}]
+   (or (map-entry? x)
+       (and (vector? x)
+            (= 2 (count x))
+            (= :map (get-in path->info [(rest path) :viewer :name]))))))
+
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
@@ -94,11 +102,11 @@
    {:pred nil? :fn '(fn [_] (v/html [:span.syntax-nil.inspected-value "nil"]))}
    {:pred boolean? :fn '(fn [x] (v/html [:span.syntax-bool.inspected-value (str x)]))}
    {:pred fn? :fn '(fn [_] (v/html [:span.inspected-value [:span.syntax-tag "ƒ"] "()"]))}
-   {:pred map-entry? :fn '(fn [x opts] (v/html [:<> (v/inspect (first x) (update opts :path conj 0)) " " (v/inspect (second x) (update opts :path conj 1))]))}
+   {:pred map-entry-or-parent? :fn '(fn [x opts] (v/html [:<> (v/inspect (first x) (update opts :path conj 0)) " " (v/inspect (second x) (update opts :path conj 1))]))}
    {:pred vector? :fn '(partial v/coll-viewer {:open "[" :close "]"}) :fetch-opts {:n 20}}
    {:pred set? :fn '(partial v/coll-viewer {:open "#{" :close "}"}) :fetch-opts {:n 20}}
    {:pred (some-fn list? sequential?) :fn '(partial v/coll-viewer {:open "(" :close ")"})  :fetch-opts {:n 20}}
-   {:pred map? :fn '(partial v/map-viewer) :fetch-opts {:n 20}}
+   {:pred map? :name :map :fn '(partial v/map-viewer) :fetch-opts {:n 20}}
    {:pred uuid? :fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred inst? :fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}])
 
@@ -159,7 +167,6 @@
    (if (< (count current-path)
           (count path))
      (let [idx (first (drop (count current-path) path))]
-       #_(prn :idx idx)
        (fetch (cond (map? xs) (nth (seq xs) idx)
                     (associative? xs) (get xs idx)
                     (sequential? xs) (nth xs idx))
@@ -168,14 +175,16 @@
      (cond
        (and (not= (count path)
                   (count current-path))
-            (not (number? xs))
+            (not (or (number? xs)
+                     (map-entry? xs)))
             (or (associative? xs)
                 (sequential? xs)
                 (and (string? xs) (< elide-string-length (count xs))))) elided
        (or (wrapped-value? xs)
            (some->> xs viewer (contains? named-viewers))) xs
-       (map-entry? xs) [(fetch (key xs) opts (conj current-path 0))
-                        (fetch (val xs) opts (conj current-path 1))]
+       (map-entry? xs)
+       [(fetch (key xs) opts (conj current-path 0))
+        (fetch (val xs) opts (conj current-path 1))]
        (or (map? xs)
            (vector? xs)) (into (if (map? xs) [] (empty xs))
                                (comp (drop+take-xf opts)
@@ -189,6 +198,7 @@
                                   (and (set? xs) (not (sorted? xs))) (into (sorted-set))))
        (and (string? xs) (< elide-string-length (count xs))) (subs xs 0 n)
        :else xs))))
+
 
 #_(fetch {1 2} {:n 10 :path []})
 #_(fetch {[1 2 3]
@@ -233,6 +243,8 @@
   ([scope viewers]
    (vec (concat viewers (@!viewers scope) (@!viewers :root)))))
 
+
+
 (defn describe
   ([xs]
    (describe {:viewers (get-viewers *ns* (viewers xs))} xs))
@@ -272,6 +284,7 @@
 
 (comment
   (describe complex-thing)
+  (describe {:hello :world})
   (describe {:one [1 2 3] 1 2 3 4})
   (describe [1 2 [1 2 3] 4 5])
   (describe (clojure.java.io/file "notebooks"))

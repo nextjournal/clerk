@@ -159,9 +159,13 @@
       (throw e))))
 
 (defn file-event [{:keys [type path]}]
-  (when (contains? #{:modify :create} type)
+  (when (and (contains? #{:modify :create} type)
+             (or (str/ends-with? path ".clj")
+                 (str/ends-with? path ".cljc")))
+
     (binding [*ns* (find-ns 'user)]
       (nextjournal.clerk/show! (str/replace (str path) (str fs/*cwd* fs/*sep*) "")))))
+
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.

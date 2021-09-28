@@ -21,6 +21,9 @@
 ;; - [x] Fix maps
 ;; - [x] Sort maps
 ;; - [x] Lazy seqs
+;; - [x] Fix Rule 30 maps
+;; - [x] Drop vector brackets when lazy load map element
+;; - [ ] Keep expanded state when lazy loading
 ;; - [ ] Restrict string length
 ;; - [ ] Datafy + Nav
 ;; - [ ] Metadata viewer

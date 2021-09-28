@@ -2,6 +2,7 @@
   (:require [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.string :as str]
+            [edamame.core :as edamame]
             [goog.object]
             [goog.string :as gstring]
             [nextjournal.clerk.viewer :as viewer :refer [html with-viewer with-viewers view-as]]
@@ -96,8 +97,10 @@
   (html [:span.inspected-value
          [:span.syntax-tag "#'" (str x)]]))
 
-(def ^:export read-string
-  (partial cljs.reader/read-string {:default identity}))
+(defn ^:export read-string [s]
+  (edamame/parse-string s {:all true
+                           :read-cond :allow
+                           :features #{:clj}}))
 
 (defn opts->query [opts]
   (->> opts
@@ -305,10 +308,13 @@
              (let [render-fn (cond-> render-fn (not (fn? render-fn)) *eval-form*)
                    pred (cond-> pred (not (fn? pred)) *eval-form*)]
                #_(js/console.log :pred pred :match? (and pred render-fn (pred val)) :r (render-fn x opts))
-               (if (and pred render-fn (pred val))
+               (if (and pred render-fn (pred val opts))
                  (viewer/value (render-fn x opts))
                  (recur (rest v))))
              (error-badge "no matching viewer")))))))
+
+(defn error-viewer [e]
+  (with-viewer (pr-str e) :code))
 
 (defn inspect-lazy [{:as desc :keys [fetch-fn]} opts]
   (let [path->info (viewer/path->info desc)
@@ -318,9 +324,11 @@
       :component-did-mount
       (fn [_this]
         (doseq [[path {:keys [fetch-opts]}] path->info]
-          (-> (fetch-fn fetch-opts)
-              (.then (fn [x] (swap! !x assoc (or path []) x)))
-              (.catch (fn [e] (js/console.error e))))))
+          (let [path (or path [])]
+            (-> (fetch-fn fetch-opts)
+                (.then #(swap! !x assoc path %))
+                (.catch #(when (empty? [])
+                           (swap! !x assoc path (error-viewer %))))))))
 
       :reagent-render
       (fn render-inspect-lazy [_]
@@ -600,7 +608,8 @@
             :vector-nested [1 [2] 3]
             :vector-nested-taco '[l [l [l [l [🌮] r] r] r] r]
             :list (range 30)
-            :map-1 {:hello [:world]}
+            :map-1 {:hello :world}
+            :map-vec-val {:hello [:world]}
             :map (zipmap (range 30) (range 30))}})
 
 (dc/defcard blob-in-process-fetch
