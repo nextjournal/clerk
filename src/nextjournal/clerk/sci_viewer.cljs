@@ -100,6 +100,7 @@
 (defn ^:export read-string [s]
   (edamame/parse-string s {:all true
                            :read-cond :allow
+                           :readers {'file (partial view-as :file)}
                            :features #{:clj}}))
 
 (defn opts->query [opts]
@@ -230,6 +231,7 @@
    {:name :reagent :fn #(r/as-element (cond-> % (fn? %) vector))}
    {:name :eval! :fn #(*eval-form* %)}
 
+   {:name :file :fn #(html (tagged-value "#file" [:span.syntax-string.inspected-value "\"" (str %) "\""]))}
    {:name :clerk/notebook :fn notebook}
    {:name :clerk/var :fn var}
    {:name :clerk/result :fn result}])
@@ -275,9 +277,9 @@
   (cond (keyword? viewer)
         (if-let [{render-fn :fn :keys [fetch-opts]} (get (into {} (map (juxt :name identity)) viewers) viewer)]
           (if-not render-fn
-            (error-badge "no render function for viewer named " (str viewer))
+            (html (error-badge "no render function for viewer named " (str viewer)))
             (render-fn x (assoc opts :fetch-opts fetch-opts)))
-          (error-badge "cannot find viewer named " (str viewer)))
+          (html (error-badge "cannot find viewer named " (str viewer))))
         (fn? viewer)
         (viewer x opts)
         (list? viewer)
