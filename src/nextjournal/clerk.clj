@@ -25,12 +25,10 @@
 (def cache-dir
   (str fs/*cwd* fs/*sep* ".cache"))
 
-(defn add-blob [result hash]
-  (-> result
-      v/wrap-value
-      (assoc :nextjournal/blob-id (cond-> hash (not (string? hash)) multihash/base58))))
+(defn wrap-with-blob-id [result hash]
+  {:result result :blob-id (cond-> hash (not (string? hash)) multihash/base58)})
 
-#_(add-blob :test "foo")
+#_(wrap-with-blob-id :test "foo")
 
 (defn hash+store-in-cas! [x]
   (let [^bytes ba (nippy/freeze x)
@@ -62,6 +60,10 @@
 
 #_(worth-caching? 0.1)
 
+(defn random-multihash []
+  (multihash/base58 (digest/sha1 (str (java.util.UUID/randomUUID)))))
+
+#_(random-multihash)
 
 (defn read+eval-cached [results-last-run vars->hash code-string]
   (let [form (hashing/read-string code-string)
@@ -81,11 +83,11 @@
     (or (when (and (not no-cache?)
                    cached?)
           (try
-            (let [value+blob (add-blob (or (get results-last-run hash)
-                                           (thaw-from-cas cas-hash)) hash)]
+            (let [{:as result+blob :keys [result]} (wrap-with-blob-id (or (get results-last-run hash)
+                                                                          (thaw-from-cas cas-hash)) hash)]
               (when var
-                (intern *ns* (-> var symbol name symbol) (v/value value+blob)))
-              value+blob)
+                (intern *ns* (-> var symbol name symbol) result))
+              result+blob)
             (catch Exception _e
               ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
               #_(prn :thaw-error e)
@@ -97,7 +99,7 @@
                               no-cache?))
               var-value (cond-> result (var? result) deref)]
           (if (fn? var-value)
-            result
+            var-value
             (do (when-not (or no-cache?
                               (instance? clojure.lang.IDeref var-value)
                               (instance? clojure.lang.MultiFn var-value)
@@ -108,7 +110,7 @@
                     (catch Exception e
                       (prn :freeze-error e)
                       nil)))
-                (add-blob var-value (if no-cache? (multihash/base58 (digest/sha1 (str (java.util.UUID/randomUUID)))) hash))))))))
+                (wrap-with-blob-id var-value (if no-cache? (random-multihash) hash))))))))
 
 #_(read+eval-cached {} {} "(subs (slurp \"/usr/share/dict/words\") 0 1000)")
 
@@ -124,7 +126,7 @@
 
 (defn blob->result [doc]
   (into {} (comp (keep :result)
-                 (map (juxt :nextjournal/blob-id :nextjournal/value))) doc))
+                 (map (juxt :blob-id :result))) doc))
 
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 

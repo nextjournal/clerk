@@ -5,9 +5,9 @@
             [clojure.string :as str]
             [clojure.walk :as w]))
 
-(defn described-result [ns result]
+(defn described-result [ns {:keys [result blob-id]}]
   (-> (v/describe {:viewers (v/get-viewers ns (v/viewers result))} result)
-      (assoc :blob-id (:nextjournal/blob-id result))
+      (assoc :blob-id blob-id)
       (v/with-viewer :clerk/result)))
 
 
@@ -25,9 +25,10 @@
                            :code (cond-> [(v/view-as :code text)]
                                    (contains? x :result)
                                    (conj (if (and (not inline-results?)
-                                                  (v/wrapped-value? result)
-                                                  (contains? result :nextjournal/blob-id)
-                                                  (not (v/registration? result)))
+                                                  (map? result)
+                                                  (contains? result :result)
+                                                  (contains? result :blob-id)
+                                                  (not (v/registration? (:result result))))
                                            (described-result ns result)
                                            result))))))
                doc)
@@ -48,7 +49,7 @@
 #_(var->data #'var->data)
 
 (defn fn->data [_]
-  {:nextjournal/value 'fn :nextjournal/type-key :fn})
+  (v/with-viewer 'fn :fn))
 
 #_(fn->data (fn []))
 

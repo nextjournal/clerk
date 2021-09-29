@@ -283,7 +283,8 @@
         (if-let [{render-fn :fn :keys [fetch-opts]} (get (into {} (map (juxt :name identity)) viewers) viewer)]
           (if-not render-fn
             (html (error-badge "no render function for viewer named " (str viewer)))
-            (render-fn x (assoc opts :fetch-opts fetch-opts)))
+            (let [render-fn (cond-> render-fn (not (fn? render-fn)) *eval-form*)]
+              (render-fn x (assoc opts :fetch-opts fetch-opts))))
           (html (error-badge "cannot find viewer named " (str viewer))))
         (fn? viewer)
         (viewer x opts)
@@ -310,7 +311,6 @@
          (when selected-viewer
            (inspect (render-with-viewer (assoc opts :viewers all-viewers) selected-viewer val) (dissoc opts :path)))
          (loop [v all-viewers]
-           #_(js/console.log :loop v )
            (if-let [{render-fn :fn :keys [pred]} (first v)]
              (let [render-fn (cond-> render-fn (not (fn? render-fn)) *eval-form*)
                    pred (cond-> pred (not (fn? pred)) *eval-form*)]
