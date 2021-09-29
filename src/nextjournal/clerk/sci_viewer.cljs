@@ -279,7 +279,7 @@
                           (into [:<>] children)))})))
 
 (defn render-with-viewer [{:as opts :keys [viewers]} viewer x]
-  (js/console.log :render-with-viewer #_opts x viewer viewers)
+  #_(js/console.log :render-with-viewer #_opts viewer x)
   (cond (keyword? viewer)
         (if-let [{render-fn :fn :keys [fetch-opts]} (get (into {} (map (juxt :name identity)) viewers) viewer)]
           (if-not render-fn
@@ -298,7 +298,7 @@
   ([x]
    (r/with-let [!expanded-at (r/atom {})
                 !x (r/atom {})]
-     (inspect x {:path [] :!expanded-at !expanded-at :!x !x})))
+     [inspect x {:path [] :!expanded-at !expanded-at :!x !x}]))
   ([x {:as opts :keys [!x viewers path path->info]}]
    (let [x (or (some-> !x deref (get path)) x)
          {:as opts :keys [viewers]} (assoc opts :viewers (vec (concat (viewer/viewers x) viewers)))
@@ -307,7 +307,7 @@
                              (when (elision-pred x) elision-viewer) ;; TODO: move elision handling out
                              (get-in path->info [path :viewer :fn]))
          val (viewer/value x)]
-     (js/console.log :val val :path path :viewer selected-viewer :type-val (type val) :react? (react/isValidElement val) :type (type selected-viewer))
+     #_(js/console.log :val val :path path :viewer selected-viewer :type-val (type val) :react? (react/isValidElement val) :type (type selected-viewer))
      (or (when (react/isValidElement val) val)
          (when selected-viewer
            (inspect (render-with-viewer (assoc opts :viewers all-viewers) selected-viewer val) (dissoc opts :path)))

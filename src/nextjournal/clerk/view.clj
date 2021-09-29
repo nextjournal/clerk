@@ -27,9 +27,10 @@
                                    (conj (if (and (not inline-results?)
                                                   (map? result)
                                                   (contains? result :result)
-                                                  (contains? result :blob-id)
-                                                  (not (v/registration? (:result result))))
-                                           (described-result ns result)
+                                                  (contains? result :blob-id))
+                                           (if (v/registration? (:result result))
+                                             (:result result)
+                                             (described-result ns result))
                                            result))))))
                doc)
          v/notebook

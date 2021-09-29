@@ -25,10 +25,10 @@
 ;; - [x] Drop vector brackets when lazy load map element
 ;; - [x] Review viewer registration api
 ;; - [x] Simplify viewer api (drop `view-as` & change argument order in `with-viewer`/`s`)
-;; - [ ] Fix seeing map with blob-id in Rule 30 notebook
+;; - [x] Fix seeing map with blob-id in Rule 30 notebook
 ;; - [ ] Turn `with-viewers` into a macro and make it take same unquoted form as `set-viewers!`
 ;; - [ ] Make map-viewer pass down options to select map-entry renderer for children and remove viewer from Rule 30
-;; - [ ] Drop lazy loading attempts in plotly + vega viewers
+;; - [x] Drop lazy loading attempts in plotly + vega viewers
 ;; - [ ] Keep expanded state when lazy loading
 ;; - [ ] Allow to control viewer expansion state programmatically
 ;; - [ ] Move update opts fn to viewer map

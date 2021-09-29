@@ -131,6 +131,7 @@
               opts
               (conj current-path idx)))
      (cond
+       (and (empty? path) (not n)) xs
        (and (not= (count path)
                   (count current-path))
             (not (or (number? xs)
@@ -156,7 +157,6 @@
                                   (and (set? xs) (not (sorted? xs))) (into (sorted-set))))
        (and (string? xs) (< elide-string-length (count xs))) (let [offset (opts :offset 0)] (subs xs offset (+ offset n)))
        :else xs))))
-
 
 #_(fetch {1 2} {:n 10 :path []})
 #_(fetch {[1 2 3]
@@ -212,7 +212,7 @@
                                                 nil))
          xs (value xs)]
      #_(prn :xs xs :type (type xs) :viewer viewer)
-     (cond #_#_(and (empty? path) (nil? fetch-opts)) (cond-> {:path path} viewer (assoc :viewer viewer)) ;; fetch everything
+     (cond (and (empty? path) (nil? fetch-opts)) (cond-> {:path path} viewer (assoc :viewer viewer)) ;; fetch everything
            (map? xs) (let [children (sequence (comp (map-indexed #(describe (update opts :path conj %1) %2))
                                                     (remove (comp empty? :children))) xs)]
                        (cond-> {:count (count xs) :path path}
@@ -282,6 +282,8 @@
 
 #_(datafy-scope *ns*)
 #_(datafy-scope #'datafy-scope)
+
+(declare with-viewer)
 
 #?(:clj
    (defn set-viewers!- [scope viewers]
