@@ -60,10 +60,18 @@
 (v/with-viewer "James Maxwell Clerk" '(fn [name] (v/html [:div "Greetings to " name])))
 
 
-(v/with-viewers
-  [0 1]
-  [{:pred 'number? :fn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                     :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}])
+^:clerk/no-cache
+(v/with-viewers '[{:pred 'number? :fn #(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                                   :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}]
+  (take 10 (repeatedly #(rand-int 2))))
 
+
+(v/with-viewers '[{:pred #(and (string? %) (re-matches #"^#[0-9a-f]{6}$" %))
+                   :fn #(v/html [:div.inline-block.rounded-sm.shadow
+                                 {:style {:width 16
+                                          :height 16
+                                          :border "1px solid rgba(0,0,0,.2)"
+                                          :background-color %}}])}]
+  ["#f01923" "#ffb9e1" "#ffff00" "#ffb946" "#00ffe1"])
 
 #_(nextjournal.clerk/show! "notebooks/viewer_api.clj")

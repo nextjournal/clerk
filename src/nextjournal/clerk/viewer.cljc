@@ -202,11 +202,18 @@
   ([scope viewers]
    (vec (concat viewers (@!viewers scope) (@!viewers :root)))))
 
+(defn maybe-eval [f]
+  (cond-> f
+    (and f (not (fn? f))) eval))
+
+(defn eval-preds [viewers]
+  (into [] (map #(update % :pred maybe-eval)) viewers))
+
 (defn describe
   ([xs]
    (describe {:viewers (get-viewers *ns* (viewers xs))} xs))
   ([opts xs]
-   (let [{:as opts :keys [viewers path]} (merge {:path []} opts)
+   (let [{:as opts :keys [viewers path]} (merge {:path []} (update opts :viewers eval-preds))
          {:as viewer :keys [fetch-opts]} (try (select-viewer xs viewers)
                                               (catch #?(:clj Exception :cljs js/Error) _ex
                                                 nil))
@@ -290,7 +297,7 @@
      (assert (or (#{:root} scope)
                  (instance? clojure.lang.Namespace scope)
                  (var? scope)))
-     (swap! !viewers assoc scope (into [] (map #(update % :pred eval)) viewers))
+     (swap! !viewers assoc scope (eval-preds viewers))
      (with-viewer :eval! `'(v/set-viewers! ~(datafy-scope scope) ~viewers))))
 
 
