@@ -5,6 +5,7 @@
             [sci.impl.namespaces]
             #?(:cljs [reagent.ratom :as ratom])))
 
+
 (defn wrap-value [x]
   (if (and (map? x) (:nextjournal/value x))
     x
@@ -26,53 +27,10 @@
 #_(value (with-viewer '(+ 1 2 3) :eval!))
 #_(value 123)
 
-(defn with-viewer
-  "The given viewer will be used to display data"
-  [x viewer]
-  (-> x
-      wrap-value
-      (assoc :nextjournal/viewer viewer)))
-
-#_(with-viewer "x^2" :latex)
-
-(defn with-viewers
-  "Binds viewers to types, eg {:boolean view-fn}"
-  [x viewers]
-  (-> x
-      wrap-value
-      (assoc :nextjournal/viewers viewers)))
-
-#_(-> "x^2" (with-viewer :latex) (with-viewers [{:name :latex :fn :mathjax}]))
-
-
-(defn view-as
-  "Like `with-viewer` but takes viewer as 1st argument"
-  [viewer data]
-  (with-viewer data viewer))
-
-#_(view-as :latex "a^2+b^2=c^2")
-
-(defn html [x]
-  (with-viewer x (if (string? x) :html :hiccup)))
-
-(defn vl [x]
-  (with-viewer x :vega-lite))
-
-(defn plotly [x]
-  (with-viewer x :plotly))
-
-(defn md [x]
-  (with-viewer x :markdown))
-
-(defn tex [x]
-  (with-viewer x :latex))
-
 (defn viewer [x]
   (when (map? x)
     (:nextjournal/viewer x)))
 
-(defn code [x]
-  (with-viewer (if (string? x) x (with-out-str (pprint/pprint x))) :code))
 
 #_(viewer (with-viewer '(+ 1 2 3) :eval!))
 #_(viewer "123")
@@ -314,19 +272,6 @@
       opts (map (comp :fetch-opts second) (path->info desc))]
   (into {} (map #(vector (:path %) (fetch x %))) opts))
 
-;; TODO: hack for talk to make sql result display as table, propery support SQL results as tables and remove
-(defn ->table
-  "converts a sequence of maps into a table with the first row containing the column names."
-  [xs]
-  (let [cols (sort (keys (first xs)))]
-    (into [cols]
-          (map (fn [row] (map #(get row %) cols)))
-          xs)))
-
-#_(->table [{:a 1 :b 2 :c 3} {:a 3 :b 0 :c 2}])
-
-(defn table [xs]
-  (view-as :table (->table xs)))
 
 #?(:clj
    (defn datafy-scope [scope]
@@ -344,7 +289,7 @@
                  (instance? clojure.lang.Namespace scope)
                  (var? scope)))
      (swap! !viewers assoc scope (into [] (map #(update % :pred eval)) viewers))
-     (with-viewer `'(v/set-viewers! ~(datafy-scope scope) ~viewers) :eval!)))
+     (with-viewer :eval! `'(v/set-viewers! ~(datafy-scope scope) ~viewers))))
 
 
 (defmacro set-viewers!
@@ -361,3 +306,57 @@
 #_(registration? (set-viewers! []))
 
 #_(nextjournal.clerk/show! "notebooks/viewers/vega.clj")
+
+
+
+
+;; TODO: hack for talk to make sql result display as table, propery support SQL results as tables and remove
+(defn ->table
+  "converts a sequence of maps into a table with the first row containing the column names."
+  [xs]
+  (let [cols (sort (keys (first xs)))]
+    (into [cols]
+          (map (fn [row] (map #(get row %) cols)))
+          xs)))
+
+#_(->table [{:a 1 :b 2 :c 3} {:a 3 :b 0 :c 2}])
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; public api
+
+(defn with-viewer
+  "The given viewer will be used to display data"
+  [viewer x]
+  (-> x
+      wrap-value
+      (assoc :nextjournal/viewer viewer)))
+
+#_(with-viewer :latex "x^2")
+
+(defn with-viewers
+  "Binds viewers to types, eg {:boolean view-fn}"
+  [viewers x]
+  (-> x
+      wrap-value
+      (assoc :nextjournal/viewers viewers)))
+
+#_(->> "x^2" (with-viewer :latex) (with-viewers [{:name :latex :fn :mathjax}]))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; public convience api
+(def md        (partial with-viewer :markdown))
+(def plotly    (partial with-viewer :plotly))
+(def vl        (partial with-viewer :vega-lite))
+(def tex       (partial with-viewer :latex))
+(def notebook  (partial with-viewer :clerk/notebook))
+
+(defn html [x]
+  (with-viewer (if (string? x) :html :hiccup) x))
+
+(defn code [x]
+  (with-viewer :code (if (string? x) x (with-out-str (pprint/pprint x)))))
+
+(defn table [xs]
+  (with-viewer :table (->table xs)))

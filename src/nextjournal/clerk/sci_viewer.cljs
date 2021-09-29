@@ -5,7 +5,7 @@
             [edamame.core :as edamame]
             [goog.object]
             [goog.string :as gstring]
-            [nextjournal.clerk.viewer :as viewer :refer [html with-viewer with-viewers view-as]]
+            [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer with-viewers]]
             [nextjournal.devcards :as dc]
             [nextjournal.devcards.main]
             [nextjournal.viewer.code :as code]
@@ -17,8 +17,8 @@
             [re-frame.context :as rf]
             [react :as react]
             [reagent.core :as r]
-            [reagent.ratom :as ratom]
             [reagent.dom :as rdom]
+            [reagent.ratom :as ratom]
             [sci.core :as sci]
             [sci.impl.namespaces]
             [sci.impl.vars]))
@@ -100,7 +100,7 @@
 (defn ^:export read-string [s]
   (edamame/parse-string s {:all true
                            :read-cond :allow
-                           :readers {'file (partial view-as :file)}
+                           :readers {'file (partial with-viewer :file)}
                            :features #{:clj}}))
 
 (defn opts->query [opts]
@@ -158,6 +158,7 @@
    (expanded-path? !expanded-at (vec (drop-last path)))))
 
 (defn inspect-children [opts]
+  ;; TODO: move update function onto viewer
   (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)])))
 
 (defn coll-viewer [{:keys [open close]} xs {:as opts :keys [!expanded-at path] :or {path []}}]
@@ -220,7 +221,7 @@
 
 (defn normalize-viewer [x]
   (if-let [viewer (-> x meta :nextjournal/viewer)]
-    (viewer/with-viewer x viewer)
+    (viewer/with-viewer viewer x)
     x))
 
 (def named-viewers
@@ -278,7 +279,7 @@
                           (into [:<>] children)))})))
 
 (defn render-with-viewer [{:as opts :keys [viewers]} viewer x]
-  #_(js/console.log :render-with-viewer #_opts x viewer viewers)
+  (js/console.log :render-with-viewer #_opts x viewer viewers)
   (cond (keyword? viewer)
         (if-let [{render-fn :fn :keys [fetch-opts]} (get (into {} (map (juxt :name identity)) viewers) viewer)]
           (if-not render-fn
@@ -306,7 +307,7 @@
                              (when (elision-pred x) elision-viewer) ;; TODO: move elision handling out
                              (get-in path->info [path :viewer :fn]))
          val (viewer/value x)]
-     #_(js/console.log :val val :path path :viewer selected-viewer :type-val (type val) :react? (react/isValidElement val) :type (type selected-viewer))
+     (js/console.log :val val :path path :viewer selected-viewer :type-val (type val) :react? (react/isValidElement val) :type (type selected-viewer))
      (or (when (react/isValidElement val) val)
          (when selected-viewer
            (inspect (render-with-viewer (assoc opts :viewers all-viewers) selected-viewer val) (dissoc opts :path)))
@@ -321,7 +322,7 @@
              (error-badge "no matching viewer")))))))
 
 (defn error-viewer [e]
-  (with-viewer (pr-str e) :code))
+  (with-viewer :code (pr-str e)))
 
 (defn inspect-lazy [{:as desc :keys [fetch-fn]} opts]
   (let [path->info (viewer/path->info desc)
@@ -386,7 +387,7 @@
 ;;   [:div.result-data
 ;;    [inspect (with-viewers @state
 ;;               {:number #(str/join (take % (repeat "*")))
-;;                :boolean #(view-as :hiccup
+;;                :boolean #(with-viewer :hiccup
 ;;                                   [:div.inline-block {:stle {:width 12 :height 12}
 ;;                                                       :class (if % "bg-red" "bg-green")}])})]]
 ;;   {::dc/state {:a 1
@@ -419,21 +420,21 @@
    [inspect (with-viewers
               @state
               {:number :cell ;; use the cell viewer for numbers
-               :cell #(view-as :hiccup
-                               [:div.inline-block {:class (if (zero? %)
-                                                            "bg-white border-solid border-2 border-black"
-                                                            "bg-black")
-                                                   :style {:width 16 :height 16}}])
+               :cell #(html
+                       [:div.inline-block {:class (if (zero? %)
+                                                    "bg-white border-solid border-2 border-black"
+                                                    "bg-black")
+                                           :style {:width 16 :height 16}}])
                :vector (fn [x options]
                          (->> x
                               (map (fn [x] [inspect x options]))
                               (into [:div.flex.inline-flex])
-                              (view-as :hiccup)))
+                              html))
                :list (fn [x options]
                        (->> x
                             (map (fn [x] [inspect x options]))
                             (into [:div.flex.flex-col])
-                            (view-as :hiccup)))})]]
+                            html))})]]
   {::dc/state rule-30-state})
 
 #_
@@ -444,21 +445,21 @@
    [inspect (-> @state
                 (with-viewer :board)
                 (with-viewers
-                  {:cell #(view-as :hiccup
-                                   [:div.inline-block {:class (if (zero? %)
-                                                                "bg-white border-solid border-2 border-black"
-                                                                "bg-black")
-                                                       :style {:width 16 :height 16}}])
+                  {:cell #(html
+                           [:div.inline-block {:class (if (zero? %)
+                                                        "bg-white border-solid border-2 border-black"
+                                                        "bg-black")
+                                               :style {:width 16 :height 16}}])
                    :row (fn [x options]
                           (->> x
-                               (map #(inspect options (view-as :cell %)))
+                               (map #(inspect options (with-viewer :cell %)))
                                (into [:div.flex.inline-flex])
-                               (view-as :hiccup)))
+                               html))
                    :board (fn [x options]
                             (->> x
-                                 (map #(inspect options (view-as :row %)))
+                                 (map #(inspect options (with-viewer :row %)))
                                  (into [:div.flex.flex-col])
-                                 (view-as :hiccup)))}))]]
+                                 html))}))]]
   {::dc/state rule-30-state})
 
 (dc/defcard rule-30-html
@@ -511,62 +512,60 @@
   [inspect js/window])
 
 (dc/defcard viewer-vega-lite
-  [inspect (view-as :vega-lite
-                    {:width 650
-                     :height 400
-                     :data
-                     {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
-                      :format
-                      {:type "topojson" :feature "counties"}}
-                     :transform
-                     [{:lookup "id"
-                       :from
-                       {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
-                        :key "id"
-                        :fields ["rate"]}}]
-                     :projection {:type "albersUsa"}
-                     :mark "geoshape"
-                     :encoding
-                     {:color {:field "rate" :type "quantitative"}}})])
+  [inspect (vl {:width 650
+                :height 400
+                :data
+                {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
+                 :format
+                 {:type "topojson" :feature "counties"}}
+                :transform
+                [{:lookup "id"
+                  :from
+                  {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
+                   :key "id"
+                   :fields ["rate"]}}]
+                :projection {:type "albersUsa"}
+                :mark "geoshape"
+                :encoding
+                {:color {:field "rate" :type "quantitative"}}})])
 
 (dc/defcard viewer-plolty
-  [inspect (view-as :plotly
-                    {:data [{:y (shuffle (range 10)) :name "The Federation" }
-                            {:y (shuffle (range 10)) :name "The Empire"}]})])
+  [inspect (plotly
+            {:data [{:y (shuffle (range 10)) :name "The Federation" }
+                    {:y (shuffle (range 10)) :name "The Empire"}]})])
 
 (dc/defcard viewer-latex
-  [inspect (view-as :latex
-                    "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")])
+  [inspect (tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")])
 
 (dc/defcard viewer-mathjax
-  [inspect (view-as :mathjax
-                    "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")])
+  [inspect (with-viewer :mathjax
+             "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")])
 
 (dc/defcard viewer-markdown
-  [inspect (view-as :markdown "### Hello Markdown\n\n- a bullet point")])
+  [inspect (md "### Hello Markdown\n\n- a bullet point")])
 
 (dc/defcard viewer-code
-  [inspect (view-as :code "(str (+ 1 2) \"some string\")")])
+  [inspect (code "(str (+ 1 2) \"some string\")")])
 
 (dc/defcard viewer-hiccup
-  [inspect (view-as :hiccup [:h1 "Hello Hiccup 👋"])])
+  [inspect (html [:h1 "Hello Hiccup 👋"])])
 
 (dc/defcard viewer-reagent-component
   "A simple counter component in reagent using `reagent.core/with-let`."
-  [inspect (view-as :reagent
-                    (fn []
-                      (r/with-let [c (r/atom 0)]
-                        [:<>
-                         [:h2 "Count: " @c]
-                         [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold.mr-2 {:on-click #(swap! c inc)} "increment"]
-                         [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold {:on-click #(swap! c dec)} "decrement"]])))])
+  [inspect (with-viewer :reagent
+             (fn []
+               (r/with-let [c (r/atom 0)]
+                 [:<>
+                  [:h2 "Count: " @c]
+                  [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold.mr-2 {:on-click #(swap! c inc)} "increment"]
+                  [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold {:on-click #(swap! c dec)} "decrement"]])))])
 
 ;; TODO add svg viewer
 
 (dc/defcard progress-bar
   "Show how to use a function as a viewer, supports both one and two artity versions."
   [:div
-   [inspect (with-viewer 0.33
+   [inspect (with-viewer
               #(html
                 [:div.relative.pt-1
                  [:div.overflow-hidden.h-2.mb-4-text-xs.flex.rounded.bg-teal-200
@@ -576,8 +575,9 @@
                                        int
                                        (max 0)
                                        (min 100)
-                                       (str "%"))}}]]]))]
-   [inspect (with-viewer 0.35
+                                       (str "%"))}}]]])
+              0.33)]
+   [inspect (with-viewer
               (fn [v _opts] (html
                              [:div.relative.pt-1
                               [:div.overflow-hidden.h-2.mb-4-text-xs.flex.rounded.bg-teal-200
@@ -587,7 +587,8 @@
                                                     int
                                                     (max 0)
                                                     (min 100)
-                                                    (str "%"))}}]]])))]])
+                                                    (str "%"))}}]]]))
+              0.35)]])
 
 
 
@@ -640,26 +641,25 @@
 
 
 (dc/defcard result
-  [inspect (view-as :clerk/result
-                    {:path [], :count 49, :blob-id "5dqpVeeZvAkHU546wCpFjr6GDHxkZh"})])
+  [inspect (with-viewer :clerk/result
+             {:path [], :count 49, :blob-id "5dqpVeeZvAkHU546wCpFjr6GDHxkZh"})])
 
 (dc/defcard notebook
   "Shows how to display a notebook document"
   [state]
   [inspect
-   (view-as :clerk/notebook
-            [(view-as :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
-             [1 2 3 4]
-             (view-as :code "(shuffle (range 10))")
-             {:hello [0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9]}
-             (view-as :markdown "# And some more\n And some more [markdown](https://daringfireball.net/projects/markdown/).")
-             (view-as :code "(shuffle (range 10))")
-             (view-as :markdown "## Some math \n This is a formula.")
-             (view-as :latex
-                      "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")
-             (view-as :plotly
-                      {:data [{:y (shuffle (range 10)) :name "The Federation"}
-                              {:y (shuffle (range 10)) :name "The Empire"}]})])]
+   (with-viewer :clerk/notebook
+     [(with-viewer :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
+      [1 2 3 4]
+      (code "(shuffle (range 10))")
+      {:hello [0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9]}
+      (md "# And some more\n And some more [markdown](https://daringfireball.net/projects/markdown/).")
+      (code "(shuffle (range 10))")
+      (md "## Some math \n This is a formula.")
+      (tex
+       "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")
+      (plotly {:data [{:y (shuffle (range 10)) :name "The Federation"}
+                      {:y (shuffle (range 10)) :name "The Empire"}]})])]
   {::dc/class "p-0"})
 
 
@@ -817,7 +817,6 @@ black")}])}
 
 (def sci-viewer-namespace
   {'html html
-   'view-as view-as
    'inspect inspect
    'coll-viewer coll-viewer
    'map-viewer map-viewer

@@ -23,12 +23,19 @@
 ;; - [x] Lazy seqs
 ;; - [x] Fix Rule 30 maps
 ;; - [x] Drop vector brackets when lazy load map element
+;; - [x] Review viewer registration api
+;; - [x] Simplify viewer api (drop `view-as` & change argument order in `with-viewer`/`s`)
+;; - [ ] Fix seeing map with blob-id in Rule 30 notebook
+;; - [ ] Turn `with-viewers` into a macro and make it take same unquoted form as `set-viewers!`
+;; - [ ] Make map-viewer pass down options to select map-entry renderer for children and remove viewer from Rule 30
+;; - [ ] Drop lazy loading attempts in plotly + vega viewers
 ;; - [ ] Keep expanded state when lazy loading
+;; - [ ] Allow to control viewer expansion state programmatically
+;; - [ ] Move update opts fn to viewer map
 ;; - [x] Restrict string length + enable lazy loading
 ;; - [ ] Datafy + Nav
 ;; - [ ] Metadata viewer
 ;; - [ ] Persist viewer expansion state across reloads
-;; - [x] Review viewer registration api
 ;; - [x] Let the viewer opt into pagination
 ;; - [ ] Viewer errors are not displayed correctly
 ;; - [x] A browser refresh is currently needed to reset a viewer override like in `notebooks/rule_30.clj`, otherwise it will carry over the viewer override to other notebooks that do no specify an override

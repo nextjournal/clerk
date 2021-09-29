@@ -6,9 +6,9 @@
             [clojure.walk :as w]))
 
 (defn described-result [ns {:keys [result blob-id]}]
-  (-> (v/describe {:viewers (v/get-viewers ns (v/viewers result))} result)
-      (assoc :blob-id blob-id)
-      (v/with-viewer :clerk/result)))
+  (v/with-viewer :clerk/result
+    (-> (v/describe {:viewers (v/get-viewers ns (v/viewers result))} result)
+        (assoc :blob-id blob-id))))
 
 
 #_(v/with-viewers (range 3) [{:pred number? :fn '(fn [x] (v/html [:div.inline-block {:style {:width 16 :height 16}
@@ -21,8 +21,8 @@
      (-> (into []
                (mapcat (fn [{:as x :keys [type text result]}]
                          (case type
-                           :markdown [(v/view-as :markdown text)]
-                           :code (cond-> [(v/view-as :code text)]
+                           :markdown [(v/md text)]
+                           :code (cond-> [(v/code text)]
                                    (contains? x :result)
                                    (conj (if (and (not inline-results?)
                                                   (map? result)
@@ -32,19 +32,19 @@
                                            (described-result ns result)
                                            result))))))
                doc)
-         (v/with-viewer :clerk/notebook)
+         v/notebook
          (assoc :scope (v/datafy-scope ns))))))
 
 #_(meta (doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj")))
 
 (defn ex->viewer [e]
   (into ^{:nextjournal/viewer :notebook}
-        [(v/view-as :code (pr-str (Throwable->map e)))]))
+        [(v/with-viewer :code (pr-str (Throwable->map e)))]))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj"))
 
 (defn var->data [v]
-  (v/view-as :clerk/var (symbol v)))
+  (v/with-viewer :clerk/var (symbol v)))
 
 #_(var->data #'var->data)
 
