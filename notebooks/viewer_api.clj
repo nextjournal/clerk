@@ -65,13 +65,32 @@
                                                                    :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}]
   (take 10 (repeatedly #(rand-int 2))))
 
+^:clerk/no-cache
+(v/with-viewers
+  [{:pred '#(and (string? %)
+                 (re-matches
+                   (re-pattern
+                     (str "(?i)"
+                          "(#(?:[0-9a-f]{2}){2,4}|(#[0-9a-f]{3})|"
+                          "(rgb|hsl)a?\\((-?\\d+%?[,\\s]+){2,3}\\s*[\\d\\.]+%?\\))")) %))
+    :fn '#(do
+            (js/console.log %)
+            (v/html [:div.inline-block.rounded-sm.shadow
+                     {:style {:width 16
+                              :height 16
+                              :border "1px solid rgba(0,0,0,.2)"
+                              :background-color %}}]))}]
+  ["#571845"
+   "rgb(144,12,62)"
+   "rgba(199,0,57,1.0)"
+   "hsl(11,100%,60%)"
+   "hsla(46, 97%, 48%, 1.000)"])
 
-(v/with-viewers '[{:pred #(and (string? %) (re-matches #"^#[0-9a-f]{6}$" %))
-                   :fn #(v/html [:div.inline-block.rounded-sm.shadow
-                                 {:style {:width 16
-                                          :height 16
-                                          :border "1px solid rgba(0,0,0,.2)"
-                                          :background-color %}}])}]
-  ["#f01923" "#ffb9e1" "#ffff00" "#ffb946" "#00ffe1"])
+(re-matches
+  (re-pattern
+    (str "(?i)"
+         "(#(?:[0-9a-f]{2}){2,4}|(#[0-9a-f]{3})|"
+         "(rgb|hsl)a?\\((-?\\d+%?[,\\s]+){2,3}\\s*[\\d\\.]+%?\\))"))
+  "hsla(46, 97%, 48%, 1.000)")
 
 #_(nextjournal.clerk/show! "notebooks/viewer_api.clj")
