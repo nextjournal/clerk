@@ -39,7 +39,7 @@
 #_(meta (doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj")))
 
 (defn ex->viewer [e]
-  (v/notebook [(v/code (pr-str (Throwable->map e)))]))
+  (v/exception (Throwable->map e)))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj"))
 

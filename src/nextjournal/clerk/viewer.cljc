@@ -369,3 +369,27 @@
 
 (defn table [xs]
   (with-viewer :table (->table xs)))
+
+(defn exception [e]
+  (let [{:keys [via trace]} e]
+    (html
+      [:div.w-screen.h-screen.overflow-y-auto.bg-gray-100.p-6.text-xs.monospace.flex.flex-col
+       [:div.rounded-md.shadow-lg.border.border-gray-300.bg-white.max-w-6xl.mx-auto
+        (into
+          [:div]
+          (map
+            (fn [{:as ex :keys [type message data trace]}]
+              [:div.p-4.bg-red-100.border-b.border-gray-300.rounded-t-md
+               [:div.font-bold "Unhandled " type]
+               [:div.font-bold.mt-1 message]
+               [:div.mt-1 (pr-str data)]])
+            via))
+        [:div.py-6
+         [:table.w-full
+          (into [:tbody]
+                (map (fn [[call _ file line]]
+                       [:tr.hover:bg-red-100.leading-tight
+                        [:td.text-right.px-6 file ":"]
+                        [:td.text-right.pr-6 (pr-str line)]
+                        [:td.py-1.pr-6 (pr-str call)]])
+                     trace))]]]])))
