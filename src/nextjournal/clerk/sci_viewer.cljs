@@ -99,6 +99,7 @@
 
 (defn ^:export read-string [s]
   (edamame/parse-string s {:all true
+                           :read-eval true
                            :read-cond :allow
                            :readers {'file (partial with-viewer :file)}
                            :features #{:clj}}))
@@ -313,8 +314,7 @@
            (inspect (render-with-viewer (assoc opts :viewers all-viewers) selected-viewer val) (dissoc opts :path)))
          (loop [v all-viewers]
            (if-let [{render-fn :fn :keys [pred]} (first v)]
-             (let [render-fn (cond-> render-fn (not (fn? render-fn)) *eval-form*)
-                   pred (cond-> pred (not (fn? pred)) *eval-form*)]
+             (let [render-fn (cond-> render-fn (not (fn? render-fn)) *eval-form*)]
                #_(js/console.log :pred pred :match? (and pred render-fn (pred val)) :r (render-fn x opts))
                (if (and pred render-fn (pred val opts))
                  (viewer/value (render-fn x opts))
@@ -828,12 +828,18 @@ black")}])}
    'with-viewer with-viewer
    'with-viewers with-viewers})
 
+(defonce eval-form-ctx
+  (sci/init {:disable-arity-checks true}))
+
+
 (defonce ctx
   (sci/init {:async? true
              :disable-arity-checks true
              :classes {'js goog/global
                        :allow :all}
-             :bindings {'atom ratom/atom}
+             :bindings {'atom ratom/atom
+                        'form->fn+ viewer/form->fn+
+                        'read-eval #(sci/eval-form eval-form-ctx %)}
              :namespaces {'nextjournal.viewer sci-viewer-namespace
                           'v sci-viewer-namespace}}))
 

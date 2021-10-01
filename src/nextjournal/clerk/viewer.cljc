@@ -1,10 +1,43 @@
 (ns nextjournal.clerk.viewer
   (:require [clojure.string :as str]
             [clojure.pprint :as pprint]
+            [sci.core :as sci]
             [sci.impl.vars]
             [sci.impl.namespaces]
-            #?(:cljs [reagent.ratom :as ratom])))
+            #?(:cljs [reagent.ratom :as ratom]))
+  #?(:clj (:import [clojure.lang IFn])))
 
+
+(defonce ctx
+  (sci/init {:disable-arity-checks true}))
+
+(defn sci-eval [f]
+  (sci/eval-form ctx f))
+
+(defrecord Fn+ [form fn]
+  IFn
+  (#?(:clj invoke :cljs -invoke) [this x]
+    ((:fn this) x))
+  (#?(:clj invoke :cljs -invoke) [this x y]
+    ((:fn this) x y)))
+
+(defn form->fn+
+  [form]
+  (map->Fn+ {:form form :fn (#?(:clj eval :cljs sci-eval) form)}))
+
+#?(:clj
+   (do
+     (defmethod print-method Fn+ [v ^java.io.Writer w]
+       (.write w (str "#=" (pr-str (list 'form->fn+ (:form v))))))
+     (pr-str (form->fn+ '(fn [x] x)))))
+
+#_(pr-str (form->fn+ '(fn [x] x)))
+
+(comment
+  (def num? (form->fn+ 'number?))
+  (num? 42)
+  (:form ident)
+  (pr-str ident))
 
 (defn wrap-value [x]
   (if (and (map? x) (:nextjournal/value x))
@@ -67,6 +100,8 @@
    {:pred map? :name :map :fn '(partial v/map-viewer) :fetch-opts {:n 20}}
    {:pred uuid? :fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred inst? :fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}])
+
+;; consider adding second arg to `:fn` function, that would be the fetch function
 
 (def named-viewers
   #{:html
@@ -202,18 +237,18 @@
   ([scope viewers]
    (vec (concat viewers (@!viewers scope) (@!viewers :root)))))
 
-(defn maybe-eval [f]
-  (cond-> f
-    (and f (not (fn? f))) eval))
+(defn maybe->fn+ [x]
+  (cond-> x
+    (not (fn? x)) form->fn+))
 
-(defn eval-preds [viewers]
-  (into [] (map #(update % :pred maybe-eval)) viewers))
+(defn preds->fn+ [viewers]
+  (into [] (map #(update % :pred maybe->fn+)) viewers))
 
 (defn describe
   ([xs]
    (describe {:viewers (get-viewers *ns* (viewers xs))} xs))
   ([opts xs]
-   (let [{:as opts :keys [viewers path]} (merge {:path []} (update opts :viewers eval-preds))
+   (let [{:as opts :keys [viewers path]} (merge {:path []} (update opts :viewers preds->fn+))
          {:as viewer :keys [fetch-opts]} (try (select-viewer xs viewers)
                                               (catch #?(:clj Exception :cljs js/Error) _ex
                                                 nil))
@@ -297,8 +332,9 @@
      (assert (or (#{:root} scope)
                  (instance? clojure.lang.Namespace scope)
                  (var? scope)))
-     (swap! !viewers assoc scope (eval-preds viewers))
-     (with-viewer :eval! `'(v/set-viewers! ~(datafy-scope scope) ~viewers))))
+     (let [viewers (preds->fn+ viewers)]
+       (swap! !viewers assoc scope viewers)
+       (with-viewer :eval! `'(v/set-viewers! ~(datafy-scope scope) ~viewers)))))
 
 
 (defmacro set-viewers!
@@ -373,23 +409,23 @@
 (defn exception [e]
   (let [{:keys [via trace]} e]
     (html
-      [:div.w-screen.h-screen.overflow-y-auto.bg-gray-100.p-6.text-xs.monospace.flex.flex-col
-       [:div.rounded-md.shadow-lg.border.border-gray-300.bg-white.max-w-6xl.mx-auto
-        (into
-          [:div]
-          (map
-            (fn [{:as ex :keys [type message data trace]}]
-              [:div.p-4.bg-red-100.border-b.border-gray-300.rounded-t-md
-               [:div.font-bold "Unhandled " type]
-               [:div.font-bold.mt-1 message]
-               [:div.mt-1 (pr-str data)]])
-            via))
-        [:div.py-6
-         [:table.w-full
-          (into [:tbody]
-                (map (fn [[call _ file line]]
-                       [:tr.hover:bg-red-100.leading-tight
-                        [:td.text-right.px-6 file ":"]
-                        [:td.text-right.pr-6 (pr-str line)]
-                        [:td.py-1.pr-6 (pr-str call)]])
-                     trace))]]]])))
+     [:div.w-screen.h-screen.overflow-y-auto.bg-gray-100.p-6.text-xs.monospace.flex.flex-col
+      [:div.rounded-md.shadow-lg.border.border-gray-300.bg-white.max-w-6xl.mx-auto
+       (into
+        [:div]
+        (map
+         (fn [{:as ex :keys [type message data trace]}]
+           [:div.p-4.bg-red-100.border-b.border-gray-300.rounded-t-md
+            [:div.font-bold "Unhandled " type]
+            [:div.font-bold.mt-1 message]
+            [:div.mt-1 (pr-str data)]])
+         via))
+       [:div.py-6
+        [:table.w-full
+         (into [:tbody]
+               (map (fn [[call _ file line]]
+                      [:tr.hover:bg-red-100.leading-tight
+                       [:td.text-right.px-6 file ":"]
+                       [:td.text-right.pr-6 (pr-str line)]
+                       [:td.py-1.pr-6 (pr-str call)]])
+                    trace))]]]])))
