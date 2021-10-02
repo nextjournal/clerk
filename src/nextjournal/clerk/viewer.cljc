@@ -424,9 +424,11 @@
        [:div.py-6
         [:table.w-full
          (into [:tbody]
-               (map (fn [[call _ file line]]
+               (map (fn [[call x file line]]
                       [:tr.hover:bg-red-100.leading-tight
                        [:td.text-right.px-6 file ":"]
-                       [:td.text-right.pr-6 (pr-str line)]
-                       [:td.py-1.pr-6 (pr-str call)]])
-                    trace))]]]])))
+                       [:td.text-right.pr-6 line]
+                       [:td.py-1.pr-6 #?(:clj (clojure.repl/demunge (pr-str call)) :cljs call)]]))
+               trace)]]]])))
+
+#_(nextjournal.clerk/show! "notebooks/boom.clj")
