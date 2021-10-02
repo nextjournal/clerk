@@ -828,18 +828,13 @@ black")}])}
    'with-viewer with-viewer
    'with-viewers with-viewers})
 
-(defonce eval-form-ctx
-  (sci/init {:disable-arity-checks true}))
-
-
 (defonce ctx
   (sci/init {:async? true
              :disable-arity-checks true
              :classes {'js goog/global
                        :allow :all}
              :bindings {'atom ratom/atom
-                        'form->fn+ viewer/form->fn+
-                        'read-eval #(sci/eval-form eval-form-ctx %)}
+                        'read-eval #(sci/eval-form {} %)}
              :namespaces {'nextjournal.viewer sci-viewer-namespace
                           'v sci-viewer-namespace}}))
 

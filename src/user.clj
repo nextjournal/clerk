@@ -29,7 +29,6 @@
   (show! "notebooks/onwards.clj")
   (show! "notebooks/elements.clj")
   (show! "notebooks/rule_30.clj")
-  (show! "notebooks/onwards.clj")
   (show! "notebooks/how_clerk_works.clj")
   (show! "notebooks/pagination.clj")
   (show! "notebooks/recursive.clj")

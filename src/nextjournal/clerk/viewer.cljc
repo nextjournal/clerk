@@ -21,17 +21,17 @@
   (#?(:clj invoke :cljs -invoke) [this x y]
     ((:fn this) x y)))
 
-(defn form->fn+
-  [form]
-  (map->Fn+ {:form form :fn (#?(:clj eval :cljs sci-eval) form)}))
+#?(:clj
+   (defn form->fn+
+     [form]
+     (map->Fn+ {:form form :fn (eval form)})))
 
 #?(:clj
-   (do
-     (defmethod print-method Fn+ [v ^java.io.Writer w]
-       (.write w (str "#=" (pr-str (list 'form->fn+ (:form v))))))
-     (pr-str (form->fn+ '(fn [x] x)))))
+   (defmethod print-method Fn+ [v ^java.io.Writer w]
+     (.write w (str "#=" (pr-str (list 'eval `'~(:form v)))))))
 
-#_(pr-str (form->fn+ '(fn [x] x)))
+#_(read-string (pr-str (form->fn+ '(fn [x] x))))
+#_(read-string (pr-str (form->fn+ 'number?)))
 
 (comment
   (def num? (form->fn+ 'number?))
@@ -57,7 +57,7 @@
     (:nextjournal/value x)
     x))
 
-#_(value (with-viewer '(+ 1 2 3) :eval!))
+#_(value (with-viewer :code '(+ 1 2 3)))
 #_(value 123)
 
 (defn viewer [x]
@@ -65,7 +65,7 @@
     (:nextjournal/viewer x)))
 
 
-#_(viewer (with-viewer '(+ 1 2 3) :eval!))
+#_(viewer (with-viewer :code '(+ 1 2 3)))
 #_(viewer "123")
 
 (defn viewers [x]
@@ -237,12 +237,13 @@
   ([scope viewers]
    (vec (concat viewers (@!viewers scope) (@!viewers :root)))))
 
-(defn maybe->fn+ [x]
-  (cond-> x
-    (not (fn? x)) form->fn+))
+#?(:clj
+   (defn maybe->fn+ [x]
+     (cond-> x
+       (not (fn? x)) form->fn+)))
 
 (defn preds->fn+ [viewers]
-  (into [] (map #(update % :pred maybe->fn+)) viewers))
+  (into [] #?(:clj (map #(update % :pred maybe->fn+))) viewers))
 
 (defn describe
   ([xs]
