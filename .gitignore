@@ -3,4 +3,12 @@
 .cpcache/
 .lsp/
 .nrepl-port
-
+/node_modules/
+/public/css/app.css
+/public/js/
+/.shadow-cljs/
+.idea/
+clerk.iml
+public/girouette.css
+public/images/
+yarn.lock

@@ -5,6 +5,7 @@
             [datoteka.core :as fs]
             [nextjournal.beholder :as beholder]
             [nextjournal.clerk.hashing :as hashing]
+            [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]
             [multihash.core :as multihash]
             [multihash.digest :as digest]
@@ -24,12 +25,10 @@
 (def cache-dir
   (str fs/*cwd* fs/*sep* ".cache"))
 
-(defn add-blob [result hash]
-  (cond-> result
-    (instance? clojure.lang.IObj result)
-    (vary-meta assoc :blob/id (cond-> hash (not (string? hash)) multihash/base58))))
+(defn wrap-with-blob-id [result hash]
+  {:result result :blob-id (cond-> hash (not (string? hash)) multihash/base58)})
 
-#_(meta (add-blob {} "foo"))
+#_(wrap-with-blob-id :test "foo")
 
 (defn hash+store-in-cas! [x]
   (let [^bytes ba (nippy/freeze x)
@@ -61,6 +60,10 @@
 
 #_(worth-caching? 0.1)
 
+(defn random-multihash []
+  (multihash/base58 (digest/sha1 (str (java.util.UUID/randomUUID)))))
+
+#_(random-multihash)
 
 (defn read+eval-cached [results-last-run vars->hash code-string]
   (let [form (hashing/read-string code-string)
@@ -80,11 +83,11 @@
     (or (when (and (not no-cache?)
                    cached?)
           (try
-            (let [value (add-blob (or (get results-last-run hash)
-                                      (thaw-from-cas cas-hash)) hash)]
+            (let [{:as result+blob :keys [result]} (wrap-with-blob-id (or (get results-last-run hash)
+                                                                          (thaw-from-cas cas-hash)) hash)]
               (when var
-                (intern *ns* (-> var symbol name symbol) value))
-              value)
+                (intern *ns* (-> var symbol name symbol) result))
+              result+blob)
             (catch Exception _e
               ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
               #_(prn :thaw-error e)
@@ -96,7 +99,7 @@
                               no-cache?))
               var-value (cond-> result (var? result) deref)]
           (if (fn? var-value)
-            result
+            var-value
             (do (when-not (or no-cache?
                               (instance? clojure.lang.IDeref var-value)
                               (instance? clojure.lang.MultiFn var-value)
@@ -107,7 +110,9 @@
                     (catch Exception e
                       (prn :freeze-error e)
                       nil)))
-                (add-blob var-value (if no-cache? (multihash/base58 (digest/sha1 (str (java.util.UUID/randomUUID)))) hash))))))))
+                (wrap-with-blob-id var-value (if no-cache? (random-multihash) hash))))))))
+
+#_(read+eval-cached {} {} "(subs (slurp \"/usr/share/dict/words\") 0 1000)")
 
 (defn clear-cache!
   ([]
@@ -121,15 +126,16 @@
 
 (defn blob->result [doc]
   (into {} (comp (keep :result)
-                 (filter meta)
-                 (map (juxt (comp :blob/id meta) identity))) doc))
+                 (map (juxt :blob-id :result))) doc))
+
+#_(blob->result @nextjournal.clerk.webserver/!doc)
 
 (defn +eval-results [results-last-run vars->hash doc]
   (let [doc (into [] (map (fn [{:as cell :keys [type text]}]
                             (cond-> cell
                               (= :code type)
                               (assoc :result (read+eval-cached results-last-run vars->hash text))))) doc)]
-    (with-meta doc (blob->result doc))))
+    (with-meta doc (-> doc blob->result (assoc :ns *ns*)))))
 
 #_(let [doc (+eval-results {} {} [{:type :markdown :text "# Hi"} {:type :code :text "[1]"} {:type :code :text "(+ 39 3)"}])
         blob->result (meta doc)]
@@ -143,7 +149,8 @@
 (defn eval-file [file]
   (+eval-results {} (hashing/hash file) (parse-file file)))
 
-#_(eval-file {} "notebooks/pagination.clj")
+#_(eval-file "notebooks/pagination.clj")
+#_(eval-file "notebooks/test.clj")
 
 (defn show!
   "Converts the Clojure source test in file to a series of text or syntax panes and causes `panel` to contain them."
@@ -159,9 +166,13 @@
       (throw e))))
 
 (defn file-event [{:keys [type path]}]
-  (when (contains? #{:modify :create} type)
+  (when (and (contains? #{:modify :create} type)
+             (or (str/ends-with? path ".clj")
+                 (str/ends-with? path ".cljc")))
+
     (binding [*ns* (find-ns 'user)]
       (nextjournal.clerk/show! (str/replace (str path) (str fs/*cwd* fs/*sep*) "")))))
+
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
@@ -179,6 +190,8 @@
   (show! "notebooks/conditional_read.cljc")
   (show! "src/nextjournal/clerk/hashing.clj")
   (show! "src/nextjournal/clerk.clj")
+
+  (show! "notebooks/test.clj")
 
   ;; Clear cache
   (clear-cache!)

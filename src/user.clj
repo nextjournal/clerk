@@ -5,10 +5,12 @@
             [nextjournal.clerk.webserver :as webserver]))
 
 (defn go []
+  (webserver/start! {})
+
   (def watcher
     (beholder/watch #(clerk/file-event %) "notebooks" "src"))
 
-  (webserver/start! {}))
+  :clerk/started)
 
 (defn set-dev!
   "Set this to `true` to load the css + js from a running instance for css + viewer dev. "
@@ -24,14 +26,15 @@
 
   (beholder/stop watcher)
 
-
+  (show! "notebooks/onwards.clj")
   (show! "notebooks/elements.clj")
   (show! "notebooks/rule_30.clj")
-  (show! "notebooks/onwards.clj")
   (show! "notebooks/how_clerk_works.clj")
   (show! "notebooks/pagination.clj")
   (show! "notebooks/recursive.clj")
   (show! "notebooks/cache.clj")
+
+  (show! "notebooks/viewer_api.clj")
 
   (show! "notebooks/viewers/vega.clj")
   (show! "notebooks/viewers/plotly.clj")
