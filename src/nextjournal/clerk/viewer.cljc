@@ -1,18 +1,12 @@
 (ns nextjournal.clerk.viewer
   (:require [clojure.string :as str]
             [clojure.pprint :as pprint]
-            [sci.core :as sci]
             [sci.impl.vars]
             [sci.impl.namespaces]
-            #?(:cljs [reagent.ratom :as ratom]))
+            #?(:cljs [reagent.ratom :as ratom]
+               :clj [clojure.repl :refer [demunge]]))
   #?(:clj (:import [clojure.lang IFn])))
 
-
-(defonce ctx
-  (sci/init {:disable-arity-checks true}))
-
-(defn sci-eval [f]
-  (sci/eval-form ctx f))
 
 (defrecord Fn+ [form fn]
   IFn
@@ -28,10 +22,12 @@
 
 #?(:clj
    (defmethod print-method Fn+ [v ^java.io.Writer w]
-     (.write w (str "#=" (pr-str (list 'eval `'~(:form v)))))))
+     (.write w (str "#function+ " (pr-str `~(:form v))))))
 
-#_(read-string (pr-str (form->fn+ '(fn [x] x))))
-#_(read-string (pr-str (form->fn+ 'number?)))
+#_(binding [*data-readers* {'function+ form->fn+}]
+    (read-string (pr-str (form->fn+ '(fn [x] x)))))
+#_(binding [*data-readers* {'function+ form->fn+}]
+    (read-string (pr-str (form->fn+ 'number?))))
 
 (comment
   (def num? (form->fn+ 'number?))
@@ -370,42 +366,60 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public api
 
-(defn with-viewer
+(defn with-viewer-
   "The given viewer will be used to display data"
   [viewer x]
   (-> x
       wrap-value
       (assoc :nextjournal/viewer viewer)))
 
-#_(with-viewer :latex "x^2")
+#_(with-viewer- :latex "x^2")
 
-(defn with-viewers
+(defmacro with-viewer
+  [viewer x]
+  (let [viewer# (list 'quote viewer)]
+    `(with-viewer- ~viewer# ~x)))
+
+#_(macroexpand '(with-viewer #(v/html [:div %]) 1))
+
+(defn with-viewers-
   "Binds viewers to types, eg {:boolean view-fn}"
   [viewers x]
   (-> x
       wrap-value
       (assoc :nextjournal/viewers viewers)))
 
-#_(->> "x^2" (with-viewer :latex) (with-viewers [{:name :latex :fn :mathjax}]))
+#_(->> "x^2" (with-viewer- :latex) (with-viewers- [{:name :latex :fn :mathjax}]))
 
+(defmacro with-viewers
+  [viewers x]
+  (let [viewers# (->> viewers
+                      preds->fn+
+                      (mapv (fn [viewer] (update viewer :fn #(list 'quote %)))))]
+    `(with-viewers- ~viewers# ~x)))
 
+#_(macroexpand '(with-viewers-m [{:pred number? :fn #(v/html [:div %])}] 1))
+
+#?(:clj (with-viewers [{:pred number? :fn #(v/html [:div %])}] 1))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convience api
-(def md        (partial with-viewer :markdown))
-(def plotly    (partial with-viewer :plotly))
-(def vl        (partial with-viewer :vega-lite))
-(def tex       (partial with-viewer :latex))
-(def notebook  (partial with-viewer :clerk/notebook))
+(def md        (partial with-viewer- :markdown))
+(def plotly    (partial with-viewer- :plotly))
+(def vl        (partial with-viewer- :vega-lite))
+(def tex       (partial with-viewer- :latex))
+(def notebook  (partial with-viewer- :clerk/notebook))
 
 (defn html [x]
-  (with-viewer (if (string? x) :html :hiccup) x))
+  (with-viewer- (if (string? x) :html :hiccup) x))
 
 (defn code [x]
-  (with-viewer :code (if (string? x) x (with-out-str (pprint/pprint x)))))
+  (with-viewer- :code (if (string? x) x (with-out-str (pprint/pprint x)))))
+
+#_(code '(+ 1 2))
 
 (defn table [xs]
-  (with-viewer :table (->table xs)))
+  (with-viewer- :table (->table xs)))
 
 (defn exception [e]
   (let [{:keys [via trace]} e]
@@ -428,7 +442,7 @@
                       [:tr.hover:bg-red-100.leading-tight
                        [:td.text-right.px-6 file ":"]
                        [:td.text-right.pr-6 line]
-                       [:td.py-1.pr-6 #?(:clj (clojure.repl/demunge (pr-str call)) :cljs call)]]))
+                       [:td.py-1.pr-6 #?(:clj (demunge (pr-str call)) :cljs call)]]))
                trace)]]]])))
 
 #_(nextjournal.clerk/show! "notebooks/boom.clj")

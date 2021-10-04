@@ -52,34 +52,26 @@
 
 ;; ## 🚀 Extensibility
 
-(defn greet [name]
-  (v/html [:div "Greetings to " name "!"]))
-
-(greet "James Maxwell Clerk")
-
-(v/with-viewer "James Maxwell Clerk" '(fn [name] (v/html [:div "Greetings to " name])))
+(v/with-viewer (fn [name] (v/html [:div "Greetings to " [:strong name] "!"])) "James Maxwell Clerk")
 
 
 ^:clerk/no-cache
-(v/with-viewers '[{:pred 'number? :fn #(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                                   :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}]
+(v/with-viewers [{:pred 'number? :fn #(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                                  :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}]
   (take 10 (repeatedly #(rand-int 2))))
 
-^:clerk/no-cache
 (v/with-viewers
-  [{:pred '#(and (string? %)
-                 (re-matches
-                   (re-pattern
-                     (str "(?i)"
-                          "(#(?:[0-9a-f]{2}){2,4}|(#[0-9a-f]{3})|"
-                          "(rgb|hsl)a?\\((-?\\d+%?[,\\s]+){2,3}\\s*[\\d\\.]+%?\\))")) %))
-    :fn '#(do
-            (js/console.log %)
-            (v/html [:div.inline-block.rounded-sm.shadow
-                     {:style {:width 16
-                              :height 16
-                              :border "1px solid rgba(0,0,0,.2)"
-                              :background-color %}}]))}]
+  [{:pred #(and (string? %)
+                (re-matches
+                 (re-pattern
+                  (str "(?i)"
+                       "(#(?:[0-9a-f]{2}){2,4}|(#[0-9a-f]{3})|"
+                       "(rgb|hsl)a?\\((-?\\d+%?[,\\s]+){2,3}\\s*[\\d\\.]+%?\\))")) %))
+    :fn #(v/html [:div.inline-block.rounded-sm.shadow
+                  {:style {:width 16
+                           :height 16
+                           :border "1px solid rgba(0,0,0,.2)"
+                           :background-color %}}])}]
   ["#571845"
    "rgb(144,12,62)"
    "rgba(199,0,57,1.0)"

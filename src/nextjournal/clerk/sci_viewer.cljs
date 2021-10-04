@@ -5,7 +5,7 @@
             [edamame.core :as edamame]
             [goog.object]
             [goog.string :as gstring]
-            [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer with-viewers]]
+            [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer-  with-viewers-] :rename {with-viewer- with-viewer with-viewers- with-viewers}]
             [nextjournal.devcards :as dc]
             [nextjournal.devcards.main]
             [nextjournal.viewer.code :as code]
@@ -97,11 +97,13 @@
   (html [:span.inspected-value
          [:span.syntax-tag "#'" (str x)]]))
 
+(declare eval-form)
+
 (defn ^:export read-string [s]
   (edamame/parse-string s {:all true
-                           :read-eval true
                            :read-cond :allow
-                           :readers {'file (partial with-viewer :file)}
+                           :readers {'file (partial with-viewer :file)
+                                     'function+ eval-form}
                            :features #{:clj}}))
 
 (defn opts->query [opts]
@@ -222,7 +224,7 @@
 
 (defn normalize-viewer [x]
   (if-let [viewer (-> x meta :nextjournal/viewer)]
-    (viewer/with-viewer viewer x)
+    (with-viewer viewer x)
     x))
 
 (def named-viewers
@@ -322,7 +324,7 @@
              (error-badge "no matching viewer")))))))
 
 (defn error-viewer [e]
-  (with-viewer :code (pr-str e)))
+  (viewer/with-viewer- :code (pr-str e)))
 
 (defn inspect-lazy [{:as desc :keys [fetch-fn]} opts]
   (let [path->info (viewer/path->info desc)
@@ -833,8 +835,6 @@ black")}])}
              :disable-arity-checks true
              :classes {'js goog/global
                        :allow :all}
-             :bindings {'atom ratom/atom
-                        'read-eval #(sci/eval-form {} %)}
              :namespaces {'nextjournal.viewer sci-viewer-namespace
                           'v sci-viewer-namespace}}))
 
