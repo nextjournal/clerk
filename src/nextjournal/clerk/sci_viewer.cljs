@@ -5,7 +5,7 @@
             [edamame.core :as edamame]
             [goog.object]
             [goog.string :as gstring]
-            [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer-  with-viewers-] :rename {with-viewer- with-viewer with-viewers- with-viewers}]
+            [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer*  with-viewers*] :rename {with-viewer* with-viewer with-viewers* with-viewers}]
             [nextjournal.devcards :as dc]
             [nextjournal.devcards.main]
             [nextjournal.viewer.code :as code]
@@ -324,7 +324,7 @@
              (error-badge "no matching viewer")))))))
 
 (defn error-viewer [e]
-  (viewer/with-viewer- :code (pr-str e)))
+  (viewer/with-viewer* :code (pr-str e)))
 
 (defn inspect-lazy [{:as desc :keys [fetch-fn]} opts]
   (let [path->info (viewer/path->info desc)

@@ -8,7 +8,7 @@
   #?(:clj (:import [clojure.lang IFn])))
 
 
-(defrecord Fn+ [form fn]
+(defrecord Fn+Form [form fn]
   IFn
   (#?(:clj invoke :cljs -invoke) [this x]
     ((:fn this) x))
@@ -18,24 +18,27 @@
 #?(:clj
    (defn form->fn+
      [form]
-     (map->Fn+ {:form form :fn (eval form)})))
+     (map->Fn+Form {:form form :fn (eval form)})))
 
 #?(:clj
-   (defmethod print-method Fn+ [v ^java.io.Writer w]
+   (defmethod print-method Fn+Form [v ^java.io.Writer w]
      (.write w (str "#function+ " (pr-str `~(:form v))))))
 
-#_(binding [*data-readers* {'function+ form->fn+}]
+#_(binding [*data-readers* {'function+ form->fn+form}]
     (read-string (pr-str (form->fn+ '(fn [x] x)))))
-#_(binding [*data-readers* {'function+ form->fn+}]
+#_(binding [*data-readers* {'function+ form->fn+form}]
     (read-string (pr-str (form->fn+ 'number?))))
 
 (comment
-  (def num? (form->fn+ 'number?))
+  (def num? (form->fn+form 'number?))
   (num? 42)
   (:form ident)
   (pr-str ident))
 
-(defn wrap-value [x]
+;; TODO: think about naming this to indicate it does nothing if the value is already wrapped.
+(defn wrap-value
+  "Ensures `x` is wrapped in a map under a `:nextjournal/value` key."
+  [x]
   (if (and (map? x) (:nextjournal/value x))
     x
     {:nextjournal/value x}))
@@ -43,12 +46,16 @@
 #_(wrap-value 123)
 #_(wrap-value {:nextjournal/value 456})
 
-(defn wrapped-value? [x]
+(defn wrapped-value?
+  "Tests if `x` is a map containing a `:nextjournal/value`."
+  [x]
   (and (map? x)
        (contains? x :nextjournal/value)))
 
 
-(defn value [x]
+(defn value
+  "Takes `x` and returns the `:nextjournal/value` from it, or otherwise `x` unmodified."
+  [x]
   (if (wrapped-value? x)
     (:nextjournal/value x)
     x))
@@ -56,7 +63,9 @@
 #_(value (with-viewer :code '(+ 1 2 3)))
 #_(value 123)
 
-(defn viewer [x]
+(defn viewer
+  "Returns the `:nextjournal/viewer` for a given wrapped value `x`, `nil` otherwise."
+  [x]
   (when (map? x)
     (:nextjournal/viewer x)))
 
@@ -64,7 +73,9 @@
 #_(viewer (with-viewer :code '(+ 1 2 3)))
 #_(viewer "123")
 
-(defn viewers [x]
+(defn viewers
+  "Returns the `:nextjournal/viewers` for a given wrapped value `x`, `nil` otherwise."
+  [x]
   (when (map? x)
     (:nextjournal/viewers x)))
 
@@ -114,9 +125,6 @@
     :clerk/var
     :clerk/result})
 
-(def preds->viewers
-  (into {} (map (juxt :pred identity)) default-viewers))
-
 (comment
   (def map-100
     (zipmap (range 100) (range 100)))
@@ -137,8 +145,10 @@
 (def elided
   :nextjournal/…)
 
-(defn drop+take-xf [{:keys [n offset]
-                     :or {offset 0}}]
+(defn drop+take-xf
+  "Takes a map with optional `:n` and `:offset` and returns a transducer that drops `:offset` and takes `:n`."
+  [{:keys [n offset]
+    :or {offset 0}}]
   (cond-> (drop offset)
     (pos-int? n)
     (comp (take n))))
@@ -147,7 +157,9 @@
 #_(sequence (drop+take-xf {:n 10 :offset 10}) (range 100))
 #_(sequence (drop+take-xf {}) (range 9))
 
+;; TODO: change `xs` to `value`.
 (defn fetch
+  "Returns the subset of `xs` identified by an `opts` map with a `:path` optionally limiting the number of elements returned by `:n` using `:offset`."
   ([xs opts]
    #_(prn :start-fetch xs :opts opts)
    (fetch xs opts []))
@@ -225,13 +237,16 @@
 #_(select-viewer (md "# Hello"))
 #_(select-viewer (html [:h1 "hi"]))
 
-(defonce !viewers
+(defonce
+  ^{:doc "atom containing a map of `:root` and per-namespace viewers."}
+  !viewers
   (#?(:clj atom :cljs ratom/atom) {:root default-viewers}))
 
 (defn get-viewers
-  ([scope] (get-viewers scope nil))
-  ([scope viewers]
-   (vec (concat viewers (@!viewers scope) (@!viewers :root)))))
+  "Returns all the viewers that apply in precendence of: optional local `viewers`, viewers set per `ns`, as well on the `:root`."
+  ([ns] (get-viewers ns nil))
+  ([ns expr-viewers]
+   (vec (concat expr-viewers (@!viewers ns) (@!viewers :root)))))
 
 #?(:clj
    (defn maybe->fn+ [x]
@@ -241,7 +256,9 @@
 (defn preds->fn+ [viewers]
   (into [] #?(:clj (map #(update % :pred maybe->fn+))) viewers))
 
+;; TODO: rename `xs` to `value`.
 (defn describe
+  "Returns a description of a given value `xs`."
   ([xs]
    (describe {:viewers (get-viewers *ns* (viewers xs))} xs))
   ([opts xs]
@@ -322,21 +339,21 @@
 #_(datafy-scope *ns*)
 #_(datafy-scope #'datafy-scope)
 
-(declare with-viewer)
+(declare with-viewer*)
 
 #?(:clj
-   (defn set-viewers!- [scope viewers]
+   (defn set-viewers!* [scope viewers]
      (assert (or (#{:root} scope)
                  (instance? clojure.lang.Namespace scope)
                  (var? scope)))
      (let [viewers (preds->fn+ viewers)]
        (swap! !viewers assoc scope viewers)
-       (with-viewer :eval! `'(v/set-viewers! ~(datafy-scope scope) ~viewers)))))
+       (with-viewer* :eval! `'(v/set-viewers! ~(datafy-scope scope) ~viewers)))))
 
 
 (defmacro set-viewers!
-  ([viewers] (set-viewers!- *ns* viewers))
-  ([scope viewers] (set-viewers!- scope viewers)))
+  ([viewers] (set-viewers!* *ns* viewers))
+  ([scope viewers] (set-viewers!* scope viewers)))
 
 #_(set-viewers! [])
 #_(set-viewers! #'update-viewers! [])
@@ -366,8 +383,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public api
 
-(defn with-viewer-
-  "The given viewer will be used to display data"
+(defn with-viewer*
+  "Wraps given "
   [viewer x]
   (-> x
       wrap-value
@@ -378,48 +395,48 @@
 (defmacro with-viewer
   [viewer x]
   (let [viewer# (list 'quote viewer)]
-    `(with-viewer- ~viewer# ~x)))
+    `(with-viewer* ~viewer# ~x)))
 
 #_(macroexpand '(with-viewer #(v/html [:div %]) 1))
 
-(defn with-viewers-
+(defn with-viewers*
   "Binds viewers to types, eg {:boolean view-fn}"
   [viewers x]
   (-> x
       wrap-value
       (assoc :nextjournal/viewers viewers)))
 
-#_(->> "x^2" (with-viewer- :latex) (with-viewers- [{:name :latex :fn :mathjax}]))
+#_(->> "x^2" (with-viewer* :latex) (with-viewers* [{:name :latex :fn :mathjax}]))
 
 (defmacro with-viewers
   [viewers x]
   (let [viewers# (->> viewers
                       preds->fn+
                       (mapv (fn [viewer] (update viewer :fn #(list 'quote %)))))]
-    `(with-viewers- ~viewers# ~x)))
+    `(with-viewers* ~viewers# ~x)))
 
-#_(macroexpand '(with-viewers-m [{:pred number? :fn #(v/html [:div %])}] 1))
+#_(macroexpand '(with-viewers [{:pred number? :fn #(v/html [:div %])}] 1))
 
 #?(:clj (with-viewers [{:pred number? :fn #(v/html [:div %])}] 1))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convience api
-(def md        (partial with-viewer- :markdown))
-(def plotly    (partial with-viewer- :plotly))
-(def vl        (partial with-viewer- :vega-lite))
-(def tex       (partial with-viewer- :latex))
-(def notebook  (partial with-viewer- :clerk/notebook))
+(def md        (partial with-viewer* :markdown))
+(def plotly    (partial with-viewer* :plotly))
+(def vl        (partial with-viewer* :vega-lite))
+(def tex       (partial with-viewer* :latex))
+(def notebook  (partial with-viewer* :clerk/notebook))
 
 (defn html [x]
-  (with-viewer- (if (string? x) :html :hiccup) x))
+  (with-viewer* (if (string? x) :html :hiccup) x))
 
 (defn code [x]
-  (with-viewer- :code (if (string? x) x (with-out-str (pprint/pprint x)))))
+  (with-viewer* :code (if (string? x) x (with-out-str (pprint/pprint x)))))
 
 #_(code '(+ 1 2))
 
 (defn table [xs]
-  (with-viewer- :table (->table xs)))
+  (with-viewer* :table (->table xs)))
 
 (defn exception [e]
   (let [{:keys [via trace]} e]
