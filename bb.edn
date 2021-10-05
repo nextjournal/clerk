@@ -1,17 +1,21 @@
-{:tasks {:init (def tailwind-build-cmd "npx tailwindcss --input stylesheets/app.css  --output public/css/app.css")
+{:tasks {:init (def tailwind-build-cmd "npx tailwindcss --input stylesheets/app.css ")
          yarn-install {:doc "Installs and updates npm dependencies"
                        :task (shell "yarn install")}
 
          watch:cljs {:doc "Starts shadow-cljs server"
-                     :task (clojure "-M:sci:demo:shadow")
+                     :task (clojure "-M:sci:demo:shadow watch browser")
+                     :depends [yarn-install]}
+
+         release:js {:doc  "Builds the js using shadow-cljs for release"
+                     :task (clojure "-M:sci:demo:shadow release browser")
                      :depends [yarn-install]}
 
          watch:css {:doc  "Starts a watcher for css files tailwindcss"
-                    :task (shell (str tailwind-build-cmd " --watch"))
+                    :task (shell (str tailwind-build-cmd "--output public/css/app.css --watch"))
                     :depends [yarn-install]}
 
          release:css {:doc  "Builds the css files with tailwindcss for release"
-                      :task (shell tailwind-build-cmd {:extra-env {"NODE_ENV" "production"}})
+                      :task (shell (str tailwind-build-cmd "--output build/app.css") {:extra-env {"NODE_ENV" "production"}})
                       :depends [yarn-install]}
 
          -dev {:depends [watch:cljs watch:css]}

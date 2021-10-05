@@ -27,11 +27,10 @@
                                    (conj (if (and (not inline-results?)
                                                   (map? result)
                                                   (contains? result :result)
-                                                  (contains? result :blob-id))
-                                           (if (v/registration? (:result result))
-                                             (:result result)
-                                             (described-result ns result))
-                                           result))))))
+                                                  (contains? result :blob-id)
+                                                  (not (v/registration? (:result result))))
+                                           (described-result ns result)
+                                           (:result result)))))))
                doc)
          v/notebook
          (assoc :scope (v/datafy-scope ns))))))
@@ -72,25 +71,19 @@
   live-js?
   true)
 
+(def resource->static-url
+  {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VwM3KWqnrvD256qitXQekGfuZySBi1NsM13VfTfdXvSDqHF3cmATLtF4x92XPjAaV9JdYAkrq88uKKM9SscE5Rqh4"
+   "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxoxUgsBRs2yjjBBcfeCc8XigM7erXHmjJg2tjdGxNBxwTYuDonuYswXqRStaCA2b3rTEPCgPwixJmAVrea1qAHHU"
+   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VuLo6S5aKAuu5vmiTSo79AV6BXmVsccv9SZKE7bR19fQo9JeH7F1GA6rHf6wnbZBV2Xmj6QTckcaJrVkNzBEBGuEz"})
 
-(defn ->html [{:keys [conn-ws?] :or {conn-ws? true}} doc]
+(defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} doc]
   (hiccup/html5
    [:head
     [:meta {:charset "UTF-8"}]
-    (hiccup/include-css
-     "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
-    (hiccup/include-css
-     (if live-js?
-       "/css/app.css"
-       "TODO"))
-    (hiccup/include-css
-     (if live-js?
-       "/css/viewer.css"
-       "https://cdn.nextjournal.com/data/QmZc2Rhp7GqGAuZFp8SH6yVLLh3sz3cyjDwZtR5Q8PGcye?filename=viewer-a098a51e8ec9999fae7673b325889dbccafad583.css&content-type=text/css"))
-    (hiccup/include-js
-     (if live-js?
-       "/js/viewer.js"
-       "https://cdn.nextjournal.com/data/Qmc5rjhjB6irjrJnCgsB4JU3Vvict3DEHeV4Zvq7GJQv4F?filename=viewer.js&content-type=application/x-javascript"))]
+    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
+    (hiccup/include-css (cond-> "/css/app.css"    (not live-js?) resource->static-url))
+    (hiccup/include-css (cond-> "/css/viewer.css" (not live-js?) resource->static-url))
+    (hiccup/include-js  (cond-> "/js/viewer.js"   (not live-js?) resource->static-url))]
    [:body
     [:div#clerk]
     [:script "let viewer = nextjournal.clerk.sci_viewer
@@ -106,7 +99,7 @@ ws.onmessage = msg => viewer.reset_doc(viewer.read_string(msg.data))")]]))
   (->html {} (doc->viewer {} doc)))
 
 (defn doc->static-html [doc]
-  (->html {:conn-ws? false} (doc->viewer {:inline-results? true} doc)))
+  (->html {:conn-ws? false :live-js? false} (doc->viewer {:inline-results? true} doc)))
 
 #_(let [out "test.html"]
     (spit out (doc->static-html (nextjournal.clerk/eval-file "notebooks/pagination.clj")))
