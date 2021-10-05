@@ -69,7 +69,7 @@
 
 (defonce ^{:doc "Load dynamic js from shadow or static bundle from cdn."}
   live-js?
-  true)
+  false)
 
 (def resource->static-url
   {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VwM3KWqnrvD256qitXQekGfuZySBi1NsM13VfTfdXvSDqHF3cmATLtF4x92XPjAaV9JdYAkrq88uKKM9SscE5Rqh4"
