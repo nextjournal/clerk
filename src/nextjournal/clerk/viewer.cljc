@@ -242,6 +242,8 @@
   !viewers
   (#?(:clj atom :cljs ratom/atom) {:root default-viewers}))
 
+#_(reset! !viewers {:root default-viewers})
+
 (defn get-viewers
   "Returns all the viewers that apply in precendence of: optional local `viewers`, viewers set per `ns`, as well on the `:root`."
   ([ns] (get-viewers ns nil))
@@ -333,7 +335,7 @@
    (defn datafy-scope [scope]
      (cond
        (instance? clojure.lang.Namespace scope) {:namespace (-> scope str keyword)}
-       (nil? scope) :root
+       (keyword? scope) scope
        :else (throw (ex-info (str "Unsupported scope " scope) {:scope scope})))))
 
 #_(datafy-scope *ns*)
@@ -357,6 +359,7 @@
 
 #_(set-viewers! [])
 #_(set-viewers! #'update-viewers! [])
+#_(set-viewers! :root [])
 #_(macroexpand '(set-viewers! []))
 
 (defn registration? [x]

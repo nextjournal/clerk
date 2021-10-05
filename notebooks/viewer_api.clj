@@ -51,8 +51,12 @@
                         expression-2)))
 
 ;; ## 🚀 Extensibility
+(v/with-viewer #(v/html [:div "Greetings to " [:strong %] "!"])
+  "James Maxwell Clerk")
 
-(v/with-viewer (fn [name] (v/html [:div "Greetings to " [:strong name] "!"])) "James Maxwell Clerk")
+
+(v/with-viewers [{:pred number? :fn #(v/html [:div.inline-block [(keyword (str "h" %)) (str "Heading " %)]])}]
+  [1 2 3 4 5])
 
 
 ^:clerk/no-cache

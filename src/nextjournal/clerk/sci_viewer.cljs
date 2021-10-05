@@ -468,28 +468,29 @@
   "Rule 30 using viewers based on a single viewer rendering the board."
   [state]
   [:div.result-data
-   [inspect (with-viewer @state (fn [board]
-                                  (let [cell #(vector :div.inline-block
-                                                      {:class (if (zero? %)
-                                                                "bg-white border-solid border-2 border-black"
-                                                                "bg-black")
-                                                       :style {:width 16 :height 16}})
-                                        row #(into [:div.flex.inline-flex] (map cell) %)]
-                                    (html (into [:div.flex.flex-col] (map row) board)))))]]
+   [inspect (with-viewer (fn [board]
+                           (let [cell #(vector :div.inline-block
+                                               {:class (if (zero? %)
+                                                         "bg-white border-solid border-2 border-black"
+                                                         "bg-black")
+                                                :style {:width 16 :height 16}})
+                                 row #(into [:div.flex.inline-flex] (map cell) %)]
+                             (html (into [:div.flex.flex-col] (map row) board))))
+              @state)]]
   {::dc/state rule-30-state})
 
 
 (dc/defcard rule-30-sci-eval
   "Rule 30 using viewers based on sci eval."
-  [inspect (with-viewer '([0 1 0] [1 0 1])
-             '(fn [board]
-                (let [cell #(vector :div.inline-block
-                                    {:class (if (zero? %)
-                                              "bg-white border-solid border-2 border-black"
-                                              "bg-black")
-                                     :style {:width 16 :height 16}})
-                      row #(into [:div.flex.inline-flex] (map cell) %)]
-                  (v/html (into [:div.flex.flex-col] (map row) board)))))])
+  [inspect (with-viewer '(fn [board]
+                           (let [cell #(vector :div.inline-block
+                                               {:class (if (zero? %)
+                                                         "bg-white border-solid border-2 border-black"
+                                                         "bg-black")
+                                                :style {:width 16 :height 16}})
+                                 row #(into [:div.flex.inline-flex] (map cell) %)]
+                             (v/html (into [:div.flex.flex-col] (map row) board))))
+             '([0 1 0] [1 0 1]))])
 
 
 #_ ;; commented out because it's slow since it renders all values, re-enable once we don't display all results
@@ -570,8 +571,8 @@
    [inspect (with-viewer
               #(html
                 [:div.relative.pt-1
-                 [:div.overflow-hidden.h-2.mb-4-text-xs.flex.rounded.bg-teal-200
-                  [:div.shadow-none.flex.flex-col.text-center.whitespace-nowrap.text-white.bg-teal-500
+                 [:div.overflow-hidden.h-2.mb-4-text-xs.flex.rounded.bg-blue-200
+                  [:div.shadow-none.flex.flex-col.text-center.whitespace-nowrap.text-white.bg-blue-500
                    {:style {:width (-> %
                                        (* 100)
                                        int
@@ -582,8 +583,8 @@
    [inspect (with-viewer
               (fn [v _opts] (html
                              [:div.relative.pt-1
-                              [:div.overflow-hidden.h-2.mb-4-text-xs.flex.rounded.bg-teal-200
-                               [:div.shadow-none.flex.flex-col.text-center.whitespace-nowrap.text-white.bg-teal-500
+                              [:div.overflow-hidden.h-2.mb-4-text-xs.flex.rounded.bg-blue-200
+                               [:div.shadow-none.flex.flex-col.text-center.whitespace-nowrap.text-white.bg-blue-500
                                 {:style {:width (-> v
                                                     (* 100)
                                                     int
@@ -639,12 +640,8 @@
 
 (dc/defcard eval-viewer
   "Viewers that are lists are evaluated using sci."
-  [inspect (with-viewer "Hans" '(fn [x] (v/with-viewer [:h3 "Ohai, " x "! 👋"] :hiccup)))])
+  [inspect (with-viewer '(fn [x] (v/html [:h3 "Ohai, " x "! 👋"])) "Hans")])
 
-
-(dc/defcard result
-  [inspect (with-viewer :clerk/result
-             {:path [], :count 49, :blob-id "5dqpVeeZvAkHU546wCpFjr6GDHxkZh"})])
 
 (dc/defcard notebook
   "Shows how to display a notebook document"
@@ -671,16 +668,14 @@
   []
   [inspect
    '([0 1 0] [1 0 1])
-   (assoc {:path []}
-          :!viewers
-          (r/atom
-           {:root
-            [{:pred number?
-              :fn #(html [:div.inline-block {:style {:width 16 :height 16}
-                                             :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
+   {:path []
+    :viewers
+    [{:pred number?
+      :fn #(html [:div.inline-block {:style {:width 16 :height 16}
+                                     :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
 black")}])}
-             {:pred vector? :fn #(html (into [:div.flex.inline-flex] (inspect-children %2) %1))}
-             {:pred list? :fn #(html (into [:div.flex.flex-col] (inspect-children %2) %1))}]}))])
+     {:pred vector? :fn #(html (into [:div.flex.inline-flex] (inspect-children %2) %1))}
+     {:pred list? :fn #(html (into [:div.flex.flex-col] (inspect-children %2) %1))}]}])
 
 (dc/defcard clj-long
   []
