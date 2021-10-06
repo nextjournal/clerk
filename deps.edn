@@ -4,7 +4,6 @@
         org.clojure/tools.analyzer.jvm {:mvn/version "1.1.0"}
         org.clojure/tools.deps.alpha {:mvn/version "0.11.905"}
         borkdude/edamame {:mvn/version "0.0.11"}
-        borkdude/sci {:mvn/version "0.2.6"}
         weavejester/dependency {:mvn/version "0.2.1"}
 
         funcool/datoteka {:mvn/version "1.0.0"}
@@ -21,10 +20,11 @@
         arrowic/arrowic {:mvn/version "0.1.1"}
         rewrite-clj/rewrite-clj {:mvn/version "0.6.1"}}
 
- :aliases {:sci {:extra-deps  {io.github.nextjournal/viewers {:git/url "git@github.com:nextjournal/viewers.git"
+ :aliases {:sci {:extra-deps  {applied-science/js-interop  {:mvn/version "0.3.0"}
+                               borkdude/sci {:mvn/version "0.2.6"}
+                               io.github.nextjournal/viewers {:git/url "git@github.com:nextjournal/viewers.git"
                                                               :git/sha "913ed6d4964171248c6b700ff925aa7ef092d59d"}
-                               metosin/reitit-frontend     {:mvn/version "0.5.15"}
-                               applied-science/js-interop  {:mvn/version "0.3.0"}}}
+                               metosin/reitit-frontend     {:mvn/version "0.5.15"}}}
 
            :shadow {:extra-deps {thheller/shadow-cljs {:mvn/version "2.15.9"}
                                  binaryage/devtools {:mvn/version "1.0.3"}

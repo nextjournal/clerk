@@ -1,10 +1,8 @@
 (ns nextjournal.clerk.viewer
   (:require [clojure.string :as str]
             [clojure.pprint :as pprint]
-            [sci.impl.vars]
-            [sci.impl.namespaces]
-            #?(:cljs [reagent.ratom :as ratom]
-               :clj [clojure.repl :refer [demunge]]))
+            #?@(:clj [[clojure.repl :refer [demunge]]]
+                :cljs [[reagent.ratom :as ratom]]))
   #?(:clj (:import [clojure.lang IFn])))
 
 
