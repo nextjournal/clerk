@@ -19,11 +19,17 @@
 (alter-var-root #'nippy/*thaw-serializable-allowlist* (fn [_] (conj nippy/default-thaw-serializable-allowlist "java.io.File" "clojure.lang.Var" "clojure.lang.Namespace")))
 #_(-> [(clojure.java.io/file "notebooks") (find-ns 'user)] nippy/freeze nippy/thaw)
 
-(defn ->cache-file [hash]
-  (str ".cache/" hash))
 
-(def cache-dir
-  (str fs/*cwd* fs/*sep* ".cache"))
+(defn cache-dir []
+  (or (System/getProperty "clerk.cache_dir")
+      ".cache"))
+
+(defn ->cache-file [hash]
+  (str (cache-dir) fs/*sep* hash))
+
+(defn cache-disabled? []
+  (when-let [prop (System/getProperty "clerk.disable_cache")]
+    (not= "false" prop)))
 
 (defn wrap-with-blob-id [result hash]
   {:result result :blob-id (cond-> hash (not (string? hash)) multihash/base58)})
@@ -79,7 +85,7 @@
                         (fs/exists? digest-file) :no-cas-file
                         :else :no-digest-file)
          :hash hash :cas-hash cas-hash :form form)
-    (fs/create-dir cache-dir)
+    (fs/create-dir (cache-dir))
     (or (when (and (not no-cache?)
                    cached?)
           (try
@@ -100,7 +106,8 @@
               var-value (cond-> result (var? result) deref)]
           (if (fn? var-value)
             var-value
-            (do (when-not (or no-cache?
+            (do (when-not (or (cache-disabled?)
+                              no-cache?
                               (instance? clojure.lang.IDeref var-value)
                               (instance? clojure.lang.MultiFn var-value)
                               (instance? clojure.lang.Namespace var-value)
@@ -116,10 +123,10 @@
 
 (defn clear-cache!
   ([]
-   (let [cache-dir (str fs/*cwd* fs/*sep* ".cache")]
+   (let [cache-dir (cache-dir)]
      (if (fs/exists? cache-dir)
        (do
-         (fs/delete (str fs/*cwd* fs/*sep* ".cache"))
+         (fs/delete cache-dir)
          (prn :cache-dir/deleted cache-dir))
        (prn :cache-dir/does-not-exist cache-dir)))))
 

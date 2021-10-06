@@ -49,7 +49,10 @@
 ;; ## 🚀 Private Beta
 ;; - [x] Move to non-jit compiled tailwind stylesheet, purging doesn't work nicely with custom viewers
 ;; - [ ] Make static build work
-;; - [ ] Review caching api
+;; - [x] Review caching api
+;; - [ ] Change `:clerk/no-cache` to `:nextjournal.clerk/no-cache` and support setting it on namespaces as well
+;; - [ ] Support setting `:nextjournal.clerk/cache-dir` on namespace
+;; - [ ] Move public viewer api to `nextjournal.clerk` and use `(:require [nextjournal.clerk :as clerk])` in all example notebooks
 ;; - [ ] Release to maven & invite contributors
 ;; ## 💡 Ideas
 ;; - [ ] Hook up distributed caching using CAS + cloud bucket
