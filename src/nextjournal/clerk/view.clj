@@ -18,22 +18,22 @@
   ([doc] (doc->viewer {} doc))
   ([{:keys [inline-results?] :or {inline-results? false}} doc]
    (let [{:keys [ns]} (meta doc)]
-     (-> (into []
-               (mapcat (fn [{:as x :keys [type text result]}]
-                         (case type
-                           :markdown [(v/md text)]
-                           :code (cond-> [(v/code text)]
-                                   (contains? x :result)
-                                   (conj (if (and (not inline-results?)
-                                                  (map? result)
-                                                  (contains? result :result)
-                                                  (contains? result :blob-id)
-                                                  (not (v/registration? (:result result))))
-                                           (described-result ns result)
-                                           (:result result)))))))
-               doc)
-         v/notebook
-         (assoc :scope (v/datafy-scope ns))))))
+     (cond-> (into []
+                   (mapcat (fn [{:as x :keys [type text result]}]
+                             (case type
+                               :markdown [(v/md text)]
+                               :code (cond-> [(v/code text)]
+                                       (contains? x :result)
+                                       (conj (if (and (not inline-results?)
+                                                      (map? result)
+                                                      (contains? result :result)
+                                                      (contains? result :blob-id)
+                                                      (not (v/registration? (:result result))))
+                                               (described-result ns result)
+                                               (:result result)))))))
+                   doc)
+       true v/notebook
+       ns (assoc :scope (v/datafy-scope ns))))))
 
 #_(meta (doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj")))
 
