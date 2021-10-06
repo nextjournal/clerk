@@ -72,7 +72,7 @@
   false)
 
 (def resource->static-url
-  {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VwM3KWqnrvD256qitXQekGfuZySBi1NsM13VfTfdXvSDqHF3cmATLtF4x92XPjAaV9JdYAkrq88uKKM9SscE5Rqh4"
+  {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxQBDwk3cvr1bt8YVL5m6bJGrFEmzrSbCrH1roypLjJr4AbbteCKh9Y6gQVYexdY85QA2HG5nQFLWpRp69zFSPDJ9"
    "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxoxUgsBRs2yjjBBcfeCc8XigM7erXHmjJg2tjdGxNBxwTYuDonuYswXqRStaCA2b3rTEPCgPwixJmAVrea1qAHHU"
    "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VuLo6S5aKAuu5vmiTSo79AV6BXmVsccv9SZKE7bR19fQo9JeH7F1GA6rHf6wnbZBV2Xmj6QTckcaJrVkNzBEBGuEz"})
 

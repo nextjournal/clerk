@@ -15,7 +15,7 @@
                     :depends [yarn-install]}
 
          release:css {:doc  "Builds the css files with tailwindcss for release"
-                      :task (shell (str tailwind-build-cmd "--output build/app.css") {:extra-env {"NODE_ENV" "production"}})
+                      :task (shell (str tailwind-build-cmd "--output build/app.css -m") {:extra-env {"NODE_ENV" "production"}})
                       :depends [yarn-install]}
 
          -dev {:depends [watch:cljs watch:css]}

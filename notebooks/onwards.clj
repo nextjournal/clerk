@@ -47,7 +47,7 @@
 ;; - [x] `(def r (range 100))` in `notebooks/pagination.clj` shows incorrect `count`
 ;; - [x] Printing of very large values
 ;; ## 🚀 Private Beta
-;; - [ ] Move to non-jit compiled tailwind stylesheet, purging doesn't work nicely with custom viewers
+;; - [x] Move to non-jit compiled tailwind stylesheet, purging doesn't work nicely with custom viewers
 ;; - [ ] Make static build work
 ;; - [ ] Review caching api
 ;; - [ ] Release to maven & invite contributors
