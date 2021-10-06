@@ -3,6 +3,7 @@
 (ns elements
   (:require [clojure.string :as str]
             [demo.lib :as lib]
+            [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]))
 
 (let [rule30 {[1 1 1] 0
@@ -63,8 +64,8 @@
 
 (v/html [:h1 "Ohai Hiccup 👋👋👋"])
 
-;; We can opt out of caching by tagging a var with `^:clerk/no-cache` metadata.
-(def ^:clerk/no-cache random-thing
+;; We can opt out of caching by tagging a var with `^::clerk/no-cache` metadata.
+(def ^::clerk/no-cache random-thing
   (rand-int 1000))
 
 ;; Other examples of viewers are `plotly` & `latex`.

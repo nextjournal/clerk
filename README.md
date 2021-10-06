@@ -61,4 +61,4 @@ See [notebooks/onwards.clj](https://github.com/nextjournal/clerk/blob/main/noteb
 Still need to explain these things
 
 * Viewer API
-* `:clerk/no-cache`
+* `:nextjournal.clerk/no-cache`

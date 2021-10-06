@@ -18,7 +18,7 @@
 
 [(mapv inc r)]
 
-^:clerk/no-cache (shuffle r)
+^:nextjournal.clerk/no-cache (shuffle r)
 
 ;; A long list.
 (range 1000)
@@ -26,7 +26,7 @@
 ;; A somewhat large map.
 (zipmap (range 1000) (map #(* % %) (range 1000)))
 
-^:clerk/no-cache (shuffle (range 42))
+^:nextjournal.clerk/no-cache (shuffle (range 42))
 
 (let [[first-three others] (split-at 3 [:A :A :B :B :C :C :D :D])]
   {:first-three first-three

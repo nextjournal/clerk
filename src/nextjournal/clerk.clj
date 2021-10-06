@@ -100,14 +100,14 @@
               nil)))
         (let [{:keys [result time-ms]} (time-ms (eval form))
               no-cache? (or no-cache?
+                            (cache-disabled?)
                             (let [no-cache? (not (worth-caching? time-ms))]
                               (when no-cache? (prn :not-worth-caching time-ms))
                               no-cache?))
               var-value (cond-> result (var? result) deref)]
           (if (fn? var-value)
             var-value
-            (do (when-not (or (cache-disabled?)
-                              no-cache?
+            (do (when-not (or no-cache?
                               (instance? clojure.lang.IDeref var-value)
                               (instance? clojure.lang.MultiFn var-value)
                               (instance? clojure.lang.Namespace var-value)

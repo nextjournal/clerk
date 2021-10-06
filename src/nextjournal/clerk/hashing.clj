@@ -24,7 +24,7 @@
     (second form)))
 
 (defn no-cache? [form]
-  (-> (if-let [vn (var-name form)] vn form) meta :clerk/no-cache boolean))
+  (-> (if-let [vn (var-name form)] vn form) meta :nextjournal.clerk/no-cache boolean))
 
 
 (defn sha1-base58 [s]

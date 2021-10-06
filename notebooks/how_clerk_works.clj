@@ -55,12 +55,13 @@
      nextjournal.clerk/thaw-from-file)
 
 
-;; As an escape hatch, you can tag a form or var with `:clerk/no-cache` to always reevalaute it. he following form will never be cached.
-^:clerk/no-cache (shuffle (range 42))
+;; As an escape hatch, you can tag a form or var with `::clerk/no-cache` to always reevalaute it. he following form will never be cached.
+^::clerk/no-cache (shuffle (range 42))
 
 ;; For side effectful functions that should be cached, like a database query, you can add a value like this `#inst` to control when evaluation should happen.
 (def query-results
   (let [_run-at #inst "2021-05-20T08:28:29.445-00:00"
         ds (next.jdbc/get-datasource {:dbtype "sqlite" :dbname "chinook.db"})]
     (with-open [conn (next.jdbc/get-connection ds)]
-      (v/table (next.jdbc/execute! conn ["SELECT AlbumId, Bytes, Name, TrackID, UnitPrice FROM tracks"])))))
+      ;; TODO: put `table` back
+      (next.jdbc/execute! conn ["SELECT AlbumId, Bytes, Name, TrackID, UnitPrice FROM tracks"]))))
