@@ -30,6 +30,7 @@
                               binaryage/devtools {:mvn/version "1.0.3"}
                               cider/cider-nrepl {:mvn/version "0.26.0"}}
                  :extra-paths ["dev"]
+                 :jvm-opts ["-Dclerk.live_js=true"]
                  :main-opts ["-m" "shadow.cljs.devtools.cli"]}
 
            :demo {:extra-paths ["notebooks/src"]

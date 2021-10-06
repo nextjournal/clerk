@@ -69,12 +69,13 @@
 
 (defonce ^{:doc "Load dynamic js from shadow or static bundle from cdn."}
   live-js?
-  false)
+  (when-let [prop (System/getProperty "clerk.live_js")]
+    (not= "false" prop)))
 
 (def resource->static-url
   {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxQBDwk3cvr1bt8YVL5m6bJGrFEmzrSbCrH1roypLjJr4AbbteCKh9Y6gQVYexdY85QA2HG5nQFLWpRp69zFSPDJ9"
    "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxoxUgsBRs2yjjBBcfeCc8XigM7erXHmjJg2tjdGxNBxwTYuDonuYswXqRStaCA2b3rTEPCgPwixJmAVrea1qAHHU"
-   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VuLo6S5aKAuu5vmiTSo79AV6BXmVsccv9SZKE7bR19fQo9JeH7F1GA6rHf6wnbZBV2Xmj6QTckcaJrVkNzBEBGuEz"})
+   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VwgJjhzswSa6ZgAtiSqnH8UW9LoLJEkSDjULRsP7zd6ePdDd7bbktyYsvxtmvpZytLV4MFQwfYAY5eHkRWpyK4qH7"})
 
 (defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} doc]
   (hiccup/html5
@@ -94,6 +95,21 @@ viewer.mount(document.getElementById('clerk'))\n"
        "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
 ws.onmessage = msg => viewer.reset_doc(viewer.read_string(msg.data))")]]))
 
+
+(defn ->static-app [{:keys [live-js?] :or {live-js? live-js?}} docs]
+  (hiccup/html5
+   [:head
+    [:meta {:charset "UTF-8"}]
+    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
+    (hiccup/include-css (cond-> "/css/app.css"    (not live-js?) resource->static-url))
+    (hiccup/include-css (cond-> "/css/viewer.css" (not live-js?) resource->static-url))
+    (hiccup/include-js  (cond-> "/js/viewer.js"   (not live-js?) resource->static-url))]
+   [:body
+    [:div#clerk]
+    [:script "let viewer = nextjournal.clerk.sci_viewer
+let app = nextjournal.clerk.static_app
+let docs = viewer.read_string(" (-> docs ->edn pr-str) ")
+app.init(docs)\n"]]))
 
 (defn doc->html [doc]
   (->html {} (doc->viewer {} doc)))

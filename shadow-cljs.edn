@@ -4,6 +4,7 @@
                     :output-to "public/js/viewer.js"
                     :output-dir "public/js"
                     :modules {:viewer {:entries [nextjournal.clerk.sci-viewer
+                                                 nextjournal.clerk.static-app
                                                  nextjournal.clerk.website
                                                  nextjournal.viewer.notebook]}}
 

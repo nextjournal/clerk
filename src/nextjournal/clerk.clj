@@ -1,14 +1,16 @@
 ;; # Introducing Clerk 👋
 (ns nextjournal.clerk
-  (:require [clojure.string :as str]
+  (:require [clojure.java.browse :as browse]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [datoteka.core :as fs]
-            [nextjournal.beholder :as beholder]
-            [nextjournal.clerk.hashing :as hashing]
-            [nextjournal.clerk.viewer :as v]
-            [nextjournal.clerk.webserver :as webserver]
             [multihash.core :as multihash]
             [multihash.digest :as digest]
+            [nextjournal.beholder :as beholder]
+            [nextjournal.clerk.hashing :as hashing]
+            [nextjournal.clerk.view :as view]
+            [nextjournal.clerk.viewer :as v]
+            [nextjournal.clerk.webserver :as webserver]
             [taoensso.nippy :as nippy]))
 
 (comment
@@ -153,11 +155,12 @@
 
 #_(parse-file "notebooks/elements.clj")
 
-(defn eval-file [file]
-  (+eval-results {} (hashing/hash file) (parse-file file)))
+(defn eval-file
+  ([file] (eval-file {} file))
+  ([results-last-run file]
+   (+eval-results results-last-run (hashing/hash file) (parse-file file))))
 
-#_(eval-file "notebooks/pagination.clj")
-#_(eval-file "notebooks/test.clj")
+#_(eval-file "notebooks/rule_30.clj")
 
 (defn show!
   "Converts the Clojure source test in file to a series of text or syntax panes and causes `panel` to contain them."
@@ -215,6 +218,32 @@
 
 #_(set-viewers! [])
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; static builds
+
+(defn file->viewer
+  "Evaluates the given `file` and returns it's viewer representation."
+  ([file] (file->viewer {:inline-results? true} file))
+  ([opts file] (view/doc->viewer opts (eval-file file))))
+
+#_(file->viewer "notebooks/rule_30.clj")
+
+(def clerk-docs
+  (into [] (map #(str "notebooks/" % ".clj")) ["hello" "rule_30" "onwards"]))
+
+
+(defn build-static-app!
+  "Builds a static html app of the notebooks at `paths`."
+  [{:keys [paths out-path]
+    :or {paths clerk-docs
+         out-path "public/build"}}]
+  (let [docs (into {} (map (fn [path] {path (file->viewer path)}) paths))
+        out-html (str out-path fs/*sep* "index.html")]
+    (fs/create-dir (fs/parent out-html))
+    (spit out-html (view/->static-app {} docs))
+    (browse/browse-url "http://localhost:7778/build/")))
+
+#_(build-static-app! {})
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
