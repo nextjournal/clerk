@@ -181,6 +181,41 @@
       (nextjournal.clerk/show! (str/replace (str path) (str fs/*cwd* fs/*sep*) "")))))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; public viewer api
+(def md             v/md)
+(def plotly         v/plotly)
+(def vl             v/vl)
+(def tex            v/tex)
+(def notebook       v/notebook)
+(def html           v/html)
+(def code           v/code)
+(def table          v/table)
+
+(defmacro with-viewer
+  [viewer x]
+  (let [viewer# (list 'quote viewer)]
+    `(v/with-viewer* ~viewer# ~x)))
+
+#_(macroexpand '(with-viewer #(v/html [:div %]) 1))
+
+(defmacro with-viewers
+  [viewers x]
+  (let [viewers# (->> viewers
+                      v/preds->fn+
+                      (mapv (fn [viewer] (update viewer :fn #(list 'quote %)))))]
+    `(v/with-viewers* ~viewers# ~x)))
+
+#_(macroexpand '(with-viewers [{:pred number? :fn #(v/html [:div %])}] 1))
+
+
+(defmacro set-viewers!
+  ([viewers] (v/set-viewers!* *ns* viewers))
+  ([scope viewers] (v/set-viewers!* scope viewers)))
+
+#_(set-viewers! [])
+
+
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
 (comment

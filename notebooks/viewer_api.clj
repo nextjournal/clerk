@@ -2,7 +2,7 @@
 ;; Clerk comes with a moldable viewer api that is open.
 
 (ns notebook.viewer-api
-  (:require [nextjournal.clerk.viewer :as v]))
+  (:require [nextjournal.clerk :as clerk]))
 
 ;; ## 🧩 Built-in Viewers
 ;; The default set of viewers are able to render Clojure data.
@@ -18,53 +18,53 @@
 ;; In addition, there's a number of built-in viewers.
 ;; ### 🕸 Hiccup
 ;; The `html` viewer interprets `hiccup` when passed a vector.
-(v/html [:div "As Clojurians we " [:em "really"] " enjoy hiccup"])
+(clerk/html [:div "As Clojurians we " [:em "really"] " enjoy hiccup"])
 
 ;; Alternatively you can pass it an HTML string.
-(v/html "Never <strong>forget</strong>.")
+(clerk/html "Never <strong>forget</strong>.")
 
 
 ;; ### 📑 Markdown
 ;; The Markdown viewer is useful for programmatically generated markdown.
-(v/md (clojure.string/join "\n" (map #(str "* Item " (inc %)) (range 3))))
+(clerk/md (clojure.string/join "\n" (map #(str "* Item " (inc %)) (range 3))))
 
 
 ;; ### 🧮 TeX
 ;; The TeX viewer is built on [KaTeX](https://katex.org/).
-(v/tex "f^{\\circ n} = \\underbrace{f \\circ f \\circ \\cdots \\circ f}_{n\\text{ times}}.\\,")
+(clerk/tex "f^{\\circ n} = \\underbrace{f \\circ f \\circ \\cdots \\circ f}_{n\\text{ times}}.\\,")
 
 
 ;; ### 📊 Plotly
-(v/plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]})
+(clerk/plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]})
 
 ;; ### 📈 Vega Lite
-(v/vl {:width 650 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
-                                     :format {:type "topojson" :feature "counties"}}
-       :transform [{:lookup "id" :from {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
-                                        :key "id" :fields ["rate"]}}]
-       :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}})
+(clerk/vl {:width 650 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
+                                         :format {:type "topojson" :feature "counties"}}
+           :transform [{:lookup "id" :from {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
+                                            :key "id" :fields ["rate"]}}]
+           :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}})
 
 ;; ### 👾 Code
 ;; The code viewer uses [clojure-mode](https://nextjournal.github.io/clojure-mode/) for syntax highlighting.
-(v/code (macroexpand '(when test
-                        expression-1
-                        expression-2)))
+(clerk/code (macroexpand '(when test
+                            expression-1
+                            expression-2)))
 
 ;; ## 🚀 Extensibility
-(v/with-viewer #(v/html [:div "Greetings to " [:strong %] "!"])
+(clerk/with-viewer #(v/html [:div "Greetings to " [:strong %] "!"])
   "James Maxwell Clerk")
 
 
-(v/with-viewers [{:pred number? :fn #(v/html [:div.inline-block [(keyword (str "h" %)) (str "Heading " %)]])}]
+(clerk/with-viewers [{:pred number? :fn #(v/html [:div.inline-block [(keyword (str "h" %)) (str "Heading " %)]])}]
   [1 2 3 4 5])
 
 
-^:clerk/no-cache
-(v/with-viewers [{:pred 'number? :fn #(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                                  :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}]
+^::clerk/no-cache
+(clerk/with-viewers [{:pred 'number? :fn #(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                                      :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}]
   (take 10 (repeatedly #(rand-int 2))))
 
-(v/with-viewers
+(clerk/with-viewers
   [{:pred #(and (string? %)
                 (re-matches
                  (re-pattern
@@ -82,11 +82,5 @@
    "hsl(11,100%,60%)"
    "hsla(46, 97%, 48%, 1.000)"])
 
-(re-matches
-  (re-pattern
-    (str "(?i)"
-         "(#(?:[0-9a-f]{2}){2,4}|(#[0-9a-f]{3})|"
-         "(rgb|hsl)a?\\((-?\\d+%?[,\\s]+){2,3}\\s*[\\d\\.]+%?\\))"))
-  "hsla(46, 97%, 48%, 1.000)")
 
-#_(nextjournal.clerk/show! "notebooks/viewer_api.clj")
+#_(clerk/show! "notebooks/viewer_api.clj")

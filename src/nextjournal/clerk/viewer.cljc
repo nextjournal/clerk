@@ -351,20 +351,10 @@
        (with-viewer* :eval! `'(v/set-viewers! ~(datafy-scope scope) ~viewers)))))
 
 
-(defmacro set-viewers!
-  ([viewers] (set-viewers!* *ns* viewers))
-  ([scope viewers] (set-viewers!* scope viewers)))
-
-#_(set-viewers! [])
-#_(set-viewers! #'update-viewers! [])
-#_(set-viewers! :root [])
-#_(macroexpand '(set-viewers! []))
-
 (defn registration? [x]
   (and (map? x) (contains? #{:eval!} (viewer x))))
 
 #_(registration? (set-viewers! []))
-
 #_(nextjournal.clerk/show! "notebooks/viewers/vega.clj")
 
 
@@ -393,13 +383,6 @@
 
 #_(with-viewer- :latex "x^2")
 
-(defmacro with-viewer
-  [viewer x]
-  (let [viewer# (list 'quote viewer)]
-    `(with-viewer* ~viewer# ~x)))
-
-#_(macroexpand '(with-viewer #(v/html [:div %]) 1))
-
 (defn with-viewers*
   "Binds viewers to types, eg {:boolean view-fn}"
   [viewers x]
@@ -409,16 +392,6 @@
 
 #_(->> "x^2" (with-viewer* :latex) (with-viewers* [{:name :latex :fn :mathjax}]))
 
-(defmacro with-viewers
-  [viewers x]
-  (let [viewers# (->> viewers
-                      preds->fn+
-                      (mapv (fn [viewer] (update viewer :fn #(list 'quote %)))))]
-    `(with-viewers* ~viewers# ~x)))
-
-#_(macroexpand '(with-viewers [{:pred number? :fn #(v/html [:div %])}] 1))
-
-#?(:clj (with-viewers [{:pred number? :fn #(v/html [:div %])}] 1))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convience api

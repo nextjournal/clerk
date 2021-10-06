@@ -1,9 +1,9 @@
 ;; # Rule 30 🕹
 ;; Let's explore cellular automata in a Clerk Notebook. We start by requiring the custom viewers.
 (ns rule-30
-  (:require [nextjournal.clerk.viewer :as v]))
+  (:require [nextjournal.clerk :as clerk]))
 
-(v/set-viewers!
+(clerk/set-viewers!
  [{:pred number? :fn #(v/html [:div.inline-block {:style {:width 16 :height 16}
                                                   :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}
   {:pred map-entry? :fn #(v/html (into [:<>] (comp (v/inspect-children %2) (interpose " ")) %1))}
@@ -39,4 +39,4 @@
 (let [evolve #(mapv rule-30 (partition 3 1 (repeat 0) (cons 0 %)))]
   (->> first-generation (iterate evolve) (take 17) (apply list)))
 
-#_(nextjournal.clerk/show! "notebooks/rule_30.clj")
+#_(clerk/show! "notebooks/rule_30.clj")
