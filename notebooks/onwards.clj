@@ -1,4 +1,4 @@
-;; # Onwards 🏔
+;; # 🏔 Onwards
 ;; Notes about what currently breaks 💥 and what could be better tomorrow.
 ;; - [x] Lists spacing is broken
 ;; - [x] Nested lists are not formatted correctly
@@ -14,7 +14,7 @@
 ;;   - [x] TODO lists 😹
 ;;   - [x] Inline Formulas $E^2=m^2+\vec{p}^2$
 ;; - [ ] Fix analyzer error for aliases requires w/o ns (e.g. in viewers notebooks)
-;; ## Viewers
+;; ## 🕵🏻‍♀️ Viewers
 ;; - [x] Make viewer api open with predicates
 ;; - [x] Make viewer registration local on namespace
 ;; - [x] Make js-only viewers like plotly & vega work
@@ -46,7 +46,12 @@
 ;; - [x] `first-generation` in `notebooks/rule_30.clj` renders incorrectly because of pagination type coercion from vector to list
 ;; - [x] `(def r (range 100))` in `notebooks/pagination.clj` shows incorrect `count`
 ;; - [x] Printing of very large values
-;; ## Ideas
+;; ## 🚀 Private Beta
+;; - [ ] Move to non-jit compiled tailwind stylesheet, purging doesn't work nicely with custom viewers
+;; - [ ] Make static build work
+;; - [ ] Review caching api
+;; - [ ] Release to maven & invite contributors
+;; ## 💡 Ideas
 ;; - [ ] Hook up distributed caching using CAS + cloud bucket
 ;; - [ ] Status log
 ;; - [ ] Allow to pin notebook
