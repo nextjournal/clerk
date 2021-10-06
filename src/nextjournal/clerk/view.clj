@@ -6,7 +6,7 @@
             [clojure.walk :as w]))
 
 (defn described-result [ns {:keys [result blob-id]}]
-  (v/with-viewer :clerk/result
+  (v/with-viewer* :clerk/result
     (-> (v/describe {:viewers (v/get-viewers ns (v/viewers result))} result)
         (assoc :blob-id blob-id))))
 
@@ -43,12 +43,12 @@
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj"))
 
 (defn var->data [v]
-  (v/with-viewer :clerk/var (symbol v)))
+  (v/with-viewer* :clerk/var (symbol v)))
 
 #_(var->data #'var->data)
 
 (defn fn->data [_]
-  (v/with-viewer 'fn :fn))
+  (v/with-viewer* 'fn :fn))
 
 #_(fn->data (fn []))
 
