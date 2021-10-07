@@ -82,11 +82,11 @@
         cas-hash (when (fs/exists? digest-file)
                    (slurp digest-file))
         cached? (boolean (and cas-hash (-> cas-hash ->cache-file fs/exists?)))]
-    (prn :cached? (cond no-cache? :no-cache
-                        cached? true
-                        (fs/exists? digest-file) :no-cas-file
-                        :else :no-digest-file)
-         :hash hash :cas-hash cas-hash :form form)
+    #_(prn :cached? (cond no-cache? :no-cache
+                          cached? true
+                          (fs/exists? digest-file) :no-cas-file
+                          :else :no-digest-file)
+           :hash hash :cas-hash cas-hash :form form)
     (fs/create-dir (cache-dir))
     (or (when (and (not no-cache?)
                    cached?)
@@ -104,7 +104,7 @@
               no-cache? (or no-cache?
                             (cache-disabled?)
                             (let [no-cache? (not (worth-caching? time-ms))]
-                              (when no-cache? (prn :not-worth-caching time-ms))
+                              #_(when no-cache? (prn :not-worth-caching time-ms))
                               no-cache?))
               var-value (cond-> result (var? result) deref)]
           (if (fn? var-value)
@@ -117,7 +117,7 @@
                   (try
                     (spit digest-file (hash+store-in-cas! var-value))
                     (catch Exception e
-                      (prn :freeze-error e)
+                      #_(prn :freeze-error e)
                       nil)))
                 (wrap-with-blob-id var-value (if no-cache? (random-multihash) hash))))))))
 
@@ -167,10 +167,12 @@
   [file]
   (try
     (let [doc (parse-file file)
-          results-last-run (meta @webserver/!doc)]
+          results-last-run (meta @webserver/!doc)
+          {:keys [result time-ms]} (time-ms (+eval-results results-last-run (hashing/hash file) doc))]
       ;; TODO diff to avoid flickering
       #_(webserver/update-doc! doc)
-      (webserver/update-doc! (+eval-results results-last-run (hashing/hash file) doc)))
+      (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
+      (webserver/update-doc! result))
     (catch Exception e
       (webserver/show-error! e)
       (throw e))))
