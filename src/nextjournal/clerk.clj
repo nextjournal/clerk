@@ -240,8 +240,8 @@
   (let [docs (into {} (map (fn [path] {path (file->viewer path)}) paths))
         out-html (str out-path fs/*sep* "index.html")]
     (fs/create-dir (fs/parent out-html))
-    (spit out-html (view/->static-app {} docs))
-    (browse/browse-url "http://localhost:7778/build/")))
+    (spit out-html (view/->static-app {:live-js? false} docs))
+    (browse/browse-url out-html)))
 
 #_(build-static-app! {})
 

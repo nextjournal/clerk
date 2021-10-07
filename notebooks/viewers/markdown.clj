@@ -1,5 +1,5 @@
 ;; # Markdown ✍️
-(require '[nextjournal.clerk.viewer :as v])
+(ns markdown (:require [nextjournal.clerk :as clerk]))
 
-(v/md "### Text can be\n * **bold**\n * *italic\n * ~~Strikethrough~~\n
+(clerk/md "### Text can be\n * **bold**\n * *italic\n * ~~Strikethrough~~\n
 It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it.")
