@@ -13,6 +13,7 @@
             [nextjournal.viewer.markdown :as markdown]
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
+            [nextjournal.viewer.table :as table]
             [nextjournal.viewer.vega-lite :as vega-lite]
             [re-frame.context :as rf]
             [react :as react]
@@ -239,7 +240,7 @@
    {:name :code :pred string? :fn (comp normalize-viewer code/viewer)}
    {:name :reagent :fn #(r/as-element (cond-> % (fn? %) vector))}
    {:name :eval! :fn #(*eval-form* %)}
-
+   {:name :table :fn (comp normalize-viewer table/viewer)}
    {:name :file :fn #(html (tagged-value "#file" [:span.syntax-string.inspected-value "\"" (str %) "\""]))}
    {:name :clerk/notebook :fn notebook}
    {:name :clerk/var :fn var}

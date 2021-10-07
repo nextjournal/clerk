@@ -229,7 +229,16 @@
 #_(file->viewer "notebooks/rule_30.clj")
 
 (def clerk-docs
-  (into [] (map #(str "notebooks/" % ".clj")) ["hello" "rule_30" "onwards"]))
+  (into []
+        (map #(str "notebooks/" % ".clj"))
+        ["hello"
+         "rule_30"
+         "onwards"
+         "viewers/html"
+         "viewers/markdown"
+         "viewers/plotly"
+         "viewers/table"
+         "viewers/vega"]))
 
 
 (defn build-static-app!

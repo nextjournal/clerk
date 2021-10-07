@@ -116,6 +116,7 @@
     :eval!
     :markdown
     :mathjax
+    :table
     :latex
     :reagent
     :vega-lite
