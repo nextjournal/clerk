@@ -21,6 +21,9 @@
          release:jar {:doc "Builds the jar"
                       :task (clojure "-T:build jar")}
 
+         deploy {:doc "Deploys the jar to clojars"
+                 :task (clojure "-T:build deploy")}
+
          -dev {:depends [watch:cljs watch:css]}
          dev {:doc "Start app in dev mode, compiles cljs and css"
               :task (run '-dev {:parallel true})}}

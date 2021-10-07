@@ -1,5 +1,6 @@
 (ns build
-  (:require [clojure.tools.build.api :as b]))
+  (:require [clojure.tools.build.api :as b]
+            [deps-deploy.deps-deploy :as dd]))
 
 (def lib 'io.github.nextjournal/clerk)
 (def version (format "0.1.%s" (b/git-count-revs nil)))
@@ -19,3 +20,10 @@
                :target-dir class-dir})
   (b/jar {:class-dir class-dir
           :jar-file jar-file}))
+
+(defn deploy [opts]
+  (println "Deploying version" jar-file "to Clojars.")
+  (dd/deploy (merge {:installer :remote
+                     :artifact jar-file
+                     :pom-file (b/pom-path {:lib lib :class-dir class-dir})}
+                    opts)))
