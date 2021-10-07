@@ -42,16 +42,15 @@
   (nextjournal.clerk.hashing/hash "notebooks/how_clerk_works.clj"))
 
 ;; ### Step 4: Evaluation
-;; Clerk uses the hashes as filenames and only re-evaluates forms that haven't been seen before. The cache is currently using edn with `pr-str` and `read-string`.
+;; Clerk uses the hashes as filenames and only re-evaluates forms that haven't been seen before. The cache is using [nippy](https://github.com/ptaoussanis/nippy).
 (def rand-fifteen
-  (shuffle (range 15)))
+  (do (Thread/sleep 10)
+      (shuffle (range 15))))
 
 ;; We can look up the cache key using the var name in the hashes map.
-;; TODO: make this work again without a fully qualified `nextjournal.clerk` namespace.
-#_
-(->> (get hashes #'how-clerk-works/rand-fifteen)
-     (str ".cache/")
-     nextjournal.clerk/thaw-from-file)
+(when-let [form-hash (get hashes #'rand-fifteen)]
+  (let [hash (slurp (nextjournal.clerk/->cache-file (str "@" form-hash)))]
+    (nextjournal.clerk/thaw-from-cas hash)))
 
 ;; As an escape hatch, you can tag a form or var with `::clerk/no-cache` to always reevalaute it. he following form will never be cached.
 ^:nextjournal.clerk/no-cache (shuffle (range 42))
@@ -61,5 +60,6 @@
   (let [_run-at #inst "2021-05-20T08:28:29.445-00:00"
         ds (next.jdbc/get-datasource {:dbtype "sqlite" :dbname "chinook.db"})]
     (with-open [conn (next.jdbc/get-connection ds)]
-      ;; TODO: put `table` back
-      (next.jdbc/execute! conn ["SELECT AlbumId, Bytes, Name, TrackID, UnitPrice FROM tracks"]))))
+      (nextjournal.clerk/table (next.jdbc/execute! conn ["SELECT AlbumId, Bytes, Name, TrackID, UnitPrice FROM tracks"])))))
+
+#_(nextjournal.clerk/show! "notebooks/how_clerk_works.clj")
