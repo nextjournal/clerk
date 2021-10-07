@@ -19,8 +19,7 @@
                       :depends [yarn-install]}
 
          release:jar {:doc "Builds the jar"
-                      :task (do (clojure "-T:build clean")
-                                (clojure "-T:build jar"))}
+                      :task (clojure "-T:build jar")}
 
          -dev {:depends [watch:cljs watch:css]}
          dev {:doc "Start app in dev mode, compiles cljs and css"
