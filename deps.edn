@@ -26,12 +26,16 @@
                                                               :git/sha "913ed6d4964171248c6b700ff925aa7ef092d59d"}
                                metosin/reitit-frontend     {:mvn/version "0.5.15"}}}
 
-           :shadow {:extra-deps {thheller/shadow-cljs {:mvn/version "2.15.9"}
-                                 binaryage/devtools {:mvn/version "1.0.3"}
-                                 cider/cider-nrepl {:mvn/version "0.26.0"}}
-                    :main-opts ["-m" "shadow.cljs.devtools.cli"]}
+           :dev {:extra-deps {thheller/shadow-cljs {:mvn/version "2.15.9"}
+                              binaryage/devtools {:mvn/version "1.0.3"}
+                              cider/cider-nrepl {:mvn/version "0.26.0"}}
+                 :extra-paths ["dev"]
+                 :main-opts ["-m" "shadow.cljs.devtools.cli"]}
 
            :demo {:extra-paths ["notebooks/src"]
                   :extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
                                org.xerial/sqlite-jdbc {:mvn/version "3.34.0"}
-                               org.clojure/data.csv {:mvn/version "1.0.0"}}}}}
+                               org.clojure/data.csv {:mvn/version "1.0.0"}}}
+
+           :build {:deps {io.github.clojure/tools.build {:git/tag "v0.5.1" :git/sha "21da7d4"}}
+                   :ns-default build}}}
