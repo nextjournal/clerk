@@ -17,7 +17,6 @@
         lambdaisland/uri {:mvn/version "1.4.70"}
 
 
-        arrowic/arrowic {:mvn/version "0.1.1"}
         rewrite-clj/rewrite-clj {:mvn/version "0.6.1"}}
 
  :aliases {:sci {:extra-deps  {applied-science/js-interop  {:mvn/version "0.3.0"}
@@ -26,9 +25,10 @@
                                                               :git/sha "913ed6d4964171248c6b700ff925aa7ef092d59d"}
                                metosin/reitit-frontend     {:mvn/version "0.5.15"}}}
 
-           :dev {:extra-deps {thheller/shadow-cljs {:mvn/version "2.15.9"}
+           :dev {:extra-deps {arrowic/arrowic {:mvn/version "0.1.1"}
                               binaryage/devtools {:mvn/version "1.0.3"}
-                              cider/cider-nrepl {:mvn/version "0.26.0"}}
+                              cider/cider-nrepl {:mvn/version "0.26.0"}
+                              thheller/shadow-cljs {:mvn/version "2.15.9"}}
                  :extra-paths ["dev"]
                  :jvm-opts ["-Dclerk.live_js=true"]
                  :main-opts ["-m" "shadow.cljs.devtools.cli"]}
