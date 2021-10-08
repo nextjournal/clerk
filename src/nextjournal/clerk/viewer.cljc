@@ -365,10 +365,12 @@
 (defn ->table
   "converts a sequence of maps into a table with the first row containing the column names."
   [xs]
-  (let [cols (sort (keys (first xs)))]
-    (into [cols]
-          (map (fn [row] (map #(get row %) cols)))
-          xs)))
+  (if (map? (first xs))
+    (let [cols (sort (keys (first xs)))]
+      (into [cols]
+            (map (fn [row] (map #(get row %) cols)))
+            xs))
+    xs))
 
 #_(->table [{:a 1 :b 2 :c 3} {:a 3 :b 0 :c 2}])
 

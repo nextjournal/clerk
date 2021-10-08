@@ -4,13 +4,7 @@
             [nextjournal.clerk.view]
             [nextjournal.clerk.webserver :as webserver]))
 
-(defn go []
-  (webserver/start! {})
-
-  (def watcher
-    (beholder/watch #(clerk/file-event %) "notebooks" "src"))
-
-  :clerk/started)
+(webserver/start! {})
 
 (defn set-dev!
   "Set this to `true` to load the css + js from a running instance for css + viewer dev. "
@@ -18,7 +12,8 @@
   (alter-var-root #'nextjournal.clerk.view/live-js? (constantly enabled?)))
 
 (comment
-  (go)
+  (def watcher
+    (beholder/watch #(clerk/file-event %) "notebooks" "src"))
 
   nextjournal.clerk.view/live-js?
 
