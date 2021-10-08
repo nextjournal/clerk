@@ -75,10 +75,10 @@
 
 (defn read+eval-cached [results-last-run vars->hash code-string]
   (let [form (hashing/read-string code-string)
-        {:as analyzed :keys [var]} (hashing/analyze form)
+        {:as analyzed :keys [ns-effect? var]} (hashing/analyze form)
         hash (hashing/hash vars->hash analyzed)
         digest-file (->cache-file (str "@" hash))
-        no-cache? (hashing/no-cache? form)
+        no-cache? (or ns-effect? (hashing/no-cache? form))
         cas-hash (when (fs/exists? digest-file)
                    (slurp digest-file))
         cached? (boolean (and cas-hash (-> cas-hash ->cache-file fs/exists?)))]

@@ -52,7 +52,8 @@
                           (ana.passes.ef/emit-form #{:hygenic :qualified-symbols}))
         var (some-> analyzed-form var-name resolve)
         deps (cond-> (var-dependencies analyzed-form) var (disj var))]
-    (cond-> {:form (cond->> form var (drop 2))}
+    (cond-> {:form (cond->> form var (drop 2))
+             :ns-effect? (some? (some #{#'clojure.core/require #'clojure.core/in-ns} deps))}
       var (assoc :var var)
       (seq deps) (assoc :deps deps))))
 
@@ -61,8 +62,8 @@
 #_(analyze '(defn segments [s] (let [segments (str/split s)]
                                  (str/join segments))))
 #_(analyze '(v/md "It's **markdown**!"))
-
-
+#_(analyze '(in-ns 'user))
+#_(analyze '(do (ns foo)))
 
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
@@ -109,7 +110,6 @@
                            :readers *data-readers*
                            :read-cond :allow
                            :features #{:clj}}))
-
 #_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
 
 (defn analyze-file
@@ -122,9 +122,9 @@
      (reduce (fn [acc {:keys [type text]}]
                (if (= type :code)
                  (let [form (read-string text)
-                       _ (when (and (seq? form) (= 'ns (first form)))
-                           (eval form))
-                       {:keys [var deps form]} (analyze form)]
+                       {:keys [var deps form ns-effect?]} (analyze form)]
+                   (when ns-effect?
+                     (eval form))
                    (cond-> acc
                      var
                      (assoc-in [:var->hash var] {:file file
