@@ -108,7 +108,7 @@
                               no-cache?))
               var-value (cond-> result (var? result) deref)]
           (if (fn? var-value)
-            var-value
+            {:result var-value}
             (do (when-not (or no-cache?
                               (instance? clojure.lang.IDeref var-value)
                               (instance? clojure.lang.MultiFn var-value)
