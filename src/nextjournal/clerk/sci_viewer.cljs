@@ -304,7 +304,7 @@
                 !x (r/atom {})]
      [inspect x {:path [] :!expanded-at !expanded-at :!x !x}]))
   ([x {:as opts :keys [!x viewers path path->info]}]
-   (let [x (or (some-> !x deref (get path)) x)
+   (let [x (let [v (some-> !x deref (get path))] (if (some? v) v x))
          {:as opts :keys [viewers]} (assoc opts :viewers (vec (concat (viewer/viewers x) viewers)))
          all-viewers (viewer/get-viewers (:scope @!doc) viewers)
          selected-viewer (or (viewer/viewer x)
