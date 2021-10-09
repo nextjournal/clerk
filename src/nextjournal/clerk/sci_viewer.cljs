@@ -59,7 +59,7 @@
 (def nbsp
   (gstring/unescapeEntities "&nbsp;"))
 
-(defn object-viewer [x {:as opts :keys [!expanded-at path]}]
+(defn js-object-viewer [x {:as opts :keys [!expanded-at path]}]
   (let [x' (obj->clj x)
         expanded? (some-> !expanded-at deref (get path))]
     (html [:span.inspected-value.whitespace-nowrap "#js {"
@@ -104,6 +104,7 @@
   (edamame/parse-string s {:all true
                            :read-cond :allow
                            :readers {'file (partial with-viewer :file)
+                                     'object (partial with-viewer :object)
                                      'function+ eval-form}
                            :features #{:clj}}))
 
@@ -218,7 +219,6 @@
 (defn tagged-value [tag value]
   [:span.inspected-value.whitespace-nowrap
    [:span.syntax-tag tag]
-   (gstring/unescapeEntities "&nbsp;")
    value])
 
 (def ^:dynamic *eval-form*)
@@ -241,14 +241,15 @@
    {:name :reagent :fn #(r/as-element (cond-> % (fn? %) vector))}
    {:name :eval! :fn #(*eval-form* %)}
    {:name :table :fn (comp normalize-viewer table/viewer)}
-   {:name :file :fn #(html (tagged-value "#file" [:span.syntax-string.inspected-value "\"" (str %) "\""]))}
+   {:name :object :fn #(html (tagged-value "#object" [inspect %]))}
+   {:name :file :fn #(html (tagged-value "#file " [inspect %]))}
    {:name :clerk/notebook :fn notebook}
    {:name :clerk/var :fn var}
    {:name :clerk/result :fn result}])
 
 (def js-viewers
   [{:pred #(implements? IDeref %) :fn #(tagged-value (-> %1 type pr-str) (inspect (deref %1) %2))}
-   {:pred goog/isObject :fn object-viewer}
+   {:pred goog/isObject :fn js-object-viewer}
    {:pred array? :fn (partial coll-viewer {:open [:<> [:span.syntax-tag "#js "] "["] :close "]"})}])
 
 
