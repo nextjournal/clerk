@@ -47,10 +47,13 @@
 
 #_(var->data #'var->data)
 
-(defn fn->data [_]
-  (v/with-viewer* 'fn :fn))
+(defn fn->data [f]
+  (let [pr-rep (pr-str f)
+        f-name (subs pr-rep (count "#function[") (- (count pr-rep) 1))]
+    (v/with-viewer* :fn f-name)))
 
 #_(fn->data (fn []))
+#_(fn->data +)
 
 (defn make-printable [x]
   (cond-> x

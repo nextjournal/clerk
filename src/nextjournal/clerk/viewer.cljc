@@ -97,7 +97,7 @@
    {:pred keyword? :fn '(fn [x] (v/html [:span.syntax-keyword.inspected-value (str x)]))}
    {:pred nil? :fn '(fn [_] (v/html [:span.syntax-nil.inspected-value "nil"]))}
    {:pred boolean? :fn '(fn [x] (v/html [:span.syntax-bool.inspected-value (str x)]))}
-   {:pred fn? :name :fn :fn '(fn [_] (v/html [:span.inspected-value [:span.syntax-tag "ƒ"] "()"]))}
+   {:pred fn? :name :fn :fn '(fn [x] (v/html [:span.inspected-value [:span.syntax-tag "#function"] "[" x "]"]))}
    {:pred map-entry-or-parent? :fn '(fn [x opts] (v/html [:<> (v/inspect (first x) (update opts :path conj 0)) " " (v/inspect (second x) (update opts :path conj 1))]))}
    {:pred vector? :fn '(partial v/coll-viewer {:open "[" :close "]"}) :fetch-opts {:n 20}}
    {:pred set? :fn '(partial v/coll-viewer {:open "#{" :close "}"}) :fetch-opts {:n 20}}
