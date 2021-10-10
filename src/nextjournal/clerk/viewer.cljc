@@ -148,6 +148,23 @@
 #_(sequence (drop+take-xf {:n 10 :offset 10}) (range 100))
 #_(sequence (drop+take-xf {}) (range 9))
 
+
+;; heavily inspired by code from Thomas Heller in shadow-cljs, see
+;; https://github.com/thheller/shadow-cljs/blob/1708acb21bcdae244b50293d17633ce35a78a467/src/main/shadow/remote/runtime/obj_support.cljc#L118-L144
+
+(defn rank-val [val]
+  (reduce-kv (fn [res idx pred]
+               (if (pred val) (reduced idx) res))
+             -1
+             (into [] (map :pred) default-viewers)))
+
+(defn resilient-comp [a b]
+  (try
+    (compare a b)
+    (catch #?(:clj Exception :cljs js/Error) _e
+      (compare (rank-val a) (rank-val b)))))
+
+
 ;; TODO: change `xs` to `value`.
 (defn fetch
   "Returns the subset of `xs` identified by an `opts` map with a `:path` optionally limiting the number of elements returned by `:n` using `:offset`."
@@ -183,12 +200,12 @@
                                (comp (drop+take-xf opts)
                                      (map-indexed #(fetch %2 opts (conj current-path %1))))
                                (cond->> xs
-                                 (and (map? xs) (not (sorted? xs))) (into (sorted-map))))
+                                 (and (map? xs) (not (sorted? xs))) (into (sorted-map-by resilient-comp))))
        (or (sequential? xs)
            (set? xs)) (sequence (comp (drop+take-xf opts)
                                       (map-indexed #(fetch %2 opts (conj current-path %1))))
                                 (cond->> xs
-                                  (and (set? xs) (not (sorted? xs))) (into (sorted-set))))
+                                  (and (set? xs) (not (sorted? xs))) (into (sorted-set-by resilient-comp))))
        (and (string? xs) (< elide-string-length (count xs))) (let [offset (opts :offset 0)] (subs xs offset (+ offset n)))
        :else xs))))
 
