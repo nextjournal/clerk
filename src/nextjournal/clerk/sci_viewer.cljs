@@ -207,7 +207,11 @@
                :class ["cursor-pointer" "hover:bg-indigo-50"]})
             "{"]
            (into [:<>]
-                 (comp (inspect-children opts)
+                 (comp (map-indexed (fn [idx x] [inspect
+                                                 (cond->> x
+                                                   (not (viewer/viewer x))
+                                                   (with-viewer :map-entry))
+                                                 (update opts :path conj idx)]))
                        (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) nbsp)] " ")))
                  xs)
            (more-button (count xs) opts)

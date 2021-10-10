@@ -29,7 +29,7 @@
 ;; - [x] Turn `with-viewers` into a macro and make it take same unquoted form as `set-viewers!`
 ;; - [ ] Consistently use `Fn+Form` to carry viewer functions
 ;; - [ ] Show sci eval error when viewers error on eval
-;; - [ ] Make map-viewer pass down options to select map-entry renderer for children and remove viewer from Rule 30
+;; - [x] Make map-viewer pass down options to select map-entry renderer for children and remove viewer from Rule 30
 ;; - [x] Drop lazy loading attempts in plotly + vega viewers
 ;; - [ ] Keep expanded state when lazy loading
 ;; - [ ] Allow to control viewer expansion state programmatically

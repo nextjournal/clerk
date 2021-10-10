@@ -79,14 +79,6 @@
 
 (def elide-string-length 100)
 
-(defn map-entry-or-parent?
-  ([x] (map-entry-or-parent? x {}))
-  ([x {:keys [path->info path]}]
-   (or (map-entry? x)
-       (and (vector? x)
-            (= 2 (count x))
-            (= :map (get-in path->info [(rest path) :viewer :name]))))))
-
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
@@ -98,7 +90,7 @@
    {:pred nil? :fn '(fn [_] (v/html [:span.syntax-nil.inspected-value "nil"]))}
    {:pred boolean? :fn '(fn [x] (v/html [:span.syntax-bool.inspected-value (str x)]))}
    {:pred fn? :name :fn :fn '(fn [x] (v/html [:span.inspected-value [:span.syntax-tag "#function"] "[" x "]"]))}
-   {:pred map-entry-or-parent? :fn '(fn [x opts] (v/html [:<> (v/inspect (first x) (update opts :path conj 0)) " " (v/inspect (second x) (update opts :path conj 1))]))}
+   {:pred map-entry? :name :map-entry :fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs)))}
    {:pred vector? :fn '(partial v/coll-viewer {:open "[" :close "]"}) :fetch-opts {:n 20}}
    {:pred set? :fn '(partial v/coll-viewer {:open "#{" :close "}"}) :fetch-opts {:n 20}}
    {:pred (some-fn list? sequential?) :fn '(partial v/coll-viewer {:open "(" :close ")"})  :fetch-opts {:n 20}}

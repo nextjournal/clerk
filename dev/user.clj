@@ -4,7 +4,8 @@
             [nextjournal.clerk.view]
             [nextjournal.clerk.webserver :as webserver]))
 
-(webserver/start! {})
+(defn go []
+  (webserver/start! {}))
 
 (defn set-dev!
   "Set this to `true` to load the css + js from a running instance for css + viewer dev. "
