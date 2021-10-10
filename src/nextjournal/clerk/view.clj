@@ -84,6 +84,7 @@
   (hiccup/html5
    [:head
     [:meta {:charset "UTF-8"}]
+    [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
     (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
     (hiccup/include-css (cond-> "/css/app.css"    (not live-js?) resource->static-url))
     (hiccup/include-css (cond-> "/css/viewer.css" (not live-js?) resource->static-url))
@@ -103,6 +104,7 @@ ws.onmessage = msg => viewer.reset_doc(viewer.read_string(msg.data))")]]))
   (hiccup/html5
    [:head
     [:meta {:charset "UTF-8"}]
+    [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
     (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
     (hiccup/include-css (cond-> "/css/app.css"    (not live-js?) resource->static-url))
     (hiccup/include-css (cond-> "/css/viewer.css" (not live-js?) resource->static-url))
