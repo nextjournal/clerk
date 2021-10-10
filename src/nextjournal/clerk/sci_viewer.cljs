@@ -122,7 +122,9 @@
   (-> (js/fetch (str "_blob/" blob-id (when (seq opts)
                                         (str "?" (opts->query opts)))))
       (.then #(.text %))
-      (.then #(read-string %))))
+      (.then #(try (read-string %)
+                   (catch js/Error _e
+                     (html [:span.inspected-value.whitespace-nowrap.text-gray-700 %]))))))
 
 (defn in-process-fetch [xs opts]
   (.resolve js/Promise (viewer/fetch xs opts)))
