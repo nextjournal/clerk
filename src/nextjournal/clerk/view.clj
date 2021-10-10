@@ -78,7 +78,7 @@
 (def resource->static-url
   {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxQBDwk3cvr1bt8YVL5m6bJGrFEmzrSbCrH1roypLjJr4AbbteCKh9Y6gQVYexdY85QA2HG5nQFLWpRp69zFSPDJ9"
    "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxoxUgsBRs2yjjBBcfeCc8XigM7erXHmjJg2tjdGxNBxwTYuDonuYswXqRStaCA2b3rTEPCgPwixJmAVrea1qAHHU"
-   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VtPCfWrUKqNA7sXeD1hJaMv71ESPgXcghsGSn6y16XkqywNos5QyWBVi7i4Gv55TWmNCbjTtqBJeQ4AZ92XxVwCcM"})
+   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VwLM6VpBBWfsaLV4hXZtRTGa2hAzRH2XcucRGgb9Ycqq9vLBq7cfWr1uAirVkGxJUodPfjEHoepuFPvgBcZdkAoND"})
 
 (defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} doc]
   (hiccup/html5
@@ -108,7 +108,7 @@ ws.onmessage = msg => viewer.reset_doc(viewer.read_string(msg.data))")]]))
     (hiccup/include-css (cond-> "/css/viewer.css" (not live-js?) resource->static-url))
     (hiccup/include-js  (cond-> "/js/viewer.js"   (not live-js?) resource->static-url))]
    [:body
-    [:div#clerk]
+    [:div#clerk-static-app]
     [:script "let viewer = nextjournal.clerk.sci_viewer
 let app = nextjournal.clerk.static_app
 let docs = viewer.read_string(" (-> docs ->edn pr-str) ")

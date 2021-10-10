@@ -58,7 +58,8 @@
         [:pre (pr-str match)])]]))
 
 (defn ^:dev/after-load mount []
-  (rdom/render [root] (js/document.getElementById "clerk")))
+  (when-let [el (js/document.getElementById "clerk-static-app")]
+    (rdom/render [root] el)))
 
 (defn ^:export init [docs]
   (reset! path->doc docs)
