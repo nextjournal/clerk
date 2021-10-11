@@ -72,6 +72,8 @@
 (defn update-doc! [doc]
   (broadcast! (view/doc->viewer (reset! !doc doc))))
 
+#_(update-doc! help-doc)
+
 (defn show-error! [e]
   (broadcast! (view/ex->viewer e)))
 
@@ -81,16 +83,20 @@
 ;; * load notebook without results
 ;; * allow page reload
 
-(defonce server (atom nil))
+(defonce !server (atom nil))
 
 (defn start! [{:keys [port] :or {port 7777}}]
-  (println "Starting server on " port "...")
-  (if @server
-    (println "Server already started")
-    (try
-      (reset! server (httpkit/run-server #'app {:port port}))
-      (catch java.net.BindException _e
-        (println "Port ""not avaible, server not started!")))))
+  (when-let [{:keys [port stop-fn]} @!server]
+    (stop-fn)
+    (println (str "Webserver already running on " port ", stopped."))
+    (reset! !server nil))
+  (try
+    (reset! !server {:port port :stop-fn (httpkit/run-server #'app {:port port})})
+    (println (str "Clerk webserver started on " port "..."))
+    (catch java.net.BindException _e
+      (println "Port " port " not avaible, server not started!"))))
+
+#_(start! {:port 7777})
 
 (add-tap broadcast!)
 

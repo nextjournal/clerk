@@ -1,11 +1,8 @@
 (ns user
-  (:require [nextjournal.beholder :as beholder]
-            [nextjournal.clerk :as clerk :refer [show!]]
-            [nextjournal.clerk.view]
-            [nextjournal.clerk.webserver :as webserver]))
+  (:require [nextjournal.clerk :as clerk]))
 
 (defn go []
-  (webserver/start! {}))
+  (clerk/serve! {}))
 
 (defn set-dev!
   "Set this to `true` to load the css + js from a running instance for css + viewer dev. "
@@ -13,8 +10,14 @@
   (alter-var-root #'nextjournal.clerk.view/live-js? (constantly enabled?)))
 
 (comment
-  (def watcher
-    (beholder/watch #(clerk/file-event %) "notebooks" "src"))
+  ;; start without file watcher
+  (clerk/serve! {})
+
+  ;; start with file watcher
+  (clerk/serve! {:watch-paths ["notebooks" "src"]})
+
+  ;; start with file watcher and show filter function to enable notebook pinning
+  (clerk/serve! {:watch-paths ["notebooks" "src"] :show-filter-fn #(clojure.string/starts-with? % "notebooks")})
 
   nextjournal.clerk.view/live-js?
 
@@ -23,21 +26,21 @@
 
   (beholder/stop watcher)
 
-  (show! "notebooks/onwards.clj")
-  (show! "notebooks/elements.clj")
-  (show! "notebooks/rule_30.clj")
-  (show! "notebooks/how_clerk_works.clj")
-  (show! "notebooks/pagination.clj")
-  (show! "notebooks/recursive.clj")
-  (show! "notebooks/cache.clj")
+  (clerk/show! "notebooks/onwards.clj")
+  (clerk/show! "notebooks/elements.clj")
+  (clerk/show! "notebooks/rule_30.clj")
+  (clerk/show! "notebooks/how_clerk_works.clj")
+  (clerk/show! "notebooks/pagination.clj")
+  (clerk/show! "notebooks/recursive.clj")
+  (clerk/show! "notebooks/cache.clj")
 
-  (show! "notebooks/viewer_api.clj")
+  (clerk/show! "notebooks/viewer_api.clj")
 
-  (show! "notebooks/viewers/vega.clj")
-  (show! "notebooks/viewers/plotly.clj")
-  (show! "notebooks/viewers/tex.clj")
-  (show! "notebooks/viewers/markdown.clj")
-  (show! "notebooks/viewers/html.clj")
+  (clerk/show! "notebooks/viewers/vega.clj")
+  (clerk/show! "notebooks/viewers/plotly.clj")
+  (clerk/show! "notebooks/viewers/tex.clj")
+  (clerk/show! "notebooks/viewers/markdown.clj")
+  (clerk/show! "notebooks/viewers/html.clj")
 
   (clerk/clear-cache!)
 

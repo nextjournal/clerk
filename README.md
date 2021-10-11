@@ -26,26 +26,26 @@ Clerk is a notebook library for Clojure that aims to address these problems by d
 To use Clerk in your project, add the following dependency to your `deps.edn`:
 
 ```edn
-{:deps {com.nextjournal/clerk {:git/url "https://github.com/nextjournal/clerk"
-                               :sha "c32936466aa2fedf970ec407d26fcc61485fdfd5"}}}
+{:deps {io.github.nextjournal/clerk {:git/sha "c32936466aa2fedf970ec407d26fcc61485fdfd5"}}}
 ```
 
 Require and start Clerk as part of your system start, e.g. in `user.clj`:
 
 ```clojure
-(require
-  '[nextjournal.clerk.webserver :as webserver]
-  '[nextjournal.clerk :as clerk]
-  '[nextjournal.beholder :as beholder])
+(require '[nextjournal.clerk :as clerk]
 
-(webserver/start {:port 7777})
+;; start Clerk's buit-in webserver on the default port 7777, opening the browser when done
+(clerk/serve! {:browse? true})
 
-;; optionally start a file-watcher to automatically refresh notebooks when saved
-(def filewatcher
-  (beholder/watch #(clerk/file-event %) "notebooks" "src"))
+;; either call `clerk/show!` explicitly
+(show! "notebooks/rule_30.clj")
 
-;; or call `clerk/show!` explicitly
-(show! "notebooks/test.clj")
+;; or let Clerk watch the given `:paths` for changes
+(clerk/serve! {:watch-paths ["notebooks" "src"]})
+
+;; start with watcher and show filter function to enable notebook pinning
+(clerk/serve! {:watch-paths ["notebooks" "src"] :show-filter-fn #(clojure.string/starts-with? % "notebooks")})
+
 ```
 
 You can then access Clerk at <http://localhost:7777>.

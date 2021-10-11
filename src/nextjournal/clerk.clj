@@ -163,10 +163,15 @@
 
 #_(eval-file "notebooks/rule_30.clj")
 
+(defonce !show-filter-fn (atom nil))
+(defonce !last-file (atom nil))
+(defonce !watcher (atom nil))
+
 (defn show!
-  "Converts the Clojure source test in file to a series of text or syntax panes and causes `panel` to contain them."
+  "Evaluates the Clojure source in `file` and makes the webserver show it."
   [file]
   (try
+    (reset! !last-file file)
     (let [doc (parse-file file)
           results-last-run (meta @webserver/!doc)
           {:keys [result time-ms]} (time-ms (+eval-results results-last-run (hashing/hash file) doc))]
@@ -182,9 +187,13 @@
   (when (and (contains? #{:modify :create} type)
              (or (str/ends-with? path ".clj")
                  (str/ends-with? path ".cljc")))
-
     (binding [*ns* (find-ns 'user)]
-      (nextjournal.clerk/show! (str/replace (str path) (str (fs/canonicalize ".") fs/file-separator) "")))))
+      (let [rel-path (str/replace (str path) (str (fs/canonicalize ".") fs/file-separator) "")
+            show-file? (or (not @!show-filter-fn)
+                           (@!show-filter-fn rel-path))]
+        (cond
+          show-file? (nextjournal.clerk/show! rel-path)
+          @!last-file (nextjournal.clerk/show! @!last-file))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -230,6 +239,39 @@
   ([opts file] (view/doc->viewer opts (eval-file file))))
 
 #_(file->viewer "notebooks/rule_30.clj")
+
+(defn serve!
+  "Main entrypoint to Clerk taking an configurations map.
+
+  Will obey the following optional configuration entries:
+
+  * a `:port` for the webserver to listen on, defaulting to `7777`
+  * `:browse?` will open Clerk in a browser after it's been started
+  * a sequence of `:watch-paths` that Clerk will watch for file system events and show any changed file
+  * a `:show-filter-fn` to restrict when to re-evaluate or show a notebook as a result of file system event. Useful for e.g. pinning a notebook. Will be called with the string path of the changed file.
+
+  Can be called multiple times and Clerk will happily serve you according to the latest config."
+  [{:as config
+    :keys [browse? watch-paths port show-filter-fn]
+    :or {port 7777}}]
+  (webserver/start! {:port port})
+  (reset! !show-filter-fn show-filter-fn)
+  (when-let [{:keys [watcher paths]} @!watcher]
+    (println "Stopping old watcher for paths" (pr-str paths))
+    (beholder/stop watcher)
+    (reset! !watcher nil))
+  (when (seq watch-paths)
+    (println "Starting new watcher for paths" (pr-str watch-paths))
+    (reset! !watcher {:paths watch-paths
+                      :watcher (apply beholder/watch #(file-event %) watch-paths)}))
+  (when browse?
+    (browse/browse-url (str "http://localhost:" port)))
+  config)
+
+#_(serve! {})
+#_(serve! {:browse? true})
+#_(serve! {:watch-paths ["src" "notebooks"]})
+#_(serve! {:watch-paths ["src" "notebooks"] :show-filter-fn #(clojure.string/starts-with? % "notebooks")})
 
 (def clerk-docs
   (into []
