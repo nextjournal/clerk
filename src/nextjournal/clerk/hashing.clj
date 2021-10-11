@@ -1,14 +1,14 @@
 ;; # Hashing Things!!!!
 (ns nextjournal.clerk.hashing
   (:refer-clojure :exclude [hash read-string])
-  (:require [clojure.java.classpath :as cp]
+  (:require [babashka.fs :as fs]
+            [clojure.java.classpath :as cp]
             [clojure.java.io :as io]
             [clojure.core :as core]
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.analyzer.jvm :as ana]
             [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef]
-            [datoteka.core :as fs]
             [edamame.core :as edamame]
             [multihash.core :as multihash]
             [multihash.digest :as digest]
@@ -165,7 +165,7 @@
 (defn ns->file [ns]
   (some (fn [dir]
           ;; TODO: fix case upstream when ns can be nil because var can contain java classes like java.lang.String
-          (when-let [path (and ns (str dir fs/*sep* (str/replace ns "." fs/*sep*) ".clj"))]
+          (when-let [path (and ns (str dir fs/file-separator (str/replace (str ns) "." fs/file-separator) ".clj"))]
             (when (fs/exists? path)
               path)))
         (cp/classpath-directories)))
@@ -178,7 +178,7 @@
 #_(var->ns #'inc)
 
 (defn ns->jar [ns]
-  (let [path (str (str/replace ns "." "/"))]
+  (let [path (str (str/replace ns "." fs/file-separator))]
     (some #(when (or (.getJarEntry % (str path ".clj"))
                      (.getJarEntry % (str path ".cljc")))
              (.getName %))

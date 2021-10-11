@@ -1,9 +1,9 @@
 ;; # Introducing Clerk 👋
 (ns nextjournal.clerk
-  (:require [clojure.java.browse :as browse]
+  (:require [babashka.fs :as fs]
+            [clojure.java.browse :as browse]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [datoteka.core :as fs]
             [multihash.core :as multihash]
             [multihash.digest :as digest]
             [nextjournal.beholder :as beholder]
@@ -27,7 +27,7 @@
       ".cache"))
 
 (defn ->cache-file [hash]
-  (str (cache-dir) fs/*sep* hash))
+  (str (cache-dir) fs/file-separator hash))
 
 (defn cache-disabled? []
   (when-let [prop (System/getProperty "clerk.disable_cache")]
@@ -87,7 +87,8 @@
                           (fs/exists? digest-file) :no-cas-file
                           :else :no-digest-file)
            :hash hash :cas-hash cas-hash :form form)
-    (fs/create-dir (cache-dir))
+    (when-not (fs/exists? (cache-dir))
+      (fs/create-dir (cache-dir)))
     (or (when (and (not no-cache?)
                    cached?)
           (try
@@ -183,7 +184,7 @@
                  (str/ends-with? path ".cljc")))
 
     (binding [*ns* (find-ns 'user)]
-      (nextjournal.clerk/show! (str/replace (str path) (str fs/*cwd* fs/*sep*) "")))))
+      (nextjournal.clerk/show! (str/replace (str path) (str (fs/canonicalize ".") fs/file-separator) "")))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -249,8 +250,9 @@
     :or {paths clerk-docs
          out-path "public/build"}}]
   (let [docs (into {} (map (fn [path] {path (file->viewer path)}) paths))
-        out-html (str out-path fs/*sep* "index.html")]
-    (fs/create-dir (fs/parent out-html))
+        out-html (str out-path fs/file-separator "index.html")]
+    (when-not (fs/exists? (fs/parent out-html))
+      (fs/create-dir (fs/parent out-html)))
     (spit out-html (view/->static-app {:live-js? false} docs))
     (browse/browse-url out-html)))
 

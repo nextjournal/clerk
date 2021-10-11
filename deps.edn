@@ -3,10 +3,10 @@
         org.clojure/java.classpath {:mvn/version "1.0.0"}
         org.clojure/tools.analyzer.jvm {:mvn/version "1.1.0"}
         org.clojure/tools.deps.alpha {:mvn/version "0.11.905"}
+        babashka/fs {:mvn/version "0.0.5"}
         borkdude/edamame {:mvn/version "0.0.11"}
         weavejester/dependency {:mvn/version "0.2.1"}
 
-        funcool/datoteka {:mvn/version "1.0.0"}
         com.nextjournal/beholder {:mvn/version "1.0.0"}
         com.taoensso/nippy {:mvn/version "3.1.1"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
@@ -38,6 +38,6 @@
                                org.xerial/sqlite-jdbc {:mvn/version "3.34.0"}
                                org.clojure/data.csv {:mvn/version "1.0.0"}}}
 
-           :build {:deps {io.github.clojure/tools.build {:git/tag "v0.5.1" :git/sha "21da7d4"}
+           :build {:deps {io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}
                           io.github.slipset/deps-deploy {:git/sha "b4359c5d67ca002d9ed0c4b41b710d7e5a82e3bf"}}
                    :ns-default build}}}
