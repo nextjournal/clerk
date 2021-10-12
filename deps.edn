@@ -17,7 +17,7 @@
         lambdaisland/uri {:mvn/version "1.4.70"}
 
 
-        rewrite-clj/rewrite-clj {:mvn/version "0.6.1"}}
+        rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}}
 
  :aliases {:sci {:extra-deps  {applied-science/js-interop  {:mvn/version "0.3.0"}
                                borkdude/sci {:mvn/version "0.2.6"}
