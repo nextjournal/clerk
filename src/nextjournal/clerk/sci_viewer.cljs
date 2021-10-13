@@ -5,7 +5,7 @@
             [edamame.core :as edamame]
             [goog.object]
             [goog.string :as gstring]
-            [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer*  with-viewers*] :rename {with-viewer* with-viewer with-viewers* with-viewers}]
+            [nextjournal.clerk.viewer :as viewer :refer [code describe html md plotly tex vl with-viewer* with-viewers*] :rename {with-viewer* with-viewer with-viewers* with-viewers}]
             [nextjournal.devcards :as dc]
             [nextjournal.devcards.main]
             [nextjournal.viewer.code :as code]
@@ -223,6 +223,77 @@
 (defn string-viewer [s opts]
   (html [:span.syntax-string.inspected-value "\"" s (more-button (count s) opts) "\""]))
 
+(defn ->cols
+  "Converts `[{:a 1 :b 2} {:a 3 :b 4}]` into `{:a [1 3] :b [2 4]}`."
+  [rows]
+  (reduce (fn [acc row]
+            (reduce (fn [acc* [k v]]
+                      (if (get acc* k)
+                        (update acc* k conj v)
+                        (assoc acc* k [v]))) acc row)) {}) rows)
+
+(defn table-viewer [data opts]
+  (let [data (cond->> data
+               #_"TODO: Find a better heuristic to convert into cols"
+               (and (vector? data) (map? (first data))) ->cols)]
+    (html
+      [:table.text-sm.sans-serif
+       (when (map? data)
+         [:thead.border-b.border-gray-300
+          (into [:tr] (map (fn [k] [:th.pl-2.pr-4.py-1 [inspect k]]) (keys data)))])
+       (into [:tbody]
+             (if (map? data)
+               (map (fn [i]
+                      (into
+                        [:tr {:class (if (even? i) "bg-gray-100" "bg-white")}]
+                        (map (fn [k]
+                               (let [v (get-in data [k i])]
+                                 [:td.pl-2.pr-4.py-1
+                                  {:class (when (number? v) "text-right")}
+                                  [inspect v]]))
+                             (keys data))))
+                    (range (count (val (apply max-key (comp count val) data)))))
+               (map-indexed
+                 (fn [i row]
+                   (into [:tr {:class (if (even? i) "bg-white" "bg-gray-50")}]
+                         (map (fn [i]
+                                (let [d (get row i)]
+                                  [:td.pl-2.pr-4.py-1
+                                   {:class (when (number? d) "text-right")}
+                                   [inspect d]]))
+                              (range (count (apply max-key count data))))))
+                 data)))])))
+
+(dc/defcard table [state]
+  [inspect (with-viewer :table @state)]
+  {::dc/state [[1 2 3]
+               [4 5 6]]})
+
+(dc/defcard table-incomplete [state]
+  [inspect (with-viewer :table @state)]
+  {::dc/state [[1 2 3]
+               [4]]})
+
+(dc/defcard table-col-headers [state]
+  [inspect (with-viewer :table @state)]
+  {::dc/state {:a [1 2 3]
+               :b [4 5 6]}})
+
+(dc/defcard table-col-headers-incomplete [state]
+  [inspect (with-viewer :table @state)]
+  {::dc/state {:a [1 2 3]
+               :b [4]}})
+
+(dc/defcard table-row-headers [state]
+  [inspect (with-viewer :table @state)]
+  {::dc/state [{:a 1 :b 2 :c 3}
+               {:a 4 :b 5 :c 6}]})
+
+(dc/defcard table-row-headers-incomplete [state]
+  [inspect (with-viewer :table @state)]
+  {::dc/state [{:a 1 :b 2 :c 3}
+               {:a 4}]})
+
 (defn tagged-value [tag value]
   [:span.inspected-value.whitespace-nowrap
    [:span.syntax-tag tag]
@@ -247,7 +318,7 @@
    {:name :code :pred string? :fn (comp normalize-viewer code/viewer)}
    {:name :reagent :fn #(r/as-element (cond-> % (fn? %) vector))}
    {:name :eval! :fn #(*eval-form* %)}
-   {:name :table :fn (comp normalize-viewer table/viewer)}
+   {:name :table :fn table-viewer :fetch-opts {:n 20}}
    {:name :object :fn #(html (tagged-value "#object" [inspect %]))}
    {:name :file :fn #(html (tagged-value "#file " [inspect %]))}
    {:name :clerk/notebook :fn notebook}
