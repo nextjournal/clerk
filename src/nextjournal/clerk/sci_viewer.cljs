@@ -146,15 +146,16 @@
         :else (concat xs ys)))
 
 (defn more-button [count {:keys [!x path desc path->info]}]
-  (when-some [more (let [more (- (get-in path->info [path :count]) count)]
-                     (when (pos? more) more))]
-    (let [fetch-opts (-> desc :viewer :fetch-opts)
-          {:keys [fetch-fn unbounded?]} desc]
-      [:<> " "
-       [:span.bg-gray-200.hover:bg-gray-200.cursor-pointer.sans-serif.relative.whitespace-nowrap
-        {:style {:border-radius 2 :padding "1px 3px" :font-size 11 :top -1}
-         :on-click (fn [_e] (.then (fetch-fn (assoc fetch-opts :offset count))
-                                   #(swap! !x update path concat-into %)))} more (when unbounded? "+") " more…"]])))
+  (let [{total-count :count :keys [viewer unbounded?]} (get path->info path)]
+    (when-some [more (let [more (- total-count count)]
+                       (when (pos? more) more))]
+      (let [{:keys [fetch-opts]} viewer
+            {:keys [fetch-fn]} desc]
+        [:<> " "
+         [:span.bg-gray-200.hover:bg-gray-200.cursor-pointer.sans-serif.relative.whitespace-nowrap
+          {:style {:border-radius 2 :padding "1px 3px" :font-size 11 :top -1}
+           :on-click (fn [_e] (.then (fetch-fn (assoc fetch-opts :offset count :path path))
+                                     #(swap! !x update path concat-into %)))} more (when unbounded? "+") " more…"]]))))
 
 (defn expanded-path? [!expanded-at path]
   (some-> !expanded-at deref (get path)))
