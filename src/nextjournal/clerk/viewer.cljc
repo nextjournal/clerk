@@ -206,7 +206,7 @@
                                       (map-indexed #(fetch %2 opts (conj current-path %1))))
                                 (cond->> xs
                                   (and (set? xs) (not (sorted? xs))) (into (sorted-set-by resilient-comp))))
-       (and (string? xs) (< elide-string-length (count xs))) (let [offset (opts :offset 0)] (subs xs offset (+ offset n)))
+       (and (string? xs) (< elide-string-length (count xs))) (let [offset (opts :offset 0)] (subs xs offset (min (+ offset n) (count xs))))
        :else xs))))
 
 #_(fetch {1 2} {:n 10 :path []})
