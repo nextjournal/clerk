@@ -230,7 +230,7 @@
             (reduce (fn [acc* [k v]]
                       (if (get acc* k)
                         (update acc* k conj v)
-                        (assoc acc* k [v]))) acc row)) {}) rows)
+                        (assoc acc* k [v]))) acc row)) {} rows))
 
 (defn table-viewer [data opts]
   (let [data (cond->> data
