@@ -232,10 +232,17 @@
                         (update acc* k conj v)
                         (assoc acc* k [v]))) acc row)) {} rows))
 
+(defn ->map-of-vec
+  "Converts `{:a '(1 2)}` to {:a [1 3]}"
+  [m]
+  (into {} (for [[k v] m] [k (vec v)])))
+
 (defn table-viewer [data opts]
   (let [data (cond->> data
+               (seq? data) vec
                #_"TODO: Find a better heuristic to convert into cols"
-               (and (vector? data) (map? (first data))) ->cols)]
+               (and (vector? data) (map? (first data))) ->cols
+               (and (map? data) (seq? (first (vals data)))) ->map-of-vec)]
     (html
       [:table.text-sm.sans-serif
        (when (map? data)
@@ -293,6 +300,21 @@
   [inspect (with-viewer :table @state)]
   {::dc/state [{:a 1 :b 2 :c 3}
                {:a 4}]})
+
+(dc/when-enabled
+  (defn rand-int-seq [n to]
+    (take n (repeatedly #(rand-int to)))))
+
+(dc/defcard table-paginated [state]
+  [inspect (with-viewer :table @state)]
+  {::dc/state (let [n 60]
+                {:species (repeat n "Adelie")
+                 :island (repeat n "Biscoe")
+                 :culmen-length-mm (rand-int-seq n 50)
+                 :culmen-depth-mm (rand-int-seq n 30)
+                 :flipper-length-mm (rand-int-seq n 200)
+                 :body-mass-g (rand-int-seq n 5000)
+                 :sex (take n (repeatedly #(rand-nth [:female :male])))})})
 
 (defn tagged-value [tag value]
   [:span.inspected-value.whitespace-nowrap
