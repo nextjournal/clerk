@@ -129,7 +129,7 @@
    (let [cache-dir (cache-dir)]
      (if (fs/exists? cache-dir)
        (do
-         (fs/delete cache-dir)
+         (fs/delete-tree cache-dir)
          (prn :cache-dir/deleted cache-dir))
        (prn :cache-dir/does-not-exist cache-dir)))))
 
