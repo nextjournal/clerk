@@ -247,12 +247,17 @@
       [:table.text-sm.sans-serif
        (when (map? data)
          [:thead.border-b.border-gray-300
-          (into [:tr] (map (fn [k] [:th.pl-2.pr-4.py-1 [inspect k]]) (keys data)))])
+          (into [:tr]
+                (map (fn [k]
+                       [:th.pl-2.pr-4.py-1.align-bottom
+                        {:class (if (number? (get-in data [k 0])) "text-right" "text-left")}
+                        [inspect k]]) (keys data)))])
        (into [:tbody]
              (if (map? data)
                (map (fn [i]
                       (into
-                        [:tr {:class (if (even? i) "bg-gray-100" "bg-white")}]
+                        [:tr.hover:bg-gray-200
+                         {:class (if (even? i) "bg-gray-100" "bg-white")}]
                         (map (fn [k]
                                (let [v (get-in data [k i])]
                                  [:td.pl-2.pr-4.py-1
@@ -262,7 +267,8 @@
                     (range (count (val (apply max-key (comp count val) data)))))
                (map-indexed
                  (fn [i row]
-                   (into [:tr {:class (if (even? i) "bg-white" "bg-gray-50")}]
+                   (into [:tr.hover:bg-gray-200
+                          {:class (if (even? i) "bg-white" "bg-gray-100")}]
                          (map (fn [i]
                                 (let [d (get row i)]
                                   [:td.pl-2.pr-4.py-1
@@ -305,16 +311,26 @@
   (defn rand-int-seq [n to]
     (take n (repeatedly #(rand-int to)))))
 
-(dc/defcard table-paginated [state]
-  [inspect (with-viewer :table @state)]
-  {::dc/state (let [n 60]
-                {:species (repeat n "Adelie")
-                 :island (repeat n "Biscoe")
-                 :culmen-length-mm (rand-int-seq n 50)
-                 :culmen-depth-mm (rand-int-seq n 30)
-                 :flipper-length-mm (rand-int-seq n 200)
-                 :body-mass-g (rand-int-seq n 5000)
-                 :sex (take n (repeatedly #(rand-nth [:female :male])))})})
+(declare lazy-inspect-in-process)
+
+(dc/defcard table-paginated-map-of-seq [state]
+  [:div
+   (when-let [xs @(rf/subscribe [::blobs])]
+     [lazy-inspect-in-process (with-viewer :table xs)])]
+  {::blobs (let [n 60]
+             {:species (repeat n "Adelie")
+              :island (repeat n "Biscoe")
+              :culmen-length-mm (rand-int-seq n 50)
+              :culmen-depth-mm (rand-int-seq n 30)
+              :flipper-length-mm (rand-int-seq n 200)
+              :body-mass-g (rand-int-seq n 5000)
+              :sex (take n (repeatedly #(rand-nth [:female :male])))})})
+
+(dc/defcard table-paginated-vec [state]
+  [:div
+   (when-let [xs @(rf/subscribe [::blobs])]
+     [lazy-inspect-in-process (with-viewer :table xs)])]
+  {::blobs (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])})
 
 (defn tagged-value [tag value]
   [:span.inspected-value.whitespace-nowrap
@@ -340,7 +356,6 @@
    {:name :code :pred string? :fn (comp normalize-viewer code/viewer)}
    {:name :reagent :fn #(r/as-element (cond-> % (fn? %) vector))}
    {:name :eval! :fn #(*eval-form* %)}
-   {:name :table :fn table-viewer :fetch-opts {:n 20}}
    {:name :object :fn #(html (tagged-value "#object" [inspect %]))}
    {:name :file :fn #(html (tagged-value "#file " [inspect %]))}
    {:name :clerk/notebook :fn notebook}
@@ -924,6 +939,7 @@ black")}])}
    'inspect-children inspect-children
    'set-viewers! set-viewers!
    'string-viewer string-viewer
+   'table-viewer table-viewer
    'with-viewer with-viewer
    'with-viewers with-viewers})
 
