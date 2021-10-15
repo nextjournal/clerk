@@ -223,59 +223,54 @@
 (defn string-viewer [s opts]
   (html [:span.syntax-string.inspected-value "\"" s (more-button (count s) opts) "\""]))
 
-(defn ->cols
-  "Converts `[{:a 1 :b 2} {:a 3 :b 4}]` into `{:a [1 3] :b [2 4]}`."
-  [rows]
-  (reduce (fn [acc row]
-            (reduce (fn [acc* [k v]]
-                      (if (get acc* k)
-                        (update acc* k conj v)
-                        (assoc acc* k [v]))) acc row)) {} rows))
+(defn rpad-vec [v length padding]
+  (vec (take length (concat v (repeat padding)))))
 
-(defn ->map-of-vec
-  "Converts `{:a '(1 2)}` to {:a [1 3]}"
-  [m]
-  (into {} (for [[k v] m] [k (vec v)])))
+(def missing-pred
+  :nextjournal/missing)
+
+(defn normalize-seq-of-seq [s]
+  (let [max-count (count (apply max-key count s))]
+    {:body (mapv #(rpad-vec % max-count missing-pred) s)}))
+
+(defn normalize-seq-of-map [s]
+  (let [ks (->> s (mapcat keys) distinct vec)]
+    {:head ks
+     :body (mapv (fn [m] (mapv #(get m % missing-pred) ks)) s)}))
+
+(defn normalize-map-of-seq [m]
+  (let [ks (-> m keys vec)
+        m* (if (seq? (get m (first ks)))
+             (reduce (fn [acc [k s]] (assoc acc k (vec s))) {} m)
+             m)]
+    {:head ks
+     :body (->> (range (count (val (apply max-key (comp count val) m*))))
+                (mapv (fn [i] (mapv #(get-in m* [% i] missing-pred) ks))))}))
 
 (defn table-viewer [data opts]
-  (let [data (cond->> data
-               (seq? data) vec
-               #_"TODO: Find a better heuristic to convert into cols"
-               (and (vector? data) (map? (first data))) ->cols
-               (and (map? data) (seq? (first (vals data)))) ->map-of-vec)]
+  (let [{:keys [head body]}
+        (cond->> data
+          (and (sequential? data) (map? (first data))) normalize-seq-of-map
+          (and (sequential? data) (sequential? (first data))) normalize-seq-of-seq
+          (and (map? data) (sequential? (first (vals data)))) normalize-map-of-seq)]
     (html
       [:table.text-sm.sans-serif
-       (when (map? data)
+       (when head
          [:thead.border-b.border-gray-300
           (into [:tr]
-                (map (fn [k]
-                       [:th.pl-2.pr-4.py-1.align-bottom
-                        {:class (if (number? (get-in data [k 0])) "text-right" "text-left")}
-                        [inspect k]]) (keys data)))])
+                (map-indexed (fn [i k]
+                               [:th.pl-2.pr-4.py-1.align-bottom
+                                {:class (if (number? (get-in body [0 i])) "text-right" "text-left")}
+                                [inspect k]]) head))])
        (into [:tbody]
-             (if (map? data)
-               (map (fn [i]
-                      (into
-                        [:tr.hover:bg-gray-200
-                         {:class (if (even? i) "bg-gray-100" "bg-white")}]
-                        (map (fn [k]
-                               (let [v (get-in data [k i])]
-                                 [:td.pl-2.pr-4.py-1
-                                  {:class (when (number? v) "text-right")}
-                                  [inspect v]]))
-                             (keys data))))
-                    (range (count (val (apply max-key (comp count val) data)))))
-               (map-indexed
-                 (fn [i row]
-                   (into [:tr.hover:bg-gray-200
-                          {:class (if (even? i) "bg-white" "bg-gray-100")}]
-                         (map (fn [i]
-                                (let [d (get row i)]
-                                  [:td.pl-2.pr-4.py-1
-                                   {:class (when (number? d) "text-right")}
-                                   [inspect d]]))
-                              (range (count (apply max-key count data))))))
-                 data)))])))
+             (map-indexed (fn [i row]
+                            (into
+                              [:tr.hover:bg-gray-200
+                               {:class (if (even? i) "bg-gray-100" "bg-white")}]
+                              (map (fn [d]
+                                     [:td.pl-2.pr-4.py-1
+                                      {:class (when (number? d) "text-right")}
+                                      (if (= d missing-pred) "" [inspect d])]) row))) body))])))
 
 (dc/defcard table [state]
   [inspect (with-viewer :table @state)]
@@ -312,6 +307,17 @@
     (take n (repeatedly #(rand-int to)))))
 
 (declare lazy-inspect-in-process)
+
+(dc/defcard table-long [state]
+  [inspect (with-viewer :table @state)]
+  {::dc/state (let [n 20]
+                {:species (repeat n "Adelie")
+                 :island (repeat n "Biscoe")
+                 :culmen-length-mm (rand-int-seq n 50)
+                 :culmen-depth-mm (rand-int-seq n 30)
+                 :flipper-length-mm (rand-int-seq n 200)
+                 :body-mass-g (rand-int-seq n 5000)
+                 :sex (take n (repeatedly #(rand-nth [:female :male])))})})
 
 (dc/defcard table-paginated-map-of-seq [state]
   [:div
