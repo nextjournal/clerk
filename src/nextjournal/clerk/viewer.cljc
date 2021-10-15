@@ -95,12 +95,13 @@
    {:pred set? :fn '(partial v/coll-viewer {:open "#{" :close "}"}) :fetch-opts {:n 20}}
    {:pred (some-fn list? sequential?) :fn '(partial v/coll-viewer {:open "(" :close ")"})  :fetch-opts {:n 20}}
    {:pred map? :name :map :fn '(partial v/map-viewer) :fetch-opts {:n 20}}
-   {:pred map? :name :table :fn '(partial v/table-viewer) :fetch-opts {:n 20}}
+   {:pred (some-fn map? sequential?) :name :table :fn '(partial v/table-viewer) :fetch-opts {:n 20}}
    {:pred uuid? :fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred inst? :fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}])
 
 ;; consider adding second arg to `:fn` function, that would be the fetch function
 
+;; clarify that these do not participate in lazy loading currently, or reconsider
 (def named-viewers
   #{:html
     :hiccup
@@ -174,41 +175,42 @@
    (fetch xs opts []))
   ([xs {:as opts :keys [path n]} current-path]
    #_(prn :xs xs :opts opts :current-path current-path)
-   (if (< (count current-path)
-          (count path))
-     (let [idx (first (drop (count current-path) path))]
-       (fetch (cond (map? xs) (nth (seq xs) idx)
-                    (associative? xs) (get xs idx)
-                    (sequential? xs) (nth xs idx))
-              opts
-              (conj current-path idx)))
-     (cond
-       (and (empty? path) (not n)) xs
-       (and (not= (count path)
-                  (count current-path))
-            (not (or (number? xs)
-                     (map-entry? xs)))
-            (or (associative? xs)
-                (sequential? xs)
-                (and (string? xs) (< elide-string-length (count xs))))) elided
-       (or (wrapped-value? xs)
-           (some->> xs viewer (contains? named-viewers))) xs
-       (map-entry? xs)
-       [(fetch (key xs) opts (conj current-path 0))
-        (fetch (val xs) opts (conj current-path 1))]
-       (or (map? xs)
-           (vector? xs)) (into (if (map? xs) [] (empty xs))
-                               (comp (drop+take-xf opts)
-                                     (map-indexed #(fetch %2 opts (conj current-path %1))))
-                               (cond->> xs
-                                 (and (map? xs) (not (sorted? xs))) (into (sorted-map-by resilient-comp))))
-       (or (sequential? xs)
-           (set? xs)) (sequence (comp (drop+take-xf opts)
-                                      (map-indexed #(fetch %2 opts (conj current-path %1))))
-                                (cond->> xs
-                                  (and (set? xs) (not (sorted? xs))) (into (sorted-set-by resilient-comp))))
-       (and (string? xs) (< elide-string-length (count xs))) (let [offset (opts :offset 0)] (subs xs offset (min (+ offset n) (count xs))))
-       :else xs))))
+   (let [xs (value xs)]
+     (if (< (count current-path)
+            (count path))
+       (let [idx (first (drop (count current-path) path))]
+         (fetch (cond (map? xs) (nth (seq xs) idx)
+                      (associative? xs) (get xs idx)
+                      (sequential? xs) (nth xs idx))
+                opts
+                (conj current-path idx)))
+       (cond
+         (and (empty? path) (not n)) xs
+         (and (not= (count path)
+                    (count current-path))
+              (not (or (number? xs)
+                       (map-entry? xs)))
+              (or (associative? xs)
+                  (sequential? xs)
+                  (and (string? xs) (< elide-string-length (count xs))))) elided
+         (or (wrapped-value? xs)
+             (some->> xs viewer (contains? named-viewers))) xs
+         (map-entry? xs)
+         [(fetch (key xs) opts (conj current-path 0))
+          (fetch (val xs) opts (conj current-path 1))]
+         (or (map? xs)
+             (vector? xs)) (into (if (map? xs) [] (empty xs))
+                                 (comp (drop+take-xf opts)
+                                       (map-indexed #(fetch %2 opts (conj current-path %1))))
+                                 (cond->> xs
+                                   (and (map? xs) (not (sorted? xs))) (into (sorted-map-by resilient-comp))))
+         (or (sequential? xs)
+             (set? xs)) (sequence (comp (drop+take-xf opts)
+                                        (map-indexed #(fetch %2 opts (conj current-path %1))))
+                                  (cond->> xs
+                                    (and (set? xs) (not (sorted? xs))) (into (sorted-set-by resilient-comp))))
+         (and (string? xs) (< elide-string-length (count xs))) (let [offset (opts :offset 0)] (subs xs offset (min (+ offset n) (count xs))))
+         :else xs)))))
 
 #_(fetch {1 2} {:n 10 :path []})
 #_(fetch {[1 2 3]
@@ -229,7 +231,8 @@
    (if-let [selected-viewer (viewer x)]
      (cond (keyword? selected-viewer)
            (if (named-viewers selected-viewer)
-             selected-viewer
+             (or (first (filter (comp #{selected-viewer} :name) viewers))
+                 selected-viewer)
              (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers}))))
      (let [val (value x)]
        (loop [v viewers]
