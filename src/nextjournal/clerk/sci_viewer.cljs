@@ -240,7 +240,7 @@
    {:name :latex :pred string? :fn #(html (katex/to-html-string %))}
    {:name :mathjax :pred string? :fn (comp normalize-viewer mathjax/viewer)}
    {:name :html :pred string? :fn #(html [:div {:dangerouslySetInnerHTML {:__html %}}])}
-   {:name :hiccup :fn r/as-element}
+   {:name :hiccup :fn #(r/as-element %)}
    {:name :plotly :pred map? :fn (comp normalize-viewer plotly/viewer)}
    {:name :vega-lite :pred map? :fn (comp normalize-viewer vega-lite/viewer)}
    {:name :markdown :pred string? :fn markdown/viewer}
