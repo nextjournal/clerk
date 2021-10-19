@@ -254,51 +254,51 @@
           (and (sequential? data) (sequential? (first data))) normalize-seq-of-seq
           (and (map? data) (sequential? (first (vals data)))) normalize-map-of-seq)]
     (html
-      [:table.text-sm.sans-serif
-       (when head
-         [:thead.border-b.border-gray-300
-          (into [:tr]
-                (map-indexed (fn [i k]
-                               [:th.pl-2.pr-4.py-1.align-bottom
-                                {:class (if (number? (get-in body [0 i])) "text-right" "text-left")}
-                                [inspect k]]) head))])
-       (into [:tbody]
-             (map-indexed (fn [i row]
-                            (into
-                              [:tr.hover:bg-gray-200
-                               {:class (if (even? i) "bg-gray-100" "bg-white")}]
-                              (map (fn [d]
-                                     [:td.pl-2.pr-4.py-1
-                                      {:class (when (number? d) "text-right")}
-                                      (if (= d missing-pred) "" [inspect d])]) row))) body))])))
+     [:table.text-sm.sans-serif
+      (when head
+        [:thead.border-b.border-gray-300
+         (into [:tr]
+               (map-indexed (fn [i k]
+                              [:th.pl-2.pr-4.py-1.align-bottom
+                               {:class (if (number? (get-in body [0 i])) "text-right" "text-left")}
+                               [inspect k]]) head))])
+      (into [:tbody]
+            (map-indexed (fn [i row]
+                           (into
+                            [:tr.hover:bg-gray-200
+                             {:class (if (even? i) "bg-gray-100" "bg-white")}]
+                            (map (fn [d]
+                                   [:td.pl-2.pr-4.py-1
+                                    {:class (when (number? d) "text-right")}
+                                    (if (= d missing-pred) "" [inspect d])]) row))) body))])))
 
 (dc/defcard table [state]
-  [inspect (with-viewer :table @state)]
+  [inspect (with-viewer table-viewer @state)]
   {::dc/state [[1 2 3]
                [4 5 6]]})
 
 (dc/defcard table-incomplete [state]
-  [inspect (with-viewer :table @state)]
+  [inspect (with-viewer table-viewer @state)]
   {::dc/state [[1 2 3]
                [4]]})
 
 (dc/defcard table-col-headers [state]
-  [inspect (with-viewer :table @state)]
+  [inspect (with-viewer table-viewer @state)]
   {::dc/state {:a [1 2 3]
                :b [4 5 6]}})
 
 (dc/defcard table-col-headers-incomplete [state]
-  [inspect (with-viewer :table @state)]
+  [inspect (with-viewer table-viewer @state)]
   {::dc/state {:a [1 2 3]
                :b [4]}})
 
 (dc/defcard table-row-headers [state]
-  [inspect (with-viewer :table @state)]
+  [inspect (with-viewer table-viewer @state)]
   {::dc/state [{:a 1 :b 2 :c 3}
                {:a 4 :b 5 :c 6}]})
 
 (dc/defcard table-row-headers-incomplete [state]
-  [inspect (with-viewer :table @state)]
+  [inspect (with-viewer table-viewer @state)]
   {::dc/state [{:a 1 :b 2 :c 3}
                {:a 4}]})
 
@@ -309,7 +309,7 @@
 (declare lazy-inspect-in-process)
 
 (dc/defcard table-long [state]
-  [inspect (with-viewer :table @state)]
+  [inspect (with-viewer table-viewer @state)]
   {::dc/state (let [n 20]
                 {:species (repeat n "Adelie")
                  :island (repeat n "Biscoe")
@@ -322,7 +322,9 @@
 (dc/defcard table-paginated-map-of-seq [state]
   [:div
    (when-let [xs @(rf/subscribe [::blobs])]
-     [lazy-inspect-in-process (with-viewer :table xs)])]
+     [lazy-inspect-in-process (->> xs
+                                   (with-viewers [{:name :table :fn table-viewer}])
+                                   (with-viewer :table))])]
   {::blobs (let [n 60]
              {:species (repeat n "Adelie")
               :island (repeat n "Biscoe")
@@ -335,7 +337,9 @@
 (dc/defcard table-paginated-vec [state]
   [:div
    (when-let [xs @(rf/subscribe [::blobs])]
-     [lazy-inspect-in-process (with-viewer :table xs)])]
+     [lazy-inspect-in-process (->> xs
+                                   (with-viewers [{:name :table :fn table-viewer}])
+                                   (with-viewer :table))])]
   {::blobs (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])})
 
 (defn tagged-value [tag value]
