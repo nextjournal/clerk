@@ -254,23 +254,27 @@
           (and (sequential? data) (sequential? (first data))) normalize-seq-of-seq
           (and (map? data) (sequential? (first (vals data)))) normalize-map-of-seq)]
     (html
-     [:table.text-sm.sans-serif
-      (when head
-        [:thead.border-b.border-gray-300
-         (into [:tr]
-               (map-indexed (fn [i k]
-                              [:th.pl-2.pr-4.py-1.align-bottom
-                               {:class (if (number? (get-in body [0 i])) "text-right" "text-left")}
-                               [inspect k]]) head))])
-      (into [:tbody]
-            (map-indexed (fn [i row]
-                           (into
-                            [:tr.hover:bg-gray-200
-                             {:class (if (even? i) "bg-gray-100" "bg-white")}]
-                            (map (fn [d]
-                                   [:td.pl-2.pr-4.py-1
-                                    {:class (when (number? d) "text-right")}
-                                    (if (= d missing-pred) "" [inspect d])]) row))) body))])))
+      [:table.text-xs.sans-serif
+       (when head
+         [:thead.border-b.border-gray-300
+          (into [:tr]
+                (map-indexed (fn [i k]
+                               [:th.pl-2.pr-4.py-1.align-bottom.font-medium
+                                {:class (if (number? (get-in body [0 i])) "text-right" "text-left")}
+                                (if (or (string? k) (keyword? k)) (name k) [inspect k])]) head))])
+       (into [:tbody]
+             (map-indexed (fn [i row]
+                            (into
+                              [:tr.hover:bg-gray-200
+                               {:class (if (even? i) "bg-gray-100" "bg-white")}]
+                              (map (fn [d]
+                                     [:td.pl-2.pr-4.py-1
+                                      {:class (when (number? d) "text-right")}
+                                      (cond
+                                        (= d missing-pred) ""
+                                        (string? d) d
+                                        (number? d) [:span.tabular-nums d]
+                                        :else [inspect d])]) row))) body))])))
 
 (dc/defcard table [state]
   [inspect (with-viewer table-viewer @state)]
