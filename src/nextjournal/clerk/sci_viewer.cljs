@@ -279,7 +279,8 @@
                                  [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
                                   {:class (if (number? (get-in rows [0 i])) "text-right" "text-left")
                                    :style {:cursor "ns-resize"}
-                                   :on-click #(sort! !sort i k)}
+                                   :on-click #(sort! !sort i k)
+                                   :title (if (or (string? k) (keyword? k)) (name k) (str k))}
                                   [:div.inline-flex
                                    ;; Truncate to available col width without growing the table
                                    [:div.table.table-fixed.w-full.flex-auto
