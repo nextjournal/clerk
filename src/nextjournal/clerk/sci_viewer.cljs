@@ -231,12 +231,12 @@
 
 (defn normalize-seq-of-seq [s]
   (let [max-count (count (apply max-key count s))]
-    {:body (mapv #(rpad-vec % max-count missing-pred) s)}))
+    {:rows (mapv #(rpad-vec % max-count missing-pred) s)}))
 
 (defn normalize-seq-of-map [s]
   (let [ks (->> s (mapcat keys) distinct vec)]
     {:head ks
-     :body (mapv (fn [m] (mapv #(get m % missing-pred) ks)) s)}))
+     :rows (mapv (fn [m] (mapv #(get m % missing-pred) ks)) s)}))
 
 (defn normalize-map-of-seq [m]
   (let [ks (-> m keys vec)
@@ -244,37 +244,66 @@
              (reduce (fn [acc [k s]] (assoc acc k (vec s))) {} m)
              m)]
     {:head ks
-     :body (->> (range (count (val (apply max-key (comp count val) m*))))
+     :rows (->> (range (count (val (apply max-key (comp count val) m*))))
                 (mapv (fn [i] (mapv #(get-in m* [% i] missing-pred) ks))))}))
 
+(defn sort! [!sort i k]
+  (let [{:keys [sort-key sort-order]} @!sort]
+    (reset! !sort {:sort-index i
+                   :sort-key k
+                   :sort-order (if (= sort-key k) (if (= sort-order :asc) :desc :asc) :asc)})))
+
+(defn sorted-rows [{:keys [sort-index sort-order]} {:as data :keys [head rows]}]
+  (cond-> data
+    head (assoc :rows (->> rows
+                           (sort-by #(cond-> (get % sort-index)
+                                       (string? val) str/lower-case)
+                                    (if (= sort-order :asc) #(compare %1 %2) #(compare %2 %1)))
+                           vec))))
+
 (defn table-viewer [data opts]
-  (let [{:keys [head body]}
-        (cond->> data
-          (and (sequential? data) (map? (first data))) normalize-seq-of-map
-          (and (sequential? data) (sequential? (first data))) normalize-seq-of-seq
-          (and (map? data) (sequential? (first (vals data)))) normalize-map-of-seq)]
-    (html
-      [:table.text-xs.sans-serif
-       (when head
-         [:thead.border-b.border-gray-300
-          (into [:tr]
-                (map-indexed (fn [i k]
-                               [:th.pl-2.pr-4.py-1.align-bottom.font-medium
-                                {:class (if (number? (get-in body [0 i])) "text-right" "text-left")}
-                                (if (or (string? k) (keyword? k)) (name k) [inspect k])]) head))])
-       (into [:tbody]
-             (map-indexed (fn [i row]
-                            (into
-                              [:tr.hover:bg-gray-200
-                               {:class (if (even? i) "bg-gray-100" "bg-white")}]
-                              (map (fn [d]
-                                     [:td.pl-2.pr-4.py-1
-                                      {:class (when (number? d) "text-right")}
-                                      (cond
-                                        (= d missing-pred) ""
-                                        (string? d) d
-                                        (number? d) [:span.tabular-nums d]
-                                        :else [inspect d])]) row))) body))])))
+  (r/with-let [!sort (r/atom nil)]
+    (let [{:as sort* :keys [sort-index sort-key sort-order]} @!sort
+          {:keys [head rows]}
+          (cond->> data
+            (and (sequential? data) (map? (first data))) normalize-seq-of-map
+            (and (sequential? data) (sequential? (first data))) normalize-seq-of-seq
+            (and (map? data) (sequential? (first (vals data)))) normalize-map-of-seq
+            sort-key (sorted-rows sort*))]
+      (html
+        [:table.text-xs.sans-serif
+         (when head
+           [:thead.border-b.border-gray-300
+            (into [:tr]
+                  (map-indexed (fn [i k]
+                                 [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
+                                  {:class (if (number? (get-in rows [0 i])) "text-right" "text-left")
+                                   :style {:cursor "ns-resize"}
+                                   :on-click #(sort! !sort i k)}
+                                  [:div.inline-flex
+                                   ;; Truncate to available col width without growing the table
+                                   [:div.table.table-fixed.w-full.flex-auto
+                                    {:style {:margin-left -12}}
+                                    [:div.truncate
+                                     [:span.inline-flex.justify-center.items-center.relative
+                                      {:style {:font-size 20 :width 10 :height 10 :bottom -2 :margin-right 2}}
+                                      (when (= sort-key k)
+                                        (if (= sort-order :asc) "▴" "▾"))]
+                                     (if (or (string? k) (keyword? k)) (name k) [inspect k])]]]]) head))])
+         (into [:tbody]
+               (map-indexed (fn [i row]
+                              (into
+                                [:tr.hover:bg-gray-200
+                                 {:class (if (even? i) "bg-opacity-5 bg-black" "bg-white")}]
+                                (map-indexed (fn [j d]
+                                               [:td.pl-6.pr-2.py-1
+                                                {:class [(when (number? d) "text-right")
+                                                         (when (= j sort-index) "bg-opacity-5 bg-black")]}
+                                                (cond
+                                                  (= d missing-pred) ""
+                                                  (string? d) d
+                                                  (number? d) [:span.tabular-nums d]
+                                                  :else [inspect d])]) row))) rows))]))))
 
 (dc/defcard table [state]
   [inspect (with-viewer table-viewer @state)]
