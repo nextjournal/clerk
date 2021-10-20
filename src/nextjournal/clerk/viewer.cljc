@@ -284,11 +284,11 @@
                        (cond-> {:count (count xs) :path path}
                          viewer (assoc :viewer viewer)
                          (seq children) (assoc :children children)))
-           (counted? xs) (let [children (sequence (comp (map-indexed #(describe (update opts :path conj %1) %2))
-                                                        (remove nil?)) xs)]
-                           (cond-> {:path path :count (count xs)}
-                             viewer (assoc :viewer viewer)
-                             (seq children) (assoc :children children)))
+           (and (counted? xs) (seqable? xs)) (let [children (sequence (comp (map-indexed #(describe (update opts :path conj %1) %2))
+                                                                            (remove nil?)) xs)]
+                                               (cond-> {:path path :count (count xs)}
+                                                 viewer (assoc :viewer viewer)
+                                                 (seq children) (assoc :children children)))
            ;; uncounted sequences assumed to be lazy
            (seq? xs) (let [{:keys [n]} fetch-opts
                            limit (+ n 10000)
