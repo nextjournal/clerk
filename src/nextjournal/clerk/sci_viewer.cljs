@@ -247,13 +247,17 @@
      :rows (->> (range (count (val (apply max-key (comp count val) m*))))
                 (mapv (fn [i] (mapv #(get-in m* [% i] missing-pred) ks))))}))
 
+(defn normalize-seq-to-vec [{:keys [head rows]}]
+  (cond-> {:rows (vec rows)}
+    head (assoc :head (vec head))))
+
 (defn sort! [!sort i k]
   (let [{:keys [sort-key sort-order]} @!sort]
     (reset! !sort {:sort-index i
                    :sort-key k
                    :sort-order (if (= sort-key k) (if (= sort-order :asc) :desc :asc) :asc)})))
 
-(defn sorted-rows [{:keys [sort-index sort-order]} {:as data :keys [head rows]}]
+(defn sort-data [{:keys [sort-index sort-order]} {:as data :keys [head rows]}]
   (cond-> data
     head (assoc :rows (->> rows
                            (sort-by #(cond-> (get % sort-index)
@@ -261,50 +265,84 @@
                                     (if (= sort-order :asc) #(compare %1 %2) #(compare %2 %1)))
                            vec))))
 
+(def x-icon
+  [:svg.h-4.w-4 {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor"}
+   [:path {:fill-rule "evenodd" :d "M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" :clip-rule "evenodd"}]])
+
+(def check-icon
+  [:svg.h-4.w-4 {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor"}
+   [:path {:fill-rule "evenodd" :d "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" :clip-rule "evenodd"}]])
+
+(defn table-error [data]
+  [:div.bg-red-100.px-6.py-4.rounded.text-xs
+   [:h4.mt-0.uppercase.text-xs "Table Error"]
+   [:p.mt-4.font-medium "Clerk’s table viewer does not recognize the format of your data:"]
+   [:div.mt-2.flex.items-center
+    [:div.text-red-500.mr-2 x-icon]
+    [inspect data]]
+   [:p.mt-4.font-medium "Currently, the following formats are supported:"]
+   [:div.mt-2.flex.items-center
+    [:div.text-green-500.mr-2 check-icon]
+    [inspect {:column-1 [1 2]
+              :column-2 [3 4]}]]
+   [:div.mt-2.flex.items-center
+    [:div.text-green-500.mr-2 check-icon]
+    [inspect [{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]]]
+   [:div.mt-2.flex.items-center
+    [:div.text-green-500.mr-2 check-icon]
+    [inspect [[1 3] [2 4]]]]
+   [:div.mt-2.flex.items-center
+    [:div.text-green-500.mr-2 check-icon]
+    [inspect {:head [:column-1 :column-2]
+              :rows [[1 3] [2 4]]}]]])
+
 (defn table-viewer [data opts]
   (r/with-let [!sort (r/atom nil)]
-    (let [{:as sort* :keys [sort-index sort-key sort-order]} @!sort
-          {:keys [head rows]}
-          (cond->> data
-            (and (sequential? data) (map? (first data))) normalize-seq-of-map
-            (and (sequential? data) (sequential? (first data))) normalize-seq-of-seq
-            (and (map? data) (sequential? (first (vals data)))) normalize-map-of-seq
-            sort-key (sorted-rows sort*))]
+    (let [{:as srt :keys [sort-index sort-key sort-order]} @!sort
+          normalized-data (cond
+                            (and (sequential? data) (map? (first data))) (normalize-seq-of-map data)
+                            (and (sequential? data) (sequential? (first data))) (normalize-seq-of-seq data)
+                            (and (map? data) (sequential? (first (vals data)))) (normalize-map-of-seq data)
+                            (-> data :rows sequential?) (normalize-seq-to-vec data)
+                            :else nil)]
       (html
-        [:table.text-xs.sans-serif
-         (when head
-           [:thead.border-b.border-gray-300
-            (into [:tr]
-                  (map-indexed (fn [i k]
-                                 [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
-                                  {:class (if (number? (get-in rows [0 i])) "text-right" "text-left")
-                                   :style {:cursor "ns-resize"}
-                                   :on-click #(sort! !sort i k)
-                                   :title (if (or (string? k) (keyword? k)) (name k) (str k))}
-                                  [:div.inline-flex
-                                   ;; Truncate to available col width without growing the table
-                                   [:div.table.table-fixed.w-full.flex-auto
-                                    {:style {:margin-left -12}}
-                                    [:div.truncate
-                                     [:span.inline-flex.justify-center.items-center.relative
-                                      {:style {:font-size 20 :width 10 :height 10 :bottom -2 :margin-right 2}}
-                                      (when (= sort-key k)
-                                        (if (= sort-order :asc) "▴" "▾"))]
-                                     (if (or (string? k) (keyword? k)) (name k) [inspect k])]]]]) head))])
-         (into [:tbody]
-               (map-indexed (fn [i row]
-                              (into
-                                [:tr.hover:bg-gray-200
-                                 {:class (if (even? i) "bg-opacity-5 bg-black" "bg-white")}]
-                                (map-indexed (fn [j d]
-                                               [:td.pl-6.pr-2.py-1
-                                                {:class [(when (number? d) "text-right")
-                                                         (when (= j sort-index) "bg-opacity-5 bg-black")]}
-                                                (cond
-                                                  (= d missing-pred) ""
-                                                  (string? d) d
-                                                  (number? d) [:span.tabular-nums d]
-                                                  :else [inspect d])]) row))) rows))]))))
+        (if normalized-data
+          (let [{:keys [head rows]} (cond->> normalized-data sort-key (sort-data srt))]
+            [:table.text-xs.sans-serif
+             (when head
+               [:thead.border-b.border-gray-300
+                (into [:tr]
+                      (map-indexed (fn [i k]
+                                     [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
+                                      {:class (if (number? (get-in rows [0 i])) "text-right" "text-left")
+                                       :style {:cursor "ns-resize"}
+                                       :on-click #(sort! !sort i k)
+                                       :title (if (or (string? k) (keyword? k)) (name k) (str k))}
+                                      [:div.inline-flex
+                                       ;; Truncate to available col width without growing the table
+                                       [:div.table.table-fixed.w-full.flex-auto
+                                        {:style {:margin-left -12}}
+                                        [:div.truncate
+                                         [:span.inline-flex.justify-center.items-center.relative
+                                          {:style {:font-size 20 :width 10 :height 10 :bottom -2 :margin-right 2}}
+                                          (when (= sort-key k)
+                                            (if (= sort-order :asc) "▴" "▾"))]
+                                         (if (or (string? k) (keyword? k)) (name k) [inspect k])]]]]) head))])
+             (into [:tbody]
+                   (map-indexed (fn [i row]
+                                  (into
+                                    [:tr.hover:bg-gray-200
+                                     {:class (if (even? i) "bg-opacity-5 bg-black" "bg-white")}]
+                                    (map-indexed (fn [j d]
+                                                   [:td.pl-6.pr-2.py-1
+                                                    {:class [(when (number? d) "text-right")
+                                                             (when (= j sort-index) "bg-opacity-5 bg-black")]}
+                                                    (cond
+                                                      (= d missing-pred) ""
+                                                      (string? d) d
+                                                      (number? d) [:span.tabular-nums d]
+                                                      :else [inspect d])]) row))) rows))])
+          [table-error data])))))
 
 (dc/defcard table [state]
   [inspect (with-viewer table-viewer @state)]
@@ -335,6 +373,10 @@
   [inspect (with-viewer table-viewer @state)]
   {::dc/state [{:a 1 :b 2 :c 3}
                {:a 4}]})
+
+(dc/defcard table-error [state]
+  [inspect (with-viewer table-viewer @state)]
+  {::dc/state #{1 2 3 4}})
 
 (dc/when-enabled
   (defn rand-int-seq [n to]
