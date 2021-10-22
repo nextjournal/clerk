@@ -95,7 +95,7 @@
    {:pred set? :fn '(partial v/coll-viewer {:open "#{" :close "}"}) :fetch-opts {:n 20}}
    {:pred (some-fn list? sequential?) :fn '(partial v/coll-viewer {:open "(" :close ")"})  :fetch-opts {:n 20}}
    {:pred map? :name :map :fn '(partial v/map-viewer) :fetch-opts {:n 20}}
-   {:pred (some-fn map? sequential?) :name :table :fn '(partial v/table-viewer) :fetch-opts {:n 20}}
+   {:pred (some-fn map? sequential?) :name :table :fn '(partial v/table-viewer) :fetch-opts {#_#_:n 20}}
    {:pred uuid? :fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred inst? :fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}])
 
@@ -282,7 +282,7 @@
                                                 nil))
          xs (value xs)]
      #_(prn :xs xs :type (type xs) :viewer viewer)
-     (cond (and (empty? path) (nil? fetch-opts)) (cond-> {:path path} viewer (assoc :viewer viewer)) ;; fetch everything
+     (cond (and (empty? path) (nil? (seq fetch-opts))) (cond-> {:path path} viewer (assoc :viewer viewer)) ;; fetch everything
            (map? xs) (let [children (sequence (comp (map-indexed #(describe (update opts :path conj %1) %2))
                                                     (remove (comp empty? :children))) xs)]
                        (cond-> {:count (count xs) :path path}
@@ -372,21 +372,6 @@
 #_(nextjournal.clerk/show! "notebooks/viewers/vega.clj")
 
 
-
-
-;; TODO: hack for talk to make sql result display as table, propery support SQL results as tables and remove
-(defn ->table
-  "converts a sequence of maps into a table with the first row containing the column names."
-  [xs]
-  (if (map? (first xs))
-    (let [cols (sort (keys (first xs)))]
-      (into [cols]
-            (map (fn [row] (map #(get row %) cols)))
-            xs))
-    xs))
-
-#_(->table [{:a 1 :b 2 :c 3} {:a 3 :b 0 :c 2}])
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public api
 
@@ -414,6 +399,7 @@
 (def md        (partial with-viewer* :markdown))
 (def plotly    (partial with-viewer* :plotly))
 (def vl        (partial with-viewer* :vega-lite))
+(def table     (partial with-viewer* :table))
 (def tex       (partial with-viewer* :latex))
 (def notebook  (partial with-viewer* :clerk/notebook))
 
@@ -425,8 +411,6 @@
 
 #_(code '(+ 1 2))
 
-(defn table [xs]
-  (with-viewer* :table (->table xs)))
 
 (defn exception [e]
   (let [{:keys [via trace]} e]
