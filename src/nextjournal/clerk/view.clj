@@ -58,15 +58,16 @@
 (defn make-printable [x]
   (cond-> x
     (var? x) var->data
-    (meta x) (vary-meta #(w/prewalk make-printable %))
+    (meta x) (with-meta {})
     (fn? x) fn->data))
 
 #_(meta (make-printable ^{:f (fn [])} []))
 
 (defn ->edn [x]
-  (binding [#_#_*print-meta* true
-            *print-namespace-maps* false]
-    (pr-str (w/prewalk make-printable x))))
+  (binding [*print-namespace-maps* false]
+    (pr-str
+     (try (w/prewalk make-printable x)
+          (catch Throwable _ x)))))
 
 #_(->edn [:vec (with-meta [] {'clojure.core.protocols/datafy (fn [x] x)}) :var #'->edn])
 
