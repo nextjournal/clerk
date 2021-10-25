@@ -13,7 +13,7 @@
 ;; - [x] Markdown should support Nextjournal Flavored Markdown including:
 ;;   - [x] TODO lists 😹
 ;;   - [x] Inline Formulas $E^2=m^2+\vec{p}^2$
-;; - [ ] Fix analyzer error for aliases requires w/o ns (e.g. in viewers notebooks)
+;; - [x] Fix analyzer error for aliases requires w/o ns (e.g. in viewers notebooks)
 ;; ## 🕵🏻‍♀️ Viewers
 ;; - [x] Make viewer api open with predicates
 ;; - [x] Make viewer registration local on namespace
@@ -48,13 +48,20 @@
 ;; - [x] Printing of very large values
 ;; ## 🚀 Private Beta
 ;; - [x] Move to non-jit compiled tailwind stylesheet, purging doesn't work nicely with custom viewers
-;; - [ ] Make static build work
+;; - [x] Make static build work
 ;; - [x] Review caching api
 ;; - [x] Change `:clerk/no-cache` to `:nextjournal.clerk/no-cache`
 ;; - [ ] Support setting `:nextjournal.clerk/no-cache` on namespaces as well
 ;; - [ ] Support setting `:nextjournal.clerk/cache-dir` on namespace
 ;; - [x] Move public viewer api to `nextjournal.clerk` and use `(:require [nextjournal.clerk :as clerk])` in all example notebooks
-;; - [ ] Release to maven & invite contributors
+;; - [x] Release to maven & invite contributors
+;; - [ ] Fix error when describing Datomic entities
+;; - [ ] Limit description to make large datasets work
+;; - [ ] Hook up new table viewer
+;; - [ ] Build static build on CI
+;; - [ ] Let consumers (SICMUitls) extend sci ns
+;; - [ ] Debug & fix extra calls to inspect / rendering
+;; - [ ] Add CAS storage option for static builds
 ;; ## 💡 Ideas
 ;; - [ ] Hook up distributed caching using CAS + cloud bucket
 ;; - [ ] Status log
