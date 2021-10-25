@@ -36,7 +36,8 @@
            :demo {:extra-paths ["notebooks/src"]
                   :extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
                                org.xerial/sqlite-jdbc {:mvn/version "3.34.0"}
-                               org.clojure/data.csv {:mvn/version "1.0.0"}}}
+                               org.clojure/data.csv {:mvn/version "1.0.0"}
+                               scicloj/tablecloth {:mvn/version "6.023"}}}
 
            :build {:deps {io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}
                           io.github.slipset/deps-deploy {:git/sha "b4359c5d67ca002d9ed0c4b41b710d7e5a82e3bf"}}
