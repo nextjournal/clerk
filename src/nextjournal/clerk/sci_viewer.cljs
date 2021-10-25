@@ -116,6 +116,8 @@
 
 #_(opts->query {:s 10 :num 42})
 
+(defn unreadable-edn [edn]
+  (html [:span.inspected-value.whitespace-nowrap.text-gray-700 edn]))
 
 (defn fetch! [{:keys [blob-id]} opts]
   #_(js/console.log :fetch! blob-id opts)
@@ -124,7 +126,7 @@
       (.then #(.text %))
       (.then #(try (read-string %)
                    (catch js/Error _e
-                     (html [:span.inspected-value.whitespace-nowrap.text-gray-700 %]))))))
+                     (unreadable-edn %))))))
 
 (defn in-process-fetch [xs opts]
   (.resolve js/Promise (viewer/fetch xs opts)))
@@ -132,6 +134,15 @@
 (defn result [desc opts]
   (html [inspect-lazy (-> desc
                           (assoc :fetch-fn (partial fetch! desc))) opts]))
+
+(declare lazy-inspect-in-process)
+(defn inline-result [{:keys [edn string]} _opts]
+  (if edn
+    (try
+      (html [lazy-inspect-in-process (read-string edn)])
+      (catch js/Error _e
+        (unreadable-edn edn)))
+    (unreadable-edn string)))
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
@@ -252,6 +263,7 @@
    {:name :file :fn #(html (tagged-value "#file " [inspect %]))}
    {:name :clerk/notebook :fn notebook}
    {:name :clerk/var :fn var}
+   {:name :clerk/inline-result :fn inline-result}
    {:name :clerk/result :fn result}])
 
 (def js-viewers

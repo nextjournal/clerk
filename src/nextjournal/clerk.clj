@@ -288,17 +288,21 @@
 
 (defn build-static-app!
   "Builds a static html app of the notebooks at `paths`."
-  [{:keys [paths out-path]
+  [{:keys [paths out-path live-js?]
     :or {paths clerk-docs
-         out-path "public/build"}}]
+         out-path "public/build"
+         live-js? view/live-js?}}]
   (let [docs (into {} (map (fn [path] {path (file->viewer path)}) paths))
         out-html (str out-path fs/file-separator "index.html")]
     (when-not (fs/exists? (fs/parent out-html))
       (fs/create-dirs (fs/parent out-html)))
-    (spit out-html (view/->static-app {:live-js? false} docs))
-    (browse/browse-url out-html)))
+    (spit out-html (view/->static-app {} docs))
+    (if (and live-js? (str/starts-with? out-path "public/"))
+      (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
+      (browse/browse-url out-html))))
 
 #_(build-static-app! {})
+#_(build-static-app! {:paths ["notebooks/tablecloth.clj"]})
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
