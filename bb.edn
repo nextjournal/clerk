@@ -6,16 +6,18 @@
                      :task (clojure "-M:sci:demo:dev watch browser")
                      :depends [yarn-install]}
 
-         release:js {:doc  "Builds the js using shadow-cljs for release"
-                     :task (clojure "-M:sci:demo:dev release browser")
-                     :depends [yarn-install]}
-
          watch:css {:doc  "Starts a watcher for css files tailwindcss"
                     :task (shell (str tailwind-build-cmd "--output public/css/app.css --watch"))
                     :depends [yarn-install]}
 
-         release:css {:doc  "Builds the css files with tailwindcss for release"
-                      :task (shell (str tailwind-build-cmd "--output build/app.css -m") {:extra-env {"NODE_ENV" "production"}})
+         release:js {:doc  "Builds & uploads the js release and updates the sha reference."
+                     :task (do (clojure "-M:sci:demo:dev release browser")
+                               (clojure "-T:build upload-to-cas+rewrite-sha :resource viewer.js"))
+                     :depends [yarn-install]}
+
+         release:css {:doc  "Builds & uploads the css release and updates the sha reference."
+                      :task (do (shell (str tailwind-build-cmd "--output build/app.css -m") {:extra-env {"NODE_ENV" "production"}})
+                                (clojure "-T:build upload-to-cas+rewrite-sha :resource app.css"))
                       :depends [yarn-install]}
 
          release:jar {:doc "Builds the jar"
