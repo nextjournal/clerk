@@ -156,6 +156,8 @@
         (string? xs) (str xs ys)
         :else (concat xs ys)))
 
+
+
 (defn more-button [count {:keys [!x path desc path->info]}]
   (let [{total-count :count :keys [viewer unbounded?]} (get path->info path)]
     (when-some [more (let [more (- total-count count)]
@@ -182,7 +184,7 @@
   ;; TODO: move update function onto viewer
   (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)])))
 
-(defn coll-viewer [{:keys [open close]} xs {:as opts :keys [!expanded-at path] :or {path []}}]
+(defn coll-viewer [{:keys [open close]} xs {:as opts :keys [!expanded-at path->info path] :or {path []}}]
   (let [expanded? (expanded-path? opts)
         expandable? (expandable-path? opts)]
     (html [:span.inspected-value.whitespace-nowrap
@@ -195,10 +197,10 @@
              open]
             (into [:<>]
                   (comp (inspect-children opts)
-                        (interpose (if expanded? [:<> [:br] nbsp] " ")))
+                        (interpose (if expanded? [:<> [:br] nbsp (when (= 2 (count open)) nbsp)] " ")))
                   xs)
             (more-button (count xs) opts)
-            close]])))
+            (into [:<>] (viewer/closing-parens path->info path))]])))
 
 (def elision-pred
   (partial = :nextjournal/…))
@@ -211,7 +213,7 @@
             :on-click (fn [_e] (.then (fetch-fn (assoc fetch-opts :path path))
                                       (fn [x] (swap! !x assoc path x))))} "…"])))
 
-(defn map-viewer [xs {:as opts :keys [!expanded-at path] :or {path []}}]
+(defn map-viewer [xs {:as opts :keys [!expanded-at path path->info] :or {path []}}]
   (let [expanded? (expanded-path? opts)
         expandable? (expandable-path? opts)]
     (html [:span.inspected-value.whitespace-nowrap
@@ -229,7 +231,7 @@
                        (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) nbsp)] " ")))
                  xs)
            (more-button (count xs) opts)
-           "}"])))
+           (into [:<>] (viewer/closing-parens path->info path))])))
 
 (defn string-viewer [s opts]
   (html [:span.syntax-string.inspected-value "\"" s (more-button (count s) opts) "\""]))
