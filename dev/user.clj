@@ -31,6 +31,7 @@
   (clerk/show! "notebooks/rule_30.clj")
   (clerk/show! "notebooks/how_clerk_works.clj")
   (clerk/show! "notebooks/pagination.clj")
+  (clerk/show! "notebooks/paren_soup.clj")
   (clerk/show! "notebooks/recursive.clj")
   (clerk/show! "notebooks/cache.clj")
 
