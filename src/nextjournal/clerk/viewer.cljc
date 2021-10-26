@@ -164,6 +164,12 @@
     (catch #?(:clj Exception :cljs js/Error) _e
       (compare (rank-val a) (rank-val b)))))
 
+(defn ensure-sorted [xs]
+  (cond
+    (sorted? xs) xs
+    (map? xs) (into (sorted-map-by resilient-comp) xs)
+    (set? xs) (into (sorted-set-by resilient-comp) xs)
+    :else xs))
 
 ;; TODO: change `xs` to `value`.
 (defn fetch
@@ -176,7 +182,7 @@
    (if (< (count current-path)
           (count path))
      (let [idx (first (drop (count current-path) path))]
-       (fetch (cond (map? xs) (nth (seq xs) idx)
+       (fetch (cond (or (map? xs) (set? xs)) (nth (seq (ensure-sorted xs)) idx)
                     (associative? xs) (get xs idx)
                     (sequential? xs) (nth xs idx))
               opts
@@ -199,13 +205,11 @@
            (vector? xs)) (into (if (map? xs) [] (empty xs))
                                (comp (drop+take-xf opts)
                                      (map-indexed #(fetch %2 opts (conj current-path %1))))
-                               (cond->> xs
-                                 (and (map? xs) (not (sorted? xs))) (into (sorted-map-by resilient-comp))))
+                               (ensure-sorted xs))
        (or (sequential? xs)
            (set? xs)) (sequence (comp (drop+take-xf opts)
                                       (map-indexed #(fetch %2 opts (conj current-path %1))))
-                                (cond->> xs
-                                  (and (set? xs) (not (sorted? xs))) (into (sorted-set-by resilient-comp))))
+                                (ensure-sorted xs))
        (and (string? xs) (< elide-string-length (count xs))) (let [offset (opts :offset 0)] (subs xs offset (min (+ offset n) (count xs))))
        :else xs))))
 
@@ -280,12 +284,14 @@
      #_(prn :xs xs :type (type xs) :viewer viewer)
      (cond (and (empty? path) (nil? fetch-opts)) (cond-> {:path path} viewer (assoc :viewer viewer)) ;; fetch everything
            (map? xs) (let [children (sequence (comp (map-indexed #(describe (update opts :path conj %1) %2))
-                                                    (remove (comp empty? :children))) xs)]
+                                                    (remove (comp empty? :children)))
+                                              (ensure-sorted xs))]
                        (cond-> {:count (count xs) :path path}
                          viewer (assoc :viewer viewer)
                          (seq children) (assoc :children children)))
            (and (counted? xs) (seqable? xs)) (let [children (sequence (comp (map-indexed #(describe (update opts :path conj %1) %2))
-                                                                            (remove nil?)) xs)]
+                                                                            (remove nil?))
+                                                                      (ensure-sorted xs))]
                                                (cond-> {:path path :count (count xs)}
                                                  viewer (assoc :viewer viewer)
                                                  (seq children) (assoc :children children)))
