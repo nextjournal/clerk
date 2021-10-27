@@ -32,13 +32,13 @@ To use Clerk in your project, add the following dependency to your `deps.edn`:
 Require and start Clerk as part of your system start, e.g. in `user.clj`:
 
 ```clojure
-(require '[nextjournal.clerk :as clerk]
+(require '[nextjournal.clerk :as clerk])
 
 ;; start Clerk's buit-in webserver on the default port 7777, opening the browser when done
 (clerk/serve! {:browse? true})
 
 ;; either call `clerk/show!` explicitly
-(show! "notebooks/rule_30.clj")
+(clerk/show! "notebooks/rule_30.clj")
 
 ;; or let Clerk watch the given `:paths` for changes
 (clerk/serve! {:watch-paths ["notebooks" "src"]})
@@ -51,6 +51,15 @@ Require and start Clerk as part of your system start, e.g. in `user.clj`:
 You can then access Clerk at <http://localhost:7777>.
 
 See the [/notebooks folder](https://github.com/nextjournal/clerk/tree/main/notebooks) in the Clerk repository for a number of sample notebooks.
+
+## Developing Clerk
+Make sure you have [Babashka installed](https://github.com/babashka/babashka#installation), and run:
+
+```bash
+bb dev
+```
+
+The will start everything needed to develop Clerk. You can connect your favorite editor to it using nREPL.
 
 ## Known Issues
 
