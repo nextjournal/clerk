@@ -33,8 +33,7 @@
                  :jvm-opts ["-Dclerk.live_js=true" "-XX:-OmitStackTraceInFastThrow"]
                  :main-opts ["-m" "shadow.cljs.devtools.cli"]}
 
-           :demo {:extra-paths ["notebooks/src"]
-                  :extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
+           :demo {:extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
                                org.xerial/sqlite-jdbc {:mvn/version "3.34.0"}
                                org.clojure/data.csv {:mvn/version "1.0.0"}
                                scicloj/tablecloth {:mvn/version "6.023"}}}

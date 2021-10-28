@@ -216,9 +216,7 @@
 
 (defmacro with-viewers
   [viewers x]
-  (let [viewers# (->> viewers
-                      v/preds->fn+form
-                      (mapv (fn [viewer] (update viewer :fn #(list 'quote %)))))]
+  (let [viewers# (v/process-fns viewers)]
     `(v/with-viewers* ~viewers# ~x)))
 
 #_(macroexpand '(with-viewers [{:pred number? :fn #(v/html [:div %])}] 1))
@@ -278,11 +276,18 @@
         (map #(str "notebooks/" % ".clj"))
         ["hello"
          "rule_30"
+         "elements"
          "onwards"
+         "how_clerk_works"
+         "pagination"
+         "paren_soup"
+         "recursive"
+         "viewer_api"
          "viewers/html"
          "viewers/markdown"
          "viewers/plotly"
          "viewers/table"
+         "viewers/tex"
          "viewers/vega"]))
 
 
@@ -296,12 +301,13 @@
         out-html (str out-path fs/file-separator "index.html")]
     (when-not (fs/exists? (fs/parent out-html))
       (fs/create-dirs (fs/parent out-html)))
-    (spit out-html (view/->static-app {} docs))
+    (spit out-html (view/->static-app {:live-js? live-js?} docs))
     (if (and live-js? (str/starts-with? out-path "public/"))
       (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
       (browse/browse-url out-html))))
 
 #_(build-static-app! {})
+#_(build-static-app! {:live-js? false})
 #_(build-static-app! {:paths ["notebooks/tablecloth.clj"]})
 
 ;; And, as is the culture of our people, a commend block containing
