@@ -33,7 +33,6 @@
   (clerk/show! "notebooks/pagination.clj")
   (clerk/show! "notebooks/paren_soup.clj")
   (clerk/show! "notebooks/recursive.clj")
-  (clerk/show! "notebooks/cache.clj")
 
   (clerk/show! "notebooks/viewer_api.clj")
 

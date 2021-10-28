@@ -16,19 +16,19 @@
 
 #_(var->data #'var->data)
 
-(defn fn->data [f]
+(defn fn->str [f]
   (let [pr-rep (pr-str f)
         f-name (subs pr-rep (count "#function[") (- (count pr-rep) 1))]
-    (v/with-viewer* :fn f-name)))
+    f-name))
 
-#_(fn->data (fn []))
-#_(fn->data +)
+#_(fn->str (fn []))
+#_(fn->str +)
 
 (defn make-printable [x]
   (cond-> x
     (var? x) var->data
     (meta x) (with-meta {})
-    (fn? x) fn->data))
+    (fn? x) fn->str))
 
 #_(meta (make-printable ^{:f (fn [])} []))
 
@@ -41,17 +41,18 @@
 #_(->edn [:vec (with-meta [] {'clojure.core.protocols/datafy (fn [x] x)}) :var #'->edn])
 
 (defn described-result [ns {:keys [result blob-id]}]
-  (v/with-viewer* :clerk/result
-    (-> (v/describe {:viewers (v/get-viewers ns (v/viewers result))} result)
+  (v/with-viewer* :clerk/result {:blob-id blob-id}
+    #_
+    (-> (v/describe result {:viewers (v/get-viewers ns (v/viewers result))})
         (assoc :blob-id blob-id))))
 
 #_(v/with-viewers (range 3) [{:pred number? :fn '(fn [x] (v/html [:div.inline-block {:style {:width 16 :height 16}
                                                                                      :class (if (pos? x) "bg-black" "bg-white border-solid border-2 border-black")}]))}])
 
-(defn inline-result [result]
+(defn inline-result [ns {:keys [result]}]
   (v/with-viewer* :clerk/inline-result
     (try
-      {:edn (->edn result)}
+      {:edn (->edn (v/describe result {:viewers (v/get-viewers ns (v/viewers result))}))}
       (catch Exception _
         {:string (pr-str result)}))))
 
@@ -65,18 +66,24 @@
                                :markdown [(v/md text)]
                                :code (cond-> [(v/code text)]
                                        (contains? x :result)
-                                       (conj (if (and (not inline-results?)
-                                                      (map? result)
-                                                      (contains? result :result)
-                                                      (contains? result :blob-id)
-                                                      (not (v/registration? (:result result))))
+                                       (conj (cond
+                                               (v/registration? (:result result))
+                                               (:result result)
+
+                                               (and (not inline-results?)
+                                                    (map? result)
+                                                    (contains? result :result)
+                                                    (contains? result :blob-id))
                                                (described-result ns result)
-                                               (inline-result (:result result))))))))
+
+                                               :else
+                                               (inline-result ns result)))))))
                    doc)
        true v/notebook
        ns (assoc :scope (v/datafy-scope ns))))))
 
 #_(meta (doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj")))
+#_(nextjournal.clerk/show! "notebooks/test.clj")
 
 (defonce ^{:doc "Load dynamic js from shadow or static bundle from cdn."}
   live-js?
@@ -86,7 +93,7 @@
 (def resource->static-url
   {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxQBDwk3cvr1bt8YVL5m6bJGrFEmzrSbCrH1roypLjJr4AbbteCKh9Y6gQVYexdY85QA2HG5nQFLWpRp69zFSPDJ9"
    "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxoxUgsBRs2yjjBBcfeCc8XigM7erXHmjJg2tjdGxNBxwTYuDonuYswXqRStaCA2b3rTEPCgPwixJmAVrea1qAHHU"
-   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8Vwskip6MouWcericEybLMiKXQGGAu2qqPkAq75Pbay9Qy6zjQKvDGgYCjQ1Q4KBTpAKPEH4xAYCidLkTPrUbsKvzm"})
+   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VwSpq8RpVvJYKtd2T11VLXm3tdrfbp4pag6feW4u7YYNSoFG4NT3PLV5oxJR52fcyooZRaxKF4JAagBaMQkeHGGsx"})
 
 (defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} doc]
   (hiccup/html5

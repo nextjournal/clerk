@@ -6,8 +6,8 @@
 (clerk/set-viewers!
  [{:pred number? :fn #(v/html [:div.inline-block {:style {:width 16 :height 16}
                                                   :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}
-  {:pred #(and (vector? %) (not (map-entry? %))) :fn #(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1))}
-  {:pred list? :fn #(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1))}])
+  {:pred list? :fn #(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1))}
+  {:pred #(and (vector? %) (not (map-entry? %))) :fn #(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1))}])
 
 0
 

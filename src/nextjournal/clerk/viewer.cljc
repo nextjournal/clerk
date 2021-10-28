@@ -5,6 +5,7 @@
                 :cljs [[reagent.ratom :as ratom]]))
   #?(:clj (:import [clojure.lang IFn])))
 
+(defrecord Form [form])
 
 (defrecord Fn+Form [form fn]
   IFn
@@ -13,13 +14,16 @@
   (#?(:clj invoke :cljs -invoke) [this x y]
     ((:fn this) x y)))
 
-#?(:clj
-   (defn form->fn+form
-     [form]
-     (map->Fn+Form {:form form :fn (eval form)})))
+(defn form->fn+form
+  ([form]
+   (map->Fn+Form {:form form :fn (#?(:clj eval :cljs *eval*) form)})))
 
 #?(:clj
    (defmethod print-method Fn+Form [v ^java.io.Writer w]
+     (.write w (str "#function+ " (pr-str `~(:form v))))))
+
+#?(:clj
+   (defmethod print-method Form [v ^java.io.Writer w]
      (.write w (str "#function+ " (pr-str `~(:form v))))))
 
 #_(binding [*data-readers* {'function+ form->fn+form}]
@@ -82,7 +86,7 @@
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
-  [{:pred string? :fn '(partial v/string-viewer) :fetch-opts {:n elide-string-length}}
+  [{:pred string? :fn 'v/string-viewer :fetch-opts {:n elide-string-length}}
    {:pred number? :fn '(fn [x] (v/html [:span.syntax-number.inspected-value
                                         (if (js/Number.isNaN x) "NaN" (str x))]))}
    {:pred symbol? :fn '(fn [x] (v/html [:span.syntax-symbol.inspected-value x]))}
@@ -90,11 +94,11 @@
    {:pred nil? :fn '(fn [_] (v/html [:span.syntax-nil.inspected-value "nil"]))}
    {:pred boolean? :fn '(fn [x] (v/html [:span.syntax-bool.inspected-value (str x)]))}
    {:pred fn? :name :fn :fn '(fn [x] (v/html [:span.inspected-value [:span.syntax-tag "#function"] "[" x "]"]))}
-   {:pred map-entry? :name :map-entry :fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs)))}
+   {:pred map-entry? :name :map-entry :fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :fetch-opts {:n 2}}
    {:pred vector? :fn '(partial v/coll-viewer {:open "[" :close "]"}) :fetch-opts {:n 20}}
    {:pred set? :fn '(partial v/coll-viewer {:open "#{" :close "}"}) :fetch-opts {:n 20}}
-   {:pred (some-fn list? sequential?) :fn '(partial v/coll-viewer {:open "(" :close ")"})  :fetch-opts {:n 20}}
-   {:pred map? :name :map :fn '(partial v/map-viewer) :fetch-opts {:n 20}}
+   {:pred sequential? :fn '(partial v/coll-viewer {:open "(" :close ")"}) :fetch-opts {:n 20}}
+   {:pred map? :name :map :fn 'v/map-viewer :fetch-opts {:n 10}}
    {:pred uuid? :fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred inst? :fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}])
 
@@ -105,49 +109,18 @@
     :hiccup
     :plotly
     :code
-    :eval!
+    :elision
+    :eval! ;; TODO: drop
     :markdown
     :mathjax
     :table
     :latex
+    :object
     :reagent
     :vega-lite
     :clerk/notebook
     :clerk/var
     :clerk/result})
-
-(comment
-  (def map-100
-    (zipmap (range 100) (range 100)))
-
-  (def dict-words
-    (vec (take 100 #?(:cljs (range) :clj (str/split-lines (slurp "/usr/share/dict/words"))))))
-
-  (def long-string
-    (str/join dict-words))
-
-  (def complex-thing
-    (-> (zipmap (range 100) (range 100))
-        (assoc 0 dict-words)
-        (assoc :words dict-words)
-        (assoc-in [:map :deep] (zipmap (range 100) (range 100)))
-        (assoc 1 long-string))))
-
-(def elided
-  :nextjournal/…)
-
-(defn drop+take-xf
-  "Takes a map with optional `:n` and `:offset` and returns a transducer that drops `:offset` and takes `:n`."
-  [{:keys [n offset]
-    :or {offset 0}}]
-  (cond-> (drop offset)
-    (pos-int? n)
-    (comp (take n))))
-
-#_(sequence (drop+take-xf {:n 10}) (range 100))
-#_(sequence (drop+take-xf {:n 10 :offset 10}) (range 100))
-#_(sequence (drop+take-xf {}) (range 9))
-
 
 ;; heavily inspired by code from Thomas Heller in shadow-cljs, see
 ;; https://github.com/thheller/shadow-cljs/blob/1708acb21bcdae244b50293d17633ce35a78a467/src/main/shadow/remote/runtime/obj_support.cljc#L118-L144
@@ -171,60 +144,7 @@
     (set? xs) (into (sorted-set-by resilient-comp) xs)
     :else xs))
 
-;; TODO: change `xs` to `value`.
-(defn fetch
-  "Returns the subset of `xs` identified by an `opts` map with a `:path` optionally limiting the number of elements returned by `:n` using `:offset`."
-  ([xs opts]
-   #_(prn :start-fetch xs :opts opts)
-   (fetch xs opts []))
-  ([xs {:as opts :keys [path n]} current-path]
-   #_(prn :xs xs :opts opts :current-path current-path)
-   (if (< (count current-path)
-          (count path))
-     (let [idx (first (drop (count current-path) path))]
-       (fetch (cond (or (map? xs) (set? xs)) (nth (seq (ensure-sorted xs)) idx)
-                    (associative? xs) (get xs idx)
-                    (sequential? xs) (nth xs idx))
-              opts
-              (conj current-path idx)))
-     (cond
-       (and (empty? path) (not n)) xs
-       (and (not= (count path)
-                  (count current-path))
-            (not (or (number? xs)
-                     (map-entry? xs)))
-            (or (associative? xs)
-                (sequential? xs)
-                (and (string? xs) (< elide-string-length (count xs))))) elided
-       (or (wrapped-value? xs)
-           (some->> xs viewer (contains? named-viewers))) xs
-       (map-entry? xs)
-       [(fetch (key xs) opts (conj current-path 0))
-        (fetch (val xs) opts (conj current-path 1))]
-       (or (map? xs)
-           (vector? xs)) (into (if (map? xs) [] (empty xs))
-                               (comp (drop+take-xf opts)
-                                     (map-indexed #(fetch %2 opts (conj current-path %1))))
-                               (ensure-sorted xs))
-       (or (sequential? xs)
-           (set? xs)) (sequence (comp (drop+take-xf opts)
-                                      (map-indexed #(fetch %2 opts (conj current-path %1))))
-                                (ensure-sorted xs))
-       (and (string? xs) (< elide-string-length (count xs))) (let [offset (opts :offset 0)] (subs xs offset (min (+ offset n) (count xs))))
-       :else xs))))
-
-#_(fetch {1 2} {:n 10 :path []})
-#_(fetch {[1 2 3]
-          [4 [5 6 7] 8] 3 4} {:n 10 :path [0 1]})
-#_(fetch '(1 2 (1 2 3) 4 5) {:n 10 :path [2]})
-#_(fetch [1 2 [1 2 3] 4 5] {:n 10 :path [2]})
-#_(fetch (range 200) {:n 20 :path [] :offset 60})
-#_(fetch {[1] [1] [2] [2]} {:n 10})
-#_(fetch [[1] [1]] {:n 10})
-#_(fetch (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}) {})
-#_(fetch {[1] [2]} {:n 10 :path [0]})
-#_(fetch [2 [1]] {:path []})
-#_(fetch (subs (slurp "/usr/share/dict/words") 0 10000) {:n 100 :offset 100})
+(declare with-viewer*)
 
 (defn select-viewer
   ([x] (select-viewer x default-viewers))
@@ -240,7 +160,7 @@
            (if (and pred (pred val))
              matching-viewer
              (recur (rest v)))
-           (throw (ex-info (str "cannot find matchting viewer") {:viewers viewers :x val}))))))))
+           (throw (ex-info (str "cannot find matchting viewer for `" (pr-str x) "`") {:viewers viewers :x val}))))))))
 
 #_(select-viewer {:one :two})
 #_(select-viewer [1 2 3])
@@ -248,13 +168,30 @@
 #_(select-viewer (clojure.java.io/file "notebooks"))
 #_(select-viewer (md "# Hello"))
 #_(select-viewer (html [:h1 "hi"]))
+#_(select-viewer (with-viewer* :elision {:remaining 10 :count 30 :offset 19}))
+
+(defn process-fns [viewers]
+  (into []
+        (map (fn [{:as viewer :keys [pred fn]}] (cond-> viewer
+                                                  (not (instance? Fn+Form pred))
+                                                  (update :pred form->fn+form)
+
+                                                  #?@(:clj [(not (instance? Form fn))
+                                                            (update :fn ->Form)]
+                                                      :cljs [(not (instance? Fn+Form fn))
+                                                             (update :fn form->fn+form)]))))
+        viewers))
+
+(defn process-default-viewers []
+  #?(:clj (process-fns default-viewers)
+     :cljs default-viewers))
 
 (defonce
   ^{:doc "atom containing a map of `:root` and per-namespace viewers."}
   !viewers
-  (#?(:clj atom :cljs ratom/atom) {:root default-viewers}))
+  (#?(:clj atom :cljs ratom/atom) {:root (process-default-viewers)}))
 
-#_(reset! !viewers {:root default-viewers})
+#_(reset! !viewers {:root (process-default-viewers)})
 
 (defn get-viewers
   "Returns all the viewers that apply in precendence of: optional local `viewers`, viewers set per `ns`, as well on the `:root`."
@@ -262,19 +199,12 @@
   ([ns expr-viewers]
    (vec (concat expr-viewers (@!viewers ns) (@!viewers :root)))))
 
-#?(:clj
-   (defn maybe->fn+form [x]
-     (cond-> x
-       (not (ifn? x)) form->fn+form)))
-
-(defn preds->fn+form [viewers]
-  (into [] #?(:clj (map #(update % :pred maybe->fn+form))) viewers))
-
 (defn closing-paren [{:as _viewer :keys [fn name]}]
-  (or (when (list? fn) (-> fn last :close))
+  (or (when (list? (:form fn)) (-> fn :form last :close))
       (when (= name :map) "}")))
 
 (defn bounded-count-opts [n xs]
+  (assert (number? n) "n must be a number?")
   (let [limit (+ n 10000)
         count (try (bounded-count limit xs)
                    (catch #?(:clj Exception :cljs js/Error) _
@@ -286,44 +216,86 @@
 #_(bounded-count-opts 20 (range))
 #_(bounded-count-opts 20 (range 123456))
 
-;; TODO: rename `xs` to `value`.
+(defn drop+take-xf
+  "Takes a map with optional `:n` and `:offset` and returns a transducer that drops `:offset` and takes `:n`."
+  [{:keys [n offset]
+    :or {offset 0}}]
+  (cond-> (drop offset)
+    (pos-int? n)
+    (comp (take n))))
+
+#_(sequence (drop+take-xf {:n 10}) (range 100))
+#_(sequence (drop+take-xf {:n 10 :offset 10}) (range 100))
+#_(sequence (drop+take-xf {}) (range 9))
+(declare with-viewer* assign-closing-parens)
+
 (defn describe
-  "Returns a description of a given value `xs`."
+  "Returns a subset of a given `value`."
   ([xs]
-   (describe {:viewers (get-viewers *ns* (viewers xs))} xs))
-  ([opts xs]
-   (let [{:as opts :keys [viewers path]} (merge {:path []} (update opts :viewers preds->fn+form))
-         {:as viewer :keys [fetch-opts]} (try (select-viewer xs viewers)
+   (describe xs {}))
+  ([xs opts]
+   (assign-closing-parens
+    (describe xs (merge {:path [] :viewers (process-fns (get-viewers *ns* (viewers xs)))} opts) [])))
+  ([xs opts current-path]
+   (let [{:as opts :keys [viewers path offset]} (merge {:offset 0} opts)
+         {:as viewer :keys [fetch-opts]} (try (select-viewer xs viewers) ;; TODO: respect `viewers` on `xs`
                                               (catch #?(:clj Exception :cljs js/Error) _ex
                                                 nil))
+         fetch-opts (merge fetch-opts (select-keys opts [:offset]))
          xs (value xs)]
-     #_(prn :xs xs :type (type xs) :viewer viewer)
-     (cond (and (empty? path) (nil? fetch-opts))
-           (cond-> {:path path} viewer (assoc :viewer viewer)) ;; fetch everything
+     #_(prn :xs xs :type (type xs) :path path :current-path current-path)
+     (merge {:path path}
+            (with-viewer* viewer
+              (cond (< (count current-path)
+                       (count path))
+                    (let [idx (first (drop (count current-path) path))]
+                      (describe (cond (or (map? xs) (set? xs)) (nth (seq (ensure-sorted xs)) idx)
+                                      (associative? xs) (get xs idx)
+                                      (sequential? xs) (nth xs idx))
+                                opts
+                                (conj current-path idx)))
 
-           (string? xs)
-           {:path path :count (count xs) :viewer viewer}
+                    (nil? (:n fetch-opts)) ;; opt out of description and return full value
+                    xs
 
-           (seqable? xs)
-           (let [count-opts  (if (counted? xs)
-                               {:count (count xs)}
-                               (bounded-count-opts (:n fetch-opts) xs))
-                 children (into []
-                                (comp (if (counted? xs) identity (drop+take-xf fetch-opts))
-                                      (map-indexed (fn [i x] (describe (-> opts
-                                                                           (update :path conj i)) x)))
-                                      (remove nil?))
-                                (ensure-sorted xs))]
-             (cond-> (merge {:path path} count-opts)
-               viewer (assoc :viewer viewer)
-               (seq children) (assoc :children children)))
+                    (string? xs)
+                    (-> (if (and (number? (:n fetch-opts)) (< (:n fetch-opts) (count xs)))
+                          (let [offset (opts :offset 0)
+                                total (count xs)
+                                new-offset (min (+ offset (:n fetch-opts)) total)
+                                remaining (- total new-offset)]
+                            (cond-> [(subs xs offset new-offset)]
+                              (pos? remaining) (conj (with-viewer* :elision {:path path :count total :offset new-offset :remaining remaining}))
+                              true wrap-value
+                              true (assoc :replace-path (conj path offset))))
+                          xs))
 
-           :else
-           {:viewer viewer}))))
+                    (and xs (seqable? xs))
+                    (let [count-opts  (if (counted? xs)
+                                        {:count (count xs)}
+                                        (bounded-count-opts (:n fetch-opts) xs))
+                          children (into []
+                                         (comp (if (number? (:n fetch-opts)) (drop+take-xf fetch-opts) identity)
+                                               (map-indexed (fn [i x] (describe x (-> opts
+                                                                                      (dissoc :offset)
+                                                                                      (update :path conj (+ i offset))) (conj current-path i))))
+                                               (remove nil?))
+                                         (ensure-sorted xs))
+                          {:keys [count]} count-opts
+                          offset (or (-> children peek :path peek) 0)]
+                      (cond-> children
+                        (or (not count) (< (inc offset) count))
 
+                        (conj (with-viewer* :elision
+                                (cond-> (assoc count-opts :offset (inc offset) :path path)
+                                  count (assoc :remaining (- count (inc offset))))))))
+
+                    :else ;; leaf value
+                    xs))))))
 
 (comment
-  (describe complex-thing)
+  (describe 123)
+  (-> (describe (range 100)) value peek)
   (describe {:hello [1 2 3]})
   (describe {:one [1 2 3] 1 2 3 4})
   (describe [1 2 [1 [2] 3] 4 5])
@@ -332,50 +304,87 @@
   (describe (map vector (range)))
   (describe (subs (slurp "/usr/share/dict/words") 0 1000))
   (describe (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
-  (describe (with-viewer [:h1 "hi"] :html))
-  (describe  {1 [2]}))
+  (describe (with-viewer* :html [:h1 "hi"]))
+  (describe (range))
+  (describe {1 [2]}))
+
+
+(defn desc->values
+  "Takes a `description` and returns its value. Inverse of `describe`. Mostly useful for debugging."
+  [description]
+  (let [x (value description)
+        viewer (viewer description)]
+    (if (= viewer :elision)
+      '…
+      (cond->> x
+        (vector? x)
+        (into (case (-> description viewer :name) :map {} [])
+              (map desc->values))))))
+
+#_(desc->values (describe [1 [2 {:a :b} 2] 3 (range 100)]))
+
+
+(defn path-to-value [path]
+  (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
+
+
+(defn merge-descriptions [root more]
+  (update-in root (path-to-value (:path more))
+             (fn [value]
+               (let [{:keys [offset path]} (-> value peek :nextjournal/value)
+                     path-from-value (conj path offset)
+                     path-from-more (or (:replace-path more) ;; string case, TODO find a better way to unify
+                                        (-> more :nextjournal/value first :path))]
+                 (when (not= path-from-value path-from-more)
+                   (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more})))
+                 (into (pop value) (:nextjournal/value more))))))
+
+(comment ;; test cases for merge-descriptions, TODO: simplify
+  (let [value (range 30)
+        desc (describe value)
+        path []
+        elision (peek (get-in desc (path-to-value path)))
+        more (describe value (:nextjournal/value elision))]
+    (merge-descriptions desc more))
+
+  (let [value [(range 30)]
+        desc (describe value)
+        path [0]
+        elision (peek (get-in desc (path-to-value path)))
+        more (describe value (:nextjournal/value elision))]
+    (merge-descriptions desc more))
+
+  (let [value (str/join (map #(str/join (repeat 70 %)) ["a" "b" #_#_ "c" "d"]))
+        desc (describe value)
+        path []
+        elision (peek (get-in desc (path-to-value path)))
+        more (describe value (:nextjournal/value elision))]
+    (merge-descriptions desc more)))
 
 (defn assign-closing-parens
   ([node] (assign-closing-parens {} node))
-  ([{:as ctx :keys [closing-parens]} {:as node :keys [children viewer]}]
+  ([{:as ctx :keys [closing-parens]} {:as node :nextjournal/keys [value viewer]}]
    (let [closing (closing-paren viewer)
-         defer-closing? (and (seq children)
-                             (or (-> children last :viewer closing-paren)
-                                 (and (= :map-entry (-> children last :viewer :name))
-                                      (-> children last :children last :viewer closing-paren))))]
+         non-leaf? (vector? value) ;; TODO: what's the best way to detect non-leaf?
+         defer-closing? (and non-leaf?
+                             (or (-> value last :nextjournal/viewer closing-paren) ;; the last element can carry parens
+                                 (and (= :map-entry (-> value last :nextjournal/viewer :name)) ;; the last element is a map entry whose value can carry parens
+                                      (-> value last :nextjournal/value last :nextjournal/viewer closing-paren))))]
      (cond-> node
-       (and closing (not defer-closing?)) (assoc-in [:viewer :closing-parens] (cons closing closing-parens))
-       (seq children) (update :children (fn [cs]
-                                          (into []
-                                                (map-indexed (fn [i x]
-                                                               (assign-closing-parens (if (and defer-closing? (= (dec (count cs)) i))
-                                                                                        (update ctx :closing-parens #(cons closing %))
-                                                                                        (dissoc ctx :closing-parens))
-                                                                                      x)))
-                                                cs)))))))
+       (and closing (not defer-closing?)) (assoc-in [:nextjournal/viewer :closing-parens] (cons closing closing-parens))
+       non-leaf? (update :nextjournal/value
+                         (fn [xs]
+                           (into []
+                                 (map-indexed (fn [i x]
+                                                (assign-closing-parens (if (and defer-closing? (= (dec (count xs)) i))
+                                                                         (update ctx :closing-parens #(cond->> % closing (cons closing)))
+                                                                         (dissoc ctx :closing-parens))
+                                                                       x)))
+                                 xs)))))))
+
 
 (defn closing-parens [path->info path]
   (get-in path->info [path :viewer :closing-parens]))
-
-(defn extract-info [{:as desc :keys [path]}]
-  ;; TODO: drop `:fetch-opts` key once we read it from `:viewer` in frontend
-  (-> desc
-      (select-keys [:count :viewer])
-      (assoc :fetch-opts (-> desc
-                             (get-in [:viewer :fetch-opts])
-                             (assoc :path path)))))
-
-(defn path->info [desc]
-  (into {} (map (juxt :path extract-info)) (tree-seq (some-fn sequential? map?) :children (assign-closing-parens desc))))
-
-#_(path->info (describe [1 [2] 3]))
-#_(path->info (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
-
-#_
-(let [x {2 [1]}
-      desc (describe x)
-      opts (map (comp :fetch-opts second) (path->info desc))]
-  (into {} (map #(vector (:path %) (fetch x %))) opts))
 
 
 #?(:clj
@@ -395,7 +404,7 @@
      (assert (or (#{:root} scope)
                  (instance? clojure.lang.Namespace scope)
                  (var? scope)))
-     (let [viewers (preds->fn+form viewers)]
+     (let [viewers (process-fns viewers)]
        (swap! !viewers assoc scope viewers)
        (with-viewer* :eval! `'(v/set-viewers! ~(datafy-scope scope) ~viewers)))))
 
@@ -443,7 +452,6 @@
 
 #_(->> "x^2" (with-viewer* :latex) (with-viewers* [{:name :latex :fn :mathjax}]))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convience api
 (def md        (partial with-viewer* :markdown))
@@ -459,9 +467,6 @@
   (with-viewer* :code (if (string? x) x (with-out-str (pprint/pprint x)))))
 
 #_(code '(+ 1 2))
-
-(defn table [xs]
-  (with-viewer* :table (->table xs)))
 
 (defn exception [e]
   (let [{:keys [via trace]} e]
@@ -486,5 +491,7 @@
                        [:td.text-right.pr-6 line]
                        [:td.py-1.pr-6 #?(:clj (demunge (pr-str call)) :cljs call)]]))
                trace)]]]])))
-
 #_(nextjournal.clerk/show! "notebooks/boom.clj")
+
+(defn table [xs]
+  (with-viewer* :table (->table xs)))
