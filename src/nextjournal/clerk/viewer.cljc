@@ -14,7 +14,7 @@
     ((:fn this) x y)))
 
 #?(:clj
-   (defn form->fn+
+   (defn form->fn+form
      [form]
      (map->Fn+Form {:form form :fn (eval form)})))
 
@@ -23,15 +23,15 @@
      (.write w (str "#function+ " (pr-str `~(:form v))))))
 
 #_(binding [*data-readers* {'function+ form->fn+form}]
-    (read-string (pr-str (form->fn+ '(fn [x] x)))))
+    (read-string (pr-str (form->fn+form '(fn [x] x)))))
 #_(binding [*data-readers* {'function+ form->fn+form}]
-    (read-string (pr-str (form->fn+ 'number?))))
+    (read-string (pr-str (form->fn+form 'number?))))
 
 (comment
   (def num? (form->fn+form 'number?))
   (num? 42)
-  (:form ident)
-  (pr-str ident))
+  (:form num?)
+  (pr-str num?))
 
 ;; TODO: think about naming this to indicate it does nothing if the value is already wrapped.
 (defn wrap-value
@@ -263,12 +263,12 @@
    (vec (concat expr-viewers (@!viewers ns) (@!viewers :root)))))
 
 #?(:clj
-   (defn maybe->fn+ [x]
+   (defn maybe->fn+form [x]
      (cond-> x
-       (not (fn? x)) form->fn+)))
+       (not (ifn? x)) form->fn+form)))
 
-(defn preds->fn+ [viewers]
-  (into [] #?(:clj (map #(update % :pred maybe->fn+))) viewers))
+(defn preds->fn+form [viewers]
+  (into [] #?(:clj (map #(update % :pred maybe->fn+form))) viewers))
 
 ;; TODO: rename `xs` to `value`.
 (defn describe
@@ -276,7 +276,7 @@
   ([xs]
    (describe {:viewers (get-viewers *ns* (viewers xs))} xs))
   ([opts xs]
-   (let [{:as opts :keys [viewers path]} (merge {:path []} (update opts :viewers preds->fn+))
+   (let [{:as opts :keys [viewers path]} (merge {:path []} (update opts :viewers preds->fn+form))
          {:as viewer :keys [fetch-opts]} (try (select-viewer xs viewers)
                                               (catch #?(:clj Exception :cljs js/Error) _ex
                                                 nil))
@@ -362,7 +362,7 @@
      (assert (or (#{:root} scope)
                  (instance? clojure.lang.Namespace scope)
                  (var? scope)))
-     (let [viewers (preds->fn+ viewers)]
+     (let [viewers (preds->fn+form viewers)]
        (swap! !viewers assoc scope viewers)
        (with-viewer* :eval! `'(v/set-viewers! ~(datafy-scope scope) ~viewers)))))
 
