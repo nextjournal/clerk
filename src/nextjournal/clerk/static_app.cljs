@@ -13,9 +13,9 @@
   [:<>
    [:div.flex.flex-col.items-center
     [:div.mt-8.flex.items-center.text-xs.w-full.max-w-prose.px-8.sans-serif.text-gray-400
-     [:a.hover:text-indigo-500 {:href "/build/"} "Back to index"]
+     [:a.hover:text-indigo-500 {:href (rfe/href ::index)} "Back to index"]
      [:span.mx-1 "/"]
-     [:a.hover:text-indigo-500 {:href "/build/"} "Generated with Clerk."]]]
+     [:a.hover:text-indigo-500 {:href "https://github.com/nextjournal/clerk"} "Generated with Clerk."]]]
    [sci-viewer/root]])
 
 (defn index [_]
