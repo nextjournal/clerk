@@ -209,7 +209,7 @@
 
 (defmacro with-viewer
   [viewer x]
-  (let [viewer# (list 'quote viewer)]
+  (let [viewer# (v/->Form viewer)]
     `(v/with-viewer* ~viewer# ~x)))
 
 #_(macroexpand '(with-viewer #(v/html [:div %]) 1))
@@ -227,9 +227,6 @@
   ([scope viewers] (v/set-viewers!* scope viewers)))
 
 #_(set-viewers! [])
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; static builds
 
 (defn file->viewer
   "Evaluates the given `file` and returns it's viewer representation."
@@ -270,6 +267,9 @@
 #_(serve! {:browse? true})
 #_(serve! {:watch-paths ["src" "notebooks"]})
 #_(serve! {:watch-paths ["src" "notebooks"] :show-filter-fn #(clojure.string/starts-with? % "notebooks")})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; static builds
 
 (def clerk-docs
   (into []
