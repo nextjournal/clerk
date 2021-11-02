@@ -274,14 +274,15 @@
 (def clerk-docs
   (into []
         (map #(str "notebooks/" % ".clj"))
-        ["hello"
-         "rule_30"
-         "elements"
-         "onwards"
+        ["elements"
+         "hello"
          "how_clerk_works"
+         "onwards"
          "pagination"
          "paren_soup"
+         #_"readme" ;; TODO: add back when we have Clojure cells in md
          "recursive"
+         "rule_30"
          "viewer_api"
          "viewers/html"
          "viewers/markdown"
@@ -289,7 +290,6 @@
          "viewers/table"
          "viewers/tex"
          "viewers/vega"]))
-
 
 (defn build-static-app!
   "Builds a static html app of the notebooks at `paths`."
