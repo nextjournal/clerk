@@ -180,7 +180,7 @@
                       "cursor-pointer bg-indigo-200 hover:bg-indigo-300"
                       "text-gray-400")
              :on-click #(when (fn? fetch-fn)
-                          (fetch-fn fetch-opts))} remaining (when unbounded? "+") (if (fn? fetch-fn) " more…" " elided")])]))
+                          (fetch-fn fetch-opts))} remaining (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")])]))
 
 (defn map-viewer [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
   (html (let [expanded? (@!expanded-at path)]
