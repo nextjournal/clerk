@@ -1,4 +1,7 @@
 ;; # Pagination
+(ns notebooks.pagination
+  (:require [babashka.fs :as fs]))
+
 #_(nextjournal.clerk/show! "notebooks/pagination.clj")
 
 (range)
@@ -6,7 +9,10 @@
 (def notebooks
   (clojure.java.io/file "notebooks"))
 
-(subs (slurp "/usr/share/dict/words") 0 10100)
+(def words-path "/usr/share/dict/words")
+
+(when-let [words (and (fs/exists? words-path) (slurp words-path))]
+  (subs words 0 10100))
 
 [notebooks]
 

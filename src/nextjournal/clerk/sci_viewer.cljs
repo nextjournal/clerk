@@ -175,12 +175,12 @@
   (html [view-context/consume :fetch-fn
          (fn [fetch-fn]
            [:span.sans-serif.relative.whitespace-nowrap
-            {:style {:border-radius 2 :padding "1px 3px" :font-size 11 :top -1}
+            {:style {:border-radius 2 :padding (when (fn? fetch-fn) "1px 3px") :font-size 11 :top -1}
              :class (if (fn? fetch-fn)
                       "cursor-pointer bg-indigo-200 hover:bg-indigo-300"
-                      "bg-gray-200")
+                      "text-gray-400")
              :on-click #(when (fn? fetch-fn)
-                          (fetch-fn fetch-opts))} remaining (when unbounded? "+") " more…"])]))
+                          (fetch-fn fetch-opts))} remaining (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")])]))
 
 (defn map-viewer [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
   (html (let [expanded? (@!expanded-at path)]

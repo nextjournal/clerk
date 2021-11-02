@@ -49,6 +49,7 @@
                             expression-2)))
 
 ;; ## 🚀 Extensibility
+#_ ;; FIXME
 (clerk/with-viewer #(v/html [:div "Greetings to " [:strong %] "!"])
   "James Maxwell Clerk")
 
@@ -58,8 +59,8 @@
 
 
 ^::clerk/no-cache
-(clerk/with-viewers [{:pred 'number? :fn #(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                                      :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}]
+(clerk/with-viewers [{:pred number? :fn #(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                                     :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}]
   (take 10 (repeatedly #(rand-int 2))))
 
 (clerk/with-viewers

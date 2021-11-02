@@ -20,6 +20,10 @@
                                 (clojure "-T:build upload-to-cas+rewrite-sha :resource app.css"))
                       :depends [yarn-install]}
 
+         build:static-app {:doc "Builds a Static App with default Notebooks"
+                           :depends [release:js release:css]
+                           :task (clojure "-X:demo nextjournal.clerk/build-static-app!")}
+
          release:jar {:doc "Builds the jar"
                       :task (clojure "-T:build jar")}
 

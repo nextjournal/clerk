@@ -209,7 +209,7 @@
 
 (defmacro with-viewer
   [viewer x]
-  (let [viewer# (list 'quote viewer)]
+  (let [viewer# (v/->Form viewer)]
     `(v/with-viewer* ~viewer# ~x)))
 
 #_(macroexpand '(with-viewer #(v/html [:div %]) 1))
@@ -227,9 +227,6 @@
   ([scope viewers] (v/set-viewers!* scope viewers)))
 
 #_(set-viewers! [])
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; static builds
 
 (defn file->viewer
   "Evaluates the given `file` and returns it's viewer representation."
@@ -271,17 +268,21 @@
 #_(serve! {:watch-paths ["src" "notebooks"]})
 #_(serve! {:watch-paths ["src" "notebooks"] :show-filter-fn #(clojure.string/starts-with? % "notebooks")})
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; static builds
+
 (def clerk-docs
   (into []
         (map #(str "notebooks/" % ".clj"))
-        ["hello"
-         "rule_30"
-         "elements"
-         "onwards"
+        ["elements"
+         "hello"
          "how_clerk_works"
+         "onwards"
          "pagination"
          "paren_soup"
+         #_"readme" ;; TODO: add back when we have Clojure cells in md
          "recursive"
+         "rule_30"
          "viewer_api"
          "viewers/html"
          "viewers/markdown"
@@ -289,7 +290,6 @@
          "viewers/table"
          "viewers/tex"
          "viewers/vega"]))
-
 
 (defn build-static-app!
   "Builds a static html app of the notebooks at `paths`."

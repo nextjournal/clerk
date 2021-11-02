@@ -45,7 +45,12 @@
                                  (= 'resource->static-url (-> % z/right z/sexpr))))
       (z/find-value z/next resource)
       z/right
-      (z/edit (constantly url))
+      (z/edit (fn [old-url]
+                (println "Replacing resource: " resource "\n"
+                         (if (= old-url url)
+                           (str "url " old-url " is up-to-date.")
+                           (str "updated from " old-url " to " url ".")))
+                url))
       z/root-string))
 
 (defn upload! [opts file] (:url (cas/upload! opts file)))
