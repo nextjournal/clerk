@@ -13,7 +13,7 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@master
         with:
-          project_id: "nextjournal"
+          project_id: "nextjournal-com"
           service_account_key: ${{ secrets.GCLOUD_SERVICE_KEY }}
           export_default_credentials: true
 
