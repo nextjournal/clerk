@@ -6,9 +6,7 @@
 
 ;; ## 🧩 Built-in Viewers
 ;; The default set of viewers are able to render Clojure data.
-{:hello "world 👋" :num [1 2 3]}
-
-
+{:hello "world 👋" :tacos (map (comp #(map (constantly '🌮) %) range) (range 1 100))}
 
 ;; And can handle lazy infinte sequences, only partially loading data by default with the ability to load more data on request.
 (range)
