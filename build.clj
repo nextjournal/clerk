@@ -48,7 +48,7 @@
       (z/edit (fn [old-url]
                 (println "Replacing resource: " resource "\n"
                          (if (= old-url url)
-                           (str "url" old-url " is up-to-date.")
+                           (str "url " old-url " is up-to-date.")
                            (str "updated from " old-url " to " url ".")))
                 url))
       z/root-string))
