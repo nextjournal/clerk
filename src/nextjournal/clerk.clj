@@ -234,11 +234,7 @@
 (defn file->viewer
   "Evaluates the given `file` and returns it's viewer representation."
   ([file] (file->viewer {:inline-results? true} file))
-  ([opts file]
-   (try (view/doc->viewer opts (eval-file file))
-        (catch Throwable e
-          (println "Can't build notebook at " file "\n" (ex-message e))
-          nil))))
+  ([opts file] (view/doc->viewer opts (eval-file file))))
 
 #_(file->viewer "notebooks/rule_30.clj")
 
@@ -301,7 +297,7 @@
     :or {paths clerk-docs
          out-path "public/build"
          live-js? view/live-js?}}]
-  (let [docs (into {} (keep (fn [path] (when-some [doc (file->viewer path)] [path doc]))) paths)
+  (let [docs (into {} (map (fn [path] {path (file->viewer path)}) paths))
         out-html (str out-path fs/file-separator "index.html")]
     (when-not (fs/exists? (fs/parent out-html))
       (fs/create-dirs (fs/parent out-html)))
