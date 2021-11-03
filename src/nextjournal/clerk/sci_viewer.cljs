@@ -2,7 +2,6 @@
   (:require [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.string :as str]
-            [devtools]
             [edamame.core :as edamame]
             [goog.object]
             [goog.string :as gstring]
