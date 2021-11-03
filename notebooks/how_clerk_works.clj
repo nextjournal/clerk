@@ -59,6 +59,6 @@
   (let [_run-at #_(java.util.Date.) #inst "2021-05-20T08:28:29.445-00:00"
         ds (next.jdbc/get-datasource {:dbtype "sqlite" :dbname "chinook.db"})]
     (with-open [conn (next.jdbc/get-connection ds)]
-      (nextjournal.clerk/table (next.jdbc/execute! conn ["SELECT AlbumId, Bytes, Name, TrackID, UnitPrice FROM tracks"])))))
+      (next.jdbc/execute! conn ["SELECT AlbumId, Bytes, Name, TrackID, UnitPrice FROM tracks"]))))
 
 #_(nextjournal.clerk/show! "notebooks/how_clerk_works.clj")
