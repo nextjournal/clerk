@@ -8,7 +8,7 @@
             [rewrite-clj.zip :as z]))
 
 (def lib 'io.github.nextjournal/clerk)
-(def version (format "0.1.%s" (b/git-count-revs nil)))
+(def version (format "0.2.%s" (b/git-count-revs nil)))
 (def class-dir "target/classes")
 (def basis (b/create-basis {:project "deps.edn"}))
 (def jar-file (format "target/%s-%s.jar" (name lib) version))

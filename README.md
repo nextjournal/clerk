@@ -8,7 +8,7 @@ Clerk takes a Clojure namespace and turns it into a notebook:
 
 ## Rationale
 
-Computational notebooks allow arguing from evidence by mixing prose with executable code. For a good overview of problems users encounter in traditional notebooks like Jupyter, see [I don't like notebooks](https://www.youtube.com/watch?v=7jiPeIFXb6U) and [What’s Wrong with Computational Notebooks? Pain Points, Needs, and Design Opportunities](https://web.eecs.utk.edu/\~azh/pubs/Chattopadhyay2020CHI_NotebookPainpoints.pdf). 
+Computational notebooks allow arguing from evidence by mixing prose with executable code. For a good overview of problems users encounter in traditional notebooks like Jupyter, see [I don't like notebooks](https://www.youtube.com/watch?v=7jiPeIFXb6U) and [What’s Wrong with Computational Notebooks? Pain Points, Needs, and Design Opportunities](https://web.eecs.utk.edu/\~azh/pubs/Chattopadhyay2020CHI_NotebookPainpoints.pdf).
 
 Specifically Clerk wants to address the following problems:
 
@@ -24,12 +24,15 @@ Clerk is a notebook library for Clojure that aims to address these problems by d
 * no out-of-order execution: Clerk notebooks always evaluate from top to bottom. Clerk builds a dependency graph of Clojure vars and only recomputes the needed changes to keep the feedback loop fast.
 * no external process: Clerk runs inside your Clojure process, giving Clerk access to all code on the classpath.
 
+## Status
+ALPHA, expect breaking changes.
+
 ## Using Clerk
 
 To use Clerk in your project, add the following dependency to your `deps.edn`:
 
 ```edn
-{:deps {io.github.nextjournal/clerk {:git/sha "c32936466aa2fedf970ec407d26fcc61485fdfd5"}}}
+{:deps {io.github.nextjournal/clerk {:mvn/version "0.2.209"}}}
 ```
 
 Require and start Clerk as part of your system start, e.g. in `user.clj`:

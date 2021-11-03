@@ -56,10 +56,10 @@
 ;; - [x] Debug & fix extra calls to inspect / rendering
 ;; - [x] Setup up static builds
 ;; - [x] Fix [link](#) style when code cell uses markdown viewer
-;; - [ ] Do pass over README
+;; - [x] Do pass over README
 ;; - [x] Add CHANGELOG
-;; - [ ] Release 0.2
-;; - [ ] Make github repo public
+;; - [x] Release 0.2
+;; - [x] Make github repo public
 ;; ## 🛠 Up Next
 ;; - [ ] Let consumers (SICMUitls) extend sci ns by putting it into an atom
 ;; - [ ] Support setting `:nextjournal.clerk/no-cache` on namespaces as well
