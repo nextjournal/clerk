@@ -415,22 +415,6 @@
 #_(registration? (set-viewers! []))
 #_(nextjournal.clerk/show! "notebooks/viewers/vega.clj")
 
-
-
-
-;; TODO: hack for talk to make sql result display as table, propery support SQL results as tables and remove
-(defn ->table
-  "converts a sequence of maps into a table with the first row containing the column names."
-  [xs]
-  (if (map? (first xs))
-    (let [cols (sort (keys (first xs)))]
-      (into [cols]
-            (map (fn [row] (map #(get row %) cols)))
-            xs))
-    xs))
-
-#_(->table [{:a 1 :b 2 :c 3} {:a 3 :b 0 :c 2}])
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public api
 
@@ -494,4 +478,4 @@
 #_(nextjournal.clerk/show! "notebooks/boom.clj")
 
 (defn table [xs]
-  (with-viewer* :table (->table xs)))
+  (with-viewer* :table xs))
