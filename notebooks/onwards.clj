@@ -36,7 +36,6 @@
 ;; - [x] Let the viewer opt into pagination
 ;; - [x] A browser refresh is currently needed to reset a viewer override like in `notebooks/rule_30.clj`, otherwise it will carry over the viewer override to other notebooks that do no specify an override
 ;; - [x] Evaluation error messages are poorly formatted
-;; - [ ] Make stacktraces clickable
 ;; - [x] `first-generation` in `notebooks/rule_30.clj` renders incorrectly because of pagination type coercion from vector to list
 ;; - [x] `(def r (range 100))` in `notebooks/pagination.clj` shows incorrect `count`
 ;; - [x] Printing of very large values
@@ -55,19 +54,21 @@
 ;; - [x] Fix error when describing Datomic entities
 ;; - [x] Limit description to make large datasets work
 ;; - [x] Debug & fix extra calls to inspect / rendering
-;; - [ ] Setup up static builds
+;; - [x] Setup up static builds
 ;; - [ ] Do pass over README
 ;; - [ ] Add CHANGELOG
 ;; - [ ] Release 0.2
 ;; - [ ] Make github repo public
 ;; ## 🛠 Up Next
+;; - [ ] Fix [link](#) style
 ;; - [ ] Let consumers (SICMUitls) extend sci ns by putting it into an atom
 ;; - [ ] Support setting `:nextjournal.clerk/no-cache` on namespaces as well
 ;; - [ ] Support setting `:nextjournal.clerk/cache-dir` on namespace
 ;; - [ ] Allow to control viewer expansion state programmatically
 ;; - [ ] Datafy + Nav, Metadata viewer via `:transform-fn`
 ;; - [ ] Persist viewer expansion state across reloads
-;; - [ ] Viewer errors are not displayed correctly
+;; - [ ] Improve feedback when viewer errors
+;; - [ ] Make stacktraces clickable
 ;; - [ ] Build static build on CI
 ;; - [ ] Hook up new table viewer
 ;; - [ ] Add CAS storage option for static builds
