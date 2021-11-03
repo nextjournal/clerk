@@ -52,7 +52,7 @@
   (let [{:keys [data path-params] :as match} @match
         {:keys [view]} data]
     [:div.flex.h-screen.bg-white
-     [:div.h-screen.overflow-y-auto.flex-auto.devcards-content.bg-gray-50
+     [:div.h-screen.overflow-y-auto.flex-auto
       (if view
         [view (merge data path-params)]
         [:pre (pr-str match)])]]))
