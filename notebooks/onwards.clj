@@ -56,7 +56,7 @@
 ;; - [x] Debug & fix extra calls to inspect / rendering
 ;; - [x] Setup up static builds
 ;; - [ ] Do pass over README
-;; - [ ] Add CHANGELOG
+;; - [x] Add CHANGELOG
 ;; - [ ] Release 0.2
 ;; - [ ] Make github repo public
 ;; ## 🛠 Up Next
