@@ -32,7 +32,7 @@
                     [:span.text-md.monospace.whitespace-nowrap path]
                     [:svg.h-4.w-4 {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke "currentColor"}
                      [:path {:stroke-linecap "round" :stroke-linejoin "round" :stroke-width "2" :d "M9 5l7 7-7 7"}]]]]))
-           (keys @path->doc))]
+           (sort (keys @path->doc)))]
     [:div.mt-4.text-xs.text-gray-400.sans-serif.px-8
      [:a.hover:text-indigo-600
       {:href "https://github.com/nextjournal/clerk"}
