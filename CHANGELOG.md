@@ -1,11 +1,11 @@
 # Changelog
 
-Changes can be: 
+Changes can be:
 * 🌟⭐️💫 features
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
-## Unreleased
+## 0.2.209 (2021-11-03)
 
 * 🌟 Enable lazy loading for description and combine with `fetch`. This let's Clerk handle moderately sized datasets without breaking a sweat.
 * ⭐️ Add `clerk/serve!` function as main entry point, this allows pinning of notebooks
