@@ -153,7 +153,9 @@
      (cond (keyword? selected-viewer)
            (if (named-viewers selected-viewer)
              selected-viewer
-             (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers}))))
+             (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
+           (instance? Form selected-viewer)
+           selected-viewer)
      (let [val (value x)]
        (loop [v viewers]
          (if-let [{:as matching-viewer :keys [pred]} (first v)]
@@ -169,6 +171,7 @@
 #_(select-viewer (md "# Hello"))
 #_(select-viewer (html [:h1 "hi"]))
 #_(select-viewer (with-viewer* :elision {:remaining 10 :count 30 :offset 19}))
+#_(select-viewer (with-viewer* (->Form '(fn [name] (html [:<> "Hello " name]))) "James"))
 
 (defn process-fns [viewers]
   (into []
@@ -306,7 +309,8 @@
   (describe (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
   (describe (with-viewer* :html [:h1 "hi"]))
   (describe (range))
-  (describe {1 [2]}))
+  (describe {1 [2]})
+  (describe (with-viewer* (->Form '(fn [name] (html [:<> "Hello " name]))) "James")))
 
 
 (defn desc->values

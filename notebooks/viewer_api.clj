@@ -49,14 +49,11 @@
                             expression-2)))
 
 ;; ## 🚀 Extensibility
-#_ ;; FIXME
 (clerk/with-viewer #(v/html [:div "Greetings to " [:strong %] "!"])
   "James Maxwell Clerk")
 
-
 (clerk/with-viewers [{:pred number? :fn #(v/html [:div.inline-block [(keyword (str "h" %)) (str "Heading " %)]])}]
   [1 2 3 4 5])
-
 
 ^::clerk/no-cache
 (clerk/with-viewers [{:pred number? :fn #(v/html [:div.inline-block {:style {:width 16 :height 16}
