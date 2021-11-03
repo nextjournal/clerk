@@ -1,5 +1,6 @@
 # Clerk
 ### Local-First Notebooks for Clojure
+[![Clojars Project](https://img.shields.io/clojars/v/io.github.nextjournal/clerk.svg)](https://clojars.org/io.github.nextjournal/clerk)
 
 Clerk takes a Clojure namespace and turns it into a notebook:
 
@@ -7,7 +8,9 @@ Clerk takes a Clojure namespace and turns it into a notebook:
 
 ## Rationale
 
-Computational notebooks allow arguing from evidence by mixing prose with executable code. For a good overview of problems users encounter in traditional notebooks like Jupyter, see [I don't like notebooks](https://www.youtube.com/watch?v=7jiPeIFXb6U) and [What’s Wrong with Computational Notebooks? Pain Points, Needs, and Design Opportunities](https://web.eecs.utk.edu/\~azh/pubs/Chattopadhyay2020CHI_NotebookPainpoints.pdf). Specifically Clerk wants to address the following problems:
+Computational notebooks allow arguing from evidence by mixing prose with executable code. For a good overview of problems users encounter in traditional notebooks like Jupyter, see [I don't like notebooks](https://www.youtube.com/watch?v=7jiPeIFXb6U) and [What’s Wrong with Computational Notebooks? Pain Points, Needs, and Design Opportunities](https://web.eecs.utk.edu/\~azh/pubs/Chattopadhyay2020CHI_NotebookPainpoints.pdf). 
+
+Specifically Clerk wants to address the following problems:
 
 * Less helpful than my editor
 * Notebook code being hard to reuse
@@ -63,11 +66,4 @@ The will start everything needed to develop Clerk. You can connect your favorite
 
 ## Known Issues
 
-See [notebooks/onwards.clj](https://github.com/nextjournal/clerk/blob/main/notebooks/onwards.clj). Most of these should be fixed before the release
-
-## README TODO
-
-Still need to explain these things
-
-* Viewer API
-* `:nextjournal.clerk/no-cache`
+See [notebooks/onwards.clj](https://github.com/nextjournal/clerk/blob/main/notebooks/onwards.clj).
