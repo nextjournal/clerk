@@ -80,7 +80,7 @@
   (html
    (into [:div.flex.flex-col.items-center.viewer-notebook]
          (map (fn [x]
-                (let [viewer (viewer/viewer x)
+                (let [viewer (:viewer (viewer/value x) (viewer/viewer x))
                       width (:nextjournal/width x)
                       blob-id (:blob-id (viewer/value x))]
                   [:div {:class ["viewer"

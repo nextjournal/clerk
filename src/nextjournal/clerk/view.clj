@@ -40,14 +40,8 @@
 
 #_(->edn [:vec (with-meta [] {'clojure.core.protocols/datafy (fn [x] x)}) :var #'->edn])
 
-(defn described-result [ns {:keys [result blob-id]}]
-  (v/with-viewer* :clerk/result {:blob-id blob-id}
-    #_
-    (-> (v/describe result {:viewers (v/get-viewers ns (v/viewers result))})
-        (assoc :blob-id blob-id))))
-
-#_(v/with-viewers (range 3) [{:pred number? :fn '(fn [x] (v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                                                     :class (if (pos? x) "bg-black" "bg-white border-solid border-2 border-black")}]))}])
+(defn described-result [_ns {:keys [result blob-id]}]
+  (v/with-viewer* :clerk/result {:blob-id blob-id :viewer (v/viewer result)}))
 
 (defn inline-result [ns {:keys [result]}]
   (v/with-viewer* :clerk/inline-result
