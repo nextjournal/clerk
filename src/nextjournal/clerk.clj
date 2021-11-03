@@ -274,14 +274,12 @@
 (def clerk-docs
   (into []
         (map #(str "notebooks/" % ".clj"))
-        ["elements"
-         "hello"
+        ["hello"
          "how_clerk_works"
          "onwards"
          "pagination"
          "paren_soup"
          #_"readme" ;; TODO: add back when we have Clojure cells in md
-         "recursive"
          "rule_30"
          "viewer_api"
          "viewers/html"
@@ -318,8 +316,8 @@
 
   (beholder/stop watcher)
 
-  (show! "notebooks/elements.clj")
   (show! "notebooks/rule_30.clj")
+  (show! "notebooks/viewer_api.clj")
   (show! "notebooks/onwards.clj")
   (show! "notebooks/pagination.clj")
   (show! "notebooks/how_clerk_works.clj")
