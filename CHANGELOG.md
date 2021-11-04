@@ -5,6 +5,11 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
+## 0.2.214 (2021-11-04)
+
+* 💫 Support setting `:nextjournal.clerk/no-cache` on namespaces
+* 🐜 Fix for unbound top-level forms not picking up dependency changes
+
 ## 0.2.209 (2021-11-03)
 
 * 🌟 Enable lazy loading for description and combine with `fetch`. This let's Clerk handle moderately sized datasets without breaking a sweat.
