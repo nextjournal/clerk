@@ -1,5 +1,5 @@
 ;; # Hashing Things!!!!
-(ns nextjournal.clerk.hashing
+(ns ^:nextjournal.clerk/no-cache nextjournal.clerk.hashing
   (:refer-clojure :exclude [hash read-string])
   (:require [babashka.fs :as fs]
             [clojure.java.classpath :as cp]
@@ -24,8 +24,10 @@
     (second form)))
 
 (defn no-cache? [form]
-  (-> (if-let [vn (var-name form)] vn form) meta :nextjournal.clerk/no-cache boolean))
+  (or (-> (if-let [vn (var-name form)] vn form) meta :nextjournal.clerk/no-cache boolean)
+      (-> *ns* meta :nextjournal.clerk/no-cache boolean)))
 
+#_(no-cache? '(rand-int 10))
 
 (defn sha1-base58 [s]
   (-> s digest/sha1 multihash/base58))
