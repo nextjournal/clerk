@@ -66,6 +66,7 @@
 #_(analyze '(v/md "It's **markdown**!"))
 #_(analyze '(in-ns 'user))
 #_(analyze '(do (ns foo)))
+#_(analyze '(def my-inc inc))
 
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
@@ -127,14 +128,12 @@
                        {:keys [var deps form ns-effect?]} (analyze form)]
                    (when ns-effect?
                      (eval form))
-                   (cond-> acc
-                     var
-                     (assoc-in [:var->hash var] {:file file
-                                                 :form form
-                                                 :deps deps})
-                     (and var (seq deps))
+                   (cond-> (assoc-in acc [:var->hash (if var var form)] {:file file
+                                                                         :form form
+                                                                         :deps deps})
+                     (seq deps)
                      (#(reduce (fn [{:as acc :keys [graph]} dep]
-                                 (try (assoc acc :graph (dep/depend graph var dep))
+                                 (try (assoc acc :graph (dep/depend graph (if var var form) dep))
                                       (catch Exception e
                                         (when-not (-> e ex-data :reason #{::dep/circular-dependency})
                                           (throw e))
@@ -154,6 +153,7 @@
 #_(:graph (analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/elements.clj"))
 #_(analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/rule_30.clj")
 #_(analyze-file {:graph (dep/graph)} "notebooks/recursive.clj")
+#_(analyze-file {:graph (dep/graph)} "notebooks/hello.clj")
 
 (defn unhashed-deps [var->hash]
   (set/difference (into #{}
@@ -197,7 +197,7 @@
           .getLocation
           .getFile))
 
-#_(symbol->jar com.mxgraph.view.mxGraph)
+#_(symbol->jar io.methvin.watcher.DirectoryChangeEvent)
 #_(symbol->jar #'inc)
 
 
@@ -223,18 +223,20 @@
 (defn build-graph
   "Analyzes the forms in the given file and builds a dependency graph of the vars.
 
-  Recursively decends into depedency vars as well as given they can be found in the classpath.
+  Recursively decends into dependency vars as well as given they can be found in the classpath.
   "
   [file]
-  (let [{:as g :keys [var->hash]} (analyze-file file)]
+  (let [{:as graph :keys [var->hash]} (analyze-file file)]
     (reduce (fn [g [source symbols]]
               (if (or (nil? source)
                       (str/ends-with? source ".jar"))
                 (update g :var->hash merge (into {} (map (juxt identity (constantly (if source (hash-jar source) {})))) symbols))
                 (analyze-file g source)))
-            g
+            graph
             (group-by find-location (unhashed-deps var->hash)))))
 
+
+#_(build-graph "notebooks/hello.clj")
 #_(keys (:var->hash (build-graph "notebooks/elements.clj")))
 #_(dep/immediate-dependencies (:graph (build-graph "notebooks/elements.clj"))  #'nextjournal.clerk.demo/fix-case)
 #_(dep/transitive-dependencies (:graph (build-graph "notebooks/elements.clj"))  #'nextjournal.clerk.demo/fix-case)
@@ -258,6 +260,7 @@
    (let [hashed-deps (into #{} (map var->hash) deps)]
      (sha1-base58 (pr-str (conj hashed-deps (if form form hash)))))))
 
+#_(hash "notebooks/hello.clj")
 #_(hash "notebooks/elements.clj")
 #_(clojure.data/diff (hash "notebooks/how_clerk_works.clj")
                      (hash "notebooks/how_clerk_works.clj"))

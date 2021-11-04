@@ -24,8 +24,6 @@
   (set-dev! false)
   (set-dev! true)
 
-  (beholder/stop watcher)
-
   (clerk/show! "notebooks/onwards.clj")
   (clerk/show! "notebooks/rule_30.clj")
   (clerk/show! "notebooks/how_clerk_works.clj")
