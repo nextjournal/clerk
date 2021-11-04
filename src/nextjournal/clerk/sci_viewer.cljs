@@ -94,13 +94,16 @@
                      blob-id (with-meta {:key blob-id}))])))
          xs)))
 
+(defonce !edamame-opts
+  (atom {:all true
+         :read-cond :allow
+         :readers {'file (partial with-viewer :file)
+                   'object (partial with-viewer :object)
+                   'function+ viewer/form->fn+form}
+         :features #{:clj}}))
+
 (defn ^:export read-string [s]
-  (edamame/parse-string s {:all true
-                           :read-cond :allow
-                           :readers {'file (partial with-viewer :file)
-                                     'object (partial with-viewer :object)
-                                     'function+ viewer/form->fn+form}
-                           :features #{:clj}}))
+  (edamame/parse-string s @!edamame-opts))
 
 (defn opts->query [opts]
   (->> opts
@@ -855,17 +858,17 @@ black")}]))}
    'with-viewer with-viewer
    'with-viewers with-viewers})
 
-(defonce ctx
-  (sci/init {:async? true
-             :disable-arity-checks true
-             :classes {'js goog/global
-                       :allow :all}
-             :namespaces {'nextjournal.viewer sci-viewer-namespace
-                          'v sci-viewer-namespace}}))
+(defonce !sci-ctx
+  (atom (sci/init {:async? true
+                   :disable-arity-checks true
+                   :classes {'js goog/global
+                             :allow :all}
+                   :namespaces {'nextjournal.viewer sci-viewer-namespace
+                                'v sci-viewer-namespace}})))
 
 
 (defn eval-form [f]
-  (sci/eval-form ctx f))
+  (sci/eval-form @!sci-ctx f))
 
 (set! *eval* eval-form)
 (swap! viewer/!viewers update :root viewer/process-fns)

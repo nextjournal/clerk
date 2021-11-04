@@ -61,7 +61,7 @@
 ;; - [x] Release 0.2
 ;; - [x] Make github repo public
 ;; ## 🛠 Up Next
-;; - [ ] Let consumers (SICMUitls) extend sci ns by putting it into an atom
+;; - [x] Let consumers (SICMUitls) extend sci ns by putting it into an atom
 ;; - [x] Support setting `:nextjournal.clerk/no-cache` on namespaces as well
 ;; - [ ] Support setting `:nextjournal.clerk/cache-dir` on namespace
 ;; - [ ] Allow to control viewer expansion state programmatically
