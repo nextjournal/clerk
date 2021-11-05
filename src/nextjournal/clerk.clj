@@ -209,16 +209,14 @@
 
 (defmacro with-viewer
   [viewer x]
-  (let [viewer# (list 'quote viewer)]
+  (let [viewer# (v/->Form viewer)]
     `(v/with-viewer* ~viewer# ~x)))
 
 #_(macroexpand '(with-viewer #(v/html [:div %]) 1))
 
 (defmacro with-viewers
   [viewers x]
-  (let [viewers# (->> viewers
-                      v/preds->fn+
-                      (mapv (fn [viewer] (update viewer :fn #(list 'quote %)))))]
+  (let [viewers# (v/process-fns viewers)]
     `(v/with-viewers* ~viewers# ~x)))
 
 #_(macroexpand '(with-viewers [{:pred number? :fn #(v/html [:div %])}] 1))
@@ -229,9 +227,6 @@
   ([scope viewers] (v/set-viewers!* scope viewers)))
 
 #_(set-viewers! [])
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; static builds
 
 (defn file->viewer
   "Evaluates the given `file` and returns it's viewer representation."
@@ -273,32 +268,45 @@
 #_(serve! {:watch-paths ["src" "notebooks"]})
 #_(serve! {:watch-paths ["src" "notebooks"] :show-filter-fn #(clojure.string/starts-with? % "notebooks")})
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; static builds
+
 (def clerk-docs
   (into []
         (map #(str "notebooks/" % ".clj"))
         ["hello"
-         "rule_30"
+         "how_clerk_works"
          "onwards"
+         "pagination"
+         "paren_soup"
+         #_"readme" ;; TODO: add back when we have Clojure cells in md
+         "rule_30"
+         "viewer_api"
          "viewers/html"
          "viewers/markdown"
          "viewers/plotly"
          "viewers/table"
+         "viewers/tex"
          "viewers/vega"]))
-
 
 (defn build-static-app!
   "Builds a static html app of the notebooks at `paths`."
-  [{:keys [paths out-path]
+  [{:keys [paths out-path live-js?]
     :or {paths clerk-docs
-         out-path "public/build"}}]
+         out-path "public/build"
+         live-js? view/live-js?}}]
   (let [docs (into {} (map (fn [path] {path (file->viewer path)}) paths))
         out-html (str out-path fs/file-separator "index.html")]
     (when-not (fs/exists? (fs/parent out-html))
       (fs/create-dirs (fs/parent out-html)))
-    (spit out-html (view/->static-app {:live-js? false} docs))
-    (browse/browse-url out-html)))
+    (spit out-html (view/->static-app {:live-js? live-js?} docs))
+    (if (and live-js? (str/starts-with? out-path "public/"))
+      (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
+      (browse/browse-url out-html))))
 
 #_(build-static-app! {})
+#_(build-static-app! {:live-js? false})
+#_(build-static-app! {:paths ["notebooks/tablecloth.clj"]})
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
@@ -308,8 +316,8 @@
 
   (beholder/stop watcher)
 
-  (show! "notebooks/elements.clj")
   (show! "notebooks/rule_30.clj")
+  (show! "notebooks/viewer_api.clj")
   (show! "notebooks/onwards.clj")
   (show! "notebooks/pagination.clj")
   (show! "notebooks/how_clerk_works.clj")

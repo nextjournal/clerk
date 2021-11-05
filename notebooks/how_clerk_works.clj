@@ -1,7 +1,6 @@
 ;; # How Clerk Works 🕵🏻‍♀️
 (ns how-clerk-works
-  (:require [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.hashing :as h]
+  (:require [nextjournal.clerk.hashing :as h]
             [next.jdbc :as jdbc]
             [weavejester.dependency :as dep]))
 
@@ -13,7 +12,7 @@
 ;; ### Step 1: Parsing
 ;; First, we parse a given Clojure file using `rewrite-clj`.
 (def parsed
-  (clerk/parse-file "notebooks/how_clerk_works.clj"))
+  (nextjournal.clerk/parse-file "notebooks/how_clerk_works.clj"))
 
 ;; ### Step 2: Analysis
 ;; Then, each expression is analysed using `tools.analyzer`. A dependency graph, the analyzed form and the originating file is recorded.
@@ -22,7 +21,7 @@
   (h/analyze-file "notebooks/how_clerk_works.clj"))
 
 
-;; This analysis is done recurively decents into all dependency symbols.
+;; This analysis is done recursively, descending into all dependency symbols.
 
 (h/find-location #'nextjournal.clerk.hashing/analyze-file)
 
@@ -57,9 +56,9 @@
 
 ;; For side effectful functions that should be cached, like a database query, you can add a value like this `#inst` to control when evaluation should happen.
 (def query-results
-  (let [_run-at #inst "2021-05-20T08:28:29.445-00:00"
+  (let [_run-at #_(java.util.Date.) #inst "2021-05-20T08:28:29.445-00:00"
         ds (next.jdbc/get-datasource {:dbtype "sqlite" :dbname "chinook.db"})]
     (with-open [conn (next.jdbc/get-connection ds)]
-      (nextjournal.clerk/table (next.jdbc/execute! conn ["SELECT AlbumId, Bytes, Name, TrackID, UnitPrice FROM tracks"])))))
+      (next.jdbc/execute! conn ["SELECT AlbumId, Bytes, Name, TrackID, UnitPrice FROM tracks"]))))
 
 #_(nextjournal.clerk/show! "notebooks/how_clerk_works.clj")

@@ -15,6 +15,7 @@
             [nextjournal.viewer.plotly :as plotly]
             [nextjournal.viewer.table :as table]
             [nextjournal.viewer.vega-lite :as vega-lite]
+            [nextjournal.view.context :as view-context]
             [re-frame.context :as rf]
             [react :as react]
             [reagent.core :as r]
@@ -33,7 +34,7 @@
 
 
 (declare inspect)
-(declare inspect-lazy)
+(declare named-viewers)
 
 (defn value-of
   "Safe access to a value at key a js object.
@@ -61,7 +62,7 @@
 
 (defn js-object-viewer [x {:as opts :keys [!expanded-at path]}]
   (let [x' (obj->clj x)
-        expanded? (some-> !expanded-at deref (get path))]
+        expanded? (@!expanded-at path)]
     (html [:span.inspected-value.whitespace-nowrap "#js {"
            (into [:<>]
                  (comp (map-indexed (fn [idx k]
@@ -78,7 +79,7 @@
   (html
    (into [:div.flex.flex-col.items-center.viewer-notebook]
          (map (fn [x]
-                (let [viewer (viewer/viewer x)
+                (let [viewer (:viewer (viewer/value x) (viewer/viewer x))
                       width (:nextjournal/width x)
                       blob-id (:blob-id (viewer/value x))]
                   [:div {:class ["viewer"
@@ -98,14 +99,12 @@
   (html [:span.inspected-value
          [:span.syntax-tag "#'" (str x)]]))
 
-(declare eval-form)
-
 (defn ^:export read-string [s]
   (edamame/parse-string s {:all true
                            :read-cond :allow
                            :readers {'file (partial with-viewer :file)
                                      'object (partial with-viewer :object)
-                                     'function+ eval-form}
+                                     'function+ viewer/form->fn+form}
                            :features #{:clj}}))
 
 (defn opts->query [opts]
@@ -116,112 +115,88 @@
 
 #_(opts->query {:s 10 :num 42})
 
+(defn unreadable-edn [edn]
+  (html [:span.inspected-value.whitespace-nowrap.text-gray-700 edn]))
 
-(defn fetch! [{:keys [blob-id]} opts]
-  #_(js/console.log :fetch! blob-id opts)
-  (-> (js/fetch (str "_blob/" blob-id (when (seq opts)
-                                        (str "?" (opts->query opts)))))
-      (.then #(.text %))
-      (.then #(try (read-string %)
-                   (catch js/Error _e
-                     (html [:span.inspected-value.whitespace-nowrap.text-gray-700 %]))))))
-
-(defn in-process-fetch [xs opts]
-  (.resolve js/Promise (viewer/fetch xs opts)))
-
-(defn result [desc opts]
-  (html [inspect-lazy (-> desc
-                          (assoc :fetch-fn (partial fetch! desc))) opts]))
+(defn inline-result [{:keys [edn string]} _opts]
+  (if edn
+    (try
+      (html [inspect (read-string edn)])
+      (catch js/Error _e
+        (unreadable-edn edn)))
+    (unreadable-edn string)))
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
   (.stopPropagation event)
   (swap! !expanded-at update path not))
 
-(defn concat-into [xs ys]
-  (cond (or (vector? xs)
-            (set? xs)
-            (map? xs)) (into xs ys)
-        (string? xs) (str xs ys)
-        :else (concat xs ys)))
+(defn expandable? [xs]
+  (< 1 (count xs)))
 
-(defn more-button [count {:keys [!x path desc path->info]}]
-  (let [{total-count :count :keys [viewer unbounded?]} (get path->info path)]
-    (when-some [more (let [more (- total-count count)]
-                       (when (pos? more) more))]
-      (let [{:keys [fetch-opts]} viewer
-            {:keys [fetch-fn]} desc]
-        [:<> " "
-         [:span.bg-gray-200.hover:bg-gray-200.cursor-pointer.sans-serif.relative.whitespace-nowrap
-          {:style {:border-radius 2 :padding "1px 3px" :font-size 11 :top -1}
-           :on-click (fn [_e] (.then (fetch-fn (assoc fetch-opts :offset count :path path))
-                                     #(swap! !x update path concat-into %)))} more (when unbounded? "+") " more…"]]))))
-
-(defn expanded-path? [!expanded-at path]
-  (some-> !expanded-at deref (get path)))
-
-(defn expandable-path? [!expanded-at path]
-  (or
-   (= path [])
-   (expanded-path? !expanded-at (vec (drop-last path)))))
 
 (defn inspect-children [opts]
   ;; TODO: move update function onto viewer
-  (map-indexed (fn [idx x] [inspect x (update opts :path conj idx)])))
+  (map-indexed (fn [idx x]
+                 (inspect (update opts :path conj idx) x))))
 
-(defn coll-viewer [{:keys [open close]} xs {:as opts :keys [!expanded-at path] :or {path []}}]
-  (let [expanded? (expanded-path? !expanded-at path)
-        expandable? (expandable-path? !expanded-at path)]
-    (html [:span.inspected-value.whitespace-nowrap
+(defn coll-viewer [{:keys [open]} xs {:as opts :keys [path viewer !expanded-at]}]
+  (html (let [expanded? (@!expanded-at path)]
+          [:span.inspected-value.whitespace-nowrap
            {:class (when expanded? "inline-flex")}
            [:span
-            [:span.bg-opacity-70.rounded-sm.whitespace-nowrap
-             (when expandable?
+            [:span.bg-opacity-70.whitespace-nowrap
+             (when (< 1 (count xs))
                {:on-click (partial toggle-expanded !expanded-at path)
-                :class ["cursor-pointer" "hover:bg-indigo-50"]})
+                :class "cursor-pointer bg-indigo-50 hover:bg-indigo-100 hover:rounded-sm border-b border-gray-400 hover:border-gray-500"})
              open]
             (into [:<>]
                   (comp (inspect-children opts)
-                        (interpose (if expanded? [:<> [:br] nbsp] " ")))
+                        (interpose (if expanded? [:<> [:br] nbsp (when (= 2 (count open)) nbsp)] " ")))
                   xs)
-            (more-button (count xs) opts)
-            close]])))
+            (into [:<>] (:closing-parens viewer))]])))
 
-(def elision-pred
-  (partial = :nextjournal/…))
+(declare inspect-paginated)
+(dc/defcard coll-viewer
+  (into [:div]
+        (for [coll [
+                    {:foo (into #{} (range 3))}
+                    {:foo {:bar (range 1000)}}
+                    [1 [2]]
+                    [[1] 2]
+                    {:a "bar"  :c (range 10)}
+                    {:a "bar"  :c (range 10) :d 1}
+                    ]]
+          [:div.mb-3.result-viewer
+           [inspect-paginated coll]])))
 
-(defn elision-viewer [_ {:as opts :keys [!x path desc] :or {path []}}]
-  (let [fetch-opts (-> desc :viewer :fetch-opts)
-        {:keys [fetch-fn]} desc]
-    (html [:span.bg-gray-200.hover:bg-gray-200.cursor-pointer.sans-serif.relative
-           {:style {:border-radius 2 :padding "1px 3px" :font-size 11 :top -1}
-            :on-click (fn [_e] (.then (fetch-fn (assoc fetch-opts :path path))
-                                      (fn [x] (swap! !x assoc path x))))} "…"])))
+(defn elision-viewer [{:as fetch-opts :keys [remaining unbounded?]} _]
+  (html [view-context/consume :fetch-fn
+         (fn [fetch-fn]
+           [:span.sans-serif.relative.whitespace-nowrap
+            {:style {:border-radius 2 :padding (when (fn? fetch-fn) "1px 3px") :font-size 11 :top -1}
+             :class (if (fn? fetch-fn)
+                      "cursor-pointer bg-indigo-200 hover:bg-indigo-300"
+                      "text-gray-400")
+             :on-click #(when (fn? fetch-fn)
+                          (fetch-fn fetch-opts))} remaining (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")])]))
 
-(defn map-viewer [xs {:as opts :keys [!expanded-at path] :or {path []}}]
-  (let [expanded? (expanded-path? !expanded-at path)
-        expandable? (expandable-path? !expanded-at path)]
-    (html [:span.inspected-value.whitespace-nowrap
-           (when expandable?
-             {:on-click (partial toggle-expanded !expanded-at path)})
-           [:span.bg-opacity-70.rounded-sm
-            (when expandable?
+(defn map-viewer [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
+  (html (let [expanded? (@!expanded-at path)]
+          [:span.inspected-value.whitespace-nowrap
+           [:span.bg-opacity-70
+            (when (expandable? xs)
               {:on-click (partial toggle-expanded !expanded-at path)
-               :class ["cursor-pointer" "hover:bg-indigo-50"]})
+               :class "cursor-pointer bg-indigo-50 hover:bg-indigo-100 hover:rounded-sm border-b border-gray-400 hover:border-gray-500"})
             "{"]
            (into [:<>]
-                 (comp (map-indexed (fn [idx x] [inspect
-                                                 (cond->> x
-                                                   (not (viewer/viewer x))
-                                                   (with-viewer :map-entry))
-                                                 (update opts :path conj idx)]))
+                 (comp (inspect-children opts)
                        (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) nbsp)] " ")))
                  xs)
-           (more-button (count xs) opts)
-           "}"])))
+           (into [:<>] (:closing-parens viewer))])))
 
 (defn string-viewer [s opts]
-  (html [:span.syntax-string.inspected-value "\"" s (more-button (count s) opts) "\""]))
+  (html [:span.syntax-string.inspected-value "\"" (into [:<>] (map #(cond-> % (not (string? %)) inspect)) s) "\""]))
 
 (defn rpad-vec [v length padding]
   (vec (take length (concat v (repeat padding)))))
@@ -420,33 +395,12 @@
 
 (defn tagged-value [tag value]
   [:span.inspected-value.whitespace-nowrap
-   [:span.syntax-tag tag]
-   value])
-
-(def ^:dynamic *eval-form*)
+   [:span.syntax-tag tag] value])
 
 (defn normalize-viewer [x]
   (if-let [viewer (-> x meta :nextjournal/viewer)]
     (with-viewer viewer x)
     x))
-
-(def named-viewers
-  [;; named viewers
-   {:name :latex :pred string? :fn #(html (katex/to-html-string %))}
-   {:name :mathjax :pred string? :fn (comp normalize-viewer mathjax/viewer)}
-   {:name :html :pred string? :fn #(html [:div {:dangerouslySetInnerHTML {:__html %}}])}
-   {:name :hiccup :fn #(r/as-element %)}
-   {:name :plotly :pred map? :fn (comp normalize-viewer plotly/viewer)}
-   {:name :vega-lite :pred map? :fn (comp normalize-viewer vega-lite/viewer)}
-   {:name :markdown :pred string? :fn markdown/viewer}
-   {:name :code :pred string? :fn (comp normalize-viewer code/viewer)}
-   {:name :reagent :fn #(r/as-element (cond-> % (fn? %) vector))}
-   {:name :eval! :fn #(*eval-form* %)}
-   {:name :object :fn #(html (tagged-value "#object" [inspect %]))}
-   {:name :file :fn #(html (tagged-value "#file " [inspect %]))}
-   {:name :clerk/notebook :fn notebook}
-   {:name :clerk/var :fn var}
-   {:name :clerk/result :fn result}])
 
 (def js-viewers
   [{:pred #(implements? IDeref %) :fn #(tagged-value (-> %1 type pr-str) (inspect (deref %1) %2))}
@@ -471,83 +425,131 @@
     [:path {:fill-rule "evenodd" :d "M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" :clip-rule "evenodd"}]]
    (into [:div.ml-2.font-bold] content)])
 
-(defn error-boundary [& children]
-  (let [error (r/atom nil)]
+(defn error-boundary [& _]
+  (let [!error (r/atom nil)]
     (r/create-class
-     {:constructor (fn [this props])
-      :component-did-catch (fn [this e info])
+     {:constructor (fn [_ _])
+      :component-did-catch (fn [_ e _info]
+                             (reset! !error e))
       :get-derived-state-from-error (fn [e]
-                                      (reset! error e)
+                                      (reset! !error e)
                                       #js {})
       :reagent-render (fn [& children]
-                        (if @error
-                          (error-badge "rendering error")
+                        (if @!error
+                          (error-badge "rendering error") ;; TODO: show error
                           (into [:<>] children)))})))
 
-(defn render-with-viewer [{:as opts :keys [viewers]} viewer x]
-  #_(js/console.log :render-with-viewer #_opts viewer x)
-  (cond (keyword? viewer)
-        (if-let [{render-fn :fn :keys [fetch-opts]} (get (into {} (map (juxt :name identity)) viewers) viewer)]
+(declare default-viewers)
+
+(defn render-with-viewer [opts viewer value]
+  #_(js/console.log :render-with-viewer {:value value :viewer viewer #_#_ :opts opts})
+  (cond (fn? viewer)
+        (viewer value opts)
+
+        (map? viewer)
+        (render-with-viewer opts (:fn viewer) value)
+
+        (keyword? viewer)
+        (if-let [{render-fn :fn :keys [fetch-opts]} (get ;; TODO change back to `viewers`
+                                                     (into {} (map (juxt :name identity)) named-viewers) viewer)]
           (if-not render-fn
             (html (error-badge "no render function for viewer named " (str viewer)))
-            (let [render-fn (cond-> render-fn (not (fn? render-fn)) *eval-form*)]
-              (render-fn x (assoc opts :fetch-opts fetch-opts))))
+            (let [render-fn (cond-> render-fn (not (fn? render-fn)) *eval*)]
+              (render-fn value (assoc opts :fetch-opts fetch-opts))))
           (html (error-badge "cannot find viewer named " (str viewer))))
-        (fn? viewer)
-        (viewer x opts)
-        (list? viewer)
-        (let [render-fn (*eval-form* viewer)]
-          #_(js/console.log :eval viewer :render-fn render-fn)
-          (render-fn x opts))))
+
+        (ifn? viewer)
+        (render-with-viewer opts viewer value)
+
+        :else
+        (html (error-badge "unusable viewer `" (pr-str viewer) "`"))))
+
+(defn guard [x f] (when (f x) x))
 
 (defn inspect
   ([x]
-   (r/with-let [!expanded-at (r/atom {})
-                !x (r/atom {})]
-     [inspect x {:path [] :!expanded-at !expanded-at :!x !x}]))
-  ([x {:as opts :keys [!x viewers path path->info]}]
-   (let [x (let [v (some-> !x deref (get path))] (if (some? v) v x))
+   (r/with-let [!expanded-at (r/atom {})]
+     [inspect {:!expanded-at !expanded-at} x]))
+  ([{:as opts :keys [viewers]} x]
+   (let [value (viewer/value x)
          {:as opts :keys [viewers]} (assoc opts :viewers (vec (concat (viewer/viewers x) viewers)))
-         all-viewers (viewer/get-viewers (:scope @!doc) viewers)
-         selected-viewer (or (viewer/viewer x)
-                             (when (elision-pred x) elision-viewer) ;; TODO: move elision handling out
-                             (get-in path->info [path :viewer :fn]))
-         val (viewer/value x)]
-     #_(js/console.log :val val :path path :viewer selected-viewer :type-val (type val) :react? (react/isValidElement val) :type (type selected-viewer))
-     (or (when (react/isValidElement val) val)
-         (when selected-viewer
-           (inspect (render-with-viewer (assoc opts :viewers all-viewers) selected-viewer val) (dissoc opts :path)))
-         (loop [v all-viewers]
-           (if-let [{render-fn :fn :keys [pred]} (first v)]
-             (let [render-fn (cond-> render-fn (not (fn? render-fn)) *eval-form*)]
-               #_(js/console.log :pred pred :match? (and pred render-fn (pred val)) :r (render-fn x opts))
-               (if (and pred render-fn (pred val opts))
-                 (viewer/value (render-fn x opts))
-                 (recur (rest v))))
-             (error-badge "no matching viewer")))))))
+         all-viewers (viewer/get-viewers (:scope @!doc) viewers)]
+     (or (when (react/isValidElement value) value)
+         ;; TODO find option to disable client-side viewer selection
+         (when-let [viewer (or (viewer/viewer x)
+                               (viewer/select-viewer value all-viewers))]
+           (inspect opts (render-with-viewer (assoc opts :viewers all-viewers :viewer viewer)
+                                             viewer
+                                             value)))))))
+
+(defn fetch! [{:keys [blob-id]} opts]
+  #_(js/console.log :fetch! blob-id opts)
+  (-> (js/fetch (str "_blob/" blob-id (when (seq opts)
+                                        (str "?" (opts->query opts)))))
+      (.then #(.text %))
+      (.then #(try (read-string %)
+                   (catch js/Error _e
+                     (unreadable-edn %))))))
+
+(defn inspect-result [result _opts]
+  (html (r/with-let [!desc (r/atom nil)
+                     fetch-fn (fn [opts]
+                                (.then (fetch! result opts)
+                                       (fn [more]
+                                         (swap! !desc viewer/merge-descriptions more))))
+                     _ (.then (fetch! result {})
+                              (fn [desc] (reset! !desc desc)))]
+          [view-context/provide {:fetch-fn fetch-fn}
+           (when (seq @!desc)
+             [error-boundary
+              [inspect @!desc]])])))
+
+(defn in-process-fetch [value opts]
+  (.resolve js/Promise (viewer/describe value opts)))
+
+(defn inspect-paginated [value]
+  (r/with-let [!desc (r/atom (viewer/describe value))]
+    [view-context/provide {:fetch-fn (fn [fetch-opts]
+                                       (.then (in-process-fetch value fetch-opts)
+                                              (fn [more]
+                                                (swap! !desc viewer/merge-descriptions more))))}
+     [inspect @!desc]]))
+
+(dc/defcard inspect-paginated-one
+  []
+  [:div
+   (when-let [value @(rf/subscribe [::blobs :recursive-range])]
+     [inspect-paginated value])]
+  {::blobs {:vector (vec (range 30))
+            :vector-nested [1 [2] 3]
+            :vector-nested-taco '[l [l [l [l [🌮] r] r] r] r]
+            :list (range 30)
+            :recursive-range (map range (range))
+            :map-1 {:hello :world}
+            :map-vec-val {:hello [:world]}
+            :map (zipmap (range 30) (range 30))}})
+
+(dc/defcard inspect-paginated-more
+  "In process inspect based on description."
+  []
+  [:div
+   (map (fn [[blob-id xs]]
+          ^{:key blob-id}
+          [:div
+           [inspect-paginated xs]])
+        @(rf/subscribe [::blobs]))]
+  {::blobs (hash-map (random-uuid) (vec (range 30))
+                     (random-uuid) (range 40)
+                     (random-uuid) (zipmap (range 50) (range 50)))})
+
+(rf/reg-sub ::blobs
+            (fn [db [blob-key id]]
+              (cond-> (get db blob-key)
+                id (get id))))
 
 (defn error-viewer [e]
   (viewer/with-viewer* :code (pr-str e)))
 
-(defn inspect-lazy [{:as desc :keys [fetch-fn]} opts]
-  (let [path->info (viewer/path->info desc)
-        {:as opts :keys [!x]} (assoc (or opts {:path []}) :!expanded-at (r/atom {}) :!x (r/atom {}) :desc desc :path->info path->info)]
-    (r/create-class
-     {:display-name "inspect-lazy"
-      :component-did-mount
-      (fn [_this]
-        (doseq [[path {:keys [fetch-opts]}] path->info]
-          (let [path (or path [])]
-            (-> (fetch-fn fetch-opts)
-                (.then #(swap! !x assoc path %))
-                (.catch #(when (empty? [])
-                           (swap! !x assoc path (error-viewer %))))))))
-
-      :reagent-render
-      (fn render-inspect-lazy [_]
-        (if (seq @!x)
-          [error-boundary [inspect nil opts]]
-          [:span "loading…"]))})))
 
 (dc/defcard inspect-values
   (into [:div]
@@ -563,13 +565,13 @@
                      #{:a :set}
                      '[vector of symbols]
                      '(:list :of :keywords)
-                     #js {:js "object"}
+                     #_#_#js {:js "object"}
                      #js ["a" "js" "array"]
-                     (js/Date.)
+                     #_(js/Date.)
                      (random-uuid)
                      (fn a-function [_foo])
+                     #_#_#_#_
                      (atom "an atom")
-                     #_#_#_
                      ^{:nextjournal/tag 'object} ['clojure.lang.Atom 0x2c42b421 {:status :ready, :val 1}]
                      ^{:nextjournal/tag 'var} ['user/a {:foo :bar}]
                      ^{:nextjournal/tag 'object} ['clojure.lang.Ref 0x73aff8f1 {:status :ready, :val 1}]]]
@@ -580,134 +582,6 @@
 
 (declare inspect)
 
-
-(comment
-  :nav/path node-id ;; a list of keys we have navigated down to
-  :nav/value node-id nav-path;; the object for a node-id and a nav-path (see above) ,
-  )
-
-;; (dc/defcard viewer-overlays
-;;   "Shows how to override how values are being displayed."
-;;   [state]
-;;   [:div.result-data
-;;    [inspect (with-viewers @state
-;;               {:number #(str/join (take % (repeat "*")))
-;;                :boolean #(with-viewer :hiccup
-;;                                   [:div.inline-block {:stle {:width 12 :height 12}
-;;                                                       :class (if % "bg-red" "bg-green")}])})]]
-;;   {::dc/state {:a 1
-;;                :b 2
-;;                :c 3
-;;                :d true
-;;                :e false}})
-
-
-(dc/when-enabled
- (def rule-30-state
-   (let [rule30 {[1 1 1] 0
-                 [1 1 0] 0
-                 [1 0 1] 0
-                 [1 0 0] 1
-                 [0 1 1] 1
-                 [0 1 0] 1
-                 [0 0 1] 1
-                 [0 0 0] 0}
-         n 33
-         g1 (assoc (vec (repeat n 0)) (/ (dec n) 2) 1)
-         evolve #(mapv rule30 (partition 3 1 (repeat 0) (cons 0 %)))]
-     (->> g1 (iterate evolve) (take 17)))))
-
-#_
-(dc/defcard rule-30-types
-  "Rule 30 using viewers based on types. Also shows how to use a named viewer for a number."
-  [state]
-  [:div.result-data
-   [inspect (with-viewers
-              @state
-              {:number :cell ;; use the cell viewer for numbers
-               :cell #(html
-                       [:div.inline-block {:class (if (zero? %)
-                                                    "bg-white border-solid border-2 border-black"
-                                                    "bg-black")
-                                           :style {:width 16 :height 16}}])
-               :vector (fn [x options]
-                         (->> x
-                              (map (fn [x] [inspect x options]))
-                              (into [:div.flex.inline-flex])
-                              html))
-               :list (fn [x options]
-                       (->> x
-                            (map (fn [x] [inspect x options]))
-                            (into [:div.flex.flex-col])
-                            html))})]]
-  {::dc/state rule-30-state})
-
-#_
-(dc/defcard rule-30-child-options
-  "Rule 30 using viewers based on viewer options (without overriding global types) and passing the viewer option down to child components."
-  [state]
-  [:div.result-data
-   [inspect (-> @state
-                (with-viewer :board)
-                (with-viewers
-                  {:cell #(html
-                           [:div.inline-block {:class (if (zero? %)
-                                                        "bg-white border-solid border-2 border-black"
-                                                        "bg-black")
-                                               :style {:width 16 :height 16}}])
-                   :row (fn [x options]
-                          (->> x
-                               (map #(inspect options (with-viewer :cell %)))
-                               (into [:div.flex.inline-flex])
-                               html))
-                   :board (fn [x options]
-                            (->> x
-                                 (map #(inspect options (with-viewer :row %)))
-                                 (into [:div.flex.flex-col])
-                                 html))}))]]
-  {::dc/state rule-30-state})
-
-(dc/defcard rule-30-html
-  "Rule 30 using viewers based on a single viewer rendering the board."
-  [state]
-  [:div.result-data
-   [inspect (with-viewer (fn [board]
-                           (let [cell #(vector :div.inline-block
-                                               {:class (if (zero? %)
-                                                         "bg-white border-solid border-2 border-black"
-                                                         "bg-black")
-                                                :style {:width 16 :height 16}})
-                                 row #(into [:div.flex.inline-flex] (map cell) %)]
-                             (html (into [:div.flex.flex-col] (map row) board))))
-              @state)]]
-  {::dc/state rule-30-state})
-
-
-(dc/defcard rule-30-sci-eval
-  "Rule 30 using viewers based on sci eval."
-  [inspect (with-viewer '(fn [board]
-                           (let [cell #(vector :div.inline-block
-                                               {:class (if (zero? %)
-                                                         "bg-white border-solid border-2 border-black"
-                                                         "bg-black")
-                                                :style {:width 16 :height 16}})
-                                 row #(into [:div.flex.inline-flex] (map cell) %)]
-                             (v/html (into [:div.flex.flex-col] (map row) board))))
-             '([0 1 0] [1 0 1]))])
-
-
-#_ ;; commented out because it's slow since it renders all values, re-enable once we don't display all results
-(dc/defcard inspect-large-values
-  "Defcard for larger datastructures clj and json, we make use of the db viewer."
-  [:div
-   (let [gen-keyword #(keyword (gensym))
-         generate-ds (fn [x val-fun]
-                       (loop [x x res {}]
-                         (cond
-                           (= x 0) res
-                           :else (recur (dec x) (assoc res (gen-keyword) (val-fun))))))
-         value-1 (generate-ds 42 gen-keyword)]
-     [inspect (generate-ds 42 (fn [] (clj->js value-1)))])])
 
 (dc/defcard viewer-reagent-atom
   ;; TODO
@@ -802,44 +676,11 @@
   [inspect @!doc])
 
 (defn ^:export reset-doc [new-doc]
+  (doseq [cell (viewer/value new-doc)
+          :when (viewer/registration? cell)
+          :let [form (viewer/value cell)]]
+    (*eval* form))
   (reset! !doc new-doc))
-
-(rf/reg-sub
- ::blobs
- (fn [db [blob-key id]]
-   (cond-> (get db blob-key)
-     id (get id))))
-
-(defn lazy-inspect-in-process [xs]
-  [inspect-lazy (assoc (viewer/describe xs) :fetch-fn (partial in-process-fetch xs))])
-
-(dc/defcard blob-in-process-fetch-single
-  []
-  [:div
-   (when-let [xs @(rf/subscribe [::blobs :map-1])]
-     [lazy-inspect-in-process xs])]
-  {::blobs {:vector (vec (range 30))
-            :vector-nested [1 [2] 3]
-            :vector-nested-taco '[l [l [l [l [🌮] r] r] r] r]
-            :list (range 30)
-            :map-1 {:hello :world}
-            :map-vec-val {:hello [:world]}
-            :map (zipmap (range 30) (range 30))}})
-
-(dc/defcard blob-in-process-fetch
-  "Dev affordance that performs fetch in-process."
-  []
-  [:div
-   (map (fn [[blob-id xs]]
-          ^{:key blob-id}
-          [:div
-           [lazy-inspect-in-process xs]])
-        @(rf/subscribe [::blobs]))]
-  {::blobs (hash-map (random-uuid) (vec (range 30))
-                     (random-uuid) (range 40)
-                     (random-uuid) (zipmap (range 50) (range 50)))})
-
-
 
 (dc/defcard eval-viewer
   "Viewers that are lists are evaluated using sci."
@@ -987,40 +828,48 @@ black")}])}
         y '({:verts [[-0.5 -0.5] [0.5 -0.5] [0.5 0.5] [-0.5 0.5]],
              :invert? true})]
     [:<>
-     #_[:div.mb-4
-        [map-viewer '{1 ● 2 ■ 3 ▲}]]
-     #_[:div.mb-4
-        [inspect {[[[[1 2]]]] [1 2]}]]
+     [:div.mb-4
+      [map-viewer '{1 ● 2 ■ 3 ▲}]]
+     [:div.mb-4
+      [inspect {[[[[1 2]]]] [1 2]}]]
 
      [:div
       {:style {:margin-right -12}}
       [:div.mb-4.overflow-x-hidden
-       [inspect x]]
-      [:div.mb-4.overflow-x-hidden
-       [lazy-inspect-in-process x]]
-      [:div.mb-4.overflow-x-hidden
-       [inspect x {:path []
-                   :expanded-at (r/atom {[] true
-                                         [0] true
-                                         [1] true
-                                         [0 0] true})}]]
-      #_#_[:div.mb-4.overflow-x-hidden
-           [inspect x]]
-      [:div.mb-4.overflow-x-hidden
-       [inspect y]]]]))
+       [inspect x]]]]))
 
 (defn ^:export ^:dev/after-load mount []
   (when-let [el (js/document.getElementById "clerk")]
     (rdom/render [root] el)))
 
-
+(def named-viewers
+  [;; named viewers
+   {:name :elision :pred map? :fn elision-viewer}
+   {:name :latex :pred string? :fn #(html (katex/to-html-string %))}
+   {:name :mathjax :pred string? :fn (comp normalize-viewer mathjax/viewer)}
+   {:name :html :pred string? :fn #(html [:div {:dangerouslySetInnerHTML {:__html %}}])}
+   {:name :hiccup :fn (fn [x _] (r/as-element x))}
+   {:name :plotly :pred map? :fn (comp normalize-viewer plotly/viewer)}
+   {:name :vega-lite :pred map? :fn (comp normalize-viewer vega-lite/viewer)}
+   {:name :markdown :pred string? :fn markdown/viewer}
+   {:name :code :pred string? :fn (comp normalize-viewer code/viewer)}
+   {:name :reagent :fn #(r/as-element (cond-> % (fn? %) vector))}
+   {:name :eval! :fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
+   {:name :table :fn (comp normalize-viewer table/viewer)}
+   {:name :object :fn #(html (tagged-value "#object" [inspect %]))}
+   {:name :file :fn #(html (tagged-value "#file " [inspect %]))}
+   {:name :clerk/notebook :fn notebook}
+   {:name :clerk/var :fn var}
+   {:name :clerk/inline-result :fn inline-result}
+   {:name :clerk/result :fn inspect-result}])
 
 (def sci-viewer-namespace
   {'html html
    'inspect inspect
+   'inspect-result 'inspect-result
    'coll-viewer coll-viewer
    'map-viewer map-viewer
-   'more-button more-button
+   'elision-viewer elision-viewer
    'tagged-value tagged-value
    'inspect-children inspect-children
    'set-viewers! set-viewers!
@@ -1041,4 +890,5 @@ black")}])}
 (defn eval-form [f]
   (sci/eval-form ctx f))
 
-(set! *eval-form* eval-form)
+(set! *eval* eval-form)
+(swap! viewer/!viewers update :root viewer/process-fns)

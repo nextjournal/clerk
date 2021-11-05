@@ -6,9 +6,7 @@
 
 ;; ## 🧩 Built-in Viewers
 ;; The default set of viewers are able to render Clojure data.
-{:hello "world 👋" :num [1 2 3]}
-
-
+{:hello "world 👋" :tacos (map (comp #(map (constantly '🌮) %) range) (range 1 100))}
 
 ;; And can handle lazy infinte sequences, only partially loading data by default with the ability to load more data on request.
 (range)
@@ -54,14 +52,12 @@
 (clerk/with-viewer #(v/html [:div "Greetings to " [:strong %] "!"])
   "James Maxwell Clerk")
 
-
 (clerk/with-viewers [{:pred number? :fn #(v/html [:div.inline-block [(keyword (str "h" %)) (str "Heading " %)]])}]
   [1 2 3 4 5])
 
-
 ^::clerk/no-cache
-(clerk/with-viewers [{:pred 'number? :fn #(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                                      :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}]
+(clerk/with-viewers [{:pred number? :fn #(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                                     :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}]
   (take 10 (repeatedly #(rand-int 2))))
 
 (clerk/with-viewers

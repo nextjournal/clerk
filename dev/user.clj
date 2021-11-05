@@ -24,15 +24,12 @@
   (set-dev! false)
   (set-dev! true)
 
-  (beholder/stop watcher)
-
   (clerk/show! "notebooks/onwards.clj")
-  (clerk/show! "notebooks/elements.clj")
   (clerk/show! "notebooks/rule_30.clj")
   (clerk/show! "notebooks/how_clerk_works.clj")
   (clerk/show! "notebooks/pagination.clj")
+  (clerk/show! "notebooks/paren_soup.clj")
   (clerk/show! "notebooks/recursive.clj")
-  (clerk/show! "notebooks/cache.clj")
 
   (clerk/show! "notebooks/viewer_api.clj")
 

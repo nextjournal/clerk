@@ -42,12 +42,17 @@
 
 (defn serve-blob [{:keys [uri query-string]}]
   (let [blob->result (meta @!doc)
-        blob-id (str/replace uri "/_blob/" "")]
+        blob-id (str/replace uri "/_blob/" "")
+        doc-ns (:ns (meta @!doc))]
+    (assert doc-ns "namespace must be set")
     (if (contains? blob->result blob-id)
-      {:status 200
-       #_#_ ;; leaving this out for now so I can open it directly
-       :headers {"Content-Type" "application/edn"}
-       :body (view/->edn (v/fetch (blob->result blob-id) (get-fetch-opts query-string)))}
+      (let [result (blob->result blob-id)
+            viewers (v/get-viewers doc-ns (v/viewers result))
+            opts (assoc (get-fetch-opts query-string) :viewers viewers)]
+        {:status 200
+         #_#_ ;; leaving this out for now so I can open it directly
+         :headers {"Content-Type" "application/edn"}
+         :body (view/->edn (v/describe result opts))})
       {:status 404})))
 
 (defn app [{:as req :keys [uri]}]

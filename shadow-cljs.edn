@@ -8,6 +8,7 @@
                                                  nextjournal.clerk.website
                                                  nextjournal.viewer.notebook]}}
 
-                    :js-options {:output-feature-set :es8}
+                    :dev {:modules {:viewer {:entries [devtools]}}}
+                    :release {:output-dir "build/"}
 
-                    :release {:output-dir "build/"}}}}
+                    :js-options {:output-feature-set :es8}}}}

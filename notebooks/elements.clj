@@ -2,7 +2,7 @@
 ;; Like the idea of notebooks, but hate leaving your favorite editor? We present Clerk, a tool that enables a rich, local-first notebook experience using standard Clojure namespaces.
 (ns elements
   (:require [clojure.string :as str]
-            [demo.lib :as lib]
+            [babashka.fs :as fs]
             [nextjournal.clerk :as clerk]))
 
 (let [rule30 {[1 1 1] 0
@@ -29,12 +29,12 @@
 
 ;; Clerk uses static analysis and a tiny bit of data flow to avoid needless recomputation.
 (defn fix-case [s]
-  (lib/fix-case s))
+  (clojure.string/upper-case s))
 
 (def long-thing
-  (do
+  (let [words-path "/usr/share/dict/words"]
     (Thread/sleep 1000)
-    (take 400 (map fix-case (str/split-lines (slurp "/usr/share/dict/words"))))))
+    (take 400 (map fix-case (when (fs/exists? words-path) (str/split-lines (slurp words-path)))))))
 
 (defn fib
   ([]
