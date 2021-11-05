@@ -5,7 +5,7 @@
             [edamame.core :as edamame]
             [goog.object]
             [goog.string :as gstring]
-            [nextjournal.clerk.viewer :as viewer :refer [code describe html md plotly tex vl with-viewer* with-viewers*] :rename {with-viewer* with-viewer with-viewers* with-viewers}]
+            [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer* with-viewers*] :rename {with-viewer* with-viewer with-viewers* with-viewers}]
             [nextjournal.devcards :as dc]
             [nextjournal.devcards.main]
             [nextjournal.viewer.code :as code]
@@ -13,7 +13,6 @@
             [nextjournal.viewer.markdown :as markdown]
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
-            [nextjournal.viewer.table :as table]
             [nextjournal.viewer.vega-lite :as vega-lite]
             [nextjournal.view.context :as view-context]
             [re-frame.context :as rf]
@@ -198,34 +197,6 @@
 (defn string-viewer [s opts]
   (html [:span.syntax-string.inspected-value "\"" (into [:<>] (map #(cond-> % (not (string? %)) inspect)) s) "\""]))
 
-(defn rpad-vec [v length padding]
-  (vec (take length (concat v (repeat padding)))))
-
-(def missing-pred
-  :nextjournal/missing)
-
-(defn normalize-seq-of-seq [s]
-  (let [max-count (count (apply max-key count s))]
-    {:rows (mapv #(rpad-vec (viewer/value %) max-count missing-pred) s)}))
-
-(defn normalize-seq-of-map [s]
-  (let [ks (->> s (mapcat keys) distinct vec)]
-    {:head ks
-     :rows (mapv (fn [m] (mapv #(get m % missing-pred) ks)) s)}))
-
-(defn normalize-map-of-seq [m]
-  (let [ks (-> m keys vec)
-        m* (if (seq? (get m (first ks)))
-             (reduce (fn [acc [k s]] (assoc acc k (vec s))) {} m)
-             m)]
-    {:head ks
-     :rows (->> (range (count (val (apply max-key (comp count val) m*))))
-                (mapv (fn [i] (mapv #(get-in m* [% i] missing-pred) ks))))}))
-
-(defn normalize-seq-to-vec [{:keys [head rows]}]
-  (cond-> {:rows (vec rows)}
-    head (assoc :head (vec head))))
-
 (defn sort! [!sort i k]
   (let [{:keys [sort-key sort-order]} @!sort]
     (reset! !sort {:sort-index i
@@ -273,17 +244,10 @@
 
 (defn table-viewer [data opts]
   (r/with-let [!sort (r/atom nil)]
-    (let [{:as srt :keys [sort-index sort-key sort-order]} @!sort
-          data (viewer/value data)
-          normalized-data (cond
-                            (and (sequential? data) (map? (viewer/value (first data)))) (normalize-seq-of-map data)
-                            (and (sequential? data) (sequential? (viewer/value (first data)))) (normalize-seq-of-seq data)
-                            (and (map? data) (sequential? (viewer/value (first (vals data))))) (normalize-map-of-seq data)
-                            (-> data :rows sequential?) (normalize-seq-to-vec data)
-                            :else nil)]
+    (let [{:as srt :keys [sort-index sort-key sort-order]} @!sort]
       (html
-        (if normalized-data
-          (let [{:keys [head rows]} (cond->> normalized-data sort-key (sort-data srt))]
+       (if data
+          (let [{:keys [head rows]} (cond->> data sort-key (sort-data srt))]
             [:table.text-xs.sans-serif
              (when head
                [:thead.border-b.border-gray-300
@@ -306,96 +270,25 @@
                                          (if (or (string? k) (keyword? k)) (name k) [inspect k])]]]]) head))])
              (into [:tbody]
                    (map-indexed (fn [i row]
-                                  (into
-                                    [:tr.hover:bg-gray-200
-                                     {:class (if (even? i) "bg-opacity-5 bg-black" "bg-white")}]
-                                    (map-indexed (fn [j d]
-                                                   [:td.pl-6.pr-2.py-1
-                                                    {:class [(when (number? d) "text-right")
-                                                             (when (= j sort-index) "bg-opacity-5 bg-black")]}
-                                                    (cond
-                                                      (= d missing-pred) ""
-                                                      (string? d) d
-                                                      (number? d) [:span.tabular-nums d]
-                                                      :else [inspect d])]) row))) rows))])
+                                  (if (= :elision (viewer/viewer row))
+                                    [inspect row]
+                                    (let [row (viewer/value row)]
+                                      (into
+                                       [:tr.hover:bg-gray-200
+                                        {:class (if (even? i) "bg-opacity-5 bg-black" "bg-white")}]
+                                       (map-indexed (fn [j d]
+                                                      (let [d (viewer/value d)]
+                                                        [:td.pl-6.pr-2.py-1
+                                                         {:class [(when (number? d) "text-right")
+                                                                  (when (= j sort-index) "bg-opacity-5 bg-black")]}
+                                                         (cond
+                                                           (= d viewer/missing-pred) ""
+                                                           (string? d) d
+                                                           (number? d) [:span.tabular-nums d]
+                                                           :else [inspect d])])) row))))) (viewer/value rows)))])
           [table-error data])))))
 
-(dc/defcard table [state]
-  [inspect (with-viewer table-viewer @state)]
-  {::dc/state [[1 2 3]
-               [4 5 6]]})
 
-(dc/defcard table-incomplete [state]
-  [inspect (with-viewer table-viewer @state)]
-  {::dc/state [[1 2 3]
-               [4]]})
-
-(dc/defcard table-col-headers [state]
-  [inspect (with-viewer table-viewer @state)]
-  {::dc/state {:a [1 2 3]
-               :b [4 5 6]}})
-
-(dc/defcard table-col-headers-incomplete [state]
-  [inspect (with-viewer table-viewer @state)]
-  {::dc/state {:a [1 2 3]
-               :b [4]}})
-
-(dc/defcard table-row-headers [state]
-  [inspect (with-viewer table-viewer @state)]
-  {::dc/state [{:a 1 :b 2 :c 3}
-               {:a 4 :b 5 :c 6}]})
-
-(dc/defcard table-row-headers-incomplete [state]
-  [inspect (with-viewer table-viewer @state)]
-  {::dc/state [{:a 1 :b 2 :c 3}
-               {:a 4}]})
-
-(dc/defcard table-error [state]
-  [inspect (with-viewer table-viewer @state)]
-  {::dc/state #{1 2 3 4}})
-
-(dc/when-enabled
-  (defn rand-int-seq [n to]
-    (take n (repeatedly #(rand-int to)))))
-
-(declare lazy-inspect-in-process)
-
-(dc/defcard table-long [state]
-  [inspect (with-viewer table-viewer @state)]
-  {::dc/state (let [n 20]
-                {:species (repeat n "Adelie")
-                 :island (repeat n "Biscoe")
-                 :culmen-length-mm (rand-int-seq n 50)
-                 :culmen-depth-mm (rand-int-seq n 30)
-                 :flipper-length-mm (rand-int-seq n 200)
-                 :body-mass-g (rand-int-seq n 5000)
-                 :sex (take n (repeatedly #(rand-nth [:female :male])))})})
-
-(dc/defcard table-paginated-map-of-seq [state]
-  [:div
-   (when-let [xs @(rf/subscribe [::blobs])]
-     [inspect-paginated (->> xs
-                             (with-viewers [{:name :table :fn table-viewer :fetch-opts {:n 5}}])
-                             (with-viewer :table))])]
-  {::blobs (let [n 60]
-             {:species (repeat n "Adelie")
-              :island (repeat n "Biscoe")
-              :culmen-length-mm (rand-int-seq n 50)
-              :culmen-depth-mm (rand-int-seq n 30)
-              :flipper-length-mm (rand-int-seq n 200)
-              :body-mass-g (rand-int-seq n 5000)
-              :sex (take n (repeatedly #(rand-nth [:female :male])))})})
-
-(dc/defcard table-paginated-vec [state]
-  [:div
-   (when-let [xs @(rf/subscribe [::blobs])]
-     [inspect-paginated (->> xs
-                             (with-viewers [{:pred (fn [x {:keys [path]}]
-                                                     (and (sequential? x)
-                                                          (empty? path)))
-                                             :name :table :fn table-viewer :fetch-opts {:n 5}}])
-                             (with-viewer :table))])]
-  {::blobs (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])})
 
 (defn tagged-value [tag value]
   [:span.inspected-value.whitespace-nowrap
@@ -444,6 +337,7 @@
                           (into [:<>] children)))})))
 
 (declare default-viewers)
+(declare find-named-viewer)
 
 (defn render-with-viewer [opts viewer value]
   #_(js/console.log :render-with-viewer {:value value :viewer viewer #_#_ :opts opts})
@@ -454,8 +348,7 @@
         (render-with-viewer opts (:fn viewer) value)
 
         (keyword? viewer)
-        (if-let [{render-fn :fn :keys [fetch-opts]} (get ;; TODO change back to `viewers`
-                                                     (into {} (map (juxt :name identity)) named-viewers) viewer)]
+        (if-let [{render-fn :fn :keys [fetch-opts]} (find-named-viewer named-viewers viewer)]  ;; TODO change back to `viewers`
           (if-not render-fn
             (html (error-badge "no render function for viewer named " (str viewer)))
             (let [render-fn (cond-> render-fn (not (fn? render-fn)) *eval*)]
@@ -502,7 +395,8 @@
                                        (fn [more]
                                          (swap! !desc viewer/merge-descriptions more))))
                      _ (.then (fetch! result {})
-                              (fn [desc] (reset! !desc desc)))]
+                              (fn [desc]
+                                (reset! !desc desc)))]
           [view-context/provide {:fetch-fn fetch-fn}
            (when (seq @!desc)
              [error-boundary
@@ -586,9 +480,9 @@
 
 (declare inspect)
 
-
+;; TODO
+#_
 (dc/defcard viewer-reagent-atom
-  ;; TODO
   [inspect (r/atom {:hello :world})])
 
 #_ ;; commented out because recursive window prop will cause a loop
@@ -688,7 +582,7 @@
 
 (dc/defcard eval-viewer
   "Viewers that are lists are evaluated using sci."
-  [inspect (with-viewer '(fn [x] (v/html [:h3 "Ohai, " x "! 👋"])) "Hans")])
+  [inspect (with-viewer (viewer/form->fn+form '(fn [x] (v/html [:h3 "Ohai, " x "! 👋"]))) "Hans")])
 
 
 (dc/defcard notebook
@@ -714,16 +608,15 @@
 
 (dc/defcard inspect-rule-30-sci
   []
-  [inspect
-   '([0 1 0] [1 0 1])
-   {:path []
-    :viewers
-    [{:pred number?
-      :fn #(html [:div.inline-block {:style {:width 16 :height 16}
-                                     :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
-black")}])}
-     {:pred vector? :fn #(html (into [:div.flex.inline-flex] (inspect-children %2) %1))}
-     {:pred list? :fn #(html (into [:div.flex.flex-col] (inspect-children %2) %1))}]}])
+  [inspect {:path []
+            :viewers
+            [{:pred number?
+              :fn (viewer/form->fn+form '#(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                                      :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
+black")}]))}
+             {:pred vector? :fn (viewer/form->fn+form '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1)))}
+             {:pred list? :fn (viewer/form->fn+form '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1)))}]}
+   '([0 1 0] [1 0 1])])
 
 (dc/defcard clj-long
   []
@@ -833,7 +726,7 @@ black")}])}
              :invert? true})]
     [:<>
      [:div.mb-4
-      [map-viewer '{1 ● 2 ■ 3 ▲}]]
+      [inspect '{1 ● 2 ■ 3 ▲}]]
      [:div.mb-4
       [inspect {[[[[1 2]]]] [1 2]}]]
 
@@ -845,6 +738,78 @@ black")}])}
 (defn ^:export ^:dev/after-load mount []
   (when-let [el (js/document.getElementById "clerk")]
     (rdom/render [root] el)))
+
+(dc/defcard table [state]
+  [inspect (viewer/table @state)]
+  {::dc/state [[1 2 3]
+               [4 5 6]]})
+
+(dc/defcard table-incomplete [state]
+  [inspect (viewer/table @state)]
+  {::dc/state [[1 2 3]
+               [4]]})
+
+(dc/defcard table-col-headers [state]
+  [inspect (viewer/table @state)]
+  {::dc/state {:a [1 2 3]
+               :b [4 5 6]}})
+
+(dc/defcard table-col-headers-incomplete [state]
+  [inspect (viewer/table @state)]
+  {::dc/state {:a [1 2 3]
+               :b [4]}})
+
+(dc/defcard table-row-headers [state]
+  [inspect (viewer/table @state)]
+  {::dc/state [{:a 1 :b 2 :c 3}
+               {:a 4 :b 5 :c 6}]})
+
+(dc/defcard table-row-headers-incomplete [state]
+  [inspect (viewer/table @state)]
+  {::dc/state [{:a 1 :b 2 :c 3}
+               {:a 4}]})
+
+(dc/defcard table-error [state]
+  [inspect (viewer/table @state)]
+  {::dc/state #{1 2 3 4}})
+
+(dc/when-enabled
+  (defn rand-int-seq [n to]
+    (take n (repeatedly #(rand-int to)))))
+
+(declare lazy-inspect-in-process)
+
+(dc/defcard table-long [state]
+  [inspect (with-viewer table-viewer @state)]
+  {::dc/state (let [n 20]
+                {:species (repeat n "Adelie")
+                 :island (repeat n "Biscoe")
+                 :culmen-length-mm (rand-int-seq n 50)
+                 :culmen-depth-mm (rand-int-seq n 30)
+                 :flipper-length-mm (rand-int-seq n 200)
+                 :body-mass-g (rand-int-seq n 5000)
+                 :sex (take n (repeatedly #(rand-nth [:female :male])))})})
+
+(dc/defcard table-paginated-map-of-seq [state]
+  [:div
+   (when-let [xs @(rf/subscribe [::blobs])]
+     [inspect-paginated (->> xs
+                             (with-viewers [{:name :table :fn table-viewer :fetch-opts {:n 5}}])
+                             (with-viewer :table))])]
+  {::blobs (let [n 60]
+             {:species (repeat n "Adelie")
+              :island (repeat n "Biscoe")
+              :culmen-length-mm (rand-int-seq n 50)
+              :culmen-depth-mm (rand-int-seq n 30)
+              :flipper-length-mm (rand-int-seq n 200)
+              :body-mass-g (rand-int-seq n 5000)
+              :sex (take n (repeatedly #(rand-nth [:female :male])))})})
+
+(dc/defcard table-paginated-vec [state]
+  [:div
+   (when-let [xs @(rf/subscribe [::blobs])]
+     [inspect-paginated (viewer/table @state)])]
+  {::blobs (repeat 3 ["Adelie" "Biscoe" 50 30 200 5000 :female])})
 
 (def named-viewers
   [;; named viewers
@@ -859,13 +824,16 @@ black")}])}
    {:name :code :pred string? :fn (comp normalize-viewer code/viewer)}
    {:name :reagent :fn #(r/as-element (cond-> % (fn? %) vector))}
    {:name :eval! :fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
-   #_{:name :table :fn (comp normalize-viewer table-viewer) :fetch-opts {:n 5}}
+   {:name :table :fn table-viewer :fetch-opts {:n 5}}
    {:name :object :fn #(html (tagged-value "#object" [inspect %]))}
    {:name :file :fn #(html (tagged-value "#file " [inspect %]))}
    {:name :clerk/notebook :fn notebook}
    {:name :clerk/var :fn var}
    {:name :clerk/inline-result :fn inline-result}
    {:name :clerk/result :fn inspect-result}])
+
+(defn find-named-viewer [viewers viewer-name]
+  (get (into {} (map (juxt :name identity)) viewers) viewer-name))
 
 (def sci-viewer-namespace
   {'html html

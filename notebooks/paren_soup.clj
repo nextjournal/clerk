@@ -31,5 +31,6 @@
 
 {1 [2] 3 [4]}
 
+
 #_(nextjournal.clerk/build-static-app! {:paths ["notebooks/paren_soup.clj"]})
 #_(nextjournal.clerk/show! "notebooks/paren_soup.clj")
