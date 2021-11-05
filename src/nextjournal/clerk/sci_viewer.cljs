@@ -140,7 +140,7 @@
   (map-indexed (fn [idx x]
                  (inspect (update opts :path conj idx) x))))
 
-(defn coll-viewer [{:keys [open]} xs {:as opts :keys [path viewer !expanded-at]}]
+(defn coll-viewer [{:keys [open close]} xs {:as opts :keys [path viewer !expanded-at]}]
   (html (let [expanded? (@!expanded-at path)]
           [:span.inspected-value.whitespace-nowrap
            {:class (when expanded? "inline-flex")}
@@ -154,7 +154,7 @@
                   (comp (inspect-children opts)
                         (interpose (if expanded? [:<> [:br] nbsp (when (= 2 (count open)) nbsp)] " ")))
                   xs)
-            (into [:<>] (:closing-parens viewer))]])))
+            (into [:<>] (:closing-parens viewer close))]])))
 
 (declare inspect-paginated)
 (dc/defcard coll-viewer
@@ -193,7 +193,7 @@
                  (comp (inspect-children opts)
                        (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) nbsp)] " ")))
                  xs)
-           (into [:<>] (:closing-parens viewer))])))
+           (into [:<>] (:closing-parens viewer "}"))])))
 
 (defn string-viewer [s opts]
   (html [:span.syntax-string.inspected-value "\"" (into [:<>] (map #(cond-> % (not (string? %)) inspect)) s) "\""]))
