@@ -206,7 +206,7 @@
 
 (defn normalize-seq-of-seq [s]
   (let [max-count (count (apply max-key count s))]
-    {:rows (mapv #(rpad-vec % max-count missing-pred) s)}))
+    {:rows (mapv #(rpad-vec (viewer/value %) max-count missing-pred) s)}))
 
 (defn normalize-seq-of-map [s]
   (let [ks (->> s (mapcat keys) distinct vec)]
@@ -274,10 +274,11 @@
 (defn table-viewer [data opts]
   (r/with-let [!sort (r/atom nil)]
     (let [{:as srt :keys [sort-index sort-key sort-order]} @!sort
+          data (viewer/value data)
           normalized-data (cond
-                            (and (sequential? data) (map? (first data))) (normalize-seq-of-map data)
-                            (and (sequential? data) (sequential? (first data))) (normalize-seq-of-seq data)
-                            (and (map? data) (sequential? (first (vals data)))) (normalize-map-of-seq data)
+                            (and (sequential? data) (map? (viewer/value (first data)))) (normalize-seq-of-map data)
+                            (and (sequential? data) (sequential? (viewer/value (first data)))) (normalize-seq-of-seq data)
+                            (and (map? data) (sequential? (viewer/value (first (vals data))))) (normalize-map-of-seq data)
                             (-> data :rows sequential?) (normalize-seq-to-vec data)
                             :else nil)]
       (html
@@ -373,9 +374,9 @@
 (dc/defcard table-paginated-map-of-seq [state]
   [:div
    (when-let [xs @(rf/subscribe [::blobs])]
-     [lazy-inspect-in-process (->> xs
-                                   (with-viewers [{:name :table :fn table-viewer}])
-                                   (with-viewer :table))])]
+     [inspect-paginated (->> xs
+                             (with-viewers [{:name :table :fn table-viewer :fetch-opts {:n 5}}])
+                             (with-viewer :table))])]
   {::blobs (let [n 60]
              {:species (repeat n "Adelie")
               :island (repeat n "Biscoe")
@@ -388,9 +389,12 @@
 (dc/defcard table-paginated-vec [state]
   [:div
    (when-let [xs @(rf/subscribe [::blobs])]
-     [lazy-inspect-in-process (->> xs
-                                   (with-viewers [{:name :table :fn table-viewer}])
-                                   (with-viewer :table))])]
+     [inspect-paginated (->> xs
+                             (with-viewers [{:pred (fn [x {:keys [path]}]
+                                                     (and (sequential? x)
+                                                          (empty? path)))
+                                             :name :table :fn table-viewer :fetch-opts {:n 5}}])
+                             (with-viewer :table))])]
   {::blobs (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])})
 
 (defn tagged-value [tag value]
@@ -855,7 +859,7 @@ black")}])}
    {:name :code :pred string? :fn (comp normalize-viewer code/viewer)}
    {:name :reagent :fn #(r/as-element (cond-> % (fn? %) vector))}
    {:name :eval! :fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
-   {:name :table :fn (comp normalize-viewer table/viewer)}
+   #_{:name :table :fn (comp normalize-viewer table-viewer) :fetch-opts {:n 5}}
    {:name :object :fn #(html (tagged-value "#object" [inspect %]))}
    {:name :file :fn #(html (tagged-value "#file " [inspect %]))}
    {:name :clerk/notebook :fn notebook}

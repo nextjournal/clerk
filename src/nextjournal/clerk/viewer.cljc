@@ -100,7 +100,10 @@
    {:pred sequential? :fn '(partial v/coll-viewer {:open "(" :close ")"}) :fetch-opts {:n 20}}
    {:pred map? :name :map :fn 'v/map-viewer :fetch-opts {:n 10}}
    {:pred uuid? :fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
-   {:pred inst? :fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}])
+   {:pred inst? :fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
+   {:pred (fn [x {:keys [path]}]
+            (and (sequential? x)
+                 (empty? path))) :name :table :fn 'v/table-viewer :fetch-opts {:n 5}}])
 
 ;; consider adding second arg to `:fn` function, that would be the fetch function
 
@@ -153,7 +156,8 @@
    (if-let [selected-viewer (viewer x)]
      (cond (keyword? selected-viewer)
            (if (named-viewers selected-viewer)
-             selected-viewer
+             (or (first (filter (comp #{selected-viewer} :name) viewers))
+                 selected-viewer)
              (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
            (instance? Form selected-viewer)
            selected-viewer)
@@ -247,7 +251,7 @@
                                                 nil))
          fetch-opts (merge fetch-opts (select-keys opts [:offset]))
          xs (value xs)]
-     #_(prn :xs xs :type (type xs) :path path :current-path current-path)
+     #_(prn :xs xs :type (type xs) :path path :current-path current-path :viewer viewer :viewers viewers)
      (merge {:path path}
             (with-viewer* viewer
               (cond (< (count current-path)
@@ -296,6 +300,13 @@
 
                     :else ;; leaf value
                     xs))))))
+
+
+#_#_
+(def t' (with-viewer* :table (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))
+
+(let [xs t']
+  (count (value (describe xs))))
 
 (comment
   (describe 123)
