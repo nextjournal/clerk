@@ -90,9 +90,10 @@
 (def missing-pred
   :nextjournal/missing)
 
-(defn normalize-seq-of-seq [s]
+(defn normalize-seq-of-seq [{:keys [header?]} s]
   (let [max-count (count (apply max-key count s))]
-    {:rows (mapv #(rpad-vec (value %) max-count missing-pred) s)}))
+    (cond-> {:rows (mapv #(rpad-vec (value %) max-count missing-pred) (cond-> s header? rest))}
+      header? (assoc :head (rpad-vec (value (first s)) max-count missing-pred)))))
 
 (defn normalize-seq-of-map [s]
   (let [ks (->> s (mapcat keys) distinct vec)]
@@ -113,12 +114,12 @@
   (cond-> {:rows (vec rows)}
     head (assoc :head (vec head))))
 
-(defn normalize-table-data [data]
+(defn normalize-table-data [opts data]
   (cond
     (and (map? data) (-> data :rows sequential?)) (normalize-seq-to-vec data)
     (and (map? data) (sequential? (first (vals data)))) (normalize-map-of-seq data)
     (and (sequential? data) (map? (first data))) (normalize-seq-of-map data)
-    (and (sequential? data) (sequential? (first data))) (normalize-seq-of-seq data)
+    (and (sequential? data) (sequential? (first data))) (normalize-seq-of-seq opts data)
     :else nil))
 
 (def elide-string-length 100)
@@ -531,10 +532,23 @@
 (def tex       (partial with-viewer* :latex))
 (def notebook  (partial with-viewer* :clerk/notebook))
 
-(defn table [xs]
-  (if-let [normalized (normalize-table-data xs)]
-    (with-viewer* :table normalized)
-    (with-viewer* :table-error [xs])))
+(defn table
+  "Displays `xs` in a table.
+
+  Performs normalization from the following formats:
+
+  * maps of seqs: `{:column-1 [1 2] :column-2 [3 4]}`
+  * seq of maps: `[{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]`
+  * seq of seqs `[[1 3] [2 4]]`
+  * map with `:head` and `:rows` keys `{:head [:column-1 :column-2] :rows [[1 3] [2 4]]}`
+
+  Takes an optional map as the first argument with valid options
+    `:header?` if the first row should be interpreted as a header, only applicable for seq of seqs."
+  ([xs] (table {} xs))
+  ([opts xs]
+   (if-let [normalized (normalize-table-data opts xs)]
+     (with-viewer* :table normalized)
+     (with-viewer* :table-error [xs]))))
 
 #_(table {:a (range 10)
           :b (mapv inc (range 10))})

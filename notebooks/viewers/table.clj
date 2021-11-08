@@ -10,10 +10,10 @@
     (with-open [conn (jdbc/get-connection ds)]
       (clerk/table (jdbc/execute! conn ["SELECT AlbumId, Bytes, Name, TrackID, UnitPrice FROM tracks"])))))
 
-(clerk/table (->> (slurp "https://gist.githubusercontent.com/netj/8836201/raw/6f9306ad21398ea43cba4f7d537619d0e07d5ae3/iris.csv")
-                  csv/read-csv
-                  ((juxt first rest))
-                  (zipmap [:head :rows])))
+(clerk/table {:header? true} (csv/read-csv (slurp "https://gist.githubusercontent.com/netj/8836201/raw/6f9306ad21398ea43cba4f7d537619d0e07d5ae3/iris.csv")))
+
+;; The table viewer will perform normalization and show an error in case of failure:
+(clerk/table (set (range 30)))
 
 #_(nextjournal.clerk/show! "notebooks/viewers/table.clj")
 #_(nextjournal.clerk/clear-cache!)
