@@ -219,75 +219,76 @@
   [:svg.h-4.w-4 {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor"}
    [:path {:fill-rule "evenodd" :d "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" :clip-rule "evenodd"}]])
 
-(defn table-error [data]
-  [:div.bg-red-100.px-6.py-4.rounded.text-xs
-   [:h4.mt-0.uppercase.text-xs "Table Error"]
-   [:p.mt-4.font-medium "Clerk’s table viewer does not recognize the format of your data:"]
-   [:div.mt-2.flex.items-center
-    [:div.text-red-500.mr-2 x-icon]
-    [inspect data]]
-   [:p.mt-4.font-medium "Currently, the following formats are supported:"]
-   [:div.mt-2.flex.items-center
-    [:div.text-green-500.mr-2 check-icon]
-    [inspect {:column-1 [1 2]
-              :column-2 [3 4]}]]
-   [:div.mt-2.flex.items-center
-    [:div.text-green-500.mr-2 check-icon]
-    [inspect [{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]]]
-   [:div.mt-2.flex.items-center
-    [:div.text-green-500.mr-2 check-icon]
-    [inspect [[1 3] [2 4]]]]
-   [:div.mt-2.flex.items-center
-    [:div.text-green-500.mr-2 check-icon]
-    [inspect {:head [:column-1 :column-2]
-              :rows [[1 3] [2 4]]}]]])
+(defn table-error [[data]]
+  ;; currently boxing the value in a vector to retain the type info
+  ;; TODO: find a better way to do this
+  (html
+   [:div.bg-red-100.px-6.py-4.rounded.text-xs
+    [:h4.mt-0.uppercase.text-xs "Table Error"]
+    [:p.mt-4.font-medium "Clerk’s table viewer does not recognize the format of your data:"]
+    [:div.mt-2.flex.items-center
+     [:div.text-red-500.mr-2 x-icon]
+     [inspect data]]
+    [:p.mt-4.font-medium "Currently, the following formats are supported:"]
+    [:div.mt-2.flex.items-center
+     [:div.text-green-500.mr-2 check-icon]
+     [inspect {:column-1 [1 2]
+               :column-2 [3 4]}]]
+    [:div.mt-2.flex.items-center
+     [:div.text-green-500.mr-2 check-icon]
+     [inspect [{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]]]
+    [:div.mt-2.flex.items-center
+     [:div.text-green-500.mr-2 check-icon]
+     [inspect [[1 3] [2 4]]]]
+    [:div.mt-2.flex.items-center
+     [:div.text-green-500.mr-2 check-icon]
+     [inspect {:head [:column-1 :column-2]
+               :rows [[1 3] [2 4]]}]]]))
 
 (defn table-viewer [data opts]
   (r/with-let [!sort (r/atom nil)]
     (let [{:as srt :keys [sort-index sort-key sort-order]} @!sort]
       (html
-       (if data
-         (let [{:keys [head rows]} (cond->> data sort-key (sort-data srt))
-               num-cols (-> rows viewer/value first viewer/value count)]
-           [:table.text-xs.sans-serif
-            (when head
-              [:thead.border-b.border-gray-300
-               (into [:tr]
-                     (map-indexed (fn [i k]
-                                    [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
-                                     {:class (if (number? (get-in rows [0 i])) "text-right" "text-left")
-                                      :style {:cursor "ns-resize"}
-                                      :on-click #(sort! !sort i k)
-                                      :title (if (or (string? k) (keyword? k)) (name k) (str k))}
-                                     [:div.inline-flex
-                                      ;; Truncate to available col width without growing the table
-                                      [:div.table.table-fixed.w-full.flex-auto
-                                       {:style {:margin-left -12}}
-                                       [:div.truncate
-                                        [:span.inline-flex.justify-center.items-center.relative
-                                         {:style {:font-size 20 :width 10 :height 10 :bottom -2 :margin-right 2}}
-                                         (when (= sort-key k)
-                                           (if (= sort-order :asc) "▴" "▾"))]
-                                        (if (or (string? k) (keyword? k)) (name k) [inspect k])]]]]) head))])
-            (into [:tbody]
-                  (map-indexed (fn [i row]
-                                 (if (= :elision (viewer/viewer row))
-                                   [:tr [:td.text-center {:col-span num-cols} [inspect row]]]
-                                   (let [row (viewer/value row)]
-                                     (into
-                                      [:tr.hover:bg-gray-200
-                                       {:class (if (even? i) "bg-opacity-5 bg-black" "bg-white")}]
-                                      (map-indexed (fn [j d]
-                                                     (let [d (viewer/value d)]
-                                                       [:td.pl-6.pr-2.py-1
-                                                        {:class [(when (number? d) "text-right")
-                                                                 (when (= j sort-index) "bg-opacity-5 bg-black")]}
-                                                        (cond
-                                                           (= d viewer/missing-pred) ""
-                                                           (string? d) d
-                                                           (number? d) [:span.tabular-nums d]
-                                                           :else [inspect d])])) row))))) (viewer/value rows)))])
-          [table-error data])))))
+       (let [{:keys [head rows]} (cond->> data sort-key (sort-data srt))
+             num-cols (-> rows viewer/value first viewer/value count)]
+         [:table.text-xs.sans-serif
+          (when head
+            [:thead.border-b.border-gray-300
+             (into [:tr]
+                   (map-indexed (fn [i k]
+                                  [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
+                                   {:class (if (number? (get-in rows [0 i])) "text-right" "text-left")
+                                    :style {:cursor "ns-resize"}
+                                    :on-click #(sort! !sort i k)
+                                    :title (if (or (string? k) (keyword? k)) (name k) (str k))}
+                                   [:div.inline-flex
+                                    ;; Truncate to available col width without growing the table
+                                    [:div.table.table-fixed.w-full.flex-auto
+                                     {:style {:margin-left -12}}
+                                     [:div.truncate
+                                      [:span.inline-flex.justify-center.items-center.relative
+                                       {:style {:font-size 20 :width 10 :height 10 :bottom -2 :margin-right 2}}
+                                       (when (= sort-key k)
+                                         (if (= sort-order :asc) "▴" "▾"))]
+                                      (if (or (string? k) (keyword? k)) (name k) [inspect k])]]]]) head))])
+          (into [:tbody]
+                (map-indexed (fn [i row]
+                               (if (= :elision (viewer/viewer row))
+                                 [:tr [:td.text-center {:col-span num-cols} [inspect row]]]
+                                 (let [row (viewer/value row)]
+                                   (into
+                                    [:tr.hover:bg-gray-200
+                                     {:class (if (even? i) "bg-opacity-5 bg-black" "bg-white")}]
+                                    (map-indexed (fn [j d]
+                                                   (let [d (viewer/value d)]
+                                                     [:td.pl-6.pr-2.py-1
+                                                      {:class [(when (number? d) "text-right")
+                                                               (when (= j sort-index) "bg-opacity-5 bg-black")]}
+                                                      (cond
+                                                        (= d viewer/missing-pred) ""
+                                                        (string? d) d
+                                                        (number? d) [:span.tabular-nums d]
+                                                        :else [inspect d])])) row))))) (viewer/value rows)))])))))
 
 
 
@@ -824,6 +825,7 @@ black")}]))}
    {:name :reagent :fn #(r/as-element (cond-> % (fn? %) vector))}
    {:name :eval! :fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
    {:name :table :fn table-viewer :fetch-opts {:n 5}}
+   {:name :table-error :fn table-error :fetch-opts {:n 1}}
    {:name :object :fn #(html (tagged-value "#object" [inspect %]))}
    {:name :file :fn #(html (tagged-value "#file " [inspect %]))}
    {:name :clerk/notebook :fn notebook}
@@ -846,6 +848,7 @@ black")}]))}
    'set-viewers! set-viewers!
    'string-viewer string-viewer
    'table-viewer table-viewer
+   'table-error table-error
    'with-viewer with-viewer
    'with-viewers with-viewers})
 

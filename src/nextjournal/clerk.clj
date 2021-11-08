@@ -205,7 +205,7 @@
 (def notebook       v/notebook)
 (def html           v/html)
 (def code           v/code)
-(def table          v/table)
+(def table          #'v/table)
 
 (defmacro with-viewer
   [viewer x]

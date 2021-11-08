@@ -147,7 +147,8 @@
     :fetch-fn (fn [{:as opts :keys [describe-fn offset]} xs]
                 (assoc (with-viewer* :table (cond-> (update xs :rows describe-fn opts)
                                               (pos? offset) :rows))
-                       :path [:rows] :replace-path [offset]))}])
+                       :path [:rows] :replace-path [offset]))}
+   {:pred (fn [x _] false) :name :table-error :fn 'v/table-error :fetch-opts {:n 5}}])
 
 ;; consider adding second arg to `:fn` function, that would be the fetch function
 
@@ -162,6 +163,7 @@
     :markdown
     :mathjax
     :table
+    :table-error
     :latex
     :object
     :reagent
@@ -530,11 +532,13 @@
 (def notebook  (partial with-viewer* :clerk/notebook))
 
 (defn table [xs]
-  (with-viewer* :table
-    (normalize-table-data xs)))
+  (if-let [normalized (normalize-table-data xs)]
+    (with-viewer* :table normalized)
+    (with-viewer* :table-error [xs])))
 
 #_(table {:a (range 10)
           :b (mapv inc (range 10))})
+#_(describe (table (set (range 10))))
 
 (defn html [x]
   (with-viewer* (if (string? x) :html :hiccup) x))
