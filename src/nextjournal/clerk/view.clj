@@ -41,7 +41,7 @@
 #_(->edn [:vec (with-meta [] {'clojure.core.protocols/datafy (fn [x] x)}) :var #'->edn])
 
 (defn described-result [_ns {:keys [result blob-id]}]
-  (v/with-viewer* :clerk/result {:blob-id blob-id :viewer (v/viewer result)}))
+  (v/with-viewer* :clerk/result {:blob-id blob-id :viewer (v/width result) :width (v/width result)}))
 
 (defn inline-result [ns {:keys [result]}]
   (v/with-viewer* :clerk/inline-result

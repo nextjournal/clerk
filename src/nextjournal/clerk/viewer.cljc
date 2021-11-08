@@ -81,6 +81,13 @@
   (when (map? x)
     (:nextjournal/viewers x)))
 
+(defn width
+  "Returns the `:nextjournal/width` for a given wrapped value `x`, `nil` otherwise."
+  [x]
+  (when (map? x)
+    (:nextjournal/width x)))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; table viewer normalization
 
@@ -546,9 +553,10 @@
     `:header?` if the first row should be interpreted as a header, only applicable for seq of seqs."
   ([xs] (table {} xs))
   ([opts xs]
-   (if-let [normalized (normalize-table-data opts xs)]
-     (with-viewer* :table normalized)
-     (with-viewer* :table-error [xs]))))
+   (-> (if-let [normalized (normalize-table-data opts xs)]
+         (with-viewer* :table normalized)
+         (with-viewer* :table-error [xs]))
+       (assoc :nextjournal/width :wide))))
 
 #_(table {:a (range 10)
           :b (mapv inc (range 10))})
