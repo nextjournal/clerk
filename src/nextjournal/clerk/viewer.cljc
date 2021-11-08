@@ -144,7 +144,10 @@
    {:pred uuid? :fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred inst? :fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred (fn [x _] false) :name :table :fn 'v/table-viewer
-    :fetch-fn (fn [{:keys [describe-fn]} xs] (with-viewer* :table (update xs :rows describe-fn)))}])
+    :fetch-fn (fn [{:as opts :keys [describe-fn offset]} xs]
+                (assoc (with-viewer* :table (cond-> (update xs :rows describe-fn opts)
+                                              (pos? offset) :rows))
+                       :path [:rows] :replace-path [offset]))}])
 
 ;; consider adding second arg to `:fn` function, that would be the fetch function
 

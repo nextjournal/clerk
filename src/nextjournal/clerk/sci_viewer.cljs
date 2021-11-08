@@ -808,7 +808,7 @@ black")}]))}
   [:div
    (when-let [xs @(rf/subscribe [::blobs])]
      [inspect-paginated (viewer/table xs)])]
-  {::blobs (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])})
+  {::blobs (mapv  #(conj %2 (str "#" (inc %1))) (range) (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female]))})
 
 (def named-viewers
   [;; named viewers
