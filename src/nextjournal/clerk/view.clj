@@ -64,8 +64,6 @@
                                                (v/registration? (:result result))
                                                (:result result)
 
-                                               ;; TODO: put back
-                                               #_#_
                                                (and (not inline-results?)
                                                     (map? result)
                                                     (contains? result :result)

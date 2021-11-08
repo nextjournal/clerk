@@ -274,7 +274,18 @@
           (into [:tbody]
                 (map-indexed (fn [i row]
                                (if (= :elision (viewer/viewer row))
-                                 [:tr [:td.text-center {:col-span num-cols} [inspect row]]]
+                                 (let [{:as fetch-opts :keys [remaining unbounded?]} (viewer/value row)]
+                                   [view-context/consume :fetch-fn
+                                    (fn [fetch-fn]
+                                      [:tr.border-t
+                                       [:td.text-center.py-1
+                                        {:col-span num-cols
+                                         :class (if (fn? fetch-fn)
+                                                  "bg-indigo-50 hover:bg-indigo-100 cursor-pointer"
+                                                  "text-gray-400")
+                                         :on-click #(when (fn? fetch-fn)
+                                                      (fetch-fn fetch-opts))}
+                                        remaining (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]])])
                                  (let [row (viewer/value row)]
                                    (into
                                     [:tr.hover:bg-gray-200
