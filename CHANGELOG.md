@@ -7,6 +7,7 @@ Changes can be:
 
 ## Unreleased
 
+* 💫 Add char viewer
 * 🐞 Fix exception when rendering hiccup containing seqs
 
 ## 0.2.214 (2021-11-04)
