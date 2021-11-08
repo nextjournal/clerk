@@ -247,41 +247,42 @@
     (let [{:as srt :keys [sort-index sort-key sort-order]} @!sort]
       (html
        (if data
-          (let [{:keys [head rows]} (cond->> data sort-key (sort-data srt))]
-            [:table.text-xs.sans-serif
-             (when head
-               [:thead.border-b.border-gray-300
-                (into [:tr]
-                      (map-indexed (fn [i k]
-                                     [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
-                                      {:class (if (number? (get-in rows [0 i])) "text-right" "text-left")
-                                       :style {:cursor "ns-resize"}
-                                       :on-click #(sort! !sort i k)
-                                       :title (if (or (string? k) (keyword? k)) (name k) (str k))}
-                                      [:div.inline-flex
-                                       ;; Truncate to available col width without growing the table
-                                       [:div.table.table-fixed.w-full.flex-auto
-                                        {:style {:margin-left -12}}
-                                        [:div.truncate
-                                         [:span.inline-flex.justify-center.items-center.relative
-                                          {:style {:font-size 20 :width 10 :height 10 :bottom -2 :margin-right 2}}
-                                          (when (= sort-key k)
-                                            (if (= sort-order :asc) "▴" "▾"))]
-                                         (if (or (string? k) (keyword? k)) (name k) [inspect k])]]]]) head))])
-             (into [:tbody]
-                   (map-indexed (fn [i row]
-                                  (if (= :elision (viewer/viewer row))
-                                    [inspect row]
-                                    (let [row (viewer/value row)]
-                                      (into
-                                       [:tr.hover:bg-gray-200
-                                        {:class (if (even? i) "bg-opacity-5 bg-black" "bg-white")}]
-                                       (map-indexed (fn [j d]
-                                                      (let [d (viewer/value d)]
-                                                        [:td.pl-6.pr-2.py-1
-                                                         {:class [(when (number? d) "text-right")
-                                                                  (when (= j sort-index) "bg-opacity-5 bg-black")]}
-                                                         (cond
+         (let [{:keys [head rows]} (cond->> data sort-key (sort-data srt))
+               num-cols (-> rows viewer/value first viewer/value count)]
+           [:table.text-xs.sans-serif
+            (when head
+              [:thead.border-b.border-gray-300
+               (into [:tr]
+                     (map-indexed (fn [i k]
+                                    [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
+                                     {:class (if (number? (get-in rows [0 i])) "text-right" "text-left")
+                                      :style {:cursor "ns-resize"}
+                                      :on-click #(sort! !sort i k)
+                                      :title (if (or (string? k) (keyword? k)) (name k) (str k))}
+                                     [:div.inline-flex
+                                      ;; Truncate to available col width without growing the table
+                                      [:div.table.table-fixed.w-full.flex-auto
+                                       {:style {:margin-left -12}}
+                                       [:div.truncate
+                                        [:span.inline-flex.justify-center.items-center.relative
+                                         {:style {:font-size 20 :width 10 :height 10 :bottom -2 :margin-right 2}}
+                                         (when (= sort-key k)
+                                           (if (= sort-order :asc) "▴" "▾"))]
+                                        (if (or (string? k) (keyword? k)) (name k) [inspect k])]]]]) head))])
+            (into [:tbody]
+                  (map-indexed (fn [i row]
+                                 (if (= :elision (viewer/viewer row))
+                                   [:tr [:td.text-center {:col-span num-cols} [inspect row]]]
+                                   (let [row (viewer/value row)]
+                                     (into
+                                      [:tr.hover:bg-gray-200
+                                       {:class (if (even? i) "bg-opacity-5 bg-black" "bg-white")}]
+                                      (map-indexed (fn [j d]
+                                                     (let [d (viewer/value d)]
+                                                       [:td.pl-6.pr-2.py-1
+                                                        {:class [(when (number? d) "text-right")
+                                                                 (when (= j sort-index) "bg-opacity-5 bg-black")]}
+                                                        (cond
                                                            (= d viewer/missing-pred) ""
                                                            (string? d) d
                                                            (number? d) [:span.tabular-nums d]
@@ -793,9 +794,7 @@ black")}]))}
 (dc/defcard table-paginated-map-of-seq [state]
   [:div
    (when-let [xs @(rf/subscribe [::blobs])]
-     [inspect-paginated (->> xs
-                             (with-viewers [{:name :table :fn table-viewer :fetch-opts {:n 5}}])
-                             (with-viewer :table))])]
+     [inspect-paginated (viewer/table xs)])]
   {::blobs (let [n 60]
              {:species (repeat n "Adelie")
               :island (repeat n "Biscoe")
@@ -808,8 +807,8 @@ black")}]))}
 (dc/defcard table-paginated-vec [state]
   [:div
    (when-let [xs @(rf/subscribe [::blobs])]
-     [inspect-paginated (viewer/table @state)])]
-  {::blobs (repeat 3 ["Adelie" "Biscoe" 50 30 200 5000 :female])})
+     [inspect-paginated (viewer/table xs)])]
+  {::blobs (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])})
 
 (def named-viewers
   [;; named viewers
