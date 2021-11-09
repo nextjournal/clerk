@@ -220,7 +220,7 @@
   (let [viewers# (v/process-fns viewers)]
     `(v/with-viewers* ~viewers# ~x)))
 
-#_(macroexpand '(with-viewers [{:pred number? :fn #(v/html [:div %])}] 1))
+#_(macroexpand '(with-viewers [{:pred number? :render-fn #(v/html [:div %])}] 1))
 
 
 (defmacro set-viewers!

@@ -314,9 +314,9 @@
     x))
 
 (def js-viewers
-  [{:pred #(implements? IDeref %) :fn #(tagged-value (-> %1 type pr-str) (inspect (deref %1) %2))}
-   {:pred goog/isObject :fn js-object-viewer}
-   {:pred array? :fn (partial coll-viewer {:open [:<> [:span.syntax-tag "#js "] "["] :close "]"})}])
+  [{:pred #(implements? IDeref %) :render-fn #(tagged-value (-> %1 type pr-str) (inspect (deref %1) %2))}
+   {:pred goog/isObject :render-fn js-object-viewer}
+   {:pred array? :render-fn (partial coll-viewer {:open [:<> [:span.syntax-tag "#js "] "["] :close "]"})}])
 
 
 (reset! viewer/!viewers
@@ -355,27 +355,21 @@
 
 (defn render-with-viewer [opts viewer value]
   #_(js/console.log :render-with-viewer {:value value :viewer viewer #_#_ :opts opts})
-  (cond (fn? viewer)
+  (cond (or (fn? viewer) (viewer/fn+form? viewer))
         (viewer value opts)
 
-        (map? viewer)
-        (render-with-viewer opts (:fn viewer) value)
+        (and (map? viewer) (:render-fn viewer))
+        (render-with-viewer opts (:render-fn viewer) value)
 
         (keyword? viewer)
-        (if-let [{render-fn :fn :keys [fetch-opts]} (find-named-viewer named-viewers viewer)]  ;; TODO change back to `viewers`
+        (if-let [{:keys [fetch-opts render-fn]} (find-named-viewer named-viewers viewer)]
           (if-not render-fn
             (html (error-badge "no render function for viewer named " (str viewer)))
-            (let [render-fn (cond-> render-fn (not (fn? render-fn)) *eval*)]
-              (render-fn value (assoc opts :fetch-opts fetch-opts))))
+            (render-fn value (assoc opts :fetch-opts fetch-opts)))
           (html (error-badge "cannot find viewer named " (str viewer))))
-
-        (ifn? viewer)
-        (render-with-viewer opts viewer value)
 
         :else
         (html (error-badge "unusable viewer `" (pr-str viewer) "`"))))
-
-(defn guard [x f] (when (f x) x))
 
 (defn inspect
   ([x]
@@ -388,7 +382,7 @@
      (or (when (react/isValidElement value) value)
          ;; TODO find option to disable client-side viewer selection
          (when-let [viewer (or (viewer/viewer x)
-                               (viewer/select-viewer value all-viewers))]
+                               (viewer/viewer (viewer/wrapped-with-viewer value all-viewers)))]
            (inspect opts (render-with-viewer (assoc opts :viewers all-viewers :viewer viewer)
                                              viewer
                                              value)))))))
@@ -430,7 +424,7 @@
 (dc/defcard inspect-paginated-one
   []
   [:div
-   (when-let [value @(rf/subscribe [::blobs :recursive-range])]
+   (when-let [value @(rf/subscribe [::blobs :map-1])]
      [inspect-paginated value])]
   {::blobs {:vector (vec (range 30))
             :vector-nested [1 [2] 3]
@@ -625,11 +619,11 @@
   [inspect {:path []
             :viewers
             [{:pred number?
-              :fn (viewer/form->fn+form '#(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                                      :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
+              :render-fn (viewer/form->fn+form '#(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                                             :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
 black")}]))}
-             {:pred vector? :fn (viewer/form->fn+form '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1)))}
-             {:pred list? :fn (viewer/form->fn+form '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1)))}]}
+             {:pred vector? :render-fn (viewer/form->fn+form '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1)))}
+             {:pred list? :render-fn (viewer/form->fn+form '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1)))}]}
    '([0 1 0] [1 0 1])])
 
 (dc/defcard clj-long
@@ -825,25 +819,25 @@ black")}]))}
 
 (def named-viewers
   [;; named viewers
-   {:name :elision :pred map? :fn elision-viewer}
-   {:name :latex :pred string? :fn #(html (katex/to-html-string %))}
-   {:name :mathjax :pred string? :fn (comp normalize-viewer mathjax/viewer)}
-   {:name :html :pred string? :fn #(html [:div {:dangerouslySetInnerHTML {:__html %}}])}
-   {:name :hiccup :fn (fn [x _] (r/as-element x))}
-   {:name :plotly :pred map? :fn (comp normalize-viewer plotly/viewer)}
-   {:name :vega-lite :pred map? :fn (comp normalize-viewer vega-lite/viewer)}
-   {:name :markdown :pred string? :fn markdown/viewer}
-   {:name :code :pred string? :fn (comp normalize-viewer code/viewer)}
-   {:name :reagent :fn #(r/as-element (cond-> % (fn? %) vector))}
-   {:name :eval! :fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
-   {:name :table :fn table-viewer :fetch-opts {:n 5}}
-   {:name :table-error :fn table-error :fetch-opts {:n 1}}
-   {:name :object :fn #(html (tagged-value "#object" [inspect %]))}
-   {:name :file :fn #(html (tagged-value "#file " [inspect %]))}
-   {:name :clerk/notebook :fn notebook}
-   {:name :clerk/var :fn var}
-   {:name :clerk/inline-result :fn inline-result}
-   {:name :clerk/result :fn inspect-result}])
+   {:name :elision :pred map? :render-fn elision-viewer}
+   {:name :latex :pred string? :render-fn #(html (katex/to-html-string %))}
+   {:name :mathjax :pred string? :render-fn (comp normalize-viewer mathjax/viewer)}
+   {:name :html :pred string? :render-fn #(html [:div {:dangerouslySetInnerHTML {:__html %}}])}
+   {:name :hiccup :render-fn (fn [x _] (r/as-element x))}
+   {:name :plotly :pred map? :render-fn (comp normalize-viewer plotly/viewer)}
+   {:name :vega-lite :pred map? :render-fn (comp normalize-viewer vega-lite/viewer)}
+   {:name :markdown :pred string? :render-fn markdown/viewer}
+   {:name :code :pred string? :render-fn (comp normalize-viewer code/viewer)}
+   {:name :reagent :render-fn #(r/as-element (cond-> % (fn? %) vector))}
+   {:name :eval! :render-fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
+   {:name :table :render-fn table-viewer :fetch-opts {:n 5}}
+   {:name :table-error :render-fn table-error :fetch-opts {:n 1}}
+   {:name :object :render-fn #(html (tagged-value "#object" [inspect %]))}
+   {:name :file :render-fn #(html (tagged-value "#file " [inspect %]))}
+   {:name :clerk/notebook :render-fn notebook}
+   {:name :clerk/var :render-fn var}
+   {:name :clerk/inline-result :render-fn inline-result}
+   {:name :clerk/result :render-fn inspect-result}])
 
 (defn find-named-viewer [viewers viewer-name]
   (get (into {} (map (juxt :name identity)) viewers) viewer-name))

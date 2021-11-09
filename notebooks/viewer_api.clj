@@ -52,12 +52,12 @@
 (clerk/with-viewer #(v/html [:div "Greetings to " [:strong %] "!"])
   "James Maxwell Clerk")
 
-(clerk/with-viewers [{:pred number? :fn #(v/html [:div.inline-block [(keyword (str "h" %)) (str "Heading " %)]])}]
+(clerk/with-viewers [{:pred number? :render-fn #(v/html [:div.inline-block [(keyword (str "h" %)) (str "Heading " %)]])}]
   [1 2 3 4 5])
 
 ^::clerk/no-cache
-(clerk/with-viewers [{:pred number? :fn #(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                                     :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}]
+(clerk/with-viewers [{:pred number? :render-fn #(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                                            :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}]
   (take 10 (repeatedly #(rand-int 2))))
 
 (clerk/with-viewers
@@ -67,11 +67,11 @@
                   (str "(?i)"
                        "(#(?:[0-9a-f]{2}){2,4}|(#[0-9a-f]{3})|"
                        "(rgb|hsl)a?\\((-?\\d+%?[,\\s]+){2,3}\\s*[\\d\\.]+%?\\))")) %))
-    :fn #(v/html [:div.inline-block.rounded-sm.shadow
-                  {:style {:width 16
-                           :height 16
-                           :border "1px solid rgba(0,0,0,.2)"
-                           :background-color %}}])}]
+    :render-fn #(v/html [:div.inline-block.rounded-sm.shadow
+                         {:style {:width 16
+                                  :height 16
+                                  :border "1px solid rgba(0,0,0,.2)"
+                                  :background-color %}}])}]
   ["#571845"
    "rgb(144,12,62)"
    "rgba(199,0,57,1.0)"
