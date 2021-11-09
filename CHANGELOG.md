@@ -5,12 +5,13 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
-## Unreleased
+## 0.3.220 (2021-11-09)
 
 * 🌟 Add much improved table viewer supporting lazy loading and data normalization
 * 💫 Add char viewer
 * 🐞 Fix exception when rendering hiccup containing seqs
 * 🐞 Parse set literals as top level expressions
+* 🐞 Add `scm` information to `pom.xml`
 
 ## 0.2.214 (2021-11-04)
 

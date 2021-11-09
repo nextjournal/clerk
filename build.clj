@@ -8,7 +8,7 @@
             [rewrite-clj.zip :as z]))
 
 (def lib 'io.github.nextjournal/clerk)
-(def version (format "0.2.%s" (b/git-count-revs nil)))
+(def version (format "0.3.%s" (b/git-count-revs nil)))
 (def class-dir "target/classes")
 (def basis (b/create-basis {:project "deps.edn"}))
 (def jar-file (format "target/%s-%s.jar" (name lib) version))
@@ -20,6 +20,9 @@
                 :lib lib
                 :version version
                 :basis basis
+                :scm {:url "http://github.com/nextjournal/clerk"
+                      :connection "scm:git:git://github.com/nextjournal/clerk.git"
+                      :developerConnection "scm:git:ssh://git@github.com/nextjournal/clerk.git"}
                 :src-dirs ["src"]})
   (b/copy-dir {:src-dirs ["src"]
                :target-dir class-dir})
