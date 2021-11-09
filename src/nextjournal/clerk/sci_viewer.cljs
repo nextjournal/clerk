@@ -258,6 +258,7 @@
                    (map-indexed (fn [i k]
                                   [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
                                    {:class (if (number? (get-in rows [0 i])) "text-right" "text-left")
+                                    #_#_#_#_
                                     :style {:cursor "ns-resize"}
                                     :on-click #(sort! !sort i k)
                                     :title (if (or (string? k) (keyword? k)) (name k) (str k))}
