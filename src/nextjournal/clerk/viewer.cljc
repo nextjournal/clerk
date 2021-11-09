@@ -196,7 +196,7 @@
              -1
              (into [] (map :pred) default-viewers)))
 
-(defn resilient-comp [a b]
+(defn resilient-compare [a b]
   (try
     (compare a b)
     (catch #?(:clj Exception :cljs js/Error) _e
@@ -205,8 +205,8 @@
 (defn ensure-sorted [xs]
   (cond
     (sorted? xs) xs
-    (map? xs) (into (sorted-map-by resilient-comp) xs)
-    (set? xs) (into (sorted-set-by resilient-comp) xs)
+    (map? xs) (sort-by first resilient-compare xs)
+    (set? xs) (sort resilient-compare xs)
     :else xs))
 
 (declare with-viewer*)
