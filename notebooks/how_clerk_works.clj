@@ -1,7 +1,8 @@
 ;; # How Clerk Works 🕵🏻‍♀️
 (ns how-clerk-works
-  (:require [nextjournal.clerk.hashing :as h]
-            [next.jdbc :as jdbc]
+  (:require [next.jdbc :as jdbc]
+            [nextjournal.clerk]
+            [nextjournal.clerk.hashing :as h]
             [weavejester.dependency :as dep]))
 
 ;; ## File Watching 👀
@@ -51,7 +52,7 @@
   (let [hash (slurp (nextjournal.clerk/->cache-file (str "@" form-hash)))]
     (nextjournal.clerk/thaw-from-cas hash)))
 
-;; As an escape hatch, you can tag a form or var with `::clerk/no-cache` to always reevalaute it. he following form will never be cached.
+;; As an escape hatch, you can tag a form or var with `::clerk/no-cache` to always re-evaluate it. The following form will never be cached.
 ^:nextjournal.clerk/no-cache (shuffle (range 42))
 
 ;; For side effectful functions that should be cached, like a database query, you can add a value like this `#inst` to control when evaluation should happen.
