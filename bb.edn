@@ -44,7 +44,7 @@
                  ;; ensure sequential order becauce tag reads from info.edn made
                  ;; by build.clj
                  :task (do
-                         (clojure "-T:build deploy")
+                         (run 'clojars)
                          (run 'tag))}
 
          -dev {:depends [watch:cljs watch:css]}

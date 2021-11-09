@@ -9,11 +9,7 @@
             [rewrite-clj.zip :as z]))
 
 (def lib 'io.github.nextjournal/clerk)
-
 (def version (format "0.3.%s" (b/git-count-revs nil)))
-(spit (doto (fs/file "resources/META-INF/nextjournal/clerk/meta.edn")
-        (-> fs/parent fs/create-dirs)) {:version version})
-
 (def class-dir "target/classes")
 (def basis (b/create-basis {:project "deps.edn"}))
 (def jar-file (format "target/%s-%s.jar" (name lib) version))
@@ -36,6 +32,9 @@
 
 (defn deploy [opts]
   (println "Deploying version" jar-file "to Clojars.")
+  (spit (doto (fs/file "resources/META-INF/nextjournal/clerk/meta.edn")
+          (-> fs/parent fs/create-dirs)) {:version version})
+  (jar {})
   (dd/deploy (merge {:installer :remote
                      :artifact jar-file
                      :pom-file (b/pom-path {:lib lib :class-dir class-dir})}
