@@ -206,6 +206,7 @@
 (def html           v/html)
 (def code           v/code)
 (def table          #'v/table)
+(def use-headers    #'v/use-headers)
 
 (defmacro with-viewer
   [viewer x]
