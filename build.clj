@@ -1,5 +1,6 @@
 (ns build
-  (:require [babashka.process :as process]
+  (:require [babashka.fs :as fs]
+            [babashka.process :as process]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.build.api :as b]
@@ -8,7 +9,11 @@
             [rewrite-clj.zip :as z]))
 
 (def lib 'io.github.nextjournal/clerk)
+
 (def version (format "0.3.%s" (b/git-count-revs nil)))
+(spit (doto (fs/file "resources/META-INF/nextjournal/clerk/meta.edn")
+        (-> fs/parent fs/create-dirs)) {:version version})
+
 (def class-dir "target/classes")
 (def basis (b/create-basis {:project "deps.edn"}))
 (def jar-file (format "target/%s-%s.jar" (name lib) version))

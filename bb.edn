@@ -1,4 +1,5 @@
-{:tasks {:init (def tailwind-build-cmd "npx tailwindcss --input stylesheets/app.css ")
+{:tasks {:requires ([clojure.edn :as edn])
+         :init (def tailwind-build-cmd "npx tailwindcss --input stylesheets/app.css ")
          yarn-install {:doc "Installs and updates npm dependencies"
                        :task (shell "yarn install")}
 
@@ -16,7 +17,8 @@
                      :depends [yarn-install]}
 
          release:css {:doc  "Builds & uploads the css release and updates the sha reference."
-                      :task (do (shell (str tailwind-build-cmd "--output build/app.css -m") {:extra-env {"NODE_ENV" "production"}})
+                      :task (do (shell (str tailwind-build-cmd "--output build/app.css -m")
+                                       {:extra-env {"NODE_ENV" "production"}})
                                 (clojure "-T:build upload-to-cas+rewrite-sha :resource app.css"))
                       :depends [yarn-install]}
 
@@ -27,8 +29,23 @@
          release:jar {:doc "Builds the jar"
                       :task (clojure "-T:build jar")}
 
+         clojars {:doc "Deploys the jar to clojars"
+                  :task (clojure "-T:build deploy")}
+
+         tag {:doc "Tags release and pushes tag to Github."
+              :task (let [version (-> (slurp "resources/META-INF/nextjournal/clerk/meta.edn")
+                                      edn/read-string
+                                      :version)
+                          tag (str "v" version)]
+                      (shell "git tag" tag)
+                      (shell "git push origin" tag))}
+
          deploy {:doc "Deploys the jar to clojars"
-                 :task (clojure "-T:build deploy")}
+                 ;; ensure sequential order becauce tag reads from info.edn made
+                 ;; by build.clj
+                 :task (do
+                         (clojure "-T:build deploy")
+                         (run 'tag))}
 
          -dev {:depends [watch:cljs watch:css]}
          dev {:doc "Start app in dev mode, compiles cljs and css"
