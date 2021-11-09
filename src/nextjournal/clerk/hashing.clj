@@ -80,7 +80,7 @@
                                          :doc []}]
      (if-let [node (first nodes)]
        (recur (cond
-                (#{:deref :map :meta :list :quote :reader-macro :token :var :vector} (n/tag node))
+                (#{:deref :map :meta :list :quote :reader-macro :set :token :var :vector} (n/tag node))
                 (-> state
                     (update :nodes rest)
                     (update :doc (fnil conj []) {:type :code :text (n/string node)}))
