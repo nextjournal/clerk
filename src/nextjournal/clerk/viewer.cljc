@@ -142,7 +142,8 @@
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
-  [{:pred string? :fn 'v/string-viewer :fetch-opts {:n elide-string-length}}
+  [{:pred char? :fn '(fn [c] (v/html [:span.syntax-string.inspected-value "\\" c]))}
+   {:pred string? :fn 'v/string-viewer :fetch-opts {:n elide-string-length}}
    {:pred number? :fn '(fn [x] (v/html [:span.syntax-number.inspected-value
                                         (if (js/Number.isNaN x) "NaN" (str x))]))}
    {:pred symbol? :fn '(fn [x] (v/html [:span.syntax-symbol.inspected-value x]))}
@@ -404,6 +405,7 @@
   (describe (subs (slurp "/usr/share/dict/words") 0 1000))
   (describe (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
   (describe (with-viewer* :html [:h1 "hi"]))
+  (describe (with-viewer* :html [:ul (for [x (range 3)] [:li x])]))
   (describe (range))
   (describe {1 [2]})
   (describe (with-viewer* (->Form '(fn [name] (html [:<> "Hello " name]))) "James")))
@@ -464,9 +466,11 @@
 
 (defn assign-closing-parens
   ([node] (assign-closing-parens {} node))
-  ([{:as ctx :keys [closing-parens]} {:as node :nextjournal/keys [value viewer]}]
-   (let [closing (closing-paren viewer)
-         non-leaf? (vector? value) ;; TODO: what's the best way to detect non-leaf?
+  ([{:as ctx :keys [closing-parens]} node]
+   (let [value (value node)
+         viewer (viewer node)
+         closing (closing-paren viewer)
+         non-leaf? (and (vector? value) (wrapped-value? (first value)))
          defer-closing? (and non-leaf?
                              (or (-> value last :nextjournal/viewer closing-paren) ;; the last element can carry parens
                                  (and (= :map-entry (-> value last :nextjournal/viewer :name)) ;; the last element is a map entry whose value can carry parens
