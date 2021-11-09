@@ -86,7 +86,8 @@
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
-  [{:pred string? :fn 'v/string-viewer :fetch-opts {:n elide-string-length}}
+  [{:pred char? :fn '(fn [c] (v/html [:span.syntax-string.inspected-value "\\" c]))}
+   {:pred string? :fn 'v/string-viewer :fetch-opts {:n elide-string-length}}
    {:pred number? :fn '(fn [x] (v/html [:span.syntax-number.inspected-value
                                         (if (js/Number.isNaN x) "NaN" (str x))]))}
    {:pred symbol? :fn '(fn [x] (v/html [:span.syntax-symbol.inspected-value x]))}
