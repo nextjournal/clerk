@@ -1,4 +1,5 @@
-{:lint-as {applied-science.js-interop/defn clojure.core/defn
+{:config-paths ["rewrite-clj/rewrite-clj"]
+ :lint-as {applied-science.js-interop/defn clojure.core/defn
            applied-science.js-interop/fn clojure.core/fn
            applied-science.js-interop/let clojure.core/let
            cljs.core/specify! cljs.core/reify
