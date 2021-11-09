@@ -7,6 +7,7 @@ Changes can be:
 
 ## Unreleased
 
+* 🌟 Add much improved table viewer supporting lazy loading and data normalization
 * 💫 Add char viewer
 * 🐞 Fix exception when rendering hiccup containing seqs
 * 🐞 Parse set literals as top level expressions
