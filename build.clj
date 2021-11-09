@@ -17,6 +17,8 @@
 (defn jar [_]
   (b/delete {:path "target"})
   (println "Producing jar:" jar-file)
+  (spit (doto (fs/file "resources/META-INF/nextjournal/clerk/meta.edn")
+          (-> fs/parent fs/create-dirs)) {:version version})
   (b/write-pom {:class-dir class-dir
                 :lib lib
                 :version version
@@ -32,8 +34,6 @@
 
 (defn deploy [opts]
   (println "Deploying version" jar-file "to Clojars.")
-  (spit (doto (fs/file "resources/META-INF/nextjournal/clerk/meta.edn")
-          (-> fs/parent fs/create-dirs)) {:version version})
   (jar {})
   (dd/deploy (merge {:installer :remote
                      :artifact jar-file
