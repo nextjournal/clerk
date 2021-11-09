@@ -117,7 +117,7 @@
                               (and (seq? form) (contains? #{'ns 'in-ns 'require} (first form))))
                   (try
                     (spit digest-file (hash+store-in-cas! var-value))
-                    (catch Exception e
+                    (catch Exception _e
                       #_(prn :freeze-error e)
                       nil)))
                 (wrap-with-blob-id var-value (if no-cache? (random-multihash) hash))))))))

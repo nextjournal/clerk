@@ -2,9 +2,9 @@
 (ns ^:nextjournal.clerk/no-cache nextjournal.clerk.hashing
   (:refer-clojure :exclude [hash read-string])
   (:require [babashka.fs :as fs]
+            [clojure.core :as core]
             [clojure.java.classpath :as cp]
             [clojure.java.io :as io]
-            [clojure.core :as core]
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.analyzer.jvm :as ana]
@@ -12,8 +12,8 @@
             [edamame.core :as edamame]
             [multihash.core :as multihash]
             [multihash.digest :as digest]
-            [rewrite-clj.parser :as p]
             [rewrite-clj.node :as n]
+            [rewrite-clj.parser :as p]
             [weavejester.dependency :as dep]))
 
 (defn var-name

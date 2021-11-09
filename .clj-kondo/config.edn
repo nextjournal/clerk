@@ -5,7 +5,9 @@
            cljs.core/specify! cljs.core/reify
            reagent.core/with-let clojure.core/let
            nextjournal.view/defview clojure.core/defn
-           nextjournal.devcards/defcard clj-kondo.lint-as/def-catch-all}
+           nextjournal.devcards/defcard clj-kondo.lint-as/def-catch-all
+           taoensso.encore/defonce clojure.core/defonce
+           taoensso.encore/defalias clojure.core/def}
  :skip-comments true
  :linters {:consistent-alias {:aliases {datomic.api datomic
                                         nextjournal.log log
@@ -17,4 +19,5 @@
                                          (clojure.core.match/match)]}
            :unused-namespace {:exclude [clojure.string
                                         nextjournal.devcards
-                                        nextjournal.log]}}}
+                                        nextjournal.log]}}
+ :hooks {:macroexpand {multihash.digest/defhash hooks/defhash}}}
