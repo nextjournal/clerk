@@ -81,7 +81,63 @@
   (when (map? x)
     (:nextjournal/viewers x)))
 
+(defn width
+  "Returns the `:nextjournal/width` for a given wrapped value `x`, `nil` otherwise."
+  [x]
+  (when (map? x)
+    (:nextjournal/width x)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; table viewer normalization
+
+(defn rpad-vec [v length padding]
+  (vec (take length (concat v (repeat padding)))))
+
+(def missing-pred
+  :nextjournal/missing)
+
+(defn normalize-seq-of-seq [s]
+  (let [max-count (count (apply max-key count s))]
+    {:rows (mapv #(rpad-vec (value %) max-count missing-pred) s)}))
+
+(defn normalize-seq-of-map [s]
+  (let [ks (->> s (mapcat keys) distinct vec)]
+    {:head ks
+     :rows (mapv (fn [m] (mapv #(get m % missing-pred) ks)) s)}))
+
+
+(defn normalize-map-of-seq [m]
+  (let [ks (-> m keys vec)
+        m* (if (seq? (get m (first ks)))
+             (reduce (fn [acc [k s]] (assoc acc k (vec s))) {} m)
+             m)]
+    {:head ks
+     :rows (->> (range (count (val (apply max-key (comp count val) m*))))
+                (mapv (fn [i] (mapv #(get-in m* [% i] missing-pred) ks))))}))
+
+(defn normalize-seq-to-vec [{:keys [head rows]}]
+  (cond-> {:rows (vec rows)}
+    head (assoc :head (vec head))))
+
+(defn use-headers [s]
+  (let [{:as table :keys [rows]} (normalize-seq-of-seq s)]
+    (-> table
+        (assoc :head (first rows))
+        (update :rows rest))))
+
+
+(defn normalize-table-data [data]
+  (cond
+    (and (map? data) (-> data :rows sequential?)) (normalize-seq-to-vec data)
+    (and (map? data) (sequential? (first (vals data)))) (normalize-map-of-seq data)
+    (and (sequential? data) (map? (first data))) (normalize-seq-of-map data)
+    (and (sequential? data) (sequential? (first data))) (normalize-seq-of-seq data)
+    :else nil))
+
 (def elide-string-length 100)
+
+(declare with-viewer*)
 
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
@@ -98,13 +154,20 @@
    {:pred map-entry? :name :map-entry :fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :fetch-opts {:n 2}}
    {:pred vector? :fn '(partial v/coll-viewer {:open "[" :close "]"}) :fetch-opts {:n 20}}
    {:pred set? :fn '(partial v/coll-viewer {:open "#{" :close "}"}) :fetch-opts {:n 20}}
-   {:pred sequential? :fn '(partial v/coll-viewer {:open "(" :close ")"}) :fetch-opts {:n 20}}
+   {:pred sequential? :fn '(partial v/coll-viewer {:open "(" :close ")"}) :fetch-opts {:n 3}}
    {:pred map? :name :map :fn 'v/map-viewer :fetch-opts {:n 10}}
    {:pred uuid? :fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
-   {:pred inst? :fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}])
+   {:pred inst? :fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
+   {:pred (fn [x _] false) :name :table :fn 'v/table-viewer
+    :fetch-fn (fn [{:as opts :keys [describe-fn offset]} xs]
+                (assoc (with-viewer* :table (cond-> (update xs :rows describe-fn opts)
+                                              (pos? offset) :rows))
+                       :path [:rows] :replace-path [offset]))}
+   {:pred (fn [x _] false) :name :table-error :fn 'v/table-error :fetch-opts {:n 5}}])
 
 ;; consider adding second arg to `:fn` function, that would be the fetch function
 
+;; clarify that these do not participate in lazy loading currently, or reconsider
 (def named-viewers
   #{:html
     :hiccup
@@ -115,6 +178,7 @@
     :markdown
     :mathjax
     :table
+    :table-error
     :latex
     :object
     :reagent
@@ -153,7 +217,8 @@
    (if-let [selected-viewer (viewer x)]
      (cond (keyword? selected-viewer)
            (if (named-viewers selected-viewer)
-             selected-viewer
+             (or (first (filter (comp #{selected-viewer} :name) viewers))
+                 selected-viewer)
              (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
            (instance? Form selected-viewer)
            selected-viewer)
@@ -242,12 +307,12 @@
     (describe xs (merge {:path [] :viewers (process-fns (get-viewers *ns* (viewers xs)))} opts) [])))
   ([xs opts current-path]
    (let [{:as opts :keys [viewers path offset]} (merge {:offset 0} opts)
-         {:as viewer :keys [fetch-opts]} (try (select-viewer xs viewers) ;; TODO: respect `viewers` on `xs`
-                                              (catch #?(:clj Exception :cljs js/Error) _ex
-                                                nil))
+         {:as viewer :keys [fetch-opts fetch-fn]} (try (select-viewer xs viewers) ;; TODO: respect `viewers` on `xs`
+                                                       (catch #?(:clj Exception :cljs js/Error) _ex
+                                                         nil))
          fetch-opts (merge fetch-opts (select-keys opts [:offset]))
          xs (value xs)]
-     #_(prn :xs xs :type (type xs) :path path :current-path current-path)
+     #_(prn :xs xs :type (type xs) :path path :current-path current-path :viewer viewer :viewers viewers)
      (merge {:path path}
             (with-viewer* viewer
               (cond (< (count current-path)
@@ -258,6 +323,7 @@
                                       (sequential? xs) (nth xs idx))
                                 opts
                                 (conj current-path idx)))
+                    fetch-fn (fetch-fn (assoc fetch-opts :describe-fn describe) xs)
 
                     (nil? (:n fetch-opts)) ;; opt out of description and return full value
                     xs
@@ -297,6 +363,36 @@
                     :else ;; leaf value
                     xs))))))
 
+
+
+
+#_#_#_#_
+(let [rand-int-seq (fn [n to]
+                     (take n (repeatedly #(rand-int to))))
+      n 5
+      t {:species (repeat n "Adelie")
+         :island (repeat n "Biscoe")
+         :culmen-length-mm (rand-int-seq n 50)
+         :culmen-depth-mm (rand-int-seq n 30)
+         :flipper-length-mm (rand-int-seq n 200)
+         :body-mass-g (rand-int-seq n 5000)
+         :sex (take n (repeatedly #(rand-nth [:female :male])))}
+      data t]
+  (update (normalize-table-data t) :rows describe))
+
+
+(let [n (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female]))]
+  (update n :rows describe))
+
+(def t' (with-viewer* :table (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))
+
+(let [xs t']
+  (describe xs))
+#_
+(describe (table
+            {:a (range 30)
+             :b (map inc (range 30))}))
+
 (comment
   (describe 123)
   (-> (describe (range 100)) value peek)
@@ -317,18 +413,18 @@
 
 (defn desc->values
   "Takes a `description` and returns its value. Inverse of `describe`. Mostly useful for debugging."
-  [description]
-  (let [x (value description)
-        viewer (viewer description)]
+  [desc]
+  (let [x (value desc)
+        viewer (viewer desc)]
     (if (= viewer :elision)
       '…
       (cond->> x
         (vector? x)
-        (into (case (-> description viewer :name) :map {} [])
+        (into (case (:name viewer) (:map :table) {} [])
               (map desc->values))))))
 
 #_(desc->values (describe [1 [2 {:a :b} 2] 3 (range 100)]))
-
+#_(desc->values (describe (with-viewer* :table (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))))
 
 (defn path-to-value [path]
   (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
@@ -342,16 +438,17 @@
                      path-from-more (or (:replace-path more) ;; string case, TODO find a better way to unify
                                         (-> more :nextjournal/value first :path))]
                  (when (not= path-from-value path-from-more)
-                   (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more})))
-                 (into (pop value) (:nextjournal/value more))))))
+                     (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more})))
+                   (into (pop value) (:nextjournal/value more))))))
 
-(comment ;; test cases for merge-descriptions, TODO: simplify
-  (let [value (range 30)
-        desc (describe value)
-        path []
-        elision (peek (get-in desc (path-to-value path)))
-        more (describe value (:nextjournal/value elision))]
-    (merge-descriptions desc more))
+  (comment ;; test cases for merge-descriptions, TODO: simplify
+    (let [value (range 30)
+          desc (describe value)
+          path []
+          elision (peek (get-in desc (path-to-value path)))
+          more (describe value (:nextjournal/value elision))]
+
+      (merge-descriptions desc more))
 
   (let [value [(range 30)]
         desc (describe value)
@@ -444,6 +541,7 @@
 
 #_(->> "x^2" (with-viewer* :latex) (with-viewers* [{:name :latex :fn :mathjax}]))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convience api
 (def md        (partial with-viewer* :markdown))
@@ -451,6 +549,25 @@
 (def vl        (partial with-viewer* :vega-lite))
 (def tex       (partial with-viewer* :latex))
 (def notebook  (partial with-viewer* :clerk/notebook))
+
+(defn table
+  "Displays `xs` in a table.
+
+  Performs normalization from the following formats:
+
+  * maps of seqs: `{:column-1 [1 2] :column-2 [3 4]}`
+  * seq of maps: `[{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]`
+  * seq of seqs `[[1 3] [2 4]]`
+  * map with `:head` and `:rows` keys `{:head [:column-1 :column-2] :rows [[1 3] [2 4]]}`"
+  [xs]
+  (-> (if-let [normalized (normalize-table-data xs)]
+        (with-viewer* :table normalized)
+        (with-viewer* :table-error [xs]))
+      (assoc :nextjournal/width :wide)))
+
+#_(table {:a (range 10)
+          :b (mapv inc (range 10))})
+#_(describe (table (set (range 10))))
 
 (defn html [x]
   (with-viewer* (if (string? x) :html :hiccup) x))
@@ -484,6 +601,3 @@
                        [:td.py-1.pr-6 #?(:clj (demunge (pr-str call)) :cljs call)]]))
                trace)]]]])))
 #_(nextjournal.clerk/show! "notebooks/boom.clj")
-
-(defn table [xs]
-  (with-viewer* :table xs))

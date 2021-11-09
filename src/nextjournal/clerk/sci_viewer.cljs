@@ -5,7 +5,7 @@
             [edamame.core :as edamame]
             [goog.object]
             [goog.string :as gstring]
-            [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer*  with-viewers*] :rename {with-viewer* with-viewer with-viewers* with-viewers}]
+            [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer* with-viewers*] :rename {with-viewer* with-viewer with-viewers* with-viewers}]
             [nextjournal.devcards :as dc]
             [nextjournal.devcards.main]
             [nextjournal.viewer.code :as code]
@@ -13,7 +13,6 @@
             [nextjournal.viewer.markdown :as markdown]
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
-            [nextjournal.viewer.table :as table]
             [nextjournal.viewer.vega-lite :as vega-lite]
             [nextjournal.view.context :as view-context]
             [re-frame.context :as rf]
@@ -80,7 +79,7 @@
    (into [:div.flex.flex-col.items-center.viewer-notebook]
          (map (fn [x]
                 (let [viewer (:viewer (viewer/value x) (viewer/viewer x))
-                      width (:nextjournal/width x)
+                      width (:width (viewer/value x) (viewer/width x))
                       blob-id (:blob-id (viewer/value x))]
                   [:div {:class ["viewer"
                                  (when (keyword? viewer)
@@ -88,7 +87,7 @@
                                  (case (or width (case viewer
                                                    :code :wide
                                                    :prose))
-                                   :wide "w-full max-w-wide px-8"
+                                   :wide "w-full max-w-wide"
                                    :full "w-full"
                                    "w-full max-w-prose px-8 overflow-x-auto")]}
                    (cond-> [inspect x]
@@ -140,7 +139,7 @@
   (map-indexed (fn [idx x]
                  (inspect (update opts :path conj idx) x))))
 
-(defn coll-viewer [{:keys [open]} xs {:as opts :keys [path viewer !expanded-at]}]
+(defn coll-viewer [{:keys [open close]} xs {:as opts :keys [path viewer !expanded-at]}]
   (html (let [expanded? (@!expanded-at path)]
           [:span.inspected-value.whitespace-nowrap
            {:class (when expanded? "inline-flex")}
@@ -154,7 +153,7 @@
                   (comp (inspect-children opts)
                         (interpose (if expanded? [:<> [:br] nbsp (when (= 2 (count open)) nbsp)] " ")))
                   xs)
-            (into [:<>] (:closing-parens viewer))]])))
+            (into [:<>] (:closing-parens viewer close))]])))
 
 (declare inspect-paginated)
 (dc/defcard coll-viewer
@@ -193,10 +192,117 @@
                  (comp (inspect-children opts)
                        (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) nbsp)] " ")))
                  xs)
-           (into [:<>] (:closing-parens viewer))])))
+           (into [:<>] (:closing-parens viewer "}"))])))
 
 (defn string-viewer [s opts]
   (html [:span.syntax-string.inspected-value "\"" (into [:<>] (map #(cond-> % (not (string? %)) inspect)) s) "\""]))
+
+(defn sort! [!sort i k]
+  (let [{:keys [sort-key sort-order]} @!sort]
+    (reset! !sort {:sort-index i
+                   :sort-key k
+                   :sort-order (if (= sort-key k) (if (= sort-order :asc) :desc :asc) :asc)})))
+
+(defn sort-data [{:keys [sort-index sort-order]} {:as data :keys [head rows]}]
+  (cond-> data
+    head (assoc :rows (->> rows
+                           (sort-by #(cond-> (get % sort-index)
+                                       (string? val) str/lower-case)
+                                    (if (= sort-order :asc) #(compare %1 %2) #(compare %2 %1)))
+                           vec))))
+
+(def x-icon
+  [:svg.h-4.w-4 {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor"}
+   [:path {:fill-rule "evenodd" :d "M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" :clip-rule "evenodd"}]])
+
+(def check-icon
+  [:svg.h-4.w-4 {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor"}
+   [:path {:fill-rule "evenodd" :d "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" :clip-rule "evenodd"}]])
+
+(defn table-error [[data]]
+  ;; currently boxing the value in a vector to retain the type info
+  ;; TODO: find a better way to do this
+  (html
+   [:div.bg-red-100.px-6.py-4.rounded.text-xs
+    [:h4.mt-0.uppercase.text-xs "Table Error"]
+    [:p.mt-4.font-medium "Clerk’s table viewer does not recognize the format of your data:"]
+    [:div.mt-2.flex.items-center
+     [:div.text-red-500.mr-2 x-icon]
+     [inspect data]]
+    [:p.mt-4.font-medium "Currently, the following formats are supported:"]
+    [:div.mt-2.flex.items-center
+     [:div.text-green-500.mr-2 check-icon]
+     [inspect {:column-1 [1 2]
+               :column-2 [3 4]}]]
+    [:div.mt-2.flex.items-center
+     [:div.text-green-500.mr-2 check-icon]
+     [inspect [{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]]]
+    [:div.mt-2.flex.items-center
+     [:div.text-green-500.mr-2 check-icon]
+     [inspect [[1 3] [2 4]]]]
+    [:div.mt-2.flex.items-center
+     [:div.text-green-500.mr-2 check-icon]
+     [inspect {:head [:column-1 :column-2]
+               :rows [[1 3] [2 4]]}]]]))
+
+(defn table-viewer [data opts]
+  (r/with-let [!sort (r/atom nil)]
+    (let [{:as srt :keys [sort-index sort-key sort-order]} @!sort]
+      (html
+       (let [{:keys [head rows]} (cond->> data sort-key (sort-data srt))
+             num-cols (-> rows viewer/value first viewer/value count)]
+         [:table.text-xs.sans-serif
+          (when head
+            [:thead.border-b.border-gray-300
+             (into [:tr]
+                   (map-indexed (fn [i k]
+                                  [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
+                                   {:class (if (number? (get-in rows [0 i])) "text-right" "text-left")
+                                    #_#_#_#_
+                                    :style {:cursor "ns-resize"}
+                                    :on-click #(sort! !sort i k)
+                                    :title (if (or (string? k) (keyword? k)) (name k) (str k))}
+                                   [:div.inline-flex
+                                    ;; Truncate to available col width without growing the table
+                                    [:div.table.table-fixed.w-full.flex-auto
+                                     {:style {:margin-left -12}}
+                                     [:div.truncate
+                                      [:span.inline-flex.justify-center.items-center.relative
+                                       {:style {:font-size 20 :width 10 :height 10 :bottom -2 :margin-right 2}}
+                                       (when (= sort-key k)
+                                         (if (= sort-order :asc) "▴" "▾"))]
+                                      (if (or (string? k) (keyword? k)) (name k) [inspect k])]]]]) head))])
+          (into [:tbody]
+                (map-indexed (fn [i row]
+                               (if (= :elision (viewer/viewer row))
+                                 (let [{:as fetch-opts :keys [remaining unbounded?]} (viewer/value row)]
+                                   [view-context/consume :fetch-fn
+                                    (fn [fetch-fn]
+                                      [:tr.border-t
+                                       [:td.text-center.py-1
+                                        {:col-span num-cols
+                                         :class (if (fn? fetch-fn)
+                                                  "bg-indigo-50 hover:bg-indigo-100 cursor-pointer"
+                                                  "text-gray-400")
+                                         :on-click #(when (fn? fetch-fn)
+                                                      (fetch-fn fetch-opts))}
+                                        remaining (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]])])
+                                 (let [row (viewer/value row)]
+                                   (into
+                                    [:tr.hover:bg-gray-200
+                                     {:class (if (even? i) "bg-opacity-5 bg-black" "bg-white")}]
+                                    (map-indexed (fn [j d]
+                                                   (let [d (viewer/value d)]
+                                                     [:td.pl-6.pr-2.py-1
+                                                      {:class [(when (number? d) "text-right")
+                                                               (when (= j sort-index) "bg-opacity-5 bg-black")]}
+                                                      (cond
+                                                        (= d viewer/missing-pred) ""
+                                                        (string? d) d
+                                                        (number? d) [:span.tabular-nums d]
+                                                        :else [inspect d])])) row))))) (viewer/value rows)))])))))
+
+
 
 (defn tagged-value [tag value]
   [:span.inspected-value.whitespace-nowrap
@@ -206,7 +312,6 @@
   (if-let [viewer (-> x meta :nextjournal/viewer)]
     (with-viewer viewer x)
     x))
-
 
 (def js-viewers
   [{:pred #(implements? IDeref %) :fn #(tagged-value (-> %1 type pr-str) (inspect (deref %1) %2))}
@@ -246,6 +351,7 @@
                           (into [:<>] children)))})))
 
 (declare default-viewers)
+(declare find-named-viewer)
 
 (defn render-with-viewer [opts viewer value]
   #_(js/console.log :render-with-viewer {:value value :viewer viewer #_#_ :opts opts})
@@ -256,8 +362,7 @@
         (render-with-viewer opts (:fn viewer) value)
 
         (keyword? viewer)
-        (if-let [{render-fn :fn :keys [fetch-opts]} (get ;; TODO change back to `viewers`
-                                                     (into {} (map (juxt :name identity)) named-viewers) viewer)]
+        (if-let [{render-fn :fn :keys [fetch-opts]} (find-named-viewer named-viewers viewer)]  ;; TODO change back to `viewers`
           (if-not render-fn
             (html (error-badge "no render function for viewer named " (str viewer)))
             (let [render-fn (cond-> render-fn (not (fn? render-fn)) *eval*)]
@@ -304,7 +409,8 @@
                                        (fn [more]
                                          (swap! !desc viewer/merge-descriptions more))))
                      _ (.then (fetch! result {})
-                              (fn [desc] (reset! !desc desc)))]
+                              (fn [desc]
+                                (reset! !desc desc)))]
           [view-context/provide {:fetch-fn fetch-fn}
            (when (seq @!desc)
              [error-boundary
@@ -388,9 +494,9 @@
 
 (declare inspect)
 
-
+;; TODO
+#_
 (dc/defcard viewer-reagent-atom
-  ;; TODO
   [inspect (r/atom {:hello :world})])
 
 #_ ;; commented out because recursive window prop will cause a loop
@@ -490,7 +596,7 @@
 
 (dc/defcard eval-viewer
   "Viewers that are lists are evaluated using sci."
-  [inspect (with-viewer '(fn [x] (v/html [:h3 "Ohai, " x "! 👋"])) "Hans")])
+  [inspect (with-viewer (viewer/form->fn+form '(fn [x] (v/html [:h3 "Ohai, " x "! 👋"]))) "Hans")])
 
 
 (dc/defcard notebook
@@ -516,16 +622,15 @@
 
 (dc/defcard inspect-rule-30-sci
   []
-  [inspect
-   '([0 1 0] [1 0 1])
-   {:path []
-    :viewers
-    [{:pred number?
-      :fn #(html [:div.inline-block {:style {:width 16 :height 16}
-                                     :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
-black")}])}
-     {:pred vector? :fn #(html (into [:div.flex.inline-flex] (inspect-children %2) %1))}
-     {:pred list? :fn #(html (into [:div.flex.flex-col] (inspect-children %2) %1))}]}])
+  [inspect {:path []
+            :viewers
+            [{:pred number?
+              :fn (viewer/form->fn+form '#(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                                      :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
+black")}]))}
+             {:pred vector? :fn (viewer/form->fn+form '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1)))}
+             {:pred list? :fn (viewer/form->fn+form '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1)))}]}
+   '([0 1 0] [1 0 1])])
 
 (dc/defcard clj-long
   []
@@ -635,7 +740,7 @@ black")}])}
              :invert? true})]
     [:<>
      [:div.mb-4
-      [map-viewer '{1 ● 2 ■ 3 ▲}]]
+      [inspect '{1 ● 2 ■ 3 ▲}]]
      [:div.mb-4
       [inspect {[[[[1 2]]]] [1 2]}]]
 
@@ -647,6 +752,76 @@ black")}])}
 (defn ^:export ^:dev/after-load mount []
   (when-let [el (js/document.getElementById "clerk")]
     (rdom/render [root] el)))
+
+(dc/defcard table [state]
+  [inspect (viewer/table @state)]
+  {::dc/state [[1 2 3]
+               [4 5 6]]})
+
+(dc/defcard table-incomplete [state]
+  [inspect (viewer/table @state)]
+  {::dc/state [[1 2 3]
+               [4]]})
+
+(dc/defcard table-col-headers [state]
+  [inspect (viewer/table @state)]
+  {::dc/state {:a [1 2 3]
+               :b [4 5 6]}})
+
+(dc/defcard table-col-headers-incomplete [state]
+  [inspect (viewer/table @state)]
+  {::dc/state {:a [1 2 3]
+               :b [4]}})
+
+(dc/defcard table-row-headers [state]
+  [inspect (viewer/table @state)]
+  {::dc/state [{:a 1 :b 2 :c 3}
+               {:a 4 :b 5 :c 6}]})
+
+(dc/defcard table-row-headers-incomplete [state]
+  [inspect (viewer/table @state)]
+  {::dc/state [{:a 1 :b 2 :c 3}
+               {:a 4}]})
+
+(dc/defcard table-error [state]
+  [inspect (viewer/table @state)]
+  {::dc/state #{1 2 3 4}})
+
+(dc/when-enabled
+  (defn rand-int-seq [n to]
+    (take n (repeatedly #(rand-int to)))))
+
+(declare lazy-inspect-in-process)
+
+(dc/defcard table-long [state]
+  [inspect (with-viewer table-viewer @state)]
+  {::dc/state (let [n 20]
+                {:species (repeat n "Adelie")
+                 :island (repeat n "Biscoe")
+                 :culmen-length-mm (rand-int-seq n 50)
+                 :culmen-depth-mm (rand-int-seq n 30)
+                 :flipper-length-mm (rand-int-seq n 200)
+                 :body-mass-g (rand-int-seq n 5000)
+                 :sex (take n (repeatedly #(rand-nth [:female :male])))})})
+
+(dc/defcard table-paginated-map-of-seq [state]
+  [:div
+   (when-let [xs @(rf/subscribe [::blobs])]
+     [inspect-paginated (viewer/table xs)])]
+  {::blobs (let [n 60]
+             {:species (repeat n "Adelie")
+              :island (repeat n "Biscoe")
+              :culmen-length-mm (rand-int-seq n 50)
+              :culmen-depth-mm (rand-int-seq n 30)
+              :flipper-length-mm (rand-int-seq n 200)
+              :body-mass-g (rand-int-seq n 5000)
+              :sex (take n (repeatedly #(rand-nth [:female :male])))})})
+
+(dc/defcard table-paginated-vec [state]
+  [:div
+   (when-let [xs @(rf/subscribe [::blobs])]
+     [inspect-paginated (viewer/table xs)])]
+  {::blobs (mapv  #(conj %2 (str "#" (inc %1))) (range) (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female]))})
 
 (def named-viewers
   [;; named viewers
@@ -661,13 +836,17 @@ black")}])}
    {:name :code :pred string? :fn (comp normalize-viewer code/viewer)}
    {:name :reagent :fn #(r/as-element (cond-> % (fn? %) vector))}
    {:name :eval! :fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
-   {:name :table :fn (comp normalize-viewer table/viewer)}
+   {:name :table :fn table-viewer :fetch-opts {:n 5}}
+   {:name :table-error :fn table-error :fetch-opts {:n 1}}
    {:name :object :fn #(html (tagged-value "#object" [inspect %]))}
    {:name :file :fn #(html (tagged-value "#file " [inspect %]))}
    {:name :clerk/notebook :fn notebook}
    {:name :clerk/var :fn var}
    {:name :clerk/inline-result :fn inline-result}
    {:name :clerk/result :fn inspect-result}])
+
+(defn find-named-viewer [viewers viewer-name]
+  (get (into {} (map (juxt :name identity)) viewers) viewer-name))
 
 (def sci-viewer-namespace
   {'html html
@@ -680,6 +859,8 @@ black")}])}
    'inspect-children inspect-children
    'set-viewers! set-viewers!
    'string-viewer string-viewer
+   'table-viewer table-viewer
+   'table-error table-error
    'with-viewer with-viewer
    'with-viewers with-viewers})
 

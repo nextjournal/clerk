@@ -205,7 +205,8 @@
 (def notebook       v/notebook)
 (def html           v/html)
 (def code           v/code)
-(def table          v/table)
+(def table          #'v/table)
+(def use-headers    #'v/use-headers)
 
 (defmacro with-viewer
   [viewer x]
@@ -306,7 +307,7 @@
 
 #_(build-static-app! {})
 #_(build-static-app! {:live-js? false})
-#_(build-static-app! {:paths ["notebooks/tablecloth.clj"]})
+#_(build-static-app! {:paths ["notebooks/viewers/table.clj"]})
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
