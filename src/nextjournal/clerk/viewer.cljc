@@ -158,12 +158,12 @@
    {:pred map? :name :map :fn 'v/map-viewer :fetch-opts {:n 10}}
    {:pred uuid? :fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred inst? :fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
-   {:pred (fn [x _] false) :name :table :fn 'v/table-viewer
+   {:pred (fn [_] false) :name :table :fn 'v/table-viewer
     :fetch-fn (fn [{:as opts :keys [describe-fn offset]} xs]
                 (assoc (with-viewer* :table (cond-> (update xs :rows describe-fn opts)
                                               (pos? offset) :rows))
                        :path [:rows] :replace-path [offset]))}
-   {:pred (fn [x _] false) :name :table-error :fn 'v/table-error :fetch-opts {:n 5}}])
+   {:pred (fn [_] false) :name :table-error :fn 'v/table-error :fetch-opts {:n 5}}])
 
 ;; consider adding second arg to `:fn` function, that would be the fetch function
 
