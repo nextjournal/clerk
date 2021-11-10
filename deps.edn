@@ -14,15 +14,16 @@
 
         http-kit/http-kit {:mvn/version "2.5.3"}
         hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
-        lambdaisland/uri {:mvn/version "1.4.70"}
+        lambdaisland/uri {:mvn/version "1.11.86"}
 
 
         rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}}
 
  :aliases {:sci {:extra-deps  {applied-science/js-interop  {:mvn/version "0.3.0"}
                                borkdude/sci {:mvn/version "0.2.6"}
+                               reagent/reagent {:mvn/version "1.1.0"}
                                io.github.nextjournal/viewers {:git/url "git@github.com:nextjournal/viewers.git"
-                                                              :git/sha "913ed6d4964171248c6b700ff925aa7ef092d59d"}
+                                                              :git/sha "d72f03a160d7389bbc39c7ffe3150b06d02b7fe3"}
                                metosin/reitit-frontend     {:mvn/version "0.5.15"}}}
 
            :dev {:extra-deps {arrowic/arrowic {:mvn/version "0.1.1"}
