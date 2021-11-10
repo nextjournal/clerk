@@ -154,7 +154,7 @@
    {:pred map-entry? :name :map-entry :fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :fetch-opts {:n 2}}
    {:pred vector? :fn '(partial v/coll-viewer {:open "[" :close "]"}) :fetch-opts {:n 20}}
    {:pred set? :fn '(partial v/coll-viewer {:open "#{" :close "}"}) :fetch-opts {:n 20}}
-   {:pred sequential? :fn '(partial v/coll-viewer {:open "(" :close ")"}) :fetch-opts {:n 3}}
+   {:pred sequential? :fn '(partial v/coll-viewer {:open "(" :close ")"}) :fetch-opts {:n 20}}
    {:pred map? :name :map :fn 'v/map-viewer :fetch-opts {:n 10}}
    {:pred uuid? :fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred inst? :fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
