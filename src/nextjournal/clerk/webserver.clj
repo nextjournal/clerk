@@ -102,7 +102,3 @@
       (println "Port " port " not avaible, server not started!"))))
 
 #_(start! {:port 7777})
-
-(add-tap broadcast!)
-
-#_(tap> (shuffle (range 100)))
