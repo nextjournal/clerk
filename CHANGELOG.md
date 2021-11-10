@@ -5,6 +5,16 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
+## 0.3.233 (2021-11-10)
+
+* 💫 Bump viewers & deps to support ordered list offsets
+* 🐜 Fix error in describe when sorting sets of maps
+* 🐜 Fix arity exception when running table viewer predicates
+* 🐞 Restore page size of 20 for seqs
+* 🐞 Fix regression in closing parens assignment
+* 🛠 Automate github releases
+
+
 ## 0.3.220 (2021-11-09)
 
 * 🌟 Add much improved table viewer supporting lazy loading and data normalization
