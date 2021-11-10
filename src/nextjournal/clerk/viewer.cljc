@@ -476,20 +476,16 @@
                                  (and (= :map-entry (-> value last :nextjournal/viewer :name)) ;; the last element is a map entry whose value can carry parens
                                       (-> value last :nextjournal/value last :nextjournal/viewer closing-paren))))]
      (cond-> node
-       (and closing (not defer-closing?)) (assoc-in [:nextjournal/viewer :closing-parens] (cons closing closing-parens))
+       closing (assoc-in [:nextjournal/viewer :closing-parens] (when-not defer-closing? (cons closing closing-parens)))
        non-leaf? (update :nextjournal/value
                          (fn [xs]
                            (into []
                                  (map-indexed (fn [i x]
                                                 (assign-closing-parens (if (and defer-closing? (= (dec (count xs)) i))
                                                                          (update ctx :closing-parens #(cond->> % closing (cons closing)))
-                                                                         (dissoc ctx :closing-parens))
+                                                                         (assoc ctx :closing-parens nil))
                                                                        x)))
                                  xs)))))))
-
-
-(defn closing-parens [path->info path]
-  (get-in path->info [path :viewer :closing-parens]))
 
 
 #?(:clj
