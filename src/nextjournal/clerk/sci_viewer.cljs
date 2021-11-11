@@ -195,7 +195,7 @@
            (into [:<>] (:closing-parens viewer "}"))])))
 
 (defn string-viewer [s opts]
-  (html [:span.syntax-string.inspected-value "\"" (into [:<>] (map #(cond-> % (not (string? %)) inspect)) s) "\""]))
+  (html [:span.syntax-string.inspected-value "\"" (into [:<>] (map #(cond->> % (not (string? %)) (inspect opts))) s) "\""]))
 
 (defn sort! [!sort i k]
   (let [{:keys [sort-key sort-order]} @!sort]
