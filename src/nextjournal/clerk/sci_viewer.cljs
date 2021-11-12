@@ -817,6 +817,41 @@ black")}]))}
      [inspect-paginated (viewer/table xs)])]
   {::blobs (mapv  #(conj %2 (str "#" (inc %1))) (range) (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female]))})
 
+(defn sparkline [vs & [{:keys [w h stroke-w spot-radius]
+                        :or {w 100 h 30 stroke-w 1.5 spot-radius 2}}]]
+  (let [spot-diameter (* spot-radius 2)
+        v-max (apply max vs)
+        offset (/ w (dec (count vs)))
+        get-y (fn [v-max h diff v]
+                (+ (- h (/ (* v h) v-max)) diff))
+        path-y (get-y v-max h (+ stroke-w spot-radius) (first vs))]
+    [:div.text-indigo-700
+     [:svg.stroke-current
+      {:width w :height h :stroke-width stroke-w :fill "none"}
+      [:path {:d (:line (reduce
+                          (fn [{:keys [i line]} v]
+                            (let [x (+ (* i offset) spot-diameter)
+                                  y (get-y v-max h (+ stroke-w spot-radius) v)]
+                              {:i (inc i)
+                               :line (str line " L " x " " y)}))
+                          {:i 0 :line (str "M" spot-diameter " " path-y)}
+                          vs))}]]]))
+
+(dc/defcard show-sparklines
+  [state]
+  (into [:div]
+        (map-indexed
+          (fn [i vals]
+            [:div.flex.items-center.py-2
+             {:class (when-not (zero? i) "border-t")}
+             [:div.mr-6
+              [inspect vals]]
+             [sparkline vals]])
+          @state))
+  {::dc/state [[1 5 2 4 8 3 7]
+               [5 9 3 2 4 2 1]
+               [7 6 5 4 3 2 1]]})
+
 (def named-viewers
   [;; named viewers
    {:name :elision :pred map? :render-fn elision-viewer}
