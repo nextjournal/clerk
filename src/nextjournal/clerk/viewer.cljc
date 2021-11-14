@@ -146,7 +146,7 @@
   [{:pred char? :render-fn '(fn [c] (v/html [:span.syntax-string.inspected-value "\\" c]))}
    {:pred string? :render-fn 'v/string-viewer :fetch-opts {:n elide-string-length}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.syntax-number.inspected-value
-                                        (if (js/Number.isNaN x) "NaN" (str x))]))}
+                                               (if (js/Number.isNaN x) "NaN" (str x))]))}
    {:pred symbol? :render-fn '(fn [x] (v/html [:span.syntax-symbol.inspected-value x]))}
    {:pred keyword? :render-fn '(fn [x] (v/html [:span.syntax-keyword.inspected-value (str x)]))}
    {:pred nil? :render-fn '(fn [_] (v/html [:span.syntax-nil.inspected-value "nil"]))}
@@ -159,12 +159,14 @@
    {:pred map? :name :map :render-fn 'v/map-viewer :fetch-opts {:n 10}}
    {:pred uuid? :render-fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred inst? :render-fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
+   {:pred var? :transform-fn symbol :render-fn '(fn [x] (v/html [:span.inspected-value [:span.syntax-tag "#'" (str x)]]))}
    {:pred (fn [_] false) :name :table :render-fn 'v/table-viewer
     :fetch-fn (fn [{:as opts :keys [describe-fn offset]} xs]
                 (assoc (with-viewer* :table (cond-> (update xs :rows describe-fn opts)
                                               (pos? offset) :rows))
                        :path [:rows] :replace-path [offset]))}
-   {:pred (fn [_] false) :name :table-error :render-fn 'v/table-error :fetch-opts {:n 5}}])
+   {:pred (fn [_] false) :name :table-error :render-fn 'v/table-error :fetch-opts {:n 5}}
+   {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.text-gray-700 x]))}])
 
 ;; consider adding second arg to `:render-fn` function, that would be the fetch function
 

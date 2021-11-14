@@ -12,7 +12,7 @@
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj"))
 
 (defn var->data [v]
-  (v/with-viewer* :clerk/var (symbol v)))
+  (v/wrapped-with-viewer v))
 
 #_(var->data #'var->data)
 
@@ -24,18 +24,19 @@
 #_(fn->str (fn []))
 #_(fn->str +)
 
-(defn make-printable [x]
+;; TODO: consider removing this and rely only on viewers
+(defn make-readable [x]
   (cond-> x
     (var? x) var->data
     (meta x) (with-meta {})
     (fn? x) fn->str))
 
-#_(meta (make-printable ^{:f (fn [])} []))
+#_(meta (make-readable ^{:f (fn [])} []))
 
 (defn ->edn [x]
   (binding [*print-namespace-maps* false]
     (pr-str
-     (try (w/prewalk make-printable x)
+     (try (w/prewalk make-readable x)
           (catch Throwable _ x)))))
 
 #_(->edn [:vec (with-meta [] {'clojure.core.protocols/datafy (fn [x] x)}) :var #'->edn])

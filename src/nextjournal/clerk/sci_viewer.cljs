@@ -94,10 +94,6 @@
                      blob-id (with-meta {:key blob-id}))])))
          xs)))
 
-(defn var [x]
-  (html [:span.inspected-value
-         [:span.syntax-tag "#'" (str x)]]))
-
 (defn ^:export read-string [s]
   (edamame/parse-string s {:all true
                            :read-cond :allow
@@ -122,6 +118,8 @@
     (try
       (html [inspect (read-string edn)])
       (catch js/Error _e
+        ;; TODO: a read error in a viewers `:render-fn` will also cause a read error currently
+        ;; Can we be more helpful by surfacing the read error in a viewer?
         (unreadable-edn edn)))
     (unreadable-edn string)))
 
@@ -835,7 +833,6 @@ black")}]))}
    {:name :object :render-fn #(html (tagged-value "#object" [inspect %]))}
    {:name :file :render-fn #(html (tagged-value "#file " [inspect %]))}
    {:name :clerk/notebook :render-fn notebook}
-   {:name :clerk/var :render-fn var}
    {:name :clerk/inline-result :render-fn inline-result}
    {:name :clerk/result :render-fn inspect-result}])
 
