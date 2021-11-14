@@ -110,7 +110,7 @@ let doc = " (-> doc ->edn pr-str) "
 viewer.reset_doc(viewer.read_string(doc))
 viewer.mount(document.getElementById('clerk'))\n"
      (when conn-ws?
-       "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
+       "goog.global.ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
 ws.onmessage = msg => viewer.reset_doc(viewer.read_string(msg.data))")]]))
 
 

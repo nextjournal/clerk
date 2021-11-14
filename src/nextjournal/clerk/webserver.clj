@@ -57,10 +57,10 @@
 
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
-    (httpkit/as-channel req {:on-open (fn [ch]
-                                        (swap! !clients conj ch))
-                             :on-close (fn [ch reason]
-                                         (swap! !clients disj ch))})
+    (httpkit/as-channel req {:on-open (fn [ch] (swap! !clients conj ch))
+                             :on-close (fn [ch _reason] (swap! !clients disj ch))
+                             :on-receive (fn [_ch msg] (binding [*ns* (create-ns 'user)]
+                                                         (eval (read-string msg))))})
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         ("css" "js") {:status 302
