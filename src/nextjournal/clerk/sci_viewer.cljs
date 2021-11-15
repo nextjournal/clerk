@@ -846,7 +846,8 @@ black")}]))}
              {:class (when-not (zero? i) "border-t")}
              [:div.mr-6
               [inspect vals]]
-             [sparkline vals]])
+             [inspect (with-viewers [{:pred vector?
+                                      :render-fn #(html [sparkline %])}] vals)]])
           @state))
   {::dc/state [[1 5 2 4 8 3 7]
                [5 9 3 2 4 2 1]
