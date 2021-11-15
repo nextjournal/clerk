@@ -293,15 +293,10 @@
                                     [:tr.hover:bg-gray-200
                                      {:class (if (even? i) "bg-opacity-5 bg-black" "bg-white")}]
                                     (map-indexed (fn [j d]
-                                                   (let [d (viewer/value d)]
-                                                     [:td.pl-6.pr-2.py-1
-                                                      {:class [(when (number? d) "text-right")
-                                                               (when (= j sort-index) "bg-opacity-5 bg-black")]}
-                                                      (cond
-                                                        (= d viewer/missing-pred) ""
-                                                        (string? d) d
-                                                        (number? d) [:span.tabular-nums d]
-                                                        :else [inspect d])])) row))))) (viewer/value rows)))])))))
+                                                   [:td.pl-6.pr-2.py-1
+                                                    {:class [(when (number? d) "text-right")
+                                                             (when (= j sort-index) "bg-opacity-5 bg-black")]}
+                                                    [inspect (update opts :path conj j) d]]) row))))) (viewer/value rows)))])))))
 
 
 

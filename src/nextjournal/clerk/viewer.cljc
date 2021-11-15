@@ -55,7 +55,7 @@
   (and (map? x)
        (contains? x :nextjournal/value)))
 
-
+;; TODO: rename to `->value`
 (defn value
   "Takes `x` and returns the `:nextjournal/value` from it, or otherwise `x` unmodified."
   [x]
@@ -162,11 +162,17 @@
    {:pred var? :transform-fn symbol :render-fn '(fn [x] (v/html [:span.inspected-value [:span.syntax-tag "#'" (str x)]]))}
    {:pred (fn [_] false) :name :table :render-fn 'v/table-viewer
     :fetch-fn (fn [{:as opts :keys [describe-fn offset]} xs]
-                (assoc (with-viewer* :table (cond-> (update xs :rows describe-fn opts)
-                                              (pos? offset) :rows))
+                (assoc (cond-> (update xs :rows describe-fn opts)
+                         (pos? offset) :rows)
                        :path [:rows] :replace-path [offset]))}
    {:pred (fn [_] false) :name :table-error :render-fn 'v/table-error :fetch-opts {:n 5}}
    {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.text-gray-700 x]))}])
+
+
+(def default-table-cell-viewers
+  [{:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))}
+   {:pred string? :render-fn '(fn [x] (v/html (str x))) :fetch-opts {:n elide-string-length}}
+   {:pred number? :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))}])
 
 ;; consider adding second arg to `:render-fn` function, that would be the fetch function
 
@@ -335,7 +341,7 @@
                                       (sequential? xs) (nth xs idx))
                                 opts
                                 (conj current-path idx)))
-                    fetch-fn (fetch-fn (assoc fetch-opts :describe-fn describe) xs)
+                    fetch-fn (fetch-fn (merge opts fetch-opts {:describe-fn describe}) xs)
 
                     (nil? (:n fetch-opts)) ;; opt out of description and return full value
                     xs
@@ -374,9 +380,6 @@
 
                     :else ;; leaf value
                     xs))))))
-
-
-
 
 #_#_#_#_
 (let [rand-int-seq (fn [n to]
@@ -558,6 +561,7 @@
 (def tex       (partial with-viewer* :latex))
 (def notebook  (partial with-viewer* :clerk/notebook))
 
+
 (defn table
   "Displays `xs` in a table.
 
@@ -567,11 +571,17 @@
   * seq of maps: `[{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]`
   * seq of seqs `[[1 3] [2 4]]`
   * map with `:head` and `:rows` keys `{:head [:column-1 :column-2] :rows [[1 3] [2 4]]}`"
-  [xs]
-  (-> (if-let [normalized (normalize-table-data xs)]
-        (with-viewer* :table normalized)
-        (with-viewer* :table-error [xs]))
-      (assoc :nextjournal/width :wide)))
+  ([xs]
+   (table {:nextjournal/width :wide} xs))
+  ([opts xs]
+   (-> (if-let [normalized (normalize-table-data xs)]
+         (with-viewer* :table normalized)
+         (with-viewer* :table-error [xs]))
+       (merge opts)
+       (assoc :nextjournal/viewers (process-fns default-table-cell-viewers)))))
+
+
+
 
 #_(table {:a (range 10)
           :b (mapv inc (range 10))})
