@@ -842,6 +842,9 @@ black")}]))}
 (defn find-named-viewer [viewers viewer-name]
   (get (into {} (map (juxt :name identity)) viewers) viewer-name))
 
+(defn clerk-eval [form]
+  (js/goog.global.ws_send (pr-str form)))
+
 (def sci-viewer-namespace
   {'html html
    'inspect inspect
@@ -856,7 +859,8 @@ black")}]))}
    'table-viewer table-viewer
    'table-error table-error
    'with-viewer with-viewer
-   'with-viewers with-viewers})
+   'with-viewers with-viewers
+   'clerk-eval clerk-eval})
 
 (defonce !sci-ctx
   (atom (sci/init {:async? true
