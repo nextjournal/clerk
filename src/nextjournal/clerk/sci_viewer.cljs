@@ -196,7 +196,10 @@
            (into [:<>] (:closing-parens viewer "}"))])))
 
 (defn string-viewer [s opts]
-  (html [:span.syntax-string.inspected-value "\"" (into [:<>] (map #(cond->> % (not (string? %)) (inspect opts))) s) "\""]))
+  (html (into [:<>] (map #(cond->> % (not (string? %)) (inspect opts))) s)))
+
+(defn quoted-string-viewer [s opts]
+  (html [:span.syntax-string.inspected-value "\"" (viewer/value (string-viewer s opts)) "\""]))
 
 (defn sort! [!sort i k]
   (let [{:keys [sort-key sort-order]} @!sort]
@@ -847,6 +850,7 @@ black")}]))}
    'tagged-value tagged-value
    'inspect-children inspect-children
    'set-viewers! set-viewers!
+   'quoted-string-viewer quoted-string-viewer
    'string-viewer string-viewer
    'table-viewer table-viewer
    'table-error table-error

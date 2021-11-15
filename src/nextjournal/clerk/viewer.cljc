@@ -144,7 +144,7 @@
 (def default-viewers
   ;; maybe make this a sorted-map
   [{:pred char? :render-fn '(fn [c] (v/html [:span.syntax-string.inspected-value "\\" c]))}
-   {:pred string? :render-fn 'v/string-viewer :fetch-opts {:n elide-string-length}}
+   {:pred string? :render-fn 'v/quoted-string-viewer :fetch-opts {:n elide-string-length}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.syntax-number.inspected-value
                                                (if (js/Number.isNaN x) "NaN" (str x))]))}
    {:pred symbol? :render-fn '(fn [x] (v/html [:span.syntax-symbol.inspected-value x]))}
@@ -171,7 +171,7 @@
 
 (def default-table-cell-viewers
   [{:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))}
-   {:pred string? :render-fn '(fn [x] (v/html (str x))) :fetch-opts {:n elide-string-length}}
+   {:pred string? :render-fn '(fn [x] (v/html (v/string-viewer x))) :fetch-opts {:n 40}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))}])
 
 ;; consider adding second arg to `:render-fn` function, that would be the fetch function
