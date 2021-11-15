@@ -292,7 +292,17 @@
                                                       (fetch-fn fetch-opts))}
                                         remaining (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]])])
                                  (let [row (viewer/value row)]
-                                   (into
+                                   [inspect (with-viewers
+                                              [{:pred vector?
+                                                :render-fn (fn [r opts]
+                                                             (html
+                                                               (into [:tr.hover:bg-gray-200]
+                                                                     (map
+                                                                       (fn [x]
+                                                                         [:td.pl-6.pr-2.py-1
+                                                                          [inspect opts x]]))
+                                                                     r)))}] row)]
+                                   #_(into
                                     [:tr.hover:bg-gray-200
                                      {:class (if (even? i) "bg-opacity-5 bg-black" "bg-white")}]
                                     (map-indexed (fn [j d]
