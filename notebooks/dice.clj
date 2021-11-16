@@ -5,10 +5,10 @@
 (def dice '[🔴 🟢 🟡 🔵 🟠 🃏])
 
 (clerk/with-viewer (fn [face]
-                     (v/html [:div
-                              [:h1 face]
-                              [:button.button-primary {:on-click (fn [e]
-                                                                   (v/clerk-eval '(clerk/show! "notebooks/dice.clj")))} "Roll!"]]))
+                     (v/html [:div.text-center
+                              [:div.mt-2 {:style {:font-size "6em"}} face]
+                              [:button.bg-blue-500.hover:bg-blue-700.text-white.font-bold.py-2.px-4.rounded
+                               {:on-click (fn [e] (v/clerk-eval '(shuffle)))} "Roll 🎲!"]]))
   (rand-nth dice))
 
 (defn shuffle []

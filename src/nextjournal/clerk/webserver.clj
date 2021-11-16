@@ -55,11 +55,14 @@
          :body (view/->edn (v/describe result opts))})
       {:status 404})))
 
+
+
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
     (httpkit/as-channel req {:on-open (fn [ch] (swap! !clients conj ch))
                              :on-close (fn [ch _reason] (swap! !clients disj ch))
-                             :on-receive (fn [_ch msg] (binding [*ns* (create-ns 'user)]
+                             :on-receive (fn [_ch msg] (binding [*ns* (or (:ns (meta @!doc))
+                                                                          (create-ns 'user))]
                                                          (eval (read-string msg))))})
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
