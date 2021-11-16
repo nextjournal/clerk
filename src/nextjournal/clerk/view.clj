@@ -42,18 +42,18 @@
 #_(->edn [:vec (with-meta [] {'clojure.core.protocols/datafy (fn [x] x)}) :var #'->edn])
 
 (defn described-result [_ns {:keys [result blob-id]}]
-  (v/with-viewer* :clerk/result (cond-> {:blob-id blob-id}
-                                  (v/width result)  (assoc :width (v/width result))
-                                  (v/viewer result) (assoc :viewer (v/viewer result)))))
+  (merge {:nextjournal/viewer :clerk/result
+          :nextjournal/value {:blob-id blob-id}}
+         (when (v/wrapped-value? result)
+           (dissoc result :nextjournal/value :nextjournal/viewer))))
 
 (defn inline-result [ns {:keys [result]}]
-  (v/with-viewer* :clerk/inline-result
-    (try
-      (cond-> {:edn (->edn (v/describe result {:viewers (v/get-viewers ns (v/viewers result))}))}
-        (v/width result)  (assoc :width (v/width result))
-        (v/viewer result) (assoc :viewer (v/viewer result)))
-      (catch Exception _
-        {:string (pr-str result)}))))
+  (let [described-result (v/describe result {:viewers (v/get-viewers ns (v/viewers result))})]
+    (merge {:nextjournal/viewer :clerk/inline-result
+            :nextjournal/value (try {:edn (->edn described-result)}
+                                    (catch Throwable _e
+                                      {:string (pr-str result)}))}
+           (dissoc described-result :nextjournal/value :nextjournal/viewer))))
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
@@ -92,7 +92,7 @@
 (def resource->static-url
   {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxQBDwk3cvr1bt8YVL5m6bJGrFEmzrSbCrH1roypLjJr4AbbteCKh9Y6gQVYexdY85QA2HG5nQFLWpRp69zFSPDJ9"
    "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxoxUgsBRs2yjjBBcfeCc8XigM7erXHmjJg2tjdGxNBxwTYuDonuYswXqRStaCA2b3rTEPCgPwixJmAVrea1qAHHU"
-   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8Vw6DtsN3e7McBGLJ1r5s3zrNSdPENzJJoQcQ4QXGvwgibD5vBqukkiYhdobRg2CKbmEmrg6U89MMKMVN7vEtwdhqa"})
+   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VsrQQHPR3YvBayTkWYEHDzVvhzqLUwdM2Bf6UqNBccsZZ382vmiroKVbJ7YMpzdCwy7Ps6YUdHmVfkH2MUFykmgmD"})
 
 (defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} doc]
   (hiccup/html5

@@ -72,21 +72,16 @@
                        (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) " ")] " ")))
                  (keys x')) "}"])))
 
-
-
 (defn notebook [xs]
   (html
    (into [:div.flex.flex-col.items-center.viewer-notebook]
          (map (fn [x]
-                (let [viewer (:viewer (viewer/value x) (viewer/viewer x))
-                      width (:width (viewer/value x) (viewer/width x))
+                (let [viewer (viewer/viewer x)
                       blob-id (:blob-id (viewer/value x))]
                   [:div {:class ["viewer"
                                  (when (keyword? viewer)
                                    (str "viewer-" (name viewer)))
-                                 (case (or width (case viewer
-                                                   :code :wide
-                                                   :prose))
+                                 (case (or (viewer/width x) (case viewer :code :wide :prose))
                                    :wide "w-full max-w-wide"
                                    :full "w-full"
                                    "w-full max-w-prose px-8 overflow-x-auto")]}

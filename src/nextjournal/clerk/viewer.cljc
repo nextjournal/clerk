@@ -79,13 +79,13 @@
 (defn viewers
   "Returns the `:nextjournal/viewers` for a given wrapped value `x`, `nil` otherwise."
   [x]
-  (when (map? x)
+  (when (wrapped-value? x)
     (:nextjournal/viewers x)))
 
 (defn width
   "Returns the `:nextjournal/width` for a given wrapped value `x`, `nil` otherwise."
   [x]
-  (when (map? x)
+  (when (wrapped-value? x)
     (:nextjournal/width x)))
 
 
@@ -326,6 +326,7 @@
          xs (value wrapped-value)]
      #_(prn :xs xs :type (type xs) :path path :current-path current-path)
      (merge {:path path}
+            (dissoc wrapped-value [:nextjournal/value :nextjournal/viewer])
             (with-viewer* (cond-> viewer (map? viewer) (dissoc viewer :pred :transform-fn))
               (cond (< (count current-path)
                        (count path))
