@@ -160,91 +160,31 @@
    {:pred uuid? :render-fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred inst? :render-fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred var? :transform-fn symbol :render-fn '(fn [x] (v/html [:span.inspected-value [:span.syntax-tag "#'" (str x)]]))}
-   {:pred (fn [_] false) :name :table :render-fn 'v/table-viewer
+   {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.text-gray-700 x]))}
+
+   {:name :elision :render-fn (quote v/elision-viewer)}
+   {:name :latex :render-fn (quote v/katex-viewer)}
+   {:name :mathjax :render-fn (quote v/mathjax-viewer)}
+   {:name :html :render-fn (quote v/html)}
+   {:name :hiccup :render-fn (quote v/html)} ;; TODO: drop once mardown doesn't use it anymore
+   {:name :plotly :render-fn (quote v/plotly-viewer)}
+   {:name :vega-lite :render-fn (quote v/vega-lite-viewer)}
+   {:name :markdown :render-fn (quote v/markdown-viewer)}
+   {:name :code :render-fn (quote v/code-viewer)}
+   {:name :reagent :render-fn (quote v/reagent-viewer)}
+   {:name :eval! :render-fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
+   {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
     :fetch-fn (fn [{:as opts :keys [describe-fn offset]} xs]
                 (assoc (with-viewer* :table (cond-> (update xs :rows describe-fn opts)
                                               (pos? offset) :rows))
                        :path [:rows] :replace-path [offset]))}
-   {:pred (fn [_] false) :name :table-error :render-fn 'v/table-error :fetch-opts {:n 5}}
-   {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.text-gray-700 x]))}])
+   {:name :table-error :render-fn '(quote v/table-error) :fetch-opts {:n 1}}
+   {:name :object :render-fn '(fn [x] (v/html (v/tagged-value "#object" [v/inspect x])))}
+   {:name :file :render-fn '(fn [x] (v/html (v/tagged-value "#file " [v/inspect x])))}
+   {:name :clerk/notebook :render-fn (quote v/notebook-viewer)}
+   {:name :clerk/inline-result :render-fn (quote v/inline-result)}
+   {:name :clerk/result :render-fn (quote v/inspect-result)}])
 
-;; consider adding second arg to `:render-fn` function, that would be the fetch function
-
-;; clarify that these do not participate in lazy loading currently, or reconsider
-(def named-viewers
-  #{:html
-    :hiccup
-    :plotly
-    :code
-    :elision
-    :eval! ;; TODO: drop
-    :markdown
-    :mathjax
-    :table
-    :table-error
-    :latex
-    :object
-    :reagent
-    :vega-lite
-    :clerk/notebook
-    :clerk/var
-    :clerk/result})
-
-;; heavily inspired by code from Thomas Heller in shadow-cljs, see
-;; https://github.com/thheller/shadow-cljs/blob/1708acb21bcdae244b50293d17633ce35a78a467/src/main/shadow/remote/runtime/obj_support.cljc#L118-L144
-
-(defn rank-val [val]
-  (reduce-kv (fn [res idx pred]
-               (if (pred val) (reduced idx) res))
-             -1
-             (into [] (map :pred) default-viewers)))
-
-(defn resilient-compare [a b]
-  (try
-    (compare a b)
-    (catch #?(:clj Exception :cljs js/Error) _e
-      (compare (rank-val a) (rank-val b)))))
-
-(defn ensure-sorted [xs]
-  (cond
-    (sorted? xs) xs
-    (map? xs) (sort-by first resilient-compare xs)
-    (set? xs) (sort resilient-compare xs)
-    :else xs))
-
-(declare with-viewer*)
-
-(defn wrapped-with-viewer
-  ([x] (wrapped-with-viewer x default-viewers))
-  ([x viewers]
-   (if-let [selected-viewer (viewer x)]
-     (cond (keyword? selected-viewer)
-           (if (named-viewers selected-viewer)
-             (wrap-value x (or (first (filter (comp #{selected-viewer} :name) viewers))
-                               selected-viewer))
-             (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
-           (instance? Form selected-viewer)
-           (wrap-value x selected-viewer))
-     (let [val (value x)]
-       (loop [v viewers]
-         (if-let [{:as matching-viewer :keys [pred]} (first v)]
-           (if (and pred (pred val))
-             (let [{:keys [render-fn transform-fn]} matching-viewer
-                   val (cond-> val transform-fn transform-fn)]
-               (if (and transform-fn (not render-fn))
-                 (wrapped-with-viewer val viewers)
-                 (wrap-value val matching-viewer)))
-             (recur (rest v)))
-           (throw (ex-info (str "cannot find matchting viewer for `" (pr-str x) "`") {:viewers viewers :x val}))))))))
-
-#_(wrapped-with-viewer {:one :two})
-#_(wrapped-with-viewer [1 2 3])
-#_(wrapped-with-viewer (range 3))
-#_(wrapped-with-viewer (clojure.java.io/file "notebooks"))
-#_(wrapped-with-viewer (md "# Hello"))
-#_(wrapped-with-viewer (html [:h1 "hi"]))
-#_(wrapped-with-viewer (with-viewer* :elision {:remaining 10 :count 30 :offset 19}))
-#_(wrapped-with-viewer (with-viewer* (->Form '(fn [name] (html [:<> "Hello " name]))) "James"))
 
 (defn process-fns [viewers]
   (into []
@@ -272,6 +212,65 @@
   (#?(:clj atom :cljs ratom/atom) {:root (process-default-viewers)}))
 
 #_(reset! !viewers {:root (process-default-viewers)})
+
+;; heavily inspired by code from Thomas Heller in shadow-cljs, see
+;; https://github.com/thheller/shadow-cljs/blob/1708acb21bcdae244b50293d17633ce35a78a467/src/main/shadow/remote/runtime/obj_support.cljc#L118-L144
+
+(defn rank-val [val]
+  (reduce-kv (fn [res idx pred]
+               (if (pred val) (reduced idx) res))
+             -1
+             (into [] (map :pred) default-viewers)))
+
+(defn resilient-compare [a b]
+  (try
+    (compare a b)
+    (catch #?(:clj Exception :cljs js/Error) _e
+      (compare (rank-val a) (rank-val b)))))
+
+(defn ensure-sorted [xs]
+  (cond
+    (sorted? xs) xs
+    (map? xs) (sort-by first resilient-compare xs)
+    (set? xs) (sort resilient-compare xs)
+    :else xs))
+
+(declare with-viewer*)
+
+(defn find-named-viewer [viewers viewer-name]
+  (first (filter (comp #{viewer-name} :name) viewers)))
+
+(defn wrapped-with-viewer
+  ([x] (wrapped-with-viewer x default-viewers))
+  ([x viewers]
+   (if-let [selected-viewer (viewer x)]
+     (cond (keyword? selected-viewer)
+           (if-let [named-viewer (find-named-viewer viewers selected-viewer)]
+             (wrap-value x named-viewer)
+             (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
+           (instance? Form selected-viewer)
+           (wrap-value x selected-viewer))
+     (let [val (value x)]
+       (loop [v viewers]
+         (if-let [{:as matching-viewer :keys [pred]} (first v)]
+           (if (and pred (pred val))
+             (let [{:keys [render-fn transform-fn]} matching-viewer
+                   val (cond-> val transform-fn transform-fn)]
+               (if (and transform-fn (not render-fn))
+                 (wrapped-with-viewer val viewers)
+                 (wrap-value val matching-viewer)))
+             (recur (rest v)))
+           (throw (ex-info (str "cannot find matchting viewer for `" (pr-str x) "`") {:viewers viewers :x val}))))))))
+
+#_(wrapped-with-viewer {:one :two})
+#_(wrapped-with-viewer [1 2 3])
+#_(wrapped-with-viewer (range 3))
+#_(wrapped-with-viewer (clojure.java.io/file "notebooks"))
+#_(wrapped-with-viewer (md "# Hello"))
+#_(wrapped-with-viewer (html [:h1 "hi"]))
+#_(wrapped-with-viewer (with-viewer* :elision {:remaining 10 :count 30 :offset 19}))
+#_(wrapped-with-viewer (with-viewer* (->Form '(fn [name] (html [:<> "Hello " name]))) "James"))
+
 
 (defn get-viewers
   "Returns all the viewers that apply in precendence of: optional local `viewers`, viewers set per `ns`, as well on the `:root`."
@@ -553,6 +552,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convience api
+(def html      (partial with-viewer* :html))
 (def md        (partial with-viewer* :markdown))
 (def plotly    (partial with-viewer* :plotly))
 (def vl        (partial with-viewer* :vega-lite))
@@ -577,9 +577,6 @@
 #_(table {:a (range 10)
           :b (mapv inc (range 10))})
 #_(describe (table (set (range 10))))
-
-(defn html [x]
-  (with-viewer* (if (string? x) :html :hiccup) x))
 
 (defn code [x]
   (with-viewer* :code (if (string? x) x (with-out-str (pprint/pprint x)))))

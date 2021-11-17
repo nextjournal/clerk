@@ -33,7 +33,6 @@
 
 
 (declare inspect)
-(declare named-viewers)
 
 (defn value-of
   "Safe access to a value at key a js object.
@@ -316,7 +315,7 @@
 
 
 (reset! viewer/!viewers
-        {:root (into [] (concat viewer/default-viewers js-viewers named-viewers))})
+        {:root (into [] (concat viewer/default-viewers js-viewers))})
 
 (defonce !doc (ratom/atom nil))
 (defonce !viewers viewer/!viewers)
@@ -347,9 +346,8 @@
                           (into [:<>] children)))})))
 
 (declare default-viewers)
-(declare find-named-viewer)
 
-(defn render-with-viewer [opts viewer value]
+(defn render-with-viewer [{:as opts :keys [viewers]} viewer value]
   #_(js/console.log :render-with-viewer {:value value :viewer viewer #_#_ :opts opts})
   (cond (or (fn? viewer) (viewer/fn+form? viewer))
         (viewer value opts)
@@ -358,7 +356,7 @@
         (render-with-viewer opts (:render-fn viewer) value)
 
         (keyword? viewer)
-        (if-let [{:keys [fetch-opts render-fn]} (find-named-viewer named-viewers viewer)]
+        (if-let [{:keys [fetch-opts render-fn]} (viewer/find-named-viewer viewers viewer)]
           (if-not render-fn
             (html (error-badge "no render function for viewer named " (str viewer)))
             (render-fn value (assoc opts :fetch-opts fetch-opts)))
@@ -813,37 +811,34 @@ black")}]))}
      [inspect-paginated (viewer/table xs)])]
   {::blobs (mapv  #(conj %2 (str "#" (inc %1))) (range) (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female]))})
 
-(def named-viewers
-  [;; named viewers
-   {:name :elision :pred map? :render-fn elision-viewer}
-   {:name :latex :pred string? :render-fn #(html (katex/to-html-string %))}
-   {:name :mathjax :pred string? :render-fn (comp normalize-viewer mathjax/viewer)}
-   {:name :html :pred string? :render-fn #(html [:div {:dangerouslySetInnerHTML {:__html %}}])}
-   {:name :hiccup :render-fn (fn [x _] (r/as-element x))}
-   {:name :plotly :pred map? :render-fn (comp normalize-viewer plotly/viewer)}
-   {:name :vega-lite :pred map? :render-fn (comp normalize-viewer vega-lite/viewer)}
-   {:name :markdown :pred string? :render-fn markdown/viewer}
-   {:name :code :pred string? :render-fn (comp normalize-viewer code/viewer)}
-   {:name :reagent :render-fn #(r/as-element (cond-> % (fn? %) vector))}
-   {:name :eval! :render-fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
-   {:name :table :render-fn table-viewer :fetch-opts {:n 5}}
-   {:name :table-error :render-fn table-error :fetch-opts {:n 1}}
-   {:name :object :render-fn #(html (tagged-value "#object" [inspect %]))}
-   {:name :file :render-fn #(html (tagged-value "#file " [inspect %]))}
-   {:name :clerk/notebook :render-fn notebook}
-   {:name :clerk/inline-result :render-fn inline-result}
-   {:name :clerk/result :render-fn inspect-result}])
-
 (defn find-named-viewer [viewers viewer-name]
   (get (into {} (map (juxt :name identity)) viewers) viewer-name))
 
 (defn clerk-eval [form]
   (js/goog.global.ws_send (pr-str form)))
 
+(defn katex-viewer [tex-string]
+  (html (katex/to-html-string tex-string)))
+
+(defn html-viewer [markup]
+  (if (string? markup)
+    (html [:div {:dangerouslySetInnerHTML {:__html markup}}])
+    (r/as-element markup)))
+
+(defn reagent-viewer [x]
+  (r/as-element (cond-> x (fn? x) vector)))
+
+(def mathjax-viewer (comp normalize-viewer mathjax/viewer))
+(def code-viewer (comp normalize-viewer code/viewer))
+(def plotly-viewer (comp normalize-viewer plotly/viewer))
+(def vega-lite-viewer (comp normalize-viewer vega-lite/viewer))
+
+
 (def sci-viewer-namespace
-  {'html html
+  {'html html-viewer
    'inspect inspect
-   'inspect-result 'inspect-result
+   'inspect-result inspect-result
+   'inline-result inline-result
    'coll-viewer coll-viewer
    'map-viewer map-viewer
    'elision-viewer elision-viewer
@@ -855,7 +850,16 @@ black")}]))}
    'table-error table-error
    'with-viewer with-viewer
    'with-viewers with-viewers
-   'clerk-eval clerk-eval})
+   'clerk-eval clerk-eval
+
+   'notebook-viewer notebook
+   'katex-viewer katex-viewer
+   'mathjax-viewer mathjax-viewer
+   'markdown-viewer markdown/viewer
+   'code-viewer code-viewer
+   'plotly-viewer plotly-viewer
+   'vega-lite-viewer vega-lite-viewer
+   'reagent-viewer reagent-viewer})
 
 (defonce !sci-ctx
   (atom (sci/init {:async? true
