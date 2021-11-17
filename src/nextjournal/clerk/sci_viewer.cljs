@@ -390,15 +390,16 @@
                    (catch js/Error _e
                      (unreadable-edn %))))))
 
-(defn inspect-result [result _opts]
-  (html (r/with-let [!desc (r/atom nil)
+(defn inspect-result [result opts]
+  (html (r/with-let [fetch? (not (contains? result :nextjournal/content-type))
+                     !desc (r/atom (when-not fetch? result))
                      fetch-fn (fn [opts]
                                 (.then (fetch! result opts)
                                        (fn [more]
                                          (swap! !desc viewer/merge-descriptions more))))
-                     _ (.then (fetch! result {})
-                              (fn [desc]
-                                (reset! !desc desc)))]
+                     _ (when fetch? (.then (fetch! result {})
+                                           (fn [desc]
+                                             (reset! !desc desc))))]
           [view-context/provide {:fetch-fn fetch-fn}
            (when (seq @!desc)
              [error-boundary
@@ -833,6 +834,8 @@ black")}]))}
 (def plotly-viewer (comp normalize-viewer plotly/viewer))
 (def vega-lite-viewer (comp normalize-viewer vega-lite/viewer))
 
+(defn url-for [{:keys [blob-id]}]
+  (str "/_blob/" blob-id))
 
 (def sci-viewer-namespace
   {'html html-viewer
@@ -859,7 +862,9 @@ black")}]))}
    'code-viewer code-viewer
    'plotly-viewer plotly-viewer
    'vega-lite-viewer vega-lite-viewer
-   'reagent-viewer reagent-viewer})
+   'reagent-viewer reagent-viewer
+
+   'url-for url-for})
 
 (defonce !sci-ctx
   (atom (sci/init {:async? true

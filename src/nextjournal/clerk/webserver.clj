@@ -48,11 +48,12 @@
     (if (contains? blob->result blob-id)
       (let [result (blob->result blob-id)
             viewers (v/get-viewers doc-ns (v/viewers result))
-            opts (assoc (get-fetch-opts query-string) :viewers viewers)]
-        {:status 200
-         #_#_ ;; leaving this out for now so I can open it directly
-         :headers {"Content-Type" "application/edn"}
-         :body (view/->edn (v/describe result opts))})
+            opts (assoc (get-fetch-opts query-string) :viewers viewers)
+            desc (v/describe result opts)]
+        (if (contains? desc :nextjournal/content-type)
+          {:body (v/value desc)
+           :content-type (:nextjournal/content-type desc)}
+          {:body (view/->edn desc)}))
       {:status 404})))
 
 

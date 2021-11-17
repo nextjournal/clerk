@@ -190,13 +190,19 @@
 
 (defn process-fns [viewers]
   (into []
-        (map (fn [{:as viewer :keys [pred render-fn transform-fn]}]
+        (map (fn [{:as viewer :keys [pred fetch-fn render-fn transform-fn]}]
+               ;; TODO: simplify with own type for things that should not be transmitted to the
+               ;; browser (`pred`, `fetch-fn` & `transform-fn`)
+               ;; also remove `symbol?` checks and let viewers use `(quote my-sym)` instead of `'my-sym`
                (cond-> viewer
                  (or (symbol? pred) (not (ifn? pred)))
                  (update :pred #?(:cljs *eval* :clj #(->Fn+Form '(constantly false) (eval %))))
 
                  (and transform-fn (or (symbol? transform-fn) (not (ifn? transform-fn))))
                  (update :transform-fn #?(:cljs *eval* :clj #(->Fn+Form '(constantly false) (eval %))))
+
+                 (and fetch-fn (not (ifn? fetch-fn)))
+                 (update :fetch-fn #?(:cljs *eval* :clj #(->Fn+Form '(constantly false) (eval %))))
 
                  #?@(:clj [(and render-fn (not (instance? Form render-fn)))
                            (update :render-fn ->Form)]

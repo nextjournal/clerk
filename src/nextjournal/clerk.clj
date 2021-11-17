@@ -284,6 +284,7 @@
          "rule_30"
          "viewer_api"
          "viewers/html"
+         "viewers/image"
          "viewers/markdown"
          "viewers/plotly"
          "viewers/table"

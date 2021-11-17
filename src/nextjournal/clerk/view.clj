@@ -41,11 +41,13 @@
 
 #_(->edn [:vec (with-meta [] {'clojure.core.protocols/datafy (fn [x] x)}) :var #'->edn])
 
-(defn described-result [_ns {:keys [result blob-id]}]
-  (merge {:nextjournal/viewer :clerk/result
-          :nextjournal/value {:blob-id blob-id}}
-         (when (v/wrapped-value? result)
-           (dissoc result :nextjournal/value :nextjournal/viewer))))
+(defn described-result [ns {:keys [result blob-id]}]
+  (let [described-result (v/describe result {:viewers (v/get-viewers ns (v/viewers result))})
+        metadata (when (v/wrapped-value? described-result)
+                   (dissoc described-result :nextjournal/value))]
+    (merge {:nextjournal/viewer :clerk/result
+            :nextjournal/value (merge {:blob-id blob-id} metadata)}
+           (dissoc metadata :nextjournal/viewer))))
 
 (defn inline-result [ns {:keys [result]}]
   (let [described-result (v/describe result {:viewers (v/get-viewers ns (v/viewers result))})]
@@ -92,7 +94,7 @@
 (def resource->static-url
   {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxQBDwk3cvr1bt8YVL5m6bJGrFEmzrSbCrH1roypLjJr4AbbteCKh9Y6gQVYexdY85QA2HG5nQFLWpRp69zFSPDJ9"
    "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxoxUgsBRs2yjjBBcfeCc8XigM7erXHmjJg2tjdGxNBxwTYuDonuYswXqRStaCA2b3rTEPCgPwixJmAVrea1qAHHU"
-   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VsrQQHPR3YvBayTkWYEHDzVvhzqLUwdM2Bf6UqNBccsZZ382vmiroKVbJ7YMpzdCwy7Ps6YUdHmVfkH2MUFykmgmD"})
+   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VweyBqPBoHfLt4gQvos6BmztYqUBoYaHo9ek1WwfQCWQEkzEL1Q4B4GtSe61nx6oL1pJdjyryay5RJTEMYq9j8gLW"})
 
 (defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} doc]
   (hiccup/html5
