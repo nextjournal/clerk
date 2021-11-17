@@ -140,6 +140,8 @@
 
 (declare with-viewer*)
 
+(defn fetch-all [_ x] x)
+
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
@@ -163,27 +165,27 @@
    {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.text-gray-700 x]))}
 
    {:name :elision :render-fn (quote v/elision-viewer)}
-   {:name :latex :render-fn (quote v/katex-viewer)}
-   {:name :mathjax :render-fn (quote v/mathjax-viewer)}
-   {:name :html :render-fn (quote v/html)}
-   {:name :hiccup :render-fn (quote v/html)} ;; TODO: drop once mardown doesn't use it anymore
-   {:name :plotly :render-fn (quote v/plotly-viewer)}
-   {:name :vega-lite :render-fn (quote v/vega-lite-viewer)}
-   {:name :markdown :render-fn (quote v/markdown-viewer)}
-   {:name :code :render-fn (quote v/code-viewer)}
-   {:name :reagent :render-fn (quote v/reagent-viewer)}
+   {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
+   {:name :mathjax :render-fn (quote v/mathjax-viewer) :fetch-fn fetch-all}
+   {:name :html :render-fn (quote v/html) :fetch-fn fetch-all}
+   {:name :hiccup :render-fn (quote v/html)} ;; TODO: drop once markdown doesn't use it anymore
+   {:name :plotly :render-fn (quote v/plotly-viewer) :fetch-fn fetch-all}
+   {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :fetch-fn fetch-all}
+   {:name :markdown :render-fn (quote v/markdown-viewer) :fetch-fn fetch-all}
+   {:name :code :render-fn (quote v/code-viewer) :fetch-fn fetch-all}
+   {:name :reagent :render-fn (quote v/reagent-viewer)  :fetch-fn fetch-all}
    {:name :eval! :render-fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
    {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
     :fetch-fn (fn [{:as opts :keys [describe-fn offset]} xs]
                 (assoc (with-viewer* :table (cond-> (update xs :rows describe-fn opts)
                                               (pos? offset) :rows))
                        :path [:rows] :replace-path [offset]))}
-   {:name :table-error :render-fn '(quote v/table-error) :fetch-opts {:n 1}}
+   {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
    {:name :object :render-fn '(fn [x] (v/html (v/tagged-value "#object" [v/inspect x])))}
    {:name :file :render-fn '(fn [x] (v/html (v/tagged-value "#file " [v/inspect x])))}
-   {:name :clerk/notebook :render-fn (quote v/notebook-viewer)}
-   {:name :clerk/inline-result :render-fn (quote v/inline-result)}
-   {:name :clerk/result :render-fn (quote v/inspect-result)}])
+   {:name :clerk/notebook :render-fn (quote v/notebook-viewer) :fetch-fn fetch-all}
+   {:name :clerk/inline-result :render-fn (quote v/inline-result) :fetch-fn fetch-all}
+   {:name :clerk/result :render-fn (quote v/inspect-result) :fetch-fn fetch-all}])
 
 
 (defn process-fns [viewers]
@@ -336,9 +338,6 @@
                                 opts
                                 (conj current-path idx)))
                     fetch-fn (fetch-fn (assoc fetch-opts :describe-fn describe) xs)
-
-                    (nil? (:n fetch-opts)) ;; opt out of description and return full value
-                    xs
 
                     (string? xs)
                     (-> (if (and (number? (:n fetch-opts)) (< (:n fetch-opts) (count xs)))
