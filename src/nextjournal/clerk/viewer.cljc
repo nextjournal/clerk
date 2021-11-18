@@ -14,6 +14,7 @@
   (#?(:clj invoke :cljs -invoke) [this x y]
     ((:fn this) x y)))
 
+
 (defn fn+form? [x]
   (instance? Fn+Form x))
 
@@ -178,9 +179,10 @@
    {:name :eval! :render-fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
    {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
     :fetch-fn (fn [{:as opts :keys [describe-fn offset]} xs]
-                (assoc (cond-> (update xs :rows describe-fn opts)
-                         (pos? offset) :rows)
-                       :path [:rows] :replace-path [offset]))}
+                (-> (cond-> (update xs :rows describe-fn opts [])
+                      (pos? offset) :rows)
+                    (assoc :path [:rows] :replace-path [offset])
+                    (dissoc :nextjournal/viewers)))}
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
    {:name :object :render-fn '(fn [x] (v/html (v/tagged-value "#object" [v/inspect x])))}
    {:name :file :render-fn '(fn [x] (v/html (v/tagged-value "#file " [v/inspect x])))}
@@ -189,7 +191,7 @@
    {:name :clerk/result :render-fn (quote v/inspect-result) :fetch-fn fetch-all}])
 
 (def default-table-cell-viewers
-  [#_{:name :elision :render-fn '(fn [_] "…")}
+  [{:name :elision :render-fn '(fn [_] "…")}
    {:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))}
    {:pred string? :render-fn (quote v/string-viewer) :fetch-opts {:n 60}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))}])
@@ -201,7 +203,7 @@
                ;; browser (`pred`, `fetch-fn` & `transform-fn`)
                ;; also remove `symbol?` checks and let viewers use `(quote my-sym)` instead of `'my-sym`
                (cond-> viewer
-                 (or (symbol? pred) (not (ifn? pred)))
+                 (and pred (or (symbol? pred) (not (ifn? pred))))
                  (update :pred #?(:cljs *eval* :clj #(->Fn+Form '(constantly false) (eval %))))
 
                  (and transform-fn (or (symbol? transform-fn) (not (ifn? transform-fn))))
@@ -331,8 +333,8 @@
   ([xs]
    (describe xs {}))
   ([xs opts]
-   #_assign-closing-parens ;; TODO: restore
-   (describe xs (merge {:path [] :viewers (process-fns (get-viewers *ns* (viewers xs)))} opts) []))
+   (assign-closing-parens
+    (describe xs (merge {:path [] :viewers (process-fns (get-viewers *ns* (viewers xs)))} opts) [])))
   ([xs opts current-path]
    (let [{:as opts :keys [viewers path offset]} (merge {:offset 0} opts)
          wrapped-value (try (wrapped-with-viewer xs viewers) ;; TODO: respect `viewers` on `xs`
@@ -353,6 +355,7 @@
                                       (sequential? xs) (nth xs idx))
                                 opts
                                 (conj current-path idx)))
+
                     fetch-fn (fetch-fn (merge opts fetch-opts {:describe-fn describe}) xs)
 
                     (string? xs)

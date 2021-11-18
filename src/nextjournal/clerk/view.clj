@@ -94,7 +94,7 @@
 (def resource->static-url
   {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxQBDwk3cvr1bt8YVL5m6bJGrFEmzrSbCrH1roypLjJr4AbbteCKh9Y6gQVYexdY85QA2HG5nQFLWpRp69zFSPDJ9"
    "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxoxUgsBRs2yjjBBcfeCc8XigM7erXHmjJg2tjdGxNBxwTYuDonuYswXqRStaCA2b3rTEPCgPwixJmAVrea1qAHHU"
-   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8Vu3fJVAJeEWG9NeeQ6WYfRq3NVzyWyD2pRXn4cn9H4yzeuqcvCnQec9t7J4Rjiek9NCGhhHsiT1fXYrX6wTJKaAYo"})
+   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxVwEykw5xUJ4HqLFszjmDFGk1NV3nVgmfo45JGxyPwsXt85HBxLgpFN5wiW29v9aUqUYNGS6f8L5bR6nx83WNH1a"})
 
 (defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} doc]
   (hiccup/html5
