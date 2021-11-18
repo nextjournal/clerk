@@ -192,7 +192,7 @@
            (into [:<>] (:closing-parens viewer "}"))])))
 
 (defn string-viewer [s opts]
-  (html (into [:span.whitespace-nowrap] (map #(cond->> % (not (string? %)) (inspect opts))) s)))
+  (html (into [:span] (map #(cond->> % (not (string? %)) (inspect opts))) s)))
 
 (defn quoted-string-viewer [s opts]
   (html [:span.syntax-string.inspected-value "\"" (viewer/value (string-viewer s opts)) "\""]))
