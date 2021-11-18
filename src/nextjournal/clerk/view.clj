@@ -44,7 +44,7 @@
 (defn described-result [ns {:keys [result blob-id]}]
   (let [described-result (v/describe result {:viewers (v/get-viewers ns (v/viewers result))})
         metadata (when (v/wrapped-value? described-result)
-                   (dissoc described-result :nextjournal/value))]
+                   (dissoc described-result :nextjournal/value :nextjournal/viewers))]
     (merge {:nextjournal/viewer :clerk/result
             :nextjournal/value (merge {:blob-id blob-id} metadata)}
            (dissoc metadata :nextjournal/viewer))))

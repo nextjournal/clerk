@@ -142,11 +142,13 @@
 
 (defn fetch-all [_ x] x)
 
+(declare !viewers)
+
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
   [{:pred char? :render-fn '(fn [c] (v/html [:span.syntax-string.inspected-value "\\" c]))}
-   {:pred string? :render-fn 'v/string-viewer :fetch-opts {:n elide-string-length}}
+   {:pred string? :render-fn (quote v/quoted-string-viewer) :fetch-opts {:n elide-string-length}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.syntax-number.inspected-value
                                                (if (js/Number.isNaN x) "NaN" (str x))]))}
    {:pred symbol? :render-fn '(fn [x] (v/html [:span.syntax-symbol.inspected-value x]))}
@@ -163,7 +165,6 @@
    {:pred inst? :render-fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred var? :transform-fn symbol :render-fn '(fn [x] (v/html [:span.inspected-value [:span.syntax-tag "#'" (str x)]]))}
    {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.text-gray-700 x]))}
-
    {:name :elision :render-fn (quote v/elision-viewer)}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
    {:name :mathjax :render-fn (quote v/mathjax-viewer) :fetch-fn fetch-all}
@@ -177,8 +178,8 @@
    {:name :eval! :render-fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
    {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
     :fetch-fn (fn [{:as opts :keys [describe-fn offset]} xs]
-                (assoc (with-viewer* :table (cond-> (update xs :rows describe-fn opts)
-                                              (pos? offset) :rows))
+                (assoc (cond-> (update xs :rows describe-fn opts)
+                         (pos? offset) :rows)
                        :path [:rows] :replace-path [offset]))}
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
    {:name :object :render-fn '(fn [x] (v/html (v/tagged-value "#object" [v/inspect x])))}
@@ -187,6 +188,11 @@
    {:name :clerk/inline-result :render-fn (quote v/inline-result) :fetch-fn fetch-all}
    {:name :clerk/result :render-fn (quote v/inspect-result) :fetch-fn fetch-all}])
 
+(def default-table-cell-viewers
+  [#_{:name :elision :render-fn '(fn [_] "…")}
+   {:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))}
+   {:pred string? :render-fn (quote v/string-viewer) :fetch-opts {:n 60}}
+   {:pred number? :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))}])
 
 (defn process-fns [viewers]
   (into []
@@ -210,16 +216,20 @@
                             (update :render-fn form->fn+form)]))))
         viewers))
 
-(defn process-default-viewers []
-  #?(:clj (process-fns default-viewers)
-     :cljs default-viewers))
+(defn process-viewers [viewers]
+  #?(:clj (process-fns viewers)
+     :cljs viewers))
+
+(defn processed-default-viewers []
+  {:root (process-viewers default-viewers)
+   :table (process-viewers default-table-cell-viewers)})
 
 (defonce
   ^{:doc "atom containing a map of `:root` and per-namespace viewers."}
   !viewers
-  (#?(:clj atom :cljs ratom/atom) {:root (process-default-viewers)}))
+  (#?(:clj atom :cljs ratom/atom) (processed-default-viewers)))
 
-#_(reset! !viewers {:root (process-default-viewers)})
+#_(reset! !viewers (processed-default-viewers))
 
 ;; heavily inspired by code from Thomas Heller in shadow-cljs, see
 ;; https://github.com/thheller/shadow-cljs/blob/1708acb21bcdae244b50293d17633ce35a78a467/src/main/shadow/remote/runtime/obj_support.cljc#L118-L144
@@ -261,7 +271,7 @@
      (let [val (value x)]
        (loop [v viewers]
          (if-let [{:as matching-viewer :keys [pred]} (first v)]
-           (if (and pred (pred val))
+           (if (and (ifn? pred) (pred val))
              (let [{:keys [render-fn transform-fn]} matching-viewer
                    val (cond-> val transform-fn transform-fn)]
                (if (and transform-fn (not render-fn))
@@ -321,8 +331,8 @@
   ([xs]
    (describe xs {}))
   ([xs opts]
-   (assign-closing-parens
-    (describe xs (merge {:path [] :viewers (process-fns (get-viewers *ns* (viewers xs)))} opts) [])))
+   #_assign-closing-parens ;; TODO: restore
+   (describe xs (merge {:path [] :viewers (process-fns (get-viewers *ns* (viewers xs)))} opts) []))
   ([xs opts current-path]
    (let [{:as opts :keys [viewers path offset]} (merge {:offset 0} opts)
          wrapped-value (try (wrapped-with-viewer xs viewers) ;; TODO: respect `viewers` on `xs`
@@ -343,7 +353,7 @@
                                       (sequential? xs) (nth xs idx))
                                 opts
                                 (conj current-path idx)))
-                    fetch-fn (fetch-fn (assoc fetch-opts :describe-fn describe) xs)
+                    fetch-fn (fetch-fn (merge opts fetch-opts {:describe-fn describe}) xs)
 
                     (string? xs)
                     (-> (if (and (number? (:n fetch-opts)) (< (:n fetch-opts) (count xs)))
@@ -379,8 +389,6 @@
 
                     :else ;; leaf value
                     xs))))))
-
-
 
 
 #_#_#_#_
@@ -573,11 +581,14 @@
   * seq of maps: `[{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]`
   * seq of seqs `[[1 3] [2 4]]`
   * map with `:head` and `:rows` keys `{:head [:column-1 :column-2] :rows [[1 3] [2 4]]}`"
-  [xs]
-  (-> (if-let [normalized (normalize-table-data xs)]
-        (with-viewer* :table normalized)
-        (with-viewer* :table-error [xs]))
-      (assoc :nextjournal/width :wide)))
+  ([xs]
+   (table {:nextjournal/width :wide} xs))
+  ([opts xs]
+   (-> (if-let [normalized (normalize-table-data xs)]
+         (with-viewer* :table normalized)
+         (with-viewer* :table-error [xs]))
+       (merge opts)
+       (update :nextjournal/viewers concat (:table @!viewers)))))
 
 #_(table {:a (range 10)
           :b (mapv inc (range 10))})
@@ -611,4 +622,5 @@
                        [:td.text-right.pr-6 line]
                        [:td.py-1.pr-6 #?(:clj (demunge (pr-str call)) :cljs call)]]))
                trace)]]]])))
+
 #_(nextjournal.clerk/show! "notebooks/boom.clj")

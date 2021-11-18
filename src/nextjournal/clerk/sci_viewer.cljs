@@ -77,13 +77,13 @@
          (map (fn [x]
                 (let [viewer (viewer/viewer x)
                       blob-id (:blob-id (viewer/value x))]
-                  [:div {:class ["viewer"
+                  [:div {:class ["viewer" "overflow-x-auto"
                                  (when (keyword? viewer)
                                    (str "viewer-" (name viewer)))
                                  (case (or (viewer/width x) (case viewer :code :wide :prose))
                                    :wide "w-full max-w-wide"
                                    :full "w-full"
-                                   "w-full max-w-prose px-8 overflow-x-auto")]}
+                                   "w-full max-w-prose px-8")]}
                    (cond-> [inspect x]
                      blob-id (with-meta {:key blob-id}))])))
          xs)))
@@ -190,7 +190,11 @@
            (into [:<>] (:closing-parens viewer "}"))])))
 
 (defn string-viewer [s opts]
-  (html [:span.syntax-string.inspected-value "\"" (into [:<>] (map #(cond->> % (not (string? %)) (inspect opts))) s) "\""]))
+  (html (into [:span.whitespace-nowrap] (map #(cond->> % (not (string? %)) (inspect opts))) s)))
+
+(defn quoted-string-viewer [s opts]
+  (html [:span.syntax-string.inspected-value "\"" (viewer/value (string-viewer s opts)) "\""]))
+
 
 (defn sort! [!sort i k]
   (let [{:keys [sort-key sort-order]} @!sort]
@@ -287,15 +291,10 @@
                                     [:tr.hover:bg-gray-200
                                      {:class (if (even? i) "bg-opacity-5 bg-black" "bg-white")}]
                                     (map-indexed (fn [j d]
-                                                   (let [d (viewer/value d)]
-                                                     [:td.pl-6.pr-2.py-1
-                                                      {:class [(when (number? d) "text-right")
-                                                               (when (= j sort-index) "bg-opacity-5 bg-black")]}
-                                                      (cond
-                                                        (= d viewer/missing-pred) ""
-                                                        (string? d) d
-                                                        (number? d) [:span.tabular-nums d]
-                                                        :else [inspect d])])) row))))) (viewer/value rows)))])))))
+                                                   [:td.pl-6.pr-2.py-1
+                                                    {:class [(when (number? d) "text-right")
+                                                             (when (= j sort-index) "bg-opacity-5 bg-black")]}
+                                                    [inspect (update opts :path conj i j) d]]) row))))) (viewer/value rows)))])))))
 
 
 
@@ -313,9 +312,6 @@
    {:pred goog/isObject :render-fn js-object-viewer}
    {:pred array? :render-fn (partial coll-viewer {:open [:<> [:span.syntax-tag "#js "] "["] :close "]"})}])
 
-
-(reset! viewer/!viewers
-        {:root (into [] (concat viewer/default-viewers js-viewers))})
 
 (defonce !doc (ratom/atom nil))
 (defonce !viewers viewer/!viewers)
@@ -387,7 +383,8 @@
                                         (str "?" (opts->query opts)))))
       (.then #(.text %))
       (.then #(try (read-string %)
-                   (catch js/Error _e
+                   (catch js/Error e
+                     (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
                      (unreadable-edn %))))))
 
 (defn inspect-result [result opts]
@@ -744,8 +741,8 @@ black")}]))}
 
 (dc/defcard table [state]
   [inspect (viewer/table @state)]
-  {::dc/state [[1 2 3]
-               [4 5 6]]})
+  {::dc/state [[1 2 "ab"]
+               [4 5 "cd"]]})
 
 (dc/defcard table-incomplete [state]
   [inspect (viewer/table @state)]
@@ -792,6 +789,10 @@ black")}]))}
                  :flipper-length-mm (rand-int-seq n 200)
                  :body-mass-g (rand-int-seq n 5000)
                  :sex (take n (repeatedly #(rand-nth [:female :male])))})})
+
+(dc/defcard table-elided-string [state]
+  [inspect-paginated (viewer/table @state)]
+  {::dc/state (repeat 3 (map (comp str/join (partial repeat 200)) ["a" "b" "c"]))})
 
 (dc/defcard table-paginated-map-of-seq [state]
   [:div
@@ -849,6 +850,7 @@ black")}]))}
    'inspect-children inspect-children
    'set-viewers! set-viewers!
    'string-viewer string-viewer
+   'quoted-string-viewer quoted-string-viewer
    'table-viewer table-viewer
    'table-error table-error
    'with-viewer with-viewer
@@ -879,4 +881,7 @@ black")}]))}
   (sci/eval-form @!sci-ctx f))
 
 (set! *eval* eval-form)
-(swap! viewer/!viewers update :root viewer/process-fns)
+
+(swap! viewer/!viewers (fn [viewers]
+                         (-> (into {} (map (juxt key (comp viewer/process-fns val))) viewers)
+                             (update :root concat js-viewers))))
