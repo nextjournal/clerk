@@ -191,7 +191,7 @@
    {:name :clerk/result :render-fn (quote v/inspect-result) :fetch-fn fetch-all}])
 
 (def default-table-cell-viewers
-  [{:name :elision :render-fn '(fn [_] "…")}
+  [{:name :elision :render-fn '(fn [_] (v/html "…"))}
    {:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))}
    {:pred string? :render-fn (quote v/string-viewer) :fetch-opts {:n 60}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))}])
