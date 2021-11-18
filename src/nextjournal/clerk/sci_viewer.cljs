@@ -80,6 +80,8 @@
                   [:div {:class ["viewer" "overflow-x-auto"
                                  (when (keyword? viewer)
                                    (str "viewer-" (name viewer)))
+                                 (when-let [inner-viewer-name (some-> x viewer/value viewer/viewer :name name)]
+                                   (str "viewer-" inner-viewer-name))
                                  (case (or (viewer/width x) (case viewer :code :wide :prose))
                                    :wide "w-full max-w-wide"
                                    :full "w-full"
