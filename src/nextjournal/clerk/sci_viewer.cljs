@@ -819,7 +819,7 @@ black")}]))}
   (get (into {} (map (juxt :name identity)) viewers) viewer-name))
 
 (defn clerk-eval [form]
-  (js/goog.global.ws_send (pr-str form)))
+  (.ws_send ^js goog/global (pr-str form)))
 
 (defn katex-viewer [tex-string]
   (html (katex/to-html-string tex-string)))

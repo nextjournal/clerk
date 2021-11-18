@@ -94,7 +94,7 @@
 (def resource->static-url
   {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxQBDwk3cvr1bt8YVL5m6bJGrFEmzrSbCrH1roypLjJr4AbbteCKh9Y6gQVYexdY85QA2HG5nQFLWpRp69zFSPDJ9"
    "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxoxUgsBRs2yjjBBcfeCc8XigM7erXHmjJg2tjdGxNBxwTYuDonuYswXqRStaCA2b3rTEPCgPwixJmAVrea1qAHHU"
-   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VunwJCkfuTqFeiuqwLbGHDV5iU15HFdUkv3rcnLPH4hwceT5Bkw6NjEKKK2PKeiP2uf3QS8ARzTu8e5SRdQjUfaHh"})
+   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VveqEJinmhjmKCPJVztPrBKzKwuiCr1ENNsMaEvhL9Jc3qkWRtgQSxZRmJaKJNWTwkkxLbQ97BecCVtrHL1KGzLsM"})
 
 (defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} doc]
   (hiccup/html5
@@ -114,7 +114,7 @@ viewer.mount(document.getElementById('clerk'))\n"
      (when conn-ws?
        "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
 ws.onmessage = msg => viewer.reset_doc(viewer.read_string(msg.data))
-goog.global.ws_send = msg => ws.send(msg)")]]))
+window.ws_send = msg => ws.send(msg)")]]))
 
 
 (defn ->static-app [{:keys [live-js?] :or {live-js? live-js?}} docs]
