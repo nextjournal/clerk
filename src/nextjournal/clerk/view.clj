@@ -59,7 +59,7 @@
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
-  ([{:keys [inline-results?] :or {inline-results? false}} doc]
+  ([{:keys [inline-results?] :or {inline-results? true}} doc]
    (let [{:keys [ns]} (meta doc)]
      (cond-> (into []
                    (mapcat (fn [{:as x :keys [type text result]}]
@@ -94,7 +94,7 @@
 (def resource->static-url
   {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxQBDwk3cvr1bt8YVL5m6bJGrFEmzrSbCrH1roypLjJr4AbbteCKh9Y6gQVYexdY85QA2HG5nQFLWpRp69zFSPDJ9"
    "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxoxUgsBRs2yjjBBcfeCc8XigM7erXHmjJg2tjdGxNBxwTYuDonuYswXqRStaCA2b3rTEPCgPwixJmAVrea1qAHHU"
-   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxVwEykw5xUJ4HqLFszjmDFGk1NV3nVgmfo45JGxyPwsXt85HBxLgpFN5wiW29v9aUqUYNGS6f8L5bR6nx83WNH1a"})
+   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VsvtWAVDqSZusVEhCezQBogAKbK4aEEZXHnLtNvSiSRzMrVsCoxakgMwqRQ7FVks4YEY6dcpoD6UVwVufyQQhDD3B"})
 
 (defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} doc]
   (hiccup/html5
