@@ -15,6 +15,7 @@
 
 
 #_(view/doc->viewer @!doc)
+#_(meta @!doc)
 #_(reset! !doc help-doc)
 
 (defn broadcast! [msg]

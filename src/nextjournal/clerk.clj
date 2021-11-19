@@ -11,7 +11,8 @@
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]
-            [taoensso.nippy :as nippy]))
+            [taoensso.nippy :as nippy]
+            [valuehash.api :as valuehash]))
 
 (comment
   (alter-var-root #'nippy/*freeze-serializable-allowlist* (fn [_] "allow-and-record"))
@@ -68,10 +69,16 @@
 
 #_(worth-caching? 0.1)
 
-(defn random-multihash []
-  (multihash/base58 (digest/sha1 (str (java.util.UUID/randomUUID)))))
 
-#_(random-multihash)
+(defn ->hash-str
+  "Attempts to compute a hash of `value` falling back a random string."
+  [value]
+  (try
+    (valuehash/sha-1-str value)
+    (catch Exception _e
+      (str (gensym)))))
+
+#_(->hash (range 104))
 
 (defn read+eval-cached [results-last-run vars->hash code-string]
   (let [form (hashing/read-string code-string)
@@ -120,7 +127,7 @@
                     (catch Exception _e
                       #_(prn :freeze-error e)
                       nil)))
-                (wrap-with-blob-id var-value (if no-cache? (random-multihash) hash))))))))
+                (wrap-with-blob-id var-value (if no-cache? (->hash-str var-value) hash))))))))
 
 #_(read+eval-cached {} {} "(subs (slurp \"/usr/share/dict/words\") 0 1000)")
 

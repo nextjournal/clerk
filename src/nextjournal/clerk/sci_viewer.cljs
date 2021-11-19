@@ -155,14 +155,16 @@
 (defn result-viewer [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
   (html (r/with-let [!hash (atom hash)
                      !desc (r/atom (read-result result))
-                     fetch-fn (when fetch-opts
+                     !fetch-opts (atom fetch-opts)
+                     fetch-fn (when @!fetch-opts
                                 (fn [opts]
-                                  (.then (fetch! fetch-opts opts)
+                                  (.then (fetch! @!fetch-opts opts)
                                          (fn [more]
                                            (swap! !desc viewer/merge-descriptions more)))))]
-          #_(js/console.log :result-viewer/render hash)
           (when-not (= hash @!hash)
+            ;; TODO: simplify
             (reset! !hash hash)
+            (reset! !fetch-opts {:blob-id hash})
             (reset! !desc (read-result result)))
           [view-context/provide {:fetch-fn fetch-fn}
            [error-boundary [inspect @!desc]]]))

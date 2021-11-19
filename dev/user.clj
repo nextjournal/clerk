@@ -1,8 +1,8 @@
 (ns user
   (:require [nextjournal.clerk :as clerk]))
 
-(defn go []
-  (clerk/serve! {}))
+(comment
+  (clerk/serve! {:browse? true}))
 
 (defn set-dev!
   "Set this to `true` to load the css + js from a running instance for css + viewer dev. "

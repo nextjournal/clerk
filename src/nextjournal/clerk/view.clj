@@ -3,7 +3,8 @@
             [hiccup.page :as hiccup]
             [clojure.pprint :as pprint]
             [clojure.string :as str]
-            [clojure.walk :as w]))
+            [clojure.walk :as w]
+            [valuehash.api :as valuehash]))
 
 
 (defn ex->viewer [e]
@@ -41,17 +42,16 @@
 
 #_(->edn [:vec (with-meta [] {'clojure.core.protocols/datafy (fn [x] x)}) :var #'->edn])
 
-
 (defn ->result [ns {:keys [result blob-id]} lazy-load?]
   (let [described-result (v/describe result {:viewers (v/get-viewers ns (v/viewers result))})]
+    (prn :->result blob-id result)
     (merge {:nextjournal/viewer :clerk/result
             :nextjournal/value (cond-> (try {:nextjournal/edn (->edn described-result)}
                                             (catch Throwable _e
                                               {:nextjournal/string (pr-str result)}))
                                  lazy-load?
                                  (assoc :nextjournal/fetch-opts {:blob-id blob-id}
-                                        ;; TODO: use valuehash
-                                        :nextjournal/hash (str (gensym))))}
+                                        :nextjournal/hash blob-id))}
 
            (dissoc described-result :nextjournal/value :nextjournal/viewer))))
 
@@ -89,7 +89,7 @@
 (def resource->static-url
   {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxQBDwk3cvr1bt8YVL5m6bJGrFEmzrSbCrH1roypLjJr4AbbteCKh9Y6gQVYexdY85QA2HG5nQFLWpRp69zFSPDJ9"
    "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxoxUgsBRs2yjjBBcfeCc8XigM7erXHmjJg2tjdGxNBxwTYuDonuYswXqRStaCA2b3rTEPCgPwixJmAVrea1qAHHU"
-   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxoyXh1b5FMSVB3GBzg5dws2LvJNGmKhq7TQG2tRRynxL6y1VGwxJa5aKYPdBw6oHWWNvCgA4ZFRASgxSSCvDBqEn"})
+   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvQsUZ6bR3VAdZzpqUSuV2QRWn3bpg3nxMn1Zf2FikwxTA3yku4orUucwZ87AetKrbVsJVJmF4QPaHNa2fFGhybNS"})
 
 (defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} doc]
   (hiccup/html5

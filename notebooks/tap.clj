@@ -14,6 +14,10 @@
 (defonce setup
   (add-tap tapped))
 
-#_(tap> (rand-int 1000))
+(comment
+  (tap> (rand-int 1000))
+  (tap> (shuffle (range 100)))
+
+  )
 
 #_(do (reset! !taps ()) (clerk/show! "notebooks/tap.clj"))
