@@ -164,7 +164,7 @@
           (when-not (= hash @!hash)
             ;; TODO: simplify
             (reset! !hash hash)
-            (reset! !fetch-opts {:blob-id hash})
+            (reset! !fetch-opts fetch-opts)
             (reset! !desc (read-result result)))
           [view-context/provide {:fetch-fn fetch-fn}
            [error-boundary [inspect @!desc]]]))

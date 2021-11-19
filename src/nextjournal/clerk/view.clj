@@ -42,6 +42,16 @@
 
 #_(->edn [:vec (with-meta [] {'clojure.core.protocols/datafy (fn [x] x)}) :var #'->edn])
 
+(defn ->hash-str
+  "Attempts to compute a hash of `value` falling back a random string."
+  [value]
+  (try
+    (valuehash/sha-1-str value)
+    (catch Exception _e
+      (str (gensym)))))
+
+#_(->hash (range 104))
+
 (defn ->result [ns {:keys [result blob-id]} lazy-load?]
   (let [described-result (v/describe result {:viewers (v/get-viewers ns (v/viewers result))})]
     (merge {:nextjournal/viewer :clerk/result
@@ -50,7 +60,7 @@
                                               {:nextjournal/string (pr-str result)}))
                                  lazy-load?
                                  (assoc :nextjournal/fetch-opts {:blob-id blob-id}
-                                        :nextjournal/hash blob-id))}
+                                        :nextjournal/hash (->hash-str [blob-id described-result])))}
 
            (dissoc described-result :nextjournal/value :nextjournal/viewer))))
 
@@ -88,7 +98,7 @@
 (def resource->static-url
   {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxQBDwk3cvr1bt8YVL5m6bJGrFEmzrSbCrH1roypLjJr4AbbteCKh9Y6gQVYexdY85QA2HG5nQFLWpRp69zFSPDJ9"
    "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxoxUgsBRs2yjjBBcfeCc8XigM7erXHmjJg2tjdGxNBxwTYuDonuYswXqRStaCA2b3rTEPCgPwixJmAVrea1qAHHU"
-   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VtPHHm4km9f42PFm17NUPos3x4WNsFPk928DUfYYip6AkugxsKsjyWY6Kz7jpykxk77YvXHSgCMG4p28Ew1QF5Fd4"})
+   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VuMQTiU4NzKEgziyc5LGHtU7diC1hyQFfQKw4dMs26m4yTSNZ9k6V2Ar5rxkonhL4QRopxYy4c9jvejpY7icsj39G"})
 
 (defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} doc]
   (hiccup/html5

@@ -34,6 +34,7 @@
 
   (clerk/show! "notebooks/viewer_api.clj")
 
+  (clerk/show! "notebooks/sicmutils.clj")
   (clerk/show! "notebooks/viewers/vega.clj")
   (clerk/show! "notebooks/viewers/plotly.clj")
   (clerk/show! "notebooks/viewers/table.clj")
