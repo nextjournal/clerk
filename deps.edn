@@ -36,18 +36,19 @@
 
            :demo {:extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
                                org.xerial/sqlite-jdbc {:mvn/version "3.34.0"}
-                               org.clojure/data.csv {:mvn/version "1.0.0"}
-                               scicloj/tablecloth {:mvn/version "6.023"}
+                               org.clojure/data.csv {:mvn/version "1.0.0"}}}
 
-                               sicmutils/sicmutils {:git/url "https://github.com/sicmutils/sicmutils"
-                                                    :git/sha "8658c0c8883b8225a742b9422061f40b852f375d"}
-                               notespace-sicmutils/notespace-sicmutils {:mvn/version "0.16.2"}
-                               aerial.hanami/aerial.hanami {:mvn/version "0.12.7"}
-                               ;; not pinning this would result in the following error:
-                               ;; > Unable to compare versions for re-frame/re-frame
-                               ;; TODO: make deps above slimmer & remove
-                               re-frame/re-frame {:git/url "https://github.com/nextjournal/freerange"
-                                                  :git/sha "8cf68c30722a4c6f8f948a134c900d7a656ecad4"}}}
+           :demo-encore {:extra-deps {scicloj/tablecloth {:mvn/version "6.023"}
+                                      sicmutils/sicmutils {:git/url "https://github.com/sicmutils/sicmutils"
+                                                           :git/sha "8658c0c8883b8225a742b9422061f40b852f375d"}
+
+                                      notespace-sicmutils/notespace-sicmutils {:mvn/version "0.16.2"}
+                                      aerial.hanami/aerial.hanami {:mvn/version "0.12.7"}
+                                      ;; not pinning this would result in the following error:
+                                      ;; > Unable to compare versions for re-frame/re-frame
+                                      ;; TODO: make deps above slimmer & remove
+                                      re-frame/re-frame {:git/url "https://githbu.com/nextjournal/freerange"
+                                                         :git/sha "8cf68c30722a4c6f8f948a134c900d7a656ecad4"}}}
 
            :build {:deps {io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}
                           io.github.slipset/deps-deploy {:git/sha "b4359c5d67ca002d9ed0c4b41b710d7e5a82e3bf"}
