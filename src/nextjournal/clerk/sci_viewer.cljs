@@ -142,24 +142,31 @@
                      (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
                      (unreadable-edn %))))))
 
-(defn result-viewer [{:nextjournal/keys [edn string fetch-opts]} _opts]
+(defn read-result [{:nextjournal/keys [edn string]}]
   (if edn
     (try
-      (let [result (read-string edn)]
-        (if fetch-opts
-          (html (r/with-let [!desc (r/atom result)
-                             fetch-fn (fn [opts]
-                                        (.then (fetch! fetch-opts opts)
-                                               (fn [more]
-                                                 (swap! !desc viewer/merge-descriptions more))))]
-                  [view-context/provide {:fetch-fn fetch-fn}
-                   [error-boundary [inspect @!desc]]]))
-          (html [inspect result])))
+      (read-string edn)
       (catch js/Error _e
         ;; TODO: a read error in a viewers `:render-fn` will also cause a read error currently
         ;; Can we be more helpful by surfacing the read error in a viewer?
         (unreadable-edn edn)))
     (unreadable-edn string)))
+
+(defn result-viewer [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
+  (html (r/with-let [!hash (atom hash)
+                     !desc (r/atom (read-result result))
+                     fetch-fn (when fetch-opts
+                                (fn [opts]
+                                  (.then (fetch! fetch-opts opts)
+                                         (fn [more]
+                                           (swap! !desc viewer/merge-descriptions more)))))]
+          #_(js/console.log :result-viewer/render hash)
+          (when-not (= hash @!hash)
+            (reset! !hash hash)
+            (reset! !desc (read-result result)))
+          [view-context/provide {:fetch-fn fetch-fn}
+           [error-boundary [inspect @!desc]]]))
+  )
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)

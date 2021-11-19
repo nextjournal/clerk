@@ -49,7 +49,9 @@
                                             (catch Throwable _e
                                               {:nextjournal/string (pr-str result)}))
                                  lazy-load?
-                                 (assoc :nextjournal/fetch-opts {:blob-id blob-id}))}
+                                 (assoc :nextjournal/fetch-opts {:blob-id blob-id}
+                                        ;; TODO: use valuehash
+                                        :nextjournal/hash (str (gensym))))}
 
            (dissoc described-result :nextjournal/value :nextjournal/viewer))))
 
