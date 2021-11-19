@@ -187,8 +187,7 @@
    {:name :object :render-fn '(fn [x] (v/html (v/tagged-value "#object" [v/inspect x])))}
    {:name :file :render-fn '(fn [x] (v/html (v/tagged-value "#file " [v/inspect x])))}
    {:name :clerk/notebook :render-fn (quote v/notebook-viewer) :fetch-fn fetch-all}
-   {:name :clerk/inline-result :render-fn (quote v/inline-result) :fetch-fn fetch-all}
-   {:name :clerk/result :render-fn (quote v/inspect-result) :fetch-fn fetch-all}])
+   {:name :clerk/result :render-fn (quote v/result-viewer) :fetch-fn fetch-all}])
 
 (def default-table-cell-viewers
   [{:name :elision :render-fn '(fn [_] (v/html "…"))}

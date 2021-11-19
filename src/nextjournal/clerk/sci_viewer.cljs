@@ -112,10 +112,49 @@
 (defn unreadable-edn [edn]
   (html [:span.inspected-value.whitespace-nowrap.text-gray-700 edn]))
 
-(defn inline-result [{:keys [edn string]} _opts]
+(defn error-badge [& content]
+  [:div.bg-red-50.rounded-sm.text-xs.text-red-400.px-2.py-1.items-center.sans-serif.inline-flex
+   [:svg.h-4.w-4.text-red-400 {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :aria-hidden "true"}
+    [:path {:fill-rule "evenodd" :d "M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" :clip-rule "evenodd"}]]
+   (into [:div.ml-2.font-bold] content)])
+
+(defn error-boundary [& _]
+  (let [!error (r/atom nil)]
+    (r/create-class
+     {:constructor (fn [_ _])
+      :component-did-catch (fn [_ e _info]
+                             (reset! !error e))
+      :get-derived-state-from-error (fn [e]
+                                      (reset! !error e)
+                                      #js {})
+      :reagent-render (fn [& children]
+                        (if @!error
+                          (error-badge "rendering error") ;; TODO: show error
+                          (into [:<>] children)))})))
+
+(defn fetch! [{:keys [blob-id]} opts]
+  #_(js/console.log :fetch! blob-id opts)
+  (-> (js/fetch (str "_blob/" blob-id (when (seq opts)
+                                        (str "?" (opts->query opts)))))
+      (.then #(.text %))
+      (.then #(try (read-string %)
+                   (catch js/Error e
+                     (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
+                     (unreadable-edn %))))))
+
+(defn result-viewer [{:nextjournal/keys [edn string fetch-opts]} _opts]
   (if edn
     (try
-      (html [inspect (read-string edn)])
+      (let [result (read-string edn)]
+        (if fetch-opts
+          (html (r/with-let [!desc (r/atom result)
+                             fetch-fn (fn [opts]
+                                        (.then (fetch! fetch-opts opts)
+                                               (fn [more]
+                                                 (swap! !desc viewer/merge-descriptions more))))]
+                  [view-context/provide {:fetch-fn fetch-fn}
+                   [error-boundary [inspect @!desc]]]))
+          (html [inspect result])))
       (catch js/Error _e
         ;; TODO: a read error in a viewers `:render-fn` will also cause a read error currently
         ;; Can we be more helpful by surfacing the read error in a viewer?
@@ -323,26 +362,6 @@
   (swap! !viewers assoc scope (vec viewers))
   'set-viewers!)
 
-(defn error-badge [& content]
-  [:div.bg-red-50.rounded-sm.text-xs.text-red-400.px-2.py-1.items-center.sans-serif.inline-flex
-   [:svg.h-4.w-4.text-red-400 {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :aria-hidden "true"}
-    [:path {:fill-rule "evenodd" :d "M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" :clip-rule "evenodd"}]]
-   (into [:div.ml-2.font-bold] content)])
-
-(defn error-boundary [& _]
-  (let [!error (r/atom nil)]
-    (r/create-class
-     {:constructor (fn [_ _])
-      :component-did-catch (fn [_ e _info]
-                             (reset! !error e))
-      :get-derived-state-from-error (fn [e]
-                                      (reset! !error e)
-                                      #js {})
-      :reagent-render (fn [& children]
-                        (if @!error
-                          (error-badge "rendering error") ;; TODO: show error
-                          (into [:<>] children)))})))
-
 (declare default-viewers)
 
 (defn render-with-viewer [{:as opts :keys [viewers]} viewer value]
@@ -378,31 +397,6 @@
            (inspect opts (render-with-viewer (assoc opts :viewers all-viewers :viewer viewer)
                                              viewer
                                              value)))))))
-
-(defn fetch! [{:keys [blob-id]} opts]
-  #_(js/console.log :fetch! blob-id opts)
-  (-> (js/fetch (str "_blob/" blob-id (when (seq opts)
-                                        (str "?" (opts->query opts)))))
-      (.then #(.text %))
-      (.then #(try (read-string %)
-                   (catch js/Error e
-                     (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
-                     (unreadable-edn %))))))
-
-(defn inspect-result [result opts]
-  (html (r/with-let [fetch? (not (contains? result :nextjournal/content-type))
-                     !desc (r/atom (when-not fetch? result))
-                     fetch-fn (fn [opts]
-                                (.then (fetch! result opts)
-                                       (fn [more]
-                                         (swap! !desc viewer/merge-descriptions more))))
-                     _ (when fetch? (.then (fetch! result {})
-                                           (fn [desc]
-                                             (reset! !desc desc))))]
-          [view-context/provide {:fetch-fn fetch-fn}
-           (when (seq @!desc)
-             [error-boundary
-              [inspect @!desc]])])))
 
 (defn in-process-fetch [value opts]
   (.resolve js/Promise (viewer/describe value opts)))
@@ -843,8 +837,7 @@ black")}]))}
 (def sci-viewer-namespace
   {'html html-viewer
    'inspect inspect
-   'inspect-result inspect-result
-   'inline-result inline-result
+   'result-viewer result-viewer
    'coll-viewer coll-viewer
    'map-viewer map-viewer
    'elision-viewer elision-viewer

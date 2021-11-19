@@ -41,25 +41,23 @@
 
 #_(->edn [:vec (with-meta [] {'clojure.core.protocols/datafy (fn [x] x)}) :var #'->edn])
 
-(defn described-result [ns {:keys [result blob-id]}]
-  (let [described-result (v/describe result {:viewers (v/get-viewers ns (v/viewers result))})
-        metadata (when (v/wrapped-value? described-result)
-                   (dissoc described-result :nextjournal/value :nextjournal/viewers))]
-    (merge {:nextjournal/viewer :clerk/result
-            :nextjournal/value (merge {:blob-id blob-id} metadata)}
-           (dissoc metadata :nextjournal/viewer))))
 
-(defn inline-result [ns {:keys [result]}]
+(defn ->result [ns {:keys [result blob-id]} lazy-load?]
   (let [described-result (v/describe result {:viewers (v/get-viewers ns (v/viewers result))})]
-    (merge {:nextjournal/viewer :clerk/inline-result
-            :nextjournal/value (try {:edn (->edn described-result)}
-                                    (catch Throwable _e
-                                      {:string (pr-str result)}))}
+    (merge {:nextjournal/viewer :clerk/result
+            :nextjournal/value (cond-> (try {:nextjournal/edn (->edn described-result)}
+                                            (catch Throwable _e
+                                              {:nextjournal/string (pr-str result)}))
+                                 lazy-load?
+                                 (assoc :nextjournal/fetch-opts {:blob-id blob-id}))}
+
            (dissoc described-result :nextjournal/value :nextjournal/viewer))))
+
+#_(nextjournal.clerk/show! "notebooks/hello.clj")
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
-  ([{:keys [inline-results?] :or {inline-results? true}} doc]
+  ([{:keys [inline-results?] :or {inline-results? false}} doc]
    (let [{:keys [ns]} (meta doc)]
      (cond-> (into []
                    (mapcat (fn [{:as x :keys [type text result]}]
@@ -71,19 +69,14 @@
                                                (v/registration? (:result result))
                                                (:result result)
 
-                                               (and (not inline-results?)
-                                                    (map? result)
-                                                    (contains? result :result)
-                                                    (contains? result :blob-id))
-                                               (described-result ns result)
-
                                                :else
-                                               (inline-result ns result)))))))
+                                               (->result ns result (and (not inline-results?)
+                                                                        (contains? result :blob-id)))))))))
                    doc)
        true v/notebook
        ns (assoc :scope (v/datafy-scope ns))))))
 
-#_(meta (doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj")))
+#_(meta (doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj")))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
 
 (defonce ^{:doc "Load dynamic js from shadow or static bundle from cdn."}
@@ -94,7 +87,7 @@
 (def resource->static-url
   {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxQBDwk3cvr1bt8YVL5m6bJGrFEmzrSbCrH1roypLjJr4AbbteCKh9Y6gQVYexdY85QA2HG5nQFLWpRp69zFSPDJ9"
    "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxoxUgsBRs2yjjBBcfeCc8XigM7erXHmjJg2tjdGxNBxwTYuDonuYswXqRStaCA2b3rTEPCgPwixJmAVrea1qAHHU"
-   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VuHfrjEiznHkMCFuf3XkQeV3WnPYwKF8vY4CEUWmCEyz9b1fQBeJm3ZBZs9Upd7wZnyJGeULZkTYrERNgWeZWsXQQ"})
+   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxoyXh1b5FMSVB3GBzg5dws2LvJNGmKhq7TQG2tRRynxL6y1VGwxJa5aKYPdBw6oHWWNvCgA4ZFRASgxSSCvDBqEn"})
 
 (defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} doc]
   (hiccup/html5
