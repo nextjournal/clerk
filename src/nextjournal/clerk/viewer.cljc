@@ -192,7 +192,7 @@
 (def default-table-cell-viewers
   [{:name :elision :render-fn '(fn [_] (v/html "…"))}
    {:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))}
-   {:pred string? :render-fn (quote v/string-viewer) :fetch-opts {:n 60}}
+   {:pred string? :render-fn (quote v/string-viewer) :fetch-opts {:n 100}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))}])
 
 (defn process-fns [viewers]
