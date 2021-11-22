@@ -237,7 +237,7 @@
 
 (defn rank-val [val]
   (reduce-kv (fn [res idx pred]
-               (if (pred val) (reduced idx) res))
+               (if (and (ifn? pred) (pred val)) (reduced idx) res))
              -1
              (into [] (map :pred) default-viewers)))
 

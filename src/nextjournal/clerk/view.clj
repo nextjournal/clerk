@@ -46,6 +46,10 @@
   "Attempts to compute a hash of `value` falling back a random string."
   [value]
   (try
+    (let [limit 1000000]
+      (when (and (seqable? value)
+                 (= limit (bounded-count limit value)))
+        (throw (ex-info "not countable within limit" {:limit limit}))))
     (valuehash/sha-1-str value)
     (catch Exception _e
       (str (gensym)))))
