@@ -9,7 +9,6 @@
 
         com.nextjournal/beholder {:mvn/version "1.0.0"}
         io.github.nextjournal/valuehash {:mvn/version "0.1.10"}
-
         com.taoensso/nippy {:mvn/version "3.1.1"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
         javax.xml.bind/jaxb-api {:mvn/version "2.3.1"} ;; needed to make multihash work on JDK11+
@@ -18,14 +17,15 @@
         hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
         lambdaisland/uri {:mvn/version "1.11.86"}
 
+        rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}
 
-        rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}}
+        io.github.nextjournal/viewers {:git/url "git@github.com:nextjournal/viewers.git"
+                                       :git/sha "a32acfedce17bfa65ef8ac2a077d87823d72c8f3"}}
 
  :aliases {:sci {:extra-deps  {applied-science/js-interop  {:mvn/version "0.3.0"}
                                borkdude/sci {:mvn/version "0.2.6"}
                                reagent/reagent {:mvn/version "1.1.0"}
-                               io.github.nextjournal/viewers {:git/url "git@github.com:nextjournal/viewers.git"
-                                                              :git/sha "a32acfedce17bfa65ef8ac2a077d87823d72c8f3"}
+
                                metosin/reitit-frontend     {:mvn/version "0.5.15"}}}
 
            :dev {:extra-deps {arrowic/arrowic {:mvn/version "0.1.1"}

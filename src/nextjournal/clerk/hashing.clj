@@ -14,6 +14,8 @@
             [multihash.digest :as digest]
             [rewrite-clj.node :as n]
             [rewrite-clj.parser :as p]
+            [nextjournal.markdown :as markdown]
+            [nextjournal.markdown.transform :as markdown.transform]
             [weavejester.dependency :as dep]))
 
 (defn var-name
@@ -71,30 +73,50 @@
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
 
+(defn parse-clojure-file [{:as _opts :keys [markdown?]} file]
+  (loop [{:as state :keys [doc nodes]} {:nodes (:children (p/parse-file-all file))
+                                        :doc []}]
+    (if-let [node (first nodes)]
+      (recur (cond
+               (#{:deref :map :meta :list :quote :reader-macro :set :token :var :vector} (n/tag node))
+               (-> state
+                   (update :nodes rest)
+                   (update :doc (fnil conj []) {:type :code :text (n/string node)}))
+
+               (and markdown? (n/comment? node))
+               (-> state
+                   (assoc :nodes (drop-while n/comment? nodes))
+                   (update :doc conj {:type :markdown :text (apply str (map (comp remove-leading-semicolons n/string)
+                                                                            (take-while n/comment? nodes)))}))
+               :else
+               (update state :nodes rest)))
+      doc)))
+
+(defn parse-markdown-file [file]
+  (loop [{:as state :keys [doc nodes] ::keys [md-slice]} {:doc [] ::md-slice [] :nodes (:content (markdown/parse (slurp file)))}]
+    (if-some [{:as node :keys [type]} (first nodes)]
+      (recur
+       (if (= :code type)
+         (cond-> state
+           (seq md-slice)
+           (-> (update :doc conj {:type :markdown :doc {:type :doc :content md-slice}})
+               (assoc ::md-slice []))
+           :always
+           (-> (update :doc conj {:type :code :text (str/trim (markdown.transform/->text node))})
+               (update :nodes rest)))
+         (-> state (update ::md-slice conj node) (update :nodes rest))))
+      (cond-> doc
+        (seq md-slice)
+        (conj {:type :markdown :doc {:type :doc :content md-slice}})))))
 
 (defn parse-file
-  ([file]
-   (parse-file {} file))
-  ([{:as _opts :keys [markdown?]} file]
-   (loop [{:as state :keys [doc nodes]} {:nodes (:children (p/parse-file-all file))
-                                         :doc []}]
-     (if-let [node (first nodes)]
-       (recur (cond
-                (#{:deref :map :meta :list :quote :reader-macro :set :token :var :vector} (n/tag node))
-                (-> state
-                    (update :nodes rest)
-                    (update :doc (fnil conj []) {:type :code :text (n/string node)}))
-
-                (and markdown? (n/comment? node))
-                (-> state
-                    (assoc :nodes (drop-while n/comment? nodes))
-                    (update :doc conj {:type :markdown :text (apply str (map (comp remove-leading-semicolons n/string)
-                                                                             (take-while n/comment? nodes)))}))
-                :else
-                (update state :nodes rest)))
-       doc))))
+  ([file] (parse-file {} file))
+  ([opts file] (if (str/ends-with? file ".md")
+                 (parse-markdown-file file)
+                 (parse-clojure-file opts file))))
 
 #_(parse-file "notebooks/elements.clj")
+#_(parse-file "notebooks/markdown.md")
 #_(parse-file {:markdown? true} "notebooks/rule_30.clj")
 #_(parse-file "notebooks/src/demo/lib.cljc")
 

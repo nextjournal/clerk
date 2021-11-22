@@ -167,6 +167,8 @@
   [file]
   (try
     (reset! !last-file file)
+    ;; NOTE: h/parse-file is called at-least twice for every show, one here and one in
+    ;; h/hash -> h/build-graph <- h/analyze <- h/parse-file
     (let [doc (parse-file file)
           results-last-run (meta @webserver/!doc)
           {:keys [result time-ms]} (time-ms (+eval-results results-last-run (hashing/hash file) doc))]
@@ -180,7 +182,8 @@
 
 (defn file-event [{:keys [type path]}]
   (when (and (contains? #{:modify :create} type)
-             (or (str/ends-with? path ".clj")
+             (or (str/ends-with? path ".md")
+                 (str/ends-with? path ".clj")
                  (str/ends-with? path ".cljc")))
     (binding [*ns* (find-ns 'user)]
       (let [rel-path (str/replace (str path) (str (fs/canonicalize ".") fs/file-separator) "")
@@ -268,9 +271,9 @@
 ;; static builds
 
 (def clerk-docs
-  (into []
-        (map #(str "notebooks/" % ".clj"))
-        ["hello"
+  (concat
+   ;; clj notebooks
+   (->> ["hello"
          "how_clerk_works"
          "onwards"
          "pagination"
@@ -284,7 +287,11 @@
          "viewers/plotly"
          "viewers/table"
          "viewers/tex"
-         "viewers/vega"]))
+         "viewers/vega"]
+        (map #(str "notebooks/" % ".clj")))
+
+   ;; md notebooks
+   ["notebooks/markdown.md"]))
 
 (defn build-static-app!
   "Builds a static html app of the notebooks at `paths`."

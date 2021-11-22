@@ -10,6 +10,7 @@
             [nextjournal.devcards.main]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
+            [nextjournal.markdown.transform :as md.transform]
             [nextjournal.viewer.markdown :as markdown]
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
@@ -839,6 +840,14 @@ black")}]))}
 (def code-viewer (comp normalize-viewer code/viewer))
 (def plotly-viewer (comp normalize-viewer plotly/viewer))
 (def vega-lite-viewer (comp normalize-viewer vega-lite/viewer))
+(defn markdown-viewer
+  "Accept a markdown string or a structure from parsed markdown."
+  [data]
+  (cond
+    (string? data)
+    (markdown/viewer data)
+    (and (map? data) (contains? data :content) (contains? data :type))
+    (with-viewer :hiccup (md.transform/->hiccup markdown/default-renderers data))))
 
 (defn url-for [{:keys [blob-id]}]
   (str "/_blob/" blob-id))
@@ -864,7 +873,7 @@ black")}]))}
    'notebook-viewer notebook
    'katex-viewer katex-viewer
    'mathjax-viewer mathjax-viewer
-   'markdown-viewer markdown/viewer
+   'markdown-viewer markdown-viewer
    'code-viewer code-viewer
    'plotly-viewer plotly-viewer
    'vega-lite-viewer vega-lite-viewer
