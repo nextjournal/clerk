@@ -64,7 +64,7 @@
       :time-ms (/ (double (- (. System (nanoTime)) start#)) 1000000.0)}))
 
 (defn worth-caching? [time-ms]
-  (<= 1.0 time-ms))
+  (<= 5.0 time-ms))
 
 #_(worth-caching? 0.1)
 
