@@ -6,9 +6,10 @@
         babashka/fs {:mvn/version "0.0.5"}
         borkdude/edamame {:mvn/version "0.0.11"}
         weavejester/dependency {:mvn/version "0.2.1"}
-        io.github.arachne-framework/valuehash {:git/sha "ff1d4b7f1260daf41c786a61cb45d02871b7baf9"}
 
         com.nextjournal/beholder {:mvn/version "1.0.0"}
+        io.github.nextjournal/valuehash {:mvn/version "0.1.10"}
+
         com.taoensso/nippy {:mvn/version "3.1.1"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
         javax.xml.bind/jaxb-api {:mvn/version "2.3.1"} ;; needed to make multihash work on JDK11+
