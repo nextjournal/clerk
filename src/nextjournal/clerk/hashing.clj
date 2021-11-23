@@ -109,9 +109,13 @@
                (assoc ::md-slice []))
 
            :always
-           (-> (update :doc into
-                       (comp (filter (comp no-junk n/tag)) (map (fn [n] {:type :code :text (n/string n)})))
-                       (-> (markdown.transform/->text node) str/trim p/parse-string-all :children))
+           (-> (update :doc #(let [form-nodes (-> (markdown.transform/->text node) str/trim p/parse-string-all :children
+                                                  (->> (filter (comp no-junk n/tag))))
+                                   last (dec (count form-nodes))]
+                               (into % (map-indexed (fn [i n] (cond-> {:type :code :text (n/string n)}
+                                                                (not= last i) (assoc :skip-result? true)
+                                                                (not= 0 i)    (assoc :glue? true))))
+                                     form-nodes)))
                (update :nodes rest)))
 
          (-> state (update ::md-slice conj node) (update :nodes rest))))

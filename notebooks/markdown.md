@@ -1,4 +1,4 @@
-# M⬇ Markdown Ingestion
+# $\mathfrak{M}\!⬇$ Markdown Ingestion
 
 This notebook demoes feeding Clerk with markdown files. We currently make no assumption on the kind of source code passed in fence or indented blocks, we just handle code as if it were clojure  
 
@@ -37,15 +37,21 @@ and render back to hiccup with customisable elements.
 At present, Clerk will split top level forms which are grouped togetehr under the same cell, this is to guarantee that Clerk's dependency analysys among forms will still effectively avoid needless recomputations when code changes.
 
 ```clj 
-(def hiccup 
-  (md.transform/->hiccup (assoc md.transform/default-hiccup-renderers 
-                                :doc (partial md.transform/into-markup 
-                                              [:div.viewer-markdown])
-                                :ruler (fn [_ _]
-                                         [:hr.mt-1.mb-1
-                                          {:style {:border "10px solid magenta" :border-radius "10px"}}]))
-                         sliced))
+(def renderers 
+  (assoc md.transform/default-hiccup-renderers 
+        :doc (partial md.transform/into-markup [:div.viewer-markdown])
+        :ruler (fn [_ _]
+                 [:hr.mt-1.mb-1
+                  {:style {:border "10px solid magenta" 
+                           :border-radius "10px"}}])))
 
+(def hiccup 
+  (md.transform/->hiccup renderers sliced))
+```
+
+and finally render via Clerk's `html` helper.
+
+```clj
 (clerk/html hiccup)
 ```
 
