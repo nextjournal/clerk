@@ -7,7 +7,6 @@
             [goog.string :as gstring]
             [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer* with-viewers*] :rename {with-viewer* with-viewer with-viewers* with-viewers}]
             [nextjournal.devcards :as dc]
-            [nextjournal.devcards.main]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.markdown :as markdown]
