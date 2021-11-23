@@ -1,0 +1,56 @@
+name: Clerk Garden Build
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: 'SHA to be built'
+        required: true
+        default: 'should fail if no SHA is provided'
+
+jobs:
+  static-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          name: nextjournal/clerk-demo
+          ref: ${{ github.event.inputs.sha }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@master
+        with:
+          project_id: "nextjournal-com"
+          service_account_key: ${{ secrets.GCLOUD_SERVICE_KEY }}
+          export_default_credentials: true
+
+      - name: Install java
+        uses: actions/setup-java@v1
+        with:
+          java-version: '11.0.7'
+
+      - name: Install clojure
+        uses: DeLaGuardo/setup-clojure@master
+        with:
+          cli: '1.10.3.943'
+
+      - name: Install SSH key and start ssh-agent
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.NEXTJOURNAL_CI_SSH_KEY }}
+
+      - name: Build Clerk Static App with default Notebooks
+        run: clj -X:nextjournal/clerk
+
+      - name: Copy static build to bucket under SHA
+        run: |
+          gsutil cp -r public/build gs://nextjournal-snapshots/clerk/build/${{ github.event.inputs.sha }}
+
+      - name: Add status flag to the build
+        uses: Sibz/github-status-action@v1
+        with:
+          authToken: ${{secrets.GITHUB_TOKEN}}
+          context: 'Clerk Garden Build'
+          description: 'Ready'
+          state: 'success'
+          sha: ${{github.event.pull_request.head.sha || github.sha}}
+          target_url: https://storage.googleapis.com/nextjournal-snapshots/clerk/build/${{ github.event.inputs.sha }}/index.html
