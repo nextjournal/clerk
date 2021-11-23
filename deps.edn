@@ -20,13 +20,16 @@
         rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}
 
         io.github.nextjournal/viewers {:git/url "git@github.com:nextjournal/viewers.git"
-                                       :git/sha "a32acfedce17bfa65ef8ac2a077d87823d72c8f3"}}
+                                       :git/sha "a32acfedce17bfa65ef8ac2a077d87823d72c8f3"
+                                       :deps/root "modules/markdown"}}
 
  :aliases {:sci {:extra-deps  {applied-science/js-interop  {:mvn/version "0.3.0"}
                                borkdude/sci {:mvn/version "0.2.6"}
                                reagent/reagent {:mvn/version "1.1.0"}
 
-                               metosin/reitit-frontend     {:mvn/version "0.5.15"}}}
+                               metosin/reitit-frontend     {:mvn/version "0.5.15"}
+                               io.github.nextjournal/viewers {:git/url "git@github.com:nextjournal/viewers.git"
+                                                              :git/sha "a32acfedce17bfa65ef8ac2a077d87823d72c8f3"}}}
 
            :dev {:extra-deps {arrowic/arrowic {:mvn/version "0.1.1"}
                               binaryage/devtools {:mvn/version "1.0.3"}
