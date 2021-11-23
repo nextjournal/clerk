@@ -77,7 +77,7 @@
      (cond-> (into []
                    (mapcat (fn [{:as x :keys [type text result doc skip-result?]}]
                              (case type
-                               :markdown [(v/md (or text doc))]
+                               :markdown [(v/md doc)]
                                :code (cond-> [(merge (v/code text) (select-keys x [:glue?]))]
                                        (and (not skip-result?) (contains? x :result))
                                        (conj (cond

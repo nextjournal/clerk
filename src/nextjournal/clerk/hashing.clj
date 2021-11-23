@@ -88,8 +88,9 @@
                (and markdown? (n/comment? node))
                (-> state
                    (assoc :nodes (drop-while n/comment? nodes))
-                   (update :doc conj {:type :markdown :text (apply str (map (comp remove-leading-semicolons n/string)
-                                                                            (take-while n/comment? nodes)))}))
+                   (update :doc conj {:type :markdown
+                                      :doc (markdown/parse (apply str (map (comp remove-leading-semicolons n/string)
+                                                                           (take-while n/comment? nodes))))}))
                :else
                (update state :nodes rest)))
       doc)))

@@ -15,28 +15,27 @@ This notebook demoes feeding Clerk with markdown files. We currently make no ass
 
 Nextjournal Markdown library is able to ingest a markdown string
 
-```clj 
+```clojure
 (def markdown-input (slurp "https://daringfireball.net/projects/markdown/syntax.text"))
 ```
 
 and parse it into a nested clojure structure 
 
-```clj 
-
+```clojure
 (def parsed (md/parse markdown-input))
 ```
 
 which you can manipulate with your favourite clojure functions
 
-```clj 
-(def sliced (update parsed :content #(take 10 %)))
+```clojure
+(def sliced (update parsed :content #(take 8 %)))
 ```
 
 and render back to hiccup with customisable elements. 
 
 At present, Clerk will split top level forms which are grouped togetehr under the same cell, this is to guarantee that Clerk's dependency analysys among forms will still effectively avoid needless recomputations when code changes.
 
-```clj 
+```clojure
 (def renderers 
   (assoc md.transform/default-hiccup-renderers 
         :doc (partial md.transform/into-markup [:div.viewer-markdown])
@@ -51,7 +50,7 @@ At present, Clerk will split top level forms which are grouped togetehr under th
 
 and finally render via Clerk's `html` helper.
 
-```clj
+```clojure
 (clerk/html hiccup)
 ```
 
