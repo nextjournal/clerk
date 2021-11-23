@@ -7,6 +7,7 @@
             [multihash.core :as multihash]
             [multihash.digest :as digest]
             [nextjournal.beholder :as beholder]
+            [nextjournal.clerk.config :as config]
             [nextjournal.clerk.hashing :as hashing]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
@@ -22,16 +23,8 @@
 #_(-> [(clojure.java.io/file "notebooks") (find-ns 'user)] nippy/freeze nippy/thaw)
 
 
-(defn cache-dir []
-  (or (System/getProperty "clerk.cache_dir")
-      ".cache"))
-
 (defn ->cache-file [hash]
-  (str (cache-dir) fs/file-separator hash))
-
-(defn cache-disabled? []
-  (when-let [prop (System/getProperty "clerk.disable_cache")]
-    (not= "false" prop)))
+  (str (config/cache-dir) fs/file-separator hash))
 
 (defn wrap-with-blob-id [result hash]
   {:result result :blob-id (cond-> hash (not (string? hash)) multihash/base58)})
@@ -82,8 +75,8 @@
                           (fs/exists? digest-file) :no-cas-file
                           :else :no-digest-file)
            :hash hash :cas-hash cas-hash :form form)
-    (when-not (fs/exists? (cache-dir))
-      (fs/create-dirs (cache-dir)))
+    (when-not (fs/exists? (config/cache-dir))
+      (fs/create-dirs (config/cache-dir)))
     (or (when (and (not no-cache?)
                    cached?)
           (try
@@ -98,7 +91,7 @@
               nil)))
         (let [{:keys [result time-ms]} (time-ms (eval form))
               no-cache? (or no-cache?
-                            (cache-disabled?)
+                            (config/cache-disabled?)
                             (let [no-cache? (not (worth-caching? time-ms))]
                               #_(when no-cache? (prn :not-worth-caching time-ms))
                               no-cache?))
@@ -121,7 +114,7 @@
 
 (defn clear-cache!
   ([]
-   (let [cache-dir (cache-dir)]
+   (let [cache-dir (config/cache-dir)]
      (if (fs/exists? cache-dir)
        (do
          (fs/delete-tree cache-dir)

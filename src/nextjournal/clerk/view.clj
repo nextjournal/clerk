@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.view
-  (:require [nextjournal.clerk.viewer :as v]
+  (:require [nextjournal.clerk.config :as config]
+            [nextjournal.clerk.viewer :as v]
             [hiccup.page :as hiccup]
             [clojure.pprint :as pprint]
             [clojure.string :as str]
@@ -43,10 +44,10 @@
 #_(->edn [:vec (with-meta [] {'clojure.core.protocols/datafy (fn [x] x)}) :var #'->edn])
 
 (defn ->hash-str
-  "Attempts to compute a hash of `value` falling back a random string."
+  "Attempts to compute a hash of `value` falling back to a random string."
   [value]
   (try
-    (let [limit 1000000]
+    (let [limit config/*bounded-count-limit*]
       (when (and (seqable? value)
                  (= limit (bounded-count limit value)))
         (throw (ex-info "not countable within limit" {:limit limit}))))

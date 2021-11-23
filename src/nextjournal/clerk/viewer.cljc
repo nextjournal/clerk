@@ -1,7 +1,8 @@
 (ns nextjournal.clerk.viewer
   (:require [clojure.string :as str]
             [clojure.pprint :as pprint]
-            #?@(:clj [[clojure.repl :refer [demunge]]]
+            #?@(:clj [[clojure.repl :refer [demunge]]
+                      [nextjournal.clerk.config :as config]]
                 :cljs [[reagent.ratom :as ratom]]))
   #?(:clj (:import [clojure.lang IFn])))
 
@@ -303,7 +304,7 @@
 
 (defn bounded-count-opts [n xs]
   (assert (number? n) "n must be a number?")
-  (let [limit (+ n 10000)
+  (let [limit (+ n #?(:clj config/*bounded-count-limit* :cljs 10000))
         count (try (bounded-count limit xs)
                    (catch #?(:clj Exception :cljs js/Error) _
                      nil))]
