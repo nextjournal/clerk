@@ -94,11 +94,15 @@
                (update state :nodes rest)))
       doc)))
 
+(defn code-cell? [{:as node :keys [type]}]
+  ;; TODO: assign different types to fenced vs indented code blocks
+  (and (= :code type) (contains? node :info)))
+
 (defn parse-markdown-file [file]
   (loop [{:as state :keys [doc nodes] ::keys [md-slice]} {:doc [] ::md-slice [] :nodes (:content (markdown/parse (slurp file)))}]
-    (if-some [{:as node :keys [type]} (first nodes)]
+    (if-some [node (first nodes)]
       (recur
-       (if (= :code type)
+       (if (code-cell? node)
          (cond-> state
            (seq md-slice)
            (-> (update :doc conj {:type :markdown :doc {:type :doc :content md-slice}})
