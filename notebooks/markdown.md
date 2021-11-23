@@ -2,7 +2,8 @@
 
 This notebook demoes feeding Clerk with markdown files. We currently make no assumption on the kind of source code passed in fence or indented blocks, we just handle code as if it were clojure  
 
-```clj 
+```clj
+^:nextjournal.clerk/no-cache
 (ns markdown-example
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.markdown :as md]
@@ -31,7 +32,9 @@ which you can manipulate with your favourite clojure functions
 (def sliced (update parsed :content #(take 10 %)))
 ```
 
-and render back to hiccup with customisable elements.
+and render back to hiccup with customisable elements. 
+
+At present, Clerk will split top level forms which are grouped togetehr under the same cell, this is to guarantee that Clerk's dependency analysys among forms will still effectively avoid needless recomputations when code changes.
 
 ```clj 
 (def hiccup 
@@ -42,11 +45,7 @@ and render back to hiccup with customisable elements.
                                          [:hr.mt-1.mb-1 
                                           {:style {:border-color "magenta"}}])) 
                          sliced))
-```
 
-Clerk markdown helper understands parsed markdown data
-
-```clj 
 (clerk/html hiccup)
 ```
 

@@ -73,12 +73,14 @@
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
 
+(def no-junk #{:deref :map :meta :list :quote :reader-macro :set :token :var :vector})
+
 (defn parse-clojure-file [{:as _opts :keys [markdown?]} file]
   (loop [{:as state :keys [doc nodes]} {:nodes (:children (p/parse-file-all file))
                                         :doc []}]
     (if-let [node (first nodes)]
       (recur (cond
-               (#{:deref :map :meta :list :quote :reader-macro :set :token :var :vector} (n/tag node))
+               (no-junk (n/tag node))
                (-> state
                    (update :nodes rest)
                    (update :doc (fnil conj []) {:type :code :text (n/string node)}))
@@ -101,10 +103,15 @@
            (seq md-slice)
            (-> (update :doc conj {:type :markdown :doc {:type :doc :content md-slice}})
                (assoc ::md-slice []))
+
            :always
-           (-> (update :doc conj {:type :code :text (str/trim (markdown.transform/->text node))})
+           (-> (update :doc into
+                       (comp (filter (comp no-junk n/tag)) (map (fn [n] {:type :code :text (n/string n)})))
+                       (-> (markdown.transform/->text node) str/trim p/parse-string-all :children))
                (update :nodes rest)))
+
          (-> state (update ::md-slice conj node) (update :nodes rest))))
+
       (cond-> doc
         (seq md-slice)
         (conj {:type :markdown :doc {:type :doc :content md-slice}})))))
