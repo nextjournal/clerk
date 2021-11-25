@@ -176,6 +176,7 @@
    {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :fetch-fn fetch-all}
    {:name :markdown :render-fn (quote v/markdown-viewer) :fetch-fn fetch-all}
    {:name :code :render-fn (quote v/code-viewer) :fetch-fn fetch-all}
+   {:name :code-folded :render-fn (quote v/foldable-code-viewer) :fetch-fn fetch-all}
    {:name :reagent :render-fn (quote v/reagent-viewer)  :fetch-fn fetch-all}
    {:name :eval! :render-fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
    {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}

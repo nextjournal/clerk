@@ -27,7 +27,8 @@
   (str (config/cache-dir) fs/file-separator hash))
 
 (defn wrap-with-blob-id [result hash]
-  {:result result :blob-id (cond-> hash (not (string? hash)) multihash/base58)})
+  {:nextjournal/value result
+   :nextjournal/blob-id (cond-> hash (not (string? hash)) multihash/base58)})
 
 #_(wrap-with-blob-id :test "foo")
 
@@ -61,7 +62,7 @@
 
 #_(worth-caching? 0.1)
 
-(defn read+eval-cached [results-last-run vars->hash code-string]
+(defn read+eval-cached [results-last-run vars->hash doc-visibility code-string]
   (let [form (hashing/read-string code-string)
         {:as analyzed :keys [ns-effect? var]} (hashing/analyze form)
         hash (hashing/hash vars->hash analyzed)
@@ -69,7 +70,11 @@
         no-cache? (or ns-effect? (hashing/no-cache? form))
         cas-hash (when (fs/exists? digest-file)
                    (slurp digest-file))
-        cached? (boolean (and cas-hash (-> cas-hash ->cache-file fs/exists?)))]
+        cached? (boolean (and cas-hash (-> cas-hash ->cache-file fs/exists?)))
+        form-visibility (or (if-let [fv (hashing/->visibility form)]
+                              fv
+                              doc-visibility)
+                            #{:show})]
     #_(prn :cached? (cond no-cache? :no-cache
                           cached? true
                           (fs/exists? digest-file) :no-cas-file
@@ -97,7 +102,8 @@
                               no-cache?))
               var-value (cond-> result (var? result) deref)]
           (if (fn? var-value)
-            {:result var-value}
+            {:nextjournal/value var-value
+             ::visibility form-visibility}
             (do (when-not (or no-cache?
                               (instance? clojure.lang.IDeref var-value)
                               (instance? clojure.lang.MultiFn var-value)
@@ -108,9 +114,11 @@
                     (catch Exception _e
                       #_(prn :freeze-error e)
                       nil)))
-                (wrap-with-blob-id var-value (if no-cache? (view/->hash-str var-value) hash))))))))
+                (-> var-value
+                    (wrap-with-blob-id (if no-cache? (view/->hash-str var-value) hash))
+                    (assoc ::visibility form-visibility))))))))
 
-#_(read+eval-cached {} {} "(subs (slurp \"/usr/share/dict/words\") 0 1000)")
+#_(read+eval-cached {} {} #{:show} "(subs (slurp \"/usr/share/dict/words\") 0 1000)")
 
 (defn clear-cache!
   ([]
@@ -128,11 +136,11 @@
 
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
-(defn +eval-results [results-last-run vars->hash doc]
+(defn +eval-results [results-last-run vars->hash {:keys [doc visibility]}]
   (let [doc (into [] (map (fn [{:as cell :keys [type text]}]
                             (cond-> cell
                               (= :code type)
-                              (assoc :result (read+eval-cached results-last-run vars->hash text))))) doc)]
+                              (assoc :result (read+eval-cached results-last-run vars->hash visibility text))))) doc)]
     (with-meta doc (-> doc blob->result (assoc :ns *ns*)))))
 
 #_(let [doc (+eval-results {} {} [{:type :markdown :text "# Hi"} {:type :code :text "[1]"} {:type :code :text "(+ 39 3)"}])
@@ -143,6 +151,7 @@
   (hashing/parse-file {:markdown? true} file))
 
 #_(parse-file "notebooks/elements.clj")
+#_(parse-file "notebooks/visibility.clj")
 
 (defn eval-file
   ([file] (eval-file {} file))
@@ -150,6 +159,7 @@
    (+eval-results results-last-run (hashing/hash file) (parse-file file))))
 
 #_(eval-file "notebooks/rule_30.clj")
+#_(eval-file "notebooks/visibility.clj")
 
 (defonce !show-filter-fn (atom nil))
 (defonce !last-file (atom nil))
@@ -270,6 +280,7 @@
          "paren_soup"
          #_"readme" ;; TODO: add back when we have Clojure cells in md
          "rule_30"
+         "visibility"
          "viewer_api"
          "viewers/html"
          "viewers/image"

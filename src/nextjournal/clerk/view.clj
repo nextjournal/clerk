@@ -57,12 +57,12 @@
 
 #_(->hash (range 104))
 
-(defn ->result [ns {:keys [result blob-id]} lazy-load?]
-  (let [described-result (v/describe result {:viewers (v/get-viewers ns (v/viewers result))})]
+(defn ->result [ns {:nextjournal/keys [value blob-id visibility]} lazy-load?]
+  (let [described-result (v/describe value {:viewers (v/get-viewers ns (v/viewers value))})]
     (merge {:nextjournal/viewer :clerk/result
             :nextjournal/value (cond-> (try {:nextjournal/edn (->edn described-result)}
                                             (catch Throwable _e
-                                              {:nextjournal/string (pr-str result)}))
+                                              {:nextjournal/string (pr-str value)}))
                                  lazy-load?
                                  (assoc :nextjournal/fetch-opts {:blob-id blob-id}
                                         :nextjournal/hash (->hash-str [blob-id described-result])))}
@@ -79,21 +79,29 @@
                    (mapcat (fn [{:as x :keys [type text result]}]
                              (case type
                                :markdown [(v/md text)]
-                               :code (cond-> [(v/code text)]
-                                       (contains? x :result)
-                                       (conj (cond
-                                               (v/registration? (:result result))
-                                               (:result result)
+                               :code (let [{:nextjournal.clerk/keys [visibility]} result
+                                           result? (and (contains? x :result) (not (visibility :hide-ns)))
+                                           fold? (visibility :fold)
+                                           code? (or (visibility :show)
+                                                     fold?)]
+                                       (cond-> []
+                                         code?
+                                         (conj (cond-> (v/code text) fold? (assoc :nextjournal/viewer :code-folded)))
+                                         result?
+                                         (conj (cond
+                                                 (v/registration? (v/value result))
+                                                 (v/value result)
 
-                                               :else
-                                               (->result ns result (and (not inline-results?)
-                                                                        (contains? result :blob-id)))))))))
+                                                 :else
+                                                 (->result ns result (and (not inline-results?)
+                                                                          (contains? result :nextjournal/blob-id))))))))))
                    doc)
        true v/notebook
        ns (assoc :scope (v/datafy-scope ns))))))
 
 #_(meta (doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj")))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
+#_(nextjournal.clerk/show! "notebooks/visibility.clj")
 
 (defonce ^{:doc "Load dynamic js from shadow or static bundle from cdn."}
   live-js?
@@ -103,7 +111,7 @@
 (def resource->static-url
   {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxQBDwk3cvr1bt8YVL5m6bJGrFEmzrSbCrH1roypLjJr4AbbteCKh9Y6gQVYexdY85QA2HG5nQFLWpRp69zFSPDJ9"
    "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvwJaC11sRe6kkEea3iBnhgiVVqAwGdacXea7sAQ1EVVRPHVupsxACFP4xcpQtXJJ5CdBPBDxLGRNYcdyQzNDPCTE"
-   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxfW23mjJmtGoscWJBchRxZgMCZ5dJZgYBpbkrpnWSV4vLbYBjbokxMrR8Adpd5dHSPhyp9HzWK1o9GDxGEQzXvjJ"})
+   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VwyMcfayNcoRj7RZhzLTBGyS2hAtk8Teieo3s5GyiNooj4R5JhZdgZ3GuNnSAye7STHZKzhUTfrSsVbEZx79JEFc2"})
 
 (defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} doc]
   (hiccup/html5

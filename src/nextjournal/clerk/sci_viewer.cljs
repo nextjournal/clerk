@@ -81,7 +81,7 @@
                                    (str "viewer-" (name viewer)))
                                  (when-let [inner-viewer-name (some-> x viewer/value viewer/viewer :name name)]
                                    (str "viewer-" inner-viewer-name))
-                                 (case (or (viewer/width x) (case viewer :code :wide :prose))
+                                 (case (or (viewer/width x) (case viewer (:code :code-folded) :wide :prose))
                                    :wide "w-full max-w-wide"
                                    :full "w-full"
                                    "w-full max-w-prose px-8")]}
@@ -839,6 +839,26 @@ black")}]))}
 (def plotly-viewer (comp normalize-viewer plotly/viewer))
 (def vega-lite-viewer (comp normalize-viewer vega-lite/viewer))
 
+(def expand-icon
+  [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
+   [:path {:fill-rule "evenodd" :d "M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" :clip-rule "evenodd"}]])
+
+(defn foldable-code-viewer [code-string]
+  (r/with-let [!hidden? (r/atom true)]
+    (html (if @!hidden?
+            [:div.w-full.max-w-wide.sans-serif {:style {:background "var(--gray-panel-color)"}}
+             [:button.mx-auto.flex.items-center.rounded-sm.cursor-pointer.bg-indigo-200.hover:bg-indigo-300.leading-none
+              {:style {:font-size "11px" :padding "1px 3px"}
+               :on-click #(swap! !hidden? not)}
+              expand-icon " Show code…"]]
+            [:div.viewer-code.relative {:style {:margin-top 0}}
+             [inspect (code-viewer code-string)]
+             [:button.sans-serif.mx-auto.flex.items-center.rounded-t-sm.cursor-pointer.bg-indigo-200.hover:bg-indigo-300.leading-none.absolute.bottom-0
+              {:style {:font-size "11px" :padding "1px 3px" :left "50%" :transform "translateX(-50%)"}
+               :on-click #(swap! !hidden? not)}
+              [:span {:style {:transform "rotate(180deg)"}} expand-icon] " Hide code…"]]))))
+
+
 (defn url-for [{:keys [blob-id]}]
   (str "/_blob/" blob-id))
 
@@ -865,6 +885,7 @@ black")}]))}
    'mathjax-viewer mathjax-viewer
    'markdown-viewer markdown/viewer
    'code-viewer code-viewer
+   'foldable-code-viewer foldable-code-viewer
    'plotly-viewer plotly-viewer
    'vega-lite-viewer vega-lite-viewer
    'reagent-viewer reagent-viewer
