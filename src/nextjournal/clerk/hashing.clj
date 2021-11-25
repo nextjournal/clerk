@@ -144,7 +144,7 @@
                 (update state :nodes rest)))
        (select-keys state [:doc :visibility])))))
 
-#_(parse-file {:markdown? true} "notebooks/viewer_api.clj")
+#_(parse-file {:markdown? true} "notebooks/visibility.clj")
 #_(parse-file "notebooks/elements.clj")
 #_(parse-file {:markdown? true} "notebooks/rule_30.clj")
 #_(parse-file "notebooks/src/demo/lib.cljc")

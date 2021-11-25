@@ -80,7 +80,9 @@
                              (case type
                                :markdown [(v/md text)]
                                :code (let [{:nextjournal.clerk/keys [visibility]} result
-                                           result? (and (contains? x :result) (not (visibility :hide-ns)))
+                                           result? (and (contains? x :result)
+                                                        (not (or (visibility :hide-ns)
+                                                                 (= :hide-result (v/viewer (v/value result))))))
                                            fold? (visibility :fold)
                                            code? (or (visibility :show)
                                                      fold?)]
