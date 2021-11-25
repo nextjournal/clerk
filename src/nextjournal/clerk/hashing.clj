@@ -71,17 +71,35 @@
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
 
-
+(defn ns? [form]
+  (and (list? form) (= 'ns (first form))))
 
 (defn ->visibility [form]
-  ;; TODO: validate values
-  (when-let [v (-> form meta :nextjournal.clerk/visibility)]
-    (cond-> v (not (set? v)) hash-set)))
+  (when-let [visibility (-> form meta :nextjournal.clerk/visibility)]
+    (let [visibility-set (cond-> visibility (not (set? visibility)) hash-set)]
+      (when-not (every? #{:hide-ns :hide :show :fold} visibility-set)
+        (throw (ex-info "Invalid `:nextjournal.clerk/visibility`, valid values are `#{:hide-ns :hide :show :fold}`." {:visibility visibility :form form})))
+      (when (and (contains? visibility-set :hide-ns) (not (ns? form)))
+        (throw (ex-info "Cannot set `:nextjournal.clerk/visibility` to `:hide-ns` on non ns form." {:visibility visibility :form form})))
+      visibility-set)))
 
 #_(->visibility '(foo :bar))
 #_(->visibility (quote ^{:nextjournal.clerk/visibility :fold} (ns foo)))
 #_(->visibility (quote ^{:nextjournal.clerk/visibility #{:hide-ns :fold}} (ns foo)))
+#_(->visibility (quote ^{:nextjournal.clerk/visibility :hidden} (ns foo)))
+#_(->visibility (quote ^{:nextjournal.clerk/visibility "bam"} (ns foo)))
+#_(->visibility (quote ^{:nextjournal.clerk/visibility #{:hide-ns}} (do :foo)))
 
+(defn ->doc-visibility [first-form]
+  (or (when (ns? first-form)
+        (-> first-form
+            ->visibility
+            (disj :hide-ns)
+            not-empty))
+      #{:show}))
+
+#_(->doc-visibility '^{:nextjournal.clerk/visibility :fold} (ns foo))
+#_(->doc-visibility '^{:nextjournal.clerk/visibility :hide-ns} (ns foo))
 
 (defn auto-resolves [ns]
   (as-> (ns-aliases ns) $
@@ -115,7 +133,7 @@
                             (update :doc (fnil conj []) {:type :code :text (n/string node)}))
 
                   (and markdown? (not visibility))
-                  (assoc :visibility (->visibility (read-string (n/string node)))))
+                  (assoc :visibility (-> node n/string read-string ->doc-visibility)))
 
                 (and markdown? (n/comment? node))
                 (-> state
@@ -126,7 +144,7 @@
                 (update state :nodes rest)))
        (select-keys state [:doc :visibility])))))
 
-#_(parse-file {:markdown? true} "notebooks/visibility.clj")
+#_(parse-file {:markdown? true} "notebooks/viewer_api.clj")
 #_(parse-file "notebooks/elements.clj")
 #_(parse-file {:markdown? true} "notebooks/rule_30.clj")
 #_(parse-file "notebooks/src/demo/lib.cljc")

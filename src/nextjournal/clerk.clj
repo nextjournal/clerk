@@ -71,10 +71,7 @@
         cas-hash (when (fs/exists? digest-file)
                    (slurp digest-file))
         cached? (boolean (and cas-hash (-> cas-hash ->cache-file fs/exists?)))
-        form-visibility (or (if-let [fv (hashing/->visibility form)]
-                              fv
-                              doc-visibility)
-                            #{:show})]
+        visibility (if-let [fv (hashing/->visibility form)] fv doc-visibility)]
     #_(prn :cached? (cond no-cache? :no-cache
                           cached? true
                           (fs/exists? digest-file) :no-cas-file
@@ -103,7 +100,7 @@
               var-value (cond-> result (var? result) deref)]
           (if (fn? var-value)
             {:nextjournal/value var-value
-             ::visibility form-visibility}
+             ::visibility visibility}
             (do (when-not (or no-cache?
                               (instance? clojure.lang.IDeref var-value)
                               (instance? clojure.lang.MultiFn var-value)
@@ -116,7 +113,7 @@
                       nil)))
                 (-> var-value
                     (wrap-with-blob-id (if no-cache? (view/->hash-str var-value) hash))
-                    (assoc ::visibility form-visibility))))))))
+                    (assoc ::visibility visibility))))))))
 
 #_(read+eval-cached {} {} #{:show} "(subs (slurp \"/usr/share/dict/words\") 0 1000)")
 
