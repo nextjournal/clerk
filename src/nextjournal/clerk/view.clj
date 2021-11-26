@@ -71,21 +71,35 @@
 
 #_(nextjournal.clerk/show! "notebooks/hello.clj")
 
+(defn ->display [{:as code-cell :keys [result ns?]}]
+  (let [{:nextjournal.clerk/keys [visibility]} result
+        result? (and (contains? code-cell :result)
+                     (not= :hide-result (v/viewer (v/value result)))
+                     (not (contains? visibility :hide-ns))
+                     (not (and ns? (contains? visibility :hide))))
+        fold? (and (not (contains? visibility :hide-ns))
+                   (or (contains? visibility :fold)
+                       (contains? visibility :fold-ns)))
+        code? (or fold? (contains? visibility :show))]
+    {:result? result? :fold? fold? :code? code?}))
+
+#_(->display {:result {:nextjournal.clerk/visibility #{:fold :hide-ns}}})
+#_(->display {:result {:nextjournal.clerk/visibility #{:fold-ns}}})
+#_(->display {:result {:nextjournal.clerk/visibility #{:hide}} :ns? false})
+#_(->display {:result {:nextjournal.clerk/visibility #{:fold}} :ns? true})
+#_(->display {:result {:nextjournal.clerk/visibility #{:fold}} :ns? false})
+#_(->display {:result {:nextjournal.clerk/visibility #{:hide} :nextjournal/value {:nextjournal/viewer :hide-result}} :ns? false})
+#_(->display {:result {:nextjournal.clerk/visibility #{:hide}} :ns? true})
+
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([{:keys [inline-results?] :or {inline-results? false}} doc]
    (let [{:keys [ns]} (meta doc)]
      (cond-> (into []
-                   (mapcat (fn [{:as x :keys [type text result]}]
+                   (mapcat (fn [{:as cell :keys [type text result ns?]}]
                              (case type
                                :markdown [(v/md text)]
-                               :code (let [{:nextjournal.clerk/keys [visibility]} result
-                                           result? (and (contains? x :result)
-                                                        (not (or (visibility :hide-ns)
-                                                                 (= :hide-result (v/viewer (v/value result))))))
-                                           fold? (visibility :fold)
-                                           code? (or (visibility :show)
-                                                     fold?)]
+                               :code (let [{:keys [code? fold? result?]} (->display cell)]
                                        (cond-> []
                                          code?
                                          (conj (cond-> (v/code text) fold? (assoc :nextjournal/viewer :code-folded)))

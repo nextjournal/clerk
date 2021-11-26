@@ -130,7 +130,9 @@
                 (#{:deref :map :meta :list :quote :reader-macro :set :token :var :vector} (n/tag node))
                 (cond-> (-> state
                             (update :nodes rest)
-                            (update :doc (fnil conj []) {:type :code :text (n/string node)}))
+                            (update :doc (fnil conj []) (cond-> {:type :code :text (n/string node)}
+                                                          (and (not visibility) (-> node n/string read-string ns?))
+                                                          (assoc :ns? true))))
 
                   (and markdown? (not visibility))
                   (assoc :visibility (-> node n/string read-string ->doc-visibility)))

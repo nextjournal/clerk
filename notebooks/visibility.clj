@@ -1,6 +1,11 @@
 ;; # Controlling Visibility 🙈
-;; You can control visibility in Clerk by setting the `:nextjournal.clerk/visibility`. Here, we set this to `#{:hide-ns :fold}` to hide the namespace declaration and fold all other code cells.
-^{:nextjournal.clerk/visibility #{:hide-ns :fold}}
+;; You can control visibility in Clerk by setting the `:nextjournal.clerk/visibility` which takes a keyword or a set of keywords. Valid values are:
+;; * `:show` (the default)
+;; * `:hide` to hide the cells w
+;; * `:fold` which shows the cells collapsed and lets users uncollapse them
+
+;; A declartion on the `ns` form let's all code cells in the notebook inherit the value. On the `ns` form you can also use `:fold-ns` or `:hide-ns` if you'd like an option to only apply to the namespace form.
+^{:nextjournal.clerk/visibility #{:fold}}
 (ns visibility
   (:require [clojure.string :as str]
             [nextjournal.clerk :as clerk]))
