@@ -71,32 +71,35 @@
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
 
+(defn ns? [form]
+  (and (list? form) (= 'ns (first form))))
 
-(defn parse-file
-  ([file]
-   (parse-file {} file))
-  ([{:as _opts :keys [markdown?]} file]
-   (loop [{:as state :keys [doc nodes]} {:nodes (:children (p/parse-file-all file))
-                                         :doc []}]
-     (if-let [node (first nodes)]
-       (recur (cond
-                (#{:deref :map :meta :list :quote :reader-macro :set :token :var :vector} (n/tag node))
-                (-> state
-                    (update :nodes rest)
-                    (update :doc (fnil conj []) {:type :code :text (n/string node)}))
+(defn ->visibility [form]
+  (when-let [visibility (-> form meta :nextjournal.clerk/visibility)]
+    (let [visibility-set (cond-> visibility (not (set? visibility)) hash-set)]
+      (when-not (every? #{:hide-ns :hide :show :fold} visibility-set)
+        (throw (ex-info "Invalid `:nextjournal.clerk/visibility`, valid values are `#{:hide-ns :hide :show :fold}`." {:visibility visibility :form form})))
+      (when (and (contains? visibility-set :hide-ns) (not (ns? form)))
+        (throw (ex-info "Cannot set `:nextjournal.clerk/visibility` to `:hide-ns` on non ns form." {:visibility visibility :form form})))
+      visibility-set)))
 
-                (and markdown? (n/comment? node))
-                (-> state
-                    (assoc :nodes (drop-while n/comment? nodes))
-                    (update :doc conj {:type :markdown :text (apply str (map (comp remove-leading-semicolons n/string)
-                                                                             (take-while n/comment? nodes)))}))
-                :else
-                (update state :nodes rest)))
-       doc))))
+#_(->visibility '(foo :bar))
+#_(->visibility (quote ^{:nextjournal.clerk/visibility :fold} (ns foo)))
+#_(->visibility (quote ^{:nextjournal.clerk/visibility #{:hide-ns :fold}} (ns foo)))
+#_(->visibility (quote ^{:nextjournal.clerk/visibility :hidden} (ns foo)))
+#_(->visibility (quote ^{:nextjournal.clerk/visibility "bam"} (ns foo)))
+#_(->visibility (quote ^{:nextjournal.clerk/visibility #{:hide-ns}} (do :foo)))
 
-#_(parse-file "notebooks/elements.clj")
-#_(parse-file {:markdown? true} "notebooks/rule_30.clj")
-#_(parse-file "notebooks/src/demo/lib.cljc")
+(defn ->doc-visibility [first-form]
+  (or (when (ns? first-form)
+        (-> first-form
+            ->visibility
+            (disj :hide-ns)
+            not-empty))
+      #{:show}))
+
+#_(->doc-visibility '^{:nextjournal.clerk/visibility :fold} (ns foo))
+#_(->doc-visibility '^{:nextjournal.clerk/visibility :hide-ns} (ns foo))
 
 (defn auto-resolves [ns]
   (as-> (ns-aliases ns) $
@@ -113,7 +116,40 @@
                            :readers *data-readers*
                            :read-cond :allow
                            :features #{:clj}}))
+
 #_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
+
+(defn parse-file
+  ([file]
+   (parse-file {} file))
+  ([{:as _opts :keys [markdown?]} file]
+   (loop [{:as state :keys [doc nodes visibility]} {:nodes (:children (p/parse-file-all file))
+                                                    :doc []}]
+     (if-let [node (first nodes)]
+       (recur (cond
+                (#{:deref :map :meta :list :quote :reader-macro :set :token :var :vector} (n/tag node))
+                (cond-> (-> state
+                            (update :nodes rest)
+                            (update :doc (fnil conj []) (cond-> {:type :code :text (n/string node)}
+                                                          (and (not visibility) (-> node n/string read-string ns?))
+                                                          (assoc :ns? true))))
+
+                  (and markdown? (not visibility))
+                  (assoc :visibility (-> node n/string read-string ->doc-visibility)))
+
+                (and markdown? (n/comment? node))
+                (-> state
+                    (assoc :nodes (drop-while n/comment? nodes))
+                    (update :doc conj {:type :markdown :text (apply str (map (comp remove-leading-semicolons n/string)
+                                                                             (take-while n/comment? nodes)))}))
+                :else
+                (update state :nodes rest)))
+       (select-keys state [:doc :visibility])))))
+
+#_(parse-file {:markdown? true} "notebooks/visibility.clj")
+#_(parse-file "notebooks/elements.clj")
+#_(parse-file {:markdown? true} "notebooks/rule_30.clj")
+#_(parse-file "notebooks/src/demo/lib.cljc")
 
 (defn analyze-file
   ([file]

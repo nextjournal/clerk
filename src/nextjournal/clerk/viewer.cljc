@@ -176,6 +176,7 @@
    {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :fetch-fn fetch-all}
    {:name :markdown :render-fn (quote v/markdown-viewer) :fetch-fn fetch-all}
    {:name :code :render-fn (quote v/code-viewer) :fetch-fn fetch-all}
+   {:name :code-folded :render-fn (quote v/foldable-code-viewer) :fetch-fn fetch-all}
    {:name :reagent :render-fn (quote v/reagent-viewer)  :fetch-fn fetch-all}
    {:name :eval! :render-fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
    {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
@@ -188,7 +189,8 @@
    {:name :object :render-fn '(fn [x] (v/html (v/tagged-value "#object" [v/inspect x])))}
    {:name :file :render-fn '(fn [x] (v/html (v/tagged-value "#file " [v/inspect x])))}
    {:name :clerk/notebook :render-fn (quote v/notebook-viewer) :fetch-fn fetch-all}
-   {:name :clerk/result :render-fn (quote v/result-viewer) :fetch-fn fetch-all}])
+   {:name :clerk/result :render-fn (quote v/result-viewer) :fetch-fn fetch-all}
+   {:name :hide-result :transform-fn (fn [_] nil)}])
 
 (def default-table-cell-viewers
   [{:name :elision :render-fn '(fn [_] (v/html "…"))}
@@ -265,8 +267,8 @@
   ([x viewers]
    (if-let [selected-viewer (viewer x)]
      (cond (keyword? selected-viewer)
-           (if-let [named-viewer (find-named-viewer viewers selected-viewer)]
-             (wrap-value x named-viewer)
+           (if-let [{:as named-viewer :keys [transform-fn]} (find-named-viewer viewers selected-viewer)]
+             (wrap-value (cond-> x transform-fn transform-fn) named-viewer)
              (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
            (instance? Form selected-viewer)
            (wrap-value x selected-viewer))
@@ -568,12 +570,13 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convience api
-(def html      (partial with-viewer* :html))
-(def md        (partial with-viewer* :markdown))
-(def plotly    (partial with-viewer* :plotly))
-(def vl        (partial with-viewer* :vega-lite))
-(def tex       (partial with-viewer* :latex))
-(def notebook  (partial with-viewer* :clerk/notebook))
+(def html         (partial with-viewer* :html))
+(def md           (partial with-viewer* :markdown))
+(def plotly       (partial with-viewer* :plotly))
+(def vl           (partial with-viewer* :vega-lite))
+(def tex          (partial with-viewer* :latex))
+(def hide-result  (partial with-viewer* :hide-result))
+(def notebook     (partial with-viewer* :clerk/notebook))
 
 (defn table
   "Displays `xs` in a table.
