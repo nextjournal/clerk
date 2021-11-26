@@ -26,9 +26,10 @@
 (defn ->cache-file [hash]
   (str (config/cache-dir) fs/file-separator hash))
 
-(defn wrap-with-blob-id [result hash]
-  {:nextjournal/value result
-   :nextjournal/blob-id (cond-> hash (not (string? hash)) multihash/base58)})
+(defn wrapped-with-metadata [value visibility hash]
+  (cond-> {:nextjournal/value value
+           ::visibility visibility}
+    hash (assoc :nextjournal/blob-id (cond-> hash (not (string? hash)) multihash/base58))))
 
 #_(wrap-with-blob-id :test "foo")
 
@@ -79,41 +80,37 @@
            :hash hash :cas-hash cas-hash :form form)
     (when-not (fs/exists? (config/cache-dir))
       (fs/create-dirs (config/cache-dir)))
-    (or (when (and (not no-cache?)
-                   cached?)
+    (or (when (and (not no-cache?) cached?)
           (try
-            (let [{:as result+blob :keys [result]} (wrap-with-blob-id (or (get results-last-run hash)
-                                                                          (thaw-from-cas cas-hash)) hash)]
+            (let [{:as result :nextjournal/keys [value]} (wrapped-with-metadata (or (get results-last-run hash)
+                                                                                    (thaw-from-cas cas-hash))
+                                                                                visibility
+                                                                                hash)]
               (when var
-                (intern *ns* (-> var symbol name symbol) result))
-              result+blob)
+                (intern *ns* (-> var symbol name symbol) value))
+              result)
             (catch Exception _e
               ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
               #_(prn :thaw-error e)
               nil)))
         (let [{:keys [result time-ms]} (time-ms (eval form))
+              var-value (cond-> result (var? result) deref)
               no-cache? (or no-cache?
                             (config/cache-disabled?)
-                            (let [no-cache? (not (worth-caching? time-ms))]
-                              #_(when no-cache? (prn :not-worth-caching time-ms))
-                              no-cache?))
-              var-value (cond-> result (var? result) deref)]
+                            (not (worth-caching? time-ms))
+                            (view/exceeds-bounded-count-limit? var-value))]
           (if (fn? var-value)
-            {:nextjournal/value var-value
-             ::visibility visibility}
+            (wrapped-with-metadata var-value visibility nil)
             (do (when-not (or no-cache?
                               (instance? clojure.lang.IDeref var-value)
                               (instance? clojure.lang.MultiFn var-value)
-                              (instance? clojure.lang.Namespace var-value)
-                              (and (seq? form) (contains? #{'ns 'in-ns 'require} (first form))))
+                              (instance? clojure.lang.Namespace var-value))
                   (try
                     (spit digest-file (hash+store-in-cas! var-value))
                     (catch Exception _e
                       #_(prn :freeze-error e)
                       nil)))
-                (-> var-value
-                    (wrap-with-blob-id (if no-cache? (view/->hash-str var-value) hash))
-                    (assoc ::visibility visibility))))))))
+                (wrapped-with-metadata var-value visibility (if no-cache? (view/->hash-str var-value) hash))))))))
 
 #_(read+eval-cached {} {} #{:show} "(subs (slurp \"/usr/share/dict/words\") 0 1000)")
 

@@ -43,21 +43,34 @@
 
 #_(->edn [:vec (with-meta [] {'clojure.core.protocols/datafy (fn [x] x)}) :var #'->edn])
 
+
+(defn exceeds-bounded-count-limit? [value]
+  (and (seqable? value)
+       (try
+         (let [limit config/*bounded-count-limit*]
+           (= limit (bounded-count limit value)))
+         (catch Exception _
+           true))))
+
+#_(exceeds-bounded-count-limit? (range))
+#_(exceeds-bounded-count-limit? (range 10000))
+#_(exceeds-bounded-count-limit? (range 1000000))
+#_(exceeds-bounded-count-limit? :foo)
+
 (defn ->hash-str
   "Attempts to compute a hash of `value` falling back to a random string."
   [value]
-  (try
-    (let [limit config/*bounded-count-limit*]
-      (when (and (seqable? value)
-                 (= limit (bounded-count limit value)))
-        (throw (ex-info "not countable within limit" {:limit limit}))))
-    (valuehash/sha-1-str value)
-    (catch Exception _e
-      (str (gensym)))))
+  (if-let [valuehash (try
+                       (when-not (exceeds-bounded-count-limit? value)
+                         (valuehash/sha-1-str value))
+                       (catch Exception _))]
+    valuehash
+    (str (gensym))))
 
-#_(->hash (range 104))
+#_(->hash-str (range 104))
+#_(->hash-str (range))
 
-(defn ->result [ns {:nextjournal/keys [value blob-id visibility]} lazy-load?]
+(defn ->result [ns {:nextjournal/keys [value blob-id]} lazy-load?]
   (let [described-result (v/describe value {:viewers (v/get-viewers ns (v/viewers value))})]
     (merge {:nextjournal/viewer :clerk/result
             :nextjournal/value (cond-> (try {:nextjournal/edn (->edn described-result)}

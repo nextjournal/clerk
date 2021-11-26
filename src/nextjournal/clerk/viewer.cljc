@@ -315,7 +315,7 @@
       (or (not count) (= count limit)) (assoc :unbounded? true))))
 
 #_(bounded-count-opts 20 (range))
-#_(bounded-count-opts 20 (range 123456))
+#_(bounded-count-opts 20 (range 3234567))
 
 (defn drop+take-xf
   "Takes a map with optional `:n` and `:offset` and returns a transducer that drops `:offset` and takes `:n`."
