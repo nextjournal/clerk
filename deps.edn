@@ -25,7 +25,7 @@
                                borkdude/sci {:mvn/version "0.2.6"}
                                reagent/reagent {:mvn/version "1.1.0"}
                                io.github.nextjournal/viewers {:git/url "git@github.com:nextjournal/viewers.git"
-                                                              :git/sha "a32acfedce17bfa65ef8ac2a077d87823d72c8f3"}
+                                                              :git/sha "7a3c4da0af1a680ba6cca60a3eb31b5536e08e87"}
                                metosin/reitit-frontend     {:mvn/version "0.5.15"}}}
 
            :dev {:extra-deps {arrowic/arrowic {:mvn/version "0.1.1"}

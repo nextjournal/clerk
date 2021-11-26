@@ -126,7 +126,7 @@
 
 (def resource->static-url
   {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxQBDwk3cvr1bt8YVL5m6bJGrFEmzrSbCrH1roypLjJr4AbbteCKh9Y6gQVYexdY85QA2HG5nQFLWpRp69zFSPDJ9"
-   "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvwJaC11sRe6kkEea3iBnhgiVVqAwGdacXea7sAQ1EVVRPHVupsxACFP4xcpQtXJJ5CdBPBDxLGRNYcdyQzNDPCTE"
+   "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8Vx9d2KqsZ38vfuiaUYDCMhns2zK5YPJ4JDRHuekrb8udKgLEM7SLfzoBhtEAkHZwspwmaDm19ZUrPzwfQUtPswF1P"
    "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VwyMcfayNcoRj7RZhzLTBGyS2hAtk8Teieo3s5GyiNooj4R5JhZdgZ3GuNnSAye7STHZKzhUTfrSsVbEZx79JEFc2"})
 
 (defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} doc]
