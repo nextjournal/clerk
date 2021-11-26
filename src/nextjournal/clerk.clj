@@ -129,7 +129,7 @@
 
 (defn blob->result [doc]
   (into {} (comp (keep :result)
-                 (map (juxt :blob-id :result))) doc))
+                 (map (juxt :nextjournal/blob-id :nextjournal/value))) doc))
 
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
