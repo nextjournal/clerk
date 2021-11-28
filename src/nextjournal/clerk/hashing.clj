@@ -184,7 +184,7 @@
                                               (assoc-in [:var->hash rec-var :form] rec-form)))))) % deps))))
                  acc))
              (cond-> acc markdown? (assoc :doc doc))
-             doc))))
+             (:doc doc)))))
 
 #_(:graph (analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/elements.clj"))
 #_(analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/rule_30.clj")
