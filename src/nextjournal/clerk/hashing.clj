@@ -134,8 +134,7 @@
                             (update :doc (fnil conj []) (cond-> {:type :code :text (n/string node)}
                                                           (and (not visibility) (-> node n/string read-string ns?))
                                                           (assoc :ns? true))))
-
-                  (and markdown? (not visibility))
+                  (not visibility)
                   (assoc :visibility (-> node n/string read-string ->doc-visibility)))
 
                 (and markdown? (n/comment? node))
