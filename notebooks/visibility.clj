@@ -4,13 +4,13 @@
 ;; * `:hide` to hide the cells w
 ;; * `:fold` which shows the cells collapsed and lets users uncollapse them
 
-;; A declartion on the `ns` form let's all code cells in the notebook inherit the value. On the `ns` form you can also use `:fold-ns` or `:hide-ns` if you'd like an option to only apply to the namespace form.
+;; A declaration on the `ns` form lets all code cells in the notebook inherit the value. On the `ns` form you can also use `:fold-ns` or `:hide-ns` if you'd like an option to only apply to the namespace form.
 ^{:nextjournal.clerk/visibility #{:fold}}
 (ns visibility
   (:require [clojure.string :as str]
             [nextjournal.clerk :as clerk]))
 
-;; So a cell will only show the result now while you can uncoallpse the code cell.
+;; So a cell will only show the result now while you can uncollapse the code cell.
 (+ 39 3)
 
 ;; If you want, you can override it. So the following cell is shown:
