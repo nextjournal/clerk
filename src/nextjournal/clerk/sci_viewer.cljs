@@ -9,6 +9,7 @@
             [nextjournal.devcards :as dc]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
+            [nextjournal.markdown.transform :as md.transform]
             [nextjournal.viewer.markdown :as markdown]
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
@@ -76,15 +77,17 @@
          (map (fn [x]
                 (let [viewer (viewer/viewer x)
                       blob-id (:blob-id (viewer/value x))]
-                  [:div {:class ["viewer" "overflow-x-auto"
-                                 (when (keyword? viewer)
-                                   (str "viewer-" (name viewer)))
-                                 (when-let [inner-viewer-name (some-> x viewer/value viewer/viewer :name name)]
-                                   (str "viewer-" inner-viewer-name))
-                                 (case (or (viewer/width x) (case viewer (:code :code-folded) :wide :prose))
-                                   :wide "w-full max-w-wide"
-                                   :full "w-full"
-                                   "w-full max-w-prose px-8")]}
+                  [:div (cond-> {:class ["viewer" "overflow-x-auto"
+                                         (when (keyword? viewer)
+                                           (str "viewer-" (name viewer)))
+                                         (when-let [inner-viewer-name (some-> x viewer/value viewer/viewer :name name)]
+                                           (str "viewer-" inner-viewer-name))
+                                         (case (or (viewer/width x) (case viewer (:code :code-folded) :wide :prose))
+                                           :wide "w-full max-w-wide"
+                                           :full "w-full"
+                                           "w-full max-w-prose px-8")]}
+                          (:join-with-cell-above? x)
+                          (assoc :style {:margin-top "-1rem" :padding-top 0}))
                    (cond-> [inspect x]
                      blob-id (with-meta {:key blob-id}))])))
          xs)))
@@ -838,6 +841,14 @@ black")}]))}
 (def code-viewer (comp normalize-viewer code/viewer))
 (def plotly-viewer (comp normalize-viewer plotly/viewer))
 (def vega-lite-viewer (comp normalize-viewer vega-lite/viewer))
+(defn markdown-viewer
+  "Accept a markdown string or a structure from parsed markdown."
+  [data]
+  (cond
+    (string? data)
+    (markdown/viewer data)
+    (and (map? data) (contains? data :content) (contains? data :type))
+    (with-viewer :hiccup (md.transform/->hiccup markdown/default-renderers data))))
 
 (def expand-icon
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
@@ -883,7 +894,7 @@ black")}]))}
    'notebook-viewer notebook
    'katex-viewer katex-viewer
    'mathjax-viewer mathjax-viewer
-   'markdown-viewer markdown/viewer
+   'markdown-viewer markdown-viewer
    'code-viewer code-viewer
    'foldable-code-viewer foldable-code-viewer
    'plotly-viewer plotly-viewer

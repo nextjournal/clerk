@@ -94,9 +94,10 @@
 
 #_(nextjournal.clerk/show! "notebooks/hello.clj")
 
-(defn ->display [{:as code-cell :keys [result ns?]}]
+(defn ->display [{:as code-cell :keys [result ns? hide-result?]}]
   (let [{:nextjournal.clerk/keys [visibility]} result
         result? (and (contains? code-cell :result)
+                     (not hide-result?)
                      (not= :hide-result (v/viewer (v/value result)))
                      (not (contains? visibility :hide-ns))
                      (not (and ns? (contains? visibility :hide))))
@@ -119,13 +120,15 @@
   ([{:keys [inline-results?] :or {inline-results? false}} doc]
    (let [{:keys [ns]} (meta doc)]
      (cond-> (into []
-                   (mapcat (fn [{:as cell :keys [type text result ns?]}]
+                   (mapcat (fn [{:as cell :keys [type text result doc join-with-cell-above?]}]
                              (case type
-                               :markdown [(v/md text)]
+                               :markdown [(v/md doc)]
                                :code (let [{:keys [code? fold? result?]} (->display cell)]
                                        (cond-> []
                                          code?
-                                         (conj (cond-> (v/code text) fold? (assoc :nextjournal/viewer :code-folded)))
+                                         (conj (cond-> (v/code text)
+                                                 fold? (assoc :nextjournal/viewer :code-folded)
+                                                 join-with-cell-above? (assoc :join-with-cell-above? true)))
                                          result?
                                          (conj (cond
                                                  (v/registration? (v/value result))
@@ -150,7 +153,7 @@
 (def resource->static-url
   {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxQBDwk3cvr1bt8YVL5m6bJGrFEmzrSbCrH1roypLjJr4AbbteCKh9Y6gQVYexdY85QA2HG5nQFLWpRp69zFSPDJ9"
    "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvykE47cdahchdt8fxwHyYwJ7YSmEFcMSyqf4UNs61izpuF1xXpKA4HeZQctDkkU11B5iLVSBjpCQrk5f5mWXS9xv"
-   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VwG2fdyhJNgY8iUttUnPQvDxXXhM4NbYE76jWE2bkBUJmpKjKMSQhiMYRnuVT1G2zgdfDHAC8bcSGkWoacPFqCnwy"})
+   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VtCQuCnwKkbSNUuM19Tdk27F5G73XjkRWEcbx3cYtuU72wfzxfYmpP9VPX2K6CsVDACcWWFkQP4FxdQpg1PbQFCG3"})
 
 (defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} doc]
   (hiccup/html5

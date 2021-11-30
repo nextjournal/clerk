@@ -24,6 +24,7 @@
   (set-dev! false)
   (set-dev! true)
 
+  (clerk/show! "notebooks/markdown.md")
   (clerk/show! "notebooks/onwards.clj")
   (clerk/show! "notebooks/rule_30.clj")
   (clerk/show! "notebooks/how_clerk_works.clj")

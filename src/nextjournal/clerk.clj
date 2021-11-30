@@ -177,7 +177,8 @@
 
 (defn file-event [{:keys [type path]}]
   (when (and (contains? #{:modify :create} type)
-             (or (str/ends-with? path ".clj")
+             (or (str/ends-with? path ".md")
+                 (str/ends-with? path ".clj")
                  (str/ends-with? path ".cljc")))
     (binding [*ns* (find-ns 'user)]
       (let [rel-path (str/replace (str path) (str (fs/canonicalize ".") fs/file-separator) "")
@@ -266,7 +267,7 @@
 ;; static builds
 
 (def clerk-docs
-  (into []
+  (into ["notebooks/markdown.md"]
         (map #(str "notebooks/" % ".clj"))
         ["hello"
          "how_clerk_works"
@@ -284,6 +285,7 @@
          "viewers/table"
          "viewers/tex"
          "viewers/vega"]))
+
 
 (defn build-static-app!
   "Builds a static html app of the notebooks at `paths`."
