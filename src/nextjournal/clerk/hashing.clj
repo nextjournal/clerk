@@ -122,15 +122,17 @@
 
 #_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
 
-(def tag-allowed? #{:deref :map :meta :list :quote :reader-macro :set :token :var :vector})
+(def code-tags
+  #{:deref :map :meta :list :quote :reader-macro :set :token :var :vector})
+
 (defn parse-clojure-file
   ([file] (parse-clojure-file {} file))
   ([{:as _opts :keys [markdown?]} file]
-   (loop [{:as state :keys [doc nodes visibility]} {:nodes (:children (p/parse-file-all file))
-                                                    :doc []}]
+   (loop [{:as state :keys [nodes visibility]} {:nodes (:children (p/parse-file-all file))
+                                                :doc []}]
      (if-let [node (first nodes)]
        (recur (cond
-                (tag-allowed? (n/tag node))
+                (code-tags (n/tag node))
                 (cond-> (-> state
                             (update :nodes rest)
                             (update :doc (fnil conj []) (cond-> {:type :code :text (n/string node)}
@@ -142,15 +144,13 @@
                 (and markdown? (n/comment? node))
                 (-> state
                     (assoc :nodes (drop-while n/comment? nodes))
-                    (update :doc conj {:type :markdown
-                                       :doc (markdown/parse (apply str (map (comp remove-leading-semicolons n/string)
-                                                                            (take-while n/comment? nodes))))}))
+                    (update :doc conj {:type :markdown :doc (markdown/parse (apply str (map (comp remove-leading-semicolons n/string)
+                                                                                            (take-while n/comment? nodes))))}))
                 :else
                 (update state :nodes rest)))
        (select-keys state [:doc :visibility])))))
 
 (defn code-cell? [{:as node :keys [type]}]
-  ;; TODO: assign different types to fenced vs indented code blocks
   (and (= :code type) (contains? node :info)))
 
 (defn parse-markdown-cell [state markdown-code-cell]
@@ -161,7 +161,7 @@
                 (cond-> (not visibility) (assoc :visibility (-> node n/string read-string ->doc-visibility)))))
           state
           (-> markdown-code-cell markdown.transform/->text str/trim p/parse-string-all :children
-              (->> (filter (comp tag-allowed? n/tag))))))
+              (->> (filter (comp code-tags n/tag))))))
 
 (defn parse-markdown-file [{:keys [markdown?]} file]
   (loop [{:as state :keys [nodes] ::keys [md-slice]} {:doc [] ::md-slice [] :nodes (:content (markdown/parse (slurp file)))}]

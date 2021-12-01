@@ -839,6 +839,7 @@ black")}]))}
 (def code-viewer (comp normalize-viewer code/viewer))
 (def plotly-viewer (comp normalize-viewer plotly/viewer))
 (def vega-lite-viewer (comp normalize-viewer vega-lite/viewer))
+
 (defn markdown-viewer
   "Accept a markdown string or a structure from parsed markdown."
   [data]
