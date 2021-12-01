@@ -14,6 +14,8 @@
             [multihash.digest :as digest]
             [rewrite-clj.node :as n]
             [rewrite-clj.parser :as p]
+            [nextjournal.markdown :as markdown]
+            [nextjournal.markdown.transform :as markdown.transform]
             [weavejester.dependency :as dep]))
 
 (defn var-name
@@ -120,15 +122,17 @@
 
 #_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
 
-(defn parse-file
-  ([file]
-   (parse-file {} file))
+(def code-tags
+  #{:deref :map :meta :list :quote :reader-macro :set :token :var :vector})
+
+(defn parse-clojure-file
+  ([file] (parse-clojure-file {} file))
   ([{:as _opts :keys [markdown?]} file]
-   (loop [{:as state :keys [doc nodes visibility]} {:nodes (:children (p/parse-file-all file))
-                                                    :doc []}]
+   (loop [{:as state :keys [nodes visibility]} {:nodes (:children (p/parse-file-all file))
+                                                :doc []}]
      (if-let [node (first nodes)]
        (recur (cond
-                (#{:deref :map :meta :list :quote :reader-macro :set :token :var :vector} (n/tag node))
+                (code-tags (n/tag node))
                 (cond-> (-> state
                             (update :nodes rest)
                             (update :doc (fnil conj []) (cond-> {:type :code :text (n/string node)}
@@ -140,14 +144,56 @@
                 (and markdown? (n/comment? node))
                 (-> state
                     (assoc :nodes (drop-while n/comment? nodes))
-                    (update :doc conj {:type :markdown :text (apply str (map (comp remove-leading-semicolons n/string)
-                                                                             (take-while n/comment? nodes)))}))
+                    (update :doc conj {:type :markdown :doc (markdown/parse (apply str (map (comp remove-leading-semicolons n/string)
+                                                                                            (take-while n/comment? nodes))))}))
                 :else
                 (update state :nodes rest)))
        (select-keys state [:doc :visibility])))))
 
+(defn code-cell? [{:as node :keys [type]}]
+  (and (= :code type) (contains? node :info)))
+
+(defn parse-markdown-cell [state markdown-code-cell]
+  (reduce (fn [{:as state :keys [visibility]} node]
+            (-> state
+                (update :doc conj (cond-> {:type :code :text (n/string node)}
+                                    (and (not visibility) (-> node n/string read-string ns?)) (assoc :ns? true)))
+                (cond-> (not visibility) (assoc :visibility (-> node n/string read-string ->doc-visibility)))))
+          state
+          (-> markdown-code-cell markdown.transform/->text str/trim p/parse-string-all :children
+              (->> (filter (comp code-tags n/tag))))))
+
+(defn parse-markdown-file [{:keys [markdown?]} file]
+  (loop [{:as state :keys [nodes] ::keys [md-slice]} {:doc [] ::md-slice [] :nodes (:content (markdown/parse (slurp file)))}]
+    (if-some [node (first nodes)]
+      (recur
+       (if (code-cell? node)
+         (cond-> state
+           (seq md-slice)
+           (-> #_state
+               (update :doc conj {:type :markdown :doc {:type :doc :content md-slice}})
+               (assoc ::md-slice []))
+
+           :always
+           (-> #_state
+               (parse-markdown-cell node)
+               (update :nodes rest)))
+
+         (-> state (update :nodes rest) (cond-> markdown? (update ::md-slice conj node)))))
+
+      (-> state
+          (update :doc #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
+          (select-keys [:doc :visibility])))))
+
+(defn parse-file
+  ([file] (parse-file {} file))
+  ([opts file] (if (str/ends-with? file ".md")
+                 (parse-markdown-file opts file)
+                 (parse-clojure-file opts file))))
+
 #_(parse-file {:markdown? true} "notebooks/visibility.clj")
 #_(parse-file "notebooks/elements.clj")
+#_(parse-file "notebooks/markdown.md")
 #_(parse-file {:markdown? true} "notebooks/rule_30.clj")
 #_(parse-file "notebooks/src/demo/lib.cljc")
 

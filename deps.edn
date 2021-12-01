@@ -17,14 +17,15 @@
         hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
         lambdaisland/uri {:mvn/version "1.11.86"}
 
+        rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}
 
-        rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}}
+        io.github.nextjournal/viewers {:git/sha "1b1374db20b56d14a0f32835c1ce5d9254c23527"
+                                       :deps/root "modules/markdown"}}
 
  :aliases {:sci {:extra-deps  {applied-science/js-interop  {:mvn/version "0.3.0"}
                                borkdude/sci {:mvn/version "0.2.6"}
                                reagent/reagent {:mvn/version "1.1.0"}
-                               io.github.nextjournal/viewers {:git/url "git@github.com:nextjournal/viewers.git"
-                                                              :git/sha "1b1374db20b56d14a0f32835c1ce5d9254c23527"}
+                               io.github.nextjournal/viewers {:git/sha "1b1374db20b56d14a0f32835c1ce5d9254c23527"}
                                metosin/reitit-frontend     {:mvn/version "0.5.15"}}}
 
            :dev {:extra-deps {arrowic/arrowic {:mvn/version "0.1.1"}

@@ -32,15 +32,19 @@
   (clerk/show! "notebooks/recursive.clj")
   (clerk/show! "notebooks/tap.clj")
 
+  (clerk/show! "notebooks/markdown.md")
+
   (clerk/show! "notebooks/viewer_api.clj")
 
-  (clerk/show! "notebooks/sicmutils.clj")
+
   (clerk/show! "notebooks/viewers/vega.clj")
   (clerk/show! "notebooks/viewers/plotly.clj")
   (clerk/show! "notebooks/viewers/table.clj")
   (clerk/show! "notebooks/viewers/tex.clj")
   (clerk/show! "notebooks/viewers/markdown.clj")
   (clerk/show! "notebooks/viewers/html.clj")
+
+  (clerk/show! "notebooks/sicmutils.clj")
 
   (clerk/clear-cache!)
 
