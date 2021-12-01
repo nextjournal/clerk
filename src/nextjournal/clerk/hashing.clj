@@ -154,19 +154,14 @@
   (and (= :code type) (contains? node :info)))
 
 (defn parse-markdown-cell [state markdown-code-cell]
-  (let [clj-nodes (-> markdown-code-cell markdown.transform/->text str/trim p/parse-string-all :children
-                      (->> (filter (comp tag-allowed? n/tag))
-                           (map-indexed (fn [i n] [i n]))))
-        last-idx (dec (count clj-nodes))]
-    (reduce (fn [{:as state :keys [visibility]} [i node]]
-              (-> state
-                  (update :doc conj (cond-> {:type :code :text (n/string node)}
-                                      (not= last-idx i) (assoc :hide-result? true)
-                                      (not= 0 i) (assoc :join-with-cell-above? true)
-                                      (and (not visibility) (-> node n/string read-string ns?)) (assoc :ns? true)))
-                  (cond-> (not visibility) (assoc :visibility (-> node n/string read-string ->doc-visibility)))))
-            state
-            clj-nodes)))
+  (reduce (fn [{:as state :keys [visibility]} node]
+            (-> state
+                (update :doc conj (cond-> {:type :code :text (n/string node)}
+                                    (and (not visibility) (-> node n/string read-string ns?)) (assoc :ns? true)))
+                (cond-> (not visibility) (assoc :visibility (-> node n/string read-string ->doc-visibility)))))
+          state
+          (-> markdown-code-cell markdown.transform/->text str/trim p/parse-string-all :children
+              (->> (filter (comp tag-allowed? n/tag))))))
 
 (defn parse-markdown-file [{:keys [markdown?]} file]
   (loop [{:as state :keys [nodes] ::keys [md-slice]} {:doc [] ::md-slice [] :nodes (:content (markdown/parse (slurp file)))}]

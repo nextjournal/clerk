@@ -286,7 +286,6 @@
          "viewers/tex"
          "viewers/vega"]))
 
-
 (defn build-static-app!
   "Builds a static html app of the notebooks at `paths`."
   [{:keys [paths out-path live-js?]

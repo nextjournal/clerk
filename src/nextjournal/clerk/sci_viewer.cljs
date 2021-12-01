@@ -77,17 +77,15 @@
          (map (fn [x]
                 (let [viewer (viewer/viewer x)
                       blob-id (:blob-id (viewer/value x))]
-                  [:div (cond-> {:class ["viewer" "overflow-x-auto"
-                                         (when (keyword? viewer)
-                                           (str "viewer-" (name viewer)))
-                                         (when-let [inner-viewer-name (some-> x viewer/value viewer/viewer :name name)]
-                                           (str "viewer-" inner-viewer-name))
-                                         (case (or (viewer/width x) (case viewer (:code :code-folded) :wide :prose))
-                                           :wide "w-full max-w-wide"
-                                           :full "w-full"
-                                           "w-full max-w-prose px-8")]}
-                          (:join-with-cell-above? x)
-                          (assoc :style {:margin-top "-1rem" :padding-top 0}))
+                  [:div {:class ["viewer" "overflow-x-auto"
+                                 (when (keyword? viewer)
+                                   (str "viewer-" (name viewer)))
+                                 (when-let [inner-viewer-name (some-> x viewer/value viewer/viewer :name name)]
+                                   (str "viewer-" inner-viewer-name))
+                                 (case (or (viewer/width x) (case viewer (:code :code-folded) :wide :prose))
+                                   :wide "w-full max-w-wide"
+                                   :full "w-full"
+                                   "w-full max-w-prose px-8")]}
                    (cond-> [inspect x]
                      blob-id (with-meta {:key blob-id}))])))
          xs)))

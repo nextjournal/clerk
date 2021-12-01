@@ -37,7 +37,7 @@ At present, Clerk will split top level forms which are grouped togetehr under th
   (assoc md.transform/default-hiccup-renderers 
         :doc (partial md.transform/into-markup [:div.viewer-markdown])
         :ruler (fn [_ _]
-                 [:hr.mt-1.mb-1
+                 [:hr.mt-1.mb-10
                   {:style {:border "10px solid magenta" 
                            :border-radius "10px"}}])))
 
