@@ -8,7 +8,6 @@
         weavejester/dependency {:mvn/version "0.2.1"}
 
         com.nextjournal/beholder {:mvn/version "1.0.0"}
-        io.github.nextjournal/valuehash {:mvn/version "0.1.10"}
 
         com.taoensso/nippy {:mvn/version "3.1.1"}
         mvxcvi/multihash {:mvn/version "2.0.3"}

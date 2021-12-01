@@ -2,10 +2,11 @@
   (:require [nextjournal.clerk.config :as config]
             [nextjournal.clerk.viewer :as v]
             [hiccup.page :as hiccup]
-            [clojure.pprint :as pprint]
             [clojure.string :as str]
             [clojure.walk :as w]
-            [valuehash.api :as valuehash]))
+            [multihash.core :as multihash]
+            [multihash.digest :as digest]
+            [taoensso.nippy :as nippy]))
 
 
 (defn ex->viewer [e]
@@ -57,12 +58,21 @@
 #_(exceeds-bounded-count-limit? (range 1000000))
 #_(exceeds-bounded-count-limit? :foo)
 
+(defn valuehash [value]
+  (-> value
+      nippy/fast-freeze
+      digest/sha2-512
+      multihash/base58))
+
+#_(valuehash (range 100))
+#_(valuehash (zipmap (range 100) (range 100)))
+
 (defn ->hash-str
   "Attempts to compute a hash of `value` falling back to a random string."
   [value]
   (if-let [valuehash (try
                        (when-not (exceeds-bounded-count-limit? value)
-                         (valuehash/sha-1-str value))
+                         (valuehash value))
                        (catch Exception _))]
     valuehash
     (str (gensym))))
