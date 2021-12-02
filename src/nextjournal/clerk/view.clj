@@ -83,7 +83,9 @@
 (defn ->result [ns {:nextjournal/keys [value blob-id]} lazy-load?]
   (let [described-result (v/describe value {:viewers (v/get-viewers ns (v/viewers value))})]
     (merge {:nextjournal/viewer :clerk/result
-            :nextjournal/value (cond-> (try {:nextjournal/edn (->edn described-result)}
+            :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (cond-> described-result
+                                                                       (:nextjournal/content-type described-result)
+                                                                       (assoc :nextjournal/value {:blob-id blob-id})))}
                                             (catch Throwable _e
                                               {:nextjournal/string (pr-str value)}))
                                  lazy-load?
@@ -93,6 +95,7 @@
            (dissoc described-result :nextjournal/value :nextjournal/viewer))))
 
 #_(nextjournal.clerk/show! "notebooks/hello.clj")
+#_(nextjournal.clerk/show! "notebooks/viewers/image.clj")
 
 (defn ->display [{:as code-cell :keys [result ns?]}]
   (let [{:nextjournal.clerk/keys [visibility]} result
