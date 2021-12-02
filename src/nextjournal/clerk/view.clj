@@ -80,12 +80,18 @@
 #_(->hash-str (range 104))
 #_(->hash-str (range))
 
+(defn base64-encode-value [{:as result :nextjournal/keys [content-type]}]
+  (update result :nextjournal/value (fn [data] (str "data:" content-type ";base64, "
+                                                    (.encodeToString (java.util.Base64/getEncoder) data)))))
+
 (defn ->result [ns {:nextjournal/keys [value blob-id]} lazy-load?]
-  (let [described-result (v/describe value {:viewers (v/get-viewers ns (v/viewers value))})]
+  (let [described-result (v/describe value {:viewers (v/get-viewers ns (v/viewers value))})
+        content-type (:nextjournal/content-type described-result)]
     (merge {:nextjournal/viewer :clerk/result
             :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (cond-> described-result
-                                                                       (:nextjournal/content-type described-result)
-                                                                       (assoc :nextjournal/value {:blob-id blob-id})))}
+                                                                       (and content-type lazy-load?)
+                                                                       (assoc :nextjournal/value {:blob-id blob-id})
+                                                                       (and content-type (not lazy-load?)) base64-encode-value))}
                                             (catch Throwable _e
                                               {:nextjournal/string (pr-str value)}))
                                  lazy-load?

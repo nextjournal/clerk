@@ -869,8 +869,10 @@ black")}]))}
               [:span {:style {:transform "rotate(180deg)"}} expand-icon] " Hide code…"]]))))
 
 
-(defn url-for [{:keys [blob-id]}]
-  (str "/_blob/" blob-id))
+(defn url-for [{:as src :keys [blob-id]}]
+  (if (string? src)
+    src
+    (str "/_blob/" blob-id)))
 
 (def sci-viewer-namespace
   {'html html-viewer
