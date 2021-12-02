@@ -80,6 +80,11 @@
 #_(->hash-str (range 104))
 #_(->hash-str (range))
 
+(defn selected-viewers [described-result]
+  (into []
+        (map (comp :render-fn :nextjournal/viewer))
+        (tree-seq (comp vector? :nextjournal/value) :nextjournal/value described-result)))
+
 (defn base64-encode-value [{:as result :nextjournal/keys [content-type]}]
   (update result :nextjournal/value (fn [data] (str "data:" content-type ";base64, "
                                                     (.encodeToString (java.util.Base64/getEncoder) data)))))
@@ -96,7 +101,7 @@
                                               {:nextjournal/string (pr-str value)}))
                                  lazy-load?
                                  (assoc :nextjournal/fetch-opts {:blob-id blob-id}
-                                        :nextjournal/hash (->hash-str [blob-id described-result])))}
+                                        :nextjournal/hash (->hash-str [blob-id (selected-viewers described-result)])))}
 
            (dissoc described-result :nextjournal/value :nextjournal/viewer))))
 
