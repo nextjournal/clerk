@@ -1,3 +1,5 @@
+![Clerk: Local-First Notebooks for Clojure](https://cdn.nextjournal.com/data/QmTMbDFWnHuMFmRsUgEMaoU4ih3hbBbHZg1XF9tXi3AF4M?filename=Requiem-Ornaments-Byline.png&content-type=image/pngX)
+
 # Clerk
 
 [![Clojars Project](https://img.shields.io/clojars/v/io.github.nextjournal/clerk.svg)](https://clojars.org/io.github.nextjournal/clerk)
