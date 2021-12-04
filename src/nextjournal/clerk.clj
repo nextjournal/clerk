@@ -267,11 +267,11 @@
 ;; static builds
 
 (def clerk-docs
-  (into ["notebooks/markdown.md"]
+  (into ["notebooks/markdown.md"
+         "notebooks/onwards.md"]
         (map #(str "notebooks/" % ".clj"))
         ["hello"
          "how_clerk_works"
-         "onwards"
          "pagination"
          "paren_soup"
          #_"readme" ;; TODO: add back when we have Clojure cells in md
@@ -315,7 +315,7 @@
 
   (show! "notebooks/rule_30.clj")
   (show! "notebooks/viewer_api.clj")
-  (show! "notebooks/onwards.clj")
+  (show! "notebooks/onwards.md")
   (show! "notebooks/pagination.clj")
   (show! "notebooks/how_clerk_works.clj")
   (show! "notebooks/conditional_read.cljc")

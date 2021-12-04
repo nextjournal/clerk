@@ -112,4 +112,4 @@ The will start everything needed to develop Clerk. You can connect your favorite
 
 ## 🐞 Known Issues
 
-See [notebooks/onwards.clj](https://github.com/nextjournal/clerk/blob/main/notebooks/onwards.clj).
+See [notebooks/onwards.md](https://github.com/nextjournal/clerk/blob/main/notebooks/onwards.md).
