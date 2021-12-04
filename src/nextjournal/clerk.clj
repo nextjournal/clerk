@@ -175,11 +175,21 @@
       (webserver/show-error! e)
       (throw e))))
 
+(defn supported-file?
+  "Returns whether PATH points to a file that can be visualized."
+  [path]
+
+  ;; Notes
+  ;;
+  ;; 1. file names starting with .# are most likely Emacs lock files
+  ;; and should be ignored.
+  (->> path io/file .getName
+       (re-matches #"(?!^\.#).+\.(md|clj|cljc)$")
+       some?))
+
 (defn file-event [{:keys [type path]}]
   (when (and (contains? #{:modify :create} type)
-             (or (str/ends-with? path ".md")
-                 (str/ends-with? path ".clj")
-                 (str/ends-with? path ".cljc")))
+             (supported-file? path))
     (binding [*ns* (find-ns 'user)]
       (let [rel-path (str/replace (str path) (str (fs/canonicalize ".") fs/file-separator) "")
             show-file? (or (not @!show-filter-fn)
