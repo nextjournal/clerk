@@ -8,12 +8,6 @@
             [multihash.digest :as digest]
             [taoensso.nippy :as nippy]))
 
-
-(defn ex->viewer [e]
-  (v/exception (Throwable->map e)))
-
-#_(doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj"))
-
 (defn var->data [v]
   (v/wrapped-with-viewer v))
 

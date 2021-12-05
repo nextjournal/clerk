@@ -85,7 +85,8 @@
 #_(update-doc! help-doc)
 
 (defn show-error! [e]
-  (broadcast! (view/ex->viewer e)))
+  (broadcast! (v/describe e)))
+
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
 

@@ -1,10 +1,12 @@
 (ns nextjournal.clerk.viewer
   (:require [clojure.string :as str]
             [clojure.pprint :as pprint]
+            [clojure.datafy :as datafy]
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]]
                 :cljs [[reagent.ratom :as ratom]]))
-  #?(:clj (:import [clojure.lang IFn])))
+  #?(:clj (:import [clojure.lang IFn]
+                   [java.lang Throwable])))
 
 (defrecord Form [form])
 
@@ -166,6 +168,8 @@
    {:pred uuid? :render-fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred inst? :render-fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred var? :transform-fn symbol :render-fn '(fn [x] (v/html [:span.inspected-value [:span.syntax-tag "#'" (str x)]]))}
+   {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e)) :fetch-fn fetch-all
+    :name :error :render-fn (quote v/throwable-viewer) :transform-fn datafy/datafy}
    {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.text-gray-700 x]))}
    {:name :elision :render-fn (quote v/elision-viewer)}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
@@ -293,7 +297,6 @@
 #_(wrapped-with-viewer (with-viewer* :elision {:remaining 10 :count 30 :offset 19}))
 #_(wrapped-with-viewer (with-viewer* (->Form '(fn [name] (html [:<> "Hello " name]))) "James"))
 
-
 (defn get-viewers
   "Returns all the viewers that apply in precendence of: optional local `viewers`, viewers set per `ns`, as well on the `:root`."
   ([ns] (get-viewers ns nil))
@@ -395,7 +398,6 @@
                     :else ;; leaf value
                     xs))))))
 
-
 #_#_#_#_
 (let [rand-int-seq (fn [n to]
                      (take n (repeatedly #(rand-int to))))
@@ -412,73 +414,73 @@
 
 
 (let [n (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female]))]
-  (update n :rows describe))
+(update n :rows describe))
 
 (def t' (with-viewer* :table (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))
 
 (let [xs t']
-  (describe xs))
+(describe xs))
 #_
 (describe (table
-            {:a (range 30)
-             :b (map inc (range 30))}))
+           {:a (range 30)
+            :b (map inc (range 30))}))
 
 (comment
-  (describe 123)
-  (-> (describe (range 100)) value peek)
-  (describe {:hello [1 2 3]})
-  (describe {:one [1 2 3] 1 2 3 4})
-  (describe [1 2 [1 [2] 3] 4 5])
-  (describe (clojure.java.io/file "notebooks"))
-  (describe {:viewers [{:pred sequential? :render-fn pr-str}]} (range 100))
-  (describe (map vector (range)))
-  (describe (subs (slurp "/usr/share/dict/words") 0 1000))
-  (describe (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
-  (describe (with-viewer* :html [:h1 "hi"]))
-  (describe (with-viewer* :html [:ul (for [x (range 3)] [:li x])]))
-  (describe (range))
-  (describe {1 [2]})
-  (describe (with-viewer* (->Form '(fn [name] (html [:<> "Hello " name]))) "James")))
+(describe 123)
+(-> (describe (range 100)) value peek)
+(describe {:hello [1 2 3]})
+(describe {:one [1 2 3] 1 2 3 4})
+(describe [1 2 [1 [2] 3] 4 5])
+(describe (clojure.java.io/file "notebooks"))
+(describe {:viewers [{:pred sequential? :render-fn pr-str}]} (range 100))
+(describe (map vector (range)))
+(describe (subs (slurp "/usr/share/dict/words") 0 1000))
+(describe (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
+(describe (with-viewer* :html [:h1 "hi"]))
+(describe (with-viewer* :html [:ul (for [x (range 3)] [:li x])]))
+(describe (range))
+(describe {1 [2]})
+(describe (with-viewer* (->Form '(fn [name] (html [:<> "Hello " name]))) "James")))
 
 
 (defn desc->values
-  "Takes a `description` and returns its value. Inverse of `describe`. Mostly useful for debugging."
-  [desc]
-  (let [x (value desc)
-        viewer (viewer desc)]
-    (if (= viewer :elision)
-      '…
-      (cond->> x
-        (vector? x)
-        (into (case (:name viewer) (:map :table) {} [])
-              (map desc->values))))))
+"Takes a `description` and returns its value. Inverse of `describe`. Mostly useful for debugging."
+[desc]
+(let [x (value desc)
+      viewer (viewer desc)]
+  (if (= viewer :elision)
+    '…
+    (cond->> x
+      (vector? x)
+      (into (case (:name viewer) (:map :table) {} [])
+            (map desc->values))))))
 
 #_(desc->values (describe [1 [2 {:a :b} 2] 3 (range 100)]))
 #_(desc->values (describe (with-viewer* :table (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))))
 
 (defn path-to-value [path]
-  (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
+(conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
 
 
 (defn merge-descriptions [root more]
-  (update-in root (path-to-value (:path more))
-             (fn [value]
-               (let [{:keys [offset path]} (-> value peek :nextjournal/value)
-                     path-from-value (conj path offset)
-                     path-from-more (or (:replace-path more) ;; string case, TODO find a better way to unify
-                                        (-> more :nextjournal/value first :path))]
-                 (when (not= path-from-value path-from-more)
-                     (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more})))
-                   (into (pop value) (:nextjournal/value more))))))
+(update-in root (path-to-value (:path more))
+           (fn [value]
+             (let [{:keys [offset path]} (-> value peek :nextjournal/value)
+                   path-from-value (conj path offset)
+                   path-from-more (or (:replace-path more) ;; string case, TODO find a better way to unify
+                                      (-> more :nextjournal/value first :path))]
+               (when (not= path-from-value path-from-more)
+                 (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more})))
+               (into (pop value) (:nextjournal/value more))))))
 
-  (comment ;; test cases for merge-descriptions, TODO: simplify
-    (let [value (range 30)
-          desc (describe value)
-          path []
-          elision (peek (get-in desc (path-to-value path)))
-          more (describe value (:nextjournal/value elision))]
+(comment ;; test cases for merge-descriptions, TODO: simplify
+  (let [value (range 30)
+        desc (describe value)
+        path []
+        elision (peek (get-in desc (path-to-value path)))
+        more (describe value (:nextjournal/value elision))]
 
-      (merge-descriptions desc more))
+    (merge-descriptions desc more))
 
   (let [value [(range 30)]
         desc (describe value)
@@ -604,29 +606,3 @@
   (with-viewer* :code (if (string? x) x (with-out-str (pprint/pprint x)))))
 
 #_(code '(+ 1 2))
-
-(defn exception [e]
-  (let [{:keys [via trace]} e]
-    (html
-     [:div.w-screen.h-screen.overflow-y-auto.bg-gray-100.p-6.text-xs.monospace.flex.flex-col
-      [:div.rounded-md.shadow-lg.border.border-gray-300.bg-white.max-w-6xl.mx-auto
-       (into
-        [:div]
-        (map
-         (fn [{:as ex :keys [type message data trace]}]
-           [:div.p-4.bg-red-100.border-b.border-gray-300.rounded-t-md
-            [:div.font-bold "Unhandled " type]
-            [:div.font-bold.mt-1 message]
-            [:div.mt-1 (pr-str data)]])
-         via))
-       [:div.py-6
-        [:table.w-full
-         (into [:tbody]
-               (map (fn [[call x file line]]
-                      [:tr.hover:bg-red-100.leading-tight
-                       [:td.text-right.px-6 file ":"]
-                       [:td.text-right.pr-6 line]
-                       [:td.py-1.pr-6 #?(:clj (demunge (pr-str call)) :cljs call)]]))
-               trace)]]]])))
-
-#_(nextjournal.clerk/show! "notebooks/boom.clj")

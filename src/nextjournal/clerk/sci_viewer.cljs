@@ -347,6 +347,28 @@
                                                     [inspect (update opts :path conj i j) d]]) row))))) (viewer/value rows)))])))))
 
 
+(defn throwable-viewer [{:keys [via trace]}]
+  (html
+   [:div.w-screen.h-screen.overflow-y-auto.bg-gray-100.p-6.text-xs.monospace.flex.flex-col
+    [:div.rounded-md.shadow-lg.border.border-gray-300.bg-white.max-w-6xl.mx-auto
+     (into
+      [:div]
+      (map
+       (fn [{:as _ex :keys [type message data _trace]}]
+         [:div.p-4.bg-red-100.border-b.border-gray-300.rounded-t-md
+          [:div.font-bold "Unhandled " type]
+          [:div.font-bold.mt-1 message]
+          [:div.mt-1 (pr-str data)]])
+       via))
+     [:div.py-6
+      [:table.w-full
+       (into [:tbody]
+             (map (fn [[call _x file line]]
+                    [:tr.hover:bg-red-100.leading-tight
+                     [:td.text-right.px-6 file ":"]
+                     [:td.text-right.pr-6 line]
+                     [:td.py-1.pr-6 call]]))
+             trace)]]]]))
 
 (defn tagged-value [tag value]
   [:span.inspected-value.whitespace-nowrap
@@ -892,6 +914,7 @@ black")}]))}
    'with-viewers with-viewers
    'clerk-eval clerk-eval
 
+   'throwable-viewer throwable-viewer
    'notebook-viewer notebook
    'katex-viewer katex-viewer
    'mathjax-viewer mathjax-viewer
