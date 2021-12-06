@@ -135,7 +135,7 @@
      (cond-> (into []
                    (mapcat (fn [{:as cell :keys [type text result doc]}]
                              (case type
-                               :markdown [(v/md doc)]
+                               :markdown [(v/md (or doc text))]
                                :code (let [{:keys [code? fold? result?]} (->display cell)]
                                        (cond-> []
                                          code?
