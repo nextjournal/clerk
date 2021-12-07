@@ -840,6 +840,10 @@ black")}]))}
 (def plotly-viewer (comp normalize-viewer plotly/viewer))
 (def vega-lite-viewer (comp normalize-viewer vega-lite/viewer))
 
+;; TODO: put this someplace (in a cljs sci ns extension file?)
+;; enables equation numbering https://docs.mathjax.org/en/latest/input/tex/eqnumbers.html
+(set! (.-MathJax js/window) #js {"tex" #js {"tags" "ams"}})
+
 (defn markdown-viewer
   "Accept a markdown string or a structure from parsed markdown."
   [data]
@@ -847,7 +851,15 @@ black")}]))}
     (string? data)
     (markdown/viewer data)
     (and (map? data) (contains? data :content) (contains? data :type))
-    (with-viewer :hiccup (md.transform/->hiccup markdown/default-renderers data))))
+    (with-viewer :hiccup
+                 (md.transform/->hiccup (assoc markdown/default-renderers
+                                               ;; TODO: allow to configure this (overriding sci ns entry for `markdown-viewer` ?)
+                                               :block-formula (fn [_ctx node] ;; mj viewer defaults to block formulas
+                                                                [inspect (mathjax-viewer (md.transform/->text node))])
+                                               :formula (fn [_ctx node]
+                                                          [inspect (normalize-viewer (mathjax/viewer (md.transform/->text node)
+                                                                                                     {:inline? true}))]))
+                                        data))))
 
 (def expand-icon
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}

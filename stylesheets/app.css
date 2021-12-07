@@ -1,3 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+mjx-container:not([display]) {
+  display: inline-grid;
+}
