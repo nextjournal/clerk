@@ -386,6 +386,7 @@
 
 
 (defonce !doc (ratom/atom nil))
+(defonce !error (ratom/atom nil))
 (defonce !viewers viewer/!viewers)
 
 (defn set-viewers! [scope viewers]
@@ -598,14 +599,22 @@
 
 
 (defn root []
-  [inspect @!doc])
+  [:<>
+   [inspect @!doc]
+   (when @!error
+     [:div.fixed.top-0.left-0.w-full.h-full
+      [inspect @!error]])])
 
 (defn ^:export reset-doc [new-doc]
   (doseq [cell (viewer/value new-doc)
           :when (viewer/registration? cell)
           :let [form (viewer/value cell)]]
     (*eval* form))
-  (reset! !doc new-doc))
+  (if (= :error (-> new-doc viewer/viewer :name))
+    (reset! !error new-doc)
+    (do (when @!error
+          (reset! !error nil))
+        (reset! !doc new-doc))))
 
 (dc/defcard eval-viewer
   "Viewers that are lists are evaluated using sci."
