@@ -99,6 +99,9 @@
                                                                        (and content-type (not lazy-load?)) base64-encode-value))}
                                             (catch Throwable _e
                                               {:nextjournal/string (pr-str value)}))
+                                 (-> described-result v/viewer :name)
+                                 (assoc :nextjournal/viewer (select-keys (v/viewer described-result) [:name]))
+
                                  lazy-load?
                                  (assoc :nextjournal/fetch-opts {:blob-id blob-id}
                                         :nextjournal/hash (->hash-str [blob-id (selected-viewers described-result)])))}
