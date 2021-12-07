@@ -5,6 +5,16 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
+## Unreleased
+* 🌟 Support markdown as an alternative to Clojure source code for prose-heavy documents.
+* ⭐️ Allow setting code cell & result visibility via
+  `:nextjournal.clerk/visibility` metadata on a form. Valid values are: `:show` (default) `:fold` or `:hide`. These settings can be set on individual forms, setting them on the `ns` form changes the default for all forms in the document. If you want to affect only the `ns` form, use  `:fold-ns` or `:hide-ns`.
+* ⭐️ Added a `:transform-fn` that allows a transformation of a value in JVM Clojure. Also rename `:fn` to `:render-fn` for clarify and ensure the `:pred` only runs on JVM Clojure to enable using predicates that cannot run in sci in the browser.
+* 🌟 Added `v/clerk-eval` to the viewer api which takes a quoted form and evaluates it in the context of the document namespace.
+* 💫 Persist viewer expansion state across document reloads and make document updates minimize repaints and flickering.
+* 💫 Wrap sci context in an atom to let consumers change it.
+* 🐜 Don't cache uncountable values within `*bounded-count-limit*`
+
 ## 0.3.233 (2021-11-10)
 
 * 💫 Bump viewers & deps to support ordered list offsets
