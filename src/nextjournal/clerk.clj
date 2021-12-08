@@ -58,11 +58,6 @@
      {:result ret#
       :time-ms (/ (double (- (. System (nanoTime)) start#)) 1000000.0)}))
 
-(defn worth-caching? [time-ms]
-  (<= 5.0 time-ms))
-
-#_(worth-caching? 0.1)
-
 (defn read+eval-cached [results-last-run vars->hash doc-visibility code-string]
   (let [form (hashing/read-string code-string)
         {:as analyzed :keys [ns-effect? var]} (hashing/analyze form)
@@ -93,11 +88,10 @@
               ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
               #_(prn :thaw-error e)
               nil)))
-        (let [{:keys [result time-ms]} (time-ms (eval form))
+        (let [{:keys [result]} (time-ms (eval form))
               var-value (cond-> result (var? result) deref)
               no-cache? (or no-cache?
                             (config/cache-disabled?)
-                            (not (worth-caching? time-ms))
                             (view/exceeds-bounded-count-limit? var-value))]
           (if (fn? var-value)
             (wrapped-with-metadata var-value visibility nil)
