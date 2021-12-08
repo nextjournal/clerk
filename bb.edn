@@ -1,4 +1,5 @@
-{:tasks {:requires ([clojure.edn :as edn])
+{:tasks {:requires ([clojure.edn :as edn]
+                    [babashka.process :as p :refer [process]])
          :init (def tailwind-build-cmd "npx tailwindcss --input stylesheets/app.css ")
          yarn-install {:doc "Installs and updates npm dependencies"
                        :task (shell "yarn install")}
@@ -19,7 +20,10 @@
          release:css {:doc  "Builds & uploads the css release and updates the sha reference."
                       :task (do (shell (str tailwind-build-cmd "--output build/app.css -m")
                                        {:extra-env {"NODE_ENV" "production"}})
-                                (clojure "-T:build upload-to-cas+rewrite-sha :resource app.css"))
+                              (clojure "-T:build upload-to-cas+rewrite-sha :resource app.css")
+                              (clojure (str "-T:build upload-to-cas+rewrite-sha :resource viewer.css :file '"
+                                            (:out (clojure {:out :string} "-A:sci -e '(prn (.getPath (clojure.java.io/resource \"public/css/viewer.css\")))'"))
+                                            "'")))
                       :depends [yarn-install]}
 
          build:static-app {:doc "Builds a Static App with default Notebooks"

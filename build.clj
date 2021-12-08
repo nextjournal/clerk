@@ -72,11 +72,12 @@
 
 (def resource->path
   '{viewer.js "/js/viewer.js"
+    viewer.css "/css/viewer.css"
     app.css "/css/app.css"})
 
-(defn upload-to-cas+rewrite-sha [{:keys [resource]}]
+(defn upload-to-cas+rewrite-sha [{:keys [resource file]}]
   (if-let [target (resource->path resource)]
     (update-resource! {:clerk-view-file (io/file clerk-view-file-path)
                        :exec-path (str/trim (asserting (get-gsutil) "Can't find gsutil executable."))
-                       :target-path "gs://nextjournal-cas-eu/data/"} target :uploading (str "build/" resource))
+                       :target-path "gs://nextjournal-cas-eu/data/"} target :uploading (or file (str "build/" resource)))
     (throw (ex-info (str "unsupported resource " resource) {:supported-resources (keys resource->path)}))))
