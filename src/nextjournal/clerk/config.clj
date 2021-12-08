@@ -8,6 +8,8 @@
   (when-let [prop (System/getProperty "clerk.disable_cache")]
     (not= "false" prop)))
 
+(def ^:dynamic *in-clerk* false)
+
 (def ^:dynamic *bounded-count-limit*
   (or (let [limit (System/getProperty "clerk.bounded-count-limit")]
         (try

@@ -88,7 +88,7 @@
               ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
               #_(prn :thaw-error e)
               nil)))
-        (let [{:keys [result]} (time-ms (eval form))
+        (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true] (eval form)))
               var-value (cond-> result (var? result) deref)
               no-cache? (or no-cache?
                             (config/cache-disabled?)
@@ -156,18 +156,19 @@
 (defn show!
   "Evaluates the Clojure source in `file` and makes the webserver show it."
   [file]
-  (try
-    (reset! !last-file file)
-    (let [doc (parse-file file)
-          results-last-run (meta @webserver/!doc)
-          {:keys [result time-ms]} (time-ms (+eval-results results-last-run (hashing/hash file) doc))]
-      ;; TODO diff to avoid flickering
-      #_(webserver/update-doc! doc)
-      (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
-      (webserver/update-doc! result))
-    (catch Exception e
-      (webserver/show-error! e)
-      (throw e))))
+  (when-not config/*in-clerk*
+    (try
+      (reset! !last-file file)
+      (let [doc (parse-file file)
+            results-last-run (meta @webserver/!doc)
+            {:keys [result time-ms]} (time-ms (+eval-results results-last-run (hashing/hash file) doc))]
+        ;; TODO diff to avoid flickering
+        #_(webserver/update-doc! doc)
+        (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
+        (webserver/update-doc! result))
+      (catch Exception e
+        (webserver/show-error! e)
+        (throw e)))))
 
 (defn supported-file?
   "Returns whether `path` points to a file that should be shown."

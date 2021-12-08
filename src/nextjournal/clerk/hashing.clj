@@ -14,6 +14,7 @@
             [multihash.digest :as digest]
             [rewrite-clj.node :as n]
             [rewrite-clj.parser :as p]
+            [nextjournal.clerk.config :as config]
             [nextjournal.markdown :as markdown]
             [nextjournal.markdown.transform :as markdown.transform]
             [weavejester.dependency :as dep]))
@@ -51,15 +52,16 @@
                        ([s] (str/includes? (p/parse-string-all s) "hi"))))
 
 (defn analyze [form]
-  (let [analyzed-form (-> form
-                          ana/analyze
-                          (ana.passes.ef/emit-form #{:hygenic :qualified-symbols}))
-        var (some-> analyzed-form var-name resolve)
-        deps (cond-> (var-dependencies analyzed-form) var (disj var))]
-    (cond-> {:form (cond->> form var (drop 2))
-             :ns-effect? (some? (some #{#'clojure.core/require #'clojure.core/in-ns} deps))}
-      var (assoc :var var)
-      (seq deps) (assoc :deps deps))))
+  (binding [config/*in-clerk* true]
+    (let [analyzed-form (-> form
+                            ana/analyze
+                            (ana.passes.ef/emit-form #{:hygenic :qualified-symbols}))
+          var (some-> analyzed-form var-name resolve)
+          deps (cond-> (var-dependencies analyzed-form) var (disj var))]
+      (cond-> {:form (cond->> form var (drop 2))
+               :ns-effect? (some? (some #{#'clojure.core/require #'clojure.core/in-ns} deps))}
+        var (assoc :var var)
+        (seq deps) (assoc :deps deps)))))
 
 #_(analyze '(let [x 2] x))
 #_(analyze '(defn foo [s] (str/includes? (p/parse-string-all s) "hi")))
