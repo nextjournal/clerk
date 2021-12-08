@@ -842,7 +842,12 @@ black")}]))}
 
 ;; TODO: put this someplace (in a cljs sci ns extension file?)
 ;; enables equation numbering https://docs.mathjax.org/en/latest/input/tex/eqnumbers.html
-(set! (.-MathJax js/window) #js {"tex" #js {"tags" "ams"}})
+(set! (.-MathJax js/window)
+      #js {"tex" #js {"tags" "ams"}
+           "startup" #js {"pageReady" (fn [_] (this-as mahjax #_(js/console.log :DoNothing mahjax) nil))} ;
+           ;; disable scanning the whole document for math
+           "options" #js {"enableAssistiveMml" false}})
+           ;; disable assistive MML
 
 (defn markdown-viewer
   "Accept a markdown string or a structure from parsed markdown."
