@@ -79,7 +79,7 @@
 (defn ->visibility [form]
   (when-let [visibility (-> form meta :nextjournal.clerk/visibility)]
     (let [visibility-set (cond-> visibility (not (set? visibility)) hash-set)]
-      (when-not (every? #{:hide-ns :fold-ns :hide :show :fold} visibility-set)
+      (when-not (every? #{:hide-ns :fold-ns :hide :show :fold :hide-result :show-result} visibility-set)
         (throw (ex-info "Invalid `:nextjournal.clerk/visibility`, valid values are `#{:hide-ns :fold-ns :hide :show :fold}`." {:visibility visibility :form form})))
       (when (and (or (visibility-set :hide-ns) (visibility-set :fold-ns))
                  (not (ns? form)))
@@ -99,10 +99,11 @@
             ->visibility
             (disj :hide-ns :fold-ns)
             not-empty))
-      #{:show}))
+      #{:show :show-result}))
 
 #_(->doc-visibility '^{:nextjournal.clerk/visibility :fold} (ns foo))
 #_(->doc-visibility '^{:nextjournal.clerk/visibility :hide-ns} (ns foo))
+#_(->doc-visibility '^{:nextjournal.clerk/visibility #{:hide-ns :hide-result}} (ns foo))
 
 (defn auto-resolves [ns]
   (as-> (ns-aliases ns) $

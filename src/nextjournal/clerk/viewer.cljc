@@ -189,8 +189,7 @@
    {:name :object :render-fn '(fn [x] (v/html (v/tagged-value "#object" [v/inspect x])))}
    {:name :file :render-fn '(fn [x] (v/html (v/tagged-value "#file " [v/inspect x])))}
    {:name :clerk/notebook :render-fn (quote v/notebook-viewer) :fetch-fn fetch-all}
-   {:name :clerk/result :render-fn (quote v/result-viewer) :fetch-fn fetch-all}
-   {:name :hide-result :transform-fn (fn [_] nil)}])
+   {:name :clerk/result :render-fn (quote v/result-viewer) :fetch-fn fetch-all}])
 
 (def default-table-cell-viewers
   [{:name :elision :render-fn '(fn [_] (v/html "…"))}
@@ -575,7 +574,6 @@
 (def plotly       (partial with-viewer* :plotly))
 (def vl           (partial with-viewer* :vega-lite))
 (def tex          (partial with-viewer* :latex))
-(def hide-result  (partial with-viewer* :hide-result))
 (def notebook     (partial with-viewer* :clerk/notebook))
 
 (defn table

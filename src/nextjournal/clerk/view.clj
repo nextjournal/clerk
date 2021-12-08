@@ -114,7 +114,8 @@
 (defn ->display [{:as code-cell :keys [result ns?]}]
   (let [{:nextjournal.clerk/keys [visibility]} result
         result? (and (contains? code-cell :result)
-                     (not= :hide-result (v/viewer (v/value result)))
+                     (and (not (contains? visibility :hide-result))
+                          (contains? visibility :show-result))
                      (not (contains? visibility :hide-ns))
                      (not (and ns? (contains? visibility :hide))))
         fold? (and (not (contains? visibility :hide-ns))

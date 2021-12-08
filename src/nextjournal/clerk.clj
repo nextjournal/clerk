@@ -207,7 +207,6 @@
 (def code           v/code)
 (def table          #'v/table)
 (def use-headers    #'v/use-headers)
-(def hide-result    #'v/hide-result)
 
 (defmacro with-viewer
   [viewer x]
@@ -332,6 +331,6 @@
   (show! "notebooks/test.clj")
 
   ;; Clear cache
-  (clear-cache!)
+  (clear-cache!))
 
-  )
+  
