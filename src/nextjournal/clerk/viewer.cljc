@@ -419,64 +419,64 @@
 
 
 (let [n (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female]))]
-(update n :rows describe))
+  (update n :rows describe))
 
 (def t' (with-viewer* :table (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))
 
 (let [xs t']
-(describe xs))
+  (describe xs))
 #_
 (describe (table
            {:a (range 30)
             :b (map inc (range 30))}))
 
 (comment
-(describe 123)
-(-> (describe (range 100)) value peek)
-(describe {:hello [1 2 3]})
-(describe {:one [1 2 3] 1 2 3 4})
-(describe [1 2 [1 [2] 3] 4 5])
-(describe (clojure.java.io/file "notebooks"))
-(describe {:viewers [{:pred sequential? :render-fn pr-str}]} (range 100))
-(describe (map vector (range)))
-(describe (subs (slurp "/usr/share/dict/words") 0 1000))
-(describe (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
-(describe (with-viewer* :html [:h1 "hi"]))
-(describe (with-viewer* :html [:ul (for [x (range 3)] [:li x])]))
-(describe (range))
-(describe {1 [2]})
-(describe (with-viewer* (->Form '(fn [name] (html [:<> "Hello " name]))) "James")))
+  (describe 123)
+  (-> (describe (range 100)) value peek)
+  (describe {:hello [1 2 3]})
+  (describe {:one [1 2 3] 1 2 3 4})
+  (describe [1 2 [1 [2] 3] 4 5])
+  (describe (clojure.java.io/file "notebooks"))
+  (describe {:viewers [{:pred sequential? :render-fn pr-str}]} (range 100))
+  (describe (map vector (range)))
+  (describe (subs (slurp "/usr/share/dict/words") 0 1000))
+  (describe (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
+  (describe (with-viewer* :html [:h1 "hi"]))
+  (describe (with-viewer* :html [:ul (for [x (range 3)] [:li x])]))
+  (describe (range))
+  (describe {1 [2]})
+  (describe (with-viewer* (->Form '(fn [name] (html [:<> "Hello " name]))) "James")))
 
 
 (defn desc->values
-"Takes a `description` and returns its value. Inverse of `describe`. Mostly useful for debugging."
-[desc]
-(let [x (value desc)
-      viewer (viewer desc)]
-  (if (= viewer :elision)
-    '…
-    (cond->> x
-      (vector? x)
-      (into (case (:name viewer) (:map :table) {} [])
-            (map desc->values))))))
+  "Takes a `description` and returns its value. Inverse of `describe`. Mostly useful for debugging."
+  [desc]
+  (let [x (value desc)
+        viewer (viewer desc)]
+    (if (= viewer :elision)
+      '…
+      (cond->> x
+        (vector? x)
+        (into (case (:name viewer) (:map :table) {} [])
+              (map desc->values))))))
 
 #_(desc->values (describe [1 [2 {:a :b} 2] 3 (range 100)]))
 #_(desc->values (describe (with-viewer* :table (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))))
 
 (defn path-to-value [path]
-(conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
+  (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
 
 
 (defn merge-descriptions [root more]
-(update-in root (path-to-value (:path more))
-           (fn [value]
-             (let [{:keys [offset path]} (-> value peek :nextjournal/value)
-                   path-from-value (conj path offset)
-                   path-from-more (or (:replace-path more) ;; string case, TODO find a better way to unify
-                                      (-> more :nextjournal/value first :path))]
-               (when (not= path-from-value path-from-more)
-                 (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more})))
-               (into (pop value) (:nextjournal/value more))))))
+  (update-in root (path-to-value (:path more))
+             (fn [value]
+               (let [{:keys [offset path]} (-> value peek :nextjournal/value)
+                     path-from-value (conj path offset)
+                     path-from-more (or (:replace-path more) ;; string case, TODO find a better way to unify
+                                        (-> more :nextjournal/value first :path))]
+                 (when (not= path-from-value path-from-more)
+                   (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more})))
+                 (into (pop value) (:nextjournal/value more))))))
 
 (comment ;; test cases for merge-descriptions, TODO: simplify
   (let [value (range 30)
