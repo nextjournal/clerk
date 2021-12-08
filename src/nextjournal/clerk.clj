@@ -176,16 +176,19 @@
       (throw e))))
 
 (defn supported-file?
-  "Returns whether PATH points to a file that can be visualized."
+  "Returns whether `path` points to a file that should be shown."
   [path]
-
-  ;; Notes
-  ;;
-  ;; 1. file names starting with .# are most likely Emacs lock files
-  ;; and should be ignored.
+  ;; file names starting with .# are most likely Emacs lock files and should be ignored.
   (->> path io/file .getName
        (re-matches #"(?!^\.#).+\.(md|clj|cljc)$")
        some?))
+
+#_(supported-file? "foo_bar.clj")
+#_(supported-file? "xyz/foo.md")
+#_(supported-file? "xyz/foo.clj")
+#_(supported-file? "xyz/abc.#name.cljc")
+#_(supported-file? ".#name.clj")
+#_(supported-file? "xyz/.#name.cljc")
 
 (defn file-event [{:keys [type path]}]
   (when (and (contains? #{:modify :create} type)
