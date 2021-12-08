@@ -140,6 +140,11 @@
     (and (sequential? data) (sequential? (first data))) (normalize-seq-of-seq data)
     :else nil))
 
+(defn demunge-ex-data [ex-data]
+  (update ex-data :trace (fn [traces] (mapv #(update % 0 (comp demunge pr-str)) traces))))
+
+#_(demunge-ex-data (datafy/datafy (ex-info "foo" {:bar :baz})))
+
 (def elide-string-length 100)
 
 (declare with-viewer*)
@@ -169,7 +174,7 @@
    {:pred inst? :render-fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred var? :transform-fn symbol :render-fn '(fn [x] (v/html [:span.inspected-value [:span.syntax-tag "#'" (str x)]]))}
    {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e)) :fetch-fn fetch-all
-    :name :error :render-fn (quote v/throwable-viewer) :transform-fn datafy/datafy}
+    :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp demunge-ex-data datafy/datafy)}
    {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.text-gray-700 x]))}
    {:name :elision :render-fn (quote v/elision-viewer)}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
