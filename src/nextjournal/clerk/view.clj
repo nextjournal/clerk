@@ -166,8 +166,8 @@
 
 (def resource->static-url
   {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxQBDwk3cvr1bt8YVL5m6bJGrFEmzrSbCrH1roypLjJr4AbbteCKh9Y6gQVYexdY85QA2HG5nQFLWpRp69zFSPDJ9"
-   "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvykE47cdahchdt8fxwHyYwJ7YSmEFcMSyqf4UNs61izpuF1xXpKA4HeZQctDkkU11B5iLVSBjpCQrk5f5mWXS9xv"
-   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VtCXjyDVLMeayjZyu3n65iikE5bE2xaygE2b9QUSR7f5BBaR5FK41f5oEnc1Fa6eQ88CVFBiPbN8LqXdGH6pjfSbP"})
+   "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VwqmvLhGRgV9sKNyCQGKCNF9ih9u4Jh5D1Yuwkb9r26WpA4LwwWr32KhTuVgv6qTacnB27B9Su92WhsfmPYuXDvJ8"
+   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvDHeKA2BruJzGfepACZCsE4FsjZe7PxrTGML1YTHBvJcjLe9e8Fpag1GVinsvBqHSJ7iMMDVp7ocKdwNfVB4YkQs"})
 
 (defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} doc]
   (hiccup/html5
