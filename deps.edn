@@ -8,6 +8,7 @@
         weavejester/dependency {:mvn/version "0.2.1"}
 
         com.nextjournal/beholder {:mvn/version "1.0.0"}
+        io.github.nextjournal/markdown {:mvn/version "0.1.36"}
 
         com.taoensso/nippy {:mvn/version "3.1.1"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
@@ -17,10 +18,7 @@
         hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
         lambdaisland/uri {:mvn/version "1.11.86"}
 
-        rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}
-
-        io.github.nextjournal/viewers {:git/sha "1b1374db20b56d14a0f32835c1ce5d9254c23527"
-                                       :deps/root "modules/markdown"}}
+        rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}}
 
  :aliases {:sci {:extra-deps  {applied-science/js-interop  {:mvn/version "0.3.0"}
                                borkdude/sci {:mvn/version "0.2.6"}
@@ -33,7 +31,7 @@
                               cider/cider-nrepl {:mvn/version "0.26.0"}
                               thheller/shadow-cljs {:mvn/version "2.15.9"}}
                  :extra-paths ["dev"]
-                 :jvm-opts ["-Dclerk.live_js=true" "-XX:-OmitStackTraceInFastThrow"]
+                 :jvm-opts ["-Dclerk.live_js=true" "-Dpolyglot.engine.WarnInterpreterOnly=false" "-XX:-OmitStackTraceInFastThrow"]
                  :main-opts ["-m" "shadow.cljs.devtools.cli"]}
 
            :demo {:extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
