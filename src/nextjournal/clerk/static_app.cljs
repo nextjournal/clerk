@@ -1,9 +1,11 @@
 (ns nextjournal.clerk.static-app
   (:require [nextjournal.clerk.sci-viewer :as sci-viewer]
+            [lambdaisland.uri.normalize :as normalize-uri]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [reitit.frontend :as rf]
-            [reitit.frontend.easy :as rfe]))
+            [reitit.frontend.easy :as rfe]
+            [clojure.string :as str]))
 
 (defonce path->doc
   (r/atom {}))
@@ -28,7 +30,7 @@
            (map (fn [path]
                   [:li.border-t
                    [:a.pl-4.md:pl-8.pr-4.py-2.flex.w-full.items-center.justify-between.hover:bg-indigo-50
-                    {:href (rfe/href ::show {:path path})}
+                    {:href (normalize-uri/percent-decode (rfe/href ::show {:path path}))}
                     [:span.text-sm.md:text-md.monospace.flex-auto.block.truncate path]
                     [:svg.h-4.w-4.flex-shrink-0 {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke "currentColor"}
                      [:path {:stroke-linecap "round" :stroke-linejoin "round" :stroke-width "2" :d "M9 5l7 7-7 7"}]]]]))
@@ -38,13 +40,11 @@
       {:href "https://github.com/nextjournal/clerk"}
       "Generated with Clerk."]]]])
 
+(defn get-routes [docs]
+  (let [index? (contains? docs "")]
+    [["/*path" {:name ::show :view show}]
+     ["/" {:name ::index :view (if index? show index) :path ""}]]))
 
-(def routes
-  [["/*path" {:name ::show :view show}]
-   ["/" {:name ::index :view index}]])
-
-(defonce router
-  (rf/router routes))
 
 (defonce match (r/atom nil))
 
@@ -61,7 +61,11 @@
   (when-let [el (js/document.getElementById "clerk-static-app")]
     (rdom/render [root] el)))
 
+(defn strip-index [path]
+  (str/replace path #"(^|.*/)(index\.(clj|cljc|md))$" "$1"))
+
 (defn ^:export init [docs]
-  (reset! path->doc docs)
-  (rfe/start! router #(reset! match %1) {:use-fragment true})
+  (reset! path->doc (into {} (map (fn [[path doc]] [(strip-index path) doc]) docs)))
+  (let [router (rf/router (get-routes @path->doc))]
+    (rfe/start! router #(reset! match %1) {:use-fragment true}))
   (mount))
