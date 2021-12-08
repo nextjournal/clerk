@@ -80,7 +80,7 @@
   (when-let [visibility (-> form meta :nextjournal.clerk/visibility)]
     (let [visibility-set (cond-> visibility (not (set? visibility)) hash-set)]
       (when-not (every? #{:hide-ns :fold-ns :hide :show :fold :hide-result :show-result} visibility-set)
-        (throw (ex-info "Invalid `:nextjournal.clerk/visibility`, valid values are `#{:hide-ns :fold-ns :hide :show :fold}`." {:visibility visibility :form form})))
+        (throw (ex-info "Invalid `:nextjournal.clerk/visibility`, valid values are `#{:hide-ns :fold-ns :hide :show :fold :hide-result :show-result}`." {:visibility visibility :form form})))
       (when (and (or (visibility-set :hide-ns) (visibility-set :fold-ns))
                  (not (ns? form)))
         (throw (ex-info "Cannot set `:nextjournal.clerk/visibility` to `:hide-ns` or `:fold-ns` on non ns form." {:visibility visibility :form form})))
