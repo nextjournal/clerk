@@ -247,15 +247,18 @@
 
 #_(unhashed-deps {#'elements/fix-case {:deps #{#'rewrite-clj.node/tag}}})
 
+(defn- cleanup-ns [ns]
+  (str/replace (str ns) "." fs/file-separator))
+
 ;; TODO: handle cljc files
 (defn ns->file [ns]
-  (some (fn [dir]
-          ;; TODO: fix case upstream when ns can be nil because var can contain java classes like java.lang.String
-          (when-let [path (and ns (str dir fs/file-separator (str/replace (str ns) "." fs/file-separator) ".clj"))]
-            (when (fs/exists? path)
-              path)))
-        (cp/classpath-directories)))
-
+  ;; TODO: fix case upstream when ns can be nil because var can contain java classes like java.lang.String
+  (when ns
+    (some (fn [dir]
+            (when-let [path (str dir fs/file-separator (cleanup-ns ns) ".clj")]
+              (when (fs/exists? path)
+                path)))
+          (cp/classpath-directories))))
 #_(ns->file (find-ns 'nextjournal.clerk.hashing))
 
 (def var->ns
@@ -264,7 +267,7 @@
 #_(var->ns #'inc)
 
 (defn ns->jar [ns]
-  (let [path (str (str/replace ns "." fs/file-separator))]
+  (let [path (cleanup-ns ns)]
     (some #(when (or (.getJarEntry % (str path ".clj"))
                      (.getJarEntry % (str path ".cljc")))
              (.getName %))
