@@ -1,5 +1,5 @@
-;; # Hashing Things!!!!
-(ns ^:nextjournal.clerk/no-cache nextjournal.clerk.hashing
+(ns nextjournal.clerk.hashing
+  ^{:nextjournal.clerk/no-cache true}
   (:refer-clojure :exclude [hash read-string])
   (:require [babashka.fs :as fs]
             [clojure.core :as core]
@@ -22,13 +22,15 @@
 (defn var-name
   "Takes a `form` and returns the name of the var, if it exists."
   [form]
-  (when (and (sequential? form)
+  (when (and (list? form)
              (contains? '#{def defn} (first form)))
     (second form)))
 
 (defn no-cache? [form]
-  (or (-> (if-let [vn (var-name form)] vn form) meta :nextjournal.clerk/no-cache boolean)
-      (-> *ns* meta :nextjournal.clerk/no-cache boolean)))
+  (let [var-or-form    (if-let [vn (var-name form)] vn form)
+        no-cache-meta? (comp boolean :nextjournal.clerk/no-cache meta)]
+    (or (no-cache-meta? var-or-form)
+        (no-cache-meta? *ns*))))
 
 #_(no-cache? '(rand-int 10))
 
