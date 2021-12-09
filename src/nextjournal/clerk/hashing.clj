@@ -1,5 +1,5 @@
-(ns nextjournal.clerk.hashing
-  ^{:nextjournal.clerk/no-cache true}
+(ns ^:nextjournal.clerk/no-cache
+  nextjournal.clerk.hashing
   (:refer-clojure :exclude [hash read-string])
   (:require [babashka.fs :as fs]
             [clojure.core :as core]
@@ -38,7 +38,6 @@
   (-> s digest/sha1 multihash/base58))
 
 #_(sha1-base58 "hello")
-
 
 (defn var-dependencies [form]
   (let [var-name (var-name form)]
