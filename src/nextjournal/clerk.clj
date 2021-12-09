@@ -156,7 +156,8 @@
 (defn show!
   "Evaluates the Clojure source in `file` and makes the webserver show it."
   [file]
-  (when-not config/*in-clerk*
+  (if config/*in-clerk*
+    ::ignored
     (try
       (reset! !last-file file)
       (let [doc (parse-file file)
@@ -184,6 +185,7 @@
 #_(supported-file? "xyz/abc.#name.cljc")
 #_(supported-file? ".#name.clj")
 #_(supported-file? "xyz/.#name.cljc")
+
 
 (defn file-event [{:keys [type path]}]
   (when (and (contains? #{:modify :create} type)
