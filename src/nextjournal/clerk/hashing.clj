@@ -205,35 +205,36 @@
    (analyze-file {} {:graph (dep/graph)} file))
   ([state file]
    (analyze-file {} state file))
-  ([{:as opts :keys [markdown?]} acc file]
-   (let [doc (parse-file opts file)]
-     (reduce (fn [acc {:keys [type text]}]
-               (if (= type :code)
-                 (let [form (read-string text)
-                       {:keys [var deps form ns-effect?]} (analyze form)]
-                   (when ns-effect?
-                     (eval form))
-                   (cond-> (assoc-in acc [:var->hash (if var var form)] {:file file
-                                                                         :form form
-                                                                         :deps deps})
-                     (seq deps)
-                     (#(reduce (fn [{:as acc :keys [graph]} dep]
-                                 (try (assoc acc :graph (dep/depend graph (if var var form) dep))
-                                      (catch Exception e
-                                        (when-not (-> e ex-data :reason #{::dep/circular-dependency})
-                                          (throw e))
-                                        (let [{:keys [node dependency]} (ex-data e)
-                                              rec-form (concat '(do) [form (get-in acc [:var->hash dependency :form])])
-                                              rec-var (symbol (str var "+" dep))]
-                                          (-> acc
-                                              (assoc :graph (-> graph
-                                                                (dep/remove-edge dependency node)
-                                                                (dep/depend var rec-var)
-                                                                (dep/depend dep rec-var)))
-                                              (assoc-in [:var->hash rec-var :form] rec-form)))))) % deps))))
-                 acc))
-             (cond-> acc markdown? (assoc :doc doc))
-             (:doc doc)))))
+  ([{:as opts :keys [markdown?]} state file]
+   (let [doc                 (parse-file opts file)
+         state-with-document (cond-> state markdown? (assoc :doc doc))]
+     (->> doc
+          :doc
+          (filter #(= :code (:type %)))
+          (reduce (fn [acc {:keys [type text]}]
+                    (let [form (read-string text)
+                          {:keys [var deps form ns-effect?]} (analyze form)]
+                      (when ns-effect?
+                        (eval form))
+                      (cond-> (assoc-in acc [:var->hash (if var var form)] {:file file
+                                                                            :form form
+                                                                            :deps deps})
+                        (seq deps)
+                        (#(reduce (fn [{:as acc :keys [graph]} dep]
+                                    (try (assoc acc :graph (dep/depend graph (if var var form) dep))
+                                         (catch Exception e
+                                           (when-not (-> e ex-data :reason #{::dep/circular-dependency})
+                                             (throw e))
+                                           (let [{:keys [node dependency]} (ex-data e)
+                                                 rec-form (concat '(do) [form (get-in acc [:var->hash dependency :form])])
+                                                 rec-var (symbol (str var "+" dep))]
+                                             (-> acc
+                                                 (assoc :graph (-> graph
+                                                                   (dep/remove-edge dependency node)
+                                                                   (dep/depend var rec-var)
+                                                                   (dep/depend dep rec-var)))
+                                                 (assoc-in [:var->hash rec-var :form] rec-form)))))) % deps)))))
+                  state-with-document)))))
 
 #_(:graph (analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/elements.clj"))
 #_(analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/rule_30.clj")
