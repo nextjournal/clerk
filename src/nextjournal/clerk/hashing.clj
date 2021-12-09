@@ -42,8 +42,11 @@
 (defn var-dependencies [form]
   (let [var-name (var-name form)]
     (->> form
-         (tree-seq sequential? seq)
+         (tree-seq (every-pred sequential?
+                               #(not (= 'quote (first %))))
+                   seq)
          (keep #(when (and (symbol? %)
+                           (namespace %)
                            (not= var-name %))
                   (resolve %)))
          (into #{}))))

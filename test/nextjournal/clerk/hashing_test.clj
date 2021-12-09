@@ -28,9 +28,8 @@
       (is (nextjournal.clerk.hashing/no-cache? '(rand-int 10))))))
 
 (deftest var-dependencies
- (is (= #{#'clojure.string/includes?
-          #'rewrite-clj.parser/parse-string-all
-          #'clojure.core/defn}
+  (is (match? #{#'clojure.string/includes?
+                #'rewrite-clj.parser/parse-string-all}
         (h/var-dependencies '(defn foo
                                ([] (foo "s"))
                                ([s] (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi")))))))
@@ -39,9 +38,13 @@
   (fn [actual] (= expected-var-name (-> actual symbol name))))
 
 (deftest analyze
-  (is (match? {:form       '(let [x 2] x)
-               :ns-effect? false}
-              (h/analyze '(let [x 2] x))))
+  (testing "quoted forms aren't confused with variable dependencies"
+    (is (match? {:deps #{#'inc}}
+                (h/analyze '(do inc))))
+    (is (empty? (:deps (h/analyze '(do 'inc))))))
+
+  (testing "locals that shadow existing vars shouldn't show up in the deps"
+    (is (empty? (:deps (h/analyze '(let [+ 2] +))))))
 
   (is (match? {:form       '(defn foo [s]
                               (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi"))
@@ -69,13 +72,7 @@
 
   (is (match? {:form       '(do (ns foo))
                :ns-effect? true
-               :deps       #{#'clojure.core/conj
-                             #'clojure.core/*loaded-libs*
-                             #'clojure.core/deref
-                             #'clojure.core/in-ns
-                             (var-named? "foo")
-                             #'clojure.core/refer
-                             #'clojure.core/commute}}
+               :deps       (m/embeds #{#'clojure.core/in-ns})}
               (h/analyze '(do (ns foo)))))
 
   (is (match? {:form       '(def my-inc inc)
