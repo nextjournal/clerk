@@ -96,7 +96,8 @@
          :read-cond :allow
          :readers {'file (partial with-viewer :file)
                    'object (partial with-viewer :object)
-                   'function+ viewer/form->fn+form}
+                   'function+ viewer/form->fn+form
+                   'sci-eval viewer/sci-eval}
          :features #{:clj}}))
 
 (defn ^:export read-string [s]
@@ -904,6 +905,12 @@ black")}]))}
     src
     (str "/_blob/" blob-id)))
 
+(def ^{:doc "Stub implementation to be replaced from outside since Clerk doesn't have a
+             link concept as it's only serving one page currently.
+             To be implemented with `clerk-eval` + `clerk/show!`"}
+  doc-url
+  (sci/new-var 'doc-url (fn [x] (str "/path/to:" x))))
+
 (def sci-viewer-namespace
   {'html html-viewer
    'inspect inspect
@@ -933,6 +940,7 @@ black")}]))}
    'vega-lite-viewer vega-lite-viewer
    'reagent-viewer reagent-viewer
 
+   'doc-url doc-url
    'url-for url-for})
 
 (defonce !sci-ctx

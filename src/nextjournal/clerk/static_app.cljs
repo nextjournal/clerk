@@ -6,7 +6,7 @@
             [reagent.dom :as rdom]
             [reitit.frontend :as rf]
             [reitit.frontend.easy :as rfe]
-            [clojure.string :as str]))
+            [sci.core :as sci]))
 
 (defonce !state
   (r/atom {}))
@@ -92,7 +92,7 @@
 (defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path]}]
   (let [url->doc (set/rename-keys path->doc path->url)]
     (reset! !state (assoc state :path->doc url->doc))
-    (swap! sci-viewer/!sci-ctx assoc-in [:namespaces 'v 'doc-url] doc-url)
+    (sci/alter-var-root sci-viewer/doc-url (constantly doc-url))
     (if bundle?
       (let [router (rf/router (get-routes url->doc))]
         (rfe/start! router #(reset! match %1) {:use-fragment true}))

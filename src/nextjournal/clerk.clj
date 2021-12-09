@@ -209,6 +209,7 @@
 (def table          #'v/table)
 (def use-headers    #'v/use-headers)
 (def hide-result    #'v/hide-result)
+(defn doc-url [path] (v/->SCIEval (list 'v/doc-url path)))
 
 (defmacro with-viewer
   [viewer x]
