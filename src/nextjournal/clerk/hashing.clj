@@ -200,6 +200,29 @@
 #_(parse-file {:markdown? true} "notebooks/rule_30.clj")
 #_(parse-file "notebooks/src/demo/lib.cljc")
 
+(defn- analyze-codeblock [file state {:keys [type text]}]
+  (let [form (read-string text)
+        {:keys [var deps form ns-effect?]} (analyze form)]
+    (when ns-effect?
+      (eval form))
+    (cond-> (assoc-in state [:var->hash (if var var form)] {:file file
+                                                            :form form
+                                                            :deps deps})
+      (seq deps)
+      (#(reduce (fn [{:as state :keys [graph]} dep]
+                  (try (assoc state :graph (dep/depend graph (if var var form) dep))
+                       (catch Exception e
+                         (when-not (-> e ex-data :reason #{::dep/circular-dependency})
+                           (throw e))
+                         (let [{:keys [node dependency]} (ex-data e)
+                               rec-form (concat '(do) [form (get-in state [:var->hash dependency :form])])
+                               rec-var (symbol (str var "+" dep))]
+                           (-> state
+                               (assoc :graph (-> graph
+                                                 (dep/remove-edge dependency node)
+                                                 (dep/depend var rec-var)
+                                                 (dep/depend dep rec-var)))
+                               (assoc-in [:var->hash rec-var :form] rec-form)))))) % deps)))))
 (defn analyze-file
   ([file]
    (analyze-file {} {:graph (dep/graph)} file))
@@ -211,30 +234,7 @@
      (->> doc
           :doc
           (filter #(= :code (:type %)))
-          (reduce (fn [acc {:keys [type text]}]
-                    (let [form (read-string text)
-                          {:keys [var deps form ns-effect?]} (analyze form)]
-                      (when ns-effect?
-                        (eval form))
-                      (cond-> (assoc-in acc [:var->hash (if var var form)] {:file file
-                                                                            :form form
-                                                                            :deps deps})
-                        (seq deps)
-                        (#(reduce (fn [{:as acc :keys [graph]} dep]
-                                    (try (assoc acc :graph (dep/depend graph (if var var form) dep))
-                                         (catch Exception e
-                                           (when-not (-> e ex-data :reason #{::dep/circular-dependency})
-                                             (throw e))
-                                           (let [{:keys [node dependency]} (ex-data e)
-                                                 rec-form (concat '(do) [form (get-in acc [:var->hash dependency :form])])
-                                                 rec-var (symbol (str var "+" dep))]
-                                             (-> acc
-                                                 (assoc :graph (-> graph
-                                                                   (dep/remove-edge dependency node)
-                                                                   (dep/depend var rec-var)
-                                                                   (dep/depend dep rec-var)))
-                                                 (assoc-in [:var->hash rec-var :form] rec-form)))))) % deps)))))
-                  state-with-document)))))
+          (reduce (partial analyze-codeblock file) state-with-document)))))
 
 #_(:graph (analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/elements.clj"))
 #_(analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/rule_30.clj")
