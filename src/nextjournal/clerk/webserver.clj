@@ -81,6 +81,7 @@
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
 
 (defn update-doc! [doc]
+  (reset! !error nil)
   (broadcast! {:doc (view/doc->viewer (reset! !doc doc))}))
 
 #_(update-doc! help-doc)
