@@ -200,29 +200,37 @@
 #_(parse-file {:markdown? true} "notebooks/rule_30.clj")
 #_(parse-file "notebooks/src/demo/lib.cljc")
 
+(defn- circular-dependency-error? [e]
+  (-> e ex-data :reason #{::dep/circular-dependency}))
+
+(defn- analyze-deps [var form {:as state :keys [graph]} dep]
+  (try (assoc state :graph (dep/depend graph (if var var form) dep))
+       (catch Exception e
+         (when-not (circular-dependency-error? e)
+           (throw e))
+         (let [{:keys [node dependency]} (ex-data e)
+               rec-form (concat '(do) [form (get-in state [:var->hash dependency :form])])
+               rec-var (symbol (str var "+" dep))]
+           (-> state
+               (assoc :graph (-> graph
+                                 (dep/remove-edge dependency node)
+                                 (dep/depend var rec-var)
+                                 (dep/depend dep rec-var)))
+               (assoc-in [:var->hash rec-var :form] rec-form))))))
+
 (defn- analyze-codeblock [file state {:keys [type text]}]
   (let [{:keys [var deps form ns-effect?]} (-> text read-string analyze)
-        var-or-form (if var var form)
-        state-with-var-hash (assoc-in state [:var->hash var-or-form] {:file file
-                                                                      :form form
-                                                                      :deps deps})]
+        state-with-var-hash (assoc-in state
+                                      [:var->hash (if var var form)]
+                                      {:file file
+                                       :form form
+                                       :deps deps})]
     (when ns-effect?
       (eval form))
     (if (seq deps)
-      (reduce (fn [{:as state :keys [graph]} dep]
-                (try (assoc state :graph (dep/depend graph var-or-form dep))
-                     (catch Exception e
-                       (when-not (-> e ex-data :reason #{::dep/circular-dependency})
-                         (throw e))
-                       (let [{:keys [node dependency]} (ex-data e)
-                             rec-form (concat '(do) [form (get-in state [:var->hash dependency :form])])
-                             rec-var (symbol (str var "+" dep))]
-                         (-> state
-                             (assoc :graph (-> graph
-                                               (dep/remove-edge dependency node)
-                                               (dep/depend var rec-var)
-                                               (dep/depend dep rec-var)))
-                             (assoc-in [:var->hash rec-var :form] rec-form)))))) state-with-var-hash deps)
+      (reduce (partial analyze-deps var form)
+              state-with-var-hash
+              deps)
       state-with-var-hash)))
 
 (defn analyze-file
