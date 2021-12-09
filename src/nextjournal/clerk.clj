@@ -303,7 +303,7 @@
 
 #_(build-static-app! {})
 #_(build-static-app! {:live-js? false})
-#_(build-static-app! {:paths ["notebooks/viewers/table.clj"]})
+#_(build-static-app! {:paths ["notebooks/viewer_api.clj" "notebooks/rule_30.clj"]})
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.

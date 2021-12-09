@@ -9,7 +9,7 @@
   (r/atom {}))
 
 (defn show [{:keys [path]}]
-  (sci-viewer/reset-doc (@path->doc path))
+  (sci-viewer/set-state {:doc (@path->doc path)})
   [:<>
    [:div.flex.flex-col.items-center
     [:div.mt-8.flex.items-center.text-xs.w-full.max-w-prose.px-8.sans-serif.text-gray-400

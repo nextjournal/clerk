@@ -605,16 +605,14 @@
      [:div.fixed.top-0.left-0.w-full.h-full
       [inspect @!error]])])
 
-(defn ^:export reset-doc [new-doc]
-  (doseq [cell (viewer/value new-doc)
+(defn ^:export set-state [{:as state :keys [doc error]}]
+  (doseq [cell (viewer/value doc)
           :when (viewer/registration? cell)
           :let [form (viewer/value cell)]]
     (*eval* form))
-  (if (= :error (-> new-doc viewer/viewer :name))
-    (reset! !error new-doc)
-    (do (when @!error
-          (reset! !error nil))
-        (reset! !doc new-doc))))
+  (when (contains? state :doc)
+    (reset! !doc doc))
+  (reset! !error error))
 
 (dc/defcard eval-viewer
   "Viewers that are lists are evaluated using sci."
