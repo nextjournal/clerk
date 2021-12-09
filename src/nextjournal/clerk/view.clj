@@ -8,12 +8,6 @@
             [multihash.digest :as digest]
             [taoensso.nippy :as nippy]))
 
-
-(defn ex->viewer [e]
-  (v/exception (Throwable->map e)))
-
-#_(doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj"))
-
 (defn var->data [v]
   (v/wrapped-with-viewer v))
 
@@ -169,7 +163,7 @@
    "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvykE47cdahchdt8fxwHyYwJ7YSmEFcMSyqf4UNs61izpuF1xXpKA4HeZQctDkkU11B5iLVSBjpCQrk5f5mWXS9xv"
    "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxPbZ2mMGPJw7Y1bYwCcGkb2VGmjBhEEkWVnNMahLgPKqNavs31fuvJ6Vh8kaHNLxAwoKaz6gnf7ex6ZPv5bMRwQq"})
 
-(defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} doc]
+(defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} state]
   (hiccup/html5
    [:head
     [:meta {:charset "UTF-8"}]
@@ -181,12 +175,12 @@
    [:body
     [:div#clerk]
     [:script "let viewer = nextjournal.clerk.sci_viewer
-let doc = " (-> doc ->edn pr-str) "
-viewer.reset_doc(viewer.read_string(doc))
+let state = " (-> state ->edn pr-str) "
+viewer.set_state(viewer.read_string(state))
 viewer.mount(document.getElementById('clerk'))\n"
      (when conn-ws?
        "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
-ws.onmessage = msg => viewer.reset_doc(viewer.read_string(msg.data))
+ws.onmessage = msg => viewer.set_state(viewer.read_string(msg.data))
 window.ws_send = msg => ws.send(msg)")]]))
 
 
@@ -206,8 +200,8 @@ let app = nextjournal.clerk.static_app
 let docs = viewer.read_string(" (-> docs ->edn pr-str) ")
 app.init(docs)\n"]]))
 
-(defn doc->html [doc]
-  (->html {} (doc->viewer {} doc)))
+(defn doc->html [doc error]
+  (->html {} {:doc (doc->viewer {} doc) :error error}))
 
 (defn doc->static-html [doc]
   (->html {:conn-ws? false :live-js? false} (doc->viewer {:inline-results? true} doc)))

@@ -12,6 +12,7 @@
 
 (defonce !clients (atom #{}))
 (defonce !doc (atom help-doc))
+(defonce !error (atom nil))
 
 
 #_(view/doc->viewer @!doc)
@@ -74,18 +75,19 @@
         "_ws" {:status 200 :body "upgrading..."}
         {:status  200
          :headers {"Content-Type" "text/html"}
-         :body    (view/doc->html @!doc)})
+         :body    (view/doc->html @!doc @!error)})
       (catch Throwable e
         {:status  500
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
 
 (defn update-doc! [doc]
-  (broadcast! (view/doc->viewer (reset! !doc doc))))
+  (broadcast! {:doc (view/doc->viewer (reset! !doc doc))}))
 
 #_(update-doc! help-doc)
 
 (defn show-error! [e]
-  (broadcast! (view/ex->viewer e)))
+  (broadcast! {:error (reset! !error (v/describe e))}))
+
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
 
