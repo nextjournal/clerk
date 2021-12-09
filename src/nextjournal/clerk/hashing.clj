@@ -1,5 +1,5 @@
-(ns ^:nextjournal.clerk/no-cache
-  nextjournal.clerk.hashing
+;; # Hashing Things!!!!
+(ns ^:nextjournal.clerk/no-cache nextjournal.clerk.hashing
   (:refer-clojure :exclude [hash read-string])
   (:require [babashka.fs :as fs]
             [clojure.core :as core]
@@ -261,7 +261,7 @@
 
 #_(unhashed-deps {#'elements/fix-case {:deps #{#'rewrite-clj.node/tag}}})
 
-(defn- cleanup-ns [ns]
+(defn- ns->path [ns]
   (str/replace (str ns) "." fs/file-separator))
 
 ;; TODO: handle cljc files
@@ -269,7 +269,7 @@
   ;; TODO: fix case upstream when ns can be nil because var can contain java classes like java.lang.String
   (when ns
     (some (fn [dir]
-            (when-let [path (str dir fs/file-separator (cleanup-ns ns) ".clj")]
+            (when-let [path (str dir fs/file-separator (ns->path ns) ".clj")]
               (when (fs/exists? path)
                 path)))
           (cp/classpath-directories))))
@@ -281,7 +281,7 @@
 #_(var->ns #'inc)
 
 (defn ns->jar [ns]
-  (let [path (cleanup-ns ns)]
+  (let [path (ns->path ns)]
     (some #(when (or (.getJarEntry % (str path ".clj"))
                      (.getJarEntry % (str path ".cljc")))
              (.getName %))
