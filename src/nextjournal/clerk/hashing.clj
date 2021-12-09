@@ -203,20 +203,22 @@
 (defn- circular-dependency-error? [e]
   (-> e ex-data :reason #{::dep/circular-dependency}))
 
+(defn- analyze-circular-dependency [{:as state :keys [graph]} var form dep {:keys [node dependency]}]
+  (let [rec-form (concat '(do) [form (get-in state [:var->hash dependency :form])])
+        rec-var (symbol (str var "+" dep))]
+    (-> state
+        (assoc :graph (-> graph
+                          (dep/remove-edge dependency node)
+                          (dep/depend var rec-var)
+                          (dep/depend dep rec-var)))
+        (assoc-in [:var->hash rec-var :form] rec-form))))
+
 (defn- analyze-deps [var form {:as state :keys [graph]} dep]
   (try (assoc state :graph (dep/depend graph (if var var form) dep))
        (catch Exception e
          (when-not (circular-dependency-error? e)
            (throw e))
-         (let [{:keys [node dependency]} (ex-data e)
-               rec-form (concat '(do) [form (get-in state [:var->hash dependency :form])])
-               rec-var (symbol (str var "+" dep))]
-           (-> state
-               (assoc :graph (-> graph
-                                 (dep/remove-edge dependency node)
-                                 (dep/depend var rec-var)
-                                 (dep/depend dep rec-var)))
-               (assoc-in [:var->hash rec-var :form] rec-form))))))
+         (analyze-circular-dependency state var form dep (ex-data e)))))
 
 (defn- analyze-codeblock [file state {:keys [type text]}]
   (let [{:keys [var deps form ns-effect?]} (-> text read-string analyze)
