@@ -1,6 +1,7 @@
 (ns build
   (:require [babashka.fs :as fs]
             [babashka.process :as process]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.build.api :as b]
@@ -9,16 +10,14 @@
             [rewrite-clj.zip :as z]))
 
 (def lib 'io.github.nextjournal/clerk)
-(def version (format "0.3.%s" (b/git-count-revs nil)))
 (def class-dir "target/classes")
 (def basis (b/create-basis {:project "deps.edn"}))
+(def version (-> (slurp "resources/META-INF/nextjournal/clerk/meta.edn") edn/read-string :version))
 (def jar-file (format "target/%s-%s.jar" (name lib) version))
 
 (defn jar [_]
   (b/delete {:path "target"})
   (println "Producing jar:" jar-file)
-  (spit (doto (fs/file "resources/META-INF/nextjournal/clerk/meta.edn")
-          (-> fs/parent fs/create-dirs)) {:version version})
   (b/write-pom {:class-dir class-dir
                 :lib lib
                 :version version
@@ -34,7 +33,7 @@
 
 (defn deploy [opts]
   (println "Deploying version" jar-file "to Clojars.")
-  (jar {})
+  (format "target/%s-%s.jar" (name lib) version)
   (dd/deploy (merge {:installer :remote
                      :artifact jar-file
                      :pom-file (b/pom-path {:lib lib :class-dir class-dir})}
