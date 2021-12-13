@@ -175,16 +175,14 @@
   "Returns whether `path` points to a file that should be shown."
   [path]
   ;; file names starting with .# are most likely Emacs lock files and should be ignored.
-  (->> path .getFileName .toString
-       (re-matches #"(?!^\.#).+\.(md|clj|cljc)$")
-       some?))
+  (some? (re-matches #"(?!^\.#).+\.(md|clj|cljc)$" (.. path getFileName toString))))
 
-#_(supported-file? (-> "foo_bar.clj" (java.nio.file.Paths/get (into-array String []))))
-#_(supported-file? (-> "xyz/foo.md" (java.nio.file.Paths/get (into-array String []))))
-#_(supported-file? (-> "xyz/foo.clj" (java.nio.file.Paths/get (into-array String []))))
-#_(supported-file? (-> "xyz/a.#name.cljc" (java.nio.file.Paths/get (into-array String []))))
-#_(supported-file? (-> ".#name.clj" (java.nio.file.Paths/get (into-array String []))))
-#_(supported-file? (-> "xyz/.#name.cljc" (java.nio.file.Paths/get (into-array String []))))
+#_(supported-file? (fs/path "foo_bar.clj"))
+#_(supported-file? (fs/path "xyz/foo.md"))
+#_(supported-file? (fs/path "xyz/foo.clj"))
+#_(supported-file? (fs/path "xyz/a.#name.cljc"))
+#_(supported-file? (fs/path ".#name.clj"))
+#_(supported-file? (fs/path "xyz/.#name.cljc"))
 
 
 (defn file-event [{:keys [type path]}]
