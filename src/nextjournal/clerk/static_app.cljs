@@ -32,12 +32,12 @@
       "Generated with "
       [:a.hover:text-indigo-500.font-medium.border-b.border-dotted.border-gray-300
        {:href "https://github.com/nextjournal/clerk"} "Clerk"]
-      #_#_
-      " from "
-      (let [file-name "rule_30.clj"
-            sha "d6b5535"]
-        [:a.hover:text-indigo-500.font-medium.border-b.border-dotted.border-gray-300
-         {:href "#"} file-name "@" [:span.tabular-nums sha]])]]]
+      (let [{:git/keys [sha url] :keys [url->path]} @!state]
+        (when (and url sha)
+         [:<>
+          " from "
+          [:a.hover:text-indigo-500.font-medium.border-b.border-dotted.border-gray-300
+           {:href (str url "/blob/" sha "/" (url->path path))} (url->path path) "@" [:span.tabular-nums sha]]]))]]]
    [sci-viewer/root]])
 
 (defn index [_]
@@ -91,7 +91,8 @@
 
 (defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path]}]
   (let [url->doc (set/rename-keys path->doc path->url)]
-    (reset! !state (assoc state :path->doc url->doc))
+    (reset! !state (assoc state :path->doc url->doc
+                                :url->path (set/map-invert path->url)))
     (sci/alter-var-root sci-viewer/doc-url (constantly doc-url))
     (if bundle?
       (let [router (rf/router (get-routes url->doc))]

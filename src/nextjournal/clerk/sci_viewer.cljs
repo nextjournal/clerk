@@ -8,19 +8,18 @@
             [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer* with-viewers*] :rename {with-viewer* with-viewer with-viewers* with-viewers}]
             [nextjournal.devcards :as dc]
             [nextjournal.markdown.transform :as md.transform]
-            [nextjournal.view.context :as view-context]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.markdown :as markdown]
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
             [nextjournal.viewer.vega-lite :as vega-lite]
+            [nextjournal.view.context :as view-context]
             [re-frame.context :as rf]
             [react :as react]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [reagent.ratom :as ratom]
-            [reitit.frontend.easy :as rfe]
             [sci.core :as sci]
             [sci.impl.namespaces]
             [sci.impl.vars]))
@@ -905,11 +904,9 @@ black")}]))}
     src
     (str "/_blob/" blob-id)))
 
-(def ^{:doc "Stub implementation to be replaced from outside since Clerk doesn't have a
-             link concept as it's only serving one page currently.
-             To be implemented with `clerk-eval` + `clerk/show!`"}
+(def ^{:doc "Stub implementation to be replaced during static site generation. Clerk is only serving one page currently."}
   doc-url
-  (sci/new-var 'doc-url (fn [x] (str "/path/to:" x))))
+  (sci/new-var 'doc-url (fn [x] (str "#" x))))
 
 (def sci-viewer-namespace
   {'html html-viewer
