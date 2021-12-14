@@ -33,7 +33,7 @@
       [:a.hover:text-indigo-500.font-medium.border-b.border-dotted.border-gray-300
        {:href "https://github.com/nextjournal/clerk"} "Clerk"]
       (let [{:git/keys [sha url] :keys [url->path]} @!state]
-        (when (and url sha)
+        (when (and url sha (contains? url->path path))
          [:<>
           " from "
           [:a.hover:text-indigo-500.font-medium.border-b.border-dotted.border-gray-300
