@@ -310,7 +310,15 @@
 #_(->html-extension "hello.clj")
 
 (defn build-static-app!
-  "Builds a static html app of the notebooks at `paths`."
+  "Builds a static html app of the notebooks. Takes an options map with keys:
+
+  - `:paths` a vector of relative paths to notebooks to include in the build
+  - `:bundle?` builds a single page app versus a folder with an html page for each notebook (defaults to `true`)
+  - `:path-prefix` a prefix to urls
+  - `:out-path` a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
+  - `:live-js?` in local development, uses shadow current build and http server
+  - `:git/sha`, `:git/url` when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
+  "
   [{:as opts :keys [paths out-path live-js? bundle?]
     :or {paths clerk-docs
          out-path "public/build"
