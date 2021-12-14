@@ -296,18 +296,20 @@
 
 (defn build-static-app!
   "Builds a static html app of the notebooks at `paths`."
-  [{:keys [paths out-path live-js?]
+  [{:keys [paths out-path live-js? browse?]
     :or {paths clerk-docs
          out-path "public/build"
-         live-js? view/live-js?}}]
+         live-js? view/live-js?
+         browse? true}}]
   (let [docs (into {} (map (fn [path] {path (file->viewer path)}) paths))
         out-html (str out-path fs/file-separator "index.html")]
     (when-not (fs/exists? (fs/parent out-html))
       (fs/create-dirs (fs/parent out-html)))
     (spit out-html (view/->static-app {:live-js? live-js?} docs))
-    (if (and live-js? (str/starts-with? out-path "public/"))
-      (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
-      (browse/browse-url out-html))))
+    (when browse?
+      (if (and live-js? (str/starts-with? out-path "public/"))
+        (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
+        (browse/browse-url out-html)))))
 
 #_(build-static-app! {})
 #_(build-static-app! {:live-js? false})
