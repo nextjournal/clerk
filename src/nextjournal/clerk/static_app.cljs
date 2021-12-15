@@ -124,7 +124,7 @@
                           :path->doc url->doc
                           :url->path (set/map-invert path->url)))
     (js/console.log :init state)
-    (sci/alter-var-root sci-viewer/doc-url (constantly doc-url))
+    (sci/alter-var-root sci-viewer/doc-url (constantly (partial doc-url @!state)))
     (if bundle?
       (let [router (rf/router (get-routes url->doc))]
         (rfe/start! router #(reset! !match %1) {:use-fragment true}))
