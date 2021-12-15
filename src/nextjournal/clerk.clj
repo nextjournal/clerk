@@ -330,12 +330,14 @@
         index-html (str out-path fs/file-separator "index.html")]
     (when-not (fs/exists? (fs/parent index-html))
       (fs/create-dirs (fs/parent index-html)))
-    (spit index-html (view/->static-app static-app-opts))
-    (when-not bundle?
-      (doseq [[path doc] path->doc]
-        (let [out-html (str out-path fs/file-separator (str/replace path #"(.clj|.md)" ".html"))]
-          (fs/create-dirs (fs/parent out-html))
-          (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path))))))
+    (if bundle?
+      (spit index-html (view/->static-app static-app-opts))
+      (do (when-not (contains? (-> path->url vals set) "") ;; no user-defined index page
+            (spit index-html (view/->static-app (dissoc static-app-opts :path->doc))))
+          (doseq [[path doc] path->doc]
+            (let [out-html (str out-path fs/file-separator (str/replace path #"(.clj|.md)" ".html"))]
+              (fs/create-dirs (fs/parent out-html))
+              (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
     (if (and live-js? (str/starts-with? out-path "public/"))
       (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
       (browse/browse-url index-html))))

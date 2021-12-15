@@ -94,12 +94,7 @@
 (defn root []
   (let [{:keys [data path-params] :as match} @!match
         {:keys [view]} data
-        view-data (merge (select-keys @!state [:bundle? :git/sha :git/url :path->doc :path->url :url->path :paths :path])
-                         data
-                         path-params
-                         {:doc (get-in @!state [:path->doc (:path path-params "")])})]
-    #_
-    (js/console.log :root :view view :view-data view-data :path (:path path-params) :pp path-params :d data)
+        view-data (merge @!state data path-params {:doc (get-in @!state [:path->doc (:path path-params "")])})]
     [:div.flex.h-screen.bg-white
      [:div.h-screen.overflow-y-auto.flex-auto
       (if view
@@ -110,11 +105,7 @@
   (when-let [el (js/document.getElementById "clerk-static-app")]
     (rdom/render [root] el)))
 
-;; support cases
-;; - support backlinks to github with sha
-;; further out:
-;; - dropping .html extension
-;; - client-side loading of edn notebook representation
+;; next up
 ;; - jit compiling css
 ;; - support viewing source clojure/markdown file (opt-in)
 
