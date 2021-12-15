@@ -326,7 +326,7 @@
          bundle? true}}]
   (let [path->doc (into {} (map (juxt identity file->viewer)) paths)
         path->url (into {} (map (juxt identity #(cond-> (strip-index %) (not bundle?) ->html-extension))) paths)
-        static-app-opts (assoc opts :live-js? live-js? :bundle? bundle? :path->doc path->doc :paths (keys path->doc) :path->url path->url)
+        static-app-opts (assoc opts :live-js? live-js? :bundle? bundle? :path->doc path->doc :paths (vec (keys path->doc)) :path->url path->url)
         index-html (str out-path fs/file-separator "index.html")]
     (when-not (fs/exists? (fs/parent index-html))
       (fs/create-dirs (fs/parent index-html)))
@@ -339,7 +339,6 @@
     (if (and live-js? (str/starts-with? out-path "public/"))
       (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
       (browse/browse-url index-html))))
-
 
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/"})
