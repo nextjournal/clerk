@@ -10,13 +10,6 @@ jobs:
         with:
           fetch_depth: 0
 
-      - name: ☁ Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@master
-        with:
-          project_id: "nextjournal-com"
-          service_account_key: ${{ secrets.GCLOUD_SERVICE_KEY }}
-          export_default_credentials: true
-
       - name: 🔧 Install java
         uses: actions/setup-java@v1
         with:
@@ -46,10 +39,17 @@ jobs:
       - name: 🏗 Build Clerk Static App with default Notebooks
         run: clojure -X:demo nextjournal.clerk/build-static-app! :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"'
 
+      - name: 🔐 Google Auth
+        uses: google-github-actions/auth@v0
+        with:
+          credentials_json: ${{ secrets.GCLOUD_SERVICE_KEY }}
+
+      - name: 🔧 Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v0.3.0
+
       - name: 📠 Copy static build to bucket under SHA
         run: |
           gsutil cp -r public/build gs://nextjournal-snapshots/clerk/build/${{ github.sha }}
-
       - name: ✅ Add success status to report with link to snapshot
         uses: Sibz/github-status-action@v1
         with:
