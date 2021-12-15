@@ -1,24 +1,12 @@
-;; # Hello Clerk
+;; # Clerk Index 🗂
 
-^:nextjournal.clerk/no-cache
-(ns index
+^{:nextjournal.clerk/visibility :hide}
+(ns ^:nextjournal.clerk/no-cache index
   (:require [nextjournal.clerk :as clerk]))
 
-;; with clerk helper
+;; A demo of a custom welcome page for the static build generated from `index.clj`.
 (clerk/html
- [:ul
-  [:li [:a.underline {:href (clerk/doc-url "notebooks/paren_soup.clj")} "Soup"]]
-  [:li [:a.underline {:href (clerk/doc-url "notebooks/markdown.md")} "MD"]]])
-
-(comment
-  (clerk/serve! {})
-  (clerk/clear-cache!)
-  (clerk/build-static-app!
-   {:paths ["index.clj" "notebooks/paren_soup.clj" "notebooks/how_clerk_works.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"]
-    :bundle?  true
-    :live-js? true
-    ;;:path-prefix "build/"
-    })
-
-  )
-
+ [:div.viewer-markdown
+  [:ul
+   [:li [:a.underline {:href (clerk/doc-url "notebooks/rule_30.clj")} "Rule 30"]]
+   [:li [:a.underline {:href (clerk/doc-url "notebooks/markdown.md")} "Markdown"]]]])

@@ -341,9 +341,8 @@
       (browse/browse-url index-html))))
 
 
-#_(build-static-app! {:paths ["index.md" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
-#_(build-static-app! {:paths [#_"index.md" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/"})
-#_(build-static-app! {:paths [#_"index.md" "notebooks/rule_30.clj"] :bundle? false})
+#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
+#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/"})
 #_(build-static-app! {})
 #_(build-static-app! {:live-js? false})
 #_(build-static-app! {:paths ["notebooks/viewer_api.clj" "notebooks/rule_30.clj"]})

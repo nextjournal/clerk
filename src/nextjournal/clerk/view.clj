@@ -169,8 +169,7 @@
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
     (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
-    (hiccup/include-js "https://cdn.tailwindcss.com/")
-    #_(hiccup/include-css (cond-> "/css/app.css"    (not live-js?) resource->static-url))
+    (hiccup/include-css (cond-> "/css/app.css"    (not live-js?) resource->static-url))
     (hiccup/include-css (cond-> "/css/viewer.css" (not live-js?) resource->static-url))
     (hiccup/include-js  (cond-> "/js/viewer.js"   (not live-js?) resource->static-url))]
    [:body
