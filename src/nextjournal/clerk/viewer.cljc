@@ -9,7 +9,7 @@
                    [java.lang Throwable])))
 
 (defrecord Form [form])
-;; a form that evaluates in the sci context 
+;; a form that evaluates in the sci context
 (defrecord SCIEval [form])
 ;; a function represented by fro
 (defrecord Fn+Form [form ifn]
@@ -244,7 +244,7 @@
                  (and fetch-fn (not (ifn? fetch-fn)))
                  (update :fetch-fn ->local-ifn)
 
-                 (and render-fn (not (ifn? render-fn)))
+                 (and render-fn (or (symbol? render-fn) (not (ifn? render-fn))))
                  (update :render-fn #?(:clj ->remote-ifn :cljs ->transmittable-ifn)))))
         viewers))
 
