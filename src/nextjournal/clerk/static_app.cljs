@@ -33,7 +33,7 @@
         [:<>
          " from "
          [:a.hover:text-indigo-500.font-medium.border-b.border-dotted.border-gray-300
-          {:href (str url "/blob/" sha "/" (url->path path))} (url->path path) "@" [:span.tabular-nums sha]]])]]]
+          {:href (str url "/blob/" sha "/" (url->path path))} (url->path path) "@" [:span.tabular-nums (subs sha 0 7)]]])]]]
    [sci-viewer/root]])
 
 (dc/defcard show []
