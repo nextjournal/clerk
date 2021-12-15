@@ -9,35 +9,52 @@
                    [java.lang Throwable])))
 
 (defrecord Form [form])
+;; a form that evaluates in the sci context 
 (defrecord SCIEval [form])
-(defrecord Fn+Form [form fn]
+;; a function represented by fro
+(defrecord Fn+Form [form ifn]
   IFn
   (#?(:clj invoke :cljs -invoke) [this x]
-    ((:fn this) x))
+    ((:ifn this) x))
   (#?(:clj invoke :cljs -invoke) [this x y]
-    ((:fn this) x y)))
+    ((:ifn this) x y)))
 
 
 (defn fn+form? [x]
   (instance? Fn+Form x))
 
-(defn form->fn+form
-  ([form]
-   (map->Fn+Form {:form form :fn (#?(:clj eval :cljs *eval*) form)})))
+(defn ->sci-eval
+  "A form that can be sent over the wire to be evaluated on read there."
+  [form]
+  )
 
-#?(:cljs (defn sci-eval [form] (*eval* form)))
+(defn ->transmittable-ifn
+  "A ifn represented by form that can be sent over the wire and rebuilt there."
+  [form]
+  (map->Fn+Form {:form form :ifn (#?(:clj eval :cljs *eval*) form)}))
+
+(defn ->local-ifn
+  "A ifn represented by form can be called locally but will not be rebuilt when sent across the wire."
+  [form]
+  (map->Fn+Form {:form '(constantly false) :ifn (#?(:clj eval :cljs *eval*) form)}))
+
+(defn ->remote-ifn
+  "A ifn represented by form that will be rebuilt when sent across the wire."
+  [form]
+  (->Form form))
+
 
 #?(:clj
    (defmethod print-method Fn+Form [v ^java.io.Writer w]
-     (.write w (str "#function+ " (pr-str `~(:form v))))))
+     (.write w (str "#transmittable-ifn " (pr-str `~(:form v))))))
 
 #?(:clj
    (defmethod print-method Form [v ^java.io.Writer w]
-     (.write w (str "#function+ " (pr-str `~(:form v))))))
+     (.write w (str "#remote-ifn " (pr-str `~(:form v))))))
 
 #?(:clj
    (defmethod print-method SCIEval [v ^java.io.Writer w]
-     (.write w (str "#sci-eval " (pr-str `~(:form v))))))
+     (.write w (str "#eval " (pr-str `~(:form v))))))
 
 #_(binding [*data-readers* {'function+ form->fn+form}]
     (read-string (pr-str (form->fn+form '(fn [x] x)))))
@@ -175,7 +192,7 @@
    {:pred vector? :render-fn '(partial v/coll-viewer {:open "[" :close "]"}) :fetch-opts {:n 20}}
    {:pred set? :render-fn '(partial v/coll-viewer {:open "#{" :close "}"}) :fetch-opts {:n 20}}
    {:pred sequential? :render-fn '(partial v/coll-viewer {:open "(" :close ")"}) :fetch-opts {:n 20}}
-   {:pred map? :name :map :render-fn 'v/map-viewer :fetch-opts {:n 10}}
+   {:pred map? :name :map :render-fn (quote v/map-viewer) :fetch-opts {:n 10}}
    {:pred uuid? :render-fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred inst? :render-fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred var? :transform-fn symbol :render-fn '(fn [x] (v/html [:span.inspected-value [:span.syntax-tag "#'" (str x)]]))}
@@ -216,23 +233,19 @@
 (defn process-fns [viewers]
   (into []
         (map (fn [{:as viewer :keys [pred fetch-fn render-fn transform-fn]}]
-               ;; TODO: simplify with own type for things that should not be transmitted to the
-               ;; browser (`pred`, `fetch-fn` & `transform-fn`)
-               ;; also remove `symbol?` checks and let viewers use `(quote my-sym)` instead of `'my-sym`
+               ;; TODO remove `symbol?` checks and let viewers use `(quote my-sym)` instead of `'my-sym`
                (cond-> viewer
                  (and pred (or (symbol? pred) (not (ifn? pred))))
-                 (update :pred #?(:cljs *eval* :clj #(->Fn+Form '(constantly false) (eval %))))
+                 (update :pred ->local-ifn)
 
                  (and transform-fn (or (symbol? transform-fn) (not (ifn? transform-fn))))
-                 (update :transform-fn #?(:cljs *eval* :clj #(->Fn+Form '(constantly false) (eval %))))
+                 (update :transform-fn ->local-ifn)
 
                  (and fetch-fn (not (ifn? fetch-fn)))
-                 (update :fetch-fn #?(:cljs *eval* :clj #(->Fn+Form '(constantly false) (eval %))))
+                 (update :fetch-fn ->local-ifn)
 
-                 #?@(:clj [(and render-fn (not (instance? Form render-fn)))
-                           (update :render-fn ->Form)]
-                     :cljs [(and render-fn (not (instance? Fn+Form render-fn)))
-                            (update :render-fn form->fn+form)]))))
+                 (and render-fn (not (ifn? render-fn)))
+                 (update :render-fn #?(:clj ->remote-ifn :cljs ->transmittable-ifn)))))
         viewers))
 
 (defn process-viewers [viewers]

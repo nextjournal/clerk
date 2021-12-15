@@ -95,8 +95,8 @@
          :read-cond :allow
          :readers {'file (partial with-viewer :file)
                    'object (partial with-viewer :object)
-                   'function+ viewer/form->fn+form
-                   'sci-eval viewer/sci-eval}
+                   'transmittable-ifn viewer/->transmittable-ifn
+                   'eval (fn [e] (*eval* e))}
          :features #{:clj}}))
 
 (defn ^:export read-string [s]
@@ -398,7 +398,7 @@
 (declare default-viewers)
 
 (defn render-with-viewer [{:as opts :keys [viewers]} viewer value]
-  #_(js/console.log :render-with-viewer {:value value :viewer viewer #_#_ :opts opts})
+  (js/console.log :render-with-viewer {:value value :viewer viewer #_#_ :opts opts})
   (cond (or (fn? viewer) (viewer/fn+form? viewer))
         (viewer value opts)
 
@@ -617,7 +617,7 @@
 
 (dc/defcard eval-viewer
   "Viewers that are lists are evaluated using sci."
-  [inspect (with-viewer (viewer/form->fn+form '(fn [x] (v/html [:h3 "Ohai, " x "! 👋"]))) "Hans")])
+  [inspect (with-viewer (viewer/->transmittable-ifn '(fn [x] (v/html [:h3 "Ohai, " x "! 👋"]))) "Hans")])
 
 
 (dc/defcard notebook
@@ -646,11 +646,11 @@
   [inspect {:path []
             :viewers
             [{:pred number?
-              :render-fn (viewer/form->fn+form '#(v/html [:div.inline-block {:style {:width 16 :height 16}
+              :render-fn (viewer/->transmittable-ifn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
                                                                              :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
 black")}]))}
-             {:pred vector? :render-fn (viewer/form->fn+form '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1)))}
-             {:pred list? :render-fn (viewer/form->fn+form '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1)))}]}
+             {:pred vector? :render-fn (viewer/->transmittable-ifn '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1)))}
+             {:pred list? :render-fn (viewer/->transmittable-ifn '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1)))}]}
    '([0 1 0] [1 0 1])])
 
 (dc/defcard clj-long
