@@ -7,9 +7,9 @@
             [goog.string :as gstring]
             [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer* with-viewers*] :rename {with-viewer* with-viewer with-viewers* with-viewers}]
             [nextjournal.devcards :as dc]
+            [nextjournal.markdown.transform :as md.transform]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
-            [nextjournal.markdown.transform :as md.transform]
             [nextjournal.viewer.markdown :as markdown]
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
@@ -95,7 +95,8 @@
          :read-cond :allow
          :readers {'file (partial with-viewer :file)
                    'object (partial with-viewer :object)
-                   'function+ viewer/form->fn+form}
+                   'function+ viewer/form->fn+form
+                   'sci-eval viewer/sci-eval}
          :features #{:clj}}))
 
 (defn ^:export read-string [s]
@@ -903,6 +904,10 @@ black")}]))}
     src
     (str "/_blob/" blob-id)))
 
+(def ^{:doc "Stub implementation to be replaced during static site generation. Clerk is only serving one page currently."}
+  doc-url
+  (sci/new-var 'doc-url (fn [x] (str "#" x))))
+
 (def sci-viewer-namespace
   {'html html-viewer
    'inspect inspect
@@ -932,6 +937,7 @@ black")}]))}
    'vega-lite-viewer vega-lite-viewer
    'reagent-viewer reagent-viewer
 
+   'doc-url doc-url
    'url-for url-for})
 
 (defonce !sci-ctx

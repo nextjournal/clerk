@@ -47,5 +47,4 @@
   (clerk/show! "notebooks/sicmutils.clj")
 
   (clerk/clear-cache!)
-
   )

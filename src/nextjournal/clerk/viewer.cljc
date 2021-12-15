@@ -9,7 +9,7 @@
                    [java.lang Throwable])))
 
 (defrecord Form [form])
-
+(defrecord SCIEval [form])
 (defrecord Fn+Form [form fn]
   IFn
   (#?(:clj invoke :cljs -invoke) [this x]
@@ -25,6 +25,8 @@
   ([form]
    (map->Fn+Form {:form form :fn (#?(:clj eval :cljs *eval*) form)})))
 
+#?(:cljs (defn sci-eval [form] (*eval* form)))
+
 #?(:clj
    (defmethod print-method Fn+Form [v ^java.io.Writer w]
      (.write w (str "#function+ " (pr-str `~(:form v))))))
@@ -32,6 +34,10 @@
 #?(:clj
    (defmethod print-method Form [v ^java.io.Writer w]
      (.write w (str "#function+ " (pr-str `~(:form v))))))
+
+#?(:clj
+   (defmethod print-method SCIEval [v ^java.io.Writer w]
+     (.write w (str "#sci-eval " (pr-str `~(:form v))))))
 
 #_(binding [*data-readers* {'function+ form->fn+form}]
     (read-string (pr-str (form->fn+form '(fn [x] x)))))
