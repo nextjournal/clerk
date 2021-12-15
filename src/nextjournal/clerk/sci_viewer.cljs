@@ -96,6 +96,7 @@
          :readers {'file (partial with-viewer :file)
                    'object (partial with-viewer :object)
                    'transmittable-ifn viewer/->transmittable-ifn
+                   'remote-ifn viewer/->transmittable-ifn
                    'eval (fn [e] (*eval* e))}
          :features #{:clj}}))
 
