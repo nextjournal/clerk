@@ -319,11 +319,12 @@
   - `:live-js?` in local development, uses shadow current build and http server
   - `:git/sha`, `:git/url` when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
   "
-  [{:as opts :keys [paths out-path live-js? bundle?]
+  [{:as opts :keys [paths out-path live-js? bundle? browse?]
     :or {paths clerk-docs
          out-path "public/build"
          live-js? view/live-js?
-         bundle? true}}]
+         bundle? true
+         browse? true}}]
   (let [path->doc (into {} (map (juxt identity file->viewer)) paths)
         path->url (into {} (map (juxt identity #(cond-> (strip-index %) (not bundle?) ->html-extension))) paths)
         static-app-opts (assoc opts :live-js? live-js? :bundle? bundle? :path->doc path->doc :paths (vec (keys path->doc)) :path->url path->url)
@@ -338,9 +339,10 @@
             (let [out-html (str out-path fs/file-separator (str/replace path #"(.clj|.md)" ".html"))]
               (fs/create-dirs (fs/parent out-html))
               (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
-    (if (and live-js? (str/starts-with? out-path "public/"))
-      (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
-      (browse/browse-url index-html))))
+    (when browse?
+      (if (and live-js? (str/starts-with? out-path "public/"))
+        (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
+        (browse/browse-url index-html)))))
 
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/"})
