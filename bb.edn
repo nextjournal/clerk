@@ -4,7 +4,7 @@
                        :task (shell "yarn install")}
 
          watch:cljs {:doc "Starts shadow-cljs server"
-                     :task (clojure "-M:sci:demo:dev watch browser")
+                     :task (clojure "-M:test:sci:demo:dev watch browser")
                      :depends [yarn-install]}
 
          watch:css {:doc  "Starts a watcher for css files tailwindcss"
