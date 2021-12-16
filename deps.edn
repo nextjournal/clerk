@@ -18,7 +18,12 @@
         hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
         lambdaisland/uri {:mvn/version "1.11.86"}
 
-        rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}}
+        rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}
+
+        ;; needed for CSS jit pass
+        babashka/process {:mvn/version "0.0.2"}
+        io.github.nextjournal/cas {:git/url "git@github.com:nextjournal/cas"
+                                   :git/sha "5e8079b720e347b9466db9c2282ce79a125a011c"}}
 
  :aliases {:sci {:extra-deps  {applied-science/js-interop  {:mvn/version "0.3.0"}
                                borkdude/sci {:mvn/version "0.2.6"}
