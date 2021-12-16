@@ -245,11 +245,9 @@
    (analyze-file {} state file))
   ([{:as opts :keys [markdown?]} state file]
    (let [doc                 (parse-file opts file)
-         state-with-document (cond-> state markdown? (assoc :doc doc))]
-     (->> doc
-          :doc
-          (filter #(= :code (:type %)))
-          (reduce (partial analyze-codeblock file) state-with-document)))))
+         state-with-document (cond-> state markdown? (assoc :doc doc))
+         code-cells (into [] (filter (comp #{:code} :type)) (:doc doc))]
+     (reduce (partial analyze-codeblock file) state-with-document code-cells))))
 
 #_(:graph (analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/elements.clj"))
 #_(analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/rule_30.clj")
