@@ -353,13 +353,16 @@
       (doseq [f (filter #(str/ends-with? (.getPath %) ".html") (file-seq (io/file out-path)))]
         (spit f (str/replace (slurp f)
                              "<script src=\"https://cdn.tailwindcss.com\" type=\"text/javascript\">"
-                             (str "<link href=\"/" path-prefix  "clerk.css\" rel=\"stylesheet\" type=\"text/css\">")))))
+                             (if bundle?
+                               (str "<style type=\"text/css\">" (slurp "public/build/clerk.css") "</style>")
+                               (str "<link href=\"/" path-prefix  "clerk.css\" rel=\"stylesheet\" type=\"text/css\">"))))))
     (when browse?
       (if (and live-js? (str/starts-with? out-path "public/"))
         (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
         (browse/browse-url index-html)))))
 
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
+#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true :purge-css? true})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/"})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/" :purge-css? true})
 #_(build-static-app! {})
