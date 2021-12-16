@@ -2,7 +2,6 @@
 (ns nextjournal.clerk
   (:require [babashka.fs :as fs]
             [babashka.process :as p]
-            [nextjournal.cas :as cas]
             [clojure.java.browse :as browse]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -321,12 +320,9 @@
   - `:out-path` a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
   - `:live-js?` in local development, uses shadow current build and http server
   - `:git/sha`, `:git/url` when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
-  - `:purge-css?` rebuilds css with only the strict necessary fragment from tailwind pushed to CAS
-                  (NOTE: this assumes
-                   - rights to push to nextjournal CAS
-                   - node + tailwindcss installed)
+  - `:purge-css?` creates a minimal css with only the used classes
   "
-  [{:as opts :keys [paths out-path live-js? bundle? browse? purge-css?]
+  [{:as opts :keys [paths path-prefix out-path live-js? bundle? browse? purge-css?]
     :or {paths clerk-docs
          out-path "public/build"
          live-js? view/live-js?
@@ -346,38 +342,26 @@
             (let [out-html (str out-path fs/file-separator (str/replace path #"(.clj|.md)" ".html"))]
               (fs/create-dirs (fs/parent out-html))
               (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
-    ;; open in browser
+    (when purge-css?
+      ;; ensure we have a local js build
+      (when-not (fs/exists? "build/viewer.js")
+        (fs/create-dirs (fs/parent "build/viewer.js"))
+        (spit "build/viewer.js" (slurp (view/resource->static-url "/js/viewer.js"))))
+      (let [tw-result (p/sh "npx tailwindcss --input stylesheets/app.css --config tailwind-jit.config.js --output public/build/clerk.css -m")]
+        (println "tailwind: " (:out tw-result) (:err tw-result))
+        (assert (= 0 (:exit tw-result)) "We couldn't purge the unused css classes for you! Make sure `npx tailwindcss` is available."))
+      (doseq [f (filter #(str/ends-with? (.getPath %) ".html") (file-seq (io/file out-path)))]
+        (spit f (str/replace (slurp f)
+                             "<script src=\"https://cdn.tailwindcss.com\" type=\"text/javascript\">"
+                             (str "<link href=\"/" path-prefix  "clerk.css\" rel=\"stylesheet\" type=\"text/css\">")))))
     (when browse?
       (if (and live-js? (str/starts-with? out-path "public/"))
         (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
-        (browse/browse-url index-html)))
-    ;; purge css
-    (when (and purge-css? (not live-js?))
-      ;; ensure we have a local js build
-      (when-not (fs/exists? "build/viewer.js")
-        (when-not (fs/exists? (fs/parent "build/viewer.js"))
-          (fs/create-dirs (fs/parent "build/viewer.js")))
-        (spit "build/viewer.js" ;; slurp latest build from CAS as configured in n.clerk.view
-              (slurp (-> (io/file "src/nextjournal/clerk/view.clj")
-                         z/of-file
-                         (z/find-token z/next #(and (= 'def (z/sexpr %)) (= 'resource->static-url (-> % z/right z/sexpr))))
-                         (z/find-value z/next "/js/viewer.js")
-                         z/right z/sexpr))))
-      ;; tailwind pass
-      (let [tw-result (p/sh "npx tailwindcss --input stylesheets/app.css --config tailwind-jit.config.js --output build/app.css -m")]
-        (println "tailwind: " (:out tw-result) (:err tw-result))
-        (assert (= 0 (:exit tw-result))
-                "We couldn't optimize CSS for you! Maybe there's no tailwind node package available?"))
-      ;; upload purged CSS to bucket and replace CDN with a link to CAS
-      (let [bucket-url (:url (cas/upload! {:exec-path (str/trim (:out (p/sh "which gsutil")))
-                                           :target-path "gs://nextjournal-cas-eu/data/"} "build/app.css"))]
-        (doseq [f (filter #(str/ends-with? (.getPath %) ".html") (file-seq (io/file out-path)))]
-          (spit f (str/replace (slurp f)
-                               "<script src=\"https://cdn.tailwindcss.com\" type=\"text/javascript\">"
-                               (str "<link href=\"" bucket-url "\" rel=\"stylesheet\" type=\"text/css\">"))))))))
+        (browse/browse-url index-html)))))
 
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/"})
+#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/" :purge-css? true})
 #_(build-static-app! {})
 #_(build-static-app! {:live-js? false})
 #_(build-static-app! {:live-js? false :purge-css? true})
