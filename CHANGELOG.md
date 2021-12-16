@@ -5,15 +5,20 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
-## Unreleased
+## 0.4.305 (2021-12-13)
 * 🌟 Support markdown as an alternative to Clojure source code for prose-heavy documents.
-* ⭐️ Allow setting code cell & result visibility via
-  `:nextjournal.clerk/visibility` metadata on a form. Valid values are: `:show` (default) `:fold` or `:hide`. These settings can be set on individual forms, setting them on the `ns` form changes the default for all forms in the document. If you want to affect only the `ns` form, use  `:fold-ns` or `:hide-ns`.
-* ⭐️ Added a `:transform-fn` that allows a transformation of a value in JVM Clojure. Also rename `:fn` to `:render-fn` for clarify and ensure the `:pred` only runs on JVM Clojure to enable using predicates that cannot run in sci in the browser.
+* 🌟 Changed viewer api: Added a `:transform-fn` that allows a transformation of a value in JVM Clojure. Also rename `:fn` to `:render-fn` for clarify and ensure the `:pred` only runs on JVM Clojure to enable using predicates that cannot run in sci in the browser. Add support for serving arbitrary blobs  via a `:fetch-fn` that returns a map with `:nextjournal/content-type` and `nextjournal/value` keys ([example](https://github.com/nextjournal/clerk/blob/8ad88630f746f1a9ff3ac314f5528c2d25c42583/notebooks/viewers/image.clj)).
 * 🌟 Added `v/clerk-eval` to the viewer api which takes a quoted form and evaluates it in the context of the document namespace.
+* ⭐️ Allow setting code cell & result visibility via
+  `:nextjournal.clerk/visibility` metadata on a form. Valid values are: `:show` (default) `:fold` or `:hide`. These settings can be set on individual forms, setting them on the `ns` form changes the default for all forms in the document. If you want to affect only the `ns` form, use  `:fold-ns` or `:hide-ns` ([example](https://github.com/nextjournal/clerk/blob/8ad88630f746f1a9ff3ac314f5528c2d25c42583/notebooks/visibility.clj)).
+* 💫 Added a dynamic binding `config/*in-clerk*` that is only true when Clerk is driving evaluation.
 * 💫 Persist viewer expansion state across document reloads and make document updates minimize repaints and flickering.
+* 💫 Keep document scroll position when an error is shown by moving error into overlay.
 * 💫 Wrap sci context in an atom to let consumers change it.
-* 🐜 Don't cache uncountable values within `*bounded-count-limit*`
+* 💫 Exclude Emacs lock files from being shown via file watcher #22 (@ikappaki)
+* 💫 Add viewers for Clojure vars and a catch all `pr-str` viewer
+* 🐜 Don't cache uncountable values within `*bounded-count-limit*` #15.
+* 🐞 Prevent infinite loop when calling `show!` in a notebook using `config/*in-clerk*`.
 
 ## 0.3.233 (2021-11-10)
 

@@ -175,16 +175,14 @@
   "Returns whether `path` points to a file that should be shown."
   [path]
   ;; file names starting with .# are most likely Emacs lock files and should be ignored.
-  (->> path io/file .getName
-       (re-matches #"(?!^\.#).+\.(md|clj|cljc)$")
-       some?))
+  (some? (re-matches #"(?!^\.#).+\.(md|clj|cljc)$" (.. path getFileName toString))))
 
-#_(supported-file? "foo_bar.clj")
-#_(supported-file? "xyz/foo.md")
-#_(supported-file? "xyz/foo.clj")
-#_(supported-file? "xyz/abc.#name.cljc")
-#_(supported-file? ".#name.clj")
-#_(supported-file? "xyz/.#name.cljc")
+#_(supported-file? (fs/path "foo_bar.clj"))
+#_(supported-file? (fs/path "xyz/foo.md"))
+#_(supported-file? (fs/path "xyz/foo.clj"))
+#_(supported-file? (fs/path "xyz/a.#name.cljc"))
+#_(supported-file? (fs/path ".#name.clj"))
+#_(supported-file? (fs/path "xyz/.#name.cljc"))
 
 
 (defn file-event [{:keys [type path]}]
@@ -211,6 +209,7 @@
 (def table          #'v/table)
 (def use-headers    #'v/use-headers)
 (def hide-result    #'v/hide-result)
+(defn doc-url [path] (v/->SCIEval (list 'v/doc-url path)))
 
 (defmacro with-viewer
   [viewer x]
@@ -296,21 +295,57 @@
          "viewers/tex"
          "viewers/vega"]))
 
+
+(defn strip-index [path]
+  (str/replace path #"(^|.*/)(index\.(clj|cljc|md))$" "$1"))
+
+#_(strip-index "index.md")
+#_(strip-index "index.cljc")
+#_(strip-index "hello/index.cljc")
+#_(strip-index "hello_index.cljc")
+
+(defn ->html-extension [path]
+  (str/replace path #"\.(clj|cljc|md)$" ".html"))
+
+#_(->html-extension "hello.clj")
+
 (defn build-static-app!
-  "Builds a static html app of the notebooks at `paths`."
-  [{:keys [paths out-path live-js?]
+  "Builds a static html app of the notebooks. Takes an options map with keys:
+
+  - `:paths` a vector of relative paths to notebooks to include in the build
+  - `:bundle?` builds a single page app versus a folder with an html page for each notebook (defaults to `true`)
+  - `:path-prefix` a prefix to urls
+  - `:out-path` a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
+  - `:live-js?` in local development, uses shadow current build and http server
+  - `:git/sha`, `:git/url` when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
+  "
+  [{:as opts :keys [paths out-path live-js? bundle? browse?]
     :or {paths clerk-docs
          out-path "public/build"
-         live-js? view/live-js?}}]
-  (let [docs (into {} (map (fn [path] {path (file->viewer path)}) paths))
-        out-html (str out-path fs/file-separator "index.html")]
-    (when-not (fs/exists? (fs/parent out-html))
-      (fs/create-dirs (fs/parent out-html)))
-    (spit out-html (view/->static-app {:live-js? live-js?} docs))
-    (if (and live-js? (str/starts-with? out-path "public/"))
-      (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
-      (browse/browse-url out-html))))
+         live-js? view/live-js?
+         bundle? true
+         browse? true}}]
+  (let [path->doc (into {} (map (juxt identity file->viewer)) paths)
+        path->url (into {} (map (juxt identity #(cond-> (strip-index %) (not bundle?) ->html-extension))) paths)
+        static-app-opts (assoc opts :live-js? live-js? :bundle? bundle? :path->doc path->doc :paths (vec (keys path->doc)) :path->url path->url)
+        index-html (str out-path fs/file-separator "index.html")]
+    (when-not (fs/exists? (fs/parent index-html))
+      (fs/create-dirs (fs/parent index-html)))
+    (if bundle?
+      (spit index-html (view/->static-app static-app-opts))
+      (do (when-not (contains? (-> path->url vals set) "") ;; no user-defined index page
+            (spit index-html (view/->static-app (dissoc static-app-opts :path->doc))))
+          (doseq [[path doc] path->doc]
+            (let [out-html (str out-path fs/file-separator (str/replace path #"(.clj|.md)" ".html"))]
+              (fs/create-dirs (fs/parent out-html))
+              (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
+    (when browse?
+      (if (and live-js? (str/starts-with? out-path "public/"))
+        (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
+        (browse/browse-url index-html)))))
 
+#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
+#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/"})
 #_(build-static-app! {})
 #_(build-static-app! {:live-js? false})
 #_(build-static-app! {:paths ["notebooks/viewer_api.clj" "notebooks/rule_30.clj"]})
