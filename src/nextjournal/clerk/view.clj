@@ -2,7 +2,7 @@
   (:require [nextjournal.clerk.config :as config]
             [nextjournal.clerk.viewer :as v]
             [hiccup.page :as hiccup]
-            [clojure.string :as str]
+            [clojure.java.io :as io]
             [clojure.walk :as w]
             [multihash.core :as multihash]
             [multihash.digest :as digest]
@@ -159,19 +159,26 @@
     (not= "false" prop)))
 
 (def resource->static-url
-  {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxQBDwk3cvr1bt8YVL5m6bJGrFEmzrSbCrH1roypLjJr4AbbteCKh9Y6gQVYexdY85QA2HG5nQFLWpRp69zFSPDJ9"
-   "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvykE47cdahchdt8fxwHyYwJ7YSmEFcMSyqf4UNs61izpuF1xXpKA4HeZQctDkkU11B5iLVSBjpCQrk5f5mWXS9xv"
+  {"/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvykE47cdahchdt8fxwHyYwJ7YSmEFcMSyqf4UNs61izpuF1xXpKA4HeZQctDkkU11B5iLVSBjpCQrk5f5mWXS9xv"
    "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VwVKkZzhYZ2jsUhXyFWzVpDTov9CjSCzoWM57qr77SEsYuNBCZus6ZCZFN8LwhFEReRF5cofoaJad5NEWhziWNnRH"})
+
+(defn inlined-tailwind-css
+  "Styles "
+  [live-js?]
+  [:style {:type (if live-js? "text/tailwindcss" "text/css")}
+   (slurp (if live-js?
+            (io/resource "public/css/viewer.css")
+            (resource->static-url "/css/viewer.css")))])
 
 (defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} state]
   (hiccup/html5
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
-    (hiccup/include-css (cond-> "/css/app.css"    (not live-js?) resource->static-url))
-    (hiccup/include-css (cond-> "/css/viewer.css" (not live-js?) resource->static-url))
-    (hiccup/include-js  (cond-> "/js/viewer.js"   (not live-js?) resource->static-url))]
+    (hiccup/include-js "https://cdn.tailwindcss.com")
+    (inlined-tailwind-css live-js?)
+    (hiccup/include-js (cond-> "/js/viewer.js" (not live-js?) resource->static-url))
+    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")]
    [:body
     [:div#clerk]
     [:script "let viewer = nextjournal.clerk.sci_viewer
@@ -183,16 +190,15 @@ viewer.mount(document.getElementById('clerk'))\n"
 ws.onmessage = msg => viewer.set_state(viewer.read_string(msg.data))
 window.ws_send = msg => ws.send(msg)")]]))
 
-
 (defn ->static-app [{:as state :keys [live-js?]}]
   (hiccup/html5
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
-    (hiccup/include-css (cond-> "/css/app.css"    (not live-js?) resource->static-url))
-    (hiccup/include-css (cond-> "/css/viewer.css" (not live-js?) resource->static-url))
-    (hiccup/include-js  (cond-> "/js/viewer.js"   (not live-js?) resource->static-url))]
+    (hiccup/include-js "https://cdn.tailwindcss.com") ;; ⬅ this will be rewritten during static site generation
+    (inlined-tailwind-css live-js?)
+    (hiccup/include-js (cond-> "/js/viewer.js" (not live-js?) resource->static-url))
+    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")]
    [:body
     [:div#clerk-static-app]
     [:script "let viewer = nextjournal.clerk.sci_viewer
