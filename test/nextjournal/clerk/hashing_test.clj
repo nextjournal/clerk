@@ -82,40 +82,40 @@
 
 (deftest analyze-file
   (is (match? (m/equals
-                {:graph {:dependencies {'(ns example-notebook) set?}
-                         :dependents   map?}
-                 :doc {:doc [{:type :code
-                              :text "^:nextjournal.clerk/no-cache\n(ns example-notebook)"
-                              :ns?  true}
-                             {:type :markdown
-                              :doc  {:type    :doc
-                                     :content [{:type :heading
-                                                :content [{:type :text, :text "📶 Sorting"}]
-                                                :heading-level 1}]
-                                     :toc     {:type :toc
-                                               :content
-                                               [{:level 1,
-                                                 :type :toc
-                                                 :title "📶 Sorting"
-                                                 :node
-                                                 {:type :heading
-                                                  :content [{:type :text, :text "📶 Sorting"}]
-                                                  :heading-level 1}
-                                                 :path [:content 0]}]}}}
-                             {:type :code
-                              :text "#{3 1 2}"}
-                             {:type :code
-                              :text "(comment (nextjournal.clerk/show! \"notebooks/sorting.clj\"))"}]
-                       :visibility #{:show}}
-                 :var->hash {'(ns example-notebook) {:file "resources/tests/example_notebook.clj",
-                                                     :form '(ns example-notebook),
-                                                     :deps set?}
-                             #{1 3 2} {:file "resources/tests/example_notebook.clj",
-                                       :form '#{1 3 2},
-                                       :deps nil},
-                             '(comment (nextjournal.clerk/show! "notebooks/sorting.clj")) {:file "resources/tests/example_notebook.clj",
-                                                                                           :form '(comment (nextjournal.clerk/show! "notebooks/sorting.clj")),
-                                                                                           :deps nil}}})
-                        (h/analyze-file {:markdown? true}
-                                        {:graph (dep/graph)}
-                                        "resources/tests/example_notebook.clj"))))
+               {:graph {:dependencies {'(ns example-notebook) set?}
+                        :dependents   map?}
+                :doc {:doc [{:type :code
+                             :text "^:nextjournal.clerk/no-cache\n(ns example-notebook)"
+                             :ns?  true}
+                            {:type :markdown
+                             :doc  {:type    :doc
+                                    :content [{:type :heading
+                                               :content [{:type :text, :text "📶 Sorting"}]
+                                               :heading-level 1}]
+                                    :toc     {:type :toc
+                                              :content
+                                              [{:level 1,
+                                                :type :toc
+                                                :title "📶 Sorting"
+                                                :node
+                                                {:type :heading
+                                                 :content [{:type :text, :text "📶 Sorting"}]
+                                                 :heading-level 1}
+                                                :path [:content 0]}]}}}
+                            {:type :code
+                             :text "#{3 1 2}"}
+                            {:type :code
+                             :text "(comment (nextjournal.clerk/show! \"notebooks/sorting.clj\"))"}]
+                      :visibility #{:show}}
+                :->analysis-info {'(ns example-notebook) {:file "resources/tests/example_notebook.clj",
+                                                          :form '(ns example-notebook),
+                                                          :deps set?}
+                                  #{1 3 2} {:file "resources/tests/example_notebook.clj",
+                                            :form '#{1 3 2},
+                                            :deps nil},
+                                  '(comment (nextjournal.clerk/show! "notebooks/sorting.clj")) {:file "resources/tests/example_notebook.clj",
+                                                                                                :form '(comment (nextjournal.clerk/show! "notebooks/sorting.clj")),
+                                                                                                :deps nil}}})
+              (h/analyze-file {:markdown? true}
+                              {:graph (dep/graph)}
+                              "resources/tests/example_notebook.clj"))))

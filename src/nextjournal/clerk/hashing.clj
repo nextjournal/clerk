@@ -207,14 +207,14 @@
   (-> e ex-data :reason #{::dep/circular-dependency}))
 
 (defn- analyze-circular-dependency [state var form dep {:keys [node dependency]}]
-  (let [rec-form (concat '(do) [form (get-in state [:var->hash dependency :form])])
+  (let [rec-form (concat '(do) [form (get-in state [:->analysis-info dependency :form])])
         rec-var (symbol (str var "+" dep))]
     (-> state
         (update :graph #(-> %
                             (dep/remove-edge dependency node)
                             (dep/depend var rec-var)
                             (dep/depend dep rec-var)))
-        (assoc-in [:var->hash rec-var :form] rec-form))))
+        (assoc-in [:->analysis-info rec-var :form] rec-form))))
 
 (defn- analyze-deps [var form {:as state :keys [graph]} dep]
   (try (assoc state :graph (dep/depend graph (if var var form) dep))
@@ -226,7 +226,7 @@
 (defn- analyze-codeblock [file state {:keys [type text]}]
   (let [{:keys [var deps form ns-effect?]} (-> text read-string analyze)
         state-with-var-hash (assoc-in state
-                                      [:var->hash (if var var form)]
+                                      [:->analysis-info (if var var form)]
                                       {:file file
                                        :form form
                                        :deps deps})]
@@ -254,11 +254,11 @@
 #_(analyze-file {:graph (dep/graph)} "notebooks/recursive.clj")
 #_(analyze-file {:graph (dep/graph)} "notebooks/hello.clj")
 
-(defn unhashed-deps [var->hash]
+(defn unhashed-deps [->analysis-info]
   (set/difference (into #{}
                         (mapcat :deps)
-                        (vals var->hash))
-                  (-> var->hash keys set)))
+                        (vals ->analysis-info))
+                  (-> ->analysis-info keys set)))
 
 #_(unhashed-deps {#'elements/fix-case {:deps #{#'rewrite-clj.node/tag}}})
 
@@ -328,22 +328,22 @@
   Recursively decends into dependency vars as well as given they can be found in the classpath.
   "
   [file]
-  (let [{:as graph :keys [var->hash]} (analyze-file file)]
+  (let [{:as graph :keys [->analysis-info]} (analyze-file file)]
     (reduce (fn [g [source symbols]]
               (if (or (nil? source)
                       (str/ends-with? source ".jar"))
-                (update g :var->hash merge (into {} (map (juxt identity (constantly (if source (hash-jar source) {})))) symbols))
+                (update g :->analysis-info merge (into {} (map (juxt identity (constantly (if source (hash-jar source) {})))) symbols))
                 (analyze-file g source)))
             graph
-            (group-by find-location (unhashed-deps var->hash)))))
+            (group-by find-location (unhashed-deps ->analysis-info)))))
 
 
 #_(build-graph "notebooks/hello.clj")
-#_(keys (:var->hash (build-graph "notebooks/elements.clj")))
+#_(keys (:->analysis-info (build-graph "notebooks/elements.clj")))
 #_(dep/immediate-dependencies (:graph (build-graph "notebooks/elements.clj"))  #'nextjournal.clerk.demo/fix-case)
 #_(dep/transitive-dependencies (:graph (build-graph "notebooks/elements.clj"))  #'nextjournal.clerk.demo/fix-case)
 
-#_(keys (:var->hash (build-graph "src/nextjournal/clerk/hashing.clj")))
+#_(keys (:->analysis-info (build-graph "src/nextjournal/clerk/hashing.clj")))
 #_(dep/topo-sort (:graph (build-graph "src/nextjournal/clerk/hashing.clj")))
 #_(dep/immediate-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
@@ -351,15 +351,15 @@
 
 (defn hash
   ([file]
-   (let [{vars :var->hash :keys [graph]} (build-graph file)]
+   (let [{vars :->analysis-info :keys [graph]} (build-graph file)]
      (reduce (fn [vars->hash var]
                (if-let [info (get vars var)]
                  (assoc vars->hash var (hash vars->hash (assoc info :var var)))
                  vars->hash))
              {}
              (dep/topo-sort graph))))
-  ([var->hash {:keys [hash form deps]}]
-   (let [hashed-deps (into #{} (map var->hash) deps)]
+  ([->analysis-info {:keys [hash form deps]}]
+   (let [hashed-deps (into #{} (map ->analysis-info) deps)]
      (sha1-base58 (pr-str (conj hashed-deps (if form form hash)))))))
 
 #_(hash "notebooks/hello.clj")
