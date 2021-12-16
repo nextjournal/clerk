@@ -81,6 +81,13 @@
               (h/analyze '(def my-inc inc)))))
 
 
+(deftest symbol->jar
+  (is (h/symbol->jar 'io.methvin.watcher.PathUtils))
+  (is (h/symbol->jar 'io.methvin.watcher.PathUtils/cast))
+  (testing "does not resolve jdk builtins"
+    (is (not (h/symbol->jar 'java.net.http.HttpClient/newHttpClient)))))
+
+
 (deftest analyze-file
   (is (match? (m/equals
                {:graph {:dependencies {'(ns example-notebook) set?}

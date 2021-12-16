@@ -45,7 +45,8 @@
           (filter #(and (symbol? %)
                         (if (qualified-symbol? %)
                           (not= var-name %)
-                          (-> % resolve class?))))
+                          (and (not= \. (-> % str (.charAt 0)))
+                               (-> % resolve class?)))))
           (tree-seq (every-pred sequential? #(not (= 'quote (first %)))) seq form))))
 
 #_(var-dependencies '(def nextjournal.clerk.hashing/foo
@@ -284,6 +285,9 @@
 
 #_(ns->jar (find-ns 'weavejester.dependency))
 
+(defn guard [x f]
+  (when (f x) x))
+
 (defn symbol->jar [sym]
   (some-> (if (qualified-symbol? sym)
             (-> sym namespace symbol)
@@ -292,12 +296,13 @@
           .getProtectionDomain
           .getCodeSource
           .getLocation
-          .getFile))
-
+          (guard #(= "file" (.getProtocol %)))
+          .getFile
+          (guard #(str/ends-with? % ".jar"))))
 
 #_(symbol->jar 'io.methvin.watcher.PathUtils)
 #_(symbol->jar 'io.methvin.watcher.PathUtils/cast)
-
+#_(symbol->jar 'java.net.http.HttpClient/newHttpClient)
 
 (defn find-location [sym]
   (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
@@ -313,6 +318,9 @@
 #_(find-location 'io.methvin.watcher.PathUtils)
 #_(find-location 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER)
 #_(find-location 'String)
+
+
+(symbol->jar 'java.net.http.HttpClient)
 
 (def hash-jar
   (memoize (fn [f]
