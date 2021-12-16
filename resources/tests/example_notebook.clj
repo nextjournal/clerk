@@ -5,4 +5,4 @@
 
 #{3 1 2}
 
-(comment (nextjournal.clerk/show! "notebooks/sorting.clj"))
+#_(nextjournal.clerk/show! "notebooks/sorting.clj")

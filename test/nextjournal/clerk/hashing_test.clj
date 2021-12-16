@@ -104,19 +104,14 @@
                                                  :heading-level 1}
                                                 :path [:content 0]}]}}}
                             {:type :code
-                             :text "#{3 1 2}"}
-                            {:type :code
-                             :text "(comment (nextjournal.clerk/show! \"notebooks/sorting.clj\"))"}]
+                             :text "#{3 1 2}"}]
                       :visibility #{:show}}
                 :->analysis-info {'(ns example-notebook) {:file "resources/tests/example_notebook.clj",
                                                           :form '(ns example-notebook),
                                                           :deps set?}
                                   #{1 3 2} {:file "resources/tests/example_notebook.clj",
                                             :form '#{1 3 2},
-                                            :deps nil},
-                                  '(comment (nextjournal.clerk/show! "notebooks/sorting.clj")) {:file "resources/tests/example_notebook.clj",
-                                                                                                :form '(comment (nextjournal.clerk/show! "notebooks/sorting.clj")),
-                                                                                                :deps nil}}})
+                                            :deps nil}}})
               (h/analyze-file {:markdown? true}
                               {:graph (dep/graph)}
                               "resources/tests/example_notebook.clj"))))
