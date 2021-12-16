@@ -164,19 +164,19 @@
 
 (defn inlined-tailwind-css
   "Styles "
-  [live-js?]
-  [:style {:type (if live-js? "text/tailwindcss" "text/css")}
+  [{:keys [purge-css? live-js?]}]
+  [:style {:type (if purge-css? "text/css" "text/tailwindcss")}
    (slurp (if live-js?
             (io/resource "public/css/viewer.css")
             (resource->static-url "/css/viewer.css")))])
 
-(defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} state]
+(defn ->html [{:as opts :keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} state]
   (hiccup/html5
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
     (hiccup/include-js "https://cdn.tailwindcss.com")
-    (inlined-tailwind-css live-js?)
+    (inlined-tailwind-css opts)
     (hiccup/include-js (cond-> "/js/viewer.js" (not live-js?) resource->static-url))
     (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")]
    [:body
@@ -196,7 +196,7 @@ window.ws_send = msg => ws.send(msg)")]]))
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
     (hiccup/include-js "https://cdn.tailwindcss.com") ;; ⬅ this will be rewritten during static site generation
-    (inlined-tailwind-css live-js?)
+    (inlined-tailwind-css state)
     (hiccup/include-js (cond-> "/js/viewer.js" (not live-js?) resource->static-url))
     (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")]
    [:body
