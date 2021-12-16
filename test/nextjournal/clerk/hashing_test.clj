@@ -5,11 +5,11 @@
             [nextjournal.clerk.hashing :as h]
             [weavejester.dependency :as dep]))
 
-(defmacro eval-in-ns [ns & body]
-  `(let [current-ns# *ns*]
-    (in-ns ~ns)
-    ~@body
-    (in-ns (.name current-ns#))))
+
+(defmacro with-ns-binding [ns-sym & body]
+  `(binding [*ns* (find-ns ~ns-sym)]
+     ~@body))
+
 
 (deftest no-cache?
   (testing "are variables set to no-cache?"
@@ -24,61 +24,62 @@
   (testing "is evaluating namespace set to no-cache?"
     (is (not (h/no-cache? '(rand-int 10))))
 
-    (eval-in-ns 'nextjournal.clerk.hashing
+    (with-ns-binding 'nextjournal.clerk.hashing
       (is (nextjournal.clerk.hashing/no-cache? '(rand-int 10))))))
 
 (deftest var-dependencies
-  (is (match? #{#'clojure.string/includes?
-                #'rewrite-clj.parser/parse-string-all}
-        (h/var-dependencies '(defn foo
-                               ([] (foo "s"))
-                               ([s] (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi")))))))
-
-(defn- var-named? [expected-var-name]
-  (fn [actual] (= expected-var-name (-> actual symbol name))))
+  (is (match? #{'clojure.string/includes?
+                'rewrite-clj.parser/parse-string-all}
+              (h/var-dependencies '(defn foo
+                                     ([] (foo "s"))
+                                     ([s] (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi")))))))
 
 (deftest analyze
   (testing "quoted forms aren't confused with variable dependencies"
-    (is (match? {:deps #{#'inc}}
+    (is (match? {:deps #{`inc}}
                 (h/analyze '(do inc))))
     (is (empty? (:deps (h/analyze '(do 'inc))))))
 
   (testing "locals that shadow existing vars shouldn't show up in the deps"
     (is (empty? (:deps (h/analyze '(let [+ 2] +))))))
 
-  (is (match? {:form       '(defn foo [s]
-                              (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi"))
-               :ns-effect? false
-               :deps       #{#'rewrite-clj.parser/parse-string-all
-                             #'clojure.string/includes?
-                             (var-named? "foo")}}
-              (h/analyze '(defn foo [s]
-                            (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi")))))
+  (testing "symbol referring to a java class"
+    (is (match? {:deps       #{'io.methvin.watcher.PathUtils}}
+                (h/analyze 'io.methvin.watcher.PathUtils))))
 
-  (is (match? {:form         '(defn segments [s]
-                                (let [segments (clojure.string/split s)]
-                                  (clojure.string/join segments)))
-               :ns-effect?   false
-               :deps         #{(var-named? "segments")
-                               #'clojure.string/split
-                               #'clojure.string/join}}
-              (h/analyze '(defn segments [s] (let [segments (clojure.string/split s)]
-                                               (clojure.string/join segments))))))
+  (testing "namespaced symbol referring to a java thing"
+    (is (match? {:deps       #{'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER}}
+                (h/analyze 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER))))
+
+  (is (match? {:ns-effect? false
+               :var 'nextjournal.clerk.hashing/foo
+               :deps       #{'rewrite-clj.parser/parse-string-all
+                             'clojure.string/includes?}}
+              (with-ns-binding 'nextjournal.clerk.hashing
+                (h/analyze '(defn foo [s]
+                              (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi"))))))
+
+  (is (match? {:ns-effect?   false
+               :var 'nextjournal.clerk.hashing/segments
+               :deps         #{'clojure.string/split
+                               'clojure.string/join}}
+              (with-ns-binding 'nextjournal.clerk.hashing
+                (h/analyze '(defn segments [s] (let [segments (clojure.string/split s)]
+                                                 (clojure.string/join segments)))))))
 
   (is (match? {:form       '(in-ns 'user)
                :ns-effect? true
-               :deps       #{#'clojure.core/in-ns}}
+               :deps       #{'clojure.core/in-ns}}
               (h/analyze '(in-ns 'user))))
 
-  (is (match? {:form       '(do (ns foo))
-               :ns-effect? true
-               :deps       (m/embeds #{#'clojure.core/in-ns})}
+  (is (match? {:ns-effect? true
+               :deps       (m/embeds #{'clojure.core/in-ns})}
               (h/analyze '(do (ns foo)))))
 
-  (is (match? {:form       '(def my-inc inc)
-               :ns-effect? false
-               :deps       #{#'clojure.core/inc (var-named? "my-inc")}}
+  (is (match? {:ns-effect? false
+               :deps       #{'clojure.core/inc}}
               (h/analyze '(def my-inc inc)))))
+
 
 (deftest analyze-file
   (is (match? (m/equals
