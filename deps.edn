@@ -8,7 +8,7 @@
         weavejester/dependency {:mvn/version "0.2.1"}
 
         com.nextjournal/beholder {:mvn/version "1.0.0"}
-        io.github.nextjournal/markdown {:mvn/version "0.1.36"}
+        io.github.nextjournal/markdown {:mvn/version "0.1.38"}
 
         com.taoensso/nippy {:mvn/version "3.1.1"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
@@ -33,6 +33,11 @@
                  :extra-paths ["dev"]
                  :jvm-opts ["-Dclerk.live_js=true" "-Dpolyglot.engine.WarnInterpreterOnly=false" "-XX:-OmitStackTraceInFastThrow"]
                  :main-opts ["-m" "shadow.cljs.devtools.cli"]}
+
+           :test {:extra-deps {nubank/matcher-combinators {:mvn/version "3.3.1"}
+                               io.github.cognitect-labs/test-runner {:git/tag "v0.5.0" :git/sha "b3fd0d2"}}
+                  :extra-paths ["test"]
+                  :exec-fn cognitect.test-runner.api/test}
 
            :demo {:extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
                                org.xerial/sqlite-jdbc {:mvn/version "3.34.0"}

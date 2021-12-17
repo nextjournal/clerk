@@ -8,12 +8,6 @@
             [multihash.digest :as digest]
             [taoensso.nippy :as nippy]))
 
-
-(defn ex->viewer [e]
-  (v/exception (Throwable->map e)))
-
-#_(doc->viewer (nextjournal.clerk/eval-file "notebooks/elements.clj"))
-
 (defn var->data [v]
   (v/wrapped-with-viewer v))
 
@@ -168,9 +162,9 @@
 (def resource->static-url
   {"/css/app.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VxQBDwk3cvr1bt8YVL5m6bJGrFEmzrSbCrH1roypLjJr4AbbteCKh9Y6gQVYexdY85QA2HG5nQFLWpRp69zFSPDJ9"
    "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvykE47cdahchdt8fxwHyYwJ7YSmEFcMSyqf4UNs61izpuF1xXpKA4HeZQctDkkU11B5iLVSBjpCQrk5f5mWXS9xv"
-   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VtCXjyDVLMeayjZyu3n65iikE5bE2xaygE2b9QUSR7f5BBaR5FK41f5oEnc1Fa6eQ88CVFBiPbN8LqXdGH6pjfSbP"})
+   "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VwVKkZzhYZ2jsUhXyFWzVpDTov9CjSCzoWM57qr77SEsYuNBCZus6ZCZFN8LwhFEReRF5cofoaJad5NEWhziWNnRH"})
 
-(defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} doc]
+(defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} state]
   (hiccup/html5
    [:head
     [:meta {:charset "UTF-8"}]
@@ -182,16 +176,16 @@
    [:body
     [:div#clerk]
     [:script "let viewer = nextjournal.clerk.sci_viewer
-let doc = " (-> doc ->edn pr-str) "
-viewer.reset_doc(viewer.read_string(doc))
+let state = " (-> state ->edn pr-str) "
+viewer.set_state(viewer.read_string(state))
 viewer.mount(document.getElementById('clerk'))\n"
      (when conn-ws?
        "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
-ws.onmessage = msg => viewer.reset_doc(viewer.read_string(msg.data))
+ws.onmessage = msg => viewer.set_state(viewer.read_string(msg.data))
 window.ws_send = msg => ws.send(msg)")]]))
 
 
-(defn ->static-app [{:keys [live-js?] :or {live-js? live-js?}} docs]
+(defn ->static-app [{:as state :keys [live-js?]}]
   (hiccup/html5
    [:head
     [:meta {:charset "UTF-8"}]
@@ -204,11 +198,11 @@ window.ws_send = msg => ws.send(msg)")]]))
     [:div#clerk-static-app]
     [:script "let viewer = nextjournal.clerk.sci_viewer
 let app = nextjournal.clerk.static_app
-let docs = viewer.read_string(" (-> docs ->edn pr-str) ")
-app.init(docs)\n"]]))
+let opts = viewer.read_string(" (-> state ->edn pr-str) ")
+app.init(opts)\n"]]))
 
-(defn doc->html [doc]
-  (->html {} (doc->viewer {} doc)))
+(defn doc->html [doc error]
+  (->html {} {:doc (doc->viewer {} doc) :error error}))
 
 (defn doc->static-html [doc]
   (->html {:conn-ws? false :live-js? false} (doc->viewer {:inline-results? true} doc)))

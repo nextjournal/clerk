@@ -1,13 +1,15 @@
 (ns nextjournal.clerk.viewer
   (:require [clojure.string :as str]
             [clojure.pprint :as pprint]
+            [clojure.datafy :as datafy]
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]]
                 :cljs [[reagent.ratom :as ratom]]))
-  #?(:clj (:import [clojure.lang IFn])))
+  #?(:clj (:import [clojure.lang IFn]
+                   [java.lang Throwable])))
 
 (defrecord Form [form])
-
+(defrecord SCIEval [form])
 (defrecord Fn+Form [form fn]
   IFn
   (#?(:clj invoke :cljs -invoke) [this x]
@@ -23,6 +25,8 @@
   ([form]
    (map->Fn+Form {:form form :fn (#?(:clj eval :cljs *eval*) form)})))
 
+#?(:cljs (defn sci-eval [form] (*eval* form)))
+
 #?(:clj
    (defmethod print-method Fn+Form [v ^java.io.Writer w]
      (.write w (str "#function+ " (pr-str `~(:form v))))))
@@ -30,6 +34,10 @@
 #?(:clj
    (defmethod print-method Form [v ^java.io.Writer w]
      (.write w (str "#function+ " (pr-str `~(:form v))))))
+
+#?(:clj
+   (defmethod print-method SCIEval [v ^java.io.Writer w]
+     (.write w (str "#sci-eval " (pr-str `~(:form v))))))
 
 #_(binding [*data-readers* {'function+ form->fn+form}]
     (read-string (pr-str (form->fn+form '(fn [x] x)))))
@@ -138,6 +146,11 @@
     (and (sequential? data) (sequential? (first data))) (normalize-seq-of-seq data)
     :else nil))
 
+(defn demunge-ex-data [ex-data]
+  (update ex-data :trace (fn [traces] (mapv #(update % 0 (comp demunge pr-str)) traces))))
+
+#_(demunge-ex-data (datafy/datafy (ex-info "foo" {:bar :baz})))
+
 (def elide-string-length 100)
 
 (declare with-viewer*)
@@ -166,6 +179,8 @@
    {:pred uuid? :render-fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred inst? :render-fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred var? :transform-fn symbol :render-fn '(fn [x] (v/html [:span.inspected-value [:span.syntax-tag "#'" (str x)]]))}
+   {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e)) :fetch-fn fetch-all
+    :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp demunge-ex-data datafy/datafy)}
    {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.text-gray-700 x]))}
    {:name :elision :render-fn (quote v/elision-viewer)}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
@@ -292,7 +307,6 @@
 #_(wrapped-with-viewer (with-viewer* :elision {:remaining 10 :count 30 :offset 19}))
 #_(wrapped-with-viewer (with-viewer* (->Form '(fn [name] (html [:<> "Hello " name]))) "James"))
 
-
 (defn get-viewers
   "Returns all the viewers that apply in precendence of: optional local `viewers`, viewers set per `ns`, as well on the `:root`."
   ([ns] (get-viewers ns nil))
@@ -394,7 +408,6 @@
                     :else ;; leaf value
                     xs))))))
 
-
 #_#_#_#_
 (let [rand-int-seq (fn [n to]
                      (take n (repeatedly #(rand-int to))))
@@ -419,8 +432,8 @@
   (describe xs))
 #_
 (describe (table
-            {:a (range 30)
-             :b (map inc (range 30))}))
+           {:a (range 30)
+            :b (map inc (range 30))}))
 
 (comment
   (describe 123)
@@ -467,17 +480,17 @@
                      path-from-more (or (:replace-path more) ;; string case, TODO find a better way to unify
                                         (-> more :nextjournal/value first :path))]
                  (when (not= path-from-value path-from-more)
-                     (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more})))
-                   (into (pop value) (:nextjournal/value more))))))
+                   (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more})))
+                 (into (pop value) (:nextjournal/value more))))))
 
-  (comment ;; test cases for merge-descriptions, TODO: simplify
-    (let [value (range 30)
-          desc (describe value)
-          path []
-          elision (peek (get-in desc (path-to-value path)))
-          more (describe value (:nextjournal/value elision))]
+(comment ;; test cases for merge-descriptions, TODO: simplify
+  (let [value (range 30)
+        desc (describe value)
+        path []
+        elision (peek (get-in desc (path-to-value path)))
+        more (describe value (:nextjournal/value elision))]
 
-      (merge-descriptions desc more))
+    (merge-descriptions desc more))
 
   (let [value [(range 30)]
         desc (describe value)
@@ -602,29 +615,3 @@
   (with-viewer* :code (if (string? x) x (with-out-str (pprint/pprint x)))))
 
 #_(code '(+ 1 2))
-
-(defn exception [e]
-  (let [{:keys [via trace]} e]
-    (html
-     [:div.w-screen.h-screen.overflow-y-auto.bg-gray-100.p-6.text-xs.monospace.flex.flex-col
-      [:div.rounded-md.shadow-lg.border.border-gray-300.bg-white.max-w-6xl.mx-auto
-       (into
-        [:div]
-        (map
-         (fn [{:as ex :keys [type message data trace]}]
-           [:div.p-4.bg-red-100.border-b.border-gray-300.rounded-t-md
-            [:div.font-bold "Unhandled " type]
-            [:div.font-bold.mt-1 message]
-            [:div.mt-1 (pr-str data)]])
-         via))
-       [:div.py-6
-        [:table.w-full
-         (into [:tbody]
-               (map (fn [[call x file line]]
-                      [:tr.hover:bg-red-100.leading-tight
-                       [:td.text-right.px-6 file ":"]
-                       [:td.text-right.pr-6 line]
-                       [:td.py-1.pr-6 #?(:clj (demunge (pr-str call)) :cljs call)]]))
-               trace)]]]])))
-
-#_(nextjournal.clerk/show! "notebooks/boom.clj")

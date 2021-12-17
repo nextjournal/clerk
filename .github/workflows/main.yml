@@ -3,37 +3,24 @@ name: Continuous Delivery
 on: push
 
 jobs:
-  static-build:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
         with:
           fetch_depth: 0
 
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@master
-        with:
-          project_id: "nextjournal-com"
-          service_account_key: ${{ secrets.GCLOUD_SERVICE_KEY }}
-          export_default_credentials: true
-
-      - name: Install java
+      - name: 🔧 Install java
         uses: actions/setup-java@v1
         with:
           java-version: '11.0.7'
 
-      - name: Install clojure
+      - name: 🔧 Install clojure
         uses: DeLaGuardo/setup-clojure@master
         with:
           cli: '1.10.3.943'
 
-      - name: Install babashka
-        run: |
-          curl -sLO https://raw.githubusercontent.com/babashka/babashka/master/install
-          chmod +x install
-          ./install
-
-      - name: maven cache
+      - name: 🗝 maven cache
         uses: actions/cache@v2
         with:
           path: |
@@ -43,35 +30,58 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: npm cache
+      - name: 🧪 Run tests
+        run: clojure -X:test
+
+
+  static-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch_depth: 0
+
+      - name: 🔧 Install java
+        uses: actions/setup-java@v1
+        with:
+          java-version: '11.0.7'
+
+      - name: 🔧 Install clojure
+        uses: DeLaGuardo/setup-clojure@master
+        with:
+          cli: '1.10.3.943'
+
+      - name: 🗝 maven cache
         uses: actions/cache@v2
         with:
-          path: node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+          path: |
+            ~/.m2
+            ~/.gitlibs
+          key: ${{ runner.os }}-maven-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-yarn-
+            ${{ runner.os }}-maven-
 
-      - name: shadow-cljs compiler cache
+      - name: 🗝 Clerk Cache
         uses: actions/cache@v2
         with:
-          path: .shadow-cljs
-          key: ${{ runner.os }}-shadow-cljs-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-shadow-cljs-
+          path: .cache
+          key: ${{ runner.os }}-clerk
 
-      - name: Install SSH key and start ssh-agent
-        uses: webfactory/ssh-agent@v0.5.3
+      - name: 🏗 Build Clerk Static App with default Notebooks
+        run: clojure -X:demo nextjournal.clerk/build-static-app! :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"'
+
+      - name: 🔐 Google Auth
+        uses: google-github-actions/auth@v0
         with:
-          ssh-private-key: ${{ secrets.NEXTJOURNAL_CI_SSH_KEY }}
+          credentials_json: ${{ secrets.GCLOUD_SERVICE_KEY }}
 
-      - name: Build Clerk Static App with default Notebooks
-        run: bb build:static-app
+      - name: 🔧 Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v0.3.0
 
-      - name: Copy static build to bucket under SHA
+      - name: 📠 Copy static build to bucket under SHA
         run: |
           gsutil cp -r public/build gs://nextjournal-snapshots/clerk/build/${{ github.sha }}
-
-      - name: Add status flag to the devcards build
+      - name: ✅ Add success status to report with link to snapshot
         uses: Sibz/github-status-action@v1
         with:
           authToken: ${{secrets.GITHUB_TOKEN}}
@@ -79,4 +89,4 @@ jobs:
           description: 'Ready'
           state: 'success'
           sha: ${{github.event.pull_request.head.sha || github.sha}}
-          target_url: https://storage.googleapis.com/nextjournal-snapshots/clerk/build/${{ github.sha }}/index.html
+          target_url: https://snapshots.nextjournal.com/clerk/build/${{ github.sha }}

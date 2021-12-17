@@ -1,10 +1,13 @@
-{:tasks {:requires ([clojure.edn :as edn])
-         :init (def tailwind-build-cmd "npx tailwindcss --input stylesheets/app.css ")
+{:tasks {:requires ([clojure.edn :as edn]
+                    [clojure.string :as str]
+                    [babashka.fs :as fs]
+                    [babashka.process :as p])
+         :init (do (def tailwind-build-cmd "npx tailwindcss --input stylesheets/app.css "))
          yarn-install {:doc "Installs and updates npm dependencies"
                        :task (shell "yarn install")}
 
          watch:cljs {:doc "Starts shadow-cljs server"
-                     :task (clojure "-M:sci:demo:dev watch browser")
+                     :task (clojure "-M:test:sci:demo:dev watch browser")
                      :depends [yarn-install]}
 
          watch:css {:doc  "Starts a watcher for css files tailwindcss"
@@ -27,10 +30,14 @@
                            :task (clojure "-X:demo nextjournal.clerk/build-static-app!")}
 
          release:jar {:doc "Builds the jar"
-                      :task (clojure "-T:build jar")}
+                      :task (let [rev-count (-> (p/process ["git" "rev-list" "HEAD" "--count"] {:out :string}) p/check :out str/trim Integer/parseInt)
+                                  version (format "0.4.%d" (inc rev-count))]
+                              (spit (doto (fs/file "resources/META-INF/nextjournal/clerk/meta.edn")
+                                      (-> fs/parent fs/create-dirs)) {:version version})
+                              (clojure "-T:build jar"))}
 
-         clojars {:doc "Deploys the jar to clojars"
-                  :task (clojure "-T:build deploy")}
+         deploy {:doc "Deploys the jar to clojars"
+                 :task (clojure "-T:build deploy")}
 
          tag {:doc "Tags release and pushes tag to Github."
               :task (let [version (-> (slurp "resources/META-INF/nextjournal/clerk/meta.edn")
@@ -39,13 +46,6 @@
                           tag (str "v" version)]
                       (shell "git tag" tag)
                       (shell "git push origin" tag))}
-
-         deploy {:doc "Deploys the jar to clojars"
-                 ;; ensure sequential order becauce tag reads from info.edn made
-                 ;; by build.clj
-                 :task (do
-                         (run 'clojars)
-                         (run 'tag))}
 
          -dev {:depends [watch:cljs watch:css]}
          dev {:doc "Start app in dev mode, compiles cljs and css"

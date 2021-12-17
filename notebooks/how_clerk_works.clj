@@ -24,16 +24,16 @@
 
 ;; This analysis is done recursively, descending into all dependency symbols.
 
-(h/find-location #'nextjournal.clerk.hashing/analyze-file)
+(h/find-location 'nextjournal.clerk.hashing/analyze-file)
 
-(h/find-location #'dep/depend)
+(h/find-location `dep/depend)
 
-(h/find-location  io.methvin.watcher.DirectoryChangeEvent)
+(h/find-location  'io.methvin.watcher.DirectoryChangeEvent)
 
-(h/find-location java.util.UUID)
+(h/find-location 'java.util.UUID)
 
 (let [{:keys [graph]} (h/build-graph "notebooks/how_clerk_works.clj")]
-  (dep/transitive-dependencies graph #'analyzed))
+  (dep/transitive-dependencies graph `analyzed))
 
 
 ;; ### Step 3: Hashing
@@ -48,7 +48,7 @@
       (shuffle (range 15))))
 
 ;; We can look up the cache key using the var name in the hashes map.
-(when-let [form-hash (get hashes #'rand-fifteen)]
+(when-let [form-hash (get hashes `rand-fifteen)]
   (let [hash (slurp (nextjournal.clerk/->cache-file (str "@" form-hash)))]
     (nextjournal.clerk/thaw-from-cas hash)))
 

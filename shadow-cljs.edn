@@ -5,7 +5,6 @@
                     :output-dir "public/js"
                     :modules {:viewer {:entries [nextjournal.clerk.sci-viewer
                                                  nextjournal.clerk.static-app
-                                                 nextjournal.clerk.website
                                                  nextjournal.devcards.main
                                                  nextjournal.viewer.notebook]}}
 
