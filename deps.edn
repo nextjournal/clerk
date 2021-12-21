@@ -3,12 +3,12 @@
         org.clojure/java.classpath {:mvn/version "1.0.0"}
         org.clojure/tools.analyzer.jvm {:mvn/version "1.1.0"}
         org.clojure/tools.deps.alpha {:mvn/version "0.11.905"}
-        babashka/fs {:mvn/version "0.0.5"}
+        babashka/fs {:mvn/version "0.1.2"}
         borkdude/edamame {:mvn/version "0.0.11"}
         weavejester/dependency {:mvn/version "0.2.1"}
 
         com.nextjournal/beholder {:mvn/version "1.0.0"}
-        io.github.nextjournal/markdown {:mvn/version "0.1.38"}
+        io.github.nextjournal/markdown {:mvn/version "0.1.39"}
 
         com.taoensso/nippy {:mvn/version "3.1.1"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
@@ -26,7 +26,7 @@
  :aliases {:sci {:extra-deps  {applied-science/js-interop  {:mvn/version "0.3.0"}
                                borkdude/sci {:mvn/version "0.2.6"}
                                reagent/reagent {:mvn/version "1.1.0"}
-                               io.github.nextjournal/viewers {:git/sha "1b1374db20b56d14a0f32835c1ce5d9254c23527"}
+                               io.github.nextjournal/viewers {:git/sha "4590d1cf992781924b25f57a3fd54f41abbb9f1e"}
                                metosin/reitit-frontend     {:mvn/version "0.5.15"}}}
 
            :dev {:extra-deps {arrowic/arrowic {:mvn/version "0.1.1"}
@@ -52,5 +52,5 @@
                           io.github.nextjournal/cas {:git/url "git@github.com:nextjournal/cas"
                                                      :git/sha "5e8079b720e347b9466db9c2282ce79a125a011c"}
                           rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}
-                          babashka/fs {:mvn/version "0.0.5"}}
+                          babashka/fs {:mvn/version "0.1.2"}}
                    :ns-default build}}}
