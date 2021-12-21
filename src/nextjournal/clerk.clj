@@ -329,7 +329,7 @@
   "
   [{:as opts :keys [paths out-path live-js? bundle? browse?]
     :or {paths clerk-docs
-         out-path "public/build"
+         out-path (str "public" fs/file-separator "build")
          live-js? view/live-js?
          bundle? true
          browse? true}}]
@@ -348,11 +348,9 @@
               (fs/create-dirs (fs/parent out-html))
               (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
     (when browse?
-      (let [index-html (-> index-html fs/absolutize .toString
-                           path-to-url-canonicalize)]
-        (if (and live-js? (str/starts-with? out-path "public/"))
-          (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
-          (browse/browse-url index-html))))))
+      (if (and live-js? (str/starts-with? out-path "public/"))
+        (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
+        (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize))))))
 
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/"})
