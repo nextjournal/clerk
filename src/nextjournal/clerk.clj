@@ -314,7 +314,6 @@
   "Canonicalizes the system specific path separators in `PATH` (e.g. `\\`
   on MS-Windows) to URL-compatible forward slashes."
   [path]
-
   (str/replace path fs/file-separator "/"))
 
 (defn build-static-app!

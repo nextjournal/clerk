@@ -49,5 +49,5 @@
                           io.github.nextjournal/cas {:git/url "git@github.com:nextjournal/cas"
                                                      :git/sha "5e8079b720e347b9466db9c2282ce79a125a011c"}
                           rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}
-                          babashka/fs {:mvn/version "0.0.5"}}
+                          babashka/fs {:mvn/version "0.1.2"}}
                    :ns-default build}}}
