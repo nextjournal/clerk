@@ -5,6 +5,11 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
+## 0.4.316 (2021-12-21)
+* 💫 Add option to control opening of built static app (@filipesilva, #31)
+* 🐜 Fix path error on windows by bumping markdown dep (#34)
+* 🐞 Fix browse in `build-static-app!` on windows (#39)
+
 ## 0.4.305 (2021-12-13)
 * 🌟 Support markdown as an alternative to Clojure source code for prose-heavy documents.
 * 🌟 Changed viewer api: Added a `:transform-fn` that allows a transformation of a value in JVM Clojure. Also rename `:fn` to `:render-fn` for clarify and ensure the `:pred` only runs on JVM Clojure to enable using predicates that cannot run in sci in the browser. Add support for serving arbitrary blobs  via a `:fetch-fn` that returns a map with `:nextjournal/content-type` and `nextjournal/value` keys ([example](https://github.com/nextjournal/clerk/blob/8ad88630f746f1a9ff3ac314f5528c2d25c42583/notebooks/viewers/image.clj)).
