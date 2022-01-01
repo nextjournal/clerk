@@ -3,6 +3,7 @@
             [cljs.reader]
             [clojure.string :as str]
             [edamame.core :as edamame]
+            [goog.events :as gevents]
             [goog.object]
             [goog.string :as gstring]
             [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer* with-viewers*] :rename {with-viewer* with-viewer with-viewers* with-viewers}]
@@ -957,3 +958,10 @@ black")}]))}
 (swap! viewer/!viewers (fn [viewers]
                          (-> (into {} (map (juxt key (comp viewer/process-fns val))) viewers)
                              (update :root concat js-viewers))))
+
+(defn hashchange [_e]
+  (let [path (subs (.-hash js/location) 1)]
+    (clerk-eval `(nextjournal.clerk/show! ~path))))
+
+;; TODO: don't attach this for static builds
+(gevents/listen js/window goog.events.EventType.HASHCHANGE hashchange false)
