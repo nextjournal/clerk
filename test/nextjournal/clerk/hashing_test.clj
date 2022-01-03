@@ -112,7 +112,7 @@
                                                 :path [:content 0]}]}}}
                             {:type :code
                              :text "#{3 1 2}"}]
-                      :visibility #{:show}}
+                      :visibility #{:show :show-result}}
                 :->analysis-info {'(ns example-notebook) {:file "resources/tests/example_notebook.clj",
                                                           :form '(ns example-notebook),
                                                           :deps set?}
