@@ -308,8 +308,16 @@
 
 #_(->html-extension "hello.clj")
 
+
+(defn- path-to-url-canonicalize
+  "Canonicalizes the system specific path separators in `PATH` (e.g. `\\`
+  on MS-Windows) to URL-compatible forward slashes."
+  [path]
+  (str/replace path fs/file-separator "/"))
+
 (defn build-static-app!
-  "Builds a static html app of the notebooks. Takes an options map with keys:
+  "Builds a static html app of the notebooks and opens the app in the
+  default browser. Takes an options map with keys:
 
   - `:paths` a vector of relative paths to notebooks to include in the build
   - `:bundle?` builds a single page app versus a folder with an html page for each notebook (defaults to `true`)
@@ -320,7 +328,7 @@
   "
   [{:as opts :keys [paths out-path live-js? bundle? browse?]
     :or {paths clerk-docs
-         out-path "public/build"
+         out-path (str "public" fs/file-separator "build")
          live-js? view/live-js?
          bundle? true
          browse? true}}]
@@ -341,7 +349,7 @@
     (when browse?
       (if (and live-js? (str/starts-with? out-path "public/"))
         (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
-        (browse/browse-url index-html)))))
+        (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize))))))
 
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/"})

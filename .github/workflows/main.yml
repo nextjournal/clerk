@@ -4,7 +4,19 @@ on: push
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{matrix.sys.os}}
+
+    strategy:
+      matrix:
+        sys:
+          - { os: macos-latest, shell: bash }
+          - { os: ubuntu-latest, shell: bash }
+          - { os: windows-latest, shell: powershell }
+
+    defaults:
+      run:
+        shell: ${{matrix.sys.shell}}
+
     steps:
       - uses: actions/checkout@v2
         with:
