@@ -216,11 +216,11 @@
         (assoc-in [:->analysis-info rec-var :form] rec-form))))
 
 (defn- analyze-deps [var form {:as state :keys [graph]} dep]
-  (try (assoc state :graph (dep/depend graph (if var var form) dep))
+  (try (update state :graph #(dep/depend % (if var var form) dep))
        (catch Exception e
-         (when-not (circular-dependency-error? e)
-           (throw e))
-         (analyze-circular-dependency state var form dep (ex-data e)))))
+         (if (circular-dependency-error? e)
+           (analyze-circular-dependency state var form dep (ex-data e))
+           (throw e)))))
 
 (defn- analyze-codeblock [file state {:keys [type text]}]
   (let [{:keys [var deps form ns-effect?]} (-> text read-string analyze)
