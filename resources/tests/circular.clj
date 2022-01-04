@@ -1,4 +1,3 @@
-^:nextjournal.clerk/no-cache
 (ns circular)
 
 (declare a)

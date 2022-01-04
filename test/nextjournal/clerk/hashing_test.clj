@@ -130,6 +130,4 @@
                :->analysis-info {'circular/a any?
                                  'circular/b any?
                                  'circular/a+circular/b {:form '(do ((str "boom " b)) ((str a " boom")))}}}
-              (h/analyze-file {:markdown? true}
-                              {:graph (dep/graph)}
-                              "resources/tests/circular.clj"))))
+              (h/analyze-file "resources/tests/circular.clj"))))
