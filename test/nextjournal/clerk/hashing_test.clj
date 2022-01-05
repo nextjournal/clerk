@@ -122,3 +122,12 @@
               (h/analyze-file {:markdown? true}
                               {:graph (dep/graph)}
                               "resources/tests/example_notebook.clj"))))
+
+(deftest circular-dependency
+  (is (match? {:graph {:dependencies {'(ns circular) any?
+                                      'circular/b #{clojure.core/str 'circular/a+circular/b}
+                                      'circular/a #{clojure.core/str 'circular/a+circular/b}}}
+               :->analysis-info {'circular/a any?
+                                 'circular/b any?
+                                 'circular/a+circular/b {:form '(do ((str "boom " b)) ((str a " boom")))}}}
+              (h/analyze-file "resources/tests/circular.clj"))))
