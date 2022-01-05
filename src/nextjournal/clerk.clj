@@ -77,13 +77,11 @@
       (fs/create-dirs (config/cache-dir)))
     (or (when (and (not no-cache?) cached?)
           (try
-            (let [{:as result :nextjournal/keys [value]} (wrapped-with-metadata (or (get results-last-run hash)
-                                                                                    (thaw-from-cas cas-hash))
-                                                                                visibility
-                                                                                hash)]
+            (let [value (or (get results-last-run hash)
+                            (thaw-from-cas cas-hash))]
               (when var
                 (intern *ns* (-> var symbol name symbol) value))
-              result)
+              (wrapped-with-metadata (if var var value) visibility hash))
             (catch Exception _e
               ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
               #_(prn :thaw-error e)
