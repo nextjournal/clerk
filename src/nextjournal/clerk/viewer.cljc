@@ -378,7 +378,7 @@
      (if-not (pos? (cond-> budget
                      (and xs (not (string? xs)) (seqable? xs))
                      dec))
-       (with-viewer* :elision {:path (pop path) :source :root})
+       (with-viewer* :elision {:path (pop path) :offset (peek path) :source :root})
        (merge {:path path}
               (when (and graph (empty? path)) {:graph graph})
               (dissoc wrapped-value [:nextjournal/value :nextjournal/viewer])
@@ -487,12 +487,16 @@
 (defn merge-descriptions [root more]
   (update-in root (path-to-value (:path more))
              (fn [value]
-               (let [{:keys [offset path]} (-> value peek :nextjournal/value)
-                     path-from-value (cond-> path offset (conj offset))
+               (let [elision (get value (:offset more))
+                     {:keys [offset path]} (:nextjournal/value elision)
+                     path-from-value (conj path offset)
                      path-from-more (or (:replace-path more) ;; string case, TODO find a better way to unify
                                         (-> more :nextjournal/value first :path))]
-                 #_(when (not= path-from-value path-from-more)
-                     (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more})))
+                 (let [elision-viewer (:nextjournal/viewer elision)]
+                   (when (not= :elision elision-viewer)
+                     (throw (ex-info "viewer at path must be an elision" {:path (:path more) :viewer elision-viewer}))))
+                 (when (not= path-from-value path-from-more)
+                   (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more})))
                  (into (pop value) (:nextjournal/value more))))))
 
 
