@@ -71,6 +71,6 @@
         (is (= 99 (lookup-var-in-*ns* "some-var"))))
 
       (testing ".. even if we load it from the cache after a fresh start"
-        (is (match? {:nextjournal/value (symbol (str *ns*) "some-var")}
+        (is (match? {:nextjournal/value {::clerk/wrapped-var (symbol (str *ns*) "some-var")}}
                     (clerk/read+eval-cached {blob-id -100} {} #{:show} "(def some-var 99)")))
         (is (= -100 (lookup-var-in-*ns* "some-var")))))))

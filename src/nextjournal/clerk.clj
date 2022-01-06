@@ -58,13 +58,16 @@
      {:result ret#
       :time-ms (/ (double (- (. System (nanoTime)) start#)) 1000000.0)}))
 
+(defn- wrapped-var [var]
+  {::wrapped-var var})
+
 (defn- lookup-cached-result [results-last-run introduced-var hash cas-hash visibility]
   (try
     (let [value (or (get results-last-run hash)
                     (thaw-from-cas cas-hash))]
       (when introduced-var
         (intern *ns* (-> introduced-var symbol name symbol) value))
-      (wrapped-with-metadata (if introduced-var introduced-var value) visibility hash))
+      (wrapped-with-metadata (if introduced-var (wrapped-var introduced-var) value) visibility hash))
     (catch Exception _e
       ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
       #_(prn :thaw-error e)
@@ -83,7 +86,7 @@
       #_(prn :freeze-error e)
       nil)))
 
-(defn- eval+cache! [form hash digest-file no-cache? visibility]
+(defn- eval+cache! [form hash digest-file introduced-var no-cache? visibility]
   (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true] (eval form)))
         var-value (cond-> result (var? result) deref)
         no-cache? (or no-cache?
@@ -94,7 +97,7 @@
     (let [blob-id (cond no-cache? (view/->hash-str var-value)
                         (fn? var-value) nil
                         :else hash)]
-      (wrapped-with-metadata var-value visibility blob-id))))
+      (wrapped-with-metadata (cond-> result introduced-var wrapped-var) visibility blob-id))))
 
 (defn- ensure-cache-dir! []
   (let [cache-dir (config/cache-dir)]
@@ -120,9 +123,10 @@
                           :else :no-digest-file)
            :hash hash :cas-hash cas-hash :form form)
     (ensure-cache-dir!)
-    (or (when cached-result?
-          (lookup-cached-result results-last-run (:var analyzed) hash cas-hash visibility))
-        (eval+cache! form hash digest-file no-cache? visibility))))
+    (let [introduced-var (:var analyzed)]
+      (or (when cached-result?
+            (lookup-cached-result results-last-run introduced-var hash cas-hash visibility))
+          (eval+cache! form hash digest-file introduced-var no-cache? visibility)))))
 
 #_(read+eval-cached {} {} #{:show} "(subs (slurp \"/usr/share/dict/words\") 0 1000)")
 
