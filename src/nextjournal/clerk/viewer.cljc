@@ -367,7 +367,7 @@
    (assign-closing-parens
     (describe xs (merge {#_#_:graph (arrowic/create-graph) :path [] :viewers (process-fns (get-viewers *ns* (viewers xs)))} opts) [])))
   ([xs opts current-path]
-   (let [{:as opts :keys [budget graph viewers path offset]} (merge {:offset 0 :budget 5} opts)
+   (let [{:as opts :keys [depth-budget graph viewers path offset]} (merge {:offset 0 :depth-budget 10} opts)
          wrapped-value (try (wrapped-with-viewer xs viewers) ;; TODO: respect `viewers` on `xs`
                             (catch #?(:clj Exception :cljs js/Error) _ex
                               nil))
@@ -375,7 +375,7 @@
          fetch-opts (merge fetch-opts (select-keys opts [:offset]))
          xs (value wrapped-value)]
      #_(prn :xs xs :type (type xs) :path path :current-path current-path)
-     (if-not (pos? (cond-> budget
+     (if-not (pos? (cond-> depth-budget
                      (and xs (not (string? xs)) (seqable? xs))
                      dec))
        (with-viewer* :elision {:path path :source :root})
@@ -421,7 +421,7 @@
 
                                                                 (describe x (-> opts
                                                                                 (dissoc :offset)
-                                                                                (update :budget dec)
+                                                                                (update :depth-budget dec)
                                                                                 (update :path conj (+ i offset))) (conj current-path i))))
                                                  (remove nil?))
                                            (ensure-sorted xs))
@@ -437,6 +437,8 @@
 
                       :else ;; leaf value
                       xs)))))))
+
+
 
 
 (comment
