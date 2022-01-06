@@ -375,14 +375,10 @@
          fetch-opts (merge fetch-opts (select-keys opts [:offset]))
          xs (value wrapped-value)]
      #_(prn :xs xs :type (type xs) :path path :current-path current-path)
-     #_(prn :budget budget :path-count (count path) :xs xs)
-
      (if-not (pos? (cond-> budget
                      (and xs (not (string? xs)) (seqable? xs))
                      dec))
-       (do
-         (prn :elision path :top)
-         (with-viewer* :elision {:path (pop path)}))
+       (with-viewer* :elision {:path (pop path) :source :root})
        (merge {:path path}
               (when (and graph (empty? path)) {:graph graph})
               (dissoc wrapped-value [:nextjournal/value :nextjournal/viewer])
@@ -439,12 +435,11 @@
                           (or (not count) (and (pos? offset) (< (inc offset) count)))
 
                           (conj (with-viewer* :elision
-                                  (cond-> (assoc count-opts :offset (inc offset) :path path)
+                                  (cond-> (assoc count-opts :offset (inc offset) :path path :source {:count count :offset offset :< (< (inc offset) count)})
                                     count (assoc :remaining (- count (inc offset))))))))
 
                       :else ;; leaf value
                       xs)))))))
-
 
 
 (comment
@@ -489,27 +484,16 @@
 (defn path-to-value [path]
   (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
 
-(do
-  (defn merge-descriptions [root more]
-    (update-in root (path-to-value (:path more))
-               (fn [value]
-                 (let [{:keys [offset path]} (-> value peek :nextjournal/value)
-                       path-from-value (conj path (or offset 0))
-                       path-from-more (or (:replace-path more) ;; string case, TODO find a better way to unify
-                                          (-> more :nextjournal/value first :path))]
-                   (when (not= path-from-value path-from-more)
+(defn merge-descriptions [root more]
+  (update-in root (path-to-value (:path more))
+             (fn [value]
+               (let [{:keys [offset path]} (-> value peek :nextjournal/value)
+                     path-from-value (cond-> path offset (conj offset))
+                     path-from-more (or (:replace-path more) ;; string case, TODO find a better way to unify
+                                        (-> more :nextjournal/value first :path))]
+                 #_(when (not= path-from-value path-from-more)
                      (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more})))
-                   (into (pop value) (:nextjournal/value more))))))
-
-  (let [value (reduce (fn [acc i] (vector i acc)) :fin (range 30 0 -1))
-        desc (describe value)
-        path []
-        elision (peek (get-in desc (path-to-value path)))
-        more (describe value (:nextjournal/value elision))]
-    (get-in desc (path-to-value path))
-    #_
-    (desc->values (merge-descriptions desc more))))
-
+                 (into (pop value) (:nextjournal/value more))))))
 
 
 (defn assign-closing-parens
