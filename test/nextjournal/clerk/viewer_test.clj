@@ -26,6 +26,13 @@
       ;; `str/join` is needed here because elided strings get turned into vector of segments
       (is (= value (str/join (v/desc->values (v/merge-descriptions desc more)))))))
 
+  (testing "deeply nested"
+    (let [value (reduce (fn [acc i] (vector i acc)) :fin (range 7 0 -1))
+          desc (v/describe value)
+          path [0 0 0]
+          elision (peek (get-in desc (v/path-to-value path)))
+          more (v/describe value (:nextjournal/value elision))]
+      (is (= value (v/desc->values (v/merge-descriptions desc more))))))
   )
 
 (deftest assign-closing-parens
