@@ -3,77 +3,52 @@
             [clojure.test :refer :all]
             [nextjournal.clerk.viewer :as v]))
 
+(defn find-elision [desc]
+  (first (filter (comp #{:elision} :nextjournal/viewer)
+                 (tree-seq (comp vector? :nextjournal/value) :nextjournal/value desc))))
+
+(defn describe+fetch [value]
+  (let [desc (v/describe value)
+        elision (find-elision desc)
+        more (v/describe value (:nextjournal/value elision))]
+    (v/desc->values (v/merge-descriptions desc more))))
+
 (deftest merge-descriptions
   (testing "range"
-    (let [value (range 30)
-          desc (v/describe value)
-          elision (peek (get-in desc (v/path-to-value [])))
-          more (v/describe value (:nextjournal/value elision))]
-      (is (= value (v/desc->values (v/merge-descriptions desc more))))))
+    (let [value (range 30)]
+      (is (= value (describe+fetch value)))))
 
   (testing "nested range"
-    (let [value [(range 30)]
-          desc (v/describe value)
-          elision (peek (get-in desc (v/path-to-value [0])))
-          more (v/describe value (:nextjournal/value elision))]
-      (is (= value (v/desc->values (v/merge-descriptions desc more))))))
+    (let [value [(range 30)]]
+      (is (= value (describe+fetch value)))))
 
   (testing "string"
-    (let [value (str/join (map #(str/join (repeat 70 %)) ["a" "b"]))
-          desc (v/describe value)
-          elision (peek (get-in desc (v/path-to-value [])))
-          more (v/describe value (:nextjournal/value elision))]
+    (let [value (str/join (map #(str/join (repeat 70 %)) ["a" "b"]))]
       ;; `str/join` is needed here because elided strings get turned into vector of segments
-      (is (= value (str/join (v/desc->values (v/merge-descriptions desc more)))))))
+      (is (= value (str/join (describe+fetch value))))))
 
   (testing "deep vector"
-    (let [value (reduce (fn [acc i] (vector acc)) :fin (range 7 0 -1))
-          desc (v/describe value)
-          path [0 0 0]
-          elision (peek (get-in desc (v/path-to-value path)))
-          more (v/describe value (:nextjournal/value elision))]
-      (is (= value (v/desc->values (v/merge-descriptions desc more))))))
+    (let [value (reduce (fn [acc i] (vector acc)) :fin (range 7 0 -1))]
+      (is (= value (describe+fetch value)))))
 
-  (testing "deep vector with element"
-    (let [value (reduce (fn [acc i] (vector i acc)) :fin (range 7 0 -1))
-          desc (v/describe value)
-          path [1 1 1]
-          elision (peek (get-in desc (v/path-to-value path)))
-          more (v/describe value (:nextjournal/value elision))]
-      (is (= value (v/desc->values (v/merge-descriptions desc more))))))
+  (testing "deep vector with element before"
+    (let [value (reduce (fn [acc i] (vector i acc)) :fin (range 7 0 -1))]
+      (is (= value (describe+fetch value)))))
 
-  (testing "deep vector with elements"
-    (let [value (reduce (fn [acc i] (vector i acc (inc i))) :fin (range 7 0 -1))
-          desc (v/describe value)
-          path [1 1 1]
-          elision (get (get-in desc (v/path-to-value path)) 1)
-          more (v/describe value (:nextjournal/value elision))]
-      (is (= value (v/desc->values (v/merge-descriptions desc more))))))
-  )
+  (testing "deep vector with element after"
+    (let [value (reduce (fn [acc i] (vector acc i)) :fin (range 7 0 -1))]
+      (is (= value (describe+fetch value)))))
 
-(let [value (reduce (fn [acc i] (vector i acc (inc i))) :fin (range 7 0 -1))
-      desc (v/describe value)
-      path [1 1 1]
-      elision (get (get-in desc (v/path-to-value path)) 1)
-      more (v/describe value (:nextjournal/value elision))]
-  (is (= value (v/desc->values (v/merge-descriptions desc more)))))
+  (testing "deep vector with elements around"
+    (let [value (reduce (fn [acc i] (vector i acc (inc i))) :fin (range 7 0 -1))]
+      (is (= value (describe+fetch value))))))
 
-
-
-(let [value (reduce (fn [acc i] (vector i acc)) :fin (range 7 0 -1))
-      desc (v/describe value)
-      path [1 1 1]
-      elision (peek (get-in desc (v/path-to-value path)))
-      more (v/describe value (:nextjournal/value elision))]
-  (v/desc->values (v/merge-descriptions desc more))
-  elision
-  more)
 
 (deftest assign-closing-parens
   (testing "closing parenthesis are moved to right-most children in the tree"
     (let [before (v/describe {:a [1 '(2 3 #{4})]
                               :b '([5 6] 7 8)}
-                             {:viewers (v/get-viewers nil)}
+                             {:viewers (v/get-viewers nil) :budget 10}
                              [])
           after (v/assign-closing-parens before)]
 
