@@ -2,7 +2,12 @@
                     [clojure.string :as str]
                     [babashka.fs :as fs]
                     [babashka.process :as p])
-         :init (do (def tailwind-build-cmd "npx tailwindcss --input stylesheets/app.css "))
+         :init (do (defn viewer-css-path []
+                     (let [cp (str/trim (with-out-str (babashka.deps/clojure ["-A:sci" "-Spath"])))]
+                       (str/trim (:out (shell {:out :string} (str "bb -cp " cp " -e '(println (.getPath (clojure.java.io/resource \"css/viewer.css\")))'"))))))
+                   (defn tailwind-build-cmd []
+                     (str "npx tailwindcss --input " (viewer-css-path) " ")))
+
          yarn-install {:doc "Installs and updates npm dependencies"
                        :task (shell "yarn install")}
 
@@ -10,8 +15,10 @@
                      :task (clojure "-M:test:sci:demo:dev watch browser")
                      :depends [yarn-install]}
 
+         -viewer-css-path {:task (println (viewer-css-path))}
+
          watch:css {:doc  "Starts a watcher for css files tailwindcss"
-                    :task (shell (str tailwind-build-cmd "--output public/css/app.css --watch"))
+                    :task (shell (str (tailwind-build-cmd) "--output public/css/viewer.css --watch"))
                     :depends [yarn-install]}
 
          release:js {:doc  "Builds & uploads the js release and updates the sha reference."
@@ -20,15 +27,15 @@
                      :depends [yarn-install]}
 
          release:css {:doc  "Builds & uploads the css release and updates the sha reference."
-                      :task (do (shell (str tailwind-build-cmd "--output build/app.css -m")
+                      :task (do (shell (str tailwind-build-cmd "--output build/viewer.css -m")
                                        {:extra-env {"NODE_ENV" "production"}})
-                                (clojure "-T:build upload-to-cas+rewrite-sha :resource app.css"))
+                                (clojure "-T:build upload-to-cas+rewrite-sha :resource viewer.css"))
                       :depends [yarn-install]}
 
-         build:css:jit {:doc "Builds jit css"
-                        :task (shell (str tailwind-build-cmd "--config tailwind-jit.config.js --output build/app.css -m")
-                                     {:extra-env {"NODE_ENV" "production"}})
-                        :depends [yarn-install]}
+         build:css {:doc "Builds purged css"
+                    :task (shell (str (tailwind-build-cmd) "--output build/viewer.css -m")
+                                 {:extra-env {"NODE_ENV" "production"}})
+                    :depends [yarn-install]}
 
          build:static-app {:doc "Builds a Static App with default Notebooks"
                            :depends [release:js release:css]

@@ -2,6 +2,7 @@
   (:require [nextjournal.clerk.config :as config]
             [nextjournal.clerk.viewer :as v]
             [hiccup.page :as hiccup]
+            [clojure.string :as str]
             [clojure.java.io :as io]
             [clojure.walk :as w]
             [multihash.core :as multihash]
@@ -162,21 +163,26 @@
   {"/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvykE47cdahchdt8fxwHyYwJ7YSmEFcMSyqf4UNs61izpuF1xXpKA4HeZQctDkkU11B5iLVSBjpCQrk5f5mWXS9xv"
    "/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VwVKkZzhYZ2jsUhXyFWzVpDTov9CjSCzoWM57qr77SEsYuNBCZus6ZCZFN8LwhFEReRF5cofoaJad5NEWhziWNnRH"})
 
-(defn inlined-tailwind-css
-  "Styles "
-  [{:keys [purge-css? live-js?]}]
-  [:style {:type (if purge-css? "text/css" "text/tailwindcss")}
-   (slurp (if live-js?
-            (io/resource "public/css/viewer.css")
-            (resource->static-url "/css/viewer.css")))])
+(def tailwind-cdn? false)
+
+(defn tailwind-cdn []
+  (list
+   [:script (-> (slurp "tailwind.config.js")
+                (str/replace  #"^module.exports" "tailwind.config")
+                (str/replace  #"require\(.*\)" ""))]
+   [:style {:type "text/tailwindcss"}
+    (slurp (io/resource "css/viewer.css"))]))
 
 (defn ->html [{:as opts :keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} state]
   (hiccup/html5
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-    (hiccup/include-js "https://cdn.tailwindcss.com")
-    (inlined-tailwind-css opts)
+    (hiccup/include-js "https://cdn.tailwindcss.com?plugins=typography")
+    (if tailwind-cdn?
+      (tailwind-cdn)
+      (hiccup/include-css (cond-> "css/viewer.css" (not live-js?) resource->static-url)))
+    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
     (hiccup/include-js (cond-> "/js/viewer.js" (not live-js?) resource->static-url))
     (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")]
    [:body
@@ -195,8 +201,10 @@ window.ws_send = msg => ws.send(msg)")]]))
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-    (hiccup/include-js "https://cdn.tailwindcss.com") ;; ⬅ this will be rewritten during static site generation
-    (inlined-tailwind-css state)
+    (hiccup/include-js "https://cdn.tailwindcss.com")
+    (if tailwind-cdn?
+      (tailwind-cdn)
+      (hiccup/include-css (cond-> "css/viewer.css" (not live-js?) resource->static-url)))
     (hiccup/include-js (cond-> "/js/viewer.js" (not live-js?) resource->static-url))
     (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")]
    [:body
