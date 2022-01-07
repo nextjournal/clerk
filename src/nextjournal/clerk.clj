@@ -1,9 +1,9 @@
 ;; # Introducing Clerk 👋
 (ns nextjournal.clerk
   (:require [babashka.fs :as fs]
-            [babashka.process :as p]
             [clojure.java.browse :as browse]
             [clojure.java.io :as io]
+            [clojure.java.shell :as shell]
             [clojure.string :as str]
             [multihash.core :as multihash]
             [multihash.digest :as digest]
@@ -13,7 +13,6 @@
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]
-            [rewrite-clj.zip :as z]
             [taoensso.nippy :as nippy]))
 
 (comment
@@ -350,14 +349,14 @@
               (fs/create-dirs (fs/parent out-html))
               (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
     (when purge-css?
-      (let [tailwind-command (str "npx tailwindcss --input "
-                                  (view/viewers-css-path!)
-                                  " --config tailwind.config.js --output "
-                                  out-path fs/file-separator "css/viewer.css "
-                                  "--minify")
-            {:keys [exit out err]} (p/sh tailwind-command)]
+      (let [tailwind-command ["npx" "tailwindcss"
+                              "--input" (view/viewers-css-path!)
+                              "--config" "tailwind.config.js"
+                              "--output" (str out-path fs/file-separator "css/viewer.css")
+                              "--minify"]
+            {:keys [exit out err]} (apply shell/sh tailwind-command)]
         (when-not (zero? exit)
-          (throw (ex-info "tailwindcss failed" {:command tailwind-command :exit exit :out out :err err}) ))))
+          (throw (ex-info (str "error running tailwind: `" (str/join " " tailwind-command) "`") {:command tailwind-command :exit exit :out out :err err}) ))))
     (when browse?
       (if (and live-js? (str/starts-with? out-path "public/"))
         (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
@@ -376,23 +375,23 @@
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
 (comment
-  (def watcher
-    (beholder/watch #(file-event %) "notebooks" "src"))
+(def watcher
+  (beholder/watch #(file-event %) "notebooks" "src"))
 
-  (beholder/stop watcher)
+(beholder/stop watcher)
 
-  (show! "notebooks/rule_30.clj")
-  (show! "notebooks/viewer_api.clj")
-  (show! "notebooks/onwards.md")
-  (show! "notebooks/pagination.clj")
-  (show! "notebooks/how_clerk_works.clj")
-  (show! "notebooks/conditional_read.cljc")
-  (show! "src/nextjournal/clerk/hashing.clj")
-  (show! "src/nextjournal/clerk.clj")
+(show! "notebooks/rule_30.clj")
+(show! "notebooks/viewer_api.clj")
+(show! "notebooks/onwards.md")
+(show! "notebooks/pagination.clj")
+(show! "notebooks/how_clerk_works.clj")
+(show! "notebooks/conditional_read.cljc")
+(show! "src/nextjournal/clerk/hashing.clj")
+(show! "src/nextjournal/clerk.clj")
 
-  (show! "notebooks/test.clj")
+(show! "notebooks/test.clj")
 
-  ;; Clear cache
-  (clear-cache!)
+;; Clear cache
+(clear-cache!)
 
-  )
+)

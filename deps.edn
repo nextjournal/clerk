@@ -18,10 +18,7 @@
         hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
         lambdaisland/uri {:mvn/version "1.11.86"}
 
-        rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}
-
-        ;; needed for CSS jit pass
-        babashka/process {:mvn/version "0.0.2"}}
+        rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}}
 
  :aliases {:sci {:extra-deps  {applied-science/js-interop  {:mvn/version "0.3.0"}
                                borkdude/sci {:mvn/version "0.2.6"}
