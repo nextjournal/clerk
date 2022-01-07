@@ -4,7 +4,7 @@ module.exports = {
     extend: {},
     fontFamily: {
       sans: ["Fira Sans", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
-      serif: ["PTSerif", "serif"],
+      serif: ["PT Serif", "serif"],
       mono: ["Fira Mono", "monospace"]
     }
   },
