@@ -71,7 +71,7 @@
 
 (def resource->path
   '{viewer.js "/js/viewer.js"
-    app.css "/css/app.css"})
+    viewer.css "/css/viewer.css"})
 
 (defn upload-to-cas+rewrite-sha [{:keys [resource]}]
   (if-let [target (resource->path resource)]

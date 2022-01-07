@@ -330,7 +330,7 @@
   - `:git/sha`, `:git/url` when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
   - `:purge-css?` creates a minimal css with only the used classes
   "
-  [{:as opts :keys [paths path-prefix out-path live-js? bundle? browse? purge-css?]
+  [{:as opts :keys [paths out-path live-js? bundle? browse? purge-css?]
     :or {paths clerk-docs
          out-path (str "public" fs/file-separator "build")
          live-js? view/live-js?
@@ -351,25 +351,21 @@
               (fs/create-dirs (fs/parent out-html))
               (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
     (when purge-css?
-      ;; ensure we have a local js build
-      (when-not (fs/exists? "build/viewer.js")
-        (fs/create-dirs (fs/parent "build/viewer.js"))
-        (spit "build/viewer.js" (slurp (view/resource->static-url "/js/viewer.js"))))
-      (let [tw-result (p/sh "npx tailwindcss --input stylesheets/app.css --config tailwind-jit.config.js --output public/build/clerk.css -m")]
-        (println "tailwind: " (:out tw-result) (:err tw-result))
-        (assert (= 0 (:exit tw-result)) "We couldn't purge the unused css classes for you! Make sure `npx tailwindcss` is available."))
-      (doseq [f (filter #(str/ends-with? (.getPath %) ".html") (file-seq (io/file out-path)))]
-        (spit f (str/replace (slurp f)
-                             "<script src=\"https://cdn.tailwindcss.com\" type=\"text/javascript\">"
-                             (if bundle?
-                               (str "<style type=\"text/css\">" (slurp "public/build/clerk.css") "</style>")
-                               (str "<link href=\"/" path-prefix  "clerk.css\" rel=\"stylesheet\" type=\"text/css\">"))))))
+      (let [tailwind-command (str "npx tailwindcss --input "
+                                  (.getPath (io/resource "css/viewer.css"))
+                                  " --config tailwind.config.js --output "
+                                  out-path fs/file-separator "css/viewer.css "
+                                  "--minify")
+            {:keys [exit out err]} (p/sh tailwind-command)]
+        (when-not (zero? exit)
+          (throw (ex-info "tailwindcss failed" {:command tailwind-command :exit exit :out out :err err}) ))))
     (when browse?
       (if (and live-js? (str/starts-with? out-path "public/"))
         (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
         (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize))))))
 
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
+#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true :purge-css? true :live-js? false})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true :purge-css? true})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/"})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/" :purge-css? true})

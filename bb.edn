@@ -15,8 +15,6 @@
                      :task (clojure "-M:test:sci:demo:dev watch browser")
                      :depends [yarn-install]}
 
-         -viewer-css-path {:task (println (viewer-css-path))}
-
          watch:css {:doc  "Starts a watcher for css files tailwindcss"
                     :task (shell (str (tailwind-build-cmd) "--output public/css/viewer.css --watch"))
                     :depends [yarn-install]}
@@ -27,17 +25,12 @@
                      :depends [yarn-install]}
 
          release:css {:doc  "Builds & uploads the css release and updates the sha reference."
-                      :task (do (shell (str tailwind-build-cmd "--output build/viewer.css -m")
+                      :task (do (shell (str (tailwind-build-cmd) "--output build/viewer.css -m")
                                        {:extra-env {"NODE_ENV" "production"}})
                                 (clojure "-T:build upload-to-cas+rewrite-sha :resource viewer.css"))
                       :depends [yarn-install]}
 
-         build:css {:doc "Builds purged css"
-                    :task (shell (str (tailwind-build-cmd) "--output build/viewer.css -m")
-                                 {:extra-env {"NODE_ENV" "production"}})
-                    :depends [yarn-install]}
-
-         build:static-app {:doc "Builds a Static App with default Notebooks"
+         build:static-app {:doc "Builds a static app with default notebooks"
                            :depends [release:js release:css]
                            :task (clojure "-X:demo nextjournal.clerk/build-static-app!")}
 
@@ -59,7 +52,7 @@
                       (shell "git tag" tag)
                       (shell "git push origin" tag))}
 
-         -dev {:depends [watch:cljs watch:css]}
+         -dev {:depends [watch:cljs #_watch:css]}
          dev {:doc "Start app in dev mode, compiles cljs and css"
               :task (run '-dev {:parallel true})}}
  :min-bb-version "0.5.1"}
