@@ -375,23 +375,23 @@
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
 (comment
-(def watcher
-  (beholder/watch #(file-event %) "notebooks" "src"))
+  (def watcher
+    (beholder/watch #(file-event %) "notebooks" "src"))
 
-(beholder/stop watcher)
+  (beholder/stop watcher)
 
-(show! "notebooks/rule_30.clj")
-(show! "notebooks/viewer_api.clj")
-(show! "notebooks/onwards.md")
-(show! "notebooks/pagination.clj")
-(show! "notebooks/how_clerk_works.clj")
-(show! "notebooks/conditional_read.cljc")
-(show! "src/nextjournal/clerk/hashing.clj")
-(show! "src/nextjournal/clerk.clj")
+  (show! "notebooks/rule_30.clj")
+  (show! "notebooks/viewer_api.clj")
+  (show! "notebooks/onwards.md")
+  (show! "notebooks/pagination.clj")
+  (show! "notebooks/how_clerk_works.clj")
+  (show! "notebooks/conditional_read.cljc")
+  (show! "src/nextjournal/clerk/hashing.clj")
+  (show! "src/nextjournal/clerk.clj")
 
-(show! "notebooks/test.clj")
+  (show! "notebooks/test.clj")
 
-;; Clear cache
-(clear-cache!)
+  ;; Clear cache
+  (clear-cache!)
 
-)
+  )
