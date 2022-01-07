@@ -172,10 +172,10 @@
    {:pred boolean? :render-fn '(fn [x] (v/html [:span.syntax-bool.inspected-value (str x)]))}
    {:pred fn? :name :fn :render-fn '(fn [x] (v/html [:span.inspected-value [:span.syntax-tag "#function"] "[" x "]"]))}
    {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :fetch-opts {:n 2}}
-   {:pred vector? :render-fn '(partial v/coll-viewer {:open "[" :close "]"}) :fetch-opts {:n 20}}
-   {:pred set? :render-fn '(partial v/coll-viewer {:open "#{" :close "}"}) :fetch-opts {:n 20}}
-   {:pred sequential? :render-fn '(partial v/coll-viewer {:open "(" :close ")"}) :fetch-opts {:n 20}}
-   {:pred map? :name :map :render-fn 'v/map-viewer :fetch-opts {:n 10}}
+   {:pred vector? :render-fn 'v/coll-viewer :opening-paren "[" :closing-paren "]" :fetch-opts {:n 20}}
+   {:pred set? :render-fn 'v/coll-viewer :opening-paren "#{" :closing-paren "}" :fetch-opts {:n 20}}
+   {:pred sequential? :render-fn 'v/coll-viewer :opening-paren "(" :closing-paren ")" :fetch-opts {:n 20}}
+   {:pred map? :name :map :render-fn 'v/map-viewer :opening-paren "{" :closing-paren "}" :fetch-opts {:n 10}}
    {:pred uuid? :render-fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred inst? :render-fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
    {:pred var? :transform-fn symbol :render-fn '(fn [x] (v/html [:span.inspected-value [:span.syntax-tag "#'" (str x)]]))}
@@ -313,10 +313,6 @@
   ([ns] (get-viewers ns nil))
   ([ns expr-viewers]
    (vec (concat expr-viewers (@!viewers ns) (@!viewers :root)))))
-
-(defn closing-paren [{:as _viewer :keys [render-fn name]}]
-  (or (when (list? (:form render-fn)) (-> render-fn :form last :close))
-      (when (= name :map) "}")))
 
 (defn bounded-count-opts [n xs]
   (assert (number? n) "n must be a number?")
@@ -508,25 +504,27 @@
     (merge-descriptions desc more)))
 
 (defn assign-closing-parens
-  ([node] (assign-closing-parens {} node))
-  ([{:as ctx :keys [closing-parens]} node]
+  ([node] (assign-closing-parens '() node))
+  ([closing-parens node]
    (let [value (value node)
          viewer (viewer node)
-         closing (closing-paren viewer)
+         closing (:closing-paren viewer)
          non-leaf? (and (vector? value) (wrapped-value? (first value)))
          defer-closing? (and non-leaf?
-                             (or (-> value last :nextjournal/viewer closing-paren) ;; the last element can carry parens
+                             (or (-> value last :nextjournal/viewer :closing-paren) ;; the last element can carry parens
                                  (and (= :map-entry (-> value last :nextjournal/viewer :name)) ;; the last element is a map entry whose value can carry parens
-                                      (-> value last :nextjournal/value last :nextjournal/viewer closing-paren))))]
-     (cond-> node
-       closing (assoc-in [:nextjournal/viewer :closing-parens] (when-not defer-closing? (cons closing closing-parens)))
+                                      (-> value last :nextjournal/value last :nextjournal/viewer :closing-paren))))]
+     (cond-> (cond
+               (not closing) node
+               defer-closing? (update node :nextjournal/viewer dissoc :closing-paren)
+               :else (update-in node [:nextjournal/viewer :closing-paren] cons closing-parens))
        non-leaf? (update :nextjournal/value
                          (fn [xs]
                            (into []
                                  (map-indexed (fn [i x]
                                                 (assign-closing-parens (if (and defer-closing? (= (dec (count xs)) i))
-                                                                         (update ctx :closing-parens #(cond->> % closing (cons closing)))
-                                                                         (assoc ctx :closing-parens nil))
+                                                                         (cond->> closing-parens closing (cons closing))
+                                                                         '())
                                                                        x)))
                                  xs)))))))
 

@@ -160,18 +160,25 @@
     (not= "false" prop)))
 
 (def resource->static-url
-  {"/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VwVKkZzhYZ2jsUhXyFWzVpDTov9CjSCzoWM57qr77SEsYuNBCZus6ZCZFN8LwhFEReRF5cofoaJad5NEWhziWNnRH"
+  {"/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VuZdwgKHD3Q6mdwEzSCwmfDVhn9sPRwn3uwZ6hBEcR8n6LEifATtpE4ohyvoVCyQeKvCuTwiB3APNoRYVCvaV18B4"
    "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvAV62HzsvhcsXEkHP33uj4cV9UvdDz7DU9qLeVRCfEP9kWLFAzaMKL77trdx898DzcVyDVejdfxvxj5XB84UpWvQ"})
 
+(defn viewers-css-path!
+  "Returns either a path to the viewers.css (if found on the classpath) or manifests"
+  []
+  (or (io/resource "css/viewer.css")
+      (let [path "viewers.css"]
+        (when-not (.exists (io/file path))
+          (spit path (slurp "https://raw.githubusercontent.com/nextjournal/viewers/955b5051189e25b5dbffd960bd11ef51d660f58c/resources/css/viewer.css")))
+        path)))
+
 (defn include-tailwind-cdn []
-  ;; TODO: viewer.css isn't on the classpath for clj-only dev mode
-  (when-let [viewer-css-path (io/resource "css/viewer.css")]
-    (list
-     (hiccup/include-js "https://cdn.tailwindcss.com?plugins=typography")
-     [:script (-> (slurp "tailwind.config.js")
-                  (str/replace  #"^module.exports" "tailwind.config")
-                  (str/replace  #"require\(.*\)" ""))]
-     [:style {:type "text/tailwindcss"} (slurp viewer-css-path)])))
+  (list
+   (hiccup/include-js "https://cdn.tailwindcss.com?plugins=typography")
+   [:script (-> (slurp "tailwind.config.js")
+                (str/replace  #"^module.exports" "tailwind.config")
+                (str/replace  #"require\(.*\)" ""))]
+   [:style {:type "text/tailwindcss"} (slurp (viewers-css-path!))]))
 
 (defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} state]
   (hiccup/html5

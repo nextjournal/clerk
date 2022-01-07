@@ -311,7 +311,6 @@
 
 #_(->html-extension "hello.clj")
 
-
 (defn- path-to-url-canonicalize
   "Canonicalizes the system specific path separators in `PATH` (e.g. `\\`
   on MS-Windows) to URL-compatible forward slashes."
@@ -352,7 +351,7 @@
               (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
     (when purge-css?
       (let [tailwind-command (str "npx tailwindcss --input "
-                                  (.getPath (io/resource "css/viewer.css"))
+                                  (view/viewers-css-path!)
                                   " --config tailwind.config.js --output "
                                   out-path fs/file-separator "css/viewer.css "
                                   "--minify")
