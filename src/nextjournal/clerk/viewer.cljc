@@ -344,19 +344,24 @@
 (declare get-vertex)
 (declare desc->values)
 
-(comment
+(comment ;; description viz using arrowic
   (require '[arrowic.core :as arrowic])
-  (def arrowic-viewer (arrowic/create-graph))
-  (defn get-vertex [graph path x]
+  (def arrowic-viewer (arrowic/create-viewer (arrowic/create-graph)))
+  (defn get-vertex [{:keys [graph !path->vertex]} path x]
     (or (@!path->vertex path)
         (do
           (arrowic/with-graph graph
             (swap! !path->vertex assoc path (arrowic/insert-vertex! (apply str (take 20 (pr-str x))))))
           (@!path->vertex path))
-        (throw (ex-info "bad" {})))))
-
-(defonce !path->vertex (atom {}))
-
+        (throw (ex-info "bad" {}))))
+  (defn setup-arrowic-graph []
+    {:graph (arrowic/create-graph)
+     :!path->vertex (atom {})
+     :insert-edge! (fn [{:as opts :keys [graph !path->vertex path !budget]} child-path xs x]
+                     (let [parent (get-vertex opts path xs)
+                           child (get-vertex opts child-path x)]
+                       (arrowic/with-graph graph
+                         (arrowic/insert-edge! parent child :label @!budget))))}))
 
 (defn desc->values
   "Takes a `description` and returns its value. Inverse of `describe`. Mostly useful for debugging."
@@ -378,9 +383,9 @@
   ([xs]
    (describe xs {}))
   ([xs opts]
-   (reset! !path->vertex {})
    (assign-closing-parens
-    (describe xs (merge {#_#_:graph (arrowic/create-graph) :!budget (atom 20) :path [] :viewers (process-fns (get-viewers *ns* (viewers xs)))} opts) [])))
+    (describe xs (merge #?(:clj (some-> 'setup-arrowic-graph resolve (apply [])))
+                        {:!budget (atom 20) :path [] :viewers (process-fns (get-viewers *ns* (viewers xs)))} opts) [])))
   ([xs opts current-path]
    (let [{:as opts :keys [!budget graph viewers path offset]} (merge {:offset 0} opts)
          wrapped-value (try (wrapped-with-viewer xs viewers) ;; TODO: respect `viewers` on `xs`
@@ -430,12 +435,7 @@
                           children (into []
                                          (comp (if (number? (:n fetch-opts)) (drop+take-xf fetch-opts) identity)
                                                (map-indexed (fn [i x]
-                                                              #_(when graph
-                                                                  (let [parent (get-vertex graph path xs)
-                                                                        child (get-vertex graph (conj path (+ i offset)) x)]
-                                                                    (arrowic/with-graph graph
-                                                                      (arrowic/insert-edge! parent child :label budget))))
-
+                                                              (when graph ((:insert-edge! opts) opts (conj path (+ i offset)) xs x))
                                                               (describe x (-> opts
                                                                               (dissoc :offset)
                                                                               (update :path conj (+ i offset))) (conj current-path i))))
