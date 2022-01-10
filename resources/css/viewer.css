@@ -1,0 +1,307 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-size: 18px;
+  }
+  @media (max-width: 600px) {
+    html {
+      font-size: 16px;
+    }
+  }
+  .font-condensed { font-family: "Fira Sans Condensed", sans-serif; }
+  .font-inter     { font-family: "Inter", sans-serif; }
+  body {
+    @apply font-serif antialiased text-gray-900 sm:overscroll-y-none;
+  }
+  code, .code {
+    @apply font-mono text-sm text-gray-900 bg-slate-50 px-0.5 py-px rounded;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-condensed font-bold mt-8 first:mt-0;
+  }
+  h1 { @apply text-4xl; }
+  h2 { @apply text-3xl; }
+  h3 { @apply text-2xl; }
+  h4 { @apply text-xl; }
+  h5 { @apply text-lg; }
+  h6 { @apply text-base; }
+
+  button { @apply focus:outline-none; }
+  strong { @apply font-bold; }
+  em     { @apply italic; }
+  pre    { @apply m-0 font-mono; }
+}
+
+/* Compatibility */
+/* --------------------------------------------------------------- */
+/* TODO: Verify which colors are in use and replace with Tailwind
+   colors accordingly. Move Nj-specific styles out of here. */
+
+:root {
+  --teal-color: #31afd0;
+  --dark-teal-color: #095960;
+  --near-black-color: #2e2e2c;
+  --red-color: #d64242;
+  --dark-blue-color: #1f2937;
+  --dark-blue-60-color: rgba(28, 42, 56, 0.6);
+  --gray-panel-color: rgba(239, 241, 245, 1.000);
+  --brand-color: var(--dark-blue-color);
+  --link-color: #5046e4;
+  --command-bar-selected-color: var(--teal-color);
+}
+
+.serif      { @apply font-serif; }
+.sans-serif { @apply font-sans; }
+.monospace  { @apply font-mono; }
+.inter      { @apply font-inter; }
+
+.border-color-teal { border-color: var(--dark-teal-color); }
+.teal { color: var(--teal-color); }
+.bg-dark-blue { background: var(--dark-blue-color); }
+.bg-dark-blue-60 { background: rgba(28, 42, 56, 0.6); }
+.bg-gray-panel { background: var(--gray-panel-color); }
+.text-dark-blue  { color: var(--dark-blue-color); }
+.text-dark-blue-60 { color: var(--dark-blue-60-color); }
+.border-dark-blue-30 { border-color: rgba(28, 42, 56, 0.6); }
+.text-brand { color: var(--dark-blue-color); }
+.bg-brand { background: var(--dark-blue-color); }
+.text-selected { color: white; }
+.red { color: var(--red-color); }
+
+/* Disclose Button */
+/* --------------------------------------------------------------- */
+
+.disclose {
+  @apply content-none border-solid cursor-pointer inline-block relative mr-[3px] top-[-2px] transition-all;
+  border-color: var(--near-black-color) transparent;
+  border-width: 6px 4px 0;
+}
+.disclose:hover {
+  border-color: var(--near-black-color) transparent;
+}
+.disclose.collapsed {
+  @apply rotate-[-90deg];
+}
+
+/* Layout */
+/* --------------------------------------------------------------- */
+
+.page {
+  @apply max-w-5xl mx-auto px-12 box-border flex-shrink-0;
+}
+.toc-content {
+  @apply translate-x-[-110%] opacity-0;
+}
+.toc:hover .toc-content,
+.toc.pinned .toc-content {
+  @apply translate-x-0 opacity-100;
+}
+.max-w-prose { @apply max-w-[46rem] !important; }
+.max-w-wide  { @apply max-w-3xl !important; }
+
+/* List Styles */
+/* --------------------------------------------------------------- */
+
+.task-list-item + .task-list-item,
+.viewer-markdown ul .task-list-item ul {
+  @apply mt-1;
+}
+
+/* Code Viewer */
+/* --------------------------------------------------------------- */
+
+.viewer-code {
+  @apply font-mono bg-slate-100 rounded-sm py-4 px-8 text-sm mt-4 overflow-x-auto;
+}
+@media (min-width: 960px){
+  .viewer-notebook .viewer-code {
+    @apply py-4 pl-[2.7rem];
+  }
+}
+
+/* Data Viewer */
+/* --------------------------------------------------------------- */
+
+.inspected-value { @apply text-xs font-mono; }
+
+.syntax-tag, .cm-number, .syntax-number, .cm-string, .syntax-string,
+.cm-atom, .syntax-keyword, .cm-builtin, .cm-keyword, .syntax-symbol,
+.syntax-bool, .syntax-nil, .syntax-untyped, .syntax-key, .syntax-index {
+  @apply font-mono;
+}
+
+.syntax-tag     { @apply text-pink-900 !important; }
+.cm-number      { @apply text-sky-900 !important; }
+.syntax-number  { @apply text-sky-900 !important; }
+.cm-string      { @apply text-teal-700 !important; }
+.syntax-string  { @apply text-teal-700 !important; }
+.cm-atom        { @apply text-sky-900 !important; }
+.syntax-keyword { @apply text-sky-900 !important; }
+.cm-builtin     { @apply text-pink-900 !important; }
+.cm-keyword     { @apply text-pink-900 !important; }
+.syntax-symbol  { @apply text-pink-900 !important; }
+.syntax-bool    { @apply text-sky-900 !important; }
+.syntax-nil     { @apply text-sky-900 !important; }
+.syntax-untyped { @apply text-rose-500 !important; }
+.syntax-key     { @apply text-fuchsia-900 !important; }
+.syntax-index   { @apply text-fuchsia-900 !important; }
+
+.syntax-untyped { @apply whitespace-nowrap; }
+
+.result-data {
+  @apply font-mono text-sm overflow-x-auto whitespace-nowrap leading-normal;
+}
+.result-data::-webkit-scrollbar, .path-nav::-webkit-scrollbar {
+  @apply h-0;
+}
+.result-data-collapsed {
+  @apply whitespace-nowrap;
+}
+.result-data-field {
+  @apply ml-4 whitespace-nowrap;
+}
+.result-data-field-link{
+  @apply ml-4 whitespace-nowrap cursor-pointer;
+}
+.result-data-field-link:hover {
+  @apply text-black bg-black/5;
+}
+.result-text-empty {
+  color: rgba(0,0,0,.3);
+}
+.browsify-button:hover {
+  box-shadow: -2px 0 0 2px #edf2f7;
+}
+
+/* Prose */
+/* --------------------------------------------------------------- */
+
+.viewer-notebook,
+.viewer-markdown {
+  @apply prose
+    prose-a:text-indigo-600 prose-a:font-medium prose-a:no-underline hover:prose-a:underline
+    prose-p:mt-4 prose-ol:mt-4 prose-ul:mt-4 prose-blockquote:mt-4 prose-figure:mt-4
+    prose-p:leading-snug prose-ol:leading-snug prose-ul:leading-snug prose-blockquote:leading-snug
+    prose-hr:mt-6 prose-hr:border-t-2 prose-hr:border-solid prose-hr:border-slate-200
+    prose-figcaption:mt-2 prose-figcaption:text-xs
+    prose-img:mb-0
+    max-w-none;
+}
+.viewer-markdown li > p {
+  @apply inline;
+}
+
+/* Todo Lists */
+/* --------------------------------------------------------------- */
+
+.contains-task-list {
+  @apply pl-6 list-none;
+}
+.contains-task-list li p {
+  @apply inline m-0;
+}
+.contains-task-list input[type="checkbox"] {
+  @apply appearance-none h-4 w-4 rounded border border-slate-200 relative mr-[0.3rem] ml-[-1.5rem] top-[0.15rem];
+}
+.contains-task-list input[type="checkbox"]:checked {
+  @apply border-indigo-600 bg-indigo-600 bg-no-repeat bg-contain;
+  background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
+}
+
+/* Markdown TOC */
+/* --------------------------------------------------------------- */
+
+.viewer-markdown .toc      { @apply mt-4; }
+.viewer-markdown h1 + .toc { @apply mt-8; }
+
+.viewer-markdown .toc h1,
+.viewer-markdown .toc h2,
+.viewer-markdown .toc h3,
+.viewer-markdown .toc h4,
+.viewer-markdown .toc h5,
+.viewer-markdown .toc h6 {
+  @apply text-base text-indigo-600 font-sans my-0;
+}
+.viewer-markdown .toc a {
+  @apply text-indigo-600 font-normal no-underline hover:underline;
+}
+.viewer-markdown .toc li    { @apply m-0; }
+.viewer-markdown .toc ul ul { @apply pl-4; }
+
+.viewer-markdown *:first-child:not(.viewer-code) { @apply mt-0; }
+.viewer + .viewer { @apply mt-6; }
+.viewer-notebook { @apply py-16; }
+
+/* Sidenotes */
+/* --------------------------------------------------------------- */
+
+.sidenote-ref {
+  @apply top-[-3px] inline-flex justify-center items-center w-[18px] h-[18px]
+    rounded-full bg-slate-100 border border-slate-300 hover:bg-slate-200 hover:border-slate-300
+    m-0 ml-[4px] cursor-pointer;
+}
+.sidenote {
+  @apply hidden float-left clear-both mx-[2.5%] my-4 text-xs relative w-[95%];
+}
+.sidenote-ref.expanded + .sidenote {
+  @apply block;
+}
+@media (min-width: 860px) {
+  .sidenote-ref {
+    @apply top-[-0.5em] w-auto h-auto inline border-0 bg-transparent m-0 pointer-events-none;
+  }
+  .sidenote sup { @apply inline; }
+  .viewer-markdown .contains-sidenotes p { @apply max-w-[65%]; }
+  .viewer-markdown p .sidenote {
+    @apply mr-[-54%] mt-[0.2rem] w-1/2 float-right clear-right relative block;
+  }
+}
+.viewer-code + .viewer:not(.viewer-markdown):not(.viewer-code):not(.viewer-code-folded),
+.viewer-code-folded + .viewer:not(.viewer-markdown):not(.viewer-code):not(.viewer-code-folded),
+.viewer-result + .viewer-result {
+  @apply mt-2;
+}
+@media (min-width: 768px) {
+  .devcard-desc > div {
+    @apply max-w-full m-0;
+  }
+}
+
+/* Command Palette */
+/* --------------------------------------------------------------- */
+
+.nj-commands-input {
+  @apply bg-transparent text-white;
+}
+.nj-context-menu-item:hover:not([disabled]) {
+  @apply cursor-pointer;
+  background-color: rgba(255,255,255,.14);
+}
+
+/* Devdocs */
+/* --------------------------------------------------------------- */
+
+.collapsed-sidebar:not(.mobile-sidebar) .sidebar-content {
+  @apply transition-all duration-200 ml-[-360px] opacity-0;
+}
+.collapsed-sidebar:hover:not(.mobile-sidebar) .sidebar-content {
+  @apply ml-0 opacity-100;
+}
+.logo, .logo-white {
+  @apply block indent-[-999em];
+  background: url(/images/nextjournal-logo.svg) center center no-repeat;
+}
+.devdocs-body {
+  @apply font-inter;
+}
+
+/* Workarounds */
+/* --------------------------------------------------------------- */
+
+/* Fixes vega viewer resizing into infinity */
+.vega-embed .chart-wrapper { @apply h-auto !important; }
+/* fixes fraction separators being overridden by tw’s border-color */
+.katex * { @apply border-black; }

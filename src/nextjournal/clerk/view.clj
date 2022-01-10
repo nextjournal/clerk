@@ -160,25 +160,15 @@
     (not= "false" prop)))
 
 (def resource->static-url
-  {"/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VuZdwgKHD3Q6mdwEzSCwmfDVhn9sPRwn3uwZ6hBEcR8n6LEifATtpE4ohyvoVCyQeKvCuTwiB3APNoRYVCvaV18B4"
-   "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvAV62HzsvhcsXEkHP33uj4cV9UvdDz7DU9qLeVRCfEP9kWLFAzaMKL77trdx898DzcVyDVejdfxvxj5XB84UpWvQ"})
-
-(defn viewers-css-path!
-  "Returns either a path to the viewers.css (if found on the classpath) or manifests"
-  []
-  (or (io/resource "css/viewer.css")
-      (let [path "viewers.css"]
-        (when-not (.exists (io/file path))
-          (spit path (slurp "https://raw.githubusercontent.com/nextjournal/viewers/955b5051189e25b5dbffd960bd11ef51d660f58c/resources/css/viewer.css")))
-        path)))
+  {"/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VuZdwgKHD3Q6mdwEzSCwmfDVhn9sPRwn3uwZ6hBEcR8n6LEifATtpE4ohyvoVCyQeKvCuTwiB3APNoRYVCvaV18B4"})
 
 (defn include-tailwind-cdn []
   (list
    (hiccup/include-js "https://cdn.tailwindcss.com?plugins=typography")
-   [:script (-> (slurp "tailwind.config.js")
+   [:script (-> (slurp (io/resource "css/tailwind.config.js"))
                 (str/replace  #"^module.exports" "tailwind.config")
                 (str/replace  #"require\(.*\)" ""))]
-   [:style {:type "text/tailwindcss"} (slurp (viewers-css-path!))]))
+   [:style {:type "text/tailwindcss"} (slurp (io/resource "css/viewer.css"))]))
 
 (defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} state]
   (hiccup/html5
@@ -207,7 +197,7 @@ window.ws_send = msg => ws.send(msg)")]]))
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
     (if purge-css?
-      (hiccup/include-css (str "/" path-prefix "css/viewer.css"))
+      (hiccup/include-css (str "/" (if live-js? "build/" path-prefix) "css/viewer.css")) ;; TODO: check bundle? false case
       (include-tailwind-cdn))
     (hiccup/include-js (cond-> "/js/viewer.js" (not live-js?) resource->static-url))
     (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")

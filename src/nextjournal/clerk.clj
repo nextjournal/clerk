@@ -316,6 +316,12 @@
   [path]
   (str/replace path fs/file-separator "/"))
 
+(defn copy-resource! [res name]
+  (let [target-file (io/file name)
+        file-output (io/output-stream target-file)]
+    (io/copy (io/input-stream res) file-output)
+    (.flush file-output)))
+
 (defn build-static-app!
   "Builds a static html app of the notebooks and opens the app in the
   default browser. Takes an options map with keys:
@@ -349,11 +355,12 @@
               (fs/create-dirs (fs/parent out-html))
               (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
     (when purge-css?
+      (copy-resource! (io/resource "css/tailwind.config.js") "tailwind.config.js")
       (let [tailwind-command ["npx" "tailwindcss"
-                              "--input" (view/viewers-css-path!)
                               "--config" "tailwind.config.js"
-                              "--output" (str out-path fs/file-separator "css/viewer.css")
-                              "--minify"]
+                              "--output" (str out-path fs/file-separator "css/viewer.css") ;; TODO: check if this works for the bundle? false case
+                              "--minify"
+                              "-" :in (io/input-stream (io/resource "css/viewer.css"))]
             {:keys [exit out err]} (apply shell/sh tailwind-command)]
         (when-not (zero? exit)
           (throw (ex-info (str "error running tailwind: `" (str/join " " tailwind-command) "`") {:command tailwind-command :exit exit :out out :err err}) ))))
