@@ -355,7 +355,8 @@
    (let [{:as opts :keys [viewers path offset]} (merge {:offset 0} opts)
          wrapped-value (try (wrapped-with-viewer xs viewers) ;; TODO: respect `viewers` on `xs`
                             (catch #?(:clj Exception :cljs js/Error) _ex
-                              nil))
+                              (do (println _ex)
+                                  nil)))
          {:as viewer :keys [fetch-opts fetch-fn]} (viewer wrapped-value)
          fetch-opts (merge fetch-opts (select-keys opts [:offset]))
          xs (value wrapped-value)]
