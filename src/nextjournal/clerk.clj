@@ -73,7 +73,7 @@
   (try
     (let [value (or (get results-last-run hash)
                     (thaw-from-cas cas-hash))]
-      (when introduced-var
+      (when (and introduced-var (not (::var-from-def value)))
         (intern *ns* (-> introduced-var symbol name symbol) value))
       (wrapped-with-metadata (if introduced-var (var-from-def introduced-var) value) visibility hash))
     (catch Exception _e
