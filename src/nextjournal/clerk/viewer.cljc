@@ -446,9 +446,10 @@
                       (cond-> children
                         (or (not count) (< (inc offset) count))
 
-                        (conj (with-viewer* :elision
-                                (cond-> (assoc count-opts :offset (inc offset) :path path :source {:count count :offset offset :< (< (inc offset) count)})
-                                  count (assoc :remaining (- count (inc offset))))))))
+                        (conj (do (when graph ((:insert-edge! opts) opts (conj path (inc offset)) xs '...))
+                                  (with-viewer* :elision
+                                    (cond-> (assoc count-opts :offset (inc offset) :path path :source {:count count :offset offset :< (< (inc offset) count)})
+                                      count (assoc :remaining (- count (inc offset)))))))))
 
                     :else ;; leaf value
                     xs))))))
