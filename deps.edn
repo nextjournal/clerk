@@ -23,7 +23,7 @@
  :aliases {:sci {:extra-deps  {applied-science/js-interop  {:mvn/version "0.3.0"}
                                borkdude/sci {:mvn/version "0.2.6"}
                                reagent/reagent {:mvn/version "1.1.0"}
-                               io.github.nextjournal/viewers {:git/sha "955b5051189e25b5dbffd960bd11ef51d660f58c"}
+                               io.github.nextjournal/viewers {:git/sha "1ffc66175b35fe6186e2476e8af31643e2f0277c"}
                                metosin/reitit-frontend     {:mvn/version "0.5.15"}}}
 
            :dev {:extra-deps {arrowic/arrowic {:mvn/version "0.1.1"}
