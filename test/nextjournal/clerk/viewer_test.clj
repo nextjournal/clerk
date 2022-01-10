@@ -36,13 +36,12 @@
       (is (= value (describe+fetch value)))))
 
   (testing "deep vector with element after"
-    (let [value (reduce (fn [acc i] (vector acc i)) :fin (range 19 0 -1))]
+    (let [value (reduce (fn [acc i] (vector acc i)) :fin (range 20 0 -1))]
       (is (= value (describe+fetch value)))))
 
   (testing "deep vector with elements around"
-    (let [value (reduce (fn [acc i] (vector i acc (inc i))) :fin (range 15 0 -1))]
+    (let [value (reduce (fn [acc i] (vector i acc (inc i))) :fin (range 10 0 -1))]
       (is (= value (describe+fetch value))))))
-
 
 (deftest assign-closing-parens
   (testing "closing parenthesis are moved to right-most children in the tree"

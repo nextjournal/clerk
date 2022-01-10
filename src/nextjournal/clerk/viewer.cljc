@@ -348,10 +348,9 @@
    (describe xs {}))
   ([xs opts]
    (assign-closing-parens
-    (describe xs (merge #?(:clj (some-> 'setup-arrowic-graph resolve (apply [])))
-                        {:!budget (atom 200) :path [] :viewers (process-fns (get-viewers *ns* (viewers xs)))} opts) [])))
+    (describe xs (merge {:!budget (atom (:budget opts 200)) :path [] :viewers (process-fns (get-viewers *ns* (viewers xs)))} opts) [])))
   ([xs opts current-path]
-   (let [{:as opts :keys [!budget graph viewers path offset]} (merge {:offset 0} opts)
+   (let [{:as opts :keys [!budget viewers path offset]} (merge {:offset 0} opts)
          wrapped-value (try (wrapped-with-viewer xs viewers) ;; TODO: respect `viewers` on `xs`
                             (catch #?(:clj Exception :cljs js/Error) _ex
                               nil))
