@@ -8,7 +8,7 @@
                  (tree-seq (comp vector? :nextjournal/value) :nextjournal/value desc))))
 
 (defn describe+fetch [value]
-  (let [desc (v/describe value {:depth-budget 5})
+  (let [desc (v/describe value {:budget 21})
         elision (find-elision desc)
         more (v/describe value (:nextjournal/value elision))]
     (v/desc->values (v/merge-descriptions desc more))))
@@ -28,19 +28,19 @@
       (is (= value (str/join (describe+fetch value))))))
 
   (testing "deep vector"
-    (let [value (reduce (fn [acc i] (vector acc)) :fin (range 7 0 -1))]
+    (let [value (reduce (fn [acc i] (vector acc)) :fin (range 30 0 -1))]
       (is (= value (describe+fetch value)))))
 
   (testing "deep vector with element before"
-    (let [value (reduce (fn [acc i] (vector i acc)) :fin (range 7 0 -1))]
+    (let [value (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))]
       (is (= value (describe+fetch value)))))
 
   (testing "deep vector with element after"
-    (let [value (reduce (fn [acc i] (vector acc i)) :fin (range 7 0 -1))]
+    (let [value (reduce (fn [acc i] (vector acc i)) :fin (range 19 0 -1))]
       (is (= value (describe+fetch value)))))
 
   (testing "deep vector with elements around"
-    (let [value (reduce (fn [acc i] (vector i acc (inc i))) :fin (range 7 0 -1))]
+    (let [value (reduce (fn [acc i] (vector i acc (inc i))) :fin (range 15 0 -1))]
       (is (= value (describe+fetch value))))))
 
 
@@ -48,7 +48,7 @@
   (testing "closing parenthesis are moved to right-most children in the tree"
     (let [before (v/describe {:a [1 '(2 3 #{4})]
                               :b '([5 6] 7 8)}
-                             {:viewers (v/get-viewers nil)}
+                             {:viewers (v/get-viewers nil) :!budget (atom 20)}
                              [])
           after (v/assign-closing-parens before)]
 

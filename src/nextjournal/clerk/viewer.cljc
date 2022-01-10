@@ -332,7 +332,7 @@
   [{:keys [n offset]
     :or {offset 0}}]
   (cond-> (drop offset)
-    (pos-int? n)
+    (int? n)
     (comp (take n))))
 
 #_(sequence (drop+take-xf {:n 10}) (range 100))
@@ -358,6 +358,21 @@
 (defonce !path->vertex (atom {}))
 
 
+(defn desc->values
+  "Takes a `description` and returns its value. Inverse of `describe`. Mostly useful for debugging."
+  [desc]
+  (let [x (value desc)
+        viewer (viewer desc)]
+    (if (= viewer :elision)
+      '…
+      (cond->> x
+        (vector? x)
+        (into (case (:name viewer) (:map :table) {} [])
+              (map desc->values))))))
+
+#_(desc->values (describe [1 [2 {:a :b} 2] 3 (range 100)]))
+#_(desc->values (describe (with-viewer* :table (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))))
+
 (defn describe
   "Returns a subset of a given `value`."
   ([xs]
@@ -365,80 +380,85 @@
   ([xs opts]
    (reset! !path->vertex {})
    (assign-closing-parens
-    (describe xs (merge {#_#_:graph (arrowic/create-graph) :path [] :viewers (process-fns (get-viewers *ns* (viewers xs)))} opts) [])))
+    (describe xs (merge {#_#_:graph (arrowic/create-graph) :!budget (atom 20) :path [] :viewers (process-fns (get-viewers *ns* (viewers xs)))} opts) [])))
   ([xs opts current-path]
-   (let [{:as opts :keys [depth-budget graph viewers path offset]} (merge {:offset 0 :depth-budget 10} opts)
+   (let [{:as opts :keys [!budget graph viewers path offset]} (merge {:offset 0} opts)
          wrapped-value (try (wrapped-with-viewer xs viewers) ;; TODO: respect `viewers` on `xs`
                             (catch #?(:clj Exception :cljs js/Error) _ex
                               nil))
          {:as viewer :keys [fetch-opts fetch-fn]} (viewer wrapped-value)
          fetch-opts (merge fetch-opts (select-keys opts [:offset]))
+         descend? (< (count current-path)
+                     (count path))
          xs (value wrapped-value)]
      #_(prn :xs xs :type (type xs) :path path :current-path current-path)
-     (if-not (pos? (cond-> depth-budget
-                     (and xs (not (string? xs)) (seqable? xs))
-                     dec))
-       (with-viewer* :elision {:path path :source :root})
-       (merge {:path path}
-              (when (and graph (empty? path)) {:graph graph})
-              (dissoc wrapped-value [:nextjournal/value :nextjournal/viewer])
-              (with-viewer* (cond-> viewer (map? viewer) (dissoc viewer :pred :transform-fn))
-                (cond (< (count current-path)
-                         (count path))
-                      (let [idx (first (drop (count current-path) path))]
-                        (describe (cond (or (map? xs) (set? xs)) (nth (seq (ensure-sorted xs)) idx)
-                                        (associative? xs) (get xs idx)
-                                        (sequential? xs) (nth xs idx))
-                                  opts
-                                  (conj current-path idx)))
+     (when-not descend?
+       (swap! !budget #(max (dec %) 0)))
+     (merge {:path path}
+            (when (and graph (empty? path)) {:graph graph})
+            (dissoc wrapped-value [:nextjournal/value :nextjournal/viewer])
+            (with-viewer* (cond-> viewer (map? viewer) (dissoc viewer :pred :transform-fn))
+              (cond descend?
+                    (let [idx (first (drop (count current-path) path))]
+                      (describe (cond (or (map? xs) (set? xs)) (nth (seq (ensure-sorted xs)) idx)
+                                      (associative? xs) (get xs idx)
+                                      (sequential? xs) (nth xs idx))
+                                opts
+                                (conj current-path idx)))
 
-                      fetch-fn (fetch-fn (merge opts fetch-opts {:describe-fn describe}) xs)
+                    fetch-fn (fetch-fn (merge opts fetch-opts {:describe-fn describe}) xs)
 
-                      (string? xs)
-                      (-> (if (and (number? (:n fetch-opts)) (< (:n fetch-opts) (count xs)))
-                            (let [offset (opts :offset 0)
-                                  total (count xs)
-                                  new-offset (min (+ offset (:n fetch-opts)) total)
-                                  remaining (- total new-offset)]
-                              (cond-> [(subs xs offset new-offset)]
-                                (pos? remaining) (conj (with-viewer* :elision {:path path :count total :offset new-offset :remaining remaining}))
-                                true wrap-value
-                                true (assoc :replace-path (conj path offset))))
-                            xs))
+                    (string? xs)
+                    (-> (if (and (number? (:n fetch-opts)) (< (:n fetch-opts) (count xs)))
+                          (let [offset (opts :offset 0)
+                                total (count xs)
+                                new-offset (min (+ offset (:n fetch-opts)) total)
+                                remaining (- total new-offset)]
+                            (cond-> [(subs xs offset new-offset)]
+                              (pos? remaining) (conj (with-viewer* :elision {:path path :count total :offset new-offset :remaining remaining}))
+                              true wrap-value
+                              true (assoc :replace-path (conj path offset))))
+                          xs))
 
-                      (and xs (seqable? xs))
-                      (let [count-opts  (if (counted? xs)
-                                          {:count (count xs)}
-                                          (bounded-count-opts (:n fetch-opts) xs))
-                            children (into []
-                                           (comp (if (number? (:n fetch-opts)) (drop+take-xf fetch-opts) identity)
-                                                 (map-indexed (fn [i x]
-                                                                #_(when graph
-                                                                    (let [parent (get-vertex graph path xs)
-                                                                          child (get-vertex graph (conj path (+ i offset)) x)]
-                                                                      (arrowic/with-graph graph
-                                                                        (arrowic/insert-edge! parent child :label budget))))
+                    (and xs (seqable? xs))
+                    (let [count-opts  (if (counted? xs)
+                                        {:count (count xs)}
+                                        (bounded-count-opts (:n fetch-opts) xs))
+                          fetch-opts (cond-> fetch-opts
+                                       (:n fetch-opts)
+                                       (update :n min @!budget))
+                          children (into []
+                                         (comp (if (number? (:n fetch-opts)) (drop+take-xf fetch-opts) identity)
+                                               (map-indexed (fn [i x]
+                                                              #_(when graph
+                                                                  (let [parent (get-vertex graph path xs)
+                                                                        child (get-vertex graph (conj path (+ i offset)) x)]
+                                                                    (arrowic/with-graph graph
+                                                                      (arrowic/insert-edge! parent child :label budget))))
 
-                                                                (describe x (-> opts
-                                                                                (dissoc :offset)
-                                                                                (update :depth-budget dec)
-                                                                                (update :path conj (+ i offset))) (conj current-path i))))
-                                                 (remove nil?))
-                                           (ensure-sorted xs))
-                            {:keys [count]} count-opts
-                            offset (or (-> children peek :path peek) 0)]
+                                                              (describe x (-> opts
+                                                                              (dissoc :offset)
+                                                                              (update :path conj (+ i offset))) (conj current-path i))))
+                                               (remove nil?))
+                                         (ensure-sorted xs))
+                          {:keys [count]} count-opts
+                          offset (or (-> children peek :path peek) -1)]
+                      (cond-> children
+                        (or (not count) (< (inc offset) count))
 
-                        (cond-> children
-                          (or (not count) (and (pos? offset) (< (inc offset) count)))
+                        (conj (with-viewer* :elision
+                                (cond-> (assoc count-opts :offset (inc offset) :path path :source {:count count :offset offset :< (< (inc offset) count)})
+                                  count (assoc :remaining (- count (inc offset))))))))
 
-                          (conj (with-viewer* :elision
-                                  (cond-> (assoc count-opts :offset (inc offset) :path path :source {:count count :offset offset :< (< (inc offset) count)})
-                                    count (assoc :remaining (- count (inc offset))))))))
+                    :else ;; leaf value
+                    xs))))))
 
-                      :else ;; leaf value
-                      xs)))))))
-
-
+#_
+(let [value (reduce (fn [acc i] (vector #_i acc)) :fin (range 30 0 -1))
+      desc (describe value {:budget 5})
+      elision (nextjournal.clerk.viewer-test/find-elision desc)
+      more (describe value (:nextjournal/value elision))]
+  (desc->values (merge-descriptions desc more)))
 
 
 (comment
@@ -464,39 +484,19 @@
   (describe {1 [2]})
   (describe (with-viewer* (->Form '(fn [name] (html [:<> "Hello " name]))) "James")))
 
-
-(defn desc->values
-  "Takes a `description` and returns its value. Inverse of `describe`. Mostly useful for debugging."
-  [desc]
-  (let [x (value desc)
-        viewer (viewer desc)]
-    (if (= viewer :elision)
-      '…
-      (cond->> x
-        (vector? x)
-        (into (case (:name viewer) (:map :table) {} [])
-              (map desc->values))))))
-
-#_(desc->values (describe [1 [2 {:a :b} 2] 3 (range 100)]))
-#_(desc->values (describe (with-viewer* :table (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))))
-
 (defn path-to-value [path]
   (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
 
 (defn merge-descriptions [root more]
-  (let [path-to-val (path-to-value (:path more))
-        val-at-path (get-in root path-to-val)]
-    (if (map? val-at-path) ;; depth elision at path
-      (assoc-in root (butlast path-to-val) (:nextjournal/value more))
-      (update-in root path-to-val
-                 (fn [value]
-                   (let [{:keys [offset path]} (-> value peek :nextjournal/value)
-                         path-from-value (conj path offset)
-                         path-from-more (or (:replace-path more) ;; string case, TODO find a better way to unify
-                                            (-> more :nextjournal/value first :path))]
-                     (when (not= path-from-value path-from-more)
-                       (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more})))
-                     (into (pop value) (:nextjournal/value more))))))))
+  (update-in root (path-to-value (:path more))
+             (fn [value]
+               (let [{:keys [offset path]} (-> value peek :nextjournal/value)
+                     path-from-value (conj path offset)
+                     path-from-more (or (:replace-path more) ;; string case, TODO find a better way to unify
+                                        (-> more :nextjournal/value first :path))]
+                 (when (not= path-from-value path-from-more)
+                   (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more})))
+                 (into (pop value) (:nextjournal/value more))))))
 
 
 (defn assign-closing-parens
