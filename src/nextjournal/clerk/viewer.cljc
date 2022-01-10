@@ -341,42 +341,6 @@
 
 
 (declare with-viewer* assign-closing-parens)
-(declare get-vertex)
-(declare desc->values)
-
-(comment ;; description viz using arrowic
-  (require '[arrowic.core :as arrowic])
-  (def arrowic-viewer (arrowic/create-viewer (arrowic/create-graph)))
-  (defn get-vertex [{:keys [graph !path->vertex]} path x]
-    (or (@!path->vertex path)
-        (do
-          (arrowic/with-graph graph
-            (swap! !path->vertex assoc path (arrowic/insert-vertex! (apply str (take 20 (pr-str x))))))
-          (@!path->vertex path))
-        (throw (ex-info "bad" {}))))
-  (defn setup-arrowic-graph []
-    {:graph (arrowic/create-graph)
-     :!path->vertex (atom {})
-     :insert-edge! (fn [{:as opts :keys [graph !path->vertex path !budget]} child-path xs x]
-                     (let [parent (get-vertex opts path xs)
-                           child (get-vertex opts child-path x)]
-                       (arrowic/with-graph graph
-                         (arrowic/insert-edge! parent child :label @!budget))))}))
-
-(defn desc->values
-  "Takes a `description` and returns its value. Inverse of `describe`. Mostly useful for debugging."
-  [desc]
-  (let [x (value desc)
-        viewer (viewer desc)]
-    (if (= viewer :elision)
-      '…
-      (cond->> x
-        (vector? x)
-        (into (case (:name viewer) (:map :table) {} [])
-              (map desc->values))))))
-
-#_(desc->values (describe [1 [2 {:a :b} 2] 3 (range 100)]))
-#_(desc->values (describe (with-viewer* :table (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))))
 
 (defn describe
   "Returns a subset of a given `value`."
@@ -385,7 +349,7 @@
   ([xs opts]
    (assign-closing-parens
     (describe xs (merge #?(:clj (some-> 'setup-arrowic-graph resolve (apply [])))
-                        {:!budget (atom 20) :path [] :viewers (process-fns (get-viewers *ns* (viewers xs)))} opts) [])))
+                        {:!budget (atom 200) :path [] :viewers (process-fns (get-viewers *ns* (viewers xs)))} opts) [])))
   ([xs opts current-path]
    (let [{:as opts :keys [!budget graph viewers path offset]} (merge {:offset 0} opts)
          wrapped-value (try (wrapped-with-viewer xs viewers) ;; TODO: respect `viewers` on `xs`
@@ -400,7 +364,6 @@
      (when-not descend?
        (swap! !budget #(max (dec %) 0)))
      (merge {:path path}
-            (when (and graph (empty? path)) {:graph graph})
             (dissoc wrapped-value [:nextjournal/value :nextjournal/viewer])
             (with-viewer* (cond-> viewer (map? viewer) (dissoc viewer :pred :transform-fn))
               (cond descend?
@@ -434,11 +397,9 @@
                                        (update :n min @!budget))
                           children (into []
                                          (comp (if (number? (:n fetch-opts)) (drop+take-xf fetch-opts) identity)
-                                               (map-indexed (fn [i x]
-                                                              (when graph ((:insert-edge! opts) opts (conj path (+ i offset)) xs x))
-                                                              (describe x (-> opts
-                                                                              (dissoc :offset)
-                                                                              (update :path conj (+ i offset))) (conj current-path i))))
+                                               (map-indexed (fn [i x] (describe x (-> opts
+                                                                                      (dissoc :offset)
+                                                                                      (update :path conj (+ i offset))) (conj current-path i))))
                                                (remove nil?))
                                          (ensure-sorted xs))
                           {:keys [count]} count-opts
@@ -446,27 +407,12 @@
                       (cond-> children
                         (or (not count) (< (inc offset) count))
 
-                        (conj (do (when graph ((:insert-edge! opts) opts (conj path (inc offset)) xs '...))
-                                  (with-viewer* :elision
-                                    (cond-> (assoc count-opts :offset (inc offset) :path path :source {:count count :offset offset :< (< (inc offset) count)})
-                                      count (assoc :remaining (- count (inc offset)))))))))
+                        (conj (with-viewer* :elision
+                                (cond-> (assoc count-opts :offset (inc offset) :path path)
+                                  count (assoc :remaining (- count (inc offset))))))))
 
                     :else ;; leaf value
                     xs))))))
-
-#_
-(let [value (reduce (fn [acc i] (vector #_i acc)) :fin (range 30 0 -1))
-      desc (describe value {:budget 5})
-      elision (nextjournal.clerk.viewer-test/find-elision desc)
-      more (describe value (:nextjournal/value elision))]
-  (desc->values (merge-descriptions desc more)))
-
-
-(comment
-  (let [{:as desc :keys [graph]} (describe (reduce (fn [acc i] (vector  i #_[i (inc i)] acc)) (range 30 0 -1)))]
-    (when graph (arrowic/view arrowic-viewer graph))
-    (desc->values desc)))
-
 
 (comment
   (describe 123)
@@ -484,6 +430,21 @@
   (describe (range))
   (describe {1 [2]})
   (describe (with-viewer* (->Form '(fn [name] (html [:<> "Hello " name]))) "James")))
+
+(defn desc->values
+  "Takes a `description` and returns its value. Inverse of `describe`. Mostly useful for debugging."
+  [desc]
+  (let [x (value desc)
+        viewer (viewer desc)]
+    (if (= viewer :elision)
+      '…
+      (cond->> x
+        (vector? x)
+        (into (case (:name viewer) (:map :table) {} [])
+              (map desc->values))))))
+
+#_(desc->values (describe [1 [2 {:a :b} 2] 3 (range 100)]))
+#_(desc->values (describe (with-viewer* :table (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))))
 
 (defn path-to-value [path]
   (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
