@@ -79,9 +79,11 @@
                       blob-id (:blob-id (viewer/value x))]
                   [:div {:class ["viewer" "overflow-x-auto"
                                  (when (keyword? viewer)
-                                   (str "viewer-" (name viewer)))
+                                   (str "viewer-" (name viewer)
+                                        (when-not (= viewer :markdown) " not-prose")))
                                  (when-let [inner-viewer-name (some-> x viewer/value viewer/viewer :name name)]
-                                   (str "viewer-" inner-viewer-name))
+                                   (str "viewer-" inner-viewer-name)
+                                   (when-not (= inner-viewer-name "markdown") " not-prose"))
                                  (case (or (viewer/width x) (case viewer (:code :code-folded) :wide :prose))
                                    :wide "w-full max-w-wide"
                                    :full "w-full"
