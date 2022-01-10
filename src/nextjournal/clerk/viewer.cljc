@@ -157,8 +157,8 @@
 
 (defn fetch-all [_ x] x)
 
-(defn- wrapped-var? [x]
-  (get x :nextjournal.clerk/wrapped-var))
+(defn- var-from-def? [x]
+  (get x :nextjournal.clerk/var-from-def))
 
 (declare !viewers)
 
@@ -175,7 +175,7 @@
    {:pred boolean? :render-fn '(fn [x] (v/html [:span.syntax-bool.inspected-value (str x)]))}
    {:pred fn? :name :fn :render-fn '(fn [x] (v/html [:span.inspected-value [:span.syntax-tag "#function"] "[" x "]"]))}
    {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :fetch-opts {:n 2}}
-   {:pred wrapped-var? :transform-fn (fn [x] (-> x :nextjournal.clerk/wrapped-var deref))}
+   {:pred var-from-def? :transform-fn (fn [x] (-> x :nextjournal.clerk/var-from-def deref))}
    {:pred vector? :render-fn 'v/coll-viewer :opening-paren "[" :closing-paren "]" :fetch-opts {:n 20}}
    {:pred set? :render-fn 'v/coll-viewer :opening-paren "#{" :closing-paren "}" :fetch-opts {:n 20}}
    {:pred sequential? :render-fn 'v/coll-viewer :opening-paren "(" :closing-paren ")" :fetch-opts {:n 20}}

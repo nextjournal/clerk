@@ -58,8 +58,8 @@
      {:result ret#
       :time-ms (/ (double (- (. System (nanoTime)) start#)) 1000000.0)}))
 
-(defn- wrapped-var [var]
-  {::wrapped-var var})
+(defn- var-from-def [var]
+  {::var-from-def var})
 
 (defn- lookup-cached-result [results-last-run introduced-var hash cas-hash visibility]
   (try
@@ -67,7 +67,7 @@
                     (thaw-from-cas cas-hash))]
       (when introduced-var
         (intern *ns* (-> introduced-var symbol name symbol) value))
-      (wrapped-with-metadata (if introduced-var (wrapped-var introduced-var) value) visibility hash))
+      (wrapped-with-metadata (if introduced-var (var-from-def introduced-var) value) visibility hash))
     (catch Exception _e
       ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
       #_(prn :thaw-error e)
@@ -97,7 +97,7 @@
     (let [blob-id (cond no-cache? (view/->hash-str var-value)
                         (fn? var-value) nil
                         :else hash)]
-      (wrapped-with-metadata (cond-> result introduced-var wrapped-var) visibility blob-id))))
+      (wrapped-with-metadata (cond-> result introduced-var var-from-def) visibility blob-id))))
 
 (defn- ensure-cache-dir! []
   (let [cache-dir (config/cache-dir)]
