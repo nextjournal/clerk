@@ -36,15 +36,15 @@
 ;; * Default for `1 < ratio < 2` and `content width <= intrinsic width`
 
 (clerk/html
-  [:figure.not-prose
+  [:figure
    [:img
     {:class "w-full"
      :src "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg"}]
-   [:figcaption.max-w-prose.px-8.text-sm.text-slate-500.sans-serif.mt-2
+   [:figcaption.max-w-prose.text-sm.text-slate-500.sans-serif.mt-2
     "Content width, height based on aspect ratio"]])
 
 (clerk/html
-  [:figure.not-prose
+  [:figure
    [:img
     {:class "w-full object-cover h-[300px]"
      :src "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg"}]
@@ -56,14 +56,14 @@
 ;; * Default for `ratio <= 1` and `intrinsic width <= content width`
 
 (clerk/html
-  [:figure.not-prose.flex.flex-col.items-center
+  [:figure.flex.flex-col.items-center
    [:img
     {:src "https://etc.usf.edu/clipart/36600/36667/thermos_36667_sm.gif"}]
    [:figcaption.text-sm.text-slate-500.sans-serif.mt-2.text-center
     "Intrinsic width, height based on aspect ratio"]])
 
 (clerk/html
-  [:figure.not-prose.flex.flex-col.items-center
+  [:figure.flex.flex-col.items-center
    [:img.object-contain
     {:class "object-contain w-[300px] h-[300px]"
      :src "https://etc.usf.edu/clipart/186600/186669/186669-trees-in-the-winter_sm.gif"}]
@@ -78,20 +78,20 @@
 ;; ### Single row, auto-sizing cells
 
 (clerk/html
-  [:div.not-prose.grid.grid-cols-3.gap-6
-   [:figure.not-prose.flex.flex-col.items-center.justify-end
+  [:div.grid.grid-cols-3.gap-6
+   [:figure.flex.flex-col.items-center.justify-end
     [:img
      {:class "object-contain"
       :src "https://etc.usf.edu/clipart/16200/16224/snowflake3_16224_sm.gif"}]
     [:figcaption.text-sm.text-slate-500.sans-serif.mt-2.text-center
      "1-1"]]
-   [:figure.not-prose.flex.flex-col.items-center.justify-end
+   [:figure.flex.flex-col.items-center.justify-end
     [:img
      {:class "object-contain"
       :src "https://etc.usf.edu/clipart/16200/16226/snowflake5_16226_sm.gif"}]
     [:figcaption.text-sm.text-slate-500.sans-serif.mt-2.text-center
      "1-2"]]
-   [:figure.not-prose.flex.flex-col.items-center.justify-end
+   [:figure.flex.flex-col.items-center.justify-end
     [:img
      {:class "object-contain"
       :src "https://etc.usf.edu/clipart/16200/16228/snowflake6_16228_sm.gif"}]
@@ -101,50 +101,50 @@
 ;; ### Multiple rows, fixed layout (4 columns), fixed cell size
 
 (clerk/html
-  [:div.not-prose.grid.grid-cols-4.gap-6
-   [:figure.not-prose.flex.flex-col.items-center.justify-end
+  [:div.grid.grid-cols-4.gap-6
+   [:figure.flex.flex-col.items-center.justify-end
     [:img
      {:class "object-contain w-[100px] h-[100px]"
       :src "https://etc.usf.edu/clipart/16200/16224/snowflake3_16224_sm.gif"}]
     [:figcaption.text-sm.text-slate-500.sans-serif.mt-2.text-center
      "1-1"]]
-   [:figure.not-prose.flex.flex-col.items-center.justify-end
+   [:figure.flex.flex-col.items-center.justify-end
     [:img
      {:class "object-contain w-[100px] h-[100px]"
       :src "https://etc.usf.edu/clipart/16200/16226/snowflake5_16226_sm.gif"}]
     [:figcaption.text-sm.text-slate-500.sans-serif.mt-2.text-center
      "1-2"]]
-   [:figure.not-prose.flex.flex-col.items-center.justify-end
+   [:figure.flex.flex-col.items-center.justify-end
     [:img
      {:class "object-contain w-[100px] h-[100px]"
       :src "https://etc.usf.edu/clipart/16200/16228/snowflake6_16228_sm.gif"}]
     [:figcaption.text-sm.text-slate-500.sans-serif.mt-2.text-center
      "1-3"]]
-   [:figure.not-prose.flex.flex-col.items-center.justify-end
+   [:figure.flex.flex-col.items-center.justify-end
     [:img
      {:class "object-contain w-[100px] h-[100px]"
       :src "https://etc.usf.edu/clipart/16200/16215/snowflake1_16215_sm.gif"}]
     [:figcaption.text-sm.text-slate-500.sans-serif.mt-2.text-center
      "1-4"]]
-   [:figure.not-prose.flex.flex-col.items-center.justify-end
+   [:figure.flex.flex-col.items-center.justify-end
     [:img
      {:class "object-contain w-[100px] h-[100px]"
       :src "https://etc.usf.edu/clipart/16200/16223/snowflake2_16223_sm.gif"}]
     [:figcaption.text-sm.text-slate-500.sans-serif.mt-2.text-center
      "2-1"]]
-   [:figure.not-prose.flex.flex-col.items-center.justify-end
+   [:figure.flex.flex-col.items-center.justify-end
     [:img
      {:class "object-contain w-[100px] h-[100px]"
       :src "https://etc.usf.edu/clipart/16200/16229/snowflake7_16229_sm.gif"}]
     [:figcaption.text-sm.text-slate-500.sans-serif.mt-2.text-center
      "2-2"]]
-   [:figure.not-prose.flex.flex-col.items-center.justify-end
+   [:figure.flex.flex-col.items-center.justify-end
     [:img
      {:class "object-contain w-[100px] h-[100px]"
       :src "https://etc.usf.edu/clipart/16200/16236/snowflake13_16236_sm.gif"}]
     [:figcaption.text-sm.text-slate-500.sans-serif.mt-2.text-center
      "2-3"]]
-   [:figure.not-prose.flex.flex-col.items-center.justify-end
+   [:figure.flex.flex-col.items-center.justify-end
     [:img
      {:class "object-contain w-[100px] h-[100px]"
       :src "https://etc.usf.edu/clipart/16200/16237/snowflake14_16237_sm.gif"}]
