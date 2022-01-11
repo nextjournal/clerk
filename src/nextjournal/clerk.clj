@@ -59,13 +59,21 @@
       :time-ms (/ (double (- (. System (nanoTime)) start#)) 1000000.0)}))
 
 (defn- var-from-def [var]
-  {::var-from-def var})
+  (let [resolved-var (cond (var? var)
+                           var
+
+                           (symbol? var)
+                           (find-var var)
+
+                           :else
+                           (throw (ex-info "Unable to resolve into a variable" {:data var})))]
+    {::var-from-def resolved-var}))
 
 (defn- lookup-cached-result [results-last-run introduced-var hash cas-hash visibility]
   (try
     (let [value (or (get results-last-run hash)
                     (thaw-from-cas cas-hash))]
-      (when introduced-var
+      (when (and introduced-var (not (::var-from-def value)))
         (intern *ns* (-> introduced-var symbol name symbol) value))
       (wrapped-with-metadata (if introduced-var (var-from-def introduced-var) value) visibility hash))
     (catch Exception _e
