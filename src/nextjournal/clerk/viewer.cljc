@@ -392,7 +392,7 @@
                                         {:count (count xs)}
                                         (bounded-count-opts (:n fetch-opts) xs))
                           fetch-opts (cond-> fetch-opts
-                                       (:n fetch-opts)
+                                       (and (:n fetch-opts) (not (map-entry? xs)))
                                        (update :n min @!budget))
                           children (into []
                                          (comp (if (number? (:n fetch-opts)) (drop+take-xf fetch-opts) identity)
