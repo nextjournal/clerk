@@ -215,27 +215,32 @@
    {:pred string? :render-fn (quote v/string-viewer) :fetch-opts {:n 100}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))}])
 
+(defn- process-fn [{:as viewer :keys [pred fetch-fn render-fn transform-fn]}]
+  ;; TODO: simplify with own type for things that should not be transmitted to the
+  ;; browser (`pred`, `fetch-fn` & `transform-fn`)
+  ;; also remove `symbol?` checks and let viewers use `(quote my-sym)` instead of `'my-sym`
+  (let [symbol-or-not-ifn? #(and % (or (symbol? %) (not (ifn? %))))
+        eval-or-to-form    #?(:clj #(->Fn+Form '(constantly false) (eval %))
+                              :cljs *eval*)
+        update-render?     #?(:clj (and render-fn (not (form? render-fn)))
+                              :cljs (and render-fn (not (fn+form? render-fn))))
+        update-render-fn   #?(:clj ->Form
+                              :cljs form->fn+form)]
+    (cond-> viewer
+      (symbol-or-not-ifn? pred)
+      (update :pred eval-or-to-form)
+
+      (symbol-or-not-ifn? transform-fn)
+      (update :transform-fn eval-or-to-form)
+
+      (and fetch-fn (not (ifn? fetch-fn)))
+      (update :fetch-fn eval-or-to-form)
+
+      update-render?
+      (update :render-fn update-render-fn))))
+
 (defn process-fns [viewers]
-  (into []
-        (map (fn [{:as viewer :keys [pred fetch-fn render-fn transform-fn]}]
-               ;; TODO: simplify with own type for things that should not be transmitted to the
-               ;; browser (`pred`, `fetch-fn` & `transform-fn`)
-               ;; also remove `symbol?` checks and let viewers use `(quote my-sym)` instead of `'my-sym`
-               (cond-> viewer
-                 (and pred (or (symbol? pred) (not (ifn? pred))))
-                 (update :pred #?(:cljs *eval* :clj #(->Fn+Form '(constantly false) (eval %))))
-
-                 (and transform-fn (or (symbol? transform-fn) (not (ifn? transform-fn))))
-                 (update :transform-fn #?(:cljs *eval* :clj #(->Fn+Form '(constantly false) (eval %))))
-
-                 (and fetch-fn (not (ifn? fetch-fn)))
-                 (update :fetch-fn #?(:cljs *eval* :clj #(->Fn+Form '(constantly false) (eval %))))
-
-                 #?@(:clj [(and render-fn (not (form? render-fn)))
-                           (update :render-fn ->Form)]
-                     :cljs [(and render-fn (not (fn+form? render-fn)))
-                            (update :render-fn form->fn+form)]))))
-        viewers))
+  (into [] (map process-fn) viewers))
 
 (defn process-viewers [viewers]
   #?(:clj (process-fns viewers)
