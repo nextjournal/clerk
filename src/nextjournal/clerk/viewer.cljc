@@ -196,7 +196,9 @@
    {:name :eval! :render-fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
    {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
     :fetch-fn (fn [{:as opts :keys [describe-fn offset]} xs]
-                (-> (cond-> (update xs :rows describe-fn opts [])
+                ;; TODO: use budget per row for table
+                ;; TODO: opt out of eliding cols
+                (-> (cond-> (update xs :rows describe-fn (dissoc opts :!budget) [])
                       (pos? offset) :rows)
                     (assoc :path [:rows] :replace-path [offset])
                     (dissoc :nextjournal/viewers)))}
@@ -360,7 +362,7 @@
                      (count path))
          xs (value wrapped-value)]
      #_(prn :xs xs :type (type xs) :path path :current-path current-path)
-     (when-not descend?
+     (when (and !budget (not descend?) (not fetch-fn))
        (swap! !budget #(max (dec %) 0)))
      (merge {:path path}
             (dissoc wrapped-value [:nextjournal/value :nextjournal/viewer])
@@ -392,7 +394,7 @@
                                         {:count (count xs)}
                                         (bounded-count-opts (:n fetch-opts) xs))
                           fetch-opts (cond-> fetch-opts
-                                       (and (:n fetch-opts) (not (map-entry? xs)))
+                                       (and (:n fetch-opts) !budget (not (map-entry? xs)))
                                        (update :n min @!budget))
                           children (into []
                                          (comp (if (number? (:n fetch-opts)) (drop+take-xf fetch-opts) identity)
