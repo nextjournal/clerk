@@ -318,6 +318,7 @@
          "viewer_api_meta"
          "viewers/html"
          "viewers/image"
+         "viewers/image_layouts"
          "viewers/markdown"
          "viewers/plotly"
          "viewers/table"
