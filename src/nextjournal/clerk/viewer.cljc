@@ -157,8 +157,6 @@
 
 (def elide-string-length 100)
 
-(declare with-viewer*)
-
 (defn fetch-all [_ x] x)
 
 (declare !viewers)
@@ -281,25 +279,33 @@
 (defn find-named-viewer [viewers viewer-name]
   (first (filter (comp #{viewer-name} :name) viewers)))
 
+(defn- wrap-with-selected-viewer [x selected-viewer viewers]
+  (cond (keyword? selected-viewer)
+        (if-let [{:as named-viewer :keys [transform-fn]} (find-named-viewer viewers selected-viewer)]
+          (wrap-value (cond-> x transform-fn transform-fn) named-viewer)
+          (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
+        (instance? Form selected-viewer)
+        (wrap-value x selected-viewer)))
+
+(declare wrapped-with-viewer)
+
+(defn- transform+render+wrap-with-viewer [val matching-viewer viewers]
+  (let [{:keys [render-fn transform-fn]} matching-viewer
+        val (cond-> val transform-fn transform-fn)]
+    (if (and transform-fn (not render-fn))
+      (wrapped-with-viewer val viewers)
+      (wrap-value val matching-viewer))))
+
 (defn wrapped-with-viewer
   ([x] (wrapped-with-viewer x default-viewers))
   ([x viewers]
    (if-let [selected-viewer (viewer x)]
-     (cond (keyword? selected-viewer)
-           (if-let [{:as named-viewer :keys [transform-fn]} (find-named-viewer viewers selected-viewer)]
-             (wrap-value (cond-> x transform-fn transform-fn) named-viewer)
-             (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
-           (instance? Form selected-viewer)
-           (wrap-value x selected-viewer))
+     (wrap-with-selected-viewer x selected-viewer viewers)
      (let [val (value x)]
        (loop [v viewers]
          (if-let [{:as matching-viewer :keys [pred]} (first v)]
            (if (and (ifn? pred) (pred val))
-             (let [{:keys [render-fn transform-fn]} matching-viewer
-                   val (cond-> val transform-fn transform-fn)]
-               (if (and transform-fn (not render-fn))
-                 (wrapped-with-viewer val viewers)
-                 (wrap-value val matching-viewer)))
+             (transform+render+wrap-with-viewer val matching-viewer viewers)
              (recur (rest v)))
            (throw (ex-info (str "cannot find matchting viewer for `" (pr-str x) "`") {:viewers viewers :x val}))))))))
 
