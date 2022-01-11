@@ -81,10 +81,9 @@
 (deftest describe
   (is (match? {:nextjournal/value 123
                :nextjournal/viewer {:render-fn
-                                    {:form
-                                     {:form '(fn [x] (v/html
-                                                      [:span.syntax-number.inspected-value
-                                                       (if (js/Number.isNaN x) "NaN" (str x))]))}}}}
+                                    {:form '(fn [x] (v/html
+                                                     [:span.syntax-number.inspected-value
+                                                      (if (js/Number.isNaN x) "NaN" (str x))]))}}}
               (viewer/describe 123)))
 
   (is (match? {:nextjournal/value [{:nextjournal/value [{:nextjournal/value :hello}
@@ -94,7 +93,7 @@
                                                                               :nextjournal/viewer any?}
                                                                              {:nextjournal/value 3
                                                                               :nextjournal/viewer any?}]
-                                                         :nextjournal/viewer {:render-fn {:form {:form 'v/coll-viewer}}}}]
+                                                         :nextjournal/viewer {:render-fn {:form 'v/coll-viewer}}}]
                                     :nextjournal/viewer {:name :map-entry}}]
                :nextjournal/viewer {:name :map}}
               (viewer/describe {:hello [1 2 3]}))))

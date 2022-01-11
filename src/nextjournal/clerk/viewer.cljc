@@ -17,9 +17,13 @@
   (#?(:clj invoke :cljs -invoke) [this x y]
     ((:fn this) x y)))
 
-
 (defn fn+form? [x]
-  (instance? Fn+Form x))
+  (= (str Fn+Form)
+     (str (type x))))
+
+(defn form? [x]
+  (= (str Form)
+     (str (type x))))
 
 (defn form->fn+form
   ([form]
@@ -229,9 +233,9 @@
                  (and fetch-fn (not (ifn? fetch-fn)))
                  (update :fetch-fn #?(:cljs *eval* :clj #(->Fn+Form '(constantly false) (eval %))))
 
-                 #?@(:clj [(and render-fn (not (instance? Form render-fn)))
+                 #?@(:clj [(and render-fn (not (form? render-fn)))
                            (update :render-fn ->Form)]
-                     :cljs [(and render-fn (not (instance? Fn+Form render-fn)))
+                     :cljs [(and render-fn (not (fn+form? render-fn)))
                             (update :render-fn form->fn+form)]))))
         viewers))
 
