@@ -72,7 +72,6 @@
   (try
     (let [value (or (get results-last-run hash)
                     (let [cached-value (thaw-from-cas cas-hash)]
-                      (prn :intro introduced-var :val cached-value)
                       (when introduced-var
                         (intern *ns* (-> introduced-var symbol name symbol) cached-value))
                       cached-value))]
@@ -126,11 +125,11 @@
         cached-result? (and (not no-cache?)
                             cas-hash
                             (-> cas-hash ->cache-file fs/exists?))]
-    (prn :cached? (cond no-cache? :no-cache
-                        cached-result? true
-                        (fs/exists? digest-file) :no-cas-file
-                        :else :no-digest-file)
-         :hash hash :cas-hash cas-hash :form form)
+    #_(prn :cached? (cond no-cache? :no-cache
+                          cached-result? true
+                          (fs/exists? digest-file) :no-cas-file
+                          :else :no-digest-file)
+           :hash hash :cas-hash cas-hash :form form)
     (ensure-cache-dir!)
     (let [introduced-var (:var analyzed)]
       (or (when cached-result?
