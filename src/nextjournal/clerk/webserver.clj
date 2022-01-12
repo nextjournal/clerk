@@ -98,11 +98,14 @@
 
 (defonce !server (atom nil))
 
-(defn start! [{:keys [port] :or {port 7777}}]
+(defn halt! []
   (when-let [{:keys [port stop-fn]} @!server]
     (stop-fn)
-    (println (str "Webserver already running on " port ", stopped."))
-    (reset! !server nil))
+    (println (str "Webserver running on " port ", stopped."))
+    (reset! !server nil)))
+
+(defn serve! [{:keys [port] :or {port 7777}}]
+  (halt!)
   (try
     (reset! !server {:port port :stop-fn (httpkit/run-server #'app {:port port})})
     (println (str "Clerk webserver started on " port "..."))
