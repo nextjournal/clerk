@@ -46,7 +46,6 @@
   ;; TODO: validate hash and retry or re-compute in case of a mismatch
   (nippy/thaw-from-file (->cache-file hash)))
 
-
 #_(thaw-from-cas (hash+store-in-cas! (range 42)))
 #_(thaw-from-cas "8Vv6q6La171HEs28ZuTdsn9Ukg6YcZwF5WRFZA1tGk2BP5utzRXNKYq9Jf9HsjFa6Y4L1qAAHzMjpZ28TCj1RTyAdx")
 
@@ -58,53 +57,85 @@
      {:result ret#
       :time-ms (/ (double (- (. System (nanoTime)) start#)) 1000000.0)}))
 
+(defn- var-from-def [var]
+  (let [resolved-var (cond (var? var)
+                           var
+
+                           (symbol? var)
+                           (find-var var)
+
+                           :else
+                           (throw (ex-info "Unable to resolve into a variable" {:data var})))]
+    {::var-from-def resolved-var}))
+
+(defn- lookup-cached-result [results-last-run introduced-var hash cas-hash visibility]
+  (try
+    (let [value (or (get results-last-run hash)
+                    (let [cached-value (thaw-from-cas cas-hash)]
+                      (prn :intro introduced-var :val cached-value)
+                      (when introduced-var
+                        (intern *ns* (-> introduced-var symbol name symbol) cached-value))
+                      cached-value))]
+      (wrapped-with-metadata (if introduced-var (var-from-def introduced-var) value) visibility hash))
+    (catch Exception _e
+      ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
+      #_(prn :thaw-error e)
+      nil)))
+
+(defn- cachable-value? [value]
+  (not (or (fn? value)
+           (instance? clojure.lang.IDeref value)
+           (instance? clojure.lang.MultiFn value)
+           (instance? clojure.lang.Namespace value))))
+
+(defn- cache! [digest-file var-value]
+  (try
+    (spit digest-file (hash+store-in-cas! var-value))
+    (catch Exception _e
+      #_(prn :freeze-error e)
+      nil)))
+
+(defn- eval+cache! [form hash digest-file introduced-var no-cache? visibility]
+  (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true] (eval form)))
+        var-value (cond-> result (var? result) deref)
+        no-cache? (or no-cache?
+                      (config/cache-disabled?)
+                      (view/exceeds-bounded-count-limit? var-value))]
+    (when (and (not no-cache?) (cachable-value? var-value))
+      (cache! digest-file var-value))
+    (let [blob-id (cond no-cache? (view/->hash-str var-value)
+                        (fn? var-value) nil
+                        :else hash)]
+      (wrapped-with-metadata (cond-> result introduced-var var-from-def) visibility blob-id))))
+
+(defn- ensure-cache-dir! []
+  (let [cache-dir (config/cache-dir)]
+    (when-not (fs/exists? cache-dir)
+      (fs/create-dirs cache-dir))))
+
 (defn read+eval-cached [results-last-run vars->hash doc-visibility code-string]
-  (let [form (hashing/read-string code-string)
-        {:as analyzed :keys [ns-effect? var]} (hashing/analyze form)
-        hash (hashing/hash vars->hash analyzed)
-        digest-file (->cache-file (str "@" hash))
-        no-cache? (or ns-effect? (hashing/no-cache? form))
-        cas-hash (when (fs/exists? digest-file)
-                   (slurp digest-file))
-        cached? (boolean (and cas-hash (-> cas-hash ->cache-file fs/exists?)))
-        visibility (if-let [fv (hashing/->visibility form)] fv doc-visibility)]
-    #_(prn :cached? (cond no-cache? :no-cache
-                          cached? true
-                          (fs/exists? digest-file) :no-cas-file
-                          :else :no-digest-file)
-           :hash hash :cas-hash cas-hash :form form)
-    (when-not (fs/exists? (config/cache-dir))
-      (fs/create-dirs (config/cache-dir)))
-    (or (when (and (not no-cache?) cached?)
-          (try
-            (let [{:as result :nextjournal/keys [value]} (wrapped-with-metadata (or (get results-last-run hash)
-                                                                                    (thaw-from-cas cas-hash))
-                                                                                visibility
-                                                                                hash)]
-              (when var
-                (intern *ns* (-> var symbol name symbol) value))
-              result)
-            (catch Exception _e
-              ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
-              #_(prn :thaw-error e)
-              nil)))
-        (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true] (eval form)))
-              var-value (cond-> result (var? result) deref)
-              no-cache? (or no-cache?
-                            (config/cache-disabled?)
-                            (view/exceeds-bounded-count-limit? var-value))]
-          (if (fn? var-value)
-            (wrapped-with-metadata var-value visibility nil)
-            (do (when-not (or no-cache?
-                              (instance? clojure.lang.IDeref var-value)
-                              (instance? clojure.lang.MultiFn var-value)
-                              (instance? clojure.lang.Namespace var-value))
-                  (try
-                    (spit digest-file (hash+store-in-cas! var-value))
-                    (catch Exception _e
-                      #_(prn :freeze-error e)
-                      nil)))
-                (wrapped-with-metadata var-value visibility (if no-cache? (view/->hash-str var-value) hash))))))))
+  (let [form           (hashing/read-string code-string)
+        analyzed       (hashing/analyze form)
+        hash           (hashing/hash vars->hash analyzed)
+        digest-file    (->cache-file (str "@" hash))
+        no-cache?      (or (:ns-effect? analyzed)
+                           (hashing/no-cache? form))
+        cas-hash       (when (fs/exists? digest-file)
+                         (slurp digest-file))
+        visibility     (if-let [fv (hashing/->visibility form)] fv doc-visibility)
+        cached-result? (and (not no-cache?)
+                            cas-hash
+                            (-> cas-hash ->cache-file fs/exists?))]
+    (prn :cached? (cond no-cache? :no-cache
+                        cached-result? true
+                        (fs/exists? digest-file) :no-cas-file
+                        :else :no-digest-file)
+         :hash hash :cas-hash cas-hash :form form)
+    (ensure-cache-dir!)
+    (let [introduced-var (:var analyzed)]
+      (or (when cached-result?
+            (lookup-cached-result results-last-run introduced-var hash cas-hash visibility))
+          (eval+cache! form hash digest-file introduced-var no-cache? visibility)))))
 
 #_(read+eval-cached {} {} #{:show} "(subs (slurp \"/usr/share/dict/words\") 0 1000)")
 
