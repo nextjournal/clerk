@@ -46,7 +46,6 @@
   ;; TODO: validate hash and retry or re-compute in case of a mismatch
   (nippy/thaw-from-file (->cache-file hash)))
 
-
 #_(thaw-from-cas (hash+store-in-cas! (range 42)))
 #_(thaw-from-cas "8Vv6q6La171HEs28ZuTdsn9Ukg6YcZwF5WRFZA1tGk2BP5utzRXNKYq9Jf9HsjFa6Y4L1qAAHzMjpZ28TCj1RTyAdx")
 
@@ -72,9 +71,11 @@
 (defn- lookup-cached-result [results-last-run introduced-var hash cas-hash visibility]
   (try
     (let [value (or (get results-last-run hash)
-                    (thaw-from-cas cas-hash))]
-      (when (and introduced-var (not (::var-from-def value)))
-        (intern *ns* (-> introduced-var symbol name symbol) value))
+                    (let [cached-value (thaw-from-cas cas-hash)]
+                      (prn :intro introduced-var :val cached-value)
+                      (when introduced-var
+                        (intern *ns* (-> introduced-var symbol name symbol) cached-value))
+                      cached-value))]
       (wrapped-with-metadata (if introduced-var (var-from-def introduced-var) value) visibility hash))
     (catch Exception _e
       ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
@@ -125,11 +126,11 @@
         cached-result? (and (not no-cache?)
                             cas-hash
                             (-> cas-hash ->cache-file fs/exists?))]
-    #_(prn :cached? (cond no-cache? :no-cache
-                          cached-result? true
-                          (fs/exists? digest-file) :no-cas-file
-                          :else :no-digest-file)
-           :hash hash :cas-hash cas-hash :form form)
+    (prn :cached? (cond no-cache? :no-cache
+                        cached-result? true
+                        (fs/exists? digest-file) :no-cas-file
+                        :else :no-digest-file)
+         :hash hash :cas-hash cas-hash :form form)
     (ensure-cache-dir!)
     (let [introduced-var (:var analyzed)]
       (or (when cached-result?

@@ -26,7 +26,7 @@
             (is (= expected @url*))))))))
 
 (defn- lookup-var-in-*ns* [var-name]
- @(find-var (symbol (str *ns*) var-name)))
+  (find-var (symbol (str *ns*) var-name)))
 
 (deftest read+eval-cached
   (testing "basic eval'ing will give a result with a hash"
@@ -50,8 +50,7 @@
                 (clerk/read+eval-cached {} {} #{:show} "(inc a-var)")))
 
     ;; sneakily change the var under the hood
-    (with-redefs [hashing/no-cache? (constantly true)]
-      (clerk/read+eval-cached {} {} #{:show} "(alter-var-root #'a-var inc)"))
+    (alter-var-root (lookup-var-in-*ns* "a-var") inc)
 
     (testing "the expression is cached and we don't see the change to `a-var`"
       (is (match? {:nextjournal/value 1}
@@ -66,12 +65,8 @@
     ;; ensure "some-var" is a variable in whatever namespace we're running in
     (intern *ns* 'some-var 0)
 
-    (let [{:nextjournal/keys [blob-id]} (clerk/read+eval-cached {} {} #{:show} "(def some-var 99)")]
-      (testing "the variable is properly defined"
-        (is (= 99 (lookup-var-in-*ns* "some-var"))))
-
-      (testing ".. even if we load it from the cache after a fresh start"
-        (is (match? {:nextjournal/value {::clerk/var-from-def #(= "some-var"
-                                                                  (-> % symbol name))}}
-                    (clerk/read+eval-cached {blob-id -100} {} #{:show} "(def some-var 99)")))
-        (is (= -100 (lookup-var-in-*ns* "some-var")))))))
+    (testing "the variable is properly defined"
+      (is (match? {:nextjournal/value {::clerk/var-from-def #(= "some-var"
+                                                                (-> % symbol name))}}
+                  (clerk/read+eval-cached {} {} #{:show} "(def some-var 99)")))
+      (is (= 99 @(lookup-var-in-*ns* "some-var"))))))
