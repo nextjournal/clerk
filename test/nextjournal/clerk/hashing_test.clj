@@ -5,11 +5,9 @@
             [nextjournal.clerk.hashing :as h]
             [weavejester.dependency :as dep]))
 
-
 (defmacro with-ns-binding [ns-sym & body]
   `(binding [*ns* (find-ns ~ns-sym)]
      ~@body))
-
 
 (deftest no-cache?
   (testing "are variables set to no-cache?"
