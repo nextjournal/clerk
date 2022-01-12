@@ -5,7 +5,7 @@
             [edamame.core :as edamame]
             [goog.object]
             [goog.string :as gstring]
-            [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer* with-viewers*] :rename {with-viewer* with-viewer with-viewers* with-viewers}]
+            [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer with-viewers]]
             [nextjournal.devcards :as dc]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.viewer.code :as code]
@@ -391,7 +391,8 @@
   [:span.inspected-value.whitespace-nowrap
    [:span.syntax-tag tag] value])
 
-(defn normalize-viewer [x]
+(defn normalize-viewer
+  [x]
   (if-let [viewer (-> x meta :nextjournal/viewer)]
     (with-viewer viewer x)
     x))
@@ -413,19 +414,25 @@
 
 (declare default-viewers)
 
+(defn maybe-eval [render-fn]
+  (js/console.log :maybe-eval render-fn :eval? (or (symbol? render-fn) (list? render-fn)))
+  (cond-> render-fn
+    (or (symbol? render-fn) (list? render-fn))
+    *eval*))
+
 (defn render-with-viewer [{:as opts :keys [viewers]} viewer value]
-  #_(js/console.log :render-with-viewer {:value value :viewer viewer #_#_ :opts opts})
+  (js/console.log :render-with-viewer {:value value :viewer viewer #_#_ :opts opts})
   (cond (or (fn? viewer) (viewer/fn+form? viewer))
         (viewer value opts)
 
         (and (map? viewer) (:render-fn viewer))
-        (render-with-viewer opts (:render-fn viewer) value)
+        (render-with-viewer opts (maybe-eval (:render-fn viewer)) value)
 
         (keyword? viewer)
         (if-let [{:keys [fetch-opts render-fn]} (viewer/find-named-viewer viewers viewer)]
           (if-not render-fn
             (html (error-badge "no render function for viewer named " (str viewer)))
-            (render-fn value (assoc opts :fetch-opts fetch-opts)))
+            ((maybe-eval render-fn) value (assoc opts :fetch-opts fetch-opts)))
           (html (error-badge "cannot find viewer named " (str viewer))))
 
         :else
@@ -434,12 +441,15 @@
 (defn inspect
   ([x]
    (r/with-let [!expanded-at (r/atom {})]
-     [inspect {:!expanded-at !expanded-at} x]))
-  ([{:as opts :keys [viewers]} x]
+     [inspect {:!expanded-at !expanded-at :recursion 0} x]))
+  ([{:as opts :keys [viewers recursion]} x]
    (let [value (viewer/value x)
          {:as opts :keys [viewers]} (assoc opts :viewers (vec (concat (viewer/viewers x) viewers)))
-         all-viewers (viewer/get-viewers (:scope @!doc) viewers)]
-     (or (when (react/isValidElement value) value)
+         all-viewers (viewer/get-viewers (:scope @!doc) viewers)
+         opts (update opts :recursion inc)]
+     (js/console.log :inspect value)
+     (or (when (< 20 recursion) [:span "reached recursion limit"])
+         (when (react/isValidElement value) value)
          ;; TODO find option to disable client-side viewer selection
          (when-let [viewer (or (viewer/viewer x)
                                (viewer/viewer (viewer/wrapped-with-viewer value all-viewers)))]
@@ -491,7 +501,7 @@
                 id (get id))))
 
 (defn error-viewer [e]
-  (viewer/with-viewer* :code (pr-str e)))
+  (viewer/with-viewer :code (pr-str e)))
 
 
 (dc/defcard inspect-values
@@ -623,6 +633,7 @@
       [inspect @!error]])])
 
 (defn ^:export set-state [{:as state :keys [doc error]}]
+  (js/console.log :set-state state)
   (doseq [cell (viewer/value doc)
           :when (viewer/registration? cell)
           :let [form (viewer/value cell)]]
@@ -874,6 +885,7 @@ black")}]))}
   (html (katex/to-html-string tex-string)))
 
 (defn html-viewer [markup]
+  (js/console.log :html-viewer markup)
   (if (string? markup)
     (html [:div {:dangerouslySetInnerHTML {:__html markup}}])
     (r/as-element markup)))
@@ -969,7 +981,3 @@ black")}]))}
   (sci/eval-form @!sci-ctx f))
 
 (set! *eval* eval-form)
-
-(swap! viewer/!viewers (fn [viewers]
-                         (-> (into {} (map (juxt key (comp viewer/process-fns val))) viewers)
-                             (update :root concat js-viewers))))
