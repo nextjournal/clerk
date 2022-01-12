@@ -239,7 +239,7 @@
 
 #_(file->viewer "notebooks/rule_30.clj")
 
-(defn- stop-watcher! []
+(defn- halt-watcher! []
   (when-let [{:keys [watcher paths]} @!watcher]
     (println "Stopping old watcher for paths" (pr-str paths))
     (beholder/stop watcher)
@@ -259,9 +259,9 @@
   [{:as config
     :keys [browse? watch-paths port show-filter-fn]
     :or {port 7777}}]
-  (webserver/start! {:port port})
+  (webserver/serve! {:port port})
   (reset! !show-filter-fn show-filter-fn)
-  (stop-watcher!)
+  (halt-watcher!)
   (when (seq watch-paths)
     (println "Starting new watcher for paths" (pr-str watch-paths))
     (reset! !watcher {:paths watch-paths
@@ -273,8 +273,8 @@
 (defn halt!
   "Stops the Clerk webserver and file watcher"
   []
-  (webserver/stop!)
-  (stop-watcher!))
+  (webserver/halt!)
+  (halt-watcher!))
 
 #_(serve! {})
 #_(serve! {:browse? true})
