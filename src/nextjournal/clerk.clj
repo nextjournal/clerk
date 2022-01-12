@@ -46,7 +46,6 @@
   ;; TODO: validate hash and retry or re-compute in case of a mismatch
   (nippy/thaw-from-file (->cache-file hash)))
 
-
 #_(thaw-from-cas (hash+store-in-cas! (range 42)))
 #_(thaw-from-cas "8Vv6q6La171HEs28ZuTdsn9Ukg6YcZwF5WRFZA1tGk2BP5utzRXNKYq9Jf9HsjFa6Y4L1qAAHzMjpZ28TCj1RTyAdx")
 
@@ -72,9 +71,11 @@
 (defn- lookup-cached-result [results-last-run introduced-var hash cas-hash visibility]
   (try
     (let [value (or (get results-last-run hash)
-                    (thaw-from-cas cas-hash))]
-      (when (and introduced-var (not (::var-from-def value)))
-        (intern *ns* (-> introduced-var symbol name symbol) value))
+                    (let [cached-value (thaw-from-cas cas-hash)]
+                      (prn :intro introduced-var :val cached-value)
+                      (when introduced-var
+                        (intern *ns* (-> introduced-var symbol name symbol) cached-value))
+                      cached-value))]
       (wrapped-with-metadata (if introduced-var (var-from-def introduced-var) value) visibility hash))
     (catch Exception _e
       ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
@@ -269,6 +270,12 @@
 
 #_(file->viewer "notebooks/rule_30.clj")
 
+(defn- halt-watcher! []
+  (when-let [{:keys [watcher paths]} @!watcher]
+    (println "Stopping old watcher for paths" (pr-str paths))
+    (beholder/stop watcher)
+    (reset! !watcher nil)))
+
 (defn serve!
   "Main entrypoint to Clerk taking an configurations map.
 
@@ -283,12 +290,9 @@
   [{:as config
     :keys [browse? watch-paths port show-filter-fn]
     :or {port 7777}}]
-  (webserver/start! {:port port})
+  (webserver/serve! {:port port})
   (reset! !show-filter-fn show-filter-fn)
-  (when-let [{:keys [watcher paths]} @!watcher]
-    (println "Stopping old watcher for paths" (pr-str paths))
-    (beholder/stop watcher)
-    (reset! !watcher nil))
+  (halt-watcher!)
   (when (seq watch-paths)
     (println "Starting new watcher for paths" (pr-str watch-paths))
     (reset! !watcher {:paths watch-paths
@@ -296,6 +300,12 @@
   (when browse?
     (browse/browse-url (str "http://localhost:" port)))
   config)
+
+(defn halt!
+  "Stops the Clerk webserver and file watcher"
+  []
+  (webserver/halt!)
+  (halt-watcher!))
 
 #_(serve! {})
 #_(serve! {:browse? true})
