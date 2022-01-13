@@ -98,7 +98,7 @@
          :readers {'file (partial with-viewer :file)
                    'object (partial with-viewer :object)
                    'viewer-fn viewer/->viewer-fn
-                   'viewer-eval *eval*}
+                   'viewer-eval #(*eval* %)}
          :features #{:clj}}))
 
 (defn ^:export read-string [s]
@@ -149,7 +149,8 @@
   (if edn
     (try
       (read-string edn)
-      (catch js/Error _e
+      (catch js/Error e
+        (js/console.error #js {:message "sci read error" :edn-string edn :error e})
         ;; TODO: a read error in a viewers `:render-fn` will also cause a read error currently
         ;; Can we be more helpful by surfacing the read error in a viewer?
         (unreadable-edn edn)))
