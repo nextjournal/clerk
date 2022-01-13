@@ -95,8 +95,8 @@
          :read-cond :allow
          :readers {'file (partial with-viewer :file)
                    'object (partial with-viewer :object)
-                   'function+ viewer/form->fn+form
-                   'sci-eval viewer/sci-eval}
+                   'viewer-fn viewer/->viewer-fn
+                   'sci-eval *eval*}
          :features #{:clj}}))
 
 (defn ^:export read-string [s]
@@ -414,15 +414,17 @@
 
 (declare default-viewers)
 
+
 (defn maybe-eval [render-fn]
-  (js/console.log :maybe-eval render-fn :eval? (or (symbol? render-fn) (list? render-fn)))
-  (cond-> render-fn
-    (or (symbol? render-fn) (list? render-fn))
-    *eval*))
+  (if (or (symbol? render-fn) (list? render-fn))
+    (do
+      (js/console.log :needs-eval render-fn)
+      (*eval* render-fn))
+    render-fn))
 
 (defn render-with-viewer [{:as opts :keys [viewers]} viewer value]
-  (js/console.log :render-with-viewer {:value value :viewer viewer #_#_ :opts opts})
-  (cond (or (fn? viewer) (viewer/fn+form? viewer))
+  #_(js/console.log :render-with-viewer {:value value :viewer viewer #_#_ :opts opts})
+  (cond (or (fn? viewer) (viewer/viewer-fn? viewer))
         (viewer value opts)
 
         (and (map? viewer) (:render-fn viewer))
@@ -447,7 +449,6 @@
          {:as opts :keys [viewers]} (assoc opts :viewers (vec (concat (viewer/viewers x) viewers)))
          all-viewers (viewer/get-viewers (:scope @!doc) viewers)
          opts (update opts :recursion inc)]
-     (js/console.log :inspect value)
      (or (when (< 20 recursion) [:span "reached recursion limit"])
          (when (react/isValidElement value) value)
          ;; TODO find option to disable client-side viewer selection
@@ -644,7 +645,7 @@
 
 (dc/defcard eval-viewer
   "Viewers that are lists are evaluated using sci."
-  [inspect (with-viewer (viewer/form->fn+form '(fn [x] (v/html [:h3 "Ohai, " x "! 👋"]))) "Hans")])
+  [inspect (with-viewer (viewer/->viewer-fn '(fn [x] (v/html [:h3 "Ohai, " x "! 👋"]))) "Hans")])
 
 
 (dc/defcard notebook
@@ -673,11 +674,11 @@
   [inspect {:path []
             :viewers
             [{:pred number?
-              :render-fn (viewer/form->fn+form '#(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                                             :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
+              :render-fn (viewer/->viewer-fn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                                           :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
 black")}]))}
-             {:pred vector? :render-fn (viewer/form->fn+form '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1)))}
-             {:pred list? :render-fn (viewer/form->fn+form '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1)))}]}
+             {:pred vector? :render-fn (viewer/->viewer-fn '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1)))}
+             {:pred list? :render-fn (viewer/->viewer-fn '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1)))}]}
    '([0 1 0] [1 0 1])])
 
 (dc/defcard clj-long
@@ -885,7 +886,6 @@ black")}]))}
   (html (katex/to-html-string tex-string)))
 
 (defn html-viewer [markup]
-  (js/console.log :html-viewer markup)
   (if (string? markup)
     (html [:div {:dangerouslySetInnerHTML {:__html markup}}])
     (r/as-element markup)))

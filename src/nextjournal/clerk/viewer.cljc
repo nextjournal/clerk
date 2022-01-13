@@ -5,44 +5,35 @@
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]]
                 :cljs [[reagent.ratom :as ratom]]))
-  #?(:clj (:import [clojure.lang IFn]
-                   [java.lang Throwable])))
+  #?(:clj (:import [java.lang Throwable])))
 
-(defrecord Form [form])
 (defrecord SCIEval [form])
-(defrecord Fn+Form [form fn]
-  IFn
-  (#?(:clj invoke :cljs -invoke) [this x]
-    ((:fn this) x))
-  (#?(:clj invoke :cljs -invoke) [this x y]
-    ((:fn this) x y)))
+(defrecord ViewerFn [form #?(:cljs f)]
+  #?@(:cljs [IFn
+             (-invoke [this x] ((:f this) x))
+             (-invoke [this x y] ((:f this) x y))]))
 
 
-(defn fn+form? [x]
-  (instance? Fn+Form x))
+(defn viewer-fn? [x]
+  (instance? ViewerFn x))
 
-(defn form->fn+form
-  ([form]
-   (map->Fn+Form {:form form :fn (#?(:clj eval :cljs *eval*) form)})))
+(defn ->viewer-fn [form]
+  (map->ViewerFn {:form form :f #?(:clj nil :cljs (*eval* form))}))
 
 #?(:cljs (defn sci-eval [form] (*eval* form)))
 
 #?(:clj
-   (defmethod print-method Fn+Form [v ^java.io.Writer w]
-     (.write w (str "#function+ " (pr-str `~(:form v))))))
-
-#?(:clj
-   (defmethod print-method Form [v ^java.io.Writer w]
-     (.write w (str "#function+ " (pr-str `~(:form v))))))
+   (defmethod print-method ViewerFn [v ^java.io.Writer w]
+     (.write w (str "#viewer-fn " (pr-str `~(:form v))))))
 
 #?(:clj
    (defmethod print-method SCIEval [v ^java.io.Writer w]
      (.write w (str "#sci-eval " (pr-str `~(:form v))))))
 
-#_(binding [*data-readers* {'function+ form->fn+form}]
-    (read-string (pr-str (form->fn+form '(fn [x] x)))))
-#_(binding [*data-readers* {'function+ form->fn+form}]
-    (read-string (pr-str (form->fn+form 'number?))))
+#_(binding [*data-readers* {'viewer-fn ->viewer-fn}]
+    (read-string (pr-str (->viewer-fn '(fn [x] x)))))
+#_(binding [*data-readers* {'viewer-fn ->viewer-fn}]
+    (read-string (pr-str (->viewer-fn 'number?))))
 
 (comment
   (def num? (form->fn+form 'number?))
@@ -220,7 +211,7 @@
    {:pred number? :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))}])
 
 (def all-viewers
-  {:root default-viewers
+  {:root  default-viewers
    :table default-table-cell-viewers})
 
 (defonce
@@ -265,7 +256,7 @@
            (if-let [{:as named-viewer :keys [transform-fn]} (find-named-viewer viewers selected-viewer)]
              (wrap-value (cond-> x transform-fn transform-fn) named-viewer)
              (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
-           (instance? Form selected-viewer)
+           (viewer-fn? selected-viewer)
            (wrap-value x selected-viewer))
      (let [val (value x)]
        (loop [v viewers]
@@ -322,12 +313,17 @@
 
 (declare with-viewer assign-closing-parens)
 
+(defn process-render-fn [{:as viewer :keys [render-fn]}]
+  (cond-> viewer
+    (and render-fn (not (viewer-fn? render-fn)))
+    (update :render-fn ->viewer-fn)))
+
 (defn process-viewer [viewer]
   (if-not (map? viewer)
     viewer
-    (cond-> (dissoc viewer :pred :transform-fn :fetch-fn)
-      (:render-fn viewer)
-      (update :render-fn #?(:clj ->Form :cljs *eval*)))))
+    (-> viewer
+        (dissoc :pred :transform-fn :fetch-fn)
+        process-render-fn)))
 
 #_(process-viewer {:render-fn '(v/html [:h1]) :fetch-fn fetch-all})
 
