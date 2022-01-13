@@ -327,7 +327,7 @@
     viewer
     (cond-> (dissoc viewer :pred :transform-fn :fetch-fn)
       (:render-fn viewer)
-      (update :render-fn ->Form))))
+      (update :render-fn #?(:clj ->Form :cljs *eval*)))))
 
 #_(process-viewer {:render-fn '(v/html [:h1]) :fetch-fn fetch-all})
 
