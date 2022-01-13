@@ -145,14 +145,10 @@
 
 (def elide-string-length 100)
 
-(declare with-viewer)
-
 (defn fetch-all [_ x] x)
 
 (defn- var-from-def? [x]
   (get x :nextjournal.clerk/var-from-def))
-
-(declare !viewers)
 
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
