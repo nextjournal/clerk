@@ -76,14 +76,14 @@
    (into [:div.flex.flex-col.items-center.viewer-notebook]
          (map (fn [x]
                 (let [viewer (viewer/viewer x)
-                      blob-id (:blob-id (viewer/value x))]
+                      blob-id (:blob-id (viewer/value x))
+                      prose? (= viewer :markdown)
+                      inner-viewer-name (some-> x viewer/value viewer/viewer :name)]
                   [:div {:class ["viewer" "overflow-x-auto"
-                                 (when (keyword? viewer)
-                                   (str "viewer-" (name viewer)
-                                        (when-not (= viewer :markdown) " not-prose")))
-                                 (when-let [inner-viewer-name (some-> x viewer/value viewer/viewer :name name)]
-                                   (str "viewer-" inner-viewer-name)
-                                   (when-not (= inner-viewer-name "markdown") " not-prose"))
+                                 (when (keyword? viewer) (str "viewer-" (name viewer)))
+                                 (when-not prose? "not-prose")
+                                 (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
+                                 (when (and prose? inner-viewer-name (not= inner-viewer-name :markdown)) "not-prose")
                                  (case (or (viewer/width x) (case viewer (:code :code-folded) :wide :prose))
                                    :wide "w-full max-w-wide"
                                    :full "w-full"
