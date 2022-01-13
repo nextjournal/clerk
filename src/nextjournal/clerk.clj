@@ -348,6 +348,7 @@
 
 #_(->html-extension "hello.clj")
 
+
 (defn- path-to-url-canonicalize
   "Canonicalizes the system specific path separators in `PATH` (e.g. `\\`
   on MS-Windows) to URL-compatible forward slashes."
@@ -391,7 +392,6 @@
         (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize))))))
 
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
-#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true :live-js? false})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/"})
 #_(build-static-app! {})
 #_(build-static-app! {:live-js? false})

@@ -70,8 +70,7 @@
 (defn get-gsutil [] (str/trim (:out (process/sh ["which" "gsutil"]))))
 
 (def resource->path
-  '{viewer.js "/js/viewer.js"
-    viewer.css "/css/viewer.css"})
+  '{viewer.js "/js/viewer.js"})
 
 (defn upload-to-cas+rewrite-sha [{:keys [resource]}]
   (if-let [target (resource->path resource)]
