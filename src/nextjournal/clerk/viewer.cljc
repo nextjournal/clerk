@@ -4,10 +4,11 @@
             [clojure.datafy :as datafy]
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]]
-                :cljs [[reagent.ratom :as ratom]]))
+                :cljs [[reagent.ratom :as ratom]])
+            [nextjournal.clerk.viewer :as v])
   #?(:clj (:import [java.lang Throwable])))
 
-(defrecord SCIEval [form])
+(defrecord ViewerEval [form])
 (defrecord ViewerFn [form #?(:cljs f)]
   #?@(:cljs [IFn
              (-invoke [this x] ((:f this) x))
@@ -20,15 +21,16 @@
 (defn ->viewer-fn [form]
   (map->ViewerFn {:form form :f #?(:clj nil :cljs (*eval* form))}))
 
-#?(:cljs (defn sci-eval [form] (*eval* form)))
+(defn ->viewer-eval [form]
+  (map->ViewerEval {:form form}))
 
 #?(:clj
    (defmethod print-method ViewerFn [v ^java.io.Writer w]
      (.write w (str "#viewer-fn " (pr-str `~(:form v))))))
 
 #?(:clj
-   (defmethod print-method SCIEval [v ^java.io.Writer w]
-     (.write w (str "#sci-eval " (pr-str `~(:form v))))))
+   (defmethod print-method ViewerEval [v ^java.io.Writer w]
+     (.write w (str "#viewer-eval " (pr-str `~(:form v))))))
 
 #_(binding [*data-readers* {'viewer-fn ->viewer-fn}]
     (read-string (pr-str (->viewer-fn '(fn [x] x)))))
@@ -532,6 +534,9 @@
 (def tex          (partial with-viewer :latex))
 (def hide-result  (partial with-viewer :hide-result))
 (def notebook     (partial with-viewer :clerk/notebook))
+(defn doc-url [path]
+  (->viewer-eval (list 'v/doc-url path)))
+
 
 (defn table
   "Displays `xs` in a table.

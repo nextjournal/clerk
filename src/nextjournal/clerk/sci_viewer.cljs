@@ -96,7 +96,7 @@
          :readers {'file (partial with-viewer :file)
                    'object (partial with-viewer :object)
                    'viewer-fn viewer/->viewer-fn
-                   'sci-eval *eval*}
+                   'viewer-eval *eval*}
          :features #{:clj}}))
 
 (defn ^:export read-string [s]
@@ -391,8 +391,7 @@
   [:span.inspected-value.whitespace-nowrap
    [:span.syntax-tag tag] value])
 
-(defn normalize-viewer
-  [x]
+(defn normalize-viewer [x]
   (if-let [viewer (-> x meta :nextjournal/viewer)]
     (with-viewer viewer x)
     x))
