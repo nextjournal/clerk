@@ -5,7 +5,7 @@
             [edamame.core :as edamame]
             [goog.object]
             [goog.string :as gstring]
-            [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer* with-viewers*] :rename {with-viewer* with-viewer with-viewers* with-viewers}]
+            [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer with-viewers]]
             [nextjournal.devcards :as dc]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.viewer.code :as code]
@@ -95,8 +95,8 @@
          :read-cond :allow
          :readers {'file (partial with-viewer :file)
                    'object (partial with-viewer :object)
-                   'function+ viewer/form->fn+form
-                   'sci-eval viewer/sci-eval}
+                   'viewer-fn viewer/->viewer-fn
+                   'viewer-eval *eval*}
          :features #{:clj}}))
 
 (defn ^:export read-string [s]
@@ -415,7 +415,7 @@
 
 (defn render-with-viewer [{:as opts :keys [viewers]} viewer value]
   #_(js/console.log :render-with-viewer {:value value :viewer viewer #_#_ :opts opts})
-  (cond (or (fn? viewer) (viewer/fn+form? viewer))
+  (cond (or (fn? viewer) (viewer/viewer-fn? viewer))
         (viewer value opts)
 
         (and (map? viewer) (:render-fn viewer))
@@ -491,7 +491,7 @@
                 id (get id))))
 
 (defn error-viewer [e]
-  (viewer/with-viewer* :code (pr-str e)))
+  (viewer/with-viewer :code (pr-str e)))
 
 
 (dc/defcard inspect-values
@@ -633,7 +633,7 @@
 
 (dc/defcard eval-viewer
   "Viewers that are lists are evaluated using sci."
-  [inspect (with-viewer (viewer/form->fn+form '(fn [x] (v/html [:h3 "Ohai, " x "! 👋"]))) "Hans")])
+  [inspect (with-viewer (viewer/->viewer-fn '(fn [x] (v/html [:h3 "Ohai, " x "! 👋"]))) "Hans")])
 
 
 (dc/defcard notebook
@@ -662,11 +662,11 @@
   [inspect {:path []
             :viewers
             [{:pred number?
-              :render-fn (viewer/form->fn+form '#(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                                             :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
+              :render-fn (viewer/->viewer-fn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                                           :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
 black")}]))}
-             {:pred vector? :render-fn (viewer/form->fn+form '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1)))}
-             {:pred list? :render-fn (viewer/form->fn+form '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1)))}]}
+             {:pred vector? :render-fn (viewer/->viewer-fn '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1)))}
+             {:pred list? :render-fn (viewer/->viewer-fn '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1)))}]}
    '([0 1 0] [1 0 1])])
 
 (dc/defcard clj-long
@@ -971,5 +971,5 @@ black")}]))}
 (set! *eval* eval-form)
 
 (swap! viewer/!viewers (fn [viewers]
-                         (-> (into {} (map (juxt key (comp viewer/process-fns val))) viewers)
+                         (-> (into {} (map (juxt key (comp #(into [] (map viewer/process-render-fn) %)  val))) viewers)
                              (update :root concat js-viewers))))

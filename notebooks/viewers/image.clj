@@ -10,7 +10,7 @@
 (clerk/set-viewers! [{:pred bytes?
                       :fetch-fn (fn [_ bytes] {:nextjournal/content-type "image/png"
                                                :nextjournal/value bytes})
-                      :render-fn (fn [blob] (v/html [:img {:src (v/url-for blob)}]))}])
+                      :render-fn '(fn [blob] (v/html [:img {:src (v/url-for blob)}]))}])
 
 (.. (HttpClient/newHttpClient)
     (send (.build (HttpRequest/newBuilder (URI. "https://upload.wikimedia.org/wikipedia/commons/5/57/James_Clerk_Maxwell.png")))
