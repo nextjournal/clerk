@@ -239,28 +239,10 @@
 (def table          #'v/table)
 (def use-headers    #'v/use-headers)
 (def hide-result    #'v/hide-result)
-(defn doc-url [path] (v/->SCIEval (list 'v/doc-url path)))
-
-(defmacro with-viewer
-  [viewer x]
-  (let [viewer# (v/->Form viewer)]
-    `(v/with-viewer* ~viewer# ~x)))
-
-#_(macroexpand '(with-viewer #(v/html [:div %]) 1))
-
-(defmacro with-viewers
-  [viewers x]
-  (let [viewers# (v/process-fns viewers)]
-    `(v/with-viewers* ~viewers# ~x)))
-
-#_(macroexpand '(with-viewers [{:pred number? :render-fn #(v/html [:div %])}] 1))
-
-
-(defmacro set-viewers!
-  ([viewers] (v/set-viewers!* *ns* viewers))
-  ([scope viewers] (v/set-viewers!* scope viewers)))
-
-#_(set-viewers! [])
+(def doc-url        #'v/doc-url)
+(def with-viewer    #'v/with-viewer)
+(def with-viewers   #'v/with-viewers)
+(def set-viewers!   #'v/set-viewers!)
 
 (defn file->viewer
   "Evaluates the given `file` and returns it's viewer representation."

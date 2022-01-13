@@ -5,44 +5,36 @@
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]]
                 :cljs [[reagent.ratom :as ratom]]))
-  #?(:clj (:import [clojure.lang IFn]
-                   [java.lang Throwable])))
+  #?(:clj (:import [java.lang Throwable])))
 
-(defrecord Form [form])
-(defrecord SCIEval [form])
-(defrecord Fn+Form [form fn]
-  IFn
-  (#?(:clj invoke :cljs -invoke) [this x]
-    ((:fn this) x))
-  (#?(:clj invoke :cljs -invoke) [this x y]
-    ((:fn this) x y)))
+(defrecord ViewerEval [form])
+(defrecord ViewerFn [form #?(:cljs f)]
+  #?@(:cljs [IFn
+             (-invoke [this x] ((:f this) x))
+             (-invoke [this x y] ((:f this) x y))]))
 
 
-(defn fn+form? [x]
-  (instance? Fn+Form x))
+(defn viewer-fn? [x]
+  (instance? ViewerFn x))
 
-(defn form->fn+form
-  ([form]
-   (map->Fn+Form {:form form :fn (#?(:clj eval :cljs *eval*) form)})))
+(defn ->viewer-fn [form]
+  (map->ViewerFn {:form form :f #?(:clj nil :cljs (*eval* form))}))
 
-#?(:cljs (defn sci-eval [form] (*eval* form)))
+(defn ->viewer-eval [form]
+  (map->ViewerEval {:form form}))
 
 #?(:clj
-   (defmethod print-method Fn+Form [v ^java.io.Writer w]
-     (.write w (str "#function+ " (pr-str `~(:form v))))))
+   (defmethod print-method ViewerFn [v ^java.io.Writer w]
+     (.write w (str "#viewer-fn " (pr-str `~(:form v))))))
 
 #?(:clj
-   (defmethod print-method Form [v ^java.io.Writer w]
-     (.write w (str "#function+ " (pr-str `~(:form v))))))
+   (defmethod print-method ViewerEval [v ^java.io.Writer w]
+     (.write w (str "#viewer-eval " (pr-str `~(:form v))))))
 
-#?(:clj
-   (defmethod print-method SCIEval [v ^java.io.Writer w]
-     (.write w (str "#sci-eval " (pr-str `~(:form v))))))
-
-#_(binding [*data-readers* {'function+ form->fn+form}]
-    (read-string (pr-str (form->fn+form '(fn [x] x)))))
-#_(binding [*data-readers* {'function+ form->fn+form}]
-    (read-string (pr-str (form->fn+form 'number?))))
+#_(binding [*data-readers* {'viewer-fn ->viewer-fn}]
+    (read-string (pr-str (->viewer-fn '(fn [x] x)))))
+#_(binding [*data-readers* {'viewer-fn ->viewer-fn}]
+    (read-string (pr-str (->viewer-fn 'number?))))
 
 (comment
   (def num? (form->fn+form 'number?))
@@ -153,14 +145,10 @@
 
 (def elide-string-length 100)
 
-(declare with-viewer*)
-
 (defn fetch-all [_ x] x)
 
 (defn- var-from-def? [x]
   (get x :nextjournal.clerk/var-from-def))
-
-(declare !viewers)
 
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
@@ -219,42 +207,16 @@
    {:pred string? :render-fn (quote v/string-viewer) :fetch-opts {:n 100}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))}])
 
-(defn process-fns [viewers]
-  (into []
-        (map (fn [{:as viewer :keys [pred fetch-fn render-fn transform-fn]}]
-               ;; TODO: simplify with own type for things that should not be transmitted to the
-               ;; browser (`pred`, `fetch-fn` & `transform-fn`)
-               ;; also remove `symbol?` checks and let viewers use `(quote my-sym)` instead of `'my-sym`
-               (cond-> viewer
-                 (and pred (or (symbol? pred) (not (ifn? pred))))
-                 (update :pred #?(:cljs *eval* :clj #(->Fn+Form '(constantly false) (eval %))))
-
-                 (and transform-fn (or (symbol? transform-fn) (not (ifn? transform-fn))))
-                 (update :transform-fn #?(:cljs *eval* :clj #(->Fn+Form '(constantly false) (eval %))))
-
-                 (and fetch-fn (not (ifn? fetch-fn)))
-                 (update :fetch-fn #?(:cljs *eval* :clj #(->Fn+Form '(constantly false) (eval %))))
-
-                 #?@(:clj [(and render-fn (not (instance? Form render-fn)))
-                           (update :render-fn ->Form)]
-                     :cljs [(and render-fn (not (instance? Fn+Form render-fn)))
-                            (update :render-fn form->fn+form)]))))
-        viewers))
-
-(defn process-viewers [viewers]
-  #?(:clj (process-fns viewers)
-     :cljs viewers))
-
-(defn processed-default-viewers []
-  {:root (process-viewers default-viewers)
-   :table (process-viewers default-table-cell-viewers)})
+(def all-viewers
+  {:root  default-viewers
+   :table default-table-cell-viewers})
 
 (defonce
   ^{:doc "atom containing a map of `:root` and per-namespace viewers."}
   !viewers
-  (#?(:clj atom :cljs ratom/atom) (processed-default-viewers)))
+  (#?(:clj atom :cljs ratom/atom) all-viewers))
 
-#_(reset! !viewers (processed-default-viewers))
+#_(reset! !viewers all-viewers)
 
 ;; heavily inspired by code from Thomas Heller in shadow-cljs, see
 ;; https://github.com/thheller/shadow-cljs/blob/1708acb21bcdae244b50293d17633ce35a78a467/src/main/shadow/remote/runtime/obj_support.cljc#L118-L144
@@ -278,7 +240,7 @@
     (set? xs) (sort resilient-compare xs)
     :else xs))
 
-(declare with-viewer*)
+(declare with-viewer)
 
 (defn find-named-viewer [viewers viewer-name]
   (first (filter (comp #{viewer-name} :name) viewers)))
@@ -291,7 +253,7 @@
            (if-let [{:as named-viewer :keys [transform-fn]} (find-named-viewer viewers selected-viewer)]
              (wrap-value (cond-> x transform-fn transform-fn) named-viewer)
              (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
-           (instance? Form selected-viewer)
+           (viewer-fn? selected-viewer)
            (wrap-value x selected-viewer))
      (let [val (value x)]
        (loop [v viewers]
@@ -311,8 +273,8 @@
 #_(wrapped-with-viewer (clojure.java.io/file "notebooks"))
 #_(wrapped-with-viewer (md "# Hello"))
 #_(wrapped-with-viewer (html [:h1 "hi"]))
-#_(wrapped-with-viewer (with-viewer* :elision {:remaining 10 :count 30 :offset 19}))
-#_(wrapped-with-viewer (with-viewer* (->Form '(fn [name] (html [:<> "Hello " name]))) "James"))
+#_(wrapped-with-viewer (with-viewer :elision {:remaining 10 :count 30 :offset 19}))
+#_(wrapped-with-viewer (with-viewer (->Form '(fn [name] (html [:<> "Hello " name]))) "James"))
 
 (defn get-viewers
   "Returns all the viewers that apply in precendence of: optional local `viewers`, viewers set per `ns`, as well on the `:root`."
@@ -346,7 +308,21 @@
 #_(sequence (drop+take-xf {}) (range 9))
 
 
-(declare with-viewer* assign-closing-parens)
+(declare with-viewer assign-closing-parens)
+
+(defn process-render-fn [{:as viewer :keys [render-fn]}]
+  (cond-> viewer
+    (and render-fn (not (viewer-fn? render-fn)))
+    (update :render-fn ->viewer-fn)))
+
+(defn process-viewer [viewer]
+  (if-not (map? viewer)
+    viewer
+    (-> viewer
+        (dissoc :pred :transform-fn :fetch-fn)
+        process-render-fn)))
+
+#_(process-viewer {:render-fn '(v/html [:h1]) :fetch-fn fetch-all})
 
 (defn describe
   "Returns a subset of a given `value`."
@@ -354,7 +330,7 @@
    (describe xs {}))
   ([xs opts]
    (assign-closing-parens
-    (describe xs (merge {:!budget (atom (:budget opts 200)) :path [] :viewers (process-fns (get-viewers *ns* (viewers xs)))} opts) [])))
+    (describe xs (merge {:!budget (atom (:budget opts 200)) :path [] :viewers (get-viewers *ns* (viewers xs))} opts) [])))
   ([xs opts current-path]
    (let [{:as opts :keys [!budget viewers path offset]} (merge {:offset 0} opts)
          wrapped-value (try (wrapped-with-viewer xs viewers) ;; TODO: respect `viewers` on `xs`
@@ -371,7 +347,7 @@
        (swap! !budget #(max (dec %) 0)))
      (merge {:path path}
             (dissoc wrapped-value [:nextjournal/value :nextjournal/viewer])
-            (with-viewer* (cond-> viewer (map? viewer) (dissoc viewer :pred :transform-fn))
+            (with-viewer (process-viewer viewer)
               (cond descend?
                     (let [idx (first (drop (count current-path) path))]
                       (describe (cond (or (map? xs) (set? xs)) (nth (seq (ensure-sorted xs)) idx)
@@ -389,7 +365,7 @@
                                 new-offset (min (+ offset (:n fetch-opts)) total)
                                 remaining (- total new-offset)]
                             (cond-> [(subs xs offset new-offset)]
-                              (pos? remaining) (conj (with-viewer* :elision {:path path :count total :offset new-offset :remaining remaining}))
+                              (pos? remaining) (conj (with-viewer :elision {:path path :count total :offset new-offset :remaining remaining}))
                               true wrap-value
                               true (assoc :replace-path (conj path offset))))
                           xs))
@@ -413,7 +389,7 @@
                       (cond-> children
                         (or (not count) (< (inc offset) count))
 
-                        (conj (with-viewer* :elision
+                        (conj (with-viewer :elision
                                 (cond-> (assoc count-opts :offset (inc offset) :path path)
                                   count (assoc :remaining (- count (inc offset))))))))
 
@@ -431,11 +407,11 @@
   (describe (map vector (range)))
   (describe (subs (slurp "/usr/share/dict/words") 0 1000))
   (describe (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
-  (describe (with-viewer* :html [:h1 "hi"]))
-  (describe (with-viewer* :html [:ul (for [x (range 3)] [:li x])]))
+  (describe (with-viewer :html [:h1 "hi"]))
+  (describe (with-viewer :html [:ul (for [x (range 3)] [:li x])]))
   (describe (range))
   (describe {1 [2]})
-  (describe (with-viewer* (->Form '(fn [name] (html [:<> "Hello " name]))) "James")))
+  (describe (with-viewer (->Form '(fn [name] (html [:<> "Hello " name]))) "James")))
 
 (defn desc->values
   "Takes a `description` and returns its value. Inverse of `describe`. Mostly useful for debugging."
@@ -450,7 +426,7 @@
               (map desc->values))))))
 
 #_(desc->values (describe [1 [2 {:a :b} 2] 3 (range 100)]))
-#_(desc->values (describe (with-viewer* :table (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))))
+#_(desc->values (describe (with-viewer :table (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))))
 
 (defn path-to-value [path]
   (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
@@ -503,16 +479,17 @@
 #_(datafy-scope *ns*)
 #_(datafy-scope #'datafy-scope)
 
-(declare with-viewer*)
+(declare with-viewer)
 
 #?(:clj
-   (defn set-viewers!* [scope viewers]
-     (assert (or (#{:root} scope)
-                 (instance? clojure.lang.Namespace scope)
-                 (var? scope)))
-     (let [viewers (process-fns viewers)]
-       (swap! !viewers assoc scope viewers)
-       (with-viewer* :eval! `'(v/set-viewers! ~(datafy-scope scope) ~viewers)))))
+   (defn set-viewers!
+     ([viewers] (set-viewers! *ns* viewers))
+     ([scope viewers]
+      (assert (or (#{:root} scope)
+                  (instance? clojure.lang.Namespace scope)
+                  (var? scope)))
+      (swap! !viewers assoc scope viewers)
+      (with-viewer :eval! `'(v/set-viewers! ~(datafy-scope scope) ~viewers)))))
 
 
 (defn registration? [x]
@@ -524,34 +501,40 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public api
 
-(defn with-viewer*
+(defn with-viewer
   "Wraps given "
   [viewer x]
   (-> x
       wrap-value
-      (assoc :nextjournal/viewer viewer)))
+      (assoc :nextjournal/viewer (cond-> viewer
+                                   (or (list? viewer) (symbol? viewer))
+                                   ->viewer-fn))))
 
-#_(with-viewer- :latex "x^2")
+#_(with-viewer :latex "x^2")
+#_(with-viewer '#(v/html [:h3 "Hello " % "!"]) "x^2")
 
-(defn with-viewers*
+(defn with-viewers
   "Binds viewers to types, eg {:boolean view-fn}"
   [viewers x]
   (-> x
       wrap-value
       (assoc :nextjournal/viewers viewers)))
 
-#_(->> "x^2" (with-viewer* :latex) (with-viewers* [{:name :latex :render-fn :mathjax}]))
+#_(->> "x^2" (with-viewer :latex) (with-viewers [{:name :latex :render-fn :mathjax}]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convience api
-(def html         (partial with-viewer* :html))
-(def md           (partial with-viewer* :markdown))
-(def plotly       (partial with-viewer* :plotly))
-(def vl           (partial with-viewer* :vega-lite))
-(def tex          (partial with-viewer* :latex))
-(def hide-result  (partial with-viewer* :hide-result))
-(def notebook     (partial with-viewer* :clerk/notebook))
+(def html         (partial with-viewer :html))
+(def md           (partial with-viewer :markdown))
+(def plotly       (partial with-viewer :plotly))
+(def vl           (partial with-viewer :vega-lite))
+(def tex          (partial with-viewer :latex))
+(def hide-result  (partial with-viewer :hide-result))
+(def notebook     (partial with-viewer :clerk/notebook))
+(defn doc-url [path]
+  (->viewer-eval (list 'v/doc-url path)))
+
 
 (defn table
   "Displays `xs` in a table.
@@ -566,8 +549,8 @@
    (table {:nextjournal/width :wide} xs))
   ([opts xs]
    (-> (if-let [normalized (normalize-table-data xs)]
-         (with-viewer* :table normalized)
-         (with-viewer* :table-error [xs]))
+         (with-viewer :table normalized)
+         (with-viewer :table-error [xs]))
        (merge opts)
        (update :nextjournal/viewers concat (:table @!viewers)))))
 
@@ -576,6 +559,6 @@
 #_(describe (table (set (range 10))))
 
 (defn code [x]
-  (with-viewer* :code (if (string? x) x (with-out-str (pprint/pprint x)))))
+  (with-viewer :code (if (string? x) x (with-out-str (pprint/pprint x)))))
 
 #_(code '(+ 1 2))
