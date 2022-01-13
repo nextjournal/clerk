@@ -434,14 +434,12 @@
 (defn inspect
   ([x]
    (r/with-let [!expanded-at (r/atom {})]
-     [inspect {:!expanded-at !expanded-at :recursion 0} x]))
-  ([{:as opts :keys [viewers recursion]} x]
+     [inspect {:!expanded-at !expanded-at} x]))
+  ([{:as opts :keys [viewers]} x]
    (let [value (viewer/value x)
          {:as opts :keys [viewers]} (assoc opts :viewers (vec (concat (viewer/viewers x) viewers)))
-         all-viewers (viewer/get-viewers (:scope @!doc) viewers)
-         opts (update opts :recursion inc)]
-     (or (when (< 20 recursion) [:span "reached recursion limit"])
-         (when (react/isValidElement value) value)
+         all-viewers (viewer/get-viewers (:scope @!doc) viewers)]
+     (or (when (react/isValidElement value) value)
          ;; TODO find option to disable client-side viewer selection
          (when-let [viewer (or (viewer/viewer x)
                                (viewer/viewer (viewer/wrapped-with-viewer value all-viewers)))]
