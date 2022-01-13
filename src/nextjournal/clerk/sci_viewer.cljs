@@ -414,27 +414,19 @@
 
 (declare default-viewers)
 
-
-(defn maybe-eval [render-fn]
-  (if (or (symbol? render-fn) (list? render-fn))
-    (do
-      (js/console.log :needs-eval render-fn)
-      (*eval* render-fn))
-    render-fn))
-
 (defn render-with-viewer [{:as opts :keys [viewers]} viewer value]
   #_(js/console.log :render-with-viewer {:value value :viewer viewer #_#_ :opts opts})
   (cond (or (fn? viewer) (viewer/viewer-fn? viewer))
         (viewer value opts)
 
         (and (map? viewer) (:render-fn viewer))
-        (render-with-viewer opts (maybe-eval (:render-fn viewer)) value)
+        (render-with-viewer opts (:render-fn viewer) value)
 
         (keyword? viewer)
         (if-let [{:keys [fetch-opts render-fn]} (viewer/find-named-viewer viewers viewer)]
           (if-not render-fn
             (html (error-badge "no render function for viewer named " (str viewer)))
-            ((maybe-eval render-fn) value (assoc opts :fetch-opts fetch-opts)))
+            (render-fn value (assoc opts :fetch-opts fetch-opts)))
           (html (error-badge "cannot find viewer named " (str viewer))))
 
         :else
@@ -634,7 +626,6 @@
       [inspect @!error]])])
 
 (defn ^:export set-state [{:as state :keys [doc error]}]
-  (js/console.log :set-state state)
   (doseq [cell (viewer/value doc)
           :when (viewer/registration? cell)
           :let [form (viewer/value cell)]]
@@ -981,3 +972,7 @@ black")}]))}
   (sci/eval-form @!sci-ctx f))
 
 (set! *eval* eval-form)
+
+(swap! viewer/!viewers (fn [viewers]
+                         (-> (into {} (map (juxt key (comp #(into [] (map viewer/process-render-fn) %)  val))) viewers)
+                             (update :root concat js-viewers))))
