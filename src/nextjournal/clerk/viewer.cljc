@@ -4,8 +4,7 @@
             [clojure.datafy :as datafy]
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]]
-                :cljs [[reagent.ratom :as ratom]])
-            [nextjournal.clerk.viewer :as v])
+                :cljs [[reagent.ratom :as ratom]]))
   #?(:clj (:import [java.lang Throwable])))
 
 (defrecord ViewerEval [form])
