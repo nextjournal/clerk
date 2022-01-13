@@ -50,7 +50,7 @@
 
 ;; ## 🚀 Extensibility
 (clerk/with-viewer '#(v/html [:div "Greetings to " [:strong %] "!"])
-  "James Maxwell Clerk")
+  "James Clerk Maxwell")
 
 (clerk/with-viewers [{:pred number? :render-fn '#(v/html [:div.inline-block [(keyword (str "h" %)) (str "Heading " %)]])}]
   [1 2 3 4 5])

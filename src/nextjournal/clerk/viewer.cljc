@@ -510,9 +510,12 @@
   [viewer x]
   (-> x
       wrap-value
-      (assoc :nextjournal/viewer viewer)))
+      (assoc :nextjournal/viewer (cond-> viewer
+                                   (or (list? viewer) (symbol? viewer))
+                                   ->viewer-fn))))
 
-#_(with-viewer- :latex "x^2")
+#_(with-viewer :latex "x^2")
+#_(with-viewer '#(v/html [:h3 "Hello " % "!"]) "x^2")
 
 (defn with-viewers
   "Binds viewers to types, eg {:boolean view-fn}"
