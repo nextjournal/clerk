@@ -63,11 +63,6 @@ jobs:
         with:
           cli: '1.10.3.943'
 
-      - name: 🔧 Setup Node
-        uses: actions/setup-node@v2
-        with:
-          node-version: '14.x'
-
       - name: 🗝 maven cache
         uses: actions/cache@v2
         with:
@@ -84,11 +79,8 @@ jobs:
           path: .cache
           key: ${{ runner.os }}-clerk
 
-      - name: 🏗 Yarn (needed for tailwind jit pass)
-        run: yarn install
-
       - name: 🏗 Build Clerk Static App with default Notebooks
-        run: clojure -X:demo nextjournal.clerk/build-static-app! :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :purge-css? true
+        run: clojure -X:demo nextjournal.clerk/build-static-app! :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"'
 
       - name: 🔐 Google Auth
         uses: google-github-actions/auth@v0

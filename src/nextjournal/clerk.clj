@@ -3,7 +3,6 @@
   (:require [babashka.fs :as fs]
             [clojure.java.browse :as browse]
             [clojure.java.io :as io]
-            [clojure.java.shell :as shell]
             [clojure.string :as str]
             [multihash.core :as multihash]
             [multihash.digest :as digest]
@@ -355,12 +354,6 @@
   [path]
   (str/replace path fs/file-separator "/"))
 
-(defn copy-resource! [res name]
-  (let [target-file (io/file name)
-        file-output (io/output-stream target-file)]
-    (io/copy (io/input-stream res) file-output)
-    (.flush file-output)))
-
 (defn build-static-app!
   "Builds a static html app of the notebooks and opens the app in the
   default browser. Takes an options map with keys:
@@ -371,9 +364,8 @@
   - `:out-path` a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
   - `:live-js?` in local development, uses shadow current build and http server
   - `:git/sha`, `:git/url` when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
-  - `:purge-css?` creates a minimal css with only the used classes
   "
-  [{:as opts :keys [paths out-path live-js? bundle? browse? purge-css?]
+  [{:as opts :keys [paths out-path live-js? bundle? browse?]
     :or {paths clerk-docs
          out-path (str "public" fs/file-separator "build")
          live-js? view/live-js?
@@ -393,29 +385,16 @@
             (let [out-html (str out-path fs/file-separator (str/replace path #"(.clj|.md)" ".html"))]
               (fs/create-dirs (fs/parent out-html))
               (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
-    (when purge-css?
-      (copy-resource! (io/resource "css/tailwind.config.js") "tailwind.config.js")
-      (let [tailwind-command ["npx" "tailwindcss"
-                              "--config" "tailwind.config.js"
-                              "--output" (str out-path fs/file-separator "css/viewer.css") ;; TODO: check if this works for the bundle? false case
-                              "--minify"
-                              "-" :in (io/input-stream (io/resource "css/viewer.css"))]
-            {:keys [exit out err]} (apply shell/sh tailwind-command)]
-        (when-not (zero? exit)
-          (throw (ex-info (str "error running tailwind: `" (str/join " " tailwind-command) "`") {:command tailwind-command :exit exit :out out :err err}) ))))
     (when browse?
       (if (and live-js? (str/starts-with? out-path "public/"))
         (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
         (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize))))))
 
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
-#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true :purge-css? true :live-js? false})
-#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true :purge-css? true})
+#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true :live-js? false})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/"})
-#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/" :purge-css? true})
 #_(build-static-app! {})
 #_(build-static-app! {:live-js? false})
-#_(build-static-app! {:live-js? false :purge-css? true})
 #_(build-static-app! {:paths ["notebooks/viewer_api.clj" "notebooks/rule_30.clj"]})
 
 ;; And, as is the culture of our people, a commend block containing
