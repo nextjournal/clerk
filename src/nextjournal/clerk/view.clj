@@ -165,10 +165,10 @@
 (defn include-tailwind-cdn []
   (list
    (hiccup/include-js "https://cdn.tailwindcss.com?plugins=typography")
-   [:script (-> (slurp (io/resource "css/tailwind.config.js"))
+   [:script (-> (slurp (io/resource "stylesheets/tailwind.config.js"))
                 (str/replace  #"^module.exports" "tailwind.config")
                 (str/replace  #"require\(.*\)" ""))]
-   [:style {:type "text/tailwindcss"} (slurp (io/resource "css/viewer.css"))]))
+   [:style {:type "text/tailwindcss"} (slurp (io/resource "stylesheets/viewer.css"))]))
 
 (defn ->html [{:keys [conn-ws? live-js?] :or {conn-ws? true live-js? live-js?}} state]
   (hiccup/html5

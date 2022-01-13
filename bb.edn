@@ -7,7 +7,9 @@
                  (let [cp (str/trim (with-out-str (deps/clojure ["-A:sci" "-Spath"])))]
                    (str/trim (:out (shell {:out :string} (str "bb -cp " cp " -e '(println (.getPath (clojure.java.io/resource \"css/viewer.css\")))'"))))))
 
-         copy-viewer-css {:task (fs/copy (viewer-css-path) "resources/css/viewer.css" #{:replace-existing})}
+
+         print-viewer-css {:task (println (viewer-css-path))}
+         copy-viewer-css {:task (fs/copy (viewer-css-path) "resources/stylesheets/viewer.css" #{:replace-existing})}
 
          yarn-install {:doc "Installs and updates npm dependencies"
                        :task (shell "yarn install")}
