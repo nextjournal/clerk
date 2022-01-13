@@ -3,7 +3,6 @@
 .cpcache/
 .lsp/
 /node_modules/
-/public/css/app.css
 /public/js/
 /.shadow-cljs/
 /target/

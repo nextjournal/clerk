@@ -1,8 +1,16 @@
 {:tasks {:requires ([clojure.edn :as edn]
                     [clojure.string :as str]
+                    [babashka.deps :as deps]
                     [babashka.fs :as fs]
                     [babashka.process :as p])
-         :init (do (def tailwind-build-cmd "npx tailwindcss --input stylesheets/app.css "))
+         :init (defn viewer-css-path []
+                 (let [cp (str/trim (with-out-str (deps/clojure ["-A:sci" "-Spath"])))]
+                   (str/trim (:out (shell {:out :string} (str "bb -cp " cp " -e '(println (.getPath (clojure.java.io/resource \"css/viewer.css\")))'"))))))
+
+
+         print-viewer-css {:task (println (viewer-css-path))}
+         copy-viewer-css {:task (fs/copy (viewer-css-path) "resources/stylesheets/viewer.css" #{:replace-existing})}
+
          yarn-install {:doc "Installs and updates npm dependencies"
                        :task (shell "yarn install")}
 
@@ -10,22 +18,12 @@
                      :task (clojure "-M:test:sci:demo:dev watch browser")
                      :depends [yarn-install]}
 
-         watch:css {:doc  "Starts a watcher for css files tailwindcss"
-                    :task (shell (str tailwind-build-cmd "--output public/css/app.css --watch"))
-                    :depends [yarn-install]}
-
-         release:js {:doc  "Builds & uploads the js release and updates the sha reference."
+         release:js {:doc "Builds & uploads the js release and updates the sha reference."
                      :task (do (clojure "-M:sci:demo:dev release browser")
                                (clojure "-T:build upload-to-cas+rewrite-sha :resource viewer.js"))
                      :depends [yarn-install]}
 
-         release:css {:doc  "Builds & uploads the css release and updates the sha reference."
-                      :task (do (shell (str tailwind-build-cmd "--output build/app.css -m")
-                                       {:extra-env {"NODE_ENV" "production"}})
-                                (clojure "-T:build upload-to-cas+rewrite-sha :resource app.css"))
-                      :depends [yarn-install]}
-
-         build:static-app {:doc "Builds a Static App with default Notebooks"
+         build:static-app {:doc "Builds a static app with default notebooks"
                            :depends [release:js release:css]
                            :task (clojure "-X:demo nextjournal.clerk/build-static-app!")}
 
@@ -47,7 +45,7 @@
                       (shell "git tag" tag)
                       (shell "git push origin" tag))}
 
-         -dev {:depends [watch:cljs watch:css]}
+         -dev {:depends [watch:cljs copy-viewer-css]}
          dev {:doc "Start app in dev mode, compiles cljs and css"
               :task (run '-dev {:parallel true})}}
  :min-bb-version "0.5.1"}
