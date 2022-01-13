@@ -160,7 +160,7 @@
     (not= "false" prop)))
 
 (def resource->static-url
-  {"/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VuZdwgKHD3Q6mdwEzSCwmfDVhn9sPRwn3uwZ6hBEcR8n6LEifATtpE4ohyvoVCyQeKvCuTwiB3APNoRYVCvaV18B4"})
+  {"/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8Vw5gbdRsRKfPVC3GCyLhvHvgZj8hiwVPW86DYnSKCQ621xYr4odJc7rvUbpSDh1Hm3TbtLWbMp5pYFCqcLzAtGZjF"})
 
 (defn include-tailwind-cdn []
   (list

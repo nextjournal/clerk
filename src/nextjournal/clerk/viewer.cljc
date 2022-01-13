@@ -157,6 +157,9 @@
 
 (defn fetch-all [_ x] x)
 
+(defn- var-from-def? [x]
+  (get x :nextjournal.clerk/var-from-def))
+
 (declare !viewers)
 
 ;; keep viewer selection stricly in Clojure
@@ -172,6 +175,7 @@
    {:pred boolean? :render-fn '(fn [x] (v/html [:span.syntax-bool.inspected-value (str x)]))}
    {:pred fn? :name :fn :render-fn '(fn [x] (v/html [:span.inspected-value [:span.syntax-tag "#function"] "[" x "]"]))}
    {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :fetch-opts {:n 2}}
+   {:pred var-from-def? :transform-fn (fn [x] (-> x :nextjournal.clerk/var-from-def deref))}
    {:pred vector? :render-fn 'v/coll-viewer :opening-paren "[" :closing-paren "]" :fetch-opts {:n 20}}
    {:pred set? :render-fn 'v/coll-viewer :opening-paren "#{" :closing-paren "}" :fetch-opts {:n 20}}
    {:pred sequential? :render-fn 'v/coll-viewer :opening-paren "(" :closing-paren ")" :fetch-opts {:n 20}}
@@ -196,7 +200,9 @@
    {:name :eval! :render-fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
    {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
     :fetch-fn (fn [{:as opts :keys [describe-fn offset]} xs]
-                (-> (cond-> (update xs :rows describe-fn opts [])
+                ;; TODO: use budget per row for table
+                ;; TODO: opt out of eliding cols
+                (-> (cond-> (update xs :rows describe-fn (dissoc opts :!budget) [])
                       (pos? offset) :rows)
                     (assoc :path [:rows] :replace-path [offset])
                     (dissoc :nextjournal/viewers)))}
@@ -332,12 +338,14 @@
   [{:keys [n offset]
     :or {offset 0}}]
   (cond-> (drop offset)
-    (pos-int? n)
+    (int? n)
     (comp (take n))))
 
 #_(sequence (drop+take-xf {:n 10}) (range 100))
 #_(sequence (drop+take-xf {:n 10 :offset 10}) (range 100))
 #_(sequence (drop+take-xf {}) (range 9))
+
+
 (declare with-viewer* assign-closing-parens)
 
 (defn describe
@@ -346,21 +354,25 @@
    (describe xs {}))
   ([xs opts]
    (assign-closing-parens
-    (describe xs (merge {:path [] :viewers (process-fns (get-viewers *ns* (viewers xs)))} opts) [])))
+    (describe xs (merge {:!budget (atom (:budget opts 200)) :path [] :viewers (process-fns (get-viewers *ns* (viewers xs)))} opts) [])))
   ([xs opts current-path]
-   (let [{:as opts :keys [viewers path offset]} (merge {:offset 0} opts)
+   (let [{:as opts :keys [!budget viewers path offset]} (merge {:offset 0} opts)
          wrapped-value (try (wrapped-with-viewer xs viewers) ;; TODO: respect `viewers` on `xs`
                             (catch #?(:clj Exception :cljs js/Error) _ex
-                              nil))
+                              (do (println _ex)
+                                  nil)))
          {:as viewer :keys [fetch-opts fetch-fn]} (viewer wrapped-value)
          fetch-opts (merge fetch-opts (select-keys opts [:offset]))
+         descend? (< (count current-path)
+                     (count path))
          xs (value wrapped-value)]
      #_(prn :xs xs :type (type xs) :path path :current-path current-path)
+     (when (and !budget (not descend?) (not fetch-fn))
+       (swap! !budget #(max (dec %) 0)))
      (merge {:path path}
             (dissoc wrapped-value [:nextjournal/value :nextjournal/viewer])
             (with-viewer* (cond-> viewer (map? viewer) (dissoc viewer :pred :transform-fn))
-              (cond (< (count current-path)
-                       (count path))
+              (cond descend?
                     (let [idx (first (drop (count current-path) path))]
                       (describe (cond (or (map? xs) (set? xs)) (nth (seq (ensure-sorted xs)) idx)
                                       (associative? xs) (get xs idx)
@@ -386,6 +398,9 @@
                     (let [count-opts  (if (counted? xs)
                                         {:count (count xs)}
                                         (bounded-count-opts (:n fetch-opts) xs))
+                          fetch-opts (cond-> fetch-opts
+                                       (and (:n fetch-opts) !budget (not (map-entry? xs)))
+                                       (update :n min @!budget))
                           children (into []
                                          (comp (if (number? (:n fetch-opts)) (drop+take-xf fetch-opts) identity)
                                                (map-indexed (fn [i x] (describe x (-> opts
@@ -394,7 +409,7 @@
                                                (remove nil?))
                                          (ensure-sorted xs))
                           {:keys [count]} count-opts
-                          offset (or (-> children peek :path peek) 0)]
+                          offset (or (-> children peek :path peek) -1)]
                       (cond-> children
                         (or (not count) (< (inc offset) count))
 
@@ -404,33 +419,6 @@
 
                     :else ;; leaf value
                     xs))))))
-
-#_#_#_#_
-(let [rand-int-seq (fn [n to]
-                     (take n (repeatedly #(rand-int to))))
-      n 5
-      t {:species (repeat n "Adelie")
-         :island (repeat n "Biscoe")
-         :culmen-length-mm (rand-int-seq n 50)
-         :culmen-depth-mm (rand-int-seq n 30)
-         :flipper-length-mm (rand-int-seq n 200)
-         :body-mass-g (rand-int-seq n 5000)
-         :sex (take n (repeatedly #(rand-nth [:female :male])))}
-      data t]
-  (update (normalize-table-data t) :rows describe))
-
-
-(let [n (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female]))]
-  (update n :rows describe))
-
-(def t' (with-viewer* :table (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))
-
-(let [xs t']
-  (describe xs))
-#_
-(describe (table
-           {:a (range 30)
-            :b (map inc (range 30))}))
 
 (comment
   (describe 123)
@@ -448,7 +436,6 @@
   (describe (range))
   (describe {1 [2]})
   (describe (with-viewer* (->Form '(fn [name] (html [:<> "Hello " name]))) "James")))
-
 
 (defn desc->values
   "Takes a `description` and returns its value. Inverse of `describe`. Mostly useful for debugging."
@@ -468,7 +455,6 @@
 (defn path-to-value [path]
   (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
 
-
 (defn merge-descriptions [root more]
   (update-in root (path-to-value (:path more))
              (fn [value]
@@ -480,28 +466,6 @@
                    (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more})))
                  (into (pop value) (:nextjournal/value more))))))
 
-(comment ;; test cases for merge-descriptions, TODO: simplify
-  (let [value (range 30)
-        desc (describe value)
-        path []
-        elision (peek (get-in desc (path-to-value path)))
-        more (describe value (:nextjournal/value elision))]
-
-    (merge-descriptions desc more))
-
-  (let [value [(range 30)]
-        desc (describe value)
-        path [0]
-        elision (peek (get-in desc (path-to-value path)))
-        more (describe value (:nextjournal/value elision))]
-    (merge-descriptions desc more))
-
-  (let [value (str/join (map #(str/join (repeat 70 %)) ["a" "b" #_#_ "c" "d"]))
-        desc (describe value)
-        path []
-        elision (peek (get-in desc (path-to-value path)))
-        more (describe value (:nextjournal/value elision))]
-    (merge-descriptions desc more)))
 
 (defn assign-closing-parens
   ([node] (assign-closing-parens '() node))
