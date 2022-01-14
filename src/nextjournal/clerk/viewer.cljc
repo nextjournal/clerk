@@ -175,6 +175,16 @@
    {:pred var? :transform-fn symbol :render-fn '(fn [x] (v/html [:span.inspected-value [:span.syntax-tag "#'" (str x)]]))}
    {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e)) :fetch-fn fetch-all
     :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp demunge-ex-data datafy/datafy)}
+   #?(:clj {:pred #(instance? BufferedImage %)
+            :fetch-fn (fn [_ image] (let [stream (java.io.ByteArrayOutputStream.)
+                                          w (.getWidth image)
+                                          h (.getHeight image)
+                                          r (float (/ w h))]
+                                      (ImageIO/write image "png" stream)
+                                      (cond-> {:nextjournal/value (.toByteArray stream)
+                                               :nextjournal/content-type "image/png"}
+                                        (< 2 r) (assoc :nextjournal/width :full))))
+            :render-fn '(fn [blob] (v/html [:img {:src (v/url-for blob)}]))})
    {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.text-gray-700 x]))}
    {:name :elision :render-fn (quote v/elision-viewer)}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
@@ -197,11 +207,6 @@
                     (assoc :path [:rows] :replace-path [offset])
                     (dissoc :nextjournal/viewers)))}
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
-   #?(:clj {:pred #(instance? BufferedImage %)
-            :fetch-fn (fn [_ image] (let [stream (java.io.ByteArrayOutputStream.)]
-                                      (ImageIO/write image "png" stream)
-                                      {:nextjournal/value (.toByteArray stream) :nextjournal/content-type "image/png"}))
-            :render-fn '(fn [blob] (v/html [:img {:src (v/url-for blob)}]))})
    {:name :object :render-fn '(fn [x] (v/html (v/tagged-value "#object" [v/inspect x])))}
    {:name :file :render-fn '(fn [x] (v/html (v/tagged-value "#file " [v/inspect x])))}
    {:name :clerk/notebook :render-fn (quote v/notebook-viewer) :fetch-fn fetch-all}
