@@ -5,7 +5,9 @@
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]]
                 :cljs [[reagent.ratom :as ratom]]))
-  #?(:clj (:import [java.lang Throwable])))
+  #?(:clj (:import (java.lang Throwable)
+                   (java.awt.image BufferedImage)
+                   (javax.imageio ImageIO))))
 
 (defrecord ViewerEval [form])
 (defrecord ViewerFn [form #?(:cljs f)]
@@ -195,6 +197,11 @@
                     (assoc :path [:rows] :replace-path [offset])
                     (dissoc :nextjournal/viewers)))}
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
+   #?(:clj {:pred #(instance? BufferedImage %)
+            :fetch-fn (fn [_ image] (let [stream (java.io.ByteArrayOutputStream.)]
+                                      (ImageIO/write image "png" stream)
+                                      {:nextjournal/value (.toByteArray stream) :nextjournal/content-type "image/png"}))
+            :render-fn '(fn [blob] (v/html [:img {:src (v/url-for blob)}]))})
    {:name :object :render-fn '(fn [x] (v/html (v/tagged-value "#object" [v/inspect x])))}
    {:name :file :render-fn '(fn [x] (v/html (v/tagged-value "#file " [v/inspect x])))}
    {:name :clerk/notebook :render-fn (quote v/notebook-viewer) :fetch-fn fetch-all}

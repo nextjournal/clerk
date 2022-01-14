@@ -1,19 +1,9 @@
-;; # 🏞 Customizing Fetch
-;; Showing how to use a custom `fetch-fn` with a `content-type` to let Clerk serve arbitrary things, in this case a PNG image.
+;; # 🏞 Image Viewer
 (ns ^:nextjournal.clerk/no-cache image
-  (:require [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as v])
-  (:import (java.net.http HttpRequest HttpClient HttpResponse$BodyHandlers)
-           (java.net URI)))
+  (:import (java.net URL)
+           (javax.imageio ImageIO)))
 
-;; We set a custom viewer for `bytes?` that includes a `:fetch-fn`, returning a wrapped value with a `:nextjournal/content-type` key set.
-(clerk/set-viewers! [{:pred bytes?
-                      :fetch-fn (fn [_ bytes] {:nextjournal/content-type "image/png"
-                                               :nextjournal/value bytes})
-                      :render-fn '(fn [blob] (v/html [:img {:src (v/url-for blob)}]))}])
-
-(.. (HttpClient/newHttpClient)
-    (send (.build (HttpRequest/newBuilder (URI. "https://upload.wikimedia.org/wikipedia/commons/5/57/James_Clerk_Maxwell.png")))
-          (HttpResponse$BodyHandlers/ofByteArray)) body)
+;; Clerk now comes with a default viewer for `java.awt.image.BufferedImage`.
+(ImageIO/read (URL. "https://images.unsplash.com/photo-1532879311112-62b7188d28ce?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8"))
 
 #_(nextjournal.clerk/show! "notebooks/viewers/image.clj")
