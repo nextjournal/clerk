@@ -12,11 +12,19 @@
 (def default-resource-manifest
   {"/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VwLM2wq7ZJ8xd2zmqCWVgdmU9xrVYt6YDYryMVeJHbNUDarrbLScR4LKvtsQjNax2h99EYeU8qWnF4ryQSjN1z4Pq"})
 
-(defonce resource-manifest
-  (or (when-let [prop (System/getProperty "clerk.resource_manifest")]
-        (when-not (str/blank? prop)
-          (read-string prop)))
-      default-resource-manifest))
+(def resource-manifest-from-props
+  (when-let [prop (System/getProperty "clerk.resource_manifest")]
+    (when-not (str/blank? prop)
+      (read-string prop))))
+
+(defonce !resource->url
+  (atom (or resource-manifest-from-props
+            default-resource-manifest)))
+
+#_(swap! !resource->url assoc "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvAV62HzsvhcsXEkHP33uj4cV9UvdDz7DU9qLeVRCfEP9kWLFAzaMKL77trdx898DzcVyDVejdfxvxj5XB84UpWvQ")
+#_(swap! !resource->url dissoc "/css/viewer.css")
+#_(reset! !resource->url identity)
+#_(reset! !resource->url default-resource-manifest)
 
 
 (def ^:dynamic *in-clerk* false)

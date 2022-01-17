@@ -154,15 +154,6 @@
 #_(nextjournal.clerk/show! "notebooks/test.clj")
 #_(nextjournal.clerk/show! "notebooks/visibility.clj")
 
-
-(defonce !resource->url
-  (atom config/resource-manifest))
-
-#_(swap! !resource->url assoc "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvAV62HzsvhcsXEkHP33uj4cV9UvdDz7DU9qLeVRCfEP9kWLFAzaMKL77trdx898DzcVyDVejdfxvxj5XB84UpWvQ")
-#_(swap! !resource->url dissoc "/css/viewer.css")
-#_(reset! !resource->url identity)
-#_(reset! !resource->url config/resource-manifest)
-
 (defn include-tailwind-cdn []
   (list
    (hiccup/include-js "https://cdn.tailwindcss.com?plugins=typography")
@@ -176,11 +167,11 @@
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-    (if-let [css-url (@!resource->url "/css/viewer.css")]
+    (if-let [css-url (@config/!resource->url "/css/viewer.css")]
       (hiccup/include-css css-url)
       (include-tailwind-cdn))
     (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
-    (hiccup/include-js (@!resource->url "/js/viewer.js"))
+    (hiccup/include-js (@config/!resource->url "/js/viewer.js"))
     (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
     (hiccup/include-css "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")]
    [:body
@@ -200,7 +191,7 @@ window.ws_send = msg => ws.send(msg)")]]))
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
     (include-tailwind-cdn)
-    (hiccup/include-js (@!resource->url "/js/viewer.js"))
+    (hiccup/include-js (@config/!resource->url "/js/viewer.js"))
     (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
     (hiccup/include-css "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")]
    [:body
