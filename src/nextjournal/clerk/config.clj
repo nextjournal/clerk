@@ -9,10 +9,6 @@
   (when-let [prop (System/getProperty "clerk.disable_cache")]
     (not= "false" prop)))
 
-(defn cache-disabled? []
-  (when-let [prop (System/getProperty "clerk.disable_cache")]
-    (not= "false" prop)))
-
 (def default-resource-manifest
   {"/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VwLM2wq7ZJ8xd2zmqCWVgdmU9xrVYt6YDYryMVeJHbNUDarrbLScR4LKvtsQjNax2h99EYeU8qWnF4ryQSjN1z4Pq"})
 
