@@ -69,8 +69,6 @@
                                                          (eval (read-string msg))))})
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
-        ("css" "js") {:status 302
-                      :headers {"Location" (str "http://localhost:7778" uri)}}
         "_blob" (serve-blob req)
         "_ws" {:status 200 :body "upgrading..."}
         {:status  200
