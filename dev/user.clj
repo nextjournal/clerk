@@ -4,11 +4,6 @@
 (comment
   (clerk/serve! {:browse? true}))
 
-(defn set-dev!
-  "Set this to `true` to load the css + js from a running instance for css + viewer dev. "
-  [enabled?]
-  (alter-var-root #'nextjournal.clerk.view/live-js? (constantly enabled?)))
-
 (comment
   ;; start without file watcher
   (clerk/serve! {})
@@ -18,11 +13,6 @@
 
   ;; start with file watcher and show filter function to enable notebook pinning
   (clerk/serve! {:watch-paths ["notebooks" "src"] :show-filter-fn #(clojure.string/starts-with? % "notebooks")})
-
-  nextjournal.clerk.view/live-js?
-
-  (set-dev! false)
-  (set-dev! true)
 
   (clerk/show! "notebooks/onwards.md")
   (clerk/show! "notebooks/rule_30.clj")
