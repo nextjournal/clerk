@@ -61,7 +61,8 @@
                             (ana.passes.ef/emit-form #{:hygenic :qualified-symbols}))
           var (var-name analyzed-form)
           deps (cond-> (var-dependencies analyzed-form) var (disj var))]
-      (cond-> {:form (cond->> form var (drop 2))
+      (cond-> {:form form
+               ;; TODO: drop var downstream
                :analyzed-form analyzed-form
                :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))}
         var (assoc :var var)
@@ -75,6 +76,7 @@
 #_(analyze '(in-ns 'user))
 #_(analyze '(do (ns foo)))
 #_(analyze '(def my-inc inc))
+;; TODO
 #_(analyze '(defonce !state (atom {})))
 
 
@@ -362,13 +364,13 @@
 
 (defn hash
   ([doc]
-   (let [{vars :->analysis-info :keys [graph]} (build-graph doc)]
-     (reduce (fn [vars->hash var]
-               (if-let [info (get vars var)]
-                 (assoc vars->hash var (hash vars->hash (assoc info :var var)))
-                 vars->hash))
-             {}
-             (dep/topo-sort graph))))
+   (let [{:as g vars :->analysis-info :keys [graph]} (build-graph doc)]
+     (assoc g :vars->hash (reduce (fn [vars->hash var]
+                                    (if-let [info (get vars var)]
+                                      (assoc vars->hash var (hash vars->hash (assoc info :var var)))
+                                      vars->hash))
+                                  {}
+                                  (dep/topo-sort graph)))))
   ([->analysis-info {:keys [hash form deps]}]
    (let [hashed-deps (into #{} (map ->analysis-info) deps)]
      (sha1-base58 (pr-str (conj hashed-deps (if form form hash)))))))

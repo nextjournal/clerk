@@ -112,12 +112,12 @@
     (when-not (fs/exists? cache-dir)
       (fs/create-dirs cache-dir))))
 
-(defn read+eval-cached [results-last-run vars->hash doc-visibility code-string]
-  (let [form           (hashing/read-string code-string)
-        analyzed       (hashing/analyze form)
-        hash           (hashing/hash vars->hash analyzed)
+(defn read+eval-cached [results-last-run {:keys [text->analysis-key ->analysis-info vars->hash]} doc-visibility code-string]
+  (let [analysis-key (text->analysis-key code-string)
+        {:keys [ns-effect? form var]} (->analysis-info analysis-key)
+        hash           (hashing/hash vars->hash analysis-key)
         digest-file    (->cache-file (str "@" hash))
-        no-cache?      (or (:ns-effect? analyzed)
+        no-cache?      (or ns-effect?
                            (hashing/no-cache? form))
         cas-hash       (when (fs/exists? digest-file)
                          (slurp digest-file))
@@ -131,10 +131,12 @@
                           :else :no-digest-file)
            :hash hash :cas-hash cas-hash :form form)
     (ensure-cache-dir!)
-    (let [introduced-var (:var analyzed)]
+    (let [introduced-var var]
       (or (when cached-result?
             (lookup-cached-result results-last-run introduced-var hash cas-hash visibility))
           (eval+cache! form hash digest-file introduced-var no-cache? visibility)))))
+
+#_(eval-file "notebooks/test123.clj")
 
 #_(read+eval-cached {} {} #{:show} "(subs (slurp \"/usr/share/dict/words\") 0 1000)")
 
@@ -155,12 +157,12 @@
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
 (defn +eval-results [results-last-run doc]
-  (let [vars->hash (hashing/hash doc)
+  (let [analysis (hashing/hash doc)
         {:keys [doc visibility]} doc
         doc (into [] (map (fn [{:as cell :keys [type text]}]
                             (cond-> cell
                               (= :code type)
-                              (assoc :result (read+eval-cached results-last-run vars->hash visibility text))))) doc)]
+                              (assoc :result (read+eval-cached results-last-run analysis visibility text))))) doc)]
     (with-meta doc (-> doc blob->result (assoc :ns *ns*)))))
 
 (defn parse-file [file]
