@@ -86,42 +86,7 @@
     (is (not (h/symbol->jar 'java.net.http.HttpClient/newHttpClient)))))
 
 
-(deftest analyze-file
-  (is (match? (m/equals
-               {:graph {:dependencies {'(ns example-notebook) set?}
-                        :dependents   map?}
-                :doc {:doc [{:type :code
-                             :text "^:nextjournal.clerk/no-cache\n(ns example-notebook)"
-                             :ns?  true}
-                            {:type :markdown
-                             :doc  {:type    :doc
-                                    :content [{:type :heading
-                                               :content [{:type :text, :text "📶 Sorting"}]
-                                               :heading-level 1}]
-                                    :toc     {:type :toc
-                                              :content
-                                              [{:level 1,
-                                                :type :toc
-                                                :title "📶 Sorting"
-                                                :node
-                                                {:type :heading
-                                                 :content [{:type :text, :text "📶 Sorting"}]
-                                                 :heading-level 1}
-                                                :path [:content 0]}]}}}
-                            {:type :code
-                             :text "#{3 1 2}"}]
-                      :visibility #{:show}}
-                :->analysis-info {'(ns example-notebook) {:file "resources/tests/example_notebook.clj",
-                                                          :form '(ns example-notebook),
-                                                          :deps set?}
-                                  #{1 3 2} {:file "resources/tests/example_notebook.clj",
-                                            :form '#{1 3 2},
-                                            :deps nil}}})
-              (h/analyze-file {:markdown? true}
-                              {:graph (dep/graph)}
-                              "resources/tests/example_notebook.clj"))))
-
-(deftest analyze-string
+(deftest analyze-doc
   (is (match? (m/equals
                {:graph {:dependencies {'(ns example-notebook) set?}
                         :dependents   map?}
@@ -146,13 +111,13 @@
                             {:type :code
                              :text "#{3 1 2}"}]
                       :visibility #{:show}}
-                :->analysis-info {'(ns example-notebook) {:file "resources/tests/example_notebook.clj",
+                :->analysis-info {'(ns example-notebook) {:file :string,
                                                           :form '(ns example-notebook),
                                                           :deps set?}
-                                  #{1 3 2} {:file "resources/tests/example_notebook.clj",
+                                  #{1 3 2} {:file :string,
                                             :form '#{1 3 2},
                                             :deps nil}}})
-              (h/analyze-doc (h/parse-clojure-string "^:nextjournal.clerk/no-cache (ns example-notebook)
+              (h/analyze-doc (h/parse-clojure-string {:markdown? true} "^:nextjournal.clerk/no-cache (ns example-notebook)
 ;; # 📶 Sorting
 #{3 1 2}")))))
 
