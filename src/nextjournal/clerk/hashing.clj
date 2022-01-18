@@ -247,19 +247,11 @@
          code-cells (into [] (filter (comp #{:code} :type)) (:doc doc))]
      (reduce (partial analyze-codeblock (:file doc)) state-with-document code-cells))))
 
-
 (defn analyze-file
-  ([file]
-   (analyze-file {:graph (dep/graph)} file))
-  ([state file]
-   (analyze-file {} state file))
-  ([{:as opts :keys [markdown?]} state file]
-   (let [doc                 (parse-file opts file)
-         state-with-document (cond-> state markdown? (assoc :doc doc))
-         code-cells (into [] (filter (comp #{:code} :type)) (:doc doc))]
-     (reduce (partial analyze-codeblock file) state-with-document code-cells))))
+  ([file] (analyze-file {:graph (dep/graph)} file))
+  ([state file] (analyze-doc state (parse-file {} file))))
 
-#_(:graph (analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/elements.clj"))
+#_(:graph (analyze-file {:graph (dep/graph)} "notebooks/elements.clj"))
 #_(analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/rule_30.clj")
 #_(analyze-file {:graph (dep/graph)} "notebooks/recursive.clj")
 #_(analyze-file {:graph (dep/graph)} "notebooks/hello.clj")
