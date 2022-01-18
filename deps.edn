@@ -8,7 +8,12 @@
         weavejester/dependency {:mvn/version "0.2.1"}
 
         com.nextjournal/beholder {:mvn/version "1.0.0"}
+
+        #_#_  ;; TODO: release md
         io.github.nextjournal/markdown {:mvn/version "0.1.39"}
+        io.github.nextjournal/markdown {:git/url "https://github.com/nextjournal/viewers"
+                                        :git/sha "c51cfb31f0a219e1c01612077a1cd6eefbcf2a43"
+                                        :deps/root "modules/markdown"}
 
         com.taoensso/nippy {:mvn/version "3.1.1"}
         mvxcvi/multihash {:mvn/version "2.0.3"}

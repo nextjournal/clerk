@@ -8,6 +8,7 @@
             [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer with-viewers]]
             [nextjournal.devcards :as dc]
             [nextjournal.markdown.transform :as md.transform]
+            [nextjournal.ui.components.icon :as icon]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.markdown :as markdown]
@@ -71,9 +72,21 @@
                        (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) " ")] " ")))
                  (keys x')) "}"])))
 
-(defn notebook [xs]
+(defn render-toc [{:keys [toc]}]
+  ;; TODO: delegate to n.clerk.viewer
+  (r/with-let [collapsed? (r/atom true)]
+    [:div.viewer-markdown.fixed.top-2.left-2.border.rounded-md.px-4.py-2
+     [:a {:href "#" :on-click #(do (.preventDefault %) (swap! collapsed? not))} [icon/menu]]
+     (when-not @collapsed?
+       (md.transform/->hiccup markdown/default-renderers toc))]))
+
+(defn notebook [{:as doc xs :blocks :keys [toc title]}]
+  ;; TODO: avoid side effects - as e.g. inline in app layout but
+  ;; this has the advantage to work both in un/bundled static apps as well
+  (set! (.-title js/document) title)
   (html
-   (into [:div.flex.flex-col.items-center.viewer-notebook]
+   (into [:div.flex.flex-col.items-center.viewer-notebook
+          (when toc (render-toc doc))]
          (map (fn [x]
                 (let [viewer (viewer/viewer x)
                       blob-id (:blob-id (viewer/value x))

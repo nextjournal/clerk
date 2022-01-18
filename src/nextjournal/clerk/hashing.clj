@@ -16,6 +16,7 @@
             [nextjournal.clerk.classpath :as cp]
             [nextjournal.clerk.config :as config]
             [nextjournal.markdown :as markdown]
+            [nextjournal.markdown.parser :as markdown.parser]
             [nextjournal.markdown.transform :as markdown.transform]
             [weavejester.dependency :as dep]))
 
@@ -141,8 +142,8 @@
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
   ([{:as _opts :keys [doc?]} s]
-   (loop [{:as state :keys [nodes visibility]} {:nodes (:children (p/parse-string-all s))
-                                                :blocks []}]
+   (loop [{:as state :keys [nodes blocks visibility]} {:nodes (:children (p/parse-string-all s))
+                                                       :blocks []}]
      (if-let [node (first nodes)]
        (recur (cond
                 (code-tags (n/tag node))
@@ -155,13 +156,19 @@
                 (and doc? (n/comment? node))
                 (-> state
                     (assoc :nodes (drop-while n/comment? nodes))
-                    (update :blocks conj {:type :markdown :doc (markdown/parse (apply str (map (comp remove-leading-semicolons n/string)
-                                                                                               (take-while n/comment? nodes))))}))
+                    (update :blocks conj {:type :markdown :text (apply str (map (comp remove-leading-semicolons n/string)
+                                                                                (take-while n/comment? nodes)))}))
                 :else
                 (update state :nodes rest)))
-       (select-keys state [:blocks :visibility])))))
-
-#_(parse-clojure-string (slurp "notebooks/how_clerk_works.clj"))
+       (merge (select-keys state [:blocks :visibility])
+              (when doc?
+                (-> {:content (into []
+                                    (comp (filter (comp #{:markdown} :type))
+                                          (map (comp markdown/parse :text))
+                                          (mapcat :content))
+                                    blocks)}
+                    markdown.parser/add-title+toc
+                    (select-keys [:title :toc]))))))))
 
 (defn code-cell? [{:as node :keys [type]}]
   (and (= :code type) (contains? node :info)))
@@ -176,26 +183,28 @@
               (->> (filter (comp code-tags n/tag))))))
 
 (defn parse-markdown-string [{:keys [doc?]} s]
-  (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes (:content (markdown/parse s))}]
-    (if-some [node (first nodes)]
-      (recur
-       (if (code-cell? node)
-         (cond-> state
-           (seq md-slice)
-           (-> #_state
-               (update :blocks conj {:type :markdown :doc {:type :doc :content md-slice}})
-               (assoc ::md-slice []))
+  (let [{:keys [content toc title]} (markdown/parse s)]
+    (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes content}]
+      (if-some [node (first nodes)]
+        (recur
+         (if (code-cell? node)
+           (cond-> state
+             (seq md-slice)
+             (-> #_state
+              (update :blocks conj {:type :markdown :doc {:type :doc :content md-slice}})
+              (assoc ::md-slice []))
 
-           :always
-           (-> #_state
-               (parse-markdown-cell node)
-               (update :nodes rest)))
+             :always
+             (-> #_state
+              (parse-markdown-cell node)
+              (update :nodes rest)))
 
-         (-> state (update :nodes rest) (cond-> doc? (update ::md-slice conj node)))))
+           (-> state (update :nodes rest) (cond-> doc? (update ::md-slice conj node)))))
 
-      (-> state
-          (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
-          (select-keys [:blocks :visibility])))))
+        (-> state
+            (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
+            (select-keys [:blocks :visibility])
+            (merge (when doc? {:toc toc :title title})))))))
 
 (defn parse-file
   ([file] (parse-file {} file))

@@ -10,7 +10,7 @@
     (not= "false" prop)))
 
 (def default-resource-manifest
-  {"/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VufNXFDYymQD5T5zdSrX4tPbAHKpGQ3wCeTffp5Tot9yuYfLz98AU3DHW3QFWPNyteKUqHFPieLVR1fojL1hLrW8e"})
+  {"/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvhXn3d1HeG9cCEfVqQYqRtRVgRBJBi89ao2cGWb7gg4YtYvKGzCeSamMk85AEye6FkUvHAGgYVUnroEmmEByzQ1F"})
 
 (def resource-manifest-from-props
   (when-let [prop (System/getProperty "clerk.resource_manifest")]
