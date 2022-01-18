@@ -39,7 +39,7 @@
 ;; ### Step 3: Hashing
 ;; Then we can use this information to hash each expression.
 (def hashes
-  (nextjournal.clerk.hashing/hash "notebooks/how_clerk_works.clj"))
+  (nextjournal.clerk.hashing/hash (nextjournal.clerk.hashing/parse-file "notebooks/how_clerk_works.clj")))
 
 ;; ### Step 4: Evaluation
 ;; Clerk uses the hashes as filenames and only re-evaluates forms that haven't been seen before. The cache is using [nippy](https://github.com/ptaoussanis/nippy).
