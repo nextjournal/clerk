@@ -71,12 +71,14 @@
 (defn viewer
   "Returns the `:nextjournal/viewer` for a given wrapped value `x`, `nil` otherwise."
   [x]
-  (when (map? x)
-    (:nextjournal/viewer x)))
+  (or (and (map? x) (:nextjournal/viewer x))
+      (when-let [m (meta x)]
+        (:nextjournal.clerk/viewer m))))
 
 
 #_(viewer (with-viewer :code '(+ 1 2 3)))
 #_(viewer "123")
+#_(viewer ^{:nextjournal.clerk/viewer :table} {:col-1 [1 2 3] :col-2 [1 2 3]})
 
 (defn viewers
   "Returns the `:nextjournal/viewers` for a given wrapped value `x`, `nil` otherwise."
