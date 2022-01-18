@@ -193,9 +193,10 @@
 
 (defn parse-file
   ([file] (parse-file {} file))
-  ([opts file] (if (str/ends-with? file ".md")
-                 (parse-markdown-string opts (slurp file))
-                 (parse-clojure-string opts (slurp file)))))
+  ([opts file] (-> (if (str/ends-with? file ".md")
+                     (parse-markdown-string opts (slurp file))
+                     (parse-clojure-string opts (slurp file)))
+                   (assoc :file file))))
 
 #_(parse-file {:markdown? true} "notebooks/visibility.clj")
 #_(parse-file "notebooks/elements.clj")
@@ -244,7 +245,7 @@
   ([state doc]
    (let [state-with-document (assoc state :doc doc)
          code-cells (into [] (filter (comp #{:code} :type)) (:doc doc))]
-     (reduce (partial analyze-codeblock nil) state-with-document code-cells))))
+     (reduce (partial analyze-codeblock (:file doc)) state-with-document code-cells))))
 
 
 (defn analyze-file
