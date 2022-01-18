@@ -28,24 +28,24 @@ which you can manipulate with your favourite clojure functions
 (def sliced (update parsed :content #(take 8 %)))
 ```
 
-and render back to hiccup with customisable elements. 
+and render back to hiccup with customisable elements.
 
 At present, Clerk will split top level forms which are grouped togetehr under the same cell, this is to guarantee that Clerk's dependency analysys among forms will still effectively avoid needless recomputations when code changes. Forms are nevertheless still grouped as intended in the document.
 
 ```clojure
-(def renderers 
-  (assoc md.transform/default-hiccup-renderers 
+(def renderers
+  (assoc md.transform/default-hiccup-renderers
         :doc (partial md.transform/into-markup [:div.viewer-markdown])
         :ruler (fn [_ _]
                  [:hr.mt-1.mb-10
-                  {:style {:border "10px solid magenta" 
+                  {:style {:border "10px solid magenta"
                            :border-radius "10px"}}])))
 
-(def hiccup 
+(def hiccup
   (md.transform/->hiccup renderers sliced))
 ```
 
-and finally render via Clerk's `html` helper.
+and finally render via Clerk's helper.
 
 ```clojure
 ^{::clerk/visibility :fold}
@@ -54,4 +54,4 @@ and finally render via Clerk's `html` helper.
 
 ## Appendix
 
-Don't forget the closing slice 🍕 of markdown! 
+Don't forget the closing slice 🍕 of markdown.

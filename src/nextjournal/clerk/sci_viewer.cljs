@@ -896,7 +896,12 @@ black")}]))}
     (string? data)
     (markdown/viewer data)
     (and (map? data) (contains? data :content) (contains? data :type))
-    (with-viewer :hiccup (md.transform/->hiccup markdown/default-renderers data))))
+    (with-viewer :hiccup
+                 (md.transform/->hiccup (assoc markdown/default-renderers
+                                               :monospace (fn [_ node]
+                                                            ;; TODO: tooltip view to show original text producing the result
+                                                            [inspect node]))
+                                        data))))
 
 (def expand-icon
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}

@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.view
   (:require [nextjournal.clerk.config :as config]
             [nextjournal.clerk.viewer :as v]
+            [nextjournal.clerk.hashing :as h]
             [hiccup.page :as hiccup]
             [clojure.string :as str]
             [clojure.java.io :as io]
@@ -106,9 +107,10 @@
 #_(nextjournal.clerk/show! "notebooks/hello.clj")
 #_(nextjournal.clerk/show! "notebooks/viewers/image.clj")
 
-(defn ->display [{:as code-cell :keys [result ns?]}]
+(defn ->display [{:as code-cell :keys [result ns? hidden?]}]
   (let [{:nextjournal.clerk/keys [visibility]} result
         result? (and (contains? code-cell :result)
+                     (not hidden?)
                      (not= :hide-result (v/viewer (v/value result)))
                      (not (contains? visibility :hide-ns))
                      (not (and ns? (contains? visibility :hide))))
@@ -126,6 +128,12 @@
 #_(->display {:result {:nextjournal.clerk/visibility #{:hide} :nextjournal/value {:nextjournal/viewer :hide-result}} :ns? false})
 #_(->display {:result {:nextjournal.clerk/visibility #{:hide}} :ns? true})
 
+(defn describe-inline-result [mddoc ns lazy-load?]
+  (h/doc-walk :result
+              (fn [node _]
+                (-> node (dissoc :result) (merge (->result ns (:result node) lazy-load?))))
+              mddoc))
+
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([{:keys [inline-results?] :or {inline-results? false}} doc]
@@ -133,7 +141,7 @@
      (cond-> (into []
                    (mapcat (fn [{:as cell :keys [type text result doc]}]
                              (case type
-                               :markdown [(v/md (or doc text))]
+                               :markdown [(v/md (or text (describe-inline-result doc ns (not inline-results?))))]
                                :code (let [{:keys [code? fold? result?]} (->display cell)]
                                        (cond-> []
                                          code?

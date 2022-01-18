@@ -130,6 +130,8 @@
 (def code-tags
   #{:deref :map :meta :list :quote :reader-macro :set :token :var :vector})
 
+(declare apply-markdown-slice)
+
 (defn parse-clojure-file
   ([file] (parse-clojure-file {} file))
   ([{:as _opts :keys [markdown?]} file]
@@ -149,8 +151,8 @@
                 (and markdown? (n/comment? node))
                 (-> state
                     (assoc :nodes (drop-while n/comment? nodes))
-                    (update :doc conj {:type :markdown :doc (markdown/parse (apply str (map (comp remove-leading-semicolons n/string)
-                                                                                            (take-while n/comment? nodes))))}))
+                    (apply-markdown-slice (:content (markdown/parse (apply str (map (comp remove-leading-semicolons n/string)
+                                                                                    (take-while n/comment? nodes)))))))
                 :else
                 (update state :nodes rest)))
        (select-keys state [:doc :visibility])))))
@@ -168,26 +170,54 @@
           (-> markdown-code-cell markdown.transform/->text str/trim p/parse-string-all :children
               (->> (filter (comp code-tags n/tag))))))
 
+(defn doc-walk
+  "Takes a predicate on node, an arity-2 function of `[node path]` and a markdown node, walks node applying f to all nodes
+  that pass `p` and to the path at node from document root."
+  ([p f node] (doc-walk p f [] node))
+  ([p f path {:as node :keys [content]}]
+   (cond-> node
+     (p node) (f path)
+     (seq content) (update :content
+                           #(into []
+                                  (map-indexed (fn [i n] (doc-walk p f (conj path :content i) n)))
+                                  %)))))
+;; TODO: fuse doc-walk with doc reduce rf: ([acc node path-at-node])
+(defn doc-reduce [rf init {:as node :keys [content]}]
+  (reduce (partial doc-reduce rf) (rf init node) content))
+
+(defn assign-paths [mddoc] ;; assign paths to monospace nodes
+  (doc-walk (comp #{:monospace} :type)
+            (fn [n p] (assoc n :path p))
+            mddoc))
+
+(defn apply-markdown-slice [{:as state :keys [doc]} md-slice]
+  (let [mddoc (when (seq md-slice) (assign-paths {:type :doc :content md-slice}))
+        pprefix (when mddoc [(count doc) :doc])]
+    (doc-reduce (fn [acc node]
+                  (if-some [path (:path node)]
+                    (update acc :doc conj {:type :code
+                                           :text (markdown.transform/->text node)
+                                           :doc-path (concat pprefix path)
+                                           :hidden? false #_ true})
+                    acc))
+                (cond-> state mddoc (update :doc conj {:type :markdown :doc mddoc}))
+                mddoc)))
+
 (defn parse-markdown-file [{:keys [markdown?]} file]
   (loop [{:as state :keys [nodes] ::keys [md-slice]} {:doc [] ::md-slice [] :nodes (:content (markdown/parse (slurp file)))}]
     (if-some [node (first nodes)]
       (recur
        (if (code-cell? node)
-         (cond-> state
-           (seq md-slice)
-           (-> #_state
-               (update :doc conj {:type :markdown :doc {:type :doc :content md-slice}})
-               (assoc ::md-slice []))
-
-           :always
-           (-> #_state
-               (parse-markdown-cell node)
-               (update :nodes rest)))
+         (-> state
+             (apply-markdown-slice md-slice)
+             (assoc ::md-slice [])
+             (parse-markdown-cell node)
+             (update :nodes rest))
 
          (-> state (update :nodes rest) (cond-> markdown? (update ::md-slice conj node)))))
 
       (-> state
-          (update :doc #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
+          (apply-markdown-slice md-slice)
           (select-keys [:doc :visibility])))))
 
 (defn parse-file

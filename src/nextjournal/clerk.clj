@@ -154,11 +154,16 @@
 
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
-(defn +eval-results [results-last-run vars->hash {:keys [doc visibility]}]
-  (let [doc (into [] (map (fn [{:as cell :keys [type text]}]
-                            (cond-> cell
-                              (= :code type)
-                              (assoc :result (read+eval-cached results-last-run vars->hash visibility text))))) doc)]
+(defn +eval-results
+  "Assocs a :result to code nodes, either to the node itselfs or at the path of inline markdown expressions."
+  [results-last-run vars->hash {:keys [doc visibility]}]
+  (let [doc (reduce (fn [doc [idx {:keys [type text doc-path]}]]
+                         (cond-> doc
+                           (= :code type)
+                           (assoc-in (if doc-path (concat doc-path [:result]) [idx :result])
+                                     (read+eval-cached results-last-run vars->hash visibility text))))
+                       doc
+                       (map-indexed (fn [i n] [i n]) doc))]
     (with-meta doc (-> doc blob->result (assoc :ns *ns*)))))
 
 #_(let [doc (+eval-results {} {} [{:type :markdown :text "# Hi"} {:type :code :text "[1]"} {:type :code :text "(+ 39 3)"}])
