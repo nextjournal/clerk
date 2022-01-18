@@ -85,6 +85,9 @@
   (testing "does not resolve jdk builtins"
     (is (not (h/symbol->jar 'java.net.http.HttpClient/newHttpClient)))))
 
+(defn analyze-string [s]
+  (-> (h/parse-clojure-string {:markdown? true} s)
+      h/analyze-doc))
 
 (deftest analyze-doc
   (is (match? (m/equals
@@ -117,9 +120,9 @@
                                   #{1 3 2} {:file :string,
                                             :form '#{1 3 2},
                                             :deps nil}}})
-              (h/analyze-doc (h/parse-clojure-string {:markdown? true} "^:nextjournal.clerk/no-cache (ns example-notebook)
+              (analyze-string "^:nextjournal.clerk/no-cache (ns example-notebook)
 ;; # 📶 Sorting
-#{3 1 2}")))))
+#{3 1 2}"))))
 
 (deftest circular-dependency
   (is (match? {:graph {:dependencies {'(ns circular) any?
@@ -128,4 +131,7 @@
                :->analysis-info {'circular/a any?
                                  'circular/b any?
                                  'circular/a+circular/b {:form '(do ((str "boom " b)) ((str a " boom")))}}}
-              (h/analyze-file "resources/tests/circular.clj"))))
+              (analyze-string "(ns circular)
+(declare a)
+(def b (str a \" boom\"))
+(def a (str \"boom \" b))"))))
