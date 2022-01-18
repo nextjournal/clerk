@@ -192,7 +192,7 @@
       (reset! !last-file file)
       (let [doc (parse-file file)
             results-last-run (meta @webserver/!doc)
-            {:keys [result time-ms]} (time-ms (+eval-results results-last-run (hashing/hash file) doc))]
+            {:keys [result time-ms]} (time-ms (+eval-results results-last-run (hashing/hash doc) doc))]
         ;; TODO diff to avoid flickering
         #_(webserver/update-doc! doc)
         (println (str "Clerk evaluated '" file "' in " time-ms "ms."))

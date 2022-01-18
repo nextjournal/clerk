@@ -343,8 +343,8 @@
 
   Recursively decends into dependency vars as well as given they can be found in the classpath.
   "
-  [file]
-  (let [{:as graph :keys [->analysis-info]} (analyze-file file)]
+  [doc]
+  (let [{:as graph :keys [->analysis-info]} (analyze-doc doc)]
     (reduce (fn [g [source symbols]]
               (if (or (nil? source)
                       (str/ends-with? source ".jar"))
@@ -366,8 +366,8 @@
 
 
 (defn hash
-  ([file]
-   (let [{vars :->analysis-info :keys [graph]} (build-graph file)]
+  ([doc]
+   (let [{vars :->analysis-info :keys [graph]} (build-graph doc)]
      (reduce (fn [vars->hash var]
                (if-let [info (get vars var)]
                  (assoc vars->hash var (hash vars->hash (assoc info :var var)))
