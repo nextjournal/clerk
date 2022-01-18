@@ -154,16 +154,14 @@
 
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
-(defn +eval-results [results-last-run vars->hash {:keys [doc visibility]}]
-  (let [doc (into [] (map (fn [{:as cell :keys [type text]}]
+(defn +eval-results [results-last-run doc]
+  (let [vars->hash (hashing/hash doc)
+        {:keys [doc visibility]} doc
+        doc (into [] (map (fn [{:as cell :keys [type text]}]
                             (cond-> cell
                               (= :code type)
                               (assoc :result (read+eval-cached results-last-run vars->hash visibility text))))) doc)]
     (with-meta doc (-> doc blob->result (assoc :ns *ns*)))))
-
-#_(let [doc (+eval-results {} {} [{:type :markdown :text "# Hi"} {:type :code :text "[1]"} {:type :code :text "(+ 39 3)"}])
-        blob->result (meta doc)]
-    (+eval-results blob->result {} doc))
 
 (defn parse-file [file]
   (hashing/parse-file {:doc? true} file))
@@ -174,7 +172,7 @@
 (defn eval-file
   ([file] (eval-file {} file))
   ([results-last-run file]
-   (+eval-results results-last-run (hashing/hash file) (parse-file file))))
+   (+eval-results results-last-run (parse-file file))))
 
 #_(eval-file "notebooks/rule_30.clj")
 #_(eval-file "notebooks/visibility.clj")
@@ -192,7 +190,7 @@
       (reset! !last-file file)
       (let [doc (parse-file file)
             results-last-run (meta @webserver/!doc)
-            {:keys [result time-ms]} (time-ms (+eval-results results-last-run (hashing/hash doc) doc))]
+            {:keys [result time-ms]} (time-ms (+eval-results results-last-run doc))]
         ;; TODO diff to avoid flickering
         #_(webserver/update-doc! doc)
         (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
