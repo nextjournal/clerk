@@ -86,7 +86,7 @@
     (is (not (h/symbol->jar 'java.net.http.HttpClient/newHttpClient)))))
 
 (defn analyze-string [s]
-  (-> (h/parse-clojure-string {:markdown? true} s)
+  (-> (h/parse-clojure-string {:doc? true} s)
       h/analyze-doc))
 
 (deftest analyze-doc

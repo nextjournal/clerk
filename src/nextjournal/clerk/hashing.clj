@@ -132,7 +132,7 @@
 
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
-  ([{:as _opts :keys [markdown?]} s]
+  ([{:as _opts :keys [doc?]} s]
    (loop [{:as state :keys [nodes visibility]} {:nodes (:children (p/parse-string-all s))
                                                 :doc []}]
      (if-let [node (first nodes)]
@@ -146,7 +146,7 @@
                   (not visibility)
                   (assoc :visibility (-> node n/string read-string ->doc-visibility)))
 
-                (and markdown? (n/comment? node))
+                (and doc? (n/comment? node))
                 (-> state
                     (assoc :nodes (drop-while n/comment? nodes))
                     (update :doc conj {:type :markdown :doc (markdown/parse (apply str (map (comp remove-leading-semicolons n/string)
@@ -154,7 +154,6 @@
                 :else
                 (update state :nodes rest)))
        (select-keys state [:doc :visibility])))))
-
 
 (defn code-cell? [{:as node :keys [type]}]
   (and (= :code type) (contains? node :info)))
@@ -169,7 +168,7 @@
           (-> markdown-code-cell markdown.transform/->text str/trim p/parse-string-all :children
               (->> (filter (comp code-tags n/tag))))))
 
-(defn parse-markdown-string [{:keys [markdown?]} s]
+(defn parse-markdown-string [{:keys [doc?]} s]
   (loop [{:as state :keys [nodes] ::keys [md-slice]} {:doc [] ::md-slice [] :nodes (:content (markdown/parse s))}]
     (if-some [node (first nodes)]
       (recur
@@ -185,7 +184,7 @@
                (parse-markdown-cell node)
                (update :nodes rest)))
 
-         (-> state (update :nodes rest) (cond-> markdown? (update ::md-slice conj node)))))
+         (-> state (update :nodes rest) (cond-> doc? (update ::md-slice conj node)))))
 
       (-> state
           (update :doc #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
@@ -198,10 +197,11 @@
                      (parse-clojure-string opts (slurp file)))
                    (assoc :file file))))
 
-#_(parse-file {:markdown? true} "notebooks/visibility.clj")
+#_(parse-file {:doc? true} "notebooks/visibility.clj")
+#_(parse-file "notebooks/visibility.clj")
 #_(parse-file "notebooks/elements.clj")
 #_(parse-file "notebooks/markdown.md")
-#_(parse-file {:markdown? true} "notebooks/rule_30.clj")
+#_(parse-file {:doc? true} "notebooks/rule_30.clj")
 #_(parse-file "notebooks/src/demo/lib.cljc")
 
 (defn- circular-dependency-error? [e]
@@ -252,7 +252,7 @@
   ([state file] (analyze-doc state (parse-file {} file))))
 
 #_(:graph (analyze-file {:graph (dep/graph)} "notebooks/elements.clj"))
-#_(analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/rule_30.clj")
+#_(analyze-file {:graph (dep/graph)} "notebooks/rule_30.clj")
 #_(analyze-file {:graph (dep/graph)} "notebooks/recursive.clj")
 #_(analyze-file {:graph (dep/graph)} "notebooks/hello.clj")
 

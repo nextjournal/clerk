@@ -166,7 +166,7 @@
     (+eval-results blob->result {} doc))
 
 (defn parse-file [file]
-  (hashing/parse-file {:markdown? true} file))
+  (hashing/parse-file {:doc? true} file))
 
 #_(parse-file "notebooks/elements.clj")
 #_(parse-file "notebooks/visibility.clj")
