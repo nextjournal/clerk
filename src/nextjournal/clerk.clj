@@ -169,6 +169,8 @@
 #_(parse-file "notebooks/elements.clj")
 #_(parse-file "notebooks/visibility.clj")
 
+#_(hashing/build-graph (parse-file "notebooks/test123.clj"))
+
 (defn eval-file
   ([file] (eval-file {} file))
   ([results-last-run file]

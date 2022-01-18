@@ -62,6 +62,7 @@
           var (var-name analyzed-form)
           deps (cond-> (var-dependencies analyzed-form) var (disj var))]
       (cond-> {:form (cond->> form var (drop 2))
+               :analyzed-form analyzed-form
                :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))}
         var (assoc :var var)
         (seq deps) (assoc :deps deps)))))
@@ -74,6 +75,8 @@
 #_(analyze '(in-ns 'user))
 #_(analyze '(do (ns foo)))
 #_(analyze '(def my-inc inc))
+#_(analyze '(defonce !state (atom {})))
+
 
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
@@ -225,12 +228,11 @@
            (throw e)))))
 
 (defn- analyze-codeblock [file state {:keys [type text]}]
-  (let [{:keys [var deps form ns-effect?]} (-> text read-string analyze)
-        state-with-var-hash (assoc-in state
-                                      [:->analysis-info (if var var form)]
-                                      (cond-> {:form form
-                                               :deps deps}
-                                        file (assoc :file file)))]
+  (let [{:as analyzed :keys [var deps form ns-effect?]} (-> text read-string analyze)
+        state-with-var-hash (-> state
+                                (assoc-in [:->analysis-info (if var var form)] (cond-> analyzed
+                                                                                 file (assoc :file file)))
+                                (assoc-in [:text->analysis-key text] (if var var form)))]
     (when ns-effect?
       (eval form))
     (if (seq deps)

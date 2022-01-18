@@ -35,7 +35,6 @@
 (let [{:keys [graph]} (h/build-graph parsed)]
   (dep/transitive-dependencies graph `analyzed))
 
-
 ;; ### Step 3: Hashing
 ;; Then we can use this information to hash each expression.
 (def hashes
@@ -49,7 +48,7 @@
 
 ;; We can look up the cache key using the var name in the hashes map.
 (when-let [form-hash (get hashes `rand-fifteen)]
-  (let [hash (slurp (nextjournal.clerk/->cache-file (str "@" form-hash)))]
+  (let [hash (slurp (clerk/->cache-file (str "@" form-hash)))]
     (clerk/thaw-from-cas hash)))
 
 ;; As an escape hatch, you can tag a form or var with `::clerk/no-cache` to always re-evaluate it. The following form will never be cached.
