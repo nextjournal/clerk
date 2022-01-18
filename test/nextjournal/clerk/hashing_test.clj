@@ -114,11 +114,9 @@
                             {:type :code
                              :text "#{3 1 2}"}]
                       :visibility #{:show}}
-                :->analysis-info {'(ns example-notebook) {:file :string,
-                                                          :form '(ns example-notebook),
+                :->analysis-info {'(ns example-notebook) {:form '(ns example-notebook),
                                                           :deps set?}
-                                  #{1 3 2} {:file :string,
-                                            :form '#{1 3 2},
+                                  #{1 3 2} {:form '#{1 3 2},
                                             :deps nil}}})
               (analyze-string "^:nextjournal.clerk/no-cache (ns example-notebook)
 ;; # 📶 Sorting

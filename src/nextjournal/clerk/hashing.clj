@@ -227,9 +227,9 @@
   (let [{:keys [var deps form ns-effect?]} (-> text read-string analyze)
         state-with-var-hash (assoc-in state
                                       [:->analysis-info (if var var form)]
-                                      {:file file
-                                       :form form
-                                       :deps deps})]
+                                      (cond-> {:form form
+                                               :deps deps}
+                                        file (assoc :file file)))]
     (when ns-effect?
       (eval form))
     (if (seq deps)
@@ -244,7 +244,7 @@
   ([state doc]
    (let [state-with-document (assoc state :doc doc)
          code-cells (into [] (filter (comp #{:code} :type)) (:doc doc))]
-     (reduce (partial analyze-codeblock :string) state-with-document code-cells))))
+     (reduce (partial analyze-codeblock nil) state-with-document code-cells))))
 
 
 (defn analyze-file
