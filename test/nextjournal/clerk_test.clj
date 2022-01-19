@@ -25,45 +25,6 @@
                                       :out-path temp})
             (is (= expected @url*))))))))
 
-(defn- lookup-var-in-*ns* [var-name]
-  (find-var (symbol (str *ns*) var-name)))
-
-
-(deftest read+eval-cached
-  (testing "basic eval'ing will give a result with a hash"
-    (let [->hash {'{:x (inc 10)} "fake-hash"}
-          first-run (clerk/read+eval-cached {} ->hash #{:show} {:form '{:x (inc 10)}})]
-      (is (match? {:nextjournal/value            {:x 11}
-                   :nextjournal.clerk/visibility #{:show}
-                   :nextjournal/blob-id          "fake-hash"}
-                  first-run))
-      (testing "the 'previous results' cache takes first precedence"
-        #_(is (match? {:nextjournal/value :hacked}
-                      (clerk/read+eval-cached {"fake-hash" :hacked}
-                                              ->hash
-                                              #{:show}
-                                              "{:x (inc 10)}"))))))
-
-  (testing "eval'ing stores results in a cache"
-    ;; ensure "a-var" is a variable in whatever namespace we're running in
-    (intern *ns* 'a-var 0)
-    (is (match? {:nextjournal/value 1}
-                (clerk/read+eval-cached {} {} #{:show} {:form '(inc a-var)})))
-
-    ;; sneakily change the var under the hood
-    (alter-var-root (lookup-var-in-*ns* "a-var") inc)
-
-    #_(testing "the expression is cached and we don't see the change to `a-var`"
-        (is (match? {:nextjournal/value 1}
-                    (clerk/read+eval-cached {} {} #{:show} {:form '(inc a-var)}))))
-
-    ;; TODO: pass hash param or move this to higher level call
-    (testing "with caching off, we get the freshly altered result"
-      (with-redefs [hashing/no-cache? (constantly true)]
-        (is (match? {:nextjournal/value 2}
-                    (clerk/read+eval-cached {} {} #{:show} {:form '(inc a-var)})))))))
-
-
 (deftest eval-string
   (testing "hello 42"
     (is (match? {:blocks [{:type :code,
@@ -76,6 +37,14 @@
                            :result {:nextjournal/value 41}}]}
                 (clerk/eval-string "^:nextjournal.clerk/no-cache (+ 39 2)"))))
 
+  (testing "the 'previous results' cache takes first precedence"
+    (let [doc (hashing/parse-clojure-string "(inc 41)")
+          {:keys [blob->result]} (clerk/eval-doc doc)
+          [blob-id v] (first blob->result)]
+      (is (= v 42))
+      (is (match? {:blocks [{:result {:nextjournal/value -4}}]}
+                  (clerk/eval-doc {blob-id -4} doc)))))
+
   (testing "handling binding forms i.e. def, defn"
     ;; ensure "some-var" is a variable in whatever namespace we're running in
     (testing "the variable is properly defined"
@@ -84,4 +53,12 @@
                      {:type :code,
                       :result {:nextjournal/value {::clerk/var-from-def var?}}}]
                     blocks))
-        (is (= 99 @(find-var 'my-test-ns/some-var)))))))
+        (is (= 99 @(find-var 'my-test-ns/some-var))))))
+
+  (testing "random expression gets cached"
+    (is (= (clerk/eval-string "(ns my-random-test-ns) (java.util.UUID/randomUUID)")
+           (clerk/eval-string "(ns my-random-test-ns) (java.util.UUID/randomUUID)"))))
+
+  (testing "random expression doesn't get cached with no-cache"
+    (is (not= (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns) (java.util.UUID/randomUUID)")
+              (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns) (java.util.UUID/randomUUID)")))))

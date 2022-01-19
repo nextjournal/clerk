@@ -78,7 +78,6 @@
 ;; TODO
 #_(analyze '(defonce !state (atom {})))
 
-
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
 
