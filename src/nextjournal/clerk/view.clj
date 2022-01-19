@@ -128,27 +128,26 @@
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
-  ([{:keys [inline-results?] :or {inline-results? false}} doc]
-   (let [{:keys [ns]} (meta doc)]
-     (cond-> (into []
-                   (mapcat (fn [{:as cell :keys [type text result doc]}]
-                             (case type
-                               :markdown [(v/md (or doc text))]
-                               :code (let [{:keys [code? fold? result?]} (->display cell)]
-                                       (cond-> []
-                                         code?
-                                         (conj (cond-> (v/code text) fold? (assoc :nextjournal/viewer :code-folded)))
-                                         result?
-                                         (conj (cond
-                                                 (v/registration? (v/value result))
-                                                 (v/value result)
+  ([{:keys [inline-results?] :or {inline-results? false}} {:keys [ns blocks]}]
+   (cond-> (into []
+                 (mapcat (fn [{:as cell :keys [type text result doc]}]
+                           (case type
+                             :markdown [(v/md (or doc text))]
+                             :code (let [{:keys [code? fold? result?]} (->display cell)]
+                                     (cond-> []
+                                       code?
+                                       (conj (cond-> (v/code text) fold? (assoc :nextjournal/viewer :code-folded)))
+                                       result?
+                                       (conj (cond
+                                               (v/registration? (v/value result))
+                                               (v/value result)
 
-                                                 :else
-                                                 (->result ns result (and (not inline-results?)
-                                                                          (contains? result :nextjournal/blob-id))))))))))
-                   doc)
-       true v/notebook
-       ns (assoc :scope (v/datafy-scope ns))))))
+                                               :else
+                                               (->result ns result (and (not inline-results?)
+                                                                        (contains? result :nextjournal/blob-id))))))))))
+                 blocks)
+     true v/notebook
+     ns (assoc :scope (v/datafy-scope ns)))))
 
 #_(meta (doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj")))
 #_(nextjournal.clerk/show! "notebooks/test.clj")

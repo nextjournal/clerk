@@ -66,22 +66,22 @@
 
 (deftest eval-string
   (testing "hello 42"
-    (is (match? [{:type :code,
-                  :result {:nextjournal/value 42}}]
+    (is (match? {:blocks [{:type :code,
+                           :result {:nextjournal/value 42}}]}
                 (clerk/eval-string "(+ 39 3)")))
-    (is (match? [{:type :code,
-                  :result {:nextjournal/value 41}}]
+    (is (match? {:blocks [{:type :code,
+                           :result {:nextjournal/value 41}}]}
                 (clerk/eval-string "(+ 39 2)")))
-    (is (match? [{:type :code,
-                  :result {:nextjournal/value 41}}]
+    (is (match? {:blocks [{:type :code,
+                           :result {:nextjournal/value 41}}]}
                 (clerk/eval-string "^:nextjournal.clerk/no-cache (+ 39 2)"))))
 
   (testing "handling binding forms i.e. def, defn"
     ;; ensure "some-var" is a variable in whatever namespace we're running in
-    (intern (create-ns 'my-test-ns) 'some-var 0)
     (testing "the variable is properly defined"
-      (is (match? [map?
-                   {:type :code,
-                    :result {:nextjournal/value {::clerk/var-from-def (var my-test-ns/some-var)}}}]
-                  (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-test-ns) (def some-var 99)")))
-      (is (= 99 @(var my-test-ns/some-var))))))
+      (let [{:keys [blocks]} (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-test-ns) (def some-var 99)")]
+        (is (match? [map?
+                     {:type :code,
+                      :result {:nextjournal/value {::clerk/var-from-def var?}}}]
+                    blocks))
+        (is (= 99 @(find-var 'my-test-ns/some-var)))))))

@@ -143,21 +143,21 @@
      (prn :cache-dir/does-not-exist config/cache-dir))))
 
 
-(defn blob->result [doc]
+(defn blob->result [blocks]
   (into {} (comp (keep :result)
-                 (map (juxt :nextjournal/blob-id :nextjournal/value))) doc))
+                 (map (juxt :nextjournal/blob-id :nextjournal/value))) blocks))
 
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
-(defn +eval-results [results-last-run doc]
-  (let [{:as info :keys [doc]} (hashing/build-graph doc) ;; TODO: clarify that this returns an analyzed doc
+(defn +eval-results [results-last-run parsed-doc]
+  (let [{:as info :keys [doc]} (hashing/build-graph parsed-doc) ;; TODO: clarify that this returns an analyzed doc
         ->hash (hashing/hash info)
         {:keys [blocks visibility]} doc
         blocks (into [] (map (fn [{:as cell :keys [type]}]
                                (cond-> cell
                                  (= :code type)
                                  (assoc :result (read+eval-cached results-last-run ->hash visibility cell))))) blocks)]
-    (with-meta blocks (-> blocks blob->result (assoc :ns *ns*)))))
+    (assoc parsed-doc :blocks blocks :blob->result (blob->result blocks) :ns *ns*)))
 
 (defn parse-file [file]
   (hashing/parse-file {:doc? true} file))
@@ -195,8 +195,8 @@
     (try
       (reset! !last-file file)
       (let [doc (parse-file file)
-            results-last-run (meta @webserver/!doc)
-            {:keys [result time-ms]} (time-ms (+eval-results results-last-run doc))]
+            {:keys [blob->result]} @webserver/!doc
+            {:keys [result time-ms]} (time-ms (+eval-results blob->result doc))]
         ;; TODO diff to avoid flickering
         #_(webserver/update-doc! doc)
         (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
