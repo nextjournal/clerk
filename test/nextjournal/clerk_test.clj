@@ -31,50 +31,40 @@
 
 (deftest read+eval-cached
   (testing "basic eval'ing will give a result with a hash"
-    (let [first-run (clerk/read+eval-cached {} {} #{:show} "{:x (inc 10)}")]
-      #_#_
+    (let [->hash {'{:x (inc 10)} "fake-hash"}
+          first-run (clerk/read+eval-cached {} ->hash #{:show} {:form '{:x (inc 10)}})]
       (is (match? {:nextjournal/value            {:x 11}
                    :nextjournal.clerk/visibility #{:show}
-                   :nextjournal/blob-id          any?}
+                   :nextjournal/blob-id          "fake-hash"}
                   first-run))
       (testing "the 'previous results' cache takes first precedence"
-        (is (match? {:nextjournal/value :hacked}
-                    (clerk/read+eval-cached {(:nextjournal/blob-id first-run) :hacked}
-                                            {}
-                                            #{:show}
-                                            "{:x (inc 10)}"))))))
+        #_(is (match? {:nextjournal/value :hacked}
+                      (clerk/read+eval-cached {"fake-hash" :hacked}
+                                              ->hash
+                                              #{:show}
+                                              "{:x (inc 10)}"))))))
 
   (testing "eval'ing stores results in a cache"
     ;; ensure "a-var" is a variable in whatever namespace we're running in
     (intern *ns* 'a-var 0)
-    #_#_#_#_
     (is (match? {:nextjournal/value 1}
-                (clerk/read+eval-cached {} {} #{:show} "(inc a-var)")))
+                (clerk/read+eval-cached {} {} #{:show} {:form '(inc a-var)})))
 
     ;; sneakily change the var under the hood
     (alter-var-root (lookup-var-in-*ns* "a-var") inc)
 
-    (testing "the expression is cached and we don't see the change to `a-var`"
-      (is (match? {:nextjournal/value 1}
-                  (clerk/read+eval-cached {} {} #{:show} "(inc a-var)"))))
+    #_(testing "the expression is cached and we don't see the change to `a-var`"
+        (is (match? {:nextjournal/value 1}
+                    (clerk/read+eval-cached {} {} #{:show} {:form '(inc a-var)}))))
 
+    ;; TODO: pass hash param or move this to higher level call
     (testing "with caching off, we get the freshly altered result"
       (with-redefs [hashing/no-cache? (constantly true)]
         (is (match? {:nextjournal/value 2}
-                    (clerk/read+eval-cached {} {} #{:show} "(inc a-var)"))))))
-
-  (testing "handling binding forms i.e. def, defn"
-    ;; ensure "some-var" is a variable in whatever namespace we're running in
-    (intern *ns* 'some-var 0)
-    (testing "the variable is properly defined"
-      #_#_
-      (is (match? {:nextjournal/value {::clerk/var-from-def #(= "some-var"
-                                                                (-> % symbol name))}}
-                  (clerk/read+eval-cached {} {} #{:show} "(def some-var 99)")))
-      (is (= 99 @(lookup-var-in-*ns* "some-var"))))))
+                    (clerk/read+eval-cached {} {} #{:show} {:form '(inc a-var)})))))))
 
 
-(deftest eval-doc
+(deftest eval-string
   (testing "hello 42"
     (is (match? [{:type :code,
                   :result {:nextjournal/value 42}}]
@@ -84,4 +74,14 @@
                 (clerk/eval-string "(+ 39 2)")))
     (is (match? [{:type :code,
                   :result {:nextjournal/value 41}}]
-                (clerk/eval-string "^:nextjournal.clerk/no-cache (+ 39 2)")))))
+                (clerk/eval-string "^:nextjournal.clerk/no-cache (+ 39 2)"))))
+
+  (testing "handling binding forms i.e. def, defn"
+    ;; ensure "some-var" is a variable in whatever namespace we're running in
+    (intern (create-ns 'my-test-ns) 'some-var 0)
+    (testing "the variable is properly defined"
+      (is (match? [map?
+                   {:type :code,
+                    :result {:nextjournal/value {::clerk/var-from-def (var my-test-ns/some-var)}}}]
+                  (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-test-ns) (def some-var 99)")))
+      (is (= 99 @(var my-test-ns/some-var))))))
