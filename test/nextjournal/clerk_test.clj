@@ -64,9 +64,11 @@
   (testing "handling binding forms i.e. def, defn"
     ;; ensure "some-var" is a variable in whatever namespace we're running in
     (intern *ns* 'some-var 0)
-
     (testing "the variable is properly defined"
       (is (match? {:nextjournal/value {::clerk/var-from-def #(= "some-var"
                                                                 (-> % symbol name))}}
                   (clerk/read+eval-cached {} {} #{:show} "(def some-var 99)")))
       (is (= 99 @(lookup-var-in-*ns* "some-var"))))))
+
+
+(deftest eval-doc)

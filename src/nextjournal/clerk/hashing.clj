@@ -62,8 +62,7 @@
           var (var-name analyzed-form)
           deps (cond-> (var-dependencies analyzed-form) var (disj var))]
       (cond-> {:form form
-               ;; TODO: drop var downstream
-               :analyzed-form analyzed-form
+               ;; TODO: drop var downstream so hash stays stable under change
                :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))}
         var (assoc :var var)
         (seq deps) (assoc :deps deps)))))
@@ -135,30 +134,34 @@
 (def code-tags
   #{:deref :map :meta :list :quote :reader-macro :set :token :var :vector})
 
+(defn ->codeblock [visibility node]
+  (let [form (-> node n/string read-string)]
+    (cond-> {:type :code :text (n/string node) :form form}
+      (and (not visibility) (ns? form))
+      (assoc :ns? true))))
+
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
   ([{:as _opts :keys [doc?]} s]
    (loop [{:as state :keys [nodes visibility]} {:nodes (:children (p/parse-string-all s))
-                                                :doc []}]
+                                                :blocks []}]
      (if-let [node (first nodes)]
        (recur (cond
                 (code-tags (n/tag node))
                 (cond-> (-> state
                             (update :nodes rest)
-                            (update :doc (fnil conj []) (cond-> {:type :code :text (n/string node)}
-                                                          (and (not visibility) (-> node n/string read-string ns?))
-                                                          (assoc :ns? true))))
+                            (update :blocks conj (->codeblock visibility node)))
                   (not visibility)
                   (assoc :visibility (-> node n/string read-string ->doc-visibility)))
 
                 (and doc? (n/comment? node))
                 (-> state
                     (assoc :nodes (drop-while n/comment? nodes))
-                    (update :doc conj {:type :markdown :doc (markdown/parse (apply str (map (comp remove-leading-semicolons n/string)
-                                                                                            (take-while n/comment? nodes))))}))
+                    (update :blocks conj {:type :markdown :doc (markdown/parse (apply str (map (comp remove-leading-semicolons n/string)
+                                                                                               (take-while n/comment? nodes))))}))
                 :else
                 (update state :nodes rest)))
-       (select-keys state [:doc :visibility])))))
+       (select-keys state [:blocks :visibility])))))
 
 (defn code-cell? [{:as node :keys [type]}]
   (and (= :code type) (contains? node :info)))
@@ -166,8 +169,7 @@
 (defn parse-markdown-cell [state markdown-code-cell]
   (reduce (fn [{:as state :keys [visibility]} node]
             (-> state
-                (update :doc conj (cond-> {:type :code :text (n/string node)}
-                                    (and (not visibility) (-> node n/string read-string ns?)) (assoc :ns? true)))
+                (update :doc conj (->codeblock visibility node))
                 (cond-> (not visibility) (assoc :visibility (-> node n/string read-string ->doc-visibility)))))
           state
           (-> markdown-code-cell markdown.transform/->text str/trim p/parse-string-all :children
@@ -222,34 +224,39 @@
                             (dep/depend dep rec-var)))
         (assoc-in [:->analysis-info rec-var :form] rec-form))))
 
-(defn- analyze-deps [var form {:as state :keys [graph]} dep]
+(defn- analyze-deps [var form state dep]
   (try (update state :graph #(dep/depend % (if var var form) dep))
        (catch Exception e
          (if (circular-dependency-error? e)
            (analyze-circular-dependency state var form dep (ex-data e))
            (throw e)))))
 
-(defn- analyze-codeblock [file state {:keys [type text]}]
-  (let [{:as analyzed :keys [var deps form ns-effect?]} (-> text read-string analyze)
-        state-with-var-hash (-> state
-                                (assoc-in [:->analysis-info (if var var form)] (cond-> analyzed
-                                                                                 file (assoc :file file)))
-                                (assoc-in [:text->analysis-key text] (if var var form)))]
-    (when ns-effect?
-      (eval form))
-    (if (seq deps)
-      (reduce (partial analyze-deps var form)
-              state-with-var-hash
-              deps)
-      state-with-var-hash)))
-
 (defn analyze-doc
   ([doc]
    (analyze-doc {:graph (dep/graph)} doc))
   ([state doc]
-   (let [state-with-document (assoc state :doc doc)
-         code-cells (into [] (filter (comp #{:code} :type)) (:doc doc))]
-     (reduce (partial analyze-codeblock (:file doc)) state-with-document code-cells))))
+   (reduce (fn [state i]
+             (let [{:keys [type form]} (get-in state [:doc :blocks i])]
+               (if (not= type :code)
+                 state
+                 (let [{:as analyzed :keys [var deps ns-effect?]} (analyze form)
+                       state (-> state
+                                 (assoc-in [:->analysis-info (if var var form)] (cond-> analyzed
+                                                                                  (:file doc) (assoc :file (:file doc))))
+                                 (update-in [:doc :blocks i] merge analyzed))]
+                   (when ns-effect?
+                     (eval form))
+                   (if (seq deps)
+                     (reduce (partial analyze-deps var form)
+                             state
+                             deps)
+                     state)))))
+           (assoc state :doc doc)
+           (-> doc :blocks count range))))
+
+
+#_(let [doc (parse-clojure-string {:doc? true} "(ns foo) (def a 41) (def b (inc a))")]
+    (analyze-doc doc))
 
 (defn analyze-file
   ([file] (analyze-file {:graph (dep/graph)} file))

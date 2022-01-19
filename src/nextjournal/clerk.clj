@@ -112,10 +112,9 @@
     (when-not (fs/exists? cache-dir)
       (fs/create-dirs cache-dir))))
 
-(defn read+eval-cached [results-last-run {:keys [text->analysis-key ->analysis-info vars->hash]} doc-visibility code-string]
-  (let [analysis-key (text->analysis-key code-string)
-        {:keys [ns-effect? form var]} (->analysis-info analysis-key)
-        hash           (hashing/hash vars->hash analysis-key)
+(defn read+eval-cached [results-last-run vars->hash doc-visibility codeblock]
+  (let [{:keys [ns-effect? form var]} codeblock
+        hash           (hashing/hash vars->hash (if var var form))
         digest-file    (->cache-file (str "@" hash))
         no-cache?      (or ns-effect?
                            (hashing/no-cache? form))
@@ -125,11 +124,11 @@
         cached-result? (and (not no-cache?)
                             cas-hash
                             (-> cas-hash ->cache-file fs/exists?))]
-    #_(prn :cached? (cond no-cache? :no-cache
-                          cached-result? true
-                          (fs/exists? digest-file) :no-cas-file
-                          :else :no-digest-file)
-           :hash hash :cas-hash cas-hash :form form)
+    (prn :cached? (cond no-cache? :no-cache
+                        cached-result? true
+                        (fs/exists? digest-file) :no-cas-file
+                        :else :no-digest-file)
+         :hash hash :cas-hash cas-hash :form form)
     (ensure-cache-dir!)
     (let [introduced-var var]
       (or (when cached-result?
@@ -157,26 +156,30 @@
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
 (defn +eval-results [results-last-run doc]
-  (let [analysis (hashing/hash doc)
-        {:keys [doc visibility]} doc
-        doc (into [] (map (fn [{:as cell :keys [type text]}]
-                            (cond-> cell
-                              (= :code type)
-                              (assoc :result (read+eval-cached results-last-run analysis visibility text))))) doc)]
-    (with-meta doc (-> doc blob->result (assoc :ns *ns*)))))
+  (let [{:keys [doc vars->hash]} (hashing/hash doc)
+        {:keys [blocks visibility]} doc
+        blocks (into [] (map (fn [{:as cell :keys [type]}]
+                               (cond-> cell
+                                 (= :code type)
+                                 (assoc :result (read+eval-cached results-last-run vars->hash visibility cell))))) blocks)]
+    (with-meta blocks (-> blocks blob->result (assoc :ns *ns*)))))
 
 (defn parse-file [file]
   (hashing/parse-file {:doc? true} file))
 
+#_(parse-file "notebooks/how_clerk_works.clj")
 #_(parse-file "notebooks/elements.clj")
 #_(parse-file "notebooks/visibility.clj")
 
 #_(hashing/build-graph (parse-file "notebooks/test123.clj"))
 
+(defn eval-doc
+  ([doc] (eval-doc {} doc))
+  ([results-last-run doc] (+eval-results results-last-run doc)))
+
 (defn eval-file
   ([file] (eval-file {} file))
-  ([results-last-run file]
-   (+eval-results results-last-run (parse-file file))))
+  ([results-last-run file] (eval-doc results-last-run (parse-file file))))
 
 #_(eval-file "notebooks/rule_30.clj")
 #_(eval-file "notebooks/visibility.clj")

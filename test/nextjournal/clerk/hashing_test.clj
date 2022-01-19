@@ -13,7 +13,7 @@
   (testing "are variables set to no-cache?"
     (is (not (h/no-cache? '(rand-int 10))))
     (is (not (h/no-cache? '(def random-thing (rand-int 1000)))))
-    (is (not (h/no-cache? '(defn random-thing [] (rand-int 1000)))))
+    (is (not (h/no-cache? '(defn random-thing [] (rand-int 1000)))))n
     (is (h/no-cache? '(def ^:nextjournal.clerk/no-cache random-thing (rand-int 1000))))
     (is (h/no-cache? '(defn ^:nextjournal.clerk/no-cache random-thing [] (rand-int 1000))))
     (is (h/no-cache? '(defn ^{:nextjournal.clerk/no-cache true} random-thing [] (rand-int 1000))))
@@ -93,26 +93,28 @@
   (is (match? (m/equals
                {:graph {:dependencies {'(ns example-notebook) set?}
                         :dependents   map?}
-                :doc {:doc [{:type :code
-                             :text "^:nextjournal.clerk/no-cache (ns example-notebook)"
-                             :ns?  true}
-                            {:type :markdown
-                             :doc  {:type    :doc
-                                    :content [{:type :heading
-                                               :content [{:type :text, :text "📶 Sorting"}]
-                                               :heading-level 1}]
-                                    :toc     {:type :toc
-                                              :content
-                                              [{:level 1,
-                                                :type :toc
-                                                :title "📶 Sorting"
-                                                :node
-                                                {:type :heading
-                                                 :content [{:type :text, :text "📶 Sorting"}]
-                                                 :heading-level 1}
-                                                :path [:content 0]}]}}}
-                            {:type :code
-                             :text "#{3 1 2}"}]
+                :doc {:blocks [{:type :code
+                                :text "^:nextjournal.clerk/no-cache (ns example-notebook)"
+                                :form '(ns example-notebook)
+                                :ns?  true}
+                               {:type :markdown
+                                :doc  {:type    :doc
+                                       :content [{:type :heading
+                                                  :content [{:type :text, :text "📶 Sorting"}]
+                                                  :heading-level 1}]
+                                       :toc     {:type :toc
+                                                 :content
+                                                 [{:level 1,
+                                                   :type :toc
+                                                   :title "📶 Sorting"
+                                                   :node
+                                                   {:type :heading
+                                                    :content [{:type :text, :text "📶 Sorting"}]
+                                                    :heading-level 1}
+                                                   :path [:content 0]}]}}}
+                               {:type :code
+                                :text "#{3 1 2}"
+                                :form #{1 2 3}}]
                       :visibility #{:show}}
                 :->analysis-info {'(ns example-notebook) {:form '(ns example-notebook),
                                                           :deps set?}
@@ -128,7 +130,7 @@
                                       'circular/a #{clojure.core/str 'circular/a+circular/b}}}
                :->analysis-info {'circular/a any?
                                  'circular/b any?
-                                 'circular/a+circular/b {:form '(do ((str "boom " b)) ((str a " boom")))}}}
+                                 'circular/a+circular/b {:form '(do (def a (str "boom " b)) (def b(str a " boom")))}}}
               (analyze-string "(ns circular)
 (declare a)
 (def b (str a \" boom\"))
