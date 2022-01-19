@@ -157,7 +157,6 @@
 (defn +eval-results [results-last-run doc]
   (let [{:as info :keys [doc]} (hashing/build-graph doc) ;; TODO: clarify that this returns an analyzed doc
         ->hash (hashing/hash info)
-        _ (prn :->hash ->hash)
         {:keys [blocks visibility]} doc
         blocks (into [] (map (fn [{:as cell :keys [type]}]
                                (cond-> cell

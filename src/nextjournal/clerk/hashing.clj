@@ -375,12 +375,10 @@
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 
 (defn- hash-form [->hash {:keys [hash form deps]}]
-  (prn :hash-form ->hash :hash hash :form form :deps deps)
   (let [hashed-deps (into #{} (map ->hash) deps)]
     (sha1-base58 (pr-str (conj hashed-deps (if form form hash))))))
 
 (defn hash [{:keys [->analysis-info graph]}]
-  (prn :->analysis-info ->analysis-info :graph graph)
   (reduce (fn [->hash k]
             (if-let [info (get ->analysis-info k)]
               (assoc ->hash k (hash-form ->hash info))
