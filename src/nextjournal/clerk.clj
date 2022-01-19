@@ -113,24 +113,21 @@
       (fs/create-dirs cache-dir))))
 
 (defn read+eval-cached [results-last-run ->hash doc-visibility codeblock]
-  (prn :read+eval-cached codeblock :->hash ->hash)
   (let [{:keys [ns-effect? form var]} codeblock
-        digest-file    (->cache-file (str "@" hash))
         no-cache?      (or ns-effect?
                            (hashing/no-cache? form))
-        hash           (when-not no-cache?
-                         (->hash (if var var form)))
-        cas-hash       (when (fs/exists? digest-file)
-                         (slurp digest-file))
+        hash           (when-not no-cache? (get ->hash (if var var form)))
+        digest-file    (when hash (->cache-file (str "@" hash)))
+        cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
         visibility     (if-let [fv (hashing/->visibility form)] fv doc-visibility)
         cached-result? (and (not no-cache?)
                             cas-hash
                             (-> cas-hash ->cache-file fs/exists?))]
     #_(prn :cached? (cond no-cache? :no-cache
                           cached-result? true
-                          (fs/exists? digest-file) :no-cas-file
+                          cas-hash :no-cas-file
                           :else :no-digest-file)
-           :hash hash :cas-hash cas-hash :form form)
+           :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
     (ensure-cache-dir!)
     (let [introduced-var var]
       (or (when cached-result?
@@ -158,7 +155,9 @@
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
 (defn +eval-results [results-last-run doc]
-  (let [{:keys [doc ->hash]} (hashing/hash doc)
+  (let [{:as info :keys [doc]} (hashing/build-graph doc) ;; TODO: clarify that this returns an analyzed doc
+        ->hash (hashing/hash info)
+        _ (prn :->hash ->hash)
         {:keys [blocks visibility]} doc
         blocks (into [] (map (fn [{:as cell :keys [type]}]
                                (cond-> cell
@@ -184,6 +183,11 @@
 
 #_(eval-file "notebooks/rule_30.clj")
 #_(eval-file "notebooks/visibility.clj")
+
+(defn eval-string [s]
+  (eval-doc (hashing/parse-clojure-string {:doc? true} s)))
+
+#_(eval-string "(+ 39 3)")
 
 (defonce !show-filter-fn (atom nil))
 (defonce !last-file (atom nil))

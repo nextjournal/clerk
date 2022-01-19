@@ -28,19 +28,20 @@
 
 (h/find-location `dep/depend)
 
-(h/find-location  'io.methvin.watcher.DirectoryChangeEvent)
+(h/find-location 'io.methvin.watcher.DirectoryChangeEvent)
 
 (h/find-location 'java.util.UUID)
 
 (let [{:keys [graph]} analyzed]
   (dep/transitive-dependencies graph 'how-clerk-works/analyzed))
 
-(keys analyzed)
 
 ;; ### Step 3: Hashing
 ;; Then we can use this information to hash each expression.
 (def hashes
   (h/hash parsed))
+
+(keys hashes)
 
 ;; ### Step 4: Evaluation
 ;; Clerk uses the hashes as filenames and only re-evaluates forms that haven't been seen before. The cache is using [nippy](https://github.com/ptaoussanis/nippy).

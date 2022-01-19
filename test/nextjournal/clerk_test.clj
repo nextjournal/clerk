@@ -74,9 +74,14 @@
       (is (= 99 @(lookup-var-in-*ns* "some-var"))))))
 
 
-(defn eval-string [s]
-  (clerk/eval-doc (hashing/parse-clojure-string s)))
-
 (deftest eval-doc
   (testing "hello 42"
-    (is (= [{}] (eval-string "(+ 39 3)")))))
+    (is (match? [{:type :code,
+                  :result {:nextjournal/value 42}}]
+                (clerk/eval-string "(+ 39 3)")))
+    (is (match? [{:type :code,
+                  :result {:nextjournal/value 41}}]
+                (clerk/eval-string "(+ 39 2)")))
+    (is (match? [{:type :code,
+                  :result {:nextjournal/value 41}}]
+                (clerk/eval-string "^:nextjournal.clerk/no-cache (+ 39 2)")))))

@@ -374,29 +374,19 @@
 #_(dep/immediate-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 
+(defn- hash-form [->hash {:keys [hash form deps]}]
+  (prn :hash-form ->hash :hash hash :form form :deps deps)
+  (let [hashed-deps (into #{} (map ->hash) deps)]
+    (sha1-base58 (pr-str (conj hashed-deps (if form form hash))))))
 
-(defn hash
-  ([doc]
-   (let [{:as g :keys [->analysis-info graph]} (build-graph doc)]
-     #_#_#_#_
-     (prn :STARTING========================)
-     (prn :hash :doc doc :graph graph :->analysis-info ->analysis-info)
-     (prn :g g)
-     (prn :sorted-g (dep/topo-sort graph))
-     (assoc g :->hash (reduce (fn [->hash k]
-                                (prn :->hash ->hash :k k)
-                                (if-let [info (get ->analysis-info k)]
-                                  (do (prn :info info)
-                                      (assoc ->hash k (hash ->hash info)))
-                                  ->hash))
-                              {}
-                              (dep/topo-sort graph)))))
-  ([->hash {:as i :keys [hash form deps]}]
-   (let [hashed-deps (into #{} (map ->hash) deps)]
-     #_(prn :hash-2 i :form form :->hash ->hash :hashed-deps hashed-deps :to-hash (conj hashed-deps (if form form hash)))
-     (sha1-base58 (pr-str (conj hashed-deps (if form form hash)))))))
-
-
+(defn hash [{:keys [->analysis-info graph]}]
+  (prn :->analysis-info ->analysis-info :graph graph)
+  (reduce (fn [->hash k]
+            (if-let [info (get ->analysis-info k)]
+              (assoc ->hash k (hash-form ->hash info))
+              ->hash))
+          {}
+          (dep/topo-sort graph)))
 
 #_(hash "notebooks/hello.clj")
 #_(hash "notebooks/elements.clj")
