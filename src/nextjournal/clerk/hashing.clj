@@ -377,26 +377,36 @@
 
 (defn hash
   ([doc]
-   (let [{:as g vars :->analysis-info :keys [graph]} (build-graph doc)]
-     (assoc g :vars->hash (reduce (fn [vars->hash var]
-                                    (if-let [info (get vars var)]
-                                      (assoc vars->hash var (hash vars->hash (assoc info :var var)))
-                                      vars->hash))
-                                  {}
-                                  (dep/topo-sort graph)))))
-  ([->analysis-info {:keys [hash form deps]}]
-   (let [hashed-deps (into #{} (map ->analysis-info) deps)]
+   (let [{:as g :keys [->analysis-info graph]} (build-graph doc)]
+     #_#_#_#_
+     (prn :STARTING========================)
+     (prn :hash :doc doc :graph graph :->analysis-info ->analysis-info)
+     (prn :g g)
+     (prn :sorted-g (dep/topo-sort graph))
+     (assoc g :->hash (reduce (fn [->hash k]
+                                (prn :->hash ->hash :k k)
+                                (if-let [info (get ->analysis-info k)]
+                                  (do (prn :info info)
+                                      (assoc ->hash k (hash ->hash info)))
+                                  ->hash))
+                              {}
+                              (dep/topo-sort graph)))))
+  ([->hash {:as i :keys [hash form deps]}]
+   (let [hashed-deps (into #{} (map ->hash) deps)]
+     #_(prn :hash-2 i :form form :->hash ->hash :hashed-deps hashed-deps :to-hash (conj hashed-deps (if form form hash)))
      (sha1-base58 (pr-str (conj hashed-deps (if form form hash)))))))
+
+
 
 #_(hash "notebooks/hello.clj")
 #_(hash "notebooks/elements.clj")
 #_(clojure.data/diff (hash "notebooks/how_clerk_works.clj")
-                     (hash "notebooks/how_clerk_works.clj"))
+(hash "notebooks/how_clerk_works.clj"))
 
 (comment
-  (require 'clojure.data)
-  (let [file "notebooks/cache.clj"
-        g1 (build-graph file)
-        g2 (build-graph file)]
-    [:= (= g1 g2)
-     :diff (clojure.data/diff g1 g2)]))
+(require 'clojure.data)
+(let [file "notebooks/cache.clj"
+      g1 (build-graph file)
+      g2 (build-graph file)]
+  [:= (= g1 g2)
+   :diff (clojure.data/diff g1 g2)]))

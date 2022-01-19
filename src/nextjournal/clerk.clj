@@ -112,13 +112,14 @@
     (when-not (fs/exists? cache-dir)
       (fs/create-dirs cache-dir))))
 
-(defn read+eval-cached [results-last-run vars->hash doc-visibility codeblock]
+(defn read+eval-cached [results-last-run ->hash doc-visibility codeblock]
+  (prn :read+eval-cached codeblock :->hash ->hash)
   (let [{:keys [ns-effect? form var]} codeblock
         digest-file    (->cache-file (str "@" hash))
         no-cache?      (or ns-effect?
                            (hashing/no-cache? form))
         hash           (when-not no-cache?
-                         (hashing/hash vars->hash (if var var form)))
+                         (->hash (if var var form)))
         cas-hash       (when (fs/exists? digest-file)
                          (slurp digest-file))
         visibility     (if-let [fv (hashing/->visibility form)] fv doc-visibility)
@@ -157,12 +158,12 @@
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
 (defn +eval-results [results-last-run doc]
-  (let [{:keys [doc vars->hash]} (hashing/hash doc)
+  (let [{:keys [doc ->hash]} (hashing/hash doc)
         {:keys [blocks visibility]} doc
         blocks (into [] (map (fn [{:as cell :keys [type]}]
                                (cond-> cell
                                  (= :code type)
-                                 (assoc :result (read+eval-cached results-last-run vars->hash visibility cell))))) blocks)]
+                                 (assoc :result (read+eval-cached results-last-run ->hash visibility cell))))) blocks)]
     (with-meta blocks (-> blocks blob->result (assoc :ns *ns*)))))
 
 (defn parse-file [file]

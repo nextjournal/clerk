@@ -35,6 +35,8 @@
 (let [{:keys [graph]} analyzed]
   (dep/transitive-dependencies graph 'how-clerk-works/analyzed))
 
+(keys analyzed)
+
 ;; ### Step 3: Hashing
 ;; Then we can use this information to hash each expression.
 (def hashes
