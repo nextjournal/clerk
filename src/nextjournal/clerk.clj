@@ -114,21 +114,22 @@
 
 (defn read+eval-cached [results-last-run vars->hash doc-visibility codeblock]
   (let [{:keys [ns-effect? form var]} codeblock
-        hash           (hashing/hash vars->hash (if var var form))
         digest-file    (->cache-file (str "@" hash))
         no-cache?      (or ns-effect?
                            (hashing/no-cache? form))
+        hash           (when-not no-cache?
+                         (hashing/hash vars->hash (if var var form)))
         cas-hash       (when (fs/exists? digest-file)
                          (slurp digest-file))
         visibility     (if-let [fv (hashing/->visibility form)] fv doc-visibility)
         cached-result? (and (not no-cache?)
                             cas-hash
                             (-> cas-hash ->cache-file fs/exists?))]
-    (prn :cached? (cond no-cache? :no-cache
-                        cached-result? true
-                        (fs/exists? digest-file) :no-cas-file
-                        :else :no-digest-file)
-         :hash hash :cas-hash cas-hash :form form)
+    #_(prn :cached? (cond no-cache? :no-cache
+                          cached-result? true
+                          (fs/exists? digest-file) :no-cas-file
+                          :else :no-digest-file)
+           :hash hash :cas-hash cas-hash :form form)
     (ensure-cache-dir!)
     (let [introduced-var var]
       (or (when cached-result?
@@ -136,7 +137,7 @@
           (eval+cache! form hash digest-file introduced-var no-cache? visibility)))))
 
 #_(eval-file "notebooks/test123.clj")
-
+#_(eval-file "notebooks/how_clerk_works.clj")
 #_(read+eval-cached {} {} #{:show} "(subs (slurp \"/usr/share/dict/words\") 0 1000)")
 
 (defn clear-cache!
@@ -167,7 +168,6 @@
 (defn parse-file [file]
   (hashing/parse-file {:doc? true} file))
 
-#_(parse-file "notebooks/how_clerk_works.clj")
 #_(parse-file "notebooks/elements.clj")
 #_(parse-file "notebooks/visibility.clj")
 

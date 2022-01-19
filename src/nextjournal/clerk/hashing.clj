@@ -135,10 +135,9 @@
   #{:deref :map :meta :list :quote :reader-macro :set :token :var :vector})
 
 (defn ->codeblock [visibility node]
-  (let [form (-> node n/string read-string)]
-    (cond-> {:type :code :text (n/string node) :form form}
-      (and (not visibility) (ns? form))
-      (assoc :ns? true))))
+  (cond-> {:type :code :text (n/string node)}
+    (and (not visibility) (-> node n/string read-string ns?))
+    (assoc :ns? true)))
 
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
@@ -162,6 +161,8 @@
                 :else
                 (update state :nodes rest)))
        (select-keys state [:blocks :visibility])))))
+
+#_(parse-clojure-string (slurp "notebooks/how_clerk_works.clj"))
 
 (defn code-cell? [{:as node :keys [type]}]
   (and (= :code type) (contains? node :info)))
@@ -233,17 +234,20 @@
 
 (defn analyze-doc
   ([doc]
-   (analyze-doc {:graph (dep/graph)} doc))
-  ([state doc]
+   (analyze-doc {:doc? true :graph (dep/graph)} doc))
+  ([{:as state :keys [doc?]} doc]
    (reduce (fn [state i]
-             (let [{:keys [type form]} (get-in state [:doc :blocks i])]
+             (let [{:keys [type text]} (get-in state [:doc :blocks i])]
                (if (not= type :code)
                  state
-                 (let [{:as analyzed :keys [var deps ns-effect?]} (analyze form)
+                 (let [form (read-string text)
+                       {:as analyzed :keys [var deps ns-effect?]} (analyze form)
                        state (-> state
+                                 (dissoc :doc?)
                                  (assoc-in [:->analysis-info (if var var form)] (cond-> analyzed
-                                                                                  (:file doc) (assoc :file (:file doc))))
-                                 (update-in [:doc :blocks i] merge analyzed))]
+                                                                                  (:file doc) (assoc :file (:file doc)))))
+                       state (cond-> state
+                               doc? (update-in [:doc :blocks i] merge (dissoc analyzed :deps)))]
                    (when ns-effect?
                      (eval form))
                    (if (seq deps)
@@ -251,7 +255,8 @@
                              state
                              deps)
                      state)))))
-           (assoc state :doc doc)
+           (cond-> state
+             doc? (assoc :doc doc))
            (-> doc :blocks count range))))
 
 
@@ -358,7 +363,8 @@
             (group-by find-location (unhashed-deps ->analysis-info)))))
 
 
-#_(build-graph "notebooks/hello.clj")
+#_(build-graph (parse-clojure-string (slurp "notebooks/hello.clj")))
+#_(build-graph (parse-clojure-string (slurp "notebooks/test123.clj")))
 #_(keys (:->analysis-info (build-graph "notebooks/elements.clj")))
 #_(dep/immediate-dependencies (:graph (build-graph "notebooks/elements.clj"))  #'nextjournal.clerk.demo/fix-case)
 #_(dep/transitive-dependencies (:graph (build-graph "notebooks/elements.clj"))  #'nextjournal.clerk.demo/fix-case)

@@ -19,7 +19,7 @@
 ;; Then, each expression is analysed using `tools.analyzer`. A dependency graph, the analyzed form and the originating file is recorded.
 
 (def analyzed
-  (h/analyze-file "notebooks/how_clerk_works.clj"))
+  (h/build-graph parsed))
 
 
 ;; This analysis is done recursively, descending into all dependency symbols.
@@ -32,8 +32,8 @@
 
 (h/find-location 'java.util.UUID)
 
-(let [{:keys [graph]} (h/build-graph parsed)]
-  (dep/transitive-dependencies graph `analyzed))
+(let [{:keys [graph]} analyzed]
+  (dep/transitive-dependencies graph 'how-clerk-works/analyzed))
 
 ;; ### Step 3: Hashing
 ;; Then we can use this information to hash each expression.
