@@ -141,7 +141,7 @@
 #_(->display {:result {:nextjournal.clerk/visibility #{:hide} :nextjournal/value {:nextjournal/viewer :hide-result}} :ns? false})
 #_(->display {:result {:nextjournal.clerk/visibility #{:hide}} :ns? true})
 
-(defn format-block [{:keys [inline-results?] :or {inline-results? false}} {:keys [ns]} {:as cell :keys [type text result doc]}]
+(defn describe-block [{:keys [inline-results?] :or {inline-results? false}} {:keys [ns]} {:as cell :keys [type text result doc]}]
   (case type
     :markdown [(v/md (or doc text))]
     :code (let [{:keys [code? fold? result?]} (->display cell)]
@@ -160,7 +160,7 @@
   ([doc] (doc->viewer {} doc))
   ([{:as opts :keys [toc?] :or {toc? true}} {:as doc :keys [ns]}]
    (-> doc
-       (update :blocks #(into [] (mapcat (partial format-block opts doc)) %))
+       (update :blocks #(into [] (mapcat (partial describe-block opts doc)) %))
        (select-keys [:blocks :toc :title])
        (cond-> (not toc?) (dissoc :toc))
        v/notebook
