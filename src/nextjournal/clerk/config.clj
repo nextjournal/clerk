@@ -1,11 +1,11 @@
 (ns nextjournal.clerk.config
   (:require [clojure.string :as str]))
 
-(defn cache-dir []
+(def cache-dir
   (or (System/getProperty "clerk.cache_dir")
-      ".cache"))
+      ".clerk/cache"))
 
-(defn cache-disabled? []
+(def cache-disabled?
   (when-let [prop (System/getProperty "clerk.disable_cache")]
     (not= "false" prop)))
 

@@ -24,7 +24,7 @@
 
 
 (defn ->cache-file [hash]
-  (str (config/cache-dir) fs/file-separator hash))
+  (str config/cache-dir fs/file-separator hash))
 
 (defn wrapped-with-metadata [value visibility hash]
   (cond-> {:nextjournal/value value
@@ -98,7 +98,7 @@
   (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true] (eval form)))
         var-value (cond-> result (var? result) deref)
         no-cache? (or no-cache?
-                      (config/cache-disabled?)
+                      config/cache-disabled?
                       (view/exceeds-bounded-count-limit? var-value))]
     (when (and (not no-cache?) (cachable-value? var-value))
       (cache! digest-file var-value))
@@ -107,10 +107,6 @@
                         :else hash)]
       (wrapped-with-metadata (cond-> result introduced-var var-from-def) visibility blob-id))))
 
-(defn- ensure-cache-dir! []
-  (let [cache-dir (config/cache-dir)]
-    (when-not (fs/exists? cache-dir)
-      (fs/create-dirs cache-dir))))
 
 (defn read+eval-cached [results-last-run ->hash doc-visibility codeblock]
   (let [{:keys [ns-effect? form var]} codeblock
@@ -128,7 +124,7 @@
                           cas-hash :no-cas-file
                           :else :no-digest-file)
            :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
-    (ensure-cache-dir!)
+    (fs/create-dirs config/cache-dir)
     (let [introduced-var var]
       (or (when cached-result?
             (lookup-cached-result results-last-run introduced-var hash cas-hash visibility))
@@ -140,12 +136,11 @@
 
 (defn clear-cache!
   ([]
-   (let [cache-dir (config/cache-dir)]
-     (if (fs/exists? cache-dir)
-       (do
-         (fs/delete-tree cache-dir)
-         (prn :cache-dir/deleted cache-dir))
-       (prn :cache-dir/does-not-exist cache-dir)))))
+   (if (fs/exists? config/cache-dir)
+     (do
+       (fs/delete-tree config/cache-dir)
+       (prn :cache-dir/deleted config/cache-dir))
+     (prn :cache-dir/does-not-exist config/cache-dir))))
 
 
 (defn blob->result [doc]
