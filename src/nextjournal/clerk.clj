@@ -24,7 +24,7 @@
 
 
 (defn ->cache-file [hash]
-  (str (config/cache-dir) fs/file-separator hash))
+  (str config/cache-dir fs/file-separator hash))
 
 (defn wrapped-with-metadata [value visibility hash]
   (cond-> {:nextjournal/value value
@@ -98,7 +98,7 @@
   (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true] (eval form)))
         var-value (cond-> result (var? result) deref)
         no-cache? (or no-cache?
-                      (config/cache-disabled?)
+                      config/cache-disabled?
                       (view/exceeds-bounded-count-limit? var-value))]
     (when (and (not no-cache?) (cachable-value? var-value))
       (cache! digest-file var-value))
@@ -107,77 +107,81 @@
                         :else hash)]
       (wrapped-with-metadata (cond-> result introduced-var var-from-def) visibility blob-id))))
 
-(defn- ensure-cache-dir! []
-  (let [cache-dir (config/cache-dir)]
-    (when-not (fs/exists? cache-dir)
-      (fs/create-dirs cache-dir))))
 
-(defn read+eval-cached [results-last-run vars->hash doc-visibility code-string]
-  (let [form           (hashing/read-string code-string)
-        analyzed       (hashing/analyze form)
-        hash           (hashing/hash vars->hash analyzed)
-        digest-file    (->cache-file (str "@" hash))
-        no-cache?      (or (:ns-effect? analyzed)
+(defn read+eval-cached [results-last-run ->hash doc-visibility codeblock]
+  (let [{:keys [ns-effect? form var]} codeblock
+        no-cache?      (or ns-effect?
                            (hashing/no-cache? form))
-        cas-hash       (when (fs/exists? digest-file)
-                         (slurp digest-file))
+        hash           (when-not no-cache? (get ->hash (if var var form)))
+        digest-file    (when hash (->cache-file (str "@" hash)))
+        cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
         visibility     (if-let [fv (hashing/->visibility form)] fv doc-visibility)
         cached-result? (and (not no-cache?)
                             cas-hash
                             (-> cas-hash ->cache-file fs/exists?))]
     #_(prn :cached? (cond no-cache? :no-cache
                           cached-result? true
-                          (fs/exists? digest-file) :no-cas-file
+                          cas-hash :no-cas-file
                           :else :no-digest-file)
-           :hash hash :cas-hash cas-hash :form form)
-    (ensure-cache-dir!)
-    (let [introduced-var (:var analyzed)]
+           :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
+    (fs/create-dirs config/cache-dir)
+    (let [introduced-var var]
       (or (when cached-result?
             (lookup-cached-result results-last-run introduced-var hash cas-hash visibility))
           (eval+cache! form hash digest-file introduced-var no-cache? visibility)))))
 
+#_(eval-file "notebooks/test123.clj")
+#_(eval-file "notebooks/how_clerk_works.clj")
 #_(read+eval-cached {} {} #{:show} "(subs (slurp \"/usr/share/dict/words\") 0 1000)")
 
 (defn clear-cache!
   ([]
-   (let [cache-dir (config/cache-dir)]
-     (if (fs/exists? cache-dir)
-       (do
-         (fs/delete-tree cache-dir)
-         (prn :cache-dir/deleted cache-dir))
-       (prn :cache-dir/does-not-exist cache-dir)))))
+   (if (fs/exists? config/cache-dir)
+     (do
+       (fs/delete-tree config/cache-dir)
+       (prn :cache-dir/deleted config/cache-dir))
+     (prn :cache-dir/does-not-exist config/cache-dir))))
 
 
-(defn blob->result [doc]
+(defn blob->result [blocks]
   (into {} (comp (keep :result)
-                 (map (juxt :nextjournal/blob-id :nextjournal/value))) doc))
+                 (map (juxt :nextjournal/blob-id :nextjournal/value))) blocks))
 
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
-(defn +eval-results [results-last-run vars->hash {:keys [doc visibility]}]
-  (let [doc (into [] (map (fn [{:as cell :keys [type text]}]
-                            (cond-> cell
-                              (= :code type)
-                              (assoc :result (read+eval-cached results-last-run vars->hash visibility text))))) doc)]
-    (with-meta doc (-> doc blob->result (assoc :ns *ns*)))))
-
-#_(let [doc (+eval-results {} {} [{:type :markdown :text "# Hi"} {:type :code :text "[1]"} {:type :code :text "(+ 39 3)"}])
-        blob->result (meta doc)]
-    (+eval-results blob->result {} doc))
+(defn +eval-results [results-last-run parsed-doc]
+  (let [{:as info :keys [doc]} (hashing/build-graph parsed-doc) ;; TODO: clarify that this returns an analyzed doc
+        ->hash (hashing/hash info)
+        {:keys [blocks visibility]} doc
+        blocks (into [] (map (fn [{:as cell :keys [type]}]
+                               (cond-> cell
+                                 (= :code type)
+                                 (assoc :result (read+eval-cached results-last-run ->hash visibility cell))))) blocks)]
+    (assoc parsed-doc :blocks blocks :blob->result (blob->result blocks) :ns *ns*)))
 
 (defn parse-file [file]
-  (hashing/parse-file {:markdown? true} file))
+  (hashing/parse-file {:doc? true} file))
 
 #_(parse-file "notebooks/elements.clj")
 #_(parse-file "notebooks/visibility.clj")
 
+#_(hashing/build-graph (parse-file "notebooks/test123.clj"))
+
+(defn eval-doc
+  ([doc] (eval-doc {} doc))
+  ([results-last-run doc] (+eval-results results-last-run doc)))
+
 (defn eval-file
   ([file] (eval-file {} file))
-  ([results-last-run file]
-   (+eval-results results-last-run (hashing/hash file) (parse-file file))))
+  ([results-last-run file] (eval-doc results-last-run (parse-file file))))
 
 #_(eval-file "notebooks/rule_30.clj")
 #_(eval-file "notebooks/visibility.clj")
+
+(defn eval-string [s]
+  (eval-doc (hashing/parse-clojure-string {:doc? true} s)))
+
+#_(eval-string "(+ 39 3)")
 
 (defonce !show-filter-fn (atom nil))
 (defonce !last-file (atom nil))
@@ -191,8 +195,8 @@
     (try
       (reset! !last-file file)
       (let [doc (parse-file file)
-            results-last-run (meta @webserver/!doc)
-            {:keys [result time-ms]} (time-ms (+eval-results results-last-run (hashing/hash file) doc))]
+            {:keys [blob->result]} @webserver/!doc
+            {:keys [result time-ms]} (time-ms (+eval-results blob->result doc))]
         ;; TODO diff to avoid flickering
         #_(webserver/update-doc! doc)
         (println (str "Clerk evaluated '" file "' in " time-ms "ms."))

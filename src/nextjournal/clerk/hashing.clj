@@ -61,7 +61,8 @@
                             (ana.passes.ef/emit-form #{:hygenic :qualified-symbols}))
           var (var-name analyzed-form)
           deps (cond-> (var-dependencies analyzed-form) var (disj var))]
-      (cond-> {:form (cond->> form var (drop 2))
+      (cond-> {:form form
+               ;; TODO: drop var downstream so hash stays stable under change
                :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))}
         var (assoc :var var)
         (seq deps) (assoc :deps deps)))))
@@ -74,6 +75,8 @@
 #_(analyze '(in-ns 'user))
 #_(analyze '(do (ns foo)))
 #_(analyze '(def my-inc inc))
+;; TODO
+#_(analyze '(defonce !state (atom {})))
 
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
@@ -130,30 +133,35 @@
 (def code-tags
   #{:deref :map :meta :list :quote :reader-macro :set :token :var :vector})
 
-(defn parse-clojure-file
-  ([file] (parse-clojure-file {} file))
-  ([{:as _opts :keys [markdown?]} file]
-   (loop [{:as state :keys [nodes visibility]} {:nodes (:children (p/parse-file-all file))
-                                                :doc []}]
+(defn ->codeblock [visibility node]
+  (cond-> {:type :code :text (n/string node)}
+    (and (not visibility) (-> node n/string read-string ns?))
+    (assoc :ns? true)))
+
+(defn parse-clojure-string
+  ([s] (parse-clojure-string {} s))
+  ([{:as _opts :keys [doc?]} s]
+   (loop [{:as state :keys [nodes visibility]} {:nodes (:children (p/parse-string-all s))
+                                                :blocks []}]
      (if-let [node (first nodes)]
        (recur (cond
                 (code-tags (n/tag node))
                 (cond-> (-> state
                             (update :nodes rest)
-                            (update :doc (fnil conj []) (cond-> {:type :code :text (n/string node)}
-                                                          (and (not visibility) (-> node n/string read-string ns?))
-                                                          (assoc :ns? true))))
+                            (update :blocks conj (->codeblock visibility node)))
                   (not visibility)
                   (assoc :visibility (-> node n/string read-string ->doc-visibility)))
 
-                (and markdown? (n/comment? node))
+                (and doc? (n/comment? node))
                 (-> state
                     (assoc :nodes (drop-while n/comment? nodes))
-                    (update :doc conj {:type :markdown :doc (markdown/parse (apply str (map (comp remove-leading-semicolons n/string)
-                                                                                            (take-while n/comment? nodes))))}))
+                    (update :blocks conj {:type :markdown :doc (markdown/parse (apply str (map (comp remove-leading-semicolons n/string)
+                                                                                               (take-while n/comment? nodes))))}))
                 :else
                 (update state :nodes rest)))
-       (select-keys state [:doc :visibility])))))
+       (select-keys state [:blocks :visibility])))))
+
+#_(parse-clojure-string (slurp "notebooks/how_clerk_works.clj"))
 
 (defn code-cell? [{:as node :keys [type]}]
   (and (= :code type) (contains? node :info)))
@@ -161,22 +169,21 @@
 (defn parse-markdown-cell [state markdown-code-cell]
   (reduce (fn [{:as state :keys [visibility]} node]
             (-> state
-                (update :doc conj (cond-> {:type :code :text (n/string node)}
-                                    (and (not visibility) (-> node n/string read-string ns?)) (assoc :ns? true)))
+                (update :blocks conj (->codeblock visibility node))
                 (cond-> (not visibility) (assoc :visibility (-> node n/string read-string ->doc-visibility)))))
           state
           (-> markdown-code-cell markdown.transform/->text str/trim p/parse-string-all :children
               (->> (filter (comp code-tags n/tag))))))
 
-(defn parse-markdown-file [{:keys [markdown?]} file]
-  (loop [{:as state :keys [nodes] ::keys [md-slice]} {:doc [] ::md-slice [] :nodes (:content (markdown/parse (slurp file)))}]
+(defn parse-markdown-string [{:keys [doc?]} s]
+  (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes (:content (markdown/parse s))}]
     (if-some [node (first nodes)]
       (recur
        (if (code-cell? node)
          (cond-> state
            (seq md-slice)
            (-> #_state
-               (update :doc conj {:type :markdown :doc {:type :doc :content md-slice}})
+               (update :blocks conj {:type :markdown :doc {:type :doc :content md-slice}})
                (assoc ::md-slice []))
 
            :always
@@ -184,22 +191,24 @@
                (parse-markdown-cell node)
                (update :nodes rest)))
 
-         (-> state (update :nodes rest) (cond-> markdown? (update ::md-slice conj node)))))
+         (-> state (update :nodes rest) (cond-> doc? (update ::md-slice conj node)))))
 
       (-> state
-          (update :doc #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
-          (select-keys [:doc :visibility])))))
+          (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
+          (select-keys [:blocks :visibility])))))
 
 (defn parse-file
   ([file] (parse-file {} file))
-  ([opts file] (if (str/ends-with? file ".md")
-                 (parse-markdown-file opts file)
-                 (parse-clojure-file opts file))))
+  ([opts file] (-> (if (str/ends-with? file ".md")
+                     (parse-markdown-string opts (slurp file))
+                     (parse-clojure-string opts (slurp file)))
+                   (assoc :file file))))
 
-#_(parse-file {:markdown? true} "notebooks/visibility.clj")
+#_(parse-file {:doc? true} "notebooks/visibility.clj")
+#_(parse-file "notebooks/visibility.clj")
 #_(parse-file "notebooks/elements.clj")
 #_(parse-file "notebooks/markdown.md")
-#_(parse-file {:markdown? true} "notebooks/rule_30.clj")
+#_(parse-file {:doc? true} "notebooks/rule_30.clj")
 #_(parse-file "notebooks/src/demo/lib.cljc")
 
 (defn- circular-dependency-error? [e]
@@ -215,41 +224,50 @@
                             (dep/depend dep rec-var)))
         (assoc-in [:->analysis-info rec-var :form] rec-form))))
 
-(defn- analyze-deps [var form {:as state :keys [graph]} dep]
+(defn- analyze-deps [var form state dep]
   (try (update state :graph #(dep/depend % (if var var form) dep))
        (catch Exception e
          (if (circular-dependency-error? e)
            (analyze-circular-dependency state var form dep (ex-data e))
            (throw e)))))
 
-(defn- analyze-codeblock [file state {:keys [type text]}]
-  (let [{:keys [var deps form ns-effect?]} (-> text read-string analyze)
-        state-with-var-hash (assoc-in state
-                                      [:->analysis-info (if var var form)]
-                                      {:file file
-                                       :form form
-                                       :deps deps})]
-    (when ns-effect?
-      (eval form))
-    (if (seq deps)
-      (reduce (partial analyze-deps var form)
-              state-with-var-hash
-              deps)
-      state-with-var-hash)))
+(defn analyze-doc
+  ([doc]
+   (analyze-doc {:doc? true :graph (dep/graph)} doc))
+  ([{:as state :keys [doc?]} doc]
+   (reduce (fn [state i]
+             (let [{:keys [type text]} (get-in state [:doc :blocks i])]
+               (if (not= type :code)
+                 state
+                 (let [form (read-string text)
+                       {:as analyzed :keys [var deps ns-effect?]} (analyze form)
+                       state (-> state
+                                 (dissoc :doc?)
+                                 (assoc-in [:->analysis-info (if var var form)] (cond-> analyzed
+                                                                                  (:file doc) (assoc :file (:file doc)))))
+                       state (cond-> state
+                               doc? (update-in [:doc :blocks i] merge (dissoc analyzed :deps)))]
+                   (when ns-effect?
+                     (eval form))
+                   (if (seq deps)
+                     (reduce (partial analyze-deps var form)
+                             state
+                             deps)
+                     state)))))
+           (cond-> state
+             doc? (assoc :doc doc))
+           (-> doc :blocks count range))))
+
+
+#_(let [doc (parse-clojure-string {:doc? true} "(ns foo) (def a 41) (def b (inc a))")]
+    (analyze-doc doc))
 
 (defn analyze-file
-  ([file]
-   (analyze-file {} {:graph (dep/graph)} file))
-  ([state file]
-   (analyze-file {} state file))
-  ([{:as opts :keys [markdown?]} state file]
-   (let [doc                 (parse-file opts file)
-         state-with-document (cond-> state markdown? (assoc :doc doc))
-         code-cells (into [] (filter (comp #{:code} :type)) (:doc doc))]
-     (reduce (partial analyze-codeblock file) state-with-document code-cells))))
+  ([file] (analyze-file {:graph (dep/graph)} file))
+  ([state file] (analyze-doc state (parse-file {} file))))
 
-#_(:graph (analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/elements.clj"))
-#_(analyze-file {:markdown? true} {:graph (dep/graph)} "notebooks/rule_30.clj")
+#_(:graph (analyze-file {:graph (dep/graph)} "notebooks/elements.clj"))
+#_(analyze-file {:graph (dep/graph)} "notebooks/rule_30.clj")
 #_(analyze-file {:graph (dep/graph)} "notebooks/recursive.clj")
 #_(analyze-file {:graph (dep/graph)} "notebooks/hello.clj")
 
@@ -333,8 +351,8 @@
 
   Recursively decends into dependency vars as well as given they can be found in the classpath.
   "
-  [file]
-  (let [{:as graph :keys [->analysis-info]} (analyze-file file)]
+  [doc]
+  (let [{:as graph :keys [->analysis-info]} (analyze-doc doc)]
     (reduce (fn [g [source symbols]]
               (if (or (nil? source)
                       (str/ends-with? source ".jar"))
@@ -344,7 +362,8 @@
             (group-by find-location (unhashed-deps ->analysis-info)))))
 
 
-#_(build-graph "notebooks/hello.clj")
+#_(build-graph (parse-clojure-string (slurp "notebooks/hello.clj")))
+#_(build-graph (parse-clojure-string (slurp "notebooks/test123.clj")))
 #_(keys (:->analysis-info (build-graph "notebooks/elements.clj")))
 #_(dep/immediate-dependencies (:graph (build-graph "notebooks/elements.clj"))  #'nextjournal.clerk.demo/fix-case)
 #_(dep/transitive-dependencies (:graph (build-graph "notebooks/elements.clj"))  #'nextjournal.clerk.demo/fix-case)
@@ -354,19 +373,17 @@
 #_(dep/immediate-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 
+(defn- hash-form [->hash {:keys [hash form deps]}]
+  (let [hashed-deps (into #{} (map ->hash) deps)]
+    (sha1-base58 (pr-str (conj hashed-deps (if form form hash))))))
 
-(defn hash
-  ([file]
-   (let [{vars :->analysis-info :keys [graph]} (build-graph file)]
-     (reduce (fn [vars->hash var]
-               (if-let [info (get vars var)]
-                 (assoc vars->hash var (hash vars->hash (assoc info :var var)))
-                 vars->hash))
-             {}
-             (dep/topo-sort graph))))
-  ([->analysis-info {:keys [hash form deps]}]
-   (let [hashed-deps (into #{} (map ->analysis-info) deps)]
-     (sha1-base58 (pr-str (conj hashed-deps (if form form hash)))))))
+(defn hash [{:keys [->analysis-info graph]}]
+  (reduce (fn [->hash k]
+            (if-let [info (get ->analysis-info k)]
+              (assoc ->hash k (hash-form ->hash info))
+              ->hash))
+          {}
+          (dep/topo-sort graph)))
 
 #_(hash "notebooks/hello.clj")
 #_(hash "notebooks/elements.clj")

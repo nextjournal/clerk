@@ -8,7 +8,7 @@
             [lambdaisland.uri :as uri]))
 
 (def help-doc
-  [{:type :markdown :text "Use `nextjournal.clerk/show!` to make your notebook appear…"}])
+  {:blocks [{:type :markdown :text "Use `nextjournal.clerk/show!` to make your notebook appear…"}]})
 
 (defonce !clients (atom #{}))
 (defonce !doc (atom help-doc))

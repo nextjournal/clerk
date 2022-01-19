@@ -85,41 +85,27 @@
   (testing "does not resolve jdk builtins"
     (is (not (h/symbol->jar 'java.net.http.HttpClient/newHttpClient)))))
 
+(defn analyze-string [s]
+  (-> (h/parse-clojure-string {:doc? true} s)
+      h/analyze-doc))
 
-(deftest analyze-file
+(deftest analyze-doc
   (is (match? (m/equals
                {:graph {:dependencies {'(ns example-notebook) set?}
                         :dependents   map?}
-                :doc {:doc [{:type :code
-                             :text "^:nextjournal.clerk/no-cache\n(ns example-notebook)"
-                             :ns?  true}
-                            {:type :markdown
-                             :doc  {:type    :doc
-                                    :content [{:type :heading
-                                               :content [{:type :text, :text "📶 Sorting"}]
-                                               :heading-level 1}]
-                                    :toc     {:type :toc
-                                              :content
-                                              [{:level 1,
-                                                :type :toc
-                                                :title "📶 Sorting"
-                                                :node
-                                                {:type :heading
-                                                 :content [{:type :text, :text "📶 Sorting"}]
-                                                 :heading-level 1}
-                                                :path [:content 0]}]}}}
-                            {:type :code
-                             :text "#{3 1 2}"}]
+                :doc {:blocks [{:type :code
+                                :text "^:nextjournal.clerk/no-cache (ns example-notebook)"
+                                :form '(ns example-notebook)
+                                :ns?  true}
+                               {:type :code
+                                :text "#{3 1 2}"
+                                :form #{1 2 3}}]
                       :visibility #{:show}}
-                :->analysis-info {'(ns example-notebook) {:file "resources/tests/example_notebook.clj",
-                                                          :form '(ns example-notebook),
+                :->analysis-info {'(ns example-notebook) {:form '(ns example-notebook),
                                                           :deps set?}
-                                  #{1 3 2} {:file "resources/tests/example_notebook.clj",
-                                            :form '#{1 3 2},
-                                            :deps nil}}})
-              (h/analyze-file {:markdown? true}
-                              {:graph (dep/graph)}
-                              "resources/tests/example_notebook.clj"))))
+                                  #{1 3 2} {:form '#{1 3 2}}}})
+              (analyze-string "^:nextjournal.clerk/no-cache (ns example-notebook)
+#{3 1 2}"))))
 
 (deftest circular-dependency
   (is (match? {:graph {:dependencies {'(ns circular) any?
@@ -127,5 +113,8 @@
                                       'circular/a #{clojure.core/str 'circular/a+circular/b}}}
                :->analysis-info {'circular/a any?
                                  'circular/b any?
-                                 'circular/a+circular/b {:form '(do ((str "boom " b)) ((str a " boom")))}}}
-              (h/analyze-file "resources/tests/circular.clj"))))
+                                 'circular/a+circular/b {:form '(do (def a (str "boom " b)) (def b(str a " boom")))}}}
+              (analyze-string "(ns circular)
+(declare a)
+(def b (str a \" boom\"))
+(def a (str \"boom \" b))"))))
