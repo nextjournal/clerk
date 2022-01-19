@@ -13,7 +13,7 @@
   (testing "are variables set to no-cache?"
     (is (not (h/no-cache? '(rand-int 10))))
     (is (not (h/no-cache? '(def random-thing (rand-int 1000)))))
-    (is (not (h/no-cache? '(defn random-thing [] (rand-int 1000)))))n
+    (is (not (h/no-cache? '(defn random-thing [] (rand-int 1000)))))
     (is (h/no-cache? '(def ^:nextjournal.clerk/no-cache random-thing (rand-int 1000))))
     (is (h/no-cache? '(defn ^:nextjournal.clerk/no-cache random-thing [] (rand-int 1000))))
     (is (h/no-cache? '(defn ^{:nextjournal.clerk/no-cache true} random-thing [] (rand-int 1000))))
@@ -97,31 +97,14 @@
                                 :text "^:nextjournal.clerk/no-cache (ns example-notebook)"
                                 :form '(ns example-notebook)
                                 :ns?  true}
-                               {:type :markdown
-                                :doc  {:type    :doc
-                                       :content [{:type :heading
-                                                  :content [{:type :text, :text "📶 Sorting"}]
-                                                  :heading-level 1}]
-                                       :toc     {:type :toc
-                                                 :content
-                                                 [{:level 1,
-                                                   :type :toc
-                                                   :title "📶 Sorting"
-                                                   :node
-                                                   {:type :heading
-                                                    :content [{:type :text, :text "📶 Sorting"}]
-                                                    :heading-level 1}
-                                                   :path [:content 0]}]}}}
                                {:type :code
                                 :text "#{3 1 2}"
                                 :form #{1 2 3}}]
                       :visibility #{:show}}
                 :->analysis-info {'(ns example-notebook) {:form '(ns example-notebook),
                                                           :deps set?}
-                                  #{1 3 2} {:form '#{1 3 2},
-                                            :deps nil}}})
+                                  #{1 3 2} {:form '#{1 3 2}}}})
               (analyze-string "^:nextjournal.clerk/no-cache (ns example-notebook)
-;; # 📶 Sorting
 #{3 1 2}"))))
 
 (deftest circular-dependency
