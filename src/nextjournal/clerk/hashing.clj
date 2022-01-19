@@ -170,21 +170,21 @@
 (defn parse-markdown-cell [state markdown-code-cell]
   (reduce (fn [{:as state :keys [visibility]} node]
             (-> state
-                (update :doc conj (->codeblock visibility node))
+                (update :blocks conj (->codeblock visibility node))
                 (cond-> (not visibility) (assoc :visibility (-> node n/string read-string ->doc-visibility)))))
           state
           (-> markdown-code-cell markdown.transform/->text str/trim p/parse-string-all :children
               (->> (filter (comp code-tags n/tag))))))
 
 (defn parse-markdown-string [{:keys [doc?]} s]
-  (loop [{:as state :keys [nodes] ::keys [md-slice]} {:doc [] ::md-slice [] :nodes (:content (markdown/parse s))}]
+  (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes (:content (markdown/parse s))}]
     (if-some [node (first nodes)]
       (recur
        (if (code-cell? node)
          (cond-> state
            (seq md-slice)
            (-> #_state
-               (update :doc conj {:type :markdown :doc {:type :doc :content md-slice}})
+               (update :blocks conj {:type :markdown :doc {:type :doc :content md-slice}})
                (assoc ::md-slice []))
 
            :always
@@ -195,8 +195,8 @@
          (-> state (update :nodes rest) (cond-> doc? (update ::md-slice conj node)))))
 
       (-> state
-          (update :doc #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
-          (select-keys [:doc :visibility])))))
+          (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
+          (select-keys [:blocks :visibility])))))
 
 (defn parse-file
   ([file] (parse-file {} file))
