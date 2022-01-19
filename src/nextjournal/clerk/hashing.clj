@@ -389,12 +389,12 @@
 #_(hash "notebooks/hello.clj")
 #_(hash "notebooks/elements.clj")
 #_(clojure.data/diff (hash "notebooks/how_clerk_works.clj")
-(hash "notebooks/how_clerk_works.clj"))
+                     (hash "notebooks/how_clerk_works.clj"))
 
 (comment
-(require 'clojure.data)
-(let [file "notebooks/cache.clj"
-      g1 (build-graph file)
-      g2 (build-graph file)]
-  [:= (= g1 g2)
-   :diff (clojure.data/diff g1 g2)]))
+  (require 'clojure.data)
+  (let [file "notebooks/cache.clj"
+        g1 (build-graph file)
+        g2 (build-graph file)]
+    [:= (= g1 g2)
+     :diff (clojure.data/diff g1 g2)]))
