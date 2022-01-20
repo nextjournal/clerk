@@ -80,10 +80,7 @@
      (when-not @collapsed?
        (md.transform/->hiccup markdown/default-renderers toc))]))
 
-(defn notebook [{:as doc xs :blocks :keys [toc title]}]
-  ;; TODO: avoid side effects - as e.g. inline in app layout but
-  ;; this has the advantage to work both in un/bundled static apps as well
-  (set! (.-title js/document) title)
+(defn notebook [{:as doc xs :blocks :keys [toc]}]
   (html
    (into [:div.flex.flex-col.items-center.viewer-notebook
           (when toc (render-toc doc))]
@@ -645,7 +642,9 @@
     (*eval* form))
   (when (contains? state :doc)
     (reset! !doc doc))
-  (reset! !error error))
+  (reset! !error error)
+  (when-some [title (-> doc viewer/value :title)]
+    (set! (.-title js/document) title)))
 
 (dc/defcard eval-viewer
   "Viewers that are lists are evaluated using sci."
