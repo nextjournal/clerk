@@ -84,8 +84,23 @@
   (update result :nextjournal/value (fn [data] (str "data:" content-type ";base64, "
                                                     (.encodeToString (java.util.Base64/getEncoder) data)))))
 
-(defn ->result [ns {:nextjournal/keys [value blob-id]} lazy-load?]
-  (let [described-result (v/describe value {:viewers (v/get-viewers ns (v/viewers value))})
+
+
+(defn apply-viewer-unwrapping-var-from-def [value viewer]
+  (let [value (if (get value :nextjournal.clerk/var-from-def)
+                (-> value :nextjournal.clerk/var-from-def deref)
+                value)]
+    (if (var? viewer)
+      (viewer value)
+      {:nextjournal/value value
+       :nextjournal/viewer viewer})))
+
+#_(apply-viewer-unwrapping-var-from-def [:h1 "hi"] :html)
+#_(apply-viewer-unwrapping-var-from-def [:h1 "hi"] (resolve 'nextjournal.clerk/html))
+
+(defn ->result [ns {:nextjournal/keys [value blob-id viewer]} lazy-load?]
+  (let [value (cond-> value viewer (apply-viewer-unwrapping-var-from-def viewer))
+        described-result (v/describe value {:viewers (v/get-viewers ns (v/viewers value))})
         content-type (:nextjournal/content-type described-result)]
     (merge {:nextjournal/viewer :clerk/result
             :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (cond-> described-result

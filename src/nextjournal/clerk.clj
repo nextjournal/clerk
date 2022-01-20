@@ -108,17 +108,6 @@
       (wrapped-with-metadata (cond-> result introduced-var var-from-def) visibility blob-id))))
 
 
-(defn maybe-assign-viewer [result {::keys [viewer]}]
-  (if-let [var (and viewer (get-in result [:nextjournal/value ::var-from-def]))]
-    (assoc result :nextjournal/value (if-let [viewer-fn (and (symbol? viewer) (resolve viewer))]
-                                       (viewer-fn @var)
-                                       {:nextjournal/value @var
-                                        :nextjournal/viewer viewer}))
-    result))
-
-#_(eval-string "^{:nextjournal.clerk/viewer :html} (def markup [:h1 \"hi\"])")
-#_(eval-string "^{:nextjournal.clerk/viewer nextjournal.clerk/html} (def markup [:h1 \"hi\"])")
-
 (defn read+eval-cached [results-last-run ->hash doc-visibility codeblock]
   (let [{:keys [ns-effect? form var]} codeblock
         no-cache?      (or ns-effect?
@@ -129,17 +118,19 @@
         visibility     (if-let [fv (hashing/->visibility form)] fv doc-visibility)
         cached-result? (and (not no-cache?)
                             cas-hash
-                            (-> cas-hash ->cache-file fs/exists?))]
+                            (-> cas-hash ->cache-file fs/exists?))
+        viewer-on-form-meta (let [v (-> form meta ::viewer)]
+                              (cond-> v (symbol? v) resolve))]
     #_(prn :cached? (cond no-cache? :no-cache
                           cached-result? true
                           cas-hash :no-cas-file
                           :else :no-digest-file)
            :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
     (fs/create-dirs config/cache-dir)
-    (-> (or (when cached-result?
-              (lookup-cached-result results-last-run var hash cas-hash visibility))
-            (eval+cache! form hash digest-file var no-cache? visibility))
-        (maybe-assign-viewer (meta form)))))
+    (cond-> (or (when cached-result?
+                  (lookup-cached-result results-last-run var hash cas-hash visibility))
+                (eval+cache! form hash digest-file var no-cache? visibility))
+      viewer-on-form-meta (assoc :nextjournal/viewer viewer-on-form-meta))))
 
 #_(eval-file "notebooks/test123.clj")
 #_(eval-file "notebooks/how_clerk_works.clj")
