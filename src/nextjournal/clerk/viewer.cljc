@@ -65,17 +65,18 @@
     (:nextjournal/value x)
     x))
 
+
 #_(value (with-viewer :code '(+ 1 2 3)))
 #_(value 123)
 
 (defn viewer
   "Returns the `:nextjournal/viewer` for a given wrapped value `x`, `nil` otherwise."
   [x]
-  (and (map? x) (:nextjournal/viewer x)))
+  (when (map? x)
+    (:nextjournal/viewer x)))
 
 #_(viewer (with-viewer :code '(+ 1 2 3)))
 #_(viewer "123")
-#_(viewer ^{:nextjournal.clerk/viewer :table} {:col-1 [1 2 3] :col-2 [1 2 3]})
 
 (defn viewers
   "Returns the `:nextjournal/viewers` for a given wrapped value `x`, `nil` otherwise."
@@ -274,7 +275,6 @@
 #_(wrapped-with-viewer (html [:h1 "hi"]))
 #_(wrapped-with-viewer (with-viewer :elision {:remaining 10 :count 30 :offset 19}))
 #_(wrapped-with-viewer (with-viewer (->Form '(fn [name] (html [:<> "Hello " name]))) "James"))
-
 
 (defn get-viewers
   "Returns all the viewers that apply in precendence of: optional local `viewers`, viewers set per `ns`, as well on the `:root`."
@@ -532,13 +532,6 @@
 (def tex          (partial with-viewer :latex))
 (def hide-result  (partial with-viewer :hide-result))
 (def notebook     (partial with-viewer :clerk/notebook))
-
-
-;; if with-viewer used meta, would be less obvious to see what's happening
-;; same is true for moving stuff into a transform fn
-
-
-
 (defn doc-url [path]
   (->viewer-eval (list 'v/doc-url path)))
 
