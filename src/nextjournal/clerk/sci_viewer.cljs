@@ -639,7 +639,7 @@
       [inspect @!error]])])
 
 (defn ^:export set-state [{:as state :keys [doc error]}]
-  (doseq [cell (viewer/value doc)
+  (doseq [cell (-> doc viewer/value :blocks)
           :when (viewer/registration? cell)
           :let [form (viewer/value cell)]]
     (*eval* form))
