@@ -11,7 +11,7 @@
 (deftest serve-blob
   (testing "lazy loading of simple range"
     (let [doc (clerk/eval-string "(range 100)")
-          {:nextjournal/keys [edn fetch-opts]} (-> doc view/doc->viewer :nextjournal/value second :nextjournal/value)
+          {:nextjournal/keys [edn fetch-opts]} (-> doc view/doc->viewer :nextjournal/value :blocks second :nextjournal/value)
           {:nextjournal/keys [value]} (read-result edn)
           {elision-viewer :nextjournal/viewer elision-fetch-opts :nextjournal/value} (peek value)
           {:keys [body]} (webserver/serve-blob doc (merge fetch-opts {:fetch-opts elision-fetch-opts}))]
