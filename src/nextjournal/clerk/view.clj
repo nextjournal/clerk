@@ -141,28 +141,30 @@
 #_(->display {:result {:nextjournal.clerk/visibility #{:hide} :nextjournal/value {:nextjournal/viewer :hide-result}} :ns? false})
 #_(->display {:result {:nextjournal.clerk/visibility #{:hide}} :ns? true})
 
+(defn describe-block [{:keys [inline-results?] :or {inline-results? false}} {:keys [ns]} {:as cell :keys [type text result doc]}]
+  (case type
+    :markdown [(v/md (or doc text))]
+    :code (let [{:keys [code? fold? result?]} (->display cell)]
+            (cond-> []
+              code?
+              (conj (cond-> (v/code text) fold? (assoc :nextjournal/viewer :code-folded)))
+              result?
+              (conj (cond
+                      (v/registration? (v/value result))
+                      (v/value result)
+                      :else
+                      (->result ns result (and (not inline-results?)
+                                               (contains? result :nextjournal/blob-id)))))))))
+
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
-  ([{:keys [inline-results?] :or {inline-results? false}} {:keys [ns blocks]}]
-   (cond-> (into []
-                 (mapcat (fn [{:as cell :keys [type text result doc]}]
-                           (case type
-                             :markdown [(v/md (or doc text))]
-                             :code (let [{:keys [code? fold? result?]} (->display cell)]
-                                     (cond-> []
-                                       code?
-                                       (conj (cond-> (v/code text) fold? (assoc :nextjournal/viewer :code-folded)))
-                                       result?
-                                       (conj (cond
-                                               (v/registration? (v/value result))
-                                               (v/value result)
-
-                                               :else
-                                               (->result ns result (and (not inline-results?)
-                                                                        (contains? result :nextjournal/blob-id))))))))))
-                 blocks)
-     true v/notebook
-     ns (assoc :scope (v/datafy-scope ns)))))
+  ([{:as opts :keys [toc?] :or {toc? false}} {:as doc :keys [ns]}]
+   (-> doc
+       (update :blocks #(into [] (mapcat (partial describe-block opts doc)) %))
+       (select-keys [:blocks :toc :title])
+       (cond-> (not toc?) (dissoc :toc))
+       v/notebook
+       (cond-> ns (assoc :scope (v/datafy-scope ns))))))
 
 #_(meta (doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj")))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
@@ -199,9 +201,10 @@ viewer.mount(document.getElementById('clerk'))\n"
 ws.onmessage = msg => viewer.set_state(viewer.read_string(msg.data))
 window.ws_send = msg => ws.send(msg)")]]))
 
-(defn ->static-app [state]
+(defn ->static-app [{:as state :keys [current-path]}]
   (hiccup/html5
    [:head
+    [:title (or (and current-path (-> state :path->doc (get current-path) v/value :title)) "Clerk")]
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
     (include-tailwind-cdn)

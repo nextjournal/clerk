@@ -8,6 +8,7 @@
             [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer with-viewers]]
             [nextjournal.devcards :as dc]
             [nextjournal.markdown.transform :as md.transform]
+            [nextjournal.ui.components.icon :as icon]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.markdown :as markdown]
@@ -71,9 +72,18 @@
                        (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) " ")] " ")))
                  (keys x')) "}"])))
 
-(defn notebook [xs]
+(defn render-toc [{:keys [toc]}]
+  ;; TODO: delegate to n.clerk.viewer
+  (r/with-let [collapsed? (r/atom true)]
+    [:div.viewer-markdown.fixed.top-2.left-2.border.rounded-md.px-4.py-2
+     [:a {:href "#" :on-click #(do (.preventDefault %) (swap! collapsed? not))} [icon/menu]]
+     (when-not @collapsed?
+       (md.transform/->hiccup markdown/default-renderers toc))]))
+
+(defn notebook [{:as doc xs :blocks :keys [toc]}]
   (html
-   (into [:div.flex.flex-col.items-center.viewer-notebook]
+   (into [:div.flex.flex-col.items-center.viewer-notebook
+          (when toc (render-toc doc))]
          (map (fn [x]
                 (let [viewer (viewer/viewer x)
                       blob-id (:blob-id (viewer/value x))
@@ -626,13 +636,15 @@
       [inspect @!error]])])
 
 (defn ^:export set-state [{:as state :keys [doc error]}]
-  (doseq [cell (viewer/value doc)
+  (doseq [cell (-> doc viewer/value :blocks)
           :when (viewer/registration? cell)
           :let [form (viewer/value cell)]]
     (*eval* form))
   (when (contains? state :doc)
     (reset! !doc doc))
-  (reset! !error error))
+  (reset! !error error)
+  (when-some [title (-> doc viewer/value :title)]
+    (set! (.-title js/document) title)))
 
 (dc/defcard eval-viewer
   "Viewers that are lists are evaluated using sci."

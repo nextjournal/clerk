@@ -52,8 +52,8 @@
          :path->url {"notebooks/hello.clj" "notebooks/hello.clj"}
          :url->path {"notebooks/hello.clj" "notebooks/hello.clj"}}])
 
-
 (defn index [{:as view-data :keys [paths]}]
+  (set! (.-title js/document) "Clerk")
   [:div.bg-gray-100.flex.justify-center.overflow-y-auto.w-screen.h-screen.p-4.md:p-0
    [:div.md:my-12.w-full.md:max-w-lg
     [:div.bg-white.shadow-lg.rounded-lg.border
