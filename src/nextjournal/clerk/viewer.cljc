@@ -65,7 +65,6 @@
     (:nextjournal/value x)
     x))
 
-
 #_(value (with-viewer :code '(+ 1 2 3)))
 #_(value 123)
 
@@ -74,6 +73,7 @@
   [x]
   (when (map? x)
     (:nextjournal/viewer x)))
+
 
 #_(viewer (with-viewer :code '(+ 1 2 3)))
 #_(viewer "123")
