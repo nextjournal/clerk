@@ -201,9 +201,11 @@ viewer.mount(document.getElementById('clerk'))\n"
 ws.onmessage = msg => viewer.set_state(viewer.read_string(msg.data))
 window.ws_send = msg => ws.send(msg)")]]))
 
-(defn ->static-app [state]
+(defn ->static-app [{:as state :keys [current-path]}]
   (hiccup/html5
    [:head
+    (when-let [title (and current-path (-> state :path->doc (get current-path) v/value :title))]
+      [:title title])
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
     (include-tailwind-cdn)
