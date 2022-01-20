@@ -14,9 +14,7 @@
 (defonce !doc (atom help-doc))
 (defonce !error (atom nil))
 
-
 #_(view/doc->viewer @!doc)
-#_(meta @!doc)
 #_(reset! !doc help-doc)
 
 (defn broadcast! [msg]
@@ -42,34 +40,33 @@
 #_(get-pagination-opts "")
 #_(get-pagination-opts "foo=bar&n=42&start=20")
 
-(defn serve-blob [{:keys [uri query-string]}]
-  (let [blob->result (meta @!doc)
-        blob-id (str/replace uri "/_blob/" "")
-        doc-ns (:ns (meta @!doc))]
-    (assert doc-ns "namespace must be set")
-    (if (contains? blob->result blob-id)
-      (let [result (blob->result blob-id)
-            viewers (v/get-viewers doc-ns (v/viewers result))
-            opts (assoc (get-fetch-opts query-string) :viewers viewers)
-            desc (v/describe result opts)]
-        (if (contains? desc :nextjournal/content-type)
-          {:body (v/value desc)
-           :content-type (:nextjournal/content-type desc)}
-          {:body (view/->edn desc)}))
-      {:status 404})))
+(defn serve-blob [{:as _doc :keys [blob->result ns]} {:keys [blob-id fetch-opts]}]
+  (assert ns "namespace must be set")
+  (if (contains? blob->result blob-id)
+    (let [result (blob->result blob-id)
+          viewers (v/get-viewers ns (v/viewers result))
+          opts (assoc fetch-opts :viewers viewers)
+          desc (v/describe result opts)]
+      (if (contains? desc :nextjournal/content-type)
+        {:body (v/value desc)
+         :content-type (:nextjournal/content-type desc)}
+        {:body (view/->edn desc)}))
+    {:status 404}))
 
-
+(defn extract-blob-opts [{:as _req :keys [uri query-string]}]
+  {:blob-id (str/replace uri "/_blob/" "")
+   :fetch-opts (get-fetch-opts query-string)})
 
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
     (httpkit/as-channel req {:on-open (fn [ch] (swap! !clients conj ch))
                              :on-close (fn [ch _reason] (swap! !clients disj ch))
-                             :on-receive (fn [_ch msg] (binding [*ns* (or (:ns (meta @!doc))
+                             :on-receive (fn [_ch msg] (binding [*ns* (or (:ns @!doc)
                                                                           (create-ns 'user))]
                                                          (eval (read-string msg))))})
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
-        "_blob" (serve-blob req)
+        "_blob" (serve-blob @!doc (extract-blob-opts req))
         "_ws" {:status 200 :body "upgrading..."}
         {:status  200
          :headers {"Content-Type" "text/html"}
