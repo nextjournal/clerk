@@ -314,6 +314,7 @@
          "rule_30"
          "visibility"
          "viewer_api"
+         "viewer_api_meta"
          "viewers/html"
          "viewers/image"
          "viewers/markdown"
