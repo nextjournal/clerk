@@ -119,17 +119,19 @@
         visibility     (if-let [fv (hashing/->visibility form)] fv doc-visibility)
         cached-result? (and (not no-cache?)
                             cas-hash
-                            (-> cas-hash ->cache-file fs/exists?))]
+                            (-> cas-hash ->cache-file fs/exists?))
+        viewer-on-form-meta (let [v (-> form meta ::viewer)]
+                              (cond-> v (symbol? v) resolve))]
     #_(prn :cached? (cond no-cache? :no-cache
                           cached-result? true
                           cas-hash :no-cas-file
                           :else :no-digest-file)
            :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
     (fs/create-dirs config/cache-dir)
-    (let [introduced-var var]
-      (or (when cached-result?
-            (lookup-cached-result results-last-run introduced-var hash cas-hash visibility))
-          (eval+cache! form hash digest-file introduced-var no-cache? visibility)))))
+    (cond-> (or (when cached-result?
+                  (lookup-cached-result results-last-run var hash cas-hash visibility))
+                (eval+cache! form hash digest-file var no-cache? visibility))
+      viewer-on-form-meta (assoc :nextjournal/viewer viewer-on-form-meta))))
 
 #_(eval-file "notebooks/test123.clj")
 #_(eval-file "notebooks/how_clerk_works.clj")
@@ -313,6 +315,7 @@
          "rule_30"
          "visibility"
          "viewer_api"
+         "viewer_api_meta"
          "viewers/html"
          "viewers/image"
          "viewers/markdown"
@@ -350,8 +353,7 @@
   - `:bundle?` builds a single page app versus a folder with an html page for each notebook (defaults to `true`)
   - `:path-prefix` a prefix to urls
   - `:out-path` a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
-  - `:git/sha`, `:git/url` when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
-  "
+  - `:git/sha`, `:git/url` when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`"
   [{:as opts :keys [paths out-path bundle? browse?]
     :or {paths clerk-docs
          out-path (str "public" fs/file-separator "build")
