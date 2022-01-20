@@ -37,6 +37,14 @@
                            :result {:nextjournal/value 41}}]}
                 (clerk/eval-string "^:nextjournal.clerk/no-cache (+ 39 2)"))))
 
+  (testing "all values gets blob id"
+    (let [{:keys [blocks blob->result]} (clerk/eval-string "(ns user) (inc 41) 42")]
+      (is (match? [map?
+                   {:result {:nextjournal/value 42}}
+                   {:result {:nextjournal/value 42}}]
+                  blocks))
+      (is (= 0 (count (into [] (comp (map key) (filter nil?)) blob->result))))))
+
   (testing "the 'previous results' cache takes first precedence"
     (let [doc (hashing/parse-clojure-string "(inc 41)")
           {:keys [blob->result]} (clerk/eval-doc doc)

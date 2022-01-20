@@ -112,7 +112,8 @@
   (let [{:keys [ns-effect? form var]} codeblock
         no-cache?      (or ns-effect?
                            (hashing/no-cache? form))
-        hash           (when-not no-cache? (get ->hash (if var var form)))
+        hash           (when-not no-cache? (or (get ->hash (if var var form))
+                                               (hashing/hash-codeblock ->hash codeblock)))
         digest-file    (when hash (->cache-file (str "@" hash)))
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
         visibility     (if-let [fv (hashing/->visibility form)] fv doc-visibility)
