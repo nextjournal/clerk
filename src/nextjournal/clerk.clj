@@ -12,14 +12,20 @@
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]
-            [taoensso.nippy :as nippy]))
+            [taoensso.nippy :as nippy])
+  (:import (java.awt.image BufferedImage)
+           (javax.imageio ImageIO)))
 
 (comment
   (alter-var-root #'nippy/*freeze-serializable-allowlist* (fn [_] "allow-and-record"))
   (alter-var-root   #'nippy/*thaw-serializable-allowlist* (fn [_] "allow-and-record"))
   (nippy/get-recorded-serializable-classes))
 
+;; nippy tweaks
 (alter-var-root #'nippy/*thaw-serializable-allowlist* (fn [_] (conj nippy/default-thaw-serializable-allowlist "java.io.File" "clojure.lang.Var" "clojure.lang.Namespace")))
+(nippy/extend-freeze BufferedImage :java.awt.image.BufferedImage [x out] (ImageIO/write x "png" (ImageIO/createImageOutputStream out)))
+(nippy/extend-thaw :java.awt.image.BufferedImage [in] (ImageIO/read in))
+
 #_(-> [(clojure.java.io/file "notebooks") (find-ns 'user)] nippy/freeze nippy/thaw)
 
 
@@ -90,7 +96,7 @@
 (defn- cache! [digest-file var-value]
   (try
     (spit digest-file (hash+store-in-cas! var-value))
-    (catch Exception _e
+    (catch Exception e
       #_(prn :freeze-error e)
       nil)))
 
@@ -318,6 +324,7 @@
          "viewer_api_meta"
          "viewers/html"
          "viewers/image"
+         "viewers/image_layouts"
          "viewers/markdown"
          "viewers/plotly"
          "viewers/table"

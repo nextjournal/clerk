@@ -1,19 +1,17 @@
-;; # 🏞 Customizing Fetch
-;; Showing how to use a custom `fetch-fn` with a `content-type` to let Clerk serve arbitrary things, in this case a PNG image.
-(ns ^:nextjournal.clerk/no-cache image
-  (:require [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as v])
-  (:import (java.net.http HttpRequest HttpClient HttpResponse$BodyHandlers)
-           (java.net URI)))
+;; # 🏞 Image Viewer
+(ns image
+  (:import (java.net URL)
+           (javax.imageio ImageIO)))
 
-;; We set a custom viewer for `bytes?` that includes a `:fetch-fn`, returning a wrapped value with a `:nextjournal/content-type` key set.
-(clerk/set-viewers! [{:pred bytes?
-                      :fetch-fn (fn [_ bytes] {:nextjournal/content-type "image/png"
-                                               :nextjournal/value bytes})
-                      :render-fn '(fn [blob] (v/html [:img {:src (v/url-for blob)}]))}])
+;; Clerk now comes with a default viewer for `java.awt.image.BufferedImage`. It looks at the dimensions of the image, and tries to do the right thing. For an image larger than 900px wide with an aspect ratio larger 2, it uses full width.
+(ImageIO/read (URL. "https://images.unsplash.com/photo-1532879311112-62b7188d28ce?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8"))
 
-(.. (HttpClient/newHttpClient)
-    (send (.build (HttpRequest/newBuilder (URI. "https://upload.wikimedia.org/wikipedia/commons/5/57/James_Clerk_Maxwell.png")))
-          (HttpResponse$BodyHandlers/ofByteArray)) body)
+;; A large image with an aspect ratio smaller 2 is shown wider.
+(ImageIO/read (URL. "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg"))
 
-#_(nextjournal.clerk/show! "notebooks/viewers/image.clj")
+;; Smaller images are centered and shown using thier intrinsic dimensions.
+(ImageIO/read (URL. "https://etc.usf.edu/clipart/36600/36667/thermos_36667_sm.gif"))
+
+(ImageIO/read (URL. "https://etc.usf.edu/clipart/186600/186669/186669-trees-in-the-winter_sm.gif"))
+
+(ImageIO/read (URL. "https://nextjournal.com/data/QmUyFWw9L8nZ6wvFTfJvtyqxtDyJiAr7EDZQxLVn64HASX?filename=Requiem-Ornaments-Byline.png&content-type=image/png"))

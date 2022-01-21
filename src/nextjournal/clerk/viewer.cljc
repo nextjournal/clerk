@@ -5,7 +5,9 @@
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]]
                 :cljs [[reagent.ratom :as ratom]]))
-  #?(:clj (:import [java.lang Throwable])))
+  #?(:clj (:import (java.lang Throwable)
+                   (java.awt.image BufferedImage)
+                   (javax.imageio ImageIO))))
 
 (defrecord ViewerEval [form])
 (defrecord ViewerFn [form #?(:cljs f)]
@@ -173,6 +175,16 @@
    {:pred var? :transform-fn symbol :render-fn '(fn [x] (v/html [:span.inspected-value [:span.syntax-tag "#'" (str x)]]))}
    {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e)) :fetch-fn fetch-all
     :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp demunge-ex-data datafy/datafy)}
+   #?(:clj {:pred #(instance? BufferedImage %)
+            :fetch-fn (fn [_ image] (let [stream (java.io.ByteArrayOutputStream.)
+                                          w (.getWidth image)
+                                          h (.getHeight image)
+                                          r (float (/ w h))]
+                                      (ImageIO/write image "png" stream)
+                                      (cond-> {:nextjournal/value (.toByteArray stream)
+                                               :nextjournal/content-type "image/png"
+                                               :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})))
+            :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center [:img {:src (v/url-for blob)}]]))})
    {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.text-gray-700 x]))}
    {:name :elision :render-fn (quote v/elision-viewer)}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
@@ -207,16 +219,16 @@
    {:pred string? :render-fn (quote v/string-viewer) :fetch-opts {:n 100}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))}])
 
-(def all-viewers
+(defn get-all-viewers []
   {:root  default-viewers
    :table default-table-cell-viewers})
 
 (defonce
   ^{:doc "atom containing a map of `:root` and per-namespace viewers."}
   !viewers
-  (#?(:clj atom :cljs ratom/atom) all-viewers))
+  (#?(:clj atom :cljs ratom/atom) (get-all-viewers)))
 
-#_(reset! !viewers all-viewers)
+#_(reset! !viewers (get-all-viewers))
 
 ;; heavily inspired by code from Thomas Heller in shadow-cljs, see
 ;; https://github.com/thheller/shadow-cljs/blob/1708acb21bcdae244b50293d17633ce35a78a467/src/main/shadow/remote/runtime/obj_support.cljc#L118-L144
