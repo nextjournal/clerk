@@ -2,10 +2,9 @@
 ;;
 ;; A list of image samples in different layouts that best suit the images
 ;; aspect ratio.
-
-(ns ^:nextjournal.clerk/no-cache image-layouts
-  (:require [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as v]))
+^{:nextjournal.clerk/visibility #{:fold}}
+(ns image-layouts
+  (:require [nextjournal.clerk :as clerk]))
 
 ;; ## Viewport width, height based on aspect ratio (or fixed)
 ;; * Examples: `3:1`, `4:1`
