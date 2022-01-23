@@ -84,23 +84,22 @@
   (update result :nextjournal/value (fn [data] (str "data:" content-type ";base64, "
                                                     (.encodeToString (java.util.Base64/getEncoder) data)))))
 
+(defn apply-viewer-unwrapping-var-from-def [{:as result :nextjournal/keys [value viewer]}]
+  (if viewer
+    (let [value (if (get value :nextjournal.clerk/var-from-def)
+                  (-> value :nextjournal.clerk/var-from-def deref)
+                  value)]
+      (assoc result :nextjournal/value (if (var? viewer)
+                                         (viewer value)
+                                         {:nextjournal/value value
+                                          :nextjournal/viewer viewer})))
+    result))
 
+#_(apply-viewer-unwrapping-var-from-def {:nextjournal/value [:h1 "hi"] :nextjournal/viewer :html})
+#_(apply-viewer-unwrapping-var-from-def {:nextjournal/value [:h1 "hi"] :nextjournal/viewer (resolve 'nextjournal.clerk/html)})
 
-(defn apply-viewer-unwrapping-var-from-def [value viewer]
-  (let [value (if (get value :nextjournal.clerk/var-from-def)
-                (-> value :nextjournal.clerk/var-from-def deref)
-                value)]
-    (if (var? viewer)
-      (viewer value)
-      {:nextjournal/value value
-       :nextjournal/viewer viewer})))
-
-#_(apply-viewer-unwrapping-var-from-def [:h1 "hi"] :html)
-#_(apply-viewer-unwrapping-var-from-def [:h1 "hi"] (resolve 'nextjournal.clerk/html))
-
-(defn ->result [ns {:nextjournal/keys [value blob-id viewer]} lazy-load?]
-  (let [value (cond-> value viewer (apply-viewer-unwrapping-var-from-def viewer))
-        described-result (v/describe value {:viewers (v/get-viewers ns (v/viewers value))})
+(defn ->result [ns {:nextjournal/keys [value blob-id]} lazy-load?]
+  (let [described-result (v/describe value {:viewers (v/get-viewers ns (v/viewers value))})
         content-type (:nextjournal/content-type described-result)]
     (merge {:nextjournal/viewer :clerk/result
             :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (cond-> described-result
@@ -121,10 +120,13 @@
 #_(nextjournal.clerk/show! "notebooks/hello.clj")
 #_(nextjournal.clerk/show! "notebooks/viewers/image.clj")
 
+(defn result-hidden? [result]
+  (= :hide-result (-> result v/value v/viewer)))
+
 (defn ->display [{:as code-cell :keys [result ns?]}]
   (let [{:nextjournal.clerk/keys [visibility]} result
         result? (and (contains? code-cell :result)
-                     (not= :hide-result (v/viewer (v/value result)))
+                     (not (result-hidden? result))
                      (not (contains? visibility :hide-ns))
                      (not (and ns? (contains? visibility :hide))))
         fold? (and (not (contains? visibility :hide-ns))
@@ -141,10 +143,11 @@
 #_(->display {:result {:nextjournal.clerk/visibility #{:hide} :nextjournal/value {:nextjournal/viewer :hide-result}} :ns? false})
 #_(->display {:result {:nextjournal.clerk/visibility #{:hide}} :ns? true})
 
-(defn describe-block [{:keys [inline-results?] :or {inline-results? false}} {:keys [ns]} {:as cell :keys [type text result doc]}]
+(defn describe-block [{:keys [inline-results?] :or {inline-results? false}} {:keys [ns]} {:as cell :keys [type text doc]}]
   (case type
     :markdown [(v/md (or doc text))]
-    :code (let [{:keys [code? fold? result?]} (->display cell)]
+    :code (let [{:as cell :keys [result]} (update cell :result apply-viewer-unwrapping-var-from-def)
+                {:keys [code? fold? result?]} (->display cell)]
             (cond-> []
               code?
               (conj (cond-> (v/code text) fold? (assoc :nextjournal/viewer :code-folded)))
