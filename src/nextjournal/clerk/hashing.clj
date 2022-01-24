@@ -21,11 +21,23 @@
             [weavejester.dependency :as dep]))
 
 (defn var-name
-  "Takes a `form` and returns the name of the var, if it exists."
-  [form]
-  (when (and (seq? form)
-             (contains? '#{def defn} (first form)))
-    (second form)))
+  "Takes a `analyzed-form` and returns the name of the var, if it exists."
+  [analyzed-form]
+  (when (and (seq? analyzed-form)
+             (= 'def (first analyzed-form)))
+    (second analyzed-form)))
+
+(defn not-quoted? [form]
+  (not (= 'quote (first form))))
+
+(defn defined-vars [analyzed-form]
+  (into #{}
+        (keep var-name)
+        (tree-seq (every-pred sequential? not-quoted?) seq analyzed-form)))
+
+#_(defined-vars (-> '(do (def foo :bar) (let [x (defn bar [] :baz)]) (defonce !state (atom {})))
+                    ana/analyze
+                    (ana.passes.ef/emit-form #{:hygenic :qualified-symbols})))
 
 (defn no-cache? [form]
   (let [var-or-form    (if-let [vn (var-name form)] vn form)
@@ -40,27 +52,34 @@
 
 #_(sha1-base58 "hello")
 
-(defn var-dependencies [form]
-  (let [var-name (var-name form)]
+(defn var-dependencies [analyzed-form]
+  (let [var-name (var-name analyzed-form)]
     (into #{}
           (filter #(and (symbol? %)
                         (if (qualified-symbol? %)
                           (not= var-name %)
                           (and (not= \. (-> % str (.charAt 0)))
                                (-> % resolve class?)))))
-          (tree-seq (every-pred sequential? #(not (= 'quote (first %)))) seq form))))
+          (tree-seq (every-pred sequential? not-quoted?) seq analyzed-form))))
 
 #_(var-dependencies '(def nextjournal.clerk.hashing/foo
                        (fn* ([] (nextjournal.clerk.hashing/foo "s"))
                             ([s] (clojure.string/includes?
                                   (rewrite-clj.parser/parse-string-all s) "hi")))))
+(defn analyze+emit [form]
+  (-> form
+      ana/analyze
+      (ana.passes.ef/emit-form #{:hygenic :qualified-symbols})))
 
 (defn analyze [form]
   (binding [config/*in-clerk* true]
-    (let [analyzed-form (-> form
-                            ana/analyze
-                            (ana.passes.ef/emit-form #{:hygenic :qualified-symbols}))
-          var (var-name analyzed-form)
+    (let [analyzed-form (analyze+emit form)
+          var (let [defined-vars (defined-vars analyzed-form)]
+                (when (< 1 (count defined-vars))
+                  (binding [*out* *err*]
+                    (println "Multiple definitions found in form, using first one:")
+                    (prn :form form :used-var (first defined-vars))))
+                (first defined-vars))
           deps (cond-> (var-dependencies analyzed-form) var (disj var))]
       (cond-> {:form form
                ;; TODO: drop var downstream so hash stays stable under change
@@ -76,8 +95,11 @@
 #_(analyze '(in-ns 'user))
 #_(analyze '(do (ns foo)))
 #_(analyze '(def my-inc inc))
-;; TODO
+#_(analyze '(defn my-inc
+              ([] (my-inc 0))
+              ([x] (inc x))))
 #_(analyze '(defonce !state (atom {})))
+#_(analyze '(do (def foo :bar) (def foo-2 :bar)))
 
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))

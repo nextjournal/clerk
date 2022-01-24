@@ -43,13 +43,12 @@
 
 (deftest no-cache?
   (testing "are variables set to no-cache?"
-    (is (not (h/no-cache? '(rand-int 10))))
-    (is (not (h/no-cache? '(def random-thing (rand-int 1000)))))
-    (is (not (h/no-cache? '(defn random-thing [] (rand-int 1000)))))
-    (is (h/no-cache? '(def ^:nextjournal.clerk/no-cache random-thing (rand-int 1000))))
-    (is (h/no-cache? '(defn ^:nextjournal.clerk/no-cache random-thing [] (rand-int 1000))))
-    (is (h/no-cache? '(defn ^{:nextjournal.clerk/no-cache true} random-thing [] (rand-int 1000))))
-    (is (not (h/no-cache? '[defn ^:nextjournal.clerk/no-cache trick [] 1]))))
+    (is (not (h/no-cache? (h/analyze+emit '(rand-int 10)))))
+    (is (not (h/no-cache? (h/analyze+emit '(def random-thing (rand-int 1000))))))
+    (is (not (h/no-cache? (h/analyze+emit '(defn random-thing [] (rand-int 1000))))))
+    (is (h/no-cache? (h/analyze+emit '(def ^:nextjournal.clerk/no-cache random-thing (rand-int 1000)))))
+    (is (h/no-cache? (h/analyze+emit '(defn ^:nextjournal.clerk/no-cache random-thing [] (rand-int 1000)))))
+    (is (h/no-cache? (h/analyze+emit '(defn ^{:nextjournal.clerk/no-cache true} random-thing [] (rand-int 1000))))))
 
   (testing "is evaluating namespace set to no-cache?"
     (is (not (h/no-cache? '(rand-int 10))))
@@ -108,7 +107,19 @@
 
   (is (match? {:ns-effect? false
                :deps       #{'clojure.core/inc}}
-              (h/analyze '(def my-inc inc)))))
+              (h/analyze '(def my-inc inc))))
+
+  (is (match? {:ns-effect? false
+               :var 'nextjournal.clerk.hashing-test/!state
+               :deps       #{'clojure.core/atom}}
+              (with-ns-binding 'nextjournal.clerk.hashing-test
+                (h/analyze '(defonce !state (atom {}))))))
+
+  (is (match? {:ns-effect? false
+               :var 'nextjournal.clerk.hashing-test/foo
+               :deps '#{nextjournal.clerk.hashing-test/foo-2}}
+              (with-ns-binding 'nextjournal.clerk.hashing-test
+                (h/analyze '(do (def foo :bar) (def foo-2 :bar)))))))
 
 
 (deftest symbol->jar
