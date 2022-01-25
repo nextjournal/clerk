@@ -900,9 +900,9 @@ black")}]))}
 (defn katex-viewer [tex-string]
   (html (katex/to-html-string tex-string)))
 
-(defn html-viewer [markup]
+(defn html-viewer [markup {:as _opts :keys [inline?]}]
   (if (string? markup)
-    (html [:div {:dangerouslySetInnerHTML {:__html markup}}])
+    (html [(if inline? :span :div) {:dangerouslySetInnerHTML {:__html markup}}])
     (r/as-element markup)))
 
 (defn reagent-viewer [x]
