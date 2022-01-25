@@ -1,8 +1,7 @@
-;; # MathJax
+;; # ${\LaTeX}$ with MathJax
 ;; How to set default latex renderer to MathJax
 (ns ^:nextjournal.clerk/no-cache mathjax
-  (:require [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as clerk-viewer]))
+  (:require [nextjournal.clerk :as clerk]))
 
 (clerk/set-viewers! [{:name :latex
                       :render-fn (quote v/mathjax-viewer)
