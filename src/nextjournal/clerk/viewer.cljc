@@ -216,15 +216,15 @@
                         (update :nextjournal/value #(or (normalize-table-data %)
                                                         {:error "Could not normalize table" :ex-data %}))
                         (update :nextjournal/viewers concat (:table @!viewers))))
-    :fetch-fn (fn [{:as opts :keys [describe-fn offset]} xs]
+    :fetch-fn (fn [{:as opts :keys [describe-fn offset path]} xs]
                 ;; TODO: use budget per row for table
                 ;; TODO: opt out of eliding cols
-                (if (:error xs)
-                  (update xs :ex-data describe-fn opts [])
-                  (-> (cond-> (update xs :rows describe-fn (dissoc opts :!budget) [])
-                        (pos? offset) :rows)
-                      (assoc :path [:rows] :replace-path [offset])
-                      (dissoc :nextjournal/viewers))))}
+                (cond (:error xs) (update xs :ex-data describe-fn opts [])
+                      (seq path) (describe-fn (:rows xs) opts [])
+                      :else (-> (cond-> (update xs :rows describe-fn (dissoc opts :!budget) [])
+                                  (pos? offset) :rows)
+                                (assoc :path [:rows] :replace-path [offset])
+                                (dissoc :nextjournal/viewers))))}
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
    {:name :object :render-fn '(fn [x] (v/html (v/tagged-value "#object" [v/inspect x])))}
    {:name :file :render-fn '(fn [x] (v/html (v/tagged-value "#file " [v/inspect x])))}
@@ -388,15 +388,16 @@
      (merge {:path path}
             (dissoc wrapped-value [:nextjournal/value :nextjournal/viewer])
             (with-viewer (process-viewer viewer)
-              (cond descend?
+              (cond fetch-fn
+                    (fetch-fn (merge opts fetch-opts {:describe-fn describe}) xs)
+
+                    descend?
                     (let [idx (first (drop (count current-path) path))]
                       (describe (cond (or (map? xs) (set? xs)) (nth (seq (ensure-sorted xs)) idx)
                                       (associative? xs) (get xs idx)
                                       (sequential? xs) (nth xs idx))
                                 opts
                                 (conj current-path idx)))
-
-                    fetch-fn (fetch-fn (merge opts fetch-opts {:describe-fn describe}) xs)
 
                     (string? xs)
                     (-> (if (and (number? (:n fetch-opts)) (< (:n fetch-opts) (count xs)))

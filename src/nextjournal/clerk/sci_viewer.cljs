@@ -935,7 +935,8 @@ black")}]))}
 (defn url-for [{:as src :keys [blob-id]}]
   (if (string? src)
     src
-    (str "/_blob/" blob-id)))
+    (str "/_blob/" blob-id (when-let [opts (seq (dissoc src :blob-id))]
+                             (str "?" (opts->query opts))))))
 
 (def ^{:doc "Stub implementation to be replaced during static site generation. Clerk is only serving one page currently."}
   doc-url

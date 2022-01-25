@@ -98,14 +98,18 @@
 #_(apply-viewer-unwrapping-var-from-def {:nextjournal/value [:h1 "hi"] :nextjournal/viewer :html})
 #_(apply-viewer-unwrapping-var-from-def {:nextjournal/value [:h1 "hi"] :nextjournal/viewer (resolve 'nextjournal.clerk/html)})
 
+(defn extract-blobs [lazy-load? blob-id described-result]
+  (w/postwalk #(cond-> %
+                 (and (get % :nextjournal/content-type) lazy-load?)
+                 (assoc :nextjournal/value {:blob-id blob-id :path (:path %)})
+                 (and (get % :nextjournal/content-type) (not lazy-load?))
+                 base64-encode-value)
+              described-result))
+
 (defn ->result [ns {:nextjournal/keys [value blob-id]} lazy-load?]
-  (let [described-result (v/describe value {:viewers (v/get-viewers ns (v/viewers value))})
-        content-type (:nextjournal/content-type described-result)]
+  (let [described-result (extract-blobs lazy-load? blob-id (v/describe value {:viewers (v/get-viewers ns (v/viewers value))}))]
     (merge {:nextjournal/viewer :clerk/result
-            :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (cond-> described-result
-                                                                       (and content-type lazy-load?)
-                                                                       (assoc :nextjournal/value {:blob-id blob-id})
-                                                                       (and content-type (not lazy-load?)) base64-encode-value))}
+            :nextjournal/value (cond-> (try {:nextjournal/edn (->edn described-result)}
                                             (catch Throwable _e
                                               {:nextjournal/string (pr-str value)}))
                                  (-> described-result v/viewer :name)
