@@ -971,6 +971,9 @@ black")}]))}
    {:name :nextjournal.markdown/em :render-fn (into-markup [:em])}
    {:name :nextjournal.markdown/strong :render-fn (into-markup [:strong])}
    {:name :nextjournal.markdown/monospace :render-fn (into-markup [:code.monospace])}
+   {:name :nextjournal.markdown/link
+    :render-fn (fn [content {:as opts :keys [attrs]}]
+                 (html (into [:a attrs] (map (partial inspect opts)) content)))}
 
    ;; lists
    {:name :nextjournal.markdown/bullet-list :render-fn (into-markup [:ul])}
