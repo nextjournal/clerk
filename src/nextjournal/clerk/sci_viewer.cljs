@@ -1019,13 +1019,12 @@ black")}]))}
               content)))
 
 (dc/defcard markdown-doc-viewer
-  [:<>
+  [:div.viewer-markdown
    [inspect #:nextjournal{:viewer :nextjournal.markdown/doc,
                           :value [{:heading-level 1,
                                    :nextjournal/viewer :nextjournal.markdown/heading,
                                    :nextjournal/value [#:nextjournal{:value "MathJax",
                                                                      :viewer :nextjournal.markdown/text}]}]}]
-
 
    [inspect #:nextjournal{:viewer :nextjournal.markdown/doc,
                           :value [#:nextjournal{:viewer :nextjournal.markdown/paragraph,
@@ -1052,8 +1051,7 @@ black")}]))}
                                                         #:nextjournal{:viewer :nextjournal.markdown/list-item,
                                                                       :value [#:nextjournal{:viewer :nextjournal.markdown/paragraph,
                                                                                             :value [#:nextjournal{:value "a list",
-                                                                                                                  :viewer :nextjournal.markdown/text}]}]}]}]}
-    ]])
+                                                                                                                  :viewer :nextjournal.markdown/text}]}]}]}]}]])
 
 (def sci-viewer-namespace
   {'html html-viewer
