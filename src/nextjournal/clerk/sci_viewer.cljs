@@ -978,6 +978,13 @@ black")}]))}
    ;; lists
    {:name :nextjournal.markdown/bullet-list :render-fn (into-markup [:ul])}
    {:name :nextjournal.markdown/list-item :render-fn (into-markup [:li])}
+   {:name :nextjournal.markdown/numbered-list :render-fn (into-markup [:ol])}
+   {:name :nextjournal.markdown/todo-list :render-fn (into-markup [:ul.contains-task-list])}
+   {:name :nextjournal.markdown/todo-item
+    :render-fn (fn [content {:as opts :keys [attrs]}]
+                 (html (into [:li [:input {:type "checkbox" :default-checked (:checked attrs)}]]
+                             (map (partial inspect opts))
+                             content)))}
 
    ;; formulas
    {:name :nextjournal.markdown/block-formula
@@ -987,19 +994,11 @@ black")}]))}
 
    ;;{:name :nextjournal.markdown/ruler
    ;; :render-fn (fn [content opts])}
-   ;;{:name :nextjournal.markdown/em
-   ;; :render-fn (fn [content opts])}
    ;;{:name :nextjournal.markdown/sidenote
-   ;; :render-fn (fn [content opts])}
-   ;;{:name :nextjournal.markdown/numbered-list
    ;; :render-fn (fn [content opts])}
    ;;{:name :nextjournal.markdown/softbreak
    ;; :render-fn (fn [content opts])}
-   ;;{:name :nextjournal.markdown/monospace
-   ;; :render-fn (fn [content opts])}
    ;;{:name :nextjournal.markdown/sidenote-ref
-   ;; :render-fn (fn [content opts])}
-   ;;{:name :nextjournal.markdown/link
    ;; :render-fn (fn [content opts])}
    ;;{:name :nextjournal.markdown/strikethrough
    ;; :render-fn (fn [content opts])}
@@ -1007,15 +1006,7 @@ black")}]))}
    ;; :render-fn (fn [content opts])}
    ;;{:name :nextjournal.markdown/image
    ;; :render-fn (fn [content opts])}
-   ;;{:name :nextjournal.markdown/table-head
-   ;; :render-fn (fn [content opts])}
-   ;;{:name :nextjournal.markdown/doc
-   ;; :render-fn (fn [content opts])}
-   ;;{:name :nextjournal.markdown/todo-item
-   ;; :render-fn (fn [content opts])}
    ;;{:name :nextjournal.markdown/hashtag
-   ;; :render-fn (fn [content opts])}
-   ;;{:name :nextjournal.markdown/paragraph
    ;; :render-fn (fn [content opts])}
    ;;{:name :nextjournal.markdown/blockquote
    ;; :render-fn (fn [content opts])}
