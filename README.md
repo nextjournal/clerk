@@ -101,6 +101,19 @@ In IntelliJ/Cursive, you can [set up REPL commands](https://cursive-ide.com/user
 * make sure the command is executed in the `nextjournal.clerk` namespace;
 * lastly assign a shortcut of your choice via `Settings→Keymap`
 
+#### Neovim + Conjure
+
+With [neovim](https://neovim.io/) + [conjure](https://github.com/Olical/conjure/) one can use the following vimscript function to save the file and show it with Clerk:
+
+```
+function! ClerkShow()
+  exe "w"
+  exe "ConjureEval (nextjournal.clerk/show! \"" . expand("%:p") . "\")"
+endfunction
+
+nmap <silent> <localleader>cs :execute ClerkShow()<CR>
+```
+
 ## 🪚 Developing Clerk
 Make sure you have [Babashka installed](https://github.com/babashka/babashka#installation), and run:
 
