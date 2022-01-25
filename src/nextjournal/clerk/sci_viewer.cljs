@@ -964,6 +964,10 @@ black")}]))}
     :render-fn (fn [content _opts] (html [:span content]))}
    {:name :nextjournal.markdown/paragraph :render-fn (into-markup [:p])}
    {:name :nextjournal.markdown/softbreak :render-fn (constantly (html [:span " "]))}
+   {:name :nextjournal.markdown/ruler :render-fn (constantly (html [:hr]))}
+   {:name :nextjournal.markdown/code
+    :render-fn (fn [content _opts] (with-viewer :code (apply str (map viewer/value content))))}
+   {:name :nextjournal.markdown/image :render-fn (fn [_ {:keys [attrs]}] (html [:img attrs]))}
    {:name :nextjournal.markdown/heading
     :render-fn (fn [content {:as opts :keys [heading-level]}]
                  (html (into [(keyword (str "h" heading-level))] (map (partial inspect opts)) content)))}
@@ -972,6 +976,8 @@ black")}]))}
    {:name :nextjournal.markdown/em :render-fn (into-markup [:em])}
    {:name :nextjournal.markdown/strong :render-fn (into-markup [:strong])}
    {:name :nextjournal.markdown/monospace :render-fn (into-markup [:code.monospace])}
+   {:name :nextjournal.markdown/strikethrough :render-fn (into-markup [:s])}
+   {:name :nextjournal.markdown/blockquote :render-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/link
     :render-fn (fn [content {:as opts :keys [attrs]}]
                  (html (into [:a attrs] (map (partial inspect opts)) content)))}
@@ -993,25 +999,17 @@ black")}]))}
    {:name :nextjournal.markdown/formula
     :render-fn (fn [content opts] (inspect (assoc opts :inline? true) (with-viewer :latex content)))}
 
-   ;;{:name :nextjournal.markdown/ruler
-   ;; :render-fn (fn [content opts])}
-   ;;{:name :nextjournal.markdown/sidenote
-   ;; :render-fn (fn [content opts])}
-   ;;{:name :nextjournal.markdown/softbreak
-   ;; :render-fn (fn [content opts])}
-   ;;{:name :nextjournal.markdown/sidenote-ref
-   ;; :render-fn (fn [content opts])}
-   ;;{:name :nextjournal.markdown/strikethrough
-   ;; :render-fn (fn [content opts])}
-   ;;{:name :nextjournal.markdown/code
-   ;; :render-fn (fn [content opts])}
-   ;;{:name :nextjournal.markdown/image
-   ;; :render-fn (fn [content opts])}
-   ;;{:name :nextjournal.markdown/hashtag
-   ;; :render-fn (fn [content opts])}
-   ;;{:name :nextjournal.markdown/blockquote
-   ;; :render-fn (fn [content opts])}
-
+   #_ ;; TODO:
+   (:table-header
+    :table-data
+    :table-head
+    :table-body
+    :table-row
+    :table
+    :hashtag
+    :sidenote
+    :sidenote-ref
+    )
    ])
 
 (defn markdown-doc-viewer [content opts]

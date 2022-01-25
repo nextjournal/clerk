@@ -1,5 +1,6 @@
 ;; # ${\LaTeX}$ with MathJax
-;; Thisi is how to set Clerk's latex rendering to use [MathJax](https://mathjax.org). _Right-click on formulas in this notebook to actually check it's rendered with Mathjax_.
+;; This is how to set Clerk's latex rendering to use ~~KaTeX~~ [MathJax](https://mathjax.org). _Right-click on formulas in this notebook to actually check it's rendered with Mathjax_.
+
 (ns ^:nextjournal.clerk/no-cache mathjax
   (:require [nextjournal.clerk :as clerk]))
 
@@ -28,9 +29,12 @@
  \\label{eq:cosinjective}
  \\tag{COS-INJ}
  \\end{equation}")
-
-;; this is an example $\eqref{eq:cosinjective}$.
+;; this is an example of reference $\eqref{eq:cosinjective}$.
+;;
 ;; # Todos
+;; ----------
 ;; - [x] render inline/display mode of formulas (both KaTeX and MathJax)
 ;; - [ ] reimplement markdown node transformers as sci viewer functions
 ;; - [ ] handle clicks on equation references **(?)**
+;;
+;; ![mj](https://www.mathjax.org/badge/mj-logo.svg)
