@@ -337,6 +337,7 @@
          "viewers/image"
          "viewers/image_layouts"
          "viewers/markdown"
+         "viewers/mathjax"
          "viewers/plotly"
          "viewers/table"
          "viewers/tex"
