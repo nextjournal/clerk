@@ -897,8 +897,8 @@ black")}]))}
 (defn clerk-eval [form]
   (.ws_send ^js goog/global (pr-str form)))
 
-(defn katex-viewer [tex-string]
-  (html (katex/to-html-string tex-string)))
+(defn katex-viewer [tex-string {:keys [inline?]}]
+  (html (katex/to-html-string tex-string #js {:displayMode (not inline?)})))
 
 (defn html-viewer [markup {:as _opts :keys [inline?]}]
   (if (string? markup)
@@ -908,7 +908,9 @@ black")}]))}
 (defn reagent-viewer [x]
   (r/as-element (cond-> x (fn? x) vector)))
 
-(def mathjax-viewer (comp normalize-viewer mathjax/viewer))
+(defn mathjax-viewer [tex-string opts]
+  (normalize-viewer (mathjax/viewer tex-string opts)))
+
 (def code-viewer (comp normalize-viewer code/viewer))
 (def plotly-viewer (comp normalize-viewer plotly/viewer))
 (def vega-lite-viewer (comp normalize-viewer vega-lite/viewer))
@@ -965,14 +967,23 @@ black")}]))}
     :render-fn (fn [content {:as opts :keys [heading-level]}]
                  (html (into [(keyword (str "h" heading-level))] (map (partial inspect opts)) content)))}
 
+   ;; marks
    {:name :nextjournal.markdown/em :render-fn (into-markup [:em])}
    {:name :nextjournal.markdown/strong :render-fn (into-markup [:strong])}
+   {:name :nextjournal.markdown/monospace :render-fn (into-markup [:code.monospace])}
+
+   ;; lists
    {:name :nextjournal.markdown/bullet-list :render-fn (into-markup [:ul])}
    {:name :nextjournal.markdown/list-item :render-fn (into-markup [:li])}
 
+   ;; formulas
+   {:name :nextjournal.markdown/block-formula
+    :render-fn (fn [content _opts] (with-viewer :latex content))}
+   {:name :nextjournal.markdown/formula
+    :render-fn (fn [content opts] (inspect (assoc opts :inline? true) (with-viewer :latex content)))}
+
    ;;{:name :nextjournal.markdown/ruler
    ;; :render-fn (fn [content opts])}
-
    ;;{:name :nextjournal.markdown/em
    ;; :render-fn (fn [content opts])}
    ;;{:name :nextjournal.markdown/sidenote
@@ -985,15 +996,11 @@ black")}]))}
    ;; :render-fn (fn [content opts])}
    ;;{:name :nextjournal.markdown/sidenote-ref
    ;; :render-fn (fn [content opts])}
-   ;;{:name :nextjournal.markdown/block-formula
-   ;; :render-fn (fn [content opts])}
    ;;{:name :nextjournal.markdown/link
    ;; :render-fn (fn [content opts])}
    ;;{:name :nextjournal.markdown/strikethrough
    ;; :render-fn (fn [content opts])}
    ;;{:name :nextjournal.markdown/code
-   ;; :render-fn (fn [content opts])}
-   ;;{:name :nextjournal.markdown/formula
    ;; :render-fn (fn [content opts])}
    ;;{:name :nextjournal.markdown/image
    ;; :render-fn (fn [content opts])}
