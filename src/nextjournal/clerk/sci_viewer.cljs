@@ -963,6 +963,7 @@ black")}]))}
   [{:name :nextjournal.markdown/text
     :render-fn (fn [content _opts] (html [:span content]))}
    {:name :nextjournal.markdown/paragraph :render-fn (into-markup [:p])}
+   {:name :nextjournal.markdown/softbreak :render-fn (constantly (html [:span " "]))}
    {:name :nextjournal.markdown/heading
     :render-fn (fn [content {:as opts :keys [heading-level]}]
                  (html (into [(keyword (str "h" heading-level))] (map (partial inspect opts)) content)))}
