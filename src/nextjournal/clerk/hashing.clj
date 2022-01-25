@@ -178,19 +178,23 @@
                 (and doc? (n/comment? node))
                 (-> state
                     (assoc :nodes (drop-while n/comment? nodes))
-                    (update :blocks conj {:type :markdown :text (apply str (map (comp remove-leading-semicolons n/string)
-                                                                                (take-while n/comment? nodes)))}))
+                    (update :blocks conj {:type :markdown
+                                          :doc (-> (apply str (map (comp remove-leading-semicolons n/string)
+                                                                   (take-while n/comment? nodes)))
+                                                   markdown/parse
+                                                   (dissoc :title :toc))}))
                 :else
                 (update state :nodes rest)))
        (merge (select-keys state [:blocks :visibility])
               (when doc?
                 (-> {:content (into []
                                     (comp (filter (comp #{:markdown} :type))
-                                          (map (comp markdown/parse :text))
-                                          (mapcat :content))
+                                          (mapcat (comp :content :doc)))
                                     blocks)}
                     markdown.parser/add-title+toc
                     (select-keys [:title :toc]))))))))
+
+#_(parse-clojure-string {:doc? true} (slurp "notebooks/mathjax.clj"))
 
 (defn code-cell? [{:as node :keys [type]}]
   (and (= :code type) (contains? node :info)))
