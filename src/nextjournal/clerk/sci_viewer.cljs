@@ -87,8 +87,9 @@
          (map (fn [x]
                 (let [viewer (viewer/viewer x)
                       blob-id (:blob-id (viewer/value x))
-                      prose? (= viewer :markdown)
+                      prose? (contains? #{:markdown :nextjournal.markdown/doc} viewer)
                       inner-viewer-name (some-> x viewer/value viewer/viewer :name)]
+                  ;; TODO: cleanup this mess
                   [:div {:class ["viewer" "overflow-x-auto"
                                  (when (keyword? viewer) (str "viewer-" (name viewer)))
                                  (when-not prose? "not-prose")
