@@ -25,20 +25,20 @@
 
 (deftest parse-clojure-string
   (testing "is returning blocks with types and markdown structure attached"
-    (is (match? (m/equals {:blocks [{:type :code, :text "^:nextjournal.clerk/no-cache (ns example-notebook)", :ns? true}
-                                    {:type :markdown, :text " # 📶 Sorting\n"}
-                                    {:type :markdown, :text " ## Sorting Sets\n The following set should be sorted upon description\n"}
-                                    {:type :code, :text "#{3 1 2}"}
-                                    {:type :markdown, :text " ## Sorting Maps\n"}
-                                    {:type :code, :text "{2 \"bar\" 1 \"foo\"}"}],
-                           :visibility #{:show},
-                           :title "📶 Sorting",
-                           :toc {:type :toc,
-                                 :children [{:type :toc,
-                                             :content [{:type :text, :text "📶 Sorting"}],
-                                             :heading-level 1,
-                                             :children [{:type :toc, :content [{:type :text, :text "Sorting Sets"}], :heading-level 2}
-                                                        {:type :toc, :content [{:type :text, :text "Sorting Maps"}], :heading-level 2}]}]}})
+    (is (match? {:blocks [{:type :code, :text "^:nextjournal.clerk/no-cache (ns example-notebook)", :ns? true}
+                          {:type :markdown, :doc {:type :doc :content [{:type :heading}]}}
+                          {:type :markdown, :doc {:type :doc :content [{:type :heading} {:type :paragraph}]}}
+                          {:type :code, :text "#{3 1 2}"}
+                          {:type :markdown, :doc {:type :doc :content [{:type :heading}]}}
+                          {:type :code, :text "{2 \"bar\" 1 \"foo\"}"}],
+                 :visibility #{:show},
+                 :title "📶 Sorting",
+                 :toc {:type :toc,
+                       :children [{:type :toc,
+                                   :content [{:type :text, :text "📶 Sorting"}],
+                                   :heading-level 1,
+                                   :children [{:type :toc, :content [{:type :text, :text "Sorting Sets"}], :heading-level 2}
+                                              {:type :toc, :content [{:type :text, :text "Sorting Maps"}], :heading-level 2}]}]}}
                 (h/parse-clojure-string {:doc? true} notebook)))))
 
 (deftest no-cache?
