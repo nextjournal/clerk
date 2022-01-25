@@ -148,9 +148,23 @@
 #_(->display {:result {:nextjournal.clerk/visibility #{:hide} :nextjournal/value {:nextjournal/viewer :hide-result}} :ns? false})
 #_(->display {:result {:nextjournal.clerk/visibility #{:hide}} :ns? true})
 
+(defn update+rename-key
+  ([m k nk] (update+rename-key m k nk identity))
+  ([m k nk f] (-> m (assoc nk (f (k m))) (dissoc k))))
+(defn describe-doc [{:as node :keys [text type content]}]
+  (cond-> node
+    text
+    (update+rename-key :text :nextjournal/value)
+    type
+    (update+rename-key :type :nextjournal/viewer #(keyword "nextjournal.markdown" (name %)))
+    content
+    (update+rename-key :content :nextjournal/value (partial mapv describe-doc))))
+
+#_(-> (nextjournal.clerk/eval-file "notebooks/mathjax.clj") :blocks (nth 3) :doc describe-doc)
+
 (defn describe-block [{:keys [inline-results?] :or {inline-results? false}} {:keys [ns]} {:as cell :keys [type text doc]}]
   (case type
-    :markdown [(v/md (or doc text))]
+    :markdown [(describe-doc doc)]
     :code (let [{:as cell :keys [result]} (update cell :result apply-viewer-unwrapping-var-from-def)
                 {:keys [code? fold? result?]} (->display cell)]
             (cond-> []
