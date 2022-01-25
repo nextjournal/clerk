@@ -167,7 +167,10 @@
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
-  [{:pred char? :render-fn '(fn [c] (v/html [:span.syntax-string.inspected-value "\\" c]))}
+  [{:name :nextjournal.markdown/doc
+    :render-fn (quote v/markdown-doc-viewer)}
+
+   {:pred char? :render-fn '(fn [c] (v/html [:span.syntax-string.inspected-value "\\" c]))}
    {:pred string? :render-fn (quote v/quoted-string-viewer) :fetch-opts {:n elide-string-length}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.syntax-number.inspected-value
                                                (if (js/Number.isNaN x) "NaN" (str x))]))}

@@ -948,6 +948,109 @@ black")}]))}
   doc-url
   (sci/new-var 'doc-url (fn [x] (str "#" x))))
 
+;;;;;;;;;;;;;; Markdown Viewers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TODO: turn into a macro with accessible `opts` and a placeholder for children content
+(defn into-markup [m]
+  (fn [content opts] (html (into m (map (partial inspect opts)) content))))
+
+(def default-markdown-viewers
+  [{:name :nextjournal.markdown/text
+    :render-fn (fn [content _opts] (html [:span content]))}
+   {:name :nextjournal.markdown/paragraph :render-fn (into-markup [:p])}
+   {:name :nextjournal.markdown/heading
+    :render-fn (fn [content {:as opts :keys [heading-level]}]
+                 (html (into [(keyword (str "h" heading-level))] (map (partial inspect opts)) content)))}
+
+   {:name :nextjournal.markdown/em :render-fn (into-markup [:em])}
+   {:name :nextjournal.markdown/strong :render-fn (into-markup [:strong])}
+   {:name :nextjournal.markdown/bullet-list :render-fn (into-markup [:ul])}
+   {:name :nextjournal.markdown/list-item :render-fn (into-markup [:li])}
+
+   ;;{:name :nextjournal.markdown/ruler
+   ;; :render-fn (fn [content opts])}
+
+   ;;{:name :nextjournal.markdown/em
+   ;; :render-fn (fn [content opts])}
+   ;;{:name :nextjournal.markdown/sidenote
+   ;; :render-fn (fn [content opts])}
+   ;;{:name :nextjournal.markdown/numbered-list
+   ;; :render-fn (fn [content opts])}
+   ;;{:name :nextjournal.markdown/softbreak
+   ;; :render-fn (fn [content opts])}
+   ;;{:name :nextjournal.markdown/monospace
+   ;; :render-fn (fn [content opts])}
+   ;;{:name :nextjournal.markdown/sidenote-ref
+   ;; :render-fn (fn [content opts])}
+   ;;{:name :nextjournal.markdown/block-formula
+   ;; :render-fn (fn [content opts])}
+   ;;{:name :nextjournal.markdown/link
+   ;; :render-fn (fn [content opts])}
+   ;;{:name :nextjournal.markdown/strikethrough
+   ;; :render-fn (fn [content opts])}
+   ;;{:name :nextjournal.markdown/code
+   ;; :render-fn (fn [content opts])}
+   ;;{:name :nextjournal.markdown/formula
+   ;; :render-fn (fn [content opts])}
+   ;;{:name :nextjournal.markdown/image
+   ;; :render-fn (fn [content opts])}
+   ;;{:name :nextjournal.markdown/table-head
+   ;; :render-fn (fn [content opts])}
+   ;;{:name :nextjournal.markdown/doc
+   ;; :render-fn (fn [content opts])}
+   ;;{:name :nextjournal.markdown/todo-item
+   ;; :render-fn (fn [content opts])}
+   ;;{:name :nextjournal.markdown/hashtag
+   ;; :render-fn (fn [content opts])}
+   ;;{:name :nextjournal.markdown/paragraph
+   ;; :render-fn (fn [content opts])}
+   ;;{:name :nextjournal.markdown/blockquote
+   ;; :render-fn (fn [content opts])}
+
+   ])
+
+(defn markdown-doc-viewer [content opts]
+  (html (into [:div.viewer-markdown]
+              ;; TODO: ensure users can override nextjournal.markdown keys
+              (map (partial inspect (update opts :viewers #(into default-markdown-viewers %))))
+              content)))
+
+(dc/defcard markdown-doc-viewer
+  [:<>
+   [inspect #:nextjournal{:viewer :nextjournal.markdown/doc,
+                          :value [{:heading-level 1,
+                                   :nextjournal/viewer :nextjournal.markdown/heading,
+                                   :nextjournal/value [#:nextjournal{:value "MathJax",
+                                                                     :viewer :nextjournal.markdown/text}]}]}]
+
+
+   [inspect #:nextjournal{:viewer :nextjournal.markdown/doc,
+                          :value [#:nextjournal{:viewer :nextjournal.markdown/paragraph,
+                                                :value [#:nextjournal{:value "this is ", :viewer :nextjournal.markdown/text}
+                                                        #:nextjournal{:viewer :nextjournal.markdown/strong,
+                                                                      :value [#:nextjournal{:value "strong",
+                                                                                            :viewer :nextjournal.markdown/text}]}
+                                                        #:nextjournal{:value " ", :viewer :nextjournal.markdown/text}
+                                                        #:nextjournal{:viewer :nextjournal.markdown/em,
+                                                                      :value [#:nextjournal{:value "cursive",
+                                                                                            :viewer :nextjournal.markdown/text}]}
+                                                        #:nextjournal{:value " text", :viewer :nextjournal.markdown/text}]}]}]
+
+   [inspect #:nextjournal{:viewer :nextjournal.markdown/doc,
+                          :value [#:nextjournal{:viewer :nextjournal.markdown/bullet-list,
+                                                :value [#:nextjournal{:viewer :nextjournal.markdown/list-item,
+                                                                      :value [#:nextjournal{:viewer :nextjournal.markdown/paragraph,
+                                                                                            :value [#:nextjournal{:value "this",
+                                                                                                                  :viewer :nextjournal.markdown/text}]}]}
+                                                        #:nextjournal{:viewer :nextjournal.markdown/list-item,
+                                                                      :value [#:nextjournal{:viewer :nextjournal.markdown/paragraph,
+                                                                                            :value [#:nextjournal{:value "is",
+                                                                                                                  :viewer :nextjournal.markdown/text}]}]}
+                                                        #:nextjournal{:viewer :nextjournal.markdown/list-item,
+                                                                      :value [#:nextjournal{:viewer :nextjournal.markdown/paragraph,
+                                                                                            :value [#:nextjournal{:value "a list",
+                                                                                                                  :viewer :nextjournal.markdown/text}]}]}]}]}
+    ]])
+
 (def sci-viewer-namespace
   {'html html-viewer
    'inspect inspect
@@ -978,7 +1081,10 @@ black")}]))}
    'reagent-viewer reagent-viewer
 
    'doc-url doc-url
-   'url-for url-for})
+   'url-for url-for
+
+   'markdown-doc-viewer markdown-doc-viewer
+   })
 
 (defonce !sci-ctx
   (atom (sci/init {:async? true
