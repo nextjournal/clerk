@@ -533,7 +533,7 @@
                   (instance? clojure.lang.Namespace scope)
                   (var? scope)))
       (swap! !viewers assoc scope viewers)
-      (with-viewer :eval! `'(v/set-viewers! ~(datafy-scope scope) ~viewers)))))
+      (with-viewer :eval! `(v/set-viewers! ~(datafy-scope scope) ~viewers)))))
 
 
 (defn registration? [x]
