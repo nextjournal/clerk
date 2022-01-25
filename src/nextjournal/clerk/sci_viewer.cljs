@@ -87,14 +87,14 @@
          (map (fn [x]
                 (let [viewer (viewer/viewer x)
                       blob-id (:blob-id (viewer/value x))
-                      prose? (contains? #{:markdown :nextjournal.markdown/doc} viewer)
+                      md? (contains? #{:markdown :nextjournal.markdown/doc} viewer)
                       inner-viewer-name (some-> x viewer/value viewer/viewer :name)]
                   ;; TODO: cleanup this mess
                   [:div {:class ["viewer" "overflow-x-auto"
-                                 (when (keyword? viewer) (str "viewer-" (name viewer)))
-                                 (when-not prose? "not-prose")
+                                 (when (keyword? viewer) (str "viewer-" (if md? "markdown" (name viewer))))
+                                 (when-not md? "not-prose")
                                  (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
-                                 (when (and prose? inner-viewer-name (not= inner-viewer-name :markdown)) "not-prose")
+                                 (when (and md? inner-viewer-name (not= inner-viewer-name :markdown)) "not-prose")
                                  (case (or (viewer/width x) (case viewer (:code :code-folded) :wide :prose))
                                    :wide "w-full max-w-wide"
                                    :full "w-full"
@@ -464,7 +464,11 @@
          ;; TODO find option to disable client-side viewer selection
          (when-let [viewer (or (viewer/viewer x)
                                (viewer/viewer (viewer/wrapped-with-viewer value all-viewers)))]
-           (inspect opts (render-with-viewer (assoc opts :viewers all-viewers :viewer viewer)
+           (inspect opts (render-with-viewer (-> opts
+                                                 (assoc :viewers all-viewers :viewer viewer)
+                                                 (merge ;; TODO: is there a more general way?
+                                                  (when (and (keyword? viewer) (= "nextjournal.markdown" (namespace viewer)))
+                                                    (dissoc x :nextjournal/value :nextjournal/viewer))))
                                              viewer
                                              value)))))))
 
@@ -949,8 +953,8 @@ black")}]))}
   (sci/new-var 'doc-url (fn [x] (str "#" x))))
 
 ;;;;;;;;;;;;;; Markdown Viewers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; TODO: turn into a macro with accessible `opts` and a placeholder for children content
-(defn into-markup [m]
+
+(defn into-markup [m] ;; TODO: turn into a macro with accessible `opts` and a placeholder for children content
   (fn [content opts] (html (into m (map (partial inspect opts)) content))))
 
 (def default-markdown-viewers
@@ -1009,7 +1013,7 @@ black")}]))}
    ])
 
 (defn markdown-doc-viewer [content opts]
-  (html (into [:div.viewer-markdown]
+  (html (into [:<>]
               ;; TODO: ensure users can override nextjournal.markdown keys
               (map (partial inspect (update opts :viewers #(into default-markdown-viewers %))))
               content)))
