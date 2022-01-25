@@ -210,6 +210,12 @@
 
 /* MathJax */
 /* --------------------------------------------------------------- */
+
+mjx-container[display] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 mjx-container:not([display]) {
   display: inline-block;
 }
