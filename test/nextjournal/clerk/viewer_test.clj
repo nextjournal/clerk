@@ -4,7 +4,7 @@
             [nextjournal.clerk.viewer :as v]))
 
 (defn find-elision [desc]
-  (first (filter (comp #{:elision} :nextjournal/viewer)
+  (first (filter (comp #{:elision} :name :nextjournal/viewer)
                  (tree-seq (comp vector? :nextjournal/value) :nextjournal/value desc))))
 
 (defn describe+fetch [value]

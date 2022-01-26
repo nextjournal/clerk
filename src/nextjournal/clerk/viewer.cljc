@@ -2,6 +2,7 @@
   (:require [clojure.string :as str]
             [clojure.pprint :as pprint]
             [clojure.datafy :as datafy]
+            [clojure.walk :as w]
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]]
                 :cljs [[reagent.ratom :as ratom]]))
@@ -147,10 +148,20 @@
 
 (def elide-string-length 100)
 
-(defn fetch-all [_ x] x)
+(declare describe with-viewer)
+
+(defn inspect-leafs [opts x]
+  (if (wrapped-value? x)
+    [(->viewer-fn 'v/inspect) (describe x opts)]
+    x))
+
+(defn fetch-all [opts xs]
+  (w/postwalk (partial inspect-leafs opts) xs))
 
 (defn- var-from-def? [x]
   (get x :nextjournal.clerk/var-from-def))
+
+(declare !viewers)
 
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
@@ -186,7 +197,7 @@
                                                :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})))
             :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center [:img {:src (v/url-for blob)}]]))})
    {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.text-gray-700 x]))}
-   {:name :elision :render-fn (quote v/elision-viewer)}
+   {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
    {:name :mathjax :render-fn (quote v/mathjax-viewer) :fetch-fn fetch-all}
    {:name :html :render-fn (quote v/html) :fetch-fn fetch-all}
@@ -199,13 +210,21 @@
    {:name :reagent :render-fn (quote v/reagent-viewer)  :fetch-fn fetch-all}
    {:name :eval! :render-fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
    {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
+    :transform-fn (fn [xs]
+                    (-> (wrap-value xs)
+                        (update :nextjournal/width #(or % :wide))
+                        (update :nextjournal/value #(or (normalize-table-data %)
+                                                        {:error "Could not normalize table" :ex-data %}))
+                        (update :nextjournal/viewers concat (:table @!viewers))))
     :fetch-fn (fn [{:as opts :keys [describe-fn offset]} xs]
                 ;; TODO: use budget per row for table
                 ;; TODO: opt out of eliding cols
-                (-> (cond-> (update xs :rows describe-fn (dissoc opts :!budget) [])
-                      (pos? offset) :rows)
-                    (assoc :path [:rows] :replace-path [offset])
-                    (dissoc :nextjournal/viewers)))}
+                (if (:error xs)
+                  (update xs :ex-data describe-fn opts [])
+                  (-> (cond-> (update xs :rows describe-fn (dissoc opts :!budget) [])
+                        (pos? offset) :rows)
+                      (assoc :path [:rows] :replace-path [offset])
+                      (dissoc :nextjournal/viewers))))}
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
    {:name :object :render-fn '(fn [x] (v/html (v/tagged-value "#object" [v/inspect x])))}
    {:name :file :render-fn '(fn [x] (v/html (v/tagged-value "#file " [v/inspect x])))}
@@ -214,7 +233,7 @@
    {:name :hide-result :transform-fn (fn [_] nil)}])
 
 (def default-table-cell-viewers
-  [{:name :elision :render-fn '(fn [_] (v/html "…"))}
+  [{:name :elision :render-fn '(fn [_] (v/html "…")) :fetch-fn fetch-all}
    {:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))}
    {:pred string? :render-fn (quote v/string-viewer) :fetch-opts {:n 100}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))}])
@@ -336,6 +355,13 @@
 
 #_(process-viewer {:render-fn '(v/html [:h1]) :fetch-fn fetch-all})
 
+(defn make-elision [fetch-opts viewers]
+  (-> (with-viewer :elision fetch-opts)
+      (wrapped-with-viewer viewers)
+      (update :nextjournal/viewer process-viewer)))
+
+#_(make-elision {:n 20} default-viewers)
+
 (defn describe
   "Returns a subset of a given `value`."
   ([xs]
@@ -345,16 +371,18 @@
     (describe xs (merge {:!budget (atom (:budget opts 200)) :path [] :viewers (get-viewers *ns* (viewers xs))} opts) [])))
   ([xs opts current-path]
    (let [{:as opts :keys [!budget viewers path offset]} (merge {:offset 0} opts)
-         wrapped-value (try (wrapped-with-viewer xs viewers) ;; TODO: respect `viewers` on `xs`
-                            (catch #?(:clj Exception :cljs js/Error) _ex
-                              (do (println _ex)
-                                  nil)))
+         {:as wrapped-value xs-viewers :nextjournal/viewers} (try (wrapped-with-viewer xs viewers)
+                                                                  (catch #?(:clj Exception :cljs js/Error) _ex
+                                                                    (do (println _ex)
+                                                                        nil)))
+         ;; TODO used for the table viewer which adds viewers in through `tranform-fn` from `wrapped-with-viewer`. Can we avoid this?
+         opts (cond-> opts xs-viewers (update :viewers #(concat xs-viewers %)))
          {:as viewer :keys [fetch-opts fetch-fn]} (viewer wrapped-value)
          fetch-opts (merge fetch-opts (select-keys opts [:offset]))
          descend? (< (count current-path)
                      (count path))
          xs (value wrapped-value)]
-     #_(prn :xs xs :type (type xs) :path path :current-path current-path)
+     #_(prn :xs xs :type (type xs) :path path :current-path current-path :descend? descend? :fetch-fn? (some? fetch-fn))
      (when (and !budget (not descend?) (not fetch-fn))
        (swap! !budget #(max (dec %) 0)))
      (merge {:path path}
@@ -377,7 +405,7 @@
                                 new-offset (min (+ offset (:n fetch-opts)) total)
                                 remaining (- total new-offset)]
                             (cond-> [(subs xs offset new-offset)]
-                              (pos? remaining) (conj (with-viewer :elision {:path path :count total :offset new-offset :remaining remaining}))
+                              (pos? remaining) (conj (make-elision {:path path :count total :offset new-offset :remaining remaining} viewers))
                               true wrap-value
                               true (assoc :replace-path (conj path offset))))
                           xs))
@@ -401,9 +429,8 @@
                       (cond-> children
                         (or (not count) (< (inc offset) count))
 
-                        (conj (with-viewer :elision
-                                (cond-> (assoc count-opts :offset (inc offset) :path path)
-                                  count (assoc :remaining (- count (inc offset))))))))
+                        (conj (make-elision (cond-> (assoc count-opts :offset (inc offset) :path path)
+                                              count (assoc :remaining (- count (inc offset)))) viewers))))
 
                     :else ;; leaf value
                     xs))))))
@@ -515,12 +542,13 @@
 
 (defn with-viewer
   "Wraps given "
-  [viewer x]
-  (-> x
-      wrap-value
-      (assoc :nextjournal/viewer (cond-> viewer
-                                   (or (list? viewer) (symbol? viewer))
-                                   ->viewer-fn))))
+  ([viewer x] (with-viewer viewer {} x))
+  ([viewer opts x]
+   (merge opts (-> x
+                   wrap-value
+                   (assoc :nextjournal/viewer (cond-> viewer
+                                                (or (list? viewer) (symbol? viewer))
+                                                ->viewer-fn))))))
 
 #_(with-viewer :latex "x^2")
 #_(with-viewer '#(v/html [:h3 "Hello " % "!"]) "x^2")
@@ -541,34 +569,12 @@
 (def md           (partial with-viewer :markdown))
 (def plotly       (partial with-viewer :plotly))
 (def vl           (partial with-viewer :vega-lite))
+(def table        (partial with-viewer :table))
 (def tex          (partial with-viewer :latex))
 (def hide-result  (partial with-viewer :hide-result))
 (def notebook     (partial with-viewer :clerk/notebook))
 (defn doc-url [path]
   (->viewer-eval (list 'v/doc-url path)))
-
-
-(defn table
-  "Displays `xs` in a table.
-
-  Performs normalization from the following formats:
-
-  * maps of seqs: `{:column-1 [1 2] :column-2 [3 4]}`
-  * seq of maps: `[{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]`
-  * seq of seqs `[[1 3] [2 4]]`
-  * map with `:head` and `:rows` keys `{:head [:column-1 :column-2] :rows [[1 3] [2 4]]}`"
-  ([xs]
-   (table {:nextjournal/width :wide} xs))
-  ([opts xs]
-   (-> (if-let [normalized (normalize-table-data xs)]
-         (with-viewer :table normalized)
-         (with-viewer :table-error [xs]))
-       (merge opts)
-       (update :nextjournal/viewers concat (:table @!viewers)))))
-
-#_(table {:a (range 10)
-          :b (mapv inc (range 10))})
-#_(describe (table (set (range 10))))
 
 (defn code [x]
   (with-viewer :code (if (string? x) x (with-out-str (pprint/pprint x)))))
