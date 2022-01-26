@@ -156,11 +156,10 @@
     x))
 
 (defn fetch-all [opts xs]
-  (clojure.walk/postwalk (partial inspect-leafs opts) xs))
+  (w/postwalk (partial inspect-leafs opts) xs))
 
 (defn- var-from-def? [x]
   (get x :nextjournal.clerk/var-from-def))
-
 
 (declare !viewers)
 
@@ -363,7 +362,7 @@
     (describe xs (merge {:!budget (atom (:budget opts 200)) :path [] :viewers (get-viewers *ns* (viewers xs))} opts) [])))
   ([xs opts current-path]
    (let [{:as opts :keys [!budget viewers path offset]} (merge {:offset 0} opts)
-         {:as wrapped-value xs-viewers :nextjournal/viewers} (try (wrapped-with-viewer xs viewers) ;; TODO: respect `viewers` on `xs`
+         {:as wrapped-value xs-viewers :nextjournal/viewers} (try (wrapped-with-viewer xs viewers)
                                                                   (catch #?(:clj Exception :cljs js/Error) _ex
                                                                     (do (println _ex)
                                                                         nil)))
