@@ -326,55 +326,57 @@
 
 (defn table-viewer [data opts]
   (r/with-let [!sort (r/atom nil)]
-    (let [{:as srt :keys [sort-index sort-key sort-order]} @!sort]
-      (html
-       (let [{:keys [head rows]} (cond->> data sort-key (sort-data srt))
-             num-cols (-> rows viewer/value first viewer/value count)]
-         [:table.text-xs.sans-serif
-          (when head
-            [:thead.border-b.border-gray-300
-             (into [:tr]
-                   (map-indexed (fn [i k]
-                                  [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
-                                   {:class (if (number? (get-in rows [0 i])) "text-right" "text-left")
-                                    #_#_#_#_
-                                    :style {:cursor "ns-resize"}
-                                    :on-click #(sort! !sort i k)
-                                    :title (if (or (string? k) (keyword? k)) (name k) (str k))}
-                                   [:div.inline-flex
-                                    ;; Truncate to available col width without growing the table
-                                    [:div.table.table-fixed.w-full.flex-auto
-                                     {:style {:margin-left -12}}
-                                     [:div.truncate
-                                      [:span.inline-flex.justify-center.items-center.relative
-                                       {:style {:font-size 20 :width 10 :height 10 :bottom -2 :margin-right 2}}
-                                       (when (= sort-key k)
-                                         (if (= sort-order :asc) "▴" "▾"))]
-                                      (if (or (string? k) (keyword? k)) (name k) [inspect k])]]]]) head))])
-          (into [:tbody]
-                (map-indexed (fn [i row]
-                               (if (= :elision (viewer/viewer row))
-                                 (let [{:as fetch-opts :keys [remaining unbounded?]} (viewer/value row)]
-                                   [view-context/consume :fetch-fn
-                                    (fn [fetch-fn]
-                                      [:tr.border-t
-                                       [:td.text-center.py-1
-                                        {:col-span num-cols
-                                         :class (if (fn? fetch-fn)
-                                                  "bg-indigo-50 hover:bg-indigo-100 cursor-pointer"
-                                                  "text-gray-400")
-                                         :on-click #(when (fn? fetch-fn)
-                                                      (fetch-fn fetch-opts))}
-                                        remaining (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]])])
-                                 (let [row (viewer/value row)]
-                                   (into
-                                    [:tr.hover:bg-gray-200
-                                     {:class (if (even? i) "bg-opacity-5 bg-black" "bg-white")}]
-                                    (map-indexed (fn [j d]
-                                                   [:td.pl-6.pr-2.py-1
-                                                    {:class [(when (number? d) "text-right")
-                                                             (when (= j sort-index) "bg-opacity-5 bg-black")]}
-                                                    [inspect (update opts :path conj i j) d]]) row))))) (viewer/value rows)))])))))
+    (if-let [error-data (and (:error data) (:ex-data data))]
+      (table-error [error-data])
+      (let [{:as srt :keys [sort-index sort-key sort-order]} @!sort]
+        (html
+         (let [{:keys [head rows]} (cond->> data sort-key (sort-data srt))
+               num-cols (-> rows viewer/value first viewer/value count)]
+           [:table.text-xs.sans-serif
+            (when head
+              [:thead.border-b.border-gray-300
+               (into [:tr]
+                     (map-indexed (fn [i k]
+                                    [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
+                                     {:class (if (number? (get-in rows [0 i])) "text-right" "text-left")
+                                      #_#_#_#_
+                                      :style {:cursor "ns-resize"}
+                                      :on-click #(sort! !sort i k)
+                                      :title (if (or (string? k) (keyword? k)) (name k) (str k))}
+                                     [:div.inline-flex
+                                      ;; Truncate to available col width without growing the table
+                                      [:div.table.table-fixed.w-full.flex-auto
+                                       {:style {:margin-left -12}}
+                                       [:div.truncate
+                                        [:span.inline-flex.justify-center.items-center.relative
+                                         {:style {:font-size 20 :width 10 :height 10 :bottom -2 :margin-right 2}}
+                                         (when (= sort-key k)
+                                           (if (= sort-order :asc) "▴" "▾"))]
+                                        (if (or (string? k) (keyword? k)) (name k) [inspect k])]]]]) head))])
+            (into [:tbody]
+                  (map-indexed (fn [i row]
+                                 (if (= :elision (-> row viewer/viewer :name))
+                                   (let [{:as fetch-opts :keys [remaining unbounded?]} (viewer/value row)]
+                                     [view-context/consume :fetch-fn
+                                      (fn [fetch-fn]
+                                        [:tr.border-t
+                                         [:td.text-center.py-1
+                                          {:col-span num-cols
+                                           :class (if (fn? fetch-fn)
+                                                    "bg-indigo-50 hover:bg-indigo-100 cursor-pointer"
+                                                    "text-gray-400")
+                                           :on-click #(when (fn? fetch-fn)
+                                                        (fetch-fn fetch-opts))}
+                                          remaining (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]])])
+                                   (let [row (viewer/value row)]
+                                     (into
+                                      [:tr.hover:bg-gray-200
+                                       {:class (if (even? i) "bg-opacity-5 bg-black" "bg-white")}]
+                                      (map-indexed (fn [j d]
+                                                     [:td.pl-6.pr-2.py-1
+                                                      {:class [(when (number? d) "text-right")
+                                                               (when (= j sort-index) "bg-opacity-5 bg-black")]}
+                                                      [inspect (update opts :path conj i j) d]]) row))))) (viewer/value rows)))]))))))
 
 
 (defn throwable-viewer [{:keys [via trace]}]
