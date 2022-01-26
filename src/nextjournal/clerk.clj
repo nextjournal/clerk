@@ -110,8 +110,11 @@
       (cache! digest-file var-value))
     (let [blob-id (cond no-cache? (view/->hash-str var-value)
                         (fn? var-value) nil
-                        :else hash)]
-      (wrapped-with-metadata (cond-> result introduced-var var-from-def) visibility blob-id))))
+                        :else hash)
+          result (if introduced-var
+                   (var-from-def introduced-var)
+                   result)]
+      (wrapped-with-metadata result visibility blob-id))))
 
 
 (defn read+eval-cached [results-last-run ->hash doc-visibility codeblock]

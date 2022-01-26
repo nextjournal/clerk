@@ -71,6 +71,11 @@
     (is (not= (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns) (java.util.UUID/randomUUID)")
               (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns) (java.util.UUID/randomUUID)"))))
 
+  (testing "defonce returns correct result on subsequent evals (when defonce would eval to nil)"
+    (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-defonce-test-ns) (defonce state (atom {}))")
+    (is (match? {:blocks [map? {:result {:nextjournal/value {::clerk/var-from-def var?}}}]}
+                (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-defonce-test-ns) (defonce state (atom {}))"))))
+
   (testing "assigning viewers from form meta"
     (is (match? {:blocks [{:result {:nextjournal/viewer #'nextjournal.clerk/table}}]}
                 (clerk/eval-string "^{:nextjournal.clerk/viewer nextjournal.clerk/table} (def markup [:h1 \"hi\"])")))
