@@ -149,8 +149,8 @@
 #_(->display {:result {:nextjournal.clerk/visibility #{:hide}} :ns? true})
 
 (defn update+rename-key
-  ([m k nk] (update+rename-key m k nk identity))
-  ([m k nk f] (-> m (assoc nk (f (k m))) (dissoc k))))
+  ([m k new-k] (update+rename-key m k new-k identity))
+  ([m k new-k f] (-> m (assoc new-k (f (get m k))) (dissoc k))))
 (defn describe-doc [{:as node :keys [text type content]}]
   (cond-> node
     text
