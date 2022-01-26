@@ -152,6 +152,9 @@
 (defn- var-from-def? [x]
   (get x :nextjournal.clerk/var-from-def))
 
+
+(declare !viewers)
+
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
@@ -199,7 +202,15 @@
    {:name :reagent :render-fn (quote v/reagent-viewer)  :fetch-fn fetch-all}
    {:name :eval! :render-fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
    {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
+    :transform-fn (fn [xs]
+                    (prn :table/transform-fn xs)
+                    (-> (wrap-value xs)
+                        (update :nextjournal/width #(or % :wide))
+                        (update :nextjournal/value #(or (normalize-table-data %)
+                                                        {:invalid-format [%]}))
+                        (update :nextjournal/viewers concat (:table @!viewers))))
     :fetch-fn (fn [{:as opts :keys [describe-fn offset]} xs]
+                (prn :table/fetch-fn xs)
                 ;; TODO: use budget per row for table
                 ;; TODO: opt out of eliding cols
                 (-> (cond-> (update xs :rows describe-fn (dissoc opts :!budget) [])
@@ -229,6 +240,7 @@
   (#?(:clj atom :cljs ratom/atom) (get-all-viewers)))
 
 #_(reset! !viewers (get-all-viewers))
+#_(nextjournal.clerk/show!)
 
 ;; heavily inspired by code from Thomas Heller in shadow-cljs, see
 ;; https://github.com/thheller/shadow-cljs/blob/1708acb21bcdae244b50293d17633ce35a78a467/src/main/shadow/remote/runtime/obj_support.cljc#L118-L144
@@ -354,7 +366,7 @@
          descend? (< (count current-path)
                      (count path))
          xs (value wrapped-value)]
-     #_(prn :xs xs :type (type xs) :path path :current-path current-path)
+     #_(prn :xs xs :type (type xs) :path path :current-path current-pathq)
      (when (and !budget (not descend?) (not fetch-fn))
        (swap! !budget #(max (dec %) 0)))
      (merge {:path path}
@@ -557,14 +569,8 @@
   * seq of maps: `[{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]`
   * seq of seqs `[[1 3] [2 4]]`
   * map with `:head` and `:rows` keys `{:head [:column-1 :column-2] :rows [[1 3] [2 4]]}`"
-  ([xs]
-   (table {:nextjournal/width :wide} xs))
-  ([opts xs]
-   (-> (if-let [normalized (normalize-table-data xs)]
-         (with-viewer :table normalized)
-         (with-viewer :table-error [xs]))
-       (merge opts)
-       (update :nextjournal/viewers concat (:table @!viewers)))))
+  ([xs] (table {} xs))
+  ([opts xs] (merge (with-viewer :table xs) opts)))
 
 #_(table {:a (range 10)
           :b (mapv inc (range 10))})
