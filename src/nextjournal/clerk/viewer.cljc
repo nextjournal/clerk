@@ -197,7 +197,7 @@
                                                :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})))
             :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center [:img {:src (v/url-for blob)}]]))})
    {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.text-gray-700 x]))}
-   {:name :elision :render-fn (quote v/elision-viewer)}
+   {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
    {:name :mathjax :render-fn (quote v/mathjax-viewer) :fetch-fn fetch-all}
    {:name :html :render-fn (quote v/html) :fetch-fn fetch-all}
@@ -233,7 +233,7 @@
    {:name :hide-result :transform-fn (fn [_] nil)}])
 
 (def default-table-cell-viewers
-  [{:name :elision :render-fn '(fn [_] (v/html "…"))}
+  [{:name :elision :render-fn '(fn [_] (v/html "…")) :fetch-fn fetch-all}
    {:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))}
    {:pred string? :render-fn (quote v/string-viewer) :fetch-opts {:n 100}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))}])
@@ -355,6 +355,13 @@
 
 #_(process-viewer {:render-fn '(v/html [:h1]) :fetch-fn fetch-all})
 
+(defn make-elision [fetch-opts viewers]
+  (-> (with-viewer :elision fetch-opts)
+      (wrapped-with-viewer viewers)
+      (update :nextjournal/viewer process-viewer)))
+
+#_(make-elision {:n 20} default-viewers)
+
 (defn describe
   "Returns a subset of a given `value`."
   ([xs]
@@ -398,7 +405,7 @@
                                 new-offset (min (+ offset (:n fetch-opts)) total)
                                 remaining (- total new-offset)]
                             (cond-> [(subs xs offset new-offset)]
-                              (pos? remaining) (conj (with-viewer :elision {:path path :count total :offset new-offset :remaining remaining}))
+                              (pos? remaining) (conj (make-elision {:path path :count total :offset new-offset :remaining remaining} viewers))
                               true wrap-value
                               true (assoc :replace-path (conj path offset))))
                           xs))
@@ -422,9 +429,8 @@
                       (cond-> children
                         (or (not count) (< (inc offset) count))
 
-                        (conj (with-viewer :elision
-                                (cond-> (assoc count-opts :offset (inc offset) :path path)
-                                  count (assoc :remaining (- count (inc offset))))))))
+                        (conj (make-elision (cond-> (assoc count-opts :offset (inc offset) :path path)
+                                              count (assoc :remaining (- count (inc offset)))) viewers))))
 
                     :else ;; leaf value
                     xs))))))
