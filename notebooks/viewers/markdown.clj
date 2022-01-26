@@ -5,7 +5,7 @@
   (:require [nextjournal.clerk :as clerk]))
 
 ;; ## Markdown Comments
-;; Clerk parses all _consecutive_ `;;`-led _clojure comment lines_ as [Markdown](#). All of markdown syntax should be supported:
+;; Clerk parses all _consecutive_ `;;`-led _clojure comment lines_ as [Markdown](https://daringfireball.net/projects/markdown). All of markdown syntax should be supported:
 ;; ### Lists
 ;; - one **strong**
 ;; - two ~~strikethrough~~
@@ -25,13 +25,11 @@
 ;; ## Markdown Results
 ;; Clerk can in addition produce markdown result blocks
 
-(clerk/md "### Text can be\n * **bold**\n * *italic\n * ~~Strikethrough~~\n
+(clerk/md "#### Text can be\n * **bold**\n * *italic\n * ~~Strikethrough~~\n
 It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it.")
 
 ;; ---
 ;; ## Overriding Markdown Viewers
 (clerk/set-viewers! [{:name :nextjournal.markdown/ruler
-                      :render-fn '(fn [content opts]
-                                    (js/console.log :RulerCalled content)
-                                    (v/html [:span.red "This is a Red Ruler"]))}])
+                      :render-fn '(constantly (v/html [:hr {:style {:border "3px solid #f472b6"}}]))}])
 ;; ---

@@ -1012,8 +1012,7 @@ black")}]))}
 
 (defn markdown-doc-viewer [content opts]
   (html (into [:div]
-              ;; TODO: ensure users can override nextjournal.markdown keys
-              (map (partial inspect (update opts :viewers #(into default-markdown-viewers %))))
+              (map (partial inspect (update opts :viewers #(concat % default-markdown-viewers))))
               content)))
 
 (dc/defcard markdown-doc-viewer
