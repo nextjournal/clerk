@@ -1,4 +1,4 @@
-;; # Markdown ✍️
+;; # Markdown Viewer ✍️
 
 ^{:nextjournal.clerk/visibility #{:hide-ns}}
 (ns ^:nextjournal.clerk/no-cache viewers.markdown
@@ -10,7 +10,7 @@
 ;; - one **strong**
 ;; - two ~~strikethrough~~
 ;; ### Todos
-;; - [ ] one
+;; - [ ] one $\phi$-ormula
 ;; - [x] checked two
 ;; ### Code
 ;; ```css
@@ -25,11 +25,14 @@
 ;; ## Markdown Results
 ;; Clerk can in addition produce markdown result blocks
 
-(clerk/md "#### Text can be\n * **bold**\n * *italic\n * ~~Strikethrough~~\n
+(clerk/md "#### Text can be\n * **bold**\n * *italic*\n * ~~Strikethrough~~\n
 It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it.")
 
 ;; ---
 ;; ## Overriding Markdown Viewers
+;; overriding single node viewers will have effect on the whole document
 (clerk/set-viewers! [{:name :nextjournal.markdown/ruler
-                      :render-fn '(constantly (v/html [:hr {:style {:border "3px solid #f472b6"}}]))}])
+                      :render-fn '(constantly
+                                   (v/html
+                                    [:hr {:style {:border "3px solid #f472b6"}}]))}])
 ;; ---

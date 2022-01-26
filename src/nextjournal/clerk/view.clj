@@ -148,23 +148,17 @@
 #_(->display {:result {:nextjournal.clerk/visibility #{:hide} :nextjournal/value {:nextjournal/viewer :hide-result}} :ns? false})
 #_(->display {:result {:nextjournal.clerk/visibility #{:hide}} :ns? true})
 
-(defn update+rename-key
-  ([m k new-k] (update+rename-key m k new-k identity))
-  ([m k new-k f] (-> m (assoc new-k (f (get m k))) (dissoc k))))
-(defn describe-doc [{:as node :keys [text type content]}]
-  (cond-> node
-    text
-    (update+rename-key :text :nextjournal/value)
-    type
-    (update+rename-key :type :nextjournal/viewer #(keyword "nextjournal.markdown" (name %)))
-    content
-    (update+rename-key :content :nextjournal/value (partial mapv describe-doc))))
+(defn md->viewer [{:as node :keys [type content]}]
+  (v/with-viewer (keyword "nextjournal.markdown" (name type))
+    (cond-> node
+      (seq content)
+      (update :content (partial mapv md->viewer)))))
 
-#_(-> (nextjournal.clerk/eval-file "notebooks/mathjax.clj") :blocks (nth 3) :doc describe-doc)
+#_ (-> (nextjournal.markdown/parse "# Hello") md->viewer)
 
 (defn describe-block [{:keys [inline-results?] :or {inline-results? false}} {:keys [ns]} {:as cell :keys [type text doc]}]
   (case type
-    :markdown [(describe-doc doc)]
+    :markdown [(md->viewer doc)]
     :code (let [{:as cell :keys [result]} (update cell :result apply-viewer-unwrapping-var-from-def)
                 {:keys [code? fold? result?]} (->display cell)]
             (cond-> []

@@ -1,7 +1,7 @@
 ;; # ${\LaTeX}$ with MathJax
 ;; This is how to set Clerk's latex rendering to use ~~KaTeX~~ [MathJax](https://mathjax.org). _Right-click on formulas in this notebook to actually check it's rendered with Mathjax_.
 
-(ns ^:nextjournal.clerk/no-cache mathjax
+(ns ^:nextjournal.clerk/no-cache viewers.mathjax
   (:require [nextjournal.clerk :as clerk]))
 
 (clerk/set-viewers! [{:name :latex

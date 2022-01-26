@@ -464,11 +464,7 @@
          ;; TODO find option to disable client-side viewer selection
          (when-let [viewer (or (viewer/viewer x)
                                (viewer/viewer (viewer/wrapped-with-viewer value all-viewers)))]
-           (inspect opts (render-with-viewer (-> opts
-                                                 (assoc :viewers all-viewers :viewer viewer)
-                                                 (merge ;; TODO: is there a more general way?
-                                                  (when (and (keyword? viewer) (= "nextjournal.markdown" (namespace viewer)))
-                                                    (dissoc x :nextjournal/value :nextjournal/viewer))))
+           (inspect opts (render-with-viewer (assoc opts :viewers all-viewers :viewer viewer)
                                              viewer
                                              value)))))))
 
@@ -952,23 +948,23 @@ black")}]))}
   (sci/new-var 'doc-url (fn [x] (str "#" x))))
 
 ;;;;;;;;;;;;;; Markdown Viewers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn into-markup [m] ;; TODO: turn into a macro with accessible `opts` and a placeholder for children content
-  (fn [content opts] (html (into m (map (partial inspect opts)) content))))
+(defn into-markup [m]
+  (fn [{:keys [content]} opts] (html (into m (inspect-children opts) content))))
 
 (def default-markdown-viewers
   [{:name :nextjournal.markdown/text
-    :render-fn (fn [content _opts] (html [:span content]))}
+    :render-fn (fn [{:keys [text]} _] (html [:span text]))}
    {:name :nextjournal.markdown/paragraph :render-fn (into-markup [:p])}
    {:name :nextjournal.markdown/softbreak :render-fn (constantly (html [:span " "]))}
    {:name :nextjournal.markdown/ruler :render-fn (constantly (html [:hr]))}
    {:name :nextjournal.markdown/code
-    :render-fn (fn [content _opts] (html [:div.viewer-code.w-full
-                                          [inspect (with-viewer :code (apply str (map viewer/value content)))]]))}
-   {:name :nextjournal.markdown/image :render-fn (fn [_ {:keys [attrs]}] (html [:img attrs]))}
+    :render-fn (fn [{:as node :keys [content]} opts]
+                 (html [:div.viewer-code.w-full
+                        [inspect opts (with-viewer :code (apply str (map (comp :text viewer/value) content)))]]))}
+   {:name :nextjournal.markdown/image :render-fn (fn [{:keys [attrs]} _] (html [:img attrs]))}
    {:name :nextjournal.markdown/heading
-    :render-fn (fn [content {:as opts :keys [heading-level]}]
-                 (html (into [(keyword (str "h" heading-level))] (map (partial inspect opts)) content)))}
+    :render-fn (fn [{:keys [content heading-level]} opts]
+                 (html (into [(keyword (str "h" heading-level))] (inspect-children opts) content)))}
 
    ;; marks
    {:name :nextjournal.markdown/em :render-fn (into-markup [:em])}
@@ -977,8 +973,8 @@ black")}]))}
    {:name :nextjournal.markdown/strikethrough :render-fn (into-markup [:s])}
    {:name :nextjournal.markdown/blockquote :render-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/link
-    :render-fn (fn [content {:as opts :keys [attrs]}]
-                 (html (into [:a attrs] (map (partial inspect opts)) content)))}
+    :render-fn (fn [{:keys [content attrs]} opts]
+                 (html (into [:a attrs] (inspect-children opts) content)))}
 
    ;; lists
    {:name :nextjournal.markdown/bullet-list :render-fn (into-markup [:ul])}
@@ -986,16 +982,16 @@ black")}]))}
    {:name :nextjournal.markdown/numbered-list :render-fn (into-markup [:ol])}
    {:name :nextjournal.markdown/todo-list :render-fn (into-markup [:ul.contains-task-list])}
    {:name :nextjournal.markdown/todo-item
-    :render-fn (fn [content {:as opts :keys [attrs]}]
+    :render-fn (fn [{:keys [content attrs]} opts]
                  (html (into [:li [:input {:type "checkbox" :default-checked (:checked attrs)}]]
-                             (map (partial inspect opts))
+                             (inspect-children opts)
                              content)))}
 
    ;; formulas
    {:name :nextjournal.markdown/block-formula
-    :render-fn (fn [content _opts] (with-viewer :latex content))}
+    :render-fn (fn [{:keys [text]} _opts] (with-viewer :latex text))}
    {:name :nextjournal.markdown/formula
-    :render-fn (fn [content opts] (inspect (assoc opts :inline? true) (with-viewer :latex content)))}
+    :render-fn (fn [{:keys [text]} opts] (inspect (assoc opts :inline? true) (with-viewer :latex text)))}
 
    #_ ;; TODO:
    (:table-header
@@ -1010,9 +1006,9 @@ black")}]))}
     )
    ])
 
-(defn markdown-doc-viewer [content opts]
+(defn markdown-doc-viewer [{:keys [content]} opts]
   (html (into [:div]
-              (map (partial inspect (update opts :viewers #(concat % default-markdown-viewers))))
+              (inspect-children (update opts :viewers #(concat % default-markdown-viewers)))
               content)))
 
 (dc/defcard markdown-doc-viewer
