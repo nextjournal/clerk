@@ -966,7 +966,8 @@ black")}]))}
    {:name :nextjournal.markdown/softbreak :render-fn (constantly (html [:span " "]))}
    {:name :nextjournal.markdown/ruler :render-fn (constantly (html [:hr]))}
    {:name :nextjournal.markdown/code
-    :render-fn (fn [content _opts] (with-viewer :code (apply str (map viewer/value content))))}
+    :render-fn (fn [content _opts] (html [:div.viewer-code.w-full
+                                          [inspect (with-viewer :code (apply str (map viewer/value content)))]]))}
    {:name :nextjournal.markdown/image :render-fn (fn [_ {:keys [attrs]}] (html [:img attrs]))}
    {:name :nextjournal.markdown/heading
     :render-fn (fn [content {:as opts :keys [heading-level]}]
