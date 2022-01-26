@@ -148,7 +148,7 @@
 
 (def elide-string-length 100)
 
-(declare describe)
+(declare describe with-viewer)
 
 (defn inspect-leafs [opts x]
   (if (wrapped-value? x)
@@ -214,15 +214,17 @@
                     (-> (wrap-value xs)
                         (update :nextjournal/width #(or % :wide))
                         (update :nextjournal/value #(or (normalize-table-data %)
-                                                        {:invalid-format [%]}))
+                                                        {:error "Could not normalize table" :ex-data %}))
                         (update :nextjournal/viewers concat (:table @!viewers))))
     :fetch-fn (fn [{:as opts :keys [describe-fn offset]} xs]
                 ;; TODO: use budget per row for table
                 ;; TODO: opt out of eliding cols
-                (-> (cond-> (update xs :rows describe-fn (dissoc opts :!budget) [])
-                      (pos? offset) :rows)
-                    (assoc :path [:rows] :replace-path [offset])
-                    (dissoc :nextjournal/viewers)))}
+                (if (:error xs)
+                  (update xs :ex-data describe-fn opts [])
+                  (-> (cond-> (update xs :rows describe-fn (dissoc opts :!budget) [])
+                        (pos? offset) :rows)
+                      (assoc :path [:rows] :replace-path [offset])
+                      (dissoc :nextjournal/viewers))))}
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
    {:name :object :render-fn '(fn [x] (v/html (v/tagged-value "#object" [v/inspect x])))}
    {:name :file :render-fn '(fn [x] (v/html (v/tagged-value "#file " [v/inspect x])))}
@@ -534,12 +536,13 @@
 
 (defn with-viewer
   "Wraps given "
-  [viewer x]
-  (-> x
-      wrap-value
-      (assoc :nextjournal/viewer (cond-> viewer
-                                   (or (list? viewer) (symbol? viewer))
-                                   ->viewer-fn))))
+  ([viewer x] (with-viewer viewer {} x))
+  ([viewer opts x]
+   (merge opts (-> x
+                   wrap-value
+                   (assoc :nextjournal/viewer (cond-> viewer
+                                                (or (list? viewer) (symbol? viewer))
+                                                ->viewer-fn))))))
 
 #_(with-viewer :latex "x^2")
 #_(with-viewer '#(v/html [:h3 "Hello " % "!"]) "x^2")
@@ -560,28 +563,12 @@
 (def md           (partial with-viewer :markdown))
 (def plotly       (partial with-viewer :plotly))
 (def vl           (partial with-viewer :vega-lite))
+(def table        (partial with-viewer :table))
 (def tex          (partial with-viewer :latex))
 (def hide-result  (partial with-viewer :hide-result))
 (def notebook     (partial with-viewer :clerk/notebook))
 (defn doc-url [path]
   (->viewer-eval (list 'v/doc-url path)))
-
-
-(defn table
-  "Displays `xs` in a table.
-
-  Performs normalization from the following formats:
-
-  * maps of seqs: `{:column-1 [1 2] :column-2 [3 4]}`
-  * seq of maps: `[{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]`
-  * seq of seqs `[[1 3] [2 4]]`
-  * map with `:head` and `:rows` keys `{:head [:column-1 :column-2] :rows [[1 3] [2 4]]}`"
-  ([xs] (table {} xs))
-  ([opts xs] (merge (with-viewer :table xs) opts)))
-
-#_(table {:a (range 10)
-          :b (mapv inc (range 10))})
-#_(describe (table (set (range 10))))
 
 (defn code [x]
   (with-viewer :code (if (string? x) x (with-out-str (pprint/pprint x)))))
