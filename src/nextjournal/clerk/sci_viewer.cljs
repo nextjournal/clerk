@@ -681,9 +681,6 @@
                       {:y (shuffle (range 10)) :name "The Empire"}]})])]
   {::dc/class "p-0"})
 
-
-(def ^:dynamic *viewers* nil)
-
 (dc/defcard inspect-rule-30-sci
   []
   [inspect {:path []
