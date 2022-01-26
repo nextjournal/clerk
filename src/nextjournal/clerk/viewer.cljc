@@ -2,6 +2,7 @@
   (:require [clojure.string :as str]
             [clojure.pprint :as pprint]
             [clojure.datafy :as datafy]
+            [clojure.walk :as w]
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]]
                 :cljs [[reagent.ratom :as ratom]]))
@@ -147,7 +148,15 @@
 
 (def elide-string-length 100)
 
-(defn fetch-all [_ x] x)
+(declare describe)
+
+(defn inspect-leafs [opts x]
+  (if (wrapped-value? x)
+    [(->viewer-fn 'v/inspect) (describe x opts)]
+    x))
+
+(defn fetch-all [opts xs]
+  (clojure.walk/postwalk (partial inspect-leafs opts) xs))
 
 (defn- var-from-def? [x]
   (get x :nextjournal.clerk/var-from-def))
@@ -203,14 +212,12 @@
    {:name :eval! :render-fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
    {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
     :transform-fn (fn [xs]
-                    (prn :table/transform-fn xs)
                     (-> (wrap-value xs)
                         (update :nextjournal/width #(or % :wide))
                         (update :nextjournal/value #(or (normalize-table-data %)
                                                         {:invalid-format [%]}))
                         (update :nextjournal/viewers concat (:table @!viewers))))
     :fetch-fn (fn [{:as opts :keys [describe-fn offset]} xs]
-                (prn :table/fetch-fn xs)
                 ;; TODO: use budget per row for table
                 ;; TODO: opt out of eliding cols
                 (-> (cond-> (update xs :rows describe-fn (dissoc opts :!budget) [])
@@ -240,7 +247,6 @@
   (#?(:clj atom :cljs ratom/atom) (get-all-viewers)))
 
 #_(reset! !viewers (get-all-viewers))
-#_(nextjournal.clerk/show!)
 
 ;; heavily inspired by code from Thomas Heller in shadow-cljs, see
 ;; https://github.com/thheller/shadow-cljs/blob/1708acb21bcdae244b50293d17633ce35a78a467/src/main/shadow/remote/runtime/obj_support.cljc#L118-L144
@@ -357,16 +363,18 @@
     (describe xs (merge {:!budget (atom (:budget opts 200)) :path [] :viewers (get-viewers *ns* (viewers xs))} opts) [])))
   ([xs opts current-path]
    (let [{:as opts :keys [!budget viewers path offset]} (merge {:offset 0} opts)
-         wrapped-value (try (wrapped-with-viewer xs viewers) ;; TODO: respect `viewers` on `xs`
-                            (catch #?(:clj Exception :cljs js/Error) _ex
-                              (do (println _ex)
-                                  nil)))
+         {:as wrapped-value xs-viewers :nextjournal/viewers} (try (wrapped-with-viewer xs viewers) ;; TODO: respect `viewers` on `xs`
+                                                                  (catch #?(:clj Exception :cljs js/Error) _ex
+                                                                    (do (println _ex)
+                                                                        nil)))
+         ;; TODO used for the table viewer which adds viewers in through `tranform-fn` from `wrapped-with-viewer`. Can we avoid this?
+         opts (cond-> opts xs-viewers (update :viewers #(concat xs-viewers %)))
          {:as viewer :keys [fetch-opts fetch-fn]} (viewer wrapped-value)
          fetch-opts (merge fetch-opts (select-keys opts [:offset]))
          descend? (< (count current-path)
                      (count path))
          xs (value wrapped-value)]
-     #_(prn :xs xs :type (type xs) :path path :current-path current-pathq)
+     #_(prn :xs xs :type (type xs) :path path :current-path current-path :descend? descend? :fetch-fn? (some? fetch-fn))
      (when (and !budget (not descend?) (not fetch-fn))
        (swap! !budget #(max (dec %) 0)))
      (merge {:path path}
