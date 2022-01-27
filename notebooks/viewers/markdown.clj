@@ -43,7 +43,12 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
                      {:name :latex
                       :render-fn 'v/mathjax-viewer}])
 ;; ### Current State
-;; - [x] Reactively update document when markdown viewers change
-;; - [x] Chaning viewers markdown depends on reactively update the document (see `:latex` viewer for $\phi$-or-$\mu$-ulas)
-;; - [ ] Expose convenient helpers to compose markup
+;; As an excuse to test _tables_ in markdown:
+;;
+;; | feature                                                                                                            |    |
+;; |:-------------------------------------------------------------------------------------------------------------------|:---|
+;; | Reactively update document when markdown viewers change                                                            |✅  |
+;; | Chaning viewers markdown depends on reactively update the document (see `:latex` viewer for $\phi$-or-$\mu$-ulas)  |✅  |
+;; | Expose convenient helpers to compose markup                                                                        |❌  |
+;;
 ;; ---

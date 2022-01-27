@@ -993,14 +993,18 @@ black")}]))}
    {:name :nextjournal.markdown/formula
     :render-fn (fn [{:keys [text]} opts] (inspect (assoc opts :inline? true) (with-viewer :latex text)))}
 
+   {:name :nextjournal.markdown/table :render-fn (into-markup [:table])}
+   {:name :nextjournal.markdown/table-head :render-fn (into-markup [:thead])}
+   {:name :nextjournal.markdown/table-body :render-fn (into-markup [:tbody])}
+   {:name :nextjournal.markdown/table-row :render-fn (into-markup [:tr])}
+   {:name :nextjournal.markdown/table-header
+    :render-fn (fn [{:keys [content attrs]} opts]
+                 (html (into [:th {:style (md.transform/table-alignment attrs)}] (inspect-children opts) content)))}
+   {:name :nextjournal.markdown/table-data
+    :render-fn (fn [{:keys [content attrs]} opts]
+                 (html (into [:td {:style (md.transform/table-alignment attrs)}] (inspect-children opts) content)))}
    #_ ;; TODO:
-   (:table-header
-    :table-data
-    :table-head
-    :table-body
-    :table-row
-    :table
-    :hashtag
+   (:hashtag
     :sidenote
     :sidenote-ref
     )
