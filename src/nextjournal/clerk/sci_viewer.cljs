@@ -952,14 +952,13 @@ black")}]))}
   (fn [{:keys [content]} opts] (html (into m (inspect-children opts) content))))
 
 (def default-markdown-viewers
-  [{:name :nextjournal.markdown/text
-    :render-fn (fn [{:keys [text]} _] (html [:span text]))}
+  [{:name :nextjournal.markdown/text :render-fn (fn [{:keys [text]} _] (html [:span text]))}
    {:name :nextjournal.markdown/paragraph :render-fn (into-markup [:p])}
    {:name :nextjournal.markdown/softbreak :render-fn (constantly (html [:span " "]))}
    {:name :nextjournal.markdown/ruler :render-fn (constantly (html [:hr]))}
    {:name :nextjournal.markdown/code
-    :render-fn (fn [{:as node :keys [content]} opts]
-                 (html [:div.viewer-code.w-full
+    :render-fn (fn [{:keys [content language info]} opts]
+                 (html [:div.viewer-code.w-full {:class (when (seq language) (str "language-" language))}
                         [inspect opts (with-viewer :code (apply str (map (comp :text viewer/value) content)))]]))}
    {:name :nextjournal.markdown/image :render-fn (fn [{:keys [attrs]} _] (html [:img attrs]))}
    {:name :nextjournal.markdown/heading
@@ -993,6 +992,7 @@ black")}]))}
    {:name :nextjournal.markdown/formula
     :render-fn (fn [{:keys [text]} opts] (inspect (assoc opts :inline? true) (with-viewer :latex text)))}
 
+   ;; tables
    {:name :nextjournal.markdown/table :render-fn (into-markup [:table])}
    {:name :nextjournal.markdown/table-head :render-fn (into-markup [:thead])}
    {:name :nextjournal.markdown/table-body :render-fn (into-markup [:tbody])}
@@ -1003,15 +1003,19 @@ black")}]))}
    {:name :nextjournal.markdown/table-data
     :render-fn (fn [{:keys [content attrs]} opts]
                  (html (into [:td {:style (md.transform/table-alignment attrs)}] (inspect-children opts) content)))}
-   #_ ;; TODO:
-   (:hashtag
-    :sidenote
-    :sidenote-ref
-    )
-   ])
 
-(defn markdown-doc-viewer [{:keys [content]} opts]
-  (html (into [:div]
+   ;; sidenotes ;;
+   {:name :nextjournal.markdown/sidenote-ref :render-fn (into-markup [:sup.sidenote-ref])}
+   {:name :nextjournal.markdown/sidenote
+    :render-fn (fn [{:keys [content attrs]} opts]
+                 (html (into [:span.sidenote [:sup {:style {:margin-right "3px"}} (-> attrs :ref inc)]] (inspect-children opts) content)))}
+
+   ;; hashtags
+   {:name :nextjournal.markdown/hashtag
+    :render-fn (fn [{:keys [text]} _] (html [:a.tag {:href (str "/tags/" text) :style {:color "#fb923c"}} (str "#" text)]))}])
+
+(defn markdown-doc-viewer [{:as doc :keys [content sidenotes?]} opts]
+  (html (into [:div {:class (when sidenotes? "contains-sidenotes")}]
               (inspect-children (update opts :viewers #(concat % default-markdown-viewers)))
               content)))
 

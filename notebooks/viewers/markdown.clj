@@ -7,7 +7,7 @@
 ;; ## Markdown Comments
 ;; Clerk parses all _consecutive_ `;;`-led _clojure comment lines_ as [Markdown](https://daringfireball.net/projects/markdown). All of markdown syntax should be supported:
 ;; ### Lists
-;; - one **strong**
+;; - one **strong** hashtag like #nomarkdownforoldcountry
 ;; - two ~~strikethrough~~
 ;; ### Code
 ;; ```css
@@ -27,7 +27,10 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
 
 ;; ---
 ;; ## Overriding Markdown Viewers
-;; What's wrong with paragraph colors in this notebook? It's possible to override each markdown node viewer via `set-viewers!`, and this will instantly have effect on the whole document.
+;; What's wrong with paragraph colors in this notebook? It's possible to override each markdown node viewer via `set-viewers!`[^setv], and this will instantly have effect on the whole document.
+;;
+;; [^setv]: `nextjournal.clerk/set-viewers!` takes a vector of viewer specs...
+
 (clerk/set-viewers! [{:name :nextjournal.markdown/paragraph
                       :render-fn '(fn [{:keys [content]} opts]
                                     (v/html
@@ -42,6 +45,7 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
                                     [:hr {:style {:border "3px solid #f472b6"}}]))}
                      {:name :latex
                       :render-fn 'v/mathjax-viewer}])
+
 ;; ### Current State
 ;; As an excuse to test _tables_ in markdown:
 ;;
