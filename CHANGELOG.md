@@ -5,6 +5,23 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
+## 0.5.346 (2022-01-27)
+This release focuses on improving the viewer api:
+
+* 🌟 new built-in image viewer component  for `java.awt.image.BufferedImage` with automatic layouting. These can be easily created constructed from `java.imageio.ImageIO/read` from `File`, `URL` or `InputStream`.
+* 🌟 Enable nested viewers inside e.g. `html` or `table` viewers.
+* 🌟 Allow to convey viewers out-of-band using metadata. Clerk's viewer api has been based on functions. This can be undesired if you want to depend on the unmodified value downstream. You can now alternatively use metadata using the `:nextjournal.clerk/viewer` to convey the viewer. Valid values are viewer functions or keywords. The latter is useful when you don't want a runtime dependency on Clerk. (#58)
+* 💫 `:render-fn` must now be quoted to make it clearer it doesn't run on the JVM but in the browser (#53)
+* 💫 Make all viewer functions take an optional map to specify the with using the `:nextjournal.clerk/width` with valid values `:full`, `:wide` or `:prose`. (#53)
+* 💫 Enable access to vars resulting from eval in viewers @philomates (#47)
+* 💫 Expose title, table of contents as the result of parse. Set title in browser. @zampino (#56) 
+* 💫 Add halt! to allow stopping Clerk @SneakyPeet (#43)* 
+* 💫 Upgrade to tailwindcss 3 and use via play cdn. This enables using any tailwind properties. (#36)
+* 💫 Allow to bring your own css and js (#55)
+* 🐜 Introduce print budget to elide deeply nested structures. This should fix overflowing the browser with too much data for certain shapes of data (#48)
+* 🐞 Recover from a viewer rendering error without requiring a browser reload and improve error display.
+* 🛠 Refactor & tests various parts
+
 ## 0.4.316 (2021-12-21)
 * 💫 Add option to control opening of built static app (@filipesilva, #31)
 * 🐜 Fix path error on windows by bumping markdown dep (#34)

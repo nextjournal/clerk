@@ -67,8 +67,8 @@ Notes about what currently breaks 💥 and what could be better tomorrow.
 - [ ] Allow to control viewer expansion state programmatically
 - [x] Datafy or Metadata viewer via `:transform-fn`
 - [x] Persist viewer expansion state across reloads
-- [ ] Show eval error in overlay to persist scroll state when it disappears
-- [ ] Improve feedback when viewer errors
+- [x] Show eval error in overlay to persist scroll state when it disappears
+- [x] Improve feedback when viewer errors
 - [ ] Support evaluating `(quote 'code 'in 'backticks)` in markdown
 - [ ] Make stacktraces clickable
 - [x] Build static build on CI

@@ -26,7 +26,7 @@
                       :connection "scm:git:git://github.com/nextjournal/clerk.git"
                       :developerConnection "scm:git:ssh://git@github.com/nextjournal/clerk.git"}
                 :src-dirs ["src"]})
-  (b/copy-dir {:src-dirs ["src"]
+  (b/copy-dir {:src-dirs ["src" "resources"]
                :target-dir class-dir})
   (b/jar {:class-dir class-dir
           :jar-file jar-file}))
