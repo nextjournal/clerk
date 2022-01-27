@@ -168,14 +168,14 @@
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
 (defn +eval-results [results-last-run parsed-doc]
-(let [{:as info :keys [doc]} (hashing/build-graph parsed-doc) ;; TODO: clarify that this returns an analyzed doc
-      ->hash (hashing/hash info)
-      {:keys [blocks visibility]} doc
-      blocks (into [] (map (fn [{:as cell :keys [type]}]
-                             (cond-> cell
-                               (= :code type)
-                               (assoc :result (read+eval-cached results-last-run ->hash visibility cell))))) blocks)]
-  (assoc parsed-doc :blocks blocks :blob->result (blob->result blocks) :ns *ns*)))
+  (let [{:as info :keys [doc]} (hashing/build-graph parsed-doc) ;; TODO: clarify that this returns an analyzed doc
+        ->hash (hashing/hash info)
+        {:keys [blocks visibility]} doc
+        blocks (into [] (map (fn [{:as cell :keys [type]}]
+                               (cond-> cell
+                                 (= :code type)
+                                 (assoc :result (read+eval-cached results-last-run ->hash visibility cell))))) blocks)]
+    (assoc parsed-doc :blocks blocks :blob->result (blob->result blocks) :ns *ns*)))
 
 (defn parse-file [file]
   (hashing/parse-file {:doc? true} file))
