@@ -21,6 +21,9 @@
 ;; Alternatively you can pass it an HTML string.
 (clerk/html "Never <strong>forget</strong>.")
 
+;; ### 🔢 Tables
+;; The table viewer api take a number of formats. Each viewer also takes an optional map as a first argument for customization.
+(clerk/table {::clerk/width :full} (into (sorted-map) (map (fn [c] [(keyword (str c)) (shuffle (range 5))])) "abcdefghiklmno"))
 
 ;; ### 📑 Markdown
 ;; The Markdown viewer is useful for programmatically generated markdown.

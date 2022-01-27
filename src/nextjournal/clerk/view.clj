@@ -106,8 +106,9 @@
                  base64-encode-value)
               described-result))
 
-(defn ->result [ns {:nextjournal/keys [value blob-id]} lazy-load?]
-  (let [described-result (extract-blobs lazy-load? blob-id (v/describe value {:viewers (v/get-viewers ns (v/viewers value))}))]
+(defn ->result [ns {:as result :nextjournal/keys [value blob-id]} lazy-load?]
+  (let [described-result (extract-blobs lazy-load? blob-id (v/describe value {:viewers (v/get-viewers ns (v/viewers value))}))
+        opts-from-form-meta (select-keys result [:nextjournal/width])]
     (merge {:nextjournal/viewer :clerk/result
             :nextjournal/value (cond-> (try {:nextjournal/edn (->edn described-result)}
                                             (catch Throwable _e
@@ -118,8 +119,8 @@
                                  lazy-load?
                                  (assoc :nextjournal/fetch-opts {:blob-id blob-id}
                                         :nextjournal/hash (->hash-str [blob-id (selected-viewers described-result)])))}
-
-           (dissoc described-result :nextjournal/value :nextjournal/viewer))))
+           (dissoc described-result :nextjournal/value :nextjournal/viewer)
+           opts-from-form-meta)))
 
 #_(nextjournal.clerk/show! "notebooks/hello.clj")
 #_(nextjournal.clerk/show! "notebooks/viewers/image.clj")
@@ -173,7 +174,7 @@
        v/notebook
        (cond-> ns (assoc :scope (v/datafy-scope ns))))))
 
-#_(meta (doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj")))
+#_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
 #_(nextjournal.clerk/show! "notebooks/visibility.clj")
 

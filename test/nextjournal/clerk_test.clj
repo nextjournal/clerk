@@ -5,7 +5,8 @@
             [clojure.test :refer :all]
             [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.hashing :as hashing])
+            [nextjournal.clerk.hashing :as hashing]
+            [nextjournal.clerk.view :as view])
   (:import (java.io File)))
 
 (deftest url-canonicalize
@@ -81,3 +82,21 @@
                 (clerk/eval-string "^{:nextjournal.clerk/viewer nextjournal.clerk/table} (def markup [:h1 \"hi\"])")))
     (is (match? {:blocks [{:result {:nextjournal/viewer :html}}]}
                 (clerk/eval-string "^{:nextjournal.clerk/viewer :html} (def markup [:h1 \"hi\"])")))))
+
+(deftest eval-string+doc->viewer
+  (testing "assigns the correct width from form meta"
+    (is (match? [{:nextjournal/width :full}
+                 {:nextjournal/width :wide}]
+                (-> "^{:nextjournal.clerk/visibility :hide} (ns clerk-test-width)
+
+^{:nextjournal.clerk/viewer :table :nextjournal.clerk/width :full}
+(def dataset
+  [[1 2] [3 4]])
+
+^{:nextjournal.clerk/viewer :html :nextjournal.clerk/width :wide}
+[:div.bg-red-200 [:h1 \"Wide Hiccup\"]]
+"
+                    clerk/eval-string
+                    view/doc->viewer
+                    :nextjournal/value
+                    :blocks)))))

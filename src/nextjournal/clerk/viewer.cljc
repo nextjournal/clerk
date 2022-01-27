@@ -2,6 +2,7 @@
   (:require [clojure.string :as str]
             [clojure.pprint :as pprint]
             [clojure.datafy :as datafy]
+            [clojure.set :as set]
             [clojure.walk :as w]
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]]
@@ -205,8 +206,8 @@
    {:name :plotly :render-fn (quote v/plotly-viewer) :fetch-fn fetch-all}
    {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :fetch-fn fetch-all}
    {:name :markdown :render-fn (quote v/markdown-viewer) :fetch-fn fetch-all}
-   {:name :code :render-fn (quote v/code-viewer) :fetch-fn fetch-all}
-   {:name :code-folded :render-fn (quote v/foldable-code-viewer) :fetch-fn fetch-all}
+   {:name :code :render-fn (quote v/code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
+   {:name :code-folded :render-fn (quote v/foldable-code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
    {:name :reagent :render-fn (quote v/reagent-viewer)  :fetch-fn fetch-all}
    {:name :eval! :render-fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
    {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
@@ -538,6 +539,10 @@
 #_(registration? (set-viewers! []))
 #_(nextjournal.clerk/show! "notebooks/viewers/vega.clj")
 
+(defn normalize-viewer-opts [opts]
+  (set/rename-keys opts {:nextjournal.clerk/viewer :nextjournal/viewer
+                         :nextjournal.clerk/width :nextjournal/width}))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public api
 
@@ -545,11 +550,12 @@
   "Wraps given "
   ([viewer x] (with-viewer viewer {} x))
   ([viewer opts x]
-   (merge opts (-> x
-                   wrap-value
-                   (assoc :nextjournal/viewer (cond-> viewer
-                                                (or (list? viewer) (symbol? viewer))
-                                                ->viewer-fn))))))
+   (merge (normalize-viewer-opts opts)
+          (-> x
+              wrap-value
+              (assoc :nextjournal/viewer (cond-> viewer
+                                           (or (list? viewer) (symbol? viewer))
+                                           ->viewer-fn))))))
 
 #_(with-viewer :latex "x^2")
 #_(with-viewer '#(v/html [:h3 "Hello " % "!"]) "x^2")
@@ -576,8 +582,4 @@
 (def notebook     (partial with-viewer :clerk/notebook))
 (defn doc-url [path]
   (->viewer-eval (list 'v/doc-url path)))
-
-(defn code [x]
-  (with-viewer :code (if (string? x) x (with-out-str (pprint/pprint x)))))
-
-#_(code '(+ 1 2))
+(def code (partial with-viewer :code))

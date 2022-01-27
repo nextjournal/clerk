@@ -116,6 +116,10 @@
                    result)]
       (wrapped-with-metadata result visibility blob-id))))
 
+(defn maybe-resolve-viewer [{:as opts :nextjournal/keys [viewer]}]
+  (cond-> opts
+    (symbol? viewer)
+    (update :nextjournal/viewer resolve)))
 
 (defn read+eval-cached [results-last-run ->hash doc-visibility codeblock]
   (let [{:keys [ns-effect? form var]} codeblock
@@ -129,8 +133,10 @@
         cached-result? (and (not no-cache?)
                             cas-hash
                             (-> cas-hash ->cache-file fs/exists?))
-        viewer-on-form-meta (let [v (-> form meta ::viewer)]
-                              (cond-> v (symbol? v) resolve))]
+        opts-from-form-meta (-> (meta form)
+                                (select-keys [::viewer ::width])
+                                v/normalize-viewer-opts
+                                maybe-resolve-viewer)]
     #_(prn :cached? (cond no-cache? :no-cache
                           cached-result? true
                           cas-hash :no-cas-file
@@ -140,19 +146,19 @@
     (cond-> (or (when cached-result?
                   (lookup-cached-result results-last-run var hash cas-hash visibility))
                 (eval+cache! form hash digest-file var no-cache? visibility))
-      viewer-on-form-meta (assoc :nextjournal/viewer viewer-on-form-meta))))
+      (seq opts-from-form-meta)
+      (merge opts-from-form-meta))))
 
 #_(eval-file "notebooks/test123.clj")
 #_(eval-file "notebooks/how_clerk_works.clj")
 #_(read+eval-cached {} {} #{:show} "(subs (slurp \"/usr/share/dict/words\") 0 1000)")
 
-(defn clear-cache!
-  ([]
-   (if (fs/exists? config/cache-dir)
-     (do
-       (fs/delete-tree config/cache-dir)
-       (prn :cache-dir/deleted config/cache-dir))
-     (prn :cache-dir/does-not-exist config/cache-dir))))
+(defn clear-cache! []
+  (if (fs/exists? config/cache-dir)
+    (do
+      (fs/delete-tree config/cache-dir)
+      (prn :cache-dir/deleted config/cache-dir))
+    (prn :cache-dir/does-not-exist config/cache-dir)))
 
 
 (defn blob->result [blocks]
@@ -162,14 +168,14 @@
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
 (defn +eval-results [results-last-run parsed-doc]
-  (let [{:as info :keys [doc]} (hashing/build-graph parsed-doc) ;; TODO: clarify that this returns an analyzed doc
-        ->hash (hashing/hash info)
-        {:keys [blocks visibility]} doc
-        blocks (into [] (map (fn [{:as cell :keys [type]}]
-                               (cond-> cell
-                                 (= :code type)
-                                 (assoc :result (read+eval-cached results-last-run ->hash visibility cell))))) blocks)]
-    (assoc parsed-doc :blocks blocks :blob->result (blob->result blocks) :ns *ns*)))
+(let [{:as info :keys [doc]} (hashing/build-graph parsed-doc) ;; TODO: clarify that this returns an analyzed doc
+      ->hash (hashing/hash info)
+      {:keys [blocks visibility]} doc
+      blocks (into [] (map (fn [{:as cell :keys [type]}]
+                             (cond-> cell
+                               (= :code type)
+                               (assoc :result (read+eval-cached results-last-run ->hash visibility cell))))) blocks)]
+  (assoc parsed-doc :blocks blocks :blob->result (blob->result blocks) :ns *ns*)))
 
 (defn parse-file [file]
   (hashing/parse-file {:doc? true} file))
@@ -245,13 +251,15 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public viewer api
-(def md             v/md)
-(def plotly         v/plotly)
-(def vl             v/vl)
-(def tex            v/tex)
-(def notebook       v/notebook)
-(def html           v/html)
-(def code           v/code)
+
+;; these are refercing vars for convience when working at the REPL
+(def md             #'v/md)
+(def plotly         #'v/plotly)
+(def vl             #'v/vl)
+(def tex            #'v/tex)
+(def notebook       #'v/notebook)
+(def html           #'v/html)
+(def code           #'v/code)
 (def table          #'v/table)
 (def use-headers    #'v/use-headers)
 (def hide-result    #'v/hide-result)
