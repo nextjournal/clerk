@@ -333,6 +333,7 @@
          "visibility"
          "viewer_api"
          "viewer_api_meta"
+         "viewers_nested"
          "viewers/html"
          "viewers/image"
          "viewers/image_layouts"
