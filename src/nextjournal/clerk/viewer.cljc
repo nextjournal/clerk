@@ -167,10 +167,7 @@
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
-  [{:name :nextjournal.markdown/doc
-    :render-fn (quote v/markdown-doc-viewer)}
-
-   {:pred char? :render-fn '(fn [c] (v/html [:span.syntax-string.inspected-value "\\" c]))}
+  [{:pred char? :render-fn '(fn [c] (v/html [:span.syntax-string.inspected-value "\\" c]))}
    {:pred string? :render-fn (quote v/quoted-string-viewer) :fetch-opts {:n elide-string-length}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.syntax-number.inspected-value
                                                (if (js/Number.isNaN x) "NaN" (str x))]))}
@@ -208,6 +205,7 @@
    {:name :hiccup :render-fn (quote v/html)} ;; TODO: drop once markdown doesn't use it anymore
    {:name :plotly :render-fn (quote v/plotly-viewer) :fetch-fn fetch-all}
    {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :fetch-fn fetch-all}
+   {:name :nextjournal.markdown/doc :render-fn (quote v/markdown-doc-viewer)}
    {:name :markdown :render-fn (quote v/markdown-viewer) :fetch-fn fetch-all}
    {:name :code :render-fn (quote v/code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
    {:name :code-folded :render-fn (quote v/foldable-code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
