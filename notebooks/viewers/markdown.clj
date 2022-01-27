@@ -33,7 +33,7 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
                                     (v/html
                                      (into [:p {:style {:color "#0c4a6e"
                                                         :font-size "110%"}}]
-                                           (map #(v/inspect opts %))
+                                           (v/inspect-children opts)
                                            content)))}
 
                      {:name :nextjournal.markdown/ruler

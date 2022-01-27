@@ -34,7 +34,5 @@
 ;; # Todos
 ;; ----------
 ;; - [x] render inline/display mode of formulas (both KaTeX and MathJax)
-;; - [ ] reimplement markdown node transformers as sci viewer functions
 ;; - [ ] handle clicks on equation references **(?)**
-;;
-;; ![mj](https://www.mathjax.org/badge/mj-logo.svg)
+
