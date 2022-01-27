@@ -9,9 +9,6 @@
 ;; ### Lists
 ;; - one **strong**
 ;; - two ~~strikethrough~~
-;; ### Todos
-;; - [ ] one $\phi$-ormula
-;; - [x] checked two
 ;; ### Code
 ;; ```css
 ;; .viewer-markdown > :where(:last-child):not(:where([class~="not-prose"] *)) {
@@ -30,9 +27,23 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
 
 ;; ---
 ;; ## Overriding Markdown Viewers
-;; overriding single node viewers will have effect on the whole document
-(clerk/set-viewers! [{:name :nextjournal.markdown/ruler
+;; What's wrong with paragraph colors in this notebook? It's possible to override each markdown node viewer via `set-viewers!`, and this will instantly have effect on the whole document.
+(clerk/set-viewers! [{:name :nextjournal.markdown/paragraph
+                      :render-fn '(fn [{:keys [content]} opts]
+                                    (v/html
+                                     (into [:p {:style {:color "#0c4a6e"
+                                                        :font-size "110%"}}]
+                                           (map #(v/inspect opts %))
+                                           content)))}
+
+                     {:name :nextjournal.markdown/ruler
                       :render-fn '(constantly
                                    (v/html
-                                    [:hr {:style {:border "3px solid #f472b6"}}]))}])
+                                    [:hr {:style {:border "3px solid #f472b6"}}]))}
+                     {:name :latex
+                      :render-fn 'v/mathjax-viewer}])
+;; ### Current State
+;; - [x] Reactively update document when markdown viewers change
+;; - [x] Chaning viewers markdown depends on reactively update the document (see `:latex` viewer for $\phi$-or-$\mu$-ulas)
+;; - [ ] Expose convenient helpers to compose markup
 ;; ---
