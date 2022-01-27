@@ -131,19 +131,22 @@
     [:path {:fill-rule "evenodd" :d "M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" :clip-rule "evenodd"}]]
    (into [:div.ml-2.font-bold] content)])
 
-(defn error-boundary [& _]
-  (let [!error (r/atom nil)]
-    (r/create-class
-     {:constructor (fn [_ _])
-      :component-did-catch (fn [_ e _info]
-                             (reset! !error e))
-      :get-derived-state-from-error (fn [e]
-                                      (reset! !error e)
-                                      #js {})
-      :reagent-render (fn [& children]
-                        (if @!error
-                          (error-badge "rendering error") ;; TODO: show error
-                          (into [:<>] children)))})))
+(defn error-boundary [!error & _]
+  (r/create-class
+   {:constructor (fn [_ _])
+    :component-did-catch (fn [_ e _info]
+                           (reset! !error e))
+    :get-derived-state-from-error (fn [e]
+                                    (reset! !error e)
+                                    #js {})
+    :reagent-render (fn [_error & children]
+                      (if @!error
+                        [:div.bg-red-100.px-6.py-4.rounded.text-xs
+                         [:h4.mt-0.uppercase.text-xs.tracking-wide "Viewer Rendering Error"]
+                         [:p.mt-3.font-medium "The following javascript error occurred rendering this result. Your browser console might contain more information."]
+                         ;; TODO: fix react CORS error in dev
+                         [:pre.mt-3.text-red-500.whitespace-pre-wrap (.-message @!error)]]
+                        (into [:<>] children)))}))
 
 (defn fetch! [{:keys [blob-id]} opts]
   #_(js/console.log :fetch! blob-id opts)
@@ -168,6 +171,7 @@
 
 (defn result-viewer [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
   (html (r/with-let [!hash (atom hash)
+                     !error (atom nil)
                      !desc (r/atom (read-result result))
                      !fetch-opts (atom fetch-opts)
                      fetch-fn (when @!fetch-opts
@@ -179,9 +183,10 @@
             ;; TODO: simplify
             (reset! !hash hash)
             (reset! !fetch-opts fetch-opts)
-            (reset! !desc (read-result result)))
+            (reset! !desc (read-result result))
+            (reset! !error nil))
           [view-context/provide {:fetch-fn fetch-fn}
-           [error-boundary [inspect @!desc]]]))
+           [error-boundary !error [inspect @!desc]]]))
   )
 
 (defn toggle-expanded [!expanded-at path event]
