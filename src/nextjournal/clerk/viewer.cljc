@@ -160,7 +160,7 @@
   (w/postwalk (partial inspect-leafs opts) xs))
 
 (defn- var-from-def? [x]
-  (get x :nextjournal.clerk/var-from-def))
+  (and (map? x) (get x :nextjournal.clerk/var-from-def)))
 
 (declare !viewers)
 
