@@ -168,14 +168,14 @@
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
 (defn +eval-results [results-last-run parsed-doc]
-  (let [{:as info :keys [doc]} (hashing/build-graph parsed-doc) ;; TODO: clarify that this returns an analyzed doc
+  (let [{:as info :keys [doc ->analysis-info]} (hashing/build-graph parsed-doc) ;; TODO: clarify that this returns an analyzed doc
         ->hash (hashing/hash info)
         {:keys [blocks visibility]} doc
         blocks (into [] (map (fn [{:as cell :keys [type]}]
                                (cond-> cell
                                  (= :code type)
                                  (assoc :result (read+eval-cached results-last-run ->hash visibility cell))))) blocks)]
-    (assoc parsed-doc :blocks blocks :blob->result (blob->result blocks) :ns *ns*)))
+    (assoc parsed-doc :blocks blocks :blob->result (blob->result blocks) :ns *ns* :->analysis-info ->analysis-info :analyzed-doc doc :->hash ->hash :parsed-doc parsed-doc)))
 
 (defn parse-file [file]
   (hashing/parse-file {:doc? true} file))
@@ -222,6 +222,23 @@
       (catch Exception e
         (webserver/show-error! e)
         (throw e)))))
+
+#_(show! @!last-file)
+
+(defn recompute!* [{:as doc :keys [blob->result ->hash analyzed-doc parsed-doc]}]
+  (let [{:keys [blocks visibility]} analyzed-doc
+        blocks (into [] (map (fn [{:as cell :keys [type]}]
+                               (cond-> cell
+                                 (= :code type)
+                                 (assoc :result (read+eval-cached blob->result ->hash visibility cell))))) blocks)]
+    (assoc doc :blocks blocks)))
+
+(defn recompute! []
+  (let [{:keys [result time-ms]} (time-ms (recompute!* @webserver/!doc))]
+    (println (str "Clerk recomputed '" @!last-file "' in " time-ms "ms."))
+    (webserver/update-doc! result)))
+
+#_(recompute!)
 
 (defn supported-file?
   "Returns whether `path` points to a file that should be shown."

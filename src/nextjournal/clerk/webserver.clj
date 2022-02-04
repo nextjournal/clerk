@@ -63,7 +63,8 @@
                              :on-close (fn [ch _reason] (swap! !clients disj ch))
                              :on-receive (fn [_ch msg] (binding [*ns* (or (:ns @!doc)
                                                                           (create-ns 'user))]
-                                                         (eval (read-string msg))))})
+                                                         (eval (read-string msg))
+                                                         (eval '(nextjournal.clerk/recompute!))))})
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
