@@ -92,7 +92,7 @@
       (assoc result :nextjournal/value (if (var? viewer)
                                          (viewer value)
                                          {:nextjournal/value value
-                                          :nextjournal/viewer viewer})))
+                                          :nextjournal/viewer (v/normalize-viewer viewer)})))
     result))
 
 #_(apply-viewer-unwrapping-var-from-def {:nextjournal/value [:h1 "hi"] :nextjournal/viewer :html})

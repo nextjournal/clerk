@@ -118,8 +118,8 @@
 
 (defn maybe-resolve-viewer [{:as opts :nextjournal/keys [viewer]}]
   (cond-> opts
-    (symbol? viewer)
-    (update :nextjournal/viewer resolve)))
+    viewer
+    (update :nextjournal/viewer eval)))
 
 (defn read+eval-cached [results-last-run ->hash doc-visibility codeblock]
   (let [{:keys [ns-effect? form var]} codeblock
