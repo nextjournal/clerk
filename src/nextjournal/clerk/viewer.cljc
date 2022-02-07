@@ -279,7 +279,7 @@
 
 (declare wrapped-with-viewer)
 
-(defn apply-viewer [{:as viewer :keys [render-fn transform-fn]} v]
+(defn apply-viewer [viewers {:as viewer :keys [render-fn transform-fn]} v]
   (let [v (cond-> v transform-fn transform-fn)]
     (if (and transform-fn (not render-fn))
       (wrapped-with-viewer v viewers)
@@ -291,16 +291,16 @@
    (if-let [selected-viewer (viewer x)]
      (if (keyword? selected-viewer)
        (if-let [named-viewer (find-named-viewer viewers selected-viewer)]
-         (apply-viewer named-viewer (value x))
+         (apply-viewer viewers named-viewer (value x))
          (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
-       (apply-viewer selected-viewer (value x)))
+       (apply-viewer viewers selected-viewer (value x)))
      (let [v (value x)]
-       (loop [viewers viewers]
-         (if-let [{:as matching-viewer :keys [pred]} (first viewers)]
+       (loop [vs viewers]
+         (if-let [{:as matching-viewer :keys [pred]} (first vs)]
            (if (and (ifn? pred) (pred v))
-             (apply-viewer matching-viewer v)
-             (recur (rest viewers)))
-           (throw (ex-info (str "cannot find matchting viewer for `" (pr-str x) "`") {:viewers viewers :x v}))))))))
+             (apply-viewer viewers matching-viewer v)
+             (recur (rest vs)))
+           (throw (ex-info (str "cannot find matchting viewer for `" (pr-str x) "`") {:viewers vs :x v}))))))))
 
 #_(wrapped-with-viewer {:one :two})
 #_(wrapped-with-viewer [1 2 3])
