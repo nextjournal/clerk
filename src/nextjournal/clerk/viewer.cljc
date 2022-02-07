@@ -279,11 +279,11 @@
 
 (declare wrapped-with-viewer)
 
-(defn apply-viewer [{:as viewer :keys [render-fn transform-fn]} val]
-  (let [val (cond-> val transform-fn transform-fn)]
+(defn apply-viewer [{:as viewer :keys [render-fn transform-fn]} v]
+  (let [v (cond-> v transform-fn transform-fn)]
     (if (and transform-fn (not render-fn))
-      (wrapped-with-viewer val viewers)
-      (wrap-value val viewer))))
+      (wrapped-with-viewer v viewers)
+      (wrap-value v viewer))))
 
 (defn wrapped-with-viewer
   ([x] (wrapped-with-viewer x default-viewers))
@@ -291,16 +291,16 @@
    (if-let [selected-viewer (viewer x)]
      (if (keyword? selected-viewer)
        (if-let [named-viewer (find-named-viewer viewers selected-viewer)]
-         (apply-viewer named-viewer val)
+         (apply-viewer named-viewer (value x))
          (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
        (apply-viewer selected-viewer (value x)))
-     (let [val (value x)]
-       (loop [v viewers]
-         (if-let [{:as matching-viewer :keys [pred]} (first v)]
-           (if (and (ifn? pred) (pred val))
-             (apply-viewer matching-viewer val)
-             (recur (rest v)))
-           (throw (ex-info (str "cannot find matchting viewer for `" (pr-str x) "`") {:viewers viewers :x val}))))))))
+     (let [v (value x)]
+       (loop [viewers viewers]
+         (if-let [{:as matching-viewer :keys [pred]} (first viewers)]
+           (if (and (ifn? pred) (pred v))
+             (apply-viewer matching-viewer v)
+             (recur (rest viewers)))
+           (throw (ex-info (str "cannot find matchting viewer for `" (pr-str x) "`") {:viewers viewers :x v}))))))))
 
 #_(wrapped-with-viewer {:one :two})
 #_(wrapped-with-viewer [1 2 3])
@@ -544,6 +544,7 @@
 
 (defn normalize-viewer-opts [opts]
   (set/rename-keys opts {:nextjournal.clerk/viewer :nextjournal/viewer
+                         :nextjournal.clerk/viewers :nextjournal/viewers
                          :nextjournal.clerk/width :nextjournal/width}))
 
 (defn normalize-viewer [viewer]

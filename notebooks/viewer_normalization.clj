@@ -20,3 +20,13 @@
 
 ^{::clerk/viewer {:render-fn '#(v/html [:span "The answer is " % "."]) :transform-fn inc}}
 (do 41)
+
+(clerk/with-viewers [{:pred (constantly true) :render-fn '(fn [v] (v/html [:span "The answer is " v "."])) :transform-fn inc}]
+  41)
+
+^{::clerk/viewer {:render-fn '#(v/html [:span "The answer is " % "."]) :transform-fn inc}}
+(do 41)
+
+
+^{::clerk/viewers [{:pred (constantly true) :render-fn '(fn [v] (v/html [:span "The answer is " v "."])) :transform-fn inc}]}
+(do 41)

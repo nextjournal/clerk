@@ -116,10 +116,12 @@
                    result)]
       (wrapped-with-metadata result visibility blob-id))))
 
-(defn maybe-resolve-viewer [{:as opts :nextjournal/keys [viewer]}]
+(defn maybe-eval-viewers [{:as opts :nextjournal/keys [viewer viewers]}]
   (cond-> opts
     viewer
-    (update :nextjournal/viewer eval)))
+    (update :nextjournal/viewer eval)
+    viewers
+    (update :nextjournal/viewers eval)))
 
 (defn read+eval-cached [results-last-run ->hash doc-visibility codeblock]
   (let [{:keys [ns-effect? form var]} codeblock
@@ -134,9 +136,9 @@
                             cas-hash
                             (-> cas-hash ->cache-file fs/exists?))
         opts-from-form-meta (-> (meta form)
-                                (select-keys [::viewer ::width])
+                                (select-keys [::viewer ::viewers ::width])
                                 v/normalize-viewer-opts
-                                maybe-resolve-viewer)]
+                                maybe-eval-viewers)]
     #_(prn :cached? (cond no-cache? :no-cache
                           cached-result? true
                           cas-hash :no-cas-file
