@@ -263,16 +263,18 @@
   (html (let [expanded? (@!expanded-at path)
               {:keys [closing-paren]} viewer]
           [:span.inspected-value.whitespace-nowrap
-           [:span.bg-opacity-70
-            (when (expandable? xs)
-              {:on-click (partial toggle-expanded !expanded-at path)
-               :class "cursor-pointer bg-indigo-50 hover:bg-indigo-100 hover:rounded-sm border-b border-gray-400 hover:border-gray-500"})
-            "{"]
-           (into [:<>]
-                 (comp (inspect-children opts)
-                       (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) nbsp)] " ")))
-                 xs)
-           (cond->> closing-paren (list? closing-paren) (into [:<>]))])))
+           {:class (when expanded? "inline-flex")}
+           [:span
+            [:span.bg-opacity-70.whitespace-nowrap
+             (when (expandable? xs)
+               {:on-click (partial toggle-expanded !expanded-at path)
+                :class "cursor-pointer bg-indigo-50 hover:bg-indigo-100 hover:rounded-sm border-b border-gray-400 hover:border-gray-500"})
+             "{"]
+            (into [:<>]
+                  (comp (inspect-children opts)
+                        (interpose (if expanded? [:<> [:br] nbsp #_(repeat (inc (count path)) nbsp)] " ")))
+                  xs)
+            (cond->> closing-paren (list? closing-paren) (into [:<>]))]])))
 
 (defn string-viewer [s opts]
   (html (into [:span] (map #(cond->> % (not (string? %)) (inspect opts))) s)))
