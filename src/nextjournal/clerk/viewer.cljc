@@ -280,9 +280,11 @@
 (declare wrapped-with-viewer)
 
 (defn apply-viewer [viewers {:as viewer :keys [render-fn transform-fn]} v]
-  (let [v (cond-> v transform-fn transform-fn)]
+  (let [v (if transform-fn
+            (-> v value transform-fn)
+            v)]
     (if (and transform-fn (not render-fn))
-      (wrapped-with-viewer v viewers)
+      (wrapped-with-viewer (value v) viewers)
       (wrap-value v viewer))))
 
 (defn wrapped-with-viewer
@@ -291,9 +293,9 @@
    (if-let [selected-viewer (viewer x)]
      (if (keyword? selected-viewer)
        (if-let [named-viewer (find-named-viewer viewers selected-viewer)]
-         (apply-viewer viewers named-viewer (value x))
+         (apply-viewer viewers named-viewer x)
          (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
-       (apply-viewer viewers selected-viewer (value x)))
+       (apply-viewer viewers selected-viewer x))
      (let [v (value x)]
        (loop [vs viewers]
          (if-let [{:as matching-viewer :keys [pred]} (first vs)]
