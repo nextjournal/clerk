@@ -84,6 +84,17 @@
                 (clerk/eval-string "^{:nextjournal.clerk/viewer :html} (def markup [:h1 \"hi\"])")))))
 
 (deftest eval-string+doc->viewer
+  (testing "assigns correct width from viewer function opts"
+    (is (match? [{:nextjournal/width :full}]
+                (-> "^{:nextjournal.clerk/visibility :hide} (ns clerk-test-width
+  (:require [nextjournal.clerk :as clerk]))
+
+(clerk/html {::clerk/width :full} [:div.bg-red-200 [:h1 \"Wide Hiccup\"]])"
+                    clerk/eval-string
+                    view/doc->viewer
+                    :nextjournal/value
+                    :blocks))))
+
   (testing "assigns the correct width from form meta"
     (is (match? [{:nextjournal/width :full}
                  {:nextjournal/width :wide}]
