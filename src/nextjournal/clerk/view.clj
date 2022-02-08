@@ -87,7 +87,8 @@
 
 (defn apply-viewer-unwrapping-var-from-def [{:as result :nextjournal/keys [value viewer]}]
   (if viewer
-    (let [value (if (get value :nextjournal.clerk/var-from-def)
+    (let [{:keys [transform-fn]} viewer
+          value (if (and (not transform-fn) (get value :nextjournal.clerk/var-from-def))
                   (-> value :nextjournal.clerk/var-from-def deref)
                   value)]
       (assoc result :nextjournal/value (if (or (var? viewer) (fn? viewer))
