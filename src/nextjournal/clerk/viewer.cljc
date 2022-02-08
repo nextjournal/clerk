@@ -167,24 +167,24 @@
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
-  [{:pred char? :render-fn '(fn [c] (v/html [:span.syntax-string.inspected-value "\\" c]))}
+  [{:pred char? :render-fn '(fn [c] (v/html [:span.cmt-string.inspected-value "\\" c]))}
    {:pred string? :render-fn (quote v/quoted-string-viewer) :fetch-opts {:n elide-string-length}}
-   {:pred number? :render-fn '(fn [x] (v/html [:span.syntax-number.inspected-value
+   {:pred number? :render-fn '(fn [x] (v/html [:span.cmt-number.inspected-value
                                                (if (js/Number.isNaN x) "NaN" (str x))]))}
-   {:pred symbol? :render-fn '(fn [x] (v/html [:span.syntax-symbol.inspected-value x]))}
-   {:pred keyword? :render-fn '(fn [x] (v/html [:span.syntax-keyword.inspected-value (str x)]))}
-   {:pred nil? :render-fn '(fn [_] (v/html [:span.syntax-nil.inspected-value "nil"]))}
-   {:pred boolean? :render-fn '(fn [x] (v/html [:span.syntax-bool.inspected-value (str x)]))}
-   {:pred fn? :name :fn :render-fn '(fn [x] (v/html [:span.inspected-value [:span.syntax-tag "#function"] "[" x "]"]))}
+   {:pred symbol? :render-fn '(fn [x] (v/html [:span.cmt-keyword.inspected-value x]))}
+   {:pred keyword? :render-fn '(fn [x] (v/html [:span.cmt-atom.inspected-value (str x)]))}
+   {:pred nil? :render-fn '(fn [_] (v/html [:span.cmt-default.inspected-value "nil"]))}
+   {:pred boolean? :render-fn '(fn [x] (v/html [:span.cmt-bool.inspected-value (str x)]))}
+   {:pred fn? :name :fn :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#function"] "[" x "]"]))}
    {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :fetch-opts {:n 2}}
    {:pred var-from-def? :transform-fn (fn [x] (-> x :nextjournal.clerk/var-from-def deref))}
    {:pred vector? :render-fn 'v/coll-viewer :opening-paren "[" :closing-paren "]" :fetch-opts {:n 20}}
    {:pred set? :render-fn 'v/coll-viewer :opening-paren "#{" :closing-paren "}" :fetch-opts {:n 20}}
    {:pred sequential? :render-fn 'v/coll-viewer :opening-paren "(" :closing-paren ")" :fetch-opts {:n 20}}
    {:pred map? :name :map :render-fn 'v/map-viewer :opening-paren "{" :closing-paren "}" :fetch-opts {:n 10}}
-   {:pred uuid? :render-fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
-   {:pred inst? :render-fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.syntax-string.inspected-value "\"" (str x) "\""])))}
-   {:pred var? :transform-fn symbol :render-fn '(fn [x] (v/html [:span.inspected-value [:span.syntax-tag "#'" (str x)]]))}
+   {:pred uuid? :render-fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.cmt-string.inspected-value "\"" (str x) "\""])))}
+   {:pred inst? :render-fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.cmt-string.inspected-value "\"" (str x) "\""])))}
+   {:pred var? :transform-fn symbol :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#'" (str x)]]))}
    {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e)) :fetch-fn fetch-all
     :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp demunge-ex-data datafy/datafy)}
    #?(:clj {:pred #(instance? BufferedImage %)
@@ -197,7 +197,7 @@
                                                :nextjournal/content-type "image/png"
                                                :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})))
             :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center [:img {:src (v/url-for blob)}]]))})
-   {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.text-gray-700 x]))}
+   {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.cmt-default x]))}
    {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
    {:name :mathjax :render-fn (quote v/mathjax-viewer) :fetch-fn fetch-all}
