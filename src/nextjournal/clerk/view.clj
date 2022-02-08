@@ -7,7 +7,8 @@
             [clojure.walk :as w]
             [multihash.core :as multihash]
             [multihash.digest :as digest]
-            [taoensso.nippy :as nippy]))
+            [taoensso.nippy :as nippy])
+  (:import (java.util Base64)))
 
 (defn var->data [v]
   (v/wrapped-with-viewer v))
@@ -82,14 +83,14 @@
 
 (defn base64-encode-value [{:as result :nextjournal/keys [content-type]}]
   (update result :nextjournal/value (fn [data] (str "data:" content-type ";base64, "
-                                                    (.encodeToString (java.util.Base64/getEncoder) data)))))
+                                                    (.encodeToString (Base64/getEncoder) data)))))
 
-(defn apply-viewer-unwrapping-var-from-def [{:as result :nextjournal/keys [value viewer viewers]}]
+(defn apply-viewer-unwrapping-var-from-def [{:as result :nextjournal/keys [value viewer]}]
   (if viewer
     (let [value (if (get value :nextjournal.clerk/var-from-def)
                   (-> value :nextjournal.clerk/var-from-def deref)
                   value)]
-      (assoc result :nextjournal/value (if (fn? viewer)
+      (assoc result :nextjournal/value (if (or (var? viewer) (fn? viewer))
                                          (viewer value)
                                          {:nextjournal/value value
                                           :nextjournal/viewer (v/normalize-viewer viewer)})))
