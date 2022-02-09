@@ -9,21 +9,19 @@
             [nextjournal.devcards :as dc]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.ui.components.icon :as icon]
+            [nextjournal.view.context :as view-context]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.markdown :as markdown]
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
             [nextjournal.viewer.vega-lite :as vega-lite]
-            [nextjournal.view.context :as view-context]
             [re-frame.context :as rf]
             [react :as react]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [reagent.ratom :as ratom]
-            [sci.core :as sci]
-            [sci.impl.namespaces]
-            [sci.impl.vars]))
+            [sci.core :as sci]))
 
 (defn color-classes [selected?]
   {:value-color (if selected? "white-90" "dark-green")
