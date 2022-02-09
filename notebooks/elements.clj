@@ -5,6 +5,15 @@
             [babashka.fs :as fs]
             [nextjournal.clerk :as clerk]))
 
+^{::clerk/viewer {:fetch-fn (fn [_ x] x)
+                  :render-fn '(fn [board]
+                                (let [cell #(vector :div.inline-block
+                                                    {:class (if (zero? %)
+                                                              "bg-white border-solid border-2 border-black"
+                                                              "bg-black")
+                                                     :style {:width 16 :height 16}})
+                                      row #(into [:div.flex.inline-flex] (map cell) %)]
+                                  (v/html (into [:div.flex.flex-col] (map row) board))))}}
 (let [rule30 {[1 1 1] 0
               [1 1 0] 0
               [1 0 1] 0
@@ -16,16 +25,7 @@
       n 33
       g1 (assoc (vec (repeat n 0)) (/ (dec n) 2) 1)
       evolve #(mapv rule30 (partition 3 1 (repeat 0) (cons 0 %)))]
-  (clerk/with-viewer
-    (fn [board]
-      (let [cell (fn [c] (vector :div.inline-block
-                                 {:class (if (zero? c)
-                                           "bg-white border-solid border-2 border-black"
-                                           "bg-black")
-                                  :style {:width 16 :height 16}}))
-            row (fn [r] (into [:div.flex.inline-flex] (map cell) r))]
-        (v/html (into [:div.flex.flex-col] (map row) board))))
-    (->> g1 (iterate evolve) (take 17))))
+  (->> g1 (iterate evolve) (take 17)))
 
 ;; Clerk uses static analysis and a tiny bit of data flow to avoid needless recomputation.
 (defn fix-case [s]
