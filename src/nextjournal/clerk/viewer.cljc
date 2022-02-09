@@ -280,12 +280,12 @@
 (declare wrapped-with-viewer)
 
 (defn apply-viewer [viewers {:as viewer :keys [render-fn transform-fn]} v]
-  (let [v (if transform-fn
-            (-> v value transform-fn)
-            v)]
+  (let [v' (if transform-fn
+             (-> v value transform-fn)
+             v)]
     (if (and transform-fn (not render-fn))
-      (wrapped-with-viewer (value v) viewers)
-      (wrap-value v viewer))))
+      (wrapped-with-viewer (value v') viewers)
+      (merge (wrap-value v' viewer) (when (map? v) (select-keys v [:nextjournal/width]))))))
 
 (defn wrapped-with-viewer
   ([x] (wrapped-with-viewer x default-viewers))

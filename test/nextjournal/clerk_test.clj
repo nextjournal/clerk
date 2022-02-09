@@ -85,11 +85,14 @@
 
 (deftest eval-string+doc->viewer
   (testing "assigns correct width from viewer function opts"
-    (is (match? [{:nextjournal/width :full}]
+    (is (match? [{:nextjournal/width :wide}
+                 {:nextjournal/width :full}]
                 (-> "^{:nextjournal.clerk/visibility :hide} (ns clerk-test-width
   (:require [nextjournal.clerk :as clerk]))
 
-(clerk/html {::clerk/width :full} [:div.bg-red-200 [:h1 \"Wide Hiccup\"]])"
+(clerk/html {::clerk/width :wide} [:div.bg-red-200 [:h1 \"Wide Hiccup\"]])
+
+(clerk/table {::clerk/width :full} {:a [1] :b [2] :c [3]})"
                     clerk/eval-string
                     view/doc->viewer
                     :nextjournal/value
