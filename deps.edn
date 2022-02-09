@@ -23,7 +23,7 @@
 
  :aliases {:nextjournal/clerk {:exec-fn nextjournal.clerk/build-static-app!}
            :sci {:extra-deps  {applied-science/js-interop  {:mvn/version "0.3.0"}
-                               babashka/sci {:mvn/version "0.2.9"}
+                               org.babashka/sci {:mvn/version "0.2.9"}
                                reagent/reagent {:mvn/version "1.1.0"}
                                io.github.nextjournal/viewers {:git/sha "3e1569a67dbec87bcbd7d1343aa754222aeede77"}
                                metosin/reitit-frontend     {:mvn/version "0.5.15"}}}
