@@ -203,6 +203,12 @@
 
 #_(eval-string "(+ 39 3)")
 
+(defmacro with-cache [form]
+  `(let [result# (-> ~(pr-str form) eval-string :blob->result first val)]
+     result#))
+
+#_(with-cache (do (Thread/sleep 4200) 42))
+
 (defonce !show-filter-fn (atom nil))
 (defonce !last-file (atom nil))
 (defonce !watcher (atom nil))
