@@ -111,6 +111,12 @@
   @apply mt-1;
 }
 
+/* compact TOC */
+.viewer-markdown .toc ul {
+  list-style: none;
+  @apply my-0;
+}
+
 /* Code Viewer */
 /* --------------------------------------------------------------- */
 

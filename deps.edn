@@ -25,7 +25,7 @@
            :sci {:extra-deps  {applied-science/js-interop  {:mvn/version "0.3.0"}
                                org.babashka/sci {:mvn/version "0.2.9"}
                                reagent/reagent {:mvn/version "1.1.0"}
-                               io.github.nextjournal/viewers {:git/sha "312e1ad253fe29873c25c365b1f5afc19b0dfd79"}
+                               io.github.nextjournal/viewers {:git/sha "122c7e70ea6981e696dd7ddf2318f75e090f0653"}
                                metosin/reitit-frontend     {:mvn/version "0.5.15"}}}
 
            :dev {:extra-deps {arrowic/arrowic {:mvn/version "0.1.1"}
