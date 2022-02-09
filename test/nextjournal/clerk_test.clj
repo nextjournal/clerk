@@ -78,12 +78,26 @@
                 (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-defonce-test-ns) (defonce state (atom {}))"))))
 
   (testing "assigning viewers from form meta"
-    (is (match? {:blocks [{:result {:nextjournal/viewer #'nextjournal.clerk/table}}]}
+    (is (match? {:blocks [{:result {:nextjournal/viewer #'nextjournal.clerk.viewer/table}}]}
                 (clerk/eval-string "^{:nextjournal.clerk/viewer nextjournal.clerk/table} (def markup [:h1 \"hi\"])")))
     (is (match? {:blocks [{:result {:nextjournal/viewer :html}}]}
                 (clerk/eval-string "^{:nextjournal.clerk/viewer :html} (def markup [:h1 \"hi\"])")))))
 
 (deftest eval-string+doc->viewer
+  (testing "assigns correct width from viewer function opts"
+    (is (match? [{:nextjournal/width :wide}
+                 {:nextjournal/width :full}]
+                (-> "^{:nextjournal.clerk/visibility :hide} (ns clerk-test-width
+  (:require [nextjournal.clerk :as clerk]))
+
+(clerk/html {::clerk/width :wide} [:div.bg-red-200 [:h1 \"Wide Hiccup\"]])
+
+(clerk/table {::clerk/width :full} {:a [1] :b [2] :c [3]})"
+                    clerk/eval-string
+                    view/doc->viewer
+                    :nextjournal/value
+                    :blocks))))
+
   (testing "assigns the correct width from form meta"
     (is (match? [{:nextjournal/width :full}
                  {:nextjournal/width :wide}]

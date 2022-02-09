@@ -55,6 +55,10 @@
 (clerk/with-viewer '#(v/html [:div "Greetings to " [:strong %] "!"])
   "James Clerk Maxwell")
 
+^{::clerk/viewer {:render-fn '#(v/html [:span "The answer is " % "."])
+                  :transform-fn inc}}
+(do 41)
+
 (clerk/with-viewers [{:pred number? :render-fn '#(v/html [:div.inline-block [(keyword (str "h" %)) (str "Heading " %)]])}]
   [1 2 3 4 5])
 
@@ -63,7 +67,7 @@
                                                                              :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}]
   (take 10 (repeatedly #(rand-int 2))))
 
-(clerk/with-viewers
+^{::clerk/viewers
   [{:pred #(and (string? %)
                 (re-matches
                  (re-pattern
@@ -74,12 +78,12 @@
                           {:style {:width 16
                                    :height 16
                                    :border "1px solid rgba(0,0,0,.2)"
-                                   :background-color %}}])}]
-  ["#571845"
-   "rgb(144,12,62)"
-   "rgba(199,0,57,1.0)"
-   "hsl(11,100%,60%)"
-   "hsla(46, 97%, 48%, 1.000)"])
+                                   :background-color %}}])}]}
+["#571845"
+ "rgb(144,12,62)"
+ "rgba(199,0,57,1.0)"
+ "hsl(11,100%,60%)"
+ "hsla(46, 97%, 48%, 1.000)"]
 
 
 #_(clerk/show! "notebooks/viewer_api.clj")

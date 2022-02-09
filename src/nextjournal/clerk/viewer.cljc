@@ -277,27 +277,32 @@
 (defn find-named-viewer [viewers viewer-name]
   (first (filter (comp #{viewer-name} :name) viewers)))
 
+(declare wrapped-with-viewer)
+
+(defn apply-viewer [viewers {:as viewer :keys [render-fn transform-fn]} v]
+  (let [v' (if transform-fn
+             (-> v value transform-fn)
+             v)]
+    (if (and transform-fn (not render-fn))
+      (wrapped-with-viewer (value v') viewers)
+      (merge (wrap-value v' viewer) (when (map? v) (select-keys v [:nextjournal/width]))))))
+
 (defn wrapped-with-viewer
   ([x] (wrapped-with-viewer x default-viewers))
   ([x viewers]
    (if-let [selected-viewer (viewer x)]
-     (cond (keyword? selected-viewer)
-           (if-let [{:as named-viewer :keys [transform-fn]} (find-named-viewer viewers selected-viewer)]
-             (wrap-value (cond-> x transform-fn transform-fn) named-viewer)
-             (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
-           (viewer-fn? selected-viewer)
-           (wrap-value x selected-viewer))
-     (let [val (value x)]
-       (loop [v viewers]
-         (if-let [{:as matching-viewer :keys [pred]} (first v)]
-           (if (and (ifn? pred) (pred val))
-             (let [{:keys [render-fn transform-fn]} matching-viewer
-                   val (cond-> val transform-fn transform-fn)]
-               (if (and transform-fn (not render-fn))
-                 (wrapped-with-viewer val viewers)
-                 (wrap-value val matching-viewer)))
-             (recur (rest v)))
-           (throw (ex-info (str "cannot find matchting viewer for `" (pr-str x) "`") {:viewers viewers :x val}))))))))
+     (if (keyword? selected-viewer)
+       (if-let [named-viewer (find-named-viewer viewers selected-viewer)]
+         (apply-viewer viewers named-viewer x)
+         (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
+       (apply-viewer viewers selected-viewer x))
+     (let [v (value x)]
+       (loop [vs viewers]
+         (if-let [{:as matching-viewer :keys [pred]} (first vs)]
+           (if (and (ifn? pred) (pred v))
+             (apply-viewer viewers matching-viewer v)
+             (recur (rest vs)))
+           (throw (ex-info (str "cannot find matchting viewer for `" (pr-str x) "`") {:viewers vs :x v}))))))))
 
 #_(wrapped-with-viewer {:one :two})
 #_(wrapped-with-viewer [1 2 3])
@@ -541,7 +546,18 @@
 
 (defn normalize-viewer-opts [opts]
   (set/rename-keys opts {:nextjournal.clerk/viewer :nextjournal/viewer
+                         :nextjournal.clerk/viewers :nextjournal/viewers
                          :nextjournal.clerk/width :nextjournal/width}))
+
+(defn normalize-viewer [viewer]
+  (if (or (keyword? viewer)
+          (map? viewer))
+    viewer
+    {:render-fn viewer}))
+
+#_(normalize-viewer '#(v/html [:h3 "Hello " % "!"]))
+#_(normalize-viewer :latex)
+#_(normalize-viewer {:render-fn '#(v/html [:h3 "Hello " % "!"]) :transform-fn identity})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public api
@@ -553,9 +569,7 @@
    (merge (normalize-viewer-opts opts)
           (-> x
               wrap-value
-              (assoc :nextjournal/viewer (cond-> viewer
-                                           (or (list? viewer) (symbol? viewer))
-                                           ->viewer-fn))))))
+              (assoc :nextjournal/viewer (normalize-viewer viewer))))))
 
 #_(with-viewer :latex "x^2")
 #_(with-viewer '#(v/html [:h3 "Hello " % "!"]) "x^2")
