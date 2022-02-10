@@ -1,6 +1,6 @@
 ;; # 🤹‍♀️ Interactivity
 ^{:nextjournal.clerk/visibility :hide}
-(ns ^:nextjournal.clerk/no-cache interactivity
+(ns interactivity
   (:require [nextjournal.clerk :as clerk]))
 
 ;; Let's try a little Slider using `::clerk/viewers` 🎚
@@ -29,6 +29,9 @@
 (defonce slider-2-state (atom 42))
 
 @slider-2-state
+
+;; What's the sum of our two sliders?
+^::clerk/no-cache (+ @slider-state @slider-2-state)
 
 ;; And a text box.
 
