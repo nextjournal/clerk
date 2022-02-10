@@ -103,6 +103,9 @@
 
 (defn- eval+cache! [form hash digest-file introduced-var no-cache? visibility]
   (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true] (eval form)))
+        result (if (and (nil? result) introduced-var (= 'defonce (first form)))
+                 (find-var introduced-var)
+                 result)
         var-value (cond-> result (var? result) deref)
         no-cache? (or no-cache?
                       config/cache-disabled?
