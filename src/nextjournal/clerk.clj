@@ -88,7 +88,8 @@
       nil)))
 
 (defn- cachable-value? [value]
-  (not (or (fn? value)
+  (not (or (nil? value)
+           (fn? value)
            (instance? clojure.lang.IDeref value)
            (instance? clojure.lang.MultiFn value)
            (instance? clojure.lang.Namespace value))))
