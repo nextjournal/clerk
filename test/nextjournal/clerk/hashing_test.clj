@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [matcher-combinators.test :refer [match?]]
             [matcher-combinators.matchers :as m]
+            [nextjournal.clerk :as clerk :refer [defcached]]
             [nextjournal.clerk.hashing :as h]
             [weavejester.dependency :as dep]))
 
@@ -119,8 +120,14 @@
                :var 'nextjournal.clerk.hashing-test/foo
                :deps '#{nextjournal.clerk.hashing-test/foo-2}}
               (with-ns-binding 'nextjournal.clerk.hashing-test
-                (h/analyze '(do (def foo :bar) (def foo-2 :bar)))))))
+                (h/analyze '(do (def foo :bar) (def foo-2 :bar))))))
 
+  (testing "defcached should be treated like a normal def"
+    (with-ns-binding 'nextjournal.clerk.hashing-test
+      (is (= (dissoc (h/analyze '(def answer (do (Thread/sleep 4200) (inc 41)))) :form)
+             (dissoc (h/analyze '(defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)
+             (dissoc (h/analyze '(clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)
+             (dissoc (h/analyze '(nextjournal.clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form))))))
 
 (deftest symbol->jar
   (is (h/symbol->jar 'io.methvin.watcher.PathUtils))
@@ -149,6 +156,7 @@
                                   #{1 3 2} {:form '#{1 3 2}}}})
               (analyze-string "^:nextjournal.clerk/no-cache (ns example-notebook)
 #{3 1 2}"))))
+
 
 (deftest circular-dependency
   (is (match? {:graph {:dependencies {'(ns circular) any?

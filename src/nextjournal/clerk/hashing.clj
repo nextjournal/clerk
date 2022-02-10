@@ -71,9 +71,19 @@
       ana/analyze
       (ana.passes.ef/emit-form #{:hygenic :qualified-symbols})))
 
+(defn rewrite-defcached [form]
+  (if (and (list? form)
+           (symbol? (first form))
+           (= (resolve 'nextjournal.clerk/defcached)
+              (resolve (first form))))
+    (conj (rest form) 'def)
+    form))
+
+#_(rewrite-defcached '(nextjournal.clerk/defcached foo :bar))
+
 (defn analyze [form]
   (binding [config/*in-clerk* true]
-    (let [analyzed-form (analyze+emit form)
+    (let [analyzed-form (analyze+emit (rewrite-defcached form))
           var (let [defined-vars (defined-vars analyzed-form)]
                 (when (< 1 (count defined-vars))
                   (binding [*out* *err*]

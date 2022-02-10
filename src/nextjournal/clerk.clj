@@ -209,6 +209,13 @@
 
 #_(with-cache (do (Thread/sleep 4200) 42))
 
+(defmacro defcached [name expr]
+  `(let [result# (-> ~(pr-str expr) eval-string :blob->result first val)]
+     (def ~name result#)))
+
+#_(defcached my-expansive-thing
+    (do (Thread/sleep 4200) 42))
+
 (defonce !show-filter-fn (atom nil))
 (defonce !last-file (atom nil))
 (defonce !watcher (atom nil))
