@@ -43,7 +43,8 @@
   (let [var-or-form    (if-let [vn (var-name form)] vn form)
         no-cache-meta? (comp boolean :nextjournal.clerk/no-cache meta)]
     (or (no-cache-meta? var-or-form)
-        (no-cache-meta? *ns*))))
+        (no-cache-meta? *ns*)
+        (and (seq? form) (= `deref (first form))))))
 
 #_(no-cache? '(rand-int 10))
 
