@@ -74,13 +74,12 @@
                            (throw (ex-info "Unable to resolve into a variable" {:data var})))]
     {::var-from-def resolved-var}))
 
-(defn- lookup-cached-result [results-last-run introduced-var hash cas-hash visibility]
+(defn- lookup-cached-result [introduced-var hash cas-hash visibility]
   (try
-    (let [value (or (get results-last-run hash)
-                    (let [cached-value (thaw-from-cas cas-hash)]
-                      (when introduced-var
-                        (intern *ns* (-> introduced-var symbol name symbol) cached-value))
-                      cached-value))]
+    (let [value (let [cached-value (thaw-from-cas cas-hash)]
+                  (when introduced-var
+                    (intern *ns* (-> introduced-var symbol name symbol) cached-value))
+                  cached-value)]
       (wrapped-with-metadata (if introduced-var (var-from-def introduced-var) value) visibility hash))
     (catch Exception _e
       ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
@@ -149,8 +148,10 @@
                           :else :no-digest-file)
            :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
     (fs/create-dirs config/cache-dir)
-    (cond-> (or (when cached-result?
-                  (lookup-cached-result results-last-run var hash cas-hash visibility))
+    (cond-> (or (when-let [result-last-run (and (not no-cache?) (get results-last-run hash))]
+                  (wrapped-with-metadata result-last-run visibility hash))
+                (when cached-result?
+                  (lookup-cached-result var hash cas-hash visibility))
                 (eval+cache! form hash digest-file var no-cache? visibility))
       (seq opts-from-form-meta)
       (merge opts-from-form-meta))))
