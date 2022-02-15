@@ -72,6 +72,14 @@
     (is (not= (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns) (java.util.UUID/randomUUID)")
               (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns) (java.util.UUID/randomUUID)"))))
 
+  (testing "random expression that cannot be frozen with nippy gets cached via in-memory cache"
+    (let [code "(ns my-random-test-ns) {:my-fn inc :my-uuid (java.util.UUID/randomUUID)}"
+          result  (clerk/eval-string code)
+          result' (clerk/eval-string (:blob->result result) code)
+          extract-my-uuid #(-> % :blocks last :result :nextjournal/value :my-uuid)]
+      (is (= (extract-my-uuid result)
+             (extract-my-uuid result')))))
+
   (testing "defonce returns correct result on subsequent evals (when defonce would eval to nil)"
     (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-defonce-test-ns) (defonce state (atom {}))")
     (is (match? {:blocks [map? {:result {:nextjournal/value {::clerk/var-from-def var?}}}]}
