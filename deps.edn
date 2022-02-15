@@ -12,6 +12,8 @@
         io.github.nextjournal/markdown {:mvn/version "0.2.44"}
 
         com.taoensso/nippy {:mvn/version "3.1.1"}
+        com.rpl/nippy-serializable-fns {:mvn/version "0.4.1"}
+
         mvxcvi/multihash {:mvn/version "2.0.3"}
         javax.xml.bind/jaxb-api {:mvn/version "2.3.1"} ;; needed to make multihash work on JDK11+
 
