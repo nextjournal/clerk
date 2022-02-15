@@ -203,8 +203,10 @@
 #_(eval-file "notebooks/rule_30.clj")
 #_(eval-file "notebooks/visibility.clj")
 
-(defn eval-string [s]
-  (eval-doc (hashing/parse-clojure-string {:doc? true} s)))
+(defn eval-string
+  ([s] (eval-string {} s))
+  ([results-last-run s]
+   (eval-doc results-last-run (hashing/parse-clojure-string {:doc? true} s))))
 
 #_(eval-string "(+ 39 3)")
 
