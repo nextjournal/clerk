@@ -321,8 +321,8 @@
 
 #_(unhashed-deps {#'elements/fix-case {:deps #{#'rewrite-clj.node/tag}}})
 
-(defn- ns->path [ns]
-  (str/replace (str ns) "." fs/file-separator))
+(defn ns->path [ns]
+  (str/replace (namespace-munge ns) "." fs/file-separator))
 
 ;; TODO: handle cljc files
 (defn ns->file [ns]

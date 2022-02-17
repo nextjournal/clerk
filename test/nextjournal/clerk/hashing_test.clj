@@ -10,6 +10,11 @@
   `(binding [*ns* (find-ns ~ns-sym)]
      ~@body))
 
+(deftest ns->path
+  (testing "converts dashes to underscores"
+    (is (= "rewrite_clj/parser"
+           (h/ns->path (find-ns 'rewrite-clj.parser))))))
+
 (def notebook "^:nextjournal.clerk/no-cache (ns example-notebook)
 
 ;; # 📶 Sorting
