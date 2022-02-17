@@ -181,7 +181,14 @@
         blocks (into [] (map (fn [{:as cell :keys [type]}]
                                (cond-> cell
                                  (= :code type)
-                                 (assoc :result (read+eval-cached results-last-run ->hash visibility cell))))) blocks)]
+                                 (assoc :result
+                                        (try
+                                          (read+eval-cached results-last-run ->hash visibility cell)
+                                          (catch Exception e
+                                            (throw (ex-info "Evaluation in Clerk resulted in an exception"
+                                                            {:form (:form cell)
+                                                             :file (:file parsed-doc)}
+                                                            e)))))))) blocks)]
     (assoc parsed-doc :blocks blocks :blob->result (blob->result blocks) :ns *ns* :->analysis-info ->analysis-info :analyzed-doc doc :->hash ->hash :parsed-doc parsed-doc)))
 
 (defn parse-file [file]
