@@ -7,6 +7,11 @@
             [nextjournal.clerk.hashing :as h]
             [weavejester.dependency :as dep]))
 
+(deftest read-string-tests
+  (testing "read-string should read regexps such that value equalility is preserved"
+    (is (= (h/read-string "(fn [x] (clojure.string/split x #\"/\"))")
+           (h/read-string "(fn [x] (clojure.string/split x #\"/\"))")))))
+
 (defmacro with-ns-binding [ns-sym & body]
   `(binding [*ns* (find-ns ~ns-sym)]
      ~@body))
@@ -163,12 +168,6 @@
               (analyze-string "^:nextjournal.clerk/no-cache (ns example-notebook)
 #{3 1 2}"))))
 
-
-(deftest hashing
-  (testing "hashing should be consistent for form containing regex"
-    (is (= [50]
-           (vals (frequencies (map (comp second vals h/hash h/build-graph h/parse-clojure-string)
-                                   (repeat 50 "(fn [x] (clojure.string/split x #\"/\"))"))))))))
 
 (deftest circular-dependency
   (is (match? {:graph {:dependencies {'(ns circular) any?
