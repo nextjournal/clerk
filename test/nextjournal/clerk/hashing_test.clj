@@ -1,7 +1,8 @@
 (ns nextjournal.clerk.hashing-test
-  (:require [clojure.test :refer :all]
-            [matcher-combinators.test :refer [match?]]
+  (:require [babashka.fs :as fs]
+            [clojure.test :refer :all]
             [matcher-combinators.matchers :as m]
+            [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk :as clerk :refer [defcached]]
             [nextjournal.clerk.hashing :as h]
             [weavejester.dependency :as dep]))
@@ -12,7 +13,7 @@
 
 (deftest ns->path
   (testing "converts dashes to underscores"
-    (is (= "rewrite_clj/parser"
+    (is (= (str "rewrite_clj" fs/file-separator "parser")
            (h/ns->path (find-ns 'rewrite-clj.parser))))))
 
 (def notebook "^:nextjournal.clerk/no-cache (ns example-notebook)
