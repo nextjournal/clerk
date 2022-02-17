@@ -154,12 +154,12 @@
 
 #_(auto-resolves (find-ns 'rule-30))
 
-
 (defn read-string [s]
   (edamame/parse-string s {:all true
                            :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))
                            :readers *data-readers*
                            :read-cond :allow
+                           :regex #(list 're-pattern %)
                            :features #{:clj}}))
 
 #_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")

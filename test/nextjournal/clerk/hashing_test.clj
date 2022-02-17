@@ -164,6 +164,12 @@
 #{3 1 2}"))))
 
 
+(deftest hashing
+  (testing "hashing should be consistent for form containing regex"
+    (is (= [50]
+           (vals (frequencies (map (comp second vals h/hash h/build-graph h/parse-clojure-string)
+                                   (repeat 50 "(fn [x] (clojure.string/split x #\"/\"))"))))))))
+
 (deftest circular-dependency
   (is (match? {:graph {:dependencies {'(ns circular) any?
                                       'circular/b #{clojure.core/str 'circular/a+circular/b}
