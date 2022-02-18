@@ -7,6 +7,11 @@
             [nextjournal.clerk.hashing :as h]
             [weavejester.dependency :as dep]))
 
+(deftest read-string-tests
+  (testing "read-string should read regex's such that value equalility is preserved"
+    (is (= '(fn [x] (clojure.string/split x (clojure.core/re-pattern "/")))
+           (h/read-string "(fn [x] (clojure.string/split x #\"/\"))")))))
+
 (defmacro with-ns-binding [ns-sym & body]
   `(binding [*ns* (find-ns ~ns-sym)]
      ~@body))
