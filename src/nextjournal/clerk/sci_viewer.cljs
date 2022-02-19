@@ -9,6 +9,7 @@
             [nextjournal.devcards :as dc]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.ui.components.icon :as icon]
+            [nextjournal.ui.components.d3-require :as d3-require]
             [nextjournal.view.context :as view-context]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
@@ -985,6 +986,7 @@ black")}]))}
                    :classes {'js goog/global
                              :allow :all}
                    :namespaces {'nextjournal.viewer sci-viewer-namespace
+                                'd3-require {'with d3-require/with}
                                 'v sci-viewer-namespace}})))
 
 
