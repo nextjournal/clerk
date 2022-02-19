@@ -42,7 +42,8 @@
   (h/hash analyzed))
 
 ;; ### Step 4: Evaluation
-;; Clerk uses the hashes as filenames and only re-evaluates forms that haven't been seen before. The cache is using [nippy](https://github.com/ptaoussanis/nippy).
+;; Clerk uses the hashes as filenames and only re-evaluates forms that haven't been seen before. The persistent cache is using [nippy](https://github.com/ptaoussanis/nippy).
+;; To obtain obtimal performance accross JVM restarts, all form result should be idealy serializable by nippy. (most Clojure data structures are)
 (def rand-fifteen
   (do (Thread/sleep 10)
       (shuffle (range 15))))
