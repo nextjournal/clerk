@@ -103,6 +103,10 @@
 
 (defonce !edamame-opts
   (atom {:all true
+         :row-key :line
+         :col-key :column
+         :location? seq?
+         :end-location false
          :read-cond :allow
          :readers {'file (partial with-viewer :file)
                    'object (partial with-viewer :object)
