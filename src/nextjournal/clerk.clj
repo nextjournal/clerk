@@ -97,7 +97,7 @@
   (try
     (spit digest-file (hash+store-in-cas! var-value))
     (catch Exception e
-      #_(prn :freeze-error e)
+      (prn :freeze-error (.getMessage e))
       nil)))
 
 (defn- eval+cache! [form hash digest-file introduced-var no-cache? visibility]
