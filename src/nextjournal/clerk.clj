@@ -95,7 +95,9 @@
 
 (defn- cache! [digest-file var-value]
   (try
-    (spit digest-file (hash+store-in-cas! var-value))
+    (let [multihash (hash+store-in-cas! var-value)]
+      (spit digest-file multihash)
+      multihash)
     (catch Exception e
       #_(prn :freeze-error e)
       nil)))
@@ -108,16 +110,17 @@
         var-value (cond-> result (var? result) deref)
         no-cache? (or no-cache?
                       config/cache-disabled?
-                      (view/exceeds-bounded-count-limit? var-value))]
-    (when (and (not no-cache?) (cachable-value? var-value))
-      (cache! digest-file var-value))
-    (let [blob-id (cond no-cache? (view/->hash-str var-value)
-                        (fn? var-value) nil
-                        :else hash)
-          result (if introduced-var
-                   (var-from-def introduced-var)
-                   result)]
-      (wrapped-with-metadata result visibility blob-id))))
+                      (view/exceeds-bounded-count-limit? var-value))
+        valuehash (when (and (not no-cache?) (cachable-value? var-value))
+                    (cache! digest-file var-value))
+        blob-id (or valuehash
+                    (cond no-cache? (view/->hash-str var-value)
+                          (fn? var-value) nil
+                          :else hash))
+        result (if introduced-var
+                 (var-from-def introduced-var)
+                 result)]
+    (wrapped-with-metadata result visibility blob-id)))
 
 (defn maybe-eval-viewers [{:as opts :nextjournal/keys [viewer viewers]}]
   (cond-> opts
@@ -143,7 +146,8 @@
                                 v/normalize-viewer-opts
                                 maybe-eval-viewers)]
     #_(prn :cached? (cond no-cache? :no-cache
-                          cached-result? true
+                          (get results-last-run hash) :in-memory
+                          cached-result? :on-fs
                           cas-hash :no-cas-file
                           :else :no-digest-file)
            :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
@@ -161,6 +165,7 @@
 #_(read+eval-cached {} {} #{:show} "(subs (slurp \"/usr/share/dict/words\") 0 1000)")
 
 (defn clear-cache! []
+  (swap! webserver/!doc dissoc :blob->result)
   (if (fs/exists? config/cache-dir)
     (do
       (fs/delete-tree config/cache-dir)
