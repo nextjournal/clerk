@@ -968,6 +968,7 @@ black")}]))}
    'table-error table-error
    'with-viewer with-viewer
    'with-viewers with-viewers
+   'with-d3-require d3-require/with
    'clerk-eval clerk-eval
 
    'throwable-viewer throwable-viewer
@@ -990,7 +991,6 @@ black")}]))}
                    :classes {'js goog/global
                              :allow :all}
                    :namespaces {'nextjournal.viewer sci-viewer-namespace
-                                'd3-require {'with d3-require/with}
                                 'v sci-viewer-namespace}})))
 
 

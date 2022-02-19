@@ -9,7 +9,7 @@
               :render-fn '(fn [value]
                             (v/html
                              (when value
-                               [d3-require/with {:package ["mermaid@8.14/dist/mermaid.js"]}
+                               [v/with-d3-require {:package ["mermaid@8.14/dist/mermaid.js"]}
                                 (fn [mermaid]
                                   [:div {:ref (fn [el] (when el
                                                          (.render mermaid (str (gensym)) value #(set! (.-innerHTML el) %))))}])])))})
