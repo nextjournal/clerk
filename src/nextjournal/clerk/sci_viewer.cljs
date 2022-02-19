@@ -9,6 +9,7 @@
             [nextjournal.devcards :as dc]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.ui.components.icon :as icon]
+            [nextjournal.ui.components.d3-require :as d3-require]
             [nextjournal.view.context :as view-context]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
@@ -102,6 +103,10 @@
 
 (defonce !edamame-opts
   (atom {:all true
+         :row-key :line
+         :col-key :column
+         :location? seq?
+         :end-location false
          :read-cond :allow
          :readers {'file (partial with-viewer :file)
                    'object (partial with-viewer :object)
@@ -963,6 +968,7 @@ black")}]))}
    'table-error table-error
    'with-viewer with-viewer
    'with-viewers with-viewers
+   'with-d3-require d3-require/with
    'clerk-eval clerk-eval
 
    'throwable-viewer throwable-viewer
