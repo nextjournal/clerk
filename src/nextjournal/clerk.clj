@@ -182,8 +182,8 @@
 
       (.delete cache-file)
       (.delete digest-file)
-      (reset! webserver/!doc
-              (update-in @webserver/!doc [:blob->result] dissoc key-of-def))))
+      (reset! webserver/!doc (update-in @webserver/!doc [:blob->result] dissoc key-of-def))
+      nil))
 
 
 (defn clear-cache!
