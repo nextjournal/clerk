@@ -159,12 +159,8 @@
               code?
               (conj (cond-> (v/code text) fold? (assoc :nextjournal/viewer :code-folded)))
               result?
-              (conj (cond
-                      (v/registration? (v/value result))
-                      (v/value result)
-                      :else
-                      (->result ns result (and (not inline-results?)
-                                               (contains? result :nextjournal/blob-id)))))))))
+              (conj (->result ns result (and (not inline-results?)
+                                             (contains? result :nextjournal/blob-id))))))))
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))

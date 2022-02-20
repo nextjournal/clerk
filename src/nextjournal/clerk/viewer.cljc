@@ -213,7 +213,6 @@
    {:name :code :render-fn (quote v/code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
    {:name :code-folded :render-fn (quote v/foldable-code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
    {:name :reagent :render-fn (quote v/reagent-viewer)  :fetch-fn fetch-all}
-   {:name :eval! :render-fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
    {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
     :transform-fn (fn [xs]
                     (-> (wrap-value xs)
@@ -543,15 +542,7 @@
       (assert (or (#{:root} scope)
                   (instance? clojure.lang.Namespace scope)
                   (var? scope)))
-      (swap! !viewers assoc scope viewers)
-      (with-viewer :eval! `'(v/set-viewers! ~(datafy-scope scope) ~viewers)))))
-
-
-(defn registration? [x]
-  (and (map? x) (contains? #{:eval!} (viewer x))))
-
-#_(registration? (set-viewers! []))
-#_(nextjournal.clerk/show! "notebooks/viewers/vega.clj")
+      (swap! !viewers assoc scope viewers))))
 
 (defn normalize-viewer-opts [opts]
   (set/rename-keys opts {:nextjournal.clerk/viewer :nextjournal/viewer
