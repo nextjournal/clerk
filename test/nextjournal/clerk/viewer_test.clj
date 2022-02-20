@@ -60,9 +60,20 @@
   (testing "table viewer defaults to wide width"
     (is (= :wide
            (:nextjournal/width (v/wrapped-with-viewer (v/table {:a [1] :b [2] :c [3]}))))))
+
   (testing "table viewer (with :transform-fn) width can be overriden"
     (is (= :full
            (:nextjournal/width (v/wrapped-with-viewer (v/table {:nextjournal.clerk/width :full} {:a [1] :b [2] :c [3]})))))))
+
+(deftest describe
+  (testing "only transform-fn can select viewer"
+    (is (match? {:nextjournal/value "Hello _markdown_!", :nextjournal/viewer {:name :markdown}}
+                (v/describe (v/with-viewer {:transform-fn (comp v/md :foo)}
+                              {:foo "Hello _markdown_!"})))))
+
+  (testing "doesn't throw on bogus input"
+    (is (match? {:nextjournal/value nil, :nextjournal/viewer {:name :html}}
+                (v/describe (v/html nil))))))
 
 (deftest assign-closing-parens
   (testing "closing parenthesis are moved to right-most children in the tree"

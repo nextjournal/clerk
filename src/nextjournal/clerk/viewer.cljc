@@ -279,13 +279,18 @@
 
 (declare wrapped-with-viewer)
 
-(defn apply-viewer [viewers {:as viewer :keys [render-fn transform-fn]} v]
+(defn apply-viewer [viewers {:as viewer :keys [render-fn transform-fn]} v opts]
   (let [v' (if transform-fn
              (-> v value transform-fn)
              v)]
     (if (and transform-fn (not render-fn))
-      (wrapped-with-viewer (value v') viewers)
-      (merge (wrap-value v' viewer) (when (map? v) (select-keys v [:nextjournal/width]))))))
+      (wrapped-with-viewer v' viewers)
+      (cond-> (wrap-value v' viewer)
+        (seq opts) (merge opts)))))
+
+(defn extract-view-opts [x]
+  (when (wrapped-value? x)
+    (select-keys x [:nextjournal/width])))
 
 (defn wrapped-with-viewer
   ([x] (wrapped-with-viewer x default-viewers))
@@ -293,16 +298,16 @@
    (if-let [selected-viewer (viewer x)]
      (if (keyword? selected-viewer)
        (if-let [named-viewer (find-named-viewer viewers selected-viewer)]
-         (apply-viewer viewers named-viewer x)
+         (apply-viewer viewers named-viewer (value x) (extract-view-opts x))
          (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
-       (apply-viewer viewers selected-viewer x))
+       (apply-viewer viewers selected-viewer (value x) (extract-view-opts x)))
      (let [v (value x)]
        (loop [vs viewers]
          (if-let [{:as matching-viewer :keys [pred]} (first vs)]
            (if (and (ifn? pred) (pred v))
-             (apply-viewer viewers matching-viewer v)
+             (apply-viewer viewers matching-viewer v (extract-view-opts x))
              (recur (rest vs)))
-           (throw (ex-info (str "cannot find matchting viewer for `" (pr-str x) "`") {:viewers vs :x v}))))))))
+           (throw (ex-info (str "cannot find matchting viewer for `" (pr-str v) "`") {:viewers viewers :x x :v v}))))))))
 
 #_(wrapped-with-viewer {:one :two})
 #_(wrapped-with-viewer [1 2 3])
