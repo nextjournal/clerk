@@ -71,6 +71,9 @@
                 (v/describe (v/with-viewer {:transform-fn (comp v/md :foo)}
                               {:foo "Hello _markdown_!"})))))
 
+  (testing "works with sorted-map which can throw on get & contains?"
+    (v/describe (into (sorted-map) {'foo 'bar})))
+
   (testing "doesn't throw on bogus input"
     (is (match? {:nextjournal/value nil, :nextjournal/viewer {:name :html}}
                 (v/describe (v/html nil))))))

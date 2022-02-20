@@ -46,21 +46,21 @@
   (:form num?)
   (pr-str num?))
 
+(defn wrapped-value?
+  "Tests if `x` is a map containing a `:nextjournal/value`."
+  [x]
+  (and (map? x) ;; can throw for `sorted-map`
+       (try (contains? x :nextjournal/value)
+            (catch #?(:clj Exception :cljs js/Error) _e false))))
+
 ;; TODO: think about naming this to indicate it does nothing if the value is already wrapped.
 (defn wrap-value
   "Ensures `x` is wrapped in a map under a `:nextjournal/value` key."
-  ([x] (if (and (map? x) (:nextjournal/value x)) x {:nextjournal/value x}))
+  ([x] (if (wrapped-value? x) x {:nextjournal/value x}))
   ([x v] (-> x wrap-value (assoc :nextjournal/viewer v))))
 
 #_(wrap-value 123)
 #_(wrap-value {:nextjournal/value 456})
-
-(defn wrapped-value?
-  "Tests if `x` is a map containing a `:nextjournal/value`."
-  [x]
-  (and (map? x)
-       (contains? x :nextjournal/value)))
-
 
 (defn value
   "Takes `x` and returns the `:nextjournal/value` from it, or otherwise `x` unmodified."
@@ -75,7 +75,7 @@
 (defn viewer
   "Returns the `:nextjournal/viewer` for a given wrapped value `x`, `nil` otherwise."
   [x]
-  (when (map? x)
+  (when (wrapped-value? x)
     (:nextjournal/viewer x)))
 
 
@@ -159,8 +159,12 @@
 (defn fetch-all [opts xs]
   (w/postwalk (partial inspect-leafs opts) xs))
 
-(defn- var-from-def? [x]
-  (and (map? x) (get x :nextjournal.clerk/var-from-def)))
+(defn get-safe [map key]
+  (try (get map key) ;; can throw for e.g. sorted-map
+       (catch #?(:clj Exception :cljs js/Error) _e nil)))
+
+(defn var-from-def? [x]
+  (and (map? x) (get-safe x :nextjournal.clerk/var-from-def)))
 
 (declare !viewers)
 
