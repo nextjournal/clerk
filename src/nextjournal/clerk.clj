@@ -160,12 +160,40 @@
 #_(eval-file "notebooks/how_clerk_works.clj")
 #_(read+eval-cached {} {} #{:show} "(subs (slurp \"/usr/share/dict/words\") 0 1000)")
 
-(defn clear-cache! []
-  (if (fs/exists? config/cache-dir)
-    (do
-      (fs/delete-tree config/cache-dir)
-      (prn :cache-dir/deleted config/cache-dir))
-    (prn :cache-dir/does-not-exist config/cache-dir)))
+
+(defn- un-cache-symbol [symbol]
+    (let [key-of-def
+          (-> @webserver/!doc
+              :blob->result
+              clojure.set/map-invert
+              (get {:nextjournal.clerk/var-from-def (resolve symbol)}))
+
+          digest-file
+          (->
+           key-of-def
+           (#(->cache-file (str "@" %)))
+           io/as-file)
+
+          cache-file
+          (->
+           (slurp digest-file)
+           ->cache-file
+           io/file)]
+
+      (.delete cache-file)
+      (.delete digest-file)
+      (reset! webserver/!doc
+              (update-in @webserver/!doc [:blob->result] dissoc key-of-def))))
+
+
+(defn clear-cache!
+  ([symbol] (un-cache-symbol symbol))
+  ([]
+   (if (fs/exists? config/cache-dir)
+     (do
+       (fs/delete-tree config/cache-dir)
+       (prn :cache-dir/deleted config/cache-dir))
+     (prn :cache-dir/does-not-exist config/cache-dir))))
 
 
 (defn blob->result [blocks]
@@ -461,6 +489,6 @@
   (show! "notebooks/test.clj")
 
   ;; Clear cache
-  (clear-cache!)
+  (clear-cache!))
 
-  )
+  
