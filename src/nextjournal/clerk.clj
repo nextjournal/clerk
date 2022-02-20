@@ -161,6 +161,7 @@
 #_(read+eval-cached {} {} #{:show} "(subs (slurp \"/usr/share/dict/words\") 0 1000)")
 
 (defn clear-cache! []
+  (reset! webserver/!doc {})
   (if (fs/exists? config/cache-dir)
     (do
       (fs/delete-tree config/cache-dir)
