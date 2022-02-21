@@ -5,11 +5,12 @@
             [edamame.core :as edamame]
             [goog.object]
             [goog.string :as gstring]
+            [nextjournal.clerk.sci-viewer.js-interop :refer [js-interop-namespace]]
             [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer with-viewers]]
             [nextjournal.devcards :as dc]
             [nextjournal.markdown.transform :as md.transform]
-            [nextjournal.ui.components.icon :as icon]
             [nextjournal.ui.components.d3-require :as d3-require]
+            [nextjournal.ui.components.icon :as icon]
             [nextjournal.view.context :as view-context]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
@@ -297,7 +298,7 @@
     head (assoc :rows (->> rows
                            (sort-by #(cond-> (get % sort-index)
                                        (string? val) str/lower-case)
-                                    (if (= sort-order :asc) #(compare %1 %2) #(compare %2 %1)))
+                                    (if (= sort-order :asc) compare #(compare %2 %1)))
                            vec))))
 
 (def x-icon
@@ -990,9 +991,10 @@ black")}]))}
                    :disable-arity-checks true
                    :classes {'js goog/global
                              :allow :all}
+                   :aliases {'v 'nextjournal.viewer
+                             'j 'applied-science.js-interop}
                    :namespaces {'nextjournal.viewer sci-viewer-namespace
-                                'v sci-viewer-namespace}})))
-
+                                'applied-science.js-interop js-interop-namespace}})))
 
 (defn eval-form [f]
   (sci/eval-form @!sci-ctx f))
