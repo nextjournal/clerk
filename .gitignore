@@ -3,7 +3,7 @@
 .clerk/
 .cpcache/
 .lsp/
-/node_modules/
+node_modules
 /public/js/
 /.shadow-cljs/
 /target/

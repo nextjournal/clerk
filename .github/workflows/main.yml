@@ -102,3 +102,8 @@ jobs:
           state: 'success'
           sha: ${{github.event.pull_request.head.sha || github.sha}}
           target_url: https://snapshots.nextjournal.com/clerk/build/${{ github.sha }}
+
+      - name: Run Playwright tests against static assets
+        run: |
+          cd nbb
+          npx nbb playwright_tests.cljs ${{ github.sha }}
