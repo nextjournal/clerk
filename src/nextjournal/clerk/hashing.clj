@@ -388,6 +388,26 @@
 
 #_(hash-jar (find-location `dep/depend))
 
+(defn- larger-then-one? [n]
+  (> n 1))
+
+(defn- check-duplicates! [graph]
+  (def graph graph)
+  (let [duplicates (->> graph
+                        :doc
+                        :blocks
+                        (map :var)
+                        (remove nil?)
+                        frequencies
+                        (filter (fn [[symbol symbol-count]] (larger-then-one? symbol-count)))
+                        keys)]
+    (def duplicates duplicates)
+    (when (seq duplicates)
+      (throw (ex-info "Clerk's dependency analysis and caching cannot handle redefined vars." {:redefined-vars duplicates}))))
+  graph)
+
+
+
 (defn build-graph
   "Analyzes the forms in the given file and builds a dependency graph of the vars.
 
@@ -395,13 +415,15 @@
   "
   [doc]
   (let [{:as graph :keys [->analysis-info]} (analyze-doc doc)]
-    (reduce (fn [g [source symbols]]
-              (if (or (nil? source)
-                      (str/ends-with? source ".jar"))
-                (update g :->analysis-info merge (into {} (map (juxt identity (constantly (if source (hash-jar source) {})))) symbols))
-                (analyze-file g source)))
-            graph
-            (group-by find-location (unhashed-deps ->analysis-info)))))
+    (->
+     (reduce (fn [g [source symbols]]
+               (if (or (nil? source)
+                       (str/ends-with? source ".jar"))
+                 (update g :->analysis-info merge (into {} (map (juxt identity (constantly (if source (hash-jar source) {})))) symbols))
+                 (analyze-file g source)))
+             graph
+             (group-by find-location (unhashed-deps ->analysis-info)))
+     check-duplicates!)))
 
 
 #_(build-graph (parse-clojure-string (slurp "notebooks/hello.clj")))
