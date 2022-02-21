@@ -18,7 +18,7 @@
             #_#_:headless false
             #_#_:devtools true}))
 
-(def headless true)
+(def headless (.-CI js/process.env))
 
 (defn launch-browser []
   (p/let [b (.launch chromium #js {:headless headless})
@@ -101,5 +101,4 @@
   (goto p "https://snapshots.nextjournal.com/clerk/build/549f9956870c69ef0951ca82d55a8e5ec2e49ed4/index.html")
   (defp loc (.locator p "h1:has-text(\"Clerk\")"))
   (defp elt (.elementHandle loc #js {:timeout 1000}))
-  elt
   )
