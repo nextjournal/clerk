@@ -52,13 +52,33 @@
 
 ;; https://snapshots.nextjournal.com/clerk/build/549f9956870c69ef0951ca82d55a8e5ec2e49ed4/index.html
 
+(defn test-notebook [page link]
+  (println "Visiting" link)
+  (p/let [_ (goto page link)
+          _t (-> (.locator page "div.viewer")
+                (.allInnerTexts))]
+    (is true)))
+
+(def console-errors (atom []))
+
 (deftest index-page-test
   (async done
          (-> (p/let [page (.newPage @browser)
+                     _ (.on page "console"
+                            (fn [msg]
+                              (when (= "error" (.type msg))
+                                (swap! console-errors conj msg))))
                      _ (goto page index)
                      elt (-> (.locator page "h1:has-text(\"Clerk\")")
-                             (.elementHandle #js {:timeout 5000}))]
-               (is elt))
+                             (.elementHandle #js {:timeout 5000}))
+                     _ (is elt)
+                     links (-> (.locator page "text=/.*\\.clj$/i")
+                               (.allInnerTexts))
+                     links (map (fn [link]
+                                  (str index "#/" link)) links)]
+               ;; TODO: this isn't correct yet
+               (p/all (map #(test-notebook page %) links))
+               (is (zero? (count @console-errors))))
              (.catch (fn [err]
                        (js/console.log err)
                        (is false)))
@@ -89,17 +109,28 @@
 (defn -main [& _args]
   (t/test-vars (get-test-vars)))
 
-(when (= *file* (:file (meta #'-main)))
-  (apply -main *command-line-args*))
-
 (defmacro defp [name & body]
-  `(p/let [res (do ~@body)]
-     (def ~name res)))
+  `(-> (p/let [res (do ~@body)]
+         (def ~name res))
+       (.catch js/console.log)))
 
 (comment
   (launch-browser)
   (defp p (.newPage @browser))
+  (.on p "console" (fn [msg]
+                     (when (= "error" (.type msg))
+                       (swap! console-errors conj msg))))
+  (goto p "https://dude.devx")
   (goto p "https://snapshots.nextjournal.com/clerk/build/549f9956870c69ef0951ca82d55a8e5ec2e49ed4/index.html")
-  (defp loc (.locator p "h1:has-text(\"Clerk\")"))
-  (defp elt (.elementHandle loc #js {:timeout 1000}))
+  (defp loc (.locator p "text=/.*\\.clj$/i"))
+  (defp elt (.elementHandles loc #js {:timeout 1000}))
+
+
+  (require '[cljs-bean.core :refer [bean]])
+  (require '[cljs.pprint :as pp])
+  (pp/pprint (bean m :recursive true))
+  (.type m)
+  (require '[applied-science.js-interop :as j])
+  (j/lookup m)
+  (js/console.log m)
   )
