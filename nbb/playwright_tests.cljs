@@ -18,7 +18,7 @@
             #_#_:headless false
             #_#_:devtools true}))
 
-(def headless (.-CI js/process.env))
+(def headless (boolean (.-CI js/process.env)))
 
 (defn launch-browser []
   (p/let [b (.launch chromium #js {:headless headless})
@@ -32,6 +32,7 @@
      (async done
             (->
              (launch-browser)
+             (.catch js/console.log)
              (.finally done))))
    :after
    (fn []
@@ -56,7 +57,7 @@
          (-> (p/let [page (.newPage @browser)
                      _ (goto page index)
                      elt (-> (.locator page "h1:has-text(\"Clerk\")")
-                             (.elementHandle #js {:timeout 1000}))]
+                             (.elementHandle #js {:timeout 5000}))]
                (is elt))
              (.catch (fn [err]
                        (js/console.log err)
