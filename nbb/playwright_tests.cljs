@@ -1,7 +1,7 @@
 (ns playwright-tests
-  (:require [cljs-bean.core :refer [bean]]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [clojure.test :as t :refer [deftest is async use-fixtures]]
+            [nbb.core :refer [*file*]]
             [promesa.core :as p]))
 
 (def sha (first *command-line-args*))
@@ -54,7 +54,7 @@
   (async done
          (-> (p/let [page (.newPage @browser)
                      _ (goto page index)
-                     elt (-> (.locator page "text=Clerk")
+                     elt (-> (.locator page "h1:has-text(\"Clerk\")")
                              (.elementHandle #js {:timeout 1000}))]
                (is elt))
              (.catch (fn [err]
@@ -84,4 +84,21 @@
        vals
        (filter (comp :test meta))))
 
-(t/test-vars (get-test-vars))
+(defn -main [& _args]
+  (t/test-vars (get-test-vars)))
+
+(when (= *file* (:file (meta #'-main)))
+  (apply -main *command-line-args*))
+
+(defmacro defp [name & body]
+  `(p/let [res (do ~@body)]
+     (def ~name res)))
+
+(comment
+  (launch-browser)
+  (defp p (.newPage @browser))
+  (goto p "https://snapshots.nextjournal.com/clerk/build/549f9956870c69ef0951ca82d55a8e5ec2e49ed4/index.html")
+  (defp loc (.locator p "h1:has-text(\"Clerk\")"))
+  (defp elt (.elementHandle loc #js {:timeout 1000}))
+  elt
+  )

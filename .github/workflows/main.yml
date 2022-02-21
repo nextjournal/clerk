@@ -106,4 +106,5 @@ jobs:
       - name: Run Playwright tests against static assets
         run: |
           cd nbb
+          npm install
           npx nbb playwright_tests.cljs ${{ github.sha }}
