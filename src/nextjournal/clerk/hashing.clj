@@ -61,7 +61,7 @@
                           (not= var-name %)
                           (and (not= \. (-> % str (.charAt 0)))
                                (-> % resolve class?)))))
-          (tree-seq (every-pred sequential? not-quoted?) seq analyzed-form))))
+          (tree-seq (every-pred (some-fn sequential? map? set?) not-quoted?) seq analyzed-form))))
 
 #_(var-dependencies '(def nextjournal.clerk.hashing/foo
                        (fn* ([] (nextjournal.clerk.hashing/foo "s"))

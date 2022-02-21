@@ -73,7 +73,16 @@
                 'rewrite-clj.parser/parse-string-all}
               (h/var-dependencies '(defn foo
                                      ([] (foo "s"))
-                                     ([s] (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi")))))))
+                                     ([s] (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi"))))))
+
+  (testing "finds deps inside maps and sets"
+    (is (match? '#{nextjournal.clerk.hashing-test/foo
+                   nextjournal.clerk.hashing-test/bar}
+                (with-ns-binding 'nextjournal.clerk.hashing-test
+                  (intern *ns* 'foo :foo)
+                  (intern *ns* 'bar :bar)
+                  (:deps (h/analyze '{:k-1 foo :k-2 #{bar}})))))))
+
 
 (deftest analyze
   (testing "quoted forms aren't confused with variable dependencies"
