@@ -18,9 +18,10 @@
             #_#_:headless false
             #_#_:devtools true}))
 
+(def headless true)
 
 (defn launch-browser []
-  (p/let [b (.launch chromium #js {:headless false})
+  (p/let [b (.launch chromium #js {:headless headless})
           _ (reset! browser b)]))
 
 (def close-browser true)
