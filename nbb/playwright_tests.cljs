@@ -61,9 +61,6 @@
 
 (def console-errors (atom []))
 
-(defn preduce [f coll]
-  (reduce #(p/then %1 (fn [_] (f %2))) (p/promise nil nil) coll))
-
 (deftest index-page-test
   (async done
          (-> (p/let [page (.newPage @browser)
@@ -81,7 +78,7 @@
                                (.allInnerTexts))
                      links (map (fn [link]
                                   (str index "#/" link)) links)]
-               (preduce #(test-notebook page %) links)
+               (p/run! #(test-notebook page %) links)
                (is (zero? (count @console-errors))
                    (str/join "\n" (map (fn [msg]
                                          [(.text msg) (.location msg)])
