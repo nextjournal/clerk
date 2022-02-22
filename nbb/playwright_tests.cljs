@@ -61,12 +61,17 @@
 
 (def console-errors (atom []))
 
+(defn preduce [f coll]
+  (reduce #(p/then %1 (fn [_] (f %2))) (p/promise nil nil) coll))
+
 (deftest index-page-test
   (async done
          (-> (p/let [page (.newPage @browser)
                      _ (.on page "console"
                             (fn [msg]
-                              (when (= "error" (.type msg))
+                              (when (and (= "error" (.type msg))
+                                         (not (str/ends-with?
+                                               (.-url (.location msg)) "favicon.ico")))
                                 (swap! console-errors conj msg))))
                      _ (goto page index)
                      elt (-> (.locator page "h1:has-text(\"Clerk\")")
@@ -76,13 +81,18 @@
                                (.allInnerTexts))
                      links (map (fn [link]
                                   (str index "#/" link)) links)]
-               ;; TODO: this isn't correct yet
-               (p/all (map #(test-notebook page %) links))
-               (is (zero? (count @console-errors))))
+               (preduce #(test-notebook page %) links)
+               (is (zero? (count @console-errors))
+                   (str/join "\n" (map (fn [msg]
+                                         [(.text msg) (.location msg)])
+                                       @console-errors))))
              (.catch (fn [err]
                        (js/console.log err)
                        (is false)))
-             (.finally done))))
+             (.finally
+              (fn []
+                (p/let [#_#__ (sleep 15000)]
+                  (done)))))))
 
 (defmethod t/report [:cljs.test/default :begin-test-var] [m]
   (println "===" (-> m :var meta :name))
