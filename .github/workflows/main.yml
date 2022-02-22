@@ -107,5 +107,5 @@ jobs:
         run: |
           cd nbb
           npm install
-          npx nbb playwright_tests.cljs ${{ github.sha }}
+          npx nbb -m playwright-tests ${{ github.sha }}
           echo 'Success!'
