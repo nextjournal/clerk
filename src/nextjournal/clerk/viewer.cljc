@@ -542,7 +542,9 @@
       (assert (or (#{:root} scope)
                   (instance? clojure.lang.Namespace scope)
                   (var? scope)))
-      (swap! !viewers assoc scope viewers))))
+      (-> (swap! !viewers assoc scope viewers)
+          wrap-value
+          (assoc :nextjournal/viewers default-viewers)))))
 
 (defn normalize-viewer-opts [opts]
   (set/rename-keys opts {:nextjournal.clerk/viewer :nextjournal/viewer
