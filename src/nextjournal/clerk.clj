@@ -412,7 +412,7 @@
   - `:bundle?` builds a single page app versus a folder with an html page for each notebook (defaults to `true`)
   - `:path-prefix` a prefix to urls
   - `:out-path` a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
-  - `:git/sha`, `:git/url` when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`"
+  - `:git/sha`, `:git/url`, (optional) `:deps/root` when present, each page displays a link to `(str url \"blob\" sha root path-to-notebook)`"
   [{:as opts :keys [paths out-path bundle? browse?]
     :or {paths clerk-docs
          out-path (str "public" fs/file-separator "build")

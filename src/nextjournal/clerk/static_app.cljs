@@ -15,7 +15,7 @@
       (str "#/" url)
       (str "/" path-prefix url))))
 
-(defn show [{:as view-data :git/keys [sha url] :keys [doc path url->path]}]
+(defn show [{:as view-data :git/keys [sha url] :deps/keys [root] :keys [doc path url->path]}]
   (sci-viewer/set-state {:doc doc})
   [:<>
    [:div.flex.flex-col.items-center
@@ -33,7 +33,7 @@
         [:<>
          " from "
          [:a.hover:text-indigo-500.font-medium.border-b.border-dotted.border-gray-300
-          {:href (str url "/blob/" sha "/" (url->path path))} (url->path path) "@" [:span.tabular-nums (subs sha 0 7)]]])]]]
+          {:href (str url "/blob/" sha root "/" (url->path path))} (url->path path) "@" [:span.tabular-nums (subs sha 0 7)]]])]]]
    [sci-viewer/root]])
 
 (dc/defcard show []
