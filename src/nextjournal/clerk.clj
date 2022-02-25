@@ -171,13 +171,19 @@
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
 (defn eval-doc-in-state* [{:as state :keys [->hash analyzed-doc]}]
-  (let [{:keys [blocks visibility]} analyzed-doc]
-    (reduce (fn [{:as acc :keys [blob->result]} {:as cell :keys [type]}]
-              (let [{:as result :nextjournal/keys [blob-id value]} (when (= :code type)
-                                                                     (read+eval-cached blob->result ->hash visibility cell))]
-                (cond-> (update acc :blocks conj (cond-> cell result (assoc :result result)))
-                  blob-id (assoc-in [:blob->result blob-id] value))))
-            (assoc state :blocks []) blocks)))
+  (let [{:keys [blocks visibility]} analyzed-doc
+
+        {:as eval-state :keys [blob-ids]}
+        (reduce (fn [{:as acc :keys [blob->result]} {:as cell :keys [type]}]
+                  (let [{:as result :nextjournal/keys [blob-id value]} (when (= :code type)
+                                                                         (read+eval-cached blob->result ->hash visibility cell))]
+                    (cond-> (update acc :blocks conj (cond-> cell result (assoc :result result)))
+                      blob-id (update :blob-ids conj blob-id)
+                      blob-id (assoc-in [:blob->result blob-id] value))))
+                (assoc state :blocks [] :blob-ids #{}) blocks)]
+    (-> eval-state
+        (update :blob->result select-keys blob-ids)
+        (dissoc :blob-ids))))
 
 
 (defn +eval-results [results-last-run parsed-doc]
