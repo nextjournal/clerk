@@ -120,7 +120,7 @@
 
                                  lazy-load?
                                  (assoc :nextjournal/fetch-opts {:blob-id blob-id}
-                                        :nextjournal/hash (->hash-str [blob-id (selected-viewers described-result)])))}
+                                        :nextjournal/hash (->hash-str [blob-id described-result])))}
            (dissoc described-result :nextjournal/value :nextjournal/viewer)
            opts-from-form-meta)))
 

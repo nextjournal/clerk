@@ -278,7 +278,7 @@
    (analyze-doc {:doc? true :graph (dep/graph)} doc))
   ([{:as state :keys [doc?]} doc]
    (reduce (fn [state i]
-             (let [{:keys [type text]} (get-in state [:doc :blocks i])]
+             (let [{:keys [type text]} (get-in state [:blocks i])]
                (if (not= type :code)
                  state
                  (let [form (read-string text)
@@ -288,7 +288,7 @@
                                  (assoc-in [:->analysis-info (if var var form)] (cond-> analyzed
                                                                                   (:file doc) (assoc :file (:file doc)))))
                        state (cond-> state
-                               doc? (update-in [:doc :blocks i] merge (dissoc analyzed :deps)))]
+                               doc? (update-in [:blocks i] merge (dissoc analyzed :deps)))]
                    (when ns-effect?
                      (eval form))
                    (if (seq deps)
@@ -297,7 +297,7 @@
                              deps)
                      state)))))
            (cond-> state
-             doc? (assoc :doc doc))
+             doc? (merge doc))
            (-> doc :blocks count range))))
 
 
