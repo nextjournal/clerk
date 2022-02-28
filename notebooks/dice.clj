@@ -1,7 +1,8 @@
 ;; # Nanu Würfel 🎲
 (ns dice
   (:require [clojure.java.shell :as shell]
-            [nextjournal.clerk :as clerk]))
+            [nextjournal.clerk :as clerk]
+            [nextjournal.viewer :as-alias v]))
 
 ;; My kids have [this game](https://www.ravensburger.de/produkte/spiele/mitbringspiele/nanu-23063/index.html) and we lost the dice that comes with it. It can't be too hard to make on in Clojure, can it? The dice has five colored `sides` and a joker.
 (def sides '[🟡 🟠 🟢 🔵 🃏])
@@ -11,7 +12,7 @@
 
 ;; Here, we define a viewer using hiccup that will the dice as well as a button. Note that this button has an `:on-click` event handler that uses `v/clerk-eval` to tell Clerk to evaluate the argument, in this cases `(roll!)` when clicked.
 ^{::clerk/no-cache true
-  ::clerk/viewer '(fn [side]
+  ::clerk/viewer (clerk/render-fn [side]
                     (v/html [:div.text-center
                              (when side
                                [:div.mt-2 {:style {:font-size "6em"}} side])

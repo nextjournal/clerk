@@ -436,6 +436,9 @@
         (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
         (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize))))))
 
+(defmacro render-fn [& body]
+  (list 'quote (cons 'fn body)))
+
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/"})
 #_(build-static-app! {})

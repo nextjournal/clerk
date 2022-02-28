@@ -1,12 +1,13 @@
 ;; # Elements of Clerk
 ;; Like the idea of notebooks, but hate leaving your favorite editor? We present Clerk, a tool that enables a rich, local-first notebook experience using standard Clojure namespaces.
 (ns elements
-  (:require [clojure.string :as str]
-            [babashka.fs :as fs]
-            [nextjournal.clerk :as clerk]))
+  (:require [babashka.fs :as fs]
+            [clojure.string :as str]
+            [nextjournal.clerk :as clerk]
+            [nextjournal.viewer :as-alias v]))
 
 ^{::clerk/viewer {:fetch-fn (fn [_ x] x)
-                  :render-fn '(fn [board]
+                  :render-fn (clerk/render-fn [board]
                                 (let [cell #(vector :div.inline-block
                                                     {:class (if (zero? %)
                                                               "bg-white border-solid border-2 border-black"

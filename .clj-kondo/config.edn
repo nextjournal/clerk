@@ -21,4 +21,5 @@
            :unused-namespace {:exclude [clojure.string
                                         nextjournal.devcards
                                         nextjournal.log]}}
- :hooks {:macroexpand {multihash.digest/defhash hooks/defhash}}}
+ :hooks {:analyze-call {nextjournal.clerk/render-fn hooks.render-fn/render-fn}
+         :macroexpand {multihash.digest/defhash hooks/defhash}}}
