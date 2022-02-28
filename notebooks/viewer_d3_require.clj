@@ -8,13 +8,13 @@
 (def mermaid {:pred string?
               :fetch-fn (fn [_ x] x)
               :render-fn (clerk/render-fn
-                          [value]
-                          (v/html
-                           (when value
-                             [v/with-d3-require {:package ["mermaid@8.14/dist/mermaid.js"]}
-                              (fn [mermaid]
-                                [:div {:ref (fn [el] (when el
-                                                       (.render mermaid (str (gensym)) value #(set! (.-innerHTML el) %))))}])])))})
+                          '(fn [value]
+                             (v/html
+                              (when value
+                                [v/with-d3-require {:package ["mermaid@8.14/dist/mermaid.js"]}
+                                 (fn [mermaid]
+                                   [:div {:ref (fn [el] (when el
+                                                          (.render mermaid (str (gensym)) value #(set! (.-innerHTML el) %))))}])]))))})
 
 ;; We can then use  the above viewer using `with-viewer`.
 (clerk/with-viewer mermaid

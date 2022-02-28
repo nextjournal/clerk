@@ -1,6 +1,6 @@
-(ns hooks.render-fn
-  (:require [clj-kondo.hooks-api :as api]))
+(ns hooks.render-fn)
 
 (defn render-fn [{:keys [node]}]
-  {:node (api/list-node (list* (api/token-node 'clojure.core/fn)
-                               (rest (:children node))))})
+  (let [new-node (-> (second (:children node))
+                     :children first)]
+    {:node new-node}))
