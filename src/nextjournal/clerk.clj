@@ -170,26 +170,25 @@
 
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
-(defn eval-doc-in-state* [{:as state :keys [->hash analyzed-doc]}]
-  (let [{:keys [blocks visibility]} analyzed-doc
-
-        {:as eval-state :keys [blob-ids]}
+(defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks visibility]}]
+  (let [{:as evaluated-doc :keys [blob-ids]}
         (reduce (fn [{:as acc :keys [blob->result]} {:as cell :keys [type]}]
                   (let [{:as result :nextjournal/keys [blob-id value]} (when (= :code type)
                                                                          (read+eval-cached blob->result ->hash visibility cell))]
                     (cond-> (update acc :blocks conj (cond-> cell result (assoc :result result)))
                       blob-id (update :blob-ids conj blob-id)
                       blob-id (assoc-in [:blob->result blob-id] value))))
-                (assoc state :blocks [] :blob-ids #{}) blocks)]
-    (-> eval-state
+                (assoc analyzed-doc :blocks [] :blob-ids #{}) blocks)]
+    (-> evaluated-doc
         (update :blob->result select-keys blob-ids)
         (dissoc :blob-ids))))
 
 
 (defn +eval-results [results-last-run parsed-doc]
-  (let [{:as info :keys [doc ->analysis-info]} (hashing/build-graph parsed-doc)  ;; TODO: clarify that this returns an analyzed doc
-        {:keys [blocks blob->result ->hash]} (eval-doc-in-state* (assoc info :->hash (hashing/hash info) :blob->result results-last-run :analyzed-doc doc))]
-    (assoc parsed-doc :blocks blocks :blob->result blob->result :ns *ns* :->analysis-info ->analysis-info :analyzed-doc doc :->hash ->hash :parsed-doc parsed-doc)))
+  (let [analyzed-doc (hashing/build-graph parsed-doc)]
+    (-> analyzed-doc
+        (assoc :blob->result results-last-run :->hash (hashing/hash analyzed-doc) :ns *ns*)
+        eval-analyzed-doc)))
 
 (defn parse-file [file]
   (hashing/parse-file {:doc? true} file))
@@ -256,7 +255,7 @@
 #_(show! @!last-file)
 
 (defn recompute! []
-  (let [{:keys [result time-ms]} (time-ms (eval-doc-in-state* @webserver/!doc))]
+  (let [{:keys [result time-ms]} (time-ms (eval-analyzed-doc @webserver/!doc))]
     (println (str "Clerk recomputed '" @!last-file "' in " time-ms "ms."))
     (webserver/update-doc! result)))
 
