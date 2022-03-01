@@ -110,7 +110,13 @@ jobs:
 
   ui-tests:
     runs-on: ubuntu-latest
+
     steps:
+      - name: Setup Babashka
+        uses: turtlequeue/setup-babashka@v1.3.0
+        with:
+          babashka-version: 0.7.5
+
       - name: Run Playwright tests against static assets
         run: |
           bb test:static-app ${{ github.sha }}
