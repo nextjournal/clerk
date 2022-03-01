@@ -1,5 +1,6 @@
 (ns build
   (:require [babashka.fs :as fs]
+            [babashka.process :as process]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -57,29 +58,20 @@
                 url))
       z/root-string))
 
-(defn upload! [opts file]
-  (:url (cas/upload! opts file)))
+(defn upload! [opts file] (:url (cas/upload! opts file)))
 
-(defn update-resource!
-  [_opts resource _ file]
-  (spit clerk-config-path (replace-resource resource file)))
+(defn update-resource! [opts resource _ file]
+  (spit clerk-config-path
+        (replace-resource resource
+                          (upload! opts file))))
 
-(defn get-gsutil [] (fs/which "gsutil"))
+(defn get-gsutil [] (str/trim (:out (process/sh ["which" "gsutil"]))))
 
 (def resource->path
   '{viewer.js "/js/viewer.js"})
 
-(defn upload-to-cas [{:keys [resource]}]
+(defn upload-to-cas+rewrite-sha [{:keys [resource]}]
   (if-let [target (resource->path resource)]
-    (let [opts {:exec-path (str/trim (asserting (get-gsutil) "Can't find gsutil executable."))
-                :target-path "gs://nextjournal-cas-eu/data/"}
-          file (str "build/" resource)
-          uploaded (upload! opts file)]
-      {:target target
-       :uploaded uploaded})
-    (throw (ex-info (str "unsupported resource " resource) {:supported-resources (keys resource->path)}))))
-
-(defn upload-to-cas+rewrite-sha [{:keys [resource] :as opts}]
-  (if-let [{:keys [target uploaded]} (upload-to-cas opts)]
-    (update-resource! opts target :uploading uploaded)
+    (update-resource! {:exec-path (str/trim (asserting (get-gsutil) "Can't find gsutil executable."))
+                       :target-path "gs://nextjournal-cas-eu/data/"} target :uploading (str "build/" resource))
     (throw (ex-info (str "unsupported resource " resource) {:supported-resources (keys resource->path)}))))
