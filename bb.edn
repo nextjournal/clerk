@@ -1,4 +1,10 @@
-{:tasks {:requires ([clojure.edn :as edn]
+{:min-bb-version "0.7.6"
+ :paths ["bb"]
+ :deps {io.github.nextjournal/dejavu
+        {:git/url "git@github.com:nextjournal/dejavu.git"
+         :git/sha "3c4cf5e4dda3648e0d4c575a3433d19c511dd3e5"}}
+ :tasks {:requires ([clojure.edn :as edn]
+                    [clojure.edn :as edn]
                     [clojure.string :as str]
                     [babashka.deps :as deps]
                     [babashka.fs :as fs]
@@ -24,7 +30,7 @@
                      :depends [yarn-install]}
 
          build:static-app {:doc "Builds a static app with default notebooks"
-                           :depends [release:js release:css]
+                           :depends [release:js]
                            :task (clojure "-X:demo nextjournal.clerk/build-static-app!")}
 
          release:jar {:doc "Builds the jar"
@@ -45,7 +51,12 @@
                       (shell "git tag" tag)
                       (shell "git push origin" tag))}
 
+         write-hash {:doc "Write hash to resources"
+                     :task hashing/write-hash}
+
+         upload-cas-link {:doc ""
+                          :task hashing/upload-cas-link}
+
          -dev {:depends [watch:cljs copy-viewer-css]}
          dev {:doc "Start app in dev mode, compiles cljs and css"
-              :task (run '-dev {:parallel true})}}
- :min-bb-version "0.5.1"}
+              :task (run '-dev {:parallel true})}}}
