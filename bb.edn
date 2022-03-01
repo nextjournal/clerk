@@ -34,7 +34,7 @@
 
          test:static-app {:doc "Run UI tests for current SHA. Provide SHA as command line arg."
                           :task (do
-                                  (shell {:dir "nbb"} "yarn install")
+                                  (shell {:dir "ui_tests"} "yarn install")
                                   (apply shell {:dir "ui_tests"}
                                          "yarn nbb -m playwright-tests"
                                          (or *command-line-args* [(latest-sha)])))}
