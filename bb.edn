@@ -11,7 +11,7 @@
                      (str/trim (:out (shell {:out :string} (str "bb -cp " cp " -e '(println (.getPath (clojure.java.io/resource \"css/viewer.css\")))'"))))))
 
                  (defn latest-sha []
-                   (str/trim (:out (sh "git rev-parse HEAD")))))
+                   (str/trim (:out (p/sh "git rev-parse HEAD")))))
 
          print-viewer-css {:task (println (viewer-css-path))}
          copy-viewer-css {:task (fs/copy (viewer-css-path) "resources/stylesheets/viewer.css" #{:replace-existing})}
