@@ -1,7 +1,6 @@
 (ns playwright-tests
   (:require [clojure.string :as str]
             [clojure.test :as t :refer [deftest is async use-fixtures]]
-            [nbb.core :refer [*file*]]
             [promesa.core :as p]))
 
 (def sha (first *command-line-args*))
@@ -72,7 +71,7 @@
                                 (swap! console-errors conj msg))))
                      _ (goto page index)
                      elt (-> (.locator page "h1:has-text(\"Clerk\")")
-                             (.elementHandle #js {:timeout 5000}))
+                             (.elementHandle #js {:timeout 10000}))
                      _ (is elt)
                      links (-> (.locator page "text=/.*\\.clj$/i")
                                (.allInnerTexts))
@@ -127,17 +126,7 @@
   (.on p "console" (fn [msg]
                      (when (= "error" (.type msg))
                        (swap! console-errors conj msg))))
-  (goto p "https://dude.devx")
   (goto p "https://snapshots.nextjournal.com/clerk/build/549f9956870c69ef0951ca82d55a8e5ec2e49ed4/index.html")
   (defp loc (.locator p "text=/.*\\.clj$/i"))
   (defp elt (.elementHandles loc #js {:timeout 1000}))
-
-
-  (require '[cljs-bean.core :refer [bean]])
-  (require '[cljs.pprint :as pp])
-  (pp/pprint (bean m :recursive true))
-  (.type m)
-  (require '[applied-science.js-interop :as j])
-  (j/lookup m)
-  (js/console.log m)
   )
