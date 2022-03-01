@@ -34,7 +34,7 @@
                           :task (do
                                   (shell {:dir "nbb"} "yarn install")
                                   (apply shell {:dir "nbb"}
-                                         "npx nbb -m playwright-tests"
+                                         "yarn nbb -m playwright-tests"
                                          (or *command-line-args* [(u/latest-sha)])))}
 
          release:jar {:doc "Builds the jar"
