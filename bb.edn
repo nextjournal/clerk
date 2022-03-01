@@ -27,7 +27,7 @@
                      :depends [yarn-install]}
 
          build:static-app {:doc "Builds a static app with default notebooks"
-                           :depends [release:js release:css]
+                           :depends [release:js]
                            :task (clojure "-X:demo nextjournal.clerk/build-static-app!")}
 
          test:static-app {:doc "Run UI tests for current SHA. Provide SHA as command line arg."

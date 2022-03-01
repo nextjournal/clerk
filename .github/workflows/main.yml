@@ -119,5 +119,6 @@ jobs:
 
       - name: Run Playwright tests against static assets
         run: |
+          bb --version
           bb test:static-app ${{ github.sha }}
 
