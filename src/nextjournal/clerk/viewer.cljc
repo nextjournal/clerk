@@ -386,10 +386,7 @@
     (describe xs (merge {:!budget (atom (:budget opts 200)) :path [] :viewers (get-viewers *ns* (viewers xs))} opts) [])))
   ([xs opts current-path]
    (let [{:as opts :keys [!budget viewers path offset]} (merge {:offset 0} opts)
-         {:as wrapped-value xs-viewers :nextjournal/viewers} (try (wrapped-with-viewer xs viewers)
-                                                                  (catch #?(:clj Exception :cljs js/Error) _ex
-                                                                    (do (println _ex)
-                                                                        nil)))
+         {:as wrapped-value xs-viewers :nextjournal/viewers} (wrapped-with-viewer xs viewers)
          ;; TODO used for the table viewer which adds viewers in through `tranform-fn` from `wrapped-with-viewer`. Can we avoid this?
          opts (cond-> opts xs-viewers (update :viewers #(concat xs-viewers %)))
          {:as viewer :keys [fetch-opts fetch-fn]} (viewer wrapped-value)
