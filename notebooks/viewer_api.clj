@@ -51,6 +51,10 @@
                             expression-1
                             expression-2)))
 
+;; ### 🔤 Strings
+;; Multi-line strings can be expanded to break on newlines.
+(do "The\npurpose\nof\nvisualization\nis\ninsight,\nnot\npictures.")
+
 ;; ## 🚀 Extensibility
 (clerk/with-viewer '#(v/html [:div "Greetings to " [:strong %] "!"])
   "James Clerk Maxwell")

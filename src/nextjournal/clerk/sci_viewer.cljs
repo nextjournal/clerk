@@ -279,12 +279,24 @@
                   xs)
             (cond->> closing-paren (list? closing-paren) (into [:<>]))]])))
 
-(defn string-viewer [s opts]
-  (html (into [:span] (map #(cond->> % (not (string? %)) (inspect opts))) s)))
+(defn string-viewer [s {:as opts :keys [path !expanded-at] :or {path []}}]
+  (html
+   (let [expanded? (@!expanded-at path)]
+     (into [:span {:class (when expanded? "whitespace-pre")}]
+           (map #(if (string? %)
+                   (if expanded?
+                     (into [:<>] (interpose "\n " (str/split-lines %)))
+                     (into [:<>] (interpose [:span.text-slate-400 "↩︎"] (str/split-lines %))))
+                   (inspect opts %)))
+           (if (string? s) [s] s)))))
 
-(defn quoted-string-viewer [s opts]
-  (html [:span.syntax-string.inspected-value "\"" (viewer/value (string-viewer s opts)) "\""]))
-
+(defn quoted-string-viewer [s {:as opts :keys [path !expanded-at] :or {path []}}]
+  (html [:span.syntax-string.inspected-value.whitespace-nowrap
+         (if (some #(str/includes? % "\n") (if (string? s) [s] s))
+           [:span.cursor-pointer {:class "cursor-poiner bg-indigo-50 hover:bg-indigo-100 hover:rounded-sm border-b border-gray-400 hover:border-gray-500"
+                                  :on-click (partial toggle-expanded !expanded-at path)} "\""]
+           [:span "\""])
+         (viewer/value (string-viewer s opts)) "\""]))
 
 (defn sort! [!sort i k]
   (let [{:keys [sort-key sort-order]} @!sort]
