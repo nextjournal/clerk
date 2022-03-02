@@ -17,7 +17,7 @@
     @apply font-serif antialiased text-gray-900 sm:overscroll-y-none;
   }
   code, .code {
-    @apply font-mono text-sm text-gray-900 bg-slate-50 px-0.5 py-px rounded;
+    @apply font-mono text-sm text-gray-900 bg-slate-50 px-0.5 py-px rounded dark:bg-slate-800;
   }
   code::before, code::after { @apply content-none !important; }
   h1, h2, h3, h4, h5, h6 {
@@ -83,6 +83,10 @@
 .disclose:hover {
   border-color: var(--near-black-color) transparent;
 }
+.dark .disclose,
+.dark .disclose:hover {
+  border-color: white transparent;
+}
 .disclose.collapsed {
   @apply rotate-[-90deg];
 }
@@ -121,7 +125,7 @@
 /* --------------------------------------------------------------- */
 
 .viewer-code {
-  @apply font-mono bg-slate-100 rounded-sm py-4 px-8 text-sm mt-4 overflow-x-auto;
+  @apply font-mono bg-slate-100 rounded-sm py-4 px-8 text-sm mt-4 overflow-x-auto dark:bg-slate-800;
 }
 @media (min-width: 960px){
   .viewer-notebook .viewer-code {
@@ -131,34 +135,51 @@
 /* Don’t show focus outline when double-clicking cell in Safari */
 .cm-scroller { @apply focus:outline-none; }
 
-/* Data Viewer */
+/* Syntax Highlighting */
 /* --------------------------------------------------------------- */
 
 .inspected-value { @apply text-xs font-mono leading-[1.25rem]; }
+.cmt-strong, .cmt-heading { @apply font-bold; }
+.cmt-emphasis { @apply italic; }
+.cmt-strikethrough { @apply line-through; }
+.cmt-link { @apply underline; }
+.untyped-value { @apply whitespace-nowrap; }
 
-.syntax-tag, .cm-number, .syntax-number, .cm-string, .syntax-string,
-.cm-atom, .syntax-keyword, .cm-builtin, .cm-keyword, .syntax-symbol,
-.syntax-bool, .syntax-nil, .syntax-untyped, .syntax-key, .syntax-index {
-  @apply font-mono;
+.cm-editor, .cmt-default, .viewer-result {
+  @apply text-slate-700 dark:text-slate-300;
 }
-
-.syntax-tag     { @apply text-pink-900 !important; }
-.cm-number      { @apply text-sky-900 !important; }
-.syntax-number  { @apply text-sky-900 !important; }
-.cm-string      { @apply text-teal-700 !important; }
-.syntax-string  { @apply text-teal-700 !important; }
-.cm-atom        { @apply text-sky-900 !important; }
-.syntax-keyword { @apply text-sky-900 !important; }
-.cm-builtin     { @apply text-pink-900 !important; }
-.cm-keyword     { @apply text-pink-900 !important; }
-.syntax-symbol  { @apply text-pink-900 !important; }
-.syntax-bool    { @apply text-sky-900 !important; }
-.syntax-nil     { @apply text-sky-900 !important; }
-.syntax-untyped { @apply text-rose-500 !important; }
-.syntax-key     { @apply text-fuchsia-900 !important; }
-.syntax-index   { @apply text-fuchsia-900 !important; }
-
-.syntax-untyped { @apply whitespace-nowrap; }
+.cmt-keyword {
+  @apply text-pink-800 dark:text-pink-400;
+}
+.cmt-name, .cmt-deleted, .cmt-character, .cmt-propertyName, .cmt-macroName {
+  @apply text-red-700 dark:text-red-400;
+}
+.cmt-variableName, .cmt-variableName2, .cmt-labelName {
+  @apply text-sky-700 dark:text-sky-300;
+}
+.cmt-typeName, .cmt-className, .cmt-number, .cmt-changed, .cmt-annotation,
+.cmt-modifier, .cmt-self, .cmt-namespace {
+  @apply text-orange-800 dark:text-orange-300;
+}
+.cmt-url, .cmt-escape, .cmt-string2,
+.cmt-regexp, .cmt-link {
+  @apply text-cyan-700 dark:text-cyan-300;
+}
+.cmt-meta, .cmt-comment, .cmt-operator, .cmt-operatorKeyword {
+  @apply text-slate-500 dark:text-slate-400;
+}
+.cmt-punctuation {
+  @apply text-slate-600 dark:text-slate-500;
+}
+.cmt-atom, .cmt-bool {
+  @apply text-amber-700 dark:text-amber-200;
+}
+.cmt-processingInstruction, .cmt-string, .cmt-inserted, .cmt-literal {
+  @apply text-teal-700 dark:text-teal-300;
+}
+.cmt-invalid {
+  @apply text-slate-900 dark:text-white;
+}
 
 .result-data {
   @apply font-mono text-sm overflow-x-auto whitespace-nowrap leading-normal;
@@ -191,7 +212,9 @@
 .viewer-notebook,
 .viewer-markdown {
   @apply prose
-    prose-a:text-indigo-600 prose-a:font-medium prose-a:no-underline hover:prose-a:underline
+    dark:prose-invert
+    prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
+    dark:prose-a:text-blue-300
     prose-p:mt-4 prose-p:leading-snug
     prose-ol:mt-4 prose-ol:mb-6 prose-ol:leading-snug
     prose-ul:mt-4 prose-ul:mb-6 prose-ul:leading-snug
