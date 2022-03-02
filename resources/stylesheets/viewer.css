@@ -134,7 +134,7 @@
 /* Data Viewer */
 /* --------------------------------------------------------------- */
 
-.inspected-value { @apply text-xs font-mono; }
+.inspected-value { @apply text-xs font-mono leading-[1.25rem]; }
 
 .syntax-tag, .cm-number, .syntax-number, .cm-string, .syntax-string,
 .cm-atom, .syntax-keyword, .cm-builtin, .cm-keyword, .syntax-symbol,
@@ -282,6 +282,9 @@
 .viewer-code-folded + .viewer:not(.viewer-markdown):not(.viewer-code):not(.viewer-code-folded),
 .viewer-result + .viewer-result {
   @apply mt-2;
+}
+.viewer-result {
+  @apply leading-tight;
 }
 @media (min-width: 768px) {
   .devcard-desc > div {
