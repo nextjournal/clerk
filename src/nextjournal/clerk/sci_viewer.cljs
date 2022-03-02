@@ -8,6 +8,8 @@
             [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer with-viewers]]
             [nextjournal.devcards :as dc]
             [nextjournal.markdown.transform :as md.transform]
+            [nextjournal.sci-configs.js-interop :as sci-configs.js-interop]
+            [nextjournal.sci-configs.reagent :as sci-configs.reagent]
             [nextjournal.ui.components.icon :as icon]
             [nextjournal.ui.components.d3-require :as d3-require]
             [nextjournal.view.context :as view-context]
@@ -1014,8 +1016,12 @@ black")}]))}
                    :disable-arity-checks true
                    :classes {'js goog/global
                              :allow :all}
-                   :namespaces {'nextjournal.viewer sci-viewer-namespace
-                                'v sci-viewer-namespace}})))
+                   :aliases {'j 'applied-science/js-interop
+                             'reagent 'reagent.core
+                             'v 'nextjournal.clerk.sci-viewer}
+                   :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace}
+                                      sci-configs.js-interop/namespaces
+                                      sci-configs.reagent/namespaces)})))
 
 
 (defn eval-form [f]
