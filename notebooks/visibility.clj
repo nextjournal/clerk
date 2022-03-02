@@ -19,9 +19,9 @@
 ;; While this one is completely hidden, without the ability to uncollapse it.
 ^{::clerk/visibility :hide} (shuffle (range 25))
 
-;; In the rare case you'd like to hide the result of a cell, use `clerk/hide-result`.
-^{::clerk/visibility :show}
-(clerk/hide-result (range 500))
+;; In the rare case you'd like to hide the result of a cell, use the `clerk/hide-result` viewer.
+^{::clerk/visibility :show ::clerk/viewer clerk/hide-result}
+(def my-range (range 500))
 
 ;; In a follow-up, we'll remove the `::clerk/visibility` metadata from the code cells to not distract from the essence.
 

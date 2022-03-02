@@ -46,21 +46,21 @@
   (:form num?)
   (pr-str num?))
 
+(defn wrapped-value?
+  "Tests if `x` is a map containing a `:nextjournal/value`."
+  [x]
+  (and (map? x) ;; can throw for `sorted-map`
+       (try (contains? x :nextjournal/value)
+            (catch #?(:clj Exception :cljs js/Error) _e false))))
+
 ;; TODO: think about naming this to indicate it does nothing if the value is already wrapped.
 (defn wrap-value
   "Ensures `x` is wrapped in a map under a `:nextjournal/value` key."
-  ([x] (if (and (map? x) (:nextjournal/value x)) x {:nextjournal/value x}))
+  ([x] (if (wrapped-value? x) x {:nextjournal/value x}))
   ([x v] (-> x wrap-value (assoc :nextjournal/viewer v))))
 
 #_(wrap-value 123)
 #_(wrap-value {:nextjournal/value 456})
-
-(defn wrapped-value?
-  "Tests if `x` is a map containing a `:nextjournal/value`."
-  [x]
-  (and (map? x)
-       (contains? x :nextjournal/value)))
-
 
 (defn value
   "Takes `x` and returns the `:nextjournal/value` from it, or otherwise `x` unmodified."
@@ -75,7 +75,7 @@
 (defn viewer
   "Returns the `:nextjournal/viewer` for a given wrapped value `x`, `nil` otherwise."
   [x]
-  (when (map? x)
+  (when (wrapped-value? x)
     (:nextjournal/viewer x)))
 
 
@@ -159,8 +159,12 @@
 (defn fetch-all [opts xs]
   (w/postwalk (partial inspect-leafs opts) xs))
 
-(defn- var-from-def? [x]
-  (and (map? x) (get x :nextjournal.clerk/var-from-def)))
+(defn get-safe [map key]
+  (try (get map key) ;; can throw for e.g. sorted-map
+       (catch #?(:clj Exception :cljs js/Error) _e nil)))
+
+(defn var-from-def? [x]
+  (and (map? x) (get-safe x :nextjournal.clerk/var-from-def)))
 
 (declare !viewers)
 
@@ -171,7 +175,7 @@
    {:pred string? :render-fn (quote v/quoted-string-viewer) :fetch-opts {:n elide-string-length}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.cmt-number.inspected-value
                                                (if (js/Number.isNaN x) "NaN" (str x))]))}
-   {:pred symbol? :render-fn '(fn [x] (v/html [:span.cmt-keyword.inspected-value x]))}
+   {:pred symbol? :render-fn '(fn [x] (v/html [:span.cmt-keyword.inspected-value (str x)]))}
    {:pred keyword? :render-fn '(fn [x] (v/html [:span.cmt-atom.inspected-value (str x)]))}
    {:pred nil? :render-fn '(fn [_] (v/html [:span.cmt-default.inspected-value "nil"]))}
    {:pred boolean? :render-fn '(fn [x] (v/html [:span.cmt-bool.inspected-value (str x)]))}
@@ -277,27 +281,37 @@
 (defn find-named-viewer [viewers viewer-name]
   (first (filter (comp #{viewer-name} :name) viewers)))
 
+(declare wrapped-with-viewer)
+
+(defn apply-viewer [viewers {:as viewer :keys [render-fn transform-fn]} v opts]
+  (let [v' (if transform-fn
+             (-> v value transform-fn)
+             v)]
+    (if (and transform-fn (not render-fn))
+      (wrapped-with-viewer v' viewers)
+      (cond-> (wrap-value v' viewer)
+        (seq opts) (merge opts)))))
+
+(defn extract-view-opts [x]
+  (when (wrapped-value? x)
+    (select-keys x [:nextjournal/width])))
+
 (defn wrapped-with-viewer
   ([x] (wrapped-with-viewer x default-viewers))
   ([x viewers]
    (if-let [selected-viewer (viewer x)]
-     (cond (keyword? selected-viewer)
-           (if-let [{:as named-viewer :keys [transform-fn]} (find-named-viewer viewers selected-viewer)]
-             (wrap-value (cond-> x transform-fn transform-fn) named-viewer)
-             (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
-           (viewer-fn? selected-viewer)
-           (wrap-value x selected-viewer))
-     (let [val (value x)]
-       (loop [v viewers]
-         (if-let [{:as matching-viewer :keys [pred]} (first v)]
-           (if (and (ifn? pred) (pred val))
-             (let [{:keys [render-fn transform-fn]} matching-viewer
-                   val (cond-> val transform-fn transform-fn)]
-               (if (and transform-fn (not render-fn))
-                 (wrapped-with-viewer val viewers)
-                 (wrap-value val matching-viewer)))
-             (recur (rest v)))
-           (throw (ex-info (str "cannot find matchting viewer for `" (pr-str x) "`") {:viewers viewers :x val}))))))))
+     (if (keyword? selected-viewer)
+       (if-let [named-viewer (find-named-viewer viewers selected-viewer)]
+         (apply-viewer viewers named-viewer (value x) (extract-view-opts x))
+         (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
+       (apply-viewer viewers selected-viewer (value x) (extract-view-opts x)))
+     (let [v (value x)]
+       (loop [vs viewers]
+         (if-let [{:as matching-viewer :keys [pred]} (first vs)]
+           (if (and (ifn? pred) (pred v))
+             (apply-viewer viewers matching-viewer v (extract-view-opts x))
+             (recur (rest vs)))
+           (throw (ex-info (str "cannot find matchting viewer for `" (pr-str v) "`") {:viewers viewers :x x :v v}))))))))
 
 #_(wrapped-with-viewer {:one :two})
 #_(wrapped-with-viewer [1 2 3])
@@ -541,7 +555,18 @@
 
 (defn normalize-viewer-opts [opts]
   (set/rename-keys opts {:nextjournal.clerk/viewer :nextjournal/viewer
+                         :nextjournal.clerk/viewers :nextjournal/viewers
                          :nextjournal.clerk/width :nextjournal/width}))
+
+(defn normalize-viewer [viewer]
+  (if (or (keyword? viewer)
+          (map? viewer))
+    viewer
+    {:render-fn viewer}))
+
+#_(normalize-viewer '#(v/html [:h3 "Hello " % "!"]))
+#_(normalize-viewer :latex)
+#_(normalize-viewer {:render-fn '#(v/html [:h3 "Hello " % "!"]) :transform-fn identity})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public api
@@ -553,9 +578,7 @@
    (merge (normalize-viewer-opts opts)
           (-> x
               wrap-value
-              (assoc :nextjournal/viewer (cond-> viewer
-                                           (or (list? viewer) (symbol? viewer))
-                                           ->viewer-fn))))))
+              (assoc :nextjournal/viewer (normalize-viewer viewer))))))
 
 #_(with-viewer :latex "x^2")
 #_(with-viewer '#(v/html [:h3 "Hello " % "!"]) "x^2")

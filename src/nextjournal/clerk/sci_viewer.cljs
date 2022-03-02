@@ -9,21 +9,20 @@
             [nextjournal.devcards :as dc]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.ui.components.icon :as icon]
+            [nextjournal.ui.components.d3-require :as d3-require]
+            [nextjournal.view.context :as view-context]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.markdown :as markdown]
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
             [nextjournal.viewer.vega-lite :as vega-lite]
-            [nextjournal.view.context :as view-context]
             [re-frame.context :as rf]
             [react :as react]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [reagent.ratom :as ratom]
-            [sci.core :as sci]
-            [sci.impl.namespaces]
-            [sci.impl.vars]))
+            [sci.core :as sci]))
 
 (defn color-classes [selected?]
   {:value-color (if selected? "white-90" "dark-green")
@@ -104,6 +103,10 @@
 
 (defonce !edamame-opts
   (atom {:all true
+         :row-key :line
+         :col-key :column
+         :location? seq?
+         :end-location false
          :read-cond :allow
          :readers {'file (partial with-viewer :file)
                    'object (partial with-viewer :object)
@@ -288,12 +291,24 @@
                   xs)
             (cond->> closing-paren (list? closing-paren) (into [:<>]))]])))
 
-(defn string-viewer [s opts]
-  (html (into [:span] (map #(cond->> % (not (string? %)) (inspect opts))) s)))
+(defn string-viewer [s {:as opts :keys [path !expanded-at] :or {path []}}]
+  (html
+   (let [expanded? (@!expanded-at path)]
+     (into [:span {:class (when expanded? "whitespace-pre")}]
+           (map #(if (string? %)
+                   (if expanded?
+                     (into [:<>] (interpose "\n " (str/split-lines %)))
+                     (into [:<>] (interpose [:span.text-slate-400 "↩︎"] (str/split-lines %))))
+                   (inspect opts %)))
+           (if (string? s) [s] s)))))
 
-(defn quoted-string-viewer [s opts]
-  (html [:span.cmt-string.inspected-value "\"" (viewer/value (string-viewer s opts)) "\""]))
-
+(defn quoted-string-viewer [s {:as opts :keys [path !expanded-at] :or {path []}}]
+  (html [:span.cmt-string.inspected-value.whitespace-nowrap
+         (if (some #(str/includes? % "\n") (if (string? s) [s] s))
+           [:span.cursor-pointer {:class "cursor-pointer bg-indigo-50 hover:bg-indigo-100 hover:rounded-sm border-b border-gray-400 hover:border-gray-500"
+                                  :on-click (partial toggle-expanded !expanded-at path)} "\""]
+           [:span "\""])
+         (viewer/value (string-viewer s opts)) "\""]))
 
 (defn sort! [!sort i k]
   (let [{:keys [sort-key sort-order]} @!sort]
@@ -977,6 +992,7 @@ black")}]))}
    'table-error table-error
    'with-viewer with-viewer
    'with-viewers with-viewers
+   'with-d3-require d3-require/with
    'clerk-eval clerk-eval
 
    'throwable-viewer throwable-viewer

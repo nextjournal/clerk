@@ -74,13 +74,12 @@
                            (throw (ex-info "Unable to resolve into a variable" {:data var})))]
     {::var-from-def resolved-var}))
 
-(defn- lookup-cached-result [results-last-run introduced-var hash cas-hash visibility]
+(defn- lookup-cached-result [introduced-var hash cas-hash visibility]
   (try
-    (let [value (or (get results-last-run hash)
-                    (let [cached-value (thaw-from-cas cas-hash)]
-                      (when introduced-var
-                        (intern *ns* (-> introduced-var symbol name symbol) cached-value))
-                      cached-value))]
+    (let [value (let [cached-value (thaw-from-cas cas-hash)]
+                  (when introduced-var
+                    (intern *ns* (-> introduced-var symbol name symbol) cached-value))
+                  cached-value)]
       (wrapped-with-metadata (if introduced-var (var-from-def introduced-var) value) visibility hash))
     (catch Exception _e
       ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
@@ -88,7 +87,8 @@
       nil)))
 
 (defn- cachable-value? [value]
-  (not (or (fn? value)
+  (not (or (nil? value)
+           (fn? value)
            (instance? clojure.lang.IDeref value)
            (instance? clojure.lang.MultiFn value)
            (instance? clojure.lang.Namespace value))))
@@ -102,6 +102,9 @@
 
 (defn- eval+cache! [form hash digest-file introduced-var no-cache? visibility]
   (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true] (eval form)))
+        result (if (and (nil? result) introduced-var (= 'defonce (first form)))
+                 (find-var introduced-var)
+                 result)
         var-value (cond-> result (var? result) deref)
         no-cache? (or no-cache?
                       config/cache-disabled?
@@ -116,10 +119,12 @@
                    result)]
       (wrapped-with-metadata result visibility blob-id))))
 
-(defn maybe-resolve-viewer [{:as opts :nextjournal/keys [viewer]}]
+(defn maybe-eval-viewers [{:as opts :nextjournal/keys [viewer viewers]}]
   (cond-> opts
-    (symbol? viewer)
-    (update :nextjournal/viewer resolve)))
+    viewer
+    (update :nextjournal/viewer eval)
+    viewers
+    (update :nextjournal/viewers eval)))
 
 (defn read+eval-cached [results-last-run ->hash doc-visibility codeblock]
   (let [{:keys [ns-effect? form var]} codeblock
@@ -134,17 +139,19 @@
                             cas-hash
                             (-> cas-hash ->cache-file fs/exists?))
         opts-from-form-meta (-> (meta form)
-                                (select-keys [::viewer ::width])
+                                (select-keys [::viewer ::viewers ::width])
                                 v/normalize-viewer-opts
-                                maybe-resolve-viewer)]
+                                maybe-eval-viewers)]
     #_(prn :cached? (cond no-cache? :no-cache
                           cached-result? true
                           cas-hash :no-cas-file
                           :else :no-digest-file)
            :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
     (fs/create-dirs config/cache-dir)
-    (cond-> (or (when cached-result?
-                  (lookup-cached-result results-last-run var hash cas-hash visibility))
+    (cond-> (or (when-let [result-last-run (and (not no-cache?) (get results-last-run hash))]
+                  (wrapped-with-metadata result-last-run visibility hash))
+                (when cached-result?
+                  (lookup-cached-result var hash cas-hash visibility))
                 (eval+cache! form hash digest-file var no-cache? visibility))
       (seq opts-from-form-meta)
       (merge opts-from-form-meta))))
@@ -154,28 +161,34 @@
 #_(read+eval-cached {} {} #{:show} "(subs (slurp \"/usr/share/dict/words\") 0 1000)")
 
 (defn clear-cache! []
+  (swap! webserver/!doc dissoc :blob->result)
   (if (fs/exists? config/cache-dir)
     (do
       (fs/delete-tree config/cache-dir)
       (prn :cache-dir/deleted config/cache-dir))
     (prn :cache-dir/does-not-exist config/cache-dir)))
 
-
-(defn blob->result [blocks]
-  (into {} (comp (keep :result)
-                 (map (juxt :nextjournal/blob-id :nextjournal/value))) blocks))
-
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
+(defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks visibility]}]
+  (let [{:as evaluated-doc :keys [blob-ids]}
+        (reduce (fn [{:as acc :keys [blob->result]} {:as cell :keys [type]}]
+                  (let [{:as result :nextjournal/keys [blob-id value]} (when (= :code type)
+                                                                         (read+eval-cached blob->result ->hash visibility cell))]
+                    (cond-> (update acc :blocks conj (cond-> cell result (assoc :result result)))
+                      blob-id (update :blob-ids conj blob-id)
+                      blob-id (assoc-in [:blob->result blob-id] value))))
+                (assoc analyzed-doc :blocks [] :blob-ids #{}) blocks)]
+    (-> evaluated-doc
+        (update :blob->result select-keys blob-ids)
+        (dissoc :blob-ids))))
+
+
 (defn +eval-results [results-last-run parsed-doc]
-  (let [{:as info :keys [doc ->analysis-info]} (hashing/build-graph parsed-doc) ;; TODO: clarify that this returns an analyzed doc
-        ->hash (hashing/hash info)
-        {:keys [blocks visibility]} doc
-        blocks (into [] (map (fn [{:as cell :keys [type]}]
-                               (cond-> cell
-                                 (= :code type)
-                                 (assoc :result (read+eval-cached results-last-run ->hash visibility cell))))) blocks)]
-    (assoc parsed-doc :blocks blocks :blob->result (blob->result blocks) :ns *ns* :->analysis-info ->analysis-info :analyzed-doc doc :->hash ->hash :parsed-doc parsed-doc)))
+  (let [analyzed-doc (hashing/build-graph parsed-doc)]
+    (-> analyzed-doc
+        (assoc :blob->result results-last-run :->hash (hashing/hash analyzed-doc) :ns *ns*)
+        eval-analyzed-doc)))
 
 (defn parse-file [file]
   (hashing/parse-file {:doc? true} file))
@@ -193,13 +206,29 @@
   ([file] (eval-file {} file))
   ([results-last-run file] (eval-doc results-last-run (parse-file file))))
 
+#_(eval-file "notebooks/hello.clj")
 #_(eval-file "notebooks/rule_30.clj")
 #_(eval-file "notebooks/visibility.clj")
 
-(defn eval-string [s]
-  (eval-doc (hashing/parse-clojure-string {:doc? true} s)))
+(defn eval-string
+  ([s] (eval-string {} s))
+  ([results-last-run s]
+   (eval-doc results-last-run (hashing/parse-clojure-string {:doc? true} s))))
 
 #_(eval-string "(+ 39 3)")
+
+(defmacro with-cache [form]
+  `(let [result# (-> ~(pr-str form) eval-string :blob->result first val)]
+     result#))
+
+#_(with-cache (do (Thread/sleep 4200) 42))
+
+(defmacro defcached [name expr]
+  `(let [result# (-> ~(pr-str expr) eval-string :blob->result first val)]
+     (def ~name result#)))
+
+#_(defcached my-expansive-thing
+    (do (Thread/sleep 4200) 42))
 
 (defonce !show-filter-fn (atom nil))
 (defonce !last-file (atom nil))
@@ -225,16 +254,8 @@
 
 #_(show! @!last-file)
 
-(defn recompute!* [{:as doc :keys [blob->result ->hash analyzed-doc parsed-doc]}]
-  (let [{:keys [blocks visibility]} analyzed-doc
-        blocks (into [] (map (fn [{:as cell :keys [type]}]
-                               (cond-> cell
-                                 (= :code type)
-                                 (assoc :result (read+eval-cached blob->result ->hash visibility cell))))) blocks)]
-    (assoc doc :blocks blocks)))
-
 (defn recompute! []
-  (let [{:keys [result time-ms]} (time-ms (recompute!* @webserver/!doc))]
+  (let [{:keys [result time-ms]} (time-ms (eval-analyzed-doc @webserver/!doc))]
     (println (str "Clerk recomputed '" @!last-file "' in " time-ms "ms."))
     (webserver/update-doc! result)))
 
@@ -350,6 +371,8 @@
          "visibility"
          "viewer_api"
          "viewer_api_meta"
+         "viewer_d3_require"
+         "viewer_normalization"
          "viewers/html"
          "viewers/image"
          "viewers/image_layouts"

@@ -4,6 +4,7 @@
            applied-science.js-interop/let clojure.core/let
            cljs.core/specify! cljs.core/reify
            reagent.core/with-let clojure.core/let
+           nextjournal.clerk/defcached clojure.core/def
            nextjournal.view/defview clojure.core/defn
            nextjournal.devcards/defcard clj-kondo.lint-as/def-catch-all
            taoensso.encore/defonce clojure.core/defonce

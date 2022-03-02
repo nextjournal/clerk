@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.viewer-test
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
+            [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk.viewer :as v]))
 
 (defn find-elision [desc]
@@ -42,6 +43,40 @@
   (testing "deep vector with elements around"
     (let [value (reduce (fn [acc i] (vector i acc (inc i))) :fin (range 10 0 -1))]
       (is (= value (describe+fetch value))))))
+
+(deftest wrapped-with-viewer
+  (testing "selects number viewer"
+    (is (match? {:nextjournal/value 42
+                 :nextjournal/viewer {:pred fn?}}
+                (v/wrapped-with-viewer 42))))
+
+  (testing "html viewer has no default width"
+    (is (nil? (:nextjournal/width (v/wrapped-with-viewer (v/html [:h1 "hi"]))))))
+
+  (testing "hiccup viewer width can be overriden"
+    (is (= :wide
+           (:nextjournal/width (v/wrapped-with-viewer (v/html {:nextjournal.clerk/width :wide} [:h1 "hi"]))))))
+
+  (testing "table viewer defaults to wide width"
+    (is (= :wide
+           (:nextjournal/width (v/wrapped-with-viewer (v/table {:a [1] :b [2] :c [3]}))))))
+
+  (testing "table viewer (with :transform-fn) width can be overriden"
+    (is (= :full
+           (:nextjournal/width (v/wrapped-with-viewer (v/table {:nextjournal.clerk/width :full} {:a [1] :b [2] :c [3]})))))))
+
+(deftest describe
+  (testing "only transform-fn can select viewer"
+    (is (match? {:nextjournal/value "Hello _markdown_!", :nextjournal/viewer {:name :markdown}}
+                (v/describe (v/with-viewer {:transform-fn (comp v/md :foo)}
+                              {:foo "Hello _markdown_!"})))))
+
+  (testing "works with sorted-map which can throw on get & contains?"
+    (v/describe (into (sorted-map) {'foo 'bar})))
+
+  (testing "doesn't throw on bogus input"
+    (is (match? {:nextjournal/value nil, :nextjournal/viewer {:name :html}}
+                (v/describe (v/html nil))))))
 
 (deftest assign-closing-parens
   (testing "closing parenthesis are moved to right-most children in the tree"
