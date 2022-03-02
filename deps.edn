@@ -21,9 +21,10 @@
         rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}}
 
  :aliases {:nextjournal/clerk {:exec-fn nextjournal.clerk/build-static-app!}
-           :sci {:extra-deps  {applied-science/js-interop  {:mvn/version "0.3.0"}
+           :sci {:extra-deps  {applied-science/js-interop  {:mvn/version "0.3.3"}
                                org.babashka/sci {:mvn/version "0.3.1"}
                                reagent/reagent {:mvn/version "1.1.0"}
+                               io.github.nextjournal/sci-configs {:git/sha "fd6a3332f358e56b96b5a791f75f97573e018580"}
                                io.github.nextjournal/viewers {:git/sha "b1580bff1e6996d5221f38ad23284bbbecc1e0e7"}
                                metosin/reitit-frontend     {:mvn/version "0.5.15"}}}
 

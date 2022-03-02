@@ -90,4 +90,10 @@
  "hsla(46, 97%, 48%, 1.000)"]
 
 
+;; The clerk viewer api also includes `reagent` and `applied-science/js-interop`.
+(clerk/with-viewer '(fn [_]
+                      (reagent/with-let [counter (reagent/atom 0)]
+                        (v/html [:h3.cursor-pointer {:on-click #(swap! counter inc)} "I was clicked " @counter " times."])))
+  nil)
+
 #_(clerk/show! "notebooks/viewer_api.clj")
