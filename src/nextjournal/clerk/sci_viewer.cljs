@@ -306,7 +306,7 @@
 
 (defn quoted-string-viewer [s {:as opts :keys [path !expanded-at] :or {path []}}]
   (html [:span.cmt-string.inspected-value.whitespace-nowrap
-         (if (some #(str/includes? % "\n") (if (string? s) [s] s))
+         (if (some #(and (string? %) (str/includes? % "\n")) (if (string? s) [s] s))
            [:span.cursor-pointer {:class "cursor-pointer bg-indigo-50 hover:bg-indigo-100 hover:rounded-sm border-b border-gray-400 hover:border-gray-500"
                                   :on-click (partial toggle-expanded !expanded-at path)} "\""]
            [:span "\""])
