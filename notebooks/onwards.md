@@ -67,6 +67,9 @@ Notes about what currently breaks 💥 and what could be better tomorrow.
 - [x] Persist viewer expansion state across reloads
 - [x] Show eval error in overlay to persist scroll state when it disappears
 - [x] Improve feedback when viewer errors
+- [x] Verify viewer caching behaviour
+- [x] Fix dark mode for string viewer
+- [ ] Release 0.6
 - [ ] Allow to control viewer expansion state programmatically
 - [ ] Support setting `:nextjournal.clerk/cache` forms to control caching behaviour
 - [ ] Deprecate `:nextjournal/no-cache`
