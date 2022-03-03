@@ -5,15 +5,16 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
-## Unreleased
-* 🌟 Normalize viewers to support full map form (#77)
+## 0.6.387 (2022-03-03)
 * 🌟 Add `clerk/recompute!` for fast recomputation of doc without re-parsing & analysis
+* 🌟 Normalize viewers to support full map form (#77)
 * 🌟 Less whitespace and better alignment when expanding nested maps
 * ⭐️ Add reagent and js-interop to viewer api (#105)
 * ⭐️ Add `with-d3-require` to viewer api, tweak sci read opts (#86)
 * 💫 Make string viewer show newlines and allow to toggle breaking (#104)
 * 💫 Tweaked the theme and make data & code viewers use consistent color scheme. Prepare dark mode support.
 * 💫 Add experimental `defcached` and `with-cache` macros to enable access to Clerk's view of a var or expression respectively.
+* 💫 Let code viewers use horizontal scrolling instead of line  wrapping to improve readability, especially on mobile.
 * 🐞 Make `clear-cache!` also clear in memory cache (#100)
 * 🐞 Protect var-from-def? against types that throw on get, closes #64
 * 🐞 Drop unused tools.deps.alpha dep
