@@ -62,6 +62,6 @@
         manifest (str (fs/create-temp-file))
         content-hash (djv/sha512 (slurp "build/viewer.js"))
         viewer-js-http-link (cas-link content-hash)]
-    (spit manifest {"js/viewer.js" viewer-js-http-link})
+    (spit manifest {"/js/viewer.js" viewer-js-http-link})
     (djv/gs-copy manifest (lookup-url front-end-hash))
     (djv/gs-copy "build/viewer.js" (str gs-bucket "/" content-hash))))
