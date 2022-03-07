@@ -4,6 +4,7 @@ on: push
 
 jobs:
   test:
+    needs: [static-build]
     runs-on: ${{matrix.sys.os}}
 
     strategy:
