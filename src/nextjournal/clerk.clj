@@ -170,7 +170,8 @@
 
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
-(defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks visibility]}]
+(defn eval-analyzed-doc [{:as analyzed-doc :keys [file ->hash blocks visibility]}]
+  (prn "Evaluating analyzed doc" file)
   (let [{:as evaluated-doc :keys [blob-ids]}
         (reduce (fn [{:as acc :keys [blob->result]} {:as cell :keys [type]}]
                   (let [{:as result :nextjournal/keys [blob-id value]} (when (= :code type)
@@ -204,7 +205,9 @@
 
 (defn eval-file
   ([file] (eval-file {} file))
-  ([results-last-run file] (eval-doc results-last-run (parse-file file))))
+  ([results-last-run file]
+   (println "Processing file:" file)
+   (eval-doc results-last-run (parse-file file))))
 
 #_(eval-file "notebooks/hello.clj")
 #_(eval-file "notebooks/rule_30.clj")
