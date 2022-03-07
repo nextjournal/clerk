@@ -57,7 +57,7 @@
 (defn cas-link [hash]
   (str gs-url-prefix "/" hash))
 
-(defn upload-cas-link []
+(defn refresh-cdn []
   (let [front-end-hash (str/trim (slurp "resources/front-end-hash.txt"))
         manifest (str (fs/create-temp-file))
         res (djv/gs-copy (str (lookup-url front-end-hash)) manifest false)]

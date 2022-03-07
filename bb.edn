@@ -17,9 +17,7 @@
          copy-viewer-css {:task (fs/copy (viewer-css-path) "resources/stylesheets/viewer.css" #{:replace-existing})}
 
          yarn-install {:doc "Installs and updates npm dependencies"
-                       :task (do
-                               (prn "Yarn install")
-                               (shell "yarn install"))}
+                       :task (shell "yarn install")}
 
          watch:cljs {:doc "Starts shadow-cljs server"
                      :task (clojure "-M:test:sci:demo:dev watch browser")
@@ -32,8 +30,8 @@
          write-hash {:doc "Write hash to resources. Intended to be used in a pre-commit hook."
                      :task hashing/write-hash}
 
-         upload-cas-link {:doc ""
-                          :task hashing/upload-cas-link}
+         refresh-cdn {:doc "Refreshes assets stored on CDN (google storage)"
+                      :task hashing/refresh-cdn}
 
          release:js {:doc "Uploads the js release and updates the sha reference."
                      :task (clojure "-T:build upload-to-cas :resource viewer.js")
