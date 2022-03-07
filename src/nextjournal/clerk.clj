@@ -204,8 +204,7 @@
 
 (defn eval-file
   ([file] (eval-file {} file))
-  ([results-last-run file]
-   (eval-doc results-last-run (parse-file file))))
+  ([results-last-run file] (eval-doc results-last-run (parse-file file))))
 
 #_(eval-file "notebooks/hello.clj")
 #_(eval-file "notebooks/rule_30.clj")
