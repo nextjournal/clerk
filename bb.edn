@@ -33,7 +33,6 @@
                      :task hashing/write-hash}
 
          upload-cas-link {:doc ""
-                          :depends [build:js]
                           :task hashing/upload-cas-link}
 
          release:js {:doc "Uploads the js release and updates the sha reference."

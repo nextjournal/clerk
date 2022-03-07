@@ -61,9 +61,12 @@
   (let [front-end-hash (str/trim (slurp "resources/front-end-hash.txt"))
         manifest (str (fs/create-temp-file))
         content-hash (djv/sha512 (slurp "build/viewer.js"))
-        viewer-js-http-link (str (cas-link content-hash) "?cache=false")]
-    (spit manifest {"/js/viewer.js" viewer-js-http-link})
-    (println "Manifest:" (slurp manifest))
-    (println "Coping manifest to" (lookup-url front-end-hash))
-    (djv/gs-copy manifest (lookup-url front-end-hash))
-    (djv/gs-copy "build/viewer.js" (str gs-bucket "/" content-hash))))
+        viewer-js-http-link (str (cas-link content-hash) "?cache=false")
+        res (djv/gs-copy (str (lookup-url front-end-hash)) manifest false)]
+    (when (= res ::djv/not-found)
+      (tasks/run 'build:js)
+      (spit manifest {"/js/viewer.js" viewer-js-http-link})
+      (println "Manifest:" (slurp manifest))
+      (println "Coping manifest to" (lookup-url front-end-hash))
+      (djv/gs-copy manifest (lookup-url front-end-hash))
+      (djv/gs-copy "build/viewer.js" (str gs-bucket "/" content-hash)))))
