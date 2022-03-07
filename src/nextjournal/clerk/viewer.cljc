@@ -151,20 +151,34 @@
 
 (declare describe with-viewer)
 
-(defn inspect-leafs [opts x]
-  (if (wrapped-value? x)
-    [(->viewer-fn 'v/inspect) (describe x opts)]
-    x))
+(do
 
-(defn fetch-all [opts xs]
-  (w/postwalk (partial inspect-leafs opts) xs))
+  (defn inspect-leafs [opts x]
+
+    #_(prn :x x :coll? (coll? x) :every? (and (vector? x) (every? #(and (vector? %) (= (->viewer-fn 'v/inspect) (first %))) x)))
+    (cond (and (vector? x) (every? #(and (vector? %)
+                                         (= (->viewer-fn 'v/inspect) (first %))) x)) (into [(->viewer-fn 'v/inspect-children)]
+                                                                                           [(mapv second x)])
+          (wrapped-value? x) [(->viewer-fn 'v/inspect) (describe x opts)]
+          :else x))
+
+  (defn fetch-all [opts xs]
+    (w/postwalk (partial inspect-leafs opts) xs))
+
+  #?(:clj (fetch-all {} [:div
+                         (md "head")
+                         [:h2 "vars"
+                          [(html [:h3 "hi"])
+                           (html [:h3 "ho"])]]])))
+
+
 
 (defn get-safe [map key]
   (try (get map key) ;; can throw for e.g. sorted-map
        (catch #?(:clj Exception :cljs js/Error) _e nil)))
 
 (defn var-from-def? [x]
-  (and (map? x) (get-safe x :nextjournal.clerk/var-from-def)))
+  (and (map? x) (get-safe x :nextjournal.clerk/var-from-def)))1
 
 (declare !viewers)
 
