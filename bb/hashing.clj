@@ -38,7 +38,7 @@
           [["deps.edn"
             "shadow-cljs.edn"
             "yarn.lock"]
-           (map str (fs/glob "notebooks" "**.clj"))
+           #_(map str (fs/glob "notebooks" "**.clj"))
            (djv/cljs-files (classpath-dirs))]))
 
 (def ci? (System/getenv "CI"))
