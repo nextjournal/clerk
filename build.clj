@@ -41,36 +41,17 @@
 
 (defn asserting [val msg] (assert (seq val) msg) val)
 
-(def clerk-config-path "src/nextjournal/clerk/config.clj")
-
-(defn replace-resource [resource url]
-  (-> (io/file clerk-config-path)
-      z/of-file
-      (z/find-token z/next #(and (= 'def (z/sexpr %))
-                                 (= 'default-resource-manifest (-> % z/right z/sexpr))))
-      (z/find-value z/next resource)
-      z/right
-      (z/edit (fn [old-url]
-                (println "Replacing resource: " resource "\n"
-                         (if (= old-url url)
-                           (str "url " old-url " is up-to-date.")
-                           (str "updated from " old-url " to " url ".")))
-                url))
-      z/root-string))
-
 (defn upload! [opts file] (:url (cas/upload! opts file)))
 
-(defn update-resource! [opts resource _ file]
-  (spit clerk-config-path
-        (replace-resource resource
-                          (upload! opts file))))
+(defn update-resource! [opts _resource _ file]
+  (upload! opts file))
 
 (defn get-gsutil [] (str/trim (:out (process/sh ["which" "gsutil"]))))
 
 (def resource->path
   '{viewer.js "/js/viewer.js"})
 
-(defn upload-to-cas+rewrite-sha [{:keys [resource]}]
+(defn upload-to-cas [{:keys [resource]}]
   (if-let [target (resource->path resource)]
     (update-resource! {:exec-path (str/trim (asserting (get-gsutil) "Can't find gsutil executable."))
                        :target-path "gs://nextjournal-cas-eu/data/"} target :uploading (str "build/" resource))

@@ -56,7 +56,7 @@
 
 (defn upload-cas-link []
   (let [front-end-hash (str (djv/file-set-hash (file-set)))
-        f (fs/create-temp-file)
-        content-hash (djv/sha512 (slurp "resources/public/viewer.js"))]
+        f (str (fs/create-temp-file))
+        content-hash (djv/sha512 (slurp "build/viewer.js"))]
     (spit f content-hash)
     (djv/gs-copy f (lookup-url front-end-hash))))

@@ -24,10 +24,20 @@
                      :task (clojure "-M:test:sci:demo:dev watch browser")
                      :depends [yarn-install]}
 
-         release:js {:doc "Builds & uploads the js release and updates the sha reference."
-                     :task (do (clojure "-M:sci:demo:dev release browser")
-                               (clojure "-T:build upload-to-cas+rewrite-sha :resource viewer.js"))
-                     :depends [yarn-install]}
+         build:js {:doc "Builds JS"
+                   :dends [yarn-install]
+                   :task (clojure "-M:sci:demo:dev release browser")}
+
+         write-hash {:doc "Write hash to resources. Intended to be used in a pre-commit hook."
+                     :task hashing/write-hash}
+
+         upload-cas-link {:doc ""
+                          ;; :depends [build:js]
+                          :task hashing/upload-cas-link}
+
+         release:js {:doc "Uploads the js release and updates the sha reference."
+                     :task (clojure "-T:build upload-to-cas :resource viewer.js")
+                     :depends [build:js]}
 
          build:static-app {:doc "Builds a static app with default notebooks"
                            :depends [release:js]
@@ -50,12 +60,6 @@
                           tag (str "v" version)]
                       (shell "git tag" tag)
                       (shell "git push origin" tag))}
-
-         write-hash {:doc "Write hash to resources"
-                     :task hashing/write-hash}
-
-         upload-cas-link {:doc ""
-                          :task hashing/upload-cas-link}
 
          -dev {:depends [watch:cljs copy-viewer-css]}
          dev {:doc "Start app in dev mode, compiles cljs and css"
