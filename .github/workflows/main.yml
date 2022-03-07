@@ -63,6 +63,11 @@ jobs:
         with:
           cli: '1.10.3.943'
 
+      - name: Setup Babashka
+        uses: turtlequeue/setup-babashka@v1.3.0
+        with:
+          babashka-version: 0.7.6
+
       - name: 🗝 maven cache
         uses: actions/cache@v2
         with:
