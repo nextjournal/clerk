@@ -12,10 +12,10 @@
                 prn))
 
 ;; Smaller images are centered and shown using thier intrinsic dimensions.
-(ImageIO/read (doto (URL. "https://etc.usf.edu/clipart/36600/36667/thermos_36667_sm.gif")
+#_(ImageIO/read (doto (URL. "https://etc.usf.edu/clipart/36600/36667/thermos_36667_sm.gif")
                 prn))
 
-(ImageIO/read (doto (URL. "https://etc.usf.edu/clipart/186600/186669/186669-trees-in-the-winter_sm.gif")
+#_(ImageIO/read (doto (URL. "https://etc.usf.edu/clipart/186600/186669/186669-trees-in-the-winter_sm.gif")
                 prn))
 
 (ImageIO/read (doto (URL. "https://nextjournal.com/data/QmUyFWw9L8nZ6wvFTfJvtyqxtDyJiAr7EDZQxLVn64HASX?filename=Requiem-Ornaments-Byline.png&content-type=image/png")
