@@ -1,8 +1,7 @@
 {:min-bb-version "0.7.6"
  :paths ["bb"]
  :deps {io.github.nextjournal/dejavu
-        {:git/url "git@github.com:nextjournal/dejavu.git"
-         :git/sha "3c4cf5e4dda3648e0d4c575a3433d19c511dd3e5"}}
+        {:git/sha "3c4cf5e4dda3648e0d4c575a3433d19c511dd3e5"}}
  :tasks {:requires ([clojure.edn :as edn]
                     [clojure.edn :as edn]
                     [clojure.string :as str]
