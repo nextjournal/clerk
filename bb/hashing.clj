@@ -61,7 +61,7 @@
   (let [front-end-hash (str/trim (slurp "resources/front-end-hash.txt"))
         manifest (str (fs/create-temp-file))
         content-hash (djv/sha512 (slurp "build/viewer.js"))
-        viewer-js-http-link (cas-link content-hash)]
+        viewer-js-http-link (str (cas-link content-hash) "?cache=false")]
     (spit manifest {"/js/viewer.js" viewer-js-http-link})
     (println "Manifest:" (slurp manifest))
     (println "Coping manifest to" (lookup-url front-end-hash))
