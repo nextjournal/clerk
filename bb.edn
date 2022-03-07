@@ -59,9 +59,10 @@
                       (shell "git tag" tag)
                       (shell "git push origin" tag))}
 
-         -install-git-hooks {:task (when-not (fs/exists? ".git/hooks/pre-commit")
-                                     (fs/copy "dev/pre-commit" ".git/hooks"))}
+         install-git-hooks {:doc "Install git hooks"
+                            :task (when-not (fs/exists? ".git/hooks/pre-commit")
+                                    (fs/copy "dev/pre-commit" ".git/hooks"))}
 
-         -dev {:depends [-install-git-hooks watch:cljs copy-viewer-css]}
+         -dev {:depends [install-git-hooks watch:cljs copy-viewer-css]}
          dev {:doc "Start app in dev mode, compiles cljs and css"
               :task (run '-dev {:parallel true})}}}

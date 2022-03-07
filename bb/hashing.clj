@@ -58,9 +58,9 @@
         manifest (str (fs/create-temp-file))
         res (djv/gs-copy (str (lookup-url front-end-hash)) manifest false)]
     (when (= res ::djv/not-found)
+      (tasks/run 'build:js)
       (let [content-hash (djv/sha512 (slurp "build/viewer.js"))
             viewer-js-http-link (str (cas-link content-hash) "?cache=false")]
-        (tasks/run 'build:js)
         (spit manifest {"/js/viewer.js" viewer-js-http-link})
         (println "Manifest:" (slurp manifest))
         (println "Coping manifest to" (lookup-url front-end-hash))
