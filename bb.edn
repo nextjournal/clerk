@@ -17,7 +17,9 @@
          copy-viewer-css {:task (fs/copy (viewer-css-path) "resources/stylesheets/viewer.css" #{:replace-existing})}
 
          yarn-install {:doc "Installs and updates npm dependencies"
-                       :task (shell "yarn install")}
+                       :task (do
+                               (prn "Yarn install")
+                               (shell "yarn install"))}
 
          watch:cljs {:doc "Starts shadow-cljs server"
                      :task (clojure "-M:test:sci:demo:dev watch browser")
