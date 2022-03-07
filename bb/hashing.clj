@@ -55,7 +55,7 @@
   (str gs-bucket "/lookup/" lookup-hash))
 
 (defn upload-cas-link []
-  (let [front-end-hash (str (djv/file-set-hash (file-set)))
+  (let [front-end-hash (str/trim (slurp "resources/front-end-hash.txt"))
         f (str (fs/create-temp-file))
         content-hash (djv/sha512 (slurp "build/viewer.js"))]
     (spit f content-hash)
