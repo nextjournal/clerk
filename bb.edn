@@ -26,7 +26,7 @@
                      :depends [yarn-install]}
 
          build:js {:doc "Builds JS"
-                   :dends [yarn-install]
+                   :depends [yarn-install]
                    :task (clojure "-M:sci:demo:dev release browser")}
 
          write-hash {:doc "Write hash to resources. Intended to be used in a pre-commit hook."
