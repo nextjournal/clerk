@@ -294,20 +294,20 @@
 ;; public viewer api
 
 ;; these are refercing vars for convience when working at the REPL
-(def md             #'v/md)
-(def plotly         #'v/plotly)
-(def vl             #'v/vl)
-(def tex            #'v/tex)
-(def notebook       #'v/notebook)
-(def html           #'v/html)
-(def code           #'v/code)
-(def table          #'v/table)
-(def use-headers    #'v/use-headers)
-(def hide-result    #'v/hide-result)
-(def doc-url        #'v/doc-url)
-(def with-viewer    #'v/with-viewer)
-(def with-viewers   #'v/with-viewers)
-(def set-viewers!   #'v/set-viewers!)
+(def md             v/md)
+(def plotly         v/plotly)
+(def vl             v/vl)
+(def tex            v/tex)
+(def notebook       v/notebook)
+(def html           v/html)
+(def code           v/code)
+(def table          v/table)
+(def use-headers    v/use-headers)
+(def hide-result    v/hide-result)
+(def doc-url        v/doc-url)
+(def with-viewer    v/with-viewer)
+(def with-viewers   v/with-viewers)
+(def set-viewers!   v/set-viewers!)
 
 (defn file->viewer
   "Evaluates the given `file` and returns it's viewer representation."

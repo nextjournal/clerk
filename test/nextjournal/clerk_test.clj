@@ -97,7 +97,7 @@
                 (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-defonce-test-ns) (defonce state (atom {}))"))))
 
   (testing "assigning viewers from form meta"
-    (is (match? {:blocks [{:result {:nextjournal/viewer #'nextjournal.clerk.viewer/table}}]}
+    (is (match? {:blocks [{:result {:nextjournal/viewer fn?}}]}
                 (clerk/eval-string "^{:nextjournal.clerk/viewer nextjournal.clerk/table} (def markup [:h1 \"hi\"])")))
     (is (match? {:blocks [{:result {:nextjournal/viewer :html}}]}
                 (clerk/eval-string "^{:nextjournal.clerk/viewer :html} (def markup [:h1 \"hi\"])")))))

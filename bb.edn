@@ -46,7 +46,7 @@
 
          release:jar {:doc "Builds the jar"
                       :task (let [rev-count (-> (p/process ["git" "rev-list" "HEAD" "--count"] {:out :string}) p/check :out str/trim Integer/parseInt)
-                                  version (format "0.5.%d" (inc rev-count))]
+                                  version (format "0.6.%d" (inc rev-count))]
                               (spit (doto (fs/file "resources/META-INF/nextjournal/clerk/meta.edn")
                                       (-> fs/parent fs/create-dirs)) {:version version})
                               (clojure "-T:build jar"))}

@@ -20,15 +20,11 @@
     (when-not (str/blank? prop)
       (read-string prop))))
 
-(prn lookup-url)
-
 (defonce !resource->url
   (atom (or resource-manifest-from-props
             ;; assume that CI will have published a CAS-link under this lookup,
             ;; prior to hitting this code-path
             (edn/read-string (slurp lookup-url)))))
-
-(prn @!resource->url)
 
 #_(swap! !resource->url assoc "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvAV62HzsvhcsXEkHP33uj4cV9UvdDz7DU9qLeVRCfEP9kWLFAzaMKL77trdx898DzcVyDVejdfxvxj5XB84UpWvQ")
 #_(swap! !resource->url dissoc "/css/viewer.css")
