@@ -54,9 +54,14 @@
 (defn lookup-url [lookup-hash]
   (str gs-bucket "/lookup/" lookup-hash))
 
+(defn cas-link [hash]
+  (str gs-url-prefix "/" hash))
+
 (defn upload-cas-link []
   (let [front-end-hash (str/trim (slurp "resources/front-end-hash.txt"))
-        f (str (fs/create-temp-file))
-        content-hash (djv/sha512 (slurp "build/viewer.js"))]
-    (spit f content-hash)
-    (djv/gs-copy f (lookup-url front-end-hash))))
+        manifest (str (fs/create-temp-file))
+        content-hash (djv/sha512 (slurp "build/viewer.js"))
+        viewer-js-link (cas-link content-hash)]
+    (spit manifest {"js/viewer.js" viewer-js-link})
+    (djv/gs-copy manifest (lookup-url front-end-hash))
+    (djv/gs-copy "build/viewer.js" viewer-js-link)))
