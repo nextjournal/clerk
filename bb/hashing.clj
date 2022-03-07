@@ -63,5 +63,7 @@
         content-hash (djv/sha512 (slurp "build/viewer.js"))
         viewer-js-http-link (cas-link content-hash)]
     (spit manifest {"/js/viewer.js" viewer-js-http-link})
+    (println "Manifest:" (slurp manifest))
+    (println "Coping manifest to" (lookup-url front-end-hash))
     (djv/gs-copy manifest (lookup-url front-end-hash))
     (djv/gs-copy "build/viewer.js" (str gs-bucket "/" content-hash))))
