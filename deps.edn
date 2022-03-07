@@ -54,6 +54,3 @@
                           rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}
                           babashka/fs {:mvn/version "0.1.2"}}
                    :ns-default build}}}
-
-
-;;; trigger sha difference

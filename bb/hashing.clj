@@ -10,6 +10,7 @@
 
 ;; Example link in bucket:
 ;; "https://storage.googleapis.com/nextjournal-cas-eu/data/8VwKauX6JACEP3K6ahNmP5p1w7rWdhKzeGXCDrHMnJiVrUxHVxcm3Xj84K2r3fcAKWxMQKzqoFe92osgFEHCuKCtZC"
+
 (def gs-bucket "gs://nextjournal-cas-eu/data")
 (def base-url "https://storage.googleapis.com/nextjournal-cas-eu/data")
 
@@ -38,12 +39,7 @@
           [["deps.edn"
             "shadow-cljs.edn"
             "yarn.lock"]
-           #_(map str (fs/glob "notebooks" "**.clj"))
            (djv/cljs-files (classpath-dirs))]))
-
-(def ci? (System/getenv "CI"))
-(when ci?
-  (println "Running in CI!"))
 
 (defn write-hash []
   (let [front-end-hash (str (djv/file-set-hash (file-set)))]
