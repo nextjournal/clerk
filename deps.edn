@@ -22,7 +22,7 @@
 
  :aliases {:nextjournal/clerk {:exec-fn nextjournal.clerk/build-static-app!}
            :sci {:extra-deps  {applied-science/js-interop  {:mvn/version "0.3.3"}
-                               org.babashka/sci {:mvn/version "0.3.1"}
+                               org.babashka/sci {:mvn/version "0.3.2"}
                                reagent/reagent {:mvn/version "1.1.0"}
                                io.github.babashka/sci-configs {:git/sha "fd6a3332f358e56b96b5a791f75f97573e018580"}
                                io.github.nextjournal/viewers {:git/sha "63bda9bb89dafa6181c71e21dd363b2bbdae7b13"}
@@ -54,4 +54,3 @@
                           rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}
                           babashka/fs {:mvn/version "0.1.2"}}
                    :ns-default build}}}
-;; force hash change
