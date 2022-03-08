@@ -157,6 +157,10 @@ jobs:
     needs: [static-build]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch_depth: 0
+
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.3.0
         with:
