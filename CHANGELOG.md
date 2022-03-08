@@ -5,6 +5,27 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
+## 0.6.387 (2022-03-03)
+* 🌟 Add `clerk/recompute!` for fast recomputation of doc without re-parsing & analysis
+* 🌟 Normalize viewers to support full map form (#77)
+* 🌟 Less whitespace and better alignment when expanding nested maps
+* ⭐️ Add reagent and js-interop to viewer api (#105)
+* ⭐️ Add `with-d3-require` to viewer api, tweak sci read opts (#86)
+* 💫 Make string viewer show newlines and allow to toggle breaking (#104)
+* 💫 Tweaked the theme and make data & code viewers use consistent color scheme. Prepare dark mode support.
+* 💫 Add experimental `defcached` and `with-cache` macros to enable access to Clerk's view of a var or expression respectively.
+* 💫 Let code viewers use horizontal scrolling instead of line  wrapping to improve readability, especially on mobile.
+* 🐞 Make `clear-cache!` also clear in memory cache (#100)
+* 🐞 Protect var-from-def? against types that throw on get, closes #64
+* 🐞 Drop unused tools.deps.alpha dep
+* 🐜 Fix inconsistent hashing when form contains a regex (#85)
+* 🐜 Fix find-location for namespaces with dashes in them
+* 🐜 Fix in memory cache not being used for unfreezable results (#82)
+* 🐜 Don't catch errors occurring on JVM-side of the viewer api (`:pred` & `:transform-fn`)
+* 🐜 Opt out of caching deref forms
+* 🐜 Protect cache from caching nil from repeated defonce eval
+* 💫 Upgrade to SCI v0.3.1
+
 ## 0.5.346 (2022-01-27)
 This release focuses on improving the viewer api:
 
@@ -14,8 +35,8 @@ This release focuses on improving the viewer api:
 * 💫 `:render-fn` must now be quoted to make it clearer it doesn't run on the JVM but in the browser (#53)
 * 💫 Make all viewer functions take an optional map to specify the with using the `:nextjournal.clerk/width` with valid values `:full`, `:wide` or `:prose`. (#53)
 * 💫 Enable access to vars resulting from eval in viewers @philomates (#47)
-* 💫 Expose title, table of contents as the result of parse. Set title in browser. @zampino (#56) 
-* 💫 Add halt! to allow stopping Clerk @SneakyPeet (#43)* 
+* 💫 Expose title, table of contents as the result of parse. Set title in browser. @zampino (#56)
+* 💫 Add halt! to allow stopping Clerk @SneakyPeet (#43)*
 * 💫 Upgrade to tailwindcss 3 and use via play cdn. This enables using any tailwind properties. (#36)
 * 💫 Allow to bring your own css and js (#55)
 * 🐜 Introduce print budget to elide deeply nested structures. This should fix overflowing the browser with too much data for certain shapes of data (#48)

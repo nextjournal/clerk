@@ -13,3 +13,6 @@ public/girouette.css
 public/images/
 yarn.lock
 *~
+.work
+/build
+/public/build

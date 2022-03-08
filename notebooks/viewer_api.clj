@@ -51,6 +51,10 @@
                             expression-1
                             expression-2)))
 
+;; ### 🔤 Strings
+;; Multi-line strings can be expanded to break on newlines.
+(do "The\npurpose\nof\nvisualization\nis\ninsight,\nnot\npictures.")
+
 ;; ## 🚀 Extensibility
 (clerk/with-viewer '#(v/html [:div "Greetings to " [:strong %] "!"])
   "James Clerk Maxwell")
@@ -85,5 +89,11 @@
  "hsl(11,100%,60%)"
  "hsla(46, 97%, 48%, 1.000)"]
 
+
+;; The clerk viewer api also includes `reagent` and `applied-science/js-interop`.
+(clerk/with-viewer '(fn [_]
+                      (reagent/with-let [counter (reagent/atom 0)]
+                        (v/html [:h3.cursor-pointer {:on-click #(swap! counter inc)} "I was clicked " @counter " times."])))
+  nil)
 
 #_(clerk/show! "notebooks/viewer_api.clj")

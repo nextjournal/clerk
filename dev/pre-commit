@@ -1,0 +1,4 @@
+#!/bin/sh
+
+bb write-hash
+git add resources/viewer-js-hash

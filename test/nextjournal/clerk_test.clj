@@ -68,6 +68,11 @@
     (is (= (clerk/eval-string "(ns my-random-test-ns) (java.util.UUID/randomUUID)")
            (clerk/eval-string "(ns my-random-test-ns) (java.util.UUID/randomUUID)"))))
 
+  (testing "random expression that cannot be serialized in nippy gets cached in memory"
+    (let [{:as result :keys [blob->result]} (clerk/eval-string "(ns my-random-test-ns) {inc (java.util.UUID/randomUUID)}")]
+      (is (= result
+             (clerk/eval-string blob->result "(ns my-random-test-ns) {inc (java.util.UUID/randomUUID)}")))))
+
   (testing "random expression doesn't get cached with no-cache"
     (is (not= (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns) (java.util.UUID/randomUUID)")
               (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns) (java.util.UUID/randomUUID)"))))
@@ -80,13 +85,17 @@
       (is (= (extract-my-uuid result)
              (extract-my-uuid result')))))
 
+  (testing "old values are cleared from in-memory cache"
+    (let [{:keys [blob->result]} (clerk/eval-string "(ns my-random-test-ns) ^:nextjournal.clerk/no-cache {inc (java.util.UUID/randomUUID)}")]
+      (is (= 2 (count (:blob->result (clerk/eval-string blob->result "(ns my-random-test-ns) {inc (java.util.UUID/randomUUID)}")))))))
+
   (testing "defonce returns correct result on subsequent evals (when defonce would eval to nil)"
     (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-defonce-test-ns) (defonce state (atom {}))")
     (is (match? {:blocks [map? {:result {:nextjournal/value {::clerk/var-from-def var?}}}]}
                 (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-defonce-test-ns) (defonce state (atom {}))"))))
 
   (testing "assigning viewers from form meta"
-    (is (match? {:blocks [{:result {:nextjournal/viewer #'nextjournal.clerk.viewer/table}}]}
+    (is (match? {:blocks [{:result {:nextjournal/viewer fn?}}]}
                 (clerk/eval-string "^{:nextjournal.clerk/viewer nextjournal.clerk/table} (def markup [:h1 \"hi\"])")))
     (is (match? {:blocks [{:result {:nextjournal/viewer :html}}]}
                 (clerk/eval-string "^{:nextjournal.clerk/viewer :html} (def markup [:h1 \"hi\"])")))))

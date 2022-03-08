@@ -163,14 +163,15 @@
   (is (match? (m/equals
                {:graph {:dependencies {'(ns example-notebook) set?}
                         :dependents   map?}
-                :doc {:blocks [{:type :code
-                                :text "^:nextjournal.clerk/no-cache (ns example-notebook)"
-                                :form '(ns example-notebook)
-                                :ns?  true}
-                               {:type :code
-                                :text "#{3 1 2}"
-                                :form #{1 2 3}}]
-                      :visibility #{:show}}
+                :blocks [{:type :code
+                          :text "^:nextjournal.clerk/no-cache (ns example-notebook)"
+                          :form '(ns example-notebook)
+                          :ns?  true}
+                         {:type :code
+                          :text "#{3 1 2}"
+                          :form #{1 2 3}}]
+                :toc {:type :toc}
+                :visibility #{:show}
                 :->analysis-info {'(ns example-notebook) {:form '(ns example-notebook),
                                                           :deps set?}
                                   #{1 3 2} {:form '#{1 3 2}}}})
