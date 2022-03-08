@@ -9,7 +9,7 @@
                   "resources/public/build"])
 
 ;; Example link in bucket:
-;; "https://storage.googleapis.com/nextjournal-cas-eu/8VwKauX6JACEP3K6ahNmP5p1w7rWdhKzeGXCDrHMnJiVrUxHVxcm3Xj84K2r3fcAKWxMQKzqoFe92osgFEHCuKCtZC"
+;; "https://storage.googleapis.com/nextjournal-cas-eu/data/8VwKauX6JACEP3K6ahNmP5p1w7rWdhKzeGXCDrHMnJiVrUxHVxcm3Xj84K2r3fcAKWxMQKzqoFe92osgFEHCuKCtZC"
 
 (def gs-bucket "gs://nextjournal-cas-eu")
 (def base-url "https://storage.googleapis.com/nextjournal-cas-eu")
@@ -52,7 +52,7 @@
   (str gs-bucket "/lookup/" lookup-hash))
 
 (defn cas-link [hash]
-  (str base-url "/" hash))
+  (str base-url "/data/" hash))
 
 (defn build+upload-viewer-resources []
   (let [front-end-hash (str/trim (slurp viewer-js-hash-file))
