@@ -1,4 +1,9 @@
-{:tasks {:requires ([clojure.edn :as edn]
+{:min-bb-version "0.7.6"
+ :paths ["bb"]
+ :deps {io.github.nextjournal/dejavu
+        {:git/sha "3c4cf5e4dda3648e0d4c575a3433d19c511dd3e5"}}
+ :tasks {:requires ([clojure.edn :as edn]
+                    [clojure.edn :as edn]
                     [clojure.string :as str]
                     [babashka.deps :as deps]
                     [babashka.fs :as fs]
@@ -18,13 +23,22 @@
                      :task (clojure "-M:test:sci:demo:dev watch browser")
                      :depends [yarn-install]}
 
-         release:js {:doc "Builds & uploads the js release and updates the sha reference."
-                     :task (do (clojure "-M:sci:demo:dev release browser")
-                               (clojure "-T:build upload-to-cas+rewrite-sha :resource viewer.js"))
-                     :depends [yarn-install]}
+         build:js {:doc "Builds JS"
+                   :depends [yarn-install]
+                   :task (clojure "-M:sci:demo:dev release browser")}
+
+         write-hash {:doc "Write viewer resource hash to resources. Intended to be used in a pre-commit hook."
+                     :task viewer-resources-hashing/write-viewer-resource-hash}
+
+         build+upload-viewer-resources {:doc "Refreshes assets stored on CDN (google storage)"
+                                        :task viewer-resources-hashing/build+upload-viewer-resources}
+
+         release:js {:doc "Uploads the js release and updates the sha reference."
+                     :task (clojure "-T:build upload-to-cas :resource viewer.js")
+                     :depends [build:js]}
 
          build:static-app {:doc "Builds a static app with default notebooks"
-                           :depends [release:js release:css]
+                           :depends [release:js]
                            :task (clojure "-X:demo nextjournal.clerk/build-static-app!")}
 
          release:jar {:doc "Builds the jar"
@@ -45,7 +59,9 @@
                       (shell "git tag" tag)
                       (shell "git push origin" tag))}
 
-         -dev {:depends [watch:cljs copy-viewer-css]}
+         install-git-hooks {:doc "Install git hooks"
+                            :task (fs/copy "dev/pre-commit" ".git/hooks" {:replace-existing true})}
+
+         -dev {:depends [install-git-hooks watch:cljs copy-viewer-css]}
          dev {:doc "Start app in dev mode, compiles cljs and css"
-              :task (run '-dev {:parallel true})}}
- :min-bb-version "0.5.1"}
+              :task (run '-dev {:parallel true})}}}

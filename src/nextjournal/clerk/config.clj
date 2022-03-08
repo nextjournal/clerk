@@ -1,5 +1,7 @@
 (ns nextjournal.clerk.config
-  (:require [clojure.string :as str]))
+  (:require [clojure.edn :as edn]
+            [clojure.java.io :as io]
+            [clojure.string :as str]))
 
 (def cache-dir
   (or (System/getProperty "clerk.cache_dir")
@@ -9,8 +11,9 @@
   (when-let [prop (System/getProperty "clerk.disable_cache")]
     (not= "false" prop)))
 
-(def default-resource-manifest
-  {"/js/viewer.js" "https://storage.googleapis.com/nextjournal-cas-eu/data/8Vt3Eko1RGonTrRXaLTP6Ly5XugGnYiRapACBxSoZ2RKwFztsi2NYXvTb5vyCTFya2RDgK9vXwVvKBnQ8dWopcmvA5"})
+(def gs-url-prefix "https://storage.googleapis.com/nextjournal-cas-eu/data")
+(def lookup-hash (str/trim (slurp (io/resource "viewer-js-hash"))))
+(def lookup-url (str gs-url-prefix "/lookup/" lookup-hash))
 
 (def resource-manifest-from-props
   (when-let [prop (System/getProperty "clerk.resource_manifest")]
@@ -19,7 +22,9 @@
 
 (defonce !resource->url
   (atom (or resource-manifest-from-props
-            default-resource-manifest)))
+            ;; assume that CI will have published a CAS-link under this lookup,
+            ;; prior to hitting this code-path
+            (edn/read-string (slurp lookup-url)))))
 
 #_(swap! !resource->url assoc "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvAV62HzsvhcsXEkHP33uj4cV9UvdDz7DU9qLeVRCfEP9kWLFAzaMKL77trdx898DzcVyDVejdfxvxj5XB84UpWvQ")
 #_(swap! !resource->url dissoc "/css/viewer.css")
