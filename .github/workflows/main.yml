@@ -48,7 +48,6 @@ jobs:
         run: bb build+upload-viewer-resources
 
   test:
-    needs: [build-and-upload-viewer-resources]
     runs-on: ${{matrix.sys.os}}
 
     strategy:
