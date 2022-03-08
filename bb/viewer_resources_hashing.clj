@@ -66,4 +66,4 @@
         (println "Manifest:" (slurp manifest))
         (println "Coping manifest to" (lookup-url front-end-hash))
         (djv/gs-copy manifest (lookup-url front-end-hash))
-        (djv/gs-copy "build/viewer.js" (str gs-bucket "/" content-hash))))))
+        (djv/gs-copy "build/viewer.js" (str gs-bucket "/data/" content-hash))))))
