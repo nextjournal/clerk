@@ -4,7 +4,7 @@ on: push
 
 jobs:
   test:
-    needs: [refresh-cdn]
+    needs: [build+upload-viewer-resources]
     runs-on: ${{matrix.sys.os}}
 
     strategy:
@@ -48,7 +48,7 @@ jobs:
 
   static-build:
     runs-on: ubuntu-latest
-    needs: [refresh-cdn]
+    needs: [build+upload-viewer-resources]
     steps:
       - uses: actions/checkout@v2
         with:
@@ -109,7 +109,7 @@ jobs:
           sha: ${{github.event.pull_request.head.sha || github.sha}}
           target_url: https://snapshots.nextjournal.com/clerk/build/${{ github.sha }}
 
-  refresh-cdn:
+  build+upload-viewer-resources:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -149,5 +149,5 @@ jobs:
       - name: 🔧 Setup Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v0.3.0
 
-      - name: Refresh CDN
-        run: bb refresh-cdn
+      - name: Build and upload viewer resources
+        run: bb build+upload-viewer-resources
