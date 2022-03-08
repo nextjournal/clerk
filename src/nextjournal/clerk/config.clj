@@ -22,7 +22,7 @@
 
 (defonce !resource->url
   ;; contains asset manifest in the form:
-  ;; {"/js/viewer.js" "https://..."}1
+  ;; {"/js/viewer.js" "https://..."}
   (atom (or resource-manifest-from-props
             (edn/read-string (slurp lookup-url)))))
 
