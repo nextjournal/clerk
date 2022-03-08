@@ -33,7 +33,6 @@
    :label-color (if selected? "white-90" "black-60")
    :badge-background-color (if selected? "bg-white-20" "bg-black-10")})
 
-
 (declare inspect)
 
 (defn value-of
