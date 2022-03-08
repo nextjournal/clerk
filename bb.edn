@@ -1,5 +1,5 @@
 {:min-bb-version "0.7.6"
- :paths ["src-bb"]
+ :paths ["bb"]
  :deps {io.github.nextjournal/dejavu
         {:git/sha "3c4cf5e4dda3648e0d4c575a3433d19c511dd3e5"}}
  :tasks {:requires ([clojure.edn :as edn]
