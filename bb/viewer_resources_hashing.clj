@@ -9,10 +9,10 @@
                   "resources/public/build"])
 
 ;; Example link in bucket:
-;; "https://storage.googleapis.com/nextjournal-cas-eu/data/8VwKauX6JACEP3K6ahNmP5p1w7rWdhKzeGXCDrHMnJiVrUxHVxcm3Xj84K2r3fcAKWxMQKzqoFe92osgFEHCuKCtZC"
+;; "https://storage.googleapis.com/nextjournal-cas-eu/8VwKauX6JACEP3K6ahNmP5p1w7rWdhKzeGXCDrHMnJiVrUxHVxcm3Xj84K2r3fcAKWxMQKzqoFe92osgFEHCuKCtZC"
 
-(def gs-bucket "gs://nextjournal-cas-eu/data")
-(def base-url "https://storage.googleapis.com/nextjournal-cas-eu/data")
+(def gs-bucket "gs://nextjournal-cas-eu")
+(def base-url "https://storage.googleapis.com/nextjournal-cas-eu")
 
 (defn sha512s []
   (let [files (map str (mapcat #(fs/glob % "**.{js,css}") output-dirs))
@@ -48,13 +48,11 @@
   (let [front-end-hash (str (djv/file-set-hash (file-set)))]
     (spit viewer-js-hash-file front-end-hash)))
 
-(def gs-url-prefix "https://storage.googleapis.com/nextjournal-cas-eu/data")
-
 (defn lookup-url [lookup-hash]
   (str gs-bucket "/lookup/" lookup-hash))
 
 (defn cas-link [hash]
-  (str gs-url-prefix "/" hash))
+  (str base-url "/" hash))
 
 (defn build+upload-viewer-resources []
   (let [front-end-hash (str/trim (slurp viewer-js-hash-file))
@@ -63,7 +61,7 @@
     (when (= res ::djv/not-found)
       (tasks/run 'build:js)
       (let [content-hash (djv/sha512 (slurp "build/viewer.js"))
-            viewer-js-http-link (str (cas-link content-hash) "?cache=false")]
+            viewer-js-http-link (str (cas-link content-hash))]
         (spit manifest {"/js/viewer.js" viewer-js-http-link})
         (println "Manifest:" (slurp manifest))
         (println "Coping manifest to" (lookup-url front-end-hash))
