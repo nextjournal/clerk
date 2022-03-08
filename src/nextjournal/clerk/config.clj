@@ -12,7 +12,7 @@
     (not= "false" prop)))
 
 (def gs-url-prefix "https://storage.googleapis.com/nextjournal-cas-eu/data")
-(def lookup-hash (str/trim (slurp (io/resource "front-end-hash.txt"))))
+(def lookup-hash (str/trim (slurp (io/resource "viewer-js-hash"))))
 (def lookup-url (str gs-url-prefix "/lookup/" lookup-hash))
 
 (def resource-manifest-from-props

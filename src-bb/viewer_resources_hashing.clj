@@ -1,4 +1,4 @@
-(ns hashing
+(ns viewer-resources-hashing
   (:require [babashka.classpath :as cp]
             [babashka.fs :as fs]
             [babashka.tasks :as tasks :refer [shell]]
@@ -41,9 +41,12 @@
             "yarn.lock"]
            (djv/cljs-files (classpath-dirs))]))
 
-(defn write-hash []
+(def viewer-js-hash-file "resources/viewer-js-hash")
+
+(defn write-viewer-resource-hash
+  []
   (let [front-end-hash (str (djv/file-set-hash (file-set)))]
-    (spit "resources/front-end-hash.txt" front-end-hash)))
+    (spit viewer-js-hash-file front-end-hash)))
 
 (def gs-url-prefix "https://storage.googleapis.com/nextjournal-cas-eu/data")
 
@@ -53,8 +56,8 @@
 (defn cas-link [hash]
   (str gs-url-prefix "/" hash))
 
-(defn refresh-cdn []
-  (let [front-end-hash (str/trim (slurp "resources/front-end-hash.txt"))
+(defn build+upload-viewer-resources []
+  (let [front-end-hash (str/trim (slurp viewer-js-hash-file))
         manifest (str (fs/create-temp-file))
         res (djv/gs-copy (str (lookup-url front-end-hash)) manifest false)]
     (when (= res ::djv/not-found)

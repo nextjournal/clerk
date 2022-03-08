@@ -1,5 +1,5 @@
 {:min-bb-version "0.7.6"
- :paths ["bb"]
+ :paths ["src-bb"]
  :deps {io.github.nextjournal/dejavu
         {:git/sha "3c4cf5e4dda3648e0d4c575a3433d19c511dd3e5"}}
  :tasks {:requires ([clojure.edn :as edn]
@@ -27,11 +27,11 @@
                    :depends [yarn-install]
                    :task (clojure "-M:sci:demo:dev release browser")}
 
-         write-hash {:doc "Write hash to resources. Intended to be used in a pre-commit hook."
-                     :task hashing/write-hash}
+         write-hash {:doc "Write viewer resource hash to resources. Intended to be used in a pre-commit hook."
+                     :task viewer-resources-hashing/write-viewer-resource-hash}
 
-         refresh-cdn {:doc "Refreshes assets stored on CDN (google storage)"
-                      :task hashing/refresh-cdn}
+         build+upload-viewer-resources {:doc "Refreshes assets stored on CDN (google storage)"
+                                        :task viewer-resources-hashing/build+upload-viewer-resources}
 
          release:js {:doc "Uploads the js release and updates the sha reference."
                      :task (clojure "-T:build upload-to-cas :resource viewer.js")
@@ -60,8 +60,7 @@
                       (shell "git push origin" tag))}
 
          install-git-hooks {:doc "Install git hooks"
-                            :task (when-not (fs/exists? ".git/hooks/pre-commit")
-                                    (fs/copy "dev/pre-commit" ".git/hooks"))}
+                            :task (fs/copy "dev/pre-commit" ".git/hooks" {:replace-existing true})}
 
          -dev {:depends [install-git-hooks watch:cljs copy-viewer-css]}
          dev {:doc "Start app in dev mode, compiles cljs and css"

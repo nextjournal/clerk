@@ -1,4 +1,4 @@
 #!/bin/sh
 
 bb write-hash
-git add resources/front-end-hash.txt
+git add resources/viewer-js-hash
