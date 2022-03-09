@@ -124,7 +124,7 @@
        (map (partial str/join "="))
        (str/join "&")))
 
-#_(opts->query {:s 11 :num 42})
+#_(opts->query {:s 12 :num 42})
 
 (defn unreadable-edn [edn]
   (html [:span.inspected-value.whitespace-nowrap.cmt-default edn]))
