@@ -87,6 +87,7 @@ jobs:
           path: |
             ~/.m2
             ~/.gitlibs
+            ~/.deps.clj
           key: ${{ runner.os }}-maven-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-maven-
