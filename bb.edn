@@ -8,10 +8,13 @@
                     [babashka.deps :as deps]
                     [babashka.fs :as fs]
                     [babashka.process :as p])
-         :init (defn viewer-css-path []
-                 (let [cp (str/trim (with-out-str (deps/clojure ["-A:sci" "-Spath"])))]
-                   (str/trim (:out (shell {:out :string} (str "bb -cp " cp " -e '(println (.getPath (clojure.java.io/resource \"css/viewer.css\")))'"))))))
+         :init (do
+                 (defn viewer-css-path []
+                   (let [cp (str/trim (with-out-str (deps/clojure ["-A:sci" "-Spath"])))]
+                     (str/trim (:out (shell {:out :string} (str "bb -cp " cp " -e '(println (.getPath (clojure.java.io/resource \"css/viewer.css\")))'"))))))
 
+                 (defn latest-sha []
+                   (str/trim (:out (p/sh "git rev-parse HEAD")))))
 
          print-viewer-css {:task (println (viewer-css-path))}
          copy-viewer-css {:task (fs/copy (viewer-css-path) "resources/stylesheets/viewer.css" #{:replace-existing})}
@@ -40,6 +43,13 @@
          build:static-app {:doc "Builds a static app with default notebooks"
                            :depends [release:js]
                            :task (clojure "-X:demo nextjournal.clerk/build-static-app!")}
+
+         test:static-app {:doc "Run UI tests for current SHA. Provide SHA as command line arg."
+                          :task (do
+                                  (shell {:dir "ui_tests"} "yarn install")
+                                  (apply shell {:dir "ui_tests"}
+                                         "yarn nbb -m playwright-tests"
+                                         (or *command-line-args* [(latest-sha)])))}
 
          release:jar {:doc "Builds the jar"
                       :task (let [rev-count (-> (p/process ["git" "rev-list" "HEAD" "--count"] {:out :string}) p/check :out str/trim Integer/parseInt)

@@ -11,7 +11,7 @@
   (when-let [prop (System/getProperty "clerk.disable_cache")]
     (not= "false" prop)))
 
-(def gs-url-prefix "https://storage.googleapis.com/nextjournal-cas-eu/data")
+(def gs-url-prefix "https://storage.googleapis.com/nextjournal-cas-eu")
 (def lookup-hash (str/trim (slurp (io/resource "viewer-js-hash"))))
 (def lookup-url (str gs-url-prefix "/lookup/" lookup-hash))
 
@@ -21,9 +21,9 @@
       (read-string prop))))
 
 (defonce !resource->url
+  ;; contains asset manifest in the form:
+  ;; {"/js/viewer.js" "https://..."}
   (atom (or resource-manifest-from-props
-            ;; assume that CI will have published a CAS-link under this lookup,
-            ;; prior to hitting this code-path
             (edn/read-string (slurp lookup-url)))))
 
 #_(swap! !resource->url assoc "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvAV62HzsvhcsXEkHP33uj4cV9UvdDz7DU9qLeVRCfEP9kWLFAzaMKL77trdx898DzcVyDVejdfxvxj5XB84UpWvQ")

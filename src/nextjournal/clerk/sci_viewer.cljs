@@ -10,8 +10,8 @@
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.sci-configs.js-interop :as sci-configs.js-interop]
             [nextjournal.sci-configs.reagent :as sci-configs.reagent]
-            [nextjournal.ui.components.icon :as icon]
             [nextjournal.ui.components.d3-require :as d3-require]
+            [nextjournal.ui.components.icon :as icon]
             [nextjournal.view.context :as view-context]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
@@ -32,7 +32,6 @@
    :prefix-color (if selected? "white-50" "black-30")
    :label-color (if selected? "white-90" "black-60")
    :badge-background-color (if selected? "bg-white-20" "bg-black-10")})
-
 
 (declare inspect)
 
@@ -125,7 +124,7 @@
        (map (partial str/join "="))
        (str/join "&")))
 
-#_(opts->query {:s 10 :num 42})
+#_(opts->query {:s 12 :num 42})
 
 (defn unreadable-edn [edn]
   (html [:span.inspected-value.whitespace-nowrap.cmt-default edn]))
@@ -1022,7 +1021,6 @@ black")}]))}
                    :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace}
                                       sci-configs.js-interop/namespaces
                                       sci-configs.reagent/namespaces)})))
-
 
 (defn eval-form [f]
   (sci/eval-form @!sci-ctx f))

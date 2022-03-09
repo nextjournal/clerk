@@ -39,7 +39,8 @@
            :test {:extra-deps {nubank/matcher-combinators {:mvn/version "3.3.1"}
                                io.github.cognitect-labs/test-runner {:git/tag "v0.5.0" :git/sha "b3fd0d2"}}
                   :extra-paths ["test"]
-                  :exec-fn cognitect.test-runner.api/test}
+                  :exec-fn cognitect.test-runner.api/test
+                  :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"http://localhost:7778/js/viewer.js\"}"]}
 
            :demo {:extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
                                org.xerial/sqlite-jdbc {:mvn/version "3.34.0"}
