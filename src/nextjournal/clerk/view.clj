@@ -168,7 +168,7 @@
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
-  ([{:as opts :keys [toc?] :or {toc? false}} {:as doc :keys [ns]}]
+  ([{:as opts :keys [toc?] :or {toc? true}} {:as doc :keys [ns]}]
    (-> doc
        (update :blocks #(into [] (mapcat (partial describe-block opts doc)) %))
        (select-keys [:blocks :toc :title])

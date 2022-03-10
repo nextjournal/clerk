@@ -97,13 +97,6 @@
 .page {
   @apply max-w-5xl mx-auto px-12 box-border flex-shrink-0;
 }
-.toc-content {
-  @apply translate-x-[-110%] opacity-0;
-}
-.toc:hover .toc-content,
-.toc.pinned .toc-content {
-  @apply translate-x-0 opacity-100;
-}
 .max-w-prose { @apply max-w-[46rem] !important; }
 .max-w-wide  { @apply max-w-3xl !important; }
 

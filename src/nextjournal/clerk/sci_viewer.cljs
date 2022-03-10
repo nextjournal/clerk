@@ -12,6 +12,8 @@
             [nextjournal.sci-configs.reagent :as sci-configs.reagent]
             [nextjournal.ui.components.d3-require :as d3-require]
             [nextjournal.ui.components.icon :as icon]
+            [nextjournal.ui.components.navbar :as navbar]
+            [nextjournal.ui.components.localstorage :as ls]
             [nextjournal.view.context :as view-context]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
@@ -19,6 +21,7 @@
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
             [nextjournal.viewer.vega-lite :as vega-lite]
+            [lambdaisland.uri.normalize :as uri.normalize]
             [re-frame.context :as rf]
             [react :as react]
             [reagent.core :as r]
@@ -72,35 +75,53 @@
                        (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) " ")] " ")))
                  (keys x')) "}"])))
 
-(defn render-toc [{:keys [toc]}]
-  ;; TODO: delegate to n.clerk.viewer
-  (r/with-let [collapsed? (r/atom true)]
-    [:div.viewer-markdown.fixed.top-2.left-2.border.rounded-md.px-4.py-2
-     [:a {:href "#" :on-click #(do (.preventDefault %) (swap! collapsed? not))} [icon/menu]]
-     (when-not @collapsed?
-       (md.transform/->hiccup markdown/default-renderers toc))]))
+(defn toc-items [items]
+  (map (fn [{:keys [content children]}]
+         (let [title (-> content first :text)]
+           (cond->
+             {:path (str "#" (uri.normalize/normalize-fragment title)) :title title}
+             (seq children) (assoc :items (toc-items children)))))
+       items))
 
 (defn notebook [{:as doc xs :blocks :keys [toc]}]
-  (html
-   (into [:div.flex.flex-col.items-center.viewer-notebook
-          (when toc (render-toc doc))]
-         (map (fn [x]
-                (let [viewer (viewer/viewer x)
-                      blob-id (:blob-id (viewer/value x))
-                      prose? (= viewer :markdown)
-                      inner-viewer-name (some-> x viewer/value viewer/viewer :name)]
-                  [:div {:class ["viewer" "overflow-x-auto"
-                                 (when (keyword? viewer) (str "viewer-" (name viewer)))
-                                 (when-not prose? "not-prose")
-                                 (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
-                                 (when (and prose? inner-viewer-name (not= inner-viewer-name :markdown)) "not-prose")
-                                 (case (or (viewer/width x) (case viewer (:code :code-folded) :wide :prose))
-                                   :wide "w-full max-w-wide"
-                                   :full "w-full"
-                                   "w-full max-w-prose px-8")]}
-                   (cond-> [inspect x]
-                     blob-id (with-meta {:key blob-id}))])))
-         xs)))
+  (r/with-let [local-storage-key "clerk-navbar"
+               !state (r/atom {:toc (toc-items (:children toc))
+                               :theme {:slide-over "bg-slate-100 font-sans border-r"
+                                       :pin-toggle "text-[11px] text-slate-500 text-right absolute right-4 top-[10px] cursor-pointer hover:underline z-10"}
+                               :width 220
+                               :local-storage-key local-storage-key
+                               :pinned? (ls/get-item local-storage-key)})]
+    (let [{:keys [pinned? width]} @!state]
+      (html
+        [:div.flex
+         (if pinned?
+           [:div {:style {:width width} :class "h-screen"}]
+           [:div.z-10.fixed.top-3.left-3.text-slate-400.font-sans.text-xs.hover:underline.cursor-pointer.flex.items-center
+            {:on-click #(swap! !state assoc :pinned? true)}
+            [icon/menu {:size 20}]
+            [:span.uppercase.tracking-wider.ml-1.font-bold
+             {:class "text-[12px]"} "ToC"]])
+         [:div
+          (when pinned? {:style {:width width} :class "fixed top-0 left-0 h-screen z-10"})
+          [navbar/pinnable-slide-over !state [navbar/navbar !state]]]
+         (into [:div.flex.flex-col.items-center.viewer-notebook.flex-auto]
+               (map (fn [x]
+                      (let [viewer (viewer/viewer x)
+                            blob-id (:blob-id (viewer/value x))
+                            prose? (= viewer :markdown)
+                            inner-viewer-name (some-> x viewer/value viewer/viewer :name)]
+                        [:div {:class ["viewer" "overflow-x-auto"
+                                       (when (keyword? viewer) (str "viewer-" (name viewer)))
+                                       (when-not prose? "not-prose")
+                                       (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
+                                       (when (and prose? inner-viewer-name (not= inner-viewer-name :markdown)) "not-prose")
+                                       (case (or (viewer/width x) (case viewer (:code :code-folded) :wide :prose))
+                                         :wide "w-full max-w-wide"
+                                         :full "w-full"
+                                         "w-full max-w-prose px-8")]}
+                         (cond-> [inspect x]
+                                 blob-id (with-meta {:key blob-id}))])))
+               xs)]))))
 
 (defonce !edamame-opts
   (atom {:all true
