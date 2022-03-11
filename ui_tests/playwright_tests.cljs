@@ -4,8 +4,8 @@
             ["playwright$default" :refer [chromium]]
             [clojure.string :as str]
             [clojure.test :as t :refer [deftest is async use-fixtures]]
-            [promesa.core :as p]
-            [nbb.core :refer [await]]))
+            [nbb.core :refer [await]]
+            [promesa.core :as p]))
 
 (def sha (or (first *command-line-args*)
              (str (cp/execSync "git rev-parse HEAD"))))
@@ -108,13 +108,12 @@
   (t/test-vars (get-test-vars)))
 
 (comment
-  (launch-browser)
+  (await (launch-browser))
   (def p (await (.newPage @browser)))
   (.on p "console" (fn [msg]
                      (when (= "error" (.type msg))
                        (swap! console-errors conj msg))))
   (await (goto p "https://snapshots.nextjournal.com/clerk/build/549f9956870c69ef0951ca82d55a8e5ec2e49ed4/index.html"))
-  (def loc (await (.locator p "text=/.*\\.clj$/i")))
-  (def elt (await (.elementHandles loc #js {:timeout 1000})))
-  (first elt)
+  (def loc (.first (.locator p "text=Clerk")))
+  (await (.isVisible loc #js {:timeout 1000}))
   )
