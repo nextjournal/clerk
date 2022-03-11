@@ -12,7 +12,7 @@
                                     {:var-name (symbol var-from-def) :value @@var-from-def})
                     :render-fn '(fn [{:keys [var-name value]}]
                                   (v/html [:input {:type :range
-                                                   :initial-value value
+                                                   :value value
                                                    :on-change #(v/clerk-eval `(reset! ~var-name (Integer/parseInt ~(.. % -target -value))))}]))}]}
 (defonce slider-state (atom 42))
 
@@ -24,7 +24,7 @@
                                   {:var-name (symbol var-from-def) :value @@var-from-def})
                   :render-fn '(fn [{:as x :keys [var-name value]}]
                                 (v/html [:input {:type :range
-                                                 :initial-value value
+                                                 :value value
                                                  :on-change #(v/clerk-eval `(reset! ~var-name (Integer/parseInt ~(.. % -target -value))))}]))}}
 (defonce slider-2-state (atom 42))
 
@@ -43,7 +43,7 @@
                   :render-fn '(fn [{:keys [var-name value]}]
                                 (v/html [:input {:type :text
                                                  :placeholder "Schreib mal"
-                                                 :initial-value value
+                                                 :value value
                                                  :class "px-3 py-3 placeholder-blueGray-300 text-blueGray-600 relative bg-white bg-white rounded text-sm border border-blueGray-300 outline-none focus:outline-none focus:ring w-full"
                                                  :on-input #(v/clerk-eval `(reset! ~var-name ~(.. % -target -value)))}]))}}
 (defonce text-state (atom ""))
