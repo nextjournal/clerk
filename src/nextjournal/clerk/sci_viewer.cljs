@@ -92,12 +92,15 @@
 (defn notebook [{:as doc xs :blocks :keys [toc]}]
   (r/with-let [local-storage-key "clerk-navbar"
                !state (r/atom {:toc (toc-items (:children toc))
+                               :md-toc toc
                                :theme {:slide-over "bg-slate-100 font-sans border-r"
                                        :pin-toggle "text-[11px] text-slate-500 text-right absolute right-4 top-[10px] cursor-pointer hover:underline z-10"}
                                :width 220
                                :local-storage-key local-storage-key
                                :pinned? (ls/get-item local-storage-key)})]
-    (let [{:keys [pinned? width]} @!state]
+    (let [{:keys [md-toc pinned? width]} @!state]
+      (when-not (= md-toc toc)
+        (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc))
       (html
         [:div.flex
          (if pinned?
