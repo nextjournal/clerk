@@ -76,12 +76,18 @@
                  (keys x')) "}"])))
 
 (defn toc-items [items]
-  (map (fn [{:keys [content children]}]
-         (let [title (-> content first :text)]
-           (cond->
-             {:path (str "#" (uri.normalize/normalize-fragment title)) :title title}
-             (seq children) (assoc :items (toc-items children)))))
-       items))
+  (reduce
+    (fn [acc {:as item :keys [content children]}]
+      (if content
+        (let [title (-> content first :text)]
+          (->> {:title title
+                :path (str "#" (uri.normalize/normalize-fragment title))
+                :items (toc-items children)}
+               (conj acc)
+               vec))
+        (toc-items (:children item))))
+    []
+    items))
 
 (defn notebook [{:as doc xs :blocks :keys [toc]}]
   (r/with-let [local-storage-key "clerk-navbar"
