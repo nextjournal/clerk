@@ -332,12 +332,6 @@
 /* Devdocs */
 /* --------------------------------------------------------------- */
 
-.collapsed-sidebar:not(.mobile-sidebar) .sidebar-content {
-  @apply transition-all duration-200 ml-[-360px] opacity-0;
-}
-.collapsed-sidebar:hover:not(.mobile-sidebar) .sidebar-content {
-  @apply ml-0 opacity-100;
-}
 .logo, .logo-white {
   @apply block indent-[-999em];
   background: url(/images/nextjournal-logo.svg) center center no-repeat;

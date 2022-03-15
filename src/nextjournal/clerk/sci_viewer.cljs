@@ -97,8 +97,9 @@
                                        :pin-toggle "text-[11px] text-slate-500 text-right absolute right-4 top-[10px] cursor-pointer hover:underline z-10"}
                                :width 220
                                :local-storage-key local-storage-key
-                               :pinned? (ls/get-item local-storage-key)})]
-    (let [{:keys [md-toc pinned? width]} @!state]
+                               :pinned? (ls/get-item local-storage-key)})
+               ref-fn #(when % (swap! !state assoc :scroll-el %))]
+    (let [{:keys [md-toc]} @!state]
       (when-not (= md-toc toc)
         (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc))
       (html
@@ -111,6 +112,7 @@
           {:class "z-10 fixed top-3 left-3 text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center"}]
          [navbar/pinnable-slide-over !state [navbar/navbar !state]]
          [:div.flex-auto.h-screen.overflow-y-auto
+          {:ref ref-fn}
           (into [:div.flex.flex-col.items-center.viewer-notebook.flex-auto]
                 (map (fn [x]
                        (let [viewer (viewer/viewer x)
