@@ -152,13 +152,9 @@
 (declare describe with-viewer)
 
 (defn inspect-leafs [opts x]
-  (cond (and (vector? x) (every? #(and (vector? %) (= (->viewer-fn 'v/inspect) (first %))) x))
-        (into [(->viewer-fn 'v/inspect-children)] [(mapv second x)])
-
-        (wrapped-value? x)
-        [(->viewer-fn 'v/inspect) (describe x opts)]
-
-        :else x))
+  (if (wrapped-value? x)
+    [(->viewer-fn 'v/inspect) (describe x opts)]
+    x))
 
 (defn fetch-all [opts xs]
   (w/postwalk (partial inspect-leafs opts) xs))

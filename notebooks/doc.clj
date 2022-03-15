@@ -26,8 +26,9 @@
                 (when-let [doc (-> ns meta :doc)]
                   [:div.mt-4.leading-normal.viewer-markdown.prose
                    (clerk/md doc)])
-                (map (comp var-meta->doc meta val)
-                     (into (sorted-map) (-> ns ns-publics)))]]))
+                (into [:<>]
+                      (map (comp var-meta->doc meta val))
+                      (into (sorted-map) (-> ns ns-publics)))]]))
 
 (defn hello "What a _wonderful_ world." []
   :what?)
@@ -39,9 +40,9 @@
 
 (clerk/html (var-meta->doc (meta #'hello-again)))
 
-(def ns-viewer {:pred #(instance? clojure.lang.Namespace %)
+(def ns-doc-viewer {:pred #(instance? clojure.lang.Namespace %)
                 :transform-fn namespace->doc})
 
-(clerk/with-viewer ns-viewer (find-ns 'nextjournal.clerk))
+(clerk/with-viewer ns-doc-viewer (find-ns 'nextjournal.clerk))
 
 #_(clerk/serve! {})
