@@ -77,7 +77,12 @@
 (defn hash-assets []
   (let [assets ["https://cdn.tailwindcss.com/3.0.23?plugins=typography@0.5.2"
                 "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"
-                "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap"]
+                "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+                "https://fonts.gstatic.com/s/firamono/v12/N0bX2SlFPv1weGeLZDtQIQ.ttf"
+                "https://fonts.gstatic.com/s/ptserif/v16/EJRVQgYoZZY2vCFuvDFR.ttf"
+                "https://fonts.gstatic.com/s/firamono/v12/N0bS2SlFPv1weGeLZDtondv3mQ.ttf"
+                "https://fonts.gstatic.com/s/firasanscondensed/v9/wEOsEADFm8hSaQTFG18FErVhsC9x-tarWU3IiMM.ttf"
+                "https://fonts.gstatic.com/s/ptserif/v16/EJRSQgYoZZY2vCFuvAnt65qV.ttf"]
         manifest {:asset-map (into {} (for [a assets]
                                        (let [f (if (str/starts-with? a "http")
                                                  (let [b (:body (curl/get a))
