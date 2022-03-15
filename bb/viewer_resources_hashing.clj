@@ -78,19 +78,19 @@
   (let [assets ["https://cdn.tailwindcss.com/3.0.23?plugins=typography@0.5.2"
                 "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"
                 "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap"]
-        manifest (into {} (for [a assets]
-                            (let [f (if (str/starts-with? a "http")
-                                      (let [b (:body (curl/get a))
-                                            f (fs/file (fs/create-temp-file))]
-                                        (spit f b)
-                                        f)
-                                      a)
-                                  hash (sha512-ize f)
-                                  gs-dest (str gs-bucket "/data/" hash)
-                                  gs-url (cas-link hash)]
-                              (println "Copying" a "to" gs-dest)
-                              (djv/gs-copy f gs-dest)
-                              [a gs-url])))]
+        manifest {:asset-map (into {} (for [a assets]
+                                       (let [f (if (str/starts-with? a "http")
+                                                 (let [b (:body (curl/get a))
+                                                       f (fs/file (fs/create-temp-file))]
+                                                   (spit f b)
+                                                   f)
+                                                 a)
+                                             hash (sha512-ize f)
+                                             gs-dest (str gs-bucket "/data/" hash)
+                                             gs-url (cas-link hash)]
+                                         (println "Copying" a "to" gs-dest)
+                                         (djv/gs-copy f gs-dest)
+                                         [a gs-url])))}]
     ((requiring-resolve 'clojure.pprint/pprint) manifest)
     (spit "resources/asset_manifest.edn"
           manifest)))
