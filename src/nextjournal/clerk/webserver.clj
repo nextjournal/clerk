@@ -1,11 +1,12 @@
 (ns nextjournal.clerk.webserver
-  (:require [clojure.string :as str]
+  (:require [clojure.edn :as edn]
             [clojure.pprint :as pprint]
-            [clojure.edn :as edn]
-            [org.httpkit.server :as httpkit]
+            [clojure.string :as str]
+            [lambdaisland.uri :as uri]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
-            [lambdaisland.uri :as uri]))
+            [org.httpkit.server :as httpkit]
+            [clojure.java.io :as io]))
 
 (def help-doc
   {:blocks [{:type :markdown :text "Use `nextjournal.clerk/show!` to make your notebook appear…"}]})
@@ -53,6 +54,9 @@
         {:body (view/->edn desc)}))
     {:status 404}))
 
+(defn serve-cached-file [{:as _req :keys [uri]}]
+  {:body (io/file ".clerk/.cache/assets" (str/replace uri "/cached/" ""))})
+
 (defn extract-blob-opts [{:as _req :keys [uri query-string]}]
   {:blob-id (str/replace uri "/_blob/" "")
    :fetch-opts (get-fetch-opts query-string)})
@@ -67,7 +71,8 @@
                                                          (eval '(nextjournal.clerk/recompute!))))})
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
-        "_blob" (serve-blob @!doc (extract-blob-opts req))
+        "cached" (serve-cached-file req)
+        "_bblob" (serve-blob @!doc (extract-blob-opts req))
         "_ws" {:status 200 :body "upgrading..."}
         {:status  200
          :headers {"Content-Type" "text/html"}
