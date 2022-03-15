@@ -96,7 +96,7 @@
 (defn- cache! [digest-file var-value]
   (try
     (spit digest-file (hash+store-in-cas! var-value))
-    (catch Exception e
+    (catch Exception _e
       #_(prn :freeze-error e)
       nil)))
 
@@ -339,7 +339,7 @@
   (when (seq watch-paths)
     (println "Starting new watcher for paths" (pr-str watch-paths))
     (reset! !watcher {:paths watch-paths
-                      :watcher (apply beholder/watch #(file-event %) watch-paths)}))
+                      :watcher (apply beholder/watch file-event watch-paths)}))
   (when browse?
     (browse/browse-url (str "http://localhost:" port)))
   config)

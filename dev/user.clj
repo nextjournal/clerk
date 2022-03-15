@@ -36,5 +36,6 @@
 
   (clerk/show! "notebooks/sicmutils.clj")
 
+  (clerk/show! "notebooks/dice.clj")
   (clerk/clear-cache!)
   )
