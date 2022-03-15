@@ -105,7 +105,14 @@
         manifest (into {} (for [a assets]
                             (store-asset a)))
         font-css (reduce (fn [acc l]
-                           (str/replace acc l (get manifest l))) font-css font-links)
+                           (str/replace acc l (let [remote (get manifest l)
+                                                    hash (last (str/split remote #"/"))
+                                                    cached (str/replace remote
+                                                                        (str base-url "/data")
+                                                                        "/cached")]
+                                                (spit (str ".clerk/.cache/" hash)
+                                                      (:body (curl/get remote)))
+                                                cached))) font-css font-links)
         [font-css-link gurl] (store-asset font-css-link font-css)
         manifest (assoc manifest font-css-link gurl)]
     ((requiring-resolve 'clojure.pprint/pprint) manifest)
