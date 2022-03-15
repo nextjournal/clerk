@@ -1,11 +1,32 @@
-^{:nextjournal.clerk/visibility #{:hide-ns}}
+;; # 📓 Doc Browser
+^{:nextjournal.clerk/visibility #{:hide-ns :hide}}
 (ns ^:nextjournal.clerk/no-cache doc
-  "My _example_ ns docstring."
   (:require [clojure.string :as str]
             [nextjournal.clerk :as clerk]))
 
-#_(filter #(str/starts-with? % "nextjournal.clerk") (sort (map str (all-ns))))
+^{::clerk/viewer clerk/hide-result}
+(def text-input
+  {:pred ::clerk/var-from-def
+   :fetch-fn (fn [_ x] x)
+   :transform-fn (fn [{::clerk/keys [var-from-def]}]
+                   {:var-name (symbol var-from-def) :value @@var-from-def})
+   :render-fn '(fn [{:keys [var-name value]}]
+                 (v/html [:input {:type :text
+                                  :autocorrect "off"
+                                  :spellcheck "false"
+                                  :placeholder "⌨"
+                                  :default-value value
+                                  :class "px-3 py-3 placeholder-blueGray-300 text-blueGray-600 relative bg-white bg-white rounded text-sm border border-blueGray-300 outline-none focus:outline-none focus:ring w-full"
+                                  :on-input #(v/clerk-eval `(reset! ~var-name ~(.. % -target -value)))}]))})
 
+^{::clerk/viewer text-input}
+(defonce !ns-query (atom "nextjournal.clerk"))
+#_(reset! !ns-query "nextjournal.clerk")
+
+(def ns-matches
+  (filter #(str/starts-with? % @!ns-query) (sort (map str (all-ns)))))
+
+^{::clerk/viewer clerk/hide-result}
 (defn var->doc-viewer
   "Takes a clojure `var` and returns a Clerk viewer to display its documentation."
   [var]
@@ -17,11 +38,13 @@
       (when doc
         (clerk/md doc))])))
 
-(var->doc-viewer #'var->doc-viewer)
+#_(var->doc-viewer #'var->doc-viewer)
 
+^{::clerk/viewer clerk/hide-result}
 (def var-doc-viewer {:pred ::clerk/var-from-def
                      :transform-fn (comp var->doc-viewer ::clerk/var-from-def)})
 
+^{::clerk/viewer clerk/hide-result}
 (defn namespace->doc-viewer [ns]
   (clerk/html
    [:div.flex-auto.overflow-y-auto.p-6.text-sm
@@ -34,9 +57,9 @@
            (map (comp :nextjournal/value var->doc-viewer val))
            (into (sorted-map) (-> ns ns-publics)))]]))
 
+^{::clerk/viewer clerk/hide-result}
 (def ns-doc-viewer {:pred #(instance? clojure.lang.Namespace %)
                     :transform-fn namespace->doc-viewer})
 
-(clerk/with-viewer ns-doc-viewer (find-ns 'nextjournal.clerk))
-
-#_(clerk/serve! {})
+(when-let [ns-name (first ns-matches)]
+  (clerk/with-viewer ns-doc-viewer (find-ns (symbol ns-name))))
