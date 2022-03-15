@@ -11,18 +11,22 @@
    :transform-fn (fn [{::clerk/keys [var-from-def]}]
                    {:var-name (symbol var-from-def) :value @@var-from-def})
    :render-fn '(fn [{:keys [var-name value]}]
-                 (v/html [:input {:type :text
-                                  :autocorrect "off"
-                                  :spellcheck "false"
-                                  :placeholder "⌨"
-                                  :default-value value
-                                  :class "px-3 py-3 placeholder-blueGray-300 text-blueGray-600 relative bg-white bg-white rounded text-sm border border-blueGray-300 outline-none focus:outline-none focus:ring w-full"
-                                  :on-input #(v/clerk-eval `(reset! ~var-name ~(.. % -target -value)))}]))})
+                 (v/html [:div
+                          [:input {:type :text
+                                   :autocorrect "off"
+                                   :spellcheck "false"
+                                   :placeholder "⌨"
+                                   :value value
+                                   :class "px-3 py-3 placeholder-blueGray-300 text-blueGray-600 relative bg-white bg-white rounded text-sm border border-blueGray-300 outline-none focus:outline-none focus:ring w-full"
+                                   :on-input #(v/clerk-eval `(reset! ~var-name ~(.. % -target -value)))}]
+                          [:a.absolute.text-4xl {:on-click #(v/clerk-eval `(reset! ~var-name ~(str/join "." (drop-last (str/split value #"\.")))))} "↫"]]))})
 
 ^{::clerk/viewer text-input}
 (defonce !ns-query (atom "nextjournal.clerk"))
 #_(reset! !ns-query "nextjournal.clerk")
 
+^{::clerk/viewers [{:pred seq? :render-fn '#(v/html (into [:div.flex-col.flex] (v/inspect-children %2) %1)) :fetch-opts {:n 20}}
+                   {:pred string? :render-fn '(fn [ns] (v/html [:a.text-xs.font-mono.cursor-pointer {:on-click #(v/clerk-eval `(reset! !ns-query ~ns))} ns]))}]}
 (def ns-matches
   (filter #(str/starts-with? % @!ns-query) (sort (map str (all-ns)))))
 
