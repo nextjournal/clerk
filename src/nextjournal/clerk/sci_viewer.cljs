@@ -103,34 +103,32 @@
         (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc))
       (html
         [:div.flex
-         (if pinned?
-           [:div {:style {:width width} :class "h-screen"}]
-           [:div.z-10.fixed.top-3.left-3.text-slate-400.font-sans.text-xs.hover:underline.cursor-pointer.flex.items-center
-            {:on-click #(swap! !state assoc :pinned? true)}
-            [icon/menu {:size 20}]
-            [:span.uppercase.tracking-wider.ml-1.font-bold
-             {:class "text-[12px]"} "ToC"]])
-         [:div
-          (when pinned? {:style {:width width} :class "fixed top-0 left-0 h-screen z-10"})
-          [navbar/pinnable-slide-over !state [navbar/navbar !state]]]
-         (into [:div.flex.flex-col.items-center.viewer-notebook.flex-auto]
-               (map (fn [x]
-                      (let [viewer (viewer/viewer x)
-                            blob-id (:blob-id (viewer/value x))
-                            prose? (= viewer :markdown)
-                            inner-viewer-name (some-> x viewer/value viewer/viewer :name)]
-                        [:div {:class ["viewer" "overflow-x-auto"
-                                       (when (keyword? viewer) (str "viewer-" (name viewer)))
-                                       (when-not prose? "not-prose")
-                                       (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
-                                       (when (and prose? inner-viewer-name (not= inner-viewer-name :markdown)) "not-prose")
-                                       (case (or (viewer/width x) (case viewer (:code :code-folded) :wide :prose))
-                                         :wide "w-full max-w-wide"
-                                         :full "w-full"
-                                         "w-full max-w-prose px-8")]}
-                         (cond-> [inspect x]
-                                 blob-id (with-meta {:key blob-id}))])))
-               xs)]))))
+         [navbar/pin-button !state
+          [:<>
+           [icon/menu {:size 20}]
+           [:span.uppercase.tracking-wider.ml-1.font-bold
+            {:class "text-[12px]"} "ToC"]]
+          {:class "z-10 fixed top-3 left-3 text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center"}]
+         [navbar/pinnable-slide-over !state [navbar/navbar !state]]
+         [:div.flex-auto.h-screen.overflow-y-auto
+          (into [:div.flex.flex-col.items-center.viewer-notebook.flex-auto]
+                (map (fn [x]
+                       (let [viewer (viewer/viewer x)
+                             blob-id (:blob-id (viewer/value x))
+                             prose? (= viewer :markdown)
+                             inner-viewer-name (some-> x viewer/value viewer/viewer :name)]
+                         [:div {:class ["viewer" "overflow-x-auto"
+                                        (when (keyword? viewer) (str "viewer-" (name viewer)))
+                                        (when-not prose? "not-prose")
+                                        (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
+                                        (when (and prose? inner-viewer-name (not= inner-viewer-name :markdown)) "not-prose")
+                                        (case (or (viewer/width x) (case viewer (:code :code-folded) :wide :prose))
+                                          :wide "w-full max-w-wide"
+                                          :full "w-full"
+                                          "w-full max-w-prose px-8")]}
+                          (cond-> [inspect x]
+                                  blob-id (with-meta {:key blob-id}))])))
+                xs)]]))))
 
 (defonce !edamame-opts
   (atom {:all true
