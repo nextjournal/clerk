@@ -55,7 +55,8 @@
     {:status 404}))
 
 (defn serve-cached-file [{:as _req :keys [uri]}]
-  {:body (io/file ".clerk/.cache/assets" (str/replace uri "/cached/" ""))})
+  {:body (io/file ".clerk/.cache/assets" (str/replace uri "/cached/" ""))
+   :headers {"Access-Control-Allow-Origin" "*"}})
 
 (defn extract-blob-opts [{:as _req :keys [uri query-string]}]
   {:blob-id (str/replace uri "/_blob/" "")
@@ -75,7 +76,8 @@
         "_bblob" (serve-blob @!doc (extract-blob-opts req))
         "_ws" {:status 200 :body "upgrading..."}
         {:status  200
-         :headers {"Content-Type" "text/html"}
+         :headers {"Content-Type" "text/html"
+                   "Access-Control-Allow-Origin" "*"}
          :body    (view/doc->html @!doc @!error)})
       (catch Throwable e
         {:status  500
