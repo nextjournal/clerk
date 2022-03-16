@@ -11,22 +11,28 @@
    :transform-fn (fn [{::clerk/keys [var-from-def]}]
                    {:var-name (symbol var-from-def) :value @@var-from-def})
    :render-fn '(fn [{:keys [var-name value]}]
-                 (v/html [:div
+                 (v/html [:div.my-1.relative
                           [:input {:type :text
                                    :autocorrect "off"
                                    :spellcheck "false"
-                                   :placeholder "⌨"
+                                   :placeholder "Filter namespaces…"
                                    :value value
-                                   :class "px-3 py-3 placeholder-blueGray-300 text-blueGray-600 relative bg-white bg-white rounded text-sm border border-blueGray-300 outline-none focus:outline-none focus:ring w-full"
+                                   :class "px-3 py-2 relative bg-white bg-white rounded text-base font-sans border border-slate-200 shadow-inner outline-none focus:outline-none focus:ring w-full"
                                    :on-input #(v/clerk-eval `(reset! ~var-name ~(.. % -target -value)))}]
-                          [:a.absolute.text-4xl {:on-click #(v/clerk-eval `(reset! ~var-name ~(str/join "." (drop-last (str/split value #"\.")))))} "↫"]]))})
+                          [:button.absolute.right-2.text-xl.cursor-pointer
+                           {:class "top-1/2 -translate-y-1/2"
+                            :on-click #(v/clerk-eval `(reset! ~var-name ~(str/join "." (drop-last (str/split value #"\.")))))} "⏮"]]))})
 
 ^{::clerk/viewer text-input}
 (defonce !ns-query (atom "nextjournal.clerk"))
 #_(reset! !ns-query "nextjournal.clerk")
 
-^{::clerk/viewers [{:pred seq? :render-fn '#(v/html (into [:div.flex-col.flex] (v/inspect-children %2) %1)) :fetch-opts {:n 20}}
-                   {:pred string? :render-fn '(fn [ns] (v/html [:a.text-xs.font-mono.cursor-pointer {:on-click #(v/clerk-eval `(reset! !ns-query ~ns))} ns]))}]}
+^{::clerk/viewers [{:pred seq?
+                    :render-fn '#(v/html (into [:div.border.rounded-md.bg-white.shadow.flex.flex-col.mb-1]
+                                               (v/inspect-children %2) %1)) :fetch-opts {:n 20}}
+                   {:pred string?
+                    :render-fn '(fn [ns] (v/html [:button.text-xs.font-medium.font-sans.cursor-pointer.px-3.py-2.hover:bg-blue-100.text-slate-700.text-left
+                                                  {:on-click #(v/clerk-eval `(reset! !ns-query ~ns))} ns]))}]}
 (def ns-matches
   (filter #(str/starts-with? % @!ns-query) (sort (map str (all-ns)))))
 
@@ -54,7 +60,7 @@
 ^{::clerk/viewer clerk/hide-result}
 (defn namespace->doc-viewer [ns]
   (clerk/html
-    [:div.text-sm
+    [:div.text-sm.mt-6
      [:h1 {:style {:margin 0}} (ns-name ns)]
      (when-let [doc (-> ns meta :doc)]
        [:div.mt-4.leading-normal.viewer-markdown.prose
