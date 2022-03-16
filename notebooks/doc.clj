@@ -36,11 +36,14 @@
   [var]
   (let [{:keys [doc name arglists]} (meta var)]
     (clerk/html
-     [:div.border-t-2.t-6.pt-3
-      [:h2.text-lg name]
-      (clerk/code (str/join "\n" (mapv (comp pr-str #(concat [name] %)) arglists)))
+     [:div.border-t.border-slate-200.pt-6.mt-6
+      [:h2 {:style {:margin 0}} name]
+      (when (seq arglists)
+        [:div.pt-4
+         (clerk/code (str/join "\n" (mapv (comp pr-str #(concat [name] %)) arglists)))])
       (when doc
-        (clerk/md doc))])))
+        [:div.mt-4.viewer-markdown.prose
+         (clerk/md doc)])])))
 
 #_(var->doc-viewer #'var->doc-viewer)
 
@@ -51,15 +54,14 @@
 ^{::clerk/viewer clerk/hide-result}
 (defn namespace->doc-viewer [ns]
   (clerk/html
-   [:div.flex-auto.overflow-y-auto.p-6.text-sm
-    [:div.max-w-6xl.mx-auto
-     [:h1.text-2xl (ns-name ns)]
+    [:div.text-sm
+     [:h1 {:style {:margin 0}} (ns-name ns)]
      (when-let [doc (-> ns meta :doc)]
        [:div.mt-4.leading-normal.viewer-markdown.prose
         (clerk/md doc)])
      (into [:<>]
            (map (comp :nextjournal/value var->doc-viewer val))
-           (into (sorted-map) (-> ns ns-publics)))]]))
+           (into (sorted-map) (-> ns ns-publics)))]))
 
 ^{::clerk/viewer clerk/hide-result}
 (def ns-doc-viewer {:pred #(instance? clojure.lang.Namespace %)
