@@ -235,6 +235,7 @@
     prose-headings:mb-6
     prose-th:mb-0
     prose-img:mb-0
+    prose-code:font-medium prose-code:bg-slate-100
     max-w-none;
 }
 .viewer-markdown li > p {
