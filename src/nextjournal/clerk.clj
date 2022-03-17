@@ -372,6 +372,7 @@
          "viewer_api"
          "viewer_api_meta"
          "viewer_d3_require"
+         "viewers_nested"
          "viewer_normalization"
          "viewers/html"
          "viewers/image"
