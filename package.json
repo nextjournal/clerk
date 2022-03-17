@@ -17,6 +17,7 @@
     "@codemirror/view": "0.18.19",
     "d3-require": "^1.2.4",
     "emoji-regex": "^10.0.0",
+    "framer-motion": "^6.2.8",
     "katex": "^0.12.0",
     "lezer-clojure": "0.1.10",
     "markdown-it": "12.3.2",

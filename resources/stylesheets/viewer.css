@@ -97,13 +97,6 @@
 .page {
   @apply max-w-5xl mx-auto px-12 box-border flex-shrink-0;
 }
-.toc-content {
-  @apply translate-x-[-110%] opacity-0;
-}
-.toc:hover .toc-content,
-.toc.pinned .toc-content {
-  @apply translate-x-0 opacity-100;
-}
 .max-w-prose { @apply max-w-[46rem] !important; }
 .max-w-wide  { @apply max-w-3xl !important; }
 
@@ -340,12 +333,6 @@
 /* Devdocs */
 /* --------------------------------------------------------------- */
 
-.collapsed-sidebar:not(.mobile-sidebar) .sidebar-content {
-  @apply transition-all duration-200 ml-[-360px] opacity-0;
-}
-.collapsed-sidebar:hover:not(.mobile-sidebar) .sidebar-content {
-  @apply ml-0 opacity-100;
-}
 .logo, .logo-white {
   @apply block indent-[-999em];
   background: url(/images/nextjournal-logo.svg) center center no-repeat;
