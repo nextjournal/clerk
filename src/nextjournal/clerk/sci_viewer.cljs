@@ -96,6 +96,7 @@
                                :theme {:slide-over "bg-slate-100 font-sans border-r"
                                        :pin-toggle "text-[11px] text-slate-500 text-right absolute right-4 top-[10px] cursor-pointer hover:underline z-10"}
                                :width 220
+                               :mobile-width 300
                                :local-storage-key local-storage-key
                                :pinned? (ls/get-item local-storage-key)})
                ref-fn #(when % (swap! !state assoc :scroll-el %))]
@@ -109,7 +110,7 @@
            [icon/menu {:size 20}]
            [:span.uppercase.tracking-wider.ml-1.font-bold
             {:class "text-[12px]"} "ToC"]]
-          {:class "z-10 fixed top-3 left-3 text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center"}]
+          {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-3 text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 shadow md:shadow-none"}]
          [navbar/pinnable-slide-over !state [navbar/navbar !state]]
          [:div.flex-auto.h-screen.overflow-y-auto
           {:ref ref-fn}
