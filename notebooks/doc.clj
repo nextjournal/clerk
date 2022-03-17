@@ -4,6 +4,8 @@
   (:require [clojure.string :as str]
             [nextjournal.clerk :as clerk]))
 
+
+
 ^{::clerk/viewer clerk/hide-result}
 (def text-input
   {:pred ::clerk/var-from-def
@@ -34,7 +36,7 @@
                     :render-fn '(fn [ns] (v/html [:button.text-xs.font-medium.font-sans.cursor-pointer.px-3.py-2.hover:bg-blue-100.text-slate-700.text-left
                                                   {:on-click #(v/clerk-eval `(reset! !ns-query ~ns))} ns]))}]}
 (def ns-matches
-  (filter #(str/starts-with? % @!ns-query) (sort (map str (all-ns)))))
+  (filter #(re-find (re-pattern @!ns-query) %) (sort (map str (all-ns)))))
 
 ^{::clerk/viewer clerk/hide-result}
 (defn var->doc-viewer
