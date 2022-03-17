@@ -1,49 +1,57 @@
 ;; # 🤹‍♀️ Interactivity
-^{:nextjournal.clerk/visibility :hide-ns}
-(ns ^:nextjournal.clerk/no-cache interactivity
+^{:nextjournal.clerk/visibility :hide}
+(ns interactivity
   (:require [nextjournal.clerk :as clerk]))
 
+;; Let's try a little Slider using `::clerk/viewers` 🎚
 
-;; Let's try a little Slider 🎚
-^{::clerk/visibility :fold}
-(clerk/with-viewers [{:pred (fn [x] (and (var? x) (instance? clojure.lang.IDeref (deref x))))
-                      :fetch-fn (fn [_ x] x)
-                      :transform-fn (fn [var]
-                                      {:var-name (symbol var) :value @@var})
-                      :render-fn (fn [{:keys [var-name value]}]
-                                   (v/html [:input {:type :range
-                                                    :value value
-                                                    :on-change #(v/clerk-eval
-                                                                 `(do
-                                                                    (reset! ~var-name (Integer/parseInt ~(.. % -target -value)))
-                                                                    (nextjournal.clerk/show! @nextjournal.clerk/!last-file)))}]))}]
-  (or (defonce slider-state (atom 42)) #'slider-state))
 
-#_(ns-unmap *ns* 'slider-state)
+^{::clerk/viewers [{:pred ::clerk/var-from-def
+                    :fetch-fn (fn [_ x] x)
+                    :transform-fn (fn [{::clerk/keys [var-from-def]}]
+                                    {:var-name (symbol var-from-def) :value @@var-from-def})
+                    :render-fn '(fn [{:keys [var-name value]}]
+                                  (v/html [:input {:type :range
+                                                   :initial-value value
+                                                   :on-change #(v/clerk-eval `(reset! ~var-name (Integer/parseInt ~(.. % -target -value))))}]))}]}
+(defonce slider-state (atom 42))
 
 @slider-state
 
-^{::clerk/visibility :fold}
-(clerk/with-viewers [{:pred (fn [x] (and (var? x) (instance? clojure.lang.IDeref (deref x))))
-                      :fetch-fn (fn [_ x] x)
-                      :transform-fn (fn [var]
-                                      {:var-name (symbol var) :value @@var})
-                      :render-fn (fn [{:keys [var-name value]}]
-                                   (v/html [:input {:type :text
-                                                    :placeholder "Schreib mal"
-                                                    :class "px-3 py-3 placeholder-blueGray-300 text-blueGray-600 relative bg-white bg-white rounded text-sm border border-blueGray-300 outline-none focus:outline-none focus:ring w-full"
-                                                    :on-input #(v/clerk-eval
-                                                                `(do
-                                                                   (reset! ~var-name ~(.. % -target -value))
-                                                                   (nextjournal.clerk/show! @nextjournal.clerk/!last-file)))}]))}]
-  (or (defonce text-state (atom "")) #'text-state))
+;; And a second one using `::clerk/viewer` 🎚
+^{::clerk/viewer {:fetch-fn (fn [_ x] x)
+                  :transform-fn (fn [{:as x ::clerk/keys [var-from-def]}]
+                                  {:var-name (symbol var-from-def) :value @@var-from-def})
+                  :render-fn '(fn [{:as x :keys [var-name value]}]
+                                (v/html [:input {:type :range
+                                                 :initial-value value
+                                                 :on-change #(v/clerk-eval `(reset! ~var-name (Integer/parseInt ~(.. % -target -value))))}]))}}
+(defonce slider-2-state (atom 42))
 
-#_ (reset! text-state "")
-#_ (ns-unmap *ns* 'text-state)
+@slider-2-state
+
+;; What's the sum of our two sliders?
+^::clerk/no-cache (+ @slider-state @slider-2-state)
+
+;; And a text box.
+
+^{::clerk/viewer {:pred #(when-let [v (get % ::clerk/var-from-def)]
+                           (and v (instance? clojure.lang.IDeref (deref v))))
+                  :fetch-fn (fn [_ x] x)
+                  :transform-fn (fn [{::clerk/keys [var-from-def]}]
+                                  {:var-name (symbol var-from-def) :value @@var-from-def})
+                  :render-fn '(fn [{:keys [var-name value]}]
+                                (v/html [:input {:type :text
+                                                 :placeholder "Schreib mal"
+                                                 :initial-value value
+                                                 :class "px-3 py-3 placeholder-blueGray-300 text-blueGray-600 relative bg-white bg-white rounded text-sm border border-blueGray-300 outline-none focus:outline-none focus:ring w-full"
+                                                 :on-input #(v/clerk-eval `(reset! ~var-name ~(.. % -target -value)))}]))}}
+(defonce text-state (atom ""))
+
 
 @text-state
 
 ;; ### TODO
 ;; - [x] Fix our defonce handling, indepdendently of interactity
 ;; - [ ] Add built-in viewers to viewers namespace
-;; - [ ] Improve performance
+;; - [x] Improve performance

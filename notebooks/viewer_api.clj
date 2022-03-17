@@ -51,9 +51,17 @@
                             expression-1
                             expression-2)))
 
+;; ### 🔤 Strings
+;; Multi-line strings can be expanded to break on newlines.
+(do "The\npurpose\nof\nvisualization\nis\ninsight,\nnot\npictures.")
+
 ;; ## 🚀 Extensibility
 (clerk/with-viewer '#(v/html [:div "Greetings to " [:strong %] "!"])
   "James Clerk Maxwell")
+
+^{::clerk/viewer {:render-fn '#(v/html [:span "The answer is " % "."])
+                  :transform-fn inc}}
+(do 41)
 
 (clerk/with-viewers [{:pred number? :render-fn '#(v/html [:div.inline-block [(keyword (str "h" %)) (str "Heading " %)]])}]
   [1 2 3 4 5])
@@ -63,7 +71,7 @@
                                                                              :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}]
   (take 10 (repeatedly #(rand-int 2))))
 
-(clerk/with-viewers
+^{::clerk/viewers
   [{:pred #(and (string? %)
                 (re-matches
                  (re-pattern
@@ -74,12 +82,18 @@
                           {:style {:width 16
                                    :height 16
                                    :border "1px solid rgba(0,0,0,.2)"
-                                   :background-color %}}])}]
-  ["#571845"
-   "rgb(144,12,62)"
-   "rgba(199,0,57,1.0)"
-   "hsl(11,100%,60%)"
-   "hsla(46, 97%, 48%, 1.000)"])
+                                   :background-color %}}])}]}
+["#571845"
+ "rgb(144,12,62)"
+ "rgba(199,0,57,1.0)"
+ "hsl(11,100%,60%)"
+ "hsla(46, 97%, 48%, 1.000)"]
 
+
+;; The clerk viewer api also includes `reagent` and `applied-science/js-interop`.
+(clerk/with-viewer '(fn [_]
+                      (reagent/with-let [counter (reagent/atom 0)]
+                        (v/html [:h3.cursor-pointer {:on-click #(swap! counter inc)} "I was clicked " @counter " times."])))
+  nil)
 
 #_(clerk/show! "notebooks/viewer_api.clj")

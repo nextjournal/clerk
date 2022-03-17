@@ -7,7 +7,8 @@
             [clojure.walk :as w]
             [multihash.core :as multihash]
             [multihash.digest :as digest]
-            [taoensso.nippy :as nippy]))
+            [taoensso.nippy :as nippy])
+  (:import (java.util Base64)))
 
 (defn var->data [v]
   (v/wrapped-with-viewer v))
@@ -82,17 +83,18 @@
 
 (defn base64-encode-value [{:as result :nextjournal/keys [content-type]}]
   (update result :nextjournal/value (fn [data] (str "data:" content-type ";base64, "
-                                                    (.encodeToString (java.util.Base64/getEncoder) data)))))
+                                                    (.encodeToString (Base64/getEncoder) data)))))
 
 (defn apply-viewer-unwrapping-var-from-def [{:as result :nextjournal/keys [value viewer]}]
   (if viewer
-    (let [value (if (get value :nextjournal.clerk/var-from-def)
+    (let [{:keys [transform-fn]} (and (map? viewer) viewer)
+          value (if (and (not transform-fn) (get value :nextjournal.clerk/var-from-def))
                   (-> value :nextjournal.clerk/var-from-def deref)
                   value)]
-      (assoc result :nextjournal/value (if (var? viewer)
+      (assoc result :nextjournal/value (if (or (var? viewer) (fn? viewer))
                                          (viewer value)
                                          {:nextjournal/value value
-                                          :nextjournal/viewer viewer})))
+                                          :nextjournal/viewer (v/normalize-viewer viewer)})))
     result))
 
 #_(apply-viewer-unwrapping-var-from-def {:nextjournal/value [:h1 "hi"] :nextjournal/viewer :html})
@@ -106,8 +108,8 @@
                  base64-encode-value)
               described-result))
 
-(defn ->result [ns {:as result :nextjournal/keys [value blob-id]} lazy-load?]
-  (let [described-result (extract-blobs lazy-load? blob-id (v/describe value {:viewers (v/get-viewers ns (v/viewers value))}))
+(defn ->result [ns {:as result :nextjournal/keys [value viewers blob-id]} lazy-load?]
+  (let [described-result (extract-blobs lazy-load? blob-id (v/describe value {:viewers (concat viewers (v/get-viewers ns (v/viewers value)))}))
         opts-from-form-meta (select-keys result [:nextjournal/width])]
     (merge {:nextjournal/viewer :clerk/result
             :nextjournal/value (cond-> (try {:nextjournal/edn (->edn described-result)}
@@ -118,7 +120,7 @@
 
                                  lazy-load?
                                  (assoc :nextjournal/fetch-opts {:blob-id blob-id}
-                                        :nextjournal/hash (->hash-str [blob-id (selected-viewers described-result)])))}
+                                        :nextjournal/hash (->hash-str [blob-id described-result])))}
            (dissoc described-result :nextjournal/value :nextjournal/viewer)
            opts-from-form-meta)))
 
@@ -197,7 +199,7 @@
     (hiccup/include-js (@config/!resource->url "/js/viewer.js"))
     (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
     (hiccup/include-css "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")]
-   [:body
+   [:body.dark:bg-slate-900
     [:div#clerk]
     [:script "let viewer = nextjournal.clerk.sci_viewer
 let state = " (-> state ->edn pr-str) "

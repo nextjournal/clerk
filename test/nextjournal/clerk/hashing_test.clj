@@ -1,13 +1,25 @@
 (ns nextjournal.clerk.hashing-test
-  (:require [clojure.test :refer :all]
-            [matcher-combinators.test :refer [match?]]
+  (:require [babashka.fs :as fs]
+            [clojure.test :refer :all]
             [matcher-combinators.matchers :as m]
+            [matcher-combinators.test :refer [match?]]
+            [nextjournal.clerk :as clerk :refer [defcached]]
             [nextjournal.clerk.hashing :as h]
             [weavejester.dependency :as dep]))
+
+(deftest read-string-tests
+  (testing "read-string should read regex's such that value equalility is preserved"
+    (is (= '(fn [x] (clojure.string/split x (clojure.core/re-pattern "/")))
+           (h/read-string "(fn [x] (clojure.string/split x #\"/\"))")))))
 
 (defmacro with-ns-binding [ns-sym & body]
   `(binding [*ns* (find-ns ~ns-sym)]
      ~@body))
+
+(deftest ns->path
+  (testing "converts dashes to underscores"
+    (is (= (str "rewrite_clj" fs/file-separator "parser")
+           (h/ns->path (find-ns 'rewrite-clj.parser))))))
 
 (def notebook "^:nextjournal.clerk/no-cache (ns example-notebook)
 
@@ -61,7 +73,16 @@
                 'rewrite-clj.parser/parse-string-all}
               (h/var-dependencies '(defn foo
                                      ([] (foo "s"))
-                                     ([s] (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi")))))))
+                                     ([s] (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi"))))))
+
+  (testing "finds deps inside maps and sets"
+    (is (match? '#{nextjournal.clerk.hashing-test/foo
+                   nextjournal.clerk.hashing-test/bar}
+                (with-ns-binding 'nextjournal.clerk.hashing-test
+                  (intern *ns* 'foo :foo)
+                  (intern *ns* 'bar :bar)
+                  (:deps (h/analyze '{:k-1 foo :k-2 #{bar}})))))))
+
 
 (deftest analyze
   (testing "quoted forms aren't confused with variable dependencies"
@@ -119,8 +140,14 @@
                :var 'nextjournal.clerk.hashing-test/foo
                :deps '#{nextjournal.clerk.hashing-test/foo-2}}
               (with-ns-binding 'nextjournal.clerk.hashing-test
-                (h/analyze '(do (def foo :bar) (def foo-2 :bar)))))))
+                (h/analyze '(do (def foo :bar) (def foo-2 :bar))))))
 
+  (testing "defcached should be treated like a normal def"
+    (with-ns-binding 'nextjournal.clerk.hashing-test
+      (is (= (dissoc (h/analyze '(def answer (do (Thread/sleep 4200) (inc 41)))) :form)
+             (dissoc (h/analyze '(defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)
+             (dissoc (h/analyze '(clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)
+             (dissoc (h/analyze '(nextjournal.clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form))))))
 
 (deftest symbol->jar
   (is (h/symbol->jar 'io.methvin.watcher.PathUtils))
@@ -136,19 +163,21 @@
   (is (match? (m/equals
                {:graph {:dependencies {'(ns example-notebook) set?}
                         :dependents   map?}
-                :doc {:blocks [{:type :code
-                                :text "^:nextjournal.clerk/no-cache (ns example-notebook)"
-                                :form '(ns example-notebook)
-                                :ns?  true}
-                               {:type :code
-                                :text "#{3 1 2}"
-                                :form #{1 2 3}}]
-                      :visibility #{:show}}
+                :blocks [{:type :code
+                          :text "^:nextjournal.clerk/no-cache (ns example-notebook)"
+                          :form '(ns example-notebook)
+                          :ns?  true}
+                         {:type :code
+                          :text "#{3 1 2}"
+                          :form #{1 2 3}}]
+                :toc {:type :toc}
+                :visibility #{:show}
                 :->analysis-info {'(ns example-notebook) {:form '(ns example-notebook),
                                                           :deps set?}
                                   #{1 3 2} {:form '#{1 3 2}}}})
               (analyze-string "^:nextjournal.clerk/no-cache (ns example-notebook)
 #{3 1 2}"))))
+
 
 (deftest circular-dependency
   (is (match? {:graph {:dependencies {'(ns circular) any?

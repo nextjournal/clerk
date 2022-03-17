@@ -63,14 +63,22 @@ Notes about what currently breaks 💥 and what could be better tomorrow.
 ## 🛠 Up Next
 - [x] Let consumers (SICMUitls) extend sci ns by putting it into an atom
 - [x] Support setting `:nextjournal.clerk/no-cache` on namespaces as well
-- [ ] Support setting `:nextjournal.clerk/cache-dir` on namespace
-- [ ] Allow to control viewer expansion state programmatically
 - [x] Datafy or Metadata viewer via `:transform-fn`
 - [x] Persist viewer expansion state across reloads
-- [ ] Show eval error in overlay to persist scroll state when it disappears
-- [ ] Improve feedback when viewer errors
+- [x] Show eval error in overlay to persist scroll state when it disappears
+- [x] Improve feedback when viewer errors
+- [x] Verify viewer caching behaviour
+- [x] Fix dark mode for string viewer
+- [ ] Release 0.6
+- [ ] Allow to control viewer expansion state programmatically
+- [ ] Support setting `:nextjournal.clerk/cache` forms to control caching behaviour
+- [ ] Deprecate `:nextjournal/no-cache`
+- [ ] Make code cells scroll horizontally scrollable and add minimum width of 80 chars
+- [ ] Derefenced Clojure atoms should get value semantics in dependency graph
 - [ ] Support evaluating `(quote 'code 'in 'backticks)` in markdown
+- [ ] Add multiviewer to default viewers
 - [ ] Make stacktraces clickable
+- [ ] Mark uncacheable results in browser window including explanation
 - [x] Build static build on CI
 - [x] Hook up new table viewer
 - [ ] Add CAS storage option for static builds

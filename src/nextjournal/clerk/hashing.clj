@@ -43,7 +43,8 @@
   (let [var-or-form    (if-let [vn (var-name form)] vn form)
         no-cache-meta? (comp boolean :nextjournal.clerk/no-cache meta)]
     (or (no-cache-meta? var-or-form)
-        (no-cache-meta? *ns*))))
+        (no-cache-meta? *ns*)
+        (and (seq? form) (= `deref (first form))))))
 
 #_(no-cache? '(rand-int 10))
 
@@ -60,7 +61,7 @@
                           (not= var-name %)
                           (and (not= \. (-> % str (.charAt 0)))
                                (-> % resolve class?)))))
-          (tree-seq (every-pred sequential? not-quoted?) seq analyzed-form))))
+          (tree-seq (every-pred (some-fn sequential? map? set?) not-quoted?) seq analyzed-form))))
 
 #_(var-dependencies '(def nextjournal.clerk.hashing/foo
                        (fn* ([] (nextjournal.clerk.hashing/foo "s"))
@@ -71,9 +72,19 @@
       ana/analyze
       (ana.passes.ef/emit-form #{:hygenic :qualified-symbols})))
 
+(defn rewrite-defcached [form]
+  (if (and (list? form)
+           (symbol? (first form))
+           (= (resolve 'nextjournal.clerk/defcached)
+              (resolve (first form))))
+    (conj (rest form) 'def)
+    form))
+
+#_(rewrite-defcached '(nextjournal.clerk/defcached foo :bar))
+
 (defn analyze [form]
   (binding [config/*in-clerk* true]
-    (let [analyzed-form (analyze+emit form)
+    (let [analyzed-form (analyze+emit (rewrite-defcached form))
           var (let [defined-vars (defined-vars analyzed-form)]
                 (when (< 1 (count defined-vars))
                   (binding [*out* *err*]
@@ -143,12 +154,12 @@
 
 #_(auto-resolves (find-ns 'rule-30))
 
-
 (defn read-string [s]
   (edamame/parse-string s {:all true
                            :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))
                            :readers *data-readers*
                            :read-cond :allow
+                           :regex #(list `re-pattern %)
                            :features #{:clj}}))
 
 #_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
@@ -267,7 +278,7 @@
    (analyze-doc {:doc? true :graph (dep/graph)} doc))
   ([{:as state :keys [doc?]} doc]
    (reduce (fn [state i]
-             (let [{:keys [type text]} (get-in state [:doc :blocks i])]
+             (let [{:keys [type text]} (get-in state [:blocks i])]
                (if (not= type :code)
                  state
                  (let [form (read-string text)
@@ -277,7 +288,7 @@
                                  (assoc-in [:->analysis-info (if var var form)] (cond-> analyzed
                                                                                   (:file doc) (assoc :file (:file doc)))))
                        state (cond-> state
-                               doc? (update-in [:doc :blocks i] merge (dissoc analyzed :deps)))]
+                               doc? (update-in [:blocks i] merge (dissoc analyzed :deps)))]
                    (when ns-effect?
                      (eval form))
                    (if (seq deps)
@@ -286,7 +297,7 @@
                              deps)
                      state)))))
            (cond-> state
-             doc? (assoc :doc doc))
+             doc? (merge doc))
            (-> doc :blocks count range))))
 
 
@@ -310,8 +321,8 @@
 
 #_(unhashed-deps {#'elements/fix-case {:deps #{#'rewrite-clj.node/tag}}})
 
-(defn- ns->path [ns]
-  (str/replace (str ns) "." fs/file-separator))
+(defn ns->path [ns]
+  (str/replace (namespace-munge ns) "." fs/file-separator))
 
 ;; TODO: handle cljc files
 (defn ns->file [ns]

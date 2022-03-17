@@ -44,7 +44,7 @@ ALPHA, expect breaking changes.
 To use Clerk in your project, add the following dependency to your `deps.edn`:
 
 ```edn
-{:deps {io.github.nextjournal/clerk {:mvn/version "0.2.214"}}}
+{:deps {io.github.nextjournal/clerk {:mvn/version "0.5.346"}}}
 ```
 
 Require and start Clerk as part of your system start, e.g. in `user.clj`:
@@ -88,7 +88,7 @@ In Emacs, add the following to your config:
     (when filename
       (cider-interactive-eval
        (concat "(nextjournal.clerk/show! \"" filename "\")")))))
-       
+
 (define-key clojure-mode-map (kbd "<M-return>") 'clerk-show)
 ```
 

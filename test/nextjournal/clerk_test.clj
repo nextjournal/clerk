@@ -49,10 +49,10 @@
   (testing "the 'previous results' cache takes first precedence"
     (let [doc (hashing/parse-clojure-string "(inc 41)")
           {:keys [blob->result]} (clerk/eval-doc doc)
-          [blob-id v] (first blob->result)]
+          [blob-id {v :nextjournal/value}] (first blob->result)]
       (is (= v 42))
       (is (match? {:blocks [{:result {:nextjournal/value -4}}]}
-                  (clerk/eval-doc {blob-id -4} doc)))))
+                  (clerk/eval-doc {blob-id {:nextjournal/value -4}} doc)))))
 
   (testing "handling binding forms i.e. def, defn"
     ;; ensure "some-var" is a variable in whatever namespace we're running in
@@ -68,9 +68,26 @@
     (is (= (clerk/eval-string "(ns my-random-test-ns) (java.util.UUID/randomUUID)")
            (clerk/eval-string "(ns my-random-test-ns) (java.util.UUID/randomUUID)"))))
 
+  (testing "random expression that cannot be serialized in nippy gets cached in memory"
+    (let [{:as result :keys [blob->result]} (clerk/eval-string "(ns my-random-test-ns) {inc (java.util.UUID/randomUUID)}")]
+      (is (= result
+             (clerk/eval-string blob->result "(ns my-random-test-ns) {inc (java.util.UUID/randomUUID)}")))))
+
   (testing "random expression doesn't get cached with no-cache"
     (is (not= (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns) (java.util.UUID/randomUUID)")
               (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns) (java.util.UUID/randomUUID)"))))
+
+  (testing "random expression that cannot be frozen with nippy gets cached via in-memory cache"
+    (let [code "(ns my-random-test-ns) {:my-fn inc :my-uuid (java.util.UUID/randomUUID)}"
+          result  (clerk/eval-string code)
+          result' (clerk/eval-string (:blob->result result) code)
+          extract-my-uuid #(-> % :blocks last :result :nextjournal/value :my-uuid)]
+      (is (= (extract-my-uuid result)
+             (extract-my-uuid result')))))
+
+  (testing "old values are cleared from in-memory cache"
+    (let [{:keys [blob->result]} (clerk/eval-string "(ns my-random-test-ns) ^:nextjournal.clerk/no-cache {inc (java.util.UUID/randomUUID)}")]
+      (is (= 2 (count (:blob->result (clerk/eval-string blob->result "(ns my-random-test-ns) {inc (java.util.UUID/randomUUID)}")))))))
 
   (testing "defonce returns correct result on subsequent evals (when defonce would eval to nil)"
     (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-defonce-test-ns) (defonce state (atom {}))")
@@ -78,12 +95,26 @@
                 (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-defonce-test-ns) (defonce state (atom {}))"))))
 
   (testing "assigning viewers from form meta"
-    (is (match? {:blocks [{:result {:nextjournal/viewer #'nextjournal.clerk/table}}]}
+    (is (match? {:blocks [{:result {:nextjournal/viewer fn?}}]}
                 (clerk/eval-string "^{:nextjournal.clerk/viewer nextjournal.clerk/table} (def markup [:h1 \"hi\"])")))
     (is (match? {:blocks [{:result {:nextjournal/viewer :html}}]}
                 (clerk/eval-string "^{:nextjournal.clerk/viewer :html} (def markup [:h1 \"hi\"])")))))
 
 (deftest eval-string+doc->viewer
+  (testing "assigns correct width from viewer function opts"
+    (is (match? [{:nextjournal/width :wide}
+                 {:nextjournal/width :full}]
+                (-> "^{:nextjournal.clerk/visibility :hide} (ns clerk-test-width
+  (:require [nextjournal.clerk :as clerk]))
+
+(clerk/html {::clerk/width :wide} [:div.bg-red-200 [:h1 \"Wide Hiccup\"]])
+
+(clerk/table {::clerk/width :full} {:a [1] :b [2] :c [3]})"
+                    clerk/eval-string
+                    view/doc->viewer
+                    :nextjournal/value
+                    :blocks))))
+
   (testing "assigns the correct width from form meta"
     (is (match? [{:nextjournal/width :full}
                  {:nextjournal/width :wide}]

@@ -48,7 +48,7 @@
                :nextjournal/value [{:nextjournal/value "# Hello Clerk 👋", :nextjournal/viewer :markdown}
                                    {:nextjournal/value "(+ 39 3)", :nextjournal/viewer :code}
                                    {:nextjournal/viewer :clerk/result,
-                                    :nextjournal/value {:nextjournal/edn "{:path [], :nextjournal/value 42, :nextjournal/viewer {:render-fn #function+ (fn [x] (v/html [:span.syntax-number.inspected-value (if (js/Number.isNaN x) \"NaN\" (str x))]))}}"}, :path []}],},
+                                    :nextjournal/value {:nextjournal/edn "{:path [], :nextjournal/value 42, :nextjournal/viewer {:render-fn #function+ (fn [x] (v/html [:span.cmt-number.inspected-value (if (js/Number.isNaN x) \"NaN\" (str x))]))}}"}, :path []}],},
          :path->url {"notebooks/hello.clj" "notebooks/hello.clj"}
          :url->path {"notebooks/hello.clj" "notebooks/hello.clj"}}])
 
