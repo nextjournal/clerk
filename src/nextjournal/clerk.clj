@@ -148,7 +148,7 @@
                           :else :no-digest-file)
            :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
     (fs/create-dirs config/cache-dir)
-    (cond-> (or (when-let [result-last-run (and (not no-cache?) (get results-last-run hash))]
+    (cond-> (or (when-let [result-last-run (and (not no-cache?) (get-in results-last-run [hash :nextjournal/value]))]
                   (wrapped-with-metadata result-last-run visibility hash))
                 (when cached-result?
                   (lookup-cached-result var hash cas-hash visibility))
@@ -173,11 +173,11 @@
 (defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks visibility]}]
   (let [{:as evaluated-doc :keys [blob-ids]}
         (reduce (fn [{:as acc :keys [blob->result]} {:as cell :keys [type]}]
-                  (let [{:as result :nextjournal/keys [blob-id value]} (when (= :code type)
-                                                                         (read+eval-cached blob->result ->hash visibility cell))]
+                  (let [{:as result :nextjournal/keys [blob-id]} (when (= :code type)
+                                                                   (read+eval-cached blob->result ->hash visibility cell))]
                     (cond-> (update acc :blocks conj (cond-> cell result (assoc :result result)))
                       blob-id (update :blob-ids conj blob-id)
-                      blob-id (assoc-in [:blob->result blob-id] value))))
+                      blob-id (assoc-in [:blob->result blob-id] result))))
                 (assoc analyzed-doc :blocks [] :blob-ids #{}) blocks)]
     (-> evaluated-doc
         (update :blob->result select-keys blob-ids)
@@ -372,6 +372,7 @@
          "viewer_api"
          "viewer_api_meta"
          "viewer_d3_require"
+         "viewers_nested"
          "viewer_normalization"
          "viewers/html"
          "viewers/image"

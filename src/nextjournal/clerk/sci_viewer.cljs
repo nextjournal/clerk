@@ -89,7 +89,7 @@
     []
     items))
 
-(defn notebook [{:as doc xs :blocks :keys [toc]}]
+(defn notebook [{:as _doc xs :blocks :keys [toc]}]
   (r/with-let [local-storage-key "clerk-navbar"
                !state (r/atom {:toc (toc-items (:children toc))
                                :md-toc toc
@@ -104,34 +104,31 @@
       (when-not (= md-toc toc)
         (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc))
       (html
-        [:div.flex
-         [navbar/pin-button !state
-          [:<>
-           [icon/menu {:size 20}]
-           [:span.uppercase.tracking-wider.ml-1.font-bold
-            {:class "text-[12px]"} "ToC"]]
-          {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-3 text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 shadow md:shadow-none"}]
-         [navbar/pinnable-slide-over !state [navbar/navbar !state]]
-         [:div.flex-auto.h-screen.overflow-y-auto
-          {:ref ref-fn}
-          (into [:div.flex.flex-col.items-center.viewer-notebook.flex-auto]
-                (map (fn [x]
-                       (let [viewer (viewer/viewer x)
-                             blob-id (:blob-id (viewer/value x))
-                             prose? (= viewer :markdown)
-                             inner-viewer-name (some-> x viewer/value viewer/viewer :name)]
-                         [:div {:class ["viewer" "overflow-x-auto"
-                                        (when (keyword? viewer) (str "viewer-" (name viewer)))
-                                        (when-not prose? "not-prose")
-                                        (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
-                                        (when (and prose? inner-viewer-name (not= inner-viewer-name :markdown)) "not-prose")
-                                        (case (or (viewer/width x) (case viewer (:code :code-folded) :wide :prose))
-                                          :wide "w-full max-w-wide"
-                                          :full "w-full"
-                                          "w-full max-w-prose px-8")]}
-                          (cond-> [inspect x]
-                                  blob-id (with-meta {:key blob-id}))])))
-                xs)]]))))
+       [:div.flex
+        [navbar/pin-button !state
+         [:<>
+          [icon/menu {:size 20}]
+          [:span.uppercase.tracking-wider.ml-1.font-bold
+           {:class "text-[12px]"} "ToC"]]
+         {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-3 text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 shadow md:shadow-none"}]
+        [navbar/pinnable-slide-over !state [navbar/navbar !state]]
+        [:div.flex-auto.h-screen.overflow-y-auto
+         {:ref ref-fn}
+         (into [:div.flex.flex-col.items-center.viewer-notebook.flex-auto]
+               (map (fn [x]
+                      (let [viewer (viewer/viewer x)
+                            blob-id (:blob-id (viewer/value x))
+                            inner-viewer-name (some-> x viewer/value viewer/viewer :name)]
+                        [:div {:class ["viewer" "overflow-x-auto"
+                                       (when (keyword? viewer) (str "viewer-" (name viewer)))
+                                       (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
+                                       (case (or (viewer/width x) (case viewer (:code :code-folded) :wide :prose))
+                                         :wide "w-full max-w-wide"
+                                         :full "w-full"
+                                         "w-full max-w-prose px-8")]}
+                         (cond-> [inspect x]
+                           blob-id (with-meta {:key blob-id}))])))
+               xs)]]))))
 
 (defonce !edamame-opts
   (atom {:all true
@@ -368,7 +365,7 @@
   ;; currently boxing the value in a vector to retain the type info
   ;; TODO: find a better way to do this
   (html
-   [:div.bg-red-100.dark:bg-slate-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-400
+   [:div.bg-red-100.dark:bg-slate-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-400.not-prose
     [:h4.mt-0.uppercase.text-xs.dark:text-red-400.tracking-wide "Table Error"]
     [:p.mt-4.font-medium "Clerk’s table viewer does not recognize the format of your data:"]
     [:div.mt-2.flex
@@ -398,7 +395,7 @@
         (html
          (let [{:keys [head rows]} (cond->> data sort-key (sort-data srt))
                num-cols (-> rows viewer/value first viewer/value count)]
-           [:table.text-xs.sans-serif.text-gray-900.dark:text-white
+           [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose
             (when head
               [:thead.border-b.border-gray-300.dark:border-slate-700
                (into [:tr]
@@ -447,7 +444,7 @@
 
 (defn throwable-viewer [{:keys [via trace]}]
   (html
-   [:div.w-screen.h-screen.overflow-y-auto.bg-gray-100.p-6.text-xs.monospace.flex.flex-col
+   [:div.w-screen.h-screen.overflow-y-auto.bg-gray-100.p-6.text-xs.monospace.flex.flex-col.not-prose
     [:div.rounded-md.shadow-lg.border.border-gray-300.bg-white.max-w-6xl.mx-auto
      (into
       [:div]

@@ -200,7 +200,7 @@
                                       (cond-> {:nextjournal/value (.toByteArray stream)
                                                :nextjournal/content-type "image/png"
                                                :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})))
-            :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center [:img {:src (v/url-for blob)}]]))})
+            :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))})
    {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.cmt-default x]))}
    {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
