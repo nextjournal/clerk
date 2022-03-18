@@ -146,6 +146,13 @@
 #_(->doc-visibility '^{:nextjournal.clerk/visibility :fold} (ns foo))
 #_(->doc-visibility '^{:nextjournal.clerk/visibility :hide-ns} (ns foo))
 
+(defn ->doc-settings [first-form]
+  {:visibility (->doc-visibility first-form)
+   :toc? (boolean (-> first-form meta :nextjournal.clerk/toc?))})
+
+#_(->doc-settings '(ns foo))
+#_(->doc-settings '^{:nextjournal.clerk/toc? true} (ns foo))
+
 (defn auto-resolves [ns]
   (as-> (ns-aliases ns) $
     (assoc $ :current (ns-name *ns*))
@@ -184,7 +191,7 @@
                             (update :nodes rest)
                             (update :blocks conj (->codeblock visibility node)))
                   (not visibility)
-                  (assoc :visibility (-> node n/string read-string ->doc-visibility)))
+                  (merge (-> node n/string read-string ->doc-settings)))
 
                 (and doc? (n/comment? node))
                 (-> state
@@ -201,7 +208,7 @@
                                           (mapcat :content))
                                     blocks)}
                     markdown.parser/add-title+toc
-                    (select-keys [:title :toc]))))))))
+                    (select-keys (cond-> #{:title} (:toc? state) (conj :toc))))))))))
 
 (defn code-cell? [{:as node :keys [type]}]
   (and (= :code type) (contains? node :info)))
@@ -210,7 +217,7 @@
   (reduce (fn [{:as state :keys [visibility]} node]
             (-> state
                 (update :blocks conj (->codeblock visibility node))
-                (cond-> (not visibility) (assoc :visibility (-> node n/string read-string ->doc-visibility)))))
+                (cond-> (not visibility) (merge (-> node n/string read-string ->doc-settings)))))
           state
           (-> markdown-code-cell markdown.transform/->text str/trim p/parse-string-all :children
               (->> (filter (comp code-tags n/tag))))))
@@ -224,20 +231,20 @@
            (cond-> state
              (seq md-slice)
              (-> #_state
-              (update :blocks conj {:type :markdown :doc {:type :doc :content md-slice}})
-              (assoc ::md-slice []))
+                 (update :blocks conj {:type :markdown :doc {:type :doc :content md-slice}})
+                 (assoc ::md-slice []))
 
              :always
              (-> #_state
-              (parse-markdown-cell node)
-              (update :nodes rest)))
+                 (parse-markdown-cell node)
+                 (update :nodes rest)))
 
            (-> state (update :nodes rest) (cond-> doc? (update ::md-slice conj node)))))
 
         (-> state
             (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
             (select-keys [:blocks :visibility])
-            (merge (when doc? {:toc toc :title title})))))))
+            (merge (when doc? (cond-> {:title title} (:toc? state) (assoc :toc toc)))))))))
 
 (defn parse-file
   ([file] (parse-file {} file))

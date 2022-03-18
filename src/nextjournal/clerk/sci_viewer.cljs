@@ -105,13 +105,15 @@
         (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc))
       (html
        [:div.flex
-        [navbar/pin-button !state
-         [:<>
-          [icon/menu {:size 20}]
-          [:span.uppercase.tracking-wider.ml-1.font-bold
-           {:class "text-[12px]"} "ToC"]]
-         {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-3 text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 shadow md:shadow-none"}]
-        [navbar/pinnable-slide-over !state [navbar/navbar !state]]
+        (when toc
+          [:<>
+           [navbar/pin-button !state
+            [:<>
+             [icon/menu {:size 20}]
+             [:span.uppercase.tracking-wider.ml-1.font-bold
+              {:class "text-[12px]"} "ToC"]]
+            {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-3 text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 shadow md:shadow-none"}]]
+          [navbar/pinnable-slide-over !state [navbar/navbar !state]])
         [:div.flex-auto.h-screen.overflow-y-auto
          {:ref ref-fn}
          (into [:div.flex.flex-col.items-center.viewer-notebook.flex-auto]
