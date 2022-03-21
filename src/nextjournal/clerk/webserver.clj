@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.webserver
-  (:require [clojure.edn :as edn]
+  (:require [babashka.fs :as fs]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.pprint :as pprint]
             [clojure.string :as str]
@@ -55,8 +56,12 @@
     {:status 404}))
 
 (defn serve-cached-file [{:as _req :keys [uri]}]
-  {:body (io/file ".clerk/.cache/assets" (str/replace uri "/cached/" ""))
-   :headers {"Access-Control-Allow-Origin" "*"}})
+  (let [f (io/file ".clerk/.cache/assets" (str/replace uri "/cached/" ""))]
+    (when-not (fs/exists? f)
+      (spit f
+       (slurp (str "https://storage.googleapis.com/nextjournal-cas-eu/data/" (last (str/split uri #"/"))))))
+    {:body (io/file ".clerk/.cache/assets" (str/replace uri "/cached/" ""))
+     :headers {"Access-Control-Allow-Origin" "*"}}))
 
 (defn extract-blob-opts [{:as _req :keys [uri query-string]}]
   {:blob-id (str/replace uri "/_blob/" "")

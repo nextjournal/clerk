@@ -93,7 +93,7 @@
          gs-dest (str gs-bucket "/data/" hash)
          gs-url (cas-link hash)]
      (println "Copying" a "to" gs-dest)
-     (djv/gs-copy f gs-dest)
+     #_(djv/gs-copy f gs-dest)
      [a gs-url])))
 
 (defn hash-assets []
@@ -114,7 +114,11 @@
                                                       (:body (curl/get remote)))
                                                 cached))) font-css font-links)
         [font-css-link gurl] (store-asset font-css-link font-css)
-        manifest (assoc manifest font-css-link gurl)]
+        manifest (assoc manifest font-css-link gurl)
+        manifest (reduce (fn [acc l]
+                           (let [remote (get manifest l)
+                                 hash (last (str/split remote #"/"))]
+                             (assoc acc (str "/cached/" hash) remote))) manifest font-links)]
     ((requiring-resolve 'clojure.pprint/pprint) manifest)
     (spit "resources/asset_manifest.edn"
           {:asset-map manifest})))
