@@ -212,7 +212,7 @@
         url)))
 
 (defn include-viewer-css []
-  (if-let [css-url (@config/!resource->url "/css/viewer.css")]
+  (if-let [css-url (config/resource->url "/css/viewer.css")]
     (hiccup/include-css css-url)
     (list (hiccup/include-js
            (cached-url "https://cdn.tailwindcss.com/3.0.23?plugins=typography@0.5.2"))
@@ -228,7 +228,7 @@
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
     (include-viewer-css)
     (hiccup/include-css (cached-url "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"))
-    (hiccup/include-js (@config/!resource->url "/js/viewer.js"))
+    (hiccup/include-js (config/resource->url "/js/viewer.js"))
     (hiccup/include-css (cached-url "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"))
     (hiccup/include-css (cached-url "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap"))]
    [:body.dark:bg-slate-900
@@ -249,9 +249,9 @@ window.ws_send = msg => ws.send(msg)")]]))
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
     (include-viewer-css)
-    (hiccup/include-js (@config/!resource->url "/js/viewer.js"))
-    (hiccup/include-css (cached-url "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"))
-    (hiccup/include-css (cached-url "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap"))]
+    (hiccup/include-js (config/resource->url "/js/viewer.js"))
+    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
+    (hiccup/include-css "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")]
    [:body
     [:div#clerk-static-app]
     [:script "let viewer = nextjournal.clerk.sci_viewer

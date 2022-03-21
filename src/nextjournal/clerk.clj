@@ -445,8 +445,9 @@
 ;; pieces of code with which to pilot the system during development.
 
 (defn cache-assets! [_]
+  @config/cached-lookup
   (doseq [k (keys view/asset-map)]
-    (prn k) #_(view/cache-url! k)))
+    (view/cache-url! k)))
 
 (comment
   (def watcher
