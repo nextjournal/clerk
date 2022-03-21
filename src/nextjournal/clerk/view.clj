@@ -211,11 +211,13 @@
         (println "[clerk] WARNING - uncached url:" url)
         url)))
 
-(defn include-viewer-css []
+(defn include-viewer-css [cached?]
   (if-let [css-url (config/resource->url "/css/viewer.css")]
     (hiccup/include-css css-url)
     (list (hiccup/include-js
-           (cached-url "https://cdn.tailwindcss.com/3.0.23?plugins=typography@0.5.2"))
+           ((if cached?
+              cached-url
+              identity) "https://cdn.tailwindcss.com/3.0.23?plugins=typography@0.5.2"))
           [:script (-> (slurp (io/resource "stylesheets/tailwind.config.js"))
                        (str/replace  #"^module.exports" "tailwind.config")
                        (str/replace  #"require\(.*\)" ""))]
@@ -226,7 +228,7 @@
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-    (include-viewer-css)
+    (include-viewer-css true)
     (hiccup/include-css (cached-url "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"))
     (hiccup/include-js (config/resource->url "/js/viewer.js"))
     (hiccup/include-css (cached-url "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"))
@@ -248,7 +250,7 @@ window.ws_send = msg => ws.send(msg)")]]))
     [:title (or (and current-path (-> state :path->doc (get current-path) v/value :title)) "Clerk")]
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-    (include-viewer-css)
+    (include-viewer-css false)
     (hiccup/include-js (config/resource->url "/js/viewer.js"))
     (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
     (hiccup/include-css "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")]
