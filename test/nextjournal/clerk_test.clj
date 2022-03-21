@@ -49,10 +49,10 @@
   (testing "the 'previous results' cache takes first precedence"
     (let [doc (hashing/parse-clojure-string "(inc 41)")
           {:keys [blob->result]} (clerk/eval-doc doc)
-          [blob-id v] (first blob->result)]
+          [blob-id {v :nextjournal/value}] (first blob->result)]
       (is (= v 42))
       (is (match? {:blocks [{:result {:nextjournal/value -4}}]}
-                  (clerk/eval-doc {blob-id -4} doc)))))
+                  (clerk/eval-doc {blob-id {:nextjournal/value -4}} doc)))))
 
   (testing "handling binding forms i.e. def, defn"
     ;; ensure "some-var" is a variable in whatever namespace we're running in
