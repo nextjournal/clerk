@@ -188,24 +188,28 @@
 (def asset-map (:asset-map
                 (edn/read-string (slurp (io/resource "asset_manifest.edn")))))
 
+(defn cache-url!
+  "Reads url from asset_manifest.edn and caches it locally. Returns file-name of cached file."
+  [url]
+  (if-let [gurl (get asset-map url)]
+    (let [fname (last (str/split gurl #"/"))
+          local-file (fs/file (str ".clerk/.cache/assets/" fname))]
+      (if (fs/exists? local-file)
+        fname
+        (do (fs/create-dirs (fs/parent local-file))
+            (spit local-file (slurp gurl))
+            fname)))
+    (do (binding [*out* *err*]
+          (println "[clerk] WARNING - url does not exist in manifest: " url))
+        nil)))
+
 (defn cached-url [url]
   (or (some->>
-       (when-let [gurl (get asset-map url)]
-         (let [fname (last (str/split gurl #"/"))
-               local-file (fs/file (str ".clerk/.cache/assets/" fname))]
-           (if (fs/exists? local-file)
-             fname
-             (do (fs/create-dirs (fs/parent local-file))
-                 (spit local-file (slurp gurl))
-                 fname))))
+       (cache-url! url)
        (str "/cached/"))
       (binding [*out* *err*]
         (println "[clerk] WARNING - uncached url:" url)
         url)))
-
-(comment
-  (cached-url "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
-  )
 
 (defn include-viewer-css []
   (if-let [css-url (@config/!resource->url "/css/viewer.css")]

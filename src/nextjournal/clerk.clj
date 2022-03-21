@@ -444,15 +444,9 @@
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
 
-
-(defn cache-assets! []
-  (let [[k v]])
-  (let [f (io/file ".clerk/.cache/assets" (str/replace uri "/cached/" ""))]
-    (when-not (fs/exists? f)
-      (spit f
-            (slurp (str "https://storage.googleapis.com/nextjournal-cas-eu/data/" (last (str/split uri #"/"))))))
-    {:body (io/file ".clerk/.cache/assets" (str/replace uri "/cached/" ""))
-     :headers {"Access-Control-Allow-Origin" "*"}}))
+(defn cache-assets! [_]
+  (doseq [k (keys view/asset-map)]
+    (prn k) #_(view/cache-url! k)))
 
 (comment
   (def watcher

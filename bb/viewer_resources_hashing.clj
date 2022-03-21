@@ -93,7 +93,7 @@
          gs-dest (str gs-bucket "/data/" hash)
          gs-url (cas-link hash)]
      (println "Copying" a "to" gs-dest)
-     #_(djv/gs-copy f gs-dest)
+     (djv/gs-copy f gs-dest)
      [a gs-url])))
 
 (defn hash-assets []
