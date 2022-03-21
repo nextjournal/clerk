@@ -17,7 +17,7 @@
     @apply font-serif antialiased text-gray-900 sm:overscroll-y-none;
   }
   code, .code {
-    @apply font-mono text-sm text-gray-900 bg-slate-50 px-0.5 py-px rounded dark:bg-slate-800;
+    @apply font-mono text-sm text-gray-900 bg-slate-50 px-0.5 py-px rounded dark:bg-gray-800;
   }
   code::before, code::after { @apply content-none !important; }
   h1, h2, h3, h4, h5, h6 {

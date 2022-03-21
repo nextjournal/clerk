@@ -13,6 +13,7 @@
             [nextjournal.ui.components.d3-require :as d3-require]
             [nextjournal.ui.components.icon :as icon]
             [nextjournal.ui.components.navbar :as navbar]
+            [nextjournal.ui.components.motion :as motion]
             [nextjournal.ui.components.localstorage :as ls]
             [nextjournal.view.context :as view-context]
             [nextjournal.viewer.code :as code]
@@ -89,22 +90,87 @@
     []
     items))
 
+(defn dark-mode-toggle [!state]
+  (let [{:keys [dark-mode?]} @!state
+        spring {:type :spring :stiffness 200 :damping 10}]
+    [:div.relative
+     [:button.text-slate-400.hover:text-slate-600.dark:hover:text-white.cursor-pointer
+      {:on-click #(swap! !state assoc :dark-mode? (not dark-mode?))}
+      (if dark-mode?
+        [:> motion/svg
+         {:xmlns "http://www.w3.org/2000/svg"
+          :class "w-5 h-5 md:w-4 md:h-4"
+          :viewBox "0 0 50 50"
+          :key "moon"}
+         [:> motion/path
+          {:d "M 43.81 29.354 C 43.688 28.958 43.413 28.626 43.046 28.432 C 42.679 28.238 42.251 28.198 41.854 28.321 C 36.161 29.886 30.067 28.272 25.894 24.096 C 21.722 19.92 20.113 13.824 21.683 8.133 C 21.848 7.582 21.697 6.985 21.29 6.578 C 20.884 6.172 20.287 6.022 19.736 6.187 C 10.659 8.728 4.691 17.389 5.55 26.776 C 6.408 36.163 13.847 43.598 23.235 44.451 C 32.622 45.304 41.28 39.332 43.816 30.253 C 43.902 29.96 43.9 29.647 43.81 29.354 Z"
+           :fill "currentColor"
+           :initial "initial"
+           :animate "animate"
+           :variants {:initial {:scale 0.6 :rotate 90}
+                      :animate {:scale 1 :rotate 0 :transition spring}}}]]
+        [:> motion/svg
+         {:key "sun"
+          :class "w-5 h-5 md:w-4 md:h-4"
+          :viewBox "0 0 24 24"
+          :fill "none"
+          :xmlns "http://www.w3.org/2000/svg"}
+         [:> motion/circle
+          {:cx "11.9998"
+           :cy "11.9998"
+           :r "5.75375"
+           :fill "currentColor"
+           :initial "initial"
+           :animate "animate"
+           :variants {:initial {:scale 1.5}
+                      :animate {:scale 1 :transition spring}}}]
+         [:> motion/g
+          {:initial "initial"
+           :animate "animate"
+           :variants {:initial {:rotate 45}
+                      :animate {:rotate 0 :transition spring}}}
+          [:circle {:cx "3.08982" :cy "6.85502" :r "1.71143" :transform "rotate(-60 3.08982 6.85502)" :fill "currentColor"}]
+          [:circle {:cx "3.0903" :cy "17.1436" :r "1.71143" :transform "rotate(-120 3.0903 17.1436)" :fill "currentColor"}]
+          [:circle {:cx "12" :cy "22.2881" :r "1.71143" :fill "currentColor"}]
+          [:circle {:cx "20.9101" :cy "17.1436" :r "1.71143" :transform "rotate(-60 20.9101 17.1436)" :fill "currentColor"}]
+          [:circle {:cx "20.9101" :cy "6.8555" :r "1.71143" :transform "rotate(-120 20.9101 6.8555)" :fill "currentColor"}]
+          [:circle {:cx "12" :cy "1.71143" :r "1.71143" :fill "currentColor"}]]])]]))
+
+(defn set-dark-mode! [dark-mode?]
+  (let [class-list (.-classList (js/document.querySelector "html"))]
+    (if dark-mode?
+      (.add class-list "dark")
+      (.remove class-list "dark")))
+  (ls/set-item! "clerk-darkmode" dark-mode?))
+
 (defn notebook [{:as _doc xs :blocks :keys [toc]}]
   (r/with-let [local-storage-key "clerk-navbar"
                !state (r/atom {:toc (toc-items (:children toc))
                                :md-toc toc
+                               :dark-mode? (ls/get-item "clerk-darkmode")
                                :theme {:slide-over "bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900"
                                        :pin-toggle "text-[11px] text-slate-500 dark:text-slate-400 text-right absolute right-4 top-[10px] cursor-pointer hover:underline z-10"}
                                :width 220
                                :mobile-width 300
                                :local-storage-key local-storage-key
                                :pinned? (ls/get-item local-storage-key)})
+               {:keys [dark-mode?]} @!state
+               root-ref-fn #(when %
+                              (add-watch !state ::dark-mode
+                                         (fn [_ _ old {:keys [dark-mode?]}]
+                                           (when (not= (:dark-mode? old) dark-mode?)
+                                             (set-dark-mode! dark-mode?))))
+                              (when dark-mode?
+                                (set-dark-mode! dark-mode?)))
                ref-fn #(when % (swap! !state assoc :scroll-el %))]
     (let [{:keys [md-toc]} @!state]
       (when-not (= md-toc toc)
         (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc))
       (html
        [:div.flex
+        {:ref root-ref-fn}
+        [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
+         [dark-mode-toggle !state]]
         (when toc
           [:<>
            [navbar/pin-button !state
