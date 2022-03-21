@@ -93,8 +93,8 @@
   (r/with-let [local-storage-key "clerk-navbar"
                !state (r/atom {:toc (toc-items (:children toc))
                                :md-toc toc
-                               :theme {:slide-over "bg-slate-100 font-sans border-r"
-                                       :pin-toggle "text-[11px] text-slate-500 text-right absolute right-4 top-[10px] cursor-pointer hover:underline z-10"}
+                               :theme {:slide-over "bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900"
+                                       :pin-toggle "text-[11px] text-slate-500 dark:text-slate-400 text-right absolute right-4 top-[10px] cursor-pointer hover:underline z-10"}
                                :width 220
                                :mobile-width 300
                                :local-storage-key local-storage-key
@@ -112,8 +112,8 @@
              [icon/menu {:size 20}]
              [:span.uppercase.tracking-wider.ml-1.font-bold
               {:class "text-[12px]"} "ToC"]]
-            {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-3 text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 shadow md:shadow-none"}]]
-          [navbar/pinnable-slide-over !state [navbar/navbar !state]])
+            {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-3 text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
+           [navbar/pinnable-slide-over !state [navbar/navbar !state]]])
         [:div.flex-auto.h-screen.overflow-y-auto
          {:ref ref-fn}
          (into [:div.flex.flex-col.items-center.viewer-notebook.flex-auto]
@@ -244,7 +244,7 @@
    "border-b"
    "border-gray-400"
    "hover:border-gray-500"
-   "dark:bg-slate-900"
+   "dark:bg-gray-900"
    "dark:hover:bg-slate-700"
    "dark:border-slate-600"
    "dark:hover:border-slate-500"])
@@ -300,7 +300,7 @@
            [:span.sans-serif.relative.whitespace-nowrap
             {:style {:border-radius 2 :padding (when (fn? fetch-fn) "1px 3px") :font-size 11 :top -1}
              :class (if (fn? fetch-fn)
-                      "cursor-pointer bg-indigo-200 hover:bg-indigo-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-gray-900 dark:text-white"
+                      "cursor-pointer bg-indigo-200 hover:bg-indigo-300 dark:bg-gray-700 dark:hover:bg-slate-600 text-gray-900 dark:text-white"
                       "text-gray-400 dark:text-slate-300")
              :on-click #(when (fn? fetch-fn)
                           (fetch-fn fetch-opts))} remaining (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")])]))
@@ -367,7 +367,7 @@
   ;; currently boxing the value in a vector to retain the type info
   ;; TODO: find a better way to do this
   (html
-   [:div.bg-red-100.dark:bg-slate-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-400.not-prose
+   [:div.bg-red-100.dark:bg-gray-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-400.not-prose
     [:h4.mt-0.uppercase.text-xs.dark:text-red-400.tracking-wide "Table Error"]
     [:p.mt-4.font-medium "Clerk’s table viewer does not recognize the format of your data:"]
     [:div.mt-2.flex
@@ -428,7 +428,7 @@
                                          [:td.text-center.py-1
                                           {:col-span num-cols
                                            :class (if (fn? fetch-fn)
-                                                    "bg-indigo-50 hover:bg-indigo-100 dark:bg-slate-800 dark:hover:bg-slate-700 cursor-pointer"
+                                                    "bg-indigo-50 hover:bg-indigo-100 dark:bg-gray-800 dark:hover:bg-slate-700 cursor-pointer"
                                                     "text-gray-400 text-slate-500")
                                            :on-click #(when (fn? fetch-fn)
                                                         (fetch-fn fetch-opts))}
@@ -436,11 +436,11 @@
                                    (let [row (viewer/value row)]
                                      (into
                                       [:tr.hover:bg-gray-200.dark:hover:bg-slate-700
-                                       {:class (if (even? i) "bg-black/5 dark:bg-slate-800" "bg-white dark:bg-slate-900")}]
+                                       {:class (if (even? i) "bg-black/5 dark:bg-gray-800" "bg-white dark:bg-gray-900")}]
                                       (map-indexed (fn [j d]
                                                      [:td.pl-6.pr-2.py-1
                                                       {:class [(when (number? d) "text-right")
-                                                               (when (= j sort-index) "bg-black/5 dark:bg-slate-800")]}
+                                                               (when (= j sort-index) "bg-black/5 dark:bg-gray-800")]}
                                                       [inspect (update opts :path conj i j) d]]) row))))) (viewer/value rows)))]))))))
 
 
