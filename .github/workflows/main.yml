@@ -49,6 +49,7 @@ jobs:
 
   test:
     runs-on: ${{matrix.sys.os}}
+    needs: [build-and-upload-viewer-resources]
 
     strategy:
       matrix:
