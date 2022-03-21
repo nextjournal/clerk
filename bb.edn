@@ -36,6 +36,9 @@
          build+upload-viewer-resources {:doc "Refreshes assets stored on CDN (google storage)"
                                         :task viewer-resources-hashing/build+upload-viewer-resources}
 
+         hash-assets {:doc "Content-addresses assets and updates assets_manifest.edn"
+                      :task viewer-resources-hashing/hash-assets}
+
          release:js {:doc "Uploads the js release and updates the sha reference."
                      :task (clojure "-T:build upload-to-cas :resource viewer.js")
                      :depends [build:js]}

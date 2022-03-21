@@ -119,6 +119,5 @@
                            (let [remote (get manifest l)
                                  hash (last (str/split remote #"/"))]
                              (assoc acc (str "/cached/" hash) remote))) manifest font-links)]
-    ((requiring-resolve 'clojure.pprint/pprint) manifest)
     (spit "resources/asset_manifest.edn"
           {:asset-map manifest})))
