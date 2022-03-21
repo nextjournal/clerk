@@ -60,8 +60,7 @@
     (when-not (fs/exists? f)
       (spit f
        (slurp (str "https://storage.googleapis.com/nextjournal-cas-eu/data/" (last (str/split uri #"/"))))))
-    {:body (io/file ".clerk/.cache/assets" (str/replace uri "/assets/" ""))
-     :headers {"Access-Control-Allow-Origin" "*"}}))
+    {:body (io/file ".clerk/.cache/assets" (str/replace uri "/assets/" ""))}))
 
 (defn extract-blob-opts [{:as _req :keys [uri query-string]}]
   {:blob-id (str/replace uri "/_blob/" "")
@@ -75,19 +74,18 @@
                                                                           (create-ns 'user))]
                                                          (eval (read-string msg))
                                                          (eval '(nextjournal.clerk/recompute!))))})
-    (-> (try
-          (case (get (re-matches #"/([^/]*).*" uri) 1)
-            "assets" (serve-cached-asset req)
-            "_bblob" (serve-blob @!doc (extract-blob-opts req))
-            "_ws" {:status 200 :body "upgrading..."}
-            {:status  200
-             :headers {"Content-Type" "text/html"
-                       }
-             :body    (view/doc->html @!doc @!error)})
-          (catch Throwable e
-            {:status  500
-             :body    (with-out-str (pprint/pprint (Throwable->map e)))}))
-        (update :headers assoc "Access-Control-Allow-Origin" "*"))))
+    (try
+      (case (get (re-matches #"/([^/]*).*" uri) 1)
+        "assets" (serve-cached-asset req)
+        "_bblob" (serve-blob @!doc (extract-blob-opts req))
+        "_ws" {:status 200 :body "upgrading..."}
+        {:status  200
+         :headers {"Content-Type" "text/html"
+                   }
+         :body    (view/doc->html @!doc @!error)})
+      (catch Throwable e
+        {:status  500
+         :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
 
 (defn update-doc! [doc]
   (reset! !error nil)
