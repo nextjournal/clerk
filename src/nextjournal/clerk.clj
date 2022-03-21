@@ -446,13 +446,13 @@
 ;; pieces of code with which to pilot the system during development.
 
 (defn cache-assets! [_]
-  @config/cached-lookup
+  @config/cached-viewer-lookup
   (doseq [k (keys view/asset-map)]
     (view/cache-url! k)))
 
 (comment
   (def watcher
-    (beholder/watch #(file-event %) "notebooks" "src"))
+    (beholder/watch file-event "notebooks" "src"))
 
   (beholder/stop watcher)
 
