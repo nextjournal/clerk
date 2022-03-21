@@ -203,10 +203,10 @@
           (println "[clerk] WARNING - url does not exist in manifest: " url))
         nil)))
 
-(defn cached-url [url]
+(defn cached-asset [url]
   (or (some->>
        (cache-url! url)
-       (str "/cached/"))
+       (str "/assets/"))
       (binding [*out* *err*]
         (println "[clerk] WARNING - uncached url:" url)
         url)))
@@ -216,7 +216,7 @@
     (hiccup/include-css css-url)
     (list (hiccup/include-js
            ((if cached?
-              cached-url
+              cached-asset
               identity) "https://cdn.tailwindcss.com/3.0.23?plugins=typography@0.5.2"))
           [:script (-> (slurp (io/resource "stylesheets/tailwind.config.js"))
                        (str/replace  #"^module.exports" "tailwind.config")
@@ -229,10 +229,10 @@
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
     (include-viewer-css true)
-    (hiccup/include-css (cached-url "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"))
+    (hiccup/include-css (cached-asset "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"))
     (hiccup/include-js (config/resource->url "/js/viewer.js"))
-    (hiccup/include-css (cached-url "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"))
-    (hiccup/include-css (cached-url "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap"))]
+    (hiccup/include-css (cached-asset "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"))
+    (hiccup/include-css (cached-asset "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap"))]
    [:body.dark:bg-slate-900
     [:div#clerk]
     [:script "let viewer = nextjournal.clerk.sci_viewer

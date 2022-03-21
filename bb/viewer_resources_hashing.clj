@@ -109,7 +109,7 @@
                                                     hash (last (str/split remote #"/"))
                                                     cached (str/replace remote
                                                                         (str base-url "/data")
-                                                                        "/cached")]
+                                                                        "/assets")]
                                                 (spit (str ".clerk/.cache/" hash)
                                                       (:body (curl/get remote)))
                                                 cached))) font-css font-links)
@@ -118,6 +118,6 @@
         manifest (reduce (fn [acc l]
                            (let [remote (get manifest l)
                                  hash (last (str/split remote #"/"))]
-                             (assoc acc (str "/cached/" hash) remote))) manifest font-links)]
+                             (assoc acc (str "/assets/" hash) remote))) manifest font-links)]
     (spit "resources/asset_manifest.edn"
           {:asset-map manifest})))

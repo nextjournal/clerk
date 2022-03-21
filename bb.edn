@@ -37,6 +37,7 @@
                                         :task viewer-resources-hashing/build+upload-viewer-resources}
 
          hash-assets {:doc "Content-addresses assets and updates assets_manifest.edn"
+                      :depends [write-hash]
                       :task viewer-resources-hashing/hash-assets}
 
          release:js {:doc "Uploads the js release and updates the sha reference."

@@ -55,12 +55,12 @@
         {:body (view/->edn desc)}))
     {:status 404}))
 
-(defn serve-cached-file [{:as _req :keys [uri]}]
-  (let [f (io/file ".clerk/.cache/assets" (str/replace uri "/cached/" ""))]
+(defn serve-cached-asset [{:as _req :keys [uri]}]
+  (let [f (io/file ".clerk/.cache/assets" (str/replace uri "/assets/" ""))]
     (when-not (fs/exists? f)
       (spit f
        (slurp (str "https://storage.googleapis.com/nextjournal-cas-eu/data/" (last (str/split uri #"/"))))))
-    {:body (io/file ".clerk/.cache/assets" (str/replace uri "/cached/" ""))
+    {:body (io/file ".clerk/.cache/assets" (str/replace uri "/assets/" ""))
      :headers {"Access-Control-Allow-Origin" "*"}}))
 
 (defn extract-blob-opts [{:as _req :keys [uri query-string]}]
@@ -77,7 +77,7 @@
                                                          (eval '(nextjournal.clerk/recompute!))))})
     (-> (try
           (case (get (re-matches #"/([^/]*).*" uri) 1)
-            "cached" (serve-cached-file req)
+            "assets" (serve-cached-asset req)
             "_bblob" (serve-blob @!doc (extract-blob-opts req))
             "_ws" {:status 200 :body "upgrading..."}
             {:status  200
