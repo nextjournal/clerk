@@ -54,8 +54,8 @@
 (defn lookup-url [lookup-hash]
   (str gs-bucket "/lookup/" lookup-hash))
 
-(defn cas-link [hash]
-  (str base-url "/data/" hash))
+(defn cas-link [hash file-name]
+  (str base-url "/data/" hash "?name=" file-name))
 
 (defn build+upload-viewer-resources []
   (let [front-end-hash (str/trim (slurp viewer-js-hash-file))
@@ -64,7 +64,7 @@
     (when (= res ::djv/not-found)
       (tasks/run 'build:js)
       (let [content-hash (djv/sha512 (slurp "build/viewer.js"))
-            viewer-js-http-link (str (cas-link content-hash))]
+            viewer-js-http-link (str (cas-link content-hash "viewer.js"))]
         (spit manifest {"/js/viewer.js" viewer-js-http-link})
         (println "Manifest:" (slurp manifest))
         (println "Coping manifest to" (lookup-url front-end-hash))
@@ -92,7 +92,7 @@
              a)
          hash (sha512-ize f)
          gs-dest (str gs-bucket "/data/" hash)
-         gs-url (cas-link hash)]
+         gs-url (cas-link hash (last (str/split f #"/")))]
      (println "Copying" a "to" gs-dest)
      (djv/gs-copy f gs-dest)
      [a gs-url])))
