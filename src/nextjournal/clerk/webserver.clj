@@ -80,8 +80,7 @@
         "_blob" (serve-blob @!doc (extract-blob-opts req))
         "_ws" {:status 200 :body "upgrading..."}
         {:status  200
-         :headers {"Content-Type" "text/html"
-                   }
+         :headers {"Content-Type" "text/html"}
          :body    (view/doc->html @!doc @!error)})
       (catch Throwable e
         {:status  500
