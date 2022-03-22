@@ -115,7 +115,7 @@
                                                 cached))) font-css font-links)
         [font-css-link gurl] (store-asset font-css-link font-css)
         manifest (assoc manifest font-css-link gurl)
-        manifest (reduce (fn [acc l]
+        #_#_manifest (reduce (fn [acc l]
                            (let [remote (get manifest l)
                                  hash (last (str/split remote #"/"))]
                              (assoc acc (str "/assets/" hash) remote))) manifest font-links)]
