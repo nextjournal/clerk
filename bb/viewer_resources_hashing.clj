@@ -104,6 +104,7 @@
                      font-links)
         manifest (into {} (for [a assets]
                             (store-asset a)))
+        _ (fs/create-dirs ".clerk/.cache")
         font-css (reduce (fn [acc l]
                            (str/replace acc l (let [remote (get manifest l)
                                                     hash (last (str/split remote #"/"))
@@ -114,10 +115,6 @@
                                                       (:body (curl/get remote)))
                                                 cached))) font-css font-links)
         [font-css-link gurl] (store-asset font-css-link font-css)
-        manifest (assoc manifest font-css-link gurl)
-        #_#_manifest (reduce (fn [acc l]
-                           (let [remote (get manifest l)
-                                 hash (last (str/split remote #"/"))]
-                             (assoc acc (str "/assets/" hash) remote))) manifest font-links)]
+        manifest (assoc manifest font-css-link gurl)]
     (spit "resources/asset_manifest.edn"
           {:asset-map manifest})))
