@@ -77,7 +77,7 @@
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "assets" (serve-cached-asset req)
-        "_bblob" (serve-blob @!doc (extract-blob-opts req))
+        "_blob" (serve-blob @!doc (extract-blob-opts req))
         "_ws" {:status 200 :body "upgrading..."}
         {:status  200
          :headers {"Content-Type" "text/html"
