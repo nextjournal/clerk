@@ -136,18 +136,29 @@
           [:circle {:cx "20.9101" :cy "6.8555" :r "1.71143" :transform "rotate(-120 20.9101 6.8555)" :fill "currentColor"}]
           [:circle {:cx "12" :cy "1.71143" :r "1.71143" :fill "currentColor"}]]])]]))
 
+(def local-storage-dark-mode-key "clerk-darkmode")
+
 (defn set-dark-mode! [dark-mode?]
   (let [class-list (.-classList (js/document.querySelector "html"))]
     (if dark-mode?
       (.add class-list "dark")
       (.remove class-list "dark")))
-  (ls/set-item! "clerk-darkmode" dark-mode?))
+  (ls/set-item! local-storage-dark-mode-key dark-mode?))
+
+(defn setup-dark-mode! [!state]
+  (let [{:keys [dark-mode?]} @!state]
+    (add-watch !state ::dark-mode
+               (fn [_ _ old {:keys [dark-mode?]}]
+                 (when (not= (:dark-mode? old) dark-mode?)
+                   (set-dark-mode! dark-mode?))))
+    (when dark-mode?
+      (set-dark-mode! dark-mode?))))
 
 (defn notebook [{:as _doc xs :blocks :keys [toc]}]
   (r/with-let [local-storage-key "clerk-navbar"
                !state (r/atom {:toc (toc-items (:children toc))
                                :md-toc toc
-                               :dark-mode? (ls/get-item "clerk-darkmode")
+                               :dark-mode? (ls/get-item local-storage-dark-mode-key)
                                :theme {:slide-over "bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900"
                                        :pin-toggle "text-[11px] text-slate-500 dark:text-slate-400 text-right absolute right-4 top-[10px] cursor-pointer hover:underline z-10"}
                                :width 220
@@ -155,13 +166,7 @@
                                :local-storage-key local-storage-key
                                :pinned? (ls/get-item local-storage-key)})
                {:keys [dark-mode?]} @!state
-               root-ref-fn #(when %
-                              (add-watch !state ::dark-mode
-                                         (fn [_ _ old {:keys [dark-mode?]}]
-                                           (when (not= (:dark-mode? old) dark-mode?)
-                                             (set-dark-mode! dark-mode?))))
-                              (when dark-mode?
-                                (set-dark-mode! dark-mode?)))
+               root-ref-fn #(when % (setup-dark-mode! !state))
                ref-fn #(when % (swap! !state assoc :scroll-el %))]
     (let [{:keys [md-toc]} @!state]
       (when-not (= md-toc toc)
