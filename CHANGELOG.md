@@ -29,7 +29,7 @@ Changes can be:
 ## 0.5.346 (2022-01-27)
 This release focuses on improving the viewer api:
 
-* 🌟 new built-in image viewer component  for `java.awt.image.BufferedImage` with automatic layouting. These can be easily created constructed from `java.imageio.ImageIO/read` from `File`, `URL` or `InputStream`.
+* 🌟 new built-in image viewer component  for `java.awt.image.BufferedImage` with automatic layouting. These can be easily created constructed from `javax.imageio.ImageIO/read` from `File`, `URL` or `InputStream`.
 * 🌟 Enable nested viewers inside e.g. `html` or `table` viewers.
 * 🌟 Allow to convey viewers out-of-band using metadata. Clerk's viewer api has been based on functions. This can be undesired if you want to depend on the unmodified value downstream. You can now alternatively use metadata using the `:nextjournal.clerk/viewer` to convey the viewer. Valid values are viewer functions or keywords. The latter is useful when you don't want a runtime dependency on Clerk. (#58)
 * 💫 `:render-fn` must now be quoted to make it clearer it doesn't run on the JVM but in the browser (#53)
