@@ -4,6 +4,7 @@
    [babashka.curl :as curl]
    [babashka.fs :as fs]
    [babashka.tasks :as tasks :refer [shell]]
+   [clojure.pprint :as pprint]
    [clojure.string :as str]
    [nextjournal.dejavu :as djv]))
 
@@ -117,4 +118,5 @@
         [font-css-link gurl] (store-asset font-css-link font-css)
         manifest (assoc manifest font-css-link gurl)]
     (spit "resources/asset_manifest.edn"
-          {:asset-map manifest})))
+          (with-out-str
+            (pprint/pprint {:asset-map manifest})))))
