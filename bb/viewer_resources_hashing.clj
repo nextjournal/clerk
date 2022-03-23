@@ -54,8 +54,8 @@
 (defn lookup-url [lookup-hash]
   (str gs-bucket "/lookup/" lookup-hash))
 
-(defn cas-link [hash]
-  (str base-url "/data/" hash))
+(defn cas-link [hash name]
+  (str base-url "/data/" hash (when name (str"?name=" name))))
 
 (defn build+upload-viewer-resources []
   (let [front-end-hash (str/trim (slurp viewer-js-hash-file))
@@ -64,7 +64,7 @@
     (when (= res ::djv/not-found)
       (tasks/run 'build:js)
       (let [content-hash (djv/sha512 (slurp "build/viewer.js"))
-            viewer-js-http-link (str (cas-link content-hash))]
+            viewer-js-http-link (str (cas-link content-hash "viewer.js"))]
         (spit manifest {"/js/viewer.js" viewer-js-http-link})
         (println "Manifest:" (slurp manifest))
         (println "Coping manifest to" (lookup-url front-end-hash))
@@ -77,9 +77,15 @@
 
 (def font-css-link "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")
 
+(def tailwind-link "https://cdn.tailwindcss.com/3.0.23?plugins=typography@0.5.2")
+
 (defn extract-font-links [css]
   (let [urls (map second (re-seq #"url\((.*?)\)" css))]
     urls))
+
+(def asset->info
+  {tailwind-link {:name "tailwind.css"}
+   font-css-link {:name "Fira+Code.css"}})
 
 (defn store-asset
   ([a] (store-asset a (:body (curl/get a))))
@@ -92,7 +98,7 @@
              a)
          hash (sha512-ize f)
          gs-dest (str gs-bucket "/data/" hash)
-         gs-url (cas-link hash)]
+         gs-url (cas-link hash (:name (asset->info a)))]
      (println "Copying" a "to" gs-dest)
      (djv/gs-copy f gs-dest)
      [a gs-url])))
@@ -100,8 +106,7 @@
 (defn hash-assets []
   (let [font-css (slurp font-css-link)
         font-links (extract-font-links font-css)
-        assets (into ["https://cdn.tailwindcss.com/3.0.23?plugins=typography@0.5.2"
-                      "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"]
+        assets (into [tailwind-link]
                      font-links)
         manifest (into {} (for [a assets]
                             (store-asset a)))

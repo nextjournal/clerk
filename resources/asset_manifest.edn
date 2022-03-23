@@ -1,7 +1,5 @@
 {:asset-map
  {"https://cdn.tailwindcss.com/3.0.23?plugins=typography@0.5.2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/36q3Vv52BMdq6KArT8NxBBcm5xXwGTQ4tXkFwjKDkSZx8TJL47KhhHDadZkLVLZSqXGuSLeoL9Mm1Em87cusoqVN",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/36q3Vv52BMdq6KArT8NxBBcm5xXwGTQ4tXkFwjKDkSZx8TJL47KhhHDadZkLVLZSqXGuSLeoL9Mm1Em87cusoqVN?name=tailwind.css",
   "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/3uEQGQ9cBUjLVQBay2VqQsMkT8RmYjctuV356d82PSAH8qX7eQsXXC4FXzSz3K3YSWFs9ZVw2fBdBZD3r8oeCYBj",
-  "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/87awbfCbtFWw7gVXM6kxbeJk1CvuxmNA8T8FzKYAuaKw7jKm3RrEeDCN262SvZZtedFfPEkHsDpt9ZwJ3bFvs9u"}}
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/3uEQGQ9cBUjLVQBay2VqQsMkT8RmYjctuV356d82PSAH8qX7eQsXXC4FXzSz3K3YSWFs9ZVw2fBdBZD3r8oeCYBj?name=Fira+Code.css"}}
