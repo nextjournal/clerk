@@ -6,7 +6,8 @@
             [clojure.walk :as w]
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]]
-                :cljs [[reagent.ratom :as ratom]]))
+                :cljs [[reagent.ratom :as ratom]])
+            [nextjournal.markdown.transform :as md.transform])
   #?(:clj (:import (java.lang Throwable)
                    (java.awt.image BufferedImage)
                    (javax.imageio ImageIO))))
@@ -285,38 +286,128 @@
     :transform-fn (into-markup [:code])
     :fetch-fn fetch-all
     :render-fn 'v/html}
+   {:name :nextjournal.markdown/link
+    :transform-fn (into-markup #(vector :a (:attrs %)))
+    :fetch-fn fetch-all
+    :render-fn 'v/html}
+   {:name :nextjournal.markdown/strikethrough
+    :transform-fn (into-markup [:s])
+    :fetch-fn 'v/fetch-all
+    :render-fn 'v/html}
    {:name :nextjournal.markdown/internal-link
     :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))
     :fetch-fn fetch-all
     :render-fn 'v/html}
+   {:name :nextjournal.markdown/hashtag
+    :fetch-fn 'v/fetch-all
+    :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))
+    :render-fn 'v/html}
 
+   ;; inlines
    {:name :nextjournal.markdown/text
     ;; TODO: find a way to drop wrapping [:span]
     :transform-fn (into-markup [:span.text])
     :fetch-fn fetch-all
     :render-fn 'v/html}
-
    #?(:clj
       {:name :nextjournal.markdown/inline
        ;; TODO: use clerk/read+eval-cached
        :transform-fn (comp eval read-string :text)
        :fetch-fn fetch-all
        :render-fn 'v/html})
+   {:name :nextjournal.markdown/softbreak
+    :transform-fn (into-markup [:span])
+    :fetch-fn 'v/fetch-all
+    :render-fn 'v/html}
 
+   ;; blocks
+   {:name :nextjournal.markdown/code
+    ;; TODO: fixme
+    :transform-fn (into-markup #(vector :div.viewer-code.not-prose (with-viewer :code (md.transform/->text %))))
+    :fetch-fn 'v/fetch-all
+    :render-fn 'v/html}
+   {:name :nextjournal.markdown/image
+    :transform-fn (into-markup #(vector :img (:attrs %)))
+    :fetch-fn 'v/fetch-all
+    :render-fn 'v/html}
+   {:name :nextjournal.markdown/blockquote
+    :transform-fn (into-markup [:blockquote])
+    :fetch-fn 'v/fetch-all
+    :render-fn 'v/html}
+
+   ;; formulas
    {:name :nextjournal.markdown/formula
-    :fetch-fn #(:text %2)
+    :transform-fn :text
+    :fetch-fn fetch-all
+    :render-fn 'v/katex-viewer}
+   {:name :nextjournal.markdown/block-formula
+    :transform-fn :text
+    :fetch-fn fetch-all
     :render-fn 'v/katex-viewer}
 
+   ;; lists
    {:name :nextjournal.markdown/bullet-list
-    :fetch-fn fetch-all
     :transform-fn (into-markup [:ul])
+    :fetch-fn fetch-all
+    :render-fn 'v/html}
+   {:name :nextjournal.markdown/numbered-list
+    :transform-fn (into-markup [:ol])
+    :fetch-fn fetch-all
+    :render-fn 'v/html}
+   {:name :nextjournal.markdown/todo-list
+    :transform-fn (into-markup [:ul.contains-task-list])
+    :fetch-fn 'v/fetch-all
+    :render-fn 'v/html}
+   {:name :nextjournal.markdown/list-item
+    :transform-fn (into-markup [:li])
+    :fetch-fn fetch-all
+    :render-fn 'v/html}
+   {:name :nextjournal.markdown/todo-item
+    :transform-fn (into-markup (fn [{:keys [attrs]}] [:li [:input {:type "checkbox" :default-checked (:checked attrs)}]]))
+    :fetch-fn fetch-all
     :render-fn 'v/html}
 
-   {:name :nextjournal.markdown/list-item
-    :fetch-fn fetch-all
-    :transform-fn (into-markup [:li])
+   ;; tables
+   {:name :nextjournal.markdown/table
+    :transform-fn (into-markup [:table])
+    :fetch-fn 'v/fetch-all
     :render-fn 'v/html}
-   ])
+   {:name :nextjournal.markdown/table-head
+    :transform-fn (into-markup [:thead])
+    :fetch-fn 'v/fetch-all
+    :render-fn 'v/html}
+   {:name :nextjournal.markdown/table-body
+    :transform-fn (into-markup [:tbody])
+    :fetch-fn 'v/fetch-all
+    :render-fn 'v/html}
+   {:name :nextjournal.markdown/table-row
+    :transform-fn (into-markup [:tr])
+    :fetch-fn 'v/fetch-all
+    :render-fn 'v/html}
+   {:name :nextjournal.markdown/table-header
+    :transform-fn (into-markup #(vector :th {:style (md.transform/table-alignment (:attrs %))}))
+    :fetch-fn 'v/fetch-all
+    :render-fn 'v/html}
+   {:name :nextjournal.markdown/table-data
+    :transform-fn (into-markup #(vector :td {:style (md.transform/table-alignment (:attrs %))}))
+    :fetch-fn 'v/fetch-all
+    :render-fn 'v/html}
+
+   ;; ToC via [[TOC]] placeholder
+   {:name :nextjournal.markdown/toc
+    :fetch-fn 'v/fetch-all
+    :transform-fn #(throw (ex-info "Not Implemented" {}))
+    :render-fn 'v/html}
+
+   ;; sidenotes
+   {:name :nextjournal.markdown/sidenote
+    :transform-fn (into-markup (fn [{:keys [attrs]}] [:span.sidenote [:sup {:style {:margin-right "3px"}} (-> attrs :ref inc)]]))
+    :fetch-fn 'v/fetch-all
+    :render-fn 'v/html}
+   {:name :nextjournal.markdown/sidenote-ref
+    :transform-fn (into-markup [:sup.sidenote-ref])
+    :fetch-fn 'v/fetch-all
+    :render-fn 'v/html}])
 
 (defn get-all-viewers []
   {:root (concat default-markdown-viewers default-viewers)

@@ -3,8 +3,6 @@
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]))
 
-;; **FIXME**: still doesn't apply viewers via set-viewers!
-
 (clerk/set-viewers! [{:name :nextjournal.markdown/text
                       :fetch-fn v/fetch-all
                       :transform-fn (v/into-markup [:span {:style {:color "#f87171"}}])
