@@ -18,7 +18,9 @@
 ;; * delegates to describe the representation of the child nodes:
 
 (defn into-markup [mkup]
-  (fn [{:keys [text content]}] (into mkup (if text [text] (map with-md-viewer content)))))
+  (let [mkup-fn (if (fn? mkup) mkup (constantly mkup))]
+    (fn [{:as node :keys [text content]}]
+      (into (mkup-fn node) (if text [text] (map with-md-viewer content))))))
 
 ^{::clerk/viewer :hide-result}
 (def md-viewers
@@ -28,7 +30,7 @@
     :render-fn 'v/html}
 
    {:name :nextjournal.markdown/heading
-    :transform-fn (into-markup [:h1.foo])
+    :transform-fn (into-markup #(vector (str "h" (:heading-level %))))
     :fetch-fn v/fetch-all
     :render-fn 'v/html}
 
@@ -58,4 +60,7 @@
 
 ^{::clerk/viewers md-viewers}
 (with-md-viewer (md/parse "# Hello
+
+## Section 2
+
 This is not _really_ a **strong** formula $\\alpha$."))
