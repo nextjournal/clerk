@@ -4,7 +4,15 @@
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.markdown :as md]
+            [nextjournal.markdown.parser :as md.parser]
             [nextjournal.markdown.transform :as md.transform]))
+
+^{::clerk/viewer :hide-result}
+(defn parse [text]
+  (md.parser/parse (update md.parser/empty-doc :text-tokenizers conj
+                           {:regexp #"\{\{([^{]+)\}\}"
+                            :handler (fn [m] {:type :inline :text (m 1)})})
+                   (md/tokenize text)))
 
 ;; This notebook contains preparatory work to make markdown node customizable in clerk.
 
@@ -21,6 +29,8 @@
   (let [mkup-fn (if (fn? mkup) mkup (constantly mkup))]
     (fn [{:as node :keys [text content]}]
       (into (mkup-fn node) (if text [text] (map with-md-viewer content))))))
+
+(defn red [text] (v/html [:span {:style {:color "#ef4444"}} text]))
 
 ^{::clerk/viewer :hide-result}
 (def md-viewers
@@ -49,8 +59,20 @@
     :fetch-fn v/fetch-all
     :render-fn 'v/html}
 
+   {:name :nextjournal.markdown/internal-link
+    :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))
+    :fetch-fn v/fetch-all
+    :render-fn 'v/html}
+
    {:name :nextjournal.markdown/text
+    ;; TODO: find a way to drop wrapping [:span]
     :transform-fn (into-markup [:span.text])
+    :fetch-fn v/fetch-all
+    :render-fn 'v/html}
+
+   {:name :nextjournal.markdown/inline
+    ;; TODO: use clerk/read+eval-cached
+    :transform-fn (comp eval read-string :text)
     :fetch-fn v/fetch-all
     :render-fn 'v/html}
 
@@ -58,9 +80,21 @@
     :fetch-fn #(:text %2)
     :render-fn 'v/katex-viewer}])
 
+(def text "# Hello
+
+This is not _really_ a **strong** formula $\\alpha$.
+
+## Section 3
+
+with inline wiki [[link]] and inline eval {{ (red \"ahoi\") }}
+")
+
 ^{::clerk/viewers md-viewers}
-(with-md-viewer (md/parse "# Hello
+(with-md-viewer (parse text))
 
-## Section 2
-
-This is not _really_ a **strong** formula $\\alpha$."))
+^{::clerk/visibility :hide}
+(comment
+  (v/describe
+   (v/with-viewers md-viewers
+     (with-md-viewer (parse text)))
+   ))
