@@ -31,23 +31,25 @@
 @!taps
 
 ^{::clerk/viewer clerk/hide-result}
-(do
-  (defn tapped [x]
-    (swap! !taps conj x))
+(defn tapped [x]
+  (swap! !taps conj x)
+  (clerk/recompute!))
 
-  (defonce setup
-    (add-tap tapped))
+^{::clerk/viewer clerk/hide-result}
+(defonce setup
+  (add-tap tapped))
 
-  (comment
-    (tap> (rand-int 1000))
-    (tap> (shuffle (range 100)))
-    (tap> (javax.imageio.ImageIO/read (java.net.URL. "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")))
-    (tap> (clerk/vl {:width 650 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
-                                                   :format {:type "topojson" :feature "counties"}}
-                     :transform [{:lookup "id" :from {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
-                                                      :key "id" :fields ["rate"]}}]
-                     :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}}))
+#_(remove-tap tapped)
 
-    ))
+^{::clerk/viewer clerk/hide-result}
+(comment
+  (tap> (rand-int 1000))
+  (tap> (shuffle (range 100)))
+  (tap> (javax.imageio.ImageIO/read (java.net.URL. "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")))
+  (tap> (clerk/vl {:width 650 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
+                                                 :format {:type "topojson" :feature "counties"}}
+                   :transform [{:lookup "id" :from {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
+                                                    :key "id" :fields ["rate"]}}]
+                   :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}}))
 
-#_(do (reset! !taps ()) (clerk/show! "notebooks/tap.clj"))
+  )
