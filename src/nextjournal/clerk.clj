@@ -360,7 +360,8 @@
 
 (def clerk-docs
   (into ["notebooks/markdown.md"
-         "notebooks/onwards.md"]
+         "notebooks/onwards.md"
+         "notebooks/described_markdown.clj"]
         (map #(str "notebooks/" % ".clj"))
         ["hello"
          "how_clerk_works"
