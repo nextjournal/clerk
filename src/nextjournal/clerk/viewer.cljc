@@ -267,21 +267,24 @@
     :fetch-fn fetch-all
     :render-fn 'v/html}
 
+   {:name :nextjournal.markdown/ruler
+    :transform-fn (into-markup [:hr])
+    :fetch-fn fetch-all
+    :render-fn 'v/html}
+
+   ;; marks
    {:name :nextjournal.markdown/em
     :transform-fn (into-markup [:em])
     :fetch-fn fetch-all
     :render-fn 'v/html}
-
    {:name :nextjournal.markdown/strong
     :transform-fn (into-markup [:strong])
     :fetch-fn fetch-all
     :render-fn 'v/html}
-
    {:name :nextjournal.markdown/monospace
     :transform-fn (into-markup [:code])
     :fetch-fn fetch-all
     :render-fn 'v/html}
-
    {:name :nextjournal.markdown/internal-link
     :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))
     :fetch-fn fetch-all
