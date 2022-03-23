@@ -243,8 +243,80 @@
    {:pred string? :render-fn (quote v/string-viewer) :fetch-opts {:n 100}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))}])
 
+(defn with-md-viewer [{:as node :keys [type]}]
+  (wrap-value node (keyword "nextjournal.markdown" (name type))))
+
+(defn into-markup [mkup]
+  (let [mkup-fn (if (fn? mkup) mkup (constantly mkup))]
+    (fn [{:as node :keys [text content]}]
+      (into (mkup-fn node) (cond text [text] content (map with-md-viewer content))))))
+
+(def default-markdown-viewers
+  [{:name :nextjournal.markdown/doc
+    :transform-fn (into-markup [:div.viewer-markdown])
+    :fetch-fn fetch-all
+    :render-fn 'v/html}
+
+   {:name :nextjournal.markdown/heading
+    :transform-fn (into-markup #(vector (str "h" (:heading-level %))))
+    :fetch-fn fetch-all
+    :render-fn 'v/html}
+
+   {:name :nextjournal.markdown/paragraph
+    :transform-fn (into-markup [:p])
+    :fetch-fn fetch-all
+    :render-fn 'v/html}
+
+   {:name :nextjournal.markdown/em
+    :transform-fn (into-markup [:em])
+    :fetch-fn fetch-all
+    :render-fn 'v/html}
+
+   {:name :nextjournal.markdown/strong
+    :transform-fn (into-markup [:strong])
+    :fetch-fn fetch-all
+    :render-fn 'v/html}
+
+   {:name :nextjournal.markdown/monospace
+    :transform-fn (into-markup [:code])
+    :fetch-fn fetch-all
+    :render-fn 'v/html}
+
+   {:name :nextjournal.markdown/internal-link
+    :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))
+    :fetch-fn fetch-all
+    :render-fn 'v/html}
+
+   {:name :nextjournal.markdown/text
+    ;; TODO: find a way to drop wrapping [:span]
+    :transform-fn (into-markup [:span.text])
+    :fetch-fn fetch-all
+    :render-fn 'v/html}
+
+   #?(:clj
+      {:name :nextjournal.markdown/inline
+       ;; TODO: use clerk/read+eval-cached
+       :transform-fn (comp eval read-string :text)
+       :fetch-fn fetch-all
+       :render-fn 'v/html})
+
+   {:name :nextjournal.markdown/formula
+    :fetch-fn #(:text %2)
+    :render-fn 'v/katex-viewer}
+
+   {:name :nextjournal.markdown/bullet-list
+    :fetch-fn fetch-all
+    :transform-fn (into-markup [:ul])
+    :render-fn 'v/html}
+
+   {:name :nextjournal.markdown/list-item
+    :fetch-fn fetch-all
+    :transform-fn (into-markup [:li])
+    :render-fn 'v/html}
+   ])
+
 (defn get-all-viewers []
-  {:root  default-viewers
+  {:root (concat default-markdown-viewers default-viewers)
    :table default-table-cell-viewers})
 
 (defonce

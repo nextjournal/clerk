@@ -28,7 +28,7 @@
 (defn into-markup [mkup]
   (let [mkup-fn (if (fn? mkup) mkup (constantly mkup))]
     (fn [{:as node :keys [text content]}]
-      (into (mkup-fn node) (if text [text] (map with-md-viewer content))))))
+      (into (mkup-fn node) (cond text [text] content (map with-md-viewer content))))))
 
 (defn red [text] (v/html [:span {:style {:color "#ef4444"}} text]))
 
@@ -56,6 +56,11 @@
 
    {:name :nextjournal.markdown/strong
     :transform-fn (into-markup [:strong])
+    :fetch-fn v/fetch-all
+    :render-fn 'v/html}
+
+   {:name :nextjournal.markdown/monospace
+    :transform-fn (into-markup [:code])
     :fetch-fn v/fetch-all
     :render-fn 'v/html}
 
