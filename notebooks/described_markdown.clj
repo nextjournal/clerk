@@ -28,62 +28,44 @@
 (defn into-markup [mkup]
   (let [mkup-fn (if (fn? mkup) mkup (constantly mkup))]
     (fn [{:as node :keys [text content]}]
-      (into (mkup-fn node) (cond text [text] content (map with-md-viewer content))))))
-
-(defn red [text] (v/html [:span {:style {:color "#ef4444"}} text]))
+      (v/html (into (mkup-fn node) (cond text [text] content (map with-md-viewer content)))))))
 
 ^{::clerk/viewer :hide-result}
 (def md-viewers
   [{:name :nextjournal.markdown/doc
-    :transform-fn (into-markup [:div.viewer-markdown])
-    :fetch-fn v/fetch-all
-    :render-fn 'v/html}
+    :transform-fn (into-markup [:div.viewer-markdown])}
 
    {:name :nextjournal.markdown/heading
-    :transform-fn (into-markup #(vector (str "h" (:heading-level %))))
-    :fetch-fn v/fetch-all
-    :render-fn 'v/html}
+    :transform-fn (into-markup #(vector (str "h" (:heading-level %))))}
 
    {:name :nextjournal.markdown/paragraph
-    :transform-fn (into-markup [:p])
-    :fetch-fn v/fetch-all
-    :render-fn 'v/html}
+    :transform-fn (into-markup [:p])}
 
    {:name :nextjournal.markdown/em
-    :transform-fn (into-markup [:em])
-    :fetch-fn v/fetch-all
-    :render-fn 'v/html}
+    :transform-fn (into-markup [:em])}
 
    {:name :nextjournal.markdown/strong
-    :transform-fn (into-markup [:strong])
-    :fetch-fn v/fetch-all
-    :render-fn 'v/html}
+    :transform-fn (into-markup [:strong])}
 
    {:name :nextjournal.markdown/monospace
-    :transform-fn (into-markup [:code])
-    :fetch-fn v/fetch-all
-    :render-fn 'v/html}
+    :transform-fn (into-markup [:code])}
 
    {:name :nextjournal.markdown/internal-link
-    :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))
-    :fetch-fn v/fetch-all
-    :render-fn 'v/html}
+    :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))}
 
    {:name :nextjournal.markdown/text
     ;; TODO: find a way to drop wrapping [:span]
-    :transform-fn (into-markup [:span.text])
-    :fetch-fn v/fetch-all
-    :render-fn 'v/html}
+    :transform-fn (into-markup [:span.text])}
 
    {:name :nextjournal.markdown/inline
     ;; TODO: use clerk/read+eval-cached
-    :transform-fn (comp eval read-string :text)
-    :fetch-fn v/fetch-all
-    :render-fn 'v/html}
+    :transform-fn (comp eval read-string :text)}
 
    {:name :nextjournal.markdown/formula
-    :fetch-fn #(:text %2)
-    :render-fn 'v/katex-viewer}])
+    :transform-fn :text
+    :render-fn 'v/mathjax-viewer}])
+
+(defn marine [text] (clerk/html [:span {:style {:font-weight 800 :color "#0284c7"}} (str "⚓️" text)]))
 
 (def text "# Hello
 
@@ -91,7 +73,7 @@ This is not _really_ a **strong** formula $\\alpha$.
 
 ## Section 3
 
-with inline wiki [[link]] and inline eval {{ (red \"ahoi\") }}
+with inline wiki [[link]] and inline eval {{ (marine \"Ahoi\") }}.
 ")
 
 ^{::clerk/viewers md-viewers}
