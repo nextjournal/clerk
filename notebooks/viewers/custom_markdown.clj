@@ -7,7 +7,7 @@
 
 ;; This notebook should demostrate how to override markdown nodes and to test how they render by default.
 
-;; ## Custom Inline Eval (is this margin ok 👇?)
+;; ## Custom Inline Eval
 
 (defonce slider-state (atom 42))
 
@@ -22,9 +22,10 @@
                                     :on-change #(v/clerk-eval `(reset! slider-state (Integer/parseInt ~(.. % -target -value))))}]))}
     @slider-state))
 
+;; ---
 ;; With overridable markdown nodes we can get inline evaluation for free: `(clerk/tex "\\beta")`. We can build inline controls to interact with.
 ;;
-;; Say you don't like the text color of your notebook: fix it with a slider `(slider 0 256)` and set blue values to `@slider-state`. Unfortunately dragging of the slider isn't smooth at all, because of recomputations.
+;; Say you don't like the text color of your notebook: fix it with a slider `(slider 0 256)` and set blue values to **`@slider-state`**. Unfortunately dragging of the slider isn't very smooth yet, because of recomputations, but should be easy to fix.
 
 (clerk/set-viewers! [{:name :nextjournal.markdown/text
                       :transform-fn
@@ -37,8 +38,6 @@
                      {:name :nextjournal.markdown/ruler
                       :transform-fn (v/into-markup [:hr {:style {:border "3px solid #fb923c"}}])}])
 
-;; # Custom Ruler
-;; ---
 ;; Margins in markdown code blocks are still to be fixed, both in fenced blocks
 ;; ```clojure
 ;; (+ 1 2)
