@@ -254,18 +254,19 @@
         (into (mkup-fn node) (cond text [text] content (map with-md-viewer content)))))))
 
 (def default-markdown-viewers
-  [{:name :nextjournal.markdown/doc
-    :transform-fn (into-markup [:div.viewer-markdown])}
+  [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:div.ahoi.viewer-markdown])}
 
    ;; blocks
    {:name :nextjournal.markdown/heading :transform-fn (into-markup #(vector (str "h" (:heading-level %))))}
+   {:name :nextjournal.markdown/image :transform-fn (into-markup #(vector :img (:attrs %)))}
+   {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
    {:name :nextjournal.markdown/ruler :transform-fn (into-markup [:hr])}
    {:name :nextjournal.markdown/code
-    ;; TODO: fixme
-    :transform-fn (into-markup #(vector :div.viewer-code.not-prose (with-viewer :code (md.transform/->text %))))}
-   {:name :nextjournal.markdown/image :transform-fn (into-markup #(vector :img (:attrs %)))}
-   {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
+    :transform-fn #(with-viewer :html
+                     [:div.viewer-code
+                      (with-viewer :code
+                        (md.transform/->text %))])}
 
    ;; marks
    {:name :nextjournal.markdown/em            :transform-fn (into-markup [:em])}
