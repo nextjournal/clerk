@@ -923,9 +923,10 @@ black")}]))}
   (html (katex/to-html-string tex-string)))
 
 (defn html-viewer [markup]
-  (if (string? markup)
-    (html [:div {:dangerouslySetInnerHTML {:__html markup}}])
-    (r/as-element markup)))
+  (r/as-element
+   (if (string? markup)
+     [:span {:dangerouslySetInnerHTML {:__html markup}}]
+     markup)))
 
 (defn reagent-viewer [x]
   (r/as-element (cond-> x (fn? x) vector)))
