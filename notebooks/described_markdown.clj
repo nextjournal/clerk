@@ -83,5 +83,7 @@ with inline wiki [[link]] and inline eval {{ (marine \"Ahoi\") }}.
 (comment
   (v/describe
    (v/with-viewers md-viewers
-     (with-md-viewer (parse text)))
-   ))
+     (with-md-viewer (parse text))))
+
+  (reset! nextjournal.clerk.webserver/!doc nextjournal.clerk.webserver/help-doc)
+  (reset! v/!viewers (v/get-all-viewers)))
