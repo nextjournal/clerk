@@ -1,12 +1,11 @@
-;; # 🚰 Tap Inspector
 ^{:nextjournal.clerk/visibility :hide}
-(ns ^:nextjournal.clerk/no-cache tap
+(ns nextjournal.clerk.tap
   (:require [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.viewer :as v]
             [clojure.core :as core]))
 
 ^{::clerk/viewer {:transform-fn (fn [{::clerk/keys [var-from-def]}]
                                   {:var-name (symbol var-from-def) :value @@var-from-def})
-                  :commands []
                   :fetch-fn (fn [_ x] x)
                   :render-fn '(fn [{:keys [var-name value]}]
                                 (v/html
@@ -25,21 +24,48 @@
 ^{::clerk/viewer clerk/hide-result}
 (defonce !taps (atom ()))
 
+
+^{::clerk/viewer clerk/hide-result}
+(defn fetch-tap [{:as opts :keys [describe-fn path offset]} x]
+  (-> (cond-> (update x :value describe-fn (assoc opts :!budget (atom 100)) path)
+        (pos? offset) :value)
+      (assoc :path (conj path :value))))
+
+^{::clerk/viewer clerk/hide-result}
+(def taps-viewer {:render-fn '(fn [taps opts]
+                                (v/html [:div.flex.flex-col
+                                         (map (fn [tap] (let [{:keys [value key]} (:nextjournal/value tap)]
+                                                         (with-meta [v/inspect value] {:key key})))
+                                              taps)]))
+                  :transform-fn (fn [taps]
+                                  (mapv (partial clerk/with-viewer {:fetch-fn fetch-tap}) taps))})
+
+
 ^{::clerk/viewer (if (= :latest @!view)
-                   {:transform-fn first}
-                   {:render-fn '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1))})}
+                   {:transform-fn (comp :value first)}
+                   taps-viewer)}
 @!taps
+
+#_(reset! !taps ())
+
 
 ^{::clerk/viewer clerk/hide-result}
 (defn tapped [x]
-  (swap! !taps conj x)
-  (clerk/recompute!))
+  (swap! !taps conj {:value x :inst (java.time.Instant/now) :key (str (gensym))})
+  (binding [*ns* (find-ns 'tap)]
+    (clerk/recompute!)))
+
+#_(tapped (rand-int 1000))
+
+#_(reset! @(find-var 'clojure.core/tapset) #{})
 
 ^{::clerk/viewer clerk/hide-result}
 (defonce setup
   (add-tap tapped))
 
 #_(remove-tap tapped)
+
+
 
 ^{::clerk/viewer clerk/hide-result}
 (comment
