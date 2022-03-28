@@ -183,7 +183,7 @@
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
-  [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:div.ahoi.viewer-markdown])}
+  [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:div.viewer-markdown])}
 
    ;; blocks
    {:name :nextjournal.markdown/heading :transform-fn (into-markup #(vector (str "h" (:heading-level %))))}
@@ -236,7 +236,7 @@
     :transform-fn (into-markup #(vector :td {:style (md.transform/table-alignment (:attrs %))}))}
 
    ;; ToC via [[TOC]] placeholder
-   {:name :nextjournal.markdown/toc :transform-fn #(throw (ex-info "Not Implemented" {}))}
+   {:name :nextjournal.markdown/toc :transform-fn #(throw (ex-info "Not Implemented" %))}
 
    ;; sidenotes
    {:name :nextjournal.markdown/sidenote
