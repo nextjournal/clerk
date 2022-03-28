@@ -1,6 +1,6 @@
 ;; #  📝 In-Text Evaluation
 ^{:nextjournal.clerk/visibility :hide-ns}
-(ns ^{:nextjournal.clerk/no-cache true} viewers.custom-markdown
+(ns ^{:nextjournal.clerk/no-cache true} viewers.in-text-eval
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.markdown.transform :as markdown.transform]))
