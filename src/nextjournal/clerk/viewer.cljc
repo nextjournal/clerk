@@ -167,12 +167,88 @@
 (defn var-from-def? [x]
   (and (map? x) (get-safe x :nextjournal.clerk/var-from-def)))
 
+(declare with-viewer)
+
+(defn with-md-viewer [{:as node :keys [type]}]
+  (with-viewer (keyword "nextjournal.markdown" (name type)) node))
+
+(defn into-markup [mkup]
+  (let [mkup-fn (if (fn? mkup) mkup (constantly mkup))]
+    (fn [{:as node :keys [text content]}]
+      (with-viewer :html
+        (into (mkup-fn node) (cond text [text] content (map with-md-viewer content)))))))
+
 (declare !viewers)
 
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
-  [{:pred char? :render-fn '(fn [c] (v/html [:span.cmt-string.inspected-value "\\" c]))}
+  [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:div.ahoi.viewer-markdown])}
+
+   ;; blocks
+   {:name :nextjournal.markdown/heading :transform-fn (into-markup #(vector (str "h" (:heading-level %))))}
+   {:name :nextjournal.markdown/image :transform-fn (into-markup #(vector :img (:attrs %)))}
+   {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
+   {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
+   {:name :nextjournal.markdown/ruler :transform-fn (into-markup [:hr])}
+   {:name :nextjournal.markdown/code
+    :transform-fn #(with-viewer :html
+                     [:div.viewer-code
+                      (with-viewer :code
+                        (md.transform/->text %))])}
+
+   ;; marks
+   {:name :nextjournal.markdown/em :transform-fn (into-markup [:em])}
+   {:name :nextjournal.markdown/strong :transform-fn (into-markup [:strong])}
+   {:name :nextjournal.markdown/monospace :transform-fn (into-markup [:code])}
+   {:name :nextjournal.markdown/strikethrough :transform-fn (into-markup [:s])}
+   {:name :nextjournal.markdown/link :transform-fn (into-markup #(vector :a (:attrs %)))}
+   {:name :nextjournal.markdown/internal-link :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))}
+   {:name :nextjournal.markdown/hashtag :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))}
+
+   ;; inlines
+   {:name :nextjournal.markdown/text :transform-fn (into-markup [:span.text])}
+   ;; TODO: find a way to drop wrapping [:span]
+   {:name :nextjournal.markdown/softbreak :transform-fn (into-markup [:span])}
+   #?(:clj                                                  ;; TODO: use clerk/read+eval-cached
+      {:name :nextjournal.markdown/inline :transform-fn (comp eval read-string md.transform/->text)})
+
+   ;; formulas
+   {:name :nextjournal.markdown/formula :transform-fn :text :render-fn 'v/katex-viewer}
+   {:name :nextjournal.markdown/block-formula :transform-fn :text :render-fn 'v/katex-viewer}
+
+   ;; lists
+   {:name :nextjournal.markdown/bullet-list
+    :transform-fn (into-markup [:ul])}
+   {:name :nextjournal.markdown/numbered-list
+    :transform-fn (into-markup [:ol])}
+   {:name :nextjournal.markdown/todo-list
+    :transform-fn (into-markup [:ul.contains-task-list])}
+   {:name :nextjournal.markdown/list-item
+    :transform-fn (into-markup [:li])}
+   {:name :nextjournal.markdown/todo-item
+    :transform-fn (into-markup (fn [{:keys [attrs]}] [:li [:input {:type "checkbox" :default-checked (:checked attrs)}]]))}
+
+   ;; tables
+   {:name :nextjournal.markdown/table :transform-fn (into-markup [:table])}
+   {:name :nextjournal.markdown/table-head :transform-fn (into-markup [:thead])}
+   {:name :nextjournal.markdown/table-body :transform-fn (into-markup [:tbody])}
+   {:name :nextjournal.markdown/table-row :transform-fn (into-markup [:tr])}
+   {:name :nextjournal.markdown/table-header
+    :transform-fn (into-markup #(vector :th {:style (md.transform/table-alignment (:attrs %))}))}
+   {:name :nextjournal.markdown/table-data
+    :transform-fn (into-markup #(vector :td {:style (md.transform/table-alignment (:attrs %))}))}
+
+   ;; ToC via [[TOC]] placeholder
+   {:name :nextjournal.markdown/toc :transform-fn #(throw (ex-info "Not Implemented" {}))}
+
+   ;; sidenotes
+   {:name :nextjournal.markdown/sidenote
+    :transform-fn (into-markup (fn [{:keys [attrs]}] [:span.sidenote [:sup {:style {:margin-right "3px"}} (-> attrs :ref inc)]]))}
+   {:name :nextjournal.markdown/sidenote-ref
+    :transform-fn (into-markup [:sup.sidenote-ref])}
+
+   {:pred char? :render-fn '(fn [c] (v/html [:span.cmt-string.inspected-value "\\" c]))}
    {:pred string? :render-fn (quote v/quoted-string-viewer) :fetch-opts {:n elide-string-length}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.cmt-number.inspected-value
                                                (if (js/Number.isNaN x) "NaN" (str x))]))}
@@ -244,83 +320,8 @@
    {:pred string? :render-fn (quote v/string-viewer) :fetch-opts {:n 100}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))}])
 
-(defn with-md-viewer [{:as node :keys [type]}]
-  (wrap-value node (keyword "nextjournal.markdown" (name type))))
-
-(defn into-markup [mkup]
-  (let [mkup-fn (if (fn? mkup) mkup (constantly mkup))]
-    (fn [{:as node :keys [text content]}]
-      (with-viewer :html
-        (into (mkup-fn node) (cond text [text] content (map with-md-viewer content)))))))
-
-(def default-markdown-viewers
-  [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:div.ahoi.viewer-markdown])}
-
-   ;; blocks
-   {:name :nextjournal.markdown/heading :transform-fn (into-markup #(vector (str "h" (:heading-level %))))}
-   {:name :nextjournal.markdown/image :transform-fn (into-markup #(vector :img (:attrs %)))}
-   {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
-   {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
-   {:name :nextjournal.markdown/ruler :transform-fn (into-markup [:hr])}
-   {:name :nextjournal.markdown/code
-    :transform-fn #(with-viewer :html
-                     [:div.viewer-code
-                      (with-viewer :code
-                        (md.transform/->text %))])}
-
-   ;; marks
-   {:name :nextjournal.markdown/em            :transform-fn (into-markup [:em])}
-   {:name :nextjournal.markdown/strong        :transform-fn (into-markup [:strong])}
-   {:name :nextjournal.markdown/monospace     :transform-fn (into-markup [:code])}
-   {:name :nextjournal.markdown/strikethrough :transform-fn (into-markup [:s])}
-   {:name :nextjournal.markdown/link          :transform-fn (into-markup #(vector :a (:attrs %)))}
-   {:name :nextjournal.markdown/internal-link :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))}
-   {:name :nextjournal.markdown/hashtag       :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))}
-
-   ;; inlines
-   {:name :nextjournal.markdown/text :transform-fn (into-markup [:span.text])}
-    ;; TODO: find a way to drop wrapping [:span]
-   {:name :nextjournal.markdown/softbreak :transform-fn (into-markup [:span])}
-   #?(:clj ;; TODO: use clerk/read+eval-cached
-      {:name :nextjournal.markdown/inline :transform-fn (comp eval read-string md.transform/->text)})
-
-   ;; formulas
-   {:name :nextjournal.markdown/formula :transform-fn :text :render-fn 'v/katex-viewer}
-   {:name :nextjournal.markdown/block-formula :transform-fn :text :render-fn 'v/katex-viewer}
-
-   ;; lists
-   {:name :nextjournal.markdown/bullet-list
-    :transform-fn (into-markup [:ul])}
-   {:name :nextjournal.markdown/numbered-list
-    :transform-fn (into-markup [:ol])}
-   {:name :nextjournal.markdown/todo-list
-    :transform-fn (into-markup [:ul.contains-task-list])}
-   {:name :nextjournal.markdown/list-item
-    :transform-fn (into-markup [:li])}
-   {:name :nextjournal.markdown/todo-item
-    :transform-fn (into-markup (fn [{:keys [attrs]}] [:li [:input {:type "checkbox" :default-checked (:checked attrs)}]]))}
-
-   ;; tables
-   {:name :nextjournal.markdown/table :transform-fn (into-markup [:table])}
-   {:name :nextjournal.markdown/table-head :transform-fn (into-markup [:thead])}
-   {:name :nextjournal.markdown/table-body :transform-fn (into-markup [:tbody])}
-   {:name :nextjournal.markdown/table-row :transform-fn (into-markup [:tr])}
-   {:name :nextjournal.markdown/table-header
-    :transform-fn (into-markup #(vector :th {:style (md.transform/table-alignment (:attrs %))}))}
-   {:name :nextjournal.markdown/table-data
-    :transform-fn (into-markup #(vector :td {:style (md.transform/table-alignment (:attrs %))}))}
-
-   ;; ToC via [[TOC]] placeholder
-   {:name :nextjournal.markdown/toc :transform-fn #(throw (ex-info "Not Implemented" {}))}
-
-   ;; sidenotes
-   {:name :nextjournal.markdown/sidenote
-    :transform-fn (into-markup (fn [{:keys [attrs]}] [:span.sidenote [:sup {:style {:margin-right "3px"}} (-> attrs :ref inc)]]))}
-   {:name :nextjournal.markdown/sidenote-ref
-    :transform-fn (into-markup [:sup.sidenote-ref])}])
-
 (defn get-all-viewers []
-  {:root (concat default-markdown-viewers default-viewers)
+  {:root default-viewers
    :table default-table-cell-viewers})
 
 (defonce
