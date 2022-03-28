@@ -41,21 +41,36 @@
                   :transform-fn (fn [taps]
                                   (mapv (partial clerk/with-viewer {:fetch-fn fetch-tap}) taps))})
 
-[0 0 1]
 
-#_(clerk/with-viewer taps-viewer
-    @!taps)
+^{::clerk/viewer (if (= :stream @!view) taps-viewer {:transform-fn (comp :tap first)})}
+@!taps
 
 #_(reset! !taps ())
 
-(nextjournal.clerk.viewer/describe
- (clerk/with-viewer taps-viewer
-   [{:tap (javax.imageio.ImageIO/read (java.net.URL. "file:/Users/mk/Desktop/CleanShot 2022-03-28 at 15.15.15@2x.png"))}]))
+(clerk/with-viewer taps-viewer
+  [{:tap 42}
+   {:tap (javax.imageio.ImageIO/read (java.net.URL. "file:/Users/mk/Desktop/CleanShot 2022-03-28 at 15.15.15@2x.png"))}
+   {:tap 42}])
+
+
+(let [!trace (atom [])]
+  (nextjournal.clerk.viewer/describe
+   (clerk/with-viewer taps-viewer
+     [{:tap (javax.imageio.ImageIO/read (java.net.URL. "file:/Users/mk/Desktop/CleanShot 2022-03-28 at 15.15.15@2x.png"))}])
+   {:trace-fn #(swap! !trace conj (select-keys % [:xs :current-path]))})
+  @!trace)
 
 
 (clerk/with-viewer taps-viewer
   [{:tap (javax.imageio.ImageIO/read (java.net.URL. "file:/Users/mk/Desktop/CleanShot 2022-03-28 at 15.15.15@2x.png"))}])
 
+#_(let [img (javax.imageio.ImageIO/read (java.net.URL. "file:/Users/mk/Desktop/CleanShot 2022-03-28 at 15.15.15@2x.png"))
+        stream (java.io.ByteArrayOutputStream.)]
+    (javax.imageio.ImageIO/write img "png" stream)
+    (.toByteArray stream))
+
+#_(clerk/clear-cache!)
+#_
 [{:tap (javax.imageio.ImageIO/read (java.net.URL. "file:/Users/mk/Desktop/CleanShot 2022-03-28 at 15.15.15@2x.png"))}]
 
 ^{::clerk/viewer clerk/hide-result}
@@ -81,6 +96,7 @@
 (comment
   (tap> (rand-int 1000))
   (tap> (shuffle (range 100)))
+  (tap> (javax.imageio.ImageIO/read (java.net.URL. "file:/Users/mk/Desktop/CleanShot 2022-03-28 at 15.15.15@2x.png")))
   (tap> (javax.imageio.ImageIO/read (java.net.URL. "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")))
   (tap> (clerk/vl {:width 650 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
                                                  :format {:type "topojson" :feature "counties"}}
