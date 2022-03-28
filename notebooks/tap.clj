@@ -27,31 +27,40 @@
 
 ^{::clerk/viewer clerk/hide-result}
 (defn fetch-tap [{:as opts :keys [describe-fn path offset]} x]
-  (-> (cond-> (update x :value describe-fn (assoc opts :!budget (atom 100)) path)
-        (pos? offset) :value)
-      (assoc :path (conj path :value))))
+  (let [path (conj path :tap)]
+    (-> (cond-> (update x :tap describe-fn (assoc opts :!budget (atom 100)) path)
+          (pos? offset) :tap)
+        (assoc :path path))))
 
 ^{::clerk/viewer clerk/hide-result}
 (def taps-viewer {:render-fn '(fn [taps opts]
                                 (v/html [:div.flex.flex-col
-                                         (map (fn [tap] (let [{:keys [value key]} (:nextjournal/value tap)]
-                                                         (with-meta [v/inspect value] {:key key})))
+                                         (map (fn [v] (let [{:keys [tap key]} (:nextjournal/value v)]
+                                                       (with-meta [v/inspect tap] {:key key})))
                                               taps)]))
                   :transform-fn (fn [taps]
                                   (mapv (partial clerk/with-viewer {:fetch-fn fetch-tap}) taps))})
 
+[0 0 1]
 
-^{::clerk/viewer (if (= :latest @!view)
-                   {:transform-fn (comp :value first)}
-                   taps-viewer)}
-@!taps
+#_(clerk/with-viewer taps-viewer
+    @!taps)
 
 #_(reset! !taps ())
 
+(nextjournal.clerk.viewer/describe
+ (clerk/with-viewer taps-viewer
+   [{:tap (javax.imageio.ImageIO/read (java.net.URL. "file:/Users/mk/Desktop/CleanShot 2022-03-28 at 15.15.15@2x.png"))}]))
+
+
+(clerk/with-viewer taps-viewer
+  [{:tap (javax.imageio.ImageIO/read (java.net.URL. "file:/Users/mk/Desktop/CleanShot 2022-03-28 at 15.15.15@2x.png"))}])
+
+[{:tap (javax.imageio.ImageIO/read (java.net.URL. "file:/Users/mk/Desktop/CleanShot 2022-03-28 at 15.15.15@2x.png"))}]
 
 ^{::clerk/viewer clerk/hide-result}
 (defn tapped [x]
-  (swap! !taps conj {:value x :inst (java.time.Instant/now) :key (str (gensym))})
+  (swap! !taps conj {:tap x :inst (java.time.Instant/now) :key (str (gensym))})
   (binding [*ns* (find-ns 'tap)]
     (clerk/recompute!)))
 
@@ -64,6 +73,7 @@
   (add-tap tapped))
 
 #_(remove-tap tapped)
+
 
 
 
