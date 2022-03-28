@@ -187,7 +187,7 @@
 
    ;; blocks
    {:name :nextjournal.markdown/heading :transform-fn (into-markup #(vector (str "h" (:heading-level %))))}
-   {:name :nextjournal.markdown/image :transform-fn (into-markup #(vector :img (:attrs %)))}
+   {:name :nextjournal.markdown/image :transform-fn #(with-viewer :html [:img (:attrs %)])}
    {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
    {:name :nextjournal.markdown/ruler :transform-fn (into-markup [:hr])}
@@ -218,14 +218,10 @@
    {:name :nextjournal.markdown/block-formula :transform-fn :text :render-fn 'v/katex-viewer}
 
    ;; lists
-   {:name :nextjournal.markdown/bullet-list
-    :transform-fn (into-markup [:ul])}
-   {:name :nextjournal.markdown/numbered-list
-    :transform-fn (into-markup [:ol])}
-   {:name :nextjournal.markdown/todo-list
-    :transform-fn (into-markup [:ul.contains-task-list])}
-   {:name :nextjournal.markdown/list-item
-    :transform-fn (into-markup [:li])}
+   {:name :nextjournal.markdown/bullet-list :transform-fn (into-markup [:ul])}
+   {:name :nextjournal.markdown/numbered-list :transform-fn (into-markup [:ol])}
+   {:name :nextjournal.markdown/todo-list :transform-fn (into-markup [:ul.contains-task-list])}
+   {:name :nextjournal.markdown/list-item :transform-fn (into-markup [:li])}
    {:name :nextjournal.markdown/todo-item
     :transform-fn (into-markup (fn [{:keys [attrs]}] [:li [:input {:type "checkbox" :default-checked (:checked attrs)}]]))}
 
