@@ -429,7 +429,7 @@
       (do (when-not (contains? (-> path->url vals set) "") ;; no user-defined index page
             (spit index-html (view/->static-app (dissoc static-app-opts :path->doc))))
           (doseq [[path doc] path->doc]
-            (let [out-html (str out-path fs/file-separator (str/replace path #"(.clj|.md)" ".html"))]
+            (let [out-html (str out-path fs/file-separator (str/replace path #"(.cljc?|.md)" ".html"))]
               (fs/create-dirs (fs/parent out-html))
               (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
     (when browse?
