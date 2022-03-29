@@ -154,7 +154,7 @@
 
 (defn inspect-leafs [opts x]
   (if (wrapped-value? x)
-    [(->viewer-fn 'v/inspect) (describe x opts)]
+    [(->viewer-eval 'v/inspect) (describe x opts)]
     x))
 
 (defn fetch-all [opts xs]
