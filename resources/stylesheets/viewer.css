@@ -276,6 +276,7 @@
 /* --------------------------------------------------------------- */
 
 .viewer-notebook { @apply py-16; }
+#clerk-static-app .viewer-notebook { @apply pt-[0.8rem] pb-16; }
 .viewer-markdown *:first-child:not(.viewer-code) { @apply mt-0; }
 .viewer + .viewer { @apply mt-6; }
 .viewer-markdown + .viewer { @apply mt-3; }
