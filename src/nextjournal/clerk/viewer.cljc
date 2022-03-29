@@ -1,8 +1,8 @@
 (ns nextjournal.clerk.viewer
-  (:require [clojure.string :as str]
+  (:require [clojure.datafy :as datafy]
             [clojure.pprint :as pprint]
-            [clojure.datafy :as datafy]
             [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.walk :as w]
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]]

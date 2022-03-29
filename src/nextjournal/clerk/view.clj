@@ -201,14 +201,18 @@
     (hiccup/include-css "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")]
    [:body.dark:bg-slate-900
     [:div#clerk]
-    [:script "let viewer = nextjournal.clerk.sci_viewer
-let state = " (-> state ->edn pr-str) "
-viewer.set_state(viewer.read_string(state))
-viewer.mount(document.getElementById('clerk'))\n"
+    [:script "let viewer = nextjournal.clerk.sci_viewer;
+let state = " (-> state ->edn pr-str) ";
+viewer.set_state(viewer.read_string(state));
+viewer.mount(document.getElementById('clerk'));\n"
      (when conn-ws?
-       "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
-ws.onmessage = msg => viewer.set_state(viewer.read_string(msg.data))
-window.ws_send = msg => ws.send(msg)")]]))
+       "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws');
+ws.onmessage = msg => viewer.set_state(viewer.read_string(msg.data));
+window.ws_send = msg => ws.send(msg);")
+     (when conn-ws?
+       "const ws_dev = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_nrepl');
+ws.onmessage = console.log;
+")]]))
 
 (defn ->static-app [{:as state :keys [current-path]}]
   (hiccup/html5

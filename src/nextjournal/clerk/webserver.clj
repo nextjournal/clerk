@@ -1,11 +1,11 @@
 (ns nextjournal.clerk.webserver
-  (:require [clojure.string :as str]
+  (:require [clojure.edn :as edn]
             [clojure.pprint :as pprint]
-            [clojure.edn :as edn]
-            [org.httpkit.server :as httpkit]
+            [clojure.string :as str]
+            [lambdaisland.uri :as uri]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
-            [lambdaisland.uri :as uri]))
+            [org.httpkit.server :as httpkit]))
 
 (def help-doc
   {:blocks [{:type :markdown :text "Use `nextjournal.clerk/show!` to make your notebook appear…"}]})
@@ -59,16 +59,22 @@
 
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
-    (httpkit/as-channel req {:on-open (fn [ch] (swap! !clients conj ch))
-                             :on-close (fn [ch _reason] (swap! !clients disj ch))
-                             :on-receive (fn [_ch msg] (binding [*ns* (or (:ns @!doc)
-                                                                          (create-ns 'user))]
-                                                         (eval (read-string msg))
-                                                         (eval '(nextjournal.clerk/recompute!))))})
+    (case (:uri req)
+      "/_nrepl" (httpkit/as-channel req {:on-open (fn [ch] (prn :open))
+                                         :on-close (fn [ch _reason] (prn :close))
+                                         :on-receive (fn [_ch msg] (prn :receive msg))})
+      ;; default
+      (httpkit/as-channel req {:on-open (fn [ch] (swap! !clients conj ch))
+                               :on-close (fn [ch _reason] (swap! !clients disj ch))
+                               :on-receive (fn [_ch msg] (binding [*ns* (or (:ns @!doc)
+                                                                            (create-ns 'user))]
+                                                           (eval (read-string msg))
+                                                           (eval '(nextjournal.clerk/recompute!))))}))
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
-        "_ws" {:status 200 :body "upgrading..."}
+        ("_ws" "_nrepl") {:status 200 :body "upgrading..."}
+         {:status 200 :body "upgrading..."}
         {:status  200
          :headers {"Content-Type" "text/html"}
          :body    (view/doc->html @!doc @!error)})
