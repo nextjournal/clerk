@@ -148,10 +148,12 @@
 
 (defn ->doc-settings [first-form]
   {:visibility (->doc-visibility first-form)
-   :toc? (boolean (-> first-form meta :nextjournal.clerk/toc?))})
+   :toc (or (#{true :pin} (-> first-form meta :nextjournal.clerk/toc)) false)})
 
 #_(->doc-settings '(ns foo))
-#_(->doc-settings '^{:nextjournal.clerk/toc? true} (ns foo))
+#_(->doc-settings '^{:nextjournal.clerk/toc true} (ns foo))
+#_(->doc-settings '^{:nextjournal.clerk/toc :pin} (ns foo))
+#_(->doc-settings '^{:nextjournal.clerk/toc :boom} (ns foo)) ;; TODO: error
 
 (defn auto-resolves [ns]
   (as-> (ns-aliases ns) $
@@ -208,7 +210,10 @@
                                           (mapcat :content))
                                     blocks)}
                     markdown.parser/add-title+toc
-                    (select-keys (cond-> #{:title} (:toc? state) (conj :toc))))))))))
+                    (select-keys (cond-> #{:title} (:toc state) (conj :toc)))
+                    (assoc-in [:toc :mode] (:toc state)))))))))
+
+#_(keys (parse-clojure-string {:doc? true} (slurp "notebooks/viewer_api.clj")))
 
 (defn code-cell? [{:as node :keys [type]}]
   (and (= :code type) (contains? node :info)))
@@ -244,7 +249,7 @@
         (-> state
             (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
             (select-keys [:blocks :visibility])
-            (merge (when doc? (cond-> {:title title} (:toc? state) (assoc :toc toc)))))))))
+            (merge (when doc? (cond-> {:title title} (:toc state) (assoc :toc toc)))))))))
 
 (defn parse-file
   ([file] (parse-file {} file))
