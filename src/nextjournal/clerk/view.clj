@@ -191,6 +191,7 @@
 
 (defn ->html [{:keys [conn-ws?] :or {conn-ws? true}} state]
   (hiccup/html5
+   {:class "overflow-hidden min-h-screen"}
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
@@ -212,6 +213,7 @@ window.ws_send = msg => ws.send(msg)")]]))
 
 (defn ->static-app [{:as state :keys [current-path]}]
   (hiccup/html5
+   {:class "overflow-hidden min-h-screen"}
    [:head
     [:title (or (and current-path (-> state :path->doc (get current-path) v/value :title)) "Clerk")]
     [:meta {:charset "UTF-8"}]
