@@ -165,7 +165,6 @@
                                :mobile-width 300
                                :local-storage-key local-storage-key
                                :pinned? (ls/get-item local-storage-key)})
-               {:keys [dark-mode?]} @!state
                root-ref-fn #(when % (setup-dark-mode! !state))
                ref-fn #(when % (swap! !state assoc :scroll-el %))]
     (let [{:keys [md-toc]} @!state]
