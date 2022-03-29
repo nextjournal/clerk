@@ -164,19 +164,18 @@
                                :width 220
                                :mobile-width 300
                                :local-storage-key local-storage-key
-                               :pinned? (or (= :pin (:mode toc))
-                                            (ls/get-item local-storage-key))})
+                               :pinned? (ls/get-item local-storage-key)})
                root-ref-fn #(when % (setup-dark-mode! !state))
                ref-fn #(when % (swap! !state assoc :scroll-el %))]
     (let [{:keys [md-toc]} @!state]
       (when-not (= md-toc toc)
-        (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc))
+        (swap! !state assoc :toc (toc-items (:children toc)):md-toc toc :pinned? (= :pin (:mode toc))))
       (html
        [:div.flex
         {:ref root-ref-fn}
         [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
          [dark-mode-toggle !state]]
-        (when toc
+        (when (and toc (:mode toc))
           [:<>
            [navbar/pin-button !state
             [:<>
