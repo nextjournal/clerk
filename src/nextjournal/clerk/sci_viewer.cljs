@@ -169,7 +169,7 @@
                ref-fn #(when % (swap! !state assoc :scroll-el %))]
     (let [{:keys [md-toc]} @!state]
       (when-not (= md-toc toc)
-        (swap! !state assoc :toc (toc-items (:children toc)):md-toc toc :pinned? (= :pin (:mode toc))))
+        (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc :pinned? (= :pin (:mode toc))))
       (html
        [:div.flex
         {:ref root-ref-fn}
