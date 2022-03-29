@@ -210,7 +210,7 @@
                                           (mapcat :content))
                                     blocks)}
                     markdown.parser/add-title+toc
-                    (select-keys (cond-> #{:title} (:toc state) (conj :toc)))
+                    (select-keys #{:title :toc})
                     (assoc-in [:toc :mode] (:toc state)))))))))
 
 #_(keys (parse-clojure-string {:doc? true} (slurp "notebooks/viewer_api.clj")))

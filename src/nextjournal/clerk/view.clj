@@ -168,11 +168,10 @@
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
-  ([{:as opts :keys [toc?] :or {toc? true}} {:as doc :keys [ns]}]
+  ([opts {:as doc :keys [ns]}]
    (-> doc
        (update :blocks #(into [] (mapcat (partial describe-block opts doc)) %))
        (select-keys [:blocks :toc :title])
-       (cond-> (not toc?) (dissoc :toc))
        v/notebook
        (cond-> ns (assoc :scope (v/datafy-scope ns))))))
 
