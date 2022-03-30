@@ -1,5 +1,5 @@
 ;; #  📝 In-Text Evaluation
-^{:nextjournal.clerk/visibility :hide-ns}
+^{:nextjournal.clerk/visibility #{:hide-ns :hide}}
 (ns ^{:nextjournal.clerk/no-cache true} viewers.in-text-eval
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]
@@ -7,14 +7,18 @@
 
 ;; Being able to override markdown viewers allows we get in-text evaluation for free:
 
-(defonce N✨ (atom 42))
+^{::clerk/viewer clerk/hide-result}
+(defonce num★ (atom 3))
+#_(reset! num★ 3)
 
+^{::clerk/visibility :show}
 (clerk/set-viewers! [{:name :nextjournal.markdown/monospace
                       :transform-fn (comp eval read-string markdown.transform/->text)}
                      {:name :nextjournal.markdown/ruler
                       :transform-fn (constantly
-                                     (v/with-viewer :html [:span (repeat @N✨ "✨")]))}])
+                                     (v/with-viewer :html [:div.text-center (repeat @num★ "★")]))}])
 ;; ---
+^{::clerk/viewer clerk/hide-result}
 (defn slider [var {:keys [min max]}]
   (clerk/with-viewer
     {:fetch-fn (fn [_ x] x)
@@ -26,6 +30,6 @@
                                     :on-change #(v/clerk-eval `(reset! ~var-name (Integer/parseInt ~(.. % -target -value))))}]))}
     var))
 
-;; This slider `(slider #'N✨ {:min 10 :max 50})` controls the numebr (**`(deref N✨)`**) of stars in our custom horizontal rules.
+;; Drag the following slider `(slider #'num★ {:min 1 :max 40})` to control the number of stars (currently **`(deref num★)`**) in our custom horizontal rules.
 
 ;; ---
