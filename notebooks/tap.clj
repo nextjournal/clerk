@@ -42,7 +42,7 @@
 
 
 ^{::clerk/viewer (if (= :latest @!view)
-                   {:transform-fn (comp :value first)}
+                   (update taps-viewer :transform-fn (fn [orig-fn] (fn [xs] (orig-fn (take 1 xs)))))
                    taps-viewer)}
 @!taps
 
@@ -77,5 +77,7 @@
                    :transform [{:lookup "id" :from {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
                                                     :key "id" :fields ["rate"]}}]
                    :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}}))
-
+  (tap> (v/plotly {:data [{:z [[1 2 3]
+                               [3 2 1]]
+                           :type "surface"}]}))
   )
