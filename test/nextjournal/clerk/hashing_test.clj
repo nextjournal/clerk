@@ -21,7 +21,7 @@
     (is (= (str "rewrite_clj" fs/file-separator "parser")
            (h/ns->path (find-ns 'rewrite-clj.parser))))))
 
-(def notebook "^:nextjournal.clerk/no-cache (ns example-notebook)
+(def notebook "^:nextjournal.clerk/no-cache ^:nextjournal.clerk/toc (ns example-notebook)
 
 ;; # 📶 Sorting
 
@@ -37,7 +37,7 @@
 
 (deftest parse-clojure-string
   (testing "is returning blocks with types and markdown structure attached"
-    (is (match? (m/equals {:blocks [{:type :code, :text "^:nextjournal.clerk/no-cache (ns example-notebook)", :ns? true}
+    (is (match? (m/equals {:blocks [{:type :code, :text "^:nextjournal.clerk/no-cache ^:nextjournal.clerk/toc (ns example-notebook)", :ns? true}
                                     {:type :markdown, :text " # 📶 Sorting\n"}
                                     {:type :markdown, :text " ## Sorting Sets\n The following set should be sorted upon description\n"}
                                     {:type :code, :text "#{3 1 2}"}
@@ -46,6 +46,7 @@
                            :visibility #{:show},
                            :title "📶 Sorting",
                            :toc {:type :toc,
+                                 :mode true,
                                  :children [{:type :toc,
                                              :content [{:type :text, :text "📶 Sorting"}],
                                              :heading-level 1,
@@ -160,21 +161,19 @@
       h/analyze-doc))
 
 (deftest analyze-doc
-  (is (match? (m/equals
-               {:graph {:dependencies {'(ns example-notebook) set?}
-                        :dependents   map?}
-                :blocks [{:type :code
-                          :text "^:nextjournal.clerk/no-cache (ns example-notebook)"
-                          :form '(ns example-notebook)
-                          :ns?  true}
-                         {:type :code
-                          :text "#{3 1 2}"
-                          :form #{1 2 3}}]
-                :toc {:type :toc}
-                :visibility #{:show}
-                :->analysis-info {'(ns example-notebook) {:form '(ns example-notebook),
-                                                          :deps set?}
-                                  #{1 3 2} {:form '#{1 3 2}}}})
+  (is (match? {:graph {:dependencies {'(ns example-notebook) set?}
+                       :dependents   map?}
+               :blocks [{:type :code
+                         :text "^:nextjournal.clerk/no-cache (ns example-notebook)"
+                         :form '(ns example-notebook)
+                         :ns?  true}
+                        {:type :code
+                         :text "#{3 1 2}"
+                         :form #{1 2 3}}]
+               :visibility #{:show}
+               :->analysis-info {'(ns example-notebook) {:form '(ns example-notebook),
+                                                         :deps set?}
+                                 #{1 3 2} {:form '#{1 3 2}}}}
               (analyze-string "^:nextjournal.clerk/no-cache (ns example-notebook)
 #{3 1 2}"))))
 

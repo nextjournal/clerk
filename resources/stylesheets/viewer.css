@@ -17,7 +17,7 @@
     @apply font-serif antialiased text-gray-900 sm:overscroll-y-none;
   }
   code, .code {
-    @apply font-mono text-sm text-gray-900 bg-slate-50 px-0.5 py-px rounded dark:bg-slate-800;
+    @apply font-mono text-sm text-gray-900 bg-slate-50 px-0.5 py-px rounded dark:bg-gray-800;
   }
   code::before, code::after { @apply content-none !important; }
   h1, h2, h3, h4, h5, h6 {
@@ -97,13 +97,6 @@
 .page {
   @apply max-w-5xl mx-auto px-12 box-border flex-shrink-0;
 }
-.toc-content {
-  @apply translate-x-[-110%] opacity-0;
-}
-.toc:hover .toc-content,
-.toc.pinned .toc-content {
-  @apply translate-x-0 opacity-100;
-}
 .max-w-prose { @apply max-w-[46rem] !important; }
 .max-w-wide  { @apply max-w-3xl !important; }
 
@@ -125,7 +118,7 @@
 /* --------------------------------------------------------------- */
 
 .viewer-code {
-  @apply font-mono bg-slate-100 rounded-sm text-sm mt-4 overflow-x-auto dark:bg-slate-800;
+  @apply font-mono bg-slate-100 rounded-sm text-sm mt-4 overflow-x-auto dark:bg-gray-800;
 }
 .viewer-code .cm-content {
   @apply py-4 px-8;
@@ -283,6 +276,7 @@
 /* --------------------------------------------------------------- */
 
 .viewer-notebook { @apply py-16; }
+#clerk-static-app .viewer-notebook { @apply pt-[0.8rem] pb-16; }
 .viewer-markdown *:first-child:not(.viewer-code) { @apply mt-0; }
 .viewer + .viewer { @apply mt-6; }
 .viewer-markdown + .viewer { @apply mt-3; }
@@ -340,12 +334,6 @@
 /* Devdocs */
 /* --------------------------------------------------------------- */
 
-.collapsed-sidebar:not(.mobile-sidebar) .sidebar-content {
-  @apply transition-all duration-200 ml-[-360px] opacity-0;
-}
-.collapsed-sidebar:hover:not(.mobile-sidebar) .sidebar-content {
-  @apply ml-0 opacity-100;
-}
 .logo, .logo-white {
   @apply block indent-[-999em];
   background: url(/images/nextjournal-logo.svg) center center no-repeat;
