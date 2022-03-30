@@ -159,20 +159,18 @@
                !state (r/atom {:toc (toc-items (:children toc))
                                :md-toc toc
                                :dark-mode? (ls/get-item local-storage-dark-mode-key)
-                               :theme {:slide-over "bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900"
-                                       :toggle "text-[11px] text-slate-500 dark:text-slate-400 text-right absolute right-4 top-[10px] cursor-pointer hover:underline z-10"}
+                               :theme {:slide-over "bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900"}
                                :width 220
                                :mobile-width 300
                                :local-storage-key local-storage-key
-                               :hide-toggle? (= :open (:mode toc))
-                               :open? (or (= :open (:mode toc))
-                                          (ls/get-item local-storage-key))})
+                               :open? (if-some [stored-open? (ls/get-item local-storage-key)]
+                                        stored-open?
+                                        (not= :collapsed (:mode toc)))})
                root-ref-fn #(when % (setup-dark-mode! !state))
                ref-fn #(when % (swap! !state assoc :scroll-el %))]
-    (let [{:keys [md-toc]} @!state
-          always-open? (= :open (:mode toc))]
+    (let [{:keys [md-toc]} @!state]
       (when-not (= md-toc toc)
-        (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc :open? always-open? :hide-toggle? always-open?))
+        (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc :open? (not= :collapsed (:mode toc))))
       (html
        [:div.flex
         {:ref root-ref-fn}
@@ -180,13 +178,12 @@
          [dark-mode-toggle !state]]
         (when (and toc (:mode toc))
           [:<>
-           (when-not always-open?
-             [navbar/toggle-button !state
-              [:<>
-               [icon/menu {:size 20}]
-               [:span.uppercase.tracking-wider.ml-1.font-bold
-                {:class "text-[12px]"} "ToC"]]
-              {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-3 text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}])
+           [navbar/toggle-button !state
+            [:<>
+             [icon/menu {:size 20}]
+             [:span.uppercase.tracking-wider.ml-1.font-bold
+              {:class "text-[12px]"} "ToC"]]
+            {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-3 text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
            [navbar/panel !state [navbar/navbar !state]]])
         [:div.flex-auto.h-screen.overflow-y-auto
          {:ref ref-fn}
