@@ -10,7 +10,7 @@
 ^{::clerk/viewer :hide-result}
 (defn parse [text]
   (md.parser/parse (update md.parser/empty-doc :text-tokenizers conj
-                           {:regexp #"\{\{([^{]+)\}\}"
+                           {:regex #"\{\{([^{]+)\}\}"
                             :handler (fn [m] {:type :inline :text (m 1)})})
                    (md/tokenize text)))
 
