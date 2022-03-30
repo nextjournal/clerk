@@ -1,6 +1,6 @@
 ;; # 👁 Clerk Viewer API
 ;; Clerk comes with a moldable viewer api that is open.
-^{:nextjournal.clerk/toc true}
+^{:nextjournal.clerk/toc :open}
 (ns notebook.viewer-api
   (:require [nextjournal.clerk :as clerk]))
 

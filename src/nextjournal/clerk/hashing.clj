@@ -148,7 +148,7 @@
 
 (defn ->doc-settings [first-form]
   {:visibility (->doc-visibility first-form)
-   :toc (or (#{true :pin} (-> first-form meta :nextjournal.clerk/toc)) false)})
+   :toc (or (#{true :open} (-> first-form meta :nextjournal.clerk/toc)) false)})
 
 #_(->doc-settings '(ns foo))
 #_(->doc-settings '^{:nextjournal.clerk/toc true} (ns foo))
