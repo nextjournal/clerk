@@ -10,7 +10,9 @@ Playground for overriding markdown nodes
 ```
 
 ```clojure
-(clerk/set-viewers! [{:name :nextjournal.markdown/ruler
+(clerk/set-viewers! [{:name :nextjournal.markdown/text 
+                      :transform-fn (v/into-markup [:span {:style {:color "#64748b"}}])}
+                     {:name :nextjournal.markdown/ruler
                       :transform-fn (constantly 
                                      (v/html [:div {:style {:width "100%" :height "80px" :background-position "center" :background-size "cover"
                                                             :background-image "url(https://www.maxpixel.net/static/photo/1x/Ornamental-Separator-Decorative-Line-Art-Divider-4715969.png)"}}]))}])
@@ -18,7 +20,7 @@ Playground for overriding markdown nodes
 
 ## Sections
 
-with some more text and a ruler.
+with some _more_ text and a ruler.
 
 ---
 
@@ -48,6 +50,6 @@ Tables with specific alignment.
 |:-------:|:---|
 |   One   |✅  |
 |   Two   |✅  |
-|  three  |❌  |
+|  Three  |❌  |
 
 ---
