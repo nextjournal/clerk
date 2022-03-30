@@ -1,5 +1,6 @@
 (ns user
-  (:require [nextjournal.clerk :as clerk]))
+  (:require [clojure.string :as str]
+            [nextjournal.clerk :as clerk]))
 
 (comment
   (clerk/serve! {:browse? true}))
@@ -36,5 +37,6 @@
 
   (clerk/show! "notebooks/sicmutils.clj")
 
+  (clerk/show! "notebooks/dice.clj")
   (clerk/clear-cache!)
   )

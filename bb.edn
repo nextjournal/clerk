@@ -1,7 +1,9 @@
 {:min-bb-version "0.7.6"
  :paths ["bb"]
  :deps {io.github.nextjournal/dejavu
-        {:git/sha "3c4cf5e4dda3648e0d4c575a3433d19c511dd3e5"}}
+        {:git/sha "a8ed3dfae827dba4ac9619b8e221910360fbe514"}
+        org.clojure/tools.namespace {:git/url "https://github.com/babashka/tools.namespace"
+                                     :git/sha "a13b037215e21a2e71aa34b27e1dd52c801a2a7b"}}
  :tasks {:requires ([clojure.edn :as edn]
                     [clojure.edn :as edn]
                     [clojure.string :as str]
@@ -35,6 +37,10 @@
 
          build+upload-viewer-resources {:doc "Refreshes assets stored on CDN (google storage)"
                                         :task viewer-resources-hashing/build+upload-viewer-resources}
+
+         hash-assets {:doc "Content-addresses assets and updates assets_manifest.edn"
+                      :depends [write-hash]
+                      :task viewer-resources-hashing/hash-assets}
 
          release:js {:doc "Uploads the js release and updates the sha reference."
                      :task (clojure "-T:build upload-to-cas :resource viewer.js")

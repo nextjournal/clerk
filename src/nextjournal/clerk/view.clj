@@ -1,14 +1,18 @@
 (ns nextjournal.clerk.view
-  (:require [nextjournal.clerk.config :as config]
-            [nextjournal.clerk.viewer :as v]
-            [hiccup.page :as hiccup]
-            [clojure.string :as str]
+  (:require [babashka.fs :as fs]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.walk :as w]
+            [hiccup.page :as hiccup]
             [multihash.core :as multihash]
             [multihash.digest :as digest]
+            [nextjournal.clerk.config :as config]
+            [nextjournal.clerk.viewer :as v]
             [taoensso.nippy :as nippy])
   (:import (java.util Base64)))
+
+(set! *warn-on-reflection* true)
 
 (defn var->data [v]
   (v/wrapped-with-viewer v))
@@ -180,10 +184,39 @@
 #_(nextjournal.clerk/show! "notebooks/test.clj")
 #_(nextjournal.clerk/show! "notebooks/visibility.clj")
 
-(defn include-viewer-css []
-  (if-let [css-url (@config/!resource->url "/css/viewer.css")]
+(def asset-map (:asset-map
+                (edn/read-string (slurp (io/resource "asset_manifest.edn")))))
+
+(defn cache-url!
+  "Reads url from asset_manifest.edn and caches it locally. Returns file-name of cached file."
+  [url]
+  (if-let [gurl (get asset-map url)]
+    (let [fname (last (str/split gurl #"/"))
+          local-file (fs/file (str ".clerk/.cache/assets/" fname))]
+      (if (fs/exists? local-file)
+        fname
+        (do (fs/create-dirs (fs/parent local-file))
+            (spit local-file (slurp gurl))
+            fname)))
+    (do (binding [*out* *err*]
+          (println "[clerk] WARNING - url does not exist in manifest: " url))
+        nil)))
+
+(defn cached-asset [url]
+  (or (some->>
+       (cache-url! url)
+       (str "/assets/"))
+      (binding [*out* *err*]
+        (println "[clerk] WARNING - uncached url:" url)
+        url)))
+
+(defn include-viewer-css [cached?]
+  (if-let [css-url (config/resource->url "/css/viewer.css")]
     (hiccup/include-css css-url)
-    (list (hiccup/include-js "https://cdn.tailwindcss.com?plugins=typography")
+    (list (hiccup/include-js
+           ((if cached?
+              cached-asset
+              identity) "https://cdn.tailwindcss.com/3.0.23?plugins=typography@0.5.2"))
           [:script (-> (slurp (io/resource "stylesheets/tailwind.config.js"))
                        (str/replace  #"^module.exports" "tailwind.config")
                        (str/replace  #"require\(.*\)" ""))]
@@ -194,11 +227,11 @@
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-    (include-viewer-css)
-    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
-    (hiccup/include-js (@config/!resource->url "/js/viewer.js"))
-    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
-    (hiccup/include-css "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")]
+    (include-viewer-css true)
+    (hiccup/include-css (cached-asset "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"))
+    (hiccup/include-js (config/resource->url "/js/viewer.js"))
+    (hiccup/include-css (cached-asset "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"))
+    (hiccup/include-css (cached-asset "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap"))]
    [:body.dark:bg-slate-900
     [:div#clerk]
     [:script "let viewer = nextjournal.clerk.sci_viewer
@@ -216,8 +249,8 @@ window.ws_send = msg => ws.send(msg)")]]))
     [:title (or (and current-path (-> state :path->doc (get current-path) v/value :title)) "Clerk")]
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-    (include-viewer-css)
-    (hiccup/include-js (@config/!resource->url "/js/viewer.js"))
+    (include-viewer-css false)
+    (hiccup/include-js (config/resource->url "/js/viewer.js"))
     (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
     (hiccup/include-css "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")]
    [:body

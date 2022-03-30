@@ -96,7 +96,7 @@
 (defn- cache! [digest-file var-value]
   (try
     (spit digest-file (hash+store-in-cas! var-value))
-    (catch Exception e
+    (catch Exception _e
       #_(prn :freeze-error e)
       nil)))
 
@@ -339,7 +339,7 @@
   (when (seq watch-paths)
     (println "Starting new watcher for paths" (pr-str watch-paths))
     (reset! !watcher {:paths watch-paths
-                      :watcher (apply beholder/watch #(file-event %) watch-paths)}))
+                      :watcher (apply beholder/watch #'file-event watch-paths)}))
   (when browse?
     (browse/browse-url (str "http://localhost:" port)))
   config)
@@ -442,11 +442,16 @@
 #_(build-static-app! {})
 #_(build-static-app! {:paths ["notebooks/viewer_api.clj" "notebooks/rule_30.clj"]})
 
+(defn cache-assets! [_]
+  @config/cached-viewer-lookup
+  (doseq [k (keys view/asset-map)]
+    (view/cache-url! k)))
+
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
 (comment
   (def watcher
-    (beholder/watch #(file-event %) "notebooks" "src"))
+    (beholder/watch file-event "notebooks" "src"))
 
   (beholder/stop watcher)
 

@@ -1,7 +1,9 @@
 (ns viewer-resources-hashing
   (:require [babashka.classpath :as cp]
+            [babashka.curl :as curl]
             [babashka.fs :as fs]
             [babashka.tasks :as tasks :refer [shell]]
+            [clojure.pprint :as pprint]
             [clojure.string :as str]
             [nextjournal.dejavu :as djv]))
 
@@ -51,8 +53,8 @@
 (defn lookup-url [lookup-hash]
   (str gs-bucket "/lookup/" lookup-hash))
 
-(defn cas-link [hash]
-  (str base-url "/data/" hash))
+(defn cas-link [hash name]
+  (str base-url "/data/" hash (when name (str"?name=" name))))
 
 (defn build+upload-viewer-resources []
   (let [front-end-hash (str/trim (slurp viewer-js-hash-file))
@@ -61,9 +63,65 @@
     (when (= res ::djv/not-found)
       (tasks/run 'build:js)
       (let [content-hash (djv/sha512 (slurp "build/viewer.js"))
-            viewer-js-http-link (str (cas-link content-hash))]
+            viewer-js-http-link (str (cas-link content-hash "viewer.js"))]
         (spit manifest {"/js/viewer.js" viewer-js-http-link})
         (println "Manifest:" (slurp manifest))
         (println "Coping manifest to" (lookup-url front-end-hash))
         (djv/gs-copy manifest (lookup-url front-end-hash))
         (djv/gs-copy "build/viewer.js" (str gs-bucket "/data/" content-hash))))))
+
+(defn sha512-ize [file]
+  (let [hash (djv/sha512 (slurp file))]
+    hash))
+
+(def font-css-link "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")
+
+(def tailwind-link "https://cdn.tailwindcss.com/3.0.23?plugins=typography@0.5.2")
+
+(defn extract-font-links [css]
+  (let [urls (map second (re-seq #"url\((.*?)\)" css))]
+    urls))
+
+(def asset->info
+  {tailwind-link {:name "tailwind.css"}
+   font-css-link {:name "Fira+Code.css"}})
+
+(defn store-asset
+  ([a] (store-asset a (:body (curl/get a))))
+  ([a content]
+   (let [f (if (str/starts-with? a "http")
+             (let [b content
+                   f (fs/file (fs/create-temp-file))]
+               (spit f b)
+               f)
+             a)
+         hash (sha512-ize f)
+         gs-dest (str gs-bucket "/data/" hash)
+         gs-url (cas-link hash (:name (asset->info a)))]
+     (println "Copying" a "to" gs-dest)
+     (djv/gs-copy f gs-dest)
+     [a gs-url])))
+
+(defn hash-assets []
+  (let [font-css (slurp font-css-link)
+        font-links (extract-font-links font-css)
+        assets (into [tailwind-link]
+                     font-links)
+        manifest (into {} (for [a assets]
+                            (store-asset a)))
+        _ (fs/create-dirs ".clerk/.cache")
+        font-css (reduce (fn [acc l]
+                           (str/replace acc l (let [remote (get manifest l)
+                                                    hash (last (str/split remote #"/"))
+                                                    cached (str/replace remote
+                                                                        (str base-url "/data")
+                                                                        "/assets")]
+                                                (spit (str ".clerk/.cache/" hash)
+                                                      (:body (curl/get remote)))
+                                                cached))) font-css font-links)
+        [font-css-link gurl] (store-asset font-css-link font-css)
+        manifest (assoc manifest font-css-link gurl)
+        manifest (apply dissoc manifest font-links)]
+    (spit "resources/asset_manifest.edn"
+          (with-out-str
+            (pprint/pprint {:asset-map manifest})))))
