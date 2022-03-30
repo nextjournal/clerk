@@ -7,6 +7,7 @@
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]]
                 :cljs [[reagent.ratom :as ratom]])
+            [nextjournal.markdown :as md]
             [nextjournal.markdown.transform :as md.transform])
   #?(:clj (:import (java.lang Throwable)
                    (java.awt.image BufferedImage)
@@ -277,10 +278,9 @@
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
    {:name :mathjax :render-fn (quote v/mathjax-viewer) :fetch-fn fetch-all}
    {:name :html :render-fn (quote v/html) :fetch-fn fetch-all}
-   {:name :hiccup :render-fn (quote v/html)} ;; TODO: drop once markdown doesn't use it anymore
    {:name :plotly :render-fn (quote v/plotly-viewer) :fetch-fn fetch-all}
    {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :fetch-fn fetch-all}
-   {:name :markdown :render-fn (quote v/markdown-viewer) :fetch-fn fetch-all}
+   {:name :markdown :transform-fn (comp with-md-viewer md/parse)}
    {:name :code :render-fn (quote v/code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
    {:name :code-folded :render-fn (quote v/foldable-code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
    {:name :reagent :render-fn (quote v/reagent-viewer)  :fetch-fn fetch-all}

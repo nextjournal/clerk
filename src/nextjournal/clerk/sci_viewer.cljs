@@ -936,15 +936,6 @@ black")}]))}
 (def plotly-viewer (comp normalize-viewer plotly/viewer))
 (def vega-lite-viewer (comp normalize-viewer vega-lite/viewer))
 
-(defn markdown-viewer
-  "Accept a markdown string or a structure from parsed markdown."
-  [data]
-  (cond
-    (string? data)
-    (markdown/viewer data)
-    (and (map? data) (contains? data :content) (contains? data :type))
-    (with-viewer :hiccup (md.transform/->hiccup markdown/default-renderers data))))
-
 (def expand-icon
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
    [:path {:fill-rule "evenodd" :d "M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" :clip-rule "evenodd"}]])
@@ -998,7 +989,6 @@ black")}]))}
    'notebook-viewer notebook
    'katex-viewer katex-viewer
    'mathjax-viewer mathjax-viewer
-   'markdown-viewer markdown-viewer
    'code-viewer code-viewer
    'foldable-code-viewer foldable-code-viewer
    'plotly-viewer plotly-viewer
