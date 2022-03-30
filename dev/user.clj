@@ -1,7 +1,6 @@
 (ns user
-  (:require
-   [clojure.string :as str]
-   [nextjournal.clerk :as clerk]))
+  (:require [clojure.string :as str]
+            [nextjournal.clerk :as clerk]))
 
 (comment
   (clerk/serve! {:browse? true}))

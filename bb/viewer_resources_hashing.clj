@@ -1,12 +1,11 @@
 (ns viewer-resources-hashing
-  (:require
-   [babashka.classpath :as cp]
-   [babashka.curl :as curl]
-   [babashka.fs :as fs]
-   [babashka.tasks :as tasks :refer [shell]]
-   [clojure.pprint :as pprint]
-   [clojure.string :as str]
-   [nextjournal.dejavu :as djv]))
+  (:require [babashka.classpath :as cp]
+            [babashka.curl :as curl]
+            [babashka.fs :as fs]
+            [babashka.tasks :as tasks :refer [shell]]
+            [clojure.pprint :as pprint]
+            [clojure.string :as str]
+            [nextjournal.dejavu :as djv]))
 
 (def output-dirs ["resources/public/ui"
                   "resources/public/build"])

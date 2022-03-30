@@ -1,16 +1,15 @@
 (ns nextjournal.clerk.view
-  (:require
-   [babashka.fs :as fs]
-   [clojure.edn :as edn]
-   [clojure.java.io :as io]
-   [clojure.string :as str]
-   [clojure.walk :as w]
-   [hiccup.page :as hiccup]
-   [multihash.core :as multihash]
-   [multihash.digest :as digest]
-   [nextjournal.clerk.config :as config]
-   [nextjournal.clerk.viewer :as v]
-   [taoensso.nippy :as nippy])
+  (:require [babashka.fs :as fs]
+            [clojure.edn :as edn]
+            [clojure.java.io :as io]
+            [clojure.string :as str]
+            [clojure.walk :as w]
+            [hiccup.page :as hiccup]
+            [multihash.core :as multihash]
+            [multihash.digest :as digest]
+            [nextjournal.clerk.config :as config]
+            [nextjournal.clerk.viewer :as v]
+            [taoensso.nippy :as nippy])
   (:import (java.util Base64)))
 
 (set! *warn-on-reflection* true)
