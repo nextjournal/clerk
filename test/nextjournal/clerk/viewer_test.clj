@@ -67,7 +67,26 @@
 
 (deftest describe
   (testing "only transform-fn can select viewer"
-    (is (match? {:nextjournal/value "Hello _markdown_!", :nextjournal/viewer {:name :markdown}}
+
+    (is (match? {:nextjournal/viewer {:name :html}
+                 :nextjournal/value [:div.viewer-markdown
+                                     [any?
+                                      {:nextjournal/viewer {:name :html}
+                                       :nextjournal/value [:p
+                                                           [any?
+                                                            {:nextjournal/viewer {:name :html}
+                                                             :nextjournal/value [:span "Hello "]}]
+                                                           [any?
+                                                            {:nextjournal/viewer {:name :html}
+                                                             :nextjournal/value [:em
+                                                                                 [any?
+                                                                                  {:path [],
+                                                                                   :nextjournal/value [:span "markdown"]
+                                                                                   :nextjournal/viewer {:name :html}}]]}]
+                                                           [any?
+                                                            {:nextjournal/viewer {:name :html}
+                                                             :nextjournal/value [:span "!"]}]]}]]}
+
                 (v/describe (v/with-viewer {:transform-fn (comp v/md :foo)}
                               {:foo "Hello _markdown_!"})))))
 
