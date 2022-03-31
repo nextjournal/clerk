@@ -1,5 +1,5 @@
-;; #  📝 In-Text Evaluation
-^{:nextjournal.clerk/visibility #{:hide-ns :hide}}
+;; #  📝 _In-Text_ Evaluation
+^{:nextjournal.clerk/visibility #{:hide-ns :hide} :nextjournal.clerk/toc true}
 (ns ^{:nextjournal.clerk/no-cache true} viewers.in-text-eval
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]

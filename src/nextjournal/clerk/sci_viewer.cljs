@@ -80,7 +80,7 @@
   (reduce
     (fn [acc {:as item :keys [content children]}]
       (if content
-        (let [title (-> content first :text)]
+        (let [title (md.transform/->text item)]
           (->> {:title title
                 :path (str "#" (uri.normalize/normalize-fragment title))
                 :items (toc-items children)}
