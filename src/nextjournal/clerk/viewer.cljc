@@ -234,8 +234,8 @@
    {:name :nextjournal.markdown/table-data
     :transform-fn (into-markup #(vector :td {:style (md.transform/table-alignment (:attrs %))}))}
 
-   ;; ToC via [[TOC]] placeholder
-   {:name :nextjournal.markdown/toc :transform-fn #(throw (ex-info "Not Implemented" %))}
+   ;; ToC via [[TOC]] placeholder ignored
+   {:name :nextjournal.markdown/toc :transform-fn (into-markup [:div.toc])}
 
    ;; sidenotes
    {:name :nextjournal.markdown/sidenote
