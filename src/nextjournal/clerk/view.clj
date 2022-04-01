@@ -168,11 +168,10 @@
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
-  ([{:as opts :keys [toc?] :or {toc? false}} {:as doc :keys [ns]}]
+  ([opts {:as doc :keys [ns]}]
    (-> doc
        (update :blocks #(into [] (mapcat (partial describe-block opts doc)) %))
        (select-keys [:blocks :toc :title])
-       (cond-> (not toc?) (dissoc :toc))
        v/notebook
        (cond-> ns (assoc :scope (v/datafy-scope ns))))))
 
@@ -191,6 +190,7 @@
 
 (defn ->html [{:keys [conn-ws?] :or {conn-ws? true}} state]
   (hiccup/html5
+   {:class "overflow-hidden min-h-screen"}
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
@@ -199,7 +199,7 @@
     (hiccup/include-js (@config/!resource->url "/js/viewer.js"))
     (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
     (hiccup/include-css "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")]
-   [:body.dark:bg-slate-900
+   [:body.dark:bg-gray-900
     [:div#clerk]
     [:script "let viewer = nextjournal.clerk.sci_viewer
 let state = " (-> state ->edn pr-str) "
@@ -212,6 +212,7 @@ window.ws_send = msg => ws.send(msg)")]]))
 
 (defn ->static-app [{:as state :keys [current-path]}]
   (hiccup/html5
+   {:class "overflow-hidden min-h-screen"}
    [:head
     [:title (or (and current-path (-> state :path->doc (get current-path) v/value :title)) "Clerk")]
     [:meta {:charset "UTF-8"}]

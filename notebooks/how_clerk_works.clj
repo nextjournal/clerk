@@ -1,4 +1,5 @@
 ;; # How Clerk Works 🕵🏻‍♀️
+^{:nextjournal.clerk/toc? true}
 (ns how-clerk-works
   (:require [next.jdbc :as jdbc]
             [nextjournal.clerk :as clerk]
