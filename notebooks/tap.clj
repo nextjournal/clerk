@@ -1,3 +1,4 @@
+;; # 🚰 Tap Inspector
 ^{:nextjournal.clerk/visibility :hide}
 (ns ^:nextjournal.clerk/no-cache nextjournal.clerk.tap
   (:require [nextjournal.clerk :as clerk]
@@ -36,11 +37,13 @@
 
 ^{::clerk/viewer clerk/hide-result}
 (def taps-viewer {:render-fn '(fn [taps opts]
-                                (v/html [:div.flex.flex-col
+                                (v/html [:div.flex.flex-col.pt-2
                                          (map (fn [tap] (let [{:keys [tap inst key]} (:nextjournal/value tap)]
-                                                         (with-meta [:div
-                                                                     [:div.monospace.text-slate-500 {:style {:font-size "0.5em"}} (.toLocaleTimeString inst)]
-                                                                     [:div.pb-2 [v/inspect tap]]] {:key key})))
+                                                         ^{:key key}
+                                                         [:div.border-t.relative.py-3
+                                                          [:span.absolute.rounded-full.px-1.bg-gray-300.font-mono.top-0
+                                                           {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (.toLocaleTimeString inst)]
+                                                          [:div.overflow-x-auto [v/inspect tap]]] ))
                                               taps)]))
                   :transform-fn (fn [taps]
                                   (mapv (partial clerk/with-viewer {:fetch-fn fetch-tap}) taps))})
@@ -98,6 +101,7 @@
   (tap> (rand-int 1000))
   (tap> (range 21))
   (tap> (shuffle (range 100)))
+  (tap> (clerk/md "* hello\n* world"))
   (tap> (javax.imageio.ImageIO/read (java.net.URL. "file:/Users/mk/Desktop/CleanShot 2022-03-28 at 15.15.15@2x.png")))
   (tap> (javax.imageio.ImageIO/read (java.net.URL. "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")))
   (tap> (clerk/vl {:width 650 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
