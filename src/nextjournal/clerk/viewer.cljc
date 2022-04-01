@@ -174,7 +174,7 @@
   [{:pred char? :render-fn '(fn [c] (v/html [:span.cmt-string.inspected-value "\\" c]))}
    {:pred string? :render-fn (quote v/quoted-string-viewer) :fetch-opts {:n elide-string-length}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.cmt-number.inspected-value
-                                               (if (js/Number.isNaN x) "NaN" (str x))]))}
+                                              (if (js/Number.isNaN x) "NaN" (str x))]))}
    {:pred symbol? :render-fn '(fn [x] (v/html [:span.cmt-keyword.inspected-value (str x)]))}
    {:pred keyword? :render-fn '(fn [x] (v/html [:span.cmt-atom.inspected-value (str x)]))}
    {:pred nil? :render-fn '(fn [_] (v/html [:span.cmt-default.inspected-value "nil"]))}
@@ -192,14 +192,18 @@
    {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e)) :fetch-fn fetch-all
     :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp demunge-ex-data datafy/datafy)}
    #?(:clj {:pred #(instance? BufferedImage %)
-            :fetch-fn (fn [_ image] (let [stream (java.io.ByteArrayOutputStream.)
-                                          w (.getWidth image)
-                                          h (.getHeight image)
-                                          r (float (/ w h))]
-                                      (ImageIO/write image "png" stream)
-                                      (cond-> {:nextjournal/value (.toByteArray stream)
-                                               :nextjournal/content-type "image/png"
-                                               :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})))
+            :fetch-fn (fn [_ image]                        
+                        ((memoize (fn [image]
+                                    (time
+                                     (let [stream (java.io.ByteArrayOutputStream.)
+                                           w (.getWidth image)
+                                           h (.getHeight image)
+                                           r (float (/ w h))]
+                                       (prn :fetch-fn image)
+                                       (ImageIO/write image "png" stream)
+                                       (cond-> {:nextjournal/value (.toByteArray stream)
+                                                :nextjournal/content-type "image/png"
+                                                :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)}))))) image))
             :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))})
    {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.cmt-default x]))}
    {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
@@ -385,7 +389,7 @@
    (assign-closing-parens
     (describe xs (merge {:!budget (atom (:budget opts 200)) :path [] :viewers (get-viewers *ns* (viewers xs))} opts) [])))
   ([xs opts current-path]
-   (let [{:as opts :keys [!budget viewers path offset trace-fn]} (merge {:offset 0} opts)
+   (let [{:as opts :keys [!budget viewers path offset]} (merge {:offset 0} opts)
          {:as wrapped-value xs-viewers :nextjournal/viewers} (wrapped-with-viewer xs viewers)
          ;; TODO used for the table viewer which adds viewers in through `tranform-fn` from `wrapped-with-viewer`. Can we avoid this?
          opts (cond-> opts xs-viewers (update :viewers #(concat xs-viewers %)))
@@ -397,8 +401,6 @@
      #_(prn :xs xs :type (type xs) :path path :current-path current-path :descend? descend? :fetch-fn? (some? fetch-fn))
      (when (and !budget (not descend?) (not fetch-fn))
        (swap! !budget #(max (dec %) 0)))
-     (when trace-fn
-       (trace-fn {:origin 'describe :path path :xs xs :opts opts :current-path current-path :wrapped-value wrapped-value :descend? descend?}))
      (merge {:path path}
             (dissoc wrapped-value [:nextjournal/value :nextjournal/viewer])
             (with-viewer (process-viewer viewer)

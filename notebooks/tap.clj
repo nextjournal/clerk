@@ -79,26 +79,6 @@
 
 #_(remove-tap tapped)
 
-^{::clerk/viewer clerk/hide-result}
-(comment
-  (defn process-trace [trace]
-    (-> trace
-        (select-keys [:origin :xs :current-path :path :descend?])))
-
-  (let [!trace (atom [])]
-    (nextjournal.clerk.viewer/describe
-     (clerk/with-viewer taps-viewer
-       [{:tap (javax.imageio.ImageIO/read (java.net.URL. "file:/Users/mk/Desktop/CleanShot 2022-03-28 at 15.15.15@2x.png"))}])
-     {:trace-fn #(swap! !trace conj (process-trace %)) :path [0]})
-    (clerk/code @!trace))
-
-
-  (let [!trace (atom [])]
-    (nextjournal.clerk.viewer/describe
-     (clerk/table [[(javax.imageio.ImageIO/read (java.net.URL. "file:/Users/mk/Desktop/CleanShot 2022-03-28 at 15.15.15@2x.png"))]])
-     {:trace-fn #(swap! !trace conj (process-trace %)) :path [0 0]})
-    (clerk/code @!trace)))
-
 
 ^{::clerk/viewer clerk/hide-result}
 (comment
@@ -118,18 +98,13 @@
 
   (tap> (clerk/html [:h1 "Fin. 👋"]))
 
-  )
+;; ---
+;; ## TODO
 
-
-^{::clerk/viewer clerk/hide-result}
-(comment
-  ;; ---
-  ;; ## TODO
-
-  ;; * [x] Avoid flickering when adding new tap
-  ;; * [x] Record & show time of tap
-  ;; * [x] Keep expanded state when adding tap
-  ;; * [x] Fix latest
-  ;; * [ ] Improve performance when large image present in tap stream
-  )
-
+;; * [x] Avoid flickering when adding new tap
+;; * [x] Record & show time of tap
+;; * [x] Keep expanded state when adding tap
+;; * [x] Fix latest
+;; * [ ] Improve performance when large image present in tap stream
+  
+)
