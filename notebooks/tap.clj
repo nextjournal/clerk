@@ -59,12 +59,9 @@
 
 
 ^{::clerk/viewer (if (= :latest @!view)
-                   (update taps-viewer :transform-fn (fn [orig-fn] (fn [xs] (orig-fn [(peek xs)]))))
+                   (update taps-viewer :transform-fn (fn [orig-fn] (fn [xs] (orig-fn (take-last 1 xs)))))
                    taps-viewer)}
 @!taps
-
-
-
 
 ^{::clerk/viewer clerk/hide-result}
 (defn tapped [x]
@@ -105,8 +102,8 @@
 
 ^{::clerk/viewer clerk/hide-result}
 (comment
-  (do (tap> (rand-int 1000))
-      (tap> (rand-int 1000)))
+  (dotimes [i 5] 
+    (tap> (rand-int 1000)))
   (tap> (shuffle (range (+ 20 (rand-int 200)))))
   (tap> (clerk/md "> The purpose of visualization is **insight**, not pictures."))
   (tap> (v/plotly {:data [{:z [[1 2 3]
@@ -115,8 +112,24 @@
   (tap> (javax.imageio.ImageIO/read (java.net.URL. "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")))
 
   (do (require 'rule-30)
-      (tap> (clerk/with-viewers rule-30/viewers rule-30/rule-30))
-      (tap> (clerk/with-viewers rule-30/viewers rule-30/board)))
+      (tap> (clerk/with-viewers rule-30/viewers rule-30/rule-30)))
+  
+  (tap> (clerk/with-viewers rule-30/viewers rule-30/board))
 
   (tap> (clerk/html [:h1 "Fin. 👋"]))
+
   )
+
+
+^{::clerk/viewer clerk/hide-result}
+(comment
+  ;; ---
+  ;; ## TODO
+
+  ;; * [x] Avoid flickering when adding new tap
+  ;; * [x] Record & show time of tap
+  ;; * [x] Keep expanded state when adding tap
+  ;; * [x] Fix latest
+  ;; * [ ] Improve performance when large image present in tap stream
+  )
+
