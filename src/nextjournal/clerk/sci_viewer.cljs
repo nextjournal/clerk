@@ -481,9 +481,9 @@
                                       :title (if (or (string? k) (keyword? k)) (name k) (str k))}
                                      [:div.inline-flex
                                       ;; Truncate to available col width without growing the table
-                                      [:div.table.table-fixed.w-full.flex-auto
-                                       {:style {:margin-left -12}}
-                                       [:div.truncate
+                                      [:div.table.table-fixed.flex-auto
+                                       #_{:style {:margin-left -12}}
+                                       [:div
                                         [:span.inline-flex.justify-center.items-center.relative
                                          {:style {:font-size 20 :width 10 :height 10 :bottom -2 :margin-right 2}}
                                          (when (= sort-key k)
@@ -509,7 +509,7 @@
                                       [:tr.hover:bg-gray-200.dark:hover:bg-slate-700
                                        {:class (if (even? i) "bg-black/5 dark:bg-gray-800" "bg-white dark:bg-gray-900")}]
                                       (map-indexed (fn [j d]
-                                                     [:td.pl-6.pr-2.py-1
+                                                     [:td.pl-6.pr-2.py-1.text-right
                                                       {:class [(when (number? d) "text-right")
                                                                (when (= j sort-index) "bg-black/5 dark:bg-gray-800")]}
                                                       [inspect (update opts :path conj i j) d]]) row))))) (viewer/value rows)))]))))))
