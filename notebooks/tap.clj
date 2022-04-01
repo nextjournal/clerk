@@ -42,7 +42,9 @@
                                                          ^{:key key}
                                                          [:div.border-t.relative.py-3
                                                           [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
-                                                           {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (.toLocaleTimeString inst)]
+                                                           {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"}
+                                                           (.toLocaleTimeString inst "en-US" (clj->js {:hour12 false})) "."
+                                                           (subs (str (+ 1000 (.getMilliseconds inst))) 1)]
                                                           [:div.overflow-x-auto [v/inspect tap]]] ))
                                               taps)]))
                   :transform-fn (fn [taps]
