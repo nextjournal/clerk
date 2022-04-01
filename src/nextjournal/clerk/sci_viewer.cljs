@@ -509,7 +509,7 @@
                                       [:tr.hover:bg-gray-200.dark:hover:bg-slate-700
                                        {:class (if (even? i) "bg-black/5 dark:bg-gray-800" "bg-white dark:bg-gray-900")}]
                                       (map-indexed (fn [j d]
-                                                     [:td.pl-6.pr-2.py-1.text-right
+                                                     [:td.pl-6.pr-2.py-1
                                                       {:class [(when (number? d) "text-right")
                                                                (when (= j sort-index) "bg-black/5 dark:bg-gray-800")]}
                                                       [inspect (update opts :path conj i j) d]]) row))))) (viewer/value rows)))]))))))
