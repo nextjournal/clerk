@@ -192,18 +192,14 @@
    {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e)) :fetch-fn fetch-all
     :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp demunge-ex-data datafy/datafy)}
    #?(:clj {:pred #(instance? BufferedImage %)
-            :fetch-fn (fn [_ image]                        
-                        ((memoize (fn [image]
-                                    (time
-                                     (let [stream (java.io.ByteArrayOutputStream.)
-                                           w (.getWidth image)
-                                           h (.getHeight image)
-                                           r (float (/ w h))]
-                                       (prn :fetch-fn image)
-                                       (ImageIO/write image "png" stream)
-                                       (cond-> {:nextjournal/value (.toByteArray stream)
-                                                :nextjournal/content-type "image/png"
-                                                :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)}))))) image))
+            :fetch-fn (fn [_ image] (let [stream (java.io.ByteArrayOutputStream.)
+                                         w (.getWidth image)
+                                         h (.getHeight image)
+                                         r (float (/ w h))]
+                                     (ImageIO/write image "png" stream)
+                                     (cond-> {:nextjournal/value (.toByteArray stream)
+                                              :nextjournal/content-type "image/png"
+                                              :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})) image)
             :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))})
    {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.cmt-default x]))}
    {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
