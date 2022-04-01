@@ -1,5 +1,5 @@
 ^{:nextjournal.clerk/visibility :hide}
-(ns nextjournal.clerk.tap
+(ns ^:nextjournal.clerk/no-cache nextjournal.clerk.tap
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]
             [clojure.core :as core]))
@@ -26,17 +26,35 @@
 
 
 ^{::clerk/viewer clerk/hide-result}
-(defn fetch-tap [{:as opts :keys [describe-fn path offset]} x]
-  (-> (cond-> (update x :value describe-fn (assoc opts :!budget (atom 100)) path)
-        (pos? offset) :value)
-      (assoc :path (conj path :value))))
+(defn fetch-tap [{:as opts :keys [describe-fn path offset trace-fn]} x]
+  (when trace-fn (trace-fn {:origin 'fetch-tap :xs x}))
+  (let [path' (cond-> path
+                (not= :tap (peek path)) (conj :tap))]
+    (-> (cond-> (update x :tap describe-fn (assoc opts :!budget (atom 100) :path path') path')
+          (-> path count dec pos?) :tap)
+        (assoc :path path' :replace-path (conj path offset)))))
+#_
+(cond (:error xs) (update xs :ex-data describe-fn opts [])
+      (seq path) (describe-fn (:rows xs) opts [])
+      :else (-> (cond-> (update xs :rows describe-fn (dissoc opts :!budget) [])
+                  (pos? offset) :rows)
+                (assoc :path [:rows] :replace-path [offset])
+                (dissoc :nextjournal/viewers)))
 
 ^{::clerk/viewer clerk/hide-result}
 (def taps-viewer {:render-fn '(fn [taps opts]
                                 (v/html [:div.flex.flex-col
-                                         (map (fn [tap] (let [{:keys [value key]} (:nextjournal/value tap)]
-                                                         (with-meta [v/inspect value] {:key key})))
+                                         (map (fn [tap] (let [{:keys [tap inst key]} (:nextjournal/value tap)]
+                                                         (js/console.log :inst inst (type inst))
+                                                         (with-meta [:div
+                                                                     [:div.text-xs.monospace.gray-200 (.toLocaleTimeString inst)]
+                                                                     [:div [v/inspect tap]]] {:key key})))
                                               taps)]))
+                  #_#_
+                  :fetch-fn (fn [{:as opts :keys [describe-fn path offset]} x]
+                              (prn :fetch-taps x)
+                              )
+                  
                   :transform-fn (fn [taps]
                                   (mapv (partial clerk/with-viewer {:fetch-fn fetch-tap}) taps))})
 
@@ -46,12 +64,44 @@
                    taps-viewer)}
 @!taps
 
+
+;; ---
+#_(clerk/with-viewer taps-viewer
+    [{:tap 42}
+     {:tap (javax.imageio.ImageIO/read (java.net.URL. "file:/Users/mk/Desktop/CleanShot 2022-03-28 at 15.15.15@2x.png"))}
+     {:tap 42}])
+
+;; ---
+(defn process-trace [trace]
+  (-> trace
+      (select-keys [:origin :xs :current-path :path :descend?])
+      #_
+      (update-in [:fetched :tap :nextjournal/value] type)))
+
+(let [!trace (atom [])]
+  (nextjournal.clerk.viewer/describe
+   (clerk/with-viewer taps-viewer
+     [{:tap (javax.imageio.ImageIO/read (java.net.URL. "file:/Users/mk/Desktop/CleanShot 2022-03-28 at 15.15.15@2x.png"))}])
+   {:trace-fn #(swap! !trace conj (process-trace %)) :path [0]})
+  (clerk/code @!trace))
+
+;; ---
+
+(let [!trace (atom [])]
+  (nextjournal.clerk.viewer/describe
+   (clerk/table [[(javax.imageio.ImageIO/read (java.net.URL. "file:/Users/mk/Desktop/CleanShot 2022-03-28 at 15.15.15@2x.png"))]])
+   {:trace-fn #(swap! !trace conj (process-trace %)) :path [0 0]})
+  (clerk/code @!trace))
+
+;; ---
+(clerk/table [[(javax.imageio.ImageIO/read (java.net.URL. "file:/Users/mk/Desktop/CleanShot 2022-03-28 at 15.15.15@2x.png"))]])
+
 #_(reset! !taps ())
 
 
 ^{::clerk/viewer clerk/hide-result}
 (defn tapped [x]
-  (swap! !taps conj {:value x :inst (java.time.Instant/now) :key (str (gensym))})
+  (swap! !taps conj {:tap x :inst (java.time.Instant/now) :key (str (gensym))})
   (binding [*ns* (find-ns 'tap)]
     (clerk/recompute!)))
 
@@ -70,7 +120,9 @@
 ^{::clerk/viewer clerk/hide-result}
 (comment
   (tap> (rand-int 1000))
+  (tap> (range 21))
   (tap> (shuffle (range 100)))
+  (tap> (javax.imageio.ImageIO/read (java.net.URL. "file:/Users/mk/Desktop/CleanShot 2022-03-28 at 15.15.15@2x.png")))
   (tap> (javax.imageio.ImageIO/read (java.net.URL. "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")))
   (tap> (clerk/vl {:width 650 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
                                                  :format {:type "topojson" :feature "counties"}}

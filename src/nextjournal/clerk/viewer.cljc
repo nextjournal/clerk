@@ -385,7 +385,7 @@
    (assign-closing-parens
     (describe xs (merge {:!budget (atom (:budget opts 200)) :path [] :viewers (get-viewers *ns* (viewers xs))} opts) [])))
   ([xs opts current-path]
-   (let [{:as opts :keys [!budget viewers path offset]} (merge {:offset 0} opts)
+   (let [{:as opts :keys [!budget viewers path offset trace-fn]} (merge {:offset 0} opts)
          {:as wrapped-value xs-viewers :nextjournal/viewers} (wrapped-with-viewer xs viewers)
          ;; TODO used for the table viewer which adds viewers in through `tranform-fn` from `wrapped-with-viewer`. Can we avoid this?
          opts (cond-> opts xs-viewers (update :viewers #(concat xs-viewers %)))
@@ -397,6 +397,8 @@
      #_(prn :xs xs :type (type xs) :path path :current-path current-path :descend? descend? :fetch-fn? (some? fetch-fn))
      (when (and !budget (not descend?) (not fetch-fn))
        (swap! !budget #(max (dec %) 0)))
+     (when trace-fn
+       (trace-fn {:origin 'describe :path path :xs xs :opts opts :current-path current-path :wrapped-value wrapped-value :descend? descend?}))
      (merge {:path path}
             (dissoc wrapped-value [:nextjournal/value :nextjournal/viewer])
             (with-viewer (process-viewer viewer)
@@ -433,8 +435,8 @@
                           children (into []
                                          (comp (if (number? (:n fetch-opts)) (drop+take-xf fetch-opts) identity)
                                                (map-indexed (fn [i x] (describe x (-> opts
-                                                                                      (dissoc :offset)
-                                                                                      (update :path conj (+ i offset))) (conj current-path i))))
+                                                                                     (dissoc :offset)
+                                                                                     (update :path conj (+ i offset))) (conj current-path i))))
                                                (remove nil?))
                                          (ensure-sorted xs))
                           {:keys [count]} count-opts
@@ -491,7 +493,7 @@
                      path-from-more (or (:replace-path more) ;; string case, TODO find a better way to unify
                                         (-> more :nextjournal/value first :path))]
                  (when (not= path-from-value path-from-more)
-                   (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more})))
+                   (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more :root root :more more :path-to-value (path-to-value (:path more)) :value value})))
                  (into (pop value) (:nextjournal/value more))))))
 
 
