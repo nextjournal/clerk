@@ -1,6 +1,6 @@
 ;; # 🚰 Tap Inspector
 ^{:nextjournal.clerk/visibility :hide}
-(ns ^:nextjournal.clerk/no-cache nextjournal.clerk.tap
+(ns nextjournal.clerk.tap
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]
             [clojure.core :as core]))
@@ -18,13 +18,18 @@
                                                   {:class (if (= value choice) "bg-indigo-100 text-indigo-600" "text-slate-500")
                                                    :on-click #(v/clerk-eval `(reset! ~var-name ~choice))}
                                                   choice]) choices))
-                                    [:button.text-xs.rounded-full.px-3.py-1.border-2.font-sans.hover:bg-slate-100.cursor-pointer {:on-click #(v/clerk-eval `(reset! !taps ()))} "Clear"]])))}}
+                                    [:button.text-xs.rounded-full.px-3.py-1.border-2.font-sans.hover:bg-slate-100.cursor-pointer {:on-click #(v/clerk-eval `(reset-taps!))} "Clear"]])))}}
 (defonce !view (atom :stream))
 
 
 ^{::clerk/viewer clerk/hide-result}
-(defonce !taps (atom ()))
+(defonce !taps (atom []))
 
+^{::clerk/viewer clerk/hide-result}
+(defn reset-taps! []
+  (reset! !taps []))
+
+#_(reset-taps!)
 
 ^{::clerk/viewer clerk/hide-result}
 (defn fetch-tap [{:as opts :keys [describe-fn path offset trace-fn]} x]
@@ -40,24 +45,23 @@
 (def taps-viewer {:render-fn '(fn [taps opts]
                                 (v/html [:div.flex.flex-col.pt-2
                                          (map (fn [tap] (let [{:keys [tap inst key]} (:nextjournal/value tap)]
-                                                         ^{:key key}
-                                                         [:div.border-t.relative.py-3
-                                                          [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
-                                                           {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"}
-                                                           (.toLocaleTimeString inst "en-US" (clj->js {:hour12 false})) "."
-                                                           (subs (str (+ 1000 (.getMilliseconds inst))) 1)]
-                                                          [:div.overflow-x-auto [v/inspect tap]]] ))
+                                                         (with-meta 
+                                                           [:div.border-t.relative.py-3
+                                                            [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
+                                                             {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"}
+                                                             (.toLocaleTimeString inst "en-US" (clj->js {:hour12 false})) "."
+                                                             (subs (str (+ 1000 (.getMilliseconds inst))) 1)]
+                                                            [:div.overflow-x-auto [v/inspect tap]]]
+                                                           {:key key})))
                                               taps)]))
                   :transform-fn (fn [taps]
-                                  (mapv (partial clerk/with-viewer {:fetch-fn fetch-tap}) taps))})
+                                  (mapv (partial clerk/with-viewer {:fetch-fn fetch-tap}) (reverse taps)))})
 
 
 ^{::clerk/viewer (if (= :latest @!view)
-                   (update taps-viewer :transform-fn (fn [orig-fn] (fn [xs] (orig-fn (take 1 xs)))))
+                   (update taps-viewer :transform-fn (fn [orig-fn] (fn [xs] (orig-fn [(peek xs)]))))
                    taps-viewer)}
 @!taps
-
-#_(reset! !taps ())
 
 
 
@@ -101,7 +105,8 @@
 
 ^{::clerk/viewer clerk/hide-result}
 (comment
-  (tap> (rand-int 1000))
+  (do (tap> (rand-int 1000))
+      (tap> (rand-int 1000)))
   (tap> (shuffle (range (+ 20 (rand-int 200)))))
   (tap> (clerk/md "> The purpose of visualization is **insight**, not pictures."))
   (tap> (v/plotly {:data [{:z [[1 2 3]
@@ -109,25 +114,9 @@
                            :type "surface"}]}))
   (tap> (javax.imageio.ImageIO/read (java.net.URL. "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")))
 
+  (do (require 'rule-30)
+      (tap> (clerk/with-viewers rule-30/viewers rule-30/rule-30))
+      (tap> (clerk/with-viewers rule-30/viewers rule-30/board)))
 
-
-  (def rule-30-viewers [{:pred number? :render-fn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                                                :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}
-                        {:pred list? :render-fn '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1))}
-                        {:pred #(and (vector? %) (not (map-entry? %))) :render-fn '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1))}])
-  (def rule-30 {[1 1 1] 0
-                [1 1 0] 0
-                [1 0 1] 0
-                [1 0 0] 1
-                [0 1 1] 1
-                [0 1 0] 1
-                [0 0 1] 1
-                [0 0 0] 0})
-  (tap> (clerk/with-viewers rule-30-viewers rule-30))
-  (tap> (let [n 21
-              first-generation (assoc (vec (repeat n 0)) (/ (dec n) 2) 1)
-              evolve #(mapv rule-30 (partition 3 1 (repeat 0) (cons 0 %)))]
-          (clerk/with-viewers rule-30-viewers
-            (->> first-generation (iterate evolve) (take (/ n 2)) (apply list)))))
   (tap> (clerk/html [:h1 "Fin. 👋"]))
   )
