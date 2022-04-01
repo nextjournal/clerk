@@ -41,7 +41,7 @@
                                          (map (fn [tap] (let [{:keys [tap inst key]} (:nextjournal/value tap)]
                                                          ^{:key key}
                                                          [:div.border-t.relative.py-3
-                                                          [:span.absolute.rounded-full.px-1.bg-gray-300.font-mono.top-0
+                                                          [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
                                                            {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (.toLocaleTimeString inst)]
                                                           [:div.overflow-x-auto [v/inspect tap]]] ))
                                               taps)]))
@@ -101,15 +101,14 @@
   (tap> (rand-int 1000))
   (tap> (range 21))
   (tap> (shuffle (range 100)))
-  (tap> (clerk/md "* hello\n* world"))
-  (tap> (javax.imageio.ImageIO/read (java.net.URL. "file:/Users/mk/Desktop/CleanShot 2022-03-28 at 15.15.15@2x.png")))
+  (tap> (clerk/md "> The purpose of visualization is **insight**, not pictures."))
   (tap> (javax.imageio.ImageIO/read (java.net.URL. "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")))
+  (tap> (v/plotly {:data [{:z [[1 2 3]
+                               [3 2 1]]
+                           :type "surface"}]}))
   (tap> (clerk/vl {:width 650 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
                                                  :format {:type "topojson" :feature "counties"}}
                    :transform [{:lookup "id" :from {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
                                                     :key "id" :fields ["rate"]}}]
                    :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}}))
-  (tap> (v/plotly {:data [{:z [[1 2 3]
-                               [3 2 1]]
-                           :type "surface"}]}))
   )
