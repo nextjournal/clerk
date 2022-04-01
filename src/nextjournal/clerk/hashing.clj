@@ -67,9 +67,24 @@
                        (fn* ([] (nextjournal.clerk.hashing/foo "s"))
                             ([s] (clojure.string/includes?
                                   (rewrite-clj.parser/parse-string-all s) "hi")))))
+
+(defn- find-index [coll pred]
+  (first (keep-indexed #(when (pred %2) %1) coll)))
+
+(defn- adapt-clojure-test
+  "Replace the expanded body of the `deftest` with it's `:test` metadata, which contains the actual `deftest` body"
+  [analysis]
+  (if-let [i (find-index (-> analysis :meta :keys)
+                         #(= :test (:val %)))]
+    (let [deftest-analysis (-> analysis :meta :vals (get i))]
+      (cond-> analysis
+        (:init analysis) (assoc :init deftest-analysis)))
+    analysis))
+
 (defn analyze+emit [form]
   (-> form
       ana/analyze
+      adapt-clojure-test
       (ana.passes.ef/emit-form #{:hygenic :qualified-symbols})))
 
 (defn rewrite-defcached [form]
@@ -99,6 +114,7 @@
         (seq deps) (assoc :deps deps)))))
 
 #_(analyze '(let [+ 2] +))
+#_(analyze '(clojure.test/deftest x (clojure.test/is (= 43 (inc 42)))))
 #_(analyze '(defn foo [s] (str/includes? (p/parse-string-all s) "hi")))
 #_(analyze '(defn segments [s] (let [segments (str/split s)]
                                  (str/join segments))))
