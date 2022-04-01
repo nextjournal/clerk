@@ -30,7 +30,8 @@
 (defn fetch-tap [{:as opts :keys [describe-fn path offset trace-fn]} x]
   (when trace-fn (trace-fn {:origin 'fetch-tap :xs x}))
   (let [path' (cond-> path
-                (not= :tap (peek path)) (conj :tap))]
+                (not= :tap (peek path)) (conj :tap))
+        opts (cond-> opts (v/viewers (:tap x)) (update :viewers #(concat (v/viewers (:tap x)) %)))]
     (-> (cond-> (update x :tap describe-fn (assoc opts :!budget (atom 100) :path path') path')
           (-> path count dec pos?) :tap)
         (assoc :path path' :replace-path (conj path offset)))))
@@ -101,16 +102,32 @@
 ^{::clerk/viewer clerk/hide-result}
 (comment
   (tap> (rand-int 1000))
-  (tap> (range 21))
-  (tap> (shuffle (range 100)))
+  (tap> (shuffle (range (+ 20 (rand-int 200)))))
   (tap> (clerk/md "> The purpose of visualization is **insight**, not pictures."))
-  (tap> (javax.imageio.ImageIO/read (java.net.URL. "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")))
   (tap> (v/plotly {:data [{:z [[1 2 3]
                                [3 2 1]]
                            :type "surface"}]}))
-  (tap> (clerk/vl {:width 650 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
-                                                 :format {:type "topojson" :feature "counties"}}
-                   :transform [{:lookup "id" :from {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
-                                                    :key "id" :fields ["rate"]}}]
-                   :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}}))
+  (tap> (javax.imageio.ImageIO/read (java.net.URL. "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")))
+
+
+
+  (def rule-30-viewers [{:pred number? :render-fn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                                                :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}
+                        {:pred list? :render-fn '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1))}
+                        {:pred #(and (vector? %) (not (map-entry? %))) :render-fn '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1))}])
+  (def rule-30 {[1 1 1] 0
+                [1 1 0] 0
+                [1 0 1] 0
+                [1 0 0] 1
+                [0 1 1] 1
+                [0 1 0] 1
+                [0 0 1] 1
+                [0 0 0] 0})
+  (tap> (clerk/with-viewers rule-30-viewers rule-30))
+  (tap> (let [n 21
+              first-generation (assoc (vec (repeat n 0)) (/ (dec n) 2) 1)
+              evolve #(mapv rule-30 (partition 3 1 (repeat 0) (cons 0 %)))]
+          (clerk/with-viewers rule-30-viewers
+            (->> first-generation (iterate evolve) (take (/ n 2)) (apply list)))))
+  (tap> (clerk/html [:h1 "Fin. 👋"]))
   )
