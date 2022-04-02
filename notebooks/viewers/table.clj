@@ -35,4 +35,5 @@
 (clerk/table {:head
               (-> (mapv (fn [char] (clojure.string/join "" (repeat 20 char)))
                         (map char (range 97 127))))
-              :rows [(range 26)]})
+              :rows
+              [(range 26)]})
