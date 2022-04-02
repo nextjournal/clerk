@@ -29,3 +29,10 @@
 (clerk/table (set (range 30)))
 
 #_(nextjournal.clerk/show! "notebooks/viewers/table.clj")
+
+
+;; Shows full column names when names are long and many columns
+(clerk/table {:head
+              (-> (mapv (fn [char] (clojure.string/join "" (repeat 20 char)))
+                        (map char (range 97 127))))
+              :rows [(range 26)]})
