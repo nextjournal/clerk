@@ -1,8 +1,9 @@
 ;; # 👁 Clerk Viewer API
 ;; Clerk comes with a moldable viewer api that is open.
 
-(ns notebook.viewer-api
-  (:require [nextjournal.clerk :as clerk]))
+(ns notebooks.viewer-api
+  (:require [clojure.string]
+            [nextjournal.clerk :as clerk]))
 
 ;; ## 🧩 Built-in Viewers
 ;; The default set of viewers are able to render Clojure data.
