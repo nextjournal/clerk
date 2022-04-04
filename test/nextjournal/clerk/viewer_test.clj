@@ -65,25 +65,26 @@
     (is (= :full
            (:nextjournal/width (v/wrapped-with-viewer (v/table {:nextjournal.clerk/width :full} {:a [1] :b [2] :c [3]})))))))
 
+(defn viewer-eval-inspect? [x] (= x (v/->viewer-eval 'v/inspect)))
+
 (deftest describe
   (testing "only transform-fn can select viewer"
-
     (is (match? {:nextjournal/viewer {:name :html}
                  :nextjournal/value [:div.viewer-markdown
-                                     [any?
+                                     [viewer-eval-inspect?
                                       {:nextjournal/viewer {:name :html}
                                        :nextjournal/value [:p
-                                                           [any?
+                                                           [viewer-eval-inspect?
                                                             {:nextjournal/viewer {:name :html}
                                                              :nextjournal/value [:span "Hello "]}]
-                                                           [any?
+                                                           [viewer-eval-inspect?
                                                             {:nextjournal/viewer {:name :html}
                                                              :nextjournal/value [:em
-                                                                                 [any?
+                                                                                 [viewer-eval-inspect?
                                                                                   {:path [],
                                                                                    :nextjournal/value [:span "markdown"]
                                                                                    :nextjournal/viewer {:name :html}}]]}]
-                                                           [any?
+                                                           [viewer-eval-inspect?
                                                             {:nextjournal/viewer {:name :html}
                                                              :nextjournal/value [:span "!"]}]]}]]}
 
