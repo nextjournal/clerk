@@ -5,20 +5,25 @@
             [nextjournal.clerk.viewer :as v]
             [clojure.core :as core]))
 
-^{::clerk/viewer {:transform-fn (fn [{::clerk/keys [var-from-def]}]
-                                  {:var-name (symbol var-from-def) :value @@var-from-def})
-                  :fetch-fn (fn [_ x] x)
-                  :render-fn '(fn [{:keys [var-name value]}]
-                                (v/html
-                                 (let [choices [:stream :latest]]
-                                   [:div.flex.justify-between.items-center
-                                    (into [:div.flex.items-center.font-sans.text-xs.mb-3 [:span.text-slate-500.mr-2 "View-as:"]]
-                                          (map (fn [choice]
-                                                 [:button.px-3.py-1.font-medium.hover:bg-indigo-50.rounded-full.hover:text-indigo-600.transition
-                                                  {:class (if (= value choice) "bg-indigo-100 text-indigo-600" "text-slate-500")
-                                                   :on-click #(v/clerk-eval `(reset! ~var-name ~choice))}
-                                                  choice]) choices))
-                                    [:button.text-xs.rounded-full.px-3.py-1.border-2.font-sans.hover:bg-slate-100.cursor-pointer {:on-click #(v/clerk-eval `(reset-taps!))} "Clear"]])))}}
+
+^{::clerk/viewer clerk/hide-result}
+(def switch-view
+  {:transform-fn (fn [{::clerk/keys [var-from-def]}]
+                   {:var-name (symbol var-from-def) :value @@var-from-def})
+   :fetch-fn (fn [_ x] x)
+   :render-fn '(fn [{:keys [var-name value]}]
+                 (v/html
+                  (let [choices [:stream :latest]]
+                    [:div.flex.justify-between.items-center
+                     (into [:div.flex.items-center.font-sans.text-xs.mb-3 [:span.text-slate-500.mr-2 "View-as:"]]
+                           (map (fn [choice]
+                                  [:button.px-3.py-1.font-medium.hover:bg-indigo-50.rounded-full.hover:text-indigo-600.transition
+                                   {:class (if (= value choice) "bg-indigo-100 text-indigo-600" "text-slate-500")
+                                    :on-click #(v/clerk-eval `(reset! ~var-name ~choice))}
+                                   choice]) choices))
+                     [:button.text-xs.rounded-full.px-3.py-1.border-2.font-sans.hover:bg-slate-100.cursor-pointer {:on-click #(v/clerk-eval `(reset-taps!))} "Clear"]])))})
+
+^{::clerk/viewer switch-view}
 (defonce !view (atom :stream))
 
 
