@@ -287,6 +287,9 @@
   (let [v' (if transform-fn
              (-> v value transform-fn)
              v)]
+    (when-let [trace-fn (:trace-fn opts)]
+      (trace-fn (cond-> {:source `apply-viewer :x v :opts opts}
+                  transform-fn (assoc :x' v'))))
     (if (and transform-fn (not render-fn))
       (wrapped-with-viewer v' viewers)
       (cond-> (wrap-value v' viewer)
@@ -385,6 +388,8 @@
    (assign-closing-parens
     (describe xs (merge {:!budget (atom (:budget opts 200)) :path [] :viewers (get-viewers *ns* (viewers xs))} opts) [])))
   ([xs opts current-path]
+   (when-let [trace-fn (:trace-fn opts)]
+     (trace-fn {:source `describe :xs xs :opts opts :current-path current-path}))
    (let [{:as opts :keys [!budget viewers path offset]} (merge {:offset 0} opts)
          {:as wrapped-value xs-viewers :nextjournal/viewers} (wrapped-with-viewer xs viewers)
          ;; TODO used for the table viewer which adds viewers in through `tranform-fn` from `wrapped-with-viewer`. Can we avoid this?
