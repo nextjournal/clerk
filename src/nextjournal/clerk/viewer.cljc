@@ -104,6 +104,7 @@
 (defn normalize-viewer-opts [opts]
   (set/rename-keys opts {:nextjournal.clerk/viewer :nextjournal/viewer
                          :nextjournal.clerk/viewers :nextjournal/viewers
+                         :nextjournal.clerk/opts :nextjournal/opts
                          :nextjournal.clerk/width :nextjournal/width}))
 
 (defn normalize-viewer [viewer]
