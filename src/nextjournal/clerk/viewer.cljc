@@ -199,7 +199,7 @@
                                       (ImageIO/write image "png" stream)
                                       (cond-> {:nextjournal/value (.toByteArray stream)
                                                :nextjournal/content-type "image/png"
-                                               :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})) image)
+                                               :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})))
             :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))})
    {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.cmt-default x]))}
    {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
@@ -433,8 +433,8 @@
                           children (into []
                                          (comp (if (number? (:n fetch-opts)) (drop+take-xf fetch-opts) identity)
                                                (map-indexed (fn [i x] (describe x (-> opts
-                                                                                     (dissoc :offset)
-                                                                                     (update :path conj (+ i offset))) (conj current-path i))))
+                                                                                      (dissoc :offset)
+                                                                                      (update :path conj (+ i offset))) (conj current-path i))))
                                                (remove nil?))
                                          (ensure-sorted xs))
                           {:keys [count]} count-opts
