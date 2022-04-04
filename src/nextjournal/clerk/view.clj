@@ -210,8 +210,8 @@ viewer.mount(document.getElementById('clerk'));\n"
 ws.onmessage = msg => viewer.set_state(viewer.read_string(msg.data));
 window.ws_send = msg => ws.send(msg);")
      (when conn-ws?
-       "const ws_dev = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_nrepl');
-ws.onmessage = console.log;
+       "window.ws_nrepl = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_nrepl');
+        nextjournal.clerk.sci-viewer.init_nrepl();
 ")]]))
 
 (defn ->static-app [{:as state :keys [current-path]}]

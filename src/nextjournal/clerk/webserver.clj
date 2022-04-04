@@ -60,9 +60,12 @@
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
     (case (:uri req)
-      "/_nrepl" (httpkit/as-channel req {:on-open (fn [ch] (prn :open))
+      "/_nrepl" (httpkit/as-channel req {:on-open (fn [ch]
+                                                    (httpkit/send! ch (str [:hello "there"])))
                                          :on-close (fn [ch _reason] (prn :close))
-                                         :on-receive (fn [_ch msg] (prn :receive msg))})
+                                         :on-receive (fn [ch msg]
+                                                       (httpkit/send! ch (str [:hello "there"]))
+                                                       (prn :receive msg))})
       ;; default
       (httpkit/as-channel req {:on-open (fn [ch] (swap! !clients conj ch))
                                :on-close (fn [ch _reason] (swap! !clients disj ch))
@@ -74,7 +77,6 @@
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
         ("_ws" "_nrepl") {:status 200 :body "upgrading..."}
-         {:status 200 :body "upgrading..."}
         {:status  200
          :headers {"Content-Type" "text/html"}
          :body    (view/doc->html @!doc @!error)})

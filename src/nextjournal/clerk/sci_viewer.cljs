@@ -1131,3 +1131,9 @@ black")}]))}
 (swap! viewer/!viewers (fn [viewers]
                          (-> (into {} (map (juxt key (comp #(into [] (map viewer/process-render-fn) %)  val))) viewers)
                              (update :root concat js-viewers))))
+
+(defn ^:export init-nrepl []
+  (let [ws (.-ws_nrepl js/window)]
+    (set! (.-onmessage ws)
+          (fn [event]
+            (js/console.log (.-data event))))))
