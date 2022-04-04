@@ -8,7 +8,8 @@
                       [nextjournal.clerk.config :as config]]
                 :cljs [[reagent.ratom :as ratom]])
             [nextjournal.markdown :as md]
-            [nextjournal.markdown.transform :as md.transform])
+            [nextjournal.markdown.transform :as md.transform]
+            [lambdaisland.uri.normalize :as uri.normalize])
   #?(:clj (:import (java.lang Throwable)
                    (java.awt.image BufferedImage)
                    (javax.imageio ImageIO))))
@@ -259,7 +260,10 @@
   [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:div.viewer-markdown])}
 
    ;; blocks
-   {:name :nextjournal.markdown/heading :transform-fn (into-markup #(vector (str "h" (:heading-level %))))}
+   {:name :nextjournal.markdown/heading
+    :transform-fn (into-markup
+                   (fn [{:as node :keys [heading-level]}]
+                     [(str "h" heading-level) {:id (uri.normalize/normalize-fragment (md.transform/->text node))}]))}
    {:name :nextjournal.markdown/image :transform-fn #(with-viewer :html [:img (:attrs %)])}
    {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
