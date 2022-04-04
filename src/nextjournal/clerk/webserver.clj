@@ -56,11 +56,11 @@
     {:status 404}))
 
 (defn serve-cached-asset [{:as _req :keys [uri]}]
-  (let [f (io/file ".clerk/.cache/assets" (str/replace uri "/assets/" ""))]
+  (let [f (io/file ".clerk/assets" (str/replace uri "/assets/" ""))]
     (when-not (fs/exists? f)
       (spit f
        (slurp (str "https://storage.googleapis.com/nextjournal-cas-eu/data/" (last (str/split uri #"/"))))))
-    {:body (io/file ".clerk/.cache/assets" (str/replace uri "/assets/" ""))}))
+    {:body (io/file ".clerk/assets" (str/replace uri "/assets/" ""))}))
 
 (defn extract-blob-opts [{:as _req :keys [uri query-string]}]
   {:blob-id (str/replace uri "/_blob/" "")

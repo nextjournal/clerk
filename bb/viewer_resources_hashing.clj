@@ -109,14 +109,14 @@
                      font-links)
         manifest (into {} (for [a assets]
                             (store-asset a)))
-        _ (fs/create-dirs ".clerk/.cache")
+        _ (fs/create-dirs ".clerk/assets")
         font-css (reduce (fn [acc l]
                            (str/replace acc l (let [remote (get manifest l)
                                                     hash (last (str/split remote #"/"))
                                                     cached (str/replace remote
                                                                         (str base-url "/data")
                                                                         "/assets")]
-                                                (spit (str ".clerk/.cache/" hash)
+                                                (spit (str ".clerk/assets/" hash)
                                                       (:body (curl/get remote)))
                                                 cached))) font-css font-links)
         [font-css-link gurl] (store-asset font-css-link font-css)

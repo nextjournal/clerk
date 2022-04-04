@@ -192,7 +192,7 @@
   [url]
   (if-let [gurl (get asset-map url)]
     (let [fname (last (str/split gurl #"/"))
-          local-file (fs/file (str ".clerk/.cache/assets/" fname))]
+          local-file (fs/file (str ".clerk/assets/" fname))]
       (if (fs/exists? local-file)
         fname
         (do (fs/create-dirs (fs/parent local-file))
