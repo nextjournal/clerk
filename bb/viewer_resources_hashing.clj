@@ -121,7 +121,7 @@
                                                 cached))) font-css font-links)
         [font-css-link gurl] (store-asset font-css-link font-css)
         manifest (assoc manifest font-css-link gurl)
-        manifest (apply dissoc manifest font-links)]
+        #_#_manifest (apply dissoc manifest font-links)]
     (spit "resources/asset_manifest.edn"
           (with-out-str
             (pprint/pprint {:asset-map manifest})))))

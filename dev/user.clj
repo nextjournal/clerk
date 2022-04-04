@@ -39,4 +39,5 @@
 
   (clerk/show! "notebooks/dice.clj")
   (clerk/clear-cache!)
+  (clerk/cache-assets! {})
   )
