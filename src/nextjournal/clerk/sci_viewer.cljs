@@ -1107,7 +1107,7 @@ black")}]))}
                    :disable-arity-checks true
                    :classes {'js goog/global
                              :allow :all}
-                   :aliases {'j 'applied-science/js-interop
+                   :aliases {'j 'applied-science.js-interop
                              'reagent 'reagent.core
                              'v 'nextjournal.clerk.sci-viewer}
                    :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace}
