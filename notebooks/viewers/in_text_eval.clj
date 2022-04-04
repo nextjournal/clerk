@@ -5,7 +5,7 @@
             [nextjournal.clerk.viewer :as v]
             [nextjournal.markdown.transform :as markdown.transform]))
 
-;; Being able to override markdown viewers allows we get in-text evaluation for free:
+;; Being able to override markdown viewers allows us to get in-text evaluation for free:
 
 ^{::clerk/viewer clerk/hide-result}
 (defonce num★ (atom 3))
