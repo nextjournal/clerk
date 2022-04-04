@@ -491,7 +491,7 @@
                      path-from-more (or (:replace-path more) ;; string case, TODO find a better way to unify
                                         (-> more :nextjournal/value first :path))]
                  (when (not= path-from-value path-from-more)
-                   (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more})))
+                   (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more :root root :more more :path-to-value (path-to-value (:path more)) :value value})))
                  (into (pop value) (:nextjournal/value more))))))
 
 

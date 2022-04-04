@@ -3,11 +3,13 @@
 (ns rule-30
   (:require [nextjournal.clerk :as clerk]))
 
-(clerk/set-viewers!
- [{:pred number? :render-fn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                          :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}
-  {:pred list? :render-fn '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1))}
-  {:pred #(and (vector? %) (not (map-entry? %))) :render-fn '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1))}])
+(def viewers
+  [{:pred number? :render-fn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                           :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}
+   {:pred list? :render-fn '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1))}
+   {:pred #(and (vector? %) (not (map-entry? %))) :render-fn '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1))}])
+
+(clerk/set-viewers! viewers)
 
 0
 
@@ -35,7 +37,8 @@
 
 ;; Finally, we can evolve the board.
 
-(let [evolve #(mapv rule-30 (partition 3 1 (repeat 0) (cons 0 %)))]
-  (->> first-generation (iterate evolve) (take 17) (apply list)))
+(def board
+  (let [evolve #(mapv rule-30 (partition 3 1 (repeat 0) (cons 0 %)))]
+    (->> first-generation (iterate evolve) (take 17) (apply list))))
 
 #_(clerk/show! "notebooks/rule_30.clj")

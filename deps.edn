@@ -21,18 +21,18 @@
         rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}}
 
  :aliases {:nextjournal/clerk {:exec-fn nextjournal.clerk/build-static-app!}
-           :sci {:extra-deps  {applied-science/js-interop  {:mvn/version "0.3.3"}
-                               org.babashka/sci {:mvn/version "0.3.2"}
-                               reagent/reagent {:mvn/version "1.1.0"}
-                               io.github.babashka/sci-configs {:git/sha "fd6a3332f358e56b96b5a791f75f97573e018580"}
-                               io.github.nextjournal/viewers {:git/sha "ecba998379fff59b55f3910c0dbaf79924088ab9"}
-                               metosin/reitit-frontend     {:mvn/version "0.5.15"}}}
+           :sci {:extra-deps {applied-science/js-interop {:mvn/version "0.3.3"}
+                              org.babashka/sci {:mvn/version "0.3.2"}
+                              reagent/reagent {:mvn/version "1.1.0"}
+                              io.github.babashka/sci-configs {:git/sha "fd6a3332f358e56b96b5a791f75f97573e018580"}
+                              io.github.nextjournal/viewers {:git/sha "d88a9abd1f2bfd28ff2d3983407a9319c6f04501"}
+                              metosin/reitit-frontend {:mvn/version "0.5.15"}}}
 
            :dev {:extra-deps {arrowic/arrowic {:mvn/version "0.1.1"}
                               binaryage/devtools {:mvn/version "1.0.3"}
                               cider/cider-nrepl {:mvn/version "0.26.0"}
                               thheller/shadow-cljs {:mvn/version "2.16.7"}}
-                 :extra-paths ["dev"]
+                 :extra-paths ["dev" "notebooks"]
                  :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"http://localhost:7778/js/viewer.js\"}" "-Dpolyglot.engine.WarnInterpreterOnly=false" "-XX:-OmitStackTraceInFastThrow"]
                  :main-opts ["-m" "shadow.cljs.devtools.cli"]}
 
