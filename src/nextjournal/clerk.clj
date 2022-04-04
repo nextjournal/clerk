@@ -255,9 +255,10 @@
 #_(show! @!last-file)
 
 (defn recompute! []
-  (let [{:keys [result time-ms]} (time-ms (eval-analyzed-doc @webserver/!doc))]
-    (println (str "Clerk recomputed '" @!last-file "' in " time-ms "ms."))
-    (webserver/update-doc! result)))
+  (binding [*ns* (:ns @webserver/!doc)]
+    (let [{:keys [result time-ms]} (time-ms (eval-analyzed-doc @webserver/!doc))]
+      (println (str "Clerk recomputed '" @!last-file "' in " time-ms "ms."))
+      (webserver/update-doc! result))))
 
 #_(recompute!)
 
