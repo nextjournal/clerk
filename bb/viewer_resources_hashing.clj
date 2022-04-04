@@ -77,8 +77,8 @@
 (def font-css-link "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")
 
 (def tailwind-link "https://cdn.tailwindcss.com/3.0.23?plugins=typography@0.5.2")
-(def plotly-link "https://cdn.jsdelivr.net/npm/plotly.js-dist@1.51.1/plotly.js")
-(def vega-embed-link "https://cdn.jsdelivr.net/npm/vega-embed@6.11.1/build/vega-embed.min.js")
+;; (def plotly-link "https://cdn.jsdelivr.net/npm/plotly.js-dist@1.51.1/plotly.js")
+;; (def vega-embed-link "https://cdn.jsdelivr.net/npm/vega-embed@6.11.1/build/vega-embed.min.js")
 
 (defn extract-font-links [css]
   (let [urls (map second (re-seq #"url\((.*?)\)" css))]
@@ -87,8 +87,8 @@
 (def asset->info
   {tailwind-link {:name "tailwind.css"}
    font-css-link {:name "Fira+Code.css"}
-   plotly-link {:name "plotly.js"}
-   vega-embed-link {:name "vega-embed.min.js"}})
+   #_#_plotly-link {:name "plotly.js"}
+   #_#_vega-embed-link {:name "vega-embed.min.js"}})
 
 (defn store-asset
   ([a] (store-asset a (:body (curl/get a))))
@@ -110,8 +110,8 @@
   (let [font-css (slurp font-css-link)
         font-links (extract-font-links font-css)
         assets (into [tailwind-link
-                      plotly-link
-                      vega-embed-link]
+                      #_plotly-link
+                      #_vega-embed-link]
                      font-links)
         manifest (into {} (for [a assets]
                             (store-asset a)))
