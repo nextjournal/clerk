@@ -209,7 +209,7 @@
 
    ;; inlines
    {:name :nextjournal.markdown/text :transform-fn (into-markup [:span])}
-   {:name :nextjournal.markdown/softbreak :transform-fn (into-markup [:span])}
+   {:name :nextjournal.markdown/softbreak :transform-fn (fn [_] (with-viewer :html [:span " "]))}
    #?(:clj {:name :nextjournal.markdown/inline :transform-fn (comp eval read-string md.transform/->text)})
 
    ;; formulas
