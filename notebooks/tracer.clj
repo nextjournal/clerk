@@ -44,20 +44,21 @@
                                                         (show-element lookup depth (second (second elem)) (second (nth elem 2)))]
         (and (list? elem) (= (first elem) 'let)) [:div.rounded-md.p-2.mt-2
                                                   {:class (if (even? depth) "bg-slate-200 " "bg-slate-300 ")}
-                                                  "let"
+                                                  [:span.font-bold "let"]
                                                   (let [depth (inc depth)]
                                                     [:div.rounded-md.p-2.mt-2
                                                      {:class (if (even? depth) "bg-slate-200 " "bg-slate-300 ")}
                                                      [:div.flex
                                                       (icon "[]")
                                                       (into [:div.ml-3]
-                                                            (mapv (fn [[k v]]
-                                                                    [:div.flex.mt-2
-                                                                     #_{:class (when-not (coll? v) "mt-2")}
-                                                                     [:div.mr-3 (show-element lookup (inc depth) nil k)]
-                                                                     [:div {:class (when (coll? v) "-mt-2")}
-                                                                      (show-element lookup (inc depth) nil v)]])
-                                                                  (->> elem second (partition 2))))]])
+                                                            (map-indexed
+                                                              (fn [i [k v]]
+                                                                [:div.flex
+                                                                 {:class (if (zero? i) "mt-1" "mt-2")}
+                                                                 [:div.mr-3.font-bold (show-element lookup (inc depth) nil k)]
+                                                                 [:div {:class (when (coll? v) "-mt-4 mb-2")}
+                                                                  (show-element lookup (inc depth) nil v)]])
+                                                              (->> elem second (partition 2))))]])
                                                   (into [:div]
                                                         (map
                                                           (fn [el]
@@ -67,12 +68,13 @@
                      {:class (if (even? depth) "bg-slate-200 " "bg-slate-300 ")}
                      (icon "{}")
                      (into [:div.ml-3]
-                           (mapv (fn [[k v]]
-                                   [:div.flex.items-center
-                                    [:div.mr-3 (show-element lookup (inc depth) nil k)]
-                                    [:div {:class (if (list? v) "-mt-2")}
-                                     (show-element lookup (inc depth) nil v)]])
-                                 elem))]
+                           (let [key-length (max (map #(-> % name count) (keys elem)))]
+                             (mapv (fn [[k v]]
+                                     [:div.flex.items-center
+                                      [:div.mr-3.font-bold (show-element lookup (inc depth) nil k)]
+                                      [:div {:class (if (list? v) "-mt-2")}
+                                       (show-element lookup (inc depth) nil v)]])
+                                   elem)))]
         (sequential? elem) [:div.rounded-md.p-2.flex
                             {:class (str (if (even? depth) "bg-slate-200 " "bg-slate-300 ")
                                          (when-not (list? elem) "mt-2"))}
@@ -81,21 +83,22 @@
                             [:div.flex-auto
                              {:class (when-not (list? elem)
                                        "ml-3 mt-1")}
-                             (into [:div
-                                    (when result-id
-                                      (let [result (get lookup result-id)]
-                                        (if-let [e (:exception result)]
-                                          [:div.rounded.border-2.border-red-500.bg-red-100.text-red-500.p-2.font-bold.text-xs.mb-2 e]
-                                          [:span.text-slate-500.text-sm.float-right.ml-3
-                                           (str "→ " (pr-str (get lookup result-id)))])))]
-                                   (mapv (partial show-element lookup (inc depth) nil) elem))]]
+                             [:div
+                              (into [:<>]
+                                    (mapv (partial show-element lookup (inc depth) nil) elem))
+                              (when result-id
+                                (let [result (get lookup result-id)]
+                                  (if-let [e (:exception result)]
+                                    [:div.rounded.border-2.border-red-500.bg-red-100.text-red-500.p-2.font-bold.text-xs.mt-2 e]
+                                    [:span.text-slate-500.text-sm.float-right.ml-3
+                                     (str "→ " (pr-str (get lookup result-id)))])))]]]
         :else (str " "
                    (if (string? elem) "\"")
                    elem
                    (if (string? elem) "\""))))
 
 (clerk/html
-  [:div {:class "font-mono"}
+  [:div.text-sm {:class "font-mono"}
    ;; boring arithmetic example form
    (let [t (debug-expression '(let [x 10
                                     y (/ 20 "foo")
