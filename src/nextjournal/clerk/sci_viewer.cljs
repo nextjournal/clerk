@@ -1,10 +1,11 @@
 (ns nextjournal.clerk.sci-viewer
   (:require [applied-science.js-interop :as j]
-            [cljs.reader]
+            [clojure.edn :as edn]
             [clojure.string :as str]
             [edamame.core :as edamame]
             [goog.object]
             [goog.string :as gstring]
+            [lambdaisland.uri.normalize :as uri.normalize]
             [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer with-viewers]]
             [nextjournal.devcards :as dc]
             [nextjournal.markdown.transform :as md.transform]
@@ -12,9 +13,9 @@
             [nextjournal.sci-configs.reagent :as sci-configs.reagent]
             [nextjournal.ui.components.d3-require :as d3-require]
             [nextjournal.ui.components.icon :as icon]
-            [nextjournal.ui.components.navbar :as navbar]
-            [nextjournal.ui.components.motion :as motion]
             [nextjournal.ui.components.localstorage :as ls]
+            [nextjournal.ui.components.motion :as motion]
+            [nextjournal.ui.components.navbar :as navbar]
             [nextjournal.view.context :as view-context]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
@@ -22,7 +23,6 @@
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
             [nextjournal.viewer.vega-lite :as vega-lite]
-            [lambdaisland.uri.normalize :as uri.normalize]
             [re-frame.context :as rf]
             [react :as react]
             [reagent.core :as r]
@@ -1123,17 +1123,40 @@ black")}]))}
                                       sci-configs.js-interop/namespaces
                                       sci-configs.reagent/namespaces)})))
 
+(sci/alter-var-root sci/print-fn (constantly *print-fn*))
+;; SCI 0.3.4:
+;; (sci/alter-var-root sci/print-err-fn (constantly *print-err-fn*))
+
 (defn eval-form [f]
   (sci/eval-form @!sci-ctx f))
 
 (set! *eval* eval-form)
 
+(defn eval-string [s]
+  (sci/eval-string* @!sci-ctx s))
+
 (swap! viewer/!viewers (fn [viewers]
                          (-> (into {} (map (juxt key (comp #(into [] (map viewer/process-render-fn) %)  val))) viewers)
                              (update :root concat js-viewers))))
 
+
+(defn nrepl-websocket []
+  (.-ws_nrepl js/window))
+
+(defn nrepl-reply [msg payload]
+  (.send (nrepl-websocket)
+         (str payload)))
+
+(defn handle-nrepl-eval [{:keys [code] :as msg}]
+  (eval-string code)
+  (nrepl-reply msg {:status [:done]}))
+
+(defn handle-nrepl-message [msg]
+  (case (:op msg)
+    :eval (handle-nrepl-eval msg)))
+
 (defn ^:export init-nrepl []
-  (let [ws (.-ws_nrepl js/window)]
+  (let [ws (nrepl-websocket)]
     (set! (.-onmessage ws)
           (fn [event]
-            (js/console.log (.-data event))))))
+            (handle-nrepl-message (edn/read-string (.-data event)))))))

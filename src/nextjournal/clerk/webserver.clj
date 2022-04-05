@@ -60,12 +60,15 @@
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
     (case (:uri req)
-      "/_nrepl" (httpkit/as-channel req {:on-open (fn [ch]
-                                                    (httpkit/send! ch (str [:hello "there"])))
-                                         :on-close (fn [ch _reason] (prn :close))
-                                         :on-receive (fn [ch msg]
-                                                       (httpkit/send! ch (str [:hello "there"]))
-                                                       (prn :receive msg))})
+      "/_nrepl" (httpkit/as-channel req
+                                    {:on-open (fn [ch]
+                                                (httpkit/send! ch (str {:op :eval
+                                                                        :code (pr-str
+                                                                               '(prn [:hello "there"]))})))
+                                     :on-close (fn [ch _reason] (prn :close))
+                                     :on-receive (fn [ch msg]
+                                                   #_(httpkit/send! ch (str [:hello "there"]))
+                                                   (prn :receive msg))})
       ;; default
       (httpkit/as-channel req {:on-open (fn [ch] (swap! !clients conj ch))
                                :on-close (fn [ch _reason] (swap! !clients disj ch))
