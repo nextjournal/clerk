@@ -3,6 +3,7 @@
             [clojure.pprint :as pprint]
             [clojure.string :as str]
             [lambdaisland.uri :as uri]
+            [nextjournal.clerk.browser-nrepl :as bnrepl]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [org.httpkit.server :as httpkit]))
@@ -62,9 +63,7 @@
     (case (:uri req)
       "/_nrepl" (httpkit/as-channel req
                                     {:on-open (fn [ch]
-                                                (httpkit/send! ch (str {:op :eval
-                                                                        :code (pr-str
-                                                                               '(prn [:hello "there"]))})))
+                                                (reset! bnrepl/nrepl-channel ch))
                                      :on-close (fn [ch _reason] (prn :close))
                                      :on-receive (fn [ch msg]
                                                    #_(httpkit/send! ch (str [:hello "there"]))
