@@ -1,7 +1,11 @@
 {:min-bb-version "0.7.6"
  :paths ["bb"]
  :deps {io.github.nextjournal/dejavu
-        {:git/sha "3c4cf5e4dda3648e0d4c575a3433d19c511dd3e5"}}
+        {:git/sha "3c4cf5e4dda3648e0d4c575a3433d19c511dd3e5"}
+        babashka/nrepl-client
+        #_{:local/root "../nrepl-client"}
+        {:git/url "https://github.com/babashka/nrepl-client"
+         :git/sha "c83b15906d224b67a67951343b05623c4c00cdcf"}}
  :tasks {:requires ([clojure.edn :as edn]
                     [clojure.edn :as edn]
                     [clojure.string :as str]
