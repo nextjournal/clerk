@@ -45,15 +45,26 @@
   (let [code (get msg "code")
         id (get msg "id")]
     (prn :re-send)
-    (prn :send (httpkit/send! @nrepl-channel (str {:op :eval
-                                                   :code code
-                                                   :id id})))
+    (when-let [chan @nrepl-channel]
+      (prn :send (httpkit/send! chan (str {:op :eval
+                                                     :code code
+                                                     :id id}))))
     (prn :eval)
     (send-response (assoc ctx :response {"status" ["done"]} :msg msg))))
 
-(defn handle-describe [{:keys [msg] :as ctx}]
-  (let [id (get msg "id")]
-    (send-response (assoc ctx :response {"new-session" id "status" ["done"]}))))
+(defn handle-describe [ctx]
+  (send-response (assoc ctx :response {"status" #{"done"}
+                                       "ops" (zipmap #{"clone" "close" "eval"
+                                                       ;; "load-file"
+                                                       ;; "complete"
+                                                       "describe"
+                                                       ;; "ls-sessions"
+                                                       ;; "eldoc"
+                                                       ;; "info"
+                                                       ;; "lookup"
+                                                       }
+                                                     (repeat {}))
+                                       "versions" []})))
 
 (defn session-loop [in out {:keys [opts]}]
   (loop []
@@ -71,7 +82,7 @@
         (case (get msg "op")
           "clone" (handle-clone ctx)
           "eval" (handle-eval ctx)
-          ;; "describe" (handle-describe ctx)
+          "describe" (handle-describe ctx)
           (println "Unhandled message" msg)))
       (recur))))
 
