@@ -41,18 +41,6 @@
 
 (declare show-element)
 
-(defn show-map [lookup depth result-id elem]
-  [:div.rounded-md.p-2.pt-0.flex.mt-2
-   {:class (if (even? depth) "bg-slate-200 " "bg-slate-300 ")}
-   [:div.mt-2 (icon "{}")]
-   (into [:div.ml-2]
-         (mapv (fn [[k v]]
-                 [:div.flex.items-center
-                  [:div.mr-2.font-bold (show-element lookup (inc depth) nil k)]
-                  [:div
-                   (show-element lookup (inc depth) nil v)]])
-               elem))])
-
 (defn show-let [lookup depth result-id elem]
   [:div.rounded-md.p-2.pt-0
    {:class (if (even? depth) "bg-slate-200 " "bg-slate-300 ")}
@@ -62,12 +50,13 @@
       {:class (if (even? depth) "bg-slate-200 " "bg-slate-300 ")}
       [:div.flex
        [:div.mt-2 (icon "[]")]
-       (into [:div.ml-2]
+       (into [:div.ml-2 {:class "-mt-2"}]
              (map
                (fn [[k v]]
-                 [:div.flex
-                  [:div.mr-2.font-bold (show-element lookup (inc depth) nil k)]
-                  [:div {:class (when (coll? v) "-mt-2 mb-2")}
+                 [:div.flex.mt-2
+                  [:div.mr-2.font-bold.flex-shrink-0
+                   (show-element lookup (inc depth) nil k)]
+                  [:div {:class (when (coll? v) "-mt-2")}
                    (show-element lookup (inc depth) nil v)]])
                (->> elem second (partition 2))))]])
    (into [:div]
@@ -76,31 +65,43 @@
              (show-element lookup (inc depth) nil el))
            (drop 2 elem)))])
 
+(defn show-coll [lookup depth result-id elem]
+  [:div.rounded-md.p-2.pt-0.flex.mt-2
+   {:class (str (if (even? depth) "bg-slate-200 " "bg-slate-300 "))}
+   [:div.mt-2 (icon (cond (set? elem) "#{}"
+                          (map? elem) "{}"
+                          (vector? elem) "[]"))]
+   [:div.flex-auto.ml-2
+    (if (map? elem)
+      (into [:div]
+            (map
+              (fn [[k v]]
+                [:div.flex
+                 [:div.mr-2.font-bold.flex-shrink-0
+                  (show-element lookup (inc depth) nil k)]
+                 [:div {:class (when (coll? v) "-mt-2 -mb-2")}
+                  (show-element lookup (inc depth) nil v)]])
+              elem))
+      (into [:div] (mapv (partial show-element lookup (inc depth) nil) elem)))]])
+
 (defn show-seq [lookup depth result-id elem]
   [:div.rounded-md.p-2.pt-0.flex.mt-2
    {:class (str (if (even? depth) "bg-slate-200 " "bg-slate-300 "))}
-   (when-not (list? elem)
-     [:div.mt-2 (icon "[]")])
-   [:div.flex-auto
-    [:div
-     (if (list? elem)
-       [:<>
-        [:span.font-bold (show-element lookup (inc depth) nil (first elem))]
-        (into [:<>] (mapv (partial show-element lookup (inc depth) nil) (rest elem)))]
-       (into [:div.ml-2] (mapv (partial show-element lookup (inc depth) nil) elem)))
-     (when result-id
-       (let [result (get lookup result-id)]
-         (if-let [e (:exception result)]
-           [:div.rounded.border-2.border-red-500.bg-red-100.text-red-500.p-2.font-bold.text-xs.mt-2 e]
-           [:span.text-slate-500.float-right.ml-2.mt-2
-            (str "→ " (pr-str result))])))]]])
+   [:div
+    [:span.font-bold (show-element lookup (inc depth) nil (first elem))]
+    (into [:<>] (mapv (partial show-element lookup (inc depth) nil) (rest elem)))
+    (when result-id
+      (let [result (get lookup result-id)]
+        (if-let [e (:exception result)]
+          [:div.rounded.border-2.border-red-500.bg-red-100.text-red-500.p-2.font-bold.text-xs.mt-2 e]
+          [:span.text-slate-500.float-right.ml-2.mt-2
+           (str "→ " (pr-str result))])))]])
 
 (defn show-element [lookup depth result-id elem]
   (println elem)
-  (cond (and (list? elem) (= (first elem) 'add-trace)) [:div
-                                                        (show-element lookup depth (second (second elem)) (second (nth elem 2)))]
+  (cond (and (list? elem) (= (first elem) 'add-trace)) (show-element lookup depth (second (second elem)) (second (nth elem 2)))
         (and (list? elem) (= (first elem) 'let)) (show-let lookup depth result-id elem)
-        (map? elem) (show-map lookup depth result-id elem)
+        (and (not (list? elem)) (coll? elem)) (show-coll lookup depth result-id elem)
         (sequential? elem) (show-seq lookup depth result-id elem)
         :else
         [:span.inline-block.mt-2.mr-2
@@ -118,7 +119,10 @@
                                     vs [3 1 4 1 5]
                                     tab {:a 4
                                          :b (+ 3 3)
-                                         :c 8}]
+                                         :c 8}
+                                    ordered #{5 1 2 :eight}
+                                    a-fn (fn [] (println "Ohai 👋"))
+                                    another-fn #(+ %1 %2)]
                                 (+ (* x 5)
                                    (apply + vs)
                                    (:a tab)
