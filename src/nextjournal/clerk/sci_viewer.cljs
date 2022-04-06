@@ -482,11 +482,12 @@
                                      [:div.inline-flex
                                       ;; Truncate to available col width without growing the table
                                       [:div.table.table-fixed.flex-auto
+                                       ;; {:style {:margin-left -12}}
                                        [:div
-                                        [:span.inline-flex.justify-center.items-center.relative
-                                         {:style {:font-size 20 :width 10 :height 10 :bottom -2 :margin-right 2}}
-                                         (when (= sort-key k)
-                                           (if (= sort-order :asc) "▴" "▾"))]
+                                        (when (= sort-key k)
+                                          [:span.inline-flex.justify-center.items-center.relative
+                                           {:style {:font-size 20 :width 10 :height 10 :bottom -2 }}
+                                           (if (= sort-order :asc) "▴" "▾")])
                                         (if (or (string? k) (keyword? k)) (name k) [inspect k])]]]]) head))])
             (into [:tbody]
                   (map-indexed (fn [i row]
