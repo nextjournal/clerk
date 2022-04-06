@@ -172,12 +172,18 @@
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns]}]
-   (-> doc
-       (update :blocks #(into [] (mapcat (partial describe-block opts doc)) %))
-       (select-keys [:blocks :toc :title])
-       v/notebook
-       (cond-> ns (assoc :scope (v/datafy-scope ns))))))
+   (->> doc
+        (v/with-viewer {:fetch-fn (fn [_ x] x)
+                        :render-fn (v/->viewer-eval 'v/notebook-viewer)
+                        :transform-fn (fn [doc]
+                                        (-> doc
+                                            (update :blocks #(into [] (mapcat (partial describe-block opts doc)) %))
+                                            (select-keys [:blocks :toc :title])
+                                            (cond-> ns (assoc :scope (v/datafy-scope ns)))))})
+        v/describe)))
 
+#_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
+#_(nextjournal.clerk/show! "notebooks/how_clerk_works.clj")
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
 #_(nextjournal.clerk/show! "notebooks/visibility.clj")
