@@ -65,35 +65,42 @@
   ([lookup depth result-id elem]
    (show-with-bindings true lookup depth result-id elem))
   ([as-pairs? lookup depth result-id elem]
-   [:div.pl-2.rounded.inline-block.shadow.border.border-slate-400.border-opacity-60
-    {:class (str "py-[2px] pr-[2px] " (if (even? depth) "bg-slate-300" "bg-slate-200"))}
-    (let [depth (inc depth)]
-      [:<>
-       [:div.flex
-        [:div.mr-2.font-bold
-         {:class "py-[2px] "}
-         (first elem)]
-        [:div
-         [:div.px-2.rounded.relative.shadow.border.border-slate-400.border-opacity-60.mb-1
-          {:class (str "py-[2px] " (if (even? depth) "bg-slate-300" "bg-slate-200"))}
-          [:div.flex
-           (icon "[]")
-           (when-not (-> elem second empty?)
-             (into [:div.ml-2]
-                   (map
-                     (fn [[k v]]
-                       [:div.flex.mb-1.last:mb-0
-                        [:div.mr-2.flex-shrink-0
-                         {:class (when as-pairs? "font-bold")}
-                         (show-element lookup (inc depth) nil k)]
-                        [:div
-                         (show-element lookup (inc depth) nil v)]])
-                     (->> elem second (partition 2)))))]]]]
-       (into [:div]
-             (map
-               (fn [el]
-                 (show-element lookup (inc (inc depth)) nil el))
-               (drop 2 elem)))])]))
+   (println elem)
+   (let [named? (-> elem second symbol?)]
+     [:div.pl-2.rounded.inline-block.shadow.border.border-slate-400.border-opacity-60
+      {:class (str "py-[2px] pr-[2px] " (if (even? depth) "bg-slate-300" "bg-slate-200"))}
+      (let [depth (inc depth)]
+        [:<>
+         [:div.flex
+          [:div.mr-2.font-bold
+           {:class "py-[2px] "}
+           (first elem)]
+          (when named?
+            [:div.mr-2.font-bold
+             {:class "py-[2px] "}
+             (second elem)])
+          (let [bindings (if named? (nth elem 2) (second elem))]
+            [:div
+             [:div.px-2.rounded.relative.shadow.border.border-slate-400.border-opacity-60.mb-1
+              {:class (str "py-[2px] " (if (even? depth) "bg-slate-300" "bg-slate-200"))}
+              [:div.flex
+               (icon "[]")
+               (when-not (empty? bindings)
+                 (into [:div.ml-2]
+                       (map
+                         (fn [[k v]]
+                           [:div.flex.mb-1.last:mb-0
+                            [:div.mr-2.flex-shrink-0
+                             {:class (when as-pairs? "font-bold")}
+                             (show-element lookup (inc depth) nil k)]
+                            [:div
+                             (show-element lookup (inc depth) nil v)]])
+                         (partition 2 bindings))))]]])]
+         (into [:div]
+               (map
+                 (fn [el]
+                   (show-element lookup (inc (inc depth)) nil el))
+                 (drop 2 elem)))])])))
 
 (defn show-coll [lookup depth result-id elem]
   [:div.px-2.rounded.inline-flex.shadow.border.border-slate-400.border-opacity-60
@@ -140,7 +147,7 @@
 
 (defn show-element [lookup depth result-id elem]
   (let [list-elem? (list? elem)
-        fn-elem? (and list-elem? (contains? #{'fn 'fn*} (first elem)))]
+        fn-elem? (and list-elem? (contains? #{'fn 'fn* 'defn} (first elem)))]
     (cond (and list-elem? (= (first elem) 'add-trace)) (show-element lookup depth (second (second elem)) (second (nth elem 2)))
           (and list-elem? (or (= (first elem) 'let) fn-elem?)) (show-with-bindings (not fn-elem?) lookup depth result-id elem)
           (and (not list-elem?) (coll? elem)) (show-coll lookup depth result-id elem)
@@ -157,27 +164,47 @@
   {::clerk/width :wide}
   [:div.text-sm {:class "font-mono"}
    ;; boring arithmetic example form
-   (let [t (debug-expression '(let [x 10
-                                    y (/ 20 0)
-                                    vs [3 1 4 1 5]
-                                    tab {:a 4
-                                         :b (+ 3 3)
-                                         :c 8}
-                                    ordered #{5 1 2 :eight}
-                                    a-fn (fn [] (println "Ohai 👋"))
-                                    another-fn #(+ %1 %2)]
-                                (+ (* x 5)
-                                   (apply + vs)
-                                   (:a tab)
-                                   (- (/ y 2)
-                                      (:b tab)
-                                      3))))]
+   (let [t1 (debug-expression '(let [x 10
+                                     y (/ 20 0)
+                                     vs [3 1 4 1 5]
+                                     tab {:a 4
+                                          :b (+ 3 3)
+                                          :c 8}
+                                     ordered #{5 1 2 :eight}
+                                     a-fn (fn [] (println "Ohai 👋"))
+                                     another-fn #(+ %1 %2)
+                                     fn-returning-fn (fn []
+                                                       (fn [] 1))]
+                                 (+ (* x 5)
+                                    (apply + vs)
+                                    (:a tab)
+                                    (- (/ y 2)
+                                       (:b tab)
+                                       3))))]
      (show-element
        ;; result id -> value lookup table
-       (reduce (fn [m [k [_ v]]] (assoc m k v)) {} t)
+       (reduce (fn [m [k [_ v]]] (assoc m k v)) {} t1)
        ;; initial display depth
        0
        ;; id of top level form's result
-       (first (last t))
+       (first (last t1))
        ;; the top level form itself
-       (first (second (last t)))))])
+       (first (second (last t1)))))])
+
+^::clerk/no-cache
+(clerk/html
+  {::clerk/width :wide}
+  [:div.text-sm {:class "font-mono"}
+   (let [t2 (debug-expression '(defn wrapped-with-metadata [value visibility h]
+                                 (cond-> {:nextjournal/value value
+                                          ::visibility visibility}
+                                         h (assoc :nextjournal/blob-id (cond-> h (not (string? h)) hash)))))]
+     (show-element
+       ;; result id -> value lookup table
+       (reduce (fn [m [k [_ v]]] (assoc m k v)) {} t2)
+       ;; initial display depth
+       0
+       ;; id of top level form's result
+       (first (last t2))
+       ;; the top level form itself
+       (first (second (last t2)))))])
