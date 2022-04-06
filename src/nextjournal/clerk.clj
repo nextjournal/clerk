@@ -365,13 +365,13 @@
 (def clerk-docs
   (into ["notebooks/markdown.md"
          "notebooks/onwards.md"
-         "notebooks/viewers/custom_markdown.md"]
+         "notebooks/viewers/custom_markdown.md"
+         "src/nextjournal/clerk/examples.clj"]
         (map #(str "notebooks/" % ".clj"))
         ["hello"
          "how_clerk_works"
          "pagination"
          "paren_soup"
-         "examples"
          #_"readme" ;; TODO: add back when we have Clojure cells in md
          "rule_30"
          "visibility"
