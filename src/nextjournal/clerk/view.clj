@@ -159,7 +159,7 @@
                 {:keys [code? fold? result?]} (->display cell)]
             (cond-> []
               code?
-              (conj (v/with-viewer :code-block {:fold? fold?} cell)) ;; TODO: fix folded code
+              (conj (v/with-viewer :clerk/code-block {:fold? fold?} cell)) ;; TODO: fix folded code
               result?
               (conj (cond
                       (v/registration? (v/value result))
@@ -171,20 +171,8 @@
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns]}]
-   (->> doc
-        (v/with-viewers [{:name :code-block
-                          :transform-fn #(v/html [:div.viewer-code (v/code (:text %))])}
-
-                          ;; TODO: make named
-                         {:pred (every-pred map? :graph :blocks :blob->result)
-                          :fetch-fn v/fetch-all
-                          :render-fn 'v/notebook-viewer
-                          :transform-fn (fn [doc]
-                                          (-> doc
-                                              (update :blocks #(into [] (mapcat (partial describe-block opts doc)) %))
-                                              (select-keys [:blocks :toc :title])
-                                              (cond-> ns (assoc :scope (v/datafy-scope ns)))))}])
-        v/describe)))
+   (binding [*ns* ns]
+     (->> doc v/notebook v/describe))))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/how_clerk_works.clj")
@@ -211,7 +199,9 @@
     (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
     (hiccup/include-js (@config/!resource->url "/js/viewer.js"))
     (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
-    (hiccup/include-css "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")]
+    (hiccup/include-css "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")
+    ;; TODO: remove, append from within viewer
+    (hiccup/include-css "https://cdn.jsdelivr.net/npm/reveal.js@4.3.1/dist/reveal.css")]
    [:body.dark:bg-gray-900
     [:div#clerk]
     [:script "let viewer = nextjournal.clerk.sci_viewer

@@ -180,7 +180,7 @@
       (with-viewer :html
         (into (mkup-fn node) (cond text [text] content (map with-md-viewer content)))))))
 
-(declare !viewers)
+(declare !viewers datafy-scope)
 
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
@@ -246,7 +246,21 @@
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
    {:name :object :render-fn '(fn [x] (v/html (v/tagged-value "#object" [v/inspect x])))}
    {:name :file :render-fn '(fn [x] (v/html (v/tagged-value "#file " [v/inspect x])))}
-   {:name :clerk/notebook :render-fn (quote v/notebook-viewer) :fetch-fn fetch-all}
+
+   #?(:clj
+      {:name :clerk/notebook :fetch-fn fetch-all :render-fn 'v/notebook-viewer
+       :transform-fn (fn [doc]
+                       ;; FIXME:
+                       ;; - move to this ns and simplify
+                       ;; - handle transformation of result block within :clerk/result transform-fn
+                       ;; - passing opts
+                       (let [describe-block @(resolve 'nextjournal.clerk.view/describe-block)]
+                         (-> doc
+                             (update :blocks (partial into [] (mapcat (partial describe-block {#_ FIXME } doc))))
+                             (select-keys [:blocks :toc :title])
+                             (assoc :scope (datafy-scope *ns*)))))})
+
+   {:name :clerk/code-block :transform-fn (fn [block] (with-viewer :html [:div.viewer-code (with-viewer :code (:text block))]))}
    {:name :clerk/result :render-fn (quote v/result-viewer) :fetch-fn fetch-all}
    {:name :hide-result :transform-fn (fn [_] nil)}])
 
