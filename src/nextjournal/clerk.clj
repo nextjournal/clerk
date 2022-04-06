@@ -371,6 +371,7 @@
          "how_clerk_works"
          "pagination"
          "paren_soup"
+         "examples"
          #_"readme" ;; TODO: add back when we have Clojure cells in md
          "rule_30"
          "visibility"
