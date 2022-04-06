@@ -65,9 +65,29 @@
     (is (= :full
            (:nextjournal/width (v/wrapped-with-viewer (v/table {:nextjournal.clerk/width :full} {:a [1] :b [2] :c [3]})))))))
 
+(defn viewer-eval-inspect? [x] (= x (v/->viewer-eval 'v/inspect)))
+
 (deftest describe
   (testing "only transform-fn can select viewer"
-    (is (match? {:nextjournal/value "Hello _markdown_!", :nextjournal/viewer {:name :markdown}}
+    (is (match? {:nextjournal/viewer {:name :html}
+                 :nextjournal/value [:div.viewer-markdown
+                                     [viewer-eval-inspect?
+                                      {:nextjournal/viewer {:name :html}
+                                       :nextjournal/value [:p
+                                                           [viewer-eval-inspect?
+                                                            {:nextjournal/viewer {:name :html}
+                                                             :nextjournal/value [:span "Hello "]}]
+                                                           [viewer-eval-inspect?
+                                                            {:nextjournal/viewer {:name :html}
+                                                             :nextjournal/value [:em
+                                                                                 [viewer-eval-inspect?
+                                                                                  {:path [],
+                                                                                   :nextjournal/value [:span "markdown"]
+                                                                                   :nextjournal/viewer {:name :html}}]]}]
+                                                           [viewer-eval-inspect?
+                                                            {:nextjournal/viewer {:name :html}
+                                                             :nextjournal/value [:span "!"]}]]}]]}
+
                 (v/describe (v/with-viewer {:transform-fn (comp v/md :foo)}
                               {:foo "Hello _markdown_!"})))))
 

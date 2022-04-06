@@ -80,7 +80,7 @@
   (reduce
     (fn [acc {:as item :keys [content children]}]
       (if content
-        (let [title (-> content first :text)]
+        (let [title (md.transform/->text item)]
           (->> {:title title
                 :path (str "#" (uri.normalize/normalize-fragment title))
                 :items (toc-items children)}
@@ -1027,9 +1027,10 @@ black")}]))}
   (html (katex/to-html-string tex-string)))
 
 (defn html-viewer [markup]
-  (if (string? markup)
-    (html [:div {:dangerouslySetInnerHTML {:__html markup}}])
-    (r/as-element markup)))
+  (r/as-element
+   (if (string? markup)
+     [:span {:dangerouslySetInnerHTML {:__html markup}}]
+     markup)))
 
 (defn reagent-viewer [x]
   (r/as-element (cond-> x (fn? x) vector)))
@@ -1038,15 +1039,6 @@ black")}]))}
 (def code-viewer (comp normalize-viewer code/viewer))
 (def plotly-viewer (comp normalize-viewer plotly/viewer))
 (def vega-lite-viewer (comp normalize-viewer vega-lite/viewer))
-
-(defn markdown-viewer
-  "Accept a markdown string or a structure from parsed markdown."
-  [data]
-  (cond
-    (string? data)
-    (markdown/viewer data)
-    (and (map? data) (contains? data :content) (contains? data :type))
-    (with-viewer :hiccup (md.transform/->hiccup markdown/default-renderers data))))
 
 (def expand-icon
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
@@ -1101,7 +1093,6 @@ black")}]))}
    'notebook-viewer notebook
    'katex-viewer katex-viewer
    'mathjax-viewer mathjax-viewer
-   'markdown-viewer markdown-viewer
    'code-viewer code-viewer
    'foldable-code-viewer foldable-code-viewer
    'plotly-viewer plotly-viewer
