@@ -25,15 +25,17 @@
                   (group-by (comp keyword str/upper-case str first))
                   (into (sorted-map))))
 
-;; The table viewer will perform normalization and show an error in case of failure:
+;; ;; The table viewer will perform normalization and show an error in case of failure:
 (clerk/table (set (range 30)))
+
+;; Shows full column names when there are many long column names
+(clerk/table {:head
+              (-> (mapv (fn [char] (clojure.string/join "" (repeat 30 char)))
+                        (map char (range 97 127))))
+              :rows
+              [(range 97 127)
+               (-> (mapv (fn [char] (clojure.string/join "" (repeat 20 char)))
+                        (map char (range 97 127))))]})
 
 #_(nextjournal.clerk/show! "notebooks/viewers/table.clj")
 
-
-;; Shows full column names when names are long and many columns
-(clerk/table {:head
-              (-> (mapv (fn [char] (clojure.string/join "" (repeat 20 char)))
-                        (map char (range 97 127))))
-              :rows
-              [(range 26)]})
