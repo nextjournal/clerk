@@ -617,7 +617,10 @@
                   (instance? clojure.lang.Namespace scope)
                   (var? scope)))
       (swap! !viewers assoc scope viewers)
-      (with-viewer :eval! `'(v/set-viewers! ~(datafy-scope scope) ~viewers)))))
+
+      #_ ;; FIXME: this throws on describe for bounded-count-opts has no `:n` on fetch opts
+      (with-viewer :eval! `'(v/set-viewers! ~(datafy-scope scope) ~viewers))
+      (with-viewer :hide-result nil))))
 
 
 (defn registration? [x]

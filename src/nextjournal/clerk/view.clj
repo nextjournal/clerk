@@ -152,15 +152,14 @@
 
 (defn describe-block [{:keys [inline-results?] :or {inline-results? false}} {:keys [ns]} {:as cell :keys [type text doc]}]
   (case type
-    :markdown [(binding [*ns* ns]
-                 (v/describe (cond
-                               text (v/md text)
-                               doc (v/with-md-viewer doc))))]
+    :markdown [(cond
+                 text (v/md text)
+                 doc (v/with-md-viewer doc))]
     :code (let [{:as cell :keys [result]} (update cell :result apply-viewer-unwrapping-var-from-def)
                 {:keys [code? fold? result?]} (->display cell)]
             (cond-> []
               code?
-              (conj (cond-> (v/code text) fold? (assoc :nextjournal/viewer :code-folded)))
+              (conj (v/with-viewer :code-block {:fold? fold?} cell)) ;; TODO: fix folded code
               result?
               (conj (cond
                       (v/registration? (v/value result))
@@ -173,13 +172,18 @@
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns]}]
    (->> doc
-        (v/with-viewer {:fetch-fn (fn [_ x] x)
-                        :render-fn (v/->viewer-eval 'v/notebook-viewer)
-                        :transform-fn (fn [doc]
-                                        (-> doc
-                                            (update :blocks #(into [] (mapcat (partial describe-block opts doc)) %))
-                                            (select-keys [:blocks :toc :title])
-                                            (cond-> ns (assoc :scope (v/datafy-scope ns)))))})
+        (v/with-viewers [{:name :code-block
+                          :transform-fn #(v/html [:div.viewer-code (v/code (:text %))])}
+
+                          ;; TODO: make named
+                         {:pred (every-pred map? :graph :blocks :blob->result)
+                          :fetch-fn v/fetch-all
+                          :render-fn 'v/notebook-viewer
+                          :transform-fn (fn [doc]
+                                          (-> doc
+                                              (update :blocks #(into [] (mapcat (partial describe-block opts doc)) %))
+                                              (select-keys [:blocks :toc :title])
+                                              (cond-> ns (assoc :scope (v/datafy-scope ns)))))}])
         v/describe)))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))

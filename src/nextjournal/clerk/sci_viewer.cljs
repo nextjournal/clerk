@@ -199,8 +199,7 @@
                                          :wide "w-full max-w-wide"
                                          :full "w-full"
                                          "w-full max-w-prose px-8")]}
-                         (cond-> [inspect x]
-                           blob-id (with-meta {:key blob-id}))])))
+                         x])))
                xs)]]))))
 
 (defonce !edamame-opts
