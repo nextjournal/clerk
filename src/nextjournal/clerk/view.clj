@@ -152,7 +152,10 @@
 
 (defn describe-block [{:keys [inline-results?] :or {inline-results? false}} {:keys [ns]} {:as cell :keys [type text doc]}]
   (case type
-    :markdown [(v/md (or doc text))]
+    :markdown [(binding [*ns* ns]
+                 (v/describe (cond
+                               text (v/md text)
+                               doc (v/with-md-viewer doc))))]
     :code (let [{:as cell :keys [result]} (update cell :result apply-viewer-unwrapping-var-from-def)
                 {:keys [code? fold? result?]} (->display cell)]
             (cond-> []

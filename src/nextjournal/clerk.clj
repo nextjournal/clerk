@@ -255,9 +255,10 @@
 #_(show! @!last-file)
 
 (defn recompute! []
-  (let [{:keys [result time-ms]} (time-ms (eval-analyzed-doc @webserver/!doc))]
-    (println (str "Clerk recomputed '" @!last-file "' in " time-ms "ms."))
-    (webserver/update-doc! result)))
+  (binding [*ns* (:ns @webserver/!doc)]
+    (let [{:keys [result time-ms]} (time-ms (eval-analyzed-doc @webserver/!doc))]
+      (println (str "Clerk recomputed '" @!last-file "' in " time-ms "ms."))
+      (webserver/update-doc! result))))
 
 #_(recompute!)
 
@@ -360,7 +361,8 @@
 
 (def clerk-docs
   (into ["notebooks/markdown.md"
-         "notebooks/onwards.md"]
+         "notebooks/onwards.md"
+         "notebooks/viewers/custom_markdown.md"]
         (map #(str "notebooks/" % ".clj"))
         ["hello"
          "how_clerk_works"
@@ -377,6 +379,7 @@
          "viewers/html"
          "viewers/image"
          "viewers/image_layouts"
+         "viewers/in_text_eval"
          "viewers/markdown"
          "viewers/plotly"
          "viewers/table"

@@ -8,7 +8,7 @@
 
         com.nextjournal/beholder {:mvn/version "1.0.0"}
 
-        io.github.nextjournal/markdown {:mvn/version "0.2.44"}
+        io.github.nextjournal/markdown {:mvn/version "0.3.69"}
 
         com.taoensso/nippy {:mvn/version "3.1.1"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
@@ -32,7 +32,7 @@
                               binaryage/devtools {:mvn/version "1.0.3"}
                               cider/cider-nrepl {:mvn/version "0.26.0"}
                               thheller/shadow-cljs {:mvn/version "2.16.7"}}
-                 :extra-paths ["dev"]
+                 :extra-paths ["dev" "notebooks"]
                  :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"http://localhost:7778/js/viewer.js\"}" "-Dpolyglot.engine.WarnInterpreterOnly=false" "-XX:-OmitStackTraceInFastThrow"]
                  :main-opts ["-m" "shadow.cljs.devtools.cli"]}
 
