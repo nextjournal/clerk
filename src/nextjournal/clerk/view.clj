@@ -175,6 +175,25 @@
    (binding [*ns* ns]
      (->> (merge doc opts) v/notebook v/describe))))
 
+(defn with-block-viewer [{:keys [ns inline-results?]} {:as cell :keys [type text doc]}]
+  (case type
+    :markdown [(cond
+                 text (v/md text)
+                 doc (v/with-md-viewer doc))]
+    :code (let [{:as cell :keys [result]} (update cell :result apply-viewer-unwrapping-var-from-def)
+                {:keys [code? fold? result?]} (->display cell)]
+            (cond-> []
+              code?
+              (conj (v/with-viewer :clerk/code-block cell)) ;; TODO: fix folded code
+              result?
+              (conj (cond
+                      (v/registration? (v/value result))
+                      (v/value result)
+                      :else
+                      (v/with-viewer :clerk/result
+                        (assoc cell
+                               :ns ns
+                               :lazy-load? (and (not inline-results?) (contains? result :nextjournal/blob-id))))))))))
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/how_clerk_works.clj")
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))

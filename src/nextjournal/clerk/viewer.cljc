@@ -249,21 +249,28 @@
    {:name :object :render-fn '(fn [x] (v/html (v/tagged-value "#object" [v/inspect x])))}
    {:name :file :render-fn '(fn [x] (v/html (v/tagged-value "#file " [v/inspect x])))}
 
+   {:name :clerk/code-block
+    :transform-fn (fn [block] (with-viewer :html [:div.viewer-code (with-viewer :code (:text block))]))}
    #?(:clj
-      {:name :clerk/notebook :fetch-fn fetch-all :render-fn 'v/notebook-viewer
+      {:name :clerk/result
+       :render-fn (quote v/result-viewer)
+       :fetch-fn (fn [_ result] result)
+       :transform-fn (fn [{:as _cell :keys [ns result lazy-load?]}]
+                       (let [->result @(resolve 'nextjournal.clerk.view/->result)]
+                         (->result ns result lazy-load?)))})
+   #?(:clj
+      {:name :clerk/notebook
+       :fetch-fn fetch-all
+       :render-fn 'v/notebook-viewer
        :transform-fn (fn [doc]
                        ;; FIXME:
                        ;; - move to this ns and simplify
-                       ;; - handle transformation of result block within :clerk/result transform-fn
-                       ;; - passing opts
-                       (let [describe-block @(resolve 'nextjournal.clerk.view/describe-block)]
+                       (let [with-block-viewer @(resolve 'nextjournal.clerk.view/with-block-viewer)]
                          (-> doc
-                             (update :blocks (partial into [] (mapcat (partial describe-block doc))))
+                             (update :blocks (partial into [] (mapcat (partial with-block-viewer doc))))
                              (select-keys [:blocks :toc :title])
                              (assoc :scope (datafy-scope *ns*)))))})
 
-   {:name :clerk/code-block :transform-fn (fn [block] (with-viewer :html [:div.viewer-code (with-viewer :code (:text block))]))}
-   {:name :clerk/result :render-fn (quote v/result-viewer) :fetch-fn fetch-all}
    {:name :hide-result :transform-fn (fn [_] nil)}])
 
 (def default-table-cell-viewers
