@@ -372,24 +372,26 @@
   (when (wrapped-value? x)
     (select-keys x [:nextjournal/width])))
 
+(defn- lookup-viewer-for [x viewers]
+  (let [v (value x)]
+    (if-let [selected-viewer (viewer x)]
+      (if (keyword? selected-viewer)
+        (or (find-named-viewer viewers selected-viewer)
+            (throw (ex-info (str "cannot find viewer named " selected-viewer)
+                            {:selected-viewer selected-viewer :x v :viewers viewers})))
+        selected-viewer)
+      (loop [vs viewers]
+        (if-let [{:as matching-viewer :keys [pred]} (first vs)]
+          (if (and (ifn? pred) (pred v))
+            matching-viewer
+            (recur (rest vs)))
+          (throw (ex-info (str "cannot find matchting viewer for `" (pr-str v) "`")
+                          {:viewers viewers :x x :v v})))))))
+
 (defn wrapped-with-viewer
   ([x] (wrapped-with-viewer x default-viewers))
   ([x viewers]
-   (let [v            (value x)
-         found-viewer (if-let [selected-viewer (viewer x)]
-                        (if (keyword? selected-viewer)
-                          (or (find-named-viewer viewers selected-viewer)
-                              (throw (ex-info (str "cannot find viewer named " selected-viewer)
-                                              {:selected-viewer selected-viewer :x v :viewers viewers})))
-                          selected-viewer)
-                        (loop [vs viewers]
-                          (if-let [{:as matching-viewer :keys [pred]} (first vs)]
-                            (if (and (ifn? pred) (pred v))
-                              matching-viewer
-                              (recur (rest vs)))
-                            (throw (ex-info (str "cannot find matchting viewer for `" (pr-str v) "`")
-                                            {:viewers viewers :x x :v v})))))]
-     (apply-viewer viewers found-viewer v (extract-view-opts x)))))
+   (apply-viewer viewers (lookup-viewer-for x viewers) (value x) (extract-view-opts x))))
 
 #_(wrapped-with-viewer {:one :two})
 #_(wrapped-with-viewer [1 2 3])
@@ -455,6 +457,14 @@
 
 #_(make-elision {:n 20} default-viewers)
 
+(defn viewer-for
+  "Look up the viewer functions that will be used on the `x` value argument"
+  ([x] (viewer-for x (get-viewers *ns* (viewers x))))
+  ([x viewers] (lookup-viewer-for x viewers)))
+
+#_(viewer-for [1])
+#_(viewer-for (with-viewer {:transform-fn (fn [x] :test)} 1))
+
 (defn describe
   "Returns a subset of a given `value`."
   ([xs]
@@ -465,7 +475,8 @@
   ([xs opts current-path]
    (let [{:as opts :keys [!budget viewers path offset]} (merge {:offset 0} opts)
          {:as wrapped-value xs-viewers :nextjournal/viewers} (wrapped-with-viewer xs viewers)
-         ;; TODO used for the table viewer which adds viewers in through `tranform-fn` from `wrapped-with-viewer`. Can we avoid this?
+         ;; TODO used for the table viewer which adds viewers in through
+         ;; `tranform-fn` from `wrapped-with-viewer`. Can we avoid this?
          opts (cond-> opts xs-viewers (update :viewers #(concat xs-viewers %)))
          {:as viewer :keys [fetch-opts fetch-fn]} (viewer wrapped-value)
          fetch-opts (merge fetch-opts (select-keys opts [:offset]))
