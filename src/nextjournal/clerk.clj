@@ -364,7 +364,8 @@
          "notebooks/onwards.md"
          "notebooks/viewers/custom_markdown.md"]
         (map #(str "notebooks/" % ".clj"))
-        ["hello"
+        ["slideshow"
+         "hello"
          "how_clerk_works"
          "pagination"
          "paren_soup"

@@ -32,9 +32,10 @@
                     " from "
                     [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
                      {:href (str url "/blob/" sha "/" (url->path path))} (url->path path) "@" [:span.tabular-nums (subs sha 0 7)]]])]]]
-    (sci-viewer/set-state {:doc (update-in doc [:nextjournal/value :blocks]
-                                           #(into [{:nextjournal/value header
-                                                    :nextjournal/viewer :html}] %))})
+                     ;; FIXME: we can no longer assume a document is a set of blocks / use a proper layout
+    (sci-viewer/set-state {:doc doc #_(update-in doc [:nextjournal/value :blocks]
+                                                 #(into [{:nextjournal/value header
+                                                          :nextjournal/viewer :html}] %))})
     [sci-viewer/root]))
 
 (dc/defcard show []
