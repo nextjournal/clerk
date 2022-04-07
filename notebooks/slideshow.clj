@@ -1,11 +1,11 @@
-;; # 🎠 Clerk in Slideshow Mode
+;; # 🎠 Slideshow Mode
 ;;
 ;; ---
 ;; This notebook shows how to use [Reveal.js](https://revealjs.com/) in a Clerk viewer in order to turn the whole notebook
 ;; into a presentation.
 ;;
 ;; ---
-;; Each set of contiguous markdown comment (`;;`) lines correspond to a single slide and so does each code block.
+;; Slides are delimited by markdown rulers i.e. with a leading `---` preceded by a newline.
 
 (ns ^:nextjournal.clerk/no-cache slideshow
   (:require [nextjournal.clerk :as clerk]
@@ -26,12 +26,56 @@
 ;; * [ ] resuse default transform fn in order to be able to process visibility, code folding etc.
 ;;
 ;; ---
+;;
+;; Some machinery to get it working:
+(defn split-by-ruler [{:keys [content]}] (partition-by (comp #{:ruler} :type) content))
+(defn doc->slides [{:keys [blocks]}]
+  (let [->slide (fn [fragment] (v/with-viewer :clerk/slide fragment))]
+    (transduce identity
+               (fn
+                 ([] {:slides [] :open-fragment []}) ;; init
+                 ([{:keys [slides open-fragment]}]   ;; finalize
+                  (conj slides (->slide open-fragment)))
+                 ([acc {:as block :keys [type doc]}]
+                    (cond
+                      (= :code type)
+                      (update acc :open-fragment conj block)
+                      (= :markdown type)
+                      (loop [[first-fragment & tail] (split-by-ruler doc)
+                             {:as acc :keys [open-fragment]} acc]
+                        (cond
+                          (= :ruler (-> first-fragment first :type))
+                          (recur tail (cond-> acc
+                                        (seq open-fragment)
+                                        (-> (update :slides conj (->slide open-fragment))
+                                            (assoc :open-fragment []))))
+                          (empty? tail)
+                          (update acc :open-fragment into first-fragment)
+                          'else
+                          (recur tail (-> acc
+                                          (update :slides conj (->slide (into open-fragment first-fragment)))
+                                          (assoc :open-fragment []))))))))
+               blocks)))
+
+;; ---
+;; and now the actual viewers
+
 (def slideshow-viewers
-  [{:name :clerk/markdown-block :transform-fn (comp (v/into-markup [:section.viewer-markdown.text-left]) :doc)}
-   {:name :clerk/code-block :transform-fn (fn [block] (v/html [:section.viewer-code (v/code (:text block))]))}
-   {:name :clerk/notebook
+  [{:name :clerk/slide
     :fetch-fn v/fetch-all
-    :transform-fn (comp (partial map #(v/with-viewer (keyword "clerk" (str (name (:type %)) "-block")) %)) :blocks)
+    :transform-fn (fn [fragment]
+                    (v/with-viewer :html
+                      (into [:section.viewer-markdown.text-left]
+                            (map (fn [x]
+                                   (cond
+                                     (v/wrapped-value? x) x
+                                     ((every-pred map? :type) x) (v/with-md-viewer x)
+                                     ((every-pred map? :form) x) (v/with-viewer :clerk/code-block x)
+                                     'else x)))
+                            fragment)))}
+   {:name :clerk/notebook
+    :transform-fn doc->slides
+    :fetch-fn v/fetch-all
     :render-fn '(fn [slides]
                   (v/with-d3-require
                    {:package "reveal.js@4.3.1"}
@@ -42,37 +86,20 @@
                        [:div.reveal {:ref refn :style {:border "1px solid black" :width "100%" :height "800px"}}
                         (into [:div.slides] slides)])))))}])
 
-(v/set-viewers! slideshow-viewers)
+;; ---
+;; this piece of code is to test slideshow in a box
+;;
 
-(defn split-by-ruler [{:keys [content]}] (partition-by (comp #{:ruler} :type) content))
-(defn ->slide [fgmt] {:slide fgmt})
-(defn doc->slides [{:keys [blocks]}]
-  (let [->slide (fn [fragment] {:slide fragment})]
-    (reduce (fn [{:as acc :keys [slides open-fragment]} {:as block :keys [type doc]}]
-              (cond
-                (= :code type)
-                (update acc :open-fragment conj (select-keys block [:text :type]))
-                (= :markdown type)
-                (loop [[first-fragment & tail] (split-by-ruler doc)
-                       {:as acc :keys [open-fragment]} acc]
-                  (cond
-                    (= :ruler (-> first-fragment first :type))
-                    (recur tail (cond-> acc
-                                  (seq open-fragment)
-                                  (-> (update :slides conj (->slide open-fragment))
-                                      (assoc :open-fragment []))))
-                    (empty? tail)
-                    (update acc :open-fragment into first-fragment)
-                    'else
-                    (recur tail (-> acc
-                                    (update :slides conj (->slide (into open-fragment first-fragment)))
-                                    (assoc :open-fragment [])))))))
-            {:slides [] :open-fragment []}
-            blocks)))
-
-;; TODO: handle last open fragment
 (comment
-  (split-by-ruler (-> @clerk.webserver/!doc :blocks first :doc))
-  (doc->slides @clerk.webserver/!doc)
+  (v/with-viewers (update slideshow-viewers 1 assoc :pred (every-pred map? :blocks :graph))
+    (clerk/eval-file "notebooks/hello.clj")))
 
-  )
+;; ---
+;; And finally actually set the viewers
+
+(clerk/set-viewers! slideshow-viewers)
+
+;; ---
+;; reset back to notebook view
+(comment
+  (reset! v/!viewers (v/get-all-viewers)))
