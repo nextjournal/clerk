@@ -287,6 +287,22 @@
            (analyze-circular-dependency state var form dep (ex-data e))
            (throw e)))))
 
+(defn- analyze-code [form state doc? block file]
+  (let [{:as analyzed :keys [var deps ns-effect?]} (analyze form)
+        state (-> state
+                  (dissoc :doc?)
+                  (assoc-in [:->analysis-info (if var var form)] (cond-> analyzed
+                                                                   file (assoc :file file))))
+        state (cond-> state
+                doc? (update-in [:blocks block] merge (dissoc analyzed :deps)))]
+    (when ns-effect?
+      (eval form))
+    (if (seq deps)
+      (reduce (partial analyze-deps var form)
+              state
+              deps)
+      state)))
+
 (defn analyze-doc
   ([doc]
    (analyze-doc {:doc? true :graph (dep/graph)} doc))
@@ -295,21 +311,7 @@
              (let [{:keys [type text]} (get-in state [:blocks i])]
                (if (not= type :code)
                  state
-                 (let [form (read-string text)
-                       {:as analyzed :keys [var deps ns-effect?]} (analyze form)
-                       state (-> state
-                                 (dissoc :doc?)
-                                 (assoc-in [:->analysis-info (if var var form)] (cond-> analyzed
-                                                                                  (:file doc) (assoc :file (:file doc)))))
-                       state (cond-> state
-                               doc? (update-in [:blocks i] merge (dissoc analyzed :deps)))]
-                   (when ns-effect?
-                     (eval form))
-                   (if (seq deps)
-                     (reduce (partial analyze-deps var form)
-                             state
-                             deps)
-                     state)))))
+                 (analyze-code (read-string text) state doc? i (:file doc)))))
            (cond-> state
              doc? (merge doc))
            (-> doc :blocks count range))))
