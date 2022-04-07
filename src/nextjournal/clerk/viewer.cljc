@@ -352,25 +352,8 @@
     (set? xs) (sort resilient-compare xs)
     :else xs))
 
-(declare with-viewer)
-
 (defn find-named-viewer [viewers viewer-name]
   (first (filter (comp #{viewer-name} :name) viewers)))
-
-(declare wrapped-with-viewer)
-
-(defn apply-viewer [viewers {:as viewer :keys [render-fn transform-fn]} v opts]
-  (let [v' (if transform-fn
-             (-> v value transform-fn)
-             v)]
-    (if (and transform-fn (not render-fn))
-      (wrapped-with-viewer v' viewers)
-      (cond-> (wrap-value v' viewer)
-        (seq opts) (merge opts)))))
-
-(defn extract-view-opts [x]
-  (when (wrapped-value? x)
-    (select-keys x [:nextjournal/width])))
 
 (defn- lookup-viewer-for [x viewers]
   (let [v (value x)]
@@ -391,7 +374,16 @@
 (defn wrapped-with-viewer
   ([x] (wrapped-with-viewer x default-viewers))
   ([x viewers]
-   (apply-viewer viewers (lookup-viewer-for x viewers) (value x) (extract-view-opts x))))
+   (let [{:as viewer :keys [render-fn transform-fn]} (lookup-viewer-for x viewers)
+         opts (when (wrapped-value? x)
+                (select-keys x [:nextjournal/width]))
+         v (if transform-fn
+             (-> (value x) value transform-fn)
+             (value x))]
+     (if (and transform-fn (not render-fn))
+       (recur v viewers)
+       (cond-> (wrap-value v viewer)
+         (seq opts) (merge opts))))))
 
 #_(wrapped-with-viewer {:one :two})
 #_(wrapped-with-viewer [1 2 3])
