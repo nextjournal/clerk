@@ -190,6 +190,9 @@
                       (v/registration? (v/value result))
                       (v/value result)
                       :else
+                      (->result ns result (and (not inline-results?)
+                                               (contains? result :nextjournal/blob-id)))
+                      #_ ;; FIXME: this doesn't work yet
                       (v/with-viewer :clerk/result
                         (assoc cell
                                :ns ns

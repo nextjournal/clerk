@@ -251,13 +251,18 @@
 
    {:name :clerk/code-block
     :transform-fn (fn [block] (with-viewer :html [:div.viewer-code (with-viewer :code (:text block))]))}
-   #?(:clj
-      {:name :clerk/result
-       :render-fn (quote v/result-viewer)
-       :fetch-fn (fn [_ result] result)
-       :transform-fn (fn [{:as _cell :keys [ns result lazy-load?]}]
-                       (let [->result @(resolve 'nextjournal.clerk.view/->result)]
-                         (->result ns result lazy-load?)))})
+
+   ;; FIXME: this doesn't work yet
+   ;;#?(:clj
+   ;;   {:name :clerk/result
+   ;;    :render-fn (quote v/result-viewer)
+   ;;    :fetch-fn (fn [_ result] result)
+   ;;    :transform-fn (fn [{:as _cell :keys [ns result lazy-load?]}]
+   ;;                    (let [->result @(resolve 'nextjournal.clerk.view/->result)]
+   ;;                      (->result ns result lazy-load?)))})
+
+   {:name :clerk/result :render-fn (quote v/result-viewer) :fetch-fn fetch-all}
+
    #?(:clj
       {:name :clerk/notebook
        :fetch-fn fetch-all
