@@ -138,8 +138,9 @@
   (is (match? {:ns-effect? false
                :var 'nextjournal.clerk.hashing-test/foo
                :deps '#{nextjournal.clerk.hashing-test/foo-2}}
-              (with-ns-binding 'nextjournal.clerk.hashing-test
-                (h/analyze '(do (def foo :bar) (def foo-2 :bar))))))
+              (binding [*err* (new java.io.StringWriter)] ;; ssshhhh
+                (with-ns-binding 'nextjournal.clerk.hashing-test
+                  (h/analyze '(do (def foo :bar) (def foo-2 :bar)))))))
 
   (testing "defcached should be treated like a normal def"
     (with-ns-binding 'nextjournal.clerk.hashing-test
@@ -159,21 +160,29 @@
       h/analyze-doc))
 
 (deftest analyze-doc
-  (is (match? {:graph {:dependencies {'(ns example-notebook) set?}
-                       :dependents   map?}
-               :blocks [{:type :code
-                         :text "^:nextjournal.clerk/no-cache (ns example-notebook)"
-                         :form '(ns example-notebook)
-                         :ns?  true}
-                        {:type :code
-                         :text "#{3 1 2}"
-                         :form #{1 2 3}}]
-               :visibility #{:show}
-               :->analysis-info {'(ns example-notebook) {:form '(ns example-notebook),
-                                                         :deps set?}
-                                 #{1 3 2} {:form '#{1 3 2}}}}
-              (analyze-string "^:nextjournal.clerk/no-cache (ns example-notebook)
-#{3 1 2}"))))
+  (is (match?
+        (m/match-with
+          [map? m/equals]
+          {:graph {:dependencies {'(ns example-notebook) set?}
+                   :dependents   map?}
+           :blocks [{:type :code
+                     :text "^:nextjournal.clerk/no-cache (ns example-notebook)"
+                     :form '(ns example-notebook)
+                     :ns-effect? true
+                     :ns?  true}
+                    {:type :code
+                     :text "#{3 1 2}"
+                     :form #{1 2 3}
+                     :ns-effect? false}]
+           :visibility #{:show}
+           :toc {:type :toc :mode false}
+           :->analysis-info {'(ns example-notebook) {:form '(ns example-notebook)
+                                                     :ns-effect? true
+                                                     :deps set?}
+                             #{1 3 2} {:form '#{1 3 2}
+                                       :ns-effect? false}}})
+        (analyze-string "^:nextjournal.clerk/no-cache (ns example-notebook)
+                        #{3 1 2}"))))
 
 
 (deftest circular-dependency
