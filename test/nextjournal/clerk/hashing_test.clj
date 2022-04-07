@@ -185,6 +185,31 @@
                         #{3 1 2}"))))
 
 
+(deftest analyze-defrecord
+  (is (match? {:graph {:dependencies (m/equals {'(ns example-notebook) set?
+                                                'example-notebook/Node set?
+                                                'example-notebook/map->Node #{'example-notebook/Node}
+                                                'example-notebook/->Node #{'example-notebook/Node}})
+                       :dependents   map?}
+               :blocks [{:type :code
+                         :text "^:nextjournal.clerk/no-cache (ns example-notebook)"}
+                        {:type :code,
+                         :text "(defrecord Node [x y z])"
+                         :form '(defrecord Node [x y z])
+                         :var 'example-notebook/Node}]
+               :->analysis-info {'example-notebook/Node {:form '(defrecord Node [x y z])
+                                                         :ns-effect? false
+                                                         :var 'example-notebook/Node}
+                                 'example-notebook/map->Node {:var 'example-notebook/map->Node
+                                                              :deps #{'example-notebook/Node}
+                                                              :form '(def 'example-notebook/map->Node nil)}
+                                 'example-notebook/->Node {:var 'example-notebook/->Node
+                                                           :deps #{'example-notebook/Node}
+                                                           :form '(def 'example-notebook/->Node nil)}}}
+              (analyze-string "^:nextjournal.clerk/no-cache (ns example-notebook)
+                              (defrecord Node [x y z])"))))
+
+
 (deftest circular-dependency
   (is (match? {:graph {:dependencies {'(ns circular) any?
                                       'circular/b #{clojure.core/str 'circular/a+circular/b}

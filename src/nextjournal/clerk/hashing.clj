@@ -82,14 +82,25 @@
 
 #_(rewrite-defcached '(nextjournal.clerk/defcached foo :bar))
 
+(defn- defrecord-form? [form]
+  (= 'defrecord (and (list? form) (first form))))
+
+(defn- ns-name-using [ns-var name-segment]
+  (symbol (namespace ns-var)
+          (str name-segment)))
+
 (defn analyze [form]
   (binding [config/*in-clerk* true]
     (let [analyzed-form (analyze+emit (rewrite-defcached form))
-          var (let [defined-vars (defined-vars analyzed-form)]
+          var (let [defined-vars (if (defrecord-form? form)
+                                   [(ns-name-using (first (defined-vars analyzed-form)) (second form))]
+                                   (defined-vars analyzed-form))]
                 (when (< 1 (count defined-vars))
                   (binding [*out* *err*]
                     (println "Multiple definitions found in form, using first one:")
-                    (prn :form form :used-var (first defined-vars))))
+                    (prn :form form
+                         :used-var (first defined-vars)
+                         :available-vars defined-vars)))
                 (first defined-vars))
           deps (cond-> (var-dependencies analyzed-form) var (disj var))]
       (cond-> {:form form
@@ -287,21 +298,27 @@
            (analyze-circular-dependency state var form dep (ex-data e))
            (throw e)))))
 
-(defn- analyze-code [form state doc? block file]
-  (let [{:as analyzed :keys [var deps ns-effect?]} (analyze form)
-        state (-> state
+(defn- analyze-code [{:as analyzed :keys [var deps ns-effect? form]} state doc? block file]
+  (let [state (-> state
                   (dissoc :doc?)
                   (assoc-in [:->analysis-info (if var var form)] (cond-> analyzed
-                                                                   file (assoc :file file))))
-        state (cond-> state
-                doc? (update-in [:blocks block] merge (dissoc analyzed :deps)))]
+                                                                   file (assoc :file file)))
+                  (cond-> doc? (update-in [:blocks block] merge (dissoc analyzed :deps))))]
     (when ns-effect?
       (eval form))
-    (if (seq deps)
-      (reduce (partial analyze-deps var form)
+    (let [defrecord-defs (when (defrecord-form? form)
+                           [(ns-name-using var (str "map->" (name var)))
+                            (ns-name-using var (str "->" (name var)))])
+          state (reduce (partial analyze-deps var form)
+                        state
+                        (apply disj deps defrecord-defs))]
+      (reduce (fn [s v] (let [fake-record-analysis {:var v
+                                                    :deps #{var}
+                                                    :ns-effect? false
+                                                    :form `(def '~v nil)}]
+                          (analyze-code fake-record-analysis s false -1 file)))
               state
-              deps)
-      state)))
+              defrecord-defs))))
 
 (defn analyze-doc
   ([doc]
@@ -311,7 +328,7 @@
              (let [{:keys [type text]} (get-in state [:blocks i])]
                (if (not= type :code)
                  state
-                 (analyze-code (read-string text) state doc? i (:file doc)))))
+                 (analyze-code (analyze (read-string text)) state doc? i (:file doc)))))
            (cond-> state
              doc? (merge doc))
            (-> doc :blocks count range))))
