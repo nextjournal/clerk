@@ -169,8 +169,6 @@
 (defn var-from-def? [x]
   (and (map? x) (get-safe x :nextjournal.clerk/var-from-def)))
 
-(declare with-viewer)
-
 (defn with-md-viewer [{:as node :keys [type]}]
   (with-viewer (keyword "nextjournal.markdown" (name type)) node))
 
@@ -426,7 +424,7 @@
 #_(sequence (drop+take-xf {}) (range 9))
 
 
-(declare with-viewer assign-closing-parens)
+(declare assign-closing-parens)
 
 (defn process-render-fn [{:as viewer :keys [render-fn]}]
   (cond-> viewer
@@ -612,8 +610,6 @@
 #_(datafy-scope *ns*)
 #_(datafy-scope #'datafy-scope)
 
-(declare with-viewer)
-
 #?(:clj
    (defn set-viewers!
      ([viewers] (set-viewers! *ns* viewers))
@@ -650,7 +646,7 @@
 ;; public api
 
 (defn with-viewer
-  "Wraps given "
+  "Associates the provided value with a Clerk viewer"
   ([viewer x] (with-viewer viewer {} x))
   ([viewer opts x]
    (merge (normalize-viewer-opts opts)
