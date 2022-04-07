@@ -5,7 +5,8 @@
 ;; into a presentation.
 ;;
 ;; ---
-;; Slides are delimited by markdown rulers i.e. with a leading `---` preceded by a newline.
+;; Slides are delimited by markdown rulers i.e. with a leading `---` preceded by a newline. A slide can span several blocks
+;; of markdown comments as well as code blocks
 
 (ns ^:nextjournal.clerk/no-cache slideshow
   (:require [nextjournal.clerk :as clerk]
@@ -13,9 +14,9 @@
             [nextjournal.clerk.webserver :as clerk.webserver]
             [nextjournal.clerk.viewer :as v]))
 
-;;
-;; We might introduce additional semantics for grouping blocks into single slides.
 
+;; The key ingredient to achieve this is to allow to override `:clerk/notebook` viewer
+;;
 ;; ---
 ;; ## TODO
 ;; * [x] describe root notebook mode
@@ -24,41 +25,44 @@
 ;; * [x] move notebook viewer to overridable named viewer
 ;; * [ ] introduce custom notebook viewer here that performs slideshow transformation
 ;; * [ ] resuse default transform fn in order to be able to process visibility, code folding etc.
-;;
+;; * [ ] fix registration
+;; * [ ] fix infinite sequences
+;; * [ ] fix static app (reveal.js seems to break all pages / use unbundled mode)
 ;; ---
 ;;
-;; Some machinery to get it working:
+;; Some machinery to split document fragments:
+
 (defn split-by-ruler [{:keys [content]}] (partition-by (comp #{:ruler} :type) content))
 (defn doc->slides [{:keys [blocks]}]
   (let [->slide (fn [fragment] (v/with-viewer :clerk/slide fragment))]
     (transduce identity
                (fn
-                 ([] {:slides [] :open-fragment []}) ;; init
-                 ([{:keys [slides open-fragment]}]   ;; finalize
+                 ([] {:slides [] :open-fragment []})        ;; init
+                 ([{:keys [slides open-fragment]}]          ;; finalize
                   (conj slides (->slide open-fragment)))
                  ([acc {:as block :keys [type doc]}]
-                    (cond
-                      (= :code type)
-                      (update acc :open-fragment conj block)
-                      (= :markdown type)
-                      (loop [[first-fragment & tail] (split-by-ruler doc)
-                             {:as acc :keys [open-fragment]} acc]
-                        (cond
-                          (= :ruler (-> first-fragment first :type))
-                          (recur tail (cond-> acc
-                                        (seq open-fragment)
-                                        (-> (update :slides conj (->slide open-fragment))
-                                            (assoc :open-fragment []))))
-                          (empty? tail)
-                          (update acc :open-fragment into first-fragment)
-                          'else
-                          (recur tail (-> acc
-                                          (update :slides conj (->slide (into open-fragment first-fragment)))
-                                          (assoc :open-fragment []))))))))
+                  (cond
+                    (= :code type)
+                    (update acc :open-fragment conj block)
+                    (= :markdown type)
+                    (loop [[first-fragment & tail] (split-by-ruler doc)
+                           {:as acc :keys [open-fragment]} acc]
+                      (cond
+                        (= :ruler (-> first-fragment first :type))
+                        (recur tail (cond-> acc
+                                      (seq open-fragment)
+                                      (-> (update :slides conj (->slide open-fragment))
+                                          (assoc :open-fragment []))))
+                        (empty? tail)
+                        (update acc :open-fragment into first-fragment)
+                        'else
+                        (recur tail (-> acc
+                                        (update :slides conj (->slide (into open-fragment first-fragment)))
+                                        (assoc :open-fragment []))))))))
                blocks)))
 
 ;; ---
-;; and now the actual viewers
+;; the actual viewers:
 
 (def slideshow-viewers
   [{:name :clerk/slide
@@ -87,7 +91,7 @@
                         (into [:div.slides] slides)])))))}])
 
 ;; ---
-;; this piece of code is to test slideshow in a box
+;; this piece of code is to test slideshow mode in cell result view
 ;;
 
 (comment
