@@ -150,7 +150,7 @@
 #_(->display {:result {:nextjournal.clerk/visibility #{:hide} :nextjournal/value {:nextjournal/viewer :hide-result}} :ns? false})
 #_(->display {:result {:nextjournal.clerk/visibility #{:hide}} :ns? true})
 
-(defn describe-block [{:keys [inline-results?] :or {inline-results? false}} {:keys [ns]} {:as cell :keys [type text doc]}]
+(defn describe-block [{:keys [ns inline-results?] :or {inline-results? false}} {:as cell :keys [type text doc]}]
   (case type
     :markdown [(cond
                  text (v/md text)
@@ -169,10 +169,11 @@
                                                (contains? result :nextjournal/blob-id)))))))))
 
 (defn doc->viewer
+  ;; TODO: fix at call site / make arity 1
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns]}]
    (binding [*ns* ns]
-     (->> doc v/notebook v/describe))))
+     (->> (merge doc opts) v/notebook v/describe))))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/how_clerk_works.clj")

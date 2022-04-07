@@ -256,7 +256,7 @@
                        ;; - passing opts
                        (let [describe-block @(resolve 'nextjournal.clerk.view/describe-block)]
                          (-> doc
-                             (update :blocks (partial into [] (mapcat (partial describe-block {#_ FIXME } doc))))
+                             (update :blocks (partial into [] (mapcat (partial describe-block doc))))
                              (select-keys [:blocks :toc :title])
                              (assoc :scope (datafy-scope *ns*)))))})
 
