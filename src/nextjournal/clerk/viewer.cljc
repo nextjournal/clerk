@@ -375,19 +375,21 @@
 (defn wrapped-with-viewer
   ([x] (wrapped-with-viewer x default-viewers))
   ([x viewers]
-   (if-let [selected-viewer (viewer x)]
-     (if (keyword? selected-viewer)
-       (if-let [named-viewer (find-named-viewer viewers selected-viewer)]
-         (apply-viewer viewers named-viewer (value x) (extract-view-opts x))
-         (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
-       (apply-viewer viewers selected-viewer (value x) (extract-view-opts x)))
-     (let [v (value x)]
-       (loop [vs viewers]
-         (if-let [{:as matching-viewer :keys [pred]} (first vs)]
-           (if (and (ifn? pred) (pred v))
-             (apply-viewer viewers matching-viewer v (extract-view-opts x))
-             (recur (rest vs)))
-           (throw (ex-info (str "cannot find matchting viewer for `" (pr-str v) "`") {:viewers viewers :x x :v v}))))))))
+   (let [v            (value x)
+         found-viewer (if-let [selected-viewer (viewer x)]
+                        (if (keyword? selected-viewer)
+                          (or (find-named-viewer viewers selected-viewer)
+                              (throw (ex-info (str "cannot find viewer named " selected-viewer)
+                                              {:selected-viewer selected-viewer :x v :viewers viewers})))
+                          selected-viewer)
+                        (loop [vs viewers]
+                          (if-let [{:as matching-viewer :keys [pred]} (first vs)]
+                            (if (and (ifn? pred) (pred v))
+                              matching-viewer
+                              (recur (rest vs)))
+                            (throw (ex-info (str "cannot find matchting viewer for `" (pr-str v) "`")
+                                            {:viewers viewers :x x :v v})))))]
+     (apply-viewer viewers found-viewer v (extract-view-opts x)))))
 
 #_(wrapped-with-viewer {:one :two})
 #_(wrapped-with-viewer [1 2 3])
