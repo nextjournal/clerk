@@ -474,7 +474,7 @@
      (when (and !budget (not descend?) (not fetch-fn))
        (swap! !budget #(max (dec %) 0)))
      (merge {:path path}
-            (dissoc wrapped-value [:nextjournal/value :nextjournal/viewer])
+            (dissoc wrapped-value :nextjournal/value :nextjournal/viewer)
             (with-viewer (process-viewer viewer)
               (cond fetch-fn
                     (fetch-fn (merge opts fetch-opts {:describe-fn describe}) xs)
