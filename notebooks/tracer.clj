@@ -189,13 +189,6 @@
                 (if (string? elem) "\"")
                 elem
                 (if (string? elem) "\""))])))
-^{::clerk/visibility :hide ::clerk/viewer clerk/hide-result}
-(defn offsets [xs]
-  (reduce
-    (fn [acc n]
-      (conj acc (+ (last acc) n)))
-    [0]
-    xs))
 
 (def char-width 11)
 (def corner-radius 5)
@@ -244,7 +237,7 @@
                (map (fn [{:keys [el]} offset]
                       (assoc-in el [1 :transform] (str "translate(" (+ label-width box-inset-x) "," offset ")")))
                     children
-                    (offsets (map :height children))))}))
+                    (->> children (map :height) (reductions +) (concat [0]))))}))
 
 ^{::clerk/visibility :hide ::clerk/viewer clerk/hide-result}
 (defn show-svg-element [lookup depth result-id elem]
@@ -282,7 +275,7 @@
                  (map (fn [{:keys [el]} offset]
                         (assoc-in el [1 :transform] (str "translate(" (+ text-inset-x box-inset-x) "," offset ")")))
                       children
-                      (offsets (map :height children))))})
+                      (->> children (map :height) (reductions +) (concat [0]))))})
     :else
     (let [width (+ text-inset-x (* (count (str elem)) char-width) text-inset-x)]
       {:width width
