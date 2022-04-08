@@ -33,33 +33,33 @@
 ;; Some machinery to split document fragments:
 
 (defn split-by-ruler [{:keys [content]}] (partition-by (comp #{:ruler} :type) content))
+(defn ->slide [fragment] (v/with-viewer :clerk/slide fragment))
 (defn doc->slides [{:keys [blocks]}]
-  (let [->slide (fn [fragment] (v/with-viewer :clerk/slide fragment))]
-    (transduce identity
-               (fn
-                 ([] {:slides [] :open-fragment []})        ;; init
-                 ([{:keys [slides open-fragment]}]          ;; finalize
-                  (conj slides (->slide open-fragment)))
-                 ([acc {:as block :keys [type doc]}]
-                  (cond
-                    (= :code type)
-                    (update acc :open-fragment conj block)
-                    (= :markdown type)
-                    (loop [[first-fragment & tail] (split-by-ruler doc)
-                           {:as acc :keys [open-fragment]} acc]
-                      (cond
-                        (= :ruler (-> first-fragment first :type))
-                        (recur tail (cond-> acc
-                                      (seq open-fragment)
-                                      (-> (update :slides conj (->slide open-fragment))
-                                          (assoc :open-fragment []))))
-                        (empty? tail)
-                        (update acc :open-fragment into first-fragment)
-                        'else
-                        (recur tail (-> acc
-                                        (update :slides conj (->slide (into open-fragment first-fragment)))
-                                        (assoc :open-fragment []))))))))
-               blocks)))
+  (transduce identity
+             (fn
+               ([] {:slides [] :open-fragment []}) ;; init
+               ([{:keys [slides open-fragment]}]   ;; complete
+                (conj slides (->slide open-fragment)))
+               ([acc {:as block :keys [type doc]}]
+                (cond
+                  (= :code type)
+                  (update acc :open-fragment conj block)
+                  (= :markdown type)
+                  (loop [[first-fragment & tail] (split-by-ruler doc)
+                         {:as acc :keys [open-fragment]} acc]
+                    (cond
+                      (= :ruler (-> first-fragment first :type))
+                      (recur tail (cond-> acc
+                                          (seq open-fragment)
+                                          (-> (update :slides conj (->slide open-fragment))
+                                              (assoc :open-fragment []))))
+                      (empty? tail)
+                      (update acc :open-fragment into first-fragment)
+                      'else
+                      (recur tail (-> acc
+                                      (update :slides conj (->slide (into open-fragment first-fragment)))
+                                      (assoc :open-fragment []))))))))
+             blocks))
 
 ;; ---
 ;; the actual viewers:
@@ -69,14 +69,13 @@
     :fetch-fn v/fetch-all
     :transform-fn (fn [fragment]
                     (v/with-viewer :html
-                      (into [:section.viewer-markdown.text-left]
-                            (map (fn [x]
-                                   (cond
-                                     (v/wrapped-value? x) x
-                                     ((every-pred map? :type) x) (v/with-md-viewer x)
-                                     ((every-pred map? :form) x) (v/with-viewer :clerk/code-block x)
-                                     'else x)))
-                            fragment)))}
+                      (->> fragment
+                           (into
+                             [:section.viewer-markdown.text-left.overflow-y-auto]
+                             (map (fn [x]
+                                    (cond
+                                      ((every-pred map? :type) x) (v/with-md-viewer x)
+                                      ((every-pred map? :form) x) (v/with-viewer :clerk/code-block x))))))))}
    {:name :clerk/notebook
     :transform-fn doc->slides
     :fetch-fn v/fetch-all
@@ -93,9 +92,9 @@
                     {:package "reveal.js@4.3.1"}
                     (fn [Reveal]
                       (reagent/with-let
-                        [refn (fn [el] (when el (.initialize (Reveal. el (clj->js {:embedded true})))))]
+                        [refn (fn [el] (when el (.initialize (Reveal. el (clj->js {})))))]
                         (v/html
-                          [:div.reveal {:ref refn :style {:border "1px solid black" :width "100%" :height "800px"}}
+                          [:div.reveal {:ref refn :style {:width "100%" :height "780px"}}
                            (into [:div.slides] slides)])))))}])
 
 ;; ---
