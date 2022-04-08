@@ -55,13 +55,16 @@
 #_(thaw-from-cas (hash+store-in-cas! (range 42)))
 #_(thaw-from-cas "8Vv6q6La171HEs28ZuTdsn9Ukg6YcZwF5WRFZA1tGk2BP5utzRXNKYq9Jf9HsjFa6Y4L1qAAHzMjpZ28TCj1RTyAdx")
 
+(defn elapsed-ms [from]
+  (/ (double (- (. System (nanoTime)) from)) 1000000.0))
+
 (defmacro time-ms
   "Pure version of `clojure.core/time`. Returns a map with `:result` and `:time-ms` keys."
   [expr]
-  `(let [start# (. System (nanoTime))
+  `(let [start# (System/nanoTime)
          ret# ~expr]
      {:result ret#
-      :time-ms (/ (double (- (. System (nanoTime)) start#)) 1000000.0)}))
+      :time-ms (elapsed-ms start#)}))
 
 (defn- var-from-def [var]
   (let [resolved-var (cond (var? var)
@@ -400,28 +403,25 @@
 
 #_(->html-extension "hello.clj")
 
-
 (defn- path-to-url-canonicalize
   "Canonicalizes the system specific path separators in `PATH` (e.g. `\\`
   on MS-Windows) to URL-compatible forward slashes."
   [path]
   (str/replace path fs/file-separator "/"))
 
-(defn build-static-app!
-  "Builds a static html app of the notebooks and opens the app in the
-  default browser. Takes an options map with keys:
+(defn write-static-app!
+  "Creates a static html app of the seq of `docs`. Customizable with an `opts` map with keys:
 
   - `:paths` a vector of relative paths to notebooks to include in the build
   - `:bundle?` builds a single page app versus a folder with an html page for each notebook (defaults to `true`)
   - `:path-prefix` a prefix to urls
   - `:out-path` a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
   - `:git/sha`, `:git/url` when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`"
-  [{:as opts :keys [paths out-path bundle? browse?]
-    :or {paths clerk-docs
-         out-path (str "public" fs/file-separator "build")
-         bundle? true
-         browse? true}}]
-  (let [path->doc (into {} (map (juxt identity file->viewer)) paths)
+  [opts docs]
+  (let [{:keys [out-path bundle? browse?]
+         :or {out-path (str "public" fs/file-separator "build") bundle? true browse? true}} opts
+        paths (mapv :file docs)
+        path->doc (into {} (map (juxt :file :viewer)) docs)
         path->url (into {} (map (juxt identity #(cond-> (strip-index %) (not bundle?) ->html-extension))) paths)
         static-app-opts (assoc opts :bundle? bundle? :path->doc path->doc :paths (vec (keys path->doc)) :path->url path->url)
         index-html (str out-path fs/file-separator "index.html")]
@@ -440,6 +440,38 @@
         (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
         (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize))))))
 
+(defn stdout-reporter [{:as event :keys [stage state duration doc]}]
+  (let [format-duration (partial format "%.3fms")
+        duration (some-> duration format-duration)]
+    (print (case stage
+             :init (str "👷🏼 Clerk is building " (count state) " notebooks…\n🧐 Parsing… ")
+             :parsed (str "Done in " duration ". ✅\n🔬 Analyzing… ")
+             (:built :analyzed) (str "Done in " duration ". ✅\n")
+             :building (str "🔨 Building \"" (:file doc) "\"… ")
+             :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n")))))
+
+(defn build-static-app! [opts]
+  (let [{:keys [paths] :or {paths clerk-docs}} opts
+        start (System/nanoTime)
+        report-fn stdout-reporter
+        state (mapv #(hash-map :file %) paths)
+        _ (report-fn {:stage :init :state state})
+        {state :result duration :time-ms} (time-ms (mapv (comp parse-file :file) state))
+        _ (report-fn {:stage :parsed :state state :duration duration})
+        {state :result duration :time-ms} (time-ms (mapv (comp (fn [doc] (assoc doc :->hash (hashing/hash doc) :ns *ns*))
+                                                               hashing/build-graph) state))
+        _ (report-fn {:stage :analyzed :state state :duration duration})
+        state (mapv (fn [doc]
+                      (report-fn {:stage :building :doc doc})
+                      (let [{doc+viewer :result duration :time-ms} (time-ms
+                                                                    (let [doc (eval-analyzed-doc doc)]
+                                                                      (assoc doc :viewer (view/doc->viewer {:inline-results? true} doc))))]
+                        (report-fn {:stage :built :doc doc+viewer :duration duration})
+                        doc+viewer)) state)]
+    {state :result duration :time-ms} (time-ms (write-static-app! opts state))
+    (report-fn {:stage :finished :state state :duration duration :total-duration (elapsed-ms start)})))
+
+#_(build-static-app! {:paths (take 5 clerk-docs)})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/"})
 #_(build-static-app! {})
