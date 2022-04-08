@@ -364,13 +364,13 @@
          "notebooks/onwards.md"
          "notebooks/viewers/custom_markdown.md"]
         (map #(str "notebooks/" % ".clj"))
-        ["slideshow"
-         "hello"
+        ["hello"
          "how_clerk_works"
          "pagination"
          "paren_soup"
-         #_"readme" ;; TODO: add back when we have Clojure cells in md
+         "readme"
          "rule_30"
+         "slideshow"
          "visibility"
          "viewer_api"
          "viewer_api_meta"
