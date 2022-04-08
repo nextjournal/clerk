@@ -143,7 +143,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v0.3.0
 
       - name: 🏗 Build Clerk Static App with default Notebooks
-        run: clojure -J-Dclojure.main.report=stderr -X:demo nextjournal.clerk/build-static-app! :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :browse false
+        run: clojure -J-Dclojure.main.report=stderr -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :browse false
 
       - name: 📠 Copy static build to bucket under SHA
         run: |
