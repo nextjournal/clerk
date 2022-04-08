@@ -168,8 +168,6 @@
             (show-exception e)
             (show-result result))]))]))
 
-
-
 ^{::clerk/visibility :hide ::clerk/viewer clerk/hide-result}
 (defn show-element [lookup depth result-id elem]
   (println elem)
@@ -204,40 +202,38 @@
                    (map
                      (fn [[k v]]
                        (let [k (show-svg-element lookup (inc depth) nil k)
+                             kw (get-in k [1 :width])
                              v (show-svg-element lookup (inc depth) nil v)
-                             w (+ (:width k) (:width v))
-                             h (max (:height k) (:height v))]
-                         {:width w
-                          :height h
-                          :el [:g {}
-                               [:rect {:width w
-                                       :height h
-                                       :fill (if (even? depth) "#fef9c3" "#fef089")
-                                       :rx corner-radius
-                                       :stroke "#bae6fc"}]
-                               (:el k)
-                               (assoc-in (:el v) [1 :transform] (str "translate(" (:width k) "," 0 ")"))]}))
+                             w (+ kw (get-in v [1 :width]))
+                             h (max (get-in k [1 :height]) (get-in v [1 :height]))]
+                         [:g {:width w :height h}
+                          [:rect {:width w
+                                  :height h
+                                  :fill (if (even? depth) "#fef9c3" "#fef089")
+                                  :rx corner-radius
+                                  :stroke "#bae6fc"}]
+                          k
+                          (assoc-in v [1 :transform] (str "translate(" kw "," 0 ")"))]))
                      (partition 2 (second elem)))
                    (map (partial show-svg-element lookup (inc depth) nil) (drop 2 elem)))
         label-width (+ text-inset-x (* (count "let") char-width) text-inset-x)
-        max-width (+ (->> children (map :width) (apply (partial max box-min-width))) label-width)
-        height (->> children (map :height) (apply +))]
-    (when (and (sequential? elem) (= (first elem) 'let))
-      (println children))
-    {:width max-width
-     :height height
-     :el (into [:g {}
-                [:rect {:width max-width
-                        :height height
-                        :fill (if (even? depth) "#f0f9ff" "#e0f2fe")
-                        :rx corner-radius
-                        :stroke "#bae6fc"}]
-                [:text.font-mono.font-bold
-                 {:x text-inset-x :y (- box-height (* box-height 0.33)) :fill "black"} "let"]]
-               (map (fn [{:keys [el]} offset]
-                      (assoc-in el [1 :transform] (str "translate(" (+ label-width box-inset-x) "," offset ")")))
-                    children
-                    (->> children (map :height) (reductions +) (concat [0]))))}))
+        max-width (+ (->> children (map #(get-in % [1 :width]))
+                          (apply (partial max box-min-width)))
+                     label-width)
+        height (->> children (map #(get-in % [1 :height])) (apply +))]
+    (into
+      [:g {:width max-width :height height}
+       [:rect {:width max-width
+               :height height
+               :fill (if (even? depth) "#f0f9ff" "#e0f2fe")
+               :rx corner-radius
+               :stroke "#bae6fc"}]
+       [:text.font-mono.font-bold
+        {:x text-inset-x :y (- box-height (* box-height 0.33)) :fill "black"} "let"]]
+      (map (fn [el offset]
+             (assoc-in el [1 :transform] (str "translate(" (+ label-width box-inset-x) "," offset ")")))
+           children
+           (->> children (map #(get-in % [1 :height])) (reductions +) (concat [0]))))))
 
 ^{::clerk/visibility :hide ::clerk/viewer clerk/hide-result}
 (defn show-svg-element [lookup depth result-id elem]
@@ -258,31 +254,26 @@
                  :else "")
           icon-width (+ (* 2 text-inset-x) (* (count icon) char-width))
           max-width (+ icon-width
-                       (->> children (map :width) (apply (partial max box-min-width))))
-          height (->> children (map :height) (apply +))]
-      (when (and (sequential? elem) (= (first elem) 'let))
-        (println children))
-      {:width max-width
-       :height height
-       :el (into [:g {}
-                  [:rect {:width max-width
-                          :height height
-                          :fill (if (even? depth) "#6ee7b7" "#35d399")
-                          :rx corner-radius
-                          :stroke "#bae6fc"}]
-                  [:text.font-mono.text-xs
-                   {:x text-inset-x :y (- box-height (* box-height 0.33)) :fill "black"} icon]]
-                 (map (fn [{:keys [el]} offset]
-                        (assoc-in el [1 :transform] (str "translate(" (+ text-inset-x box-inset-x) "," offset ")")))
-                      children
-                      (->> children (map :height) (reductions +) (concat [0]))))})
+                       (->> children (map #(get-in % [1 :width])) (apply (partial max box-min-width))))
+          height (->> children (map #(get-in % [1 :height])) (apply +))]
+      (into
+        [:g {:width max-width :height height}
+         [:rect {:width max-width
+                 :height height
+                 :fill (if (even? depth) "#6ee7b7" "#35d399")
+                 :rx corner-radius
+                 :stroke "#bae6fc"}]
+         [:text.font-mono.text-xs
+          {:x text-inset-x :y (- box-height (* box-height 0.33)) :fill "black"} icon]]
+        (map (fn [el offset]
+               (assoc-in el [1 :transform] (str "translate(" (+ text-inset-x box-inset-x) "," offset ")")))
+             children
+             (->> children (map #(get-in % [1 :height])) (reductions +) (concat [0])))))
     :else
     (let [width (+ text-inset-x (* (count (str elem)) char-width) text-inset-x)]
-      {:width width
-       :height box-height
-       :el [:g {}
-            [:text.font-mono {:x text-inset-x :y (- box-height (* box-height 0.33)) :fill "black"}
-             elem]]})))
+      [:g {:width width :height box-height}
+       [:text.font-mono {:x text-inset-x :y (- box-height (* box-height 0.33)) :fill "black"}
+        elem]])))
 
 ^::clerk/no-cache
 (clerk/html
@@ -307,16 +298,15 @@
                                     (- (/ y 2)
                                        (:b tab)
                                        3))))]
-     (:el
-       (show-svg-element
-         ;; result id -> value lookup table
-         (reduce (fn [m [k [_ v]]] (assoc m k v)) {} t1)
-         ;; initial display depth
-         0
-         ;; id of top level form's result
-         (first (last t1))
-         ;; the top level form itself
-         (first (second (last t1))))))])
+     (show-svg-element
+       ;; result id -> value lookup table
+       (reduce (fn [m [k [_ v]]] (assoc m k v)) {} t1)
+       ;; initial display depth
+       0
+       ;; id of top level form's result
+       (first (last t1))
+       ;; the top level form itself
+       (first (second (last t1)))))])
 
 
 #_(clerk/html
