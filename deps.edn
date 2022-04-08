@@ -20,7 +20,8 @@
 
         rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}}
 
- :aliases {:nextjournal/clerk {:exec-fn nextjournal.clerk/build-static-app!}
+ :aliases {:nextjournal/clerk {:exec-fn nextjournal.clerk/build-static-app!
+                               :exec-args {:paths nextjournal.clerk/clerk-docs}}
            :sci {:extra-deps {applied-science/js-interop {:mvn/version "0.3.3"}
                               org.babashka/sci {:mvn/version "0.3.2"}
                               reagent/reagent {:mvn/version "1.1.0"}

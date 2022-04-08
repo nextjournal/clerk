@@ -450,8 +450,24 @@
              :building (str "🔨 Building \"" (:file doc) "\"… ")
              :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n")))))
 
+(defn expand-paths [paths]
+  (->> (if (symbol? paths)
+         (let [resolved (-> paths requiring-resolve deref)]
+           (cond-> resolved
+             (fn? resolved) (apply [])))
+         paths)
+       (mapcat (partial fs/glob "."))
+       (filter (complement fs/directory?))
+       (mapv (comp str fs/file))))
+
+#_(expand-paths ["notebooks/di*.clj"])
+#_(expand-paths `clerk-docs)
+#_(do (defn my-paths [] ["notebooks/h*.clj"])
+      (expand-paths `my-paths))
+#_(expand-paths ["notebooks/viewers**"])
+
 (defn build-static-app! [opts]
-  (let [{:keys [paths] :or {paths clerk-docs}} opts
+  (let [{:as opts :keys [paths]} (update opts :paths expand-paths)
         start (System/nanoTime)
         report-fn stdout-reporter
         state (mapv #(hash-map :file %) paths)
@@ -474,8 +490,7 @@
 #_(build-static-app! {:paths (take 5 clerk-docs)})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/"})
-#_(build-static-app! {})
-#_(build-static-app! {:paths ["notebooks/viewer_api.clj" "notebooks/rule_30.clj"]})
+#_(build-static-app! {:paths ["notebooks/viewers/**"]})
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
