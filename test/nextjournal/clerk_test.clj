@@ -6,7 +6,8 @@
             [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.hashing :as hashing]
-            [nextjournal.clerk.view :as view])
+            [nextjournal.clerk.view :as view]
+            [nextjournal.clerk.viewer :as viewer])
   (:import (java.io File)))
 
 (deftest url-canonicalize
@@ -102,8 +103,8 @@
 
 (deftest eval-string+doc->viewer
   (testing "assigns correct width from viewer function opts"
-    (is (match? [{:nextjournal/width :wide}
-                 {:nextjournal/width :full}]
+    (is (match? [[#(= % (viewer/->viewer-eval 'v/inspect)) {:nextjournal/width :wide}]
+                 [#(= % (viewer/->viewer-eval 'v/inspect)) {:nextjournal/width :full}]]
                 (-> "^{:nextjournal.clerk/visibility :hide} (ns clerk-test-width
   (:require [nextjournal.clerk :as clerk]))
 
@@ -116,8 +117,8 @@
                     :blocks))))
 
   (testing "assigns the correct width from form meta"
-    (is (match? [{:nextjournal/width :full}
-                 {:nextjournal/width :wide}]
+    (is (match? [[#(= % (viewer/->viewer-eval 'v/inspect)) {:nextjournal/width :full}]
+                 [#(= % (viewer/->viewer-eval 'v/inspect)) {:nextjournal/width :wide}]]
                 (-> "^{:nextjournal.clerk/visibility :hide} (ns clerk-test-width)
 
 ^{:nextjournal.clerk/viewer :table :nextjournal.clerk/width :full}
