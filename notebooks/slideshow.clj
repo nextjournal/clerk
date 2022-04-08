@@ -81,14 +81,22 @@
     :transform-fn doc->slides
     :fetch-fn v/fetch-all
     :render-fn '(fn [slides]
+                  ;; append CSS
+                  (doto (js/document.querySelector "head")
+                    (.appendChild (doto (js/document.createElement "link")
+                                    (.setAttribute "rel" "stylesheet")
+                                    (.setAttribute "href" "https://cdn.jsdelivr.net/npm/reveal.js@4.3.1/dist/reveal.css")))
+                    (.appendChild (doto (js/document.createElement "link")
+                                    (.setAttribute "rel" "stylesheet")
+                                    (.setAttribute "href" "https://cdn.jsdelivr.net/npm/reveal.js@4.3.1/dist/theme/white.css"))))
                   (v/with-d3-require
-                   {:package "reveal.js@4.3.1"}
-                   (fn [Reveal]
-                     (reagent/with-let
-                      [refn (fn [el] (when el (.initialize (Reveal. el (clj->js {:embedded true})))))]
-                      (v/html
-                       [:div.reveal {:ref refn :style {:border "1px solid black" :width "100%" :height "800px"}}
-                        (into [:div.slides] slides)])))))}])
+                    {:package "reveal.js@4.3.1"}
+                    (fn [Reveal]
+                      (reagent/with-let
+                        [refn (fn [el] (when el (.initialize (Reveal. el (clj->js {:embedded true})))))]
+                        (v/html
+                          [:div.reveal {:ref refn :style {:border "1px solid black" :width "100%" :height "800px"}}
+                           (into [:div.slides] slides)])))))}])
 
 ;; ---
 ;; this piece of code is to test slideshow mode in cell result view
@@ -106,4 +114,5 @@
 ;; ---
 ;; reset back to notebook view
 (comment
+  (clerk/serve! {})
   (reset! v/!viewers (v/get-all-viewers)))
