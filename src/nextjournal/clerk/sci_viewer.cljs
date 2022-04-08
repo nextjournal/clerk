@@ -188,9 +188,8 @@
         [:div.flex-auto.h-screen.overflow-y-auto
          {:ref ref-fn}
          (into [:div.flex.flex-col.items-center.viewer-notebook.flex-auto]
-               (map (fn [x]
+               (map (fn [[_inspect x :as y]]
                       (let [viewer (viewer/viewer x)
-                            blob-id (:blob-id (viewer/value x))
                             inner-viewer-name (some-> x viewer/value viewer/viewer :name)]
                         [:div {:class ["viewer" "overflow-x-auto"
                                        (when (keyword? viewer) (str "viewer-" (name viewer)))
@@ -199,7 +198,7 @@
                                          :wide "w-full max-w-wide"
                                          :full "w-full"
                                          "w-full max-w-prose px-8")]}
-                         x])))
+                         y])))
                xs)]]))))
 
 (defonce !edamame-opts
