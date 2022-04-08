@@ -19,15 +19,16 @@
 ;;
 ;; ---
 ;; ## TODO
-;; * [x] describe root notebook mode
+;; * [x] describe root notebook in `n.c.view/doc->viewer`
 ;; * [x] use v/fetch-all in notebook viewer
 ;; * [ ] drop using describe-blocks in favour of a simplified with-viewer approach
-;; * [x] move notebook viewer to overridable named viewer
-;; * [ ] introduce custom notebook viewer here that performs slideshow transformation
+;; * [x] move `:clerk/notebook` viewer to overridable named viewer
+;; * [x] introduce custom notebook viewer here that performs slideshow transformation
 ;; * [ ] resuse default transform fn in order to be able to process visibility, code folding etc.
 ;; * [ ] fix registration
+;; * [ ] fix `n.c.viewer/inspect-leafs`
 ;; * [ ] fix infinite sequences
-;; * [ ] fix static app (reveal.js seems to break all pages / use unbundled mode)
+;; * [x] fix static app (reveal.js seems to break all pages / use unbundled mode)
 ;; ---
 ;;
 ;; Some machinery to split document fragments:
