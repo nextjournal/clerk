@@ -66,10 +66,12 @@
        "\uD835\uDC53"
        res)]))
 
+
+
 ^{::clerk/visibility :hide ::clerk/viewer clerk/hide-result}
 (defn show-with-bindings
-  ([lookup depth result-id elem]
-   (show-with-bindings true lookup depth result-id elem))
+      ([lookup depth result-id elem]
+       (show-with-bindings true lookup depth result-id elem))
   ([as-pairs? lookup depth result-id elem]
    (println elem)
    (let [named? (-> elem second symbol?)
@@ -79,13 +81,13 @@
      [:div.inline-block.relative
       [:div.flex
        [:div.relative
-        [:div.absolute.bg-white.border.border-r-0.left-0.top-0.bottom-0.rounded
+        [:div.absolute.bg-white.border-2.border-r-0.left-0.top-0.bottom-0.rounded
          {:style {:z-index -1 :right -20}}]
         [:div.pl-2.font-bold (first elem)]]
        (when named?
          [:div.ml-2 (second elem)])
        [:div.flex.ml-2.relative
-        [:div.absolute.bg-white.border.left-0.top-0.bottom-0.rounded
+        [:div.absolute.bg-white.border-2.left-0.top-0.bottom-0.rounded
          {#_#_:class (when-not bindings-empty? "border-r-0")
           :style {:z-index -1 :width (if bindings-empty? 30 40)}}]
         [:div.pl-2
@@ -98,7 +100,7 @@
                       [:div
                        [:div.inline-flex.px-2
                         [:div.font-bold.relative.px-2
-                         [:div.absolute.bg-white.border.left-0.top-0.bottom-0.rounded
+                         [:div.absolute.bg-white.border-2.left-0.top-0.bottom-0.rounded
                           {:style {:z-index -1 :right -5}}]
                          (show-element lookup (inc depth) nil k)]
                         (show-element lookup (inc depth) nil v)]])
@@ -118,7 +120,7 @@
 (defn show-coll [lookup depth result-id elem]
   (let [empty? (empty? elem)]
     [:div.flex.relative.pl-2
-     [:div.absolute.bg-white.border.left-0.top-0.bottom-0.rounded
+     [:div.absolute.bg-white.border-2.left-0.top-0.bottom-0.rounded
       {:class (when-not empty? "border-r-0")
        :style {:z-index -1 :width (if empty? 30 40)}}]
      (icon (cond (set? elem) "#{}"
@@ -134,7 +136,10 @@
                    (show-element lookup (inc depth) nil v)])
                 elem))
         (into [:div]
-              (mapv (partial show-element lookup (inc depth) nil) elem)))]]))
+              (mapv (fn [e]
+                      [:div
+                       [:div.inline-flex
+                        (show-element lookup (inc depth) nil e)]]) elem)))]]))
 
 ^{::clerk/visibility :hide ::clerk/viewer clerk/hide-result}
 (defn show-seq [lookup depth result-id elem]
@@ -142,13 +147,16 @@
         line? (< (count remaining) 4)]
     [:div.inline-flex
      {:class (when line? "items-center ")}
-     [:div.font-bold.mr-2 (show-element lookup (inc depth) nil (first elem))]
+     [:div.font-bold.px-1.relative
+      [:div.absolute.bg-white.border-2.left-0.top-0.bottom-0.rounded
+       {:class "border-r-0"
+        :style {:z-index -1 :right -5}}]
+      (show-element lookup (inc depth) nil (first elem))]
      [:div.flex-auto.items-center
       {:class (when line? "flex")}
       (into [:<>] (mapv
                     (fn [e]
                       [:div
-                       {:class (if line? "mr-2 last:mr-0" "mb-1 last:mb-0")}
                        (show-element lookup (inc depth) nil e)])
                     remaining))]
      (when result-id
@@ -159,6 +167,8 @@
           (if-let [e (:exception result)]
             (show-exception e)
             (show-result result))]))]))
+
+
 
 ^{::clerk/visibility :hide ::clerk/viewer clerk/hide-result}
 (defn show-element [lookup depth result-id elem]
@@ -171,19 +181,112 @@
           (sequential? elem) (show-seq lookup depth result-id elem)
           :else
           [:div.relative
-           (when-not (symbol? elem) {:class "px-2"})
+           (when-not (symbol? elem) {:class "px-1"})
            (when-not (symbol? elem)
-             [:div.absolute.bg-white.border.left-0.top-0.bottom-0.rounded
+             [:div.absolute.bg-white.border-2.left-0.top-0.bottom-0.rounded
               {:style {:z-index -1 :right -5}}])
            (str " "
                 (if (string? elem) "\"")
                 elem
                 (if (string? elem) "\""))])))
+^{::clerk/visibility :hide ::clerk/viewer clerk/hide-result}
+(defn offsets [xs]
+  (reduce
+    (fn [acc n]
+      (conj acc (+ (last acc) n)))
+    [0]
+    xs))
+
+(def char-width 11)
+(def corner-radius 5)
+(def box-min-width 20)
+(def box-height 30)
+(def box-inset-x 20)
+(def text-inset-x 3)
+
+(declare show-svg-element)
+
+(defn show-let [lookup depth result-id elem]
+  (let [children (concat
+                   (map
+                     (fn [[k v]]
+                       (let [k (show-svg-element lookup (inc depth) nil k)
+                             v (show-svg-element lookup (inc depth) nil v)]
+                         {:width (+ (:width k) (:width v))
+                          :height (max (:height k) (:height v))
+                          :el [:g {}
+                               (:el k)
+                               (assoc-in (:el v) [1 :transform] (str "translate(" (:width k) "," 0 ")"))]}))
+                     (partition 2 (second elem)))
+                   (map (partial show-svg-element lookup (inc depth) nil) (drop 2 elem)))
+        label-width (+ text-inset-x (* (count "let") char-width) text-inset-x)
+        max-width (+ (->> children (map :width) (apply (partial max box-min-width))) label-width)
+        height (->> children (map :height) (apply +))]
+    (when (and (sequential? elem) (= (first elem) 'let))
+      (println children))
+    {:width max-width
+     :height height
+     :el (into [:g {}
+                [:rect {:width max-width
+                        :height height
+                        :fill (if (even? depth) "#f0f9ff" "#e0f2fe")
+                        :rx corner-radius
+                        :stroke "#bae6fc"}]
+                [:text.font-mono.font-bold
+                 {:x text-inset-x :y (- box-height (* box-height 0.33)) :fill "black"} "let"]]
+               (map (fn [{:keys [el]} offset]
+                      (assoc-in el [1 :transform] (str "translate(" (+ label-width box-inset-x) "," offset ")")))
+                    children
+                    (offsets (map :height children))))}))
+
+^{::clerk/visibility :hide ::clerk/viewer clerk/hide-result}
+(defn show-svg-element [lookup depth result-id elem]
+  (cond
+    (and (list? elem) (= (first elem) 'add-trace))
+    (show-svg-element lookup depth (second (second elem)) (second (nth elem 2)))
+    (and (list? elem) (= (first elem) 'let))
+    (show-let lookup depth nil elem)
+    (coll? elem)
+    (let [children (map
+                     (fn [e]
+                       (show-svg-element lookup (inc depth) nil e))
+                     elem)
+          max-width (->> children (map :width) (apply (partial max box-min-width)))
+          height (->> children (map :height) (apply +))]
+      (when (and (sequential? elem) (= (first elem) 'let))
+        (println children))
+      {:width max-width
+       :height height
+       :el (into [:g {}
+                  [:rect {:width max-width
+                          :height height
+                          :fill (if (even? depth) "#f0f9ff" "#e0f2fe")
+                          :rx corner-radius
+                          :stroke "#bae6fc"}]
+                  [:text.font-mono.text-xs
+                   {:x text-inset-x :y (- box-height (* box-height 0.33)) :fill "black"}
+                   (cond
+                     (and (not (map-entry? elem)) (vector? elem)) "[]"
+                     (map? elem) "{}"
+                     (set? elem) "#{}"
+                     :else "")]]
+                 (map (fn [{:keys [el]} offset]
+                        (assoc-in el [1 :transform] (str "translate(" box-inset-x "," offset ")")))
+                      children
+                      (offsets (map :height children))))})
+    :else
+    (let [width (+ text-inset-x (* (count (str elem)) char-width) text-inset-x)]
+      {:width width
+       :height box-height
+       :el [:g {}
+            [:text.font-mono {:x text-inset-x :y (- box-height (* box-height 0.33)) :fill "black"}
+             elem]]})))
 
 ^::clerk/no-cache
 (clerk/html
   {::clerk/width :wide}
-  [:div.text-sm {:class "font-mono"}
+  [:svg
+   {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 1000 1900"}
    ;; boring arithmetic example form
    (let [t1 (debug-expression '(let [x 10
                                      y (/ 20 0)
@@ -202,30 +305,31 @@
                                     (- (/ y 2)
                                        (:b tab)
                                        3))))]
-     (show-element
-       ;; result id -> value lookup table
-       (reduce (fn [m [k [_ v]]] (assoc m k v)) {} t1)
-       ;; initial display depth
-       0
-       ;; id of top level form's result
-       (first (last t1))
-       ;; the top level form itself
-       (first (second (last t1)))))])
+     (:el
+       (show-svg-element
+         ;; result id -> value lookup table
+         (reduce (fn [m [k [_ v]]] (assoc m k v)) {} t1)
+         ;; initial display depth
+         0
+         ;; id of top level form's result
+         (first (last t1))
+         ;; the top level form itself
+         (first (second (last t1))))))])
 
 
 #_(clerk/html
-  {::clerk/width :wide}
-  [:div.text-sm.relative {:class "font-mono"}
-   (let [t2 (debug-expression '(defn wrapped-with-metadata [value visibility h]
-                                 (cond-> {:nextjournal/value value
-                                          ::visibility visibility}
-                                         h (assoc :nextjournal/blob-id (cond-> h (not (string? h)) hash)))))]
-     (show-element
-       ;; result id -> value lookup table
-       (reduce (fn [m [k [_ v]]] (assoc m k v)) {} t2)
-       ;; initial display depth
-       0
-       ;; id of top level form's result
-       (first (last t2))
-       ;; the top level form itself
-       (first (second (last t2)))))])
+    {::clerk/width :wide}
+    [:div.text-sm.relative {:class "font-mono"}
+     (let [t2 (debug-expression '(defn wrapped-with-metadata [value visibility h]
+                                   (cond-> {:nextjournal/value value
+                                            ::visibility visibility}
+                                           h (assoc :nextjournal/blob-id (cond-> h (not (string? h)) hash)))))]
+       (show-element
+         ;; result id -> value lookup table
+         (reduce (fn [m [k [_ v]]] (assoc m k v)) {} t2)
+         ;; initial display depth
+         0
+         ;; id of top level form's result
+         (first (last t2))
+         ;; the top level form itself
+         (first (second (last t2)))))])
