@@ -111,10 +111,10 @@
         var-value (cond-> result (var? result) deref)
         no-cache? (or no-cache?
                       config/cache-disabled?
-                      (view/exceeds-bounded-count-limit? var-value))]
+                      (v/exceeds-bounded-count-limit? var-value))]
     (when (and (not no-cache?) (cachable-value? var-value))
       (cache! digest-file var-value))
-    (let [blob-id (cond no-cache? (view/->hash-str var-value)
+    (let [blob-id (cond no-cache? (v/->hash-str var-value)
                         (fn? var-value) nil
                         :else hash)
           result (if introduced-var

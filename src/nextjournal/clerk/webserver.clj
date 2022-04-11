@@ -19,7 +19,7 @@
 
 (defn broadcast! [msg]
   (doseq [ch @!clients]
-    (httpkit/send! ch (view/->edn msg))))
+    (httpkit/send! ch (v/->edn msg))))
 
 #_(broadcast! [{:random (rand-int 10000) :range (range 100)}])
 
@@ -50,7 +50,7 @@
       (if (contains? desc :nextjournal/content-type)
         {:body (v/value desc)
          :content-type (:nextjournal/content-type desc)}
-        {:body (view/->edn desc)}))
+        {:body (v/->edn desc)}))
     {:status 404}))
 
 (defn extract-blob-opts [{:as _req :keys [uri query-string]}]
