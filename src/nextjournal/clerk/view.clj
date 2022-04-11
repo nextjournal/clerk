@@ -168,17 +168,8 @@
               code?
               (conj (v/with-viewer :clerk/code-block (dissoc cell :result))) ;; TODO: fix folded code
               result?
-              (conj (cond
-                      (v/registration? (v/value result))
-                      (v/value result)
-                      :else
-                      (->result ns result (and (not inline-results?)
-                                               (contains? result :nextjournal/blob-id)))
-                      #_ ;; FIXME: this doesn't work yet
-                      (v/with-viewer :clerk/result
-                        (assoc cell
-                               :ns ns
-                               :lazy-load? (and (not inline-results?) (contains? result :nextjournal/blob-id))))))))))
+              (conj (->result ns result (and (not inline-results?)
+                                             (contains? result :nextjournal/blob-id))))))))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
