@@ -157,7 +157,7 @@
 (defn result? [{:nextjournal/keys [blob-id]}] (some? blob-id))
 
 (defn inspect-leafs [opts x]
-  (if (and (wrapped-value? x) (not (result? x)))
+  (if (wrapped-value? x)
     [(->viewer-eval 'v/inspect) (describe x opts)]
     x))
 

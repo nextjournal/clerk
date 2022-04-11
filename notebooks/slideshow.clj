@@ -26,9 +26,10 @@
 ;; * [x] introduce custom notebook viewer here that performs slideshow transformation
 ;; * [ ] resuse default transform fn in order to be able to process visibility, code folding etc.
 ;; * [ ] fix registration
-;; * [ ] fix `n.c.viewer/inspect-leafs`
-;; * [ ] fix infinite sequences
+;; * [x] fix `n.c.viewer/inspect-leafs`
+;; * [x] fix infinite sequences
 ;; * [x] fix static app (reveal.js seems to break all pages / use unbundled mode)
+;; * [ ] fix static app header wrt toc
 ;; ---
 ;;
 ;; Some machinery to split document fragments:
