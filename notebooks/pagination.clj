@@ -4,8 +4,7 @@
 
 #_(nextjournal.clerk/show! "notebooks/pagination.clj")
 
-;; **FIXME:** uncountable seqs are broken
-(range 100)
+(range)
 
 (def notebooks
   (clojure.java.io/file "notebooks"))

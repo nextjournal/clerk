@@ -101,10 +101,12 @@
     (is (match? {:blocks [{:result {:nextjournal/viewer :html}}]}
                 (clerk/eval-string "^{:nextjournal.clerk/viewer :html} (def markup [:h1 \"hi\"])")))))
 
+(def eval-inspect? #(= % (viewer/->viewer-eval 'v/inspect)))
+
 (deftest eval-string+doc->viewer
   (testing "assigns correct width from viewer function opts"
-    (is (match? [[#(= % (viewer/->viewer-eval 'v/inspect)) {:nextjournal/width :wide}]
-                 [#(= % (viewer/->viewer-eval 'v/inspect)) {:nextjournal/width :full}]]
+    (is (match? [[eval-inspect? {:nextjournal/width :wide}]
+                 [eval-inspect? {:nextjournal/width :full}]]
                 (-> "^{:nextjournal.clerk/visibility :hide} (ns clerk-test-width
   (:require [nextjournal.clerk :as clerk]))
 
@@ -117,8 +119,8 @@
                     :blocks))))
 
   (testing "assigns the correct width from form meta"
-    (is (match? [[#(= % (viewer/->viewer-eval 'v/inspect)) {:nextjournal/width :full}]
-                 [#(= % (viewer/->viewer-eval 'v/inspect)) {:nextjournal/width :wide}]]
+    (is (match? [[eval-inspect? {:nextjournal/width :full}]
+                 [eval-inspect? {:nextjournal/width :wide}]]
                 (-> "^{:nextjournal.clerk/visibility :hide} (ns clerk-test-width)
 
 ^{:nextjournal.clerk/viewer :table :nextjournal.clerk/width :full}
@@ -128,6 +130,22 @@
 ^{:nextjournal.clerk/viewer :html :nextjournal.clerk/width :wide}
 [:div.bg-red-200 [:h1 \"Wide Hiccup\"]]
 "
+                    clerk/eval-string
+                    view/doc->viewer
+                    :nextjournal/value
+                    :blocks))))
+
+  (testing "can handle uncounted sequences"
+    (is (match? [[eval-inspect? {:nextjournal/viewer {:name :html}
+                                 :nextjournal/value [:div.viewer-code
+                                                     [eval-inspect?
+                                                      {:nextjournal/value "(range)"
+                                                       :nextjournal/viewer {:name :code}}]]}]
+                 [eval-inspect? {:nextjournal/viewer {:name :clerk/result}
+                                 :nextjournal/value {:nextjournal/edn string?
+                                                     :nextjournal/fetch-opts {:blob-id string?}
+                                                     :nextjournal/hash string?}}]]
+                (-> "(range)"
                     clerk/eval-string
                     view/doc->viewer
                     :nextjournal/value

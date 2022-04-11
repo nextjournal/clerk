@@ -185,7 +185,7 @@
                 {:keys [code? fold? result?]} (->display cell)]
             (cond-> []
               code?
-              (conj (v/with-viewer :clerk/code-block cell)) ;; TODO: fix folded code
+              (conj (v/with-viewer :clerk/code-block (dissoc cell :result))) ;; TODO: fix folded code
               result?
               (conj (cond
                       (v/registration? (v/value result))

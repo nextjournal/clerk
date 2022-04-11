@@ -9,8 +9,7 @@
 {:hello "world 👋" :tacos (map (comp #(map (constantly '🌮) %) range) (range 1 100)) :zeta {:chars [\w \a \v \e] :set (set (range 100))}}
 
 ;; And can handle lazy infinte sequences, only partially loading data by default with the ability to load more data on request.
-;; **FIXME:** uncountable seqs are broken
-(range 100)
+(range)
 
 (def fib (lazy-cat [0 1] (map + fib (rest fib))))
 
