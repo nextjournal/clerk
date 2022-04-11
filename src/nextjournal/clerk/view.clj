@@ -150,25 +150,6 @@
 #_(->display {:result {:nextjournal.clerk/visibility #{:hide} :nextjournal/value {:nextjournal/viewer :hide-result}} :ns? false})
 #_(->display {:result {:nextjournal.clerk/visibility #{:hide}} :ns? true})
 
-(defn describe-block [{:keys [inline-results?] :or {inline-results? false}} {:keys [ns]} {:as cell :keys [type text doc]}]
-  (case type
-    :markdown [(binding [*ns* ns]
-                 (v/describe (cond
-                               text (v/md text)
-                               doc (v/with-md-viewer doc))))]
-    :code (let [{:as cell :keys [result]} (update cell :result apply-viewer-unwrapping-var-from-def)
-                {:keys [code? fold? result?]} (->display cell)]
-            (cond-> []
-              code?
-              (conj (cond-> (v/code text) fold? (assoc :nextjournal/viewer :code-folded)))
-              result?
-              (conj (cond
-                      (v/registration? (v/value result))
-                      (v/value result)
-                      :else
-                      (->result ns result (and (not inline-results?)
-                                               (contains? result :nextjournal/blob-id)))))))))
-
 (defn doc->viewer
   ;; TODO: fix at call site / make arity 1
   ([doc] (doc->viewer {} doc))
