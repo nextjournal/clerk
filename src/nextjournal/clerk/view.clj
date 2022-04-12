@@ -9,7 +9,6 @@
 #_(nextjournal.clerk/show! "notebooks/viewers/image.clj")
 
 (defn doc->viewer
-  ;; TODO: fix at call site / make arity 1
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns]}]
    (binding [*ns* ns]

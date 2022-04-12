@@ -411,11 +411,11 @@
       {:name :clerk/notebook
        :fetch-fn fetch-all
        :render-fn 'v/notebook-viewer
-       :transform-fn (fn [doc]
+       :transform-fn (fn [{:as doc :keys [ns]}]
                        (-> doc
                            (update :blocks (partial into [] (mapcat (partial with-block-viewer doc))))
                            (select-keys [:blocks :toc :title])
-                           (assoc :scope (datafy-scope *ns*))))})
+                           (cond-> ns (assoc :scope (datafy-scope ns)))))})
    {:name :hide-result :transform-fn (fn [_] nil)}])
 
 (def default-table-cell-viewers
