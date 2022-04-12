@@ -14,7 +14,11 @@
   (let [url (path->url path)]
     (if bundle?
       (str "#/" url)
-      (let [url (or url "index.html")
+      (let [url (cond-> url
+                  (and (= (.. js/document -location -protocol) "file:")
+                       (or (nil? url)
+                           (str/ends-with? url "/")))
+                  (str "index.html"))
             dir-depth (get (frequencies current-path) \/ 0)
             relative-root (apply str (repeat dir-depth "../"))]
         (str relative-root url)))))
