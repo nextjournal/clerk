@@ -136,16 +136,26 @@
                     :blocks))))
 
   (testing "can handle uncounted sequences"
-    (is (match? [[eval-inspect? {:nextjournal/viewer {:name :html}
-                                 :nextjournal/value [:div.viewer-code
-                                                     [eval-inspect?
-                                                      {:nextjournal/value "(range)"
-                                                       :nextjournal/viewer {:name :code}}]]}]
+    (is (match? [[eval-inspect? {:nextjournal/viewer {:name :code}
+                                 :nextjournal/value "(range)"}]
                  [eval-inspect? {:nextjournal/viewer {:name :clerk/result}
                                  :nextjournal/value {:nextjournal/edn string?
                                                      :nextjournal/fetch-opts {:blob-id string?}
                                                      :nextjournal/hash string?}}]]
                 (-> "(range)"
+                    clerk/eval-string
+                    view/doc->viewer
+                    :nextjournal/value
+                    :blocks))))
+
+  (testing "assigns folded visibility"
+    (is (match? [[eval-inspect? {:nextjournal/viewer {:name :code-folded}
+                                 :nextjournal/value "^{:nextjournal.clerk/visibility :fold}{:some :map}"}]
+                 [eval-inspect? {:nextjournal/viewer {:name :clerk/result}
+                                 :nextjournal/value {:nextjournal/edn string?
+                                                     :nextjournal/fetch-opts {:blob-id string?}
+                                                     :nextjournal/hash string?}}]]
+                (-> "^{:nextjournal.clerk/visibility :fold}{:some :map}"
                     clerk/eval-string
                     view/doc->viewer
                     :nextjournal/value

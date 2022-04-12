@@ -189,12 +189,12 @@
          {:ref ref-fn}
          (into [:div.flex.flex-col.items-center.viewer-notebook.flex-auto]
                (map (fn [[_inspect x :as y]]
-                      (let [viewer (viewer/viewer x)
+                      (let [{viewer-name :name} (viewer/viewer x)
                             inner-viewer-name (some-> x viewer/value viewer/viewer :name)]
                         [:div {:class ["viewer" "overflow-x-auto"
-                                       (when (keyword? viewer) (str "viewer-" (name viewer)))
+                                       (when viewer-name (str "viewer-" (name viewer-name)))
                                        (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
-                                       (case (or (viewer/width x) (case viewer (:code :code-folded) :wide :prose))
+                                       (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
                                          :wide "w-full max-w-wide"
                                          :full "w-full"
                                          "w-full max-w-prose px-8")]}

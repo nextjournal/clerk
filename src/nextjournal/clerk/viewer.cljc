@@ -333,10 +333,12 @@
                       text (with-viewer :markdown text)
                       doc (with-md-viewer doc))]
          :code (let [{:as cell :keys [result]} (update cell :result apply-viewer-unwrapping-var-from-def)
-                     {:keys [code? fold? result?]} (->display cell)]
+                     {:as display-opts :keys [code? result?]} (->display cell)]
                  (cond-> []
                    code?
-                   (conj (with-viewer :clerk/code-block (dissoc cell :result))) ;; TODO: fix folded code
+                   (conj (with-viewer :clerk/code-block
+                           ;; TODO: display analysis could be merged into cell earlier
+                           (-> cell (merge display-opts) (dissoc :result))))
                    result?
                    (conj (->result ns result (and (not inline-results?)
                                                   (contains? result :nextjournal/blob-id))))))))))
@@ -404,8 +406,7 @@
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
    {:name :object :render-fn '(fn [x] (v/html (v/tagged-value "#object" [v/inspect x])))}
    {:name :file :render-fn '(fn [x] (v/html (v/tagged-value "#file " [v/inspect x])))}
-
-   {:name :clerk/code-block :transform-fn (fn [block] (with-viewer :html [:div.viewer-code (with-viewer :code (:text block))]))}
+   {:name :clerk/code-block :transform-fn #(with-viewer (if (:fold? %) :code-folded :code) (:text %))}
    {:name :clerk/result :render-fn (quote v/result-viewer) :fetch-fn fetch-all}
    #?(:clj
       {:name :clerk/notebook
