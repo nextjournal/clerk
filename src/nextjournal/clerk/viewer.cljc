@@ -327,11 +327,9 @@
      #_(->display {:result {:nextjournal.clerk/visibility #{:hide} :nextjournal/value {:nextjournal/viewer :hide-result}} :ns? false})
      #_(->display {:result {:nextjournal.clerk/visibility #{:hide}} :ns? true})
 
-     (defn with-block-viewer [{:keys [ns inline-results?]} {:as cell :keys [type text doc]}]
+     (defn with-block-viewer [{:keys [ns inline-results?]} {:as cell :keys [type]}]
        (case type
-         :markdown [(cond
-                      text (with-viewer :markdown text)
-                      doc (with-md-viewer doc))]
+         :markdown [(with-viewer :clerk/markdown-block cell)]
          :code (let [{:as cell :keys [result]} (update cell :result apply-viewer-unwrapping-var-from-def)
                      {:as display-opts :keys [code? result?]} (->display cell)]
                  (cond-> []
@@ -406,6 +404,7 @@
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
    {:name :object :render-fn '(fn [x] (v/html (v/tagged-value "#object" [v/inspect x])))}
    {:name :file :render-fn '(fn [x] (v/html (v/tagged-value "#file " [v/inspect x])))}
+   {:name :clerk/markdown-block :transform-fn (fn [{:keys [doc text]}] (cond doc (with-md-viewer doc) text (with-viewer :markdown text)))}
    {:name :clerk/code-block :transform-fn #(with-viewer (if (:fold? %) :code-folded :code) (:text %))}
    {:name :clerk/result :render-fn (quote v/result-viewer) :fetch-fn fetch-all}
    #?(:clj
