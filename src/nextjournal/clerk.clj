@@ -435,9 +435,7 @@
               (fs/create-dirs (fs/parent out-html))
               (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
     (when browse?
-      (if (str/starts-with? out-path "public/")
-        (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
-        (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize))))))
+      (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize)))))
 
 (defn stdout-reporter [{:as event :keys [stage state duration doc]}]
   (let [format-duration (partial format "%.3fms")
