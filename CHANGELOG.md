@@ -5,6 +5,19 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
+## Unreleased
+* 🌟 Support Table of Contents & dark mode toggle, #109. ToC is opt-in via `^:nextjournal.clerk/toc` metadata on ns form.
+* 🌟 Use viewer api to to enable full customization of markdown nodes (#122)
+* 💫 Expand glob paths and support symbols pointing to vars for `build-static-app!` (#130)
+* 💫 Use relative links inside the static-app (#132)
+* 🐞 Always open static build index via file: protocol, closes #96
+* 🐞 Remove column truncation in table viewer (#124)
+* 🐞 Make lazy loading respect viewers on form
+* 🐞 Fix .cljc file renaming in unbundled static app (#123)
+* 🐞 Leave it to viewers to opt into tailwind's `not-prose` class
+* 🛠 First cut of browser tests using nbb & playwright (#97)
+* 🛠 Write hash in pre-commit hook for predicable viewer.js location, build JS in CI (#107)
+  
 ## 0.6.387 (2022-03-03)
 * 🌟 Add `clerk/recompute!` for fast recomputation of doc without re-parsing & analysis
 * 🌟 Normalize viewers to support full map form (#77)
