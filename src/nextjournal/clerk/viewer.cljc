@@ -263,7 +263,8 @@
    {:name :nextjournal.markdown/heading
     :transform-fn (into-markup
                    (fn [{:as node :keys [heading-level]}]
-                     [(str "h" heading-level) {:id (uri.normalize/normalize-fragment (md.transform/->text node))}]))}
+                     [(str "h" heading-level) {:id (uri.normalize/normalize-fragment (md.transform/->text node))
+                                               :class "not-prose"}]))}
    {:name :nextjournal.markdown/image :transform-fn #(with-viewer :html [:img (:attrs %)])}
    {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
