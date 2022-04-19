@@ -198,15 +198,18 @@
         (do (fs/create-dirs (fs/parent local-file))
             (spit local-file (slurp gurl))
             fname)))
-    (do (binding [*out* *err*]
+    nil #_(do (binding [*out* *err*]
           (println "[clerk] WARNING - url does not exist in manifest: " url))
         nil)))
 
 (defn cached-asset [url]
-  (or (some->>
-       (cache-url! url)
-       (str "/assets/"))
-      (binding [*out* *err*]
+  (or (when-let [url (some->>
+                (cache-url! url)
+                (str "/assets/")
+                )]
+        (prn :url url)
+        url)
+      url #_(binding [*out* *err*]
         (println "[clerk] WARNING - uncached url:" url)
         url)))
 

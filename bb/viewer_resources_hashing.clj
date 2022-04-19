@@ -99,7 +99,8 @@
                (spit f b)
                f)
              a)
-         hash (sha512-ize f)
+         hash (if (str/ends-with? a "ttf")
+                (fs/file-name a) (sha512-ize f))
          gs-dest (str gs-bucket "/data/" hash)
          gs-url (cas-link hash (:name (asset->info a)))]
      (println "Copying" a "to" gs-dest)
