@@ -415,7 +415,6 @@
 
   - `:paths` a vector of relative paths to notebooks to include in the build
   - `:bundle?` builds a single page app versus a folder with an html page for each notebook (defaults to `true`)
-  - `:path-prefix` a prefix to urls
   - `:out-path` a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
   - `:git/sha`, `:git/url` when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`"
   [opts docs]
@@ -437,9 +436,7 @@
               (fs/create-dirs (fs/parent out-html))
               (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
     (when browse?
-      (if (str/starts-with? out-path "public/")
-        (browse/browse-url (str "http://localhost:7778/" (str/replace out-path "public/" "")))
-        (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize))))))
+      (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize)))))
 
 (defn stdout-reporter [{:as event :keys [stage state duration doc]}]
   (let [format-duration (partial format "%.3fms")
@@ -489,8 +486,8 @@
     (report-fn {:stage :finished :state state :duration duration :total-duration (elapsed-ms start)})))
 
 #_(build-static-app! {:paths (take 5 clerk-docs)})
-#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
-#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :path-prefix "build/"})
+#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
+#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? false})
 #_(build-static-app! {:paths ["notebooks/viewers/**"]})
 
 ;; And, as is the culture of our people, a commend block containing

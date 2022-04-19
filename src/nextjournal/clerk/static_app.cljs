@@ -10,11 +10,18 @@
             [reitit.frontend.easy :as rfe]
             [sci.core :as sci]))
 
-(defn doc-url [{:keys [path->url path-prefix bundle?]} path]
+(defn doc-url [{:keys [path->url current-path bundle?]} path]
   (let [url (path->url path)]
     (if bundle?
       (str "#/" url)
-      (str "/" path-prefix url))))
+      (let [url (cond-> url
+                  (and (= (.. js/document -location -protocol) "file:")
+                       (or (nil? url)
+                           (str/ends-with? url "/")))
+                  (str "index.html"))
+            dir-depth (get (frequencies current-path) \/ 0)
+            relative-root (apply str (repeat dir-depth "../"))]
+        (str relative-root url)))))
 
 (defn show [{:as view-data :git/keys [sha url] :keys [doc path url->path]}]
   (sci-viewer/set-state {:doc doc})
