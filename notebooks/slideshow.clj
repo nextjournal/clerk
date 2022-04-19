@@ -31,22 +31,38 @@
 ;; * [x] fix static app (reveal.js seems to break all pages / use unbundled mode)
 ;; * [ ] fix static app header wrt toc
 ;; ---
-;;
+;; Results should be displayed as usual and cells should obey visibility control
+
+^{::clerk/visibility :hide}
+(v/vl {:width 650 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
+                                     :format {:type "topojson" :feature "counties"}}
+       :transform [{:lookup "id" :from {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
+                                        :key "id" :fields ["rate"]}}]
+       :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}})
+
+;; ---
 ;; Some machinery to split document fragments:
 
 (defn split-by-ruler [{:keys [content]}] (partition-by (comp #{:ruler} :type) content))
 (defn ->slide [fragment] (v/with-viewer :clerk/slide fragment))
-(defn doc->slides [{:keys [blocks]}]
-  (transduce identity
+(defn doc->slides [{:keys [ns blocks]}]
+  (transduce (mapcat (fn [{:as block :keys [type result]}]
+                       (case type
+                         :markdown [block]
+                         :code (let [block (update block :result v/apply-viewer-unwrapping-var-from-def)
+                                     {:keys [code? result?]} (v/->display block)]
+                                 (cond-> []
+                                   code?
+                                   (conj (dissoc block :result))
+                                   result?
+                                   (conj (v/value (v/->result ns result false))))))))
              (fn
                ([] {:slides [] :open-fragment []}) ;; init
                ([{:keys [slides open-fragment]}]   ;; complete
                 (conj slides (->slide open-fragment)))
                ([acc {:as block :keys [type doc]}]
-                (cond
-                  (= :code type)
+                (if (not= :markdown type)
                   (update acc :open-fragment conj block)
-                  (= :markdown type)
                   (loop [[first-fragment & tail] (split-by-ruler doc)
                          {:as acc :keys [open-fragment]} acc]
                     (cond
@@ -77,7 +93,8 @@
                              (map (fn [x]
                                     (cond
                                       ((every-pred map? :type) x) (v/with-md-viewer x)
-                                      ((every-pred map? :form) x) (v/with-viewer :clerk/code-block x))))))))}
+                                      ((every-pred map? :form) x) (v/with-viewer :clerk/code-block x)
+                                      'else (v/with-viewer :clerk/result x))))))))}
    {:name :clerk/notebook
     :transform-fn doc->slides
     :fetch-fn v/fetch-all
