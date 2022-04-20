@@ -57,15 +57,14 @@
     (is (not (h/no-cache? (h/analyze+emit '(rand-int 10)))))
     (is (not (h/no-cache? (h/analyze+emit '(def random-thing (rand-int 1000))))))
     (is (not (h/no-cache? (h/analyze+emit '(defn random-thing [] (rand-int 1000))))))
-    (is (h/no-cache? (h/analyze+emit '(def ^:nextjournal.clerk/no-cache random-thing (rand-int 1000)))))
-    (is (h/no-cache? (h/analyze+emit '(defn ^:nextjournal.clerk/no-cache random-thing [] (rand-int 1000)))))
-    (is (h/no-cache? (h/analyze+emit '(defn ^{:nextjournal.clerk/no-cache true} random-thing [] (rand-int 1000))))))
+    (is (h/no-cache? (h/analyze+emit '^:nextjournal.clerk/no-cache (def random-thing (rand-int 1000)))))
+    (is (h/no-cache? (h/analyze+emit '^:nextjournal.clerk/no-cache (defn random-thing [] (rand-int 1000)))))
+    (is (h/no-cache? (h/analyze+emit '^{:nextjournal.clerk/no-cache true} (defn random-thing [] (rand-int 1000))))))
 
   (testing "is evaluating namespace set to no-cache?"
     (is (not (h/no-cache? '(rand-int 10))))
 
-    (with-ns-binding 'nextjournal.clerk.hashing
-      (is (nextjournal.clerk.hashing/no-cache? '(rand-int 10))))))
+    (is (nextjournal.clerk.hashing/no-cache? '(rand-int 10) true))))
 
 (deftest var-dependencies
   (is (match? #{'clojure.string/includes?

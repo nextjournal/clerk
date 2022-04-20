@@ -1,7 +1,8 @@
 ;; # Clerk Index 🗂
 
-^{:nextjournal.clerk/visibility :hide}
-(ns ^:nextjournal.clerk/no-cache index
+^{:nextjournal.clerk/visibility :hide
+  :nextjournal.clerk/no-cache true}
+(ns index
   (:require [nextjournal.clerk :as clerk]))
 
 ;; A demo of a custom welcome page for the static build generated from `index.clj`.

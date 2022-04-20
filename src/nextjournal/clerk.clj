@@ -129,15 +129,16 @@
     viewers
     (update :nextjournal/viewers eval)))
 
-(defn read+eval-cached [results-last-run ->hash doc-visibility codeblock]
-  (let [{:keys [ns-effect? form var]} codeblock
+(defn read+eval-cached [results-last-run doc codeblock]
+  (let [{:keys [->hash visibility no-cache]} doc
+        {:keys [ns-effect? form var]} codeblock
         no-cache?      (or ns-effect?
-                           (hashing/no-cache? form))
+                           (hashing/no-cache? form no-cache))
         hash           (when-not no-cache? (or (get ->hash (if var var form))
                                                (hashing/hash-codeblock ->hash codeblock)))
         digest-file    (when hash (->cache-file (str "@" hash)))
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
-        visibility     (if-let [fv (hashing/->visibility form)] fv doc-visibility)
+        visibility     (if-let [fv (hashing/->visibility form)] fv visibility)
         cached-result? (and (not no-cache?)
                             cas-hash
                             (-> cas-hash ->cache-file fs/exists?))
@@ -173,11 +174,11 @@
 
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
-(defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks visibility]}]
+(defn eval-analyzed-doc [{:as analyzed-doc :keys [blocks]}]
   (let [{:as evaluated-doc :keys [blob-ids]}
         (reduce (fn [{:as acc :keys [blob->result]} {:as cell :keys [type]}]
                   (let [{:as result :nextjournal/keys [blob-id]} (when (= :code type)
-                                                                   (read+eval-cached blob->result ->hash visibility cell))]
+                                                                   (read+eval-cached blob->result analyzed-doc cell))]
                     (cond-> (update acc :blocks conj (cond-> cell result (assoc :result result)))
                       blob-id (update :blob-ids conj blob-id)
                       blob-id (assoc-in [:blob->result blob-id] result))))

@@ -1,5 +1,6 @@
 ;; # Hashing Things!!!!
-(ns ^:nextjournal.clerk/no-cache nextjournal.clerk.hashing
+^:nextjournal.clerk/no-cache
+(ns nextjournal.clerk.hashing
   (:refer-clojure :exclude [hash read-string])
   (:require [babashka.fs :as fs]
             [clojure.core :as core]
@@ -39,14 +40,18 @@
                     ana/analyze
                     (ana.passes.ef/emit-form #{:hygenic :qualified-symbols})))
 
-(defn no-cache? [form]
-  (let [var-or-form    (if-let [vn (var-name form)] vn form)
-        no-cache-meta? (comp boolean :nextjournal.clerk/no-cache meta)]
-    (or (no-cache-meta? var-or-form)
-        (no-cache-meta? *ns*)
-        (and (seq? form) (= `deref (first form))))))
+(defn no-cache?
+  ([form] (no-cache? form false))
+  ([form doc-setting]
+   (if-some [v (-> form meta :nextjournal.clerk/no-cache)]
+     (boolean v)
+     (or (-> form meta :nextjournal.clerk/no-cache boolean)
+         doc-setting))))
 
 #_(no-cache? '(rand-int 10))
+#_(no-cache? '(rand-int 10) true)
+#_(no-cache? '^{:nextjournal.clerk/no-cache true} (def rand (rand-int 10)))
+#_(no-cache? '^{:nextjournal.clerk/no-cache false} (rand-int 10) true)
 
 (defn sha1-base58 [s]
   (-> s digest/sha1 multihash/base58))
@@ -148,10 +153,11 @@
 
 (defn ->doc-settings [first-form]
   {:visibility (->doc-visibility first-form)
+   :no-cache (no-cache? first-form)
    :toc (or (#{true :collapsed} (-> first-form meta :nextjournal.clerk/toc)) false)})
 
 #_(->doc-settings '(ns foo))
-#_(->doc-settings '^{:nextjournal.clerk/toc true} (ns foo))
+#_(->doc-settings '^{:nextjournal.clerk/toc true :nextjournal.clerk/no-cache true} (ns foo))
 #_(->doc-settings '^{:nextjournal.clerk/toc :pin} (ns foo))
 #_(->doc-settings '^{:nextjournal.clerk/toc :boom} (ns foo)) ;; TODO: error
 
@@ -181,6 +187,9 @@
     (and (not visibility) (-> node n/string read-string ns?))
     (assoc :ns? true)))
 
+(def doc-keys
+  [:blocks :visibility :no-cache])
+
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
   ([{:as _opts :keys [doc?]} s]
@@ -205,7 +214,7 @@
                                                    (select-keys [:type :content]))}))
                 :else
                 (update state :nodes rest)))
-       (merge (select-keys state [:blocks :visibility])
+       (merge (select-keys state doc-keys)
               (when doc?
                 (-> {:content (into []
                                     (comp (filter (comp #{:markdown} :type))
@@ -250,7 +259,7 @@
 
         (-> state
             (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
-            (select-keys [:blocks :visibility])
+            (select-keys doc-keys)
             (merge (when doc? (cond-> {:title title} (:toc state) (assoc :toc toc)))))))))
 
 (defn parse-file

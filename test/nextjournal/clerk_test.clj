@@ -74,8 +74,8 @@
              (clerk/eval-string blob->result "(ns my-random-test-ns) {inc (java.util.UUID/randomUUID)}")))))
 
   (testing "random expression doesn't get cached with no-cache"
-    (is (not= (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns) (java.util.UUID/randomUUID)")
-              (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns) (java.util.UUID/randomUUID)"))))
+    (is (not= (clerk/eval-string "^:nextjournal.clerk/no-cache (ns my-random-test-ns) (java.util.UUID/randomUUID)")
+              (clerk/eval-string "^:nextjournal.clerk/no-cache (ns my-random-test-ns) (java.util.UUID/randomUUID)"))))
 
   (testing "random expression that cannot be frozen with nippy gets cached via in-memory cache"
     (let [code "(ns my-random-test-ns) {:my-fn inc :my-uuid (java.util.UUID/randomUUID)}"
