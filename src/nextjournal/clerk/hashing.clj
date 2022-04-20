@@ -197,10 +197,10 @@
 
                 (and doc? (n/comment? node))
                 (-> state
-                    (assoc :nodes (drop-while n/comment? nodes))
+                    (assoc :nodes (drop-while (some-fn n/comment? n/linebreak?) nodes))
                     (update :blocks conj {:type :markdown
                                           :doc (-> (apply str (map (comp remove-leading-semicolons n/string)
-                                                                   (take-while n/comment? nodes)))
+                                                                   (take-while (some-fn n/comment? n/linebreak?) nodes)))
                                                    markdown/parse
                                                    (select-keys [:type :content]))}))
                 :else
