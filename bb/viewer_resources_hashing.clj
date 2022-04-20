@@ -109,6 +109,7 @@
 
 (defn hash-assets []
   (let [font-css (slurp font-css-link)
+        _ (spit "/tmp/foo.css" font-css)
         font-links (extract-font-links font-css)
         assets (into [tailwind-link
                       #_plotly-link

@@ -79,12 +79,16 @@
         "assets" (serve-cached-asset req)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
         "_ws" {:status 200 :body "upgrading..."}
+        "xassets" {:status 404}
         {:status  200
          :headers {"Content-Type" "text/html"}
          :body    (view/doc->html @!doc @!error)})
       (catch Throwable e
         {:status  500
-         :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
+         :body    (let [b (with-out-str (pprint/pprint (Throwable->map e)))]
+                    (binding [*out* *err*]
+                      (println b))
+                    b)}))))
 
 (defn update-doc! [doc]
   (reset! !error nil)

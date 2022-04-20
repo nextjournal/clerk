@@ -207,7 +207,6 @@
                 (cache-url! url)
                 (str "/assets/")
                 )]
-        (prn :url url)
         url)
       url #_(binding [*out* *err*]
         (println "[clerk] WARNING - uncached url:" url)
@@ -236,6 +235,7 @@
     (hiccup/include-css (cached-asset "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"))
     (hiccup/include-css (cached-asset "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap"))]
    [:body.dark:bg-slate-900
+    [:p {:style "font-family: 'Fira Code'"} "Hello"]
     [:div#clerk]
     [:script "let viewer = nextjournal.clerk.sci_viewer
 let state = " (-> state ->edn pr-str) "
