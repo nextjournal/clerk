@@ -5,6 +5,9 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
+## 0.7.418 (2022-04-20)
+* 🐜 Fix regression in heading sizes & margins (#135)
+
 ## 0.7.416 (2022-04-19)
 * 🌟 Support Table of Contents & dark mode toggle, #109. ToC is opt-in via `^:nextjournal.clerk/toc` metadata on ns form.
 * 🌟 Use viewer api to to enable full customization of markdown nodes (#122)
