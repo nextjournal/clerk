@@ -86,7 +86,7 @@
 
 (def asset->info
   {tailwind-link {:name "tailwind.css"}
-   font-css-link {:name "Fira+Code.css"}
+   font-css-link {:name "fonts.css"}
    #_#_plotly-link {:name "plotly.js"}
    #_#_vega-embed-link {:name "vega-embed.min.js"}})
 
@@ -108,7 +108,7 @@
      [a gs-url])))
 
 (defn hash-assets []
-  (let [font-css (slurp font-css-link)
+  (let [font-css (:body (curl/get font-css-link {:raw-args ["-A" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.88 Safari/537.36"]}))
         _ (spit "/tmp/foo.css" font-css)
         font-links (extract-font-links font-css)
         assets (into [tailwind-link
