@@ -181,6 +181,8 @@
     (and (not visibility) (-> node n/string read-string ns?))
     (assoc :ns? true)))
 
+(def in-comment? (some-fn n/comment? (comp #{:newline} n/tag)))
+
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
   ([{:as _opts :keys [doc?]} s]
@@ -197,10 +199,10 @@
 
                 (and doc? (n/comment? node))
                 (-> state
-                    (assoc :nodes (drop-while n/comment? nodes))
+                    (assoc :nodes (drop-while in-comment? nodes))
                     (update :blocks conj {:type :markdown
                                           :doc (-> (apply str (map (comp remove-leading-semicolons n/string)
-                                                                   (take-while n/comment? nodes)))
+                                                                   (take-while in-comment? nodes)))
                                                    markdown/parse
                                                    (select-keys [:type :content]))}))
                 :else

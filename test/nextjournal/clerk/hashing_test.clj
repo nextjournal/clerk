@@ -36,10 +36,10 @@
 ")
 
 (deftest parse-clojure-string
-  (testing "is returning blocks with types and markdown structure attached"
+  (testing "is returning blocks with types and markdown structure attached, ignoring newlines between comments"
     (is (match? (m/equals {:blocks [{:type :code, :text "^:nextjournal.clerk/no-cache ^:nextjournal.clerk/toc (ns example-notebook)", :ns? true}
-                                    {:type :markdown, :doc {:type :doc :content [{:type :heading}]}}
                                     {:type :markdown, :doc {:type :doc :content [{:type :heading}
+                                                                                 {:type :heading}
                                                                                  {:type :paragraph}]}}
                                     {:type :code, :text "#{3 1 2}"}
                                     {:type :markdown, :doc {:type :doc :content [{:type :heading}]}}
