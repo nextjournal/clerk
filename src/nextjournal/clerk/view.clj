@@ -12,7 +12,7 @@
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns]}]
    (binding [*ns* ns]
-     (->> (merge doc opts) v/notebook v/describe))))
+     (-> (merge doc opts) v/notebook v/describe))))
 
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
