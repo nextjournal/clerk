@@ -158,8 +158,6 @@
 
 (declare describe with-viewer)
 
-(defn result? [{:nextjournal/keys [blob-id]}] (some? blob-id))
-
 (defn inspect-leafs [opts x]
   (if (wrapped-value? x)
     [(->viewer-eval 'v/inspect) (describe x opts)]
