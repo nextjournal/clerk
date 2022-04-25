@@ -362,15 +362,15 @@
    {:name :clerk/markdown-block :transform-fn (fn [{:keys [doc text]}] (cond doc (with-md-viewer doc) text (with-viewer :markdown text)))}
    {:name :clerk/code-block :transform-fn #(with-viewer (if (:fold? %) :code-folded :code) (:text %))}
    {:name :clerk/result :render-fn (quote v/result-viewer) :fetch-fn fetch-all}
-   #?(:clj
-      {:name :clerk/notebook
-       :fetch-fn fetch-all
-       :render-fn 'v/notebook-viewer
-       :transform-fn (fn [{:as doc :keys [ns]}]
-                       (-> doc
-                           (update :blocks (partial into [] (mapcat (partial with-block-viewer doc))))
-                           (select-keys [:blocks :toc :title])
-                           (cond-> ns (assoc :scope (datafy-scope ns)))))})
+   {:name :clerk/notebook
+    :fetch-fn fetch-all
+    :render-fn (quote v/notebook-viewer)
+    :transform-fn #?(:cljs identity
+                     :clj (fn [{:as doc :keys [ns]}]
+                            (-> doc
+                                (update :blocks (partial into [] (mapcat (partial with-block-viewer doc))))
+                                (select-keys [:blocks :toc :title])
+                                (cond-> ns (assoc :scope (datafy-scope ns))))))}
    {:name :hide-result :transform-fn (fn [_] nil)}])
 
 (def default-table-cell-viewers
