@@ -29,13 +29,21 @@
 
 (def !last-ctx (volatile! nil))
 
+#_(let [sw (java.io.ByteArrayOutputStream.)]
+  (bencode/write-bencode sw {:a 1 "a" 2})
+  (let [bencode (str sw)]
+    (bencode/read-bencode (java.io.PushbackInputStream. (java.io.ByteArrayInputStream. (.getBytes bencode))))))
+
 (defn send-response [{:keys [out id session response]
-                      :or {out (:out @!last-ctx)
-                           session (:session @!last-ctx)}}]
+                      :or {out (:out @!last-ctx)}}]
+  (prn :pre-resp response)
   (let [response (cond-> response
-                   id (assoc "id" id)
-                   session (assoc "session" session))]
+                   id (assoc :id id)
+                   session (assoc :session session))]
     (prn :resp response)
+    #_(prn :res2 (let [sw (java.io.StringWriter.)]
+                 (bencode/write-bencode sw response)
+                 (str sw)))
     (bencode/write-bencode out response)
     (.flush ^java.io.OutputStream out)))
 
@@ -47,19 +55,24 @@
 (defonce nrepl-channel (atom nil))
 
 (defn response-handler [message]
-  (prn :message message)
-  (prn (edn/read-string message))
-  (send-response {:response (edn/read-string message)})
+  (prn :message-handler (edn/read-string message))
+  (let [msg (edn/read-string message)
+        id (:id msg)
+        session (:session msg)]
+    (send-response {:id id
+                    :session session
+                    :response (dissoc (edn/read-string message)
+                                      :id :session)}))
   #_(prn :message message))
 
-(defn handle-eval [{:keys [msg] :as ctx}]
+(defn handle-eval [{:keys [msg session id] :as ctx}]
   (vreset! !last-ctx ctx)
-  (let [code (get msg "code")
-        id (get msg "id")]
+  (let [code (get msg "code")]
     (when-let [chan @nrepl-channel]
       (httpkit/send! chan (str {:op :eval
                                 :code code
-                                :id id})))
+                                :id id
+                                :session session})))
     (send-response (assoc ctx :response {"status" ["done"]} :msg msg))))
 
 (defn handle-describe [ctx]

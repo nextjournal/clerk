@@ -1143,9 +1143,9 @@ black")}]))}
 (defn nrepl-websocket []
   (.-ws_nrepl js/window))
 
-(defn nrepl-reply [{:keys [id]} payload]
+(defn nrepl-reply [{:keys [id session]} payload]
   (.send (nrepl-websocket)
-         (str (assoc payload :id id))))
+         (str (assoc payload :id id :session session))))
 
 (defn handle-nrepl-eval [{:keys [code] :as msg}]
   (let [val (eval-string code)]
