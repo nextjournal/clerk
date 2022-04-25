@@ -1144,13 +1144,23 @@ black")}]))}
   (.-ws_nrepl js/window))
 
 (defn nrepl-reply [{:keys [id session]} payload]
+  (js/console.log (assoc payload :id id :session session))
   (.send (nrepl-websocket)
          (str (assoc payload :id id :session session))))
 
 (defn handle-nrepl-eval [{:keys [code] :as msg}]
-  (let [val (eval-string code)]
-    (nrepl-reply msg {:value (pr-str val)
-                      :status ["done"]})))
+  (let [[kind val] (try [::success (eval-string code)]
+                        (catch :default e
+                          [::error (str e)]))]
+    (case kind
+      ::success
+      (do (nrepl-reply msg {:value (pr-str val)})
+          (nrepl-reply msg {:status ["done"]}))
+      ::error
+      (do
+        (nrepl-reply msg {:err (pr-str val)})
+        (nrepl-reply msg {:ex (pr-str val)
+                          :status ["error" "done"]})))))
 
 (defn handle-nrepl-message [msg]
   (case (:op msg)

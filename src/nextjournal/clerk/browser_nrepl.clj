@@ -72,8 +72,7 @@
       (httpkit/send! chan (str {:op :eval
                                 :code code
                                 :id id
-                                :session session})))
-    (send-response (assoc ctx :response {"status" ["done"]} :msg msg))))
+                                :session session})))))
 
 (defn handle-describe [ctx]
   (send-response (assoc ctx :response {"status" #{"done"}
