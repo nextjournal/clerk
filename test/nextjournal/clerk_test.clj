@@ -101,7 +101,7 @@
     (is (match? {:blocks [{:result {:nextjournal/viewer :html}}]}
                 (clerk/eval-string "^{:nextjournal.clerk/viewer :html} (def markup [:h1 \"hi\"])")))))
 
-(def eval-inspect? #(= % (viewer/->viewer-eval 'v/inspect)))
+(defn eval-inspect? [x] (= x (viewer/->viewer-eval 'v/inspect)))
 
 (deftest eval-string+doc->viewer
   (testing "assigns correct width from viewer function opts"
