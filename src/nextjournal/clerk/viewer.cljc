@@ -6,9 +6,7 @@
             [clojure.walk :as w]
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]
-                      [multihash.core :as multihash]
-                      [multihash.digest :as digest]
-                      [taoensso.nippy :as nippy]]
+                      [nextjournal.clerk.hashing :as hashing]]
                 :cljs [[reagent.ratom :as ratom]])
             [nextjournal.markdown :as md]
             [nextjournal.markdown.transform :as md.transform]
@@ -173,7 +171,7 @@
 (defn var-from-def? [x]
   (and (map? x) (get-safe x :nextjournal.clerk/var-from-def)))
 
-(declare with-viewer wrapped-with-viewer !viewers datafy-scope normalize-viewer get-viewers viewers)
+(declare wrapped-with-viewer !viewers datafy-scope normalize-viewer get-viewers viewers)
 
 (defn with-md-viewer [{:as node :keys [type]}]
   (with-viewer (keyword "nextjournal.markdown" (name type)) node))
@@ -184,160 +182,119 @@
       (with-viewer :html
         (into (mkup-fn node) (cond text [text] content (map with-md-viewer content)))))))
 
-;; block/result formatting fns
+;; EDN writer
+(defn var->data [v] (wrapped-with-viewer v))
+
+#_(var->data #'var->data)
+
+(defn fn->str [f]
+  (let [pr-rep (pr-str f)
+        f-name (subs pr-rep (count "#function[") (- (count pr-rep) 1))]
+    f-name))
+
+#_(fn->str (fn []))
+#_(fn->str +)
+
+;; TODO: consider removing this and rely only on viewers
+(defn make-readable [x]
+  (cond-> x
+    (var? x) var->data
+    (meta x) (with-meta {})
+    (fn? x) fn->str))
+
+#_(meta (make-readable ^{:f (fn [])} []))
+
 #?(:clj
-   (do
+   (defn ->edn [x]
+     (binding [*print-namespace-maps* false]
+       (pr-str
+        (try (w/prewalk make-readable x)
+             (catch Throwable _ x))))))
 
-     (defn var->data [v] (wrapped-with-viewer v))
+#_(->edn [:vec (with-meta [] {'clojure.core.protocols/datafy (fn [x] x)}) :var #'->edn])
 
-     #_(var->data #'var->data)
+#?(:clj
+   (defn base64-encode-value [{:as result :nextjournal/keys [content-type]}]
+     (update result :nextjournal/value (fn [data] (str "data:" content-type ";base64, "
+                                                       (.encodeToString (Base64/getEncoder) data))))))
 
-     (defn fn->str [f]
-       (let [pr-rep (pr-str f)
-             f-name (subs pr-rep (count "#function[") (- (count pr-rep) 1))]
-         f-name))
+(defn apply-viewer-unwrapping-var-from-def [{:as result :nextjournal/keys [value viewer]}]
+  (if viewer
+    (let [{:keys [transform-fn]} (and (map? viewer) viewer)
+          value (if (and (not transform-fn) (get value :nextjournal.clerk/var-from-def))
+                  (-> value :nextjournal.clerk/var-from-def deref)
+                  value)]
+      (assoc result :nextjournal/value (if (or (var? viewer) (fn? viewer))
+                                         (viewer value)
+                                         {:nextjournal/value value
+                                          :nextjournal/viewer (normalize-viewer viewer)})))
+    result))
 
-     #_(fn->str (fn []))
-     #_(fn->str +)
+#_(apply-viewer-unwrapping-var-from-def {:nextjournal/value [:h1 "hi"] :nextjournal/viewer :html})
+#_(apply-viewer-unwrapping-var-from-def {:nextjournal/value [:h1 "hi"] :nextjournal/viewer (resolve 'nextjournal.clerk/html)})
 
-     ;; TODO: consider removing this and rely only on viewers
-     (defn make-readable [x]
-       (cond-> x
-         (var? x) var->data
-         (meta x) (with-meta {})
-         (fn? x) fn->str))
+#?(:clj
+   (defn extract-blobs [lazy-load? blob-id described-result]
+     (w/postwalk #(cond-> %
+                    (and (get % :nextjournal/content-type) lazy-load?)
+                    (assoc :nextjournal/value {:blob-id blob-id :path (:path %)})
+                    (and (get % :nextjournal/content-type) (not lazy-load?))
+                    base64-encode-value)
+                 described-result)))
 
-     #_(meta (make-readable ^{:f (fn [])} []))
+#?(:clj
+   (defn ->result [ns {:as result :nextjournal/keys [value blob-id] vs :nextjournal/viewers} lazy-load?]
+     (let [described-result (extract-blobs lazy-load? blob-id (describe value {:viewers (concat vs (get-viewers ns (viewers value)))}))
+           opts-from-form-meta (select-keys result [:nextjournal/width])]
+       (merge {:nextjournal/viewer :clerk/result
+               :nextjournal/value (cond-> (try {:nextjournal/edn (->edn described-result)}
+                                               (catch Throwable _e
+                                                 {:nextjournal/string (pr-str value)}))
+                                    (-> described-result viewer :name)
+                                    (assoc :nextjournal/viewer (select-keys (viewer described-result) [:name]))
 
-     (defn ->edn [x]
-       (binding [*print-namespace-maps* false]
-         (pr-str
-          (try (w/prewalk make-readable x)
-               (catch Throwable _ x)))))
+                                    lazy-load?
+                                    (assoc :nextjournal/fetch-opts {:blob-id blob-id}
+                                           :nextjournal/hash (hashing/->hash-str [blob-id described-result])))}
+              (dissoc described-result :nextjournal/value :nextjournal/viewer)
+              opts-from-form-meta))))
 
-     #_(->edn [:vec (with-meta [] {'clojure.core.protocols/datafy (fn [x] x)}) :var #'->edn])
+(defn result-hidden? [result] (= :hide-result (-> result value viewer)))
 
+(defn ->display [{:as code-cell :keys [result ns?]}]
+  (let [{:nextjournal.clerk/keys [visibility]} result
+        result? (and (contains? code-cell :result)
+                     (not (result-hidden? result))
+                     (not (contains? visibility :hide-ns))
+                     (not (and ns? (contains? visibility :hide))))
+        fold? (and (not (contains? visibility :hide-ns))
+                   (or (contains? visibility :fold)
+                       (contains? visibility :fold-ns)))
+        code? (or fold? (contains? visibility :show))]
+    {:result? result? :fold? fold? :code? code?}))
 
-     (defn exceeds-bounded-count-limit? [value]
-       (and (seqable? value)
-            (try
-              (let [limit config/*bounded-count-limit*]
-                (= limit (bounded-count limit value)))
-              (catch Exception _
-                true))))
+#_(->display {:result {:nextjournal.clerk/visibility #{:fold :hide-ns}}})
+#_(->display {:result {:nextjournal.clerk/visibility #{:fold-ns}}})
+#_(->display {:result {:nextjournal.clerk/visibility #{:hide}} :ns? false})
+#_(->display {:result {:nextjournal.clerk/visibility #{:fold}} :ns? true})
+#_(->display {:result {:nextjournal.clerk/visibility #{:fold}} :ns? false})
+#_(->display {:result {:nextjournal.clerk/visibility #{:hide} :nextjournal/value {:nextjournal/viewer :hide-result}} :ns? false})
+#_(->display {:result {:nextjournal.clerk/visibility #{:hide}} :ns? true})
 
-     #_(exceeds-bounded-count-limit? (range))
-     #_(exceeds-bounded-count-limit? (range 10000))
-     #_(exceeds-bounded-count-limit? (range 1000000))
-     #_(exceeds-bounded-count-limit? :foo)
-
-     (defn valuehash [value]
-       (-> value
-           nippy/fast-freeze
-           digest/sha2-512
-           multihash/base58))
-
-     #_(valuehash (range 100))
-     #_(valuehash (zipmap (range 100) (range 100)))
-
-     (defn ->hash-str
-       "Attempts to compute a hash of `value` falling back to a random string."
-       [value]
-       (if-let [valuehash (try
-                            (when-not (exceeds-bounded-count-limit? value)
-                              (valuehash value))
-                            (catch Exception _))]
-         valuehash
-         (str (gensym))))
-
-     #_(->hash-str (range 104))
-     #_(->hash-str (range))
-
-     (defn selected-viewers [described-result]
-       (into []
-             (map (comp :render-fn :nextjournal/viewer))
-             (tree-seq (comp vector? :nextjournal/value) :nextjournal/value described-result)))
-
-     (defn base64-encode-value [{:as result :nextjournal/keys [content-type]}]
-       (update result :nextjournal/value (fn [data] (str "data:" content-type ";base64, "
-                                                         (.encodeToString (Base64/getEncoder) data)))))
-
-     (defn apply-viewer-unwrapping-var-from-def [{:as result :nextjournal/keys [value viewer]}]
-       (if viewer
-         (let [{:keys [transform-fn]} (and (map? viewer) viewer)
-               value (if (and (not transform-fn) (get value :nextjournal.clerk/var-from-def))
-                       (-> value :nextjournal.clerk/var-from-def deref)
-                       value)]
-           (assoc result :nextjournal/value (if (or (var? viewer) (fn? viewer))
-                                              (viewer value)
-                                              {:nextjournal/value value
-                                               :nextjournal/viewer (normalize-viewer viewer)})))
-         result))
-
-     #_(apply-viewer-unwrapping-var-from-def {:nextjournal/value [:h1 "hi"] :nextjournal/viewer :html})
-     #_(apply-viewer-unwrapping-var-from-def {:nextjournal/value [:h1 "hi"] :nextjournal/viewer (resolve 'nextjournal.clerk/html)})
-
-     (defn extract-blobs [lazy-load? blob-id described-result]
-       (w/postwalk #(cond-> %
-                      (and (get % :nextjournal/content-type) lazy-load?)
-                      (assoc :nextjournal/value {:blob-id blob-id :path (:path %)})
-                      (and (get % :nextjournal/content-type) (not lazy-load?))
-                      base64-encode-value)
-                   described-result))
-
-     (defn ->result [ns {:as result :nextjournal/keys [value blob-id] vs :nextjournal/viewers} lazy-load?]
-       (let [described-result (extract-blobs lazy-load? blob-id (describe value {:viewers (concat vs (get-viewers ns (viewers value)))}))
-             opts-from-form-meta (select-keys result [:nextjournal/width])]
-         (merge {:nextjournal/viewer :clerk/result
-                 :nextjournal/value (cond-> (try {:nextjournal/edn (->edn described-result)}
-                                                 (catch Throwable _e
-                                                   {:nextjournal/string (pr-str value)}))
-                                      (-> described-result viewer :name)
-                                      (assoc :nextjournal/viewer (select-keys (viewer described-result) [:name]))
-
-                                      lazy-load?
-                                      (assoc :nextjournal/fetch-opts {:blob-id blob-id}
-                                             :nextjournal/hash (->hash-str [blob-id described-result])))}
-                (dissoc described-result :nextjournal/value :nextjournal/viewer)
-                opts-from-form-meta)))
-
-
-
-     (defn result-hidden? [result] (= :hide-result (-> result value viewer)))
-
-     (defn ->display [{:as code-cell :keys [result ns?]}]
-       (let [{:nextjournal.clerk/keys [visibility]} result
-             result? (and (contains? code-cell :result)
-                          (not (result-hidden? result))
-                          (not (contains? visibility :hide-ns))
-                          (not (and ns? (contains? visibility :hide))))
-             fold? (and (not (contains? visibility :hide-ns))
-                        (or (contains? visibility :fold)
-                            (contains? visibility :fold-ns)))
-             code? (or fold? (contains? visibility :show))]
-         {:result? result? :fold? fold? :code? code?}))
-
-     #_(->display {:result {:nextjournal.clerk/visibility #{:fold :hide-ns}}})
-     #_(->display {:result {:nextjournal.clerk/visibility #{:fold-ns}}})
-     #_(->display {:result {:nextjournal.clerk/visibility #{:hide}} :ns? false})
-     #_(->display {:result {:nextjournal.clerk/visibility #{:fold}} :ns? true})
-     #_(->display {:result {:nextjournal.clerk/visibility #{:fold}} :ns? false})
-     #_(->display {:result {:nextjournal.clerk/visibility #{:hide} :nextjournal/value {:nextjournal/viewer :hide-result}} :ns? false})
-     #_(->display {:result {:nextjournal.clerk/visibility #{:hide}} :ns? true})
-
-     (defn with-block-viewer [{:keys [ns inline-results?]} {:as cell :keys [type]}]
-       (case type
-         :markdown [(with-viewer :clerk/markdown-block cell)]
-         :code (let [{:as cell :keys [result]} (update cell :result apply-viewer-unwrapping-var-from-def)
-                     {:as display-opts :keys [code? result?]} (->display cell)]
-                 (cond-> []
-                   code?
-                   (conj (with-viewer :clerk/code-block
-                           ;; TODO: display analysis could be merged into cell earlier
-                           (-> cell (merge display-opts) (dissoc :result))))
-                   result?
-                   (conj (->result ns result (and (not inline-results?)
-                                                  (contains? result :nextjournal/blob-id))))))))))
+#?(:clj
+   (defn with-block-viewer [{:keys [ns inline-results?]} {:as cell :keys [type]}]
+     (case type
+       :markdown [(with-viewer :clerk/markdown-block cell)]
+       :code (let [{:as cell :keys [result]} (update cell :result apply-viewer-unwrapping-var-from-def)
+                   {:as display-opts :keys [code? result?]} (->display cell)]
+               (cond-> []
+                 code?
+                 (conj (with-viewer :clerk/code-block
+                         ;; TODO: display analysis could be merged into cell earlier
+                         (-> cell (merge display-opts) (dissoc :result))))
+                 result?
+                 (conj (->result ns result (and (not inline-results?)
+                                                (contains? result :nextjournal/blob-id)))))))))
 
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
