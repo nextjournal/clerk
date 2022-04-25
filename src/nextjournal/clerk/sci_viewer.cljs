@@ -1143,13 +1143,14 @@ black")}]))}
 (defn nrepl-websocket []
   (.-ws_nrepl js/window))
 
-(defn nrepl-reply [msg payload]
+(defn nrepl-reply [{:keys [id]} payload]
   (.send (nrepl-websocket)
-         (str payload)))
+         (str (assoc payload :id id))))
 
 (defn handle-nrepl-eval [{:keys [code] :as msg}]
-  (eval-string code)
-  (nrepl-reply msg {:status [:done]}))
+  (let [val (eval-string code)]
+    (nrepl-reply msg {:value (pr-str val)
+                      :status ["done"]})))
 
 (defn handle-nrepl-message [msg]
   (case (:op msg)

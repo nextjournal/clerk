@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.browser-nrepl
   (:require [bencode.core :as bencode]
-            [org.httpkit.server :as httpkit])
+            [org.httpkit.server :as httpkit]
+            [clojure.edn :as edn])
   (:import [java.io InputStream PushbackInputStream EOFException BufferedOutputStream PrintWriter BufferedWriter Writer StringWriter]
            [java.net ServerSocket]
            ))
@@ -26,7 +27,11 @@
   (write-bencode os msg)
   (.flush os))
 
-(defn send-response [{:keys [out id session response]}]
+(def !last-ctx (volatile! nil))
+
+(defn send-response [{:keys [out id session response]
+                      :or {out (:out @!last-ctx)
+                           session (:session @!last-ctx)}}]
   (let [response (cond-> response
                    id (assoc "id" id)
                    session (assoc "session" session))]
@@ -39,17 +44,22 @@
     (send-response (assoc ctx
                           :response {"new-session" id "status" ["done"]}))))
 
-(def nrepl-channel (atom nil))
+(defonce nrepl-channel (atom nil))
+
+(defn response-handler [message]
+  (prn :message message)
+  (prn (edn/read-string message))
+  (send-response {:response (edn/read-string message)})
+  #_(prn :message message))
 
 (defn handle-eval [{:keys [msg] :as ctx}]
+  (vreset! !last-ctx ctx)
   (let [code (get msg "code")
         id (get msg "id")]
-    (prn :re-send)
     (when-let [chan @nrepl-channel]
-      (prn :send (httpkit/send! chan (str {:op :eval
-                                                     :code code
-                                                     :id id}))))
-    (prn :eval)
+      (httpkit/send! chan (str {:op :eval
+                                :code code
+                                :id id})))
     (send-response (assoc ctx :response {"status" ["done"]} :msg msg))))
 
 (defn handle-describe [ctx]

@@ -64,10 +64,10 @@
       "/_nrepl" (httpkit/as-channel req
                                     {:on-open (fn [ch]
                                                 (reset! bnrepl/nrepl-channel ch))
-                                     :on-close (fn [ch _reason] (prn :close))
-                                     :on-receive (fn [ch msg]
-                                                   #_(httpkit/send! ch (str [:hello "there"]))
-                                                   (prn :receive msg))})
+                                     :on-close (fn [_ch _reason] (prn :close))
+                                     :on-receive
+                                     (fn [_ch message]
+                                       (bnrepl/response-handler message))})
       ;; default
       (httpkit/as-channel req {:on-open (fn [ch] (swap! !clients conj ch))
                                :on-close (fn [ch _reason] (swap! !clients disj ch))
