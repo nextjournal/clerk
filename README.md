@@ -1,4 +1,4 @@
-![Clerk: Local-First Notebooks for Clojure](https://cdn.nextjournal.com/data/QmTMbDFWnHuMFmRsUgEMaoU4ih3hbBbHZg1XF9tXi3AF4M?filename=Requiem-Ornaments-Byline.png&content-type=image/pngX)
+![Clerk: Local-First Notebooks for Clojure](https://cdn.nextjournal.com/data/QmQfj66AwEThMukaNiAcvKuBxTo1oF8XYmUH8ewbG8aXqy?filename=Clerk-GitHub.png&content-type=image/png)
 
 # Clerk
 
