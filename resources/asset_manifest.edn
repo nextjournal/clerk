@@ -1,185 +1,185 @@
 {:asset-map
  {"https://fonts.gstatic.com/s/firacode/v18/uU9NCBsR6Z2vfE9aq3bh2dSDqFGedCMX.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/Gun7rASZCCzfFFFJCJAW1qtmR6juGrSjk5buUAbpFeM2P4sVWtT6zpbbFgt93Fg8D99e9fMJ5mJv1pboyduapJ5",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/uU9NCBsR6Z2vfE9aq3bh2dSDqFGedCMX.woff2",
   "https://fonts.gstatic.com/s/ptserif/v16/EJRQQgYoZZY2vCFuvAFT9gaQZyTfoOFC-I2irw.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/4sjazoAw1JPfhztzUypJ1rAEqwR7UGi5KEZ59BUeJoLTfsnXM5fS86YnrkgXuCzpH67opQ75tycnWMgGUmmZgeX6",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/EJRQQgYoZZY2vCFuvAFT9gaQZyTfoOFC-I2irw.woff2",
   "https://fonts.gstatic.com/s/firamono/v14/N0bS2SlFPv1weGeLZDtondvHkvfUS5NBBASF.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/39ZhfWJ56wZxmp3eizfLxeJZqDGypU8bTfiK6ZbwRXw6z8TVWh9k5i8JsHHdw9fLJh9i47CdXLkcC871qjtc2mER",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/N0bS2SlFPv1weGeLZDtondvHkvfUS5NBBASF.woff2",
   "https://fonts.gstatic.com/s/firacode/v18/uU9NCBsR6Z2vfE9aq3bh3tSDqFGedCMX.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/2HVQvF6VCQh2do4a2re2u8mVDjCX4h5QShTD1SgftNB6Y2QD2aytaLEySUYUPRjxvwePpL7GsJBWEfTPgsCLnA6B",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/uU9NCBsR6Z2vfE9aq3bh3tSDqFGedCMX.woff2",
   "https://fonts.gstatic.com/s/firamono/v14/N0bS2SlFPv1weGeLZDtondvHk_fUS5NBBASF.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/a6QGnCvEAwQLhkjVz6W3rva6Gt7MUJdhJ8U29PSnfEHULFWAEihq7WFBbU8soHZG7XmenC6SQmb2J5yy1ASr12B",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/N0bS2SlFPv1weGeLZDtondvHk_fUS5NBBASF.woff2",
   "https://fonts.gstatic.com/s/firamono/v14/N0bX2SlFPv1weGeLZDtgK_7Ss9XZYalI.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/pqVRsmNvg4yki7s3SWf2mpf4Vqxvoq3WUWTqhqYxd2y6LSYUJWvR3H1s5374RrTC8uURW7s6mEpNE9uBATokQgV",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/N0bX2SlFPv1weGeLZDtgK_7Ss9XZYalI.woff2",
   "https://fonts.gstatic.com/s/ptserif/v16/EJRQQgYoZZY2vCFuvAFT9gaQZynfoOFC-I0.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/3hkFZoM57z6wTbMLmL7EpnNb5n7o4ttu7Yfs4v7pw98aUVPPaM3RteG9jdpzBcgU8awmCVPAmgvrZuN8miN3PmVd",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/EJRQQgYoZZY2vCFuvAFT9gaQZynfoOFC-I0.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9f4kDNxMZdWfMOD5VvkrA6Qif4VFnklULW.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/2UWgPhppq24pch3hJ6ERH6XrXFEYwWREGL6X9dxPQyPEPitiNSCMaVpBN6x3udxyDkh4G2mkfvjkyMmQkScmeuc2",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9f4kDNxMZdWfMOD5VvkrA6Qif4VFnklULW.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9E4kDNxMZdWfMOD5Vvk4jLazX3dGTP.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5avu6XcZEsVN7RAzpzFsavB67nw1QHTsMHTR3yb4CAw2H7KyCSVT6UgAzYXJznmHfWH7KjdmUSiZe6TYYM42vMqk",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9E4kDNxMZdWfMOD5Vvk4jLazX3dGTP.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9f4kDNxMZdWfMOD5VvkrA6Qif1VFnklULWJXg.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/4VYP7vwc7YhuTmKAyRG8Tt8eZJpRJqQCy9bpdCtyBaz22NYFS9UvMqEEV5mSdBFDmb8CF5cpAXCrd5z2dfd1wvJs",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9f4kDNxMZdWfMOD5VvkrA6Qif1VFnklULWJXg.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9f4kDNxMZdWfMOD5VvkrByRCf2VFnklULWJXg.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/21fGiaxcfGi9x42FBnGg8kTtuJBbifkEH7vdV9gSq8ijmdRgsk4rFo9ncNet1SGpZzKjhMS4gctRZS18i55vyqdd",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9f4kDNxMZdWfMOD5VvkrByRCf2VFnklULWJXg.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9B4kDNxMZdWfMOD5VnLK3eRhf6Xl7Glw.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/4EHJAYHKthQBMfEFCib5BEoDYnvPZF591wXrmF2LERTnAm1oQLGXytYcRoiPiwptm8hdFLh5YA1WVxW2sFRhp2vQ",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9B4kDNxMZdWfMOD5VnLK3eRhf6Xl7Glw.woff2",
   "https://fonts.gstatic.com/s/ptserif/v16/EJRVQgYoZZY2vCFuvAFWzr-_dSb_.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5fMe1dfUmXmv7e9FSHXmoFLcDQmvD2SCzrtfYnpu39BV6tuhrdNv9urgxXa36EuHRRQbUbtqSGFKiiZPhrYDCjCc",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/EJRVQgYoZZY2vCFuvAFWzr-_dSb_.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9E4kDNxMZdWfMOD5Vvm4jLazX3dGTP.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5ceqUVoBK1Nmrkw4Qh7AC9aCyYY3dYgbyDsRAAnviftr8iD3w3XY1sXF1hjXT4AjjUFzSYnaYWVNetsT2AJNxRTm",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9E4kDNxMZdWfMOD5Vvm4jLazX3dGTP.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9f4kDNxMZdWfMOD5VvkrA6Qif3VFnklULWJXg.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/2x3JEGrdGqqqS3ge2oEodCY4RtChbSAaRcYueB25dbCsfSBL6Q1TZ8bDCbBqT8DobMRL77PMrHUJh3CUQYTHqcRd",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9f4kDNxMZdWfMOD5VvkrA6Qif3VFnklULWJXg.woff2",
   "https://fonts.gstatic.com/s/ptserif/v16/EJRQQgYoZZY2vCFuvAFT9gaQZy3foOFC-I2irw.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5wfN22nQsktdeWKSrWzi9Tn1LNf2gzC6TMvPow7k26GhZncxjkzHaK9X6yx2fkrqc6Mocr1MTssUSUXB86bQtdH",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/EJRQQgYoZZY2vCFuvAFT9gaQZy3foOFC-I2irw.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9B4kDNxMZdWfMOD5VnZKveSxf6Xl7Gl3LX.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/4vGPB41oydHLrPf5kvfZjvH2KkWnUMGaSd38F4PwKgCNaPKv2mNUGZ5cF2aNDxbxnmyUTbSS3cvt31soUjpYjmL9",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9B4kDNxMZdWfMOD5VnZKveSxf6Xl7Gl3LX.woff2",
   "https://fonts.gstatic.com/s/firamono/v14/N0bX2SlFPv1weGeLZDtgIv7Ss9XZYalI.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/J7F7QQean8UUngkd24k2YUASR8MvyeXPEcFE466CDZGR1NuDan9j72SkYiPiUEWLJwX2ptZ7QK7XgKAHgKv98Kw",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/N0bX2SlFPv1weGeLZDtgIv7Ss9XZYalI.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9B4kDNxMZdWfMOD5VnLK3eSxf6Xl7Gl3LX.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/2EqsuXd5WvX7XUN4fGwzKcbQHSCC7oCQZFZGcBJeiZzjSyZjXDePesGr3jBxuHJsDDwDDW1tPNpdaacdYRXzie4o",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9B4kDNxMZdWfMOD5VnLK3eSxf6Xl7Gl3LX.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9E4kDNxMZdWfMOD5VvlIjLazX3dGTP.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/31B2jXuFTYuR1ZCgn1LMoRMvXfNKJNhHoELZJvstsRts9Q9Skju2ojNQ7iMjjGzusw7nzPaBKYfKy54m4hCkXw6C",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9E4kDNxMZdWfMOD5VvlIjLazX3dGTP.woff2",
   "https://fonts.gstatic.com/s/ptserif/v16/EJRTQgYoZZY2vCFuvAFT_rm1cgT9rct48Q.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5AmNaU2Y2Xozqb4Lq3JABbFNjMvKZvY92DfiiGBnxXV1ohjyKofKNrrcuwfnkcWQgvjDWexLDSyCcxV3WgKfSXuF",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/EJRTQgYoZZY2vCFuvAFT_rm1cgT9rct48Q.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9E4kDNxMZdWfMOD5VvmojLazX3dGTP.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/4tVUrL8FJTnYvW28zpQVHrv7kmGTHLBm6XbeVXVGhRYMte1ZGNTmUbJgxRmu9SxSFBLkrUtMvhbXTWrmyYASYZD2",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9E4kDNxMZdWfMOD5VvmojLazX3dGTP.woff2",
   "https://fonts.gstatic.com/s/firasanscondensed/v10/wEOsEADFm8hSaQTFG18FErVhsC9x-tarWU3IuMB0cjRYhY8XEA.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5PPCpKynSgDBRLMqCjZVgdoMqksunkeqDExYBPGWHp6jVmB2159mTiysfSAZ43JzM4JF8XmNhoxwwjZyA1aRUC7L",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/wEOsEADFm8hSaQTFG18FErVhsC9x-tarWU3IuMB0cjRYhY8XEA.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9E4kDNxMZdWfMOD5Vvl4jLazX3dA.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/VFTyDJZ8RfRjxrgDrQmSqcaTrwwKcJButcNQWAXQ4Kxy2MhwXbKuKhWybSdg8Ehnf45ZqMYcbPocnuiuWZDKhQf",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9E4kDNxMZdWfMOD5Vvl4jLazX3dA.woff2",
   "https://fonts.gstatic.com/s/firamono/v14/N0bX2SlFPv1weGeLZDtgKP7Ss9XZYalI.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/2iUcYyzREaWTruN5UE5mKjyxYd4bU8KwmtQrphgpjCdH6ffBAs3sntpXn8j9JWeUn1vbMY4Un9KxRaXfZ5KY2d7W",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/N0bX2SlFPv1weGeLZDtgKP7Ss9XZYalI.woff2",
   "https://fonts.gstatic.com/s/ptserif/v16/EJRTQgYoZZY2vCFuvAFT_rO1cgT9rct48Q.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/3dhLWugmVRKaWwTnKFV3edMCuBbfgkCGfnp7n27c3PzhnPJsFTEJVmPjKQmaZhqLmARFmG95LaNoFfAjZepVtndN",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/EJRTQgYoZZY2vCFuvAFT_rO1cgT9rct48Q.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9f4kDNxMZdWfMOD5VvkrA6Qif8VFnklULWJXg.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/3mKVUrkT3yTG92Fhn1eEq6TyoGqpBZStr3CKc52dxhMQ5tJnDSSkCYGnLqEcCNevFMEpSkFM1mhvQpqabTBPvGwQ",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9f4kDNxMZdWfMOD5VvkrA6Qif8VFnklULWJXg.woff2",
   "https://cdn.tailwindcss.com/3.0.23?plugins=typography@0.5.2"
   "https://storage.googleapis.com/nextjournal-cas-eu/data/5TdqR2mFDMM1KGEB7cLdQ1vgLk3ZLQdzTBfQn1Zng8rUEdfCo1E3TkeMVRFgWKYmV1wvYcN7u5UzfmhYFBLRzvsQ?name=tailwind.css",
   "https://fonts.gstatic.com/s/ptserif/v16/EJRTQgYoZZY2vCFuvAFT_r21cgT9rcs.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/3xm8P6M3RWmffnABYDJE8HH6Rb4JscxK68cHkBQY7mUZQgsQoWsis2BGAUAAT9bhpByV4a64GXzjk13UmP5zMoog",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/EJRTQgYoZZY2vCFuvAFT_r21cgT9rcs.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9B4kDNxMZdWfMOD5VnZKveQhf6Xl7Gl3LX.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/AR7W6p3YvvrbRm47ujQBF49ykpkk8A6ikepr2miav7TCUpDet9gc1oYbNxumLcMrgLLtCf5Z3vY6FmQfkvoSCpj",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9B4kDNxMZdWfMOD5VnZKveQhf6Xl7Gl3LX.woff2",
   "https://fonts.gstatic.com/s/firasanscondensed/v10/wEOuEADFm8hSaQTFG18FErVhsC9x-tarUfPVFMZEfD5fp40nEYfW.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/2AtZxVori9uM29wVP4tUWTwCgr4EM9R9WwVP4Zhhvczp4oTTHYgMcjudNuYFMiQK2MHU1Q3sr1kZDhafaw7w3DaZ",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/wEOuEADFm8hSaQTFG18FErVhsC9x-tarUfPVFMZEfD5fp40nEYfW.woff2",
   "https://fonts.gstatic.com/s/firacode/v18/uU9NCBsR6Z2vfE9aq3bh09SDqFGedCMX.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/UySerVEdABZEwYphASrBpxf71ZpMt8ix4MjGGMsdgpR38A1fggtXkTn9bzTcEVz5KUebNHBkFz7W66HFD6dUqr9",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/uU9NCBsR6Z2vfE9aq3bh09SDqFGedCMX.woff2",
   "https://fonts.gstatic.com/s/ptserif/v16/EJRVQgYoZZY2vCFuvAFYzr-_dSb_nco.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/4WR8UCcpkQ4mUQB96f6ZL7zx6QycVe9MHYQ85vgBdDMaroF62JYGrQcr8PegkZ3goCoUfR3eFBBpG2LjZ9Xzq84T",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/EJRVQgYoZZY2vCFuvAFYzr-_dSb_nco.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9C4kDNxMZdWfMOD5VvkrjNYTLVdlTOr0s.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/44PocQhUSZ7z6TFWxdpJHLsjZmitzXPiq4Tcm4wBPnsFFPwRc7pQ85Q6ncteusktTBUpjYe7dXjannk32KT3aw8D",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9C4kDNxMZdWfMOD5VvkrjNYTLVdlTOr0s.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9B4kDNxMZdWfMOD5VnLK3eSBf6Xl7Gl3LX.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/dp9oAXB91FBmpTQULyGw9sdAwgCq32by2NsjW7hAYFSHKhVVS1nakWeLLgLkQBeJdh5BnckF3XbtnNL8D5A82Zt",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9B4kDNxMZdWfMOD5VnLK3eSBf6Xl7Gl3LX.woff2",
   "https://fonts.gstatic.com/s/firasanscondensed/v10/wEOsEADFm8hSaQTFG18FErVhsC9x-tarWU3IuMR0cjRYhY8.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/XDEKr5jL5imWgDPVxuV2jcaiifFDsHfjDx7Foa56vuhrHmAF54QX3XAqWvTrcjYawn6H33RtAtaZeXtvTEHpzwJ",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/wEOsEADFm8hSaQTFG18FErVhsC9x-tarWU3IuMR0cjRYhY8.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9B4kDNxMZdWfMOD5VnLK3eSRf6Xl7Gl3LX.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/56NLFnujKNEs8Qi74ABUFzNbhuyH5ybdkx5ckX1wiMDTPZAzA2Ny9H3WffZUkTXphMSwttYWkYh8cgfJxkWMeYaQ",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9B4kDNxMZdWfMOD5VnLK3eSRf6Xl7Gl3LX.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9B4kDNxMZdWfMOD5VnZKveShf6Xl7Gl3LX.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/3VNu2RnS5VTTQPxdwxaNFAZQrkeGtrKABe8csHEdH88TPwznANTvua4Zx4fVVan1wXBsRtrFY2Nvut2ygmj1gGzS",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9B4kDNxMZdWfMOD5VnZKveShf6Xl7Gl3LX.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9B4kDNxMZdWfMOD5VnLK3eQhf6Xl7Gl3LX.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/3B1XozTiQPRrE1eXoLpq5Ej4B1eQQJyfMw3LWgHJatPJu4t6t7gTPQN3wC81397iThwjfJ99KRAjsh84EmTEDFKr",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9B4kDNxMZdWfMOD5VnLK3eQhf6Xl7Gl3LX.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9E4kDNxMZdWfMOD5VvmYjLazX3dGTP.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/RD3HEqEPPYMYK3kdZZPuDenTqhGx1V5LZPRLvjpu875okhzXS3Gm8MWr1NCZNgiKTJddHd8478kjwV1YtxojdY9",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9E4kDNxMZdWfMOD5VvmYjLazX3dGTP.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9B4kDNxMZdWfMOD5VnZKveSBf6Xl7Gl3LX.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/2SSoXS43iYJvGjtURsRiTdZVn4yTiSi2LcJYE4WbJXToAQvn79n6kY4uRhu7zkYbGUsdNWN5Qp4zLUZrQRhUKdC8",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9B4kDNxMZdWfMOD5VnZKveSBf6Xl7Gl3LX.woff2",
   "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/66o7enndX5dJrF3FrH2vXRv3HayLBz9VVDaHYBA7eLZT6TxyAwtw1oJYfhvkz3QkmYFVNeF4v6aq4mizry4VL1qw?name=fonts.css",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/4HEU31FfU4qeBJsckPYy513MpNjJ7QFh2cvB9i4swFyB1txeskrvvbCmqYQZcXbADJnwWBYyFzMt3RJCQ4cSLpuQ?name=fonts.css",
   "https://fonts.gstatic.com/s/firasans/v16/va9f4kDNxMZdWfMOD5VvkrByRCf1VFnklULWJXg.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/3MbZ9u5mnMbyF7BTZuNZK5njsSYkbHGB9tkq5RjrZSmcHAbf5FcQKAoFhB2zfXHpHsHXp2tEvNxZQzbPXhj4qoX3",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9f4kDNxMZdWfMOD5VvkrByRCf1VFnklULWJXg.woff2",
   "https://fonts.gstatic.com/s/firamono/v14/N0bS2SlFPv1weGeLZDtondvHnvfUS5NBBA.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/2D1aMaSq283Uf236hvZ9ZEB9EwaeS8xTF9xqZv6P233ZndMDJS335rtKc4Edj1wqVCq7mwbtGWo947yKaYUgqf8t",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/N0bS2SlFPv1weGeLZDtondvHnvfUS5NBBA.woff2",
   "https://fonts.gstatic.com/s/firasanscondensed/v10/wEOuEADFm8hSaQTFG18FErVhsC9x-tarUfPVFMZEcD5fp40nEQ.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/2rd9zpo5yogM3Ykm4m3P8UWp2TdirvbNsZapAvpGCMtgf54qdv3ajHZWAFkZaiKKjfmiz6AEaS4DixS4R5CPM4WS",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/wEOuEADFm8hSaQTFG18FErVhsC9x-tarUfPVFMZEcD5fp40nEQ.woff2",
   "https://fonts.gstatic.com/s/ptserif/v16/EJRSQgYoZZY2vCFuvAnt66qWVyvVp8NAyIw.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5ZmwgTnnFzHrbeU9JgXPqgYPoN7RHjZSgVkUU3hUEAMSsSafQbmpTLa6QdiRLRgdhNcfbiaAADHdpa21yij1ehEH",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/EJRSQgYoZZY2vCFuvAnt66qWVyvVp8NAyIw.woff2",
   "https://fonts.gstatic.com/s/firasanscondensed/v10/wEOsEADFm8hSaQTFG18FErVhsC9x-tarWU3IuMd0cjRYhY8XEA.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/2uM2d5r6JiBTfPQ4LH14YWctrceg3iVA4k9NpWKgwcmavYa7cCJN56pYbc4SVpo1SuNNwUjMUbUiUDGtvseD2BfE",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/wEOsEADFm8hSaQTFG18FErVhsC9x-tarWU3IuMd0cjRYhY8XEA.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9f4kDNxMZdWfMOD5VvkrA6Qif0VFnklULWJXg.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/2uqZXXb9E2WAsnvCgcAfimMr9R86gAU8kLHAbWbWPxwU6HEeFLd5E6tK9sKFCnCgU9APwUMWo1PPDz8W3fhuvkqv",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9f4kDNxMZdWfMOD5VvkrA6Qif0VFnklULWJXg.woff2",
   "https://fonts.gstatic.com/s/firasanscondensed/v10/wEOuEADFm8hSaQTFG18FErVhsC9x-tarUfPVFMZEfT5fp40nEYfW.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/8oqr1ZEwtYeFhXp8a5nXD3hwAEq4K9Dtk9w2RQTi2dGq3Jm3vC4eooF11d3ufV7ynoD6XVGJ1H1vUiatKbxpC4z",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/wEOuEADFm8hSaQTFG18FErVhsC9x-tarUfPVFMZEfT5fp40nEYfW.woff2",
   "https://fonts.gstatic.com/s/ptserif/v16/EJRQQgYoZZY2vCFuvAFT9gaQZyffoOFC-I2irw.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5TwveHt8RwAeFzPgkfaCjyhv527mTkRt2rsvZsNsDYxJ2kfyVMwp6vrDcfJ5rvfHLbt1KXf3SfcoUR4QNGvjpk88",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/EJRQQgYoZZY2vCFuvAFT9gaQZyffoOFC-I2irw.woff2",
   "https://fonts.gstatic.com/s/firasanscondensed/v10/wEOsEADFm8hSaQTFG18FErVhsC9x-tarWU3IuMh0cjRYhY8XEA.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/3zVMeaaLBmKAXKN54CY6U9WrUXcLUm1icB4FGQDQeTG47aYo4F6TBJYcsvnThs3HuMyDiqtT2axWD39AhBj1ACoR",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/wEOsEADFm8hSaQTFG18FErVhsC9x-tarWU3IuMh0cjRYhY8XEA.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9f4kDNxMZdWfMOD5VvkrByRCf7VFnklULWJXg.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/LtpVW2DBvkPshVvHRuhLdzwDVhRwZmhkrVAYV9pmWCdmLCVUXyu259Z2yss9voSjNF4P9zT6RtGxmPLeg4Xcp2o",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9f4kDNxMZdWfMOD5VvkrByRCf7VFnklULWJXg.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9f4kDNxMZdWfMOD5VvkrA6Qif7VFnklULWJXg.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/66J215Je46XSay8kDPtBq1MMzhZZpXayvSamd31vdYv4eAEjV649eZd688YGQSR3LnNT2ydU6xUp9DbE2KCtk6BR",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9f4kDNxMZdWfMOD5VvkrA6Qif7VFnklULWJXg.woff2",
   "https://fonts.gstatic.com/s/firasanscondensed/v10/wEOsEADFm8hSaQTFG18FErVhsC9x-tarWU3IuMt0cjRYhY8XEA.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/2D82ecmMWpL7vYEcvjenqJ7UWaioqncXMsuyHpXfS3wZxHQSwDVkPnPs8qRBx4vHhqev2KV5Nkj5pT6TW676hhPM",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/wEOsEADFm8hSaQTFG18FErVhsC9x-tarWU3IuMt0cjRYhY8XEA.woff2",
   "https://fonts.gstatic.com/s/firacode/v18/uU9NCBsR6Z2vfE9aq3bh3dSDqFGedA.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5iYwXrP26UZFc6P82giHFypHUd6Svd9H4KGcNn1Lm6fPYKbmt3LdH9u7HBcgbdc2y9iabDX2oXjNzVjygp2D3W6G",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/uU9NCBsR6Z2vfE9aq3bh3dSDqFGedA.woff2",
   "https://fonts.gstatic.com/s/firamono/v14/N0bS2SlFPv1weGeLZDtondvHkPfUS5NBBASF.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5P251VZ85ZpxiZwBHLfpwkq2rhsZ3AZRQSRYi2Vzdx96sM4weCCJCZisNZfgKGKXHLJRVr7sJmVi7miPkujzV7qs",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/N0bS2SlFPv1weGeLZDtondvHkPfUS5NBBASF.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9C4kDNxMZdWfMOD5VvkrjKYTLVdlTOr0s.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/4TbgY5k331HeEWNb7kn8dxotbbiGVgfGxRTqpdBWcqCoCm5G5q5PzVfsTtp6d5wuE7VCpyhV1ngV7XYqykMbBpao",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9C4kDNxMZdWfMOD5VvkrjKYTLVdlTOr0s.woff2",
   "https://fonts.gstatic.com/s/firasanscondensed/v10/wEOuEADFm8hSaQTFG18FErVhsC9x-tarUfPVFMZEcz5fp40nEYfW.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/4vmT9pxN2Z1iM4JnM3rwxxzUmWq5TzCne3GojkkkhhyCxhmqhbrt5mFBsQjnzZX2tnUjQLA28x1miZFD9CFT89C5",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/wEOuEADFm8hSaQTFG18FErVhsC9x-tarUfPVFMZEcz5fp40nEYfW.woff2",
   "https://fonts.gstatic.com/s/firasanscondensed/v10/wEOsEADFm8hSaQTFG18FErVhsC9x-tarWU3IuMl0cjRYhY8XEA.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/C7B9b4YV747BuqMs5Go9ai7hnJ9N5hJztR3mQZfKzzuVJLupUNWjrrciU6dXBLPo8CySYSBR9xQaDzTSvG4UGE7",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/wEOsEADFm8hSaQTFG18FErVhsC9x-tarWU3IuMl0cjRYhY8XEA.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9f4kDNxMZdWfMOD5VvkrA6Qif2VFnklULWJXg.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/29u3cQ8H7opDU4sErjk1p8HBtvM5NMn1xv9WhUp2YdV5NnBLMKyzmBsYxNeVJAUckiuZFvU2NxUSA2URhRVde1q9",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9f4kDNxMZdWfMOD5VvkrA6Qif2VFnklULWJXg.woff2",
   "https://fonts.gstatic.com/s/ptserif/v16/EJRSQgYoZZY2vCFuvAnt66qfVyvVp8NAyIw.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5VqeBiKdgtnshVGXK8MnWrsjNZTNZpALYNAaSuKGeoT4uWCe49LG7CqkaRMCuau6L6nWVgf6Et28c6eNmPv5TanY",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/EJRSQgYoZZY2vCFuvAnt66qfVyvVp8NAyIw.woff2",
   "https://fonts.gstatic.com/s/firasanscondensed/v10/wEOuEADFm8hSaQTFG18FErVhsC9x-tarUfPVFMZEdD5fp40nEYfW.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5K1r19tH6JMQS8w8gktqT3R5meGBqbrdYRP6FWtWkUmFcVoqC8N3WgUBQyRgkWhrSmiyL9FghiAUzkKJT6jDbwR1",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/wEOuEADFm8hSaQTFG18FErVhsC9x-tarUfPVFMZEdD5fp40nEYfW.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9C4kDNxMZdWfMOD5VvkrjFYTLVdlTOr0s.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5j7gebNub9chjW29tS73SqSrhzXxTkwaZMiFQTF6pwR8iuhBqdT1QmtzVBTF74tS9z9Dtfyyx4PPuduCAFTUz5YA",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9C4kDNxMZdWfMOD5VvkrjFYTLVdlTOr0s.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9f4kDNxMZdWfMOD5VvkrByRCf4VFnklULW.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/2VpNhGxS1XnGQn6pVgF2xi6Z9knAwGt6f7g3M5AFCHcVG9SNWYRYyzpj8vPopaPuguGbzKBp9mtYwQbf22d5E7sZ",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9f4kDNxMZdWfMOD5VvkrByRCf4VFnklULW.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9C4kDNxMZdWfMOD5VvkrjGYTLVdlTOr0s.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/DCpXWUqiWZf4RbxoriwAsXvCEhtDj5iJQddZXh8EgXEeHUA1TrjvvzDWZovsnpHV1eFP3pUeJSXx6YfvPv7LeFZ",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9C4kDNxMZdWfMOD5VvkrjGYTLVdlTOr0s.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9B4kDNxMZdWfMOD5VnZKveRRf6Xl7Gl3LX.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/LMsva1ise1nMaosLzxzyMZ2VgWa2FFkhM6crYW6s6uLC8Yhp8FRXqzzUWLCz8zzCGskEQE19Qtoss5GXvyZzwfd",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9B4kDNxMZdWfMOD5VnZKveRRf6Xl7Gl3LX.woff2",
   "https://fonts.gstatic.com/s/firamono/v14/N0bS2SlFPv1weGeLZDtondvHnffUS5NBBASF.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/4Z8524yV3hdYxjFetEFh6hwQ3vygqa6sqn83Rq6si9ssZ1pAJDpXZEUmk1EDn89gL6oDuvAdpSWdxT23f8nNitYW",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/N0bS2SlFPv1weGeLZDtondvHnffUS5NBBASF.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9B4kDNxMZdWfMOD5VnZKveRhf6Xl7Glw.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/2GwtbJDcuoo1whHMZWBfjhi9uNQjXmN7S2Pi5FPc8rA8uYAPh9Ucv3ruVPTyacyK31W91veVECAzDR7vuSbt3GuL",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9B4kDNxMZdWfMOD5VnZKveRhf6Xl7Glw.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9B4kDNxMZdWfMOD5VnZKveSRf6Xl7Gl3LX.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5c5qdQ1eYpLk3wQYGgbeHoMUFn36S684pMD8By3GiCUjJcwdWx3VhBcjGSdWdMgXK1owntZxvKamHW2Ne4DoGkvG",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9B4kDNxMZdWfMOD5VnZKveSRf6Xl7Gl3LX.woff2",
   "https://fonts.gstatic.com/s/firacode/v18/uU9NCBsR6Z2vfE9aq3bh0dSDqFGedCMX.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5pLRLiZ1nhe3HWHZNbGjegFTzJT2eLLxZ1Q6MqfcXeEeuSSjxmxtfG9uWKsALbem6VnkNagBRkdRS1NYyx5eL7gK",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/uU9NCBsR6Z2vfE9aq3bh0dSDqFGedCMX.woff2",
   "https://fonts.gstatic.com/s/ptserif/v16/EJRVQgYoZZY2vCFuvAFbzr-_dSb_nco.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/64LY6Z8H97aHFCgAahUGqtJ4Y8ViuQwramsE5MSSoz82g28szhWwTRkdQLNBNeWFEzGGoFzeNgWa3DYBjg99TtEu",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/EJRVQgYoZZY2vCFuvAFbzr-_dSb_nco.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9f4kDNxMZdWfMOD5VvkrByRCf3VFnklULWJXg.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5rHi3ffssVrqwe4eqn21cdpLMoGYDHRHqJEnWAWdcj58CJXkt3X7BfqDae16LzqTgySDjfDNaTFm8Atgh1RLPbBi",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9f4kDNxMZdWfMOD5VvkrByRCf3VFnklULWJXg.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9C4kDNxMZdWfMOD5VvkrjEYTLVdlTOr0s.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/29tnErd9WwLkvqHyEbS6nVha1WYuv1C6B8LqZRLVXKV9iR5bRthsxm2jLmeqYJ9En1gGkWc6rXZ4bz85L5K8pKLS",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9C4kDNxMZdWfMOD5VvkrjEYTLVdlTOr0s.woff2",
   "https://fonts.gstatic.com/s/firacode/v18/uU9NCBsR6Z2vfE9aq3bh0NSDqFGedCMX.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/2TXebnQ7yTvuKpLfXhFf4SYhmzJFkjAMD6FQXkBFgJaqwQahbESdJeFqg2xAx1ncFhYUeDdrHbhDhtGkFzXACm6R",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/uU9NCBsR6Z2vfE9aq3bh0NSDqFGedCMX.woff2",
   "https://fonts.gstatic.com/s/ptserif/v16/EJRVQgYoZZY2vCFuvAFSzr-_dSb_nco.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/aQuHsfUZ2vkzsv97Vq9X3M7CdGNaTKDjq7VujWdG5MepR3LEZoqANSUswKWgYY33gNCmZwMyU3gMGbmjW7GJj4R",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/EJRVQgYoZZY2vCFuvAFSzr-_dSb_nco.woff2",
   "https://fonts.gstatic.com/s/ptserif/v16/EJRSQgYoZZY2vCFuvAnt66qSVyvVp8NA.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/3kS32vutek2ug2nipbjx2ZdcGPCHJ4NjWF2dAQALU4cUvMpVKJ5nxox5pyWXQ7XHJ7YsaWR69kDQAtKncmmSrMdZ",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/EJRSQgYoZZY2vCFuvAnt66qSVyvVp8NA.woff2",
   "https://fonts.gstatic.com/s/ptserif/v16/EJRSQgYoZZY2vCFuvAnt66qcVyvVp8NAyIw.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/3umisMDpRaivfisygnk3t5vKz6pkayX2FQgMm83WMDdNUQAAWkG9wXLtTgKMA9fE8VHCT6W3Kk6NGhqdLawVgq5W",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/EJRSQgYoZZY2vCFuvAnt66qcVyvVp8NAyIw.woff2",
   "https://fonts.gstatic.com/s/ptserif/v16/EJRTQgYoZZY2vCFuvAFT_rC1cgT9rct48Q.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/2Hsf93u7f97xtjUTz31MTUHCjxDF6GfjE9gBh1HsFrdd2nBNbQs26VUrFfUs9yCMMYEJxmN853TXqP5C2ig4BXTQ",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/EJRTQgYoZZY2vCFuvAFT_rC1cgT9rct48Q.woff2",
   "https://fonts.gstatic.com/s/firamono/v14/N0bX2SlFPv1weGeLZDtgKv7Ss9XZYalI.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/54NmXzma64BwPb3W4AG5xKGNUjcywbDXBHzSJrgdehxSptX87Uhkdh3KwthxCbZJ1S59ZG7ofaE46H4gMxpN77QF",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/N0bX2SlFPv1weGeLZDtgKv7Ss9XZYalI.woff2",
   "https://fonts.gstatic.com/s/firamono/v14/N0bS2SlFPv1weGeLZDtondvHmvfUS5NBBASF.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/4yjpa6krGQhnQww2MN31ReymJNXh5xgKKmD5raUHdMT33CRLC7FE9TZGuYdrXnohJ4JKpPgpnUhiQr7SKxWh8dVg",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/N0bS2SlFPv1weGeLZDtondvHmvfUS5NBBASF.woff2",
   "https://fonts.gstatic.com/s/firasanscondensed/v10/wEOuEADFm8hSaQTFG18FErVhsC9x-tarUfPVFMZEfz5fp40nEYfW.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/3pHFCgLp6f86nRxqcHqKieXwTz2MRHkQ3FnnhbBwW6pJQzt9jsHEqGiUyNVr3ccnvWpFQ7h1CodYgQgS2aZryRqR",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/wEOuEADFm8hSaQTFG18FErVhsC9x-tarUfPVFMZEfz5fp40nEYfW.woff2",
   "https://fonts.gstatic.com/s/firamono/v14/N0bX2SlFPv1weGeLZDtgJf7Ss9XZYalI.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/61LSS7G1pSkheCvBE18HzqAgCV2T8BvKuBAENfFyQBjGS1g4Afo3FNtn16NQBA4nrccUSumRZ1NWgvHJLGcNddxf",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/N0bX2SlFPv1weGeLZDtgJf7Ss9XZYalI.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9E4kDNxMZdWfMOD5VvmIjLazX3dGTP.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/2mRyKWCKoATD1TWmuLJBMpK7neHyFjdN8YiDoAdgEf1Hn7MAaeWCzbZ7PV4cRgK5uNv8eVUo1ZeHkip1U8cuyXDv",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9E4kDNxMZdWfMOD5VvmIjLazX3dGTP.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9B4kDNxMZdWfMOD5VnLK3eRRf6Xl7Gl3LX.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/65RzBwutuyLANN52mNUwoxqmYDhCGULk91jE3hCU5cPhSfAvFCRVkUBwondZ2ya6vUqm6bzhproVmbeWS24WHMQk",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9B4kDNxMZdWfMOD5VnLK3eRRf6Xl7Gl3LX.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9f4kDNxMZdWfMOD5VvkrByRCf8VFnklULWJXg.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/9DCnkDdjyWQq18eAmhmApjxqA8QSU2FaUT9vmNfSeQEyzKCNZVjboL2xCrqGs6VMqi13aanRffVvGzRvMZDZemH",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9f4kDNxMZdWfMOD5VvkrByRCf8VFnklULWJXg.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9C4kDNxMZdWfMOD5VvkrjJYTLVdlTO.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5dtfSFZAn37UrukEBEvavCvEheZwXscCpMdFXwbUfen499bQ96qqViFhTjisQhCkGR9nfmDZRaLkovzNNPucCrQj",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9C4kDNxMZdWfMOD5VvkrjJYTLVdlTO.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9f4kDNxMZdWfMOD5VvkrByRCf0VFnklULWJXg.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/4bCVWpALMxdeS9b9HVZC26u9Jbgop1URbSJvWcuvcoaTjZtBJJiAq31imZ7eHzf9HMZ69U2d6JT6msYNN72soZXo",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9f4kDNxMZdWfMOD5VvkrByRCf0VFnklULWJXg.woff2",
   "https://fonts.gstatic.com/s/firasanscondensed/v10/wEOsEADFm8hSaQTFG18FErVhsC9x-tarWU3IuMp0cjRYhY8XEA.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5n6gYrNr3x7xNzz4Aj97iMDpfpYdqpXi9Va47C9sTRDhQuJXdTjYYDS3fDjNdQPG3fS6MtXsKEQEK9pDX3opuBgg",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/wEOsEADFm8hSaQTFG18FErVhsC9x-tarWU3IuMp0cjRYhY8XEA.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9C4kDNxMZdWfMOD5VvkrjHYTLVdlTOr0s.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/b9vt4HBLZ9NJxoZ4VwQEkD4Ub9wK3aG4CUvvNwmKLCdoTkmKmRhCuqGCexP1tiXi5hYGDGWLejvXz9zwY7a1iw1",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9C4kDNxMZdWfMOD5VvkrjHYTLVdlTOr0s.woff2",
   "https://fonts.gstatic.com/s/firasans/v16/va9B4kDNxMZdWfMOD5VnLK3eShf6Xl7Gl3LX.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5TRo89ria9s6g7L74DCsvuFihJV8EZnBcfoQ6HueNYjhyZtSR1kSMKHwKfdyFUwb2dxYZ9t994YjUjhzECinNWLd",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/va9B4kDNxMZdWfMOD5VnLK3eShf6Xl7Gl3LX.woff2",
   "https://fonts.gstatic.com/s/firamono/v14/N0bX2SlFPv1weGeLZDtgJv7Ss9XZYQ.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/5s2azZsdegV5jPa3bMg2f8WDDpmkZ181EeE4nXeeRQajAXAtbAWWLGtSzqTjURoWnTFWwCFhQGeA448JVmYhqo6N",
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/N0bX2SlFPv1weGeLZDtgJv7Ss9XZYQ.woff2",
   "https://fonts.gstatic.com/s/firasanscondensed/v10/wEOuEADFm8hSaQTFG18FErVhsC9x-tarUfPVFMZEfj5fp40nEYfW.woff2"
-  "https://storage.googleapis.com/nextjournal-cas-eu/data/41k7WtpEp9P5HuDwupa9TQSmMSAgCQeYTPS2Dstsds4iZcbqZgv78cYLvaUnZrZ7TqvokGrpUFMyBh4xPcnALfpZ"}}
+  "https://storage.googleapis.com/nextjournal-cas-eu/data/wEOuEADFm8hSaQTFG18FErVhsC9x-tarUfPVFMZEfj5fp40nEYfW.woff2"}}

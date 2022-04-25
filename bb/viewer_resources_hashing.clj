@@ -99,7 +99,8 @@
                (spit f b)
                f)
              a)
-         hash (if (str/ends-with? a "ttf")
+         hash (if (or (str/ends-with? a "ttf")
+                      (str/ends-with? a "woff2"))
                 (fs/file-name a) (sha512-ize f))
          gs-dest (str gs-bucket "/data/" hash)
          gs-url (cas-link hash (:name (asset->info a)))]
