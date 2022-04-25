@@ -5,7 +5,8 @@
             [babashka.tasks :as tasks :refer [shell]]
             [clojure.pprint :as pprint]
             [clojure.string :as str]
-            [nextjournal.dejavu :as djv]))
+            [nextjournal.dejavu :as djv]
+            [clojure.java.io :as io]))
 
 (def output-dirs ["resources/public/ui"
                   "resources/public/build"])
@@ -91,12 +92,12 @@
    #_#_vega-embed-link {:name "vega-embed.min.js"}})
 
 (defn store-asset
-  ([a] (store-asset a (:body (curl/get a))))
+  ([a] (store-asset a (:body (curl/get a {:as :stream}))))
   ([a content]
    (let [f (if (str/starts-with? a "http")
              (let [b content
                    f (fs/file (fs/create-temp-file))]
-               (spit f b)
+               (io/copy b f)
                f)
              a)
          hash (if (or (str/ends-with? a "ttf")
@@ -125,8 +126,8 @@
                                                     cached (str/replace remote
                                                                         (str base-url "/data")
                                                                         "/assets")]
-                                                (spit (str ".clerk/assets/" hash)
-                                                      (:body (curl/get remote)))
+                                                (io/copy (:body (curl/get remote {:as :stream}))
+                                                         (io/file (str ".clerk/assets/" hash)))
                                                 cached))) font-css font-links)
         [font-css-link gurl] (store-asset font-css-link font-css)
         manifest (assoc manifest font-css-link gurl)
