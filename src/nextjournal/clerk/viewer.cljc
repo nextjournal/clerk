@@ -16,7 +16,10 @@
                    (javax.imageio ImageIO)
                    (java.util Base64))))
 
-(defrecord ViewerEval [form])
+(defrecord ViewerEval [form]
+  #?@(:cljs [IFn
+             (-invoke [_this x] ((eval form) x))
+             (-invoke [_this x y] ((eval form) x y))]))
 (defrecord ViewerFn [form #?(:cljs f)]
   #?@(:cljs [IFn
              (-invoke [this x] ((:f this) x))

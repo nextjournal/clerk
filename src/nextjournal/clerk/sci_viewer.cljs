@@ -18,7 +18,6 @@
             [nextjournal.view.context :as view-context]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
-            [nextjournal.viewer.markdown :as markdown]
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
             [nextjournal.viewer.vega-lite :as vega-lite]
@@ -705,7 +704,7 @@
              "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")])
 
 (dc/defcard viewer-markdown
-  [inspect (md "### Hello Markdown\n\n- a bullet point")])
+  [inspect (viewer/describe (md "### Hello Markdown\n\n* a bullet point"))])
 
 (dc/defcard viewer-code
   [inspect (code "(str (+ 1 2) \"some string\")")])
@@ -773,25 +772,22 @@
   "Viewers that are lists are evaluated using sci."
   [inspect (with-viewer (viewer/->viewer-fn '(fn [x] (v/html [:h3 "Ohai, " x "! 👋"]))) "Hans")])
 
-
 (dc/defcard notebook
   "Shows how to display a notebook document"
-  [state]
-  [inspect
-   (with-viewer :clerk/notebook
-     [(with-viewer :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
-      [1 2 3 4]
-      (code "(shuffle (range 10))")
-      {:hello [0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9]}
-      (md "# And some more\n And some more [markdown](https://daringfireball.net/projects/markdown/).")
-      (code "(shuffle (range 10))")
-      (md "## Some math \n This is a formula.")
-      (tex
-       "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")
-      (plotly {:data [{:y (shuffle (range 10)) :name "The Federation"}
-                      {:y (shuffle (range 10)) :name "The Empire"}]})])]
-  {::dc/class "p-0"})
-
+  [doc]
+  [inspect (with-viewer :clerk/notebook @doc)]
+  {::dc/class "p-0"
+   ::dc/state
+   {:blocks [[inspect (viewer/describe (with-viewer :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna."))]
+             [inspect [1 2 3 4]]
+             [inspect (code "(shuffle (range 10))")]
+             [inspect {:hello [0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9]}]
+             [inspect (viewer/describe (md "# And some more\n And some more [markdown](https://daringfireball.net/projects/markdown/)."))]
+             [inspect (code "(shuffle (range 10))")]
+             [inspect (viewer/describe (md "## Some math \n This is a formula."))]
+             [inspect (tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")]
+             [inspect (plotly {:data [{:y (shuffle (range 10)) :name "The Federation"}
+                                      {:y (shuffle (range 10)) :name "The Empire"}]})]]}})
 
 (def ^:dynamic *viewers* nil)
 
