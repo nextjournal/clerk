@@ -1014,8 +1014,8 @@ black")}]))}
 (defn clerk-eval [form]
   (.ws_send ^js goog/global (pr-str form)))
 
-(defn katex-viewer [tex-string]
-  (html (katex/to-html-string tex-string)))
+(defn katex-viewer [tex-string {:keys [inline?]}]
+  (html (katex/to-html-string tex-string (j/obj :displayMode (not inline?)))))
 
 (defn html-viewer [markup]
   (r/as-element
