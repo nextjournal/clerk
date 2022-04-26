@@ -1135,7 +1135,7 @@ black")}]))}
 (defonce !last-ns (volatile! @sci/ns))
 
 (defn eval-string [s]
-  (sci/binding [sci/ns @sci/ns]
+  (sci/binding [sci/ns @!last-ns]
     (let [rdr (sci/reader s)]
       (loop [res nil]
         (let [form (sci/parse-next @!sci-ctx rdr)]
