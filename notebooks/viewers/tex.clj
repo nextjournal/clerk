@@ -10,7 +10,7 @@
 ;;
 ;; $${\frac{d}{d t} \frac{∂ L}{∂ \dot{q}}}-\frac{∂ L}{∂ q}=0.$$
 ;;
-;; also called _display mode_ in $\LaTeX$. The same should render fire in markdown results:
+;; also called _display mode_ in $\LaTeX$. The same should render fine in markdown results:
 
 (clerk/md "Inline $e^{2\\pi i}-1 = 0$ and block
 
