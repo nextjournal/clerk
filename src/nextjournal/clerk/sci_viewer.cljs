@@ -1132,8 +1132,18 @@ black")}]))}
 
 (set! *eval* eval-form)
 
+(defonce !last-ns (volatile! @sci/ns))
+
 (defn eval-string [s]
-  (sci/eval-string* @!sci-ctx s))
+  (sci/binding [sci/ns @sci/ns]
+    (let [rdr (sci/reader s)]
+      (loop [res nil]
+        (let [form (sci/parse-next @!sci-ctx rdr)]
+          (if (= :sci.core/eof form)
+            (do
+              (vreset! !last-ns @sci/ns)
+              res)
+            (recur (sci/eval-form @!sci-ctx form))))))))
 
 (swap! viewer/!viewers (fn [viewers]
                          (-> (into {} (map (juxt key (comp #(into [] (map viewer/process-render-fn) %)  val))) viewers)
@@ -1146,7 +1156,7 @@ black")}]))}
 (defn nrepl-reply [{:keys [id session]} payload]
   (js/console.log (assoc payload :id id :session session))
   (.send (nrepl-websocket)
-         (str (assoc payload :id id :session session))))
+         (str (assoc payload :id id :session session :ns (str @!last-ns)))))
 
 (defn handle-nrepl-eval [{:keys [code] :as msg}]
   (let [[kind val] (try [::success (eval-string code)]
