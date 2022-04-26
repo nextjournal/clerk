@@ -12,7 +12,11 @@
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.view :as clerk.view]
             [nextjournal.clerk.webserver :as clerk.webserver]
-            [nextjournal.clerk.viewer :as v]))
+            [nextjournal.clerk.viewer :as v]
+            [nextjournal.markdown :as md]
+            [nextjournal.markdown.transform :as md.transform]
+            [lambdaisland.uri.normalize :as uri.normalize]
+            [clojure.string :as str]))
 
 
 ;; The key ingredient to achieve this is to allow to override `:clerk/notebook` viewer
@@ -79,42 +83,106 @@
                                       (assoc :open-fragment []))))))))
              blocks))
 
-;; ---
-;; the actual viewers:
+(def slideshow-prose-classes
+  (clojure.string/join
+    " "
+    ["prose max-w-none"
+     "prose-h1:mb-0" "prose-h2:mb-8" "prose-h3:mb-8" "prose-h4:mb-8"
+     "prose-h1:text-6xl" "prose-h2:text-5xl" "prose-h3:text-3xl" "prose-h4:text-2xl"]))
 
 (def slideshow-viewers
-  [{:name :clerk/slide
+  [{:name :nextjournal.markdown/doc :transform-fn (v/into-markup [:div.viewer-markdown])}
+
+   ;; blocks
+   {:name :nextjournal.markdown/code
+    :transform-fn #(v/with-viewer :html
+                                [:div.viewer-code
+                                 (v/with-viewer :code
+                                              (md.transform/->text %))])}
+
+   {:name :clerk/slide
     :fetch-fn v/fetch-all
     :transform-fn (fn [fragment]
-                    (v/with-viewer :html
-                      (->> fragment
-                           (into
-                             [:section.viewer-markdown.text-left.overflow-y-auto]
-                             (map (fn [x]
-                                    (cond
-                                      ((every-pred map? :type) x) (v/with-md-viewer x)
-                                      ((every-pred map? :form) x) (v/with-viewer :clerk/code-block x)
-                                      'else (v/with-viewer :clerk/result x))))))))}
+                    (v/with-viewer
+                      :html
+                      [:div.flex.flex-col.justify-center
+                       {:style {:min-block-size "100vh"}}
+                       (->> fragment
+                            (into
+                              [:div.text-xl.p-20
+                               {:class slideshow-prose-classes}]
+                              (map (fn [x]
+                                     (cond
+                                       ((every-pred map? :type) x) (v/with-md-viewer x)
+                                       ((every-pred map? :form) x) (v/with-viewer :clerk/code-block x)
+                                       'else (v/with-viewer :clerk/result x))))))]))}
    {:name :clerk/notebook
     :transform-fn doc->slides
     :fetch-fn v/fetch-all
     :render-fn '(fn [slides]
-                  ;; append CSS
-                  (doto (js/document.querySelector "head")
-                    (.appendChild (doto (js/document.createElement "link")
-                                    (.setAttribute "rel" "stylesheet")
-                                    (.setAttribute "href" "https://cdn.jsdelivr.net/npm/reveal.js@4.3.1/dist/reveal.css")))
-                    (.appendChild (doto (js/document.createElement "link")
-                                    (.setAttribute "rel" "stylesheet")
-                                    (.setAttribute "href" "https://cdn.jsdelivr.net/npm/reveal.js@4.3.1/dist/theme/white.css"))))
-                  (v/with-d3-require
-                    {:package "reveal.js@4.3.1"}
-                    (fn [Reveal]
-                      (reagent/with-let
-                        [refn (fn [el] (when el (.initialize (Reveal. el (clj->js {})))))]
-                        (v/html
-                          [:div.reveal {:ref refn :style {:width "100%" :height "780px"}}
-                           (into [:div.slides] slides)])))))}])
+                  (v/html
+                    (reagent.core/with-let [!state (reagent.core/atom {:current-slide 0
+                                                                      :grid? false
+                                                                      :viewport-width js/innerWidth
+                                                                      :viewport-height js/innerHeight})
+                                            ref-fn (fn [el]
+                                                     (when el
+                                                       (swap! !state assoc :stage-el el)
+                                                       (js/addEventListener
+                                                         "resize"
+                                                         #(swap! !state assoc
+                                                                 :viewport-width js/innerWidth
+                                                                 :viewport-height js/innerHeight))
+                                                       (js/document.addEventListener
+                                                         "keydown"
+                                                         (fn [e]
+                                                           (case (.-key e)
+                                                             "Escape" (swap! !state update :grid? not)
+                                                             "ArrowRight" (when-not (:grid? !state)
+                                                                            (swap! !state update :current-slide #(min (dec (count slides)) (inc %))))
+                                                             "ArrowLeft" (when-not (:grid? !state)
+                                                                           (swap! !state update :current-slide #(max 0 (dec %))))
+                                                             nil)))))
+                                            default-transition {:type :spring
+                                                                :duration 0.4
+                                                                :bounce 0.1}]
+                      (let [{:keys [grid? current-slide viewport-width viewport-height]} @!state]
+                        [:div.overflow-hidden.relative.bg-slate-50
+                         {:ref ref-fn
+                          :id "stage"
+                          :style {:width viewport-width :height viewport-height}}
+                         (into [:> (.. framer-motion -motion -div)
+                                {:style {:width (if grid? viewport-width (* (count slides) viewport-width))}
+                                 :initial false
+                                 :animate {:x (if grid? 0 (* -1 current-slide viewport-width))}
+                                 :transition default-transition}]
+                               (map-indexed
+                                 (fn [i slide]
+                                   (let [width 250
+                                         height 150
+                                         gap 40
+                                         slides-per-row (int (/ viewport-width (+ gap width)))
+                                         col (mod i slides-per-row)
+                                         row (int (/ i slides-per-row))]
+                                     [:> (.. framer-motion -motion -div)
+                                      {:initial false
+                                       :class (str "absolute left-0 top-0 overflow-x-hidden bg-white "
+                                                   (if grid? "rounded-lg shadow-lg overflow-y-hidden cursor-pointer ring-1 ring-slate-200 hover:ring hover:ring-blue-500/50 active:ring-blue-500"))
+                                       :animate {:width (if grid? width viewport-width)
+                                                 :height (if grid? height viewport-height)
+                                                 :x (if grid? (+ gap (* (+ gap width) col)) (* i viewport-width))
+                                                 :y (if grid? (+ gap (* (+ gap height) row)) 0)}
+                                       :transition default-transition
+                                       :on-click #(when grid? (swap! !state assoc :current-slide i :grid? false))}
+                                      [:> (.. framer-motion -motion -div)
+                                       {:style {:width viewport-width
+                                                :height viewport-height
+                                                :transformOrigin "left top"}
+                                        :initial false
+                                        :animate {:scale (if grid? (/ width viewport-width) 1)}
+                                        :transition default-transition}
+                                       slide]]))
+                                 slides))]))))}])
 
 ;; ---
 ;; this piece of code is to test slideshow mode in cell result view

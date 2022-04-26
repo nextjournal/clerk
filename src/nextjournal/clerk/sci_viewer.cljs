@@ -22,6 +22,7 @@
             [nextjournal.viewer.plotly :as plotly]
             [nextjournal.viewer.vega-lite :as vega-lite]
             [lambdaisland.uri.normalize :as uri.normalize]
+            ["framer-motion" :as framer-motion]
             [re-frame.context :as rf]
             [react :as react]
             [reagent.core :as r]
@@ -1087,6 +1088,7 @@ black")}]))}
   (atom (sci/init {:async? true
                    :disable-arity-checks true
                    :classes {'js goog/global
+                             'framer-motion framer-motion
                              :allow :all}
                    :aliases {'j 'applied-science.js-interop
                              'reagent 'reagent.core
