@@ -399,9 +399,7 @@
    (let [{:as viewer :keys [render-fn transform-fn update-viewers-fn]} (viewer-for viewers x)
          opts (when (wrapped-value? x)
                 (select-keys x [:nextjournal/width]))
-         v (if transform-fn
-             (-> (value x) value transform-fn)
-             (value x))]
+         v (cond-> (value x) transform-fn transform-fn)]
      (if (and transform-fn (not render-fn))
        (recur v (cond-> viewers update-viewers-fn update-viewers-fn))
        (cond-> (wrap-value v viewer)
