@@ -150,8 +150,6 @@
 
 #_(demunge-ex-data (datafy/datafy (ex-info "foo" {:bar :baz})))
 
-(def elide-string-length 100)
-
 (declare describe with-viewer)
 
 (defn inspect-leafs [opts x]
@@ -188,17 +186,17 @@
           viewers
           select-fn->update-fn))
 
-#_ (update-viewers default-viewers {:fetch-opts #(dissoc % :fetch-opts)})
+#_(update-viewers default-viewers {:fetch-opts #(dissoc % :fetch-opts)})
 
-(defn prepend [viewers viewers-to-prepend]
-  (into (vec viewers-to-prepend) viewers))
+(defn add-viewers [viewers new-viewers]
+  (into (vec new-viewers) viewers))
 
 (defn update-table-viewers [viewers]
   (-> viewers
       (update-viewers {(comp #{:elision} :name) #(assoc % :render-fn '(fn [_] (v/html "…")))
                        (comp #{string?} :pred) #(assoc % :render-fn (quote v/string-viewer))
                        (comp #{number?} :pred) #(assoc % :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))])))})
-      (prepend [{:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))}])))
+      (add-viewers [{:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))}])))
 
 #?(:clj (def utc-date-format ;; from `clojure.instant/thread-local-utc-date-format`
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
@@ -208,7 +206,7 @@
 (def default-viewers
   ;; maybe make this a sorted-map
   [{:pred char? :render-fn '(fn [c] (v/html [:span.cmt-string.inspected-value "\\" c]))}
-   {:pred string? :render-fn (quote v/quoted-string-viewer) :fetch-opts {:n elide-string-length}}
+   {:pred string? :render-fn (quote v/quoted-string-viewer) :fetch-opts {:n 85}}
    {:pred number? :render-fn '(fn [x] (v/html [:span.cmt-number.inspected-value
                                                (if (js/Number.isNaN x) "NaN" (str x))]))}
    {:pred symbol? :render-fn '(fn [x] (v/html [:span.cmt-keyword.inspected-value (str x)]))}
@@ -388,8 +386,9 @@
               (throw (ex-info (str "cannot find viewer named " selected-viewer)
                               {:viewer-name selected-viewer :x (->value x) :viewers viewers})))
           selected-viewer))
-      (find-viewer viewers (let [v (->value x)] (fn [{:keys [pred]}]
-                                                (and (ifn? pred) (pred v)))))
+      (find-viewer viewers (let [v (->value x)]
+                             (fn [{:keys [pred]}]
+                               (and (ifn? pred) (pred v)))))
       (throw (ex-info (str "cannot find matching viewer for value")
                       {:x x :value (->value x) :viewers viewers}))))
 
@@ -399,32 +398,36 @@
 #_(viewer-for default-viewers (with-viewer {:transform-fn identity} [:h1 "Hello Hiccup"]))
 
 
-(defn wrapped-with-viewer
-  ([x] (wrapped-with-viewer x default-viewers))
-  ([x viewers]
+(defn apply-viewers
+  ([x] (apply-viewers default-viewers x))
+  ([viewers x]
    (let [{:as viewer :keys [render-fn transform-fn update-viewers-fn]} (viewer-for viewers x)
          opts (when (wrapped-value? x)
                 (select-keys x [:nextjournal/width]))
          v (cond-> (->value x) transform-fn transform-fn)]
      (if (and transform-fn (not render-fn))
-       (recur v (cond-> viewers update-viewers-fn update-viewers-fn))
+       (recur (cond-> viewers update-viewers-fn update-viewers-fn) v)
        (cond-> (wrap-value v viewer)
          (seq opts) (merge opts))))))
 
-#_(wrapped-with-viewer {:one :two})
-#_(wrapped-with-viewer [1 2 3])
-#_(wrapped-with-viewer (range 3))
-#_(wrapped-with-viewer (clojure.java.io/file "notebooks"))
-#_(wrapped-with-viewer (md "# Hello"))
-#_(wrapped-with-viewer (html [:h1 "hi"]))
-#_(wrapped-with-viewer (with-viewer :elision {:remaining 10 :count 30 :offset 19}))
-#_(wrapped-with-viewer (with-viewer (->Form '(fn [name] (html [:<> "Hello " name]))) "James"))
+#_(apply-viewers {:one :two})
+#_(apply-viewers [1 2 3])
+#_(apply-viewers (range 3))
+#_(apply-viewers (clojure.java.io/file "notebooks"))
+#_(apply-viewers (md "# Hello"))
+#_(apply-viewers (html [:h1 "hi"]))
+#_(apply-viewers (with-viewer :elision {:remaining 10 :count 30 :offset 19}))
+#_(apply-viewers (with-viewer (->Form '(fn [name] (html [:<> "Hello " name]))) "James"))
 
 (defn get-viewers
-  "Returns all the viewers that apply in precendence of: optional local `viewers`, viewers set per `ns`, as well on the `:root`."
-  ([ns] (get-viewers ns nil))
-  ([ns expr-viewers]
-   (vec (concat expr-viewers (@!viewers ns) (@!viewers :root)))))
+  ([] (get-viewers :root))
+  ([scope] (get-viewers :root nil))
+  ([scope value]
+   (or (->viewers value)
+       (@!viewers scope)
+       (@!viewers :root))))
+
+#_(get-viewers)
 
 (defn bounded-count-opts [n xs]
   (assert (number? n) "n must be a number?")
@@ -469,8 +472,7 @@
 #_(process-viewer {:render-fn '(v/html [:h1]) :fetch-fn fetch-all})
 
 (defn make-elision [fetch-opts viewers]
-  (-> (with-viewer :elision fetch-opts)
-      (wrapped-with-viewer viewers)
+  (-> (apply-viewers viewers (with-viewer :elision fetch-opts))
       (update :nextjournal/viewer process-viewer)))
 
 #_(make-elision {:n 20} default-viewers)
@@ -480,11 +482,12 @@
   ([xs]
    (describe xs {}))
   ([xs opts]
-   (assign-closing-parens
-    (describe xs (merge {:!budget (atom (:budget opts 200)) :path [] :viewers (get-viewers *ns* (->viewers xs))} opts) [])))
+   (-> xs
+       (describe (merge {:!budget (atom (:budget opts 200)) :path [] :viewers (:root @!viewers)} opts) [])
+       assign-closing-parens))
   ([xs opts current-path]
    (let [{:as opts :keys [!budget viewers path offset]} (merge {:offset 0} opts)
-         wrapped-value (wrapped-with-viewer xs viewers)
+         wrapped-value (apply-viewers viewers xs)
          {:as viewer :keys [fetch-opts fetch-fn update-viewers-fn]} (->viewer wrapped-value)
          {:as opts :keys [viewers]} (cond-> opts
                                       update-viewers-fn (update :viewers update-viewers-fn))
@@ -629,16 +632,22 @@
 #_(datafy-scope *ns*)
 #_(datafy-scope #'datafy-scope)
 
-#?(:clj
-   (defn set-viewers!
-     ([viewers] (set-viewers! *ns* viewers))
-     ([scope viewers]
-      (assert (or (#{:root} scope)
-                  (instance? clojure.lang.Namespace scope)
-                  (var? scope)))
-      (swap! !viewers assoc scope viewers)
-      viewers)))
+(defn reset-viewers!
+  ([viewers] (reset-viewers! *ns* viewers))
+  ([scope viewers]
+   (assert (or (#{:root} scope)
+               #?(:clj (instance? clojure.lang.Namespace scope))))
+   (swap! !viewers assoc scope viewers)))
 
+(defn add-viewers! [viewers]
+  (reset-viewers! *ns* (add-viewers (:root @!viewers) viewers)))
+
+(defn ^{:deprecated "0.8"} set-viewers! [viewers]
+  (binding #?(:clj [*out* *err*] :cljs [])
+    (prn "`set-viewers!` has been deprecated, please use `add-viewers!` or `reset-viewers!` instead."))
+  (add-viewers! viewers))
+
+#_(nextjournal.clerk/show! "notebooks/viewers/vega.clj")
 
 (defn normalize-viewer-opts [opts]
   (set/rename-keys opts {:nextjournal.clerk/viewer :nextjournal/viewer

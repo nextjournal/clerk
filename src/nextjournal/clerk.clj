@@ -308,6 +308,8 @@
 (def doc-url        v/doc-url)
 (def with-viewer    v/with-viewer)
 (def with-viewers   v/with-viewers)
+(def reset-viewers! v/reset-viewers!)
+(def add-viewers!   v/add-viewers!)
 (def set-viewers!   v/set-viewers!)
 
 (defn file->viewer

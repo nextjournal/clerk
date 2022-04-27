@@ -44,26 +44,26 @@
     (let [value (reduce (fn [acc i] (vector i acc (inc i))) :fin (range 10 0 -1))]
       (is (= value (describe+fetch value))))))
 
-(deftest wrapped-with-viewer
+(deftest apply-viewers
   (testing "selects number viewer"
     (is (match? {:nextjournal/value 42
                  :nextjournal/viewer {:pred fn?}}
-                (v/wrapped-with-viewer 42))))
+                (v/apply-viewers 42))))
 
   (testing "html viewer has no default width"
-    (is (nil? (:nextjournal/width (v/wrapped-with-viewer (v/html [:h1 "hi"]))))))
+    (is (nil? (:nextjournal/width (v/apply-viewers (v/html [:h1 "hi"]))))))
 
   (testing "hiccup viewer width can be overriden"
     (is (= :wide
-           (:nextjournal/width (v/wrapped-with-viewer (v/html {:nextjournal.clerk/width :wide} [:h1 "hi"]))))))
+           (:nextjournal/width (v/apply-viewers (v/html {:nextjournal.clerk/width :wide} [:h1 "hi"]))))))
 
   (testing "table viewer defaults to wide width"
     (is (= :wide
-           (:nextjournal/width (v/wrapped-with-viewer (v/table {:a [1] :b [2] :c [3]}))))))
+           (:nextjournal/width (v/apply-viewers (v/table {:a [1] :b [2] :c [3]}))))))
 
   (testing "table viewer (with :transform-fn) width can be overriden"
     (is (= :full
-           (:nextjournal/width (v/wrapped-with-viewer (v/table {:nextjournal.clerk/width :full} {:a [1] :b [2] :c [3]})))))))
+           (:nextjournal/width (v/apply-viewers (v/table {:nextjournal.clerk/width :full} {:a [1] :b [2] :c [3]})))))))
 
 (defn viewer-eval-inspect? [x] (= x (v/->viewer-eval 'v/inspect)))
 

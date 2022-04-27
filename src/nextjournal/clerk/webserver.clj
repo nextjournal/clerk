@@ -44,7 +44,7 @@
   (assert ns "namespace must be set")
   (if (contains? blob->result blob-id)
     (let [result (blob->result blob-id)
-          viewers (v/get-viewers ns (v/->viewers result))
+          viewers (v/get-viewers ns result)
           opts (assoc fetch-opts :viewers viewers)
           desc (v/describe result opts)]
       (if (contains? desc :nextjournal/content-type)

@@ -579,13 +579,12 @@
      [inspect {:!expanded-at !expanded-at} x]))
   ([{:as opts :keys [viewers]} x]
    (let [value (viewer/->value x)
-         {:as opts :keys [viewers]} (assoc opts :viewers (vec (concat (viewer/->viewers x) viewers)))
-         all-viewers (viewer/get-viewers (:scope @!doc) viewers)]
+         {:as opts :keys [viewers]} (update opts :viewers #(or % (viewer/get-viewers)))]
      (or (when (react/isValidElement value) value)
          ;; TODO find option to disable client-side viewer selection
          (when-let [viewer (or (viewer/->viewer x)
-                               (viewer/->viewer (viewer/wrapped-with-viewer value all-viewers)))]
-           (inspect opts (render-with-viewer (assoc opts :viewers all-viewers :viewer viewer)
+                               (viewer/->viewer (viewer/apply-viewers viewers value)))]
+           (inspect opts (render-with-viewer (assoc opts :viewers viewers :viewer viewer)
                                              viewer
                                              value)))))))
 
