@@ -85,14 +85,8 @@
      "prose-h1:text-6xl" "prose-h2:text-5xl" "prose-h3:text-3xl" "prose-h4:text-2xl"]))
 
 (def slideshow-viewers
-  [{:name :nextjournal.markdown/doc :transform-fn (v/into-markup [:div.viewer-markdown])}
-
-   ;; blocks
-   {:name :nextjournal.markdown/code
-    :transform-fn #(v/with-viewer :html
-                                [:div.viewer-code
-                                 (v/with-viewer :code
-                                              (md.transform/->text %))])}
+  [{:name :clerk/code-block
+    :transform-fn #(v/html [:div.viewer-code.text-xl (v/code (:text %))])}
 
    {:name :clerk/slide
     :fetch-fn v/fetch-all
@@ -107,8 +101,8 @@
                                {:class slideshow-prose-classes}]
                               (map (fn [x]
                                      (cond
-                                       ((every-pred map? :type) x) (v/with-md-viewer x)
                                        ((every-pred map? :form) x) (v/with-viewer :clerk/code-block x)
+                                       ((every-pred map? :type) x) (v/with-md-viewer x)
                                        'else (v/with-viewer :clerk/result x))))))]))}
    {:name :clerk/notebook
     :transform-fn doc->slides
