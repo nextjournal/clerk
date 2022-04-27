@@ -5,9 +5,6 @@
             [clojure.string :as str]
             [clojure.java.io :as io]))
 
-#_(nextjournal.clerk/show! "notebooks/hello.clj")
-#_(nextjournal.clerk/show! "notebooks/viewers/image.clj")
-
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns]}]
@@ -54,7 +51,7 @@ window.ws_send = msg => ws.send(msg)")]]))
   (hiccup/html5
    {:class "overflow-hidden min-h-screen"}
    [:head
-    [:title (or (and current-path (-> state :path->doc (get current-path) v/value :title)) "Clerk")]
+    [:title (or (and current-path (-> state :path->doc (get current-path) v/->value :title)) "Clerk")]
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
     (include-viewer-css)
