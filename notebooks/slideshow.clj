@@ -9,8 +9,7 @@
 
 ;; Consider first a `slide-viewer`:
 (def slide-viewer
-  {:fetch-fn v/fetch-all
-   :transform-fn (fn [fragment]
+  {:transform-fn (fn [fragment]
                    (v/html [:div.flex.flex-col.justify-center
                             {:style {:min-block-size "100vh"}}
                             (into [:div.text-xl.p-20 {:class ["prose max-w-none prose-h1:mb-0 prose-h2:mb-8 rose-h3:mb-8 prose-h4:mb-8"
