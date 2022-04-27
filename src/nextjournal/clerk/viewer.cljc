@@ -157,7 +157,7 @@
 
 (def elide-string-length 100)
 
-(declare describe with-viewer)
+(declare describe with-viewer wrapped-with-viewer datafy-scope normalize-viewer get-viewers viewers)
 
 (defn inspect-leafs [opts x]
   (if (wrapped-value? x)
@@ -173,8 +173,6 @@
 
 (defn var-from-def? [x]
   (and (map? x) (get-safe x :nextjournal.clerk/var-from-def)))
-
-(declare wrapped-with-viewer !viewers datafy-scope normalize-viewer get-viewers viewers)
 
 (defn with-md-viewer [{:as node :keys [type]}]
   (with-viewer (keyword "nextjournal.markdown" (name type)) node))
@@ -299,6 +297,26 @@
                  (conj (->result ns result (and (not inline-results?)
                                                 (contains? result :nextjournal/blob-id)))))))))
 
+(defn update-viewers [viewers select-fn->update-fn]
+  (reduce (fn [viewers [pred update-fn]]
+            (mapv (fn [viewer]
+                    (cond-> viewer
+                      (pred viewer) update-fn)) viewers))
+          viewers
+          select-fn->update-fn))
+
+#_ (update-viewers default-viewers {:fetch-opts #(dissoc % :fetch-opts)})
+
+(defn prepend [viewers viewers-to-prepend]
+  (into (vec viewers-to-prepend) viewers))
+
+(defn update-table-viewers [viewers]
+  (-> viewers
+      (update-viewers {(comp #{:elision} :name) #(assoc % :render-fn '(fn [_] (v/html "…")))
+                       (comp #{string?} :pred) #(assoc % :render-fn (quote v/string-viewer))
+                       (comp #{number?} :pred) #(assoc % :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))])))})
+      (prepend [{:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))}])))
+
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
@@ -344,12 +362,12 @@
    {:name :code-folded :render-fn (quote v/foldable-code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
    {:name :reagent :render-fn (quote v/reagent-viewer)  :fetch-fn fetch-all}
    {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
+    :update-viewers-fn update-table-viewers
     :transform-fn (fn [xs]
                     (-> (wrap-value xs)
                         (update :nextjournal/width #(or % :wide))
                         (update :nextjournal/value #(or (normalize-table-data %)
-                                                        {:error "Could not normalize table" :ex-data %}))
-                        (update :nextjournal/viewers concat (:table @!viewers))))
+                                                        {:error "Could not normalize table" :ex-data %}))))
     :fetch-fn (fn [{:as opts :keys [describe-fn offset path]} xs]
                 ;; TODO: use budget per row for table
                 ;; TODO: opt out of eliding cols
@@ -375,12 +393,6 @@
                                 (select-keys [:blocks :toc :title])
                                 (cond-> ns (assoc :scope (datafy-scope ns))))))}
    {:name :hide-result :transform-fn (fn [_] nil)}])
-
-(def default-table-cell-viewers
-  [{:name :elision :render-fn '(fn [_] (v/html "…")) :fetch-fn fetch-all}
-   {:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))}
-   {:pred string? :render-fn (quote v/string-viewer) :fetch-opts {:n 100}}
-   {:pred number? :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))}])
 
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:div.viewer-markdown])}
@@ -445,16 +457,15 @@
    {:name :nextjournal.markdown/sidenote-ref
     :transform-fn (into-markup [:sup.sidenote-ref])}])
 
-(defn get-all-viewers []
-  {:root (concat default-viewers markdown-viewers)
-   :table default-table-cell-viewers})
+(defn make-default-viewers []
+  {:root (into default-viewers markdown-viewers)})
 
 (defonce
   ^{:doc "atom containing a map of `:root` and per-namespace viewers."}
   !viewers
-  (#?(:clj atom :cljs ratom/atom) (get-all-viewers)))
+  (#?(:clj atom :cljs ratom/atom) (make-default-viewers)))
 
-#_(reset! !viewers (get-all-viewers))
+#_(reset! !viewers (make-default-viewers))
 
 ;; heavily inspired by code from Thomas Heller in shadow-cljs, see
 ;; https://github.com/thheller/shadow-cljs/blob/1708acb21bcdae244b50293d17633ce35a78a467/src/main/shadow/remote/runtime/obj_support.cljc#L118-L144
@@ -478,42 +489,47 @@
     (set? xs) (sort resilient-compare xs)
     :else xs))
 
-(declare with-viewer)
+
+(defn find-viewer [viewers select-fn]
+  (first (filter select-fn viewers)))
+
+#_(find-viewer default-viewers (comp #{string?} :pred))
+#_(find-viewer default-viewers (comp #{:elision} :name))
 
 (defn find-named-viewer [viewers viewer-name]
-  (first (filter (comp #{viewer-name} :name) viewers)))
+  (find-viewer viewers (comp #{viewer-name} :name)))
 
-(declare wrapped-with-viewer)
+#_(find-named-viewer default-viewers :elision)
 
-(defn apply-viewer [viewers {:as viewer :keys [render-fn transform-fn]} v opts]
-  (let [v' (if transform-fn
-             (-> v value transform-fn)
-             v)]
-    (if (and transform-fn (not render-fn))
-      (wrapped-with-viewer v' viewers)
-      (cond-> (wrap-value v' viewer)
-        (seq opts) (merge opts)))))
+(defn viewer-for [viewers x]
+  (or (when-let [selected-viewer (viewer x)]
+        (if (keyword? selected-viewer)
+          (or (find-named-viewer viewers selected-viewer)
+              (throw (ex-info (str "cannot find viewer named " selected-viewer)
+                              {:viewer-name selected-viewer :x (value x) :viewers viewers})))
+          selected-viewer))
+      (find-viewer viewers (let [v (value x)] (fn [{:keys [pred]}]
+                                                (and (ifn? pred) (pred v)))))
+      (throw (ex-info (str "cannot find matching viewer for value")
+                      {:x x :value (value x) :viewers viewers}))))
 
-(defn extract-view-opts [x]
-  (when (wrapped-value? x)
-    (select-keys x [:nextjournal/width])))
+#_(viewer-for default-viewers [1 2 3])
+#_(viewer-for default-viewers 42)
+#_(viewer-for default-viewers (with-viewer :html [:h1 "Hello Hiccup"]))
+#_(viewer-for default-viewers (with-viewer {:transform-fn identity} [:h1 "Hello Hiccup"]))
+
 
 (defn wrapped-with-viewer
   ([x] (wrapped-with-viewer x default-viewers))
   ([x viewers]
-   (if-let [selected-viewer (viewer x)]
-     (if (keyword? selected-viewer)
-       (if-let [named-viewer (find-named-viewer viewers selected-viewer)]
-         (apply-viewer viewers named-viewer (value x) (extract-view-opts x))
-         (throw (ex-info (str "cannot find viewer named " selected-viewer) {:selected-viewer selected-viewer :x (value x) :viewers viewers})))
-       (apply-viewer viewers selected-viewer (value x) (extract-view-opts x)))
-     (let [v (value x)]
-       (loop [vs viewers]
-         (if-let [{:as matching-viewer :keys [pred]} (first vs)]
-           (if (and (ifn? pred) (pred v))
-             (apply-viewer viewers matching-viewer v (extract-view-opts x))
-             (recur (rest vs)))
-           (throw (ex-info (str "cannot find matchting viewer for `" (pr-str v) "`") {:viewers viewers :x x :v v}))))))))
+   (let [{:as viewer :keys [render-fn transform-fn update-viewers-fn]} (viewer-for viewers x)
+         opts (when (wrapped-value? x)
+                (select-keys x [:nextjournal/width]))
+         v (cond-> (value x) transform-fn transform-fn)]
+     (if (and transform-fn (not render-fn))
+       (recur v (cond-> viewers update-viewers-fn update-viewers-fn))
+       (cond-> (wrap-value v viewer)
+         (seq opts) (merge opts))))))
 
 #_(wrapped-with-viewer {:one :two})
 #_(wrapped-with-viewer [1 2 3])
@@ -556,7 +572,7 @@
 #_(sequence (drop+take-xf {}) (range 9))
 
 
-(declare with-viewer assign-closing-parens)
+(declare assign-closing-parens)
 
 (defn process-render-fn [{:as viewer :keys [render-fn]}]
   (cond-> viewer
@@ -588,11 +604,11 @@
     (describe xs (merge {:!budget (atom (:budget opts 200)) :path [] :viewers (get-viewers *ns* (viewers xs))} opts) [])))
   ([xs opts current-path]
    (let [{:as opts :keys [!budget viewers path offset]} (merge {:offset 0} opts)
-         {:as wrapped-value xs-viewers :nextjournal/viewers} (wrapped-with-viewer xs viewers)
-         ;; TODO used for the table viewer which adds viewers in through `tranform-fn` from `wrapped-with-viewer`. Can we avoid this?
-         opts (cond-> opts xs-viewers (update :viewers #(concat xs-viewers %)))
-         {:as viewer :keys [fetch-opts fetch-fn]} (viewer wrapped-value)
-         fetch-opts (merge fetch-opts (select-keys opts [:offset]))
+         wrapped-value (wrapped-with-viewer xs viewers)
+         {:as viewer :keys [fetch-opts fetch-fn update-viewers-fn]} (viewer wrapped-value)
+         {:as opts :keys [viewers]} (cond-> opts
+                                      update-viewers-fn (update :viewers update-viewers-fn))
+         fetch-opts (merge fetch-opts (select-keys opts [:offset :viewers]))
          descend? (< (count current-path)
                      (count path))
          xs (value wrapped-value)]
@@ -733,8 +749,6 @@
 #_(datafy-scope *ns*)
 #_(datafy-scope #'datafy-scope)
 
-(declare with-viewer)
-
 #?(:clj
    (defn set-viewers!
      ([viewers] (set-viewers! *ns* viewers))
@@ -766,10 +780,10 @@
 ;; public api
 
 (defn with-viewer
-  "Wraps given "
+  "Wraps the given value `x` and associates it with the given `viewer`. Takes an optional second `viewer-opts` arg."
   ([viewer x] (with-viewer viewer {} x))
-  ([viewer opts x]
-   (merge (normalize-viewer-opts opts)
+  ([viewer viewer-opts x]
+   (merge (normalize-viewer-opts viewer-opts)
           (-> x
               wrap-value
               (assoc :nextjournal/viewer (normalize-viewer viewer))))))
