@@ -43,7 +43,6 @@
 
 ;; ---
 ;; Lastly, the `slideshow-viewer` overrides
-^{::clerk/viewer :hide-result}
 (def slideshow-viewer
   {:name :clerk/notebook
    :transform-fn doc->slides
@@ -108,8 +107,8 @@
                                                     slide]]))
                                               slides))]))))})
 
-^{::clerk/viewer :hide-result}
-(clerk/set-viewers! [slide-viewer slideshow-viewer])
+
+(clerk/set-viewers! [slideshow-viewer])
 
 ;; ---
 
