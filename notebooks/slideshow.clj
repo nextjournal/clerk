@@ -10,14 +10,8 @@
 
 (ns ^:nextjournal.clerk/no-cache slideshow
   (:require [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.view :as clerk.view]
-            [nextjournal.clerk.webserver :as clerk.webserver]
             [nextjournal.clerk.viewer :as v]
-            [nextjournal.markdown :as md]
-            [nextjournal.markdown.transform :as md.transform]
-            [lambdaisland.uri.normalize :as uri.normalize]
-            [clojure.string :as str]))
-
+            [nextjournal.markdown.transform :as md.transform]))
 
 ;; The key ingredient to achieve this is to allow to override `:clerk/notebook` viewer
 ;;
@@ -59,7 +53,7 @@
                                    code?
                                    (conj (dissoc block :result))
                                    result?
-                                   (conj (v/value (v/->result ns result false))))))))
+                                   (conj (v/->value (v/->result ns result false))))))))
              (fn
                ([] {:slides [] :open-fragment []}) ;; init
                ([{:keys [slides open-fragment]}]   ;; complete
