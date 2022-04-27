@@ -110,24 +110,24 @@
              (-> before
                  (get-in (v/path-to-value [0 1 1]))
                  (get 2)
-                 v/viewer
+                 v/->viewer
                  :closing-paren)))
       (is (= ")"
              (-> before
                  (get-in (v/path-to-value [1]))
                  (get 1)
-                 v/viewer
+                 v/->viewer
                  :closing-paren)))
 
       (is (= '( "}" ")" "]")
              (-> after
                  (get-in (v/path-to-value [0 1 1]))
                  (get 2)
-                 v/viewer
+                 v/->viewer
                  :closing-paren)))
       (is (= '(")" "}")
              (-> after
                  (get-in (v/path-to-value [1]))
                  (get 1)
-                 v/viewer
+                 v/->viewer
                  :closing-paren))))))

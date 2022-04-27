@@ -65,27 +65,27 @@
 #_(wrap-value 123)
 #_(wrap-value {:nextjournal/value 456})
 
-(defn value
+(defn ->value
   "Takes `x` and returns the `:nextjournal/value` from it, or otherwise `x` unmodified."
   [x]
   (if (wrapped-value? x)
     (:nextjournal/value x)
     x))
 
-#_(value (with-viewer :code '(+ 1 2 3)))
-#_(value 123)
+#_(->value (with-viewer :code '(+ 1 2 3)))
+#_(->value 123)
 
-(defn viewer
+(defn ->viewer
   "Returns the `:nextjournal/viewer` for a given wrapped value `x`, `nil` otherwise."
   [x]
   (when (wrapped-value? x)
     (:nextjournal/viewer x)))
 
 
-#_(viewer (with-viewer :code '(+ 1 2 3)))
-#_(viewer "123")
+#_(->viewer (with-viewer :code '(+ 1 2 3)))
+#_(->viewer "123")
 
-(defn viewers
+(defn ->viewers
   "Returns the `:nextjournal/viewers` for a given wrapped value `x`, `nil` otherwise."
   [x]
   (when (wrapped-value? x)
@@ -109,7 +109,7 @@
 
 (defn normalize-seq-of-seq [s]
   (let [max-count (count (apply max-key count s))]
-    {:rows (mapv #(rpad-vec (value %) max-count missing-pred) s)}))
+    {:rows (mapv #(rpad-vec (->value %) max-count missing-pred) s)}))
 
 (defn normalize-seq-of-map [s]
   (let [ks (->> s (mapcat keys) distinct vec)]
@@ -241,8 +241,8 @@
    {:name :plotly :render-fn (quote v/plotly-viewer) :fetch-fn fetch-all}
    {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :fetch-fn fetch-all}
    {:name :markdown :transform-fn (comp with-md-viewer md/parse)}
-   {:name :code :render-fn (quote v/code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (value %)] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))}
-   {:name :code-folded :render-fn (quote v/foldable-code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
+   {:name :code :render-fn (quote v/code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (->value %)] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))}
+   {:name :code-folded :render-fn (quote v/foldable-code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (->value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
    {:name :reagent :render-fn (quote v/reagent-viewer)  :fetch-fn fetch-all}
    {:name :eval! :render-fn (constantly 'nextjournal.clerk.viewer/set-viewers!)}
    {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
@@ -376,16 +376,16 @@
 #_(find-named-viewer default-viewers :elision)
 
 (defn viewer-for [viewers x]
-  (or (when-let [selected-viewer (viewer x)]
+  (or (when-let [selected-viewer (->viewer x)]
         (if (keyword? selected-viewer)
           (or (find-named-viewer viewers selected-viewer)
               (throw (ex-info (str "cannot find viewer named " selected-viewer)
-                              {:viewer-name selected-viewer :x (value x) :viewers viewers})))
+                              {:viewer-name selected-viewer :x (->value x) :viewers viewers})))
           selected-viewer))
-      (find-viewer viewers (let [v (value x)] (fn [{:keys [pred]}]
+      (find-viewer viewers (let [v (->value x)] (fn [{:keys [pred]}]
                                                 (and (ifn? pred) (pred v)))))
       (throw (ex-info (str "cannot find matching viewer for value")
-                      {:x x :value (value x) :viewers viewers}))))
+                      {:x x :value (->value x) :viewers viewers}))))
 
 #_(viewer-for default-viewers [1 2 3])
 #_(viewer-for default-viewers 42)
@@ -399,7 +399,7 @@
    (let [{:as viewer :keys [render-fn transform-fn update-viewers-fn]} (viewer-for viewers x)
          opts (when (wrapped-value? x)
                 (select-keys x [:nextjournal/width]))
-         v (cond-> (value x) transform-fn transform-fn)]
+         v (cond-> (->value x) transform-fn transform-fn)]
      (if (and transform-fn (not render-fn))
        (recur v (cond-> viewers update-viewers-fn update-viewers-fn))
        (cond-> (wrap-value v viewer)
@@ -475,17 +475,17 @@
    (describe xs {}))
   ([xs opts]
    (assign-closing-parens
-    (describe xs (merge {:!budget (atom (:budget opts 200)) :path [] :viewers (get-viewers *ns* (viewers xs))} opts) [])))
+    (describe xs (merge {:!budget (atom (:budget opts 200)) :path [] :viewers (get-viewers *ns* (->viewers xs))} opts) [])))
   ([xs opts current-path]
    (let [{:as opts :keys [!budget viewers path offset]} (merge {:offset 0} opts)
          wrapped-value (wrapped-with-viewer xs viewers)
-         {:as viewer :keys [fetch-opts fetch-fn update-viewers-fn]} (viewer wrapped-value)
+         {:as viewer :keys [fetch-opts fetch-fn update-viewers-fn]} (->viewer wrapped-value)
          {:as opts :keys [viewers]} (cond-> opts
                                       update-viewers-fn (update :viewers update-viewers-fn))
          fetch-opts (merge fetch-opts (select-keys opts [:offset :viewers]))
          descend? (< (count current-path)
                      (count path))
-         xs (value wrapped-value)]
+         xs (->value wrapped-value)]
      #_(prn :xs xs :type (type xs) :path path :current-path current-path :descend? descend? :fetch-fn? (some? fetch-fn))
      (when (and !budget (not descend?) (not fetch-fn))
        (swap! !budget #(max (dec %) 0)))
@@ -560,8 +560,8 @@
 (defn desc->values
   "Takes a `description` and returns its value. Inverse of `describe`. Mostly useful for debugging."
   [desc]
-  (let [x (value desc)
-        viewer (viewer desc)]
+  (let [x (->value desc)
+        viewer (->viewer desc)]
     (if (= viewer :elision)
       '…
       (cond->> x
@@ -590,8 +590,8 @@
 (defn assign-closing-parens
   ([node] (assign-closing-parens '() node))
   ([closing-parens node]
-   (let [value (value node)
-         viewer (viewer node)
+   (let [value (->value node)
+         viewer (->viewer node)
          closing (:closing-paren viewer)
          non-leaf? (and (vector? value) (wrapped-value? (first value)))
          defer-closing? (and non-leaf?
@@ -635,7 +635,7 @@
 
 
 (defn registration? [x]
-  (and (map? x) (contains? #{:eval!} (viewer x))))
+  (and (map? x) (contains? #{:eval!} (->viewer x))))
 
 #_(registration? (set-viewers! []))
 #_(nextjournal.clerk/show! "notebooks/viewers/vega.clj")
