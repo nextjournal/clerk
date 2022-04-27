@@ -8,8 +8,6 @@
 ;; With two custom viewers and a helper function, we can show a Clerk notebooks as Slideshow.
 
 ;; Consider first a `slide-viewer`:
-
-^{::clerk/viewer :hide-result}
 (def slide-viewer
   {:fetch-fn v/fetch-all
    :transform-fn (fn [fragment]
@@ -22,7 +20,6 @@
 
 ;; ---
 ;; The `doc->slides` helper function takes a Clerk notebook and partitions its blocks into slides by occurrences of markdown rulers.
-^{::clerk/viewer :hide-result}
 (defn doc->slides [{:as doc :keys [blocks]}]
   (let [->slide (partial v/with-viewer slide-viewer)]
     (transduce (mapcat (partial v/with-block-viewer doc))
