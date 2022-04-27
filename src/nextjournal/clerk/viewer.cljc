@@ -307,8 +307,7 @@
 
 #_ (update-viewers default-viewers {:fetch-opts #(dissoc % :fetch-opts)})
 
-(defn prepend [viewers viewers-to-prepend]
-  (into (vec viewers-to-prepend) viewers))
+(defn prepend [xs ys] (into (vec ys) xs))
 
 (defn update-table-viewers [viewers]
   (-> viewers

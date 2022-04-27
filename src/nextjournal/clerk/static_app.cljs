@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.static-app
   (:require [clojure.string :as str]
             [clojure.set :as set]
+            [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.sci-viewer :as sci-viewer]
             [nextjournal.ui.components.localstorage :as ls]
             [nextjournal.devcards :as dc]
@@ -24,24 +25,26 @@
         (str relative-root url)))))
 
 (defn show [{:as view-data :git/keys [sha url] :keys [doc path url->path]}]
-  (sci-viewer/set-state {:doc doc})
-  [:div
-   [:div.mt-3.mb-8.ml-10.text-xs.sans-serif.text-gray-400.not-prose
-    (when (not= "" path)
-      [:<>
-       [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
-        {:href (doc-url view-data "")} "Back to index"]
-       [:span.mx-1 "/"]])
-    [:span
-     "Generated with "
-     [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
-      {:href "https://github.com/nextjournal/clerk"} "Clerk"]
-     (when (and url sha (contains? url->path path))
-       [:<>
-        " from "
-        [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
-         {:href (str url "/blob/" sha "/" (url->path path))} (url->path path) "@" [:span.tabular-nums (subs sha 0 7)]]])]]
-   [sci-viewer/root]])
+  (let [header [:div.mb-8.text-xs.sans-serif.text-gray-400.not-prose
+                (when (not= "" path)
+                  [:<>
+                   [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
+                    {:href (doc-url view-data "")} "Back to index"]
+                   [:span.mx-1 "/"]])
+                [:span
+                 "Generated with "
+                 [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
+                  {:href "https://github.com/nextjournal/clerk"} "Clerk"]
+                 (when (and url sha (contains? url->path path))
+                   [:<>
+                    " from "
+                    [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
+                     {:href (str url "/blob/" sha "/" (url->path path))} (url->path path) "@" [:span.tabular-nums (subs sha 0 7)]]])]]]
+    (sci-viewer/set-state {:doc (cond-> doc
+                                  (vector? (get-in doc [:nextjournal/value :blocks]))
+                                  (update-in [:nextjournal/value :blocks] v/prepend [[sci-viewer/inspect {:nextjournal/value header
+                                                                                                          :nextjournal/viewer :html}]]))})
+    [sci-viewer/root]))
 
 (dc/defcard show []
   [show {:git/url "https://github.com/nextjournal/clerk"
