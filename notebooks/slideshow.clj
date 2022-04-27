@@ -1,9 +1,5 @@
 ;; # 🎠 Slideshow Mode
-;;
-;; ---
-;; This notebook shows how to use [Reveal.js](https://revealjs.com/) in a Clerk viewer in order to turn the whole notebook
-;; into a presentation.
-;;
+;; ### _How to turn notebook into a presentation._
 ;; ---
 ;; Slides are delimited by markdown rulers i.e. with a leading `---` preceded by a newline. A slide can span several blocks
 ;; of markdown comments as well as code blocks
@@ -13,23 +9,10 @@
             [nextjournal.clerk.viewer :as v]
             [nextjournal.markdown.transform :as md.transform]))
 
-;; The key ingredient to achieve this is to allow to override `:clerk/notebook` viewer
+;; The key ingredient to achieve this is to allow for `:clerk/notebook` viewer to be customized.
 ;;
 ;; ---
-;; ## TODO
-;; * [x] describe root notebook in `n.c.view/doc->viewer`
-;; * [x] use v/fetch-all in notebook viewer
-;; * [ ] drop using describe-blocks in favour of a simplified with-viewer approach
-;; * [x] move `:clerk/notebook` viewer to overridable named viewer
-;; * [x] introduce custom notebook viewer here that performs slideshow transformation
-;; * [ ] resuse default transform fn in order to be able to process visibility, code folding etc.
-;; * [ ] fix registration
-;; * [x] fix `n.c.viewer/inspect-leafs`
-;; * [x] fix infinite sequences
-;; * [x] fix static app (reveal.js seems to break all pages / use unbundled mode)
-;; * [ ] fix static app header wrt toc
-;; ---
-;; Results should be displayed as usual and cells should obey visibility control
+;; Results should be displayed as usual and cells should obey visibility control:
 
 ^{::clerk/visibility :hide}
 (v/vl {:width 650 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
@@ -39,43 +22,44 @@
        :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}})
 
 ;; ---
-;; Some machinery to split document fragments:
-
-(defn split-by-ruler [{:keys [content]}] (partition-by (comp #{:ruler} :type) content))
-(defn ->slide [fragment] (v/with-viewer :clerk/slide fragment))
+;; Some machinery to split document fragments at each markdown ruler:
+^{::clerk/viewer :hide-result}
 (defn doc->slides [{:keys [ns blocks]}]
-  (transduce (mapcat (fn [{:as block :keys [type result]}]
-                       (case type
-                         :markdown [block]
-                         :code (let [block (update block :result v/apply-viewer-unwrapping-var-from-def)
-                                     {:keys [code? result?]} (v/->display block)]
-                                 (cond-> []
-                                   code?
-                                   (conj (dissoc block :result))
-                                   result?
-                                   (conj (v/->value (v/->result ns result false))))))))
-             (fn
-               ([] {:slides [] :open-fragment []}) ;; init
-               ([{:keys [slides open-fragment]}]   ;; complete
-                (conj slides (->slide open-fragment)))
-               ([acc {:as block :keys [type doc]}]
-                (if (not= :markdown type)
-                  (update acc :open-fragment conj block)
-                  (loop [[first-fragment & tail] (split-by-ruler doc)
-                         {:as acc :keys [open-fragment]} acc]
-                    (cond
-                      (= :ruler (-> first-fragment first :type))
-                      (recur tail (cond-> acc
-                                          (seq open-fragment)
-                                          (-> (update :slides conj (->slide open-fragment))
-                                              (assoc :open-fragment []))))
-                      (empty? tail)
-                      (update acc :open-fragment into first-fragment)
-                      'else
-                      (recur tail (-> acc
-                                      (update :slides conj (->slide (into open-fragment first-fragment)))
-                                      (assoc :open-fragment []))))))))
-             blocks))
+  (let [->slide (partial v/with-viewer :clerk/slide)]
+    (transduce (mapcat (fn [{:as block :keys [type result]}]
+                         (case type
+                           :markdown [block]
+                           :code (let [block (update block :result v/apply-viewer-unwrapping-var-from-def)
+                                       {:keys [code? result?]} (v/->display block)]
+                                   (cond-> []
+                                     code?
+                                     (conj (dissoc block :result))
+                                     result?
+                                     (conj (v/->value (v/->result ns result false))))))))
+               (fn
+                 ([] {:slides [] :open-fragment []})        ;; init
+                 ([{:keys [slides open-fragment]}]          ;; complete
+                  (conj slides (->slide open-fragment)))
+                 ([acc {:as block :keys [type doc]}]
+                  (if (not= :markdown type)
+                    (update acc :open-fragment conj block)
+                    (loop [[first-fragment & tail] (partition-by (comp #{:ruler} :type) (:content doc))
+                           {:as acc :keys [open-fragment]} acc]
+                      (cond
+                        (= :ruler (-> first-fragment first :type))
+                        (recur tail (cond-> acc
+                                      (seq open-fragment)
+                                      (-> (update :slides conj (->slide open-fragment))
+                                          (assoc :open-fragment []))))
+                        (empty? tail)
+                        (update acc :open-fragment into first-fragment)
+                        'else
+                        (recur tail (-> acc
+                                        (update :slides conj (->slide (into open-fragment first-fragment)))
+                                        (assoc :open-fragment []))))))))
+               blocks)))
+
+;; ---
 
 (def slideshow-prose-classes
   (clojure.string/join
@@ -175,18 +159,13 @@
 ;; ---
 ;; this piece of code is to test slideshow mode in cell result view
 ;;
-
 (comment
-  (v/with-viewers (update slideshow-viewers 1 assoc :pred (every-pred map? :blocks :graph))
+  (v/with-viewers (update slideshow-viewers 2 assoc :pred (every-pred map? :blocks :graph))
     (clerk/eval-file "notebooks/hello.clj")))
 
-;; ---
 ;; And finally actually set the viewers
-
 (clerk/set-viewers! slideshow-viewers)
 
-;; ---
 ;; reset back to notebook view
 (comment
-  (clerk/serve! {})
-  (reset! v/!viewers (v/get-all-viewers)))
+  (reset! v/!viewers (v/make-default-viewers)))
