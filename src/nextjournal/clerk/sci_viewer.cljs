@@ -1109,7 +1109,8 @@ black")}]))}
    'reagent-viewer reagent-viewer
 
    'doc-url doc-url
-   'url-for url-for})
+   'url-for url-for
+   'mount mount})
 
 (defonce !sci-ctx
   (atom (sci/init {:async? true

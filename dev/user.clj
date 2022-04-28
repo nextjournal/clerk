@@ -35,6 +35,7 @@
   (clerk/show! "notebooks/viewers/html.clj")
 
   (clerk/show! "notebooks/sicmutils.clj")
+  (clerk/show! "notebooks/dice.clj")
 
   (clerk/clear-cache!)
   )
