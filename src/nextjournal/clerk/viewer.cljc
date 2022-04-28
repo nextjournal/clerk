@@ -275,7 +275,7 @@
    {:name :hide-result :transform-fn (fn [_] nil)}])
 
 (def markdown-viewers
-  [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:div.viewer-markdown])}
+  [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:<>])}
 
    ;; blocks
    {:name :nextjournal.markdown/heading

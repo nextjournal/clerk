@@ -192,13 +192,14 @@
                       (let [viewer (viewer/->viewer x)
                             blob-id (:blob-id (viewer/->value x))
                             inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
-                        [:div {:class ["viewer" "overflow-x-auto" "overflow-y-hidden"
-                                       (when (keyword? viewer) (str "viewer-" (name viewer)))
-                                       (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
-                                       (case (or (viewer/width x) (case viewer (:code :code-folded) :wide :prose))
-                                         :wide "w-full max-w-wide"
-                                         :full "w-full"
-                                         "w-full max-w-prose px-8")]}
+                        [:<>
+                         #_{:class ["viewer" "overflow-x-auto" "overflow-y-hidden"
+                                    (when (keyword? viewer) (str "viewer-" (name viewer)))
+                                    (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
+                                    (case (or (viewer/width x) (case viewer (:code :code-folded) :wide :prose))
+                                      :wide "w-full max-w-wide"
+                                      :full "w-full"
+                                      "w-full max-w-prose px-8")]}
                          (cond-> [inspect x]
                            blob-id (with-meta {:key blob-id}))])))
                xs)]]))))
