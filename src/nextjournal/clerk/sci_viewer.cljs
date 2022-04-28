@@ -212,7 +212,9 @@
          :read-cond :allow
          :readers {'file (partial with-viewer :file)
                    'object (partial with-viewer :object)
-                   'viewer-fn viewer/->viewer-fn
+                   'viewer-fn #(try (viewer/->viewer-fn %)
+                                    (catch js/Error e
+                                      (throw (ex-info (str "error in render-fn: " (.-message e)) {:render-fn %} e))))
                    'viewer-eval #(*eval* %)}
          :features #{:clj}}))
 
@@ -263,15 +265,20 @@
                      (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
                      (unreadable-edn %))))))
 
+(defn read-error [{:keys [message edn error]}]
+  (html
+   [:div.bg-red-100.dark:bg-gray-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-400.not-prose
+    [:h4.mt-0.uppercase.text-xs.dark:text-red-400.tracking-wide "Viewer Error"]
+    [:p.mt-4.font-medium "The following error occurred rendering your result: "]
+    [:p.font-mono.mt-4.text-red-500.font-bold (.-message error)]
+    [:div.mt-4 [inspect (.-data error)]]]))
+
 (defn read-result [{:nextjournal/keys [edn string]}]
   (if edn
     (try
       (read-string edn)
       (catch js/Error e
-        (js/console.error #js {:message "sci read error" :edn-string edn :error e})
-        ;; TODO: a read error in a viewers `:render-fn` will also cause a read error currently
-        ;; Can we be more helpful by surfacing the read error in a viewer?
-        (unreadable-edn edn)))
+        (html (read-error {:message "sci read error" :edn edn :error e}))))
     (unreadable-edn string)))
 
 (defn result-viewer [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
