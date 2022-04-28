@@ -3,7 +3,11 @@ module.exports = {
   content: ["./public/build/index.html", "./public/build/**/*.html", "./build/viewer.js"],
   safelist: ['dark'],
   theme: {
-    extend: {},
+    extend: {
+      maxWidth: {
+        "prose": "46rem"
+      }
+    },
     fontFamily: {
       sans: ["Fira Sans", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
       serif: ["PT Serif", "serif"],

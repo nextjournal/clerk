@@ -21,7 +21,8 @@
   }
   code::before, code::after { @apply content-none !important; }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-condensed font-bold mt-8 first:mt-0;
+    @apply font-condensed font-bold;
+    /*mt-8 first:mt-0*/
   }
   h1 { @apply text-4xl; }
   h2 { @apply text-3xl; }
@@ -94,19 +95,18 @@
 .page {
   @apply max-w-5xl mx-auto px-12 box-border flex-shrink-0;
 }
-.max-w-prose { @apply max-w-[46rem] !important; }
 .max-w-wide  { @apply max-w-3xl !important; }
 
 /* List Styles */
 /* --------------------------------------------------------------- */
 
 .task-list-item + .task-list-item,
-.viewer-markdown ul .task-list-item ul {
+.has-prose ul .task-list-item ul {
   @apply mt-1;
 }
 
 /* compact TOC */
-.viewer-markdown .toc ul {
+.has-prose .toc ul {
   list-style: none;
   @apply my-0;
 }
@@ -209,30 +209,49 @@
 /* Prose */
 /* --------------------------------------------------------------- */
 
-.viewer-notebook,
-.viewer-markdown {
+.has-prose {
   @apply prose
     dark:prose-invert
     prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
     dark:prose-a:text-blue-300
-    prose-p:mt-4 prose-p:leading-snug
-    prose-ol:mt-4 prose-ol:mb-6 prose-ol:leading-snug
-    prose-ul:mt-4 prose-ul:mb-6 prose-ul:leading-snug
-    prose-blockquote:mt-4 prose-blockquote:leading-snug
-    prose-hr:mt-6 prose-hr:border-t-2 prose-hr:border-solid prose-hr:border-slate-200
-    prose-figure:mt-4
+    prose-p:leading-snug prose-ol:leading-snug prose-ul:leading-snug prose-blockquote:leading-snug
+    prose-hr:border-t prose-hr:border-solid prose-hr:border-slate-200
     prose-figcaption:mt-2 prose-figcaption:text-xs
-    prose-headings:mb-6
+    prose-code:font-medium prose-code:bg-slate-100
+
     prose-th:mb-0
     prose-img:mb-0
-    prose-code:font-medium prose-code:bg-slate-100
-    max-w-none;
+
+    prose-headings:w-full prose-headings:max-w-prose prose-headings:px-8 prose-headings:mb-0
+    prose-h1:mt-[0.67em] first:prose-h1:mt-0 prose-h2:mt-[0.83em] prose-h3:mt-[1em] prose-h4:mt-4
+    prose-p:w-full prose-p:max-w-prose prose-p:px-8 prose-p:my-0
+    prose-ul:w-full prose-ul:max-w-prose prose-ul:pl-14 prose-ul:pr-8 prose-ul:my-0
+    prose-ol:w-full prose-ol:max-w-prose prose-ol:pl-14 prose-ol:pr-8 prose-ol:my-0
+    prose-blockquote:w-full prose-blockquote:max-w-prose prose-blockquote:px-8 prose-blockquote:my-0
+    prose-hr:w-full prose-hr:max-w-prose prose-hr:px-8 prose-hr:my-8
+
+    flex flex-col items-center flex-auto max-w-none gap-4;
 }
-.viewer-markdown li > p {
-  @apply inline;
+.has-prose h5, .has-prose h6 {
+  @apply w-full max-w-prose mx-8;
 }
-.viewer-markdown blockquote p:first-of-type:before,
-.viewer-markdown blockquote p:last-of-type:after {
+.has-prose li > p {
+  @apply inline px-0;
+}
+.has-prose li:first-of-type {
+  @apply mt-0;
+}
+.has-prose ul ul, .has-prose ul ol, .has-prose ol ul, .has-prose ol ol {
+  @apply px-4 mt-1.5;
+}
+.has-prose blockquote p {
+  @apply mx-0;
+}
+.has-prose blockquote p + * {
+  @apply mt-4;
+}
+.has-prose blockquote p:first-of-type:before,
+.has-prose blockquote p:last-of-type:after {
   @apply content-none;
 }
 
@@ -256,32 +275,32 @@
 /* Markdown TOC */
 /* --------------------------------------------------------------- */
 
-.viewer-markdown .toc      { @apply mt-4; }
-.viewer-markdown h1 + .toc { @apply mt-8; }
+.has-prose .toc      { @apply mt-4; }
+.has-prose h1 + .toc { @apply mt-8; }
 
-.viewer-markdown .toc h1,
-.viewer-markdown .toc h2,
-.viewer-markdown .toc h3,
-.viewer-markdown .toc h4,
-.viewer-markdown .toc h5,
-.viewer-markdown .toc h6 {
+.has-prose .toc h1,
+.has-prose .toc h2,
+.has-prose .toc h3,
+.has-prose .toc h4,
+.has-prose .toc h5,
+.has-prose .toc h6 {
   @apply text-base text-indigo-600 font-sans my-0;
 }
-.viewer-markdown .toc a {
+.has-prose .toc a {
   @apply text-indigo-600 font-normal no-underline hover:underline;
 }
-.viewer-markdown .toc li    { @apply m-0; }
-.viewer-markdown .toc ul ul { @apply pl-4; }
+.has-prose .toc li    { @apply m-0; }
+.has-prose .toc ul ul { @apply pl-4; }
 
 /* Notebook Spacing */
 /* --------------------------------------------------------------- */
 
 .viewer-notebook { @apply py-16; }
 #clerk-static-app .viewer-notebook { @apply pt-[0.8rem] pb-16; }
-.viewer-markdown *:first-child:not(.viewer-code) { @apply mt-0; }
-.viewer + .viewer { @apply mt-6; }
-.viewer-markdown + .viewer { @apply mt-3; }
-.viewer-markdown + .viewer-markdown { @apply mt-0; }
+/*.viewer-markdown *:first-child:not(.viewer-code) { @apply mt-0; }*/
+/*.viewer + .viewer { @apply mt-6; }*/
+/*.viewer-markdown + .viewer { @apply mt-3; }*/
+/*.viewer-markdown + .viewer-markdown { @apply mt-0; }*/
 
 /* Sidenotes */
 /* --------------------------------------------------------------- */
@@ -307,11 +326,11 @@
     @apply mr-[-54%] mt-[0.2rem] w-1/2 float-right clear-right relative block;
   }
 }
-.viewer-code + .viewer:not(.viewer-markdown):not(.viewer-code):not(.viewer-code-folded),
-.viewer-code-folded + .viewer:not(.viewer-markdown):not(.viewer-code):not(.viewer-code-folded),
-.viewer-result + .viewer-result {
-  @apply mt-2;
-}
+/*.viewer-code + .viewer:not(.viewer-markdown):not(.viewer-code):not(.viewer-code-folded),*/
+/*.viewer-code-folded + .viewer:not(.viewer-markdown):not(.viewer-code):not(.viewer-code-folded),*/
+/*.viewer-result + .viewer-result {*/
+/*  @apply mt-2;*/
+/*}*/
 .viewer-result {
   @apply leading-tight;
 }

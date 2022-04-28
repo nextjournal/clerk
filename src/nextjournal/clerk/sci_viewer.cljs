@@ -187,7 +187,7 @@
            [navbar/panel !state [navbar/navbar !state]]])
         [:div.flex-auto.h-screen.overflow-y-auto
          {:ref ref-fn}
-         (into [:div.flex.flex-col.items-center.viewer-notebook.flex-auto]
+         (into [:div.viewer-notebook.has-prose]
                (map (fn [x]
                       (let [viewer (viewer/->viewer x)
                             blob-id (:blob-id (viewer/->value x))
@@ -1016,17 +1016,22 @@ black")}]))}
 
 (defn html-viewer [markup]
   (r/as-element
-   (if (string? markup)
-     [:span {:dangerouslySetInnerHTML {:__html markup}}]
-     markup)))
+    (if (string? markup)
+      [:span {:dangerouslySetInnerHTML {:__html markup}}]
+      markup)))
 
 (defn reagent-viewer [x]
   (r/as-element (cond-> x (fn? x) vector)))
 
 (def mathjax-viewer (comp normalize-viewer mathjax/viewer))
-(def code-viewer (comp normalize-viewer code/viewer))
 (def plotly-viewer (comp normalize-viewer plotly/viewer))
 (def vega-lite-viewer (comp normalize-viewer vega-lite/viewer))
+
+(defn code-viewer [x]
+  (html [:div.viewer-code.w-full.max-w-prose.px-8
+         [code/viewer x]
+         #_(normalize-viewer (code/viewer x))
+         #_(comp normalize-viewer code/viewer)]))
 
 (def expand-icon
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
