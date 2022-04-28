@@ -383,6 +383,7 @@
          "viewers/image"
          "viewers/image_layouts"
          "viewers/in_text_eval"
+         "viewers/instants"
          "viewers/markdown"
          "viewers/plotly"
          "viewers/table"

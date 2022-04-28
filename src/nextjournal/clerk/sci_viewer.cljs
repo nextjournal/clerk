@@ -189,9 +189,9 @@
          {:ref ref-fn}
          (into [:div.flex.flex-col.items-center.viewer-notebook.flex-auto]
                (map (fn [x]
-                      (let [viewer (viewer/viewer x)
-                            blob-id (:blob-id (viewer/value x))
-                            inner-viewer-name (some-> x viewer/value viewer/viewer :name)]
+                      (let [viewer (viewer/->viewer x)
+                            blob-id (:blob-id (viewer/->value x))
+                            inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
                         [:div {:class ["viewer" "overflow-x-auto" "overflow-y-hidden"
                                        (when (keyword? viewer) (str "viewer-" (name viewer)))
                                        (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
@@ -410,7 +410,7 @@
            [:span.cursor-pointer {:class expand-style
                                   :on-click (partial toggle-expanded !expanded-at path)} "\""]
            [:span "\""])
-         (viewer/value (string-viewer s opts)) "\""]))
+         (viewer/->value (string-viewer s opts)) "\""]))
 
 (defn sort! [!sort i k]
   (let [{:keys [sort-key sort-order]} @!sort]
@@ -465,7 +465,7 @@
     (table-error [error-data])
     (html
       (let [{:keys [head rows sort-index sort-order]} data
-            num-cols (-> rows viewer/value first viewer/value count)]
+            num-cols (-> rows viewer/->value first viewer/->value count)]
         [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose
          (when head
            [:thead.border-b.border-gray-300.dark:border-slate-700
@@ -482,8 +482,8 @@
                                       (if (= sort-order :asc) "▴" "▾")])]]) head))])
          (into [:tbody]
                (map-indexed (fn [i row]
-                              (if (= :elision (-> row viewer/viewer :name))
-                                (let [{:as fetch-opts :keys [remaining unbounded?]} (viewer/value row)]
+                              (if (= :elision (-> row viewer/->viewer :name))
+                                (let [{:as fetch-opts :keys [remaining unbounded?]} (viewer/->value row)]
                                   [view-context/consume :fetch-fn
                                    (fn [fetch-fn]
                                      [:tr.border-t.dark:border-slate-700
@@ -495,7 +495,7 @@
                                         :on-click #(when (fn? fetch-fn)
                                                      (fetch-fn fetch-opts))}
                                        remaining (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]])])
-                                (let [row (viewer/value row)]
+                                (let [row (viewer/->value row)]
                                   (into
                                     [:tr.hover:bg-gray-200.dark:hover:bg-slate-700
                                      {:class (if (even? i) "bg-black/5 dark:bg-gray-800" "bg-white dark:bg-gray-900")}]
@@ -503,7 +503,7 @@
                                                    [:td.pl-6.pr-2.py-1
                                                     {:class [(when (number? d) "text-right")
                                                              (when (= j sort-index) "bg-black/5 dark:bg-gray-800")]}
-                                                    [inspect (update opts :path conj i j) d]]) row))))) (viewer/value rows)))]))))
+                                                    [inspect (update opts :path conj i j) d]]) row))))) (viewer/->value rows)))]))))
 
 
 (defn throwable-viewer [{:keys [via trace]}]
@@ -531,7 +531,7 @@
 
 (defn tagged-value [tag value]
   [:span.inspected-value.whitespace-nowrap
-   [:span.cmt-meta tag] value])
+   [:span.cmt-meta tag] nbsp value])
 
 (defn normalize-viewer [x]
   (if-let [viewer (-> x meta :nextjournal/viewer)]
@@ -578,13 +578,13 @@
    (r/with-let [!expanded-at (r/atom {})]
      [inspect {:!expanded-at !expanded-at} x]))
   ([{:as opts :keys [viewers]} x]
-   (let [value (viewer/value x)
-         {:as opts :keys [viewers]} (assoc opts :viewers (vec (concat (viewer/viewers x) viewers)))
+   (let [value (viewer/->value x)
+         {:as opts :keys [viewers]} (assoc opts :viewers (vec (concat (viewer/->viewers x) viewers)))
          all-viewers (viewer/get-viewers (:scope @!doc) viewers)]
      (or (when (react/isValidElement value) value)
          ;; TODO find option to disable client-side viewer selection
-         (when-let [viewer (or (viewer/viewer x)
-                               (viewer/viewer (viewer/wrapped-with-viewer value all-viewers)))]
+         (when-let [viewer (or (viewer/->viewer x)
+                               (viewer/->viewer (viewer/wrapped-with-viewer value all-viewers)))]
            (inspect opts (render-with-viewer (assoc opts :viewers all-viewers :viewer viewer)
                                              viewer
                                              value)))))))
@@ -765,14 +765,10 @@
       [inspect @!error]])])
 
 (defn ^:export set-state [{:as state :keys [doc error]}]
-  (doseq [cell (-> doc viewer/value :blocks)
-          :when (viewer/registration? cell)
-          :let [form (viewer/value cell)]]
-    (*eval* form))
   (when (contains? state :doc)
     (reset! !doc doc))
   (reset! !error error)
-  (when-some [title (-> doc viewer/value :title)]
+  (when-some [title (-> doc viewer/->value :title)]
     (set! (.-title js/document) title)))
 
 (dc/defcard eval-viewer

@@ -10,36 +10,9 @@
             [taoensso.nippy :as nippy])
   (:import (java.util Base64)))
 
-(defn var->data [v]
-  (v/wrapped-with-viewer v))
-
-#_(var->data #'var->data)
-
-(defn fn->str [f]
-  (let [pr-rep (pr-str f)
-        f-name (subs pr-rep (count "#function[") (- (count pr-rep) 1))]
-    f-name))
-
-#_(fn->str (fn []))
-#_(fn->str +)
-
-;; TODO: consider removing this and rely only on viewers
-(defn make-readable [x]
-  (cond-> x
-    (var? x) var->data
-    (meta x) (with-meta {})
-    (fn? x) fn->str))
-
-#_(meta (make-readable ^{:f (fn [])} []))
-
 (defn ->edn [x]
   (binding [*print-namespace-maps* false]
-    (pr-str
-     (try (w/prewalk make-readable x)
-          (catch Throwable _ x)))))
-
-#_(->edn [:vec (with-meta [] {'clojure.core.protocols/datafy (fn [x] x)}) :var #'->edn])
-
+    (pr-str x)))
 
 (defn exceeds-bounded-count-limit? [value]
   (and (seqable? value)
@@ -109,14 +82,14 @@
               described-result))
 
 (defn ->result [ns {:as result :nextjournal/keys [value viewers blob-id]} lazy-load?]
-  (let [described-result (extract-blobs lazy-load? blob-id (v/describe value {:viewers (concat viewers (v/get-viewers ns (v/viewers value)))}))
+  (let [described-result (extract-blobs lazy-load? blob-id (v/describe value {:viewers (concat viewers (v/get-viewers ns (v/->viewers value)))}))
         opts-from-form-meta (select-keys result [:nextjournal/width])]
     (merge {:nextjournal/viewer :clerk/result
             :nextjournal/value (cond-> (try {:nextjournal/edn (->edn described-result)}
                                             (catch Throwable _e
                                               {:nextjournal/string (pr-str value)}))
-                                 (-> described-result v/viewer :name)
-                                 (assoc :nextjournal/viewer (select-keys (v/viewer described-result) [:name]))
+                                 (-> described-result v/->viewer :name)
+                                 (assoc :nextjournal/viewer (select-keys (v/->viewer described-result) [:name]))
 
                                  lazy-load?
                                  (assoc :nextjournal/fetch-opts {:blob-id blob-id}
@@ -128,7 +101,7 @@
 #_(nextjournal.clerk/show! "notebooks/viewers/image.clj")
 
 (defn result-hidden? [result]
-  (= :hide-result (-> result v/value v/viewer)))
+  (= :hide-result (-> result v/->value v/->viewer)))
 
 (defn ->display [{:as code-cell :keys [result ns?]}]
   (let [{:nextjournal.clerk/keys [visibility]} result
@@ -162,12 +135,8 @@
               code?
               (conj (cond-> (v/code text) fold? (assoc :nextjournal/viewer :code-folded)))
               result?
-              (conj (cond
-                      (v/registration? (v/value result))
-                      (v/value result)
-                      :else
-                      (->result ns result (and (not inline-results?)
-                                               (contains? result :nextjournal/blob-id)))))))))
+              (conj (->result ns result (and (not inline-results?)
+                                             (contains? result :nextjournal/blob-id))))))))
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
@@ -217,7 +186,7 @@ window.ws_send = msg => ws.send(msg)")]]))
   (hiccup/html5
    {:class "overflow-hidden min-h-screen"}
    [:head
-    [:title (or (and current-path (-> state :path->doc (get current-path) v/value :title)) "Clerk")]
+    [:title (or (and current-path (-> state :path->doc (get current-path) v/->value :title)) "Clerk")]
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
     (include-viewer-css)
