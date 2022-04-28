@@ -200,6 +200,10 @@
                        (comp #{number?} :pred) #(assoc % :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))])))})
       (prepend [{:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))}])))
 
+#?(:clj (def utc-date-format ;; from `clojure.instant/thread-local-utc-date-format`
+          (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
+            (.setTimeZone (java.util.TimeZone/getTimeZone "GMT")))))
+
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
@@ -220,7 +224,8 @@
    {:pred sequential? :render-fn 'v/coll-viewer :opening-paren "(" :closing-paren ")" :fetch-opts {:n 20}}
    {:pred map? :name :map :render-fn 'v/map-viewer :opening-paren "{" :closing-paren "}" :fetch-opts {:n 10}}
    {:pred uuid? :render-fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.cmt-string.inspected-value "\"" (str x) "\""])))}
-   {:pred inst? :render-fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.cmt-string.inspected-value "\"" (str x) "\""])))}
+   {:pred inst? :render-fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.cmt-string.inspected-value "\"" x "\""])))
+    :transform-fn #?(:cljs str :clj #(if (instance? java.util.Date %) (.format utc-date-format %) (str %)))}
    {:pred var? :transform-fn symbol :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#'" (str x)]]))}
    {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e)) :fetch-fn fetch-all
     :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp demunge-ex-data datafy/datafy)}
