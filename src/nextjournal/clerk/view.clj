@@ -10,36 +10,9 @@
             [taoensso.nippy :as nippy])
   (:import (java.util Base64)))
 
-(defn var->data [v]
-  (v/wrapped-with-viewer v))
-
-#_(var->data #'var->data)
-
-(defn fn->str [f]
-  (let [pr-rep (pr-str f)
-        f-name (subs pr-rep (count "#function[") (- (count pr-rep) 1))]
-    f-name))
-
-#_(fn->str (fn []))
-#_(fn->str +)
-
-;; TODO: consider removing this and rely only on viewers
-(defn make-readable [x]
-  (cond-> x
-    (var? x) var->data
-    (meta x) (with-meta {})
-    (fn? x) fn->str))
-
-#_(meta (make-readable ^{:f (fn [])} []))
-
 (defn ->edn [x]
   (binding [*print-namespace-maps* false]
-    (pr-str
-     (try (w/prewalk make-readable x)
-          (catch Throwable _ x)))))
-
-#_(->edn [:vec (with-meta [] {'clojure.core.protocols/datafy (fn [x] x)}) :var #'->edn])
-
+    (pr-str x)))
 
 (defn exceeds-bounded-count-limit? [value]
   (and (seqable? value)
@@ -162,12 +135,8 @@
               code?
               (conj (cond-> (v/code text) fold? (assoc :nextjournal/viewer :code-folded)))
               result?
-              (conj (cond
-                      (v/registration? (v/->value result))
-                      (v/->value result)
-                      :else
-                      (->result ns result (and (not inline-results?)
-                                               (contains? result :nextjournal/blob-id)))))))))
+              (conj (->result ns result (and (not inline-results?)
+                                             (contains? result :nextjournal/blob-id))))))))
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
