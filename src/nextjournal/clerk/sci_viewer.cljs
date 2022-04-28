@@ -529,7 +529,7 @@
 
 (defn tagged-value [tag value]
   [:span.inspected-value.whitespace-nowrap
-   [:span.cmt-meta tag] value])
+   [:span.cmt-meta tag] nbsp value])
 
 (defn normalize-viewer [x]
   (if-let [viewer (-> x meta :nextjournal/viewer)]
