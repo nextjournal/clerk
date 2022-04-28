@@ -209,7 +209,7 @@ viewer.mount(document.getElementById('clerk'));\n"
        "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws');
 ws.onmessage = msg => viewer.set_state(viewer.read_string(msg.data));
 window.ws_send = msg => ws.send(msg);")
-     (when conn-ws?
+     (when (and conn-ws? (resolve 'nextjournal.clerk.browser-nrepl/create-channel))
        "window.ws_nrepl = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_nrepl');
         nextjournal.clerk.sci-viewer.init_nrepl();
 ")]]))

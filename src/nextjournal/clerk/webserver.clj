@@ -3,7 +3,6 @@
             [clojure.pprint :as pprint]
             [clojure.string :as str]
             [lambdaisland.uri :as uri]
-            [nextjournal.clerk.browser-nrepl :as bnrepl]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [org.httpkit.server :as httpkit]))
@@ -61,13 +60,8 @@
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
     (case (:uri req)
-      "/_nrepl" (httpkit/as-channel req
-                                    {:on-open (fn [ch]
-                                                (reset! bnrepl/nrepl-channel ch))
-                                     :on-close (fn [_ch _reason] (prn :close))
-                                     :on-receive
-                                     (fn [_ch message]
-                                       (bnrepl/response-handler message))})
+      "/_nrepl"
+      ((resolve 'nextjournal.clerk.browser-nrepl/create-channel) req)
       ;; default
       (httpkit/as-channel req {:on-open (fn [ch] (swap! !clients conj ch))
                                :on-close (fn [ch _reason] (swap! !clients disj ch))

@@ -1,10 +1,11 @@
 (ns nextjournal.clerk.browser-nrepl
-  (:require [bencode.core :as bencode]
-            [org.httpkit.server :as httpkit]
-            [clojure.edn :as edn])
-  (:import [java.io InputStream PushbackInputStream EOFException BufferedOutputStream PrintWriter BufferedWriter Writer StringWriter]
-           [java.net ServerSocket]
-           ))
+  (:require
+   [bencode.core :as bencode]
+   [clojure.edn :as edn]
+   [org.httpkit.server :as httpkit])
+  (:import
+   [java.io PushbackInputStream EOFException BufferedOutputStream]
+   [java.net ServerSocket]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,16 +24,16 @@
     msg))
 
 #_(defn send [^OutputStream os msg {:keys [debug-send]}]
-  (when debug-send (prn "Sending" msg))
-  (write-bencode os msg)
-  (.flush os))
+    (when debug-send (prn "Sending" msg))
+    (write-bencode os msg)
+    (.flush os))
 
 (def !last-ctx (volatile! nil))
 
 #_(let [sw (java.io.ByteArrayOutputStream.)]
-  (bencode/write-bencode sw {:a 1 "a" 2})
-  (let [bencode (str sw)]
-    (bencode/read-bencode (java.io.PushbackInputStream. (java.io.ByteArrayInputStream. (.getBytes bencode))))))
+    (bencode/write-bencode sw {:a 1 "a" 2})
+    (let [bencode (str sw)]
+      (bencode/read-bencode (java.io.PushbackInputStream. (java.io.ByteArrayInputStream. (.getBytes bencode))))))
 
 (defn send-response [{:keys [out id session response]
                       :or {out (:out @!last-ctx)}}]
@@ -42,8 +43,8 @@
                    session (assoc :session session))]
     (prn :resp response)
     #_(prn :res2 (let [sw (java.io.StringWriter.)]
-                 (bencode/write-bencode sw response)
-                 (str sw)))
+                   (bencode/write-bencode sw response)
+                   (str sw)))
     (bencode/write-bencode out response)
     (.flush ^java.io.OutputStream out)))
 
@@ -128,6 +129,15 @@
 
 (defn stop-browser-nrepl! []
   (.close ^ServerSocket @!socket))
+
+(defn create-channel [req]
+  (httpkit/as-channel req
+                      {:on-open (fn [ch]
+                                  (reset! nrepl-channel ch))
+                       :on-close (fn [_ch _reason] (prn :close))
+                       :on-receive
+                       (fn [_ch message]
+                         (response-handler message))}))
 
 ;;;; Scratch
 
