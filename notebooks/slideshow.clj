@@ -20,25 +20,12 @@
 ;; ---
 ;; The `doc->slides` helper function takes a Clerk notebook and partitions its blocks into slides by occurrences of markdown rulers.
 (defn doc->slides [{:as doc :keys [blocks]}]
-  (let [->slide (partial v/with-viewer slide-viewer)]
-    (transduce (mapcat (partial v/with-block-viewer doc))
-               (fn
-                 ([] {:slides [] :open-fragment []})        ;; init
-                 ([{:keys [slides open-fragment]}]          ;; complete
-                  (conj slides (->slide open-fragment)))
-                 ([acc {:nextjournal/keys [viewer value]}]
-                  (if (not= :clerk/markdown-block viewer)
-                    (update acc :open-fragment conj value)
-                    (loop [[hd & tail] (partition-by (comp #{:ruler} :type) (-> value :doc :content))
-                           {:as acc :keys [open-fragment]} acc]
-                      (let [ruler? (comp #{:ruler} :type first)]
-                        (if (and (empty? tail) (not (ruler? hd)))
-                          (update acc :open-fragment into hd)
-                          (recur tail (cond-> acc
-                                        (or (seq open-fragment) (and (seq hd) (not (ruler? hd))))
-                                        (-> (update :slides conj (->slide (concat open-fragment (when-not (ruler? hd) hd))))
-                                            (assoc :open-fragment []))))))))))
-               blocks)))
+  (sequence (comp (mapcat (partial v/with-block-viewer doc))
+                  (mapcat #(if (= :clerk/markdown-block (v/->viewer %)) (-> % v/->value :doc :content) [(v/->value %)]))
+                  (partition-by (comp #{:ruler} :type))
+                  (remove (comp #{:ruler} :type first))
+                  (map (partial v/with-viewer slide-viewer)))
+            blocks))
 
 ;; ---
 ;; Lastly, the `slideshow-viewer` overrides
