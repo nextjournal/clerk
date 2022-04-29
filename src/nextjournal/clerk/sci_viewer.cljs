@@ -216,7 +216,11 @@
                                                  (throw (ex-info (str "error in render-fn: " (.-message e)) {:render-fn %} e))))
                               'viewer-eval #(*eval* %)} tag)
                         (fn [value]
-                          (with-viewer :tagged-value {:tag tag :value value}))))
+                          (with-viewer :tagged-value
+                            {:tag tag :value (cond-> value
+                                               (and (vector? value) (number? (second value)))
+                                               (update 1 (fn [memory-address]
+                                                           (with-viewer :number-hex memory-address))))}))))
          :features #{:clj}}))
 
 (defn ^:export read-string [s]
@@ -419,6 +423,10 @@
                                   :on-click (partial toggle-expanded !expanded-at path)} "\""]
            [:span "\""])
          (viewer/->value (string-viewer s opts)) "\""]))
+
+(defn number-viewer [num]
+  (html [:span.cmt-number.inspected-value
+         (if (js/Number.isNaN num) "NaN" (str num))]))
 
 (defn sort! [!sort i k]
   (let [{:keys [sort-key sort-order]} @!sort]
@@ -1070,6 +1078,7 @@ black")}]))}
 (def sci-viewer-namespace
   {'html html-viewer
    'inspect inspect
+   'inspect-paginated inspect-paginated
    'result-viewer result-viewer
    'coll-viewer coll-viewer
    'map-viewer map-viewer
@@ -1079,6 +1088,7 @@ black")}]))}
    'set-viewers! set-viewers!
    'string-viewer string-viewer
    'quoted-string-viewer quoted-string-viewer
+   'number-viewer number-viewer
    'table-viewer table-viewer
    'table-error table-error
    'with-viewer with-viewer

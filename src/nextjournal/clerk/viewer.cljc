@@ -209,8 +209,8 @@
   ;; maybe make this a sorted-map
   [{:pred char? :render-fn '(fn [c] (v/html [:span.cmt-string.inspected-value "\\" c]))}
    {:pred string? :render-fn (quote v/quoted-string-viewer) :fetch-opts {:n elide-string-length}}
-   {:pred number? :render-fn '(fn [x] (v/html [:span.cmt-number.inspected-value
-                                               (if (js/Number.isNaN x) "NaN" (str x))]))}
+   {:pred number? :render-fn (quote v/number-viewer)}
+   {:name :number-hex :render-fn '(fn [num] (v/number-viewer (str "0x" (.toString (js/Number. num) 16))))}
    {:pred symbol? :render-fn '(fn [x] (v/html [:span.cmt-keyword.inspected-value (str x)]))}
    {:pred keyword? :render-fn '(fn [x] (v/html [:span.cmt-atom.inspected-value (str x)]))}
    {:pred nil? :render-fn '(fn [_] (v/html [:span.cmt-default.inspected-value "nil"]))}
@@ -268,7 +268,7 @@
                                 (assoc :path [:rows] :replace-path [offset])
                                 (dissoc :nextjournal/viewers))))}
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
-   {:name :tagged-value :render-fn '(fn [{:keys [tag value]}] (v/html (v/tagged-value {:space? false} (str "#" tag) [v/inspect value])))}
+   {:name :tagged-value :render-fn '(fn [{:keys [tag value]}] (v/html (v/tagged-value {:space? false} (str "#" tag) [v/inspect-paginated value])))}
    {:name :clerk/notebook :render-fn (quote v/notebook-viewer) :fetch-fn fetch-all}
    {:name :clerk/result :render-fn (quote v/result-viewer) :fetch-fn fetch-all}
    {:name :hide-result :transform-fn (fn [_] nil)}])
