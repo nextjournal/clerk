@@ -210,12 +210,13 @@
          :location? seq?
          :end-location false
          :read-cond :allow
-         :readers {'file (partial with-viewer :file)
-                   'object (partial with-viewer :object)
-                   'viewer-fn #(try (viewer/->viewer-fn %)
-                                    (catch js/Error e
-                                      (throw (ex-info (str "error in render-fn: " (.-message e)) {:render-fn %} e))))
-                   'viewer-eval #(*eval* %)}
+         :readers (fn [tag]
+                    (or (get {'viewer-fn #(try (viewer/->viewer-fn %)
+                                               (catch js/Error e
+                                                 (throw (ex-info (str "error in render-fn: " (.-message e)) {:render-fn %} e))))
+                              'viewer-eval #(*eval* %)} tag)
+                        (fn [value]
+                          (with-viewer :tagged-value {:tag tag :value value}))))
          :features #{:clj}}))
 
 (defn ^:export read-string [s]
@@ -536,9 +537,11 @@
                      [:td.py-1.pr-6 call]]))
              trace)]]]]))
 
-(defn tagged-value [tag value]
-  [:span.inspected-value.whitespace-nowrap
-   [:span.cmt-meta tag] nbsp value])
+(defn tagged-value
+  ([tag value] ({:space? true} tagged-value tag value))
+  ([{:keys [space?]} tag value]
+   [:span.inspected-value.whitespace-nowrap
+    [:span.cmt-meta tag] (when space? nbsp) value]))
 
 (defn normalize-viewer [x]
   (if-let [viewer (-> x meta :nextjournal/viewer)]
@@ -1094,7 +1097,8 @@ black")}]))}
    'reagent-viewer reagent-viewer
 
    'doc-url doc-url
-   'url-for url-for})
+   'url-for url-for
+   'read-string read-string})
 
 (defonce !sci-ctx
   (atom (sci/init {:async? true
