@@ -162,12 +162,18 @@
 (defn fetch-all [opts xs]
   (w/postwalk (partial inspect-leafs opts) xs))
 
-(defn get-safe [map key]
-  (try (get map key) ;; can throw for e.g. sorted-map
-       (catch #?(:clj Exception :cljs js/Error) _e nil)))
+(defn get-safe
+  ([key] #(get-safe % key))
+  ([map key]
+   (when (map? map)
+     (try (get map key) ;; can throw for e.g. sorted-map
+          (catch #?(:clj Exception :cljs js/Error) _e nil)))))
 
-(defn var-from-def? [x]
-  (and (map? x) (get-safe x :nextjournal.clerk/var-from-def)))
+(def var-from-def?
+  (get-safe :nextjournal.clerk/var-from-def))
+
+(def datafied?
+  (get-safe :nextjournal.clerk/datafied))
 
 (defn with-md-viewer [{:as node :keys [type]}]
   (with-viewer (keyword "nextjournal.markdown" (name type)) node))
@@ -204,6 +210,12 @@
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
             (.setTimeZone (java.util.TimeZone/getTimeZone "GMT")))))
 
+(defn try-datafy [x]
+  (let [datafied (clojure.datafy/datafy x)]
+    (if (= x datafied)
+      (with-viewer :pr-str x)
+      datafied)))
+
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
@@ -219,6 +231,7 @@
     :transform-fn (comp demunge str)}
    {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :fetch-opts {:n 2}}
    {:pred var-from-def? :transform-fn (fn [x] (-> x :nextjournal.clerk/var-from-def deref))}
+   {:name :pr-str :transform-fn pr-str :render-fn '(fn [x] (v/html [v/inspect (v/read-string x)]))}
    {:pred vector? :render-fn 'v/coll-viewer :opening-paren "[" :closing-paren "]" :fetch-opts {:n 20}}
    {:pred set? :render-fn 'v/coll-viewer :opening-paren "#{" :closing-paren "}" :fetch-opts {:n 20}}
    {:pred sequential? :render-fn 'v/coll-viewer :opening-paren "(" :closing-paren ")" :fetch-opts {:n 20}}
@@ -239,7 +252,7 @@
                                                :nextjournal/content-type "image/png"
                                                :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})))
             :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))})
-   {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [v/inspect (v/read-string x)]))}
+   {:pred (constantly true) :transform-fn try-datafy}
    {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
    {:name :mathjax :render-fn (quote v/mathjax-viewer) :fetch-fn fetch-all}
