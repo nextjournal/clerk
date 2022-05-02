@@ -35,7 +35,10 @@
   (clerk/show! "notebooks/viewers/html.clj")
 
   (clerk/show! "notebooks/sicmutils.clj")
-  (clerk/show! "notebooks/dice.clj")
+
+  (require '[nextjournal.clerk.browser-nrepl :as bnrepl])
+  (bnrepl/start-browser-nrepl! {:port 1339})
+  (clerk/show! "notebooks/cljs_render_fn_file.clj")
 
   (clerk/clear-cache!)
   )

@@ -2,7 +2,8 @@
   (:require
    [bencode.core :as bencode]
    [clojure.edn :as edn]
-   [org.httpkit.server :as httpkit])
+   [org.httpkit.server :as httpkit]
+   [clojure.string :as str])
   (:import
    [java.io PushbackInputStream EOFException BufferedOutputStream]
    [java.net ServerSocket]))
@@ -69,11 +70,17 @@
 (defn handle-eval [{:keys [msg session id] :as ctx}]
   (vreset! !last-ctx ctx)
   (let [code (get msg "code")]
-    (when-let [chan @nrepl-channel]
-      (httpkit/send! chan (str {:op :eval
-                                :code code
-                                :id id
-                                :session session})))))
+    (prn :code code)
+    (if (or (str/includes? code "clojure.main/repl-requires")
+            (str/includes? code "System/getProperty"))
+      (do
+        (send-response (assoc ctx :response {"value" "nil"}))
+        (send-response (assoc ctx :response {"status" ["done"]})))
+      (when-let [chan @nrepl-channel]
+        (httpkit/send! chan (str {:op :eval
+                                  :code code
+                                  :id id
+                                  :session session}))))))
 
 (defn handle-describe [ctx]
   (send-response (assoc ctx :response {"status" #{"done"}
@@ -87,7 +94,7 @@
                                                        ;; "lookup"
                                                        }
                                                      (repeat {}))
-                                       "versions" []})))
+                                       "versions" {"clerk-browser-nrepl" "0.0.1"}})))
 
 (defn session-loop [in out {:keys [opts]}]
   (loop []
@@ -98,6 +105,7 @@
                      (catch EOFException _
                        (when-not (:quiet opts)
                          (println "Client closed connection."))))]
+      (prn :msg msg)
       (let [ctx {:out out :msg msg}
             id (get msg "id")
             session (get msg "session")
@@ -106,6 +114,7 @@
           "clone" (handle-clone ctx)
           "eval" (handle-eval ctx)
           "describe" (handle-describe ctx)
+          ;; TODO "version op"
           (println "Unhandled message" msg)))
       (recur))))
 
@@ -119,11 +128,12 @@
       (session-loop in out {:opts opts}))
     (recur listener opts)))
 
-(def !socket (atom nil))
+(defonce !socket (atom nil))
 
-(defn start-browser-nrepl! []
+(defn start-browser-nrepl! [{:keys [port]
+                             :or {port 1339}}]
   (let [inet-address (java.net.InetAddress/getByName "localhost")
-        socket (new ServerSocket 1339 0 inet-address)
+        socket (new ServerSocket port 0 inet-address)
         _ (reset! !socket socket)]
     (future (listen socket nil))))
 
@@ -143,7 +153,7 @@
 
 (comment
 
-  (start-browser-nrepl!)
+  (start-browser-nrepl! {:port 1339})
   (stop-browser-nrepl!)
 
   )
