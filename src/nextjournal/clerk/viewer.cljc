@@ -246,7 +246,7 @@
                                                :nextjournal/content-type "image/png"
                                                :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})))
             :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))})
-   {:pred (constantly :true) :transform-fn (comp (partial with-viewer :read+inspect) pr-str)}
+   {:pred (constantly :true) :transform-fn #(with-viewer :read+inspect (pr-str %))}
    {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
    {:name :mathjax :render-fn (quote v/mathjax-viewer) :fetch-fn fetch-all}
