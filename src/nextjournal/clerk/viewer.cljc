@@ -210,12 +210,6 @@
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
             (.setTimeZone (java.util.TimeZone/getTimeZone "GMT")))))
 
-(defn try-datafy [x]
-  (let [datafied (clojure.datafy/datafy x)]
-    (if (= x datafied)
-      (with-viewer :pr-str x)
-      datafied)))
-
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
@@ -231,7 +225,7 @@
     :transform-fn (comp demunge str)}
    {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :fetch-opts {:n 2}}
    {:pred var-from-def? :transform-fn (fn [x] (-> x :nextjournal.clerk/var-from-def deref))}
-   {:name :pr-str :transform-fn pr-str :render-fn '(fn [x] (v/html [v/inspect (v/read-string x)]))}
+   {:name :read+inspect :render-fn '(fn [x] (v/html [v/inspect-paginated (v/read-string x)]))}
    {:pred vector? :render-fn 'v/coll-viewer :opening-paren "[" :closing-paren "]" :fetch-opts {:n 20}}
    {:pred set? :render-fn 'v/coll-viewer :opening-paren "#{" :closing-paren "}" :fetch-opts {:n 20}}
    {:pred sequential? :render-fn 'v/coll-viewer :opening-paren "(" :closing-paren ")" :fetch-opts {:n 20}}
@@ -252,7 +246,7 @@
                                                :nextjournal/content-type "image/png"
                                                :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})))
             :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))})
-   {:pred (constantly true) :transform-fn try-datafy}
+   {:pred (constantly :true) :transform-fn (comp (partial with-viewer :read+inspect) pr-str)}
    {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
    {:name :mathjax :render-fn (quote v/mathjax-viewer) :fetch-fn fetch-all}
@@ -281,7 +275,9 @@
                                 (assoc :path [:rows] :replace-path [offset])
                                 (dissoc :nextjournal/viewers))))}
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
-   {:name :tagged-value :render-fn '(fn [{:keys [tag value]}] (v/html (v/tagged-value {:space? false} (str "#" tag) [v/inspect-paginated value])))}
+   {:name :tagged-value :render-fn '(fn [{:keys [tag value]}] (v/html (v/tagged-value {:space? false} (str "#" tag) [v/inspect value])))
+    :fetch-fn (fn [{:as opts :keys [describe-fn]} x]
+                (update x :value describe-fn opts))}
    {:name :clerk/notebook :render-fn (quote v/notebook-viewer) :fetch-fn fetch-all}
    {:name :clerk/result :render-fn (quote v/result-viewer) :fetch-fn fetch-all}
    {:name :hide-result :transform-fn (fn [_] nil)}])
