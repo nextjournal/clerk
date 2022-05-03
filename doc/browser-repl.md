@@ -28,7 +28,7 @@ To connect to the browser nREPL client from CIDER, insert this snippet in your e
 (cider-register-cljs-repl-type 'clerk-browser-repl "(+ 42)")
 
 (defun mm/cider-connected-hook ()
-  (when (eq 'nbb cider-cljs-repl-type)
+  (when (eq 'clerk-browser-repl cider-cljs-repl-type)
     (setq-local cider-show-error-buffer nil)
     (cider-set-repl-type 'cljs)))
 
