@@ -2,8 +2,8 @@
   (:require
    [bencode.core :as bencode]
    [clojure.edn :as edn]
-   [org.httpkit.server :as httpkit]
-   [clojure.string :as str])
+   [clojure.string :as str]
+   [org.httpkit.server :as httpkit])
   (:import
    [java.io PushbackInputStream EOFException BufferedOutputStream]
    [java.net ServerSocket]))
@@ -15,37 +15,31 @@
     (assoc m k (f v))
     m))
 
-(defn read-bencode [in]
-  (let [msg (bencode/read-bencode in)
-        msg (update msg "id" #(String. ^bytes %))
-        msg (update msg "op" #(String. ^bytes %))
-        msg (update-when msg "code" #(String. ^bytes %))
-        msg (update-when msg "session" #(String. ^bytes %))]
-    (prn :msssg msg)
-    msg))
+(def known-keys ["id" "op" "code" "session" "file" "file-name" "file-path"])
 
-#_(defn send [^OutputStream os msg {:keys [debug-send]}]
-    (when debug-send (prn "Sending" msg))
-    (write-bencode os msg)
-    (.flush os))
+(defn read-bencode [in]
+  (try (let [msg (bencode/read-bencode in)
+            _ (def m1 msg)
+            msg (reduce (fn [msg k]
+                          (def m msg)
+                          (update-when msg k #(String. ^bytes %)))
+                        msg known-keys)]
+         msg)
+       (catch Exception e
+         (def e e)
+         (throw e))))
+
+(comment
+  
+  )
 
 (def !last-ctx (volatile! nil))
 
-#_(let [sw (java.io.ByteArrayOutputStream.)]
-    (bencode/write-bencode sw {:a 1 "a" 2})
-    (let [bencode (str sw)]
-      (bencode/read-bencode (java.io.PushbackInputStream. (java.io.ByteArrayInputStream. (.getBytes bencode))))))
-
 (defn send-response [{:keys [out id session response]
                       :or {out (:out @!last-ctx)}}]
-  (prn :pre-resp response)
   (let [response (cond-> response
                    id (assoc :id id)
                    session (assoc :session session))]
-    (prn :resp response)
-    #_(prn :res2 (let [sw (java.io.StringWriter.)]
-                   (bencode/write-bencode sw response)
-                   (str sw)))
     (bencode/write-bencode out response)
     (.flush ^java.io.OutputStream out)))
 
@@ -70,6 +64,7 @@
 (defn handle-eval [{:keys [msg session id] :as ctx}]
   (vreset! !last-ctx ctx)
   (let [code (get msg "code")]
+    (def c code)
     (prn :code code)
     (if (or (str/includes? code "clojure.main/repl-requires")
             (str/includes? code "System/getProperty"))
@@ -81,6 +76,13 @@
                                   :code code
                                   :id id
                                   :session session}))))))
+
+(defn handle-load-file [ctx]
+  (let [msg (get ctx :msg)
+        code (get msg "file")
+        msg (assoc msg "code" code)
+        ctx (assoc ctx :msg msg)]
+    (handle-eval ctx)))
 
 (defn handle-describe [ctx]
   (send-response (assoc ctx :response {"status" #{"done"}
@@ -116,6 +118,7 @@
           "clone" (handle-clone ctx)
           "eval" (handle-eval ctx)
           "describe" (handle-describe ctx)
+          ;; "load-file" (handle-load-file ctx)
           (send-response (assoc ctx :response {"status" #{"error" "unknown-op" "done"}}))))
       (recur))))
 
