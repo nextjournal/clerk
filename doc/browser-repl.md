@@ -6,7 +6,7 @@ Clerk supports connecting to an nREPL server that runs directly in the browser, 
 
 In your JVM REPL, execute the following:
 
-```
+``` clojure
 (require '[nextjournal.clerk :as clerk])
 (clerk/serve! {})
 (require '[nextjournal.clerk.browser-nrepl :as bnrepl])
