@@ -15,7 +15,8 @@
     (assoc m k (f v))
     m))
 
-(def known-keys ["id" "op" "code" "session" "file" "file-name" "file-path"])
+(def known-keys ["id" "op" "code" "session" "file" "file-name" "file-path"
+                 "symbol" "prefix" "ns" "context"])
 
 (defn read-bencode [in]
   (try (let [msg (bencode/read-bencode in)
@@ -40,6 +41,7 @@
   (let [response (cond-> response
                    id (assoc :id id)
                    session (assoc :session session))]
+    (def resp response)
     (bencode/write-bencode out response)
     (.flush ^java.io.OutputStream out)))
 
@@ -64,8 +66,6 @@
 (defn handle-eval [{:keys [msg session id] :as ctx}]
   (vreset! !last-ctx ctx)
   (let [code (get msg "code")]
-    (def c code)
-    (prn :code code)
     (if (or (str/includes? code "clojure.main/repl-requires")
             (str/includes? code "System/getProperty"))
       (do
@@ -84,11 +84,24 @@
         ctx (assoc ctx :msg msg)]
     (handle-eval ctx)))
 
+(defn handle-complete [{:keys [id session msg]}]
+  (def m msg)
+  (when-let [chan @nrepl-channel]
+    (let [symbol (get msg "symbol")
+          prefix (get msg "prefix")
+          ns (get msg "ns")]
+      (httpkit/send! chan (str {:op :complete
+                                :id id
+                                :session session
+                                :symbol symbol
+                                :prefix prefix
+                                :ns ns})))))
+
 (defn handle-describe [ctx]
   (send-response (assoc ctx :response {"status" #{"done"}
                                        "ops" (zipmap #{"clone" "close" "eval"
                                                        "load-file"
-                                                       ;; "complete"
+                                                       "complete"
                                                        "describe"
                                                        ;; "ls-sessions"
                                                        ;; "eldoc"
@@ -119,6 +132,7 @@
           "eval" (handle-eval ctx)
           "describe" (handle-describe ctx)
           "load-file" (handle-load-file ctx)
+          "complete" (handle-complete ctx)
           (send-response (assoc ctx :response {"status" #{"error" "unknown-op" "done"}}))))
       (recur))))
 
