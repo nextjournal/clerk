@@ -1230,7 +1230,6 @@ black")}]))}
                     :as request}]
   (try
     (let [ctx @!sci-ctx
-          ns-str nil
           sci-ns (when ns-str
                    (sci/find-ns ctx (symbol ns-str)))]
       (sci/binding [sci/ns (or sci-ns @sci/ns)]
