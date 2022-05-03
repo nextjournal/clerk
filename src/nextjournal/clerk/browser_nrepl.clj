@@ -94,7 +94,16 @@
                                                        ;; "lookup"
                                                        }
                                                      (repeat {}))
-                                       "versions" {"clerk-browser-nrepl" "0.0.1"}})))
+                                       "versions" {"clerk-browser-nrepl" {"major" "0"
+                                                                          "minor" "0"
+                                                                          "incremental" "1"}}})))
+
+(defn handle-version [ctx]
+  (send-response (assoc ctx :response
+                        {"status" #{"done"}
+                         "versions" {"clerk-browser-nrepl" {"major" "0"
+                                                            "minor" "0"
+                                                            "incremental" "1"}}})))
 
 (defn session-loop [in out {:keys [opts]}]
   (loop []
@@ -114,7 +123,7 @@
           "clone" (handle-clone ctx)
           "eval" (handle-eval ctx)
           "describe" (handle-describe ctx)
-          ;; TODO "version op"
+          "version" (handle-version ctx)
           (println "Unhandled message" msg)))
       (recur))))
 

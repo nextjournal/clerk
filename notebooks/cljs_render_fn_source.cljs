@@ -5,7 +5,7 @@
   (v/mount))
 
 (defn bar []
-  [:pre "Hello yes dude"])
+  [:pre "Hello yes no!"])
 
 (defn foo []
   [:<>
