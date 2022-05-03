@@ -123,8 +123,7 @@
           "clone" (handle-clone ctx)
           "eval" (handle-eval ctx)
           "describe" (handle-describe ctx)
-          "version" (handle-version ctx)
-          (println "Unhandled message" msg)))
+          (send-response (assoc ctx :response {"status" #{"error" "unknown-op" "done"}}))))
       (recur))))
 
 (defn listen [^ServerSocket listener {:as opts}]
