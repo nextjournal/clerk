@@ -87,7 +87,7 @@
 (defn handle-describe [ctx]
   (send-response (assoc ctx :response {"status" #{"done"}
                                        "ops" (zipmap #{"clone" "close" "eval"
-                                                       ;; "load-file"
+                                                       "load-file"
                                                        ;; "complete"
                                                        "describe"
                                                        ;; "ls-sessions"
@@ -118,7 +118,7 @@
           "clone" (handle-clone ctx)
           "eval" (handle-eval ctx)
           "describe" (handle-describe ctx)
-          ;; "load-file" (handle-load-file ctx)
+          "load-file" (handle-load-file ctx)
           (send-response (assoc ctx :response {"status" #{"error" "unknown-op" "done"}}))))
       (recur))))
 
