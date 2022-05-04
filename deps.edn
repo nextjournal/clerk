@@ -8,7 +8,8 @@
 
         com.nextjournal/beholder {:mvn/version "1.0.0"}
 
-        io.github.nextjournal/markdown {:mvn/version "0.3.69"}
+        io.github.nextjournal/markdown {:git/url "git@github.com:nextjournal/markdown.git"
+                                        :git/sha "8e4e2c0d05aaaa08693c6f945d9dbe83beaa889d"}
 
         com.taoensso/nippy {:mvn/version "3.1.1"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
