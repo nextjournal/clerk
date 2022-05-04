@@ -14,12 +14,8 @@
 
 ;; ## Compare with the REPL
 ;; ### Finding `print-method` implementations
-
-(require 'cider.nrepl.print-method :reload)
-
 (def print-method-impls
   (->> print-method methods keys (mapv (fn [x] (if (class? x) (symbol (.getName x)) x))) set))
-
 
 (defn print-with-dispatch [dispatch x]
   (let [w (java.io.StringWriter.)
@@ -107,6 +103,8 @@
 
 ;; ## Testcases
 
+(atom (vec (range 100)))
+
 (ref (vec (range 100)))
 
 (java.io.File. "/Users/mk/dev/blog")
@@ -134,3 +132,4 @@ inc
 (type (atom {}))
 
 (datafy/datafy (type (atom {})))
+
