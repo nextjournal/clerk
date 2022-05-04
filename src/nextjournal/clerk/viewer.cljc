@@ -10,7 +10,8 @@
             [nextjournal.markdown :as md]
             [nextjournal.markdown.transform :as md.transform]
             [lambdaisland.uri.normalize :as uri.normalize])
-  #?(:clj (:import (java.lang Throwable)
+  #?(:clj (:import (clojure.lang IDeref)
+                   (java.lang Throwable)
                    (java.awt.image BufferedImage)
                    (javax.imageio ImageIO))))
 
@@ -221,6 +222,7 @@
    {:pred keyword? :render-fn '(fn [x] (v/html [:span.cmt-atom.inspected-value (str x)]))}
    {:pred nil? :render-fn '(fn [_] (v/html [:span.cmt-default.inspected-value "nil"]))}
    {:pred boolean? :render-fn '(fn [x] (v/html [:span.cmt-bool.inspected-value (str x)]))}
+   #_
    {:pred fn? :name :fn :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#function"] "[" x "]"]))
     :transform-fn (comp demunge str)}
    {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :fetch-opts {:n 2}}
@@ -246,6 +248,14 @@
                                                :nextjournal/content-type "image/png"
                                                :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})))
             :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))})
+   {:pred #(instance? IDeref %)
+    :transform-fn (fn [r] (with-viewer :tagged-value
+                            {:tag "object"
+                             :value (vector (type r)
+                                            #?(:clj (with-viewer :number-hex (System/identityHashCode r)))
+                                            (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
+                                              (deref-as-map r)
+                                              r))}))}
    {:pred (constantly :true) :transform-fn #(with-viewer :read+inspect (pr-str %))}
    {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}

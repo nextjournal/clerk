@@ -1,16 +1,61 @@
 ;; # 🖨 Better Printing
-(ns viewers.printing
+(ns ^:nextjournal.clerk/no-cache viewers.printing
   (:require [clojure.datafy :as datafy]
+            [clojure.java.io :as io]
+            [clojure.set :as set]
+            [clojure.string :as str]
             [nextjournal.clerk :as clerk :refer [with-viewer]]
             [nextjournal.clerk.viewer :as v]))
 
 ;; For reference, let's look at `core_print.clj` (jump to `*print-length*`) and `cider.nrepl` (jump to `cider.nrepl.print-method/def-print-method`).
 
 
-^::clerk/no-cache
 (clerk/set-viewers! v/default-viewers)
 
 ;; ## Compare with the REPL
+;; ### Finding `print-method` implementations
+
+(require 'cider.nrepl.print-method :reload)
+
+(def print-method-impls
+  (->> print-method methods keys (mapv (fn [x] (if (class? x) (symbol (.getName x)) x))) set))
+
+
+(defn print-with-dispatch [dispatch x]
+  (let [w (java.io.StringWriter.)
+        f (-> print-method methods (get dispatch))]
+    (when f
+      (f x w)
+      (str w))))
+
+(print-with-dispatch :default (atom {}))
+
+(print-with-dispatch clojure.lang.Atom (atom {}))
+
+(print-with-dispatch clojure.lang.IDeref (atom {}))
+
+(def default-print-method-impls
+  '#{nil java.lang.Object clojure.lang.ISeq clojure.lang.ReaderConditional java.util.Date java.lang.Throwable java.util.regex.Pattern :default java.lang.StackTraceElement clojure.lang.Var clojure.core.Eduction java.util.Map java.util.UUID java.lang.Character java.sql.Timestamp java.lang.Double java.lang.Boolean :clojure.core/VecSeq java.lang.Float java.lang.String clojure.lang.IPersistentSet java.util.RandomAccess clojure.lang.IDeref java.util.Set java.util.Calendar java.lang.Class clojure.lang.IPersistentMap clojure.lang.IPersistentVector java.lang.Number :clojure.core/Vec java.util.List clojure.lang.BigInt java.math.BigDecimal clojure.lang.Keyword clojure.lang.Symbol clojure.lang.TaggedLiteral clojure.lang.IRecord})
+
+(def print-method-overrides
+  (->> (set/difference print-method-impls default-print-method-impls)
+       (filter #(str/starts-with? (str %) "clojure.lang"))
+       (mapv resolve)))
+
+(doseq [dispatch print-method-overrides]
+  (remove-method print-method dispatch))
+
+;; Let's re-evaluate the the `clojure/core_print.clj` default implemetation
+(defmethod print-method clojure.lang.IDeref [o w]
+  (#'clojure.core/print-tagged-object o (#'clojure.core/deref-as-map o) w))
+
+(print-with-dispatch :default (atom {}))
+
+(print-with-dispatch clojure.lang.Atom (atom {}))
+
+(print-with-dispatch clojure.lang.IDeref (atom {}))
+
+
 ;; ### Clojure's default printing
 
 ^{::clerk/visibility :hide}
@@ -34,7 +79,7 @@
   "#namespace[clojure.core]")
 
 ;; Like Clojure's default:
-(with-viewer {:pred (partial instance? clojure.lang.IDeref)
+(with-viewer {:pred #(instance? clojure.lang.IDeref %)
               :transform-fn (fn [r] (with-viewer :tagged-value
                                       {:tag "object"
                                        :value (vector (class r)
@@ -66,13 +111,15 @@
 
 (java.io.File. "/Users/mk/dev/blog")
 
+inc
+
 #'inc
 
-(clojure.datafy/datafy #'inc)
+(datafy/datafy #'inc)
 
 (find-ns 'nextjournal.clerk)
 
-(clojure.datafy/datafy (find-ns 'nextjournal.clerk))
+(datafy/datafy (find-ns 'nextjournal.clerk))
 
 (defmulti foo :bar)
 
@@ -86,4 +133,4 @@
 ;; But I rejected this because the default implementations for `class` and `namespace` would be confusing.
 (type (atom {}))
 
-(clojure.datafy/datafy (type (atom {})))
+(datafy/datafy (type (atom {})))
