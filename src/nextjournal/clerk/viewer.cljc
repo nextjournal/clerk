@@ -463,7 +463,7 @@
   (if-not (map? viewer)
     viewer
     (-> viewer
-        (dissoc :pred :transform-fn :fetch-fn)
+        (dissoc :pred :transform-fn :fetch-fn :update-viewers-fn)
         process-render-fn)))
 
 #_(process-viewer {:render-fn '(v/html [:h1]) :fetch-fn fetch-all})
