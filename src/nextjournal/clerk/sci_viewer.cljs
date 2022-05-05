@@ -217,10 +217,12 @@
                               'viewer-eval #(*eval* %)} tag)
                         (fn [value]
                           (with-viewer :tagged-value
-                            {:tag tag :value (cond-> value
-                                               (and (vector? value) (number? (second value)))
-                                               (update 1 (fn [memory-address]
-                                                           (with-viewer :number-hex memory-address))))}))))
+                            {:tag tag
+                             :space? (not (vector? value))
+                             :value (cond-> value
+                                      (and (vector? value) (number? (second value)))
+                                      (update 1 (fn [memory-address]
+                                                  (with-viewer :number-hex memory-address))))}))))
          :features #{:clj}}))
 
 (defn ^:export read-string [s]

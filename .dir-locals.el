@@ -1,6 +1,7 @@
 ;;; Directory Local Variables
 ;;; For more information see (info "(emacs) Directory Variables")
 ((nil . ((cider-clojure-cli-global-options . "-A:demo")
+         (prettify-symbols-mode . nil)
          (use-bb-dev . t)
          (eval . ((lambda ()
                     (defun cider-jack-in-wrapper-function (orig-fun &rest args)

@@ -13,84 +13,43 @@
 (clerk/set-viewers! v/default-viewers)
 
 ;; ## Compare with the REPL
-;; ### Finding `print-method` implementations
-(def print-method-impls
-  (->> print-method methods keys (mapv (fn [x] (if (class? x) (symbol (.getName x)) x))) set))
-
-(defn print-with-dispatch [dispatch x]
-  (let [w (java.io.StringWriter.)
-        f (-> print-method methods (get dispatch))]
-    (when f
-      (f x w)
-      (str w))))
-
-(print-with-dispatch :default (atom {}))
-
-(print-with-dispatch clojure.lang.Atom (atom {}))
-
-(print-with-dispatch clojure.lang.IDeref (atom {}))
-
-(def default-print-method-impls
-  '#{nil java.lang.Object clojure.lang.ISeq clojure.lang.ReaderConditional java.util.Date java.lang.Throwable java.util.regex.Pattern :default java.lang.StackTraceElement clojure.lang.Var clojure.core.Eduction java.util.Map java.util.UUID java.lang.Character java.sql.Timestamp java.lang.Double java.lang.Boolean :clojure.core/VecSeq java.lang.Float java.lang.String clojure.lang.IPersistentSet java.util.RandomAccess clojure.lang.IDeref java.util.Set java.util.Calendar java.lang.Class clojure.lang.IPersistentMap clojure.lang.IPersistentVector java.lang.Number :clojure.core/Vec java.util.List clojure.lang.BigInt java.math.BigDecimal clojure.lang.Keyword clojure.lang.Symbol clojure.lang.TaggedLiteral clojure.lang.IRecord})
-
-(def print-method-overrides
-  (->> (set/difference print-method-impls default-print-method-impls)
-       (filter #(str/starts-with? (str %) "clojure.lang"))
-       (mapv resolve)))
-
-(doseq [dispatch print-method-overrides]
-  (remove-method print-method dispatch))
-
-;; Let's re-evaluate the the `clojure/core_print.clj` default implemetation
-(defmethod print-method clojure.lang.IDeref [o w]
+;; Let's re-evaluate the the `clojure/core_print.clj` [default implemetation](https://github.com/clojure/clojure/blob/35bd89f05f8dc4aec47001ca10fe9163abc02ea6/src/clj/clojure/core_print.clj#L459-L460) (but with a dispatch value of `clojure.lang.Atom`).
+(defmethod print-method clojure.lang.Atom [o w]
   (#'clojure.core/print-tagged-object o (#'clojure.core/deref-as-map o) w))
 
-(print-with-dispatch :default (atom {}))
-
-(print-with-dispatch clojure.lang.Atom (atom {}))
-
-(print-with-dispatch clojure.lang.IDeref (atom {}))
-
-
-;; ### Clojure's default printing
-
-^{::clerk/visibility :hide}
 (with-viewer :read+inspect
-  "#object[clojure.lang.Atom 0x1a38ba58 {:status :ready, :val (0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29)}]")
+  (pr-str (atom {})))
 
-^{::clerk/visibility :hide}
+;; This is [cider-nrepl's implementation](https://github.com/clojure-emacs/cider-nrepl/blob/5c0f21197fcccb1b2ca67054cab1dcc8a6af2c7f/src/cider/nrepl/print_method.clj#L37-L40).
+(defmethod print-method clojure.lang.Atom [o w]
+  (.write w "#atom[")
+  (.write w (pr-str @o))
+  (.write w (format " 0x%x]" (System/identityHashCode o))))
+
 (with-viewer :read+inspect
-  "#object[clojure.lang.Namespace 0x1e53135d \"clojure.core\"]")
+  (pr-str (atom {})))
 
-;; ### `cider-nrepl`
 
-;; Atom
-^{::clerk/visibility :hide}
-(with-viewer :read+inspect
-  "#atom[(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29) 0x78fc3e4b]")
 
-;; Namespace
-^{::clerk/visibility :hide}
-(with-viewer :read+inspect
-  "#namespace[clojure.core]")
+;; ### Viewer Implementations
 
 ;; Like Clojure's default:
 (with-viewer {:pred #(instance? clojure.lang.IDeref %)
               :transform-fn (fn [r] (with-viewer :tagged-value
-                                      {:tag "object"
-                                       :value (vector (class r)
-                                                      (with-viewer :number-hex (System/identityHashCode r))
-                                                      (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
-                                                        (deref-as-map r)
-                                                        r))}))}
+                                     {:tag "object"
+                                      :value (vector (class r)
+                                                     (with-viewer :number-hex (System/identityHashCode r))
+                                                     (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
+                                                       (deref-as-map r)
+                                                       r))}))}
   (atom {:range (range 100)}))
 
 ;; Like Cider
 (with-viewer {:pred (partial instance? clojure.lang.IRef)
               :transform-fn (fn [r] (with-viewer :tagged-value
-                                      {:tag "atom"
-                                       :value [(deref r)
-                                               (with-viewer :number-hex (System/identityHashCode r))]}))}
+                                     {:tag "atom"
+                                      :value [(deref r)
+                                              (with-viewer :number-hex (System/identityHashCode r))]}))}
   (atom {:range (range 100)}))
 
 ;; ## Possible Solutions
@@ -100,6 +59,20 @@
 ;; A bit more concise at the expense of hiding certain or de-emphasising information (implementing class and the idenity hash code).
 ;; ### 3. Detect how `pr-str` would print it and do the same
 ;; This might have the downside of being confusing to folks when `cider-jack-in` will affect how Clerk displays things but otoh that is also true of `pr-str` today.
+
+;; ## Rejected Alternative: Datafy
+
+;; Initially I thought we'd use `clojure.core/datafy` in case there's a non-trivial implementation for a given object.
+;; But I rejected this because the default implementations for `class` and `namespace` would be confusing.
+(type (atom {}))
+
+(datafy/datafy (type (atom {})))
+
+;; ## Decision
+
+;; I decided to implement a custom viewer for `clojure.lang.IDeref` that looks like what `clojure.core` does, but performs JVM-side pagination. For other custom classes not handled by Clerk's default viewers, we call `pr-str` on the JVM and apply the `:read+inspect` viewer. This viewer does in-process pagination in the browser but I hope this is rarely needed since the strings it's given should be small. We've also been able to drop the custom viewers for `inst?` and `fn?` since they are handled well by this approach as well. This has the upside of letting Clerk show custom classes identital to what folks would see on the REPL. This means that bringing in a dependency like `cider.nrepl` affects how Clerk will display things which one could consider to be both good (for example `java.time` related stuff like look right) and bad (`cider-jack-in` brings in the middleware and affects how Clerk shows stuff).
+;;
+;; We're thinking about working around this and consistently show what Clojure does by default in a future release.
 
 ;; ## Testcases
 
@@ -125,11 +98,10 @@ inc
 
 (future :foo)
 
-;; ## Rejected Alternative: Datafy
+(java.util.Date.)
 
-;; Initially I thought we'd use `clojure.core/datafy` in case there's a non-trivial implementation for a given object.
-;; But I rejected this because the default implementations for `class` and `namespace` would be confusing.
-(type (atom {}))
+(java.time.Instant/now)
 
-(datafy/datafy (type (atom {})))
+(java.time.LocalTime/now)
 
+(java.time.LocalDateTime/now)
