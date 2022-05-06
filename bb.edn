@@ -23,7 +23,7 @@
                        :task (shell "yarn install")}
 
          watch:cljs {:doc "Starts shadow-cljs server"
-                     :task (clojure "-M:test:sci:demo:dev watch browser")
+                     :task (clojure "-X:test:sci:demo:dev")
                      :depends [yarn-install]}
 
          build:js {:doc "Builds JS"

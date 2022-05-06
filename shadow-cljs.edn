@@ -3,6 +3,7 @@
  :builds {:browser {:target :browser
                     :output-to "public/js/viewer.js"
                     :output-dir "public/js"
+                    :build-hooks [(nextjournal.clerk.dev-launcher/shadow-hook-cljs-flushed)]
                     :modules {:viewer {:entries [nextjournal.clerk.sci-viewer
                                                  nextjournal.clerk.static-app
                                                  nextjournal.devcards.main
