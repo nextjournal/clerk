@@ -203,6 +203,11 @@
                            blob-id (with-meta {:key blob-id}))])))
                xs)]]))))
 
+(defn eval-viewer-fn [eval-f form]
+  (try (eval-f form)
+       (catch js/Error e
+         (throw (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)))))
+
 (defonce !edamame-opts
   (atom {:all true
          :row-key :line
@@ -210,20 +215,20 @@
          :location? seq?
          :end-location false
          :read-cond :allow
-         :readers (fn [tag]
-                    (or (get {'viewer-fn #(try (viewer/->viewer-fn %)
-                                               (catch js/Error e
-                                                 (throw (ex-info (str "error in render-fn: " (.-message e)) {:render-fn %} e))))
-                              'viewer-eval #(*eval* %)} tag)
-                        (fn [value]
-                          (with-viewer :tagged-value
-                            {:tag tag
-                             :space? (not (vector? value))
-                             :value (cond-> value
-                                      (and (vector? value) (number? (second value)))
-                                      (update 1 (fn [memory-address]
-                                                  (with-viewer :number-hex memory-address))))}))))
+         :readers
+         (fn [tag]
+           (or (get {'viewer-fn   (partial eval-viewer-fn viewer/->viewer-fn)
+                     'viewer-eval (partial eval-viewer-fn *eval*)} tag)
+               (fn [value]
+                 (with-viewer :tagged-value
+                   {:tag tag
+                    :space? (not (vector? value))
+                    :value (cond-> value
+                             (and (vector? value) (number? (second value)))
+                             (update 1 (fn [memory-address]
+                                         (with-viewer :number-hex memory-address))))}))))
          :features #{:clj}}))
+
 
 (defn ^:export read-string [s]
   (edamame/parse-string s @!edamame-opts))
@@ -233,6 +238,8 @@
        (map #(update % 0 name))
        (map (partial str/join "="))
        (str/join "&")))
+
+
 
 #_(opts->query {:s 12 :num 42})
 
@@ -245,34 +252,7 @@
     [:path {:fill-rule "evenodd" :d "M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" :clip-rule "evenodd"}]]
    (into [:div.ml-2.font-bold] content)])
 
-(defn error-boundary [!error & _]
-  (r/create-class
-   {:constructor (fn [_ _])
-    :component-did-catch (fn [_ e _info]
-                           (reset! !error e))
-    :get-derived-state-from-error (fn [e]
-                                    (reset! !error e)
-                                    #js {})
-    :reagent-render (fn [_error & children]
-                      (if @!error
-                        [:div.bg-red-100.px-6.py-4.rounded.text-xs
-                         [:h4.mt-0.uppercase.text-xs.tracking-wide "Viewer Rendering Error"]
-                         [:p.mt-3.font-medium "The following javascript error occurred rendering this result. Your browser console might contain more information."]
-                         ;; TODO: fix react CORS error in dev
-                         [:pre.mt-3.text-red-500.whitespace-pre-wrap (.-message @!error)]]
-                        (into [:<>] children)))}))
-
-(defn fetch! [{:keys [blob-id]} opts]
-  #_(js/console.log :fetch! blob-id opts)
-  (-> (js/fetch (str "_blob/" blob-id (when (seq opts)
-                                        (str "?" (opts->query opts)))))
-      (.then #(.text %))
-      (.then #(try (read-string %)
-                   (catch js/Error e
-                     (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
-                     (unreadable-edn-viewer %))))))
-
-(defn read-error [{:keys [error]}]
+(defn error-viewer [error]
   (html
    [:div.bg-red-100.dark:bg-gray-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-300.not-prose
     [:p.font-mono.text-red-600.dark:text-red-300.font-bold (.-message error)]
@@ -288,12 +268,35 @@
          nil))]
     [:div.mt-2 [inspect (.-data error)]]]))
 
+(defn error-boundary [!error & _]
+  (r/create-class
+   {:constructor (fn [_ _])
+    :component-did-catch (fn [_ e _info]
+                           (reset! !error e))
+    :get-derived-state-from-error (fn [e]
+                                    (reset! !error e)
+                                    #js {})
+    :reagent-render (fn [_error & children]
+                      (if-let [error @!error]
+                        (viewer/->value (error-viewer error))
+                        (into [:<>] children)))}))
+
+(defn fetch! [{:keys [blob-id]} opts]
+  #_(js/console.log :fetch! blob-id opts)
+  (-> (js/fetch (str "_blob/" blob-id (when (seq opts)
+                                        (str "?" (opts->query opts)))))
+      (.then #(.text %))
+      (.then #(try (read-string %)
+                   (catch js/Error e
+                     (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
+                     (unreadable-edn-viewer %))))))
+
 (defn read-result [{:nextjournal/keys [edn string]}]
   (if edn
     (try
       (read-string edn)
       (catch js/Error e
-        (html (read-error {:message "sci read error" :edn edn :error e}))))
+        (error-viewer e)))
     (unreadable-edn-viewer string)))
 
 (defn result-viewer [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
@@ -659,10 +662,6 @@
             (fn [db [blob-key id]]
               (cond-> (get db blob-key)
                 id (get id))))
-
-(defn error-viewer [e]
-  (viewer/with-viewer :code (pr-str e)))
-
 
 (dc/defcard inspect-values
   (into [:div]
