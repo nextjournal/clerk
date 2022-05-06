@@ -272,13 +272,21 @@
                      (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
                      (unreadable-edn-viewer %))))))
 
-(defn read-error [{:keys [message edn error]}]
+(defn read-error [{:keys [error]}]
   (html
-   [:div.bg-red-100.dark:bg-gray-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-400.not-prose
-    [:h4.mt-0.uppercase.text-xs.dark:text-red-400.tracking-wide "Viewer Error"]
-    [:p.mt-4.font-medium "The following error occurred rendering your result: "]
-    [:p.font-mono.mt-4.text-red-500.font-bold (.-message error)]
-    [:div.mt-4 [inspect (.-data error)]]]))
+   [:div.bg-red-100.dark:bg-gray-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-300.not-prose
+    [:p.font-mono.text-red-600.dark:text-red-300.font-bold (.-message error)]
+    [:pre.text-red-600.dark:text-red-300.w-full.overflow-x-auto.mt-2
+     {:class "text-[11px]"}
+     (try
+       (->> (.-stack error)
+            str/split-lines
+            (drop 1)
+            (mapv str/trim)
+            (str/join "\n"))
+       (catch js/Error e
+         nil))]
+    [:div.mt-2 [inspect (.-data error)]]]))
 
 (defn read-result [{:nextjournal/keys [edn string]}]
   (if edn
