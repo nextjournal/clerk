@@ -613,7 +613,7 @@
   (.resolve js/Promise (viewer/describe value opts)))
 
 (defn inspect-paginated [value]
-  (r/with-let [!desc (r/atom (viewer/describe value))]
+  (let [!desc (r/atom (viewer/describe value))]
     [view-context/provide {:fetch-fn (fn [fetch-opts]
                                        (.then (in-process-fetch value fetch-opts)
                                               (fn [more]
