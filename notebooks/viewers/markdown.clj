@@ -25,3 +25,9 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
 ;; ### Heading 3
 ;; #### Heading 4
 ;; ##### Heading 5
+
+;; ## Blockquotes
+
+;; > If the recursion point was a `fn` method, then it rebinds the params.
+;; >
+;; > — Special Forms

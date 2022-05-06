@@ -26,7 +26,7 @@
                               org.babashka/sci {:mvn/version "0.3.2"}
                               reagent/reagent {:mvn/version "1.1.0"}
                               io.github.babashka/sci-configs {:git/sha "fd6a3332f358e56b96b5a791f75f97573e018580"}
-                              io.github.nextjournal/viewers {:git/sha "718ce95ff283bf51c0a73cc2401be286a8575b2a"}
+                              io.github.nextjournal/viewers {:git/sha "dcbaea5fe8c31b4357bdb6c3b4e6951c7fdecdf8"}
                               metosin/reitit-frontend {:mvn/version "0.5.15"}}}
 
            :dev {:extra-deps {arrowic/arrowic {:mvn/version "0.1.1"}

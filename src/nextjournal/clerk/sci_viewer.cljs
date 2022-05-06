@@ -192,7 +192,7 @@
                       (let [viewer (viewer/->viewer x)
                             blob-id (:blob-id (viewer/->value x))
                             inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
-                        [:div {:class ["viewer" "overflow-x-auto"
+                        [:div {:class ["viewer" "overflow-x-auto" "overflow-y-hidden"
                                        (when (keyword? viewer) (str "viewer-" (name viewer)))
                                        (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
                                        (case (or (viewer/width x) (case viewer (:code :code-folded) :wide :prose))
@@ -1010,8 +1010,8 @@ black")}]))}
 (defn clerk-eval [form]
   (.ws_send ^js goog/global (pr-str form)))
 
-(defn katex-viewer [tex-string]
-  (html (katex/to-html-string tex-string)))
+(defn katex-viewer [tex-string {:keys [inline?]}]
+  (html (katex/to-html-string tex-string (j/obj :displayMode (not inline?)))))
 
 (defn html-viewer [markup]
   (r/as-element
