@@ -1,4 +1,5 @@
-;; # 🖨 Better Printing
+;; # 🖨 Better Printing ADR
+^{:nextjournal.clerk/visibility :hide-ns}
 (ns ^:nextjournal.clerk/no-cache viewers.printing
   (:require [clojure.datafy :as datafy]
             [clojure.java.io :as io]
@@ -7,12 +8,12 @@
             [nextjournal.clerk :as clerk :refer [with-viewer]]
             [nextjournal.clerk.viewer :as v]))
 
-;; For reference, let's look at `core_print.clj` (jump to `*print-length*`) and `cider.nrepl` (jump to `cider.nrepl.print-method/def-print-method`).
-
 
 (clerk/set-viewers! v/default-viewers)
 
 ;; ## Compare with the REPL
+
+;; For reference, let's look at `core_print.clj` (jump to `*print-length*`) and `cider.nrepl` (jump to `cider.nrepl.print-method/def-print-method`).
 ;; Let's re-evaluate the the `clojure/core_print.clj` [default implemetation](https://github.com/clojure/clojure/blob/35bd89f05f8dc4aec47001ca10fe9163abc02ea6/src/clj/clojure/core_print.clj#L459-L460) (but with a dispatch value of `clojure.lang.Atom`).
 (defmethod print-method clojure.lang.Atom [o w]
   (#'clojure.core/print-tagged-object o (#'clojure.core/deref-as-map o) w))
@@ -29,19 +30,17 @@
 (with-viewer :read+inspect
   (pr-str (atom {})))
 
-
-
 ;; ### Viewer Implementations
 
 ;; Like Clojure's default:
 (with-viewer {:pred #(instance? clojure.lang.IDeref %)
               :transform-fn (fn [r] (with-viewer :tagged-value
-                                     {:tag "object"
-                                      :value (vector (class r)
-                                                     (with-viewer :number-hex (System/identityHashCode r))
-                                                     (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
-                                                       (deref-as-map r)
-                                                       r))}))}
+                                      {:tag "object"
+                                       :value (vector (class r)
+                                                      (with-viewer :number-hex (System/identityHashCode r))
+                                                      (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
+                                                        (deref-as-map r)
+                                                        r))}))}
   (atom {:range (range 100)}))
 
 ;; Like Cider
@@ -105,3 +104,8 @@ inc
 (java.time.LocalTime/now)
 
 (java.time.LocalDateTime/now)
+
+(with-viewer :read+inspect
+  (pr-str {:range (range 100 200)}))
+
+(comp inc dec)

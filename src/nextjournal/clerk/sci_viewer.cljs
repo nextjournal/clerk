@@ -236,7 +236,7 @@
 
 #_(opts->query {:s 12 :num 42})
 
-(defn unreadable-edn [edn]
+(defn unreadable-edn-viewer [edn]
   (html [:span.inspected-value.whitespace-nowrap.cmt-default edn]))
 
 (defn error-badge [& content]
@@ -270,7 +270,7 @@
       (.then #(try (read-string %)
                    (catch js/Error e
                      (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
-                     (unreadable-edn %))))))
+                     (unreadable-edn-viewer %))))))
 
 (defn read-error [{:keys [message edn error]}]
   (html
@@ -286,7 +286,7 @@
       (read-string edn)
       (catch js/Error e
         (html (read-error {:message "sci read error" :edn edn :error e}))))
-    (unreadable-edn string)))
+    (unreadable-edn-viewer string)))
 
 (defn result-viewer [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
   (html (r/with-let [!hash (atom hash)
@@ -1107,6 +1107,7 @@ black")}]))}
    'plotly-viewer plotly-viewer
    'vega-lite-viewer vega-lite-viewer
    'reagent-viewer reagent-viewer
+   'unreadable-edn-viewer unreadable-edn-viewer
 
    'doc-url doc-url
    'url-for url-for

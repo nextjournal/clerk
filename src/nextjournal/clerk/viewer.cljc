@@ -224,7 +224,9 @@
    {:pred boolean? :render-fn '(fn [x] (v/html [:span.cmt-bool.inspected-value (str x)]))}
    {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :fetch-opts {:n 2}}
    {:pred var-from-def? :transform-fn (fn [x] (-> x :nextjournal.clerk/var-from-def deref))}
-   {:name :read+inspect :render-fn '(fn [x] (v/html [v/inspect-paginated (v/read-string x)]))}
+   {:name :read+inspect :render-fn '(fn [x] (v/html [v/inspect-paginated (try (v/read-string x)
+                                                                              (catch js/Error _e
+                                                                                (v/with-viewer v/unreadable-edn-viewer x)))]))}
    {:pred vector? :render-fn 'v/coll-viewer :opening-paren "[" :closing-paren "]" :fetch-opts {:n 20}}
    {:pred set? :render-fn 'v/coll-viewer :opening-paren "#{" :closing-paren "}" :fetch-opts {:n 20}}
    {:pred sequential? :render-fn 'v/coll-viewer :opening-paren "(" :closing-paren ")" :fetch-opts {:n 20}}
