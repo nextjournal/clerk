@@ -256,8 +256,8 @@
   (html
    [:div.bg-red-100.dark:bg-gray-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-300.not-prose
     [:p.font-mono.text-red-600.dark:text-red-300.font-bold (.-message error)]
-    [:pre.text-red-600.dark:text-red-300.w-full.overflow-x-auto.mt-2
-     {:class "text-[11px]"}
+    [:pre.text-red-600.dark:text-red-300.w-full.overflow-auto.mt-2
+     {:class "text-[11px] max-h-[155px]"}
      (try
        (->> (.-stack error)
             str/split-lines
@@ -266,7 +266,8 @@
             (str/join "\n"))
        (catch js/Error e
          nil))]
-    [:div.mt-2 [inspect (.-data error)]]]))
+    (when-let [data (.-data error)]
+      [:div.mt-2 [inspect data]])]))
 
 (defn error-boundary [!error & _]
   (r/create-class
