@@ -322,7 +322,7 @@
    #?(:clj {:name :nextjournal.markdown/inline :transform-fn (comp eval read-string md.transform/->text)})
 
    ;; formulas
-   {:name :nextjournal.markdown/formula :transform-fn :text :render-fn 'v/katex-viewer}
+   {:name :nextjournal.markdown/formula :transform-fn :text :render-fn '(fn [tex] (v/katex-viewer tex {:inline? true}))}
    {:name :nextjournal.markdown/block-formula :transform-fn :text :render-fn 'v/katex-viewer}
 
    ;; lists
@@ -478,7 +478,7 @@
   (if-not (map? viewer)
     viewer
     (-> viewer
-        (dissoc :pred :transform-fn :fetch-fn)
+        (dissoc :pred :transform-fn :fetch-fn :update-viewers-fn)
         process-render-fn)))
 
 #_(process-viewer {:render-fn '(v/html [:h1]) :fetch-fn fetch-all})

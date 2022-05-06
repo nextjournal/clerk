@@ -93,7 +93,7 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: 🧪 Run tests
-        run: bb clojure -X:test
+        run: bb test:clj
 
   static-build:
     runs-on: ubuntu-latest
