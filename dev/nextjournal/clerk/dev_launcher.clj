@@ -7,7 +7,7 @@
 (defn shadow-hook-cljs-flushed
   {:shadow.build/stage :flush}
   [build-state & _]  
-  @@!start-clerk-delay
+  (some-> !start-clerk-delay deref deref)
   build-state)
 
 (defn start [{:keys [shadow-cli-args serve-opts]}]
@@ -20,4 +20,4 @@
     (do
       (reset! !start-clerk-delay (delay (clerk/serve! serve-opts)))
       (apply shadow-cli-main shadow-cli-args))
-    #_(clerk/serve! serve-opts)))
+    (clerk/serve! serve-opts)))

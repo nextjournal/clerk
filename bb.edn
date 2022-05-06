@@ -22,8 +22,9 @@
          yarn-install {:doc "Installs and updates npm dependencies"
                        :task (shell "yarn install")}
 
-         watch:cljs {:doc "Starts shadow-cljs server"
-                     :task (apply clojure "-X:test:sci:demo:dev" *command-line-args*)
+         watch:cljs {:doc "Starts shadow-cljs & clerk"
+                     :task (do (fs/delete-if-exists ".nrepl-port")
+                               (apply clojure "-X:test:sci:demo:dev" *command-line-args*))
                      :depends [yarn-install]}
 
          build:js {:doc "Builds JS"

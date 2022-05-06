@@ -7,8 +7,6 @@
 
   ;; start without file watcher
   (clerk/serve! {})
-
-  (require 'shadow.cljs.devtools.cli)
   
   ;; start with file watcher
   (clerk/serve! {:watch-paths ["notebooks" "src"]})
