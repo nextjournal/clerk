@@ -123,6 +123,13 @@ bb dev
 
 The will start everything needed to develop Clerk. You can connect your favorite editor to it using nREPL.
 
+Any trailing arguments will be forwarded to `clojure -X` and
+`clerk/serve!`. The following command opens your browser on startup.
+
+```bash
+bb dev :browse\? true
+```
+
 ## 🐞 Known Issues
 
 See [notebooks/onwards.md](https://github.com/nextjournal/clerk/blob/main/notebooks/onwards.md).
