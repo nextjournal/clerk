@@ -15,5 +15,5 @@
                         (when (file-exists-p init-file-path)
                           (load init-file-path)
                           (require 'clerk)))))))))
- (clojure-mode (cider-clojure-cli-aliases . ":test:demo")
+ (clojure-mode (cider-clojure-cli-aliases . ":test:demo:dev")
                (cider-preferred-build-tool . clojure-cli)))

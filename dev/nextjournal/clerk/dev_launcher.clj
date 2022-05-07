@@ -1,23 +1,19 @@
 (ns nextjournal.clerk.dev-launcher
-  (:require [nextjournal.clerk :as clerk]))
+  "A dev launcher that launches nrepl, shadow-cljs and once the first cljs compliation completes, Clerk.
+  
+  Avoiding ns requires here so the REPL comes up early.")
 
 (defonce !start-clerk-delay
   (atom nil))
 
-(defn shadow-hook-cljs-flushed
+(defn cljs-flushed
   {:shadow.build/stage :flush}
-  [build-state & _]  
+  [build-state & _]
   (some-> !start-clerk-delay deref deref)
   build-state)
 
-(defn start [{:keys [shadow-cli-args serve-opts]}]
-  (if-let [shadow-cli-main (and (seq shadow-cli-args)
-                                (try (requiring-resolve 'shadow.cljs.devtools.cli-actual/main)
-                                     (catch Exception e
-                                       (binding [*out* *err*]
-                                         (prn e)
-                                         (System/exit 1)))))]
-    (do
-      (reset! !start-clerk-delay (delay (clerk/serve! serve-opts)))
-      (apply shadow-cli-main shadow-cli-args))
-    (clerk/serve! serve-opts)))
+(defn start [serve-opts]
+  (reset! !start-clerk-delay (delay ((requiring-resolve 'nextjournal.clerk/serve!) serve-opts)))
+  (future ((requiring-resolve 'nrepl.cmdline/-main) "--middleware" "[cider.nrepl/cider-middleware]"))
+  ((requiring-resolve 'shadow.cljs.devtools.server/start!))
+  ((requiring-resolve 'shadow.cljs.devtools.api/watch) :browser))

@@ -32,12 +32,12 @@
            :dev {:extra-deps {arrowic/arrowic {:mvn/version "0.1.1"}
                               binaryage/devtools {:mvn/version "1.0.3"}
                               cider/cider-nrepl {:mvn/version "0.28.3"}
-                              thheller/shadow-cljs {:mvn/version "2.16.7"}}
+                              thheller/shadow-cljs {:mvn/version "2.16.7"}
+                              org.slf4j/slf4j-nop {:mvn/version "1.7.36"}}
                  :extra-paths ["dev" "notebooks"]
                  :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"http://localhost:7778/js/viewer.js\"}" "-Dpolyglot.engine.WarnInterpreterOnly=false" "-XX:-OmitStackTraceInFastThrow"]
                  :main-opts ["-m" "shadow.cljs.devtools.cli"]
-                 :exec-fn nextjournal.clerk.dev-launcher/start
-                 :exec-args {:shadow-cli-args ["watch" "browser"]}}
+                 :exec-fn nextjournal.clerk.dev-launcher/start}
 
            :test {:extra-deps {nubank/matcher-combinators {:mvn/version "3.3.1"}
                                io.github.cognitect-labs/test-runner {:git/tag "v0.5.0" :git/sha "b3fd0d2"}}
