@@ -23,8 +23,7 @@
                        :task (shell "yarn install")}
 
          watch:cljs {:doc "Starts shadow-cljs & clerk"
-                     :task (do (fs/delete-if-exists ".nrepl-port")
-                               (apply clojure "-X:test:sci:demo:dev" *command-line-args*))
+                     :task (apply clojure "-X:test:sci:demo:dev" *command-line-args*)
                      :depends [yarn-install]}
 
          build:js {:doc "Builds JS"
