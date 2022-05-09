@@ -11,7 +11,8 @@
             [nextjournal.markdown :as md]
             [nextjournal.markdown.transform :as md.transform]
             [lambdaisland.uri.normalize :as uri.normalize])
-  #?(:clj (:import (java.lang Throwable)
+  #?(:clj (:import (clojure.lang IDeref)
+                   (java.lang Throwable)
                    (java.awt.image BufferedImage)
                    (javax.imageio ImageIO)
                    (java.util Base64))))
@@ -167,12 +168,18 @@
 (defn fetch-all [opts xs]
   (w/postwalk (partial inspect-leafs opts) xs))
 
-(defn get-safe [map key]
-  (try (get map key) ;; can throw for e.g. sorted-map
-       (catch #?(:clj Exception :cljs js/Error) _e nil)))
+(defn get-safe
+  ([key] #(get-safe % key))
+  ([map key]
+   (when (map? map)
+     (try (get map key) ;; can throw for e.g. sorted-map
+          (catch #?(:clj Exception :cljs js/Error) _e nil)))))
 
-(defn var-from-def? [x]
-  (and (map? x) (get-safe x :nextjournal.clerk/var-from-def)))
+(def var-from-def?
+  (get-safe :nextjournal.clerk/var-from-def))
+
+(def datafied?
+  (get-safe :nextjournal.clerk/datafied))
 
 (defn with-md-viewer [{:as node :keys [type]}]
   (with-viewer (keyword "nextjournal.markdown" (name type)) node))
@@ -316,27 +323,30 @@
                        (comp #{number?} :pred) #(assoc % :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))])))})
       (prepend [{:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))}])))
 
+#?(:clj (def utc-date-format ;; from `clojure.instant/thread-local-utc-date-format`
+          (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
+            (.setTimeZone (java.util.TimeZone/getTimeZone "GMT")))))
+
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
   ;; maybe make this a sorted-map
   [{:pred char? :render-fn '(fn [c] (v/html [:span.cmt-string.inspected-value "\\" c]))}
    {:pred string? :render-fn (quote v/quoted-string-viewer) :fetch-opts {:n elide-string-length}}
-   {:pred number? :render-fn '(fn [x] (v/html [:span.cmt-number.inspected-value
-                                               (if (js/Number.isNaN x) "NaN" (str x))]))}
+   {:pred number? :render-fn (quote v/number-viewer)}
+   {:name :number-hex :render-fn '(fn [num] (v/number-viewer (str "0x" (.toString (js/Number. num) 16))))}
    {:pred symbol? :render-fn '(fn [x] (v/html [:span.cmt-keyword.inspected-value (str x)]))}
    {:pred keyword? :render-fn '(fn [x] (v/html [:span.cmt-atom.inspected-value (str x)]))}
    {:pred nil? :render-fn '(fn [_] (v/html [:span.cmt-default.inspected-value "nil"]))}
    {:pred boolean? :render-fn '(fn [x] (v/html [:span.cmt-bool.inspected-value (str x)]))}
-   {:pred fn? :name :fn :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#function"] "[" x "]"]))
-    :transform-fn (comp demunge str)}
    {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :fetch-opts {:n 2}}
    {:pred var-from-def? :transform-fn (fn [x] (-> x :nextjournal.clerk/var-from-def deref))}
+   {:name :read+inspect :render-fn '(fn [x] (v/html [v/inspect-paginated (try (v/read-string x)
+                                                                              (catch js/Error _e
+                                                                                (v/with-viewer v/unreadable-edn-viewer x)))]))}
    {:pred vector? :render-fn 'v/coll-viewer :opening-paren "[" :closing-paren "]" :fetch-opts {:n 20}}
    {:pred set? :render-fn 'v/coll-viewer :opening-paren "#{" :closing-paren "}" :fetch-opts {:n 20}}
    {:pred sequential? :render-fn 'v/coll-viewer :opening-paren "(" :closing-paren ")" :fetch-opts {:n 20}}
    {:pred map? :name :map :render-fn 'v/map-viewer :opening-paren "{" :closing-paren "}" :fetch-opts {:n 10}}
-   {:pred uuid? :render-fn '(fn [x] (v/html (v/tagged-value "#uuid" [:span.cmt-string.inspected-value "\"" (str x) "\""])))}
-   {:pred inst? :render-fn '(fn [x] (v/html (v/tagged-value "#inst" [:span.cmt-string.inspected-value "\"" (str x) "\""])))}
    {:pred var? :transform-fn symbol :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#'" (str x)]]))}
    {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e)) :fetch-fn fetch-all
     :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp demunge-ex-data datafy/datafy)}
@@ -350,7 +360,15 @@
                                                :nextjournal/content-type "image/png"
                                                :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})))
             :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))})
-   {:pred (fn [_] true) :transform-fn pr-str :render-fn '(fn [x] (v/html [:span.inspected-value.whitespace-nowrap.cmt-default x]))}
+   {:pred #(instance? IDeref %)
+    :transform-fn (fn [r] (with-viewer :tagged-value
+                            {:tag "object"
+                             :value (vector (type r)
+                                            #?(:clj (with-viewer :number-hex (System/identityHashCode r)))
+                                            (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
+                                              (deref-as-map r)
+                                              r))}))}
+   {:pred (constantly :true) :transform-fn #(with-viewer :read+inspect (pr-str %))}
    {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
    {:name :mathjax :render-fn (quote v/mathjax-viewer) :fetch-fn fetch-all}
@@ -378,10 +396,11 @@
                                 (assoc :path [:rows] :replace-path [offset])
                                 (dissoc :nextjournal/viewers))))}
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
-   {:name :object :render-fn '(fn [x] (v/html (v/tagged-value "#object" [v/inspect x])))}
-   {:name :file :render-fn '(fn [x] (v/html (v/tagged-value "#file " [v/inspect x])))}
    {:name :clerk/markdown-block :transform-fn (fn [{:keys [doc text]}] (cond doc (with-md-viewer doc) text (with-viewer :markdown text)))}
    {:name :clerk/code-block :transform-fn #(with-viewer (if (:fold? %) :code-folded :code) (:text %))}
+   {:name :tagged-value :render-fn '(fn [{:keys [tag value space?]}] (v/html (v/tagged-value {:space? space?} (str "#" tag) [v/inspect value])))
+    :fetch-fn (fn [{:as opts :keys [describe-fn]} x]
+                (update x :value describe-fn opts))}
    {:name :clerk/result :render-fn (quote v/result-viewer) :fetch-fn fetch-all}
    {:name :clerk/notebook
     :fetch-fn fetch-all
@@ -427,7 +446,7 @@
    #?(:clj {:name :nextjournal.markdown/inline :transform-fn (comp eval read-string md.transform/->text)})
 
    ;; formulas
-   {:name :nextjournal.markdown/formula :transform-fn :text :render-fn 'v/katex-viewer}
+   {:name :nextjournal.markdown/formula :transform-fn :text :render-fn '(fn [tex] (v/katex-viewer tex {:inline? true}))}
    {:name :nextjournal.markdown/block-formula :transform-fn :text :render-fn 'v/katex-viewer}
 
    ;; lists
@@ -583,7 +602,7 @@
   (if-not (map? viewer)
     viewer
     (-> viewer
-        (dissoc :pred :transform-fn :fetch-fn)
+        (dissoc :pred :transform-fn :fetch-fn :update-viewers-fn)
         process-render-fn)))
 
 #_(process-viewer {:render-fn '(v/html [:h1]) :fetch-fn fetch-all})

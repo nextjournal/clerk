@@ -191,7 +191,7 @@
                (map (fn [[_inspect x :as y]]
                       (let [{viewer-name :name} (viewer/->viewer x)
                             inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
-                        [:div {:class ["viewer" "overflow-x-auto"
+                        [:div {:class ["viewer" "overflow-x-auto" "overflow-y-hidden"
                                        (when viewer-name (str "viewer-" (name viewer-name)))
                                        (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
                                        (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
@@ -201,6 +201,11 @@
                          y])))
                xs)]]))))
 
+(defn eval-viewer-fn [eval-f form]
+  (try (eval-f form)
+       (catch js/Error e
+         (throw (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)))))
+
 (defonce !edamame-opts
   (atom {:all true
          :row-key :line
@@ -208,11 +213,20 @@
          :location? seq?
          :end-location false
          :read-cond :allow
-         :readers {'file (partial with-viewer :file)
-                   'object (partial with-viewer :object)
-                   'viewer-fn viewer/->viewer-fn
-                   'viewer-eval #(*eval* %)}
+         :readers
+         (fn [tag]
+           (or (get {'viewer-fn   (partial eval-viewer-fn viewer/->viewer-fn)
+                     'viewer-eval (partial eval-viewer-fn *eval*)} tag)
+               (fn [value]
+                 (with-viewer :tagged-value
+                   {:tag tag
+                    :space? (not (vector? value))
+                    :value (cond-> value
+                             (and (vector? value) (number? (second value)))
+                             (update 1 (fn [memory-address]
+                                         (with-viewer :number-hex memory-address))))}))))
          :features #{:clj}}))
+
 
 (defn ^:export read-string [s]
   (edamame/parse-string s @!edamame-opts))
@@ -223,9 +237,11 @@
        (map (partial str/join "="))
        (str/join "&")))
 
+
+
 #_(opts->query {:s 12 :num 42})
 
-(defn unreadable-edn [edn]
+(defn unreadable-edn-viewer [edn]
   (html [:span.inspected-value.whitespace-nowrap.cmt-default edn]))
 
 (defn error-badge [& content]
@@ -233,6 +249,23 @@
    [:svg.h-4.w-4.text-red-400 {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :aria-hidden "true"}
     [:path {:fill-rule "evenodd" :d "M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" :clip-rule "evenodd"}]]
    (into [:div.ml-2.font-bold] content)])
+
+(defn error-viewer [error]
+  (html
+   [:div.bg-red-100.dark:bg-gray-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-300.not-prose
+    [:p.font-mono.text-red-600.dark:text-red-300.font-bold (.-message error)]
+    [:pre.text-red-600.dark:text-red-300.w-full.overflow-auto.mt-2
+     {:class "text-[11px] max-h-[155px]"}
+     (try
+       (->> (.-stack error)
+            str/split-lines
+            (drop 1)
+            (mapv str/trim)
+            (str/join "\n"))
+       (catch js/Error e
+         nil))]
+    (when-let [data (.-data error)]
+      [:div.mt-2 [inspect data]])]))
 
 (defn error-boundary [!error & _]
   (r/create-class
@@ -243,12 +276,8 @@
                                     (reset! !error e)
                                     #js {})
     :reagent-render (fn [_error & children]
-                      (if @!error
-                        [:div.bg-red-100.px-6.py-4.rounded.text-xs
-                         [:h4.mt-0.uppercase.text-xs.tracking-wide "Viewer Rendering Error"]
-                         [:p.mt-3.font-medium "The following javascript error occurred rendering this result. Your browser console might contain more information."]
-                         ;; TODO: fix react CORS error in dev
-                         [:pre.mt-3.text-red-500.whitespace-pre-wrap (.-message @!error)]]
+                      (if-let [error @!error]
+                        (viewer/->value (error-viewer error))
                         (into [:<>] children)))}))
 
 (defn fetch! [{:keys [blob-id]} opts]
@@ -259,18 +288,15 @@
       (.then #(try (read-string %)
                    (catch js/Error e
                      (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
-                     (unreadable-edn %))))))
+                     (unreadable-edn-viewer %))))))
 
 (defn read-result [{:nextjournal/keys [edn string]}]
   (if edn
     (try
       (read-string edn)
       (catch js/Error e
-        (js/console.error #js {:message "sci read error" :edn-string edn :error e})
-        ;; TODO: a read error in a viewers `:render-fn` will also cause a read error currently
-        ;; Can we be more helpful by surfacing the read error in a viewer?
-        (unreadable-edn edn)))
-    (unreadable-edn string)))
+        (error-viewer e)))
+    (unreadable-edn-viewer string)))
 
 (defn result-viewer [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
   (html (r/with-let [!hash (atom hash)
@@ -410,6 +436,10 @@
            [:span "\""])
          (viewer/->value (string-viewer s opts)) "\""]))
 
+(defn number-viewer [num]
+  (html [:span.cmt-number.inspected-value
+         (if (js/Number.isNaN num) "NaN" (str num))]))
+
 (defn sort! [!sort i k]
   (let [{:keys [sort-key sort-order]} @!sort]
     (reset! !sort {:sort-index i
@@ -527,9 +557,11 @@
                      [:td.py-1.pr-6 call]]))
              trace)]]]]))
 
-(defn tagged-value [tag value]
-  [:span.inspected-value.whitespace-nowrap
-   [:span.cmt-meta tag] nbsp value])
+(defn tagged-value
+  ([tag value] ({:space? true} tagged-value tag value))
+  ([{:keys [space?]} tag value]
+   [:span.inspected-value.whitespace-nowrap
+    [:span.cmt-meta tag] (when space? nbsp) value]))
 
 (defn normalize-viewer [x]
   (if-let [viewer (-> x meta :nextjournal/viewer)]
@@ -591,7 +623,7 @@
   (.resolve js/Promise (viewer/describe value opts)))
 
 (defn inspect-paginated [value]
-  (r/with-let [!desc (r/atom (viewer/describe value))]
+  (let [!desc (r/atom (viewer/describe value))]
     [view-context/provide {:fetch-fn (fn [fetch-opts]
                                        (.then (in-process-fetch value fetch-opts)
                                               (fn [more]
@@ -629,10 +661,6 @@
             (fn [db [blob-key id]]
               (cond-> (get db blob-key)
                 id (get id))))
-
-(defn error-viewer [e]
-  (viewer/with-viewer :code (pr-str e)))
-
 
 (dc/defcard inspect-values
   (into [:div]
@@ -1005,8 +1033,8 @@ black")}]))}
 (defn clerk-eval [form]
   (.ws_send ^js goog/global (pr-str form)))
 
-(defn katex-viewer [tex-string]
-  (html (katex/to-html-string tex-string)))
+(defn katex-viewer [tex-string {:keys [inline?]}]
+  (html (katex/to-html-string tex-string (j/obj :displayMode (not inline?)))))
 
 (defn html-viewer [markup]
   (r/as-element
@@ -1055,6 +1083,7 @@ black")}]))}
 (def sci-viewer-namespace
   {'html html-viewer
    'inspect inspect
+   'inspect-paginated inspect-paginated
    'result-viewer result-viewer
    'coll-viewer coll-viewer
    'map-viewer map-viewer
@@ -1064,6 +1093,7 @@ black")}]))}
    'set-viewers! set-viewers!
    'string-viewer string-viewer
    'quoted-string-viewer quoted-string-viewer
+   'number-viewer number-viewer
    'table-viewer table-viewer
    'table-error table-error
    'with-viewer with-viewer
@@ -1080,9 +1110,11 @@ black")}]))}
    'plotly-viewer plotly-viewer
    'vega-lite-viewer vega-lite-viewer
    'reagent-viewer reagent-viewer
+   'unreadable-edn-viewer unreadable-edn-viewer
 
    'doc-url doc-url
-   'url-for url-for})
+   'url-for url-for
+   'read-string read-string})
 
 (defonce !sci-ctx
   (atom (sci/init {:async? true

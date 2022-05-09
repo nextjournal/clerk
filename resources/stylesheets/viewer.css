@@ -231,6 +231,10 @@
 .viewer-markdown li > p {
   @apply inline;
 }
+.viewer-markdown blockquote p:first-of-type:before,
+.viewer-markdown blockquote p:last-of-type:after {
+  @apply content-none;
+}
 
 /* Todo Lists */
 /* --------------------------------------------------------------- */
