@@ -121,10 +121,12 @@ Make sure you have [Babashka installed](https://github.com/babashka/babashka#ins
 bb dev :browse\? true
 ```
 
-The will start everything needed to develop Clerk. You can connect your favorite editor to it using nREPL.
+The will start everything needed to develop Clerk and open your
+default browser. You can connect your favorite editor to it using nREPL.
 
-Any trailing arguments to `bb dev` will be forwarded to `clojure -X`and `clerk/serve!`. 
-So if you prefer to not open your browser, leave out the `:browse\? true` arguments.
+Any trailing arguments to `bb dev` will be forwarded to `clojure -X`
+and `clerk/serve!`. So if you prefer to not open your browser, leave 
+out the `:browse\? true` arguments.
 
 ## 🐞 Known Issues
 
