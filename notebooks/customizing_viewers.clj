@@ -21,9 +21,6 @@ v/default-viewers
 (v/with-viewer (dissoc string?-viewer :fetch-opts)
   (clojure.string/join (into [] cat (repeat 10 (range 10)))))
 
-
-(set-viewers! )
-
 ;; You can see Clerk is performing pagination as to not overload the browser with too much data. Since we're not dealing with a huge amount of data here, let's turn that off.
 (def without-pagination
   {:fetch-opts #(dissoc % :fetch-opts)})
@@ -31,26 +28,8 @@ v/default-viewers
 (def viewers-without-lazy-loading
   (v/update-viewers v/default-viewers {:fetch-opts #(dissoc % :fetch-opts)}))
 
-
 (def update-dropping-lazy-loading
   (partial v/update-viewers {:fetch-opts #(dissoc % :fetch-opts)}))
-
-
-(v/set-viewers! ())
-
-(v/reset-viewers! v/default-viewers)
-
-(v/set-viewers! (v/update-viewers v/default-viewers ,,,))
-
-;; currently does prepend a number of viewers
-
-
-(v/with-viewers (v/update-viewers v/default-viewers ,,,)
-  v/default-viewers)
-
-(v/with-viewer {:update-viewers-fn ,,,}
-  )
-
 
 ;; ## Pagination
 (filter :fetch-opts v/default-viewers)
