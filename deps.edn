@@ -27,7 +27,8 @@
                               io.github.babashka/sci-configs {:git/sha "fd6a3332f358e56b96b5a791f75f97573e018580"}
                               io.github.nextjournal/viewers {:git/sha "d88a9abd1f2bfd28ff2d3983407a9319c6f04501"}
                               metosin/reitit-frontend {:mvn/version "0.5.15"}
-                              nrepl/bencode {:mvn/version "1.1.0"}}}
+                              nrepl/bencode {:mvn/version "1.1.0"}
+                              io.github.babashka/sci.nrepl {:git/sha "65ab97e817a4916867b140a9c1febcb6773763e6"}}}
 
            :dev {:extra-deps {arrowic/arrowic {:mvn/version "0.1.1"}
                               binaryage/devtools {:mvn/version "1.0.3"}
