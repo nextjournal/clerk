@@ -387,6 +387,7 @@
          "viewers/in_text_eval"
          "viewers/instants"
          "viewers/markdown"
+         "viewers/printing"
          "viewers/plotly"
          "viewers/table"
          "viewers/tex"

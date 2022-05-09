@@ -1,5 +1,6 @@
 {:deps {:aliases [:sci]}
  :dev-http {7778 ["public" "classpath:public"]}
+ :nrepl false
  :builds {:browser {:target :browser
                     :output-to "public/js/viewer.js"
                     :output-dir "public/js"

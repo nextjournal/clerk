@@ -22,8 +22,8 @@
          yarn-install {:doc "Installs and updates npm dependencies"
                        :task (shell "yarn install")}
 
-         watch:cljs {:doc "Starts shadow-cljs server"
-                     :task (clojure "-M:test:sci:demo:dev watch browser")
+         watch:cljs {:doc "Starts shadow-cljs & clerk"
+                     :task (apply clojure "-X:test:sci:demo:dev" *command-line-args*)
                      :depends [yarn-install]}
 
          build:js {:doc "Builds JS"
@@ -43,6 +43,9 @@
          build:static-app {:doc "Builds a static app with default notebooks"
                            :depends [release:js]
                            :task (clojure "-X:demo nextjournal.clerk/build-static-app!")}
+
+         test:clj {:doc "Run clojure tests"
+                   :task (clojure "-X:test")}
 
          test:static-app {:doc "Run UI tests for current SHA. Provide SHA as command line arg."
                           :task (do

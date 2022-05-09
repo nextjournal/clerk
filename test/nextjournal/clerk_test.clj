@@ -131,3 +131,8 @@
                     view/doc->viewer
                     :nextjournal/value
                     :blocks)))))
+
+(deftest expand-paths-test
+  (let [paths (clerk/expand-paths ["notebooks/*clj"])]
+    (is (> (count paths) 25))
+    (is (every? #(str/ends-with? % ".clj") paths))))
