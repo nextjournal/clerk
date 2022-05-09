@@ -1,7 +1,6 @@
 ;;; Directory Local Variables
 ;;; For more information see (info "(emacs) Directory Variables")
-((nil . ((cider-clojure-cli-global-options . "-A:demo")
-         (prettify-symbols-mode . nil)
+((nil . ((prettify-symbols-mode . nil)
          (use-bb-dev . t)
          (eval . ((lambda ()
                     (defun cider-jack-in-wrapper-function (orig-fun &rest args)
@@ -15,4 +14,6 @@
                       (let ((init-file-path (expand-file-name "clerk.el" default-directory)))
                         (when (file-exists-p init-file-path)
                           (load init-file-path)
-                          (require 'clerk))))))))))
+                          (require 'clerk)))))))))
+ (clojure-mode (cider-clojure-cli-aliases . ":test:demo:dev")
+               (cider-preferred-build-tool . clojure-cli)))

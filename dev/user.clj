@@ -2,12 +2,12 @@
   (:require [nextjournal.clerk :as clerk]))
 
 (comment
-  (clerk/serve! {:browse? true}))
+  ;; start without file watcher & open browser
+  (clerk/serve! {:browse? true})
 
-(comment
   ;; start without file watcher
   (clerk/serve! {})
-
+  
   ;; start with file watcher
   (clerk/serve! {:watch-paths ["notebooks" "src"]})
 
