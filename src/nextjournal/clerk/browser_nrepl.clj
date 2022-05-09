@@ -15,24 +15,19 @@
     (assoc m k (f v))
     m))
 
-(def known-keys ["id" "op" "code" "session" "file" "file-name" "file-path"
-                 "symbol" "prefix" "ns" "context"])
+(defn coerce-bencode [x]
+  (if (bytes? x)
+    (String. ^bytes x)
+    x))
 
 (defn read-bencode [in]
   (try (let [msg (bencode/read-bencode in)
-            _ (def m1 msg)
-            msg (reduce (fn [msg k]
-                          (def m msg)
-                          (update-when msg k #(String. ^bytes %)))
-                        msg known-keys)]
+             msg (zipmap (map keyword (keys msg))
+                         (map coerce-bencode (vals msg)))]
          msg)
        (catch Exception e
-         (def e e)
+         #_(def e e)
          (throw e))))
-
-(comment
-  
-  )
 
 (def !last-ctx (volatile! nil))
 
@@ -41,7 +36,6 @@
   (let [response (cond-> response
                    id (assoc :id id)
                    session (assoc :session session))]
-    (def resp response)
     (bencode/write-bencode out response)
     (.flush ^java.io.OutputStream out)))
 
@@ -53,19 +47,17 @@
 (defonce nrepl-channel (atom nil))
 
 (defn response-handler [message]
-  (prn :message-handler (edn/read-string message))
   (let [msg (edn/read-string message)
         id (:id msg)
         session (:session msg)]
     (send-response {:id id
                     :session session
                     :response (dissoc (edn/read-string message)
-                                      :id :session)}))
-  #_(prn :message message))
+                                      :id :session)})))
 
 (defn handle-eval [{:keys [msg session id] :as ctx}]
   (vreset! !last-ctx ctx)
-  (let [code (get msg "code")]
+  (let [code (get msg :code)]
     (if (or (str/includes? code "clojure.main/repl-requires")
             (str/includes? code "System/getProperty"))
       (do
@@ -79,17 +71,16 @@
 
 (defn handle-load-file [ctx]
   (let [msg (get ctx :msg)
-        code (get msg "file")
-        msg (assoc msg "code" code)
+        code (get msg :file)
+        msg (assoc msg :code code)
         ctx (assoc ctx :msg msg)]
     (handle-eval ctx)))
 
 (defn handle-complete [{:keys [id session msg]}]
-  (def m msg)
   (when-let [chan @nrepl-channel]
-    (let [symbol (get msg "symbol")
-          prefix (get msg "prefix")
-          ns (get msg "ns")]
+    (let [symbol (get msg :symbol)
+          prefix (get msg :prefix)
+          ns (get msg :ns)]
       (httpkit/send! chan (str {:op :complete
                                 :id id
                                 :session session
@@ -98,41 +89,40 @@
                                 :ns ns})))))
 
 (defn handle-describe [ctx]
-  (send-response (assoc ctx :response {"status" #{"done"}
-                                       "ops" (zipmap #{"clone" "close" "eval"
-                                                       "load-file"
-                                                       "complete"
-                                                       "describe"
-                                                       ;; "ls-sessions"
-                                                       ;; "eldoc"
-                                                       ;; "info"
-                                                       ;; "lookup"
-                                                       }
-                                                     (repeat {}))
-                                       "versions" {"clerk-browser-nrepl" {"major" "0"
-                                                                          "minor" "0"
-                                                                          "incremental" "1"}}})))
+  (send-response (assoc ctx :response
+                        {"status" #{"done"}
+                         "ops" (zipmap #{"clone" "close" "eval"
+                                         "load-file"
+                                         "complete"
+                                         "describe"
+                                         ;; "ls-sessions"
+                                         ;; "eldoc"
+                                         ;; "info"
+                                         ;; "lookup"
+                                         }
+                                       (repeat {}))
+                         "versions" {"clerk-browser-nrepl" {"major" "0"
+                                                            "minor" "0"
+                                                            "incremental" "1"}}})))
 
 (defn session-loop [in out {:keys [opts]}]
   (loop []
     (when-let [msg (try
-                     (prn :reading)
                      (let [msg (read-bencode in)]
                        msg)
                      (catch EOFException _
                        (when-not (:quiet opts)
                          (println "Client closed connection."))))]
-      (prn :msg msg)
       (let [ctx {:out out :msg msg}
-            id (get msg "id")
-            session (get msg "session")
+            id (get msg :id)
+            session (get msg :session)
             ctx (assoc ctx :id id :session session)]
-        (case (get msg "op")
-          "clone" (handle-clone ctx)
-          "eval" (handle-eval ctx)
-          "describe" (handle-describe ctx)
-          "load-file" (handle-load-file ctx)
-          "complete" (handle-complete ctx)
+        (case (keyword (get msg :op))
+          :clone (handle-clone ctx)
+          :eval (handle-eval ctx)
+          :describe (handle-describe ctx)
+          :load-file (handle-load-file ctx)
+          :complete (handle-complete ctx)
           (send-response (assoc ctx :response {"status" #{"error" "unknown-op" "done"}}))))
       (recur))))
 
@@ -171,7 +161,10 @@
 
 (comment
 
+  (require '[nextjournal.clerk :as clerk])
+  (clerk/serve! {})
   (start-browser-nrepl! {:port 1339})
+  (clerk/show! "notebooks/cljs_render_fn_file.clj")
   (stop-browser-nrepl!)
 
   )
