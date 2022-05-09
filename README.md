@@ -118,17 +118,13 @@ nmap <silent> <localleader>cs :execute ClerkShow()<CR>
 Make sure you have [Babashka installed](https://github.com/babashka/babashka#installation), and run:
 
 ```bash
-bb dev
+bb dev :browse\? true
 ```
 
 The will start everything needed to develop Clerk. You can connect your favorite editor to it using nREPL.
 
-Any trailing arguments will be forwarded to `clojure -X` and
-`clerk/serve!`. The following command opens your browser on startup.
-
-```bash
-bb dev :browse\? true
-```
+Any trailing arguments to `bb dev` will be forwarded to `clojure -X`and `clerk/serve!`. 
+So if you prefer to not open your browser, leave out the `:browse\? true` arguments.
 
 ## 🐞 Known Issues
 
