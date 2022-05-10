@@ -214,7 +214,7 @@
          :readers {'file (partial with-viewer :file)
                    'object (partial with-viewer :object)
                    'viewer-fn viewer/->viewer-fn
-                   'viewer-eval #(*eval* %)}
+                   'viewer-eval #_:clj-kondo/ignore #(*eval* %)}
          :features #{:clj}}))
 
 (defn ^:export read-string [s]
@@ -1126,8 +1126,7 @@ black")}]))}
                                       sci-configs.reagent/namespaces)})))
 
 (sci/alter-var-root sci/print-fn (constantly *print-fn*))
-;; SCI 0.3.4:
-;; (sci/alter-var-root sci/print-err-fn (constantly *print-err-fn*))
+(sci/alter-var-root sci/print-err-fn (constantly *print-err-fn*))
 
 (defn eval-form [f]
   (sci/eval-form @!sci-ctx f))
@@ -1147,16 +1146,15 @@ black")}]))}
               res)
             (recur (sci/eval-form @!sci-ctx form))))))))
 
-(swap! viewer/!viewers (fn [viewers]
-                         (-> (into {} (map (juxt key (comp #(into [] (map viewer/process-render-fn) %)  val))) viewers)
-                             (update :root concat js-viewers))))
-
+(swap! viewer/!viewers
+       (fn [viewers]
+         (-> (into {} (map (juxt key (comp #(into [] (map viewer/process-render-fn) %)  val))) viewers)
+             (update :root concat js-viewers))))
 
 (defn nrepl-websocket []
   (.-ws_nrepl js/window))
 
 (defn nrepl-reply [{:keys [id session]} payload]
-  (js/console.log (assoc payload :id id :session session))
   (.send (nrepl-websocket)
          (str (assoc payload :id id :session session :ns (str @!last-ns)))))
 
@@ -1183,5 +1181,4 @@ black")}]))}
   (let [ws (nrepl-websocket)]
     (set! (.-onmessage ws)
           (fn [event]
-            ;; (js/console.log (.-data event))
             (handle-nrepl-message (edn/read-string (.-data event)))))))
