@@ -18,6 +18,7 @@
             [nextjournal.markdown :as markdown]
             [nextjournal.markdown.parser :as markdown.parser]
             [nextjournal.markdown.transform :as markdown.transform]
+            [taoensso.nippy :as nippy]
             [weavejester.dependency :as dep]))
 
 (defn var-name
@@ -445,6 +446,41 @@
 #_(hash "notebooks/elements.clj")
 #_(clojure.data/diff (hash "notebooks/how_clerk_works.clj")
                      (hash "notebooks/how_clerk_works.clj"))
+
+(defn exceeds-bounded-count-limit? [value]
+  (and (seqable? value)
+       (try
+         (let [limit config/*bounded-count-limit*]
+           (= limit (bounded-count limit value)))
+         (catch Exception _
+           true))))
+
+#_(exceeds-bounded-count-limit? (range))
+#_(exceeds-bounded-count-limit? (range 10000))
+#_(exceeds-bounded-count-limit? (range 1000000))
+#_(exceeds-bounded-count-limit? :foo)
+
+(defn valuehash [value]
+  (-> value
+      nippy/fast-freeze
+      digest/sha2-512
+      multihash/base58))
+
+#_(valuehash (range 100))
+#_(valuehash (zipmap (range 100) (range 100)))
+
+(defn ->hash-str
+  "Attempts to compute a hash of `value` falling back to a random string."
+  [value]
+  (if-let [valuehash (try
+                       (when-not (exceeds-bounded-count-limit? value)
+                         (valuehash value))
+                       (catch Exception _))]
+    valuehash
+    (str (gensym))))
+
+#_(->hash-str (range 104))
+#_(->hash-str (range))
 
 (comment
   (require 'clojure.data)

@@ -69,13 +69,20 @@ Notes about what currently breaks 💥 and what could be better tomorrow.
 - [x] Improve feedback when viewer errors
 - [x] Verify viewer caching behaviour
 - [x] Fix dark mode for string viewer
-- [ ] Release 0.6
+- [x] Release 0.6
+- [x] Make code cells scroll horizontally scrollable and add minimum width of 80 chars
+- [x] Extend reach of viewer api to whole notebook (including the root node)
+- [ ] Make viewer api more functional and restore defaults on eval
+- [ ] Try using `:update-viewers-fn` for markdown node
+- [ ] Minimize re-rendering when updating notebook
+- [ ] Throw on re-definitions
+- [ ] Allow multiple defs per top-level forms
+- [ ] Restore `*ns*` after hashing / eval
 - [ ] Allow to control viewer expansion state programmatically
 - [ ] Support setting `:nextjournal.clerk/cache` forms to control caching behaviour
 - [ ] Deprecate `:nextjournal/no-cache`
-- [ ] Make code cells scroll horizontally scrollable and add minimum width of 80 chars
 - [ ] Derefenced Clojure atoms should get value semantics in dependency graph
-- [ ] Support evaluating `(quote 'code 'in 'backticks)` in markdown
+- [x] Support evaluating `(quote 'code 'in 'backticks)` in markdown
 - [ ] Add multiviewer to default viewers
 - [ ] Make stacktraces clickable
 - [ ] Mark uncacheable results in browser window including explanation

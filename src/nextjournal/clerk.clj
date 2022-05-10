@@ -111,10 +111,10 @@
         var-value (cond-> result (var? result) deref)
         no-cache? (or no-cache?
                       config/cache-disabled?
-                      (view/exceeds-bounded-count-limit? var-value))]
+                      (hashing/exceeds-bounded-count-limit? var-value))]
     (when (and (not no-cache?) (cachable-value? var-value))
       (cache! digest-file var-value))
-    (let [blob-id (cond no-cache? (view/->hash-str var-value)
+    (let [blob-id (cond no-cache? (hashing/->hash-str var-value)
                         (fn? var-value) nil
                         :else hash)
           result (if introduced-var
@@ -373,8 +373,9 @@
          "how_clerk_works"
          "pagination"
          "paren_soup"
-         #_"readme" ;; TODO: add back when we have Clojure cells in md
+         "readme"
          "rule_30"
+         "slideshow"
          "visibility"
          "viewer_api"
          "viewer_api_meta"
