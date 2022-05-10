@@ -190,36 +190,12 @@
       (with-viewer :html
         (into (mkup-fn node) (cond text [text] content (map with-md-viewer content)))))))
 
-;; EDN writer
-(defn var->data [v] (wrapped-with-viewer v))
-
-#_(var->data #'var->data)
-
-(defn fn->str [f]
-  (let [pr-rep (pr-str f)
-        f-name (subs pr-rep (count "#function[") (- (count pr-rep) 1))]
-    f-name))
-
-#_(fn->str (fn []))
-#_(fn->str +)
-
-;; TODO: consider removing this and rely only on viewers
-(defn make-readable [x]
-  (cond-> x
-    (var? x) var->data
-    (meta x) (with-meta {})
-    (fn? x) fn->str))
-
-#_(meta (make-readable ^{:f (fn [])} []))
-
 #?(:clj
    (defn ->edn [x]
      (binding [*print-namespace-maps* false]
-       (pr-str
-        (try (w/prewalk make-readable x)
-             (catch Throwable _ x))))))
+       (pr-str x))))
 
-#_(->edn [:vec (with-meta [] {'clojure.core.protocols/datafy (fn [x] x)}) :var #'->edn])
+#_(->edn {:nextjournal/value :foo})
 
 #?(:clj
    (defn base64-encode-value [{:as result :nextjournal/keys [content-type]}]
@@ -314,7 +290,8 @@
 
 #_ (update-viewers default-viewers {:fetch-opts #(dissoc % :fetch-opts)})
 
-(defn prepend [xs ys] (into (vec ys) xs))
+(defn prepend [viewers viewers-to-prepend]
+  (into (vec viewers-to-prepend) viewers))
 
 (defn update-table-viewers [viewers]
   (-> viewers
