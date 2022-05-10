@@ -17,10 +17,8 @@
                    (javax.imageio ImageIO)
                    (java.util Base64))))
 
-(defrecord ViewerEval [form]
-  #?@(:cljs [IFn
-             (-invoke [_this x] ((eval form) x))
-             (-invoke [_this x y] ((eval form) x y))]))
+(defrecord ViewerEval [form])
+
 (defrecord ViewerFn [form #?(:cljs f)]
   #?@(:cljs [IFn
              (-invoke [this x] ((:f this) x))
@@ -31,7 +29,7 @@
   (instance? ViewerFn x))
 
 (defn ->viewer-fn [form]
-  (map->ViewerFn {:form form :f #?(:clj nil :cljs (*eval* form))}))
+  (map->ViewerFn {:form form :f #?(:clj nil :cljs (eval form))}))
 
 (defn ->viewer-eval [form]
   (map->ViewerEval {:form form}))
@@ -162,7 +160,7 @@
 
 (defn inspect-leafs [opts x]
   (if (wrapped-value? x)
-    [(->viewer-eval 'v/inspect) (describe x opts)]
+    [#?(:clj (->viewer-eval 'v/inspect) :cljs (eval 'v/inspect)) (describe x opts)]
     x))
 
 (defn fetch-all [opts xs]
