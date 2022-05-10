@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.static-app
   (:require [clojure.string :as str]
             [clojure.set :as set]
+            [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.sci-viewer :as sci-viewer]
             [nextjournal.ui.components.localstorage :as ls]
             [nextjournal.devcards :as dc]
@@ -39,9 +40,10 @@
                     " from "
                     [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
                      {:href (str url "/blob/" sha "/" (url->path path))} (url->path path) "@" [:span.tabular-nums (subs sha 0 7)]]])]]]
-    (sci-viewer/set-state {:doc (update-in doc [:nextjournal/value :blocks]
-                                           #(into [{:nextjournal/value header
-                                                    :nextjournal/viewer :html}] %))})
+    (sci-viewer/set-state {:doc (cond-> doc
+                                  (vector? (get-in doc [:nextjournal/value :blocks]))
+                                  (update-in [:nextjournal/value :blocks] (partial into [[sci-viewer/inspect {:nextjournal/value header
+                                                                                                              :nextjournal/viewer :html}]])))})
     [sci-viewer/root]))
 
 (dc/defcard show []
