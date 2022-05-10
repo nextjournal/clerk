@@ -623,12 +623,14 @@
   (.resolve js/Promise (viewer/describe value opts)))
 
 (defn inspect-paginated [value]
-  (r/with-let [!desc (r/atom (viewer/describe value))]
+  (r/with-let [!state (r/atom nil)]
+    (when (not= (:value @!state) value)
+      (swap! !state assoc :value value :desc (viewer/describe value)))
     [view-context/provide {:fetch-fn (fn [fetch-opts]
                                        (.then (in-process-fetch value fetch-opts)
                                               (fn [more]
-                                                (swap! !desc viewer/merge-descriptions more))))}
-     [inspect @!desc]]))
+                                                (swap! !state update :desc viewer/merge-descriptions more))))}
+     [inspect (:desc @!state)]]))
 
 (dc/defcard inspect-paginated-one
   []
