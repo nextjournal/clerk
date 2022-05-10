@@ -30,7 +30,7 @@
                               nrepl/bencode {:mvn/version "1.1.0"}
                               io.github.babashka/sci.nrepl
                               #_{:local/root "../sci.nrepl"}
-                              {:git/sha "dbb840631a0531f33c0003f60aa9b1db20241602"}}}
+                              {:git/sha "8998f2a4fd25ff02474d7298253e91f059f482b2"}}}
 
            :dev {:extra-deps {arrowic/arrowic {:mvn/version "0.1.1"}
                               binaryage/devtools {:mvn/version "1.0.3"}

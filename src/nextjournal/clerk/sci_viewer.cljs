@@ -1181,4 +1181,7 @@ black")}]))}
   (let [ws (nrepl-websocket)]
     (set! (.-onmessage ws)
           (fn [event]
-            (handle-nrepl-message (edn/read-string (.-data event)))))))
+            (handle-nrepl-message (edn/read-string (.-data event)))))
+    (set! (.-onerror ws)
+          (fn [event]
+            (js/console.log event)))))
