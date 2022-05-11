@@ -102,6 +102,45 @@
     (:nextjournal/width x)))
 
 
+(defn normalize-viewer-opts [opts]
+  (set/rename-keys opts {:nextjournal.clerk/viewer :nextjournal/viewer
+                         :nextjournal.clerk/viewers :nextjournal/viewers
+                         :nextjournal.clerk/width :nextjournal/width}))
+
+(defn normalize-viewer [viewer]
+  (if (or (keyword? viewer)
+          (map? viewer))
+    viewer
+    {:render-fn viewer}))
+
+#_(normalize-viewer '#(v/html [:h3 "Hello " % "!"]))
+#_(normalize-viewer :latex)
+#_(normalize-viewer {:render-fn '#(v/html [:h3 "Hello " % "!"]) :transform-fn identity})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; public api
+
+(defn with-viewer
+  "Wraps the given value `x` and associates it with the given `viewer`. Takes an optional second `viewer-opts` arg."
+  ([viewer x] (with-viewer viewer {} x))
+  ([viewer viewer-opts x]
+   (merge (normalize-viewer-opts viewer-opts)
+          (-> x
+              wrap-value
+              (assoc :nextjournal/viewer (normalize-viewer viewer))))))
+
+#_(with-viewer :latex "x^2")
+#_(with-viewer '#(v/html [:h3 "Hello " % "!"]) "x^2")
+
+(defn with-viewers
+  "Binds viewers to types, eg {:boolean view-fn}"
+  [viewers x]
+  (-> x
+      wrap-value
+      (assoc :nextjournal/viewers viewers)))
+
+#_(->> "x^2" (with-viewer :latex) (with-viewers [{:name :latex :render-fn :mathjax}]))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; table viewer normalization
 
@@ -154,7 +193,7 @@
 
 #_(demunge-ex-data (datafy/datafy (ex-info "foo" {:bar :baz})))
 
-(declare describe with-viewer normalize-viewer get-viewers)
+(declare describe !viewers)
 
 (defn inspect-leafs [opts x]
   (if (wrapped-value? x)
@@ -221,6 +260,16 @@
                     (and (get % :nextjournal/content-type) (not lazy-load?))
                     base64-encode-value)
                  described-result)))
+
+(defn get-viewers
+  ([] (get-viewers :root))
+  ([scope] (get-viewers :root nil))
+  ([scope value]
+   (or (->viewers value)
+       (@!viewers scope)
+       (@!viewers :root))))
+
+#_(get-viewers)
 
 #?(:clj
    (defn ->result [ns {:as result :nextjournal/keys [value blob-id] vs :nextjournal/viewers} lazy-load?]
@@ -442,7 +491,7 @@
                                 (assoc :path [:rows] :replace-path [offset])
                                 (dissoc :nextjournal/viewers))))}
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
-   {:name :clerk/markdown-block :transform-fn #(with-viewer :markdown (:doc %))}
+   {:name :clerk/markdown-block :transform-fn (comp (partial with-viewer :markdown) :doc)}
    {:name :clerk/code-block :transform-fn #(with-viewer (if (:fold? %) :code-folded :code) (:text %))}
    {:name :tagged-value :render-fn '(fn [{:keys [tag value space?]}] (v/html (v/tagged-value {:space? space?} (str "#" tag) [v/inspect value])))
     :fetch-fn (fn [{:as opts :keys [describe-fn]} x]
@@ -545,16 +594,6 @@
 #_(apply-viewers (html [:h1 "hi"]))
 #_(apply-viewers (with-viewer :elision {:remaining 10 :count 30 :offset 19}))
 #_(apply-viewers (with-viewer (->Form '(fn [name] (html [:<> "Hello " name]))) "James"))
-
-(defn get-viewers
-  ([] (get-viewers :root))
-  ([scope] (get-viewers :root nil))
-  ([scope value]
-   (or (->viewers value)
-       (@!viewers scope)
-       (@!viewers :root))))
-
-#_(get-viewers)
 
 (defn bounded-count-opts [n xs]
   (assert (number? n) "n must be a number?")
@@ -763,46 +802,6 @@
   (binding #?(:clj [*out* *err*] :cljs [])
     (prn "`set-viewers!` has been deprecated, please use `add-viewers!` or `reset-viewers!` instead."))
   (add-viewers! viewers))
-
-(defn normalize-viewer-opts [opts]
-  (set/rename-keys opts {:nextjournal.clerk/viewer :nextjournal/viewer
-                         :nextjournal.clerk/viewers :nextjournal/viewers
-                         :nextjournal.clerk/width :nextjournal/width}))
-
-(defn normalize-viewer [viewer]
-  (if (or (keyword? viewer)
-          (map? viewer))
-    viewer
-    {:render-fn viewer}))
-
-#_(normalize-viewer '#(v/html [:h3 "Hello " % "!"]))
-#_(normalize-viewer :latex)
-#_(normalize-viewer {:render-fn '#(v/html [:h3 "Hello " % "!"]) :transform-fn identity})
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; public api
-
-(defn with-viewer
-  "Wraps the given value `x` and associates it with the given `viewer`. Takes an optional second `viewer-opts` arg."
-  ([viewer x] (with-viewer viewer {} x))
-  ([viewer viewer-opts x]
-   (merge (normalize-viewer-opts viewer-opts)
-          (-> x
-              wrap-value
-              (assoc :nextjournal/viewer (normalize-viewer viewer))))))
-
-#_(with-viewer :latex "x^2")
-#_(with-viewer '#(v/html [:h3 "Hello " % "!"]) "x^2")
-
-(defn with-viewers
-  "Binds viewers to types, eg {:boolean view-fn}"
-  [viewers x]
-  (-> x
-      wrap-value
-      (assoc :nextjournal/viewers viewers)))
-
-#_(->> "x^2" (with-viewer :latex) (with-viewers [{:name :latex :render-fn :mathjax}]))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convience api
