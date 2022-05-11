@@ -154,7 +154,7 @@
 
 #_(demunge-ex-data (datafy/datafy (ex-info "foo" {:bar :baz})))
 
-(declare describe with-viewer wrapped-with-viewer datafy-scope normalize-viewer get-viewers)
+(declare describe with-viewer normalize-viewer get-viewers)
 
 (defn inspect-leafs [opts x]
   (if (wrapped-value? x)
@@ -299,6 +299,17 @@
 #?(:clj (def utc-date-format ;; from `clojure.instant/thread-local-utc-date-format`
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
             (.setTimeZone (java.util.TimeZone/getTimeZone "GMT")))))
+
+#?(:clj
+   (defn datafy-scope [scope]
+     (cond
+       (instance? clojure.lang.Namespace scope) {:namespace (-> scope str keyword)}
+       (keyword? scope) scope
+       :else (throw (ex-info (str "Unsupported scope " scope) {:scope scope})))))
+
+#_(datafy-scope *ns*)
+#_(datafy-scope #'datafy-scope)
+
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:div.viewer-markdown])}
 
@@ -431,7 +442,7 @@
                                 (assoc :path [:rows] :replace-path [offset])
                                 (dissoc :nextjournal/viewers))))}
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
-   {:name :clerk/markdown-block :transform-fn (comp (partial with-viewer :markdown) :doc)}
+   {:name :clerk/markdown-block :transform-fn #(with-viewer :markdown (:doc %))}
    {:name :clerk/code-block :transform-fn #(with-viewer (if (:fold? %) :code-folded :code) (:text %))}
    {:name :tagged-value :render-fn '(fn [{:keys [tag value space?]}] (v/html (v/tagged-value {:space? space?} (str "#" tag) [v/inspect value])))
     :fetch-fn (fn [{:as opts :keys [describe-fn]} x]
@@ -737,16 +748,6 @@
                                                                        x)))
                                  xs)))))))
 
-
-#?(:clj
-   (defn datafy-scope [scope]
-     (cond
-       (instance? clojure.lang.Namespace scope) {:namespace (-> scope str keyword)}
-       (keyword? scope) scope
-       :else (throw (ex-info (str "Unsupported scope " scope) {:scope scope})))))
-
-#_(datafy-scope *ns*)
-#_(datafy-scope #'datafy-scope)
 
 (defn reset-viewers!
   ([viewers] (reset-viewers! *ns* viewers))
