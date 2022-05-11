@@ -11,7 +11,27 @@
 ;; Clerk comes with a rich set of default viewers, and this is them.
 v/default-viewers
 
+;; A Clerk viewer is just a Clojure map. Let's start with a very basic example.
+(def greeting-viewer
+  {:render-fn '(fn [name] (v/html [:strong "Hello, " name "!"]))})
+
+;; In it's simplest form, a viewer has just a `:render-fn`. Notice that the value is not yet a function, but a quoted form that will be sent via a websocket to the browser. There, it will be evaluated using the [Small Clojure Intepreter](https://github.com/babashka/sci) or sci for short. Let's use the viewer to confirm it does what we expect:
+(v/with-viewer greeting-viewer
+  "James Clerk Maxwell")
+
+;; It is often useful, but not a neccesity to define a viewer in a clojure var, so the following expression yields the same result.
+(v/with-viewer {:render-fn '(fn [name] (v/html [:strong "Hello, " name "!"]))}
+  "James Clerk Maxwell")
+
+;; There's a third way to get to the same result, using another part of the viewer api, `:transform-fn`.
+(v/with-viewer {:transform-fn (fn [name]
+                                (v/with-viewer :html [:strong "Hello, " name "!"]))}
+  "James Clerk Maxwell")
+
 ;; Without a viewer specified, Clerk will go through the a sequence viewers and apply the `:pred` function in the viewer to find a matching one. Use `v/viewer-for` to select a viewer for a given value.
+(def char?-viewer
+  (v/viewer-for v/default-viewers \A))
+
 (def string?-viewer
   (v/viewer-for v/default-viewers "Denn wir sind wie Baumstämme im Schnee."))
 
@@ -34,11 +54,14 @@ v/default-viewers
 (def viewers-without-lazy-loading
   (v/update-viewers v/default-viewers without-pagination))
 
-;; Now let's check what we got:
+;; Now let's confirm these modified viewers don't have `:fetch-opts` on them anymore.
 (filter :fetch-opts viewers-without-lazy-loading)
 
 ;; And compare it with the defaults:
 (filter :fetch-opts v/default-viewers)
+
+
+
 
 ;; ### TODO:
 ;; * `v/with-viewers`
@@ -49,4 +72,6 @@ v/default-viewers
 ;;   * `v/add-viewers!`
 ;;   * `v/reset-viewers!`
 ;; * Change the default viewers
+
+
 
