@@ -261,19 +261,18 @@
                     base64-encode-value)
                  described-result)))
 
+(defn get-default-viewers [] (get @!viewers :root))
+
 (defn get-viewers
-  ([] (get-viewers :root))
   ([scope] (get-viewers scope nil))
   ([scope value]
    (or (when value (->viewers value))
-       (@!viewers scope)
-       (@!viewers :root))))
-
-#_(get-viewers)
+       (when scope (@!viewers scope))
+       (get-default-viewers))))
 
 #?(:clj
-   (defn ->result [ns {:as result :nextjournal/keys [value blob-id] vs :nextjournal/viewers} lazy-load?]
-     (let [described-result (extract-blobs lazy-load? blob-id (describe value {:viewers (concat vs (get-viewers ns (->viewers value)))}))
+   (defn ->result [ns {:as result :nextjournal/keys [value blob-id viewers]} lazy-load?]
+     (let [described-result (extract-blobs lazy-load? blob-id (describe value {:viewers (or viewers (get-viewers ns value))}))
            opts-from-form-meta (select-keys result [:nextjournal/width])]
        (merge {:nextjournal/viewer :clerk/result
                :nextjournal/value (cond-> (try {:nextjournal/edn (->edn described-result)}
@@ -796,7 +795,7 @@
    (swap! !viewers assoc scope viewers)))
 
 (defn add-viewers! [viewers]
-  (reset-viewers! *ns* (add-viewers (:root @!viewers) viewers)))
+  (reset-viewers! *ns* (add-viewers (get-default-viewers) viewers)))
 
 (defn ^{:deprecated "0.8"} set-viewers! [viewers]
   (binding #?(:clj [*out* *err*] :cljs [])
