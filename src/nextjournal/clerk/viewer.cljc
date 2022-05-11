@@ -314,8 +314,8 @@
    {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :fetch-opts {:n 2}}
    {:pred var-from-def? :transform-fn (fn [x] (-> x :nextjournal.clerk/var-from-def deref))}
    {:name :read+inspect :render-fn '(fn [x] (v/html [v/inspect-paginated (try (v/read-string x)
-                                                                             (catch js/Error _e
-                                                                               (v/with-viewer v/unreadable-edn-viewer x)))]))}
+                                                                              (catch js/Error _e
+                                                                                (v/with-viewer v/unreadable-edn-viewer x)))]))}
    {:pred vector? :render-fn 'v/coll-viewer :opening-paren "[" :closing-paren "]" :fetch-opts {:n 20}}
    {:pred set? :render-fn 'v/coll-viewer :opening-paren "#{" :closing-paren "}" :fetch-opts {:n 20}}
    {:pred sequential? :render-fn 'v/coll-viewer :opening-paren "(" :closing-paren ")" :fetch-opts {:n 20}}
@@ -325,22 +325,22 @@
     :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp demunge-ex-data datafy/datafy)}
    #?(:clj {:pred #(instance? BufferedImage %)
             :fetch-fn (fn [_ image] (let [stream (java.io.ByteArrayOutputStream.)
-                                         w (.getWidth image)
-                                         h (.getHeight image)
-                                         r (float (/ w h))]
-                                     (ImageIO/write image "png" stream)
-                                     (cond-> {:nextjournal/value (.toByteArray stream)
-                                              :nextjournal/content-type "image/png"
-                                              :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})))
+                                          w (.getWidth image)
+                                          h (.getHeight image)
+                                          r (float (/ w h))]
+                                      (ImageIO/write image "png" stream)
+                                      (cond-> {:nextjournal/value (.toByteArray stream)
+                                               :nextjournal/content-type "image/png"
+                                               :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})))
             :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))})
    {:pred #(instance? IDeref %)
     :transform-fn (fn [r] (with-viewer :tagged-value
-                           {:tag "object"
-                            :value (vector (type r)
-                                           #?(:clj (with-viewer :number-hex (System/identityHashCode r)))
-                                           (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
-                                             (deref-as-map r)
-                                             r))}))}
+                            {:tag "object"
+                             :value (vector (type r)
+                                            #?(:clj (with-viewer :number-hex (System/identityHashCode r)))
+                                            (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
+                                              (deref-as-map r)
+                                              r))}))}
    {:pred (constantly :true) :transform-fn #(with-viewer :read+inspect (pr-str %))}
    {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
