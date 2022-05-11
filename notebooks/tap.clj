@@ -1,9 +1,10 @@
 ;; # 🚰 Tap Inspector
 ^{:nextjournal.clerk/visibility :hide}
 (ns nextjournal.clerk.tap
-  (:require [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as v]
-            [clojure.core :as core]))
+  (:require [clojure.core :as core]
+            [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.viewer :as v])
+  (:import (java.time Instant LocalTime ZoneId)))
 
 
 ^{::clerk/viewer clerk/hide-result}
@@ -41,26 +42,35 @@
   (when trace-fn (trace-fn {:origin 'fetch-tap :xs x}))
   (let [path' (cond-> path
                 (not= :tap (peek path)) (conj :tap))
-        opts (cond-> opts (v/viewers (:tap x)) (update :viewers #(concat (v/viewers (:tap x)) %)))]
+        opts (cond-> opts (v/->viewers (:tap x)) (update :viewers #(concat (v/->viewers (:tap x)) %)))]
     (-> (cond-> (update x :tap describe-fn (assoc opts :!budget (atom 100) :path path') path')
           (-> path count dec pos?) :tap)
         (assoc :path path' :replace-path (conj path offset)))))
 
 ^{::clerk/viewer clerk/hide-result}
-(def taps-viewer {:render-fn '(fn [taps opts]
-                                (v/html [:div.flex.flex-col.pt-2
-                                         (map (fn [tap] (let [{:keys [tap inst key]} (:nextjournal/value tap)]
-                                                         (with-meta 
-                                                           [:div.border-t.relative.py-3
-                                                            [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
-                                                             {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"}
-                                                             (.toLocaleTimeString inst "en-US" (clj->js {:hour12 false})) "."
-                                                             (subs (str (+ 1000 (.getMilliseconds inst))) 1)]
-                                                            [:div.overflow-x-auto [v/inspect tap]]]
-                                                           {:key key})))
-                                              taps)]))
-                  :transform-fn (fn [taps]
-                                  (mapv (partial clerk/with-viewer {:fetch-fn fetch-tap}) (reverse taps)))})
+(defn inst->local-time-str [inst]
+  (str (LocalTime/ofInstant inst (ZoneId/systemDefault))))
+
+#_(inst->local-time-str (Instant/now))
+
+^{::clerk/viewer clerk/hide-result}
+(def taps-viewer
+  {:render-fn '(fn [taps opts]
+                 (v/html [:div.flex.flex-col.pt-2
+                          (map (fn [tap] (let [{:keys [tap tapped-at key]} (:nextjournal/value tap)]
+                                           (with-meta 
+                                             [:div.border-t.relative.py-3
+                                              [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
+                                               {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} tapped-at]
+                                              [:div.overflow-x-auto [v/inspect tap]]]
+                                             {:key key})))
+                               taps)]))
+   :transform-fn (fn [taps]
+                   (mapv (partial clerk/with-viewer
+                                  {:transform-fn (fn [tap]
+                                                   (clerk/with-viewer {:fetch-fn fetch-tap}
+                                                     (update tap :tapped-at inst->local-time-str)))})
+                         (reverse taps)))})
 
 
 ^{::clerk/viewer (if (= :latest @!view)
@@ -68,9 +78,10 @@
                    taps-viewer)}
 @!taps
 
+
 ^{::clerk/viewer clerk/hide-result}
 (defn tapped [x]
-  (swap! !taps conj {:tap x :inst (java.time.Instant/now) :key (str (gensym))})
+  (swap! !taps conj {:tap x :tapped-at (java.time.Instant/now) :key (str (gensym))})
   (binding [*ns* (find-ns 'tap)]
     (clerk/recompute!)))
 
@@ -103,13 +114,13 @@
 
   (tap> (clerk/html [:h1 "Fin. 👋"]))
 
-;; ---
-;; ## TODO
+  ;; ---
+  ;; ## TODO
 
-;; * [x] Avoid flickering when adding new tap
-;; * [x] Record & show time of tap
-;; * [x] Keep expanded state when adding tap
-;; * [x] Fix latest
-;; * [ ] Improve performance when large image present in tap stream
+  ;; * [x] Avoid flickering when adding new tap
+  ;; * [x] Record & show time of tap
+  ;; * [x] Keep expanded state when adding tap
+  ;; * [x] Fix latest
+  ;; * [ ] Improve performance when large image present in tap stream
   
-)
+  )
