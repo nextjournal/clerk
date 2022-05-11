@@ -309,6 +309,7 @@
 (def with-viewer    v/with-viewer)
 (def with-viewers   v/with-viewers)
 (def reset-viewers! v/reset-viewers!)
+(def add-viewers    v/add-viewers)
 (def add-viewers!   v/add-viewers!)
 (def set-viewers!   v/set-viewers!)
 
@@ -450,7 +451,8 @@
              :parsed (str "Done in " duration ". ✅\n🔬 Analyzing… ")
              (:built :analyzed) (str "Done in " duration ". ✅\n")
              :building (str "🔨 Building \"" (:file doc) "\"… ")
-             :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n")))))
+             :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n"))))
+  (flush))
 
 (defn expand-paths [paths]
   (->> (if (symbol? paths)
