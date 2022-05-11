@@ -334,8 +334,9 @@
 
 #_(update-viewers default-viewers {:fetch-opts #(dissoc % :fetch-opts)})
 
-(defn add-viewers [viewers new-viewers]
-  (into (vec new-viewers) viewers))
+(defn add-viewers
+  ([added-viewers] (add-viewers (get-default-viewers) added-viewers))
+  ([viewers added-viewers] (into (vec added-viewers) viewers)))
 
 (defn update-table-viewers [viewers]
   (-> viewers
@@ -578,7 +579,7 @@
                 (select-keys x [:nextjournal/width]))
          v (cond-> (->value x) transform-fn transform-fn)
          viewers (cond-> viewers update-viewers-fn update-viewers-fn)]
-     (if (and transform-fn (not render-fn))
+     (if (and (or transform-fn update-viewers-fn) (not render-fn))
        (recur viewers v)
        (cond-> (-> v
                    (wrap-value viewer)
