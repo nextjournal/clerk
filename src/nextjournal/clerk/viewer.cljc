@@ -299,93 +299,6 @@
 #?(:clj (def utc-date-format ;; from `clojure.instant/thread-local-utc-date-format`
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
             (.setTimeZone (java.util.TimeZone/getTimeZone "GMT")))))
-
-;; keep viewer selection stricly in Clojure
-(def default-viewers
-  ;; maybe make this a sorted-map
-  [{:pred char? :render-fn '(fn [c] (v/html [:span.cmt-string.inspected-value "\\" c]))}
-   {:pred string? :render-fn (quote v/quoted-string-viewer) :fetch-opts {:n 80}}
-   {:pred number? :render-fn (quote v/number-viewer)}
-   {:name :number-hex :render-fn '(fn [num] (v/number-viewer (str "0x" (.toString (js/Number. num) 16))))}
-   {:pred symbol? :render-fn '(fn [x] (v/html [:span.cmt-keyword.inspected-value (str x)]))}
-   {:pred keyword? :render-fn '(fn [x] (v/html [:span.cmt-atom.inspected-value (str x)]))}
-   {:pred nil? :render-fn '(fn [_] (v/html [:span.cmt-default.inspected-value "nil"]))}
-   {:pred boolean? :render-fn '(fn [x] (v/html [:span.cmt-bool.inspected-value (str x)]))}
-   {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :fetch-opts {:n 2}}
-   {:pred var-from-def? :transform-fn (fn [x] (-> x :nextjournal.clerk/var-from-def deref))}
-   {:name :read+inspect :render-fn '(fn [x] (v/html [v/inspect-paginated (try (v/read-string x)
-                                                                              (catch js/Error _e
-                                                                                (v/with-viewer v/unreadable-edn-viewer x)))]))}
-   {:pred vector? :render-fn 'v/coll-viewer :opening-paren "[" :closing-paren "]" :fetch-opts {:n 20}}
-   {:pred set? :render-fn 'v/coll-viewer :opening-paren "#{" :closing-paren "}" :fetch-opts {:n 20}}
-   {:pred sequential? :render-fn 'v/coll-viewer :opening-paren "(" :closing-paren ")" :fetch-opts {:n 20}}
-   {:pred map? :name :map :render-fn 'v/map-viewer :opening-paren "{" :closing-paren "}" :fetch-opts {:n 10}}
-   {:pred var? :transform-fn symbol :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#'" (str x)]]))}
-   {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e)) :fetch-fn fetch-all
-    :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp demunge-ex-data datafy/datafy)}
-   #?(:clj {:pred #(instance? BufferedImage %)
-            :fetch-fn (fn [_ image] (let [stream (java.io.ByteArrayOutputStream.)
-                                          w (.getWidth image)
-                                          h (.getHeight image)
-                                          r (float (/ w h))]
-                                      (ImageIO/write image "png" stream)
-                                      (cond-> {:nextjournal/value (.toByteArray stream)
-                                               :nextjournal/content-type "image/png"
-                                               :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})))
-            :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))})
-   {:pred #(instance? IDeref %)
-    :transform-fn (fn [r] (with-viewer :tagged-value
-                            {:tag "object"
-                             :value (vector (type r)
-                                            #?(:clj (with-viewer :number-hex (System/identityHashCode r)))
-                                            (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
-                                              (deref-as-map r)
-                                              r))}))}
-   {:pred (constantly :true) :transform-fn #(with-viewer :read+inspect (pr-str %))}
-   {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
-   {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
-   {:name :mathjax :render-fn (quote v/mathjax-viewer) :fetch-fn fetch-all}
-   {:name :html :render-fn (quote v/html) :fetch-fn fetch-all}
-   {:name :plotly :render-fn (quote v/plotly-viewer) :fetch-fn fetch-all}
-   {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :fetch-fn fetch-all}
-   {:name :markdown :transform-fn (comp with-md-viewer md/parse)}
-   {:name :code :render-fn (quote v/code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (->value %)] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))}
-   {:name :code-folded :render-fn (quote v/foldable-code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (->value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
-   {:name :reagent :render-fn (quote v/reagent-viewer)  :fetch-fn fetch-all}
-   {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
-    :update-viewers-fn update-table-viewers
-    :transform-fn (fn [xs]
-                    (-> (wrap-value xs)
-                        (update :nextjournal/width #(or % :wide))
-                        (update :nextjournal/value #(or (normalize-table-data %)
-                                                        {:error "Could not normalize table" :ex-data %}))))
-    :fetch-fn (fn [{:as opts :keys [describe-fn offset path]} xs]
-                ;; TODO: use budget per row for table
-                ;; TODO: opt out of eliding cols
-                (cond (:error xs) (update xs :ex-data describe-fn opts [])
-                      (seq path) (describe-fn (:rows xs) opts [])
-                      :else (-> (cond-> (update xs :rows describe-fn (dissoc opts :!budget) [])
-                                  (pos? offset) :rows)
-                                (assoc :path [:rows] :replace-path [offset])
-                                (dissoc :nextjournal/viewers))))}
-   {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
-   {:name :clerk/markdown-block :transform-fn (fn [{:keys [doc text]}] (cond doc (with-md-viewer doc) text (with-viewer :markdown text)))}
-   {:name :clerk/code-block :transform-fn #(with-viewer (if (:fold? %) :code-folded :code) (:text %))}
-   {:name :tagged-value :render-fn '(fn [{:keys [tag value space?]}] (v/html (v/tagged-value {:space? space?} (str "#" tag) [v/inspect value])))
-    :fetch-fn (fn [{:as opts :keys [describe-fn]} x]
-                (update x :value describe-fn opts))}
-   {:name :clerk/result :render-fn (quote v/result-viewer) :fetch-fn fetch-all}
-   {:name :clerk/notebook
-    :fetch-fn fetch-all
-    :render-fn (quote v/notebook-viewer)
-    :transform-fn #?(:cljs identity
-                     :clj (fn [{:as doc :keys [ns]}]
-                            (-> doc
-                                (update :blocks (partial into [] (mapcat (partial with-block-viewer doc))))
-                                (select-keys [:blocks :toc :title])
-                                (cond-> ns (assoc :scope (datafy-scope ns))))))}
-   {:name :hide-result :transform-fn (fn [_] nil)}])
-
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:div.viewer-markdown])}
 
@@ -449,8 +362,94 @@
    {:name :nextjournal.markdown/sidenote-ref
     :transform-fn (into-markup [:sup.sidenote-ref])}])
 
+;; keep viewer selection stricly in Clojure
+(def default-viewers
+  ;; maybe make this a sorted-map
+  [{:pred char? :render-fn '(fn [c] (v/html [:span.cmt-string.inspected-value "\\" c]))}
+   {:pred string? :render-fn (quote v/quoted-string-viewer) :fetch-opts {:n 80}}
+   {:pred number? :render-fn (quote v/number-viewer)}
+   {:name :number-hex :render-fn '(fn [num] (v/number-viewer (str "0x" (.toString (js/Number. num) 16))))}
+   {:pred symbol? :render-fn '(fn [x] (v/html [:span.cmt-keyword.inspected-value (str x)]))}
+   {:pred keyword? :render-fn '(fn [x] (v/html [:span.cmt-atom.inspected-value (str x)]))}
+   {:pred nil? :render-fn '(fn [_] (v/html [:span.cmt-default.inspected-value "nil"]))}
+   {:pred boolean? :render-fn '(fn [x] (v/html [:span.cmt-bool.inspected-value (str x)]))}
+   {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :fetch-opts {:n 2}}
+   {:pred var-from-def? :transform-fn (fn [x] (-> x :nextjournal.clerk/var-from-def deref))}
+   {:name :read+inspect :render-fn '(fn [x] (v/html [v/inspect-paginated (try (v/read-string x)
+                                                                              (catch js/Error _e
+                                                                                (v/with-viewer v/unreadable-edn-viewer x)))]))}
+   {:pred vector? :render-fn 'v/coll-viewer :opening-paren "[" :closing-paren "]" :fetch-opts {:n 20}}
+   {:pred set? :render-fn 'v/coll-viewer :opening-paren "#{" :closing-paren "}" :fetch-opts {:n 20}}
+   {:pred sequential? :render-fn 'v/coll-viewer :opening-paren "(" :closing-paren ")" :fetch-opts {:n 20}}
+   {:pred map? :name :map :render-fn 'v/map-viewer :opening-paren "{" :closing-paren "}" :fetch-opts {:n 10}}
+   {:pred var? :transform-fn symbol :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#'" (str x)]]))}
+   {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e)) :fetch-fn fetch-all
+    :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp demunge-ex-data datafy/datafy)}
+   #?(:clj {:pred #(instance? BufferedImage %)
+            :fetch-fn (fn [_ image] (let [stream (java.io.ByteArrayOutputStream.)
+                                          w (.getWidth image)
+                                          h (.getHeight image)
+                                          r (float (/ w h))]
+                                      (ImageIO/write image "png" stream)
+                                      (cond-> {:nextjournal/value (.toByteArray stream)
+                                               :nextjournal/content-type "image/png"
+                                               :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})))
+            :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))})
+   {:pred #(instance? IDeref %)
+    :transform-fn (fn [r] (with-viewer :tagged-value
+                            {:tag "object"
+                             :value (vector (type r)
+                                            #?(:clj (with-viewer :number-hex (System/identityHashCode r)))
+                                            (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
+                                              (deref-as-map r)
+                                              r))}))}
+   {:pred (constantly :true) :transform-fn #(with-viewer :read+inspect (pr-str %))}
+   {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
+   {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
+   {:name :mathjax :render-fn (quote v/mathjax-viewer) :fetch-fn fetch-all}
+   {:name :html :render-fn (quote v/html) :fetch-fn fetch-all}
+   {:name :plotly :render-fn (quote v/plotly-viewer) :fetch-fn fetch-all}
+   {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :fetch-fn fetch-all}
+   {:name :markdown :transform-fn (fn [md] (with-md-viewer (cond-> md (string? md) md/parse))) :update-viewers-fn #(add-viewers % markdown-viewers)}
+   {:name :code :render-fn (quote v/code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (->value %)] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))}
+   {:name :code-folded :render-fn (quote v/foldable-code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (->value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
+   {:name :reagent :render-fn (quote v/reagent-viewer)  :fetch-fn fetch-all}
+   {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
+    :update-viewers-fn update-table-viewers
+    :transform-fn (fn [xs]
+                    (-> (wrap-value xs)
+                        (update :nextjournal/width #(or % :wide))
+                        (update :nextjournal/value #(or (normalize-table-data %)
+                                                        {:error "Could not normalize table" :ex-data %}))))
+    :fetch-fn (fn [{:as opts :keys [describe-fn offset path]} xs]
+                ;; TODO: use budget per row for table
+                ;; TODO: opt out of eliding cols
+                (cond (:error xs) (update xs :ex-data describe-fn opts [])
+                      (seq path) (describe-fn (:rows xs) opts [])
+                      :else (-> (cond-> (update xs :rows describe-fn (dissoc opts :!budget) [])
+                                  (pos? offset) :rows)
+                                (assoc :path [:rows] :replace-path [offset])
+                                (dissoc :nextjournal/viewers))))}
+   {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
+   {:name :clerk/markdown-block :transform-fn (comp (partial with-viewer :markdown) :doc)}
+   {:name :clerk/code-block :transform-fn #(with-viewer (if (:fold? %) :code-folded :code) (:text %))}
+   {:name :tagged-value :render-fn '(fn [{:keys [tag value space?]}] (v/html (v/tagged-value {:space? space?} (str "#" tag) [v/inspect value])))
+    :fetch-fn (fn [{:as opts :keys [describe-fn]} x]
+                (update x :value describe-fn opts))}
+   {:name :clerk/result :render-fn (quote v/result-viewer) :fetch-fn fetch-all}
+   {:name :clerk/notebook
+    :fetch-fn fetch-all
+    :render-fn (quote v/notebook-viewer)
+    :transform-fn #?(:cljs identity
+                     :clj (fn [{:as doc :keys [ns]}]
+                            (-> doc
+                                (update :blocks (partial into [] (mapcat (partial with-block-viewer doc))))
+                                (select-keys [:blocks :toc :title])
+                                (cond-> ns (assoc :scope (datafy-scope ns))))))}
+   {:name :hide-result :transform-fn (fn [_] nil)}])
+
 (defn make-default-viewers []
-  {:root (into default-viewers markdown-viewers)})
+  {:root default-viewers})
 
 (defonce
   ^{:doc "atom containing a map of `:root` and per-namespace viewers."}
