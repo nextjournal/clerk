@@ -21,15 +21,7 @@ Playground for overriding markdown nodes
                                                                                                                                   (v/html [:div {:style {:width "100%" :height "80px" :background-position "center" :background-size "cover"
                                                                                                                                                          :background-image "url(https://www.maxpixel.net/static/photo/1x/Ornamental-Separator-Decorative-Line-Art-Divider-4715969.png)"}}]))}]))))}))
 ```
-```
-(v/reset-viewers! md-viewers)
 
-(= (get @v/!viewers *ns*) md-viewers (v/get-viewers *ns* nil))
-
-(v/md "# Ho\n---\nWhat about us?")
-
-(v/with-viewers md-viewers (v/md "# Hi\n---\nHow can this ever work?\n---"))
-```
 ## Sections
 
 with some _more_ text and a ruler.

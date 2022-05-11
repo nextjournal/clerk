@@ -263,9 +263,9 @@
 
 (defn get-viewers
   ([] (get-viewers :root))
-  ([scope] (get-viewers :root nil))
+  ([scope] (get-viewers scope nil))
   ([scope value]
-   (or (->viewers value)
+   (or (when value (->viewers value))
        (@!viewers scope)
        (@!viewers :root))))
 
@@ -650,7 +650,7 @@
    (describe xs {}))
   ([xs opts]
    (-> xs
-       (describe (merge {:!budget (atom (:budget opts 200)) :path [] :viewers (:root @!viewers)} opts) [])
+       (describe (merge {:!budget (atom (:budget opts 200)) :path [] :viewers (get-viewers *ns*)} opts) [])
        assign-closing-parens))
   ([xs opts current-path]
    (let [{:as opts :keys [!budget viewers path offset]} (merge {:offset 0} opts)
