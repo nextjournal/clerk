@@ -367,8 +367,7 @@
 
 (def clerk-docs
   (into ["notebooks/markdown.md"
-         "notebooks/onwards.md"
-         "notebooks/viewers/custom_markdown.md"]
+         "notebooks/onwards.md"]
         (map #(str "notebooks/" % ".clj"))
         ["hello"
          "how_clerk_works"
@@ -383,6 +382,7 @@
          "viewer_d3_require"
          "viewers_nested"
          "viewer_normalization"
+         "viewers/custom_markdown"
          "viewers/html"
          "viewers/image"
          "viewers/image_layouts"

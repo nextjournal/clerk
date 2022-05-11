@@ -1,26 +1,25 @@
 ;; #  📝 _In-Text_ Evaluation
-^{:nextjournal.clerk/visibility #{:hide-ns :hide} :nextjournal.clerk/toc true}
+^{:nextjournal.clerk/visibility #{:hide-ns}}
 (ns ^{:nextjournal.clerk/no-cache true} viewers.in-text-eval
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]
+            [viewers.custom-markdown :as custom-md]
             [nextjournal.markdown.transform :as markdown.transform]))
 
 ;; Being able to override markdown viewers allows us to get in-text evaluation for free:
 
-^{::clerk/viewer clerk/hide-result}
 (defonce num★ (atom 3))
 #_(reset! num★ 3)
 
+^{::clerk/visibility :hide ::clerk/viewer :hide-result}
+(custom-md/update-markdown-viewers!
+ (fn [mdvs] (v/add-viewers mdvs [{:name :nextjournal.markdown/monospace
+                                  :transform-fn (comp eval read-string markdown.transform/->text)}
+                                 {:name :nextjournal.markdown/ruler
+                                  :transform-fn (constantly (v/with-viewer :html [:div.text-center (repeat @num★ "★")]))}])))
 
-;; FIXME
-^{::clerk/visibility :show}
-(clerk/set-viewers! [{:name :nextjournal.markdown/monospace
-                      :transform-fn (comp eval read-string markdown.transform/->text)}
-                     {:name :nextjournal.markdown/ruler
-                      :transform-fn (constantly
-                                     (v/with-viewer :html [:div.text-center (repeat @num★ "★")]))}])
 ;; ---
-^{::clerk/viewer clerk/hide-result}
+^{::clerk/viewer clerk/hide-result ::clerk/visibility :hide}
 (defn slider [var {:keys [min max]}]
   (clerk/with-viewer
     {:fetch-fn (fn [_ x] x)
