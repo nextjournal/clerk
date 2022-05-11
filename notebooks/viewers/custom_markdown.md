@@ -22,6 +22,10 @@ Playground for overriding markdown nodes
                                                                                                                                                          :background-image "url(https://www.maxpixel.net/static/photo/1x/Ornamental-Separator-Decorative-Line-Art-Divider-4715969.png)"}}]))}]))))}))
 ```
 
+```clojure
+(clerk/add-viewers! md-viewers)
+```
+
 ## Sections
 
 with some _more_ text and a ruler.
