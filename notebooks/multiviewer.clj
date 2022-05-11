@@ -35,7 +35,7 @@
                                    l]) x))
                      (get x @!sel)])))})
 
-(clerk/set-viewers! [literal-viewer])
+(clerk/add-viewers! [literal-viewer])
 
 (+ (square (sin 'x))
    (square (cos 'x)))

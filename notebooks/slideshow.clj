@@ -94,7 +94,7 @@
                                               slides))]))))})
 
 
-(clerk/set-viewers! [slideshow-viewer])
+(clerk/add-viewers! [slideshow-viewer])
 
 ;; ---
 

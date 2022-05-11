@@ -9,7 +9,7 @@
             [nextjournal.clerk.viewer :as v]))
 
 
-(clerk/set-viewers! v/default-viewers)
+(clerk/reset-viewers! v/default-viewers)
 
 ;; ## Compare with the REPL
 

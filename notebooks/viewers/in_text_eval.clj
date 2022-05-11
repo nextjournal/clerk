@@ -11,6 +11,8 @@
 (defonce num★ (atom 3))
 #_(reset! num★ 3)
 
+
+;; FIXME
 ^{::clerk/visibility :show}
 (clerk/set-viewers! [{:name :nextjournal.markdown/monospace
                       :transform-fn (comp eval read-string markdown.transform/->text)}
