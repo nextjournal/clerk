@@ -518,10 +518,13 @@
    (let [{:as viewer :keys [render-fn transform-fn update-viewers-fn]} (viewer-for viewers x)
          opts (when (wrapped-value? x)
                 (select-keys x [:nextjournal/width]))
-         v (cond-> (->value x) transform-fn transform-fn)]
+         v (cond-> (->value x) transform-fn transform-fn)
+         viewers (cond-> viewers update-viewers-fn update-viewers-fn)]
      (if (and transform-fn (not render-fn))
-       (recur (cond-> viewers update-viewers-fn update-viewers-fn) v)
-       (cond-> (wrap-value v viewer)
+       (recur viewers v)
+       (cond-> (-> v
+                   (wrap-value viewer)
+                   (assoc :nextjournal/viewers viewers))
          (seq opts) (merge opts))))))
 
 #_(apply-viewers {:one :two})
@@ -587,7 +590,8 @@
 
 (defn make-elision [fetch-opts viewers]
   (-> (apply-viewers viewers (with-viewer :elision fetch-opts))
-      (update :nextjournal/viewer process-viewer)))
+      (update :nextjournal/viewer process-viewer)
+      (dissoc :nextjournal/viewers)))
 
 #_(make-elision {:n 20} default-viewers)
 
@@ -602,9 +606,8 @@
   ([xs opts current-path]
    (let [{:as opts :keys [!budget viewers path offset]} (merge {:offset 0} opts)
          wrapped-value (apply-viewers viewers xs)
-         {:as viewer :keys [fetch-opts fetch-fn update-viewers-fn]} (->viewer wrapped-value)
-         {:as opts :keys [viewers]} (cond-> opts
-                                      update-viewers-fn (update :viewers update-viewers-fn))
+         {:as viewer :keys [fetch-opts fetch-fn]} (->viewer wrapped-value)
+         opts (assoc opts :viewers (->viewers wrapped-value))
          fetch-opts (merge fetch-opts (select-keys opts [:offset :viewers]))
          descend? (< (count current-path)
                      (count path))
@@ -613,7 +616,7 @@
      (when (and !budget (not descend?) (not fetch-fn))
        (swap! !budget #(max (dec %) 0)))
      (merge {:path path}
-            (dissoc wrapped-value [:nextjournal/value :nextjournal/viewer])
+            (dissoc wrapped-value :nextjournal/viewers)
             (with-viewer (process-viewer viewer)
               (cond fetch-fn
                     (fetch-fn (merge opts fetch-opts {:describe-fn describe}) xs)
