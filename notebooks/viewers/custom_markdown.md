@@ -10,14 +10,26 @@ Playground for overriding markdown nodes
 ```
 
 ```clojure
-(clerk/set-viewers! [{:name :nextjournal.markdown/text 
-                      :transform-fn (v/into-markup [:span {:style {:color "#64748b"}}])}
-                     {:name :nextjournal.markdown/ruler
-                      :transform-fn (constantly 
-                                     (v/html [:div {:style {:width "100%" :height "80px" :background-position "center" :background-size "cover"
-                                                            :background-image "url(https://www.maxpixel.net/static/photo/1x/Ornamental-Separator-Decorative-Line-Art-Divider-4715969.png)"}}]))}])
+(def md-viewers
+  (v/update-viewers v/default-viewers
+                    {(comp #{:markdown} :name) #(update % :update-viewers-fn (fn [old-fn]
+                                                                               (fn [viewers]
+                                                                                 (v/add-viewers (old-fn viewers) [{:name :nextjournal.markdown/text 
+                                                                                                                   :transform-fn (v/into-markup [:span {:style {:color "#64748b"}}])}
+                                                                                                                  {:name :nextjournal.markdown/ruler
+                                                                                                                   :transform-fn (constantly 
+                                                                                                                                  (v/html [:div {:style {:width "100%" :height "80px" :background-position "center" :background-size "cover"
+                                                                                                                                                         :background-image "url(https://www.maxpixel.net/static/photo/1x/Ornamental-Separator-Decorative-Line-Art-Divider-4715969.png)"}}]))}]))))}))
 ```
+```
+(v/reset-viewers! md-viewers)
 
+(= (get @v/!viewers *ns*) md-viewers (v/get-viewers *ns* nil))
+
+(v/md "# Ho\n---\nWhat about us?")
+
+(v/with-viewers md-viewers (v/md "# Hi\n---\nHow can this ever work?\n---"))
+```
 ## Sections
 
 with some _more_ text and a ruler.
