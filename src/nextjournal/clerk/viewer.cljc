@@ -581,30 +581,33 @@
 #_(ensure-wrapped-with-viewers 42)
 #_(ensure-wrapped-with-viewers {:nextjournal/value 42 :nextjournal/viewers [:boo]})
 
-(defn apply-viewers
-  ([x] (let [{:as wrapped-value :nextjournal/keys [viewers]} (ensure-wrapped-with-viewers x)]
-         (apply-viewers viewers wrapped-value)))
-  ([viewers x]
-   (let [{:as viewer :keys [render-fn transform-fn update-viewers-fn]} (viewer-for viewers x)
-         opts (when (wrapped-value? x) (select-keys x [:nextjournal/width]))
-         v (cond-> (->value x) transform-fn transform-fn)
-         viewers (cond-> viewers update-viewers-fn update-viewers-fn)]
-     (if (and (or transform-fn update-viewers-fn) (not render-fn))
-       (recur viewers v)
-       (cond-> (->> (ensure-wrapped v viewer)
-                    (ensure-wrapped-with-viewers viewers))
-         (seq opts) (merge opts))))))
+(defn apply-viewers [viewers x]
+  (let [viewers (or (->viewers x) viewers)
+        _ (when (empty? viewers)
+            (throw (ex-info "cannot apply empty viewers" {:x x})))
+        {:as viewer :keys [render-fn transform-fn update-viewers-fn]} (viewer-for viewers x)
+        opts (when (wrapped-value? x) (select-keys x [:nextjournal/width]))
+        v (cond-> (->value x) transform-fn transform-fn)
+        viewers (cond-> viewers update-viewers-fn update-viewers-fn)]
+    (if (and (or transform-fn update-viewers-fn) (not render-fn))
+      (recur viewers v)
+      (cond-> (->> (ensure-wrapped v viewer)
+                   (ensure-wrapped-with-viewers viewers))
+        (seq opts) (merge opts)))))
 
-#_(apply-viewers 42)
-#_(apply-viewers {:one :two})
-#_(apply-viewers {:one :two})
-#_(apply-viewers [1 2 3])
-#_(apply-viewers (range 3))
-#_(apply-viewers (clojure.java.io/file "notebooks"))
-#_(apply-viewers (md "# Hello"))
-#_(apply-viewers (html [:h1 "hi"]))
-#_(apply-viewers (with-viewer :elision {:remaining 10 :count 30 :offset 19}))
-#_(apply-viewers (with-viewer (->Form '(fn [name] (html [:<> "Hello " name]))) "James"))
+#_(describe (md "hi"))
+
+#_(apply-viewers default-viewers 42)
+#_(apply-viewers default-viewers {:one :two})
+#_(apply-viewers default-viewers {:one :two})
+#_(apply-viewers default-viewers [1 2 3])
+#_(apply-viewers default-viewers (range 3))
+#_(apply-viewers default-viewers (clojure.java.io/file "notebooks"))
+#_(apply-viewers default-viewers (md "# Hello"))
+#_(apply-viewers default-viewers (html [:h1 "hi"]))
+#_(apply-viewers default-viewers (with-viewer :elision {:remaining 10 :count 30 :offset 19}))
+#_(apply-viewers default-viewers (with-viewer (->Form '(fn [name] (html [:<> "Hello " name]))) "James"))
+#_(apply-viewers default-viewers (with-viewers [{:pred (constantly true) :render-fn '(fn [x] [:h1 "hi"])}] 42))
 
 (defn bounded-count-opts [n xs]
   (assert (number? n) "n must be a number?")
@@ -649,17 +652,17 @@
 #_(process-viewer {:render-fn '(v/html [:h1]) :fetch-fn fetch-all})
 
 (defn make-elision [viewers fetch-opts]
-  (-> (with-viewer :elision fetch-opts)
-      (assoc :nextjournal/viewers viewers)
-      (apply-viewers)
+  (-> (apply-viewers viewers (with-viewer :elision fetch-opts))
       (update :nextjournal/viewer process-viewer)
       (dissoc :nextjournal/viewers)))
 
 #_(make-elision default-viewers {:n 20})
 
 (defn ^:private describe* [xs opts current-path]
-  (let [{:as opts :keys [!budget path offset]} (merge {:offset 0} opts)
-        {:as wrapped-value :nextjournal/keys [viewers]} (apply-viewers xs)
+  (let [{:as opts :keys [!budget path offset viewers]} (merge {:offset 0} opts)
+        viewers (or (->viewers xs) viewers)
+        {:as wrapped-value :nextjournal/keys [viewers]} (apply-viewers viewers xs)
+        opts (assoc opts :viewers viewers)
         {:as viewer :keys [fetch-opts fetch-fn]} (->viewer wrapped-value)
         fetch-opts (merge fetch-opts (select-keys opts [:offset :viewers]))
         descend? (< (count current-path)
@@ -720,10 +723,17 @@
 (defn describe
   "Returns a subset of a given `value`."
   ([x] (describe x {}))
-  ([x opts] (-> x
-                (ensure-wrapped-with-viewers)
-                (describe* (merge {:!budget (atom (:budget opts 200)) :path []} opts) [])
-                assign-closing-parens)))
+  ([x opts]
+   (-> (ensure-wrapped-with-viewers x)
+       (describe* (merge {:!budget (atom (:budget opts 200)) :path []} opts) [])
+       (assign-closing-parens))))
+
+#_(let [x (md "hi")
+        markdown-viewer (viewer-for default-viewers x)
+        x-applied (apply-viewers default-viewers (with-viewer markdown-viewer x))
+        viewers (->viewers x-applied)
+        paragraph-viewer (find-named-viewer viewers :nextjournal.markdown/paragraph)]
+    (describe x-applied))
 
 (comment
   (describe 42)
@@ -741,7 +751,7 @@
   (describe (with-viewer :html [:ul (for [x (range 3)] [:li x])]))
   (describe (range))
   (describe {1 [2]})
-  (describe (with-viewer (->Form '(fn [name] (html [:<> "Hello " name]))) "James")))
+  (describe (with-viewer '(fn [name] (html [:<> "Hello " name])) "James")))
 
 (defn desc->values
   "Takes a `description` and returns its value. Inverse of `describe`. Mostly useful for debugging."
