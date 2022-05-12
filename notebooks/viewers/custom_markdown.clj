@@ -6,13 +6,14 @@
 (ns ^:nextjournal.clerk/no-cache viewers.custom-markdown
   (:require [nextjournal.clerk.viewer :as v]))
 
-(defn update-markdown-viewers! [update-fn]
-  (v/reset-viewers!
-   (v/update-viewers (v/get-default-viewers)
-                     {(comp #{:markdown} :name)
-                      (fn [v] (update v :update-viewers-fn
-                                      (fn [old-fn]
-                                        (fn [viewers] (update-fn (old-fn viewers))))))})))
+#_(defn update-markdown-viewer [update-fn]
+    {(comp #{:markdown} :name) (fn [v] (update v :update-viewers-fn
+                                               (fn [old-fn]
+                                                 (fn [viewers] (update-fn (old-fn viewers))))))})
+
+(defn update-child-viewers [update-fn]
+  (fn [v] (update v :update-viewers-fn (fn [old-fn]
+                                         (fn [viewers] (update-fn (old-fn viewers)))))))
 
 (def md-viewers
   [{:name :nextjournal.markdown/text
@@ -22,7 +23,27 @@
                    (v/html [:div {:style {:width "100%" :height "80px" :background-position "center" :background-size "cover"
                                           :background-image "url(https://www.maxpixel.net/static/photo/1x/Ornamental-Separator-Decorative-Line-Art-Divider-4715969.png)"}}]))}])
 
-(update-markdown-viewers! #(v/add-viewers % md-viewers))
+(def viewers-with-pretty-markdown
+  (v/update-viewers (v/get-default-viewers) {(comp #{:markdown} :name)
+                                             (update-child-viewers #(v/add-viewers % md-viewers))}))
+
+(def viewers-with-pretty-markdown
+  (v/update-viewers v/default-viewers {(comp #{:markdown} :name)
+                                       (update-child-viewers #(v/add-viewers % md-viewers))}))
+
+
+(= v/default-viewers
+   (-> (v/with-viewers v/default-viewers
+         [1 2 3])
+       v/->viewers)
+   #_
+   (v/with-viewer {:update-viewers-fn (constantly v/default-viewers)}
+     [1 2 3])
+   #_
+   (v/->viewers (v/apply-viewers (v/with-viewer {:update-viewers-fn (constantly v/default-viewers)}
+                                   [1 2 3]))))
+
+#_(v/reset-viewers! viewers-with-pretty-markdown)
 
 ;; ## Sections
 ;;
