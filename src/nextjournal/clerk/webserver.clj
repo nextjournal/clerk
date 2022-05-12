@@ -15,7 +15,7 @@
 (defonce !doc (atom help-doc))
 (defonce !error (atom nil))
 
-#_(view/doc->viewer @!doc)
+#_(v/describe (view/doc->viewer @!doc))
 #_(reset! !doc help-doc)
 
 (defn broadcast! [msg]

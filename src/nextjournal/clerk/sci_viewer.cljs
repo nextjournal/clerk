@@ -611,9 +611,8 @@
    (let [value (viewer/->value x)
          {:as opts :keys [viewers]} (update opts :viewers #(or % (viewer/get-default-viewers)))]
      (or (when (react/isValidElement value) value)
-         ;; TODO find option to disable client-side viewer selection
          (when-let [viewer (or (viewer/->viewer x)
-                               (viewer/->viewer (viewer/apply-viewers viewers value)))]
+                               (throw (ex-info "inspect needs to be called on described value" {:x x})))]
            (inspect opts (render-with-viewer (assoc opts :viewers viewers :viewer viewer)
                                              viewer
                                              value)))))))

@@ -36,21 +36,22 @@ v/default-viewers
   (v/viewer-for v/default-viewers "Denn wir sind wie Baumstämme im Schnee."))
 
 ;; Notice that for the `string?` viewer above, there's a `{:n 80}` on there. This is the case for all collection viewers in Clerk and controls how many elements are displayed. So using the default `string?-viewer` above, we're showing the first 80 characters.
-(str/join (into [] cat (repeat 10 (range 10))))
+(def long-string
+  (str/join (into [] cat (repeat 10 (range 10)))))
 
 ;; If we change the viewer and set a different `:n` in `:fetch-opts`, we only see 10 characters.
 (v/with-viewer (assoc-in string?-viewer [:fetch-opts :n] 10)
-  (str/join (into [] cat (repeat 10 (range 10)))))
+  long-string)
 
 ;; Or, we can turn off eliding, by dissoc'ing `:fetch-opts` alltogether.
 (v/with-viewer (dissoc string?-viewer :fetch-opts)
-  (str/join (into [] cat (repeat 10 (range 10)))))
+  long-string)
 
 ;; The operations above were changes to a single viewer. But we also have a function `update-viewers` to update a given viewers by applying a `select-fn->update-fn` map. Here, the predicate is the keyword `:fetch-opts` and our update function is called for every viewer with `:fetch-opts` and is dissoc'ing them.
 (def without-pagination
   {:fetch-opts #(dissoc % :fetch-opts)})
 
-;; Here's the updated-viewers.
+;; Here's the updated-viewers:
 (def viewers-without-lazy-loading
   (v/update-viewers v/default-viewers without-pagination))
 
