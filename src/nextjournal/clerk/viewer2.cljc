@@ -581,21 +581,45 @@
 #_(ensure-wrapped-with-viewers 42)
 #_(ensure-wrapped-with-viewers {:nextjournal/value 42 :nextjournal/viewers [:boo]})
 
-(defn apply-viewers [viewers x]
-  (let [viewers (or (->viewers x) viewers)
-        _ (when (empty? viewers)
-            (throw (ex-info "cannot apply empty viewers" {:x x})))
-        {:as viewer :keys [render-fn transform-fn update-viewers-fn]} (viewer-for viewers x)
-        opts (when (wrapped-value? x) (select-keys x [:nextjournal/width]))
-        v (cond-> (->value x) transform-fn transform-fn)
-        viewers (cond-> viewers update-viewers-fn update-viewers-fn)]
-    (if (and (or transform-fn update-viewers-fn) (not render-fn))
-      (recur viewers v)
-      (cond-> (->> (ensure-wrapped v viewer)
-                   (ensure-wrapped-with-viewers viewers))
-        (seq opts) (merge opts)))))
 
-#_(apply-viewers default-viewers 42)
+
+(do
+  (defn apply-viewers* [{:as wrapped-value :nextjournal/keys [viewers]}]
+    (when (empty? viewers)
+      (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
+    (let [{:as viewer :keys [render-fn transform-fn]} (viewer-for viewers wrapped-value)
+          opts (select-keys wrapped-value [:nextjournal/width])
+          wrapped-value (cond->> wrapped-value
+                          transform-fn transform-fn)]
+      (if (and transform-fn (not render-fn))
+        (recur wrapped-value)
+        (assoc wrapped-value :nextjournal/viewer viewer))))
+
+  
+
+  (defn apply-viewers [v]
+    (-> v ensure-wrapped-with-viewers apply-viewers* (dissoc :nextjournal/viewers)))
+
+  ;; TODO: make this work on wrapped-values
+  (defn with-md-viewer [wrapped-value]
+    (let [{:as node :keys [type]} (->value wrapped-value)]
+      (with-viewer (keyword "nextjournal.markdown" (name type)) wrapped-value)))
+
+  (let [viewers (add-viewers default-viewers
+                             [{:name :markdown :transform-fn (fn [wrapped-value]
+                                                               
+                                                               #_(throw (ex-info "boom" {:v (md/parse (->value wrapped-value))}))
+                                                               (-> wrapped-value
+                                                                   (update :nextjournal/value #(cond->> %
+                                                                                                 (string? %) md/parse))
+                                                                   (update :nextjournal/viewers #(add-viewers % markdown-viewers))
+                                                                   ;; TODO
+                                                                   #_(with-md-viewer)))}])]
+    
+    (apply-viewers (with-viewers viewers
+                     (md "# Hi")))))
+
+#_(apply-viewers 42)
 #_(apply-viewers default-viewers {:one :two})
 #_(apply-viewers default-viewers {:one :two})
 #_(apply-viewers default-viewers [1 2 3])
@@ -751,10 +775,10 @@
         viewer (->viewer desc)]
     (if (= viewer :elision)
       '…
-      (cond->> x
-        (vector? x)
-        (into (case (:name viewer) (:map :table) {} [])
-              (map desc->values))))))
+        (cond->> x
+          (vector? x)
+          (into (case (:name viewer) (:map :table) {} [])
+                (map desc->values))))))
 
 #_(desc->values (describe [1 [2 {:a :b} 2] 3 (range 100)]))
 #_(desc->values (describe (with-viewer :table (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))))
@@ -828,3 +852,4 @@
 (defn doc-url [path]
   (->viewer-eval (list 'v/doc-url path)))
 (def code (partial with-viewer :code))
+
