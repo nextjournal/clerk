@@ -192,11 +192,11 @@
 
 #_(demunge-ex-data (datafy/datafy (ex-info "foo" {:bar :baz})))
 
-(declare describe !viewers)
+(declare describe describe* !viewers)
 
 (defn inspect-leafs [opts x]
   (if (wrapped-value? x)
-    [#?(:clj (->viewer-eval 'v/inspect) :cljs (eval 'v/inspect)) (describe x opts)]
+    [#?(:clj (->viewer-eval 'v/inspect) :cljs (eval 'v/inspect)) (describe* x opts [])]
     x))
 
 (defn fetch-all [opts xs]
@@ -595,8 +595,6 @@
                    (ensure-wrapped-with-viewers viewers))
         (seq opts) (merge opts)))))
 
-#_(describe (md "hi"))
-
 #_(apply-viewers default-viewers 42)
 #_(apply-viewers default-viewers {:one :two})
 #_(apply-viewers default-viewers {:one :two})
@@ -727,13 +725,6 @@
    (-> (ensure-wrapped-with-viewers x)
        (describe* (merge {:!budget (atom (:budget opts 200)) :path []} opts) [])
        (assign-closing-parens))))
-
-#_(let [x (md "hi")
-        markdown-viewer (viewer-for default-viewers x)
-        x-applied (apply-viewers default-viewers (with-viewer markdown-viewer x))
-        viewers (->viewers x-applied)
-        paragraph-viewer (find-named-viewer viewers :nextjournal.markdown/paragraph)]
-    (describe x-applied))
 
 (comment
   (describe 42)
