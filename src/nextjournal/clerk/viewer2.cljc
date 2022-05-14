@@ -582,8 +582,8 @@
 #_(ensure-wrapped-with-viewers {:nextjournal/value 42 :nextjournal/viewers [:boo]})
 
 
-
 (do
+  
   (defn apply-viewers* [{:as wrapped-value :nextjournal/keys [viewers]}]
     (when (empty? viewers)
       (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
@@ -605,16 +605,35 @@
     (let [{:as node :keys [type]} (->value wrapped-value)]
       (with-viewer (keyword "nextjournal.markdown" (name type)) wrapped-value)))
 
+  (defn into-markup [mkup]
+    (let [mkup-fn (if (fn? mkup) mkup (constantly mkup))]
+      (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
+        (-> wrapped-value
+            (assoc :nextjournal/viewer :html)
+            (update :nextjournal/value
+                    (fn [{:as node :keys [text content]}]
+                      (into (mkup-fn node) (cond text [text] content (mapv #(assoc (with-md-viewer %) :nextjournal/viewers viewers) content)))))))))
+  
+  (def markdown-viewers
+    [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:div.viewer-markdown])}
+
+     {:name :nextjournal.markdown/heading
+      :transform-fn (into-markup
+                     (fn [{:as node :keys [heading-level]}]
+                       [(str "h" heading-level) {:id (uri.normalize/normalize-fragment (md.transform/->text node))}]))}
+     
+     
+     {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
+     {:name :nextjournal.markdown/ruler :transform-fn (into-markup [:hr])}
+     ])
+  
   (let [viewers (add-viewers default-viewers
                              [{:name :markdown :transform-fn (fn [wrapped-value]
-                                                               
-                                                               #_(throw (ex-info "boom" {:v (md/parse (->value wrapped-value))}))
                                                                (-> wrapped-value
                                                                    (update :nextjournal/value #(cond->> %
                                                                                                  (string? %) md/parse))
-                                                                   (update :nextjournal/viewers #(add-viewers % markdown-viewers))
-                                                                   ;; TODO
-                                                                   #_(with-md-viewer)))}])]
+                                                                   (update :nextjournal/viewers #(add-viewers % markdown-viewers))                 
+                                                                   (with-md-viewer)))}])]
     
     (apply-viewers (with-viewers viewers
                      (md "# Hi")))))
