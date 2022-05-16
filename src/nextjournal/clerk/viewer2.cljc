@@ -605,18 +605,21 @@
     (let [{:as node :keys [type]} (->value wrapped-value)]
       (with-viewer (keyword "nextjournal.markdown" (name type)) wrapped-value)))
 
-  (defn into-markup [mkup]
-    (let [mkup-fn (if (fn? mkup) mkup (constantly mkup))]
-      (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
-        (-> wrapped-value
-            (assoc :nextjournal/viewer :html)
-            (update :nextjournal/value
-                    (fn [{:as node :keys [text content]}]
-                      (into (mkup-fn node) (cond text [text] content (mapv #(assoc (with-md-viewer %) :nextjournal/viewers viewers) content)))))))))
+  (defn into-markup [markup]
+    (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
+      (-> (with-viewer :html wrapped-value)
+          (update :nextjournal/value (fn [{:as node :keys [text content]}]
+                                       (into (cond-> markup (fn? markup) (apply [node]))
+                                             (cond text [text]
+                                                   content (mapv #(-> (with-md-viewer %)
+                                                                      (assoc :nextjournal/viewers viewers)
+                                                                      (apply-viewers)
+                                                                      (->value))
+                                                                 content))))))))
   
   (def markdown-viewers
     [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:div.viewer-markdown])}
-
+     {:name :nextjournal.markdown/text :transform-fn (into-markup [:span])}
      {:name :nextjournal.markdown/heading
       :transform-fn (into-markup
                      (fn [{:as node :keys [heading-level]}]
@@ -636,7 +639,7 @@
                                                                    (with-md-viewer)))}])]
     
     (apply-viewers (with-viewers viewers
-                     (md "# Hi")))))
+                     (md "# Hi\nho")))))
 
 #_(apply-viewers 42)
 #_(apply-viewers default-viewers {:one :two})
