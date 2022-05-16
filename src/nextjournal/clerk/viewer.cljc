@@ -359,68 +359,6 @@
 #_(datafy-scope *ns*)
 #_(datafy-scope #'datafy-scope)
 
-(def markdown-viewers
-  [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:div.viewer-markdown])}
-
-   ;; blocks
-   {:name :nextjournal.markdown/heading
-    :transform-fn (into-markup
-                   (fn [{:as node :keys [heading-level]}]
-                     [(str "h" heading-level) {:id (uri.normalize/normalize-fragment (md.transform/->text node))}]))}
-   {:name :nextjournal.markdown/image :transform-fn #(with-viewer :html [:img (:attrs %)])}
-   {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
-   {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
-   {:name :nextjournal.markdown/ruler :transform-fn (into-markup [:hr])}
-   {:name :nextjournal.markdown/code
-    :transform-fn #(with-viewer :html
-                     [:div.viewer-code
-                      (with-viewer :code
-                        (md.transform/->text %))])}
-
-   ;; marks
-   {:name :nextjournal.markdown/em :transform-fn (into-markup [:em])}
-   {:name :nextjournal.markdown/strong :transform-fn (into-markup [:strong])}
-   {:name :nextjournal.markdown/monospace :transform-fn (into-markup [:code])}
-   {:name :nextjournal.markdown/strikethrough :transform-fn (into-markup [:s])}
-   {:name :nextjournal.markdown/link :transform-fn (into-markup #(vector :a (:attrs %)))}
-   {:name :nextjournal.markdown/internal-link :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))}
-   {:name :nextjournal.markdown/hashtag :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))}
-
-   ;; inlines
-   {:name :nextjournal.markdown/text :transform-fn (into-markup [:span])}
-   {:name :nextjournal.markdown/softbreak :transform-fn (fn [_] (with-viewer :html [:span " "]))}
-   #?(:clj {:name :nextjournal.markdown/inline :transform-fn (comp eval read-string md.transform/->text)})
-
-   ;; formulas
-   {:name :nextjournal.markdown/formula :transform-fn :text :render-fn '(fn [tex] (v/katex-viewer tex {:inline? true}))}
-   {:name :nextjournal.markdown/block-formula :transform-fn :text :render-fn 'v/katex-viewer}
-
-   ;; lists
-   {:name :nextjournal.markdown/bullet-list :transform-fn (into-markup [:ul])}
-   {:name :nextjournal.markdown/numbered-list :transform-fn (into-markup [:ol])}
-   {:name :nextjournal.markdown/todo-list :transform-fn (into-markup [:ul.contains-task-list])}
-   {:name :nextjournal.markdown/list-item :transform-fn (into-markup [:li])}
-   {:name :nextjournal.markdown/todo-item
-    :transform-fn (into-markup (fn [{:keys [attrs]}] [:li [:input {:type "checkbox" :default-checked (:checked attrs)}]]))}
-
-   ;; tables
-   {:name :nextjournal.markdown/table :transform-fn (into-markup [:table])}
-   {:name :nextjournal.markdown/table-head :transform-fn (into-markup [:thead])}
-   {:name :nextjournal.markdown/table-body :transform-fn (into-markup [:tbody])}
-   {:name :nextjournal.markdown/table-row :transform-fn (into-markup [:tr])}
-   {:name :nextjournal.markdown/table-header
-    :transform-fn (into-markup #(vector :th {:style (md.transform/table-alignment (:attrs %))}))}
-   {:name :nextjournal.markdown/table-data
-    :transform-fn (into-markup #(vector :td {:style (md.transform/table-alignment (:attrs %))}))}
-
-   ;; ToC via [[TOC]] placeholder ignored
-   {:name :nextjournal.markdown/toc :transform-fn (into-markup [:div.toc])}
-
-   ;; sidenotes
-   {:name :nextjournal.markdown/sidenote
-    :transform-fn (into-markup (fn [{:keys [attrs]}] [:span.sidenote [:sup {:style {:margin-right "3px"}} (-> attrs :ref inc)]]))}
-   {:name :nextjournal.markdown/sidenote-ref
-    :transform-fn (into-markup [:sup.sidenote-ref])}])
 
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
@@ -470,7 +408,7 @@
    {:name :html :render-fn (quote v/html) :fetch-fn fetch-all}
    {:name :plotly :render-fn (quote v/plotly-viewer) :fetch-fn fetch-all}
    {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :fetch-fn fetch-all}
-   {:name :markdown :transform-fn (fn [md] (with-md-viewer (cond-> md (string? md) md/parse))) :update-viewers-fn #(add-viewers % markdown-viewers)}
+   {:name :markdown :transform-fn (fn [md] (with-md-viewer (cond-> md (string? md) md/parse))) #_#_:update-viewers-fn #(add-viewers % markdown-viewers)}
    {:name :code :render-fn (quote v/code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (->value %)] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))}
    {:name :code-folded :render-fn (quote v/foldable-code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (->value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
    {:name :reagent :render-fn (quote v/reagent-viewer)  :fetch-fn fetch-all}
@@ -501,11 +439,12 @@
     :fetch-fn fetch-all
     :render-fn (quote v/notebook-viewer)
     :transform-fn #?(:cljs identity
-                     :clj (fn [{:as doc :keys [ns]}]
-                            (-> doc
-                                (update :blocks (partial into [] (mapcat (partial with-block-viewer doc))))
-                                (select-keys [:blocks :toc :title])
-                                (cond-> ns (assoc :scope (datafy-scope ns))))))}
+                     :clj (fn [wrapped-value]
+                            (let [{:as doc :keys [ns]} (->value wrapped-value)]
+                              (-> doc
+                                  (update :blocks (partial into [] (mapcat (partial with-block-viewer doc))))
+                                  (select-keys [:blocks :toc :title])
+                                  (cond-> ns (assoc :scope (datafy-scope ns)))))))}
    {:name :hide-result :transform-fn (fn [_] nil)}])
 
 (defn make-default-viewers []
@@ -581,31 +520,33 @@
 #_(ensure-wrapped-with-viewers 42)
 #_(ensure-wrapped-with-viewers {:nextjournal/value 42 :nextjournal/viewers [:boo]})
 
-(defn apply-viewers [viewers x]
-  (let [viewers (or (->viewers x) viewers)
-        _ (when (empty? viewers)
-            (throw (ex-info "cannot apply empty viewers" {:x x})))
-        {:as viewer :keys [render-fn transform-fn update-viewers-fn]} (viewer-for viewers x)
-        opts (when (wrapped-value? x) (select-keys x [:nextjournal/width]))
-        v (cond-> (->value x) transform-fn transform-fn)
-        viewers (cond-> viewers update-viewers-fn update-viewers-fn)]
-    (if (and (or transform-fn update-viewers-fn) (not render-fn))
-      (recur viewers v)
-      (cond-> (->> (ensure-wrapped v viewer)
+(defn apply-viewers* [wrapped-value]
+  (when (empty? (->viewers wrapped-value))
+    (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
+  (let [viewers (->viewers wrapped-value)
+        {:as viewer :keys [render-fn transform-fn update-viewers-fn]} (viewer-for viewers wrapped-value)
+        opts (select-keys wrapped-value [:nextjournal/width])
+        wrapped-value (cond-> wrapped-value transform-fn transform-fn)]
+    (if (and transform-fn (not render-fn))
+      (recur wrapped-value)
+      (cond-> (->> (ensure-wrapped wrapped-value viewer)
                    (ensure-wrapped-with-viewers viewers))
         (seq opts) (merge opts)))))
 
-#_(apply-viewers default-viewers 42)
-#_(apply-viewers default-viewers {:one :two})
-#_(apply-viewers default-viewers {:one :two})
-#_(apply-viewers default-viewers [1 2 3])
-#_(apply-viewers default-viewers (range 3))
-#_(apply-viewers default-viewers (clojure.java.io/file "notebooks"))
-#_(apply-viewers default-viewers (md "# Hello"))
-#_(apply-viewers default-viewers (html [:h1 "hi"]))
-#_(apply-viewers default-viewers (with-viewer :elision {:remaining 10 :count 30 :offset 19}))
-#_(apply-viewers default-viewers (with-viewer (->Form '(fn [name] (html [:<> "Hello " name]))) "James"))
-#_(apply-viewers default-viewers (with-viewers [{:pred (constantly true) :render-fn '(fn [x] [:h1 "hi"])}] 42))
+(defn apply-viewers [x]
+  (apply-viewers* (ensure-wrapped-with-viewers x)))
+
+#_(apply-viewers 42)
+#_(apply-viewers {:one :two})
+#_(apply-viewers {:one :two})
+#_(apply-viewers [1 2 3])
+#_(apply-viewers (range 3))
+#_(apply-viewers (clojure.java.io/file "notebooks"))
+#_(apply-viewers (md "# Hello"))
+#_(apply-viewers (html [:h1 "hi"]))
+#_(apply-viewers (with-viewer :elision {:remaining 10 :count 30 :offset 19}))
+#_(apply-viewers (with-viewer (->Form '(fn [name] (html [:<> "Hello " name]))) "James"))
+#_(apply-viewers (with-viewers [{:pred (constantly true) :render-fn '(fn [x] [:h1 "hi"])}] 42))
 
 (defn bounded-count-opts [n xs]
   (assert (number? n) "n must be a number?")
@@ -650,16 +591,17 @@
 #_(process-viewer {:render-fn '(v/html [:h1]) :fetch-fn fetch-all})
 
 (defn make-elision [viewers fetch-opts]
-  (-> (apply-viewers viewers (with-viewer :elision fetch-opts))
+  (-> (with-viewer :elision fetch-opts)
+      (assoc :nextjournal/viewers viewers)
+      (apply-viewers)
       (update :nextjournal/viewer process-viewer)
       (dissoc :nextjournal/viewers)))
 
 #_(make-elision default-viewers {:n 20})
 
 (defn ^:private describe* [xs opts current-path]
-  (let [{:as opts :keys [!budget path offset viewers]} (merge {:offset 0} opts)
-        viewers (or (->viewers xs) viewers)
-        {:as wrapped-value :nextjournal/keys [viewers]} (apply-viewers viewers xs)
+  (let [{:as opts :keys [!budget path offset]} (merge {:offset 0} opts)
+        {:as wrapped-value :nextjournal/keys [viewers]} (apply-viewers xs)
         opts (assoc opts :viewers viewers)
         {:as viewer :keys [fetch-opts fetch-fn]} (->viewer wrapped-value)
         fetch-opts (merge fetch-opts (select-keys opts [:offset :viewers]))
@@ -729,7 +671,7 @@
 (comment
   (describe 42)
   (describe [42])
-  (-> (describe (range 100)) value peek)
+  (-> (describe (range 100)) ->value peek)
   (describe {:hello [1 2 3]})
   (describe {:one [1 2 3] 1 2 3 4})
   (describe [1 2 [1 [2] 3] 4 5])
