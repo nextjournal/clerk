@@ -5,7 +5,11 @@
         babashka/nrepl-client
         #_{:local/root "../nrepl-client"}
         {:git/url "https://github.com/babashka/nrepl-client"
-         :git/sha "c83b15906d224b67a67951343b05623c4c00cdcf"}}
+         :git/sha "c83b15906d224b67a67951343b05623c4c00cdcf"}
+
+        io.github.babashka/sci.nrepl
+        #_{:local/root "../sci.nrepl"}
+        {:git/sha "8998f2a4fd25ff02474d7298253e91f059f482b2"}}
  :tasks {:requires ([clojure.edn :as edn]
                     [clojure.edn :as edn]
                     [clojure.string :as str]
@@ -76,6 +80,12 @@
          install-git-hooks {:doc "Install git hooks"
                             :task (fs/copy "dev/pre-commit" ".git/hooks" {:replace-existing true})}
 
-         -dev {:depends [install-git-hooks watch:cljs copy-viewer-css]}
+         browser-nrepl {:doc "Start browser nREPL"
+                        :requires ([sci.nrepl.browser-proxy :as bp])
+                        :task (do (bp/start-browser-nrepl! {:port 1339})
+                                  (println "Started browser nREPL on port 1339")
+                                  (deref (promise)))}
+
+         -dev {:depends [install-git-hooks watch:cljs copy-viewer-css browser-nrepl]}
          dev {:doc "Start app in dev mode, compiles cljs and css"
               :task (run '-dev {:parallel true})}}}
