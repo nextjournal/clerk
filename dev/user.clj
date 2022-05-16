@@ -7,7 +7,7 @@
 
   ;; start without file watcher
   (clerk/serve! {})
-  
+
   ;; start with file watcher
   (clerk/serve! {:watch-paths ["notebooks" "src"]})
 
@@ -35,6 +35,9 @@
   (clerk/show! "notebooks/viewers/html.clj")
 
   (clerk/show! "notebooks/sicmutils.clj")
+
+  ;; "upgrade" shadow nREPL to cljs
+  (shadow.cljs.devtools.api/repl :browser)
 
   (clerk/clear-cache!)
   )
