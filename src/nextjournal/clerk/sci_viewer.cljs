@@ -1,33 +1,33 @@
 (ns nextjournal.clerk.sci-viewer
-  (:require [applied-science.js-interop :as j]
+  (:require ["framer-motion" :as framer-motion]
+            [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.string :as str]
             [edamame.core :as edamame]
             [goog.object]
             [goog.string :as gstring]
+            [lambdaisland.uri.normalize :as uri.normalize]
             [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer with-viewers]]
             [nextjournal.devcards :as dc]
             [nextjournal.markdown.transform :as md.transform]
-            [nextjournal.sci-configs.js-interop :as sci-configs.js-interop]
-            [nextjournal.sci-configs.reagent :as sci-configs.reagent]
             [nextjournal.ui.components.d3-require :as d3-require]
             [nextjournal.ui.components.icon :as icon]
-            [nextjournal.ui.components.navbar :as navbar]
-            [nextjournal.ui.components.motion :as motion]
             [nextjournal.ui.components.localstorage :as ls]
+            [nextjournal.ui.components.motion :as motion]
+            [nextjournal.ui.components.navbar :as navbar]
             [nextjournal.view.context :as view-context]
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
             [nextjournal.viewer.vega-lite :as vega-lite]
-            [lambdaisland.uri.normalize :as uri.normalize]
-            ["framer-motion" :as framer-motion]
             [re-frame.context :as rf]
             [react :as react]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [reagent.ratom :as ratom]
+            [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
+            [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]))
 
 (defn color-classes [selected?]
@@ -1127,8 +1127,8 @@ black")}]))}
                              'reagent 'reagent.core
                              'v 'nextjournal.clerk.sci-viewer}
                    :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace}
-                                      sci-configs.js-interop/namespaces
-                                      sci-configs.reagent/namespaces)})))
+                                      sci.configs.js-interop/namespaces
+                                      sci.configs.reagent/namespaces)})))
 
 (defn eval-form [f]
   (sci/eval-form @!sci-ctx f))
