@@ -468,7 +468,7 @@
     :pred #?(:clj (partial instance? Pattern) :cljs regexp?)
     :transform-fn (fn [regex] {:pattern #?(:clj (.pattern regex) :cljs (.-source regex))})
     :fetch-fn fetch-all
-    :render-fn '(fn [{:keys [pattern]}] (v/html [:span [:span.cmt-meta "#"] [:span.cmt-string "\"" pattern "\""]]))}
+    :render-fn '(fn [{:keys [pattern]}] (v/html [:span.inspected-value [:span.cmt-meta "#"] [:span.cmt-string "\"" pattern "\""]]))}
    {:pred (constantly :true) :transform-fn #(with-viewer :read+inspect (pr-str %))}
    {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
