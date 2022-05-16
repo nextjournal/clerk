@@ -12,7 +12,7 @@
    {:pred (every-pred vector? (complement map-entry?))
     :render-fn '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1))}])
 
-(clerk/set-viewers! viewers)
+(clerk/add-viewers! viewers)
 
 0
 

@@ -14,7 +14,7 @@
                             {:style {:min-block-size "100vh"}}
                             (into [:div.text-xl.p-20 {:class ["prose max-w-none prose-h1:mb-0 prose-h2:mb-8 rose-h3:mb-8 prose-h4:mb-8"
                                                               "prose-h1:text-6xl prose-h2:text-5xl prose-h3:text-3xl prose-h4:text-2xl"]}]
-                                  (map (fn [block] (if (:type block) (v/with-md-viewer block) (v/with-viewer :clerk/result block))))
+                                  (map (fn [block] (if (:type block) (v/md block) (v/with-viewer :clerk/result block))))
                                   fragment)]))})
 
 ;; ---
@@ -94,7 +94,7 @@
                                               slides))]))))})
 
 
-(clerk/set-viewers! [slideshow-viewer])
+(clerk/add-viewers! [slideshow-viewer])
 
 ;; ---
 

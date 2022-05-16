@@ -5,10 +5,11 @@
             [org.httpkit.server :as httpkit]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
+            [nextjournal.markdown :as md]
             [lambdaisland.uri :as uri]))
 
 (def help-doc
-  {:blocks [{:type :markdown :text "Use `nextjournal.clerk/show!` to make your notebook appear…"}]})
+  {:blocks [{:type :markdown :doc (md/parse "Use `nextjournal.clerk/show!` to make your notebook appear…")}]})
 
 (defonce !clients (atom #{}))
 (defonce !doc (atom help-doc))
@@ -44,7 +45,7 @@
   (assert ns "namespace must be set")
   (if (contains? blob->result blob-id)
     (let [result (blob->result blob-id)
-          viewers (v/get-viewers ns (v/->viewers result))
+          viewers (v/get-viewers ns result)
           opts (assoc fetch-opts :viewers viewers)
           desc (v/describe result opts)]
       (if (contains? desc :nextjournal/content-type)
