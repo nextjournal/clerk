@@ -87,6 +87,8 @@ inc
 
 #""
 
+(java.util.UUID/randomUUID)
+
 (datafy/datafy #'inc)
 
 (find-ns 'nextjournal.clerk)
