@@ -85,7 +85,7 @@ inc
 
 #'inc
 
-#""
+#"\d+"
 
 (java.util.UUID/randomUUID)
 

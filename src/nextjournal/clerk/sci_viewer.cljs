@@ -641,7 +641,7 @@
             :vector-nested-taco '[l [l [l [l [🌮] r] r] r] r]
             :list (range 30)
             :recursive-range (map range (range 100))
-            :regex #""
+            :regex #"\d+"
             :map-1 {:hello :world}
             :map-vec-val {:hello [:world]}
             :map (zipmap (range 30) (range 30))}})
