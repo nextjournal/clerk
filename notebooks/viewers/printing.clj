@@ -85,6 +85,8 @@ inc
 
 #'inc
 
+#""
+
 (datafy/datafy #'inc)
 
 (find-ns 'nextjournal.clerk)
