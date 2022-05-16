@@ -175,7 +175,7 @@
 #_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
 
 (def code-tags
-  #{:deref :map :meta :list :quote :reader-macro :set :token :var :vector})
+  #{:deref :map :meta :list :quote :reader-macro :regex :set :token :var :vector})
 
 (defn ->codeblock [visibility node]
   (cond-> {:type :code :text (n/string node)}
