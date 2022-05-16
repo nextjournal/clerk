@@ -83,6 +83,7 @@
          browser-nrepl {:doc "Start browser nREPL"
                         :requires ([sci.nrepl.browser-proxy :as bp])
                         :task (do (bp/start-browser-nrepl! {:port 1339})
+                                  (bp/serve! {:port 1340})
                                   (println "Started browser nREPL on port 1339")
                                   (deref (promise)))}
 
