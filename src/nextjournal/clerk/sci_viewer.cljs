@@ -37,7 +37,7 @@
    :label-color (if selected? "white-90" "black-60")
    :badge-background-color (if selected? "bg-white-20" "bg-black-10")})
 
-(declare inspect)
+(declare inspect inspect-paginated)
 
 (defn value-of
   "Safe access to a value at key a js object.
@@ -267,7 +267,7 @@
        (catch js/Error e
          nil))]
     (when-let [data (.-data error)]
-      [:div.mt-2 [inspect data]])]))
+      [:div.mt-2 [inspect-paginated data]])]))
 
 (defn error-boundary [!error & _]
   (r/create-class
@@ -363,7 +363,6 @@
                   xs)
             (cond->> closing-paren (list? closing-paren) (into [:<>]))]])))
 
-(declare inspect-paginated)
 (dc/defcard coll-viewer
   (into [:div]
         (for [coll [
@@ -477,18 +476,18 @@
     [:p.mt-4.font-medium "Currently, the following formats are supported:"]
     [:div.mt-2.flex.items-center
      [:div.text-green-500.mr-2 check-icon]
-     [inspect {:column-1 [1 2]
-               :column-2 [3 4]}]]
+     [inspect-paginated {:column-1 [1 2]
+                         :column-2 [3 4]}]]
     [:div.mt-2.flex.items-center
      [:div.text-green-500.mr-2 check-icon]
-     [inspect [{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]]]
+     [inspect-paginated [{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]]]
     [:div.mt-2.flex.items-center
      [:div.text-green-500.mr-2 check-icon]
-     [inspect [[1 3] [2 4]]]]
+     [inspect-paginated [[1 3] [2 4]]]]
     [:div.mt-2.flex.items-center
      [:div.text-green-500.mr-2 check-icon]
-     [inspect {:head [:column-1 :column-2]
-               :rows [[1 3] [2 4]]}]]]))
+     [inspect-paginated {:head [:column-1 :column-2]
+                         :rows [[1 3] [2 4]]}]]]))
 
 (defn table-viewer [data opts]
   (if-let [error-data (and (:error data) (:ex-data data))]
@@ -614,7 +613,7 @@
      [inspect {:!expanded-at !expanded-at} x]))
   ([opts x]
    (let [value (viewer/->value x)]
-     (prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
+     #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
      (or (when (react/isValidElement value) value)
          (when-let [viewer (viewer/->viewer x)]
            (inspect opts (render-with-viewer opts viewer value)))
