@@ -472,13 +472,14 @@
                                                :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})))
             :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))})
    {:pred #(instance? IDeref %)
-    :transform-fn (fn [r] (with-viewer :tagged-value
-                            {:tag "object"
-                             :value (vector (type r)
-                                            #?(:clj (with-viewer :number-hex (System/identityHashCode r)))
-                                            (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
-                                              (deref-as-map r)
-                                              r))}))}
+    :transform-fn (fn [wrapped-value] (with-viewer :tagged-value
+                                        {:tag "object"
+                                         :value (let [r (->value wrapped-value)]
+                                                  (vector (type r)
+                                                          #?(:clj (with-viewer :number-hex (System/identityHashCode r)))
+                                                          (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
+                                                            (deref-as-map r)
+                                                            r)))}))}
    {:pred (constantly :true) :transform-fn #(with-viewer :read+inspect (pr-str (->value %)))}
    {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
