@@ -502,7 +502,7 @@
                         (assoc :nextjournal/reduced? true)
                         (update :nextjournal/width #(or % :wide))
                         (update :nextjournal/value #(or (normalize-table-data %)
-                                                        {:error "Could not normalize table" :ex-data %}))
+                                                        {:error "Could not normalize table" :ex-data (describe %)}))
                         (update-in [:nextjournal/value :rows] describe)))
     #_#_:fetch-fn (fn [{:as opts :keys [describe-fn offset path]} xs]
                     ;; TODO: use budget per row for table
