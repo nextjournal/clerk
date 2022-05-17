@@ -115,4 +115,3 @@
                  v/->viewer
                  :closing-paren))))))
 
-(assign-closing-parens)
