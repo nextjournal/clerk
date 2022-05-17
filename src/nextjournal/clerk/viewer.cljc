@@ -192,13 +192,15 @@
 
 #_(demunge-ex-data (datafy/datafy (ex-info "foo" {:bar :baz})))
 
-(declare describe describe* !viewers apply-viewers apply-viewers* ensure-wrapped-with-viewers process-viewer default-viewers)
+(declare describe describe* !viewers apply-viewers apply-viewers* ensure-wrapped-with-viewers process-viewer default-viewers find-named-viewer)
 
 (defn inspect-leafs [x]
   (if (wrapped-value? x)
     [#?(:clj (->viewer-eval 'v/inspect) :cljs (eval 'v/inspect)) (-> x
-                                                                     (update :nextjournal/viewer process-viewer)
-                                                                     (dissoc :nextjournal/viewers))]
+                                                                     (dissoc :nextjournal/viewers)
+                                                                     (update :nextjournal/viewer
+                                                                             (comp process-viewer
+                                                                                   #(cond->> % (keyword? %) (find-named-viewer (->viewers x))))))]
     x))
 
 (defn fetch-all [_opts xs]
@@ -387,21 +389,14 @@
    {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
    {:name :nextjournal.markdown/ruler :transform-fn (into-markup [:hr])}
-
    {:name :nextjournal.markdown/code
-    ;; :transform-fn #(with-viewer :html
-    ;;                  [:div.viewer-code
-    ;;                   (with-viewer :code
-    ;;                     (md.transform/->text %))])
-    ;; TODO: simplify this (ideally as simple as it was before ⬆)
-    :transform-fn (fn [{:as wv :nextjournal/keys [viewers]}]
-                    (-> wv
-                        (assoc :nextjournal/viewer :html)
-                        (update :nextjournal/value
-                                (fn [node]
-                                  [:div.viewer-code
-                                   (apply-viewers (ensure-wrapped-with-viewers viewers
-                                                                               (with-viewer :code (md.transform/->text node))))]))))}
+    :transform-fn (fn [wv]
+                    (with-viewer :html
+                      [:div.viewer-code
+                       ;; TODO: simplify this (ideally drop ensure-wrapped)
+                       (ensure-wrapped-with-viewers (->viewers wv)
+                                                    (with-viewer :code
+                                                      (md.transform/->text (->value wv))))]))}
 
    ;; marks
    {:name :nextjournal.markdown/em :transform-fn (into-markup [:em])}
