@@ -24,8 +24,8 @@ v/default-viewers
   "James Clerk Maxwell")
 
 ;; There's a third way to get to the same result, using another part of the viewer api, `:transform-fn`.
-(v/with-viewer {:transform-fn (fn [name]
-                                (v/with-viewer :html [:strong "Hello, " name "!"]))}
+(v/with-viewer {:transform-fn (fn [x]
+                                (v/with-viewer :html [:strong "Hello, " (v/->value x) "!"]))}
   "James Clerk Maxwell")
 
 ;; Without a viewer specified, Clerk will go through the a sequence viewers and apply the `:pred` function in the viewer to find a matching one. Use `v/viewer-for` to select a viewer for a given value.

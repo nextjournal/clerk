@@ -11,19 +11,27 @@
 (defonce num★ (atom 3))
 #_(reset! num★ 3)
 
+(def md-eval-viewers
+  [{:name :nextjournal.markdown/monospace
+    :transform-fn (comp eval read-string markdown.transform/->text v/->value)}
+   {:name :nextjournal.markdown/ruler
+    :transform-fn (constantly (v/with-viewer :html [:div.text-center (repeat @num★ "★")]))}])
+
 ^{::clerk/visibility :hide ::clerk/viewer :hide-result}
-(custom-md/update-markdown-viewers!
- (fn [mdvs] (v/add-viewers mdvs [{:name :nextjournal.markdown/monospace
-                                  :transform-fn (comp eval read-string markdown.transform/->text)}
-                                 {:name :nextjournal.markdown/ruler
-                                  :transform-fn (constantly (v/with-viewer :html [:div.text-center (repeat @num★ "★")]))}])))
+(def viewers-with-md-eval
+  (v/update-viewers (v/get-default-viewers) {(comp #{:markdown} :name)
+                                             (custom-md/update-child-viewers #(v/add-viewers % md-eval-viewers))}))
+
+(v/reset-viewers! viewers-with-md-eval)
 
 ;; ---
 ^{::clerk/viewer clerk/hide-result ::clerk/visibility :hide}
 (defn slider [var {:keys [min max]}]
   (clerk/with-viewer
-    {:fetch-fn (fn [_ x] x)
-     :transform-fn (fn [var] {:var-name (symbol var) :value @@var})
+    {:transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
+                     (-> wrapped-value
+                         (update :nextjournal/value (fn [var] {:var-name (symbol var) :value @@var}))
+                         (assoc :nextjournal/reduced? true)))
      :render-fn `(fn [{:as x :keys [var-name value]}]
                    (v/html [:input {:type :range
                                     :min ~min :max ~max
