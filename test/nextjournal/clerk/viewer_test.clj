@@ -69,27 +69,11 @@
 
 (deftest describe
   (testing "only transform-fn can select viewer"
-    (is (match? {:nextjournal/viewer {:name :html}
-                 :nextjournal/value [:div.viewer-markdown
-                                     [viewer-eval-inspect?
-                                      {:nextjournal/viewer {:name :html}
-                                       :nextjournal/value [:p
-                                                           [viewer-eval-inspect?
-                                                            {:nextjournal/viewer {:name :html}
-                                                             :nextjournal/value [:span "Hello "]}]
-                                                           [viewer-eval-inspect?
-                                                            {:nextjournal/viewer {:name :html}
-                                                             :nextjournal/value [:em
-                                                                                 [viewer-eval-inspect?
-                                                                                  {:path [],
-                                                                                   :nextjournal/value [:span "markdown"]
-                                                                                   :nextjournal/viewer {:name :html}}]]}]
-                                                           [viewer-eval-inspect?
-                                                            {:nextjournal/viewer {:name :html}
-                                                             :nextjournal/value [:span "!"]}]]}]]}
-
-                (v/describe (v/with-viewer {:transform-fn (comp v/md :foo)}
-                              {:foo "Hello _markdown_!"})))))
+    (is (match? {:nextjournal/value [:div.viewer-markdown
+                                     [:p [:span "Hello "] [:em [:span "markdown"]] [:span "!"]]]
+                 :nextjournal/viewer {:name :html}}
+                (v/describe (v/with-viewer {:transform-fn (comp v/md v/->value)}
+                              "Hello _markdown_!")))))
 
   (testing "works with sorted-map which can throw on get & contains?"
     (v/describe (into (sorted-map) {'foo 'bar})))
@@ -100,10 +84,9 @@
 
 (deftest assign-closing-parens
   (testing "closing parenthesis are moved to right-most children in the tree"
-    (let [before (v/describe {:a [1 '(2 3 #{4})]
-                              :b '([5 6] 7 8)}
-                             {:viewers (v/get-viewers nil) :!budget (atom 20)}
-                             [])
+    (let [before (#'v/describe* (v/ensure-wrapped-with-viewers {:a [1 '(2 3 #{4})]
+                                                                :b '([5 6] 7 8)})
+                                {:path []} [])
           after (v/assign-closing-parens before)]
 
       (is (= "}"
@@ -131,3 +114,5 @@
                  (get 1)
                  v/->viewer
                  :closing-paren))))))
+
+(assign-closing-parens)
