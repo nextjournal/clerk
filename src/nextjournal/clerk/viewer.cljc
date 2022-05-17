@@ -194,15 +194,15 @@
 
 (declare describe describe* !viewers apply-viewers apply-viewers* ensure-wrapped-with-viewers process-viewer default-viewers)
 
-(defn inspect-leafs [opts x]
+(defn inspect-leafs [x]
   (if (wrapped-value? x)
     [#?(:clj (->viewer-eval 'v/inspect) :cljs (eval 'v/inspect)) (-> x
                                                                      (update :nextjournal/viewer process-viewer)
                                                                      (dissoc :nextjournal/viewers))]
     x))
 
-(defn fetch-all [opts xs]
-  (w/postwalk (partial inspect-leafs opts) xs))
+(defn fetch-all [_opts xs]
+  (w/postwalk inspect-leafs xs))
 
 (defn get-safe
   ([key] #(get-safe % key))
@@ -231,8 +231,7 @@
                                            (cond text [text]
                                                  content (mapv #(-> (with-md-viewer %)
                                                                     (assoc :nextjournal/viewers viewers)
-                                                                    (apply-viewers)
-                                                                    (->value))
+                                                                    (apply-viewers))
                                                                content))))))))
 
 #?(:clj
@@ -491,7 +490,7 @@
                                     (-> wrapped-value
                                         (update :nextjournal/value #(cond->> %
                                                                       (string? %) md/parse))
-                                        (update :nextjournal/viewers #(add-viewers % markdown-viewers))                 
+                                        (update :nextjournal/viewers #(add-viewers % markdown-viewers))
                                         (with-md-viewer)))}
    {:name :code :render-fn (quote v/code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (->value %)] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))}
    {:name :code-folded :render-fn (quote v/foldable-code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (->value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
