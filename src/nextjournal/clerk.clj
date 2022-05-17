@@ -312,6 +312,7 @@
 (def add-viewers    v/add-viewers)
 (def add-viewers!   v/add-viewers!)
 (def set-viewers!   v/set-viewers!)
+(def ->value        v/->value)
 
 (defn file->viewer
   "Evaluates the given `file` and returns it's viewer representation."
