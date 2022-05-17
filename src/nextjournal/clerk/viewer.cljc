@@ -387,11 +387,21 @@
    {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
    {:name :nextjournal.markdown/ruler :transform-fn (into-markup [:hr])}
+
    {:name :nextjournal.markdown/code
-    :transform-fn #(with-viewer :html
-                     [:div.viewer-code
-                      (with-viewer :code
-                        (md.transform/->text %))])}
+    ;; :transform-fn #(with-viewer :html
+    ;;                  [:div.viewer-code
+    ;;                   (with-viewer :code
+    ;;                     (md.transform/->text %))])
+    ;; TODO: simplify this (ideally as simple as it was before ⬆)
+    :transform-fn (fn [{:as wv :nextjournal/keys [viewers]}]
+                    (-> wv
+                        (assoc :nextjournal/viewer :html)
+                        (update :nextjournal/value
+                                (fn [node]
+                                  [:div.viewer-code
+                                   (apply-viewers (ensure-wrapped-with-viewers viewers
+                                                                               (with-viewer :code (md.transform/->text node))))]))))}
 
    ;; marks
    {:name :nextjournal.markdown/em :transform-fn (into-markup [:em])}
