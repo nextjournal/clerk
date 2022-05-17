@@ -231,7 +231,8 @@
                                            (cond text [text]
                                                  content (mapv #(-> (with-md-viewer %)
                                                                     (assoc :nextjournal/viewers viewers)
-                                                                    (apply-viewers))
+                                                                    (apply-viewers)
+                                                                    (as-> w (cond-> w (= :html (:name (->viewer w))) ->value)))
                                                                content))))))))
 
 #?(:clj
