@@ -5,7 +5,7 @@
             [edamame.core :as edamame]
             [goog.object]
             [goog.string :as gstring]
-            [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer with-viewers]]
+            [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex vl with-viewer with-viewers]]
             [nextjournal.devcards :as dc]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.sci-configs.js-interop :as sci-configs.js-interop]
@@ -62,6 +62,8 @@
 
 (def nbsp
   (gstring/unescapeEntities "&nbsp;"))
+
+(declare html)
 
 (defn js-object-viewer [x {:as opts :keys [!expanded-at path]}]
   (let [x' (obj->clj x)
@@ -563,9 +565,11 @@
    [:span.inspected-value.whitespace-nowrap
     [:span.cmt-meta tag] (when space? nbsp) value]))
 
+(declare viewer-name->fn)
+
 (defn normalize-viewer [x]
   (if-let [viewer (-> x meta :nextjournal/viewer)]
-    (with-viewer viewer x)
+    (with-viewer (viewer-name->fn viewer viewer)  x)
     x))
 
 (def js-viewers
@@ -585,7 +589,7 @@
 
 (declare default-viewers)
 
-(defn render-with-viewer [{:as opts :keys [viewers]} viewer value]
+(defn render-with-viewer [opts viewer value]
   #_(js/console.log :render-with-viewer {:value value :viewer viewer #_#_ :opts opts})
   (cond (or (fn? viewer) (viewer/viewer-fn? viewer))
         (viewer value opts)
@@ -593,6 +597,7 @@
         (and (map? viewer) (:render-fn viewer))
         (render-with-viewer opts (:render-fn viewer) value)
 
+        #_#_ ;; TODO: maybe bring this back
         (keyword? viewer)
         (if-let [{:keys [fetch-opts render-fn]} (viewer/find-named-viewer viewers viewer)]
           (if-not render-fn
@@ -607,15 +612,13 @@
   ([x]
    (r/with-let [!expanded-at (r/atom {})]
      [inspect {:!expanded-at !expanded-at} x]))
-  ([{:as opts :keys [viewers]} x]
-   (let [value (viewer/->value x)
-         {:as opts :keys [viewers]} (update opts :viewers #(or % (viewer/get-default-viewers)))]
+  ([opts x]
+   (let [value (viewer/->value x)]
+     (prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
      (or (when (react/isValidElement value) value)
-         (when-let [viewer (or (viewer/->viewer x)
-                               (throw (ex-info "inspect needs to be called on described value" {:x x})))]
-           (inspect opts (render-with-viewer (assoc opts :viewers viewers :viewer viewer)
-                                             viewer
-                                             value)))))))
+         (when-let [viewer (viewer/->viewer x)]
+           (inspect opts (render-with-viewer opts viewer value)))
+         (throw (ex-info "inspect needs to be called on described value" {:x x}))))))
 
 (defn in-process-fetch [value opts]
   (.resolve js/Promise (viewer/describe value opts)))
@@ -1044,6 +1047,12 @@ black")}]))}
 
 (defn reagent-viewer [x]
   (r/as-element (cond-> x (fn? x) vector)))
+
+(def html html-viewer)
+
+(def viewer-name->fn
+  {:reagent reagent-viewer
+   :html html})
 
 (def mathjax-viewer (comp normalize-viewer mathjax/viewer))
 (def code-viewer (comp normalize-viewer code/viewer))

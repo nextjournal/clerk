@@ -192,7 +192,7 @@
 
 #_(demunge-ex-data (datafy/datafy (ex-info "foo" {:bar :baz})))
 
-(declare describe describe* !viewers apply-viewers apply-viewers* ensure-wrapped-with-viewers process-viewer)
+(declare describe describe* !viewers apply-viewers apply-viewers* ensure-wrapped-with-viewers process-viewer default-viewers)
 
 (defn inspect-leafs [opts x]
   (if (wrapped-value? x)
@@ -272,7 +272,7 @@
                  described-result)))
 
 (defn get-default-viewers []
-  (get @!viewers :root))
+  (:default @!viewers default-viewers))
 
 (defn get-viewers
   ([scope] (get-viewers scope nil))
@@ -280,6 +280,8 @@
    (or (when value (->viewers value))
        (when scope (@!viewers scope))
        (get-default-viewers))))
+
+#_(get-viewers nil nil)
 
 #?(:clj
    (defn ->result [ns {:as result :nextjournal/keys [value blob-id viewers]} lazy-load?]
@@ -534,15 +536,13 @@
                      :cljs identity)}
    {:name :hide-result :transform-fn (fn [_] nil)}])
 
-(defn make-default-viewers []
-  {:root default-viewers})
 
 (defonce
-  ^{:doc "atom containing a map of `:root` and per-namespace viewers."}
+  ^{:doc "atom containing a map of and per-namespace viewers or `:defaults` overridden viewers."}
   !viewers
-  (#?(:clj atom :cljs ratom/atom) (make-default-viewers)))
+  (#?(:clj atom :cljs ratom/atom) {}))
 
-#_(reset! !viewers (make-default-viewers))
+#_(reset! !viewers {})
 
 ;; heavily inspired by code from Thomas Heller in shadow-cljs, see
 ;; https://github.com/thheller/shadow-cljs/blob/1708acb21bcdae244b50293d17633ce35a78a467/src/main/shadow/remote/runtime/obj_support.cljc#L118-L144
@@ -835,7 +835,7 @@
 (defn reset-viewers!
   ([viewers] (reset-viewers! *ns* viewers))
   ([scope viewers]
-   (assert (or (#{:root} scope)
+   (assert (or (#{:default} scope)
                #?(:clj (instance? clojure.lang.Namespace scope))))
    (swap! !viewers assoc scope viewers)))
 
