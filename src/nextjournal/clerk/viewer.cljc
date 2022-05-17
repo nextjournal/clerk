@@ -479,7 +479,7 @@
                                             (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
                                               (deref-as-map r)
                                               r))}))}
-   {:pred (constantly :true) :transform-fn #(with-viewer :read+inspect (pr-str %))}
+   {:pred (constantly :true) :transform-fn #(with-viewer :read+inspect (pr-str (->value %)))}
    {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
    {:name :mathjax :render-fn (quote v/mathjax-viewer) :fetch-fn fetch-all}
@@ -518,9 +518,11 @@
                                             (-> wrapped-value
                                                 (assoc :nextjournal/viewer (if (:fold? value) :code-folded :code))
                                                 (update :nextjournal/value :text)))}
-   {:name :tagged-value :render-fn '(fn [{:keys [tag value space?]}] (v/html (v/tagged-value {:space? space?} (str "#" tag) [v/inspect value])))
-    :fetch-fn (fn [{:as opts :keys [describe-fn]} x]
-                (update x :value describe-fn opts))}
+   {:name :tagged-value :render-fn '(fn [{:keys [tag value space?]}] (v/html (v/tagged-value {:space? space?} (str "#" tag) [v/inspect-paginated value])))
+    :transform-fn (fn [wrapped-value]
+                    (-> wrapped-value
+                        (update-in [:nextjournal/value :value] describe)
+                        (assoc :nextjournal/reduced? true)))}
    {:name :clerk/result :render-fn (quote v/result-viewer) :fetch-fn fetch-all}
    {:name :clerk/notebook
     :fetch-fn fetch-all
@@ -706,7 +708,7 @@
            (with-viewer (process-viewer viewer)
              (cond reduced? (dissoc wrapped-value :nextjournal/viewers)
 
-                   fetch-fn
+                   fetch-fn ;; TODO: drop this branch
                    (fetch-fn (merge opts fetch-opts {:describe-fn describe*}) xs)
 
                    descend?
