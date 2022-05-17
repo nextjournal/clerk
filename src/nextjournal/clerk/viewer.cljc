@@ -521,16 +521,17 @@
    {:name :clerk/notebook
     :fetch-fn fetch-all
     :render-fn (quote v/notebook-viewer)
-    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
-                    (-> wrapped-value
-                        (update :nextjournal/value
-                                (fn [{:as doc :keys [ns]}]
-                                  (-> doc
-                                      (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
-                                                                             (map (comp apply-viewers*
-                                                                                        (partial ensure-wrapped-with-viewers viewers))))))
-                                      (select-keys [:blocks :toc :title])
-                                      (cond-> ns (assoc :scope (datafy-scope ns))))))))}
+    :transform-fn #?(:clj (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
+                            (-> wrapped-value
+                                (update :nextjournal/value
+                                        (fn [{:as doc :keys [ns]}]
+                                          (-> doc
+                                              (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
+                                                                                     (map (comp apply-viewers*
+                                                                                                (partial ensure-wrapped-with-viewers viewers))))))
+                                              (select-keys [:blocks :toc :title])
+                                              (cond-> ns (assoc :scope (datafy-scope ns))))))))
+                     :cljs identity)}
    {:name :hide-result :transform-fn (fn [_] nil)}])
 
 (defn make-default-viewers []
