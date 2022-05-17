@@ -192,7 +192,7 @@
 
 #_(demunge-ex-data (datafy/datafy (ex-info "foo" {:bar :baz})))
 
-(declare describe describe* !viewers)
+(declare describe describe* !viewers apply-viewers apply-viewers* ensure-wrapped-with-viewers)
 
 (defn inspect-leafs [opts x]
   (if (wrapped-value? x)
@@ -215,14 +215,23 @@
 (def datafied?
   (get-safe :nextjournal.clerk/datafied))
 
-(defn with-md-viewer [{:as node :keys [type]}]
-  (with-viewer (keyword "nextjournal.markdown" (name type)) node))
+(defn with-md-viewer [wrapped-value]
+  (let [{:as node :keys [type]} (->value wrapped-value)]
+    (when-not type
+      (throw (ex-info "no type given for with-md-viewer" {:wrapped-value wrapped-value})))
+    (with-viewer (keyword "nextjournal.markdown" (name type)) wrapped-value)))
 
-(defn into-markup [mkup]
-  (let [mkup-fn (if (fn? mkup) mkup (constantly mkup))]
-    (fn [{:as node :keys [text content]}]
-      (with-viewer :html
-        (into (mkup-fn node) (cond text [text] content (map with-md-viewer content)))))))
+(defn into-markup [markup]
+  (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
+    (-> (with-viewer :html wrapped-value)
+        (update :nextjournal/value (fn [{:as node :keys [text content]}]
+                                     (into (cond-> markup (fn? markup) (apply [node]))
+                                           (cond text [text]
+                                                 content (mapv #(-> (with-md-viewer %)
+                                                                    (assoc :nextjournal/viewers viewers)
+                                                                    (apply-viewers)
+                                                                    (->value))
+                                                               content))))))))
 
 #?(:clj
    (defn ->edn [x]
@@ -312,7 +321,7 @@
 #?(:clj
    (defn with-block-viewer [{:keys [ns inline-results?]} {:as cell :keys [type]}]
      (case type
-       :markdown [(with-viewer :clerk/markdown-block cell)]
+       :markdown [(with-viewer :markdown (:doc cell))]
        :code (let [{:as cell :keys [result]} (update cell :result apply-viewer-unwrapping-var-from-def)
                    {:as display-opts :keys [code? result?]} (->display cell)]
                (cond-> []
@@ -359,6 +368,74 @@
 #_(datafy-scope *ns*)
 #_(datafy-scope #'datafy-scope)
 
+(defn update-value [f]
+  #(update % :nextjournal/value f))
+
+(defn dissoc-viewers [x]
+  (dissoc x :nextjournal/viewers))
+
+(def markdown-viewers
+  [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:div.viewer-markdown])}
+
+   ;; blocks
+   {:name :nextjournal.markdown/heading
+    :transform-fn (into-markup
+                   (fn [{:as node :keys [heading-level]}]
+                     [(str "h" heading-level) {:id (uri.normalize/normalize-fragment (md.transform/->text node))}]))}
+   {:name :nextjournal.markdown/image :transform-fn #(with-viewer :html [:img (:attrs %)])}
+   {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
+   {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
+   {:name :nextjournal.markdown/ruler :transform-fn (into-markup [:hr])}
+   {:name :nextjournal.markdown/code
+    :transform-fn #(with-viewer :html
+                     [:div.viewer-code
+                      (with-viewer :code
+                        (md.transform/->text %))])}
+
+   ;; marks
+   {:name :nextjournal.markdown/em :transform-fn (into-markup [:em])}
+   {:name :nextjournal.markdown/strong :transform-fn (into-markup [:strong])}
+   {:name :nextjournal.markdown/monospace :transform-fn (into-markup [:code])}
+   {:name :nextjournal.markdown/strikethrough :transform-fn (into-markup [:s])}
+   {:name :nextjournal.markdown/link :transform-fn (into-markup #(vector :a (:attrs %)))}
+   {:name :nextjournal.markdown/internal-link :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))}
+   {:name :nextjournal.markdown/hashtag :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))}
+
+   ;; inlines
+   {:name :nextjournal.markdown/text :transform-fn (into-markup [:span])}
+   {:name :nextjournal.markdown/softbreak :transform-fn (fn [_] (with-viewer :html [:span " "]))}
+   #?(:clj {:name :nextjournal.markdown/inline :transform-fn (comp eval read-string md.transform/->text)})
+
+   ;; formulas
+   {:name :nextjournal.markdown/formula :transform-fn :text :render-fn '(fn [tex] (v/katex-viewer tex {:inline? true}))}
+   {:name :nextjournal.markdown/block-formula :transform-fn :text :render-fn 'v/katex-viewer}
+
+   ;; lists
+   {:name :nextjournal.markdown/bullet-list :transform-fn (into-markup [:ul])}
+   {:name :nextjournal.markdown/numbered-list :transform-fn (into-markup [:ol])}
+   {:name :nextjournal.markdown/todo-list :transform-fn (into-markup [:ul.contains-task-list])}
+   {:name :nextjournal.markdown/list-item :transform-fn (into-markup [:li])}
+   {:name :nextjournal.markdown/todo-item
+    :transform-fn (into-markup (fn [{:keys [attrs]}] [:li [:input {:type "checkbox" :default-checked (:checked attrs)}]]))}
+
+   ;; tables
+   {:name :nextjournal.markdown/table :transform-fn (into-markup [:table])}
+   {:name :nextjournal.markdown/table-head :transform-fn (into-markup [:thead])}
+   {:name :nextjournal.markdown/table-body :transform-fn (into-markup [:tbody])}
+   {:name :nextjournal.markdown/table-row :transform-fn (into-markup [:tr])}
+   {:name :nextjournal.markdown/table-header
+    :transform-fn (into-markup #(vector :th {:style (md.transform/table-alignment (:attrs %))}))}
+   {:name :nextjournal.markdown/table-data
+    :transform-fn (into-markup #(vector :td {:style (md.transform/table-alignment (:attrs %))}))}
+
+   ;; ToC via [[TOC]] placeholder ignored
+   {:name :nextjournal.markdown/toc :transform-fn (into-markup [:div.toc])}
+
+   ;; sidenotes
+   {:name :nextjournal.markdown/sidenote
+    :transform-fn (into-markup (fn [{:keys [attrs]}] [:span.sidenote [:sup {:style {:margin-right "3px"}} (-> attrs :ref inc)]]))}
+   {:name :nextjournal.markdown/sidenote-ref
+    :transform-fn (into-markup [:sup.sidenote-ref])}])
 
 ;; keep viewer selection stricly in Clojure
 (def default-viewers
@@ -408,7 +485,12 @@
    {:name :html :render-fn (quote v/html) :fetch-fn fetch-all}
    {:name :plotly :render-fn (quote v/plotly-viewer) :fetch-fn fetch-all}
    {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :fetch-fn fetch-all}
-   {:name :markdown :transform-fn (fn [md] (with-md-viewer (cond-> md (string? md) md/parse))) #_#_:update-viewers-fn #(add-viewers % markdown-viewers)}
+   {:name :markdown :transform-fn (fn [wrapped-value]
+                                    (-> wrapped-value
+                                        (update :nextjournal/value #(cond->> %
+                                                                      (string? %) md/parse))
+                                        (update :nextjournal/viewers #(add-viewers % markdown-viewers))                 
+                                        (with-md-viewer)))}
    {:name :code :render-fn (quote v/code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (->value %)] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))}
    {:name :code-folded :render-fn (quote v/foldable-code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (->value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
    {:name :reagent :render-fn (quote v/reagent-viewer)  :fetch-fn fetch-all}
@@ -429,8 +511,10 @@
                                 (assoc :path [:rows] :replace-path [offset])
                                 (dissoc :nextjournal/viewers))))}
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
-   {:name :clerk/markdown-block :transform-fn (comp (partial with-viewer :markdown) :doc)}
-   {:name :clerk/code-block :transform-fn #(with-viewer (if (:fold? %) :code-folded :code) (:text %))}
+   {:name :clerk/code-block :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
+                                            (-> wrapped-value
+                                                (assoc :nextjournal/viewer (if (:fold? value) :code-folded :code))
+                                                (update :nextjournal/value :text)))}
    {:name :tagged-value :render-fn '(fn [{:keys [tag value space?]}] (v/html (v/tagged-value {:space? space?} (str "#" tag) [v/inspect value])))
     :fetch-fn (fn [{:as opts :keys [describe-fn]} x]
                 (update x :value describe-fn opts))}
@@ -438,13 +522,16 @@
    {:name :clerk/notebook
     :fetch-fn fetch-all
     :render-fn (quote v/notebook-viewer)
-    :transform-fn #?(:cljs identity
-                     :clj (fn [wrapped-value]
-                            (let [{:as doc :keys [ns]} (->value wrapped-value)]
-                              (-> doc
-                                  (update :blocks (partial into [] (mapcat (partial with-block-viewer doc))))
-                                  (select-keys [:blocks :toc :title])
-                                  (cond-> ns (assoc :scope (datafy-scope ns)))))))}
+    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
+                    (-> wrapped-value
+                        (update :nextjournal/value
+                                (fn [{:as doc :keys [ns]}]
+                                  (-> doc
+                                      (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
+                                                                             (map (comp apply-viewers*
+                                                                                        (partial ensure-wrapped-with-viewers viewers))))))
+                                      (select-keys [:blocks :toc :title])
+                                      (cond-> ns (assoc :scope (datafy-scope ns))))))))}
    {:name :hide-result :transform-fn (fn [_] nil)}])
 
 (defn make-default-viewers []
@@ -528,9 +615,12 @@
         opts (select-keys wrapped-value [:nextjournal/width])
         wrapped-value (cond-> wrapped-value transform-fn transform-fn)]
     (if (and transform-fn (not render-fn))
-      (recur wrapped-value)
+      (if (:nextjournal/reduced? wrapped-value)
+        (dissoc-viewers wrapped-value)
+        (recur (ensure-wrapped-with-viewers viewers wrapped-value)))
       (cond-> (->> (ensure-wrapped wrapped-value viewer)
-                   (ensure-wrapped-with-viewers viewers))
+                   dissoc-viewers
+                   #_(ensure-wrapped-with-viewers viewers))
         (seq opts) (merge opts)))))
 
 (defn apply-viewers [x]
