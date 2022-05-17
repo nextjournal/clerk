@@ -616,7 +616,7 @@
      #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
      (or (when (react/isValidElement value) value)
          (when-let [viewer (viewer/->viewer x)]
-           (inspect opts (render-with-viewer opts viewer value)))
+           (inspect opts (render-with-viewer (assoc opts :viewer viewer) viewer value)))
          (throw (ex-info "inspect needs to be called on described value" {:x x}))))))
 
 (defn in-process-fetch [value opts]
