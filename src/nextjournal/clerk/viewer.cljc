@@ -497,20 +497,22 @@
    {:name :reagent :render-fn (quote v/reagent-viewer)  :fetch-fn fetch-all}
    {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
     :update-viewers-fn update-table-viewers
-    :transform-fn (fn [xs]
-                    (-> (ensure-wrapped xs)
+    :transform-fn (fn [wrapped-value]
+                    (-> wrapped-value
+                        (assoc :nextjournal/reduced? true)
                         (update :nextjournal/width #(or % :wide))
                         (update :nextjournal/value #(or (normalize-table-data %)
-                                                        {:error "Could not normalize table" :ex-data %}))))
-    :fetch-fn (fn [{:as opts :keys [describe-fn offset path]} xs]
-                ;; TODO: use budget per row for table
-                ;; TODO: opt out of eliding cols
-                (cond (:error xs) (update xs :ex-data describe-fn opts [])
-                      (seq path) (describe-fn (:rows xs) opts [])
-                      :else (-> (cond-> (update xs :rows describe-fn (dissoc opts :!budget) [])
-                                  (pos? offset) :rows)
-                                (assoc :path [:rows] :replace-path [offset])
-                                (dissoc :nextjournal/viewers))))}
+                                                        {:error "Could not normalize table" :ex-data %}))
+                        (update-in [:nextjournal/value :rows] describe)))
+    #_#_:fetch-fn (fn [{:as opts :keys [describe-fn offset path]} xs]
+                    ;; TODO: use budget per row for table
+                    ;; TODO: opt out of eliding cols
+                    (cond (:error xs) (update xs :ex-data describe-fn opts [])
+                          (seq path) (describe-fn (:rows xs) opts [])
+                          :else (-> (cond-> (update xs :rows describe-fn (dissoc opts :!budget) [])
+                                      (pos? offset) :rows)
+                                    (assoc :path [:rows] :replace-path [offset])
+                                    (dissoc :nextjournal/viewers))))}
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
    {:name :clerk/code-block :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
                                             (-> wrapped-value
@@ -686,7 +688,7 @@
 #_(make-elision default-viewers {:n 20})
 
 (defn ^:private describe* [wrapped-value opts current-path]
-  (let [{:as wrapped-value :nextjournal/keys [viewers]} (apply-viewers* wrapped-value)
+  (let [{:as wrapped-value :nextjournal/keys [viewers reduced?]} (apply-viewers* wrapped-value)
         {:as viewer :keys [fetch-opts fetch-fn]} (->viewer wrapped-value)
         {:as opts :keys [!budget path offset]} (merge {:offset 0} opts)
         opts (assoc opts :viewers viewers)
@@ -702,7 +704,9 @@
     (merge {:path path}
            (dissoc wrapped-value :nextjournal/viewers)
            (with-viewer (process-viewer viewer)
-             (cond fetch-fn
+             (cond reduced? (dissoc wrapped-value :nextjournal/viewers)
+
+                   fetch-fn
                    (fetch-fn (merge opts fetch-opts {:describe-fn describe*}) xs)
 
                    descend?
