@@ -9,30 +9,33 @@
 
 ;; Consider first a `slide-viewer`:
 (def slide-viewer
-  {:transform-fn (fn [fragment]
-                   (v/html [:div.flex.flex-col.justify-center
-                            {:style {:min-block-size "100vh"}}
-                            (into [:div.text-xl.p-20 {:class ["prose max-w-none prose-h1:mb-0 prose-h2:mb-8 rose-h3:mb-8 prose-h4:mb-8"
-                                                              "prose-h1:text-6xl prose-h2:text-5xl prose-h3:text-3xl prose-h4:text-2xl"]}]
-                                  (map (fn [block] (if (:type block) (v/md block) (v/with-viewer :clerk/result block))))
-                                  fragment)]))})
+  {:transform-fn (fn [wv]
+                   (-> (v/html [:div.flex.flex-col.justify-center
+                                {:style {:min-block-size "100vh"}}
+                                (into [:div.text-xl.p-20 {:class ["prose max-w-none prose-h1:mb-0 prose-h2:mb-8 rose-h3:mb-8 prose-h4:mb-8"
+                                                                  "prose-h1:text-6xl prose-h2:text-5xl prose-h3:text-3xl prose-h4:text-2xl"]}]
+                                      (map (comp
+                                            v/apply-viewers
+                                            (fn [block] (if (:type block) (v/md block) (v/with-viewer :clerk/result block)))))
+                                      (v/->value wv))])
+                       (assoc :nextjournal/reduced? true)))})
 
 ;; ---
 ;; The `doc->slides` helper function takes a Clerk notebook and partitions its blocks into slides by occurrences of markdown rulers.
 (defn doc->slides [{:as doc :keys [blocks]}]
   (sequence (comp (mapcat (partial v/with-block-viewer doc))
-                  (mapcat #(if (= :clerk/markdown-block (v/->viewer %)) (-> % v/->value :doc :content) [(v/->value %)]))
+                  (mapcat #(if (= :markdown (v/->viewer %)) (-> % v/->value :content) [(v/->value %)]))
                   (partition-by (comp #{:ruler} :type))
                   (remove (comp #{:ruler} :type first))
-                  (map (partial v/with-viewer slide-viewer)))
+                  (map (partial v/with-viewer slide-viewer))
+                  (map v/apply-viewers))
             blocks))
 
 ;; ---
 ;; Lastly, the `slideshow-viewer` overrides
 (def slideshow-viewer
   {:name :clerk/notebook
-   :transform-fn doc->slides
-   :fetch-fn v/fetch-all
+   :transform-fn (comp #(assoc % :nextjournal/reduced? true) (v/update-value (comp (partial v/fetch-all {}) doc->slides)))
    :render-fn '(fn [slides]
                  (v/html
                   (reagent/with-let [!state (reagent/atom {:current-slide 0
