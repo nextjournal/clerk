@@ -286,8 +286,9 @@
 #_(get-viewers nil nil)
 
 #?(:clj
-   (defn ->result [ns {:as result :nextjournal/keys [value blob-id viewers]} lazy-load?]
-     (let [described-result (extract-blobs lazy-load? blob-id (describe* (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value) {} []))
+   (defn ->result [{:keys [inline-results?]} {:as result :nextjournal/keys [value blob-id viewers]}]
+     (let [lazy-load? (and (not inline-results?) blob-id)
+           described-result (extract-blobs lazy-load? blob-id (describe (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
            opts-from-form-meta (select-keys result [:nextjournal/width])]
        (merge {:nextjournal/viewer :clerk/result
                :nextjournal/value (cond-> (try {:nextjournal/edn (->edn described-result)}
@@ -325,7 +326,7 @@
 #_(->display {:result {:nextjournal.clerk/visibility #{:hide}} :ns? true})
 
 #?(:clj
-   (defn with-block-viewer [{:keys [ns inline-results?]} {:as cell :keys [type]}]
+   (defn with-block-viewer [doc {:as cell :keys [type]}]
      (case type
        :markdown [(with-viewer :markdown (:doc cell))]
        :code (let [{:as cell :keys [result]} (update cell :result apply-viewer-unwrapping-var-from-def)
@@ -336,8 +337,7 @@
                          ;; TODO: display analysis could be merged into cell earlier
                          (-> cell (merge display-opts) (dissoc :result))))
                  result?
-                 (conj (->result ns result (and (not inline-results?)
-                                                (contains? result :nextjournal/blob-id)))))))))
+                 (conj (->result doc result)))))))
 
 (defn update-viewers [viewers select-fn->update-fn]
   (reduce (fn [viewers [pred update-fn]]
