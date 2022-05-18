@@ -447,38 +447,21 @@
 #_(clojure.data/diff (hash "notebooks/how_clerk_works.clj")
                      (hash "notebooks/how_clerk_works.clj"))
 
-(defn exceeds-bounded-count-limit?* [value]
-  (and (seqable? value)
-       (try
-         (let [limit config/*bounded-count-limit*]
-           (= limit (bounded-count limit value)))
-         (catch Exception _
-           true))))
+(defn exceeds-bounded-count-limit? [x]
+  (reduce (fn [_ xs]
+            (try
+              (let [limit config/*bounded-count-limit*]
+                (if (and (seqable? xs) (<= limit (bounded-count limit xs)))
+                  (reduced true)
+                  false))
+              (catch Exception _e
+                (reduced true))))
+          false
+          (tree-seq seqable? seq x)))
 
-;; branching rules from clojure walk
-;;
-;; * `(list? form)`
-;; * `(instance? clojure.lang.IMapEntry form)`
-;; * `(seq? form)`
-;; * `(instance? clojure.lang.IRecord form)`
-;; * `(coll? form)`
-;;
-;; should all be covered by `seqable?`
-
-(defn exceeds-bounded-count-limit? [value]
-  (->> value
-       (tree-seq seqable? seq)
-       (reduce (fn [acc item]
-                 (if (exceeds-bounded-count-limit?* item)
-                   (reduced true)
-                   acc)) false)))
-
-#_(exceeds-bounded-count-limit? (range))
-#_(exceeds-bounded-count-limit? (range 10000))
-#_(exceeds-bounded-count-limit? {:a [(range 10000)]})
-#_(exceeds-bounded-count-limit? (range 1000000))
-#_(exceeds-bounded-count-limit? {:a [(range 1000000)]})
-#_(exceeds-bounded-count-limit? :foo)
+#_(exceeds-bounded-count-limit? (range config/*bounded-count-limit*))
+#_(exceeds-bounded-count-limit? (range (dec config/*bounded-count-limit*)))
+#_(exceeds-bounded-count-limit? {:a-range (range)})
 
 (defn valuehash [value]
   (-> value

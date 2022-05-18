@@ -102,11 +102,8 @@
                 (clerk/eval-string "^{:nextjournal.clerk/viewer :html} (def markup [:h1 \"hi\"])"))))
 
   (testing "can handle unbounded sequences"
-
     (is (match? {:blocks [{:result {:nextjournal/value seq?}}]}
                 (clerk/eval-string "(range)")))
-
-
     (is (match? {:blocks [{:result {:nextjournal/value {:a seq?}}}]}
                 (clerk/eval-string "{:a (range)}")))))
 
