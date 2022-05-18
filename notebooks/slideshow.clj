@@ -3,7 +3,8 @@
 ^{:nextjournal.clerk/visibility :hide-ns}
 (ns slideshow
   (:require [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as v]))
+            [nextjournal.clerk.viewer :as v]
+            [clojure.walk :as w]))
 
 ;; With two custom viewers and a helper function, we can show a Clerk notebooks as Slideshow.
 
@@ -35,7 +36,9 @@
 ;; Lastly, the `slideshow-viewer` overrides
 (def slideshow-viewer
   {:name :clerk/notebook
-   :transform-fn (comp #(assoc % :nextjournal/reduced? true) (v/update-value (comp (partial v/fetch-all {}) doc->slides)))
+   :transform-fn (comp #(assoc % :nextjournal/reduced? true)
+                       (v/update-value (comp (partial w/postwalk v/inspect-leafs)
+                                             doc->slides)))
    :render-fn '(fn [slides]
                  (v/html
                   (reagent/with-let [!state (reagent/atom {:current-slide 0
