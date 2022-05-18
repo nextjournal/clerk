@@ -502,14 +502,14 @@
    {:name :code-folded :render-fn (quote v/foldable-code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (->value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
    {:name :reagent :render-fn (quote v/reagent-viewer)  :fetch-fn fetch-all}
    {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
-    :transform-fn (fn [wrapped-value]
+    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
                     (-> wrapped-value
                         (assoc :nextjournal/reduced? true)
-                        (update :nextjournal/viewers update-table-viewers)
                         (update :nextjournal/width #(or % :wide))
                         (update :nextjournal/value #(or (normalize-table-data %)
                                                         {:error "Could not normalize table" :ex-data (describe %)}))
-                        (update-in [:nextjournal/value :rows] describe* {} [])))
+                        (update-in [:nextjournal/value :rows]
+                                   (comp describe (partial ensure-wrapped-with-viewers (update-table-viewers viewers))))))
     #_#_:fetch-fn (fn [{:as opts :keys [describe-fn offset path]} xs]
                     ;; TODO: use budget per row for table
                     ;; TODO: opt out of eliding cols
