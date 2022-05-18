@@ -455,7 +455,7 @@
    {:pred nil? :render-fn '(fn [_] (v/html [:span.cmt-default.inspected-value "nil"]))}
    {:pred boolean? :render-fn '(fn [x] (v/html [:span.cmt-bool.inspected-value (str x)]))}
    {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :fetch-opts {:n 2}}
-   {:pred var-from-def? :transform-fn (update-value (fn [x] (-> x :nextjournal.clerk/var-from-def deref)))}
+   {:pred var-from-def? :transform-fn (update-value (comp deref :nextjournal.clerk/var-from-def))}
    {:name :read+inspect :render-fn '(fn [x] (v/html [v/inspect-paginated (try (v/read-string x)
                                                                               (catch js/Error _e
                                                                                 (v/with-viewer v/unreadable-edn-viewer x)))]))}
@@ -502,14 +502,14 @@
    {:name :code-folded :render-fn (quote v/foldable-code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (->value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
    {:name :reagent :render-fn (quote v/reagent-viewer)  :fetch-fn fetch-all}
    {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
-    :update-viewers-fn update-table-viewers
     :transform-fn (fn [wrapped-value]
                     (-> wrapped-value
                         (assoc :nextjournal/reduced? true)
+                        (update :nextjournal/viewers update-table-viewers)
                         (update :nextjournal/width #(or % :wide))
                         (update :nextjournal/value #(or (normalize-table-data %)
                                                         {:error "Could not normalize table" :ex-data (describe %)}))
-                        (update-in [:nextjournal/value :rows] describe)))
+                        (update-in [:nextjournal/value :rows] describe* {} [])))
     #_#_:fetch-fn (fn [{:as opts :keys [describe-fn offset path]} xs]
                     ;; TODO: use budget per row for table
                     ;; TODO: opt out of eliding cols
@@ -593,7 +593,7 @@
         (if (keyword? selected-viewer)
           (or (find-named-viewer viewers selected-viewer)
               (throw (ex-info (str "cannot find viewer named " selected-viewer)
-                              {:viewer-name selected-viewer :x (->value x) :viewers viewers})))
+                              {:selected-viewer selected-viewer :viewers viewers})))
           selected-viewer))
       (find-viewer viewers (let [v (->value x)]
                              (fn [{:keys [pred]}]
@@ -623,7 +623,10 @@
   (let [viewers (->viewers wrapped-value)
         {:as viewer :keys [render-fn transform-fn update-viewers-fn]} (viewer-for viewers wrapped-value)
         opts (select-keys wrapped-value [:nextjournal/width])
-        wrapped-value (ensure-wrapped-with-viewers viewers (cond-> wrapped-value transform-fn transform-fn))]
+        wrapped-value (ensure-wrapped-with-viewers viewers (cond-> wrapped-value transform-fn transform-fn))
+        wrapped-value (cond-> wrapped-value
+                        (-> wrapped-value ->value wrapped-value?)
+                        (merge (->value wrapped-value)))]
     (if (and transform-fn (not render-fn))
       (recur wrapped-value)
       (cond-> (assoc wrapped-value :nextjournal/viewer viewer)
@@ -643,6 +646,15 @@
 #_(apply-viewers (with-viewer :elision {:remaining 10 :count 30 :offset 19}))
 #_(apply-viewers (with-viewer (->Form '(fn [name] (html [:<> "Hello " name]))) "James"))
 #_(apply-viewers (with-viewers [{:pred (constantly true) :render-fn '(fn [x] [:h1 "hi"])}] 42))
+
+(defn count-viewers
+  "Helper function to walk a given `x` and replace the viewers with their counts. Useful for debugging."
+  [x]
+  (w/postwalk #(if (and (wrapped-value? %) (:nextjournal/viewers %))
+                 (-> %
+                     (update :nextjournal/viewers count)
+                     (set/rename-keys {:nextjournal/viewers :nextjournal/viewers-count}))
+                 %) x))
 
 (defn bounded-count-opts [n xs]
   (assert (number? n) "n must be a number?")
