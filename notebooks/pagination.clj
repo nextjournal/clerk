@@ -6,6 +6,8 @@
 
 (range)
 
+{:a [(range)]}
+
 (def notebooks
   (clojure.java.io/file "notebooks"))
 
