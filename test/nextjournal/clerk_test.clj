@@ -99,7 +99,16 @@
     (is (match? {:blocks [{:result {:nextjournal/viewer fn?}}]}
                 (clerk/eval-string "^{:nextjournal.clerk/viewer nextjournal.clerk/table} (def markup [:h1 \"hi\"])")))
     (is (match? {:blocks [{:result {:nextjournal/viewer :html}}]}
-                (clerk/eval-string "^{:nextjournal.clerk/viewer :html} (def markup [:h1 \"hi\"])")))))
+                (clerk/eval-string "^{:nextjournal.clerk/viewer :html} (def markup [:h1 \"hi\"])"))))
+
+  (testing "can handle unbounded sequences"
+
+    (is (match? {:blocks [{:result {:nextjournal/value seq?}}]}
+                (clerk/eval-string "(range)")))
+
+
+    (is (match? {:blocks [{:result {:nextjournal/value {:a seq?}}}]}
+                (clerk/eval-string "{:a (range)}")))))
 
 (defn eval-inspect? [x] (= x (viewer/->viewer-eval 'v/inspect)))
 
