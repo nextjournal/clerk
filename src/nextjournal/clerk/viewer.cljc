@@ -194,16 +194,22 @@
 
 (declare describe describe* !viewers apply-viewers apply-viewers* ensure-wrapped-with-viewers process-viewer process-wrapped-value default-viewers find-named-viewer)
 
-(defn inspect-leafs [x]
-  (if (wrapped-value? x)
-    [#?(:clj (->viewer-eval 'v/inspect)
-        :cljs (eval 'v/inspect)) (-> x
-                                     (update :nextjournal/viewer #(cond->> % (keyword? %) (find-named-viewer (->viewers x))))
-                                     process-wrapped-value)]
-    x))
+(defn inspect-fn []  #?(:clj (->viewer-eval 'v/inspect) :cljs (eval 'v/inspect)))
+
+(defn when-wrapped [f] #(cond-> % (wrapped-value? %) f))
+
+(defn inspect-wrapped-value [wrapped-value]
+  #_ (prn :WV wrapped-value)
+  [(inspect-fn) (as-> wrapped-value x
+                  (ensure-wrapped-with-viewers x)
+                  (update x :nextjournal/viewer #(cond->> % (keyword? %) (find-named-viewer (->viewers x))))
+                  (process-wrapped-value x))])
+
+#_(clojure.walk/postwalk (when-wrapped inspect-wrapped-value) [1 2 {:a [3 (with-viewer :latex "\\alpha")]} 4])
 
 (defn fetch-all [_opts xs]
-  (w/postwalk inspect-leafs xs))
+  ;; TODO:
+  (throw (ex-info "Deprecated" {:xs xs})))
 
 (defn get-safe
   ([key] #(get-safe % key))
@@ -392,10 +398,8 @@
     :transform-fn (fn [wv]
                     (with-viewer :html
                       [:div.viewer-code
-                       ;; TODO: simplify this (ideally drop ensure-wrapped)
-                       (ensure-wrapped-with-viewers (->viewers wv)
-                                                    (with-viewer :code
-                                                      (md.transform/->text (->value wv))))]))}
+                       (with-viewer :code
+                         (md.transform/->text (->value wv)))]))}
 
    ;; marks
    {:name :nextjournal.markdown/em :transform-fn (into-markup [:em])}
@@ -488,13 +492,16 @@
    {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
    {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
    {:name :mathjax :render-fn (quote v/mathjax-viewer) :fetch-fn fetch-all}
-   {:name :html :render-fn (quote v/html) :fetch-fn fetch-all}
+   {:name :html
+    :render-fn (quote v/html)
+    :transform-fn (comp #(assoc % :nextjournal/reduced? true)
+                        (update-value (partial w/postwalk (when-wrapped inspect-wrapped-value))))}
    {:name :plotly :render-fn (quote v/plotly-viewer) :fetch-fn fetch-all}
    {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :fetch-fn fetch-all}
    {:name :markdown :transform-fn (fn [wrapped-value]
                                     (-> wrapped-value
-                                        (update :nextjournal/value #(cond->> %
-                                                                      (string? %) md/parse))
+                                        (assoc :nextjournal/reduced? true)
+                                        (update :nextjournal/value #(cond->> % (string? %) md/parse))
                                         (update :nextjournal/viewers #(add-viewers % markdown-viewers))
                                         (with-md-viewer)))}
    {:name :code :render-fn (quote v/code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (->value %)] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))}

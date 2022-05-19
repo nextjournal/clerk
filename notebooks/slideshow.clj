@@ -34,7 +34,7 @@
 (def slideshow-viewer
   {:name :clerk/notebook
    :transform-fn (comp #(assoc % :nextjournal/reduced? true)
-                       (v/update-value (comp (partial w/postwalk v/inspect-leafs)
+                       (v/update-value (comp (partial w/postwalk (v/when-wrapped v/inspect-wrapped-value))
                                              doc->slides)))
    :render-fn '(fn [slides]
                  (v/html
