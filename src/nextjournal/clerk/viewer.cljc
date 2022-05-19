@@ -622,8 +622,8 @@
   (when (empty? (->viewers wrapped-value))
     (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
   (let [viewers (->viewers wrapped-value)
-        {:as viewer :keys [render-fn transform-fn update-viewers-fn]} (viewer-for viewers wrapped-value)
-        opts (select-keys wrapped-value [:nextjournal/width])
+        {:as viewer :keys [render-fn transform-fn]} (viewer-for viewers wrapped-value)
+        opts (select-keys wrapped-value [:nextjournal/width :!budget :budget :path :current-path :offset])
         wrapped-value (ensure-wrapped-with-viewers viewers (cond-> wrapped-value transform-fn transform-fn))
         wrapped-value (cond-> wrapped-value
                         (-> wrapped-value ->value wrapped-value?)
@@ -729,7 +729,7 @@
         {:as viewer :keys [fetch-fn fetch-opts]} (->viewer wrapped-value)
         ;; TODO: remove following line
         reduced? (or reduced? (some? fetch-fn))]
-    
+
     #_(prn :xs xs :type (type xs) :path path :current-path current-path :descend? descend?)
     (when (and !budget (not descend?) (not reduced?))
       (swap! !budget #(max (dec %) 0)))
@@ -745,7 +745,7 @@
                                      (cond (or (map? xs) (set? xs)) (nth (seq (ensure-sorted xs)) idx)
                                            (associative? xs) (get xs idx)
                                            (sequential? xs) (nth xs idx)))
-                                    (update :current-path conj idx))))
+                                    (update :current-path (fnil conj []) idx))))
 
                    (string? xs)
                    (-> (if (and (number? (:n fetch-opts)) (< (:n fetch-opts) (count xs)))
@@ -770,8 +770,8 @@
                                         (comp (if (number? (:n fetch-opts)) (drop+take-xf fetch-opts) identity)
                                               (map-indexed (fn [i x] (describe* (-> (ensure-wrapped-with-viewers viewers x)
                                                                                     (dissoc :offset)
-                                                                                    (update :path conj (+ i (or offset 0)))
-                                                                                    (update :current-path conj i)))))
+                                                                                    (update :path (fnil conj []) (+ i (or offset 0)))
+                                                                                    (update :current-path (fnil conj []) i)))))
                                               (remove nil?))
                                         (ensure-sorted xs))
                          {:keys [count]} count-opts

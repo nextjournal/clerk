@@ -91,8 +91,8 @@
 
 (deftest assign-closing-parens
   (testing "closing parenthesis are moved to right-most children in the tree"
-    (let [before (#'v/describe* (v/ensure-wrapped-with-viewers {:a [1 '(2 3 #{4})]
-                                                                :b '([5 6] 7 8)}))
+    (let [before (#'v/describe* (assoc (v/ensure-wrapped-with-viewers {:a [1 '(2 3 #{4})]
+                                                                       :b '([5 6] 7 8)}) :path []))
           after (v/assign-closing-parens before)]
 
       (is (= "}"
@@ -120,4 +120,3 @@
                  (get 1)
                  v/->viewer
                  :closing-paren))))))
-
