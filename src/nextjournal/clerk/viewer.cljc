@@ -701,7 +701,7 @@
 
 (defn process-wrapped-value [wrapped-value]
   (-> wrapped-value
-      (dissoc :nextjournal/viewers)
+      (select-keys [:nextjournal/viewer :nextjournal/value :nextjournal/width])
       (update :nextjournal/viewer process-viewer)))
 
 #_(process-wrapped-value (apply-viewers 42))
@@ -787,6 +787,7 @@
    (-> (ensure-wrapped-with-viewers x)
        (merge {:!budget (atom (:budget opts 200)) :path (:path opts []) :current-path (:path opts [])} opts)
        describe*
+       process-wrapped-value
        assign-closing-parens)))
 
 (comment
