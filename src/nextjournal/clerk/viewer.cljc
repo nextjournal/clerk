@@ -192,15 +192,14 @@
 
 #_(demunge-ex-data (datafy/datafy (ex-info "foo" {:bar :baz})))
 
-(declare describe describe* !viewers apply-viewers apply-viewers* ensure-wrapped-with-viewers process-viewer default-viewers find-named-viewer)
+(declare describe describe* !viewers apply-viewers apply-viewers* ensure-wrapped-with-viewers process-viewer process-wrapped-value default-viewers find-named-viewer)
 
 (defn inspect-leafs [x]
   (if (wrapped-value? x)
-    [#?(:clj (->viewer-eval 'v/inspect) :cljs (eval 'v/inspect)) (-> x
-                                                                     (dissoc :nextjournal/viewers)
-                                                                     (update :nextjournal/viewer
-                                                                             (comp process-viewer
-                                                                                   #(cond->> % (keyword? %) (find-named-viewer (->viewers x))))))]
+    [#?(:clj (->viewer-eval 'v/inspect)
+        :cljs (eval 'v/inspect)) (-> x
+                                     (update :nextjournal/viewer #(cond->> % (keyword? %) (find-named-viewer (->viewers x))))
+                                     process-wrapped-value)]
     x))
 
 (defn fetch-all [_opts xs]
@@ -300,7 +299,7 @@
                                     lazy-load?
                                     (assoc :nextjournal/fetch-opts {:blob-id blob-id}
                                            :nextjournal/hash (hashing/->hash-str [blob-id described-result])))}
-              (dissoc described-result :nextjournal/value :nextjournal/viewer)
+              (dissoc described-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
               opts-from-form-meta))))
 
 (defn result-hidden? [result] (= :hide-result (-> result ->value ->viewer)))
@@ -531,15 +530,17 @@
                         (assoc :nextjournal/reduced? true)))}
    {:name :clerk/result :render-fn (quote v/result-viewer) :fetch-fn fetch-all}
    {:name :clerk/notebook
-    :fetch-fn fetch-all
     :render-fn (quote v/notebook-viewer)
     :transform-fn #?(:clj (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
                             (-> wrapped-value
+                                (assoc :nextjournal/reduced? true)
                                 (update :nextjournal/value
                                         (fn [{:as doc :keys [ns]}]
                                           (-> doc
                                               (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
-                                                                                     (map (comp apply-viewers*
+                                                                                     (map (comp #(vector (->ViewerEval 'v/inspect) %)
+                                                                                                process-wrapped-value
+                                                                                                apply-viewers*
                                                                                                 (partial ensure-wrapped-with-viewers viewers))))))
                                               (select-keys [:blocks :toc :title])
                                               (cond-> ns (assoc :scope (datafy-scope ns))))))))
@@ -698,6 +699,13 @@
 
 #_(process-viewer {:render-fn '(v/html [:h1]) :fetch-fn fetch-all})
 
+(defn process-wrapped-value [wrapped-value]
+  (-> wrapped-value
+      (dissoc :nextjournal/viewers)
+      (update :nextjournal/viewer process-viewer)))
+
+#_(process-wrapped-value (apply-viewers 42))
+
 (defn make-elision [viewers fetch-opts]
   (-> (with-viewer :elision fetch-opts)
       (assoc :nextjournal/viewers viewers)
@@ -707,41 +715,36 @@
 
 #_(make-elision default-viewers {:n 20})
 
-(defn ^:private describe* [wrapped-value opts current-path]
+(defn ^:private describe* [{:as wrapped-value :keys [path current-path !budget offset]}]
   (let [{:as wrapped-value :nextjournal/keys [viewers reduced?]} (apply-viewers* wrapped-value)
-        {:as viewer :keys [fetch-opts fetch-fn]} (->viewer wrapped-value)
-        {:as opts :keys [!budget path offset]} (merge {:offset 0} opts)
-        opts (assoc opts :viewers viewers)
-        fetch-opts (merge fetch-opts (select-keys opts [:offset :viewers]))
         descend? (< (count current-path)
                     (count path))
-        xs (->value wrapped-value)]
+        xs (->value wrapped-value)
+        {:as viewer :keys [fetch-fn fetch-opts]} (->viewer wrapped-value)
+        ;; TODO: remove following line
+        reduced? (or reduced? (some? fetch-fn))]
     (when (empty? viewers)
       (throw (ex-info "cannot describe* with empty viewers" {:wrapped-value wrapped-value})))
-    #_(prn :xs xs :type (type xs) :path path :current-path current-path :descend? descend? :fetch-fn? (some? fetch-fn))
-    (when (and !budget (not descend?) (not fetch-fn))
+    #_(prn :xs xs :type (type xs) :path path :current-path current-path :descend? descend?)
+    (when (and !budget (not descend?) (not reduced?))
       (swap! !budget #(max (dec %) 0)))
     (merge {:path path}
            (dissoc wrapped-value :nextjournal/viewers)
            (with-viewer (process-viewer viewer)
              (cond reduced? (dissoc wrapped-value :nextjournal/viewers)
 
-                   fetch-fn ;; TODO: drop this branch
-                   (fetch-fn (merge opts fetch-opts {:describe-fn describe*}) xs)
-
                    descend?
                    (let [idx (first (drop (count current-path) path))]
-                     (describe* (ensure-wrapped-with-viewers
-                                 viewers
-                                 (cond (or (map? xs) (set? xs)) (nth (seq (ensure-sorted xs)) idx)
-                                       (associative? xs) (get xs idx)
-                                       (sequential? xs) (nth xs idx)))
-                                opts
-                                (conj current-path idx)))
+                     (describe* (-> (ensure-wrapped-with-viewers
+                                     viewers
+                                     (cond (or (map? xs) (set? xs)) (nth (seq (ensure-sorted xs)) idx)
+                                           (associative? xs) (get xs idx)
+                                           (sequential? xs) (nth xs idx)))
+                                    (update :current-path conj idx))))
 
                    (string? xs)
                    (-> (if (and (number? (:n fetch-opts)) (< (:n fetch-opts) (count xs)))
-                         (let [offset (opts :offset 0)
+                         (let [offset (:offset wrapped-value 0)
                                total (count xs)
                                new-offset (min (+ offset (:n fetch-opts)) total)
                                remaining (- total new-offset)]
@@ -760,7 +763,10 @@
                                       (update :n min @!budget))
                          children (into []
                                         (comp (if (number? (:n fetch-opts)) (drop+take-xf fetch-opts) identity)
-                                              (map-indexed (fn [i x] (describe* (ensure-wrapped-with-viewers viewers x) (-> opts (dissoc :offset) (update :path conj (+ i offset))) (conj current-path i))))
+                                              (map-indexed (fn [i x] (describe* (-> (ensure-wrapped-with-viewers viewers x)
+                                                                                    (dissoc :offset)
+                                                                                    (update :path conj (+ i (or offset 0)))
+                                                                                    (update :current-path conj i)))))
                                               (remove nil?))
                                         (ensure-sorted xs))
                          {:keys [count]} count-opts
@@ -779,8 +785,9 @@
   ([x] (describe x {}))
   ([x opts]
    (-> (ensure-wrapped-with-viewers x)
-       (describe* (merge {:!budget (atom (:budget opts 200)) :path []} opts) [])
-       (assign-closing-parens))))
+       (merge {:!budget (atom (:budget opts 200)) :path (:path opts []) :current-path (:path opts [])} opts)
+       describe*
+       assign-closing-parens)))
 
 (comment
   (describe 42)
