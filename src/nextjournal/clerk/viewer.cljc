@@ -715,7 +715,13 @@
 
 #_(make-elision default-viewers {:n 20})
 
-(defn ^:private describe* [{:as wrapped-value :keys [path current-path !budget offset]}]
+(defn ^:private describe* [{:as wrapped-value
+                            :keys [path current-path !budget offset]
+                            :nextjournal/keys [viewers]}]
+  (when (empty? viewers)
+    (throw (ex-info "cannot describe* with empty viewers" {:wrapped-value wrapped-value})))
+  (when-not (vector? path)
+    (throw (ex-info "path needs to be a `vector?`" {:path path :wrapped-value wrapped-value})))
   (let [{:as wrapped-value :nextjournal/keys [viewers reduced?]} (apply-viewers* wrapped-value)
         descend? (< (count current-path)
                     (count path))
@@ -723,8 +729,7 @@
         {:as viewer :keys [fetch-fn fetch-opts]} (->viewer wrapped-value)
         ;; TODO: remove following line
         reduced? (or reduced? (some? fetch-fn))]
-    (when (empty? viewers)
-      (throw (ex-info "cannot describe* with empty viewers" {:wrapped-value wrapped-value})))
+    
     #_(prn :xs xs :type (type xs) :path path :current-path current-path :descend? descend?)
     (when (and !budget (not descend?) (not reduced?))
       (swap! !budget #(max (dec %) 0)))
