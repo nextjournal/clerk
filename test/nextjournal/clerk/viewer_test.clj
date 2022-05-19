@@ -5,21 +5,14 @@
             [nextjournal.clerk.viewer :as v]))
 
 (defn find-elision [desc]
-  (first (filter (comp #{:elision} :name :nextjournal/viewer)
-                 (tree-seq (comp vector? :nextjournal/value) :nextjournal/value desc))))
-
-(let [value (range 30)
-      desc (v/describe value {:budget 21})
-      elision (find-elision desc)
-      more (v/describe value (:nextjournal/value elision))]
-  #_(v/desc->values (v/merge-descriptions desc more))
-  elision)
+  (v/->value (first (filter (comp #{:elision} :name :nextjournal/viewer)
+                            (tree-seq (comp vector? :nextjournal/value) :nextjournal/value desc)))))
 
 (defn describe+fetch [value]
   (let [desc (v/describe value {:budget 21})
         elision (find-elision desc)
-        more (v/describe value (:nextjournal/value elision))]
-    (v/desc->values (v/merge-descriptions desc more))))
+        more (v/describe value elision)]
+    (v/desc->values (v/merge-descriptions desc more elision))))
 
 (deftest merge-descriptions
   (testing "range"

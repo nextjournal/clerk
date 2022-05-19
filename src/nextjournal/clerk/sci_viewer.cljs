@@ -309,7 +309,7 @@
                                 (fn [opts]
                                   (.then (fetch! @!fetch-opts opts)
                                          (fn [more]
-                                           (swap! !desc viewer/merge-descriptions more)))))]
+                                           (swap! !desc viewer/merge-descriptions more opts)))))]
           (when-not (= hash @!hash)
             ;; TODO: simplify
             (reset! !hash hash)

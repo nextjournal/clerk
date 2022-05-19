@@ -625,20 +625,23 @@
 #_(ensure-wrapped-with-viewers 42)
 #_(ensure-wrapped-with-viewers {:nextjournal/value 42 :nextjournal/viewers [:boo]})
 
+(defn ->opts [wrapped-value]
+  (select-keys wrapped-value [:nextjournal/width :!budget :budget :path :current-path :offset]))
+
 (defn apply-viewers* [wrapped-value]
   (when (empty? (->viewers wrapped-value))
     (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
   (let [viewers (->viewers wrapped-value)
         {:as viewer :keys [render-fn transform-fn]} (viewer-for viewers wrapped-value)
-        opts (select-keys wrapped-value [:nextjournal/width :!budget :budget :path :current-path :offset])
-        wrapped-value (ensure-wrapped-with-viewers viewers (cond-> wrapped-value transform-fn transform-fn))
-        wrapped-value (cond-> wrapped-value
-                        (-> wrapped-value ->value wrapped-value?)
-                        (merge (->value wrapped-value)))]
+        transformed-value (ensure-wrapped-with-viewers viewers (cond-> wrapped-value transform-fn transform-fn))
+        wrapped-value' (cond-> transformed-value
+                         (-> transformed-value ->value wrapped-value?)
+                         (merge (->value transformed-value)))]
     (if (and transform-fn (not render-fn))
-      (recur wrapped-value)
-      (cond-> (assoc wrapped-value :nextjournal/viewer viewer)
-        (seq opts) (merge opts)))))
+      (recur wrapped-value')
+      (-> wrapped-value'
+          (assoc :nextjournal/viewer viewer)
+          (merge (->opts wrapped-value))))))
 
 (defn apply-viewers [x]
   (apply-viewers* (ensure-wrapped-with-viewers x)))
@@ -658,10 +661,12 @@
 (defn count-viewers
   "Helper function to walk a given `x` and replace the viewers with their counts. Useful for debugging."
   [x]
-  (w/postwalk #(if (and (wrapped-value? %) (:nextjournal/viewers %))
-                 (-> %
-                     (update :nextjournal/viewers count)
-                     (set/rename-keys {:nextjournal/viewers :nextjournal/viewers-count}))
+  (w/postwalk #(if (wrapped-value? %)
+                 (cond-> (dissoc % :!budget)
+                   (:nextjournal/viewers %)
+                   (-> #_%
+                       (update :nextjournal/viewers count)
+                       (set/rename-keys {:nextjournal/viewers :nextjournal/viewers-count})))
                  %) x))
 
 (defn bounded-count-opts [n xs]
@@ -713,14 +718,66 @@
 
 #_(process-wrapped-value (apply-viewers 42))
 
-(defn make-elision [viewers fetch-opts]
-  (-> (with-viewer :elision fetch-opts)
+(defn make-elision [viewers fetch-fn fetch-opts]
+  (-> (with-viewer :elision (with-meta fetch-opts {:fetch-fn fetch-fn}))
       (assoc :nextjournal/viewers viewers)
       (apply-viewers)
       (update :nextjournal/viewer process-viewer)
       (dissoc :nextjournal/viewers)))
 
 #_(make-elision default-viewers {:n 20})
+
+(defn find-elision [desc]
+  (->value (first (filter (comp #{:elision} :name :nextjournal/viewer)
+                          (tree-seq (comp vector? :nextjournal/value) :nextjournal/value desc)))))
+
+(defn describe+paginate-children [{:as wrapped-value :nextjournal/keys [viewers] :keys [!budget]} {:as fetch-opts :keys [path offset]}]
+  (let [xs (->value wrapped-value)
+        count-opts  (if (counted? xs)
+                      {:count (count xs)}
+                      (bounded-count-opts (:n fetch-opts) xs))
+        fetch-opts (cond-> fetch-opts
+                     (and (:n fetch-opts) !budget (not (map-entry? xs)))
+                     (update :n min @!budget))
+        children (into []
+                       (comp (if (number? (:n fetch-opts)) (drop+take-xf fetch-opts) identity)
+                             (map-indexed (fn [i x] (describe* (-> (ensure-wrapped-with-viewers viewers x)
+                                                                   (merge (->opts wrapped-value))
+                                                                   (dissoc :offset)
+                                                                   (update :path (fnil conj []) (+ i (or offset 0)))
+                                                                   (update :current-path (fnil conj []) i)))))
+                             (remove nil?))
+                       (ensure-sorted xs))
+        {:keys [count]} count-opts
+        offset (or (-> children peek :path peek) -1)]
+    (cond-> children
+      (or (not count) (< (inc offset) count))
+      (conj (let [fetch-opts (cond-> (assoc count-opts :offset (inc offset) :path path)
+                               (number? (:n fetch-opts)) (assoc :n (:n fetch-opts))
+                               count (assoc :remaining (- count (inc offset))))
+                  ;; TODO: call describe here
+                  fetch-fn (fn [] (->> (describe+paginate-children wrapped-value fetch-opts)
+                                       (ensure-wrapped-with-viewers viewers)))]
+              (make-elision viewers fetch-fn fetch-opts))))))
+
+(defn describe+paginate-string [{:as wrapped-value :nextjournal/keys [viewers value] :keys [!budget]} {:as fetch-opts :keys [path offset]}]
+  (-> (if (and (number? (:n fetch-opts)) (< (:n fetch-opts) (count value)))
+        (let [offset (:offset wrapped-value 0)
+              total (count value)
+              new-offset (min (+ offset (:n fetch-opts)) total)
+              remaining (- total new-offset)]
+          (cond-> [(subs value offset new-offset)]
+            (pos? remaining) (conj (let [fetch-opts {:path path
+                                                     :replace-path (conj path new-offset)
+                                                     :count total 
+                                                     :offset new-offset
+                                                     :remaining remaining
+                                                     :n (:n fetch-opts)}
+                                         fetch-fn (fn [] (->> (describe+paginate-string wrapped-value fetch-opts)
+                                                              (ensure-wrapped-with-viewers viewers)))]
+                                     (make-elision viewers fetch-fn fetch-opts)))
+            true ensure-wrapped))
+        value)))
 
 (defn ^:private describe* [{:as wrapped-value
                             :keys [path current-path !budget offset]
@@ -734,9 +791,9 @@
                     (count path))
         xs (->value wrapped-value)
         {:as viewer :keys [fetch-fn fetch-opts]} (->viewer wrapped-value)
+        fetch-opts (merge fetch-opts (->opts wrapped-value))
         ;; TODO: remove following line
         reduced? (or reduced? (some? fetch-fn))]
-
     #_(prn :xs xs :type (type xs) :path path :current-path current-path :descend? descend?)
     (when (and !budget (not descend?) (not reduced?))
       (swap! !budget #(max (dec %) 0)))
@@ -752,42 +809,14 @@
                                      (cond (or (map? xs) (set? xs)) (nth (seq (ensure-sorted xs)) idx)
                                            (associative? xs) (get xs idx)
                                            (sequential? xs) (nth xs idx)))
+                                    (merge (->opts wrapped-value))
                                     (update :current-path (fnil conj []) idx))))
 
                    (string? xs)
-                   (-> (if (and (number? (:n fetch-opts)) (< (:n fetch-opts) (count xs)))
-                         (let [offset (:offset wrapped-value 0)
-                               total (count xs)
-                               new-offset (min (+ offset (:n fetch-opts)) total)
-                               remaining (- total new-offset)]
-                           (cond-> [(subs xs offset new-offset)]
-                             (pos? remaining) (conj (make-elision viewers {:path path :count total :offset new-offset :remaining remaining}))
-                             true ensure-wrapped
-                             true (assoc :replace-path (conj path offset))))
-                         xs))
+                   (describe+paginate-string wrapped-value fetch-opts)
 
                    (and xs (seqable? xs))
-                   (let [count-opts  (if (counted? xs)
-                                       {:count (count xs)}
-                                       (bounded-count-opts (:n fetch-opts) xs))
-                         fetch-opts (cond-> fetch-opts
-                                      (and (:n fetch-opts) !budget (not (map-entry? xs)))
-                                      (update :n min @!budget))
-                         children (into []
-                                        (comp (if (number? (:n fetch-opts)) (drop+take-xf fetch-opts) identity)
-                                              (map-indexed (fn [i x] (describe* (-> (ensure-wrapped-with-viewers viewers x)
-                                                                                    (dissoc :offset)
-                                                                                    (update :path (fnil conj []) (+ i (or offset 0)))
-                                                                                    (update :current-path (fnil conj []) i)))))
-                                              (remove nil?))
-                                        (ensure-sorted xs))
-                         {:keys [count]} count-opts
-                         offset (or (-> children peek :path peek) -1)]
-                     (cond-> children
-                       (or (not count) (< (inc offset) count))
-
-                       (conj (make-elision viewers (cond-> (assoc count-opts :offset (inc offset) :path path)
-                                                     count (assoc :remaining (- count (inc offset))))))))
+                   (describe+paginate-children wrapped-value fetch-opts)
 
                    :else ;; leaf value
                    xs)))))
@@ -797,7 +826,10 @@
   ([x] (describe x {}))
   ([x opts]
    (-> (ensure-wrapped-with-viewers x)
-       (merge {:!budget (atom (:budget opts 200)) :path (:path opts []) :current-path (:path opts [])} opts)
+       (merge {:!budget (atom (:budget opts 200))
+               :path (:path opts [])
+               :current-path (:current-path opts [])}
+              opts)
        describe*
        process-wrapped-value
        assign-closing-parens)))
@@ -838,12 +870,13 @@
 (defn path-to-value [path]
   (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
 
-(defn merge-descriptions [root more]
-  (update-in root (path-to-value (:path more))
+(defn merge-descriptions [root more elision]
+  (update-in root
+             (path-to-value (:path elision))
              (fn [value]
                (let [{:keys [offset path]} (-> value peek :nextjournal/value)
                      path-from-value (conj path offset)
-                     path-from-more (or (:replace-path more) ;; string case, TODO find a better way to unify
+                     path-from-more (or (:replace-path elision) ;; string case, TODO find a better way to unify
                                         (-> more :nextjournal/value first :path))]
                  (when (not= path-from-value path-from-more)
                    (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more :root root :more more :path-to-value (path-to-value (:path more)) :value value})))

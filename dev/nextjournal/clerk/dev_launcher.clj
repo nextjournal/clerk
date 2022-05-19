@@ -12,6 +12,7 @@
   ((requiring-resolve 'shadow.cljs.devtools.server/start!))
   ((requiring-resolve 'shadow.cljs.devtools.api/watch) :browser)
   ((requiring-resolve 'nextjournal.clerk/serve!) serve-opts)
+  (set! *print-namespace-maps* false)
   (println "Clerk dev system ready in"
            (String/format (Locale. "en-US")
                           "%.2fs"
