@@ -8,6 +8,13 @@
   (first (filter (comp #{:elision} :name :nextjournal/viewer)
                  (tree-seq (comp vector? :nextjournal/value) :nextjournal/value desc))))
 
+(let [value (range 30)
+      desc (v/describe value {:budget 21})
+      elision (find-elision desc)
+      more (v/describe value (:nextjournal/value elision))]
+  #_(v/desc->values (v/merge-descriptions desc more))
+  elision)
+
 (defn describe+fetch [value]
   (let [desc (v/describe value {:budget 21})
         elision (find-elision desc)
@@ -85,8 +92,7 @@
 (deftest assign-closing-parens
   (testing "closing parenthesis are moved to right-most children in the tree"
     (let [before (#'v/describe* (v/ensure-wrapped-with-viewers {:a [1 '(2 3 #{4})]
-                                                                :b '([5 6] 7 8)})
-                                {:path []} [])
+                                                                :b '([5 6] 7 8)}))
           after (v/assign-closing-parens before)]
 
       (is (= "}"
