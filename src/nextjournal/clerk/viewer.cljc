@@ -232,15 +232,20 @@
 
 (defn into-markup [markup]
   (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
-    (-> (with-viewer :html wrapped-value)
-        (update :nextjournal/value (fn [{:as node :keys [text content]}]
-                                     (into (cond-> markup (fn? markup) (apply [node]))
-                                           (cond text [text]
-                                                 content (mapv #(-> (with-md-viewer %)
-                                                                    (assoc :nextjournal/viewers viewers)
-                                                                    (apply-viewers)
-                                                                    (as-> w (cond-> w (= :html (:name (->viewer w))) ->value)))
-                                                               content))))))))
+    (-> (with-viewer :html- wrapped-value)
+        (assoc :nextjournal/reduced? true)
+        (update :nextjournal/value
+                (fn [{:as node :keys [text content]}]
+                  (into (cond-> markup (fn? markup) (apply [node]))
+                        (cond text [text]
+                              content (mapv #(-> (with-md-viewer %)
+                                                 (assoc :nextjournal/viewers viewers)
+                                                 (apply-viewers)
+                                                 (as-> w
+                                                   (if (= :html- (:name (->viewer w)))
+                                                     (->value w)
+                                                     (inspect-wrapped-value w))))
+                                            content))))))))
 
 #?(:clj
    (defn ->edn [x]
@@ -496,6 +501,12 @@
     :render-fn (quote v/html)
     :transform-fn (comp #(assoc % :nextjournal/reduced? true)
                         (update-value (partial w/postwalk (when-wrapped inspect-wrapped-value))))}
+
+   ;; TODO: solve this otherwise / better naming
+   {:name :html-
+    :doc "A version of `:html` viewer which does not recursively inspect wrapped child values"
+    :render-fn (quote v/html)}
+
    {:name :plotly :render-fn (quote v/plotly-viewer) :fetch-fn fetch-all}
    {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :fetch-fn fetch-all}
    {:name :markdown :transform-fn (fn [wrapped-value]
@@ -769,7 +780,7 @@
           (cond-> [(subs value offset new-offset)]
             (pos? remaining) (conj (let [fetch-opts {:path path
                                                      :replace-path (conj path new-offset)
-                                                     :count total 
+                                                     :count total
                                                      :offset new-offset
                                                      :remaining remaining
                                                      :n (:n fetch-opts)}
