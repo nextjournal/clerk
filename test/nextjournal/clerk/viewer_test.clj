@@ -71,7 +71,7 @@
   (testing "only transform-fn can select viewer"
     (is (match? {:nextjournal/value [:div.viewer-markdown
                                      [:p [:span "Hello "] [:em [:span "markdown"]] [:span "!"]]]
-                 :nextjournal/viewer {:name :html}}
+                 :nextjournal/viewer {:name :html-}}
                 (v/describe (v/with-viewer {:transform-fn (comp v/md v/->value)}
                               "Hello _markdown_!")))))
 
