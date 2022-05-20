@@ -475,14 +475,16 @@
    {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e)) :fetch-fn fetch-all
     :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp demunge-ex-data datafy/datafy)}
    #?(:clj {:pred #(instance? BufferedImage %)
-            :fetch-fn (fn [_ image] (let [stream (java.io.ByteArrayOutputStream.)
-                                          w (.getWidth image)
-                                          h (.getHeight image)
-                                          r (float (/ w h))]
-                                      (ImageIO/write image "png" stream)
-                                      (cond-> {:nextjournal/value (.toByteArray stream)
-                                               :nextjournal/content-type "image/png"
-                                               :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)})))
+            :transform-fn (fn [{image :nextjournal/value}]
+                            (let [stream (java.io.ByteArrayOutputStream.)
+                                  w (.getWidth image)
+                                  h (.getHeight image)
+                                  r (float (/ w h))]
+                              (ImageIO/write image "png" stream)
+                              {:nextjournal/reduced? true
+                               :nextjournal/value (.toByteArray stream)
+                               :nextjournal/content-type "image/png"
+                               :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)}))
             :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))})
    {:pred #(instance? IDeref %)
     :transform-fn (fn [wrapped-value] (with-viewer :tagged-value
@@ -724,7 +726,7 @@
 
 (defn process-wrapped-value [wrapped-value]
   (-> wrapped-value
-      (select-keys [:nextjournal/viewer :nextjournal/value :nextjournal/width])
+      (select-keys [:nextjournal/viewer :nextjournal/value :nextjournal/width :nextjournal/content-type])
       (update :nextjournal/viewer process-viewer)))
 
 #_(process-wrapped-value (apply-viewers 42))
