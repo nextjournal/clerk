@@ -867,15 +867,17 @@
   "Takes a `description` and returns its value. Inverse of `describe`. Mostly useful for debugging."
   [desc]
   (let [x (->value desc)
-        viewer (->viewer desc)]
-    (if (= viewer :elision)
-      '…
-      (cond->> x
-        (vector? x)
-        (into (case (:name viewer) (:map :table) {} [])
-              (map desc->values))))))
+        viewer-name (-> desc ->viewer :name)]
+    (cond (= viewer-name :elision) (with-meta '… x)
+          (coll? x) (into (case viewer-name
+                            (:map :table) {}
+                            (or (empty x) []))
+                          (map desc->values)
+                          x)
+          :else x)))
 
 #_(desc->values (describe [1 [2 {:a :b} 2] 3 (range 100)]))
+#_(desc->values (describe (table (mapv vector (range 30)))))
 #_(desc->values (describe (with-viewer :table (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))))
 
 (defn path-to-value [path]
