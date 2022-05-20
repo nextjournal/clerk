@@ -771,9 +771,9 @@
                                        (ensure-wrapped-with-viewers viewers)))]
               (make-elision viewers fetch-fn fetch-opts))))))
 
-(defn describe+paginate-string [{:as wrapped-value :nextjournal/keys [viewers value] :keys [!budget]} {:as fetch-opts :keys [path offset]}]
+(defn describe+paginate-string [{:as wrapped-value :nextjournal/keys [viewers value]} {:as fetch-opts :keys [path offset]}]
   (-> (if (and (number? (:n fetch-opts)) (< (:n fetch-opts) (count value)))
-        (let [offset (:offset wrapped-value 0)
+        (let [offset (or offset 0)
               total (count value)
               new-offset (min (+ offset (:n fetch-opts)) total)
               remaining (- total new-offset)]

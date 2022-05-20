@@ -21,11 +21,10 @@
     (let [value [(range 30)]]
       (is (= value (describe+fetch value)))))
 
-  ;; TODO: fix & revive
-  #_(testing "string"
-      (let [value (str/join (map #(str/join (repeat 70 %)) ["a" "b"]))]
-        ;; `str/join` is needed here because elided strings get turned into vector of segments
-        (is (= value (str/join (describe+fetch value))))))
+  (testing "string"
+    (let [value (str/join (map #(str/join (repeat 80 %)) ["a" "b"]))]
+      ;; `str/join` is needed here because elided strings get turned into vector of segments
+      (is (= value (str/join (describe+fetch value))))))
 
   (testing "deep vector"
     (let [value (reduce (fn [acc i] (vector acc)) :fin (range 30 0 -1))]
