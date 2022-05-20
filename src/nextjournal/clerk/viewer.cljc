@@ -797,8 +797,6 @@
                             :nextjournal/keys [viewers]}]
   (when (empty? viewers)
     (throw (ex-info "cannot describe* with empty viewers" {:wrapped-value wrapped-value})))
-  (when-not (vector? path)
-    (throw (ex-info "path needs to be a `vector?`" {:path path :wrapped-value wrapped-value})))
   (let [{:as wrapped-value :nextjournal/keys [viewers reduced?]} (apply-viewers* wrapped-value)
         descend? (< (count current-path)
                     (count path))
