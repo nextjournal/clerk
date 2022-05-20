@@ -520,24 +520,22 @@
    {:name :code :render-fn (quote v/code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (->value %)] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))}
    {:name :code-folded :render-fn (quote v/foldable-code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (->value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
    {:name :reagent :render-fn (quote v/reagent-viewer)  :fetch-fn fetch-all}
-   {:name :table :render-fn (quote v/table-viewer) :fetch-opts {:n 5}
-    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
-                    (-> wrapped-value
-                        (assoc :nextjournal/reduced? true)
-                        (update :nextjournal/width #(or % :wide))
-                        (update :nextjournal/value #(or (normalize-table-data %)
-                                                        {:error "Could not normalize table" :ex-data (describe %)}))
-                        (update-in [:nextjournal/value :rows]
-                                   (comp describe (partial ensure-wrapped-with-viewers (update-table-viewers viewers))))))
-    #_#_:fetch-fn (fn [{:as opts :keys [describe-fn offset path]} xs]
-                    ;; TODO: use budget per row for table
-                    ;; TODO: opt out of eliding cols
-                    (cond (:error xs) (update xs :ex-data describe-fn opts [])
-                          (seq path) (describe-fn (:rows xs) opts [])
-                          :else (-> (cond-> (update xs :rows describe-fn (dissoc opts :!budget) [])
-                                      (pos? offset) :rows)
-                                    (assoc :path [:rows] :replace-path [offset])
-                                    (dissoc :nextjournal/viewers))))}
+   {:name :table :render-fn (quote v/table-viewer)
+    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers] :keys [offset]}]
+                    (cond-> (-> wrapped-value
+                                (assoc :nextjournal/reduced? true)
+                                (update :nextjournal/width #(or % :wide))
+                                (update :nextjournal/value #(or (normalize-table-data %)
+                                                                {:error "Could not normalize table" :ex-data (describe %)}))
+                                (update-in [:nextjournal/value :rows] (fn [rows]
+                                                                        (let [viewers (update-table-viewers viewers)]
+                                                                          (describe (ensure-wrapped-with-viewers viewers rows)
+                                                                                    (-> wrapped-value
+                                                                                        (select-keys [:offset])
+                                                                                        (update :path conj :rows)
+                                                                                        (update :current-path conj :rows)))))))
+                      (pos-int? offset)
+                      (get-in [:nextjournal/value :rows])))}
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
    {:name :clerk/code-block :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
                                             (-> wrapped-value
@@ -742,18 +740,18 @@
 
 (defn find-elision [desc]
   (->value (first (filter (comp #{:elision} :name :nextjournal/viewer)
-                          (tree-seq (comp vector? :nextjournal/value) :nextjournal/value desc)))))
+                          (tree-seq (some-fn map? vector?) #(cond-> % (map? %) vals) desc)))))
 
-(defn describe+paginate-children [{:as wrapped-value :nextjournal/keys [viewers] :keys [!budget]} {:as fetch-opts :keys [path offset]}]
+(defn describe+paginate-children [{:as wrapped-value :nextjournal/keys [viewers] :keys [!budget budget]} {:as fetch-opts :keys [path offset]}]
   (let [xs (->value wrapped-value)
         count-opts  (if (counted? xs)
                       {:count (count xs)}
                       (bounded-count-opts (:n fetch-opts) xs))
-        fetch-opts (cond-> fetch-opts
-                     (and (:n fetch-opts) !budget (not (map-entry? xs)))
-                     (update :n min @!budget))
+        fetch-opts' (cond-> fetch-opts
+                      (and (:n fetch-opts) !budget (not (map-entry? xs)))
+                      (update :n min @!budget))
         children (into []
-                       (comp (if (number? (:n fetch-opts)) (drop+take-xf fetch-opts) identity)
+                       (comp (if (number? (:n fetch-opts')) (drop+take-xf fetch-opts') identity)
                              (map-indexed (fn [i x] (describe* (-> (ensure-wrapped-with-viewers viewers x)
                                                                    (merge (->opts wrapped-value))
                                                                    (dissoc :offset)
@@ -768,8 +766,8 @@
       (conj (let [fetch-opts (cond-> (assoc count-opts :offset (inc offset) :path path)
                                (number? (:n fetch-opts)) (assoc :n (:n fetch-opts))
                                count (assoc :remaining (- count (inc offset))))
-                  ;; TODO: call describe here
-                  fetch-fn (fn [] (->> (describe+paginate-children wrapped-value fetch-opts)
+                  ;; TODO: call describe here, fixing also :!budget reset
+                  fetch-fn (fn [] (->> (describe+paginate-children (assoc wrapped-value :!budget (atom 200) :budget 200) fetch-opts)
                                        (ensure-wrapped-with-viewers viewers)))]
               (make-elision viewers fetch-fn fetch-opts))))))
 
