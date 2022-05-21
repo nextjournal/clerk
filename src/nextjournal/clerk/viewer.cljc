@@ -532,10 +532,13 @@
                                                                           (describe (ensure-wrapped-with-viewers viewers rows)
                                                                                     (-> wrapped-value
                                                                                         (select-keys [:offset])
-                                                                                        (update :path conj :rows)
-                                                                                        (update :current-path conj :rows)))))))
+                                                                                        (update :path (fnil conj []) :rows)
+                                                                                        (update :current-path (fnil conj []) :rows)
+                                                                                        (assoc :budget 100000)))))))
                       (pos-int? offset)
-                      (get-in [:nextjournal/value :rows])))}
+                      (-> #_rows
+                          (get-in [:nextjournal/value :rows])
+                          (assoc :nextjournal/reduced? true))))}
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
    {:name :clerk/code-block :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
                                             (-> wrapped-value
@@ -815,7 +818,8 @@
                    (let [idx (first (drop (count current-path) path))]
                      (describe* (-> (ensure-wrapped-with-viewers
                                      viewers
-                                     (cond (or (map? xs) (set? xs)) (nth (seq (ensure-sorted xs)) idx)
+                                     (cond (and (map? xs) (keyword? idx)) (get xs idx)
+                                           (or (map? xs) (set? xs)) (nth (seq (ensure-sorted xs)) idx)
                                            (associative? xs) (get xs idx)
                                            (sequential? xs) (nth xs idx)))
                                     (merge (->opts wrapped-value))

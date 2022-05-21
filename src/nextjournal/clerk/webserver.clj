@@ -45,9 +45,10 @@
   (assert ns "namespace must be set")
   (if (contains? blob->result blob-id)
     (let [result (blob->result blob-id)
-          viewers (v/get-viewers ns result)
-          opts (assoc fetch-opts :viewers viewers)
-          desc (v/describe result opts)]
+          desc (v/describe (v/ensure-wrapped-with-viewers
+                            (v/get-viewers ns result)
+                            (v/->value result)) ;; TODO understand why this unwrapping fixes lazy loaded table viewers
+                           fetch-opts)]
       (if (contains? desc :nextjournal/content-type)
         {:body (v/->value desc)
          :content-type (:nextjournal/content-type desc)}
