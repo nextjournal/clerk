@@ -199,7 +199,6 @@
 (defn when-wrapped [f] #(cond-> % (wrapped-value? %) f))
 
 (defn inspect-wrapped-value [wrapped-value]
-  #_ (prn :WV wrapped-value)
   [(inspect-fn) (as-> wrapped-value x
                   (ensure-wrapped-with-viewers x)
                   (update x :nextjournal/viewer #(cond->> % (keyword? %) (find-named-viewer (->viewers x))))
@@ -207,9 +206,11 @@
 
 #_(clojure.walk/postwalk (when-wrapped inspect-wrapped-value) [1 2 {:a [3 (with-viewer :latex "\\alpha")]} 4])
 
-(defn fetch-all [_opts xs]
-  ;; TODO:
-  (throw (ex-info "Deprecated" {:xs xs})))
+(defn assoc-reduced [wrapped-value]
+  (assoc wrapped-value :nextjournal/reduced? true))
+
+(defn fetch-all [_opts _xs]
+  (throw (ex-info "`fetch-all` is deprecated, please use a `:transform-fn` with `assoc-reduced` instead." {})))
 
 (defn get-safe
   ([key] #(get-safe % key))
@@ -233,7 +234,7 @@
 (defn into-markup [markup]
   (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
     (-> (with-viewer :html- wrapped-value)
-        (assoc :nextjournal/reduced? true)
+        assoc-reduced
         (update :nextjournal/value
                 (fn [{:as node :keys [text content]}]
                   (into (cond-> markup (fn? markup) (apply [node]))
@@ -242,9 +243,9 @@
                                                  (assoc :nextjournal/viewers viewers)
                                                  (apply-viewers)
                                                  (as-> w
-                                                   (if (= :html- (:name (->viewer w)))
-                                                     (->value w)
-                                                     (inspect-wrapped-value w))))
+                                                     (if (= :html- (:name (->viewer w)))
+                                                       (->value w)
+                                                       (inspect-wrapped-value w))))
                                             content))))))))
 
 #?(:clj
@@ -472,8 +473,8 @@
    {:pred sequential? :render-fn 'v/coll-viewer :opening-paren "(" :closing-paren ")" :fetch-opts {:n 20}}
    {:pred map? :name :map :render-fn 'v/map-viewer :opening-paren "{" :closing-paren "}" :fetch-opts {:n 10}}
    {:pred var? :transform-fn (comp symbol ->value) :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#'" (str x)]]))}
-   {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e)) :fetch-fn fetch-all
-    :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp demunge-ex-data datafy/datafy)}
+   {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
+    :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp assoc-reduced (update-value (comp demunge-ex-data datafy/datafy)))}
    #?(:clj {:pred #(instance? BufferedImage %)
             :transform-fn (fn [{image :nextjournal/value}]
                             (let [stream (java.io.ByteArrayOutputStream.)
@@ -481,10 +482,10 @@
                                   h (.getHeight image)
                                   r (float (/ w h))]
                               (ImageIO/write image "png" stream)
-                              {:nextjournal/reduced? true
-                               :nextjournal/value (.toByteArray stream)
-                               :nextjournal/content-type "image/png"
-                               :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)}))
+                              (-> {:nextjournal/value (.toByteArray stream)
+                                   :nextjournal/content-type "image/png"
+                                   :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)}
+                                  assoc-reduced)))
             :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))})
    {:pred #(instance? IDeref %)
     :transform-fn (fn [wrapped-value] (with-viewer :tagged-value
@@ -496,12 +497,12 @@
                                                             (deref-as-map r)
                                                             r)))}))}
    {:pred (constantly :true) :transform-fn #(with-viewer :read+inspect (pr-str (->value %)))}
-   {:name :elision :render-fn (quote v/elision-viewer) :fetch-fn fetch-all}
-   {:name :latex :render-fn (quote v/katex-viewer) :fetch-fn fetch-all}
-   {:name :mathjax :render-fn (quote v/mathjax-viewer) :fetch-fn fetch-all}
+   {:name :elision :render-fn (quote v/elision-viewer) :transform-fn assoc-reduced}
+   {:name :latex :render-fn (quote v/katex-viewer) :transform-fn assoc-reduced}
+   {:name :mathjax :render-fn (quote v/mathjax-viewer) :transform-fn assoc-reduced}
    {:name :html
     :render-fn (quote v/html)
-    :transform-fn (comp #(assoc % :nextjournal/reduced? true)
+    :transform-fn (comp assoc-reduced
                         (update-value (partial w/postwalk (when-wrapped inspect-wrapped-value))))}
 
    ;; TODO: solve this otherwise / better naming
@@ -509,21 +510,21 @@
     :doc "A version of `:html` viewer which does not recursively inspect wrapped child values"
     :render-fn (quote v/html)}
 
-   {:name :plotly :render-fn (quote v/plotly-viewer) :fetch-fn fetch-all}
-   {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :fetch-fn fetch-all}
+   {:name :plotly :render-fn (quote v/plotly-viewer) :transform-fn assoc-reduced}
+   {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :transform-fn assoc-reduced}
    {:name :markdown :transform-fn (fn [wrapped-value]
                                     (-> wrapped-value
-                                        (assoc :nextjournal/reduced? true)
+                                        assoc-reduced
                                         (update :nextjournal/value #(cond->> % (string? %) md/parse))
                                         (update :nextjournal/viewers #(add-viewers % markdown-viewers))
                                         (with-md-viewer)))}
-   {:name :code :render-fn (quote v/code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (->value %)] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))}
-   {:name :code-folded :render-fn (quote v/foldable-code-viewer) :fetch-fn fetch-all :transform-fn #(let [v (->value %)] (if (string? v) v (with-out-str (pprint/pprint v))))}
-   {:name :reagent :render-fn (quote v/reagent-viewer)  :fetch-fn fetch-all}
+   {:name :code :render-fn (quote v/code-viewer) :transform-fn (comp assoc-reduced (update-value (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))}
+   {:name :code-folded :render-fn (quote v/foldable-code-viewer) :transform-fn (comp assoc-reduced (update-value (fn [v] (if (string? v) v (with-out-str (pprint/pprint v))))))}
+   {:name :reagent :render-fn (quote v/reagent-viewer) :transform-fn assoc-reduced}
    {:name :table :render-fn (quote v/table-viewer)
     :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers] :keys [offset]}]
                     (cond-> (-> wrapped-value
-                                (assoc :nextjournal/reduced? true)
+                                assoc-reduced
                                 (update :nextjournal/width #(or % :wide))
                                 (update :nextjournal/value #(or (normalize-table-data %)
                                                                 {:error "Could not normalize table" :ex-data (describe %)}))
@@ -538,7 +539,7 @@
                       (pos-int? offset)
                       (-> #_rows
                           (get-in [:nextjournal/value :rows])
-                          (assoc :nextjournal/reduced? true))))}
+                          assoc-reduced)))}
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
    {:name :clerk/code-block :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
                                             (-> wrapped-value
@@ -548,13 +549,13 @@
     :transform-fn (fn [wrapped-value]
                     (-> wrapped-value
                         (update-in [:nextjournal/value :value] describe)
-                        (assoc :nextjournal/reduced? true)))}
-   {:name :clerk/result :render-fn (quote v/result-viewer) :fetch-fn fetch-all}
+                        assoc-reduced))}
+   {:name :clerk/result :render-fn (quote v/result-viewer) :transform-fn assoc-reduced}
    {:name :clerk/notebook
     :render-fn (quote v/notebook-viewer)
     :transform-fn #?(:clj (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
                             (-> wrapped-value
-                                (assoc :nextjournal/reduced? true)
+                                assoc-reduced
                                 (update :nextjournal/value
                                         (fn [{:as doc :keys [ns]}]
                                           (-> doc
@@ -720,10 +721,10 @@
   (if-not (map? viewer)
     viewer
     (-> viewer
-        (dissoc :pred :transform-fn :fetch-fn :update-viewers-fn)
+        (dissoc :pred :transform-fn :update-viewers-fn)
         process-render-fn)))
 
-#_(process-viewer {:render-fn '(v/html [:h1]) :fetch-fn fetch-all})
+#_(process-viewer {:render-fn '(v/html [:h1]) :transform-fn assoc-reduced})
 
 (defn process-wrapped-value [wrapped-value]
   (-> wrapped-value
@@ -802,10 +803,8 @@
         descend? (< (count current-path)
                     (count path))
         xs (->value wrapped-value)
-        {:as viewer :keys [fetch-fn fetch-opts]} (->viewer wrapped-value)
-        fetch-opts (merge fetch-opts (->opts wrapped-value))
-        ;; TODO: remove following line
-        reduced? (or reduced? (some? fetch-fn))]
+        {:as viewer :keys [fetch-opts]} (->viewer wrapped-value)
+        fetch-opts (merge fetch-opts (->opts wrapped-value))]
     #_(prn :xs xs :type (type xs) :path path :current-path current-path :descend? descend?)
     (when (and !budget (not descend?) (not reduced?))
       (swap! !budget #(max (dec %) 0)))

@@ -313,6 +313,8 @@
 (def add-viewers!   v/add-viewers!)
 (def set-viewers!   v/set-viewers!)
 (def ->value        v/->value)
+(def update-value   v/update-value)
+(def assoc-reduced  v/assoc-reduced)
 
 (defn file->viewer
   "Evaluates the given `file` and returns it's viewer representation."
