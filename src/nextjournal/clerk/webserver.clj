@@ -44,7 +44,7 @@
 (defn serve-blob [{:as _doc :keys [blob->result ns]} {:keys [blob-id fetch-opts]}]
   (assert ns "namespace must be set")
   (if (contains? blob->result blob-id)
-    (let [result (blob->result blob-id)
+    (let [result (v/apply-viewer-unwrapping-var-from-def (blob->result blob-id))
           desc (v/describe (v/ensure-wrapped-with-viewers
                             (v/get-viewers ns result)
                             (v/->value result)) ;; TODO understand why this unwrapping fixes lazy loaded table viewers
