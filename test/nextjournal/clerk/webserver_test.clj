@@ -5,10 +5,7 @@
             [nextjournal.clerk.webserver :as webserver]))
 
 (defn read-result [s]
-  (binding [*data-readers* {'viewer-fn identity
-                            ;; FIXME: drop extra reader tags and make sure edn does not contain fns & atoms
-                            'object identity
-                            'atom identity}]
+  (binding [*data-readers* {'viewer-fn identity}]
     (read-string s)))
 
 (deftest serve-blob
@@ -21,4 +18,3 @@
       (is (= :elision (:name elision-viewer)))
       (is body)
       (is (= (-> body read-result :nextjournal/value first :nextjournal/value) 20)))))
-

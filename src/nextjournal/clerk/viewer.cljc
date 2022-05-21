@@ -727,7 +727,7 @@
 
 (defn process-wrapped-value [wrapped-value]
   (-> wrapped-value
-      (select-keys [:nextjournal/viewer :nextjournal/value :nextjournal/width :nextjournal/content-type])
+      (select-keys [:nextjournal/viewer :nextjournal/value :nextjournal/width :nextjournal/content-type :path :offset :n])
       (update :nextjournal/viewer process-viewer)))
 
 #_(process-wrapped-value (apply-viewers 42))
@@ -809,30 +809,31 @@
     #_(prn :xs xs :type (type xs) :path path :current-path current-path :descend? descend?)
     (when (and !budget (not descend?) (not reduced?))
       (swap! !budget #(max (dec %) 0)))
-    (merge {:path path}
-           (dissoc wrapped-value :nextjournal/viewers)
-           (with-viewer (process-viewer viewer)
-             (cond reduced? (dissoc wrapped-value :nextjournal/viewers)
+    (-> (merge {:path path}
+               (with-viewer viewer
+                 (cond reduced?
+                       wrapped-value
 
-                   descend?
-                   (let [idx (first (drop (count current-path) path))]
-                     (describe* (-> (ensure-wrapped-with-viewers
-                                     viewers
-                                     (cond (and (map? xs) (keyword? idx)) (get xs idx)
-                                           (or (map? xs) (set? xs)) (nth (seq (ensure-sorted xs)) idx)
-                                           (associative? xs) (get xs idx)
-                                           (sequential? xs) (nth xs idx)))
-                                    (merge (->opts wrapped-value))
-                                    (update :current-path (fnil conj []) idx))))
+                       descend?
+                       (let [idx (first (drop (count current-path) path))]
+                         (describe* (-> (ensure-wrapped-with-viewers
+                                         viewers
+                                         (cond (and (map? xs) (keyword? idx)) (get xs idx)
+                                               (or (map? xs) (set? xs)) (nth (seq (ensure-sorted xs)) idx)
+                                               (associative? xs) (get xs idx)
+                                               (sequential? xs) (nth xs idx)))
+                                        (merge (->opts wrapped-value))
+                                        (update :current-path (fnil conj []) idx))))
 
-                   (string? xs)
-                   (describe+paginate-string wrapped-value fetch-opts)
+                       (string? xs)
+                       (describe+paginate-string wrapped-value fetch-opts)
 
-                   (and xs (seqable? xs))
-                   (describe+paginate-children wrapped-value fetch-opts)
+                       (and xs (seqable? xs))
+                       (describe+paginate-children wrapped-value fetch-opts)
 
-                   :else ;; leaf value
-                   xs)))))
+                       :else ;; leaf value
+                       xs)))
+        process-wrapped-value)))
 
 (defn describe
   "Returns a subset of a given `value`."
@@ -844,7 +845,6 @@
                :current-path (:current-path opts [])}
               opts)
        describe*
-       process-wrapped-value
        assign-closing-parens)))
 
 (comment
