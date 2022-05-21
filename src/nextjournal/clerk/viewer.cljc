@@ -648,7 +648,9 @@
     (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
   (let [viewers (->viewers wrapped-value)
         {:as viewer :keys [render-fn transform-fn]} (viewer-for viewers wrapped-value)
-        transformed-value (ensure-wrapped-with-viewers viewers (cond-> wrapped-value transform-fn transform-fn))
+        transformed-value (ensure-wrapped-with-viewers viewers
+                                                       (cond-> (dissoc wrapped-value :nextjournal/viewer)
+                                                         transform-fn transform-fn))
         wrapped-value' (cond-> transformed-value
                          (-> transformed-value ->value wrapped-value?)
                          (merge (->value transformed-value)))]
