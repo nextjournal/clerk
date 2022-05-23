@@ -687,7 +687,8 @@
                  %) x))
 
 (defn bounded-count-opts [n xs]
-  (assert (number? n) "n must be a number?")
+  (when-not (number? n)
+    (throw (ex-info "n must be a number?" {:n n :xs xs})))
   (let [limit (+ n #?(:clj config/*bounded-count-limit* :cljs 10000))
         total (try (bounded-count limit xs)
                    (catch #?(:clj Exception :cljs js/Error) _
@@ -753,8 +754,8 @@
          (select-keys wrapped-value [:path :offset])))
 
 (defn get-elision [wrapped-value]
-  (let [{:as fetch-opts :keys [path offset]} (->fetch-opts wrapped-value)]
-    (merge fetch-opts (bounded-count-opts (:n fetch-opts) (->value wrapped-value)))))
+  (let [{:as fetch-opts :keys [path offset n]} (->fetch-opts wrapped-value)]
+    (merge fetch-opts (bounded-count-opts n (->value wrapped-value)))))
 
 #_(get-elision (describe (range)))
 #_(get-elision (describe "abc"))
@@ -764,13 +765,14 @@
   (-> wrapped-value ->fetch-opts :n))
 
 (defn describe+paginate-children [{:as wrapped-value :nextjournal/keys [viewers] :keys [!budget budget]}]
-  (let [{:as fetch-opts :keys [path offset]} (->fetch-opts wrapped-value)
+  (let [{:as fetch-opts :keys [path offset n]} (->fetch-opts wrapped-value)
         xs (->value wrapped-value)
+        paginate? (number? n)
         fetch-opts' (cond-> fetch-opts
-                      (and (:n fetch-opts) !budget (not (map-entry? xs)))
+                      (and paginate? !budget (not (map-entry? xs)))
                       (update :n min @!budget))
         children (into []
-                       (comp (if (number? (:n fetch-opts')) (drop+take-xf fetch-opts') identity)
+                       (comp (if paginate? (drop+take-xf fetch-opts') identity)
                              (map-indexed (fn [i x] (describe* (-> (ensure-wrapped-with-viewers viewers x)
                                                                    (merge (->opts wrapped-value))
                                                                    (dissoc :offset)
@@ -778,10 +780,10 @@
                                                                    (update :current-path (fnil conj []) i)))))
                              (remove nil?))
                        (ensure-sorted xs))
-        {:as elision :keys [total unbounded?]} (get-elision wrapped-value)
+        {:as elision :keys [total unbounded?]} (and paginate? (get-elision wrapped-value))
         new-offset (or (some-> children peek :path peek inc) 0)]
     (cond-> children
-      (or unbounded? (< new-offset total))
+      (and paginate? (or unbounded? (< new-offset total)))
       (conj (let [fetch-opts (assoc elision :offset new-offset)
                   ;; TODO: call describe here, fixing also :!budget reset
                   fetch-fn (fn [] (->> (describe+paginate-children (merge wrapped-value {:!budget (atom 200) :budget 200} fetch-opts))
@@ -789,15 +791,13 @@
               (make-elision viewers fetch-fn fetch-opts))))))
 
 
-
-;; TODO: unify 👆 & 👇
-
-(defn describe+paginate-string [{:as wrapped-value :nextjournal/keys [viewers value]}]
-  (let [{:as elision :keys [n total path offset]} (get-elision wrapped-value)]
+(defn describe+paginate-string [{:as wrapped-value :nextjournal/keys [viewers viewer value]}]
+  (let [{:as elision :keys [n total path offset]} (and (-> viewer :fetch-opts :n)
+                                                       (get-elision wrapped-value))]
     (if (and n (< n total))
       (let [new-offset (min (+ (or offset 0) n) total)]
         (cond-> [(subs value (or offset 0) new-offset)]
-          (pos? (- total new-offset)) (conj (let [fetch-opts (-> (get-elision wrapped-value)
+          (pos? (- total new-offset)) (conj (let [fetch-opts (-> elision
                                                                  (assoc :offset new-offset :replace-path (conj path new-offset)))
                                                   fetch-fn (fn [] (->> (describe+paginate-string (merge wrapped-value fetch-opts))
                                                                        (ensure-wrapped-with-viewers viewers)))]
