@@ -737,11 +737,10 @@
 #_(process-wrapped-value (apply-viewers 42))
 
 (defn make-elision [viewers fetch-opts]
-  (-> (with-viewer :elision fetch-opts)
-      (assoc :nextjournal/viewers viewers)
-      (apply-viewers)
-      (update :nextjournal/viewer process-viewer)
-      (dissoc :nextjournal/viewers)))
+  (->> (with-viewer :elision fetch-opts)
+       (ensure-wrapped-with-viewers viewers)
+       apply-viewers
+       process-wrapped-value))
 
 #_(make-elision default-viewers {:n 20})
 
