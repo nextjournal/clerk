@@ -80,13 +80,13 @@
          install-git-hooks {:doc "Install git hooks"
                             :task (fs/copy "dev/pre-commit" ".git/hooks" {:replace-existing true})}
 
-         browser-nrepl {:doc "Start browser nREPL"
-                        :requires ([sci.nrepl.browser-proxy :as bp])
-                        :task (do (bp/start-browser-nrepl! {:port 1339})
-                                  (bp/serve! {:port 1340})
-                                  (println "Started browser nREPL on port 1339")
-                                  (deref (promise)))}
+         ;; browser-nrepl {:doc "Start browser nREPL"
+         ;;                :requires ([sci.nrepl.browser-proxy :as bp])
+         ;;                :task (do (bp/start-browser-nrepl! {:port 1339})
+         ;;                          (bp/serve! {:port 1340})
+         ;;                          (println "Started browser nREPL on port 1339")
+         ;;                          (deref (promise)))}
 
-         -dev {:depends [install-git-hooks watch:cljs copy-viewer-css browser-nrepl]}
+         -dev {:depends [install-git-hooks watch:cljs copy-viewer-css #_browser-nrepl]}
          dev {:doc "Start app in dev mode, compiles cljs and css"
               :task (run '-dev {:parallel true})}}}

@@ -209,10 +209,11 @@ viewer.mount(document.getElementById('clerk'));\n"
        "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws');
 ws.onmessage = msg => viewer.set_state(viewer.read_string(msg.data));
 window.ws_send = msg => ws.send(msg);")
-     (when (and conn-ws? (find-ns 'nextjournal.clerk.browser-nrepl))
-       "window.ws_nrepl = new WebSocket('ws://localhost:1340/_nrepl');
+     (when conn-ws?
+       (when-let [port (:websocket-port @config/sci-repl-config)]
+         (format "window.ws_nrepl = new WebSocket('ws://localhost:%s/_nrepl');
         nextjournal.clerk.sci-viewer.init_nrepl();
-")]]))
+" port)))]]))
 
 (defn ->static-app [{:as state :keys [current-path]}]
   (hiccup/html5

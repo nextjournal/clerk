@@ -18,7 +18,7 @@
 (def resource-manifest-from-props
   (when-let [prop (System/getProperty "clerk.resource_manifest")]
     (when-not (str/blank? prop)
-      (read-string prop))))
+      (edn/read-string prop))))
 
 (defonce !resource->url
   ;; contains asset manifest in the form:
@@ -31,7 +31,6 @@
 #_(reset! !resource->url identity)
 #_(reset! !resource->url default-resource-manifest)
 
-
 (def ^:dynamic *in-clerk* false)
 
 (def ^:dynamic *bounded-count-limit*
@@ -41,3 +40,17 @@
           (catch Exception _
             (throw (ex-info "Invalid value for property `clerk.bounded-count-limit`, must be integer." {:value limit})))))
       1000000))
+
+(def sci-repl-config
+  (delay (if-let [prop (System/getProperty "clerk.sci_nrepl")]
+           (if-not (str/blank? prop)
+             (do (try (let [start! (requiring-resolve 'sci.nrepl.browser-server/start!)]
+                        (start! sci-repl-config))
+                      (catch Exception _
+                        (binding [*out* *err*]
+                          (println "clerk.sci_repl config was set, but sci.nrepl dependency not available"))))
+                 (merge {:nrepl-port 1339
+                         :websocket-port 1340}
+                        (edn/read-string prop)))
+             (prn :booooooo))
+           (prn :yaaa))))

@@ -1,0 +1,52 @@
+; This is the Calva evaluation results output window.
+; TIPS: The keyboard shortcut `ctrl+alt+o o` shows and focuses this window
+;   when connected to a REPL session.
+; Please see https://calva.io/output/ for more info.
+; Happy coding! ♥️
+
+; Connecting ...
+; No nrepl port file found.
+; Hooking up nREPL sessions...
+; Connected session: clj
+; TIPS:
+;   - You can edit the contents here. Use it as a REPL if you like.
+;   - `alt+enter` evaluates the current top level form.
+;   - `ctrl+enter` evaluates the current form.
+;   - `alt+up` and `alt+down` traverse up and down the REPL command history
+;      when the cursor is after the last contents at the prompt
+;   - Clojure lines in stack traces are peekable and clickable.
+clj꞉cljs-render-fn-source꞉>  ; Use `alt+enter` to evaluate
+; Creating cljs repl session...
+; Connecting cljs repl: ClojureScript nREPL Server...
+;   The Calva Connection Log might have more connection progress information.
+; Connected session: cljs
+; TIPS: You can choose which REPL to use (clj or cljs):
+;    *Calva: Toggle REPL connection*
+;    (There is a button in the status bar for this)
+nil
+cljs꞉cljs-render-fn-source꞉>  ; Use `alt+enter` to evaluate
+#'cljs-render-fn-source/!state
+cljs꞉cljs-render-fn-source꞉> 
+#'cljs-render-fn-source/bar
+cljs꞉cljs-render-fn-source꞉> 
+1
+cljs꞉cljs-render-fn-source꞉> 
+2
+cljs꞉cljs-render-fn-source꞉> 
+3
+cljs꞉cljs-render-fn-source꞉> 
+4
+cljs꞉cljs-render-fn-source꞉> 
+5
+cljs꞉cljs-render-fn-source꞉> 
+6
+cljs꞉cljs-render-fn-source꞉> 
+7
+cljs꞉cljs-render-fn-source꞉> 
+8
+cljs꞉cljs-render-fn-source꞉> 
+9
+cljs꞉cljs-render-fn-source꞉> 
+10
+cljs꞉cljs-render-fn-source꞉> 
+; nREPL Connection was closed

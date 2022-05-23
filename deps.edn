@@ -30,14 +30,17 @@
                               nrepl/bencode {:mvn/version "1.1.0"}
                               io.github.babashka/sci.nrepl
                               #_{:local/root "../sci.nrepl"}
-                              {:git/sha "8998f2a4fd25ff02474d7298253e91f059f482b2"}}}
+                              {:git/sha "c14b5b4ef4390ff206cdb71f763f327799f5e853"}}}
 
            :dev {:extra-deps {arrowic/arrowic {:mvn/version "0.1.1"}
                               binaryage/devtools {:mvn/version "1.0.3"}
                               cider/cider-nrepl {:mvn/version "0.26.0"}
                               thheller/shadow-cljs {:mvn/version "2.16.7"}}
                  :extra-paths ["dev" "notebooks"]
-                 :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"http://localhost:7778/js/viewer.js\"}" "-Dpolyglot.engine.WarnInterpreterOnly=false" "-XX:-OmitStackTraceInFastThrow"]
+                 :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"http://localhost:7778/js/viewer.js\"}"
+                            "-Dpolyglot.engine.WarnInterpreterOnly=false"
+                            "-Dclerk.sci_nrepl={}"
+                            "-XX:-OmitStackTraceInFastThrow"]
                  :main-opts ["-m" "shadow.cljs.devtools.cli"]}
 
            :test {:extra-deps {nubank/matcher-combinators {:mvn/version "3.3.1"}

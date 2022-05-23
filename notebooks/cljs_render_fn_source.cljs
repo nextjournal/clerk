@@ -13,7 +13,8 @@
   )
 
 (defn on-click []
-  (v/mount))
+  (v/mount)
+  (swap! !state inc))
 
 (defn foo []
   [:<>
