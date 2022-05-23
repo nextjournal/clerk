@@ -748,8 +748,13 @@
   (->value (first (filter (comp #{:elision} :name :nextjournal/viewer)
                           (tree-seq (some-fn map? vector?) #(cond-> % (map? %) vals) desc)))))
 
-(defn describe+paginate-children [{:as wrapped-value :nextjournal/keys [viewers] :keys [!budget budget]} {:as fetch-opts :keys [path offset]}]
-  (let [xs (->value wrapped-value)
+(defn ->fetch-opts [wrapped-value]
+  (merge (-> wrapped-value ->viewer :fetch-opts)
+         (->opts wrapped-value)))
+
+(defn describe+paginate-children [{:as wrapped-value :nextjournal/keys [viewers] :keys [!budget budget]}]
+  (let [{:as fetch-opts :keys [path offset]} (->fetch-opts wrapped-value)
+        xs (->value wrapped-value)
         count-opts  (if (counted? xs)
                       {:count (count xs)}
                       (bounded-count-opts (:n fetch-opts) xs))
@@ -773,49 +778,51 @@
                                (number? (:n fetch-opts)) (assoc :n (:n fetch-opts))
                                count (assoc :remaining (- count (inc offset))))
                   ;; TODO: call describe here, fixing also :!budget reset
-                  fetch-fn (fn [] (->> (describe+paginate-children (assoc wrapped-value :!budget (atom 200) :budget 200) fetch-opts)
+                  fetch-fn (fn [] (->> (describe+paginate-children (merge wrapped-value {:!budget (atom 200) :budget 200} fetch-opts))
                                        (ensure-wrapped-with-viewers viewers)))]
               (make-elision viewers fetch-fn fetch-opts))))))
 
-(defn describe+paginate-string [{:as wrapped-value :nextjournal/keys [viewers value]} {:as fetch-opts :keys [path offset]}]
-  (-> (if (and (number? (:n fetch-opts)) (< (:n fetch-opts) (count value)))
-        (let [offset (or offset 0)
-              total (count value)
-              new-offset (min (+ offset (:n fetch-opts)) total)
-              remaining (- total new-offset)]
-          (cond-> [(subs value offset new-offset)]
-            (pos? remaining) (conj (let [fetch-opts {:path path
-                                                     :replace-path (conj path new-offset)
-                                                     :count total
-                                                     :offset new-offset
-                                                     :remaining remaining
-                                                     :n (:n fetch-opts)}
-                                         fetch-fn (fn [] (->> (describe+paginate-string wrapped-value fetch-opts)
-                                                              (ensure-wrapped-with-viewers viewers)))]
-                                     (make-elision viewers fetch-fn fetch-opts)))
-            true ensure-wrapped))
-        value)))
+;; TODO: unify 👆 & 👇
+
+(defn describe+paginate-string [{:as wrapped-value :nextjournal/keys [viewers value]}]
+  (let [{:as fetch-opts :keys [path offset]} (->fetch-opts wrapped-value)]
+    (-> (if (and (number? (:n fetch-opts)) (< (:n fetch-opts) (count value)))
+          (let [offset (or offset 0)
+                total (count value)
+                new-offset (min (+ offset (:n fetch-opts)) total)
+                remaining (- total new-offset)]
+            (cond-> [(subs value offset new-offset)]
+              (pos? remaining) (conj (let [fetch-opts {:path path
+                                                       :replace-path (conj path new-offset)
+                                                       :count total
+                                                       :offset new-offset
+                                                       :remaining remaining
+                                                       :n (:n fetch-opts)}
+                                           fetch-fn (fn [] (->> (describe+paginate-string (merge wrapped-value fetch-opts))
+                                                                (ensure-wrapped-with-viewers viewers)))]
+                                       (make-elision viewers fetch-fn fetch-opts)))
+              true ensure-wrapped))
+          value))))
+
 
 (defn ^:private describe* [{:as wrapped-value
-                            :keys [path current-path !budget offset]
+                            :keys [path current-path !budget]
                             :nextjournal/keys [viewers]}]
   (when (empty? viewers)
     (throw (ex-info "cannot describe* with empty viewers" {:wrapped-value wrapped-value})))
   (let [{:as wrapped-value :nextjournal/keys [viewers reduced?]} (apply-viewers* wrapped-value)
         descend? (< (count current-path)
                     (count path))
-        xs (->value wrapped-value)
-        {:as viewer :keys [fetch-opts]} (->viewer wrapped-value)
-        fetch-opts (merge fetch-opts (->opts wrapped-value))]
+        xs (->value wrapped-value)]
     #_(prn :xs xs :type (type xs) :path path :current-path current-path :descend? descend?)
     (when (and !budget (not descend?) (not reduced?))
       (swap! !budget #(max (dec %) 0)))
     (-> (merge {:path path}
-               (with-viewer viewer
+               (with-viewer (->viewer wrapped-value)
                  (cond reduced?
                        wrapped-value
 
-                       descend?
+                       descend? ;; TODO: can this be unified, simplified, or even dropped in favor of continuation?
                        (let [idx (first (drop (count current-path) path))]
                          (describe* (-> (ensure-wrapped-with-viewers
                                          viewers
@@ -827,10 +834,10 @@
                                         (update :current-path (fnil conj []) idx))))
 
                        (string? xs)
-                       (describe+paginate-string wrapped-value fetch-opts)
+                       (describe+paginate-string wrapped-value)
 
                        (and xs (seqable? xs))
-                       (describe+paginate-children wrapped-value fetch-opts)
+                       (describe+paginate-children wrapped-value)
 
                        :else ;; leaf value
                        xs)))
