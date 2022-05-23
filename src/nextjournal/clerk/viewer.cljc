@@ -736,8 +736,8 @@
 
 #_(process-wrapped-value (apply-viewers 42))
 
-(defn make-elision [viewers fetch-fn fetch-opts]
-  (-> (with-viewer :elision (with-meta fetch-opts {:fetch-fn fetch-fn}))
+(defn make-elision [viewers fetch-opts]
+  (-> (with-viewer :elision fetch-opts)
       (assoc :nextjournal/viewers viewers)
       (apply-viewers)
       (update :nextjournal/viewer process-viewer)
@@ -784,11 +784,8 @@
         new-offset (or (some-> children peek :path peek inc) 0)]
     (cond-> children
       (and paginate? (or unbounded? (< new-offset total)))
-      (conj (let [fetch-opts (assoc elision :offset new-offset)
-                  ;; TODO: call describe here, fixing also :!budget reset
-                  fetch-fn (fn [] (->> (describe+paginate-children (merge wrapped-value {:!budget (atom 200) :budget 200} fetch-opts))
-                                       (ensure-wrapped-with-viewers viewers)))]
-              (make-elision viewers fetch-fn fetch-opts))))))
+      (conj (let [fetch-opts (assoc elision :offset new-offset)]
+              (make-elision viewers fetch-opts))))))
 
 
 (defn describe+paginate-string [{:as wrapped-value :nextjournal/keys [viewers viewer value]}]
@@ -798,10 +795,8 @@
       (let [new-offset (min (+ (or offset 0) n) total)]
         (cond-> [(subs value (or offset 0) new-offset)]
           (pos? (- total new-offset)) (conj (let [fetch-opts (-> elision
-                                                                 (assoc :offset new-offset :replace-path (conj path new-offset)))
-                                                  fetch-fn (fn [] (->> (describe+paginate-string (merge wrapped-value fetch-opts))
-                                                                       (ensure-wrapped-with-viewers viewers)))]
-                                              (make-elision viewers fetch-fn fetch-opts)))
+                                                                 (assoc :offset new-offset :replace-path (conj path new-offset)))]
+                                              (make-elision viewers fetch-opts)))
           true ensure-wrapped))
       value)))
 
