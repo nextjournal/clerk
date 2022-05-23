@@ -756,8 +756,9 @@
   (let [{:as fetch-opts :keys [path offset]} (->fetch-opts wrapped-value)]
     (merge fetch-opts (bounded-count-opts (:n fetch-opts) (->value wrapped-value)))))
 
-#_(get-elision (apply-viewers (range)))
-#_(get-elision (apply-viewers (str/join (repeat 1000 "abc"))))
+#_(get-elision (describe (range)))
+#_(get-elision (describe "abc"))
+#_(get-elision (describe (str/join (repeat 1000 "abc"))))
 
 (defn get-fetch-opts-n [wrapped-value]
   (-> wrapped-value ->fetch-opts :n))
@@ -792,19 +793,17 @@
 ;; TODO: unify 👆 & 👇
 
 (defn describe+paginate-string [{:as wrapped-value :nextjournal/keys [viewers value]}]
-  (let [{:as fetch-opts :keys [path offset]} (->fetch-opts wrapped-value)]
-    (-> (if (and (number? (:n fetch-opts)) (< (:n fetch-opts) (count value)))
-          (let [offset (or offset 0)
-                total (count value)
-                new-offset (min (+ offset (:n fetch-opts)) total)]
-            (cond-> [(subs value offset new-offset)]
-              (pos? (- total new-offset)) (conj (let [fetch-opts (-> (get-elision wrapped-value)
-                                                                     (assoc :offset new-offset :replace-path (conj path new-offset)))
-                                                      fetch-fn (fn [] (->> (describe+paginate-string (merge wrapped-value fetch-opts))
-                                                                           (ensure-wrapped-with-viewers viewers)))]
-                                                  (make-elision viewers fetch-fn fetch-opts)))
-              true ensure-wrapped))
-          value))))
+  (let [{:as elision :keys [n total path offset]} (get-elision wrapped-value)]
+    (if (and n (< n total))
+      (let [new-offset (min (+ (or offset 0) n) total)]
+        (cond-> [(subs value (or offset 0) new-offset)]
+          (pos? (- total new-offset)) (conj (let [fetch-opts (-> (get-elision wrapped-value)
+                                                                 (assoc :offset new-offset :replace-path (conj path new-offset)))
+                                                  fetch-fn (fn [] (->> (describe+paginate-string (merge wrapped-value fetch-opts))
+                                                                       (ensure-wrapped-with-viewers viewers)))]
+                                              (make-elision viewers fetch-fn fetch-opts)))
+          true ensure-wrapped))
+      value)))
 
 
 (defn ^:private describe* [{:as wrapped-value
