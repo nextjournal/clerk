@@ -60,8 +60,6 @@
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
     (case (:uri req)
-      "/_nrepl"
-      ((resolve 'nextjournal.clerk.browser-nrepl/create-channel) req)
       ;; default
       (httpkit/as-channel req {:on-open (fn [ch] (swap! !clients conj ch))
                                :on-close (fn [ch _reason] (swap! !clients disj ch))
@@ -72,7 +70,7 @@
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
-        ("_ws" "_nrepl") {:status 200 :body "upgrading..."}
+        "_ws" {:status 200 :body "upgrading..."}
         {:status  200
          :headers {"Content-Type" "text/html"}
          :body    (view/doc->html @!doc @!error)})
