@@ -233,7 +233,7 @@
 
 (defn into-markup [markup]
   (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
-    (-> (with-viewer :html- wrapped-value)
+    (-> (with-viewer {:name :html- :render-fn 'v/html} wrapped-value)
         assoc-reduced
         (update :nextjournal/value
                 (fn [{:as node :keys [text content]}]
@@ -243,9 +243,9 @@
                                                  (assoc :nextjournal/viewers viewers)
                                                  (apply-viewers)
                                                  (as-> w
-                                                     (if (= :html- (:name (->viewer w)))
-                                                       (->value w)
-                                                       (inspect-wrapped-value w))))
+                                                   (if (= :html- (:name (->viewer w)))
+                                                     (->value w)
+                                                     (inspect-wrapped-value w))))
                                             content))))))))
 
 #?(:clj
@@ -504,19 +504,13 @@
     :render-fn (quote v/html)
     :transform-fn (comp assoc-reduced
                         (update-value (partial w/postwalk (when-wrapped inspect-wrapped-value))))}
-
-   ;; TODO: solve this otherwise / better naming
-   {:name :html-
-    :doc "A version of `:html` viewer which does not recursively inspect wrapped child values"
-    :render-fn (quote v/html)}
-
    {:name :plotly :render-fn (quote v/plotly-viewer) :transform-fn assoc-reduced}
    {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :transform-fn assoc-reduced}
    {:name :markdown :transform-fn (fn [wrapped-value]
                                     (-> wrapped-value
                                         assoc-reduced
                                         (update :nextjournal/value #(cond->> % (string? %) md/parse))
-                                        (update :nextjournal/viewers #(add-viewers % markdown-viewers))
+                                        (update :nextjournal/viewers add-viewers markdown-viewers)
                                         (with-md-viewer)))}
    {:name :code :render-fn (quote v/code-viewer) :transform-fn (comp assoc-reduced (update-value (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))}
    {:name :code-folded :render-fn (quote v/foldable-code-viewer) :transform-fn (comp assoc-reduced (update-value (fn [v] (if (string? v) v (with-out-str (pprint/pprint v))))))}
