@@ -6,7 +6,6 @@
             [nextjournal.clerk.viewer :as v])
   (:import (java.time Instant LocalTime ZoneId)))
 
-
 ^{::clerk/viewer clerk/hide-result}
 (def switch-view
   {:transform-fn (comp clerk/assoc-reduced
@@ -44,6 +43,19 @@
 #_(inst->local-time-str (Instant/now))
 
 ^{::clerk/viewer clerk/hide-result}
+(defn describe-only-key [key {:as wrapped-value :keys [offset]}]
+  (-> (update wrapped-value :nextjournal/value (fn [x]
+                                                 (when (empty? (:path wrapped-value))
+                                                   (throw (ex-info "path cannot be empty?" {:path (:path wrapped-value) :wrapped-value wrapped-value})))
+                                                 (cond-> (update x key v/describe (-> wrapped-value
+                                                                                      v/->opts
+                                                                                      (update :path conj key)
+                                                                                      (update :current-path conj key)
+                                                                                      (assoc :budget 100000)))
+                                                   (pos-int? offset) key)))
+      v/assoc-reduced))
+
+^{::clerk/viewer clerk/hide-result}
 (def tap-viewer
   {:name :tapped-value
    :render-fn '(fn [tap opts]
@@ -54,19 +66,8 @@
                                {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} tapped-at]
                               [:div.overflow-x-auto [v/inspect tap]]]
                              {:key key}))))
-   :transform-fn (fn [wrapped-value]
-                   (-> wrapped-value
-                       clerk/assoc-reduced
-                       (update :nextjournal/value (fn [tap] (-> tap
-                                                                (update :tapped-at inst->local-time-str)
-                                                                (update :tap v/describe (-> wrapped-value
-                                                                                            (select-keys [:offset])
-                                                                                            (update :path (fnil conj []) :tap)
-                                                                                            (update :current-path (fnil conj []) :tap)
-                                                                                            (assoc :budget 100000))))))))})
-
-#_(clerk/with-viewer tap-viewer
-    {:tap (range 30) :tapped-at (java.time.Instant/now), :key "G__68209"})
+   :transform-fn (comp (partial describe-only-key :tap)
+                       (clerk/update-value #(update % :tapped-at inst->local-time-str)))})
 
 ^{::clerk/viewer clerk/hide-result}
 (clerk/add-viewers! [tap-viewer])
