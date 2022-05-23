@@ -18,3 +18,4 @@ yarn.lock
 /public/build
 .nrepl-port
 .portal
+.calva

@@ -1,5 +1,6 @@
 (ns user
-  (:require [nextjournal.clerk :as clerk]))
+  (:require [clojure.string :as str]
+            [nextjournal.clerk :as clerk]))
 
 (comment
   (clerk/serve! {:browse? true}))
@@ -37,7 +38,6 @@
   (clerk/show! "notebooks/sicmutils.clj")
 
   (require '[nextjournal.clerk.browser-nrepl :as bnrepl])
-  (bnrepl/start-browser-nrepl! {:port 1339})
   (clerk/show! "notebooks/cljs_render_fn_file.clj")
 
   (clerk/clear-cache!)
