@@ -80,6 +80,6 @@
          install-git-hooks {:doc "Install git hooks"
                             :task (fs/copy "dev/pre-commit" ".git/hooks" {:replace-existing true})}
 
-         -dev {:depends [install-git-hooks watch:cljs copy-viewer-css #_browser-nrepl]}
+         -dev {:depends [install-git-hooks watch:cljs copy-viewer-css]}
          dev {:doc "Start app in dev mode, compiles cljs and css"
               :task (run '-dev {:parallel true})}}}
