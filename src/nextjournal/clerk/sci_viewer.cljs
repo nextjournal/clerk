@@ -390,7 +390,7 @@
           [:div.mb-3.result-viewer
            [inspect coll]])))
 
-(defn elision-viewer [{:as fetch-opts :keys [remaining unbounded?]} _]
+(defn elision-viewer [{:as fetch-opts :keys [total offset unbounded?]} _]
   (html [view-context/consume :fetch-fn
          (fn [fetch-fn]
            [:span.sans-serif.relative.whitespace-nowrap
@@ -399,7 +399,7 @@
                       "cursor-pointer bg-indigo-200 hover:bg-indigo-300 dark:bg-gray-700 dark:hover:bg-slate-600 text-gray-900 dark:text-white"
                       "text-gray-400 dark:text-slate-300")
              :on-click #(when (fn? fetch-fn)
-                          (fetch-fn fetch-opts))} remaining (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")])]))
+                          (fetch-fn fetch-opts))} (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")])]))
 
 (defn map-viewer [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
   (html (let [expanded? (@!expanded-at path)

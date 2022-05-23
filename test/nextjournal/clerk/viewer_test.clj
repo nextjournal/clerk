@@ -9,7 +9,7 @@
   ([opts value]
    (let [desc (v/describe value opts)
          elision (v/find-elision desc)
-         more (-> elision meta :fetch-fn (apply []))]
+         more (v/describe value elision)]
      (v/desc->values (v/merge-descriptions desc more elision)))))
 
 (deftest merge-descriptions
@@ -44,7 +44,7 @@
 
   (testing "table"
     (let [value {:rows (mapv vector (range 30))}]
-      (is (= value (describe+fetch (v/table value) nil))))))
+      (is (= value (describe+fetch (v/table value)))))))
 
 (deftest apply-viewers
   (testing "selects number viewer"

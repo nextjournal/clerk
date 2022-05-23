@@ -26,7 +26,6 @@
 ^{::clerk/viewer switch-view}
 (defonce !view (atom :stream))
 
-
 ^{::clerk/viewer clerk/hide-result}
 (defonce !taps (atom []))
 
@@ -47,11 +46,12 @@
   (-> (update wrapped-value :nextjournal/value (fn [x]
                                                  (when (empty? (:path wrapped-value))
                                                    (throw (ex-info "path cannot be empty?" {:path (:path wrapped-value) :wrapped-value wrapped-value})))
-                                                 (cond-> (update x key v/describe (-> wrapped-value
-                                                                                      v/->opts
-                                                                                      (update :path conj key)
-                                                                                      (update :current-path conj key)
-                                                                                      (assoc :budget 100000)))
+                                                 (cond-> (update x key v/describe (cond-> (-> wrapped-value
+                                                                                              v/->opts
+                                                                                              (assoc :budget 100000))
+                                                                                    (not= key (peek (:path wrapped-value)))
+                                                                                    (-> (update :path conj key)
+                                                                                        (update :current-path conj key))))
                                                    (pos-int? offset) key)))
       v/assoc-reduced))
 
@@ -101,7 +101,7 @@
 
 ^{::clerk/viewer clerk/hide-result}
 (comment
-  (dotimes [i 5] 
+  (dotimes [i 5]
     (tap> (rand-int 1000)))
   (tap> (shuffle (range (+ 20 (rand-int 200)))))
   (tap> (clerk/md "> The purpose of visualization is **insight**, not pictures."))
@@ -112,12 +112,11 @@
 
   (do (require 'rule-30)
       (tap> (clerk/with-viewers rule-30/viewers rule-30/rule-30)))
-  
+
   (tap> (clerk/with-viewers rule-30/viewers rule-30/board))
 
   (tap> (clerk/html [:h1 "Fin. 👋"]))
 
-  (reset! !taps [])
   ;; ---
   ;; ## TODO
 
@@ -127,5 +126,4 @@
   ;; * [x] Fix latest
   ;; * [ ] Fix lazy loading
   ;; * [ ] Improve performance when large image present in tap stream
-  
   )
