@@ -37,7 +37,6 @@
 
   (clerk/show! "notebooks/sicmutils.clj")
 
-  (require '[nextjournal.clerk.browser-nrepl :as bnrepl])
   (clerk/show! "notebooks/cljs_render_fn_file.clj")
 
   (clerk/clear-cache!)
