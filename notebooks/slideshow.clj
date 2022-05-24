@@ -26,15 +26,12 @@
                   (remove (comp #{:ruler} :type first))
                   (map ->slide))
             blocks))
-
-
 ;; ---
 ;; Lastly, the `slideshow-viewer` overrides the notebook viewer
-(defn inspect-wrapped [wv] [(v/inspect-fn) (-> wv v/apply-viewers v/process-wrapped-value)])
 (def slideshow-viewer
   {:name :clerk/notebook
-   :transform-fn (comp #(assoc % :nextjournal/reduced? true)
-                       (v/update-value (comp (partial w/postwalk (v/when-wrapped inspect-wrapped))
+   :transform-fn (comp v/assoc-reduced
+                       (v/update-value (comp (partial w/postwalk (v/when-wrapped v/inspect-wrapped-value))
                                              doc->slides)))
    :render-fn '(fn [slides]
                  (v/html

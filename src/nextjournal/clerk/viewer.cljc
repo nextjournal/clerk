@@ -199,12 +199,9 @@
 (defn when-wrapped [f] #(cond-> % (wrapped-value? %) f))
 
 (defn inspect-wrapped-value [wrapped-value]
-  [(inspect-fn) (as-> wrapped-value x
-                  (ensure-wrapped-with-viewers x)
-                  (update x :nextjournal/viewer #(cond->> % (keyword? %) (find-named-viewer (->viewers x))))
-                  (process-wrapped-value x))])
+  [(inspect-fn) (-> wrapped-value apply-viewers process-wrapped-value)])
 
-#_(clojure.walk/postwalk (when-wrapped inspect-wrapped-value) [1 2 {:a [3 (with-viewer :latex "\\alpha")]} 4])
+#_(w/postwalk (when-wrapped inspect-wrapped-value) [1 2 {:a [3 (with-viewer :latex "\\alpha")]} 4])
 
 (defn assoc-reduced [wrapped-value]
   (assoc wrapped-value :nextjournal/reduced? true))
@@ -245,7 +242,7 @@
                                                  (as-> w
                                                    (if (= :html- (:name (->viewer w)))
                                                      (->value w)
-                                                     (inspect-wrapped-value w))))
+                                                     [(inspect-fn) (process-wrapped-value w)])))
                                             content))))))))
 
 #?(:clj

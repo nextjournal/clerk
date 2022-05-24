@@ -8,7 +8,7 @@
 
 ;; Being able to override markdown viewers allows us to get in-text evaluation for free:
 
-(defonce num★ (atom 3))
+(defonce num★ (atom 20))
 
 (def md-eval-viewers
   [{:name :nextjournal.markdown/monospace
@@ -29,19 +29,12 @@
 ^{::clerk/viewer clerk/hide-result ::clerk/visibility :hide}
 (defn slider [var {:keys [min max]}]
   (clerk/with-viewer
-   {:name :slider
-    :transform-fn (fn [wrapped-value]
-                    (-> wrapped-value
-                        #_ (assoc :nextjournal/value "foo")
-                        (update :nextjournal/value (fn [var] {:var-name (symbol var) :value @@var}))
-                        (assoc :nextjournal/reduced? true)))
+   {:transform-fn (comp v/assoc-reduced (v/update-value (fn [var] {:var-name (symbol var) :value @@var})))
     :render-fn `(fn [{:keys [var-name value]}]
-                  (v/html [:input {:type :range
-                                   :min ~min :max ~max
-                                   :value value
+                  (v/html [:input {:type :range :min ~min :max ~max :value value
                                    :on-change #(v/clerk-eval `(reset! ~var-name (Integer/parseInt ~(.. % -target -value))))}]))}
-    var))
+   var))
 
-;; Drag the following slider `(slider #'num★ {:min 1 :max 40})` to control the number of stars (currently **`(deref num★)`**) in our custom horizontal rules.
+;; Drag the following slider `(slider #'num★ {:min 1 :max 44})` to control the number of stars (currently **`(deref num★)`**) in our custom horizontal rules.
 
 ;; ---
