@@ -35,7 +35,9 @@
               :rows
               [(range 97 127)
                (-> (mapv (fn [char] (clojure.string/join "" (repeat 20 char)))
-                        (map char (range 97 127))))]})
+                         (map char (range 97 127))))]})
 
-#_(nextjournal.clerk/show! "notebooks/viewers/table.clj")
+(clerk/table [[(javax.imageio.ImageIO/read (java.net.URL. "https://etc.usf.edu/clipart/36600/36667/thermos_36667_sm.gif"))]])
 
+
+#_(clerk/table [[1 2] [3 (clerk/table [[1 2] [3 4]])]]) #_ FIXME

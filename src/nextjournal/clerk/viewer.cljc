@@ -513,7 +513,7 @@
    {:name :code-folded :render-fn (quote v/foldable-code-viewer) :transform-fn (comp assoc-reduced (update-value (fn [v] (if (string? v) v (with-out-str (pprint/pprint v))))))}
    {:name :reagent :render-fn (quote v/reagent-viewer) :transform-fn assoc-reduced}
    {:name :table :render-fn (quote v/table-viewer)
-    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers] :keys [offset]}]
+    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers] :keys [offset path]}]
                     (cond-> (-> wrapped-value
                                 assoc-reduced
                                 (update :nextjournal/width #(or % :wide))
@@ -523,11 +523,11 @@
                                                                         (let [viewers (update-table-viewers viewers)]
                                                                           (describe (ensure-wrapped-with-viewers viewers rows)
                                                                                     (-> wrapped-value
-                                                                                        (select-keys [:offset])
+                                                                                        (select-keys [:offset :path :current-path])
                                                                                         (update :path (fnil conj []) :rows)
                                                                                         (update :current-path (fnil conj []) :rows)
                                                                                         (assoc :budget 100000)))))))
-                      (pos-int? offset)
+                      (or (pos-int? offset) (seq path))
                       (-> #_rows
                           (get-in [:nextjournal/value :rows])
                           assoc-reduced)))}
