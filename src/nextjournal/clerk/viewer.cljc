@@ -396,7 +396,7 @@
     :transform-fn (into-markup
                    (fn [{:as node :keys [heading-level]}]
                      [(str "h" heading-level) {:id (uri.normalize/normalize-fragment (md.transform/->text node))}]))}
-   {:name :nextjournal.markdown/image :transform-fn #(with-viewer :html [:img (:attrs %)])}
+   {:name :nextjournal.markdown/image :transform-fn #(with-viewer :html [:img (-> % ->value :attrs)])}
    {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
    {:name :nextjournal.markdown/ruler :transform-fn (into-markup [:hr])}
@@ -412,7 +412,7 @@
    {:name :nextjournal.markdown/strong :transform-fn (into-markup [:strong])}
    {:name :nextjournal.markdown/monospace :transform-fn (into-markup [:code])}
    {:name :nextjournal.markdown/strikethrough :transform-fn (into-markup [:s])}
-   {:name :nextjournal.markdown/link :transform-fn (into-markup #(vector :a (:attrs %)))}
+   {:name :nextjournal.markdown/link :transform-fn (into-markup #(vector :a (-> % ->value :attrs)))}
    {:name :nextjournal.markdown/internal-link :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))}
    {:name :nextjournal.markdown/hashtag :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))}
 
