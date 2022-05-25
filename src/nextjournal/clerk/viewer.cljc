@@ -298,9 +298,9 @@
    (defn ->result [{:keys [inline-results?]} {:as result :nextjournal/keys [value blob-id viewers]}]
      (let [lazy-load? (and (not inline-results?) blob-id)
            described-result (extract-blobs lazy-load? blob-id (describe (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
-           opts-from-form-meta (select-keys result [:nextjournal/width])]
+           opts-from-form-meta (select-keys result [:nextjournal/width :nextjournal/opts])]
        (merge {:nextjournal/viewer :clerk/result
-               :nextjournal/value (cond-> (try {:nextjournal/edn (->edn described-result)}
+               :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (merge described-result opts-from-form-meta))}
                                                (catch Throwable _e
                                                  {:nextjournal/string (pr-str value)}))
                                     (-> described-result ->viewer :name)
@@ -310,6 +310,7 @@
                                     (assoc :nextjournal/fetch-opts {:blob-id blob-id}
                                            :nextjournal/hash (hashing/->hash-str [blob-id described-result])))}
               (dissoc described-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
+              ;; TODO: consider merging meta options into EDN result
               opts-from-form-meta))))
 
 (defn result-hidden? [result] (= :hide-result (-> result ->value ->viewer)))

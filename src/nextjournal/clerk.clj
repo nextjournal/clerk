@@ -142,7 +142,7 @@
                             cas-hash
                             (-> cas-hash ->cache-file fs/exists?))
         opts-from-form-meta (-> (meta form)
-                                (select-keys [::viewer ::viewers ::width])
+                                (select-keys [::viewer ::viewers ::width ::opts])
                                 v/normalize-viewer-opts
                                 maybe-eval-viewers)]
     #_(prn :cached? (cond no-cache? :no-cache
@@ -386,6 +386,7 @@
          "viewers_nested"
          "viewer_normalization"
          "viewers/custom_markdown"
+         "viewers/grid"
          "viewers/html"
          "viewers/image"
          "viewers/image_layouts"
