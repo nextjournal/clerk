@@ -80,13 +80,5 @@ with-viewer
            [(javax.imageio.ImageIO/read (java.net.URL. "https://etc.usf.edu/clipart/36600/36667/thermos_36667_sm.gif"))]])
 
 
-
-#_(do (prn :===================)
-      (describe (my-table [[1 2]])))
-
 ;; ## An error
-#_(my-table #{1 2 3})
-
-#_(describe (my-table [[1 2] [3 4]]))
-
-#_(def d (comp count-viewers describe))
+(my-table #{1 2 3})

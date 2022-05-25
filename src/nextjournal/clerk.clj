@@ -395,6 +395,7 @@
          "viewers/printing"
          "viewers/plotly"
          "viewers/table"
+         "table_viewer_2"
          "viewers/tex"
          "viewers/vega"]))
 
