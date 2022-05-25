@@ -804,7 +804,7 @@
     #_(prn :xs xs :type (type xs) :path path :current-path current-path :descend? descend?)
     (when (and !budget (not descend?) (not reduced?))
       (swap! !budget #(max (dec %) 0)))
-    (-> (merge {:path path}
+    (-> (merge (->opts wrapped-value)
                (with-viewer (->viewer wrapped-value)
                  (cond reduced?
                        wrapped-value
