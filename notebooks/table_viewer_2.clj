@@ -14,12 +14,12 @@
 ^{:nextjournal.clerk/viewer :hide-result}
 (defn update-table-viewers' [viewers]
   (-> viewers
-      (update-viewers {(comp #{:elision} :name) #(assoc % :render-fn '(fn [{:as fetch-opts :keys [total offset unbounded?]}]
+      (update-viewers {(comp #{:elision} :name) #(assoc % :render-fn '(fn [{:as fetch-opts :keys [total offset unbounded?]} {:keys [num-cols]}]
                                                                         (v/html
                                                                          [v/consume-view-context :fetch-fn (fn [fetch-fn]
                                                                                                              [:tr.border-t.dark:border-slate-700
                                                                                                               [:td.text-center.py-1
-                                                                                                               {:col-span #_#_num-cols FIXME 100
+                                                                                                               {:col-span num-cols
                                                                                                                 :class (if (fn? fetch-fn)
                                                                                                                          "bg-indigo-50 hover:bg-indigo-100 dark:bg-gray-800 dark:hover:bg-slate-700 cursor-pointer"
                                                                                                                          "text-gray-400 text-slate-500")
@@ -28,21 +28,23 @@
                                                                                                                (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]])])))
                        (comp #{string?} :pred) #(assoc % :render-fn (quote v/string-viewer))
                        (comp #{number?} :pred) #(assoc % :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))])))})
-      (add-viewers [{:name :table/markup :render-fn '(fn [head+body opts]
-                                                       (v/html (into [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose] (v/inspect-children opts) head+body)))}
-                    {:name :table/head :render-fn '(fn [header-row {:as opts :keys [path]}]
+      (add-viewers [{:name :table/markup
+                     :render-fn '(fn [head+body opts]
+                                   (v/html (into [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose]
+                                                 (v/inspect-children (let [first-row (-> head+body (get (dec (count head+body))) :nextjournal/value first :nextjournal/value)]
+                                                                       (assoc opts
+                                                                              :num-cols (count first-row)
+                                                                              :number-col? (mapv (comp number? :nextjournal/value) first-row)))) head+body)))}
+                    {:name :table/head :render-fn '(fn [header-row {:as opts :keys [path number-col?]}]
                                                      (v/html [:thead.border-b.border-gray-300.dark:border-slate-700
                                                               (into [:tr]
                                                                     (map-indexed (fn [i {v :nextjournal/value}]
                                                                                    ;; TODO: consider not discarding viewer here
                                                                                    (let [title (str (cond-> v (keyword? v) name))]
                                                                                      [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
-                                                                                      ;; TODO: add column types to table normalization
-                                                                                      {#_#_:class (if (number? (get-in rows [0 i])) "text-right" "text-left")
-                                                                                       :title title}
+                                                                                      {:title title :class (if (number-col? i) "text-right" "text-left")}
                                                                                       [:div.flex.items-center title]]))) header-row)]))}
-                    {:name :table/body :fetch-opts {:n 20} :render-fn '(fn [rows opts] (v/html [:tbody
-                                                                                               (into [:<>] (map-indexed (fn [idx row] (v/inspect (update opts :path conj idx) row))) rows)]))}
+                    {:name :table/body :fetch-opts {:n 20} :render-fn '(fn [rows opts] (v/html (into [:tbody] (map-indexed (fn [idx row] (v/inspect (update opts :path conj idx) row))) rows)))}
                     {:name :table/row :render-fn '(fn [row {:as opts :keys [path]}]
                                                     (v/html (into [:tr.hover:bg-gray-200.dark:hover:bg-slate-700
                                                                    {:class (if (even? (peek path)) "bg-black/5 dark:bg-gray-800" "bg-white dark:bg-gray-900")}]
@@ -73,7 +75,13 @@
 
 (my-table {:head ["num" "foo"] :rows [[1 2] [3 4]]})
 
+;; testing column numeric type
+(my-table {:numbers [1.1 2.2] :symbols ['foo 'bar]})
+
 (my-table (map-indexed #(vector (inc %1) %2) (->> "https://gist.githubusercontent.com/wchargin/8927565/raw/d9783627c731268fb2935a731a618aa8e95cf465/words" slurp clojure.string/split-lines (take 30))))
+
+;; padding with missing values
+(my-table {:col-1 [1 2 3] :col-2 [1 2]})
 
 ;; ## Table Inside a Table
 (my-table [[1 2] [3 (my-table [[4 5] [6 7]])]])
