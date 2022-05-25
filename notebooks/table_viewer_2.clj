@@ -29,16 +29,15 @@
                     {:name :table/head :render-fn '(fn [header-row {:as opts :keys [path]}]
                                                      (v/html [:thead.border-b.border-gray-300.dark:border-slate-700
                                                               (into [:tr]
-                                                                    (map-indexed (fn [i k] [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
-                                                                                            {#_#_:class (if (number? (get-in header-row [0 i])) "text-right" "text-left")
-                                                                                             :title (let [k (:nextjournal/value k)] (if (or (string? k) (keyword? k)) (name k) (str k)))}
-                                                                                            [:div.flex.items-center
-                                                                                             (v/inspect opts k)
-                                                                                             #_(when (= sort-index i)
-                                                                                                 [:span.inline-flex.justify-center.items-center.relative
-                                                                                                  {:style {:font-size 20 :width 10 :height 10 :top -2}}
-                                                                                                  (if (= sort-order :asc) "▴" "▾")])]])) header-row)]))}
-                    {:name :table/body :fetch-opts {:n 5} :render-fn '(fn [rows opts] (v/html [:tbody
+                                                                    (map-indexed (fn [i {v :nextjournal/value}]
+                                                                                   ;; TODO: consider not discarding viewer here
+                                                                                   (let [title (str (cond-> v (keyword? v) name))]
+                                                                                     [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
+                                                                                      ;; TODO: add column types to table normalization
+                                                                                      {#_#_:class (if (number? (get-in rows [0 i])) "text-right" "text-left")
+                                                                                       :title title}
+                                                                                      [:div.flex.items-center title]]))) header-row)]))}
+                    {:name :table/body :fetch-opts {:n 20} :render-fn '(fn [rows opts] (v/html [:tbody
                                                                                                (into [:<>] (map-indexed (fn [idx row] (v/inspect (update opts :path conj idx) row))) rows)]))}
                     {:name :table/row :render-fn '(fn [row {:as opts :keys [path]}]
                                                     (v/html (into [:tr.hover:bg-gray-200.dark:hover:bg-slate-700
