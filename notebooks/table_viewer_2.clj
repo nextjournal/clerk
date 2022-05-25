@@ -3,7 +3,7 @@
 ;; Leaning into the viewer api to make the table viewer better.
 
 ^{:nextjournal.clerk/visibility :hide}
-(ns ^:nextjournal.clerk/no-cache table-viewer
+(ns ^:nextjournal.clerk/no-cache table-viewer-2
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :refer :all]))
 

@@ -1108,6 +1108,7 @@ black")}]))}
    'with-viewers with-viewers
    'with-d3-require d3-require/with
    'clerk-eval clerk-eval
+   'consume-view-context view-context/consume
 
    'throwable-viewer throwable-viewer
    'notebook-viewer notebook
