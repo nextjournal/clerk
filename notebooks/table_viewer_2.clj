@@ -55,13 +55,12 @@
 (def my-table
   (partial with-viewer {:transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers] :keys [offset path current-path]}]
                                         (if-let [{:keys [head rows]} (normalize-table-data (->value wrapped-value))]
-                                          (let [viewers (update-table-viewers' viewers)]
-                                            (-> wrapped-value
-                                                (assoc :nextjournal/viewer :table/markup)
-                                                (update :nextjournal/width #(or % :wide))
-                                                (assoc :nextjournal/viewers viewers)
-                                                (assoc :nextjournal/value (cond->> [(with-viewer :table/body {::clerk/viewers viewers} (map (partial with-viewer :table/row {::clerk/viewers viewers}) rows))]
-                                                                            head (cons (with-viewer :table/head {::clerk/viewers viewers} head))))))
+                                          (-> wrapped-value
+                                              (assoc :nextjournal/viewer :table/markup)
+                                              (update :nextjournal/width #(or % :wide))
+                                              (update :nextjournal/viewers update-table-viewers')
+                                              (assoc :nextjournal/value (cond->> [(with-viewer :table/body (map (partial with-viewer :table/row) rows))]
+                                                                          head (cons (with-viewer :table/head head)))))
                                           (-> wrapped-value
                                               assoc-reduced
                                               (assoc :nextjournal/width :wide)
@@ -71,7 +70,7 @@
 
 ;; ## The simplest example, no header.
 
-(my-table [[1 2] [3 4]])
+#_(my-table (repeatedly #(vector 1 2 3)))
 
 (my-table {:head ["num" "foo"] :rows [[1 2] [3 4]]})
 
