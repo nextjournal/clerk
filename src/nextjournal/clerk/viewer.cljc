@@ -364,10 +364,41 @@
 
 (defn update-table-viewers [viewers]
   (-> viewers
-      (update-viewers {(comp #{:elision} :name) #(assoc % :render-fn '(fn [_] (v/html "…")))
-                       (comp #{string?} :pred) #(assoc % :render-fn (quote v/string-viewer))
-                       (comp #{number?} :pred) #(assoc % :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))])))})
-      (add-viewers [{:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))}])))
+      (update-viewers {(comp #{string?} :pred) #(assoc % :render-fn (quote v/string-viewer))
+                       (comp #{number?} :pred) #(assoc % :render-fn '(fn [x] (v/html [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))])))
+                       (comp #{:elision} :name) #(assoc % :render-fn '(fn [{:as fetch-opts :keys [total offset unbounded?]} {:keys [num-cols]}]
+                                                                        (v/html
+                                                                         [v/consume-view-context :fetch-fn (fn [fetch-fn]
+                                                                                                             [:tr.border-t.dark:border-slate-700
+                                                                                                              [:td.text-center.py-1
+                                                                                                               {:col-span #_num-cols 100
+                                                                                                                :class (if (fn? fetch-fn)
+                                                                                                                         "bg-indigo-50 hover:bg-indigo-100 dark:bg-gray-800 dark:hover:bg-slate-700 cursor-pointer"
+                                                                                                                         "text-gray-400 text-slate-500")
+                                                                                                                :on-click (fn [_] (when (fn? fetch-fn)
+                                                                                                                                    (fetch-fn fetch-opts)))}
+                                                                                                               (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]])])))})
+      (add-viewers [{:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))}
+                    {:name :table/markup
+                     :render-fn '(fn [head+body opts]
+                                   (v/html (into [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose] (v/inspect-children opts) head+body)))}
+                    {:name :table/head
+                     :render-fn '(fn [header-row {:as opts :keys [path number-col?]}]
+                                   (v/html [:thead.border-b.border-gray-300.dark:border-slate-700
+                                            (into [:tr]
+                                                  (map-indexed (fn [i {v :nextjournal/value}]
+                                                                 ;; TODO: consider not discarding viewer here
+                                                                 (let [title (str (cond-> v (keyword? v) name))]
+                                                                   [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
+                                                                    {:title title :class (when (number-col? i) "text-right")}
+                                                                    [:div.flex.items-center title]]))) header-row)]))}
+                    {:name :table/body :fetch-opts {:n 20}
+                     :render-fn '(fn [rows opts] (v/html (into [:tbody] (map-indexed (fn [idx row] (v/inspect (update opts :path conj idx) row))) rows)))}
+                    {:name :table/row
+                     :render-fn '(fn [row {:as opts :keys [path number-col?]}]
+                                   (v/html (into [:tr.hover:bg-gray-200.dark:hover:bg-slate-700
+                                                  {:class (if (even? (peek path)) "bg-black/5 dark:bg-gray-800" "bg-white dark:bg-gray-900")}]
+                                                 (map-indexed (fn [idx cell] [:td.pl-6.pr-2.py-1 (when (number-col? idx) {:class "text-right"}) (v/inspect opts cell)])) row)))}])))
 
 #?(:clj (def utc-date-format ;; from `clojure.instant/thread-local-utc-date-format`
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
@@ -513,26 +544,22 @@
    {:name :code :render-fn (quote v/code-viewer) :transform-fn (comp assoc-reduced (update-value (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))}
    {:name :code-folded :render-fn (quote v/foldable-code-viewer) :transform-fn (comp assoc-reduced (update-value (fn [v] (if (string? v) v (with-out-str (pprint/pprint v))))))}
    {:name :reagent :render-fn (quote v/reagent-viewer) :transform-fn assoc-reduced}
-   {:name :table :render-fn (quote v/table-viewer)
+   {:name :table
     :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers] :keys [offset path current-path]}]
-                    (cond-> (-> wrapped-value
-                                assoc-reduced
-                                (update :nextjournal/width #(or % :wide))
-                                (update :nextjournal/value #(or (normalize-table-data %)
-                                                                {:error "Could not normalize table" :ex-data (describe %)}))
-                                (update-in [:nextjournal/value :rows] (fn [rows]
-                                                                        (let [viewers (update-table-viewers viewers)]
-                                                                          (describe (ensure-wrapped-with-viewers viewers rows)
-                                                                                    (cond-> (-> wrapped-value
-                                                                                                (select-keys [:offset :path :current-path])
-                                                                                                (update :current-path (fnil conj []) :rows)
-                                                                                                (assoc :budget 100000))
-                                                                                      (not= :rows (peek path))
-                                                                                      (update :path (fnil conj []) :rows)))))))
-                      (or (pos-int? offset) (seq path))
-                      (-> #_rows
-                          (get-in [:nextjournal/value :rows])
-                          assoc-reduced)))}
+                    (if-let [{:keys [head rows]} (normalize-table-data (->value wrapped-value))]
+                      (-> wrapped-value
+                          (assoc :nextjournal/viewer :table/markup)
+                          (update :nextjournal/width #(or % :wide))
+                          (update :nextjournal/viewers update-table-viewers)
+                          (assoc :nextjournal/opts {:num-cols (-> rows first count)
+                                                    :number-col? (mapv number? (first rows))})
+                          (assoc :nextjournal/value (cond->> [(with-viewer :table/body (map (partial with-viewer :table/row) rows))]
+                                                      head (cons (with-viewer :table/head head)))))
+                      (-> wrapped-value
+                          assoc-reduced
+                          (assoc :nextjournal/width :wide)
+                          (assoc :nextjournal/value [(describe wrapped-value)])
+                          (assoc :nextjournal/viewer {:render-fn 'v/table-error}))))}
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
    {:name :clerk/code-block :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
                                             (-> wrapped-value
@@ -868,6 +895,7 @@
         viewer-name (-> desc ->viewer :name)]
     (cond (= viewer-name :elision) (with-meta '… x)
           (coll? x) (into (case viewer-name
+                            ;; TODO: fix table viewer
                             (:map :table) {}
                             (or (empty x) []))
                           (map desc->values)

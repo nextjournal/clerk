@@ -42,9 +42,11 @@
     (let [value (reduce (fn [acc i] (vector i acc (inc i))) :fin (range 10 0 -1))]
       (is (= value (describe+fetch {:budget 21} value)))))
 
+  ;; TODO: fit table viewer into v/desc->values
   (testing "table"
-    (let [value {:rows (mapv vector (range 30))}]
-      (is (= value (describe+fetch (v/table value)))))))
+    (let [value {:a (range 30) :b (range 30)}]
+      (is (= (vec (vals (v/normalize-table-data value)))
+             (describe+fetch (v/table value)))))))
 
 (deftest apply-viewers
   (testing "selects number viewer"
