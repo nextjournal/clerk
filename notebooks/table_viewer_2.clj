@@ -4,7 +4,11 @@
 
 ^{:nextjournal.clerk/visibility :hide}
 (ns ^:nextjournal.clerk/no-cache table-viewer-2
-  (:require [nextjournal.clerk :as clerk]
+  (:require [clojure.data.csv :as csv]
+            [clojure.java.io :as io]
+            [clojure.string :as str]
+            [next.jdbc :as jdbc]
+            [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :refer :all]))
 
 ^{:nextjournal.clerk/viewer :hide-result}
@@ -75,9 +79,45 @@
 (my-table [[1 2] [3 (my-table [[4 5] [6 7]])]])
 
 ;; ## Table with an Image in it
-(my-table [["an image"]
-           [(javax.imageio.ImageIO/read (java.net.URL. "https://etc.usf.edu/clipart/36600/36667/thermos_36667_sm.gif"))]])
+(my-table [[1 "and an image"]
+           [2 (javax.imageio.ImageIO/read (java.net.URL. "https://etc.usf.edu/clipart/36600/36667/thermos_36667_sm.gif"))]])
 
 
 ;; ## An error
 (my-table #{1 2 3})
+
+;; ## More Examples
+(def query-results
+  (let [_run-at #inst "2021-05-20T08:28:29.445-00:00"
+        ds (jdbc/get-datasource {:dbtype "sqlite" :dbname "chinook.db"})]
+    (with-open [conn (jdbc/get-connection ds)]
+      (my-table (jdbc/execute! conn ["SELECT AlbumId, Bytes, Name, TrackID, UnitPrice FROM tracks"])))))
+
+(my-table (clerk/use-headers (csv/read-csv (slurp "https://gist.githubusercontent.com/netj/8836201/raw/6f9306ad21398ea43cba4f7d537619d0e07d5ae3/iris.csv"))))
+
+(defn words-url []
+  (if (.exists (io/file "/usr/share/dict/words"))
+    "/usr/share/dict/words"
+    "https://gist.githubusercontent.com/wchargin/8927565/raw/d9783627c731268fb2935a731a618aa8e95cf465/words"))
+
+(my-table {:nextjournal/width :full}
+             (->> (slurp (words-url))
+                  str/split-lines
+                  (group-by (comp keyword str/upper-case str first))
+                  (into (sorted-map))))
+
+;; ;; The table viewer will perform normalization and show an error in case of failure:
+(my-table (set (range 30)))
+
+;; Shows full column names when there are many long column names
+(my-table {:head
+              (-> (mapv (fn [char] (clojure.string/join "" (repeat 30 char)))
+                        (map char (range 97 127))))
+              :rows
+              [(range 97 127)
+               (-> (mapv (fn [char] (clojure.string/join "" (repeat 20 char)))
+                         (map char (range 97 127))))]})
+
+(my-table [[(javax.imageio.ImageIO/read (java.net.URL. "https://etc.usf.edu/clipart/36600/36667/thermos_36667_sm.gif"))]])
+
+(my-table {:a [1 2] :b [3 (my-table [[1 2] [3 4]])]})
