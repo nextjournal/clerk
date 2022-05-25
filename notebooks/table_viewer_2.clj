@@ -52,12 +52,14 @@
                                         (if-let [{:keys [head rows]} (normalize-table-data (->value wrapped-value))]
                                           (let [viewers (update-table-viewers' viewers)]
                                             (-> wrapped-value
+                                                (assoc :nextjournal/viewer :table/markup)
+                                                (update :nextjournal/width #(or % :wide))
                                                 (assoc :nextjournal/viewers viewers)
                                                 (assoc :nextjournal/value (cond->> [(with-viewer :table/body {::clerk/viewers viewers} (map (partial with-viewer :table/row {::clerk/viewers viewers}) rows))]
-                                                                            head (cons (with-viewer :table/head {::clerk/viewers viewers} head))))
-                                                (assoc :nextjournal/viewer :table/markup)))
+                                                                            head (cons (with-viewer :table/head {::clerk/viewers viewers} head))))))
                                           (-> wrapped-value
                                               assoc-reduced
+                                              (assoc :nextjournal/width :wide)
                                               (assoc :nextjournal/value [(describe wrapped-value)])
                                               (assoc :nextjournal/viewer {:render-fn 'v/table-error}))))}))
 
