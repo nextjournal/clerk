@@ -15,7 +15,7 @@
                                                                          [v/consume-view-context :fetch-fn (fn [fetch-fn]
                                                                                                              [:tr.border-t.dark:border-slate-700
                                                                                                               [:td.text-center.py-1
-                                                                                                               {:col-span #_#_num-cols FIXME 2
+                                                                                                               {:col-span #_#_num-cols FIXME 100
                                                                                                                 :class (if (fn? fetch-fn)
                                                                                                                          "bg-indigo-50 hover:bg-indigo-100 dark:bg-gray-800 dark:hover:bg-slate-700 cursor-pointer"
                                                                                                                          "text-gray-400 text-slate-500")
@@ -46,8 +46,6 @@
                                                                   (map (fn [cell] [:td.pl-6.pr-2.py-1 (v/inspect opts cell)])) row)))}
                     {:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))}])))
 
-with-viewer
-
 ^{:nextjournal.clerk/viewer :hide-result}
 (def my-table
   (partial with-viewer {:transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers] :keys [offset path current-path]}]
@@ -70,7 +68,7 @@ with-viewer
 
 (my-table {:head ["num" "foo"] :rows [[1 2] [3 4]]})
 
-(my-table (map-indexed #(vector (inc %1) %2) (->> "/usr/share/dict/words" slurp clojure.string/split-lines (take 30))))
+(my-table (map-indexed #(vector (inc %1) %2) (->> "https://gist.githubusercontent.com/wchargin/8927565/raw/d9783627c731268fb2935a731a618aa8e95cf465/words" slurp clojure.string/split-lines (take 30))))
 
 ;; ## Table Inside a Table
 (my-table [[1 2] [3 (my-table [[4 5] [6 7]])]])
