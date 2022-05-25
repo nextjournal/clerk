@@ -310,7 +310,7 @@
                                     (assoc :nextjournal/fetch-opts {:blob-id blob-id}
                                            :nextjournal/hash (hashing/->hash-str [blob-id described-result])))}
               (dissoc described-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
-              ;; TODO: consider merging meta options into EDN result
+              ;; TODO: consider dropping this. Still needed by notebook-viewer fn to read :nextjournal/width option on result blocks
               opts-from-form-meta))))
 
 (defn result-hidden? [result] (= :hide-result (-> result ->value ->viewer)))
