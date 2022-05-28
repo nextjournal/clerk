@@ -10,9 +10,9 @@
    (let [desc (v/prepare value opts)
          elision (v/find-elision desc)
          more (v/prepare value elision)]
-     (v/desc->values (v/merge-descriptions desc more elision)))))
+     (v/desc->values (v/resolve-elision desc more elision)))))
 
-(deftest merge-descriptions
+(deftest resolve-elision
   (testing "range"
     (let [value (range 30)]
       (is (= value (prepare+fetch value)))))

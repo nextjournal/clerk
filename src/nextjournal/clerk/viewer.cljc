@@ -911,7 +911,7 @@
 (defn path-to-value [path]
   (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
 
-(defn merge-descriptions [root more elision]
+(defn resolve-elision [root more elision]
   (update-in root
              (path-to-value (:path elision))
              (fn [value]

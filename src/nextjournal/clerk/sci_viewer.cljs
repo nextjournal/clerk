@@ -309,7 +309,7 @@
                                 (fn [opts]
                                   (.then (fetch! @!fetch-opts opts)
                                          (fn [more]
-                                           (swap! !desc viewer/merge-descriptions more opts)))))]
+                                           (swap! !desc viewer/resolve-elision more opts)))))]
           (when-not (= hash @!hash)
             ;; TODO: simplify
             (reset! !hash hash)
@@ -377,7 +377,7 @@
            [inspect-paginated coll]])))
 
 (dc/defcard coll-viewer-simple
-  "with a simple `inspect` and no `describe` we don't move closing parens to children"
+  "with a simple `inspect` and no `prepare` we don't move closing parens to children"
   (into [:div]
         (for [coll [
                     {:foo (into #{} (range 3))}
@@ -618,19 +618,19 @@
      (or (when (react/isValidElement value) value)
          (when-let [viewer (viewer/->viewer x)]
            (inspect opts (render-with-viewer (merge opts {:viewer viewer} (:nextjournal/opts x)) viewer value)))
-         (throw (ex-info "inspect needs to be called on described value" {:x x}))))))
+         (throw (ex-info "inspect needs to be called on prepared value" {:x x}))))))
 
 (defn in-process-fetch [value opts]
-  (.resolve js/Promise (viewer/describe value opts)))
+  (.resolve js/Promise (viewer/prepare value opts)))
 
 (defn inspect-paginated [value]
   (r/with-let [!state (r/atom nil)]
     (when (not= (:value @!state) value)
-      (swap! !state assoc :value value :desc (viewer/describe value)))
+      (swap! !state assoc :value value :desc (viewer/prepare value)))
     [view-context/provide {:fetch-fn (fn [fetch-opts]
                                        (.then (in-process-fetch value fetch-opts)
                                               (fn [more]
-                                                (swap! !state update :desc viewer/merge-descriptions more))))}
+                                                (swap! !state update :desc viewer/resolve-elision more))))}
      [inspect (:desc @!state)]]))
 
 (dc/defcard inspect-paginated-one
