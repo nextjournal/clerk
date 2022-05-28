@@ -31,7 +31,8 @@
 
 ^{::clerk/viewer clerk/hide-result}
 (defn reset-taps! []
-  (reset! !taps []))
+  (reset! !taps [])
+  (clerk/recompute!))
 
 #_(reset-taps!)
 
@@ -42,32 +43,17 @@
 #_(inst->local-time-str (Instant/now))
 
 ^{::clerk/viewer clerk/hide-result}
-(defn prepare-only-key [key {:as wrapped-value :keys [offset]}]
-  (-> (update wrapped-value :nextjournal/value (fn [x]
-                                                 (when (empty? (:path wrapped-value))
-                                                   (throw (ex-info "path cannot be empty?" {:path (:path wrapped-value) :wrapped-value wrapped-value})))
-                                                 (cond-> (update x key v/prepare (cond-> (-> wrapped-value
-                                                                                             v/->opts
-                                                                                             (assoc :budget 100000))
-                                                                                   (not= key (peek (:path wrapped-value)))
-                                                                                   (-> (update :path conj key)
-                                                                                       (update :current-path conj key))))
-                                                   (pos-int? offset) key)))
-      v/mark-prepared))
-
-^{::clerk/viewer clerk/hide-result}
 (def tap-viewer
   {:name :tapped-value
    :render-fn '(fn [tap opts]
-                 (let [{:keys [tap tapped-at key]} tap]
+                 (let [[tap tapped-at key] tap]
                    (v/html (with-meta
                              [:div.border-t.relative.py-3
                               [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
-                               {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} tapped-at]
+                               {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
                               [:div.overflow-x-auto [v/inspect tap]]]
-                             {:key key}))))
-   :transform-fn (comp (partial prepare-only-key :tap)
-                       (clerk/update-val #(update % :tapped-at inst->local-time-str)))})
+                             {:key (:nextjournal/value key)}))))
+   :transform-fn (clerk/update-val #(update % 1 inst->local-time-str))})
 
 ^{::clerk/viewer clerk/hide-result}
 (clerk/add-viewers! [tap-viewer])
@@ -78,16 +64,15 @@
    :transform-fn (clerk/update-val (fn [taps]
                                      (mapv (partial clerk/with-viewer :tapped-value) (reverse taps))))})
 
-^{::clerk/viewer (if (= :latest @!view)
-                   {:transform-fn (clerk/update-val (comp (partial clerk/with-viewer tap-viewer) peek))}
-                   taps-viewer)}
+^{::clerk/viewer (cond-> taps-viewer
+                   (= :latest @!view)
+                   (update :transform-fn (fn [orig] (comp orig (clerk/update-val (partial take-last 1))))))}
 @!taps
 
 ^{::clerk/viewer clerk/hide-result}
 (defn tapped [x]
-  (swap! !taps conj {:tap x :tapped-at (java.time.Instant/now) :key (str (gensym))})
-  (binding [*ns* (find-ns 'tap)]
-    (clerk/recompute!)))
+  (swap! !taps conj [x (java.time.Instant/now) (str (gensym))])
+  (clerk/recompute!))
 
 #_(tapped (rand-int 1000))
 
