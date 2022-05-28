@@ -489,51 +489,6 @@
      [inspect-paginated {:head [:column-1 :column-2]
                          :rows [[1 3] [2 4]]}]]]))
 
-(defn table-viewer [data opts]
-  (if-let [error-data (and (:error data) (:ex-data data))]
-    (table-error [error-data])
-    (html
-      (let [{:keys [head rows sort-index sort-order]} data
-            num-cols (-> rows viewer/->value first viewer/->value count)]
-        [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose
-         (when head
-           [:thead.border-b.border-gray-300.dark:border-slate-700
-            (into [:tr]
-                  (map-indexed (fn [i k]
-                                 [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
-                                  {:class (if (number? (get-in rows [0 i])) "text-right" "text-left")
-                                   :title (if (or (string? k) (keyword? k)) (name k) (str k))}
-                                  [:div.flex.items-center
-                                   (if (or (string? k) (keyword? k)) (name k) [inspect k])
-                                   (when (= sort-index i)
-                                     [:span.inline-flex.justify-center.items-center.relative
-                                      {:style {:font-size 20 :width 10 :height 10 :top -2}}
-                                      (if (= sort-order :asc) "▴" "▾")])]]) head))])
-         (into [:tbody]
-               (map-indexed (fn [i row]
-                              (if (= :elision (-> row viewer/->viewer :name))
-                                (let [{:as fetch-opts :keys [remaining unbounded?]} (viewer/->value row)]
-                                  [view-context/consume :fetch-fn
-                                   (fn [fetch-fn]
-                                     [:tr.border-t.dark:border-slate-700
-                                      [:td.text-center.py-1
-                                       {:col-span num-cols
-                                        :class (if (fn? fetch-fn)
-                                                 "bg-indigo-50 hover:bg-indigo-100 dark:bg-gray-800 dark:hover:bg-slate-700 cursor-pointer"
-                                                 "text-gray-400 text-slate-500")
-                                        :on-click #(when (fn? fetch-fn)
-                                                     (fetch-fn fetch-opts))}
-                                       remaining (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]])])
-                                (let [row (viewer/->value row)]
-                                  (into
-                                    [:tr.hover:bg-gray-200.dark:hover:bg-slate-700
-                                     {:class (if (even? i) "bg-black/5 dark:bg-gray-800" "bg-white dark:bg-gray-900")}]
-                                    (map-indexed (fn [j d]
-                                                   [:td.pl-6.pr-2.py-1
-                                                    {:class [(when (number? d) "text-right")
-                                                             (when (= j sort-index) "bg-black/5 dark:bg-gray-800")]}
-                                                    [inspect (update opts :path conj i j) d]]) row))))) (viewer/->value rows)))]))))
-
 
 (defn throwable-viewer [{:keys [via trace]}]
   (html
@@ -997,7 +952,7 @@ black")}]))}
 (declare lazy-inspect-in-process)
 
 (dc/defcard table-long [state]
-  [inspect (with-viewer table-viewer @state)]
+  [inspect-paginated (with-viewer :table @state)]
   {::dc/state (let [n 20]
                 {:species (repeat n "Adelie")
                  :island (repeat n "Biscoe")
@@ -1099,7 +1054,6 @@ black")}]))}
    'string-viewer string-viewer
    'quoted-string-viewer quoted-string-viewer
    'number-viewer number-viewer
-   'table-viewer table-viewer
    'table-error table-error
    'with-viewer with-viewer
    'with-viewers with-viewers
