@@ -527,7 +527,7 @@
                                                           (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
                                                             (deref-as-map r)
                                                             r)))}))}
-   {:pred (constantly :true) :transform-fn #(with-viewer :read+inspect (pr-str (->value %)))}
+   {:pred (constantly :true) :transform-fn (update-val #(with-viewer :read+inspect (pr-str %)))}
    {:name :elision :render-fn (quote v/elision-viewer) :transform-fn mark-prepared}
    {:name :latex :render-fn (quote v/katex-viewer) :transform-fn mark-prepared}
    {:name :mathjax :render-fn (quote v/mathjax-viewer) :transform-fn mark-prepared}
@@ -795,10 +795,10 @@
         children (into []
                        (comp (if paginate? (drop+take-xf fetch-opts') identity)
                              (map-indexed (fn [i x] (prepare* (-> (ensure-wrapped-with-viewers viewers x)
-                                                                   (merge (->opts wrapped-value))
-                                                                   (dissoc :offset)
-                                                                   (update :path (fnil conj []) (+ i (or offset 0)))
-                                                                   (update :current-path (fnil conj []) i)))))
+                                                                  (merge (->opts wrapped-value))
+                                                                  (dissoc :offset)
+                                                                  (update :path (fnil conj []) (+ i (or offset 0)))
+                                                                  (update :current-path (fnil conj []) i)))))
                              (remove nil?))
                        (ensure-sorted xs))
         {:as elision :keys [total unbounded?]} (and paginate? (get-elision wrapped-value))
