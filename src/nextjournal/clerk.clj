@@ -313,7 +313,7 @@
 (def add-viewers!   v/add-viewers!)
 (def set-viewers!   v/set-viewers!)
 (def ->value        v/->value)
-(def update-value   v/update-value)
+(def update-val     v/update-val)
 (def mark-prepared  v/mark-prepared)
 
 (defn file->viewer

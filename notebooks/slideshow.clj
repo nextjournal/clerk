@@ -31,8 +31,8 @@
 (def slideshow-viewer
   {:name :clerk/notebook
    :transform-fn (comp v/mark-prepared
-                       (v/update-value (comp (partial w/postwalk (v/when-wrapped v/inspect-wrapped-value))
-                                             doc->slides)))
+                       (v/update-val (comp (partial w/postwalk (v/when-wrapped v/inspect-wrapped-value))
+                                           doc->slides)))
    :render-fn '(fn [slides]
                  (v/html
                   (reagent/with-let [!state (reagent/atom {:current-slide 0

@@ -9,8 +9,8 @@
 ^{::clerk/viewer clerk/hide-result}
 (def switch-view
   {:transform-fn (comp clerk/mark-prepared
-                       (clerk/update-value (fn [{::clerk/keys [var-from-def]}]
-                                             {:var-name (symbol var-from-def) :value @@var-from-def})))
+                       (clerk/update-val (fn [{::clerk/keys [var-from-def]}]
+                                           {:var-name (symbol var-from-def) :value @@var-from-def})))
    :render-fn '(fn [{:keys [var-name value]}]
                  (v/html
                   (let [choices [:stream :latest]]
@@ -67,7 +67,7 @@
                               [:div.overflow-x-auto [v/inspect tap]]]
                              {:key key}))))
    :transform-fn (comp (partial describe-only-key :tap)
-                       (clerk/update-value #(update % :tapped-at inst->local-time-str)))})
+                       (clerk/update-val #(update % :tapped-at inst->local-time-str)))})
 
 ^{::clerk/viewer clerk/hide-result}
 (clerk/add-viewers! [tap-viewer])
@@ -75,11 +75,11 @@
 ^{::clerk/viewer clerk/hide-result}
 (def taps-viewer
   {:render-fn '#(v/html (into [:div.flex.flex-col.pt-2] (v/inspect-children %2) %1))
-   :transform-fn (clerk/update-value (fn [taps]
-                                       (mapv (partial clerk/with-viewer :tapped-value) (reverse taps))))})
+   :transform-fn (clerk/update-val (fn [taps]
+                                     (mapv (partial clerk/with-viewer :tapped-value) (reverse taps))))})
 
 ^{::clerk/viewer (if (= :latest @!view)
-                   {:transform-fn (clerk/update-value (comp (partial clerk/with-viewer tap-viewer) peek))}
+                   {:transform-fn (clerk/update-val (comp (partial clerk/with-viewer tap-viewer) peek))}
                    taps-viewer)}
 @!taps
 

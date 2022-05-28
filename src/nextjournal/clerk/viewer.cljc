@@ -416,7 +416,7 @@
 #_(datafy-scope *ns*)
 #_(datafy-scope #'datafy-scope)
 
-(defn update-value [f]
+(defn update-val [f]
   #(update % :nextjournal/value f))
 
 (def markdown-viewers
@@ -495,7 +495,7 @@
    {:pred nil? :render-fn '(fn [_] (v/html [:span.cmt-default.inspected-value "nil"]))}
    {:pred boolean? :render-fn '(fn [x] (v/html [:span.cmt-bool.inspected-value (str x)]))}
    {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :fetch-opts {:n 2}}
-   {:pred var-from-def? :transform-fn (update-value (comp deref :nextjournal.clerk/var-from-def))}
+   {:pred var-from-def? :transform-fn (update-val (comp deref :nextjournal.clerk/var-from-def))}
    {:name :read+inspect :render-fn '(fn [x] (v/html [v/inspect-paginated (try (v/read-string x)
                                                                               (catch js/Error _e
                                                                                 (v/with-viewer v/unreadable-edn-viewer x)))]))}
@@ -505,7 +505,7 @@
    {:pred map? :name :map :render-fn 'v/map-viewer :opening-paren "{" :closing-paren "}" :fetch-opts {:n 10}}
    {:pred var? :transform-fn (comp symbol ->value) :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#'" (str x)]]))}
    {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
-    :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp mark-prepared (update-value (comp demunge-ex-data datafy/datafy)))}
+    :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp mark-prepared (update-val (comp demunge-ex-data datafy/datafy)))}
    #?(:clj {:pred #(instance? BufferedImage %)
             :transform-fn (fn [{image :nextjournal/value}]
                             (let [stream (java.io.ByteArrayOutputStream.)
@@ -534,7 +534,7 @@
    {:name :html
     :render-fn (quote v/html)
     :transform-fn (comp mark-prepared
-                        (update-value (partial w/postwalk (when-wrapped inspect-wrapped-value))))}
+                        (update-val (partial w/postwalk (when-wrapped inspect-wrapped-value))))}
    {:name :plotly :render-fn (quote v/plotly-viewer) :transform-fn mark-prepared}
    {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :transform-fn mark-prepared}
    {:name :markdown :transform-fn (fn [wrapped-value]
@@ -543,8 +543,8 @@
                                         (update :nextjournal/value #(cond->> % (string? %) md/parse))
                                         (update :nextjournal/viewers add-viewers markdown-viewers)
                                         (with-md-viewer)))}
-   {:name :code :render-fn (quote v/code-viewer) :transform-fn (comp mark-prepared (update-value (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))}
-   {:name :code-folded :render-fn (quote v/foldable-code-viewer) :transform-fn (comp mark-prepared (update-value (fn [v] (if (string? v) v (with-out-str (pprint/pprint v))))))}
+   {:name :code :render-fn (quote v/code-viewer) :transform-fn (comp mark-prepared (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))}
+   {:name :code-folded :render-fn (quote v/foldable-code-viewer) :transform-fn (comp mark-prepared (update-val (fn [v] (if (string? v) v (with-out-str (pprint/pprint v))))))}
    {:name :reagent :render-fn (quote v/reagent-viewer) :transform-fn mark-prepared}
    {:name :table
     :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers] :keys [offset path current-path]}]

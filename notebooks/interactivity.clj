@@ -7,8 +7,8 @@
 
 
 ^{::clerk/viewers [{:pred ::clerk/var-from-def
-                    :transform-fn (comp clerk/mark-prepared (clerk/update-value (fn [{::clerk/keys [var-from-def]}]
-                                                                                  {:var-name (symbol var-from-def) :value @@var-from-def})))
+                    :transform-fn (comp clerk/mark-prepared (clerk/update-val (fn [{::clerk/keys [var-from-def]}]
+                                                                                {:var-name (symbol var-from-def) :value @@var-from-def})))
                     :render-fn '(fn [{:keys [var-name value]}]
                                   (v/html [:input {:type :range
                                                    :initial-value value
@@ -18,8 +18,8 @@
 @slider-state
 
 ;; And a second one using `::clerk/viewer` 🎚
-^{::clerk/viewer {:transform-fn (comp clerk/mark-prepared (clerk/update-value (fn [{:as x ::clerk/keys [var-from-def]}]
-                                                                                {:var-name (symbol var-from-def) :value @@var-from-def})))
+^{::clerk/viewer {:transform-fn (comp clerk/mark-prepared (clerk/update-val (fn [{:as x ::clerk/keys [var-from-def]}]
+                                                                              {:var-name (symbol var-from-def) :value @@var-from-def})))
                   :render-fn '(fn [{:as x :keys [var-name value]}]
                                 (v/html [:input {:type :range
                                                  :initial-value value
@@ -35,8 +35,8 @@
 
 ^{::clerk/viewer {:pred #(when-let [v (get % ::clerk/var-from-def)]
                            (and v (instance? clojure.lang.IDeref (deref v))))
-                  :transform-fn (comp clerk/mark-prepared (clerk/update-value (fn [{::clerk/keys [var-from-def]}]
-                                                                                {:var-name (symbol var-from-def) :value @@var-from-def})))
+                  :transform-fn (comp clerk/mark-prepared (clerk/update-val (fn [{::clerk/keys [var-from-def]}]
+                                                                              {:var-name (symbol var-from-def) :value @@var-from-def})))
                   :render-fn '(fn [{:keys [var-name value]}]
                                 (v/html [:input {:type :text
                                                  :placeholder "Schreib mal"
