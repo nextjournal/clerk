@@ -15,7 +15,7 @@
 (defonce !doc (atom help-doc))
 (defonce !error (atom nil))
 
-#_(v/describe (view/doc->viewer @!doc))
+#_(v/prepare (view/doc->viewer @!doc))
 #_(reset! !doc help-doc)
 
 (defn broadcast! [msg]
@@ -45,10 +45,10 @@
   (assert ns "namespace must be set")
   (if (contains? blob->result blob-id)
     (let [result (v/apply-viewer-unwrapping-var-from-def (blob->result blob-id))
-          desc (v/describe (v/ensure-wrapped-with-viewers
-                            (v/get-viewers ns result)
-                            (v/->value result)) ;; TODO understand why this unwrapping fixes lazy loaded table viewers
-                           fetch-opts)]
+          desc (v/prepare (v/ensure-wrapped-with-viewers
+                           (v/get-viewers ns result)
+                           (v/->value result)) ;; TODO understand why this unwrapping fixes lazy loaded table viewers
+                          fetch-opts)]
       (if (contains? desc :nextjournal/content-type)
         {:body (v/->value desc)
          :content-type (:nextjournal/content-type desc)}
@@ -85,7 +85,7 @@
 #_(update-doc! help-doc)
 
 (defn show-error! [e]
-  (broadcast! {:error (reset! !error (v/describe e))}))
+  (broadcast! {:error (reset! !error (v/prepare e))}))
 
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")

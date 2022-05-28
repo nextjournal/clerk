@@ -29,11 +29,11 @@
 ^{::clerk/viewer clerk/hide-result ::clerk/visibility :hide}
 (defn slider [var {:keys [min max]}]
   (clerk/with-viewer
-   {:transform-fn (comp v/assoc-reduced (v/update-value (fn [var] {:var-name (symbol var) :value @@var})))
-    :render-fn `(fn [{:keys [var-name value]}]
-                  (v/html [:input {:type :range :min ~min :max ~max :value value
-                                   :on-change #(v/clerk-eval `(reset! ~var-name (Integer/parseInt ~(.. % -target -value))))}]))}
-   var))
+    {:transform-fn (comp v/mark-prepared (v/update-value (fn [var] {:var-name (symbol var) :value @@var})))
+     :render-fn `(fn [{:keys [var-name value]}]
+                   (v/html [:input {:type :range :min ~min :max ~max :value value
+                                    :on-change #(v/clerk-eval `(reset! ~var-name (Integer/parseInt ~(.. % -target -value))))}]))}
+    var))
 
 ;; Drag the following slider `(slider #'num★ {:min 1 :max 44})` to control the number of stars (currently **`(deref num★)`**) in our custom horizontal rules.
 

@@ -60,7 +60,7 @@
                                               (assoc :nextjournal/value (cond->> [(with-viewer :table/body (map (partial with-viewer :table/row) rows))]
                                                                           head (cons (with-viewer :table/head head)))))
                                           (-> wrapped-value
-                                              assoc-reduced
+                                              mark-prepared
                                               (assoc :nextjournal/width :wide)
                                               (assoc :nextjournal/value [(describe wrapped-value)])
                                               (assoc :nextjournal/viewer {:render-fn 'v/table-error}))))}))
@@ -123,4 +123,4 @@
 
 (my-table {:a [1 2] :b [3 (my-table [[1 2] [3 4]])]})
 
-#_(def d (comp count-viewers describe))
+#_(def d (comp count-viewers prepare))

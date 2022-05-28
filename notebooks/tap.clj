@@ -8,7 +8,7 @@
 
 ^{::clerk/viewer clerk/hide-result}
 (def switch-view
-  {:transform-fn (comp clerk/assoc-reduced
+  {:transform-fn (comp clerk/mark-prepared
                        (clerk/update-value (fn [{::clerk/keys [var-from-def]}]
                                              {:var-name (symbol var-from-def) :value @@var-from-def})))
    :render-fn '(fn [{:keys [var-name value]}]
@@ -53,7 +53,7 @@
                                                                                     (-> (update :path conj key)
                                                                                         (update :current-path conj key))))
                                                    (pos-int? offset) key)))
-      v/assoc-reduced))
+      v/mark-prepared))
 
 ^{::clerk/viewer clerk/hide-result}
 (def tap-viewer

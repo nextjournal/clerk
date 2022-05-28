@@ -21,7 +21,7 @@
 
 (def literal-viewer
   {:pred e/literal?
-   :transform-fn (comp clerk/assoc-reduced
+   :transform-fn (comp clerk/mark-prepared
                        (clerk/update-value (comp (partial w/postwalk (viewer/when-wrapped viewer/inspect-wrapped-value))
                                                  transform-literal)))
    :render-fn '(fn [x]

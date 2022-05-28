@@ -4,49 +4,49 @@
             [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk.viewer :as v]))
 
-(defn describe+fetch
-  ([value] (describe+fetch {} value))
+(defn prepare+fetch
+  ([value] (prepare+fetch {} value))
   ([opts value]
-   (let [desc (v/describe value opts)
+   (let [desc (v/prepare value opts)
          elision (v/find-elision desc)
-         more (v/describe value elision)]
+         more (v/prepare value elision)]
      (v/desc->values (v/merge-descriptions desc more elision)))))
 
 (deftest merge-descriptions
   (testing "range"
     (let [value (range 30)]
-      (is (= value (describe+fetch value)))))
+      (is (= value (prepare+fetch value)))))
 
   (testing "nested range"
     (let [value [(range 30)]]
-      (is (= value (describe+fetch value)))))
+      (is (= value (prepare+fetch value)))))
 
   (testing "string"
     (let [value (str/join (map #(str/join (repeat 80 %)) ["a" "b"]))]
       ;; `str/join` is needed here because elided strings get turned into vector of segments
-      (is (= value (str/join (describe+fetch value))))))
+      (is (= value (str/join (prepare+fetch value))))))
 
   (testing "deep vector"
     (let [value (reduce (fn [acc i] (vector acc)) :fin (range 30 0 -1))]
-      (is (= value (describe+fetch {:budget 21} value)))))
+      (is (= value (prepare+fetch {:budget 21} value)))))
 
   (testing "deep vector with element before"
     (let [value (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))]
-      (is (= value (describe+fetch {:budget 21} value)))))
+      (is (= value (prepare+fetch {:budget 21} value)))))
 
   (testing "deep vector with element after"
     (let [value (reduce (fn [acc i] (vector acc i)) :fin (range 20 0 -1))]
-      (is (= value (describe+fetch {:budget 21} value)))))
+      (is (= value (prepare+fetch {:budget 21} value)))))
 
   (testing "deep vector with elements around"
     (let [value (reduce (fn [acc i] (vector i acc (inc i))) :fin (range 10 0 -1))]
-      (is (= value (describe+fetch {:budget 21} value)))))
+      (is (= value (prepare+fetch {:budget 21} value)))))
 
   ;; TODO: fit table viewer into v/desc->values
   (testing "table"
     (let [value {:a (range 30) :b (range 30)}]
       (is (= (vec (vals (v/normalize-table-data value)))
-             (describe+fetch (v/table value)))))))
+             (prepare+fetch (v/table value)))))))
 
 (deftest apply-viewers
   (testing "selects number viewer"
@@ -71,24 +71,24 @@
 
 (defn viewer-eval-inspect? [x] (= x (v/->viewer-eval 'v/inspect)))
 
-(deftest describe
+(deftest prepare
   (testing "only transform-fn can select viewer"
     (is (match? {:nextjournal/value [:div.viewer-markdown
                                      [:p [:span "Hello "] [:em [:span "markdown"]] [:span "!"]]]
                  :nextjournal/viewer {:name :html-}}
-                (v/describe (v/with-viewer {:transform-fn (comp v/md v/->value)}
+                (v/prepare (v/with-viewer {:transform-fn (comp v/md v/->value)}
                               "Hello _markdown_!")))))
 
   (testing "works with sorted-map which can throw on get & contains?"
-    (v/describe (into (sorted-map) {'foo 'bar})))
+    (v/prepare (into (sorted-map) {'foo 'bar})))
 
   (testing "doesn't throw on bogus input"
     (is (match? {:nextjournal/value nil, :nextjournal/viewer {:name :html}}
-                (v/describe (v/html nil))))))
+                (v/prepare (v/html nil))))))
 
 (deftest assign-closing-parens
   (testing "closing parenthesis are moved to right-most children in the tree"
-    (let [before (#'v/describe* (assoc (v/ensure-wrapped-with-viewers {:a [1 '(2 3 #{4})]
+    (let [before (#'v/prepare* (assoc (v/ensure-wrapped-with-viewers {:a [1 '(2 3 #{4})]
                                                                        :b '([5 6] 7 8)}) :path []))
           after (v/assign-closing-parens before)]
 
