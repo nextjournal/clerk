@@ -108,10 +108,11 @@
                          :nextjournal.clerk/width :nextjournal/width}))
 
 (defn normalize-viewer [viewer]
-  (if (or (keyword? viewer)
-          (map? viewer))
-    viewer
-    {:render-fn viewer}))
+  (cond (keyword? viewer) viewer
+        (map? viewer) viewer
+        (or (symbol? viewer) (seq? viewer)) {:render-fn viewer}
+        (fn? viewer) {:transform-fn viewer}
+        :else (throw (ex-info "cannot normalize viewer" {:viewer viewer}))))
 
 #_(normalize-viewer '#(v/html [:h3 "Hello " % "!"]))
 #_(normalize-viewer :latex)

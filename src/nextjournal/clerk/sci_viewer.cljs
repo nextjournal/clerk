@@ -564,11 +564,12 @@
    [:span.inspected-value.whitespace-nowrap
     [:span.cmt-meta tag] (when space? nbsp) value]))
 
-(declare viewer-name->fn)
-
 (defn normalize-viewer [x]
   (if-let [viewer (-> x meta :nextjournal/viewer)]
-    (with-viewer (viewer-name->fn viewer viewer)  x)
+    (with-viewer (if (contains? #{:reagent :html} viewer)
+                   {:render-fn html}
+                   viewer)
+      x)
     x))
 
 (def js-viewers
@@ -1048,10 +1049,6 @@ black")}]))}
   (r/as-element (cond-> x (fn? x) vector)))
 
 (def html html-viewer)
-
-(def viewer-name->fn
-  {:reagent reagent-viewer
-   :html html})
 
 (def mathjax-viewer (comp normalize-viewer mathjax/viewer))
 (def code-viewer (comp normalize-viewer code/viewer))
