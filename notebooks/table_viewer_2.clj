@@ -62,7 +62,7 @@
                                           (-> wrapped-value
                                               mark-prepared
                                               (assoc :nextjournal/width :wide)
-                                              (assoc :nextjournal/value [(describe wrapped-value)])
+                                              (assoc :nextjournal/value [(prepare wrapped-value)])
                                               (assoc :nextjournal/viewer {:render-fn 'v/table-error}))))}))
 
 

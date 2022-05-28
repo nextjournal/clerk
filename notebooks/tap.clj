@@ -42,16 +42,16 @@
 #_(inst->local-time-str (Instant/now))
 
 ^{::clerk/viewer clerk/hide-result}
-(defn describe-only-key [key {:as wrapped-value :keys [offset]}]
+(defn prepare-only-key [key {:as wrapped-value :keys [offset]}]
   (-> (update wrapped-value :nextjournal/value (fn [x]
                                                  (when (empty? (:path wrapped-value))
                                                    (throw (ex-info "path cannot be empty?" {:path (:path wrapped-value) :wrapped-value wrapped-value})))
-                                                 (cond-> (update x key v/describe (cond-> (-> wrapped-value
-                                                                                              v/->opts
-                                                                                              (assoc :budget 100000))
-                                                                                    (not= key (peek (:path wrapped-value)))
-                                                                                    (-> (update :path conj key)
-                                                                                        (update :current-path conj key))))
+                                                 (cond-> (update x key v/prepare (cond-> (-> wrapped-value
+                                                                                             v/->opts
+                                                                                             (assoc :budget 100000))
+                                                                                   (not= key (peek (:path wrapped-value)))
+                                                                                   (-> (update :path conj key)
+                                                                                       (update :current-path conj key))))
                                                    (pos-int? offset) key)))
       v/mark-prepared))
 
@@ -66,7 +66,7 @@
                                {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} tapped-at]
                               [:div.overflow-x-auto [v/inspect tap]]]
                              {:key key}))))
-   :transform-fn (comp (partial describe-only-key :tap)
+   :transform-fn (comp (partial prepare-only-key :tap)
                        (clerk/update-val #(update % :tapped-at inst->local-time-str)))})
 
 ^{::clerk/viewer clerk/hide-result}
