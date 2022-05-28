@@ -373,12 +373,12 @@
                                                                          [v/consume-view-context :fetch-fn (fn [fetch-fn]
                                                                                                              [:tr.border-t.dark:border-slate-700
                                                                                                               [:td.text-center.py-1
-                                                                                                               {:col-span #_num-cols 100
+                                                                                                               {:col-span num-cols
                                                                                                                 :class (if (fn? fetch-fn)
                                                                                                                          "bg-indigo-50 hover:bg-indigo-100 dark:bg-gray-800 dark:hover:bg-slate-700 cursor-pointer"
                                                                                                                          "text-gray-400 text-slate-500")
                                                                                                                 :on-click (fn [_] (when (fn? fetch-fn)
-                                                                                                                                    (fetch-fn fetch-opts)))}
+                                                                                                                                   (fetch-fn fetch-opts)))}
                                                                                                                (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]])])))})
       (add-viewers [{:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))}
                     {:name :table/markup
