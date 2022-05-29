@@ -37,7 +37,7 @@
    :label-color (if selected? "white-90" "black-60")
    :badge-background-color (if selected? "bg-white-20" "bg-black-10")})
 
-(declare inspect inspect-paginated)
+(declare inspect inspect-paginated reagent-viewer)
 
 (defn value-of
   "Safe access to a value at key a js object.
@@ -63,7 +63,7 @@
 (def nbsp
   (gstring/unescapeEntities "&nbsp;"))
 
-(declare html)
+(declare html html-viewer)
 
 (defn js-object-viewer [x {:as opts :keys [!expanded-at path]}]
   (let [x' (obj->clj x)
@@ -519,12 +519,10 @@
    [:span.inspected-value.whitespace-nowrap
     [:span.cmt-meta tag] (when space? nbsp) value]))
 
-(defn normalize-viewer [x]
+(defn normalize-viewer-meta [x]
   (if-let [viewer (-> x meta :nextjournal/viewer)]
-    (with-viewer (if (contains? #{:reagent :html} viewer)
-                   {:render-fn html}
-                   viewer)
-      x)
+    (with-viewer ({:html html-viewer
+                   :reagent reagent-viewer} viewer viewer) x)
     x))
 
 (def js-viewers
@@ -545,7 +543,7 @@
 (declare default-viewers)
 
 (defn render-with-viewer [opts viewer value]
-  #_(js/console.log :render-with-viewer {:value value :viewer viewer #_#_ :opts opts})
+  #_(js/console.log :render-with-viewer {:value value :viewer viewer :opts opts})
   (cond (or (fn? viewer) (viewer/viewer-fn? viewer))
         (viewer value opts)
 
@@ -994,21 +992,25 @@ black")}]))}
 (defn katex-viewer [tex-string {:keys [inline?]}]
   (html (katex/to-html-string tex-string (j/obj :displayMode (not inline?)))))
 
-(defn html-viewer [markup]
+(defn html-render [markup]
   (r/as-element
    (if (string? markup)
      [:span {:dangerouslySetInnerHTML {:__html markup}}]
      markup)))
 
+(def html-viewer
+  {:render-fn html-render})
+
+(def html
+  (partial with-viewer html-viewer))
+
 (defn reagent-viewer [x]
   (r/as-element (cond-> x (fn? x) vector)))
 
-(def html html-viewer)
-
-(def mathjax-viewer (comp normalize-viewer mathjax/viewer))
-(def code-viewer (comp normalize-viewer code/viewer))
-(def plotly-viewer (comp normalize-viewer plotly/viewer))
-(def vega-lite-viewer (comp normalize-viewer vega-lite/viewer))
+(def mathjax-viewer (comp normalize-viewer-meta mathjax/viewer))
+(def code-viewer (comp normalize-viewer-meta code/viewer))
+(def plotly-viewer (comp normalize-viewer-meta plotly/viewer))
+(def vega-lite-viewer (comp normalize-viewer-meta vega-lite/viewer))
 
 (def expand-icon
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
@@ -1041,7 +1043,7 @@ black")}]))}
   (sci/new-var 'doc-url (fn [x] (str "#" x))))
 
 (def sci-viewer-namespace
-  {'html html-viewer
+  {'html html-render
    'inspect inspect
    'inspect-paginated inspect-paginated
    'result-viewer result-viewer

@@ -102,6 +102,8 @@
 
 
 (defn normalize-viewer-opts [opts]
+  (when-not (map? opts)
+    (throw (ex-info "normalize-viewer-opts not passed `map?` opts" {:opts opts})))
   (set/rename-keys opts {:nextjournal.clerk/viewer :nextjournal/viewer
                          :nextjournal.clerk/viewers :nextjournal/viewers
                          :nextjournal.clerk/opts :nextjournal/opts
@@ -110,8 +112,8 @@
 (defn normalize-viewer [viewer]
   (cond (keyword? viewer) viewer
         (map? viewer) viewer
-        (or (symbol? viewer) (seq? viewer)) {:render-fn viewer}
-        (fn? viewer) {:transform-fn viewer}
+        (or (symbol? viewer) (seq? viewer) #?(:cljs (fn? viewer))) {:render-fn viewer}
+        #?@(:clj [(fn? viewer) {:transform-fn viewer}])
         :else (throw (ex-info "cannot normalize viewer" {:viewer viewer}))))
 
 #_(normalize-viewer '#(v/html [:h3 "Hello " % "!"]))
@@ -123,9 +125,9 @@
 
 (defn with-viewer
   "Wraps the given value `x` and associates it with the given `viewer`. Takes an optional second `viewer-opts` arg."
-  ([viewer x] (with-viewer viewer {} x))
+  ([viewer x] (with-viewer viewer nil x))
   ([viewer viewer-opts x]
-   (merge (normalize-viewer-opts viewer-opts)
+   (merge (when viewer-opts (normalize-viewer-opts viewer-opts))
           (-> x
               ensure-wrapped
               (assoc :nextjournal/viewer (normalize-viewer viewer))))))
@@ -432,11 +434,9 @@
    {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
    {:name :nextjournal.markdown/ruler :transform-fn (into-markup [:hr])}
    {:name :nextjournal.markdown/code
-    :transform-fn (fn [wv]
-                    (with-viewer :html
-                      [:div.viewer-code
-                       (with-viewer :code
-                         (md.transform/->text (->value wv)))]))}
+    :transform-fn (fn [wrapped-value] (with-viewer :html
+                                        [:div.viewer-code (with-viewer :code
+                                                            (md.transform/->text (->value wrapped-value)))]))}
 
    ;; marks
    {:name :nextjournal.markdown/em :transform-fn (into-markup [:em])}
@@ -496,9 +496,9 @@
    {:pred boolean? :render-fn '(fn [x] (v/html [:span.cmt-bool.inspected-value (str x)]))}
    {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :fetch-opts {:n 2}}
    {:pred var-from-def? :transform-fn (update-val (comp deref :nextjournal.clerk/var-from-def))}
-   {:name :read+inspect :render-fn '(fn [x] (v/html [v/inspect-paginated (try (v/read-string x)
-                                                                              (catch js/Error _e
-                                                                                (v/with-viewer v/unreadable-edn-viewer x)))]))}
+   {:name :read+inspect :render-fn '(fn [x] (try (v/html [v/inspect-paginated (v/read-string x)])
+                                                 (catch js/Error _e
+                                                   (v/unreadable-edn-viewer x))))}
    {:pred vector? :render-fn 'v/coll-viewer :opening-paren "[" :closing-paren "]" :fetch-opts {:n 20}}
    {:pred set? :render-fn 'v/coll-viewer :opening-paren "#{" :closing-paren "}" :fetch-opts {:n 20}}
    {:pred sequential? :render-fn 'v/coll-viewer :opening-paren "(" :closing-paren ")" :fetch-opts {:n 20}}
@@ -958,7 +958,8 @@
    (swap! !viewers assoc scope viewers)))
 
 (defn add-viewers! [viewers]
-  (reset-viewers! *ns* (add-viewers (get-default-viewers) viewers)))
+  (reset-viewers! *ns* (add-viewers (get-default-viewers) viewers))
+  viewers)
 
 (defn ^{:deprecated "0.8"} set-viewers! [viewers]
   (binding #?(:clj [*out* *err*] :cljs [])
