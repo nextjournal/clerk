@@ -395,7 +395,8 @@
                                                                  (let [title (str (cond-> v (keyword? v) name))]
                                                                    [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
                                                                     {:title title :class (when (number-col? i) "text-right")}
-                                                                    [:div.flex.items-center title]]))) header-row)]))}
+                                                                    [:div.flex.items-center title]
+                                                                    [v/table-col-summary (v/table-summary-sample {:continuous? (number-col? i)})]]))) header-row)]))}
                     {:name :table/body :fetch-opts {:n 20}
                      :render-fn '(fn [rows opts] (v/html (into [:tbody] (map-indexed (fn [idx row] (v/inspect (update opts :path conj idx) row))) rows)))}
                     {:name :table/row

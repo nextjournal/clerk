@@ -6,6 +6,7 @@
             [edamame.core :as edamame]
             [goog.object]
             [goog.string :as gstring]
+            [goog.i18n.NumberFormat]
             [lambdaisland.uri.normalize :as uri.normalize]
             [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex vl with-viewer with-viewers]]
             [nextjournal.devcards :as dc]
@@ -489,6 +490,186 @@
      [inspect-paginated {:head [:column-1 :column-2]
                          :rows [[1 3] [2 4]]}]]]))
 
+(defn table-col-bars [{:keys [col-type category-count distribution width height]}]
+  (r/with-let [selected-bar (r/atom nil)]
+    (let [width 140
+          height 30
+          last-index (dec (count distribution))]
+      [:div
+       [:div.text-slate-500.dark:text-slate-400.font-normal
+        {:class "text-[12px] h-[24px] leading-[24px]"}
+        (if-let [{:keys [row-count percentage]} @selected-bar]
+          (str row-count " rows (" (* 100 percentage) "%)")
+          (str col-type " (" category-count " categories)"))]
+       (into
+         [:div.flex.relative
+          {:style {:width width :height height}
+           :class "rounded-sm overflow-hidden items-center "}]
+         (map-indexed
+           (fn [i {:as bar :keys [label row-count percentage range]}]
+             (let [bar-width (* width percentage)]
+               [:div.relative.overflow-hidden
+                {:on-mouse-enter #(reset! selected-bar bar)
+                 :on-mouse-leave #(reset! selected-bar nil)
+                 :class (case label
+                          :unique "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 "
+                          :empty "bg-orange-200 hover:bg-orange-300 dark:bg-pink-900 dark:bg-opacity-[0.7] dark:hover:bg-pink-800 "
+                          "bg-indigo-200 hover:bg-indigo-300 dark:bg-sky-700 dark:hover:bg-sky-500")
+                 :style {:width bar-width
+                         :height height}}
+                (when (and (contains? #{:unique :empty} label) (< 30 bar-width))
+                  [:div.text-slate-500.dark:text-slate-300.font-normal.absolute.left-0.top-0.right-0.bottom-0.flex.items-center.justify-center.whitespace-nowrap
+                   {:class "text-[12px]"}
+                   (str (* 100 percentage) "%"
+                        (when (and (= label :unique) (< 80 bar-width))
+                          " unique")
+                        (when (and (= label :empty) (< 110 bar-width))
+                          " empty/nil"))])
+                (when-not (= i last-index)
+                  [:div.absolute.top-0.right-0.bottom-0
+                   {:class "bg-white bg-opacity-[0.7] dark:bg-black w-[1px]"}])]))
+           distribution))
+       [:div.text-slate-500.dark:text-slate-400.font-normal.truncate
+        {:class "text-[12px] h-[24px] mt-[1px] leading-[24px] "
+         :style {:width width}}
+        (when-let [{:keys [row-count label]} @selected-bar]
+          (case label
+            :unique (str row-count " unique values")
+            :empty (str row-count " empty/nil values")
+            label))]])))
+
+(defn table-col-histogram [{:keys [col-type distribution width height]}]
+  (r/with-let [!selected-bar (r/atom nil)
+               fmt (goog.i18n.NumberFormat. (j/get-in goog.i18n.NumberFormat [:Format :COMPACT_SHORT]))]
+    (let [max (:row-count (apply max-key :row-count distribution))
+          last-index (dec (count distribution))
+          from (-> distribution first :range first)
+          to (-> distribution last :range last)]
+      [:div
+       [:div.text-slate-500.dark:text-slate-400.font-normal
+        {:class "text-[12px] h-[24px] leading-[24px]"}
+        [:span col-type]]
+       (into
+         [:div.flex.relative
+          {:style {:width width :height height}}]
+         (map-indexed
+           (fn [i {:as bar :keys [row-count range]}]
+             (let [bar-width (/ width (count distribution))
+                   selected? (= @!selected-bar bar)
+                   last? (= i last-index)]
+               [:div.relative.group
+                {:on-mouse-enter #(reset! !selected-bar bar)
+                 :on-mouse-leave #(reset! !selected-bar nil)
+                 :style {:width bar-width
+                         :height (+ height 24)}}
+                [:div.w-full.flex.items-end
+                 {:style {:height height}}
+                 [:div.w-full.relative
+                  {:style {:height (* (/ row-count max) height)}
+                   :class "bg-indigo-200 group-hover:bg-indigo-400 dark:bg-sky-700 dark:group-hover:bg-sky-500 "}
+                  (when-not last?
+                    [:div.absolute.top-0.right-0.bottom-0
+                     {:class "bg-white dark:bg-black w-[1px]"}])]]
+                [:div.relative
+                 {:class "mt-[1px] h-[1px] bg-slate-300 dark:bg-slate-700"}
+                 (when selected?
+                   [:div.absolute.left-0.top-0.bg-black.dark:bg-white
+                    {:class (str "h-[2px] " (if last? "right-0" "right-[1px]"))}])]
+                (when selected?
+                  [:<>
+                   [:div.absolute.left-0.text-left.text-slate-500.dark:text-slate-400.font-normal.pointer-events-none
+                    {:class "text-[12px] h-[24px] leading-[24px] -translate-x-full"
+                     :style {:top height}}
+                    (.format fmt (first range))]
+                   [:div.absolute.right-0.text-right.text-slate-500.dark:text-slate-400.font-normal.pointer-events-none
+                    {:class "text-[12px] h-[24px] leading-[24px] translate-x-full"
+                     :style {:top height}}
+                    (.format fmt (last range))]])]))
+           distribution))
+       [:div.text-slate-500.dark:text-slate-400.font-normal.truncate
+        {:class "text-[12px] h-[24px] leading-[24px] "
+         :style {:width width}}
+        (when-not @!selected-bar
+          [:div.relative.pointer-events-none
+           [:div.absolute.left-0.top-0 (.format fmt from)]
+           [:div.absolute.right-0.top-0 (.format fmt to)]])]])))
+
+(defn table-summary-sample [{:keys [continuous?]}]
+  (if continuous?
+    {:continuous? continuous?
+     :col-type "number"
+     :distribution [{:range [0 100000]
+                     :row-count 1
+                     :percentage 0.011}
+                    {:range [100000 200000]
+                     :row-count 16
+                     :percentage 0.18}
+                    {:range [200000 300000]
+                     :row-count 33
+                     :percentage 0.37}
+                    {:range [300000 400000]
+                     :row-count 22
+                     :percentage 0.25}
+                    {:range [400000 500000]
+                     :row-count 8
+                     :percentage 0.09}
+                    {:range [500000 600000]
+                     :row-count 3
+                     :percentage 0.034}
+                    {:range [600000 700000]
+                     :row-count 3
+                     :percentage 0.034}
+                    {:range [700000 800000]
+                     :row-count 1
+                     :percentage 0.011}
+                    {:range [800000 900000]
+                     :row-count 0
+                     :percentage 0.0}
+                    {:range [900000 1000000]
+                     :row-count 0
+                     :percentage 0.0}
+                    {:range [1000000 1100000]
+                     :row-count 0
+                     :percentage 0.0}
+                    {:range [1100000 1200000]
+                     :row-count 1
+                     :percentage 0.011}
+                    {:range [1200000 1300000]
+                     :row-count 0
+                     :percentage 0.0}
+                    {:range [1300000 1400000]
+                     :row-count 0
+                     :percentage 0.0}
+                    {:range [1400000 1500000]
+                     :row-count 0
+                     :percentage 0.0}
+                    {:range [1500000 1600000]
+                     :row-count 0
+                     :percentage 0.0}
+                    {:range [1600000 1700000]
+                     :row-count 1
+                     :percentage 0.011}]}
+    {:continuous? continuous?
+     :col-type "string"
+     :category-count 30
+     :distribution [{:label "For Those About To Rock (We Salute You)"
+                     :row-count 3
+                     :percentage 0.068}
+                    {:label "Balls to the Wall"
+                     :row-count 2
+                     :percentage 0.045}
+                    {:label :unique
+                     :row-count 28
+                     :percentage 0.636}
+                    {:label :empty
+                     :row-count 11
+                     :percentage 0.25}]}))
+
+(defn table-col-summary [{:as summary :keys [continuous?]}]
+  (let [summary (assoc summary :width 140 :height 30)]
+    (if continuous?
+      [table-col-histogram summary]
+      [table-col-bars summary])))
 
 (defn throwable-viewer [{:keys [via trace]}]
   (html
@@ -1057,6 +1238,8 @@ black")}]))}
    'quoted-string-viewer quoted-string-viewer
    'number-viewer number-viewer
    'table-error table-error
+   'table-col-summary table-col-summary
+   'table-summary-sample table-summary-sample
    'with-viewer with-viewer
    'with-viewers with-viewers
    'with-d3-require d3-require/with
