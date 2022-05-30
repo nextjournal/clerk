@@ -42,7 +42,7 @@
                      {:href (str url "/blob/" sha "/" (url->path path))} (url->path path) "@" [:span.tabular-nums (subs sha 0 7)]]])]]]
     (sci-viewer/set-state {:doc (cond-> doc
                                   (vector? (get-in doc [:nextjournal/value :blocks]))
-                                  (update-in [:nextjournal/value :blocks] (partial into [[sci-viewer/html-viewer header]])))})
+                                  (update-in [:nextjournal/value :blocks] (partial into [[sci-viewer/html-render header]])))})
     [sci-viewer/root]))
 
 (dc/defcard show []
