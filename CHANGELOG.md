@@ -5,6 +5,48 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
+## unreleased
+* 🌟 Simplify viewer api by letting `:transform-fn` act on wrapped-value (#152)
+    
+    This simplifies the viewer api by letting `:transform-fn` act on
+    the wrapped-value. This way the `:transform-fn` can now serve as the
+    single JVM-extension point and also serve as `:fetch-fn` (using
+    `mark-presented`) and `:update-viewers-fn`.
+    
+    In the case of a `:fetch-fn` the transformation would previously
+    happen in a second pass. Now it is always eager, which should make it
+    much clearer what's happening.
+    
+    Also do a naming pass:
+    
+    * `describe` → `present`
+    * `merge-descriptions` → `merge-presentations`
+    
+    
+* ⭐️ Extend the reach of the viewer api to the root node.
+
+    This allows full customization of how a Clerk doc is displayed. Showcase
+    that by implementing a slideshow viewer.
+  
+* ⭐️ Show render-fn errors and simplify and improve default viewers
+
+    Show a somewhat useful error when a viewer's `:render-fn` errors, either on eval or when invoked as a render function later. Since the stack property of `js/Error` isn't standardized the usefulness differs between browsers and variants. The advanced compiled js bundle is currently lacking source maps so the stack isn't useful there, yet.
+
+    Also simplify and improve the default viewers by having a fallback reader function for unknown tags and display anything that's readable with it using the pagination inside the browser. We can use this as a generic fallback and drop a number of specialised viewers (`uuid?`, `fn?`, `inst?`). It also means Clerk will now display these fallback objects identical to how Clojure will print them. Note that this also means that bringing in library like cider.nrepl that extends `print-method` will affect how things are displayed in Clerk.
+
+    Lastly, we include a viewer for `clojure.lang.IDeref` that will use Clerk's JVM-side pagination behaviour for the `:val`.
+
+    More rationale and live examples in the [Better Printing ADR](https://snapshots.nextjournal.com/clerk/build/7f510cde367ee9de6765c3f3dd7013e8bf19c64b/index.html#/notebooks/viewers/printing.clj) notebook.
+
+* 🐜 Fix lazy loading when viewer is selected via metadata.
+* 🐜 Perform bounded count limit check on tree (#154)
+
+    Previously this would only be performed on the root node so we'd go out of
+    memory attempting to cache a value like `{:a (range)}`.
+    
+* 🛠 Update SCI & SCI configs (#151)
+* 🛠 Start Clerk on `bb dev` after first cljs compile and forward serve opts.
+
 ## 0.7.418 (2022-04-20)
 * 🐜 Fix regression in heading sizes & margins (#135)
 
