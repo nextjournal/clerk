@@ -29,7 +29,7 @@
   (instance? ViewerFn x))
 
 (defn ->viewer-fn [form]
-  (map->ViewerFn {:form form :f #?(:clj nil :cljs (eval form))}))
+  (map->ViewerFn {:form form #?@(:cljs [:f (eval form)])}))
 
 (defn ->viewer-eval [form]
   (map->ViewerEval {:form form}))

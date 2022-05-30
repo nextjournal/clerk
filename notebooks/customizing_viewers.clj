@@ -15,7 +15,7 @@ v/default-viewers
 (def greeting-viewer
   {:render-fn '(fn [name] (v/html [:strong "Hello, " name "!"]))})
 
-;; In it's simplest form, a viewer has just a `:render-fn`. Notice that the value is not yet a function, but a quoted form that will be sent via a websocket to the browser. There, it will be evaluated using the [Small Clojure Intepreter](https://github.com/babashka/sci) or sci for short. Let's use the viewer to confirm it does what we expect:
+;; In it's simplest form, a viewer has just a `:render-fn`. Notice that the value is not yet a function, but a quoted form that will be sent via a websocket to the browser. There, it will be evaluated using the [Small Clojure Intepreter](https://github.com/babashka/sci) or SCI for short. Let's use the viewer to confirm it does what we expect:
 (v/with-viewer greeting-viewer
   "James Clerk Maxwell")
 
@@ -23,10 +23,23 @@ v/default-viewers
 (v/with-viewer {:render-fn '(fn [name] (v/html [:strong "Hello, " name "!"]))}
   "James Clerk Maxwell")
 
-;; There's a third way to get to the same result, using another part of the viewer api, `:transform-fn`.
-(v/with-viewer {:transform-fn (fn [x]
-                                (v/with-viewer :html [:strong "Hello, " (v/->value x) "!"]))}
+;; Besides `:render-fn`, there's also a part of the viewer api, that runs directly in JVM Clojure, `:transform-fn`.
+;; We can use it do archieve the same thing:
+(v/with-viewer {:transform-fn (fn [wrapped-value]
+                                (v/html [:strong "Hello, " (v/->value wrapped-value) "!"]))}
   "James Clerk Maxwell")
+
+;; Note that this _is_ a function, not a quoted form like `:render-fn`. It does not recieve the plain value, but it's value is wrapped in a map under the `:nextjournal/value` key which allows it to carry and convey additional information.
+
+;; Let's use `v/apply-viewers` to look more closely at what this does:
+#_ "TODO: remove equality hack once we can display wrapped-values as-is." 
+(= (-> (v/with-viewer {:transform-fn (fn [wrapped-value]
+                                       (v/html [:strong "Hello, " (v/->value wrapped-value) "!"]))}
+         "James Clerk Maxwell")
+       (v/apply-viewers)
+       (v/process-wrapped-value))
+   {:nextjournal/viewer {:name :html, :render-fn (v/->ViewerFn 'v/html)},
+    :nextjournal/value [:strong "Hello, " "James Clerk Maxwell" "!"]})
 
 ;; Without a viewer specified, Clerk will go through the a sequence viewers and apply the `:pred` function in the viewer to find a matching one. Use `v/viewer-for` to select a viewer for a given value.
 (def char?-viewer
