@@ -6,12 +6,11 @@
             [nextjournal.clerk.viewer :as v])
   (:import (java.time Instant LocalTime ZoneId)))
 
-
 ^{::clerk/viewer clerk/hide-result}
 (def switch-view
-  {:transform-fn (fn [{::clerk/keys [var-from-def]}]
-                   {:var-name (symbol var-from-def) :value @@var-from-def})
-   :fetch-fn (fn [_ x] x)
+  {:transform-fn (comp clerk/mark-presented
+                       (clerk/update-val (fn [{::clerk/keys [var-from-def]}]
+                                           {:var-name (symbol var-from-def) :value @@var-from-def})))
    :render-fn '(fn [{:keys [var-name value]}]
                  (v/html
                   (let [choices [:stream :latest]]
@@ -27,25 +26,15 @@
 ^{::clerk/viewer switch-view}
 (defonce !view (atom :stream))
 
-
 ^{::clerk/viewer clerk/hide-result}
 (defonce !taps (atom []))
 
 ^{::clerk/viewer clerk/hide-result}
 (defn reset-taps! []
-  (reset! !taps []))
+  (reset! !taps [])
+  (clerk/recompute!))
 
 #_(reset-taps!)
-
-^{::clerk/viewer clerk/hide-result}
-(defn fetch-tap [{:as opts :keys [describe-fn path offset trace-fn]} x]
-  (when trace-fn (trace-fn {:origin 'fetch-tap :xs x}))
-  (let [path' (cond-> path
-                (not= :tap (peek path)) (conj :tap))
-        opts (cond-> opts (v/->viewers (:tap x)) (update :viewers #(concat (v/->viewers (:tap x)) %)))]
-    (-> (cond-> (update x :tap describe-fn (assoc opts :!budget (atom 100) :path path') path')
-          (-> path count dec pos?) :tap)
-        (assoc :path path' :replace-path (conj path offset)))))
 
 ^{::clerk/viewer clerk/hide-result}
 (defn inst->local-time-str [inst]
@@ -54,36 +43,36 @@
 #_(inst->local-time-str (Instant/now))
 
 ^{::clerk/viewer clerk/hide-result}
+(def tap-viewer
+  {:name :tapped-value
+   :render-fn '(fn [tap opts]
+                 (let [[tap tapped-at key] tap]
+                   (v/html (with-meta
+                             [:div.border-t.relative.py-3
+                              [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
+                               {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
+                              [:div.overflow-x-auto [v/inspect tap]]]
+                             {:key (:nextjournal/value key)}))))
+   :transform-fn (clerk/update-val #(update % 1 inst->local-time-str))})
+
+^{::clerk/viewer clerk/hide-result}
+(clerk/add-viewers! [tap-viewer])
+
+^{::clerk/viewer clerk/hide-result}
 (def taps-viewer
-  {:render-fn '(fn [taps opts]
-                 (v/html [:div.flex.flex-col.pt-2
-                          (map (fn [tap] (let [{:keys [tap tapped-at key]} (:nextjournal/value tap)]
-                                           (with-meta 
-                                             [:div.border-t.relative.py-3
-                                              [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
-                                               {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} tapped-at]
-                                              [:div.overflow-x-auto [v/inspect tap]]]
-                                             {:key key})))
-                               taps)]))
-   :transform-fn (fn [taps]
-                   (mapv (partial clerk/with-viewer
-                                  {:transform-fn (fn [tap]
-                                                   (clerk/with-viewer {:fetch-fn fetch-tap}
-                                                     (update tap :tapped-at inst->local-time-str)))})
-                         (reverse taps)))})
+  {:render-fn '#(v/html (into [:div.flex.flex-col.pt-2] (v/inspect-children %2) %1))
+   :transform-fn (clerk/update-val (fn [taps]
+                                     (mapv (partial clerk/with-viewer :tapped-value) (reverse taps))))})
 
-
-^{::clerk/viewer (if (= :latest @!view)
-                   (update taps-viewer :transform-fn (fn [orig-fn] (fn [xs] (orig-fn (take-last 1 xs)))))
-                   taps-viewer)}
+^{::clerk/viewer (cond-> taps-viewer
+                   (= :latest @!view)
+                   (update :transform-fn (fn [orig] (comp orig (clerk/update-val (partial take-last 1))))))}
 @!taps
-
 
 ^{::clerk/viewer clerk/hide-result}
 (defn tapped [x]
-  (swap! !taps conj {:tap x :tapped-at (java.time.Instant/now) :key (str (gensym))})
-  (binding [*ns* (find-ns 'tap)]
-    (clerk/recompute!)))
+  (swap! !taps conj [x (java.time.Instant/now) (str (gensym))])
+  (clerk/recompute!))
 
 #_(tapped (rand-int 1000))
 
@@ -95,10 +84,9 @@
 
 #_(remove-tap tapped)
 
-
 ^{::clerk/viewer clerk/hide-result}
 (comment
-  (dotimes [i 5] 
+  (dotimes [i 5]
     (tap> (rand-int 1000)))
   (tap> (shuffle (range (+ 20 (rand-int 200)))))
   (tap> (clerk/md "> The purpose of visualization is **insight**, not pictures."))
@@ -109,7 +97,7 @@
 
   (do (require 'rule-30)
       (tap> (clerk/with-viewers rule-30/viewers rule-30/rule-30)))
-  
+
   (tap> (clerk/with-viewers rule-30/viewers rule-30/board))
 
   (tap> (clerk/html [:h1 "Fin. 👋"]))
@@ -121,6 +109,6 @@
   ;; * [x] Record & show time of tap
   ;; * [x] Keep expanded state when adding tap
   ;; * [x] Fix latest
+  ;; * [ ] Fix lazy loading
   ;; * [ ] Improve performance when large image present in tap stream
-  
   )

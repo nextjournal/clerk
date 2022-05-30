@@ -34,21 +34,22 @@
 
 ;; Like Clojure's default:
 (with-viewer {:pred #(instance? clojure.lang.IDeref %)
-              :transform-fn (fn [r] (with-viewer :tagged-value
-                                      {:tag "object"
-                                       :value (vector (class r)
-                                                      (with-viewer :number-hex (System/identityHashCode r))
-                                                      (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
-                                                        (deref-as-map r)
-                                                        r))}))}
+              :transform-fn (fn [wrapped-value] (with-viewer :tagged-value
+                                                  {:tag "object"
+                                                   :value (let [r (v/->value wrapped-value)]
+                                                            (vector (type r)
+                                                                    #?(:clj (with-viewer :number-hex (System/identityHashCode r)))
+                                                                    (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
+                                                                      (deref-as-map r)
+                                                                      r)))}))}
   (atom {:range (range 100)}))
 
 ;; Like Cider
 (with-viewer {:pred (partial instance? clojure.lang.IRef)
-              :transform-fn (fn [r] (with-viewer :tagged-value
-                                     {:tag "atom"
-                                      :value [(deref r)
-                                              (with-viewer :number-hex (System/identityHashCode r))]}))}
+              :transform-fn (fn [wrapped-value] (with-viewer :tagged-value
+                                                  {:tag "atom"
+                                                   :value [(deref (v/->value wrapped-value))
+                                                           (with-viewer :number-hex (System/identityHashCode (v/->value wrapped-value)))]}))}
   (atom {:range (range 100)}))
 
 ;; ## Possible Solutions
@@ -109,3 +110,7 @@ inc
   (pr-str {:range (range 100 200)}))
 
 (comp inc dec)
+
+(re-pattern "hel?o")
+
+(java.util.UUID/randomUUID)

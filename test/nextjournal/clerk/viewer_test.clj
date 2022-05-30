@@ -4,45 +4,49 @@
             [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk.viewer :as v]))
 
-(defn find-elision [desc]
-  (first (filter (comp #{:elision} :name :nextjournal/viewer)
-                 (tree-seq (comp vector? :nextjournal/value) :nextjournal/value desc))))
+(defn present+fetch
+  ([value] (present+fetch {} value))
+  ([opts value]
+   (let [desc (v/present value opts)
+         elision (v/find-elision desc)
+         more (v/present value elision)]
+     (v/desc->values (v/merge-presentations desc more elision)))))
 
-(defn describe+fetch [value]
-  (let [desc (v/describe value {:budget 21})
-        elision (find-elision desc)
-        more (v/describe value (:nextjournal/value elision))]
-    (v/desc->values (v/merge-descriptions desc more))))
-
-(deftest merge-descriptions
+(deftest resolve-elision
   (testing "range"
     (let [value (range 30)]
-      (is (= value (describe+fetch value)))))
+      (is (= value (present+fetch value)))))
 
   (testing "nested range"
     (let [value [(range 30)]]
-      (is (= value (describe+fetch value)))))
+      (is (= value (present+fetch value)))))
 
   (testing "string"
-    (let [value (str/join (map #(str/join (repeat 70 %)) ["a" "b"]))]
+    (let [value (str/join (map #(str/join (repeat 80 %)) ["a" "b"]))]
       ;; `str/join` is needed here because elided strings get turned into vector of segments
-      (is (= value (str/join (describe+fetch value))))))
+      (is (= value (str/join (present+fetch value))))))
 
   (testing "deep vector"
     (let [value (reduce (fn [acc i] (vector acc)) :fin (range 30 0 -1))]
-      (is (= value (describe+fetch value)))))
+      (is (= value (present+fetch {:budget 21} value)))))
 
   (testing "deep vector with element before"
     (let [value (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))]
-      (is (= value (describe+fetch value)))))
+      (is (= value (present+fetch {:budget 21} value)))))
 
   (testing "deep vector with element after"
     (let [value (reduce (fn [acc i] (vector acc i)) :fin (range 20 0 -1))]
-      (is (= value (describe+fetch value)))))
+      (is (= value (present+fetch {:budget 21} value)))))
 
   (testing "deep vector with elements around"
     (let [value (reduce (fn [acc i] (vector i acc (inc i))) :fin (range 10 0 -1))]
-      (is (= value (describe+fetch value))))))
+      (is (= value (present+fetch {:budget 21} value)))))
+
+  ;; TODO: fit table viewer into v/desc->values
+  (testing "table"
+    (let [value {:a (range 30) :b (range 30)}]
+      (is (= (vec (vals (v/normalize-table-data value)))
+             (present+fetch (v/table value)))))))
 
 (deftest apply-viewers
   (testing "selects number viewer"
@@ -67,43 +71,25 @@
 
 (defn viewer-eval-inspect? [x] (= x (v/->viewer-eval 'v/inspect)))
 
-(deftest describe
+(deftest present
   (testing "only transform-fn can select viewer"
-    (is (match? {:nextjournal/viewer {:name :html}
-                 :nextjournal/value [:div.viewer-markdown
-                                     [viewer-eval-inspect?
-                                      {:nextjournal/viewer {:name :html}
-                                       :nextjournal/value [:p
-                                                           [viewer-eval-inspect?
-                                                            {:nextjournal/viewer {:name :html}
-                                                             :nextjournal/value [:span "Hello "]}]
-                                                           [viewer-eval-inspect?
-                                                            {:nextjournal/viewer {:name :html}
-                                                             :nextjournal/value [:em
-                                                                                 [viewer-eval-inspect?
-                                                                                  {:path [],
-                                                                                   :nextjournal/value [:span "markdown"]
-                                                                                   :nextjournal/viewer {:name :html}}]]}]
-                                                           [viewer-eval-inspect?
-                                                            {:nextjournal/viewer {:name :html}
-                                                             :nextjournal/value [:span "!"]}]]}]]}
-
-                (v/describe (v/with-viewer {:transform-fn (comp v/md :foo)}
-                              {:foo "Hello _markdown_!"})))))
+    (is (match? {:nextjournal/value [:div.viewer-markdown
+                                     [:p [:span "Hello "] [:em [:span "markdown"]] [:span "!"]]]
+                 :nextjournal/viewer {:name :html-}}
+                (v/present (v/with-viewer {:transform-fn (comp v/md v/->value)}
+                              "Hello _markdown_!")))))
 
   (testing "works with sorted-map which can throw on get & contains?"
-    (v/describe (into (sorted-map) {'foo 'bar})))
+    (v/present (into (sorted-map) {'foo 'bar})))
 
   (testing "doesn't throw on bogus input"
     (is (match? {:nextjournal/value nil, :nextjournal/viewer {:name :html}}
-                (v/describe (v/html nil))))))
+                (v/present (v/html nil))))))
 
 (deftest assign-closing-parens
   (testing "closing parenthesis are moved to right-most children in the tree"
-    (let [before (v/describe {:a [1 '(2 3 #{4})]
-                              :b '([5 6] 7 8)}
-                             {:viewers (v/get-viewers nil) :!budget (atom 20)}
-                             [])
+    (let [before (#'v/present* (assoc (v/ensure-wrapped-with-viewers {:a [1 '(2 3 #{4})]
+                                                                       :b '([5 6] 7 8)}) :path []))
           after (v/assign-closing-parens before)]
 
       (is (= "}"

@@ -1,9 +1,10 @@
 (ns multiviewer
-  (:require [nextjournal.clerk :as clerk]
+  (:require [clojure.walk :as w]
+            [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as viewer]
-            [sicmutils.value :as v]
+            [sicmutils.env :refer :all]
             [sicmutils.expression :as e]
-            [sicmutils.env :refer :all]))
+            [sicmutils.value :as v]))
 
 (defn ->formatted-str [expr]
   (let [form (v/freeze expr)]
@@ -20,8 +21,9 @@
 
 (def literal-viewer
   {:pred e/literal?
-   :fetch-fn viewer/fetch-all
-   :transform-fn transform-literal
+   :transform-fn (comp clerk/mark-presented
+                       (clerk/update-val (comp (partial w/postwalk (viewer/when-wrapped viewer/inspect-wrapped-value))
+                                               transform-literal)))
    :render-fn '(fn [x]
                  (v/html
                   (reagent/with-let [!sel (reagent/atom (-> x first key))]

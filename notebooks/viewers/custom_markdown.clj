@@ -6,13 +6,13 @@
 (ns ^:nextjournal.clerk/no-cache viewers.custom-markdown
   (:require [nextjournal.clerk.viewer :as v]))
 
-(defn update-markdown-viewers! [update-fn]
-  (v/reset-viewers!
-   (v/update-viewers (v/get-default-viewers)
-                     {(comp #{:markdown} :name)
-                      (fn [v] (update v :update-viewers-fn
-                                      (fn [old-fn]
-                                        (fn [viewers] (update-fn (old-fn viewers))))))})))
+(defn update-child-viewers [f]
+  (fn [viewer]
+    (update viewer :transform-fn (fn [transform-fn]
+                                   (fn [wrapped-value]
+                                     (-> wrapped-value
+                                         transform-fn
+                                         (update :nextjournal/viewers f)))))))
 
 (def md-viewers
   [{:name :nextjournal.markdown/text
@@ -22,7 +22,11 @@
                    (v/html [:div {:style {:width "100%" :height "80px" :background-position "center" :background-size "cover"
                                           :background-image "url(https://www.maxpixel.net/static/photo/1x/Ornamental-Separator-Decorative-Line-Art-Divider-4715969.png)"}}]))}])
 
-(update-markdown-viewers! #(v/add-viewers % md-viewers))
+(def viewers-with-pretty-markdown
+  (v/update-viewers (v/get-default-viewers) {(comp #{:markdown} :name)
+                                             (update-child-viewers #(v/add-viewers % md-viewers))}))
+
+(v/reset-viewers! viewers-with-pretty-markdown)
 
 ;; ## Sections
 ;;

@@ -60,13 +60,12 @@
   "James Clerk Maxwell")
 
 ^{::clerk/viewer {:render-fn '#(v/html [:span "The answer is " % "."])
-                  :transform-fn inc}}
+                  :transform-fn (comp inc :nextjournal/value)}}
 (do 41)
 
 (clerk/with-viewers (clerk/add-viewers [{:pred number?
                                          :render-fn '(fn [n] (v/html [:div.inline-block [(keyword (str "h" n)) (str "Heading " n)]]))}])
   [1 2 3 4 5])
-
 
 ^::clerk/no-cache
 (clerk/with-viewers (clerk/add-viewers [{:pred number? :render-fn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
@@ -98,4 +97,3 @@
                         (v/html [:h3.cursor-pointer {:on-click #(swap! counter inc)} "I was clicked " @counter " times."])))
   nil)
 
-#_(clerk/show! "notebooks/viewer_api.clj")

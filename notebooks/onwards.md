@@ -72,7 +72,9 @@ Notes about what currently breaks 💥 and what could be better tomorrow.
 - [x] Release 0.6
 - [x] Make code cells scroll horizontally scrollable and add minimum width of 80 chars
 - [x] Extend reach of viewer api to whole notebook (including the root node)
-- [ ] Make viewer api more functional and restore defaults on eval
+- [x] Make viewer api more functional
+- [x] Let `:transform-fn` act on wrapped-value and use it to also replace `:fetch-fn`
+- [ ] Reset ns viewers to defaults on eval
 - [ ] Try using `:update-viewers-fn` for markdown node
 - [ ] Minimize re-rendering when updating notebook
 - [ ] Throw on re-definitions

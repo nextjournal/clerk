@@ -9,7 +9,7 @@
                                              :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}
    {:pred (every-pred list? (partial every? (some-fn number? vector?)))
     :render-fn '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1))}
-   {:pred (every-pred vector? (complement map-entry?))
+   {:pred (every-pred vector? (complement map-entry?) (partial every? number?))
     :render-fn '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1))}])
 
 (clerk/add-viewers! viewers)

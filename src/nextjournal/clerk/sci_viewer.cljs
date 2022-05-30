@@ -7,7 +7,7 @@
             [goog.object]
             [goog.string :as gstring]
             [lambdaisland.uri.normalize :as uri.normalize]
-            [nextjournal.clerk.viewer :as viewer :refer [code html md plotly tex vl with-viewer with-viewers]]
+            [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex vl with-viewer with-viewers]]
             [nextjournal.devcards :as dc]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.ui.components.d3-require :as d3-require]
@@ -37,7 +37,7 @@
    :label-color (if selected? "white-90" "black-60")
    :badge-background-color (if selected? "bg-white-20" "bg-black-10")})
 
-(declare inspect)
+(declare inspect inspect-paginated reagent-viewer)
 
 (defn value-of
   "Safe access to a value at key a js object.
@@ -62,6 +62,8 @@
 
 (def nbsp
   (gstring/unescapeEntities "&nbsp;"))
+
+(declare html html-viewer)
 
 (defn js-object-viewer [x {:as opts :keys [!expanded-at path]}]
   (let [x' (obj->clj x)
@@ -265,7 +267,7 @@
        (catch js/Error e
          nil))]
     (when-let [data (.-data error)]
-      [:div.mt-2 [inspect data]])]))
+      [:div.mt-2 [inspect-paginated data]])]))
 
 (defn error-boundary [!error & _]
   (r/create-class
@@ -307,7 +309,7 @@
                                 (fn [opts]
                                   (.then (fetch! @!fetch-opts opts)
                                          (fn [more]
-                                           (swap! !desc viewer/merge-descriptions more)))))]
+                                           (swap! !desc viewer/merge-presentations more opts)))))]
           (when-not (= hash @!hash)
             ;; TODO: simplify
             (reset! !hash hash)
@@ -361,7 +363,6 @@
                   xs)
             (cond->> closing-paren (list? closing-paren) (into [:<>]))]])))
 
-(declare inspect-paginated)
 (dc/defcard coll-viewer
   (into [:div]
         (for [coll [
@@ -376,7 +377,7 @@
            [inspect-paginated coll]])))
 
 (dc/defcard coll-viewer-simple
-  "with a simple `inspect` and no `describe` we don't move closing parens to children"
+  "with a simple `inspect` and no `present` we don't move closing parens to children"
   (into [:div]
         (for [coll [
                     {:foo (into #{} (range 3))}
@@ -389,7 +390,7 @@
           [:div.mb-3.result-viewer
            [inspect coll]])))
 
-(defn elision-viewer [{:as fetch-opts :keys [remaining unbounded?]} _]
+(defn elision-viewer [{:as fetch-opts :keys [total offset unbounded?]} _]
   (html [view-context/consume :fetch-fn
          (fn [fetch-fn]
            [:span.sans-serif.relative.whitespace-nowrap
@@ -398,7 +399,7 @@
                       "cursor-pointer bg-indigo-200 hover:bg-indigo-300 dark:bg-gray-700 dark:hover:bg-slate-600 text-gray-900 dark:text-white"
                       "text-gray-400 dark:text-slate-300")
              :on-click #(when (fn? fetch-fn)
-                          (fetch-fn fetch-opts))} remaining (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")])]))
+                          (fetch-fn fetch-opts))} (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")])]))
 
 (defn map-viewer [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
   (html (let [expanded? (@!expanded-at path)
@@ -475,63 +476,18 @@
     [:p.mt-4.font-medium "Currently, the following formats are supported:"]
     [:div.mt-2.flex.items-center
      [:div.text-green-500.mr-2 check-icon]
-     [inspect {:column-1 [1 2]
-               :column-2 [3 4]}]]
+     [inspect-paginated {:column-1 [1 2]
+                         :column-2 [3 4]}]]
     [:div.mt-2.flex.items-center
      [:div.text-green-500.mr-2 check-icon]
-     [inspect [{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]]]
+     [inspect-paginated [{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]]]
     [:div.mt-2.flex.items-center
      [:div.text-green-500.mr-2 check-icon]
-     [inspect [[1 3] [2 4]]]]
+     [inspect-paginated [[1 3] [2 4]]]]
     [:div.mt-2.flex.items-center
      [:div.text-green-500.mr-2 check-icon]
-     [inspect {:head [:column-1 :column-2]
-               :rows [[1 3] [2 4]]}]]]))
-
-(defn table-viewer [data opts]
-  (if-let [error-data (and (:error data) (:ex-data data))]
-    (table-error [error-data])
-    (html
-      (let [{:keys [head rows sort-index sort-order]} data
-            num-cols (-> rows viewer/->value first viewer/->value count)]
-        [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose
-         (when head
-           [:thead.border-b.border-gray-300.dark:border-slate-700
-            (into [:tr]
-                  (map-indexed (fn [i k]
-                                 [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
-                                  {:class (if (number? (get-in rows [0 i])) "text-right" "text-left")
-                                   :title (if (or (string? k) (keyword? k)) (name k) (str k))}
-                                  [:div.flex.items-center
-                                   (if (or (string? k) (keyword? k)) (name k) [inspect k])
-                                   (when (= sort-index i)
-                                     [:span.inline-flex.justify-center.items-center.relative
-                                      {:style {:font-size 20 :width 10 :height 10 :top -2}}
-                                      (if (= sort-order :asc) "▴" "▾")])]]) head))])
-         (into [:tbody]
-               (map-indexed (fn [i row]
-                              (if (= :elision (-> row viewer/->viewer :name))
-                                (let [{:as fetch-opts :keys [remaining unbounded?]} (viewer/->value row)]
-                                  [view-context/consume :fetch-fn
-                                   (fn [fetch-fn]
-                                     [:tr.border-t.dark:border-slate-700
-                                      [:td.text-center.py-1
-                                       {:col-span num-cols
-                                        :class (if (fn? fetch-fn)
-                                                 "bg-indigo-50 hover:bg-indigo-100 dark:bg-gray-800 dark:hover:bg-slate-700 cursor-pointer"
-                                                 "text-gray-400 text-slate-500")
-                                        :on-click #(when (fn? fetch-fn)
-                                                     (fetch-fn fetch-opts))}
-                                       remaining (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]])])
-                                (let [row (viewer/->value row)]
-                                  (into
-                                    [:tr.hover:bg-gray-200.dark:hover:bg-slate-700
-                                     {:class (if (even? i) "bg-black/5 dark:bg-gray-800" "bg-white dark:bg-gray-900")}]
-                                    (map-indexed (fn [j d]
-                                                   [:td.pl-6.pr-2.py-1
-                                                    {:class [(when (number? d) "text-right")
-                                                             (when (= j sort-index) "bg-black/5 dark:bg-gray-800")]}
-                                                    [inspect (update opts :path conj i j) d]]) row))))) (viewer/->value rows)))]))))
+     [inspect-paginated {:head [:column-1 :column-2]
+                         :rows [[1 3] [2 4]]}]]]))
 
 
 (defn throwable-viewer [{:keys [via trace]}]
@@ -563,9 +519,10 @@
    [:span.inspected-value.whitespace-nowrap
     [:span.cmt-meta tag] (when space? nbsp) value]))
 
-(defn normalize-viewer [x]
+(defn normalize-viewer-meta [x]
   (if-let [viewer (-> x meta :nextjournal/viewer)]
-    (with-viewer viewer x)
+    (with-viewer ({:html html-viewer
+                   :reagent reagent-viewer} viewer viewer) x)
     x))
 
 (def js-viewers
@@ -585,14 +542,15 @@
 
 (declare default-viewers)
 
-(defn render-with-viewer [{:as opts :keys [viewers]} viewer value]
-  #_(js/console.log :render-with-viewer {:value value :viewer viewer #_#_ :opts opts})
+(defn render-with-viewer [opts viewer value]
+  #_(js/console.log :render-with-viewer {:value value :viewer viewer :opts opts})
   (cond (or (fn? viewer) (viewer/viewer-fn? viewer))
         (viewer value opts)
 
         (and (map? viewer) (:render-fn viewer))
         (render-with-viewer opts (:render-fn viewer) value)
 
+        #_#_ ;; TODO: maybe bring this back
         (keyword? viewer)
         (if-let [{:keys [fetch-opts render-fn]} (viewer/find-named-viewer viewers viewer)]
           (if-not render-fn
@@ -607,28 +565,25 @@
   ([x]
    (r/with-let [!expanded-at (r/atom {})]
      [inspect {:!expanded-at !expanded-at} x]))
-  ([{:as opts :keys [viewers]} x]
-   (let [value (viewer/->value x)
-         {:as opts :keys [viewers]} (update opts :viewers #(or % (viewer/get-default-viewers)))]
+  ([opts x]
+   (let [value (viewer/->value x)]
+     #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
      (or (when (react/isValidElement value) value)
-         ;; TODO find option to disable client-side viewer selection
-         (when-let [viewer (or (viewer/->viewer x)
-                               (viewer/->viewer (viewer/apply-viewers viewers value)))]
-           (inspect opts (render-with-viewer (assoc opts :viewers viewers :viewer viewer)
-                                             viewer
-                                             value)))))))
+         (when-let [viewer (viewer/->viewer x)]
+           (inspect opts (render-with-viewer (merge opts {:viewer viewer} (:nextjournal/opts x)) viewer value)))
+         (throw (ex-info "inspect needs to be called on presented value" {:x x}))))))
 
 (defn in-process-fetch [value opts]
-  (.resolve js/Promise (viewer/describe value opts)))
+  (.resolve js/Promise (viewer/present value opts)))
 
 (defn inspect-paginated [value]
   (r/with-let [!state (r/atom nil)]
     (when (not= (:value @!state) value)
-      (swap! !state assoc :value value :desc (viewer/describe value)))
+      (swap! !state assoc :value value :desc (viewer/present value)))
     [view-context/provide {:fetch-fn (fn [fetch-opts]
                                        (.then (in-process-fetch value fetch-opts)
                                               (fn [more]
-                                                (swap! !state update :desc viewer/merge-descriptions more))))}
+                                                (swap! !state update :desc viewer/merge-presentations more))))}
      [inspect (:desc @!state)]]))
 
 (dc/defcard inspect-paginated-one
@@ -995,7 +950,7 @@ black")}]))}
 (declare lazy-inspect-in-process)
 
 (dc/defcard table-long [state]
-  [inspect (with-viewer table-viewer @state)]
+  [inspect-paginated (with-viewer :table @state)]
   {::dc/state (let [n 20]
                 {:species (repeat n "Adelie")
                  :island (repeat n "Biscoe")
@@ -1037,19 +992,25 @@ black")}]))}
 (defn katex-viewer [tex-string {:keys [inline?]}]
   (html (katex/to-html-string tex-string (j/obj :displayMode (not inline?)))))
 
-(defn html-viewer [markup]
+(defn html-render [markup]
   (r/as-element
    (if (string? markup)
      [:span {:dangerouslySetInnerHTML {:__html markup}}]
      markup)))
 
+(def html-viewer
+  {:render-fn html-render})
+
+(def html
+  (partial with-viewer html-viewer))
+
 (defn reagent-viewer [x]
   (r/as-element (cond-> x (fn? x) vector)))
 
-(def mathjax-viewer (comp normalize-viewer mathjax/viewer))
-(def code-viewer (comp normalize-viewer code/viewer))
-(def plotly-viewer (comp normalize-viewer plotly/viewer))
-(def vega-lite-viewer (comp normalize-viewer vega-lite/viewer))
+(def mathjax-viewer (comp normalize-viewer-meta mathjax/viewer))
+(def code-viewer (comp normalize-viewer-meta code/viewer))
+(def plotly-viewer (comp normalize-viewer-meta plotly/viewer))
+(def vega-lite-viewer (comp normalize-viewer-meta vega-lite/viewer))
 
 (def expand-icon
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
@@ -1082,7 +1043,7 @@ black")}]))}
   (sci/new-var 'doc-url (fn [x] (str "#" x))))
 
 (def sci-viewer-namespace
-  {'html html-viewer
+  {'html html-render
    'inspect inspect
    'inspect-paginated inspect-paginated
    'result-viewer result-viewer
@@ -1095,12 +1056,12 @@ black")}]))}
    'string-viewer string-viewer
    'quoted-string-viewer quoted-string-viewer
    'number-viewer number-viewer
-   'table-viewer table-viewer
    'table-error table-error
    'with-viewer with-viewer
    'with-viewers with-viewers
    'with-d3-require d3-require/with
    'clerk-eval clerk-eval
+   'consume-view-context view-context/consume
 
    'throwable-viewer throwable-viewer
    'notebook-viewer notebook
