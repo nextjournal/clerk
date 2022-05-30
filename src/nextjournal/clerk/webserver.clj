@@ -15,7 +15,7 @@
 (defonce !doc (atom help-doc))
 (defonce !error (atom nil))
 
-#_(v/prepare (view/doc->viewer @!doc))
+#_(v/present (view/doc->viewer @!doc))
 #_(reset! !doc help-doc)
 
 (defn broadcast! [msg]
@@ -45,7 +45,7 @@
   (assert ns "namespace must be set")
   (if (contains? blob->result blob-id)
     (let [result (v/apply-viewer-unwrapping-var-from-def (blob->result blob-id))
-          desc (v/prepare (v/ensure-wrapped-with-viewers
+          desc (v/present (v/ensure-wrapped-with-viewers
                            (v/get-viewers ns result)
                            (v/->value result)) ;; TODO understand why this unwrapping fixes lazy loaded table viewers
                           fetch-opts)]
@@ -85,7 +85,7 @@
 #_(update-doc! help-doc)
 
 (defn show-error! [e]
-  (broadcast! {:error (reset! !error (v/prepare e))}))
+  (broadcast! {:error (reset! !error (v/present e))}))
 
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")

@@ -30,7 +30,7 @@
 ;; Lastly, the `slideshow-viewer` overrides the notebook viewer
 (def slideshow-viewer
   {:name :clerk/notebook
-   :transform-fn (comp v/mark-prepared
+   :transform-fn (comp v/mark-presented
                        (v/update-val (comp (partial w/postwalk (v/when-wrapped v/inspect-wrapped-value))
                                            doc->slides)))
    :render-fn '(fn [slides]

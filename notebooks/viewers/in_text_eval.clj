@@ -29,7 +29,7 @@
 ^{::clerk/viewer clerk/hide-result ::clerk/visibility :hide}
 (defn slider [var {:keys [min max]}]
   (clerk/with-viewer
-    {:transform-fn (comp v/mark-prepared (v/update-val (fn [var] {:var-name (symbol var) :value @@var})))
+    {:transform-fn (comp v/mark-presented (v/update-val (fn [var] {:var-name (symbol var) :value @@var})))
      :render-fn `(fn [{:keys [var-name value]}]
                    (v/html [:input {:type :range :min ~min :max ~max :value value
                                     :on-change #(v/clerk-eval `(reset! ~var-name (Integer/parseInt ~(.. % -target -value))))}]))}

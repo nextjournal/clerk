@@ -196,7 +196,7 @@
 
 #_(demunge-ex-data (datafy/datafy (ex-info "foo" {:bar :baz})))
 
-(declare prepare prepare* !viewers apply-viewers apply-viewers* ensure-wrapped-with-viewers process-viewer process-wrapped-value default-viewers find-named-viewer)
+(declare present present* !viewers apply-viewers apply-viewers* ensure-wrapped-with-viewers process-viewer process-wrapped-value default-viewers find-named-viewer)
 
 (defn inspect-fn []  #?(:clj (->viewer-eval 'v/inspect) :cljs (eval 'v/inspect)))
 
@@ -207,11 +207,11 @@
 
 #_(w/postwalk (when-wrapped inspect-wrapped-value) [1 2 {:a [3 (with-viewer :latex "\\alpha")]} 4])
 
-(defn mark-prepared [wrapped-value]
-  (assoc wrapped-value :nextjournal/prepared? true))
+(defn mark-presented [wrapped-value]
+  (assoc wrapped-value :nextjournal/presented? true))
 
 (defn fetch-all [_opts _xs]
-  (throw (ex-info "`fetch-all` is deprecated, please use a `:transform-fn` with `mark-prepared` instead." {})))
+  (throw (ex-info "`fetch-all` is deprecated, please use a `:transform-fn` with `mark-presented` instead." {})))
 
 (defn get-safe
   ([key] #(get-safe % key))
@@ -235,7 +235,7 @@
 (defn into-markup [markup]
   (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
     (-> (with-viewer {:name :html- :render-fn 'v/html} wrapped-value)
-        mark-prepared
+        mark-presented
         (update :nextjournal/value
                 (fn [{:as node :keys [text content]}]
                   (into (cond-> markup (fn? markup) (apply [node]))
@@ -277,13 +277,13 @@
 #_(apply-viewer-unwrapping-var-from-def {:nextjournal/value [:h1 "hi"] :nextjournal/viewer (resolve 'nextjournal.clerk/html)})
 
 #?(:clj
-   (defn extract-blobs [lazy-load? blob-id prepared-result]
+   (defn extract-blobs [lazy-load? blob-id presentd-result]
      (w/postwalk #(cond-> %
                     (and (get % :nextjournal/content-type) lazy-load?)
                     (assoc :nextjournal/value {:blob-id blob-id :path (:path %)})
                     (and (get % :nextjournal/content-type) (not lazy-load?))
                     base64-encode-value)
-                 prepared-result)))
+                 presentd-result)))
 
 (defn get-default-viewers []
   (:default @!viewers default-viewers))
@@ -300,19 +300,19 @@
 #?(:clj
    (defn ->result [{:keys [inline-results?]} {:as result :nextjournal/keys [value blob-id viewers]}]
      (let [lazy-load? (and (not inline-results?) blob-id)
-           prepared-result (extract-blobs lazy-load? blob-id (prepare (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
+           presentd-result (extract-blobs lazy-load? blob-id (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
            opts-from-form-meta (select-keys result [:nextjournal/width :nextjournal/opts])]
        (merge {:nextjournal/viewer :clerk/result
-               :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (merge prepared-result opts-from-form-meta))}
+               :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (merge presentd-result opts-from-form-meta))}
                                                (catch Throwable _e
                                                  {:nextjournal/string (pr-str value)}))
-                                    (-> prepared-result ->viewer :name)
-                                    (assoc :nextjournal/viewer (select-keys (->viewer prepared-result) [:name]))
+                                    (-> presentd-result ->viewer :name)
+                                    (assoc :nextjournal/viewer (select-keys (->viewer presentd-result) [:name]))
 
                                     lazy-load?
                                     (assoc :nextjournal/fetch-opts {:blob-id blob-id}
-                                           :nextjournal/hash (hashing/->hash-str [blob-id prepared-result opts-from-form-meta])))}
-              (dissoc prepared-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
+                                           :nextjournal/hash (hashing/->hash-str [blob-id presentd-result opts-from-form-meta])))}
+              (dissoc presentd-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
               ;; TODO: consider dropping this. Still needed by notebook-viewer fn to read :nextjournal/width option on result blocks
               opts-from-form-meta))))
 
@@ -505,7 +505,7 @@
    {:pred map? :name :map :render-fn 'v/map-viewer :opening-paren "{" :closing-paren "}" :fetch-opts {:n 10}}
    {:pred var? :transform-fn (comp symbol ->value) :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#'" (str x)]]))}
    {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
-    :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp mark-prepared (update-val (comp demunge-ex-data datafy/datafy)))}
+    :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp mark-presented (update-val (comp demunge-ex-data datafy/datafy)))}
    #?(:clj {:pred #(instance? BufferedImage %)
             :transform-fn (fn [{image :nextjournal/value}]
                             (let [stream (java.io.ByteArrayOutputStream.)
@@ -516,7 +516,7 @@
                               (-> {:nextjournal/value (.toByteArray stream)
                                    :nextjournal/content-type "image/png"
                                    :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)}
-                                  mark-prepared)))
+                                  mark-presented)))
             :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))})
    {:pred #(instance? IDeref %)
     :transform-fn (fn [wrapped-value] (with-viewer :tagged-value
@@ -531,24 +531,24 @@
     :transform-fn (fn [wrapped-value] (with-viewer :tagged-value {:tag "" :value (let [regex (->value wrapped-value)]
                                                                                    #?(:clj (.pattern regex) :cljs (.-source regex)))}))}
    {:pred (constantly :true) :transform-fn (update-val #(with-viewer :read+inspect (pr-str %)))}
-   {:name :elision :render-fn (quote v/elision-viewer) :transform-fn mark-prepared}
-   {:name :latex :render-fn (quote v/katex-viewer) :transform-fn mark-prepared}
-   {:name :mathjax :render-fn (quote v/mathjax-viewer) :transform-fn mark-prepared}
+   {:name :elision :render-fn (quote v/elision-viewer) :transform-fn mark-presented}
+   {:name :latex :render-fn (quote v/katex-viewer) :transform-fn mark-presented}
+   {:name :mathjax :render-fn (quote v/mathjax-viewer) :transform-fn mark-presented}
    {:name :html
     :render-fn (quote v/html)
-    :transform-fn (comp mark-prepared
+    :transform-fn (comp mark-presented
                         (update-val (partial w/postwalk (when-wrapped inspect-wrapped-value))))}
-   {:name :plotly :render-fn (quote v/plotly-viewer) :transform-fn mark-prepared}
-   {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :transform-fn mark-prepared}
+   {:name :plotly :render-fn (quote v/plotly-viewer) :transform-fn mark-presented}
+   {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :transform-fn mark-presented}
    {:name :markdown :transform-fn (fn [wrapped-value]
                                     (-> wrapped-value
-                                        mark-prepared
+                                        mark-presented
                                         (update :nextjournal/value #(cond->> % (string? %) md/parse))
                                         (update :nextjournal/viewers add-viewers markdown-viewers)
                                         (with-md-viewer)))}
-   {:name :code :render-fn (quote v/code-viewer) :transform-fn (comp mark-prepared (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))}
-   {:name :code-folded :render-fn (quote v/foldable-code-viewer) :transform-fn (comp mark-prepared (update-val (fn [v] (if (string? v) v (with-out-str (pprint/pprint v))))))}
-   {:name :reagent :render-fn (quote v/reagent-viewer) :transform-fn mark-prepared}
+   {:name :code :render-fn (quote v/code-viewer) :transform-fn (comp mark-presented (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))}
+   {:name :code-folded :render-fn (quote v/foldable-code-viewer) :transform-fn (comp mark-presented (update-val (fn [v] (if (string? v) v (with-out-str (pprint/pprint v))))))}
+   {:name :reagent :render-fn (quote v/reagent-viewer) :transform-fn mark-presented}
    {:name :table
     :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers] :keys [offset path current-path]}]
                     (if-let [{:keys [head rows]} (normalize-table-data (->value wrapped-value))]
@@ -561,9 +561,9 @@
                           (assoc :nextjournal/value (cond->> [(with-viewer :table/body (map (partial with-viewer :table/row) rows))]
                                                       head (cons (with-viewer :table/head head)))))
                       (-> wrapped-value
-                          mark-prepared
+                          mark-presented
                           (assoc :nextjournal/width :wide)
-                          (assoc :nextjournal/value [(prepare wrapped-value)])
+                          (assoc :nextjournal/value [(present wrapped-value)])
                           (assoc :nextjournal/viewer {:render-fn 'v/table-error}))))}
    {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}}
    {:name :clerk/code-block :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
@@ -573,14 +573,14 @@
    {:name :tagged-value :render-fn '(fn [{:keys [tag value space?]}] (v/html (v/tagged-value {:space? space?} (str "#" tag) [v/inspect-paginated value])))
     :transform-fn (fn [wrapped-value]
                     (-> wrapped-value
-                        (update-in [:nextjournal/value :value] prepare)
-                        mark-prepared))}
-   {:name :clerk/result :render-fn (quote v/result-viewer) :transform-fn mark-prepared}
+                        (update-in [:nextjournal/value :value] present)
+                        mark-presented))}
+   {:name :clerk/result :render-fn (quote v/result-viewer) :transform-fn mark-presented}
    {:name :clerk/notebook
     :render-fn (quote v/notebook-viewer)
     :transform-fn #?(:clj (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
                             (-> wrapped-value
-                                mark-prepared
+                                mark-presented
                                 (update :nextjournal/value
                                         (fn [{:as doc :keys [ns]}]
                                           (-> doc
@@ -752,7 +752,7 @@
         (dissoc :pred :transform-fn :update-viewers-fn)
         process-render-fn)))
 
-#_(process-viewer {:render-fn '(v/html [:h1]) :transform-fn mark-prepared})
+#_(process-viewer {:render-fn '(v/html [:h1]) :transform-fn mark-presented})
 
 (defn process-wrapped-value [wrapped-value]
   (-> wrapped-value
@@ -781,14 +781,14 @@
   (let [{:as fetch-opts :keys [path offset n]} (->fetch-opts wrapped-value)]
     (merge fetch-opts (bounded-count-opts n (->value wrapped-value)))))
 
-#_(get-elision (prepare (range)))
-#_(get-elision (prepare "abc"))
-#_(get-elision (prepare (str/join (repeat 1000 "abc"))))
+#_(get-elision (present (range)))
+#_(get-elision (present "abc"))
+#_(get-elision (present (str/join (repeat 1000 "abc"))))
 
 (defn get-fetch-opts-n [wrapped-value]
   (-> wrapped-value ->fetch-opts :n))
 
-(defn prepare+paginate-children [{:as wrapped-value :nextjournal/keys [viewers] :keys [!budget budget]}]
+(defn present+paginate-children [{:as wrapped-value :nextjournal/keys [viewers] :keys [!budget budget]}]
   (let [{:as fetch-opts :keys [path offset n]} (->fetch-opts wrapped-value)
         xs (->value wrapped-value)
         paginate? (number? n)
@@ -797,7 +797,7 @@
                       (update :n min @!budget))
         children (into []
                        (comp (if paginate? (drop+take-xf fetch-opts') identity)
-                             (map-indexed (fn [i x] (prepare* (-> (ensure-wrapped-with-viewers viewers x)
+                             (map-indexed (fn [i x] (present* (-> (ensure-wrapped-with-viewers viewers x)
                                                                   (merge (->opts wrapped-value))
                                                                   (dissoc :offset)
                                                                   (update :path (fnil conj []) (+ i (or offset 0)))
@@ -812,7 +812,7 @@
               (make-elision viewers fetch-opts))))))
 
 
-(defn prepare+paginate-string [{:as wrapped-value :nextjournal/keys [viewers viewer value]}]
+(defn present+paginate-string [{:as wrapped-value :nextjournal/keys [viewers viewer value]}]
   (let [{:as elision :keys [n total path offset]} (and (-> viewer :fetch-opts :n)
                                                        (get-elision wrapped-value))]
     (if (and n (< n total))
@@ -825,26 +825,26 @@
       value)))
 
 
-(defn ^:private prepare* [{:as wrapped-value
+(defn ^:private present* [{:as wrapped-value
                            :keys [path current-path !budget]
                            :nextjournal/keys [viewers]}]
   (when (empty? viewers)
-    (throw (ex-info "cannot prepare* with empty viewers" {:wrapped-value wrapped-value})))
-  (let [{:as wrapped-value :nextjournal/keys [viewers prepared?]} (apply-viewers* wrapped-value)
+    (throw (ex-info "cannot present* with empty viewers" {:wrapped-value wrapped-value})))
+  (let [{:as wrapped-value :nextjournal/keys [viewers presented?]} (apply-viewers* wrapped-value)
         descend? (< (count current-path)
                     (count path))
         xs (->value wrapped-value)]
     #_(prn :xs xs :type (type xs) :path path :current-path current-path :descend? descend?)
-    (when (and !budget (not descend?) (not prepared?))
+    (when (and !budget (not descend?) (not presented?))
       (swap! !budget #(max (dec %) 0)))
     (-> (merge (->opts wrapped-value)
                (with-viewer (->viewer wrapped-value)
-                 (cond prepared?
+                 (cond presented?
                        wrapped-value
 
                        descend? ;; TODO: can this be unified, simplified, or even dropped in favor of continuation?
                        (let [idx (first (drop (count current-path) path))]
-                         (prepare* (-> (ensure-wrapped-with-viewers
+                         (present* (-> (ensure-wrapped-with-viewers
                                         viewers
                                         (cond (and (map? xs) (keyword? idx)) (get xs idx)
                                               (or (map? xs) (set? xs)) (nth (seq (ensure-sorted xs)) idx)
@@ -854,47 +854,47 @@
                                        (update :current-path (fnil conj []) idx))))
 
                        (string? xs)
-                       (prepare+paginate-string wrapped-value)
+                       (present+paginate-string wrapped-value)
 
                        (and xs (seqable? xs))
-                       (prepare+paginate-children wrapped-value)
+                       (present+paginate-children wrapped-value)
 
                        :else ;; leaf value
                        xs)))
         process-wrapped-value)))
 
-(defn prepare
+(defn present
   "Returns a subset of a given `value`."
-  ([x] (prepare x {}))
+  ([x] (present x {}))
   ([x opts]
    (-> (ensure-wrapped-with-viewers x)
        (merge {:!budget (atom (:budget opts 200))
                :path (:path opts [])
                :current-path (:current-path opts [])}
               opts)
-       prepare*
+       present*
        assign-closing-parens)))
 
 (comment
-  (prepare 42)
-  (prepare [42])
-  (-> (prepare (range 100)) ->value peek)
-  (prepare {:hello [1 2 3]})
-  (prepare {:one [1 2 3] 1 2 3 4})
-  (prepare [1 2 [1 [2] 3] 4 5])
-  (prepare (clojure.java.io/file "notebooks"))
-  (prepare {:viewers [{:pred sequential? :render-fn pr-str}]} (range 100))
-  (prepare (map vector (range)))
-  (prepare (subs (slurp "/usr/share/dict/words") 0 1000))
-  (prepare (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
-  (prepare [(with-viewer :html [:h1 "hi"])])
-  (prepare (with-viewer :html [:ul (for [x (range 3)] [:li x])]))
-  (prepare (range))
-  (prepare {1 [2]})
-  (prepare (with-viewer '(fn [name] (html [:<> "Hello " name])) "James")))
+  (present 42)
+  (present [42])
+  (-> (present (range 100)) ->value peek)
+  (present {:hello [1 2 3]})
+  (present {:one [1 2 3] 1 2 3 4})
+  (present [1 2 [1 [2] 3] 4 5])
+  (present (clojure.java.io/file "notebooks"))
+  (present {:viewers [{:pred sequential? :render-fn pr-str}]} (range 100))
+  (present (map vector (range)))
+  (present (subs (slurp "/usr/share/dict/words") 0 1000))
+  (present (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
+  (present [(with-viewer :html [:h1 "hi"])])
+  (present (with-viewer :html [:ul (for [x (range 3)] [:li x])]))
+  (present (range))
+  (present {1 [2]})
+  (present (with-viewer '(fn [name] (html [:<> "Hello " name])) "James")))
 
 (defn desc->values
-  "Takes a `description` and returns its value. Inverse of `prepare`. Mostly useful for debugging."
+  "Takes a `description` and returns its value. Inverse of `present`. Mostly useful for debugging."
   [desc]
   (let [x (->value desc)
         viewer-name (-> desc ->viewer :name)]
@@ -907,14 +907,14 @@
                           x)
           :else x)))
 
-#_(desc->values (prepare [1 [2 {:a :b} 2] 3 (range 100)]))
-#_(desc->values (prepare (table (mapv vector (range 30)))))
-#_(desc->values (prepare (with-viewer :table (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))))
+#_(desc->values (present [1 [2 {:a :b} 2] 3 (range 100)]))
+#_(desc->values (present (table (mapv vector (range 30)))))
+#_(desc->values (present (with-viewer :table (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))))
 
 (defn path-to-value [path]
   (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
 
-(defn resolve-elision [root more elision]
+(defn merge-presentations [root more elision]
   (update-in root
              (path-to-value (:path elision))
              (fn [value]

@@ -314,7 +314,7 @@
 (def set-viewers!   v/set-viewers!)
 (def ->value        v/->value)
 (def update-val     v/update-val)
-(def mark-prepared  v/mark-prepared)
+(def mark-presented v/mark-presented)
 
 (defn file->viewer
   "Evaluates the given `file` and returns it's viewer representation."
