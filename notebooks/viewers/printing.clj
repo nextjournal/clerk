@@ -110,3 +110,7 @@ inc
   (pr-str {:range (range 100 200)}))
 
 (comp inc dec)
+
+(re-pattern "hel?o")
+
+(java.util.UUID/randomUUID)

@@ -527,6 +527,9 @@
                                                           (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
                                                             (deref-as-map r)
                                                             r)))}))}
+   {:pred #?(:clj (partial instance? java.util.regex.Pattern) :cljs regexp?)
+    :transform-fn (fn [wrapped-value] (with-viewer :tagged-value {:tag "" :value (let [regex (->value wrapped-value)]
+                                                                                   #?(:clj (.pattern regex) :cljs (.-source regex)))}))}
    {:pred (constantly :true) :transform-fn (update-val #(with-viewer :read+inspect (pr-str %)))}
    {:name :elision :render-fn (quote v/elision-viewer) :transform-fn mark-prepared}
    {:name :latex :render-fn (quote v/katex-viewer) :transform-fn mark-prepared}
