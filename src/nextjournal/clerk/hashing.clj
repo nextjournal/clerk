@@ -95,7 +95,8 @@
           deps (cond-> (var-dependencies analyzed-form) var (disj var))]
       (cond-> {:form form
                ;; TODO: drop var downstream so hash stays stable under change
-               :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))}
+               :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
+               :no-cache? (no-cache? form)}
         var (assoc :var var)
         (seq deps) (assoc :deps deps)))))
 
@@ -307,9 +308,11 @@
                    (when ns-effect?
                      (eval form))
                    (if (seq deps)
-                     (reduce (partial analyze-deps var form)
-                             state
-                             deps)
+                     (-> (reduce (partial analyze-deps var form)
+                                 state
+                                 deps)
+                         (update-in [:->analysis-info (if var var form) :no-cache?]
+                                    (fn [no-cache?] (or no-cache? (not (not-any? (fn [dep] (get-in state [:->analysis-info dep :no-cache?])) deps))))))
                      state)))))
            (cond-> state
              doc? (merge doc))
@@ -393,9 +396,6 @@
 #_(find-location 'io.methvin.watcher.PathUtils)
 #_(find-location 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER)
 #_(find-location 'String)
-
-
-(symbol->jar 'java.net.http.HttpClient)
 
 (def hash-jar
   (memoize (fn [f]
