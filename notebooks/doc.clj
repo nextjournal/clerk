@@ -1,41 +1,42 @@
 ;; # 📓 Doc Browser
 ^{:nextjournal.clerk/visibility #{:hide-ns :hide}}
-(ns ^:nextjournal.clerk/no-cache doc
+(ns doc
   (:require [clojure.string :as str]
             [nextjournal.clerk :as clerk]))
-
-
 
 ^{::clerk/viewer clerk/hide-result}
 (def text-input
   {:pred ::clerk/var-from-def
    :fetch-fn (fn [_ x] x)
-   :transform-fn (fn [{::clerk/keys [var-from-def]}]
-                   {:var-name (symbol var-from-def) :value @@var-from-def})
+   :transform-fn (comp (clerk/update-val (fn [{::clerk/keys [var-from-def]}]
+                                           {:var-name (symbol var-from-def) :value @@var-from-def}))
+                       clerk/mark-presented)
    :render-fn '(fn [{:keys [var-name value]}]
                  (v/html [:div.my-1.relative
                           [:input {:type :text
-                                   :autocorrect "off"
-                                   :spellcheck "false"
+                                   :auto-correct "off"
+                                   :spell-check "false"
                                    :placeholder "Filter namespaces…"
                                    :value value
                                    :class "px-3 py-2 relative bg-white bg-white rounded text-base font-sans border border-slate-200 shadow-inner outline-none focus:outline-none focus:ring w-full"
                                    :on-input #(v/clerk-eval `(reset! ~var-name ~(.. % -target -value)))}]
                           [:button.absolute.right-2.text-xl.cursor-pointer
                            {:class "top-1/2 -translate-y-1/2"
-                            :on-click #(v/clerk-eval `(reset! ~var-name ~(str/join "." (drop-last (str/split value #"\.")))))} "⏮"]]))})
+                            :on-click #(v/clerk-eval `(reset! ~var-name ~(clojure.string/join "." (drop-last (clojure.string/split value #"\.")))))} "⏮"]]))})
 
 ^{::clerk/viewer text-input}
-(defonce !ns-query (atom "nextjournal.clerk"))
+(defonce ^::clerk/no-cache !ns-query (atom "nextjournal.clerk"))
 #_(reset! !ns-query "nextjournal.clerk")
 
-^{::clerk/viewers [{:pred seq?
-                    :render-fn '#(v/html (into [:div.border.rounded-md.bg-white.shadow.flex.flex-col.mb-1]
-                                               (v/inspect-children %2) %1)) :fetch-opts {:n 20}}
-                   {:pred string?
-                    :render-fn '(fn [ns] (v/html [:button.text-xs.font-medium.font-sans.cursor-pointer.px-3.py-2.hover:bg-blue-100.text-slate-700.text-left
-                                                  {:on-click #(v/clerk-eval `(reset! !ns-query ~ns))} ns]))}]}
-(def ns-matches
+^{::clerk/viewers (clerk/add-viewers
+                   [{:pred seq?
+                     :render-fn '#(v/html (into [:div.border.rounded-md.bg-white.shadow.flex.flex-col.mb-1]
+                                                (v/inspect-children %2) %1)) :fetch-opts {:n 20}}
+                    {:pred string?
+                     :render-fn '(fn [ns] (v/html [:button.text-xs.font-medium.font-sans.cursor-pointer.px-3.py-2.hover:bg-blue-100.text-slate-700.text-left
+                                                   {:on-click #(v/clerk-eval `(reset! !ns-query ~ns))} ns]))}])}
+
+(def ^::clerk/no-cache ns-matches
   (filter #(re-find (re-pattern @!ns-query) %) (sort (map str (all-ns)))))
 
 ^{::clerk/viewer clerk/hide-result}
@@ -57,7 +58,7 @@
 
 ^{::clerk/viewer clerk/hide-result}
 (def var-doc-viewer {:pred ::clerk/var-from-def
-                     :transform-fn (comp var->doc-viewer ::clerk/var-from-def)})
+                     :transform-fn (clerk/update-val (comp var->doc-viewer ::clerk/var-from-def))})
 
 ^{::clerk/viewer clerk/hide-result}
 (defn namespace->doc-viewer [ns]
@@ -73,7 +74,8 @@
 
 ^{::clerk/viewer clerk/hide-result}
 (def ns-doc-viewer {:pred #(instance? clojure.lang.Namespace %)
-                    :transform-fn namespace->doc-viewer})
+                    :transform-fn (clerk/update-val namespace->doc-viewer)})
 
+^::clerk/no-cache
 (when-let [ns-name (first ns-matches)]
   (clerk/with-viewer ns-doc-viewer (find-ns (symbol ns-name))))
