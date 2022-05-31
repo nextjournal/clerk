@@ -66,20 +66,26 @@
         (is (= 99 @(find-var 'my-test-ns/some-var))))))
 
   (testing "random expression gets cached"
-    (is (= (clerk/eval-string "(ns my-random-test-ns) (java.util.UUID/randomUUID)")
-           (clerk/eval-string "(ns my-random-test-ns) (java.util.UUID/randomUUID)"))))
+    (is (= (clerk/eval-string "(ns my-random-test-ns-1) (rand-int 1000000)")
+           (clerk/eval-string "(ns my-random-test-ns-1) (rand-int 1000000)"))))
 
   (testing "random expression that cannot be serialized in nippy gets cached in memory"
-    (let [{:as result :keys [blob->result]} (clerk/eval-string "(ns my-random-test-ns) {inc (java.util.UUID/randomUUID)}")]
+    (let [{:as result :keys [blob->result]} (clerk/eval-string "(ns my-random-test-ns-2) {inc (java.util.UUID/randomUUID)}")]
       (is (= result
-             (clerk/eval-string blob->result "(ns my-random-test-ns) {inc (java.util.UUID/randomUUID)}")))))
+             (clerk/eval-string blob->result "(ns my-random-test-ns-2) {inc (java.util.UUID/randomUUID)}")))))
 
   (testing "random expression doesn't get cached with no-cache"
-    (is (not= (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns) (java.util.UUID/randomUUID)")
-              (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns) (java.util.UUID/randomUUID)"))))
+    (is (not= (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns-3) (java.util.UUID/randomUUID)")
+              (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns-3) (java.util.UUID/randomUUID)"))))
+  
+  (testing "random dependent expression doesn't get cached with no-cache"
+    (let [code "(ns my-random-test-ns-4) (def ^:nextjournal.clerk/no-cache my-uuid (java.util.UUID/randomUUID)) (str my-uuid)"
+          eval+get-last-block-val (fn [] (-> code clerk/eval-string :blocks peek :result :nextjournal/value))]
+      (is (not= (eval+get-last-block-val)
+                (eval+get-last-block-val)))))
 
   (testing "random expression that cannot be frozen with nippy gets cached via in-memory cache"
-    (let [code "(ns my-random-test-ns) {:my-fn inc :my-uuid (java.util.UUID/randomUUID)}"
+    (let [code "(ns my-random-test-ns-5) {:my-fn inc :my-uuid (java.util.UUID/randomUUID)}"
           result  (clerk/eval-string code)
           result' (clerk/eval-string (:blob->result result) code)
           extract-my-uuid #(-> % :blocks last :result :nextjournal/value :my-uuid)]
@@ -87,8 +93,8 @@
              (extract-my-uuid result')))))
 
   (testing "old values are cleared from in-memory cache"
-    (let [{:keys [blob->result]} (clerk/eval-string "(ns my-random-test-ns) ^:nextjournal.clerk/no-cache {inc (java.util.UUID/randomUUID)}")]
-      (is (= 2 (count (:blob->result (clerk/eval-string blob->result "(ns my-random-test-ns) {inc (java.util.UUID/randomUUID)}")))))))
+    (let [{:keys [blob->result]} (clerk/eval-string "(ns my-random-test-ns-6) ^:nextjournal.clerk/no-cache {inc (java.util.UUID/randomUUID)}")]
+      (is (= 2 (count (:blob->result (clerk/eval-string blob->result "(ns my-random-test-ns-6) {inc (java.util.UUID/randomUUID)}")))))))
 
   (testing "defonce returns correct result on subsequent evals (when defonce would eval to nil)"
     (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-defonce-test-ns) (defonce state (atom {}))")

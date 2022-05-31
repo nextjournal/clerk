@@ -40,11 +40,15 @@
                     ana/analyze
                     (ana.passes.ef/emit-form #{:hygenic :qualified-symbols})))
 
+(defn ns? [form]
+  (and (seq? form) (= 'ns (first form))))
+
 (defn no-cache? [form]
   (let [var-or-form    (if-let [vn (var-name form)] vn form)
         no-cache-meta? (comp boolean :nextjournal.clerk/no-cache meta)]
     (or (no-cache-meta? var-or-form)
-        (no-cache-meta? *ns*)
+        (when-not (ns? form)
+          (no-cache-meta? *ns*))
         (and (seq? form) (= `deref (first form))))))
 
 #_(no-cache? '(rand-int 10))
@@ -95,7 +99,8 @@
           deps (cond-> (var-dependencies analyzed-form) var (disj var))]
       (cond-> {:form form
                ;; TODO: drop var downstream so hash stays stable under change
-               :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))}
+               :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
+               :no-cache? (no-cache? form)}
         var (assoc :var var)
         (seq deps) (assoc :deps deps)))))
 
@@ -115,9 +120,6 @@
 
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
-
-(defn ns? [form]
-  (and (list? form) (= 'ns (first form))))
 
 (defn ->visibility [form]
   (when-let [visibility (-> form meta :nextjournal.clerk/visibility)]
@@ -303,13 +305,15 @@
                                  (assoc-in [:->analysis-info (if var var form)] (cond-> analyzed
                                                                                   (:file doc) (assoc :file (:file doc)))))
                        state (cond-> state
-                               doc? (update-in [:blocks i] merge (dissoc analyzed :deps)))]
+                               doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?)))]
                    (when ns-effect?
                      (eval form))
                    (if (seq deps)
-                     (reduce (partial analyze-deps var form)
-                             state
-                             deps)
+                     (-> (reduce (partial analyze-deps var form)
+                                 state
+                                 deps)
+                         (update-in [:->analysis-info (if var var form) :no-cache?]
+                                    (fn [no-cache?] (or no-cache? (boolean (some (fn [dep] (get-in state [:->analysis-info dep :no-cache?])) deps))))))
                      state)))))
            (cond-> state
              doc? (merge doc))
@@ -318,6 +322,8 @@
 
 #_(let [doc (parse-clojure-string {:doc? true} "(ns foo) (def a 41) (def b (inc a))")]
     (analyze-doc doc))
+
+*ns*
 
 (defn analyze-file
   ([file] (analyze-file {:graph (dep/graph)} file))
@@ -394,9 +400,6 @@
 #_(find-location 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER)
 #_(find-location 'String)
 
-
-(symbol->jar 'java.net.http.HttpClient)
-
 (def hash-jar
   (memoize (fn [f]
              {:jar f :hash (sha1-base58 (io/input-stream f))})))
@@ -442,10 +445,7 @@
           {}
           (dep/topo-sort graph)))
 
-#_(hash "notebooks/hello.clj")
-#_(hash "notebooks/elements.clj")
-#_(clojure.data/diff (hash "notebooks/how_clerk_works.clj")
-                     (hash "notebooks/how_clerk_works.clj"))
+#_(hash (build-graph (parse-clojure-string (slurp "notebooks/hello.clj"))))
 
 (defn exceeds-bounded-count-limit? [x]
   (reduce (fn [_ xs]

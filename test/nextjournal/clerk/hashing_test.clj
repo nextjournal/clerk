@@ -175,6 +175,16 @@
               (analyze-string "^:nextjournal.clerk/no-cache (ns example-notebook)
 #{3 1 2}"))))
 
+(deftest no-cache-dep
+  (is (match? [{:no-cache? true} {:no-cache? true} {:no-cache? true}]
+              (->> "(def ^:nextjournal.clerk/no-cache my-uuid
+  (java.util.UUID/randomUUID))
+(str my-uuid)
+my-uuid"
+                   analyze-string
+                   h/analyze-doc
+                   :->analysis-info
+                   vals))))
 
 (deftest circular-dependency
   (is (match? {:graph {:dependencies {'(ns circular) any?
@@ -187,3 +197,7 @@
 (declare a)
 (def b (str a \" boom\"))
 (def a (str \"boom \" b))"))))
+
+
+
+
