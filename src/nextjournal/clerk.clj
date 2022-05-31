@@ -129,8 +129,9 @@
     viewers
     (update :nextjournal/viewers eval)))
 
-(defn read+eval-cached [results-last-run ->hash doc-visibility codeblock]
-  (let [{:keys [ns-effect? no-cache? form var]} codeblock
+(defn read+eval-cached [results-last-run {:as _doc doc-visibility :visibility :keys [->analysis-info ->hash]} codeblock]
+  (let [{:keys [form var]} codeblock
+        {:keys [ns-effect? no-cache?]} (->analysis-info (if var var form))
         no-cache?      (or ns-effect? no-cache?)
         hash           (when-not no-cache? (or (get ->hash (if var var form))
                                                (hashing/hash-codeblock ->hash codeblock)))
@@ -158,9 +159,9 @@
       (seq opts-from-form-meta)
       (merge opts-from-form-meta))))
 
+
 #_(eval-file "notebooks/test123.clj")
 #_(eval-file "notebooks/how_clerk_works.clj")
-#_(read+eval-cached {} {} #{:show} "(subs (slurp \"/usr/share/dict/words\") 0 1000)")
 
 (defn clear-cache! []
   (swap! webserver/!doc dissoc :blob->result)
@@ -176,7 +177,7 @@
   (let [{:as evaluated-doc :keys [blob-ids]}
         (reduce (fn [{:as acc :keys [blob->result]} {:as cell :keys [type]}]
                   (let [{:as result :nextjournal/keys [blob-id]} (when (= :code type)
-                                                                   (read+eval-cached blob->result ->hash visibility cell))]
+                                                                   (read+eval-cached blob->result analyzed-doc cell))]
                     (cond-> (update acc :blocks conj (cond-> cell result (assoc :result result)))
                       blob-id (update :blob-ids conj blob-id)
                       blob-id (assoc-in [:blob->result blob-id] result))))

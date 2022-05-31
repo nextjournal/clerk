@@ -304,7 +304,7 @@
                                  (assoc-in [:->analysis-info (if var var form)] (cond-> analyzed
                                                                                   (:file doc) (assoc :file (:file doc)))))
                        state (cond-> state
-                               doc? (update-in [:blocks i] merge (dissoc analyzed :deps)))]
+                               doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?)))]
                    (when ns-effect?
                      (eval form))
                    (if (seq deps)
@@ -442,10 +442,7 @@
           {}
           (dep/topo-sort graph)))
 
-#_(hash "notebooks/hello.clj")
-#_(hash "notebooks/elements.clj")
-#_(clojure.data/diff (hash "notebooks/how_clerk_works.clj")
-                     (hash "notebooks/how_clerk_works.clj"))
+#_(hash (build-graph (parse-clojure-string (slurp "notebooks/hello.clj"))))
 
 (defn exceeds-bounded-count-limit? [x]
   (reduce (fn [_ xs]

@@ -65,18 +65,26 @@
                     blocks))
         (is (= 99 @(find-var 'my-test-ns/some-var))))))
 
+  #_
   (testing "random expression gets cached"
     (is (= (clerk/eval-string "(ns my-random-test-ns) (java.util.UUID/randomUUID)")
            (clerk/eval-string "(ns my-random-test-ns) (java.util.UUID/randomUUID)"))))
-
+  #_
   (testing "random expression that cannot be serialized in nippy gets cached in memory"
     (let [{:as result :keys [blob->result]} (clerk/eval-string "(ns my-random-test-ns) {inc (java.util.UUID/randomUUID)}")]
       (is (= result
              (clerk/eval-string blob->result "(ns my-random-test-ns) {inc (java.util.UUID/randomUUID)}")))))
 
+  
   (testing "random expression doesn't get cached with no-cache"
     (is (not= (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns) (java.util.UUID/randomUUID)")
               (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns) (java.util.UUID/randomUUID)"))))
+  
+  (testing "random dependent expression doesn't get cached with no-cache"
+    (let [code "(ns my-random-test-ns) (def ^:nextjournal.clerk/no-cache my-uuid (java.util.UUID/randomUUID)) (str my-uuid)"
+          eval+get-last-block-val (fn [] (-> code clerk/eval-string :blocks peek :result :nextjournal/value))]
+      (is (not= (eval+get-last-block-val)
+                (eval+get-last-block-val)))))
 
   (testing "random expression that cannot be frozen with nippy gets cached via in-memory cache"
     (let [code "(ns my-random-test-ns) {:my-fn inc :my-uuid (java.util.UUID/randomUUID)}"
