@@ -40,11 +40,15 @@
                     ana/analyze
                     (ana.passes.ef/emit-form #{:hygenic :qualified-symbols})))
 
+(defn ns? [form]
+  (and (seq? form) (= 'ns (first form))))
+
 (defn no-cache? [form]
   (let [var-or-form    (if-let [vn (var-name form)] vn form)
         no-cache-meta? (comp boolean :nextjournal.clerk/no-cache meta)]
     (or (no-cache-meta? var-or-form)
-        (no-cache-meta? *ns*)
+        (when-not (ns? form)
+          (no-cache-meta? *ns*))
         (and (seq? form) (= `deref (first form))))))
 
 #_(no-cache? '(rand-int 10))
@@ -116,9 +120,6 @@
 
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
-
-(defn ns? [form]
-  (and (list? form) (= 'ns (first form))))
 
 (defn ->visibility [form]
   (when-let [visibility (-> form meta :nextjournal.clerk/visibility)]
@@ -312,7 +313,7 @@
                                  state
                                  deps)
                          (update-in [:->analysis-info (if var var form) :no-cache?]
-                                    (fn [no-cache?] (or no-cache? (not (not-any? (fn [dep] (get-in state [:->analysis-info dep :no-cache?])) deps))))))
+                                    (fn [no-cache?] (or no-cache? (boolean (some (fn [dep] (get-in state [:->analysis-info dep :no-cache?])) deps))))))
                      state)))))
            (cond-> state
              doc? (merge doc))
@@ -321,6 +322,8 @@
 
 #_(let [doc (parse-clojure-string {:doc? true} "(ns foo) (def a 41) (def b (inc a))")]
     (analyze-doc doc))
+
+*ns*
 
 (defn analyze-file
   ([file] (analyze-file {:graph (dep/graph)} file))

@@ -129,7 +129,7 @@
     viewers
     (update :nextjournal/viewers eval)))
 
-(defn read+eval-cached [results-last-run {:as _doc doc-visibility :visibility :keys [->analysis-info ->hash]} codeblock]
+(defn read+eval-cached [{:as _doc doc-visibility :visibility :keys [blob->result ->analysis-info ->hash]} codeblock]
   (let [{:keys [form var]} codeblock
         {:keys [ns-effect? no-cache?]} (->analysis-info (if var var form))
         no-cache?      (or ns-effect? no-cache?)
@@ -151,8 +151,8 @@
                           :else :no-digest-file)
            :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
     (fs/create-dirs config/cache-dir)
-    (cond-> (or (when-let [result-last-run (and (not no-cache?) (get-in results-last-run [hash :nextjournal/value]))]
-                  (wrapped-with-metadata result-last-run visibility hash))
+    (cond-> (or (when-let [blob->result (and (not no-cache?) (get-in blob->result [hash :nextjournal/value]))]
+                  (wrapped-with-metadata blob->result visibility hash))
                 (when cached-result?
                   (lookup-cached-result var hash cas-hash visibility))
                 (eval+cache! form hash digest-file var no-cache? visibility))
@@ -177,7 +177,7 @@
   (let [{:as evaluated-doc :keys [blob-ids]}
         (reduce (fn [{:as acc :keys [blob->result]} {:as cell :keys [type]}]
                   (let [{:as result :nextjournal/keys [blob-id]} (when (= :code type)
-                                                                   (read+eval-cached blob->result analyzed-doc cell))]
+                                                                   (read+eval-cached analyzed-doc cell))]
                     (cond-> (update acc :blocks conj (cond-> cell result (assoc :result result)))
                       blob-id (update :blob-ids conj blob-id)
                       blob-id (assoc-in [:blob->result blob-id] result))))
