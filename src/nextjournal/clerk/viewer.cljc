@@ -10,6 +10,7 @@
                 :cljs [[reagent.ratom :as ratom]])
             [nextjournal.markdown :as md]
             [nextjournal.markdown.transform :as md.transform]
+            [nextjournal.clerk.viewers.table :as table]
             [lambdaisland.uri.normalize :as uri.normalize])
   #?(:clj (:import (clojure.lang IDeref)
                    (java.lang Throwable)
@@ -143,53 +144,6 @@
       (assoc :nextjournal/viewers viewers)))
 
 #_(->> "x^2" (with-viewer :latex) (with-viewers [{:name :latex :render-fn :mathjax}]))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; table viewer normalization
-
-(defn rpad-vec [v length padding]
-  (vec (take length (concat v (repeat padding)))))
-
-(def missing-pred
-  :nextjournal/missing)
-
-(defn normalize-seq-of-seq [s]
-  (let [max-count (count (apply max-key count s))]
-    {:rows (mapv #(rpad-vec (->value %) max-count missing-pred) s)}))
-
-(defn normalize-seq-of-map [s]
-  (let [ks (->> s (mapcat keys) distinct vec)]
-    {:head ks
-     :rows (mapv (fn [m] (mapv #(get m % missing-pred) ks)) s)}))
-
-
-(defn normalize-map-of-seq [m]
-  (let [ks (-> m keys vec)
-        m* (if (seq? (get m (first ks)))
-             (reduce (fn [acc [k s]] (assoc acc k (vec s))) {} m)
-             m)]
-    {:head ks
-     :rows (->> (range (count (val (apply max-key (comp count val) m*))))
-                (mapv (fn [i] (mapv #(get-in m* [% i] missing-pred) ks))))}))
-
-(defn normalize-seq-to-vec [{:keys [head rows]}]
-  (cond-> {:rows (vec rows)}
-    head (assoc :head (vec head))))
-
-(defn use-headers [s]
-  (let [{:as table :keys [rows]} (normalize-seq-of-seq s)]
-    (-> table
-        (assoc :head (first rows))
-        (update :rows rest))))
-
-
-(defn normalize-table-data [data]
-  (cond
-    (and (map? data) (-> data :rows sequential?)) (normalize-seq-to-vec data)
-    (and (map? data) (sequential? (first (vals data)))) (normalize-map-of-seq data)
-    (and (sequential? data) (map? (first data))) (normalize-seq-of-map data)
-    (and (sequential? data) (sequential? (first data))) (normalize-seq-of-seq data)
-    :else nil))
 
 (defn demunge-ex-data [ex-data]
   (update ex-data :trace (fn [traces] (mapv #(update % 0 (comp demunge pr-str)) traces))))
@@ -387,16 +341,18 @@
                      :render-fn '(fn [head+body opts]
                                    (v/html (into [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose] (v/inspect-children opts) head+body)))}
                     {:name :table/head
-                     :render-fn '(fn [header-row {:as opts :keys [path number-col?]}]
+                     :render-fn '(fn [header-row {:as opts :keys [path number-col? summary]}]
                                    (v/html [:thead.border-b.border-gray-300.dark:border-slate-700
                                             (into [:tr]
-                                                  (map-indexed (fn [i {v :nextjournal/value}]
-                                                                 ;; TODO: consider not discarding viewer here
-                                                                 (let [title (str (cond-> v (keyword? v) name))]
-                                                                   [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
-                                                                    {:title title :class (when (number-col? i) "text-right")}
-                                                                    [:div.flex.items-center title]
-                                                                    [v/table-col-summary (v/table-summary-sample {:continuous? (number-col? i)})]]))) header-row)]))}
+                                              (map-indexed (fn [i {v :nextjournal/value}]
+                                                             ;; TODO: consider not discarding viewer here
+                                                             (let [title (str (cond-> v (keyword? v) name))]
+                                                               [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
+                                                                {:class (when (and (number-col? i) (not summary)) "text-right")}
+                                                                [:div.flex.items-center {:title title} title]
+                                                                (when summary
+                                                                  [:div {:class "-mt-[6px]"}
+                                                                   [v/table-col-summary (get summary v)]])]))) header-row)]))}
                     {:name :table/body :fetch-opts {:n 20}
                      :render-fn '(fn [rows opts] (v/html (into [:tbody] (map-indexed (fn [idx row] (v/inspect (update opts :path conj idx) row))) rows)))}
                     {:name :table/row
@@ -552,13 +508,14 @@
    {:name :reagent :render-fn (quote v/reagent-viewer) :transform-fn mark-presented}
    {:name :table
     :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers] :keys [offset path current-path]}]
-                    (if-let [{:keys [head rows]} (normalize-table-data (->value wrapped-value))]
+                    (if-let [{:keys [head rows summary]} (table/normalize-table-data (->value wrapped-value))]
                       (-> wrapped-value
                           (assoc :nextjournal/viewer :table/markup)
                           (update :nextjournal/width #(or % :wide))
                           (update :nextjournal/viewers update-table-viewers)
                           (assoc :nextjournal/opts {:num-cols (-> rows first count)
-                                                    :number-col? (mapv number? (first rows))})
+                                                    :number-col? (mapv number? (first rows))
+                                                    :summary summary})
                           (assoc :nextjournal/value (cond->> [(with-viewer :table/body (map (partial with-viewer :table/row) rows))]
                                                       head (cons (with-viewer :table/head head)))))
                       (-> wrapped-value

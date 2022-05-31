@@ -11,6 +11,7 @@
             [nextjournal.clerk.hashing :as hashing]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
+            [nextjournal.clerk.viewers.table :as v.table]
             [nextjournal.clerk.webserver :as webserver]
             [taoensso.nippy :as nippy])
   (:import (java.awt.image BufferedImage)
@@ -294,7 +295,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public viewer api
 
-;; these are refercing vars for convience when working at the REPL
+;; these are referencing vars for convenience when working at the REPL
 (def md             v/md)
 (def plotly         v/plotly)
 (def vl             v/vl)
@@ -303,7 +304,7 @@
 (def html           v/html)
 (def code           v/code)
 (def table          v/table)
-(def use-headers    v/use-headers)
+(def use-headers    v.table/use-headers)
 (def hide-result    v/hide-result)
 (def doc-url        v/doc-url)
 (def with-viewer    v/with-viewer)

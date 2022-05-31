@@ -498,15 +498,15 @@
       [:div
        [:div.text-slate-500.dark:text-slate-400.font-normal
         {:class "text-[12px] h-[24px] leading-[24px]"}
-        (if-let [{:keys [row-count percentage]} @selected-bar]
-          (str row-count " rows (" (* 100 percentage) "%)")
-          (str col-type " (" category-count " categories)"))]
+        (if-let [{:keys [count percentage]} @selected-bar]
+          (str count " rows (" (.toFixed (* 100 percentage) 2) "%)")
+          col-type)]
        (into
          [:div.flex.relative
           {:style {:width width :height height}
            :class "rounded-sm overflow-hidden items-center "}]
          (map-indexed
-           (fn [i {:as bar :keys [label row-count percentage range]}]
+           (fn [i {:as bar :keys [label count percentage range]}]
              (let [bar-width (* width percentage)]
                [:div.relative.overflow-hidden
                 {:on-mouse-enter #(reset! selected-bar bar)
@@ -520,7 +520,7 @@
                 (when (and (contains? #{:unique :empty} label) (< 30 bar-width))
                   [:div.text-slate-500.dark:text-slate-300.font-normal.absolute.left-0.top-0.right-0.bottom-0.flex.items-center.justify-center.whitespace-nowrap
                    {:class "text-[12px]"}
-                   (str (* 100 percentage) "%"
+                   (str (.toFixed (* 100 percentage) 2) "%"
                         (when (and (= label :unique) (< 80 bar-width))
                           " unique")
                         (when (and (= label :empty) (< 110 bar-width))
@@ -532,28 +532,31 @@
        [:div.text-slate-500.dark:text-slate-400.font-normal.truncate
         {:class "text-[12px] h-[24px] mt-[1px] leading-[24px] "
          :style {:width width}}
-        (when-let [{:keys [row-count label]} @selected-bar]
+        (if-let [{:keys [count label]} @selected-bar]
           (case label
-            :unique (str row-count " unique values")
-            :empty (str row-count " empty/nil values")
-            label))]])))
+            :unique (str count " unique values")
+            :empty (str count " empty/nil values")
+            label)
+          (str "(" category-count " categories)"))]])))
 
 (defn table-col-histogram [{:keys [col-type distribution width height]}]
   (r/with-let [!selected-bar (r/atom nil)
                fmt (goog.i18n.NumberFormat. (j/get-in goog.i18n.NumberFormat [:Format :COMPACT_SHORT]))]
-    (let [max (:row-count (apply max-key :row-count distribution))
+    (let [max (:count (apply max-key :count distribution))
           last-index (dec (count distribution))
           from (-> distribution first :range first)
           to (-> distribution last :range last)]
       [:div
        [:div.text-slate-500.dark:text-slate-400.font-normal
         {:class "text-[12px] h-[24px] leading-[24px]"}
-        [:span col-type]]
+        (if-let [{:keys [count percentage]} @!selected-bar]
+          (str count " rows (" (.toFixed (* percentage 100) 2) "%)")
+          col-type)]
        (into
          [:div.flex.relative
           {:style {:width width :height height}}]
          (map-indexed
-           (fn [i {:as bar :keys [row-count range]}]
+           (fn [i {:as bar row-count :count :keys [range]}]
              (let [bar-width (/ width (count distribution))
                    selected? (= @!selected-bar bar)
                    last? (= i last-index)]
