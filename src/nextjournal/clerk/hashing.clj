@@ -36,9 +36,10 @@
         (keep var-name)
         (tree-seq (every-pred sequential? not-quoted?) seq analyzed-form)))
 
-#_(defined-vars (-> '(do (def foo :bar) (let [x (defn bar [] :baz)]) (defonce !state (atom {})))
-                    ana/analyze
-                    (ana.passes.ef/emit-form #{:hygenic :qualified-symbols})))
+#_(:vars (analyze '(do (def foo :bar) (let [x (defn bar [] :baz)]) (defonce !state (atom {})))))
+
+(defn ns? [form]
+  (and (seq? form) (= 'ns (first form))))
 
 (defn ns? [form]
   (and (seq? form) (= 'ns (first form))))
@@ -90,21 +91,18 @@
 (defn analyze [form]
   (binding [config/*in-clerk* true]
     (let [analyzed-form (analyze+emit (rewrite-defcached form))
-          var (let [defined-vars (defined-vars analyzed-form)]
-                (when (< 1 (count defined-vars))
-                  (binding [*out* *err*]
-                    (println "Multiple definitions found in form, using first one:")
-                    (prn :form form :used-var (first defined-vars))))
-                (first defined-vars))
-          deps (cond-> (var-dependencies analyzed-form) var (disj var))]
+          vars (defined-vars analyzed-form)
+          deps (apply disj (var-dependencies analyzed-form) vars)]
       (cond-> {:form form
                ;; TODO: drop var downstream so hash stays stable under change
                :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
                :no-cache? (no-cache? form)}
-        var (assoc :var var)
+        vars (assoc :vars vars)
         (seq deps) (assoc :deps deps)))))
 
 #_(analyze '(let [+ 2] +))
+#_(:vars (analyze '(do (def a 41) (def b (inc a)))))
+#_(:vars (analyze '(defrecord Node [v l r])))
 #_(analyze '(defn foo [s] (str/includes? (p/parse-string-all s) "hi")))
 #_(analyze '(defn segments [s] (let [segments (str/split s)]
                                  (str/join segments))))
@@ -273,9 +271,12 @@
 (defn- circular-dependency-error? [e]
   (-> e ex-data :reason #{::dep/circular-dependency}))
 
-(defn- analyze-circular-dependency [state var form dep {:keys [node dependency]}]
+(defn ->key [{:as _analyzed :keys [vars deps form]}])
+
+(defn- analyze-circular-dependency [state vars form dep {:keys [node dependency]}]
   (let [rec-form (concat '(do) [form (get-in state [:->analysis-info dependency :form])])
-        rec-var (symbol (str var "+" dep))]
+        rec-var (symbol (str/join "+" (sort (conj vars dep))))
+        var (first vars)] ;; TODO: reduce below
     (-> state
         (update :graph #(-> %
                             (dep/remove-edge dependency node)
@@ -283,12 +284,25 @@
                             (dep/depend dep rec-var)))
         (assoc-in [:->analysis-info rec-var :form] rec-form))))
 
-(defn- analyze-deps [var form state dep]
-  (try (update state :graph #(dep/depend % (if var var form) dep))
+(defn ->ana-keys [{:as _analyzed :keys [form vars]}]
+  (if (seq vars) vars [form]))
+
+(defn- analyze-deps [{:as analyzed :keys [form vars]} state dep]
+  (try (reduce (fn [state var]
+                 (update state :graph #(dep/depend % (if var var form) dep)))
+               state
+               (->ana-keys analyzed))
        (catch Exception e
          (if (circular-dependency-error? e)
-           (analyze-circular-dependency state var form dep (ex-data e))
+           (analyze-circular-dependency state vars form dep (ex-data e))
            (throw e)))))
+
+(defn make-deps-inherit-no-cache [state {:as analyzed :keys [no-cache? vars deps ns-effect?]}]
+  (if no-cache?
+    state
+    (let [no-cache-deps? (boolean (some (fn [dep] (get-in state [:->analysis-info dep :no-cache?])) deps))]
+      (reduce (fn [state k]
+                (assoc-in state [:->analysis-info k :no-cache?] no-cache-deps?)) state (->ana-keys analyzed)))))
 
 (defn analyze-doc
   ([doc]
@@ -299,31 +313,25 @@
                (if (not= type :code)
                  state
                  (let [form (read-string text)
-                       {:as analyzed :keys [var deps ns-effect?]} (analyze form)
-                       state (-> state
-                                 (dissoc :doc?)
-                                 (assoc-in [:->analysis-info (if var var form)] (cond-> analyzed
-                                                                                  (:file doc) (assoc :file (:file doc)))))
-                       state (cond-> state
+                       {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form)
+                                                                     (:file doc) (assoc :file (:file doc)))
+                       state (cond-> (reduce (fn [state ana-key]
+                                               (assoc-in state [:->analysis-info ana-key] analyzed))
+                                             (dissoc state :doc?)
+                                             (->ana-keys analyzed))
                                doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?)))]
                    (when ns-effect?
                      (eval form))
                    (if (seq deps)
-                     (-> (reduce (partial analyze-deps var form)
-                                 state
-                                 deps)
-                         (update-in [:->analysis-info (if var var form) :no-cache?]
-                                    (fn [no-cache?] (or no-cache? (boolean (some (fn [dep] (get-in state [:->analysis-info dep :no-cache?])) deps))))))
+                     (-> (reduce (partial analyze-deps analyzed) state deps)
+                         (make-deps-inherit-no-cache analyzed))
                      state)))))
            (cond-> state
              doc? (merge doc))
            (-> doc :blocks count range))))
 
-
-#_(let [doc (parse-clojure-string {:doc? true} "(ns foo) (def a 41) (def b (inc a))")]
+#_(let [doc (parse-clojure-string {:doc? true} "(ns foo) (def a 41) (def b (inc a)) (do (def c 4) (def d (inc a)))")]
     (analyze-doc doc))
-
-*ns*
 
 (defn analyze-file
   ([file] (analyze-file {:graph (dep/graph)} file))

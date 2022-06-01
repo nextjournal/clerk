@@ -101,7 +101,7 @@
                 (h/analyze 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER))))
 
   (is (match? {:ns-effect? false
-               :var 'nextjournal.clerk.hashing/foo
+               :vars '#{nextjournal.clerk.hashing/foo}
                :deps       #{'rewrite-clj.parser/parse-string-all
                              'clojure.string/includes?}}
               (with-ns-binding 'nextjournal.clerk.hashing
@@ -109,7 +109,7 @@
                               (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi"))))))
 
   (is (match? {:ns-effect?   false
-               :var 'nextjournal.clerk.hashing/segments
+               :vars '#{nextjournal.clerk.hashing/segments}
                :deps         #{'clojure.string/split
                                'clojure.string/join}}
               (with-ns-binding 'nextjournal.clerk.hashing
@@ -130,14 +130,13 @@
               (h/analyze '(def my-inc inc))))
 
   (is (match? {:ns-effect? false
-               :var 'nextjournal.clerk.hashing-test/!state
+               :vars '#{nextjournal.clerk.hashing-test/!state}
                :deps       #{'clojure.core/atom}}
               (with-ns-binding 'nextjournal.clerk.hashing-test
                 (h/analyze '(defonce !state (atom {}))))))
 
   (is (match? {:ns-effect? false
-               :var 'nextjournal.clerk.hashing-test/foo
-               :deps '#{nextjournal.clerk.hashing-test/foo-2}}
+               :vars '#{nextjournal.clerk.hashing-test/foo nextjournal.clerk.hashing-test/foo-2}}
               (with-ns-binding 'nextjournal.clerk.hashing-test
                 (h/analyze '(do (def foo :bar) (def foo-2 :bar))))))
 
@@ -192,12 +191,8 @@ my-uuid"
                                       'circular/a #{clojure.core/str 'circular/a+circular/b}}}
                :->analysis-info {'circular/a any?
                                  'circular/b any?
-                                 'circular/a+circular/b {:form '(do (def a (str "boom " b)) (def b(str a " boom")))}}}
+                                 'circular/a+circular/b {:form '(do (def a (str "boom " b)) (def b (str a " boom")))}}}
               (analyze-string "(ns circular)
 (declare a)
 (def b (str a \" boom\"))
 (def a (str \"boom \" b))"))))
-
-
-
-
