@@ -10,7 +10,6 @@
            taoensso.encore/defonce clojure.core/defonce
            taoensso.encore/defalias clojure.core/def
            promesa.core/let clojure.core/let}
- :skip-comments true
  :linters {:consistent-alias {:aliases {datomic.api datomic
                                         nextjournal.log log
                                         clojure.string str

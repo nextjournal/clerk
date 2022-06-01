@@ -1,5 +1,7 @@
 (ns user
-  (:require [nextjournal.clerk :as clerk]))
+  (:require
+   [clojure.string :as str]
+   [nextjournal.clerk :as clerk]))
 
 (comment
   ;; start without file watcher & open browser
@@ -7,12 +9,12 @@
 
   ;; start without file watcher
   (clerk/serve! {})
-  
+
   ;; start with file watcher
   (clerk/serve! {:watch-paths ["notebooks" "src"]})
 
   ;; start with file watcher and show filter function to enable notebook pinning
-  (clerk/serve! {:watch-paths ["notebooks" "src"] :show-filter-fn #(clojure.string/starts-with? % "notebooks")})
+  (clerk/serve! {:watch-paths ["notebooks" "src"] :show-filter-fn #(str/starts-with? % "notebooks")})
 
   (clerk/show! "notebooks/onwards.md")
   (clerk/show! "notebooks/rule_30.clj")
@@ -35,6 +37,7 @@
   (clerk/show! "notebooks/viewers/html.clj")
 
   (clerk/show! "notebooks/sicmutils.clj")
+  (clerk/show! "dev/scratch.clj")
 
   (clerk/clear-cache!)
   )
