@@ -491,8 +491,8 @@
                                                                     (let [doc (eval-analyzed-doc doc)]
                                                                       (assoc doc :viewer (view/doc->viewer {:inline-results? true} doc))))]
                         (report-fn {:stage :built :doc doc+viewer :duration duration})
-                        doc+viewer)) state)]
-    {state :result duration :time-ms} (time-ms (write-static-app! opts state))
+                        doc+viewer)) state)
+        {state :result duration :time-ms} (time-ms (write-static-app! opts state))]
     (report-fn {:stage :finished :state state :duration duration :total-duration (elapsed-ms start)})))
 
 #_(build-static-app! {:paths (take 5 clerk-docs)})
