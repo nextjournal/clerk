@@ -5,7 +5,7 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
-## unreleased
+## 0.8.442 (2022-06-01)
 * 🌟 Simplify viewer api by letting `:transform-fn` act on wrapped-value (#152)
     
     This simplifies the viewer api by letting `:transform-fn` act on
