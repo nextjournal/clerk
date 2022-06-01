@@ -1,34 +1,37 @@
 (ns nextjournal.clerk.sci-viewer
-  (:require ["framer-motion" :as framer-motion]
-            [applied-science.js-interop :as j]
-            [cljs.reader]
-            [clojure.string :as str]
-            [edamame.core :as edamame]
-            [goog.object]
-            [goog.string :as gstring]
-            [lambdaisland.uri.normalize :as uri.normalize]
-            [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex vl with-viewer with-viewers]]
-            [nextjournal.devcards :as dc]
-            [nextjournal.markdown.transform :as md.transform]
-            [nextjournal.ui.components.d3-require :as d3-require]
-            [nextjournal.ui.components.icon :as icon]
-            [nextjournal.ui.components.localstorage :as ls]
-            [nextjournal.ui.components.motion :as motion]
-            [nextjournal.ui.components.navbar :as navbar]
-            [nextjournal.view.context :as view-context]
-            [nextjournal.viewer.code :as code]
-            [nextjournal.viewer.katex :as katex]
-            [nextjournal.viewer.mathjax :as mathjax]
-            [nextjournal.viewer.plotly :as plotly]
-            [nextjournal.viewer.vega-lite :as vega-lite]
-            [re-frame.context :as rf]
-            [react :as react]
-            [reagent.core :as r]
-            [reagent.dom :as rdom]
-            [reagent.ratom :as ratom]
-            [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
-            [sci.configs.reagent.reagent :as sci.configs.reagent]
-            [sci.core :as sci]))
+  (:require
+   ["framer-motion" :as framer-motion]
+   [applied-science.js-interop :as j]
+   [cljs.reader]
+   [clojure.string :as str]
+   [edamame.core :as edamame]
+   [goog.i18n.NumberFormat]
+   [goog.object]
+   [goog.string :as gstring]
+   [lambdaisland.uri.normalize :as uri.normalize]
+   [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex vl
+                                                with-viewer with-viewers]]
+   [nextjournal.devcards :as dc]
+   [nextjournal.markdown.transform :as md.transform]
+   [nextjournal.ui.components.d3-require :as d3-require]
+   [nextjournal.ui.components.icon :as icon]
+   [nextjournal.ui.components.localstorage :as ls]
+   [nextjournal.ui.components.motion :as motion]
+   [nextjournal.ui.components.navbar :as navbar]
+   [nextjournal.view.context :as view-context]
+   [nextjournal.viewer.code :as code]
+   [nextjournal.viewer.katex :as katex]
+   [nextjournal.viewer.mathjax :as mathjax]
+   [nextjournal.viewer.plotly :as plotly]
+   [nextjournal.viewer.vega-lite :as vega-lite]
+   [re-frame.context :as rf]
+   [react :as react]
+   [reagent.core :as r]
+   [reagent.dom :as rdom]
+   [reagent.ratom :as ratom]
+   [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
+   [sci.configs.reagent.reagent :as sci.configs.reagent]
+   [sci.core :as sci]))
 
 (defn color-classes [selected?]
   {:value-color (if selected? "white-90" "dark-green")
@@ -1078,11 +1081,12 @@ black")}]))}
    'url-for url-for
    'read-string read-string})
 
-(defonce !sci-ctx
+(def !sci-ctx
   (atom (sci/init {:async? true
                    :disable-arity-checks true
                    :classes {'js goog/global
                              'framer-motion framer-motion
+                             'goog.i18n.NumberFormat goog.i18n.NumberFormat
                              :allow :all}
                    :aliases {'j 'applied-science.js-interop
                              'reagent 'reagent.core
