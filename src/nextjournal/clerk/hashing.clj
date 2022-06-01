@@ -85,6 +85,15 @@
 
 #_(rewrite-defcached '(nextjournal.clerk/defcached foo :bar))
 
+(defn def? [form]
+  (and (seq? form) (= 'def (first form))))
+
+(defn deflike? [form]
+  (and (seq? form) (symbol? (first form)) (str/starts-with? (name (first form)) "def")))
+
+#_(deflike? '(defonce foo :bar))
+#_(deflike? '(rdef foo :bar))
+
 (defn analyze [form]
   (binding [config/*in-clerk* true]
     (let [analyzed-form (analyze+emit (rewrite-defcached form))
@@ -95,9 +104,10 @@
                :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
                :no-cache? (no-cache? form)}
         vars (assoc :vars vars)
+        (and (= 1 (count vars)) (or (def? analyzed-form)
+                                    (deflike? form))) (assoc :var (first vars))
         (seq deps) (assoc :deps deps)))))
 
-#_(analyze '(let [+ 2] +))
 #_(:vars (analyze '(do (def a 41) (def b (inc a)))))
 #_(:vars (analyze '(defrecord Node [v l r])))
 #_(analyze '(defn foo [s] (str/includes? (p/parse-string-all s) "hi")))
