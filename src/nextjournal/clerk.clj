@@ -130,8 +130,8 @@
     (update :nextjournal/viewers eval)))
 
 (defn read+eval-cached [{:as _doc doc-visibility :visibility :keys [blob->result ->analysis-info ->hash]} codeblock]
-  (let [{:keys [form var]} codeblock
-        {:keys [ns-effect? no-cache?]} (->analysis-info (if var var form))
+  (let [{:keys [form vars var]} codeblock
+        {:keys [ns-effect? no-cache?]} (->analysis-info (if (seq vars) (first vars) form))
         no-cache?      (or ns-effect? no-cache?)
         hash           (when-not no-cache? (or (get ->hash (if var var form))
                                                (hashing/hash-codeblock ->hash codeblock)))
