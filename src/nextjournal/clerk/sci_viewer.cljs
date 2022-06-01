@@ -1081,7 +1081,7 @@ black")}]))}
    'url-for url-for
    'read-string read-string})
 
-(def !sci-ctx
+(defonce !sci-ctx
   (atom (sci/init {:async? true
                    :disable-arity-checks true
                    :classes {'js goog/global
