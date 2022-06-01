@@ -38,8 +38,10 @@ Changes can be:
 
     More rationale and live examples in the [Better Printing ADR](https://snapshots.nextjournal.com/clerk/build/7f510cde367ee9de6765c3f3dd7013e8bf19c64b/index.html#/notebooks/viewers/printing.clj) notebook.
 
-* 🐜 Fix lazy loading when viewer is selected via metadata.
-* 🐜 Perform bounded count limit check on tree (#154)
+* 💫 Refactor analysis to support multiple defs per top-level form (#159)
+* 🐜 Make no-cache on side-effecting var invalidate dependents (#158), fixes #157
+* 🐞 Fix lazy loading when viewer is selected via metadata.
+* 🐞 Perform bounded count limit check on tree (#154)
 
     Previously this would only be performed on the root node so we'd go out of
     memory attempting to cache a value like `{:a (range)}`.
