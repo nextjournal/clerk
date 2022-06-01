@@ -41,9 +41,6 @@
 (defn ns? [form]
   (and (seq? form) (= 'ns (first form))))
 
-(defn ns? [form]
-  (and (seq? form) (= 'ns (first form))))
-
 (defn no-cache? [form]
   (let [var-or-form    (if-let [vn (var-name form)] vn form)
         no-cache-meta? (comp boolean :nextjournal.clerk/no-cache meta)]
