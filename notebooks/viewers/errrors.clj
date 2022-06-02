@@ -10,3 +10,9 @@
 ;; If `->viewer-fn` succeeds, it can still blow up at render time.
 (clerk/with-viewer {:render-fn '(fn [x] (throw (ex-info "I blow up when called" {})))}
   :boom)
+
+(clerk/with-viewer {:render-fn '(fn [x] x)}
+  42)
+
+(clerk/with-viewer {:render-fn '(fn [_] (v/inspect :crash))}
+  42)
