@@ -317,6 +317,12 @@
 (def mark-presented v/mark-presented)
 (def mark-preserve-keys v/mark-preserve-keys)
 
+(defmacro example
+  [& body]
+  (when nextjournal.clerk.config/*in-clerk*
+    `(clerk/with-viewer v/examples-viewer
+       (mapv (fn [form# val#] {:form form# :val val#}) ~(mapv (fn [x#] `'~x#) body) ~(vec body)))))
+
 
 (defn file->viewer
   "Evaluates the given `file` and returns it's viewer representation."

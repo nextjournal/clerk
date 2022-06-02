@@ -990,3 +990,28 @@
 (defn doc-url [path]
   (->viewer-eval (list 'v/doc-url path)))
 (def code (partial with-viewer :code))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; examples
+(def example-viewer
+  {:transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers] :keys [path current-path]}]
+                   (-> wrapped-value
+                       mark-preserve-keys
+                       (assoc :nextjournal/viewer {:render-fn '(fn [{:keys [form val]} opts]
+                                                                 (v/html [:div.flex.flex-wrap
+                                                                          {:class "py-[7px]"}
+                                                                          [:div [:div.bg-slate-100.px-2.rounded
+                                                                                 (v/inspect opts form)]]
+                                                                          [:div.flex.mt-1
+                                                                           [:div.mx-2.font-sans.text-xs.text-slate-500 {:class "mt-[2px]"} "⇒"]
+                                                                           (v/inspect opts val)]]))})
+                       (update-in [:nextjournal/value :form] code)))})
+
+(def examples-viewer
+  {:transform-fn (update-val (fn [examples]
+                               (mapv (partial with-viewer example-viewer) examples)))
+   :render-fn '(fn [examples opts]
+                 (v/html (into [:div.border-l-2.border-slate-300.pl-4
+                                [:div.uppercase.tracking-wider.text-xs.font-sans.text-slate-500.mt-4.mb-2 "Examples"]]
+                               (v/inspect-children opts) examples)))})
