@@ -315,6 +315,8 @@
 (def ->value        v/->value)
 (def update-val     v/update-val)
 (def mark-presented v/mark-presented)
+(def mark-preserve-keys v/mark-preserve-keys)
+
 
 (defn file->viewer
   "Evaluates the given `file` and returns it's viewer representation."

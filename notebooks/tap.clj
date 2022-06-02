@@ -45,15 +45,15 @@
 ^{::clerk/viewer clerk/hide-result}
 (def tap-viewer
   {:name :tapped-value
-   :render-fn '(fn [tap opts]
-                 (let [[tap tapped-at key] tap]
-                   (v/html (with-meta
-                             [:div.border-t.relative.py-3
-                              [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
-                               {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
-                              [:div.overflow-x-auto [v/inspect tap]]]
-                             {:key (:nextjournal/value key)}))))
-   :transform-fn (clerk/update-val #(update % 1 inst->local-time-str))})
+   :render-fn '(fn [{:keys [val tapped-at key]} opts]
+                 (v/html (with-meta
+                           [:div.border-t.relative.py-3
+                            [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
+                             {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
+                            [:div.overflow-x-auto [v/inspect val]]]
+                           {:key (:nextjournal/value key)})))
+   :transform-fn (comp clerk/mark-preserve-keys
+                       (clerk/update-val #(update % :tapped-at inst->local-time-str)))})
 
 ^{::clerk/viewer clerk/hide-result}
 (clerk/add-viewers! [tap-viewer])
@@ -71,7 +71,7 @@
 
 ^{::clerk/viewer clerk/hide-result}
 (defn tapped [x]
-  (swap! !taps conj [x (java.time.Instant/now) (str (gensym))])
+  (swap! !taps conj {:val x :tapped-at (java.time.Instant/now) :key (str (gensym))})
   (clerk/recompute!))
 
 #_(tapped (rand-int 1000))
@@ -96,9 +96,9 @@
   (tap> (javax.imageio.ImageIO/read (java.net.URL. "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")))
 
   (do (require 'rule-30)
-      (tap> (clerk/with-viewers rule-30/viewers rule-30/rule-30)))
+      (tap> (clerk/with-viewers (clerk/add-viewers rule-30/viewers) rule-30/rule-30)))
 
-  (tap> (clerk/with-viewers rule-30/viewers rule-30/board))
+  (tap> (clerk/with-viewers (clerk/add-viewers rule-30/viewers) rule-30/board))
 
   (tap> (clerk/html [:h1 "Fin. 👋"]))
 
