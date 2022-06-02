@@ -24,45 +24,34 @@
                                                                            (v/inspect opts val)]]))})
                        (update-in [:nextjournal/value :form] clerk/code)))})
 
-(clerk/with-viewer example-viewer
-  {:form '(+ 1 2)
-   :val 3})
+(def examples-viewer
+  {:transform-fn (clerk/update-val (fn [examples]
+                                     (mapv (partial clerk/with-viewer example-viewer) examples)))
+   :render-fn '(fn [examples opts]
+                 (v/html (into [:div.border-l-2.border-slate-300.pl-4
+                                [:div.uppercase.tracking-wider.text-xs.font-sans.text-slate-500.mt-4.mb-2 "Examples"]]
+                               (v/inspect-children opts) examples)))})
 
-(clerk/with-viewer example-viewer
-  {:form '(clerk/html [:h1 "👋"])
-   :val (clerk/html [:h1 "👋"])})
-
-
-(clerk/with-viewer example-viewer
-  {:form '(-> 42 range shuffle)
-   :val (-> 42 range shuffle)})
 
 ;; Outside of Clerk, the `example` macro evaluates to `nil`, just like `clojure.core/comment`. Try this in your editor!
 (defmacro example
   [& body]
   (when nextjournal.clerk.config/*in-clerk*
-    `(clerk/with-viewer {:transform-fn (clerk/update-val (fn [ex#]
-                                                           (clerk/with-viewer {:render-fn '(fn [examples opts]
-                                                                                             (v/html (into [:div.border-l-2.border-slate-300.pl-4
-                                                                                                            [:div.uppercase.tracking-wider.text-xs.font-sans.text-slate-500.mt-4.mb-2 "Examples"]]
-                                                                                                           (v/inspect-children opts) examples)))}
-                                                             
-                                                             (mapv (partial clerk/with-viewer example-viewer) ex#))))}
+    `(clerk/with-viewer examples-viewer
        (mapv (fn [form# val#] {:form form# :val val#}) ~(mapv (fn [x#] `'~x#) body) ~(vec body)))))
 
 
 ;; But when used in the context of Clerk, it renders the examples.
 
+^{::clerk/visibility :hide}
 (example
- (+ 1 2)
- (+ 41 1)
- (-> 42 range shuffle)
- (macroexpand '(example (+ 1 2)))
- (clerk/html [:h1 "👋"])
- (javax.imageio.ImageIO/read (java.net.URL. "https://etc.usf.edu/clipart/36600/36667/thermos_36667_sm.gif"))
- )
-
-
+  (+ 1 2)
+  (+ 41 1)
+  (-> 42 range shuffle)
+  (macroexpand '(example (+ 1 2)))
+  (clerk/html [:h1 "👋"])
+  (range)
+  (javax.imageio.ImageIO/read (java.net.URL. "https://etc.usf.edu/clipart/36600/36667/thermos_36667_sm.gif")))
 
 ;; ## TODO
 ;; - [x] Show all code & results
