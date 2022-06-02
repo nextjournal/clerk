@@ -382,6 +382,7 @@
         (map #(str "notebooks/" % ".clj"))
         ["hello"
          "how_clerk_works"
+         "example"
          "pagination"
          "paren_soup"
          "readme"
