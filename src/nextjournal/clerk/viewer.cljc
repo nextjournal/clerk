@@ -210,6 +210,9 @@
 (defn mark-presented [wrapped-value]
   (assoc wrapped-value :nextjournal/presented? true))
 
+(defn mark-preserve-keys [wrapped-value]
+  (assoc wrapped-value :nextjournal/preserve-keys? true))
+
 (defn fetch-all [_opts _xs]
   (throw (ex-info "`fetch-all` is deprecated, please use a `:transform-fn` with `mark-presented` instead." {})))
 
@@ -788,24 +791,29 @@
 (defn get-fetch-opts-n [wrapped-value]
   (-> wrapped-value ->fetch-opts :n))
 
-(defn present+paginate-children [{:as wrapped-value :nextjournal/keys [viewers] :keys [!budget budget]}]
+(defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
+  (-> (ensure-wrapped-with-viewers viewers value)
+      (merge (->opts wrapped-value))
+      (dissoc :offset)
+      (update :path (fnil conj []) path-segment)
+      (update :current-path (fnil conj []) path-segment)))
+
+(defn present+paginate-children [{:as wrapped-value :nextjournal/keys [viewers preserve-keys?] :keys [!budget budget]}]
   (let [{:as fetch-opts :keys [path offset n]} (->fetch-opts wrapped-value)
         xs (->value wrapped-value)
-        paginate? (number? n)
+        paginate? (and (number? n) (not preserve-keys?))
         fetch-opts' (cond-> fetch-opts
                       (and paginate? !budget (not (map-entry? xs)))
                       (update :n min @!budget))
-        children (into []
-                       (comp (if paginate? (drop+take-xf fetch-opts') identity)
-                             (map-indexed (fn [i x] (present* (-> (ensure-wrapped-with-viewers viewers x)
-                                                                  (merge (->opts wrapped-value))
-                                                                  (dissoc :offset)
-                                                                  (update :path (fnil conj []) (+ i (or offset 0)))
-                                                                  (update :current-path (fnil conj []) i)))))
-                             (remove nil?))
-                       (ensure-sorted xs))
+        children (if preserve-keys?
+                   (into {} (map (fn [[k v]] [k (present* (inherit-opts wrapped-value v k))])) xs)
+                   (into []
+                         (comp (if paginate? (drop+take-xf fetch-opts') identity)
+                               (map-indexed (fn [i x] (present* (inherit-opts wrapped-value x (+ i (or offset 0))))))
+                               (remove nil?))
+                         (ensure-sorted xs)))
         {:as elision :keys [total unbounded?]} (and paginate? (get-elision wrapped-value))
-        new-offset (or (some-> children peek :path peek inc) 0)]
+        new-offset (when paginate? (or (some-> children peek :path peek inc) 0))]
     (cond-> children
       (and paginate? (or unbounded? (< new-offset total)))
       (conj (let [fetch-opts (assoc elision :offset new-offset)]

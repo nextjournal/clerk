@@ -12,18 +12,17 @@
 ;; The example viewer shows the form and it's resulting value.
 (def example-viewer
   {:transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers] :keys [path current-path]}]
-                   (prn :path path :current-path current-path :keys (keys wrapped-value))
                    (-> wrapped-value
-                       (assoc :nextjournal/viewer {:render-fn '(fn [[form val] opts]
+                       v/mark-preserve-keys
+                       (assoc :nextjournal/viewer {:render-fn '(fn [{:keys [form val]} opts]
                                                                  (v/html [:div.flex.flex-wrap
                                                                           {:class "py-[7px]"}
                                                                           [:div [:div.bg-slate-100.px-2.rounded
-                                                                                 (v/inspect (update opts :path conj 0) form)]]
+                                                                                 (v/inspect opts form)]]
                                                                           [:div.flex.mt-1
                                                                            [:div.mx-2.font-sans.text-xs.text-slate-500 {:class "mt-[2px]"} "⇒"]
-                                                                           (v/inspect (update opts :path conj 0) val)]]))})
-                       (update :nextjournal/value (fn [{:keys [form val]}]
-                                                    [(clerk/code form) val]))))})
+                                                                           (v/inspect opts val)]]))})
+                       (update-in [:nextjournal/value :form] clerk/code)))})
 
 (clerk/with-viewer example-viewer
   {:form '(+ 1 2)
