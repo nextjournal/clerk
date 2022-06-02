@@ -1,5 +1,5 @@
 ;; # 🔭 Clerk Examples
-^{::clerk/visibility :hide-ns}
+^{:nextjournal.clerk/visibility :hide-ns}
 (ns example
   (:require [nextjournal.clerk :as clerk]))
 
