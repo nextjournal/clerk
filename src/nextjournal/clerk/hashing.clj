@@ -315,27 +315,30 @@
   ([doc]
    (analyze-doc {:doc? true :graph (dep/graph)} doc))
   ([{:as state :keys [doc?]} doc]
-   (reduce (fn [state i]
-             (let [{:keys [type text]} (get-in state [:blocks i])]
-               (if (not= type :code)
-                 state
-                 (let [form (read-string text)
-                       {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form)
-                                                                     (:file doc) (assoc :file (:file doc)))
-                       state (cond-> (reduce (fn [state ana-key]
-                                               (assoc-in state [:->analysis-info ana-key] analyzed))
-                                             (dissoc state :doc?)
-                                             (->ana-keys analyzed))
-                               doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?)))]
-                   (when ns-effect?
-                     (eval form))
-                   (if (seq deps)
-                     (-> (reduce (partial analyze-deps analyzed) state deps)
-                         (make-deps-inherit-no-cache analyzed))
-                     state)))))
-           (cond-> state
-             doc? (merge doc))
-           (-> doc :blocks count range))))
+   (let [orig-ns *ns*
+         analyzed-state (reduce (fn [state i]
+                                  (let [{:keys [type text]} (get-in state [:blocks i])]
+                                    (if (not= type :code)
+                                      state
+                                      (let [form (read-string text)
+                                            {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form)
+                                                                                          (:file doc) (assoc :file (:file doc)))
+                                            state (cond-> (reduce (fn [state ana-key]
+                                                                    (assoc-in state [:->analysis-info ana-key] analyzed))
+                                                                  (dissoc state :doc?)
+                                                                  (->ana-keys analyzed))
+                                                    doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?)))]
+                                        (when ns-effect?
+                                          (eval form))
+                                        (if (seq deps)
+                                          (-> (reduce (partial analyze-deps analyzed) state deps)
+                                              (make-deps-inherit-no-cache analyzed))
+                                          state)))))
+                                (cond-> (assoc state :orig-ns *ns*)
+                                  doc? (merge doc))
+                                (-> doc :blocks count range))]
+     (set! *ns* orig-ns)
+     analyzed-state)))
 
 #_(let [doc (parse-clojure-string {:doc? true} "(ns foo) (def a 41) (def b (inc a)) (do (def c 4) (def d (inc a)))")]
     (analyze-doc doc))
