@@ -284,8 +284,10 @@
 
 (defn fetch! [{:keys [blob-id]} opts]
   #_(js/console.log :fetch! blob-id opts)
-  (-> (js/fetch (str "_blob/" blob-id (when (seq opts)
-                                        (str "?" (opts->query opts)))))
+  (-> (js/fetch (str js/window.location.pathname
+                     "/_blob/" blob-id
+                     (when (seq opts)
+                       (str "?" (opts->query opts)))))
       (.then #(.text %))
       (.then #(try (read-string %)
                    (catch js/Error e
@@ -1035,8 +1037,10 @@ black")}]))}
 (defn url-for [{:as src :keys [blob-id]}]
   (if (string? src)
     src
-    (str "/_blob/" blob-id (when-let [opts (seq (dissoc src :blob-id))]
-                             (str "?" (opts->query opts))))))
+    (str
+      js/window.location.pathname
+      "/_blob/" blob-id (when-let [opts (seq (dissoc src :blob-id))]
+                          (str "?" (opts->query opts))))))
 
 (def ^{:doc "Stub implementation to be replaced during static site generation. Clerk is only serving one page currently."}
   doc-url

@@ -45,38 +45,55 @@
   (assert ns "namespace must be set")
   (if (contains? blob->result blob-id)
     (let [result (v/apply-viewer-unwrapping-var-from-def (blob->result blob-id))
-          desc (v/present (v/ensure-wrapped-with-viewers
-                           (v/get-viewers ns result)
-                           (v/->value result)) ;; TODO understand why this unwrapping fixes lazy loaded table viewers
-                          fetch-opts)]
+          desc   (v/present (v/ensure-wrapped-with-viewers
+                              (v/get-viewers ns result)
+                              (v/->value result))           ;; TODO understand why this unwrapping fixes lazy loaded table viewers
+                            fetch-opts)]
       (if (contains? desc :nextjournal/content-type)
-        {:body (v/->value desc)
+        {:body         (v/->value desc)
          :content-type (:nextjournal/content-type desc)}
         {:body (v/->edn desc)}))
     {:status 404}))
 
 (defn extract-blob-opts [{:as _req :keys [uri query-string]}]
-  {:blob-id (str/replace uri "/_blob/" "")
+  {:blob-id    (str/replace uri "/_blob/" "")
    :fetch-opts (get-fetch-opts query-string)})
 
-(defn app [{:as req :keys [uri]}]
-  (if (:websocket? req)
-    (httpkit/as-channel req {:on-open (fn [ch] (swap! !clients conj ch))
-                             :on-close (fn [ch _reason] (swap! !clients disj ch))
-                             :on-receive (fn [_ch msg] (binding [*ns* (or (:ns @!doc)
-                                                                          (create-ns 'user))]
-                                                         (eval (read-string msg))
-                                                         (eval '(nextjournal.clerk/recompute!))))})
-    (try
-      (case (get (re-matches #"/([^/]*).*" uri) 1)
-        "_blob" (serve-blob @!doc (extract-blob-opts req))
-        "_ws" {:status 200 :body "upgrading..."}
-        {:status  200
-         :headers {"Content-Type" "text/html"}
-         :body    (view/doc->html @!doc @!error)})
-      (catch Throwable e
-        {:status  500
-         :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
+(defn app [{:as    req
+            :keys  [uri websocket?]
+            ::keys [path-prefix]
+            :or    {path-prefix "/clerk/"}}]
+  (let [uri' (str/replace uri path-prefix "")
+        req' (assoc req :uri (str "/" uri'))]
+    (if websocket?
+      (httpkit/as-channel req {:on-open    (fn [ch] (swap! !clients conj ch))
+                               :on-close   (fn [ch _reason] (swap! !clients disj ch))
+                               :on-receive (fn [_ch msg] (binding [*ns* (or (:ns @!doc)
+                                                                            (create-ns 'user))]
+                                                           (eval (read-string msg))
+                                                           (eval '(nextjournal.clerk/recompute!))))})
+      (try
+        (case (re-find #"[^/]*" uri')
+          "_blob" (serve-blob @!doc (extract-blob-opts req'))
+          "_ws" {:status 200 :body "upgrading..."}
+          {:status  200
+           :headers {"Content-Type" "text/html"}
+           :body    (view/doc->html {:doc         @!doc
+                                     :error       @!error
+                                     :path-prefix path-prefix})})
+        (catch Throwable e
+          {:status 500
+           :body   (with-out-str (pprint/pprint (Throwable->map e)))})))))
+
+(defn- ensure-starts-ends-with-slash [s]
+  (cond-> s
+    (not (str/starts-with? s "/")) (->> (str "/"))
+    (not (str/ends-with? s "/")) (str "/")))
+
+(defn wrap-path-prefix [handler {:keys [path-prefix]}]
+  (let [path-prefix' (ensure-starts-ends-with-slash path-prefix)]
+    (fn [req]
+      (handler (assoc req ::path-prefix path-prefix')))))
 
 (defn update-doc! [doc]
   (reset! !error nil)
