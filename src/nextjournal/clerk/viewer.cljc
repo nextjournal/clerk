@@ -132,6 +132,11 @@
               ensure-wrapped
               (assoc :nextjournal/viewer (normalize-viewer viewer))))))
 
+(defn with-viewer-extracting-opts [viewer & opts+items]
+  (if (and (map? (first opts+items)) (not (wrapped-value? (first opts+items))))
+    (with-viewer viewer (first opts+items) (rest opts+items))
+    (with-viewer viewer opts+items)))
+
 #_(with-viewer :latex "x^2")
 #_(with-viewer '#(v/html [:h3 "Hello " % "!"]) "x^2")
 
@@ -552,6 +557,20 @@
    {:name :code :render-fn (quote v/code-viewer) :transform-fn (comp mark-presented (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))}
    {:name :code-folded :render-fn (quote v/foldable-code-viewer) :transform-fn (comp mark-presented (update-val (fn [v] (if (string? v) v (with-out-str (pprint/pprint v))))))}
    {:name :reagent :render-fn (quote v/reagent-viewer) :transform-fn mark-presented}
+   {:name :row :render-fn '(fn [items opts]
+                             (let [item-count (count items)]
+                               (v/html (into [:div {:class "md:flex md:flex-row md:gap-4 not-prose"
+                                                    :style opts}]
+                                         (map (fn [item]
+                                                [:div.flex.items-center.justify-center
+                                                 {:class (str "md:w-[" (* 100 (float (/ 1 item-count))) "%]")}
+                                                 (v/inspect opts item)])) items))))}
+   {:name :col :render-fn '(fn [items opts]
+                             (v/html (into [:div {:class "md:flex md:flex-col md:gap-4 clerk-grid not-prose"
+                                                  :style opts}]
+                                       (map (fn [item]
+                                              [:div.flex.items-center.justify-center
+                                               (v/inspect opts item)])) items)))}
    {:name :table
     :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers] :keys [offset path current-path]}]
                     (if-let [{:keys [head rows]} (normalize-table-data (->value wrapped-value))]
@@ -984,13 +1003,14 @@
 (def plotly       (partial with-viewer :plotly))
 (def vl           (partial with-viewer :vega-lite))
 (def table        (partial with-viewer :table))
+(def row          (partial with-viewer-extracting-opts :row))
+(def col          (partial with-viewer-extracting-opts :col))
 (def tex          (partial with-viewer :latex))
 (def hide-result  (partial with-viewer :hide-result))
 (def notebook     (partial with-viewer :clerk/notebook))
 (defn doc-url [path]
   (->viewer-eval (list 'v/doc-url path)))
 (def code (partial with-viewer :code))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; examples
