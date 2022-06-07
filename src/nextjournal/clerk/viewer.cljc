@@ -133,8 +133,14 @@
               (assoc :nextjournal/viewer (normalize-viewer viewer))))))
 
 (defn with-viewer-extracting-opts [viewer & opts+items]
-  (if (and (map? (first opts+items)) (not (wrapped-value? (first opts+items))))
+  (cond
+    (and (map? (first opts+items)) (not (wrapped-value? (first opts+items))))
     (with-viewer viewer (first opts+items) (rest opts+items))
+
+    (and (sequential? (first opts+items)) (= 1 (count opts+items)))
+    (apply (partial with-viewer viewer) opts+items)
+
+    :else
     (with-viewer viewer opts+items)))
 
 #_(with-viewer :latex "x^2")
