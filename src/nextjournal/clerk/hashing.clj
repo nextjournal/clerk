@@ -189,19 +189,29 @@
     (and (not visibility) (-> node n/string read-string ns?))
     (assoc :ns? true)))
 
-(defn including-comment-on-same-line [nodes]
-  (loop [{:as state :keys [nodes]} {:nodes nodes}]
-    (cond (empty? nodes) state
-          (n/linebreak? (first nodes)) (update :nodes rest)
-          (n/comment? (first nodes)) (-> state
-                                         (update :nodes rest)
-                                         (update :string str (n/string (first nodes))))
-          (n/whitespace? (first nodes)) (recur (-> state
-                                                   (update :nodes rest)
-                                                   (update :string str (n/string (first nodes)))))
-          :else state)))
+(defn including-comment-on-same-line [{:as state :keys [nodes]}]
+  (cond (empty? nodes) state
+        (n/linebreak? (first nodes)) (update state :nodes rest)
+        (n/comment? (first nodes)) (-> state
+                                       (update :nodes rest)
+                                       (update :string str (str/trim-newline (n/string (first nodes)))))
+        (n/whitespace? (first nodes)) (recur (-> state
+                                                 (update :nodes rest)
+                                                 (update :string str (n/string (first nodes)))))
+        :else state))
 
-#_(-> "(inc 41) ;; foo\n;;bar" p/parse-string-all :children rest including-comment-on-same-line)
+#_(-> {:nodes (:children (p/parse-string-all "'code ;; foo\n;; bar"))}
+      (update :nodes rest)
+      including-comment-on-same-line)
+
+(defn add-code-block [{:keys [nodes visibility] :as state}]
+  (let [{:as state' :keys [string]} (-> state (update :nodes rest) including-comment-on-same-line)]
+    (-> state'
+        (update :blocks conj (cond-> (->codeblock visibility (first nodes))
+                               (seq string)
+                               (update :text str string))))))
+
+#_(add-code-block {:nodes (:children (p/parse-string-all "'code ;; foo\n;; bar"))})
 
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
@@ -211,9 +221,7 @@
      (if-let [node (first nodes)]
        (recur (cond
                 (code-tags (n/tag node))
-                (cond-> (-> state
-                            (update :nodes rest)
-                            (update :blocks conj (->codeblock visibility node)))
+                (cond-> (add-code-block state)
                   (not visibility)
                   (merge (-> node n/string read-string ->doc-settings)))
 
