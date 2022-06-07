@@ -568,8 +568,7 @@
                                (v/html (into [:div {:class "md:flex md:flex-row md:gap-4 not-prose"
                                                     :style opts}]
                                          (map (fn [item]
-                                                [:div.flex.items-center.justify-center
-                                                 {:class (str "md:w-[" (* 100 (float (/ 1 item-count))) "%]")}
+                                                [:div.flex.items-center.justify-center.flex-auto
                                                  (v/inspect opts item)])) items))))}
    {:name :col :render-fn '(fn [items opts]
                              (v/html (into [:div {:class "md:flex md:flex-col md:gap-4 clerk-grid not-prose"
