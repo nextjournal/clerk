@@ -194,10 +194,10 @@
         (n/linebreak? (first nodes)) (update state :nodes rest)
         (n/comment? (first nodes)) (-> state
                                        (update :nodes rest)
-                                       (update :string str (str/trim-newline (n/string (first nodes)))))
+                                       (update :comment str (str/trim-newline (n/string (first nodes)))))
         (n/whitespace? (first nodes)) (recur (-> state
                                                  (update :nodes rest)
-                                                 (update :string str (n/string (first nodes)))))
+                                                 (update :comment str (n/string (first nodes)))))
         :else state))
 
 #_(-> {:nodes (:children (p/parse-string-all "'code ;; foo\n;; bar"))}
@@ -205,11 +205,13 @@
       including-comment-on-same-line)
 
 (defn add-code-block [{:keys [nodes visibility] :as state}]
-  (let [{:as state' :keys [string]} (-> state (update :nodes rest) including-comment-on-same-line)]
-    (-> state'
-        (update :blocks conj (cond-> (->codeblock visibility (first nodes))
-                               (seq string)
-                               (update :text str string))))))
+  (as-> state s
+    (update s :nodes rest)
+    (including-comment-on-same-line s)
+    (update s :blocks conj (cond-> (->codeblock visibility (first nodes))
+                             (seq (:comment s))
+                             (update :text str (:comment s))))
+    (dissoc s :comment)))
 
 #_(add-code-block {:nodes (:children (p/parse-string-all "'code ;; foo\n;; bar"))})
 
