@@ -189,6 +189,20 @@
     (and (not visibility) (-> node n/string read-string ns?))
     (assoc :ns? true)))
 
+(defn including-comment-on-same-line [nodes]
+  (loop [{:as state :keys [nodes]} {:nodes nodes}]
+    (cond (empty? nodes) state
+          (n/linebreak? (first nodes)) (update :nodes rest)
+          (n/comment? (first nodes)) (-> state
+                                         (update :nodes rest)
+                                         (update :string str (n/string (first nodes))))
+          (n/whitespace? (first nodes)) (recur (-> state
+                                                   (update :nodes rest)
+                                                   (update :string str (n/string (first nodes)))))
+          :else state)))
+
+#_(-> "(inc 41) ;; foo\n;;bar" p/parse-string-all :children rest including-comment-on-same-line)
+
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
   ([{:as _opts :keys [doc?]} s]
