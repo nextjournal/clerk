@@ -1002,7 +1002,7 @@
   (add-viewers! viewers))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; public convience api
+;; public convenience api
 (def html         (partial with-viewer :html))
 (def md           (partial with-viewer :markdown))
 (def plotly       (partial with-viewer :plotly))
