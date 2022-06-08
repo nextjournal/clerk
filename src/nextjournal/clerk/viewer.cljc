@@ -132,6 +132,7 @@
               ensure-wrapped
               (assoc :nextjournal/viewer (normalize-viewer viewer))))))
 
+;; TODO: Think of a better name
 (defn with-viewer-extracting-opts [viewer & opts+items]
   (cond
     (and (map? (first opts+items)) (not (wrapped-value? (first opts+items))))
