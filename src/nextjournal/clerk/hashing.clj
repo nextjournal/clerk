@@ -217,9 +217,9 @@
 
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
-  ([{:as _opts :keys [doc?]} s]
-   (loop [{:as state :keys [nodes blocks visibility]} {:nodes (:children (p/parse-string-all s))
-                                                       :blocks []}]
+  ([opts s] (parse-clojure-string opts {:blocks []} s))
+  ([{:as _opts :keys [doc?]} initial-state s]
+   (loop [{:as state :keys [nodes blocks visibility]} (assoc initial-state :nodes (:children (p/parse-string-all s)))]
      (if-let [node (first nodes)]
        (recur (cond
                 (code-tags (n/tag node))
@@ -252,14 +252,9 @@
 (defn code-cell? [{:as node :keys [type]}]
   (and (= :code type) (contains? node :info)))
 
-(defn parse-markdown-cell [state markdown-code-cell]
-  (reduce (fn [{:as state :keys [visibility]} node]
-            (-> state
-                (update :blocks conj (->codeblock visibility node))
-                (cond-> (not visibility) (merge (-> node n/string read-string ->doc-settings)))))
-          state
-          (-> markdown-code-cell markdown.transform/->text str/trim p/parse-string-all :children
-              (->> (filter (comp code-tags n/tag))))))
+(defn parse-markdown-cell [{:as state :keys [nodes]}]
+  (assoc (parse-clojure-string {:doc? true} state (markdown.transform/->text (first nodes)))
+         :nodes (rest nodes)))
 
 (defn parse-markdown-string [{:keys [doc?]} s]
   (let [{:keys [content toc title]} (markdown/parse s)]
@@ -274,9 +269,7 @@
                  (assoc ::md-slice []))
 
              :always
-             (-> #_state
-                 (parse-markdown-cell node)
-                 (update :nodes rest)))
+             parse-markdown-cell)
 
            (-> state (update :nodes rest) (cond-> doc? (update ::md-slice conj node)))))
 
