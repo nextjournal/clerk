@@ -5,6 +5,12 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
+## 0.8.451 (2022-06-09)
+* 🐞 Display inline comments in code cell rather than in prose (#165)
+* 🌟 Introduce flexible grid layouts (#162)
+* ⭐ Make it easier to reference default viewers / introduce `last-result-viewer` (#167)
+* 🐞 Introduce checks for forms which cannot be cached to disk (#166)
+
 ## 0.8.445 (2022-06-01)
 * 💫 First cut of Clerk Examples
 
