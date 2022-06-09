@@ -98,14 +98,19 @@
   (binding [config/*in-clerk* true]
     (let [analyzed-form (analyze+emit (rewrite-defcached form))
           vars (defined-vars analyzed-form)
+          var (when (and (= 1 (count vars)) (or (def? analyzed-form)
+                                                (deflike? form)))
+                (first vars))
           deps (apply disj (var-dependencies analyzed-form) vars)]
       (cond-> {:form form
                ;; TODO: drop var downstream so hash stays stable under change
                :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
+               :freezable? (and (not (some #{'clojure.core/intern} deps))
+                                (<= (count vars) 1)
+                                (if (seq vars) (= var (first vars)) true))
                :no-cache? (no-cache? form)}
+        var (assoc :var var)
         vars (assoc :vars vars)
-        (and (= 1 (count vars)) (or (def? analyzed-form)
-                                    (deflike? form))) (assoc :var (first vars))
         (seq deps) (assoc :deps deps)))))
 
 #_(:vars (analyze '(do (def a 41) (def b (inc a)))))
@@ -122,6 +127,9 @@
               ([x] (inc x))))
 #_(analyze '(defonce !state (atom {})))
 #_(analyze '(do (def foo :bar) (def foo-2 :bar)))
+#_(analyze '(do (def foo :bar) :baz))
+#_(analyze '(intern *ns* 'foo :bar))
+#_(analyze '(import javax.imageio.ImageIO))
 
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
@@ -212,7 +220,7 @@
                     (assoc :add-comment-on-line? (not (n/comment? node)))
                     (update :nodes rest)
                     (update-in [:blocks (dec (count blocks)) :text] str (-> node n/string str/trim-newline)))
-                
+
                 (and doc? (n/comment? node))
                 (-> state
                     (assoc :add-comment-on-line? false)
