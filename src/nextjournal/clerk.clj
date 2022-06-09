@@ -403,6 +403,7 @@
          "viewers/image_layouts"
          "viewers/in_text_eval"
          "viewers/instants"
+         "viewers/last_result"
          "viewers/markdown"
          "viewers/printing"
          "viewers/plotly"
