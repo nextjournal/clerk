@@ -504,8 +504,8 @@
   {:pred char? :render-fn '(fn [c] (v/html [:span.cmt-string.inspected-value "\\" c]))})
 
 (def string-viewer
-  {:pred string? :render-fn (quote v/quoted-string-viewer) :fetch-opts (def -viewer
-                                                                         {:n 80})})
+  {:pred string? :render-fn (quote v/quoted-string-viewer) :fetch-opts {:n 80}})
+
 (def number-viewer
   {:pred number? :render-fn (quote v/number-viewer)})
 
