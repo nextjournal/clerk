@@ -52,6 +52,16 @@
                                                                    {:type :toc}]}]}})
                 (h/parse-clojure-string {:doc? true} notebook)))))
 
+(deftest parse-inline-comments
+  (is (match? {:blocks [{:doc {:content [{:content [{:text "text before"}]}]}}
+                        {:text "'some-token ;; with inline comment" :type :code}
+                        {:doc {:content [{:content [{:text "text after"}]}]}}]}
+              (h/parse-clojure-string {:doc? true}
+                                      ";; text before
+                                      'some-token ;; with inline comment
+                                      ;; text after
+                                      "))))
+
 (deftest no-cache?
   (testing "are variables set to no-cache?"
     (is (not (h/no-cache? (h/analyze+emit '(rand-int 10)))))
