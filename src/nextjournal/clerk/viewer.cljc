@@ -303,19 +303,19 @@
 #?(:clj
    (defn ->result [{:keys [inline-results?]} {:as result :nextjournal/keys [value blob-id viewers]}]
      (let [lazy-load? (and (not inline-results?) blob-id)
-           presentd-result (extract-blobs lazy-load? blob-id (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
+           presented-result (extract-blobs lazy-load? blob-id (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
            opts-from-form-meta (select-keys result [:nextjournal/width :nextjournal/opts])]
        (merge {:nextjournal/viewer :clerk/result
-               :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (merge presentd-result opts-from-form-meta))}
+               :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (merge presented-result opts-from-form-meta))}
                                                (catch Throwable _e
                                                  {:nextjournal/string (pr-str value)}))
-                                    (-> presentd-result ->viewer :name)
-                                    (assoc :nextjournal/viewer (select-keys (->viewer presentd-result) [:name]))
+                                    (-> presented-result ->viewer :name)
+                                    (assoc :nextjournal/viewer (select-keys (->viewer presented-result) [:name]))
 
                                     lazy-load?
                                     (assoc :nextjournal/fetch-opts {:blob-id blob-id}
-                                           :nextjournal/hash (hashing/->hash-str [blob-id presentd-result opts-from-form-meta])))}
-              (dissoc presentd-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
+                                           :nextjournal/hash (hashing/->hash-str [blob-id presented-result opts-from-form-meta])))}
+              (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
               ;; TODO: consider dropping this. Still needed by notebook-viewer fn to read :nextjournal/width option on result blocks
               opts-from-form-meta))))
 
