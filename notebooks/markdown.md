@@ -14,23 +14,23 @@ Nextjournal Markdown library is able to ingest a markdown string
 
 ```clojure
 (def markdown-input (slurp "https://daringfireball.net/projects/markdown/syntax.text"))
-```
 
-and parse it into a nested clojure structure
 
-```clojure
+;; and parse it into a _nested clojure structure_ (an AST)
+
+
 (def parsed (md/parse markdown-input))
 ```
 
 which you can manipulate with your favourite clojure functions
 
 ```clojure
-(def sliced (update parsed :content #(take 8 %)))
+(def sliced (update parsed :content #(take 8 %))) ;; take just a slice 
 ```
 
 and render back to hiccup with customisable elements. 
 
-At present, Clerk will split top level forms which are grouped togetehr under the same cell, this is to guarantee that Clerk's dependency analysys among forms will still effectively avoid needless recomputations when code changes. Forms are nevertheless still grouped as intended in the document.
+At present, Clerk will split top level forms which are grouped together under the same cell, this is to guarantee that Clerk's dependency analysys among forms will still effectively avoid needless recomputations when code changes. Forms are nevertheless still grouped as intended in the document.
 
 ```clojure
 (def renderers 
