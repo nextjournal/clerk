@@ -184,51 +184,38 @@
 (def code-tags
   #{:deref :map :meta :list :quote :reader-macro :set :token :var :vector})
 
+(def whitespace-on-line-tags
+  #{:comment :whitespace :comma})
+
 (defn ->codeblock [visibility node]
   (cond-> {:type :code :text (n/string node)}
     (and (not visibility) (-> node n/string read-string ns?))
     (assoc :ns? true)))
 
-(defn including-comment-on-same-line [{:as state :keys [nodes]}]
-  (cond (empty? nodes) state
-        (n/linebreak? (first nodes)) (update state :nodes rest)
-        (n/comment? (first nodes)) (-> state
-                                       (update :nodes rest)
-                                       (update :comment str (str/trim-newline (n/string (first nodes)))))
-        (n/whitespace? (first nodes)) (recur (-> state
-                                                 (update :nodes rest)
-                                                 (update :comment str (n/string (first nodes)))))
-        :else state))
-
-#_(-> {:nodes (:children (p/parse-string-all "'code ;; foo\n;; bar"))}
-      (update :nodes rest)
-      including-comment-on-same-line)
-
-(defn add-code-block [{:keys [nodes visibility] :as state}]
-  (as-> state s
-    (update s :nodes rest)
-    (including-comment-on-same-line s)
-    (update s :blocks conj (cond-> (->codeblock visibility (first nodes))
-                             (seq (:comment s))
-                             (update :text str (:comment s))))
-    (dissoc s :comment)))
-
-#_(add-code-block {:nodes (:children (p/parse-string-all "'code ;; foo\n;; bar"))})
-
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
   ([opts s] (parse-clojure-string opts {:blocks []} s))
   ([{:as _opts :keys [doc?]} initial-state s]
-   (loop [{:as state :keys [nodes blocks visibility]} (assoc initial-state :nodes (:children (p/parse-string-all s)))]
+   (loop [{:as state :keys [nodes blocks visibility add-comment-on-line?]} (assoc initial-state :nodes (:children (p/parse-string-all s)))]
      (if-let [node (first nodes)]
        (recur (cond
                 (code-tags (n/tag node))
-                (cond-> (add-code-block state)
+                (cond-> (-> state
+                            (assoc :add-comment-on-line? true)
+                            (update :nodes rest)
+                            (update :blocks conj (->codeblock visibility node)))
                   (not visibility)
                   (merge (-> node n/string read-string ->doc-settings)))
 
+                (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
+                (-> state
+                    (assoc :add-comment-on-line? (not (n/comment? node)))
+                    (update :nodes rest)
+                    (update-in [:blocks (dec (count blocks)) :text] str (-> node n/string str/trim-newline)))
+                
                 (and doc? (n/comment? node))
                 (-> state
+                    (assoc :add-comment-on-line? false)
                     (assoc :nodes (drop-while (some-fn n/comment? n/linebreak?) nodes))
                     (update :blocks conj {:type :markdown
                                           :doc (-> (apply str (map (comp remove-leading-semicolons n/string)
@@ -236,7 +223,9 @@
                                                    markdown/parse
                                                    (select-keys [:type :content]))}))
                 :else
-                (update state :nodes rest)))
+                (-> state
+                    (assoc :add-comment-on-line? false)
+                    (update :nodes rest))))
        (merge (select-keys state [:blocks :visibility])
               (when doc?
                 (-> {:content (into []
@@ -247,6 +236,9 @@
                     (select-keys #{:title :toc})
                     (assoc-in [:toc :mode] (:toc state)))))))))
 
+#_(parse-clojure-string {:doc? true} "'code ;; foo\n;; bar")
+#_(parse-clojure-string "'code , ;; foo\n;; bar")
+#_(parse-clojure-string "'code\n;; foo\n;; bar")
 #_(keys (parse-clojure-string {:doc? true} (slurp "notebooks/viewer_api.clj")))
 
 (defn code-cell? [{:as node :keys [type]}]
