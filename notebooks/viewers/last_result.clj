@@ -1,9 +1,12 @@
-(ns last-result
+;; Last Result Viewer 🔚
+(ns viewers.last-result
   (:require [clojure.string :as str]
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]))
 
-(def viewer
+;; This is a custom notebook viewer to only show the last result.
+
+(def last-result-viewer
   (update v/notebook-viewer :transform-fn (fn [transform-fn-orig]
                                             (comp transform-fn-orig
                                                   (clerk/update-val (fn [doc] (update doc :blocks (partial take-last 1))))))))
@@ -24,7 +27,7 @@
              :config {:responsive true}}))
 
 ^{::clerk/no-cache true}
-(clerk/add-viewers! [viewer])
+(clerk/add-viewers! [last-result-viewer])
 
 ^{::clerk/width :full ::clerk/visibility :hide}
 (v/row donut-chart donut-chart donut-chart)
