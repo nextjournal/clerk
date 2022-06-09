@@ -86,47 +86,18 @@
 
   (testing "random expression that cannot be frozen with nippy gets cached via in-memory cache"
     (let [code "(ns my-random-test-ns-5) {:my-fn inc :my-uuid (java.util.UUID/randomUUID)}"
-          result  (clerk/eval-string code)
+          result (clerk/eval-string code)
           result' (clerk/eval-string (:blob->result result) code)
           extract-my-uuid #(-> % :blocks last :result :nextjournal/value :my-uuid)]
       (is (= (extract-my-uuid result)
              (extract-my-uuid result')))))
 
-  (testing "def forms are freezable"
-    (clerk/clear-cache!)
-    (let [code "(ns my-test-ns-8) (def foo 1)"
-          result  (clerk/eval-string code)
-          result' (clerk/eval-string (:blob->result result) code)
-          digest-file (clerk/->cache-file (str "@" (-> result :blocks  last :result :nextjournal/blob-id)))
+  (testing "do blocks with defs are not cached on disk"
+    (let [code "(ns my-test-ns-7) (do (defonce counter (atom 0)) (swap! counter inc))"
           extract-value #(-> % :blocks last :result :nextjournal/value)]
-      (is (true? (-> result :blocks last :freezable?)))
-      (is (fs/exists? digest-file))
-      (is (= (extract-value result)
-             (extract-value result')))))
-
-  (testing "do blocks containing a def are not frozen with nippy"
-    (clerk/clear-cache!)
-    (let [code "(ns my-random-test-ns-6) (do (def foo :bar) (java.util.UUID/randomUUID))"
-          result  (clerk/eval-string code)
-          result' (clerk/eval-string (:blob->result result) code)
-          digest-file (clerk/->cache-file (str "@" (-> result :blocks  last :result :nextjournal/blob-id)))
-          extract-value #(-> % :blocks last :result :nextjournal/value)]
-      (is (false? (-> result :blocks last :freezable?)))
-      (is (not (fs/exists? digest-file)))
-      (is (= (extract-value result)
-             (extract-value result')))))
-
-  (testing "do blocks containing multiple defs are not frozen with nippy"
-    (clerk/clear-cache!)
-    (let [code "(ns my-test-ns-7) (do (def foo1 1) (def foo2 2))"
-          result  (clerk/eval-string code)
-          result' (clerk/eval-string (:blob->result result) code)
-          digest-file (clerk/->cache-file (str "@" (-> result :blocks  last :result :nextjournal/blob-id)))
-          extract-value #(-> % :blocks last :result :nextjournal/value)]
-      (is (false? (-> result :blocks last :freezable?)))
-      (is (not (fs/exists? digest-file)))
-      (is (= (extract-value result)
-             (extract-value result')))))
+      (is (= 1 (extract-value (clerk/eval-string code))))
+      (is (= 2 (extract-value (clerk/eval-string code))))
+      (ns-unmap 'my-test-ns-7 'counter)))
 
   (testing "old values are cleared from in-memory cache"
     (let [{:keys [blob->result]} (clerk/eval-string "(ns my-random-test-ns-6) ^:nextjournal.clerk/no-cache {inc (java.util.UUID/randomUUID)}")]
