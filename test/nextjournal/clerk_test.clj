@@ -77,7 +77,7 @@
   (testing "random expression doesn't get cached with no-cache"
     (is (not= (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns-3) (java.util.UUID/randomUUID)")
               (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns-3) (java.util.UUID/randomUUID)"))))
-  
+
   (testing "random dependent expression doesn't get cached with no-cache"
     (let [code "(ns my-random-test-ns-4) (def ^:nextjournal.clerk/no-cache my-uuid (java.util.UUID/randomUUID)) (str my-uuid)"
           eval+get-last-block-val (fn [] (-> code clerk/eval-string :blocks peek :result :nextjournal/value))]
@@ -91,6 +91,42 @@
           extract-my-uuid #(-> % :blocks last :result :nextjournal/value :my-uuid)]
       (is (= (extract-my-uuid result)
              (extract-my-uuid result')))))
+
+  (testing "def forms are freezable"
+    (clerk/clear-cache!)
+    (let [code "(ns my-test-ns-8) (def foo 1)"
+          result  (clerk/eval-string code)
+          result' (clerk/eval-string (:blob->result result) code)
+          digest-file (clerk/->cache-file (str "@" (-> result :blocks  last :result :nextjournal/blob-id)))
+          extract-value #(-> % :blocks last :result :nextjournal/value)]
+      (is (true? (-> result :blocks last :freezable?)))
+      (is (fs/exists? digest-file))
+      (is (= (extract-value result)
+             (extract-value result')))))
+
+  (testing "do blocks containing a def are not frozen with nippy"
+    (clerk/clear-cache!)
+    (let [code "(ns my-random-test-ns-6) (do (def foo :bar) (java.util.UUID/randomUUID))"
+          result  (clerk/eval-string code)
+          result' (clerk/eval-string (:blob->result result) code)
+          digest-file (clerk/->cache-file (str "@" (-> result :blocks  last :result :nextjournal/blob-id)))
+          extract-value #(-> % :blocks last :result :nextjournal/value)]
+      (is (false? (-> result :blocks last :freezable?)))
+      (is (not (fs/exists? digest-file)))
+      (is (= (extract-value result)
+             (extract-value result')))))
+
+  (testing "do blocks containing multiple defs are not frozen with nippy"
+    (clerk/clear-cache!)
+    (let [code "(ns my-test-ns-7) (do (def foo1 1) (def foo2 2))"
+          result  (clerk/eval-string code)
+          result' (clerk/eval-string (:blob->result result) code)
+          digest-file (clerk/->cache-file (str "@" (-> result :blocks  last :result :nextjournal/blob-id)))
+          extract-value #(-> % :blocks last :result :nextjournal/value)]
+      (is (false? (-> result :blocks last :freezable?)))
+      (is (not (fs/exists? digest-file)))
+      (is (= (extract-value result)
+             (extract-value result')))))
 
   (testing "old values are cleared from in-memory cache"
     (let [{:keys [blob->result]} (clerk/eval-string "(ns my-random-test-ns-6) ^:nextjournal.clerk/no-cache {inc (java.util.UUID/randomUUID)}")]
