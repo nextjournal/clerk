@@ -105,7 +105,7 @@
       (cond-> {:form form
                ;; TODO: drop var downstream so hash stays stable under change
                :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
-               :freezable? (and (not (some #{'clojure.core/intern 'clojure.core/import*} deps))
+               :freezable? (and (not (some #{'clojure.core/intern} deps))
                                 (<= (count vars) 1)
                                 (if (seq vars) (= var (first vars)) true))
                :no-cache? (no-cache? form)}
