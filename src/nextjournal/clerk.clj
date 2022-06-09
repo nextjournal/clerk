@@ -303,6 +303,8 @@
 (def html           v/html)
 (def code           v/code)
 (def table          v/table)
+(def row            v/row)
+(def col            v/col)
 (def use-headers    v/use-headers)
 (def hide-result    v/hide-result)
 (def doc-url        v/doc-url)
