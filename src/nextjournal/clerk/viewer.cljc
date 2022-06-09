@@ -675,23 +675,22 @@
 (def result-viewer
   {:name :clerk/result :render-fn (quote v/result-viewer) :transform-fn mark-presented})
 
+(defn process-blocks [viewers {:as doc :keys [ns]}]
+  (-> doc
+    (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
+                                           (map (comp #(vector (->ViewerEval 'v/inspect) %)
+                                                  process-wrapped-value
+                                              apply-viewers*
+                                              (partial ensure-wrapped-with-viewers viewers))))))
+    (select-keys [:blocks :toc :title])
+    (cond-> ns (assoc :scope (datafy-scope ns)))))
+
 (def notebook-viewer
   {:name :clerk/notebook
    :render-fn (quote v/notebook-viewer)
-   :transform-fn #?(:clj  (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
-                            (-> wrapped-value
-                              mark-presented
-                              (update :nextjournal/value
-                                (fn [{:as doc :keys [ns]}]
-                                  (-> doc
-                                    (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
-                                                                       (map (comp #(vector (->ViewerEval 'v/inspect) %)
-                                                                              process-wrapped-value
-                                                                              apply-viewers*
-                                                                              (partial ensure-wrapped-with-viewers viewers))))))
-                                    (select-keys [:blocks :toc :title])
-                                    (cond-> ns (assoc :scope (datafy-scope ns))))))))
-                    :cljs identity)})
+   :transform-fn #?(:cljs identity
+                    :clj  (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
+                            (->> wrapped-value mark-presented (process-blocks viewers))))})
 
 (def hide-result-viewer
   {:name :hide-result :transform-fn (fn [_] nil)})
