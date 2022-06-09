@@ -597,7 +597,7 @@
   {:name :html
    :render-fn (quote v/html)
    :transform-fn (comp mark-presented
-                   (update-val (partial w/postwalk (when-wrapped inspect-wrapped-value))))})
+                       (update-val (partial w/postwalk (when-wrapped inspect-wrapped-value))))})
 
 (def plotly-viewer
   {:name :plotly :render-fn (quote v/plotly-viewer) :transform-fn mark-presented})
@@ -608,10 +608,10 @@
 (def markdown-viewer
   {:name :markdown :transform-fn (fn [wrapped-value]
                                    (-> wrapped-value
-                                     mark-presented
-                                     (update :nextjournal/value #(cond->> % (string? %) md/parse))
-                                     (update :nextjournal/viewers add-viewers markdown-viewers)
-                                     (with-md-viewer)))})
+                                       mark-presented
+                                       (update :nextjournal/value #(cond->> % (string? %) md/parse))
+                                       (update :nextjournal/viewers add-viewers markdown-viewers)
+                                       (with-md-viewer)))})
 
 (def code-viewer
   {:name :code :render-fn (quote v/code-viewer) :transform-fn (comp mark-presented (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))})
@@ -644,18 +644,18 @@
    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers] :keys [offset path current-path]}]
                    (if-let [{:keys [head rows]} (normalize-table-data (->value wrapped-value))]
                      (-> wrapped-value
-                       (assoc :nextjournal/viewer :table/markup)
-                       (update :nextjournal/width #(or % :wide))
-                       (update :nextjournal/viewers update-table-viewers)
-                       (assoc :nextjournal/opts {:num-cols (-> rows first count)
-                                                 :number-col? (mapv number? (first rows))})
-                       (assoc :nextjournal/value (cond->> [(with-viewer :table/body (map (partial with-viewer :table/row) rows))]
-                                                   head (cons (with-viewer :table/head head)))))
+                         (assoc :nextjournal/viewer :table/markup)
+                         (update :nextjournal/width #(or % :wide))
+                         (update :nextjournal/viewers update-table-viewers)
+                         (assoc :nextjournal/opts {:num-cols (-> rows first count)
+                                                   :number-col? (mapv number? (first rows))})
+                         (assoc :nextjournal/value (cond->> [(with-viewer :table/body (map (partial with-viewer :table/row) rows))]
+                                                     head (cons (with-viewer :table/head head)))))
                      (-> wrapped-value
-                       mark-presented
-                       (assoc :nextjournal/width :wide)
-                       (assoc :nextjournal/value [(present wrapped-value)])
-                       (assoc :nextjournal/viewer {:render-fn 'v/table-error}))))})
+                         mark-presented
+                         (assoc :nextjournal/width :wide)
+                         (assoc :nextjournal/value [(present wrapped-value)])
+                         (assoc :nextjournal/viewer {:render-fn 'v/table-error}))))})
 
 (def table-error-viewer
   {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}})
@@ -677,13 +677,13 @@
 
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc
-    (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
-                                           (map (comp #(vector (->ViewerEval 'v/inspect) %)
-                                                  process-wrapped-value
-                                              apply-viewers*
-                                              (partial ensure-wrapped-with-viewers viewers))))))
-    (select-keys [:blocks :toc :title])
-    (cond-> ns (assoc :scope (datafy-scope ns)))))
+      (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
+                                             (map (comp #(vector (->ViewerEval 'v/inspect) %)
+                                                        process-wrapped-value
+                                                        apply-viewers*
+                                                        (partial ensure-wrapped-with-viewers viewers))))))
+      (select-keys [:blocks :toc :title])
+      (cond-> ns (assoc :scope (datafy-scope ns)))))
 
 (def notebook-viewer
   {:name :clerk/notebook
