@@ -30,4 +30,4 @@
 (clerk/add-viewers! [last-result-viewer])
 
 ^{::clerk/width :full ::clerk/visibility :hide}
-(v/row donut-chart donut-chart donut-chart)
+(repeat 3 (v/row (repeat 3 donut-chart)))
