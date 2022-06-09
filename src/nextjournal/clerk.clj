@@ -131,7 +131,7 @@
 
 (defn read+eval-cached [{:as _doc doc-visibility :visibility :keys [blob->result ->analysis-info ->hash]} codeblock]
   (let [{:keys [form vars var]} codeblock
-        {:keys [ns-effect? no-cache?]} (->analysis-info (if (seq vars) (first vars) form))
+        {:keys [ns-effect? no-cache? freezable?]} (->analysis-info (if (seq vars) (first vars) form))
         no-cache?      (or ns-effect? no-cache?)
         hash           (when-not no-cache? (or (get ->hash (if var var form))
                                                (hashing/hash-codeblock ->hash codeblock)))
@@ -153,7 +153,7 @@
     (fs/create-dirs config/cache-dir)
     (cond-> (or (when-let [blob->result (and (not no-cache?) (get-in blob->result [hash :nextjournal/value]))]
                   (wrapped-with-metadata blob->result visibility hash))
-                (when cached-result?
+                (when (and cached-result? freezable?)
                   (lookup-cached-result var hash cas-hash visibility))
                 (eval+cache! form hash digest-file var no-cache? visibility))
       (seq opts-from-form-meta)
