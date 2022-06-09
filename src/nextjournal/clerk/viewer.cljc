@@ -433,8 +433,10 @@
 #_(datafy-scope *ns*)
 #_(datafy-scope #'datafy-scope)
 
-(defn update-val [f]
-  #(update % :nextjournal/value f))
+(defn update-val [f & args]
+  (fn [wrapped-value] (apply update wrapped-value :nextjournal/value f args)))
+
+#_((update-val + 1) {:nextjournal/value 41})
 
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:div.viewer-markdown])}
@@ -675,22 +677,25 @@
 (def result-viewer
   {:name :clerk/result :render-fn (quote v/result-viewer) :transform-fn mark-presented})
 
-(defn process-blocks [viewers {:as doc :keys [ns]}]
-  (-> doc
-      (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
-                                             (map (comp #(vector (->ViewerEval 'v/inspect) %)
-                                                        process-wrapped-value
-                                                        apply-viewers*
-                                                        (partial ensure-wrapped-with-viewers viewers))))))
-      (select-keys [:blocks :toc :title])
-      (cond-> ns (assoc :scope (datafy-scope ns)))))
+#?(:clj
+   (defn process-blocks [viewers {:as doc :keys [ns]}]
+     (-> doc
+         (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
+                                                (map (comp #(vector (->ViewerEval 'v/inspect) %)
+                                                           process-wrapped-value
+                                                           apply-viewers*
+                                                           (partial ensure-wrapped-with-viewers viewers))))))
+         (select-keys [:blocks :toc :title])
+         (cond-> ns (assoc :scope (datafy-scope ns))))))
 
 (def notebook-viewer
   {:name :clerk/notebook
    :render-fn (quote v/notebook-viewer)
    :transform-fn #?(:cljs identity
                     :clj  (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
-                            (->> wrapped-value mark-presented (process-blocks viewers))))})
+                            (-> wrapped-value
+                                (update :nextjournal/value (partial process-blocks viewers))
+                                mark-presented)))})
 
 (def hide-result-viewer
   {:name :hide-result :transform-fn (fn [_] nil)})
