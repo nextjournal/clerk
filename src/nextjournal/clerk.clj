@@ -103,22 +103,23 @@
       #_(prn :freeze-error e)
       nil)))
 
-(defn- eval+cache! [form hash digest-file introduced-var no-cache? visibility]
+(defn- eval+cache! [{:keys [form var ns-effect? no-cache? freezable?]} hash digest-file visibility]
   (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true] (eval form)))
-        result (if (and (nil? result) introduced-var (= 'defonce (first form)))
-                 (find-var introduced-var)
+        result (if (and (nil? result) var (= 'defonce (first form)))
+                 (find-var var)
                  result)
         var-value (cond-> result (var? result) deref)
-        no-cache? (or no-cache?
+        no-cache? (or ns-effect?
+                      no-cache?
                       config/cache-disabled?
                       (hashing/exceeds-bounded-count-limit? var-value))]
-    (when (and (not no-cache?) (cachable-value? var-value))
+    (when (and (not no-cache?) (not ns-effect?) freezable? (cachable-value? var-value))
       (cache! digest-file var-value))
     (let [blob-id (cond no-cache? (hashing/->hash-str var-value)
                         (fn? var-value) nil
                         :else hash)
-          result (if introduced-var
-                   (var-from-def introduced-var)
+          result (if var
+                   (var-from-def var)
                    result)]
       (wrapped-with-metadata result visibility blob-id))))
 
@@ -131,7 +132,7 @@
 
 (defn read+eval-cached [{:as _doc doc-visibility :visibility :keys [blob->result ->analysis-info ->hash]} codeblock]
   (let [{:keys [form vars var]} codeblock
-        {:keys [ns-effect? no-cache? freezable?]} (->analysis-info (if (seq vars) (first vars) form))
+        {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info (if (seq vars) (first vars) form))
         no-cache?      (or ns-effect? no-cache?)
         hash           (when-not no-cache? (or (get ->hash (if var var form))
                                                (hashing/hash-codeblock ->hash codeblock)))
@@ -155,7 +156,7 @@
                   (wrapped-with-metadata blob->result visibility hash))
                 (when (and cached-result? freezable?)
                   (lookup-cached-result var hash cas-hash visibility))
-                (eval+cache! form hash digest-file var no-cache? visibility))
+                (eval+cache! form-info hash digest-file visibility))
       (seq opts-from-form-meta)
       (merge opts-from-form-meta))))
 
