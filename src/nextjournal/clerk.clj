@@ -81,7 +81,7 @@
   (try
     (let [value (let [cached-value (thaw-from-cas cas-hash)]
                   (when introduced-var
-                    (intern *ns* (-> introduced-var symbol name symbol) cached-value))
+                    (intern (-> introduced-var symbol namespace find-ns) (-> introduced-var symbol name symbol) cached-value))
                   cached-value)]
       (wrapped-with-metadata (if introduced-var (var-from-def introduced-var) value) visibility hash))
     (catch Exception _e
@@ -189,10 +189,11 @@
 
 
 (defn +eval-results [results-last-run parsed-doc]
-  (let [analyzed-doc (hashing/build-graph parsed-doc)]
-    (-> analyzed-doc
-        (assoc :blob->result results-last-run :->hash (hashing/hash analyzed-doc) :ns *ns*)
-        eval-analyzed-doc)))
+  (let [{:as analyzed-doc :keys [ns]} (hashing/build-graph parsed-doc)]
+    (binding [*ns* ns]
+      (-> analyzed-doc
+          (assoc :blob->result results-last-run :->hash (hashing/hash analyzed-doc))
+          eval-analyzed-doc))))
 
 (defn parse-file [file]
   (hashing/parse-file {:doc? true} file))
@@ -495,7 +496,7 @@
         _ (report-fn {:stage :init :state state})
         {state :result duration :time-ms} (time-ms (mapv (comp parse-file :file) state))
         _ (report-fn {:stage :parsed :state state :duration duration})
-        {state :result duration :time-ms} (time-ms (mapv (comp (fn [doc] (assoc doc :->hash (hashing/hash doc) :ns *ns*))
+        {state :result duration :time-ms} (time-ms (mapv (comp (fn [doc] (assoc doc :->hash (hashing/hash doc)))
                                                                hashing/build-graph) state))
         _ (report-fn {:stage :analyzed :state state :duration duration})
         state (mapv (fn [doc]

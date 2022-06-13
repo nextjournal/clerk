@@ -41,8 +41,9 @@
 #_(get-pagination-opts "")
 #_(get-pagination-opts "foo=bar&n=42&start=20")
 
-(defn serve-blob [{:as _doc :keys [blob->result ns]} {:keys [blob-id fetch-opts]}]
-  (assert ns "namespace must be set")
+(defn serve-blob [{:as doc :keys [blob->result ns]} {:keys [blob-id fetch-opts]}]
+  (when-not ns
+    (throw (ex-info "namespace must be set" {:doc doc})))
   (if (contains? blob->result blob-id)
     (let [result (v/apply-viewer-unwrapping-var-from-def (blob->result blob-id))
           desc (v/present (v/ensure-wrapped-with-viewers
