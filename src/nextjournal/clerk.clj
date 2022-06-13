@@ -134,7 +134,8 @@
   (let [{:keys [form vars var]} codeblock
         {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info (if (seq vars) (first vars) form))
         no-cache?      (or ns-effect? no-cache?)
-        hash           (when-not no-cache? (or (get ->hash (if var var form))
+        hash           (when-not no-cache? (or (when-not (contains? (meta form) :nextjournal.clerk/hash-fn)
+                                                 (get ->hash (if var var form)))
                                                (hashing/hash-codeblock ->hash codeblock)))
         digest-file    (when hash (->cache-file (str "@" hash)))
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))

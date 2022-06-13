@@ -59,13 +59,17 @@
 (defn var-dependencies [analyzed-form]
   (let [var-name (var-name analyzed-form)]
     (into #{}
-          (filter #(and (symbol? %)
-                        (if (qualified-symbol? %)
-                          (not= var-name %)
-                          (and (not= \. (-> % str (.charAt 0)))
-                               (-> % resolve class?)))))
+          (filter #(or (and (symbol? %)
+                            (if (qualified-symbol? %)
+                              (not= var-name %)
+                              (and (not= \. (-> % str (.charAt 0)))
+                                   (-> % resolve class?))))
+                       (and (seq? %)
+                            (= (first %) `deref)
+                            (= 2 (count %)))))
           (tree-seq (every-pred (some-fn sequential? map? set?) not-quoted?) seq analyzed-form))))
 
+#_(var-dependencies '@foo/bar)
 #_(var-dependencies '(def nextjournal.clerk.hashing/foo
                        (fn* ([] (nextjournal.clerk.hashing/foo "s"))
                             ([s] (clojure.string/includes?
@@ -418,10 +422,12 @@
 #_(symbol->jar 'java.net.http.HttpClient/newHttpClient)
 
 (defn find-location [sym]
-  (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
-    (or (ns->file ns)
-        (ns->jar ns))
-    (symbol->jar sym)))
+  (if (seq? sym)
+    (find-location (second sym))
+    (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
+      (or (ns->file ns)
+          (ns->jar ns))
+      (symbol->jar sym))))
 
 
 #_(find-location `inc)
@@ -489,7 +495,8 @@
 
 (defn hash-codeblock [->hash {:as ana :keys [hash form deps]}]
   (if-let [hash-fn (some-> form meta :nextjournal.clerk/hash-fn eval)]
-    (valuehash (hash-fn (assoc ana :->hash ->hash)))
+    (let [hashed (hash-fn (assoc ana :->hash ->hash))]
+      (valuehash (hash-fn (assoc ana :->hash ->hash))))
     (let [hashed-deps (into #{} (map ->hash) deps)]
       (sha1-base58 (pr-str (conj hashed-deps (if form form hash)))))))
 
