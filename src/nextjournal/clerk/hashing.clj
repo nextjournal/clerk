@@ -126,6 +126,8 @@
               ([] (my-inc 0))
               ([x] (inc x))))
 #_(analyze '(defonce !state (atom {})))
+#_(analyze '(vector :h1 (deref !state)))
+#_(analyze '(vector :h1 @!state))
 #_(analyze '(do (def foo :bar) (def foo-2 :bar)))
 #_(analyze '(do (def foo :bar) :baz))
 #_(analyze '(intern *ns* 'foo :bar))
@@ -463,36 +465,6 @@
 #_(dep/immediate-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 
-(defn hash-codeblock [->hash {:keys [hash form deps]}]
-  (let [hashed-deps (into #{} (map ->hash) deps)]
-    (sha1-base58 (pr-str (conj hashed-deps (if form form hash))))))
-
-(defn hash [{:keys [->analysis-info graph]}]
-  (reduce (fn [->hash k]
-            (if-let [codeblock (get ->analysis-info k)]
-              (assoc ->hash k (hash-codeblock ->hash codeblock))
-              ->hash))
-          {}
-          (dep/topo-sort graph)))
-
-#_(hash (build-graph (parse-clojure-string (slurp "notebooks/hello.clj"))))
-
-(defn exceeds-bounded-count-limit? [x]
-  (reduce (fn [_ xs]
-            (try
-              (let [limit config/*bounded-count-limit*]
-                (if (and (seqable? xs) (<= limit (bounded-count limit xs)))
-                  (reduced true)
-                  false))
-              (catch Exception _e
-                (reduced true))))
-          false
-          (tree-seq seqable? seq x)))
-
-#_(exceeds-bounded-count-limit? (range config/*bounded-count-limit*))
-#_(exceeds-bounded-count-limit? (range (dec config/*bounded-count-limit*)))
-#_(exceeds-bounded-count-limit? {:a-range (range)})
-
 (defn valuehash [value]
   (-> value
       nippy/fast-freeze
@@ -514,6 +486,40 @@
 
 #_(->hash-str (range 104))
 #_(->hash-str (range))
+
+(defn hash-codeblock [->hash {:as ana :keys [hash form deps]}]
+  (if-let [hash-fn (some-> form meta :nextjournal.clerk/hash-fn eval)]
+    (valuehash (hash-fn (assoc ana :->hash ->hash)))
+    (let [hashed-deps (into #{} (map ->hash) deps)]
+      (sha1-base58 (pr-str (conj hashed-deps (if form form hash)))))))
+
+(defn hash [{:keys [->analysis-info graph]}]
+  (reduce (fn [->hash k]
+            (if-let [codeblock (get ->analysis-info k)]
+              (assoc ->hash k (hash-codeblock ->hash codeblock))
+              ->hash))
+          {}
+          (dep/topo-sort graph)))
+
+#_(hash (build-graph (parse-clojure-string "^{:nextjournal.clerk/hash-fn (fn [x] \"abc\")}(def contents (slurp \"notebooks/hello.clj\"))")))
+#_(hash (build-graph (parse-clojure-string (slurp "notebooks/hello.clj"))))
+
+(defn exceeds-bounded-count-limit? [x]
+  (reduce (fn [_ xs]
+            (try
+              (let [limit config/*bounded-count-limit*]
+                (if (and (seqable? xs) (<= limit (bounded-count limit xs)))
+                  (reduced true)
+                  false))
+              (catch Exception _e
+                (reduced true))))
+          false
+          (tree-seq seqable? seq x)))
+
+#_(exceeds-bounded-count-limit? (range config/*bounded-count-limit*))
+#_(exceeds-bounded-count-limit? (range (dec config/*bounded-count-limit*)))
+#_(exceeds-bounded-count-limit? {:a-range (range)})
+
 
 (comment
   (require 'clojure.data)
