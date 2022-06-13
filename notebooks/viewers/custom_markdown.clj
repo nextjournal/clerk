@@ -63,3 +63,15 @@
 ;; |  Three  |❌  |
 ;;
 ;; ---
+;; ### Images
+;; inline
+;;
+;; what a ![Clojars Project](https://img.shields.io/clojars/v/io.github.nextjournal/markdown.svg) badge ![Notebooks](https://img.shields.io/static/v1?logo=plex&logoColor=rgb(155,187,157)&label=clerk&message=notebooks&color=rgb(155,187,157))
+;;
+;; wrapped in links
+;;
+;; [![Clojars Project](https://img.shields.io/clojars/v/io.github.nextjournal/markdown.svg)](https://clojars.org/io.github.nextjournal/markdown) [![Notebooks](https://img.shields.io/static/v1?logo=plex&logoColor=rgb(155,187,157)&label=clerk&message=notebooks&color=rgb(155,187,157))](https://nextjournal.github.io/markdown/#/README.md)
+;;
+;; block
+;;
+;; ![nj](https://cdn.nextjournal.com/images/nextjournal-logo.svg)
