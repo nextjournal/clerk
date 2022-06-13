@@ -36,7 +36,7 @@
       uri/query-string->map
       (update-if :n #(Integer/parseInt %))
       (update-if :offset #(Integer/parseInt %))
-      (update-if :path #(edn/read-string %))))
+      (update-if :path edn/read-string)))
 
 #_(get-pagination-opts "")
 #_(get-pagination-opts "foo=bar&n=42&start=20")

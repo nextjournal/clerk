@@ -251,6 +251,7 @@
         ;; TODO diff to avoid flickering
         #_(webserver/update-doc! doc)
         (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
+        (def r result)
         (webserver/update-doc! result))
       (catch Exception e
         (webserver/show-error! e)
@@ -507,6 +508,14 @@
                         doc+viewer)) state)
         {state :result duration :time-ms} (time-ms (write-static-app! opts state))]
     (report-fn {:stage :finished :state state :duration duration :total-duration (elapsed-ms start)})))
+
+(defn viewer-source [rel-path]
+  (let [source (-> @!last-file
+                  fs/parent
+                  (fs/file rel-path)
+                  slurp)
+        source (format "(do %s)" source)]
+    {::viewer-source source}))
 
 #_(build-static-app! {:paths (take 5 clerk-docs)})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})

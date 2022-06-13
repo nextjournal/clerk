@@ -1092,7 +1092,9 @@ black")}]))}
                                       sci.configs.reagent/namespaces)})))
 
 (defn eval-form [f]
-  (sci/eval-form @!sci-ctx f))
+  (if-let [source (:nextjournal.clerk/viewer-source f)]
+    (sci/eval-string* @!sci-ctx source)
+    (sci/eval-form @!sci-ctx f)))
 
 (set! *eval* eval-form)
 

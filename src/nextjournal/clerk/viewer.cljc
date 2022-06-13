@@ -1,21 +1,23 @@
 (ns nextjournal.clerk.viewer
-  (:require [clojure.string :as str]
-            [clojure.pprint :as pprint]
-            [clojure.datafy :as datafy]
-            [clojure.set :as set]
-            [clojure.walk :as w]
-            #?@(:clj [[clojure.repl :refer [demunge]]
+  (:require
+   [clojure.datafy :as datafy]
+   [clojure.pprint :as pprint]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.walk :as w]
+   [lambdaisland.uri.normalize :as uri.normalize]
+   [nextjournal.markdown :as md]
+   [nextjournal.markdown.transform :as md.transform]
+   #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.hashing :as hashing]]
-                :cljs [[reagent.ratom :as ratom]])
-            [nextjournal.markdown :as md]
-            [nextjournal.markdown.transform :as md.transform]
-            [lambdaisland.uri.normalize :as uri.normalize])
-  #?(:clj (:import (clojure.lang IDeref)
-                   (java.lang Throwable)
-                   (java.awt.image BufferedImage)
-                   (javax.imageio ImageIO)
-                   (java.util Base64))))
+                :cljs [[reagent.ratom :as ratom]]))
+  #?(:clj (:import
+           (clojure.lang IDeref)
+           (java.awt.image BufferedImage)
+           (java.lang Throwable)
+           (java.util Base64)
+           (javax.imageio ImageIO))))
 
 (defrecord ViewerEval [form])
 
