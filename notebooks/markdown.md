@@ -30,7 +30,7 @@ which you can manipulate with your favourite clojure functions
 
 and render back to hiccup with customisable elements. 
 
-At present, Clerk will split top level forms which are grouped together under the same cell, this is to guarantee that Clerk's dependency analysys among forms will still effectively avoid needless recomputations when code changes. Forms are nevertheless still grouped as intended in the document.
+At present, Clerk will split top level forms which are grouped together under the same cell, this is to guarantee that Clerk's dependency analysys among forms will still effectively avoid needless recomputations when code changes.
 
 ```clojure
 (def renderers 
@@ -54,4 +54,4 @@ and finally render via Clerk's `html` helper.
 
 ## Appendix
 
-Don't forget the closing slice 🍕 of markdown! 
+Don't forget the closing slice 🍕 of markdown!

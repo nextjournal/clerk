@@ -254,7 +254,8 @@
 
 (defn parse-markdown-cell [{:as state :keys [nodes]}]
   (assoc (parse-clojure-string {:doc? true} state (markdown.transform/->text (first nodes)))
-         :nodes (rest nodes)))
+         :nodes (rest nodes)
+         ::md-slice []))
 
 (defn parse-markdown-string [{:keys [doc?]} s]
   (let [{:keys [content toc title]} (markdown/parse s)]
@@ -262,14 +263,9 @@
       (if-some [node (first nodes)]
         (recur
          (if (code-cell? node)
-           (cond-> state
-             (seq md-slice)
-             (-> #_state
-                 (update :blocks conj {:type :markdown :doc {:type :doc :content md-slice}})
-                 (assoc ::md-slice []))
-
-             :always
-             parse-markdown-cell)
+           (-> state
+               (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
+               parse-markdown-cell)
 
            (-> state (update :nodes rest) (cond-> doc? (update ::md-slice conj node)))))
 
