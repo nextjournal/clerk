@@ -62,6 +62,21 @@
                                       ;; text after
                                       "))))
 
+(deftest parse-markdown-string
+  (is (match? {:title "Title"
+               :blocks [{:doc {:content [{:type :heading :content [{:text "Title"}]}]}}
+                        {:text "'code" :type :code}
+                        {:doc {:content [{:content [{:text "par one"}] :type :paragraph}
+                                         {:content [{:text "par two"}] :type :paragraph}]}}]}
+              (h/parse-markdown-string {:doc? true}
+                                       "# Title
+```
+'code
+```
+par one
+
+par two"))))
+
 (deftest no-cache?
   (testing "are variables set to no-cache?"
     (is (not (h/no-cache? (h/analyze+emit '(rand-int 10)))))
