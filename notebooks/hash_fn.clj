@@ -12,5 +12,13 @@
 
 @!state
 
+(-> @!state inc dec)
+
+(defonce !state-2 (atom 0))
+
+(-> @!state-2 inc dec)
+
+@!state-2
+
 #_(do (swap! !state inc)
       (clerk/recompute!))

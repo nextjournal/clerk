@@ -41,6 +41,14 @@
 (defn ns? [form]
   (and (seq? form) (= 'ns (first form))))
 
+(defn deref? [form]
+  (and (seq? form)
+       (= (first form) `deref)
+       (= 2 (count form))
+       (symbol? (second form))))
+
+#_(deref? '@foo/bar)
+
 (defn no-cache? [form]
   (let [var-or-form    (if-let [vn (var-name form)] vn form)
         no-cache-meta? (comp boolean :nextjournal.clerk/no-cache meta)]
@@ -64,9 +72,7 @@
                               (not= var-name %)
                               (and (not= \. (-> % str (.charAt 0)))
                                    (-> % resolve class?))))
-                       (and (seq? %)
-                            (= (first %) `deref)
-                            (= 2 (count %)))))
+                       (deref? %)))
           (tree-seq (every-pred (some-fn sequential? map? set?) not-quoted?) seq analyzed-form))))
 
 #_(var-dependencies '@foo/bar)
@@ -494,7 +500,9 @@
 #_(->hash-str (range))
 
 (defn hash-codeblock [->hash {:as ana :keys [hash form deps]}]
-  (if-let [hash-fn (some-> form meta :nextjournal.clerk/hash-fn eval)]
+  (if-let [hash-fn (or (some-> form meta :nextjournal.clerk/hash-fn eval)
+                       (when (deref? form)
+                         (constantly (eval form))))]
     (let [hashed (hash-fn (assoc ana :->hash ->hash))]
       (valuehash (hash-fn (assoc ana :->hash ->hash))))
     (let [hashed-deps (into #{} (map ->hash) deps)]
