@@ -22,6 +22,8 @@ Nextjournal Markdown library is able to ingest a markdown string
 (def parsed (md/parse markdown-input))
 ```
 
+At present, Clerk will split top level forms which are grouped together under the same cell, this is to guarantee that Clerk's dependency analysys among forms will still effectively avoid needless recomputations when code changes.
+
 which you can manipulate with your favourite clojure functions
 
 ```clojure
@@ -29,8 +31,6 @@ which you can manipulate with your favourite clojure functions
 ```
 
 and render back to hiccup with customisable elements. 
-
-At present, Clerk will split top level forms which are grouped together under the same cell, this is to guarantee that Clerk's dependency analysys among forms will still effectively avoid needless recomputations when code changes.
 
 ```clojure
 (def renderers 
