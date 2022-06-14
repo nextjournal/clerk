@@ -1,7 +1,7 @@
 (ns hash-fn
   (:require [nextjournal.clerk :as clerk]))
 
-^{::clerk/hash-fn (constantly (slurp "notebooks/hello.clj"))}
+^{::clerk/hash-fn (fn [_] (clerk/valuehash (slurp "notebooks/hello.clj")))}
 (def contents
   (slurp "notebooks/hello.clj"))
 
@@ -15,5 +15,4 @@
 
 
 #_(do (swap! !state inc)
-      (swap! !state-2 inc)
       (clerk/recompute!))

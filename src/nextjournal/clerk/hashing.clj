@@ -483,28 +483,6 @@
 #_(dep/immediate-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 
-(defn valuehash [value]
-  (-> value
-      nippy/fast-freeze
-      digest/sha2-512
-      multihash/base58))
-
-#_(valuehash (range 100))
-#_(valuehash (zipmap (range 100) (range 100)))
-
-(defn ->hash-str
-  "Attempts to compute a hash of `value` falling back to a random string."
-  [value]
-  (if-let [valuehash (try
-                       (when-not (exceeds-bounded-count-limit? value)
-                         (valuehash value))
-                       (catch Exception _))]
-    valuehash
-    (str (gensym))))
-
-#_(->hash-str (range 104))
-#_(->hash-str (range))
-
 (defn hash-codeblock [->hash {:as ana :keys [hash form deps]}]
   (let [hashed-deps (into #{} (map ->hash) deps)]
     (sha1-base58 (pr-str (conj hashed-deps (if form form hash))))))
@@ -536,6 +514,27 @@
 #_(exceeds-bounded-count-limit? (range (dec config/*bounded-count-limit*)))
 #_(exceeds-bounded-count-limit? {:a-range (range)})
 
+(defn valuehash [value]
+  (-> value
+      nippy/fast-freeze
+      digest/sha2-512
+      multihash/base58))
+
+#_(valuehash (range 100))
+#_(valuehash (zipmap (range 100) (range 100)))
+
+(defn ->hash-str
+  "Attempts to compute a hash of `value` falling back to a random string."
+  [value]
+  (if-let [valuehash (try
+                       (when-not (exceeds-bounded-count-limit? value)
+                         (valuehash value))
+                       (catch Exception _))]
+    valuehash
+    (str (gensym))))
+
+#_(->hash-str (range 104))
+#_(->hash-str (range))
 
 (comment
   (require 'clojure.data)

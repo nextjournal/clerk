@@ -135,7 +135,7 @@
         {:as form-info :keys [ns-effect? no-cache? freezable? hash-fn]} (->analysis-info (if (seq vars) (first vars) form))
         no-cache?      (or ns-effect? no-cache?)
         hash           (when-not no-cache? (if (seq deref-deps)
-                                             (hashing/valuehash (eval deref-deps)) ;; TODO: use `hash-fn`
+                                             (eval deref-deps) ;; TODO: use `hash-fn`
                                              (or (get ->hash (if var var form))
                                                  (hashing/hash-codeblock ->hash codeblock))))
         _ (when hash-fn
@@ -520,6 +520,8 @@
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? false})
 #_(build-static-app! {:paths ["notebooks/viewers/**"]})
+
+(def valuehash hashing/valuehash)
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
