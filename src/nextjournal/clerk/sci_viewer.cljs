@@ -746,23 +746,7 @@
      [:div.fixed.top-0.left-0.w-full.h-full
       [inspect @!error]])])
 
-(declare sci-viewer-namespace)
-
-(defn initial-ctx []
-  (sci/init {:async? true
-             :disable-arity-checks true
-             :classes {'js goog/global
-                       'framer-motion framer-motion
-                       :allow :all}
-             :aliases {'j 'applied-science.js-interop
-                       'reagent 'reagent.core
-                       'v 'nextjournal.clerk.sci-viewer}
-             :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace}
-                                sci.configs.js-interop/namespaces
-                                sci.configs.reagent/namespaces)}))
-
-(defonce !sci-ctx
-  (atom (initial-ctx)))
+(declare initial-ctx !sci-ctx)
 
 (defn ^:export set-state [{:as state :keys [doc error]}]
   (reset! !sci-ctx (initial-ctx))
@@ -1096,6 +1080,22 @@ black")}]))}
    'doc-url doc-url
    'url-for url-for
    'read-string read-string})
+
+(defn initial-ctx []
+  (sci/init {:async? true
+             :disable-arity-checks true
+             :classes {'js goog/global
+                       'framer-motion framer-motion
+                       :allow :all}
+             :aliases {'j 'applied-science.js-interop
+                       'reagent 'reagent.core
+                       'v 'nextjournal.clerk.sci-viewer}
+             :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace}
+                                sci.configs.js-interop/namespaces
+                                sci.configs.reagent/namespaces)}))
+
+(defonce !sci-ctx
+  (atom (initial-ctx)))
 
 (defn sci-resolve [ctx sym]
   (sci/eval-form ctx (list 'clojure.core/resolve (list 'quote sym))))
