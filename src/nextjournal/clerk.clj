@@ -131,12 +131,17 @@
     (update :nextjournal/viewers eval)))
 
 (defn read+eval-cached [{:as _doc doc-visibility :visibility :keys [blob->result ->analysis-info ->hash]} codeblock]
-  (let [{:keys [form vars var]} codeblock
-        {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info (if (seq vars) (first vars) form))
+  (let [{:keys [form vars var deref-deps]} codeblock
+        {:as form-info :keys [ns-effect? no-cache? freezable? hash-fn]} (->analysis-info (if (seq vars) (first vars) form))
         no-cache?      (or ns-effect? no-cache?)
-        hash           (when-not no-cache? (or (when-not (contains? (meta form) :nextjournal.clerk/hash-fn)
-                                                 (get ->hash (if var var form)))
-                                               (hashing/hash-codeblock ->hash codeblock)))
+        hash           (when-not no-cache? (if (seq deref-deps)
+                                             (hashing/valuehash (eval deref-deps)) ;; TODO: use `hash-fn`
+                                             (or (get ->hash (if var var form))
+                                                 (hashing/hash-codeblock ->hash codeblock))))
+        _ (when hash-fn
+            (prn :hash-fn hash-fn :val (hash-fn "foo")))
+        _ (when (seq deref-deps)
+            (prn :deref-deps deref-deps :v (eval deref-deps)))
         digest-file    (when hash (->cache-file (str "@" hash)))
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
         visibility     (if-let [fv (hashing/->visibility form)] fv doc-visibility)
@@ -161,6 +166,7 @@
       (seq opts-from-form-meta)
       (merge opts-from-form-meta))))
 
+#_(show! "notebooks/scratch_cache.clj")
 
 #_(eval-file "notebooks/test123.clj")
 #_(eval-file "notebooks/how_clerk_works.clj")

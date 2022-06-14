@@ -111,7 +111,10 @@
           var (when (and (= 1 (count vars)) (or (def? analyzed-form)
                                                 (deflike? form)))
                 (first vars))
-          deps (apply disj (var-dependencies analyzed-form) vars)]
+          all-deps (apply disj (var-dependencies analyzed-form) vars)
+          deref-deps (into #{} (filter deref? all-deps))
+          deps (apply disj all-deps deref-deps)
+          hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
       (cond-> {:form form
                ;; TODO: drop var downstream so hash stays stable under change
                :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
@@ -121,7 +124,10 @@
                :no-cache? (no-cache? form)}
         var (assoc :var var)
         vars (assoc :vars vars)
-        (seq deps) (assoc :deps deps)))))
+        (seq deps) (assoc :deps deps)
+        (seq deref-deps) (assoc :deref-deps deref-deps)
+        hash-fn (assoc :hash-fn (constantly (eval hash-fn)))
+        (and (not hash-fn) (seq deref-deps)) (assoc :hash-fn (constantly (eval deref-deps)))))))
 
 #_(:vars (analyze '(do (def a 41) (def b (inc a)))))
 #_(:vars (analyze '(defrecord Node [v l r])))
@@ -500,13 +506,8 @@
 #_(->hash-str (range))
 
 (defn hash-codeblock [->hash {:as ana :keys [hash form deps]}]
-  (if-let [hash-fn (or (some-> form meta :nextjournal.clerk/hash-fn eval)
-                       (when (deref? form)
-                         (constantly (eval form))))]
-    (let [hashed (hash-fn (assoc ana :->hash ->hash))]
-      (valuehash (hash-fn (assoc ana :->hash ->hash))))
-    (let [hashed-deps (into #{} (map ->hash) deps)]
-      (sha1-base58 (pr-str (conj hashed-deps (if form form hash)))))))
+  (let [hashed-deps (into #{} (map ->hash) deps)]
+    (sha1-base58 (pr-str (conj hashed-deps (if form form hash))))))
 
 (defn hash [{:keys [->analysis-info graph]}]
   (reduce (fn [->hash k]
