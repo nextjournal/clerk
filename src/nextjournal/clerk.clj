@@ -251,7 +251,6 @@
         ;; TODO diff to avoid flickering
         #_(webserver/update-doc! doc)
         (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
-        (def r result)
         (webserver/update-doc! result))
       (catch Exception e
         (webserver/show-error! e)
