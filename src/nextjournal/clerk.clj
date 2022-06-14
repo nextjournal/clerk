@@ -381,7 +381,8 @@
 ;; static builds
 
 (def clerk-docs
-  (into ["notebooks/markdown.md"
+  (into ["CHANGELOG.md"
+         "notebooks/markdown.md"
          "notebooks/onwards.md"]
         (map #(str "notebooks/" % ".clj"))
         ["hello"
