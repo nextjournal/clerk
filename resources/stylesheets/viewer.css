@@ -228,9 +228,6 @@
     prose-code:font-medium prose-code:bg-slate-100
     max-w-none;
 }
-.viewer-markdown li > p {
-  @apply inline;
-}
 .viewer-markdown blockquote p:first-of-type:before,
 .viewer-markdown blockquote p:last-of-type:after {
   @apply content-none;
@@ -241,9 +238,6 @@
 
 .contains-task-list {
   @apply pl-6 list-none;
-}
-.contains-task-list li p {
-  @apply inline m-0;
 }
 .contains-task-list input[type="checkbox"] {
   @apply appearance-none h-4 w-4 rounded border border-slate-200 relative mr-[0.3rem] ml-[-1.5rem] top-[0.15rem];
