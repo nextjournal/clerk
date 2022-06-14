@@ -4,7 +4,6 @@
 
 (clerk/with-viewers (clerk/add-viewers
                      [{:pred number?
-                       ;; the problem here is that render-fn ns is referenced twice, so we're eval-ing it twice on the client.
                        :render-fn @(clerk/render-fn 'render-fn/heading)}
                       {:pred string?
                        :render-fn @(clerk/render-fn 'render-fn/paragraph)}])
