@@ -1091,9 +1091,14 @@ black")}]))}
                                       sci.configs.js-interop/namespaces
                                       sci.configs.reagent/namespaces)})))
 
+(defn sci-resolve [ctx sym]
+  (sci/eval-form ctx (list 'clojure.core/resolve (list 'quote sym))))
+
 (defn eval-form [f]
-  (if-let [source (:nextjournal.clerk/viewer-source f)]
-    (sci/eval-string* @!sci-ctx source)
+  (if-let [source (:nextjournal.clerk/render-source f)]
+    (or (sci-resolve @!sci-ctx (:nextjournal.clerk/render-fn f))
+        (do (sci/eval-string* @!sci-ctx source)
+            (sci-resolve @!sci-ctx (:nextjournal.clerk/render-fn f))))
     (sci/eval-form @!sci-ctx f)))
 
 (set! *eval* eval-form)

@@ -516,7 +516,8 @@
       (deref [_]
         (let [source (slurp (io/resource file))
               source (format "(do %s)" source)]
-          {::viewer-source source})))))
+          {::render-source source
+           ::render-fn sym})))))
 
 (def render-fn (memoize render-fn*))
 
