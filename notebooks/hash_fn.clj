@@ -5,14 +5,15 @@
 (def contents
   (slurp "notebooks/hello.clj"))
 
-(defonce !state (atom 0))
+(clojure.string/split-lines contents)
 
-(-> @!state inc dec)
+(defonce !state (atom 0))
 
 @!state
 
 (-> @!state inc dec)
 
-
 #_(do (swap! !state inc)
       (clerk/recompute!))
+
+

@@ -132,16 +132,10 @@
 
 (defn read+eval-cached [{:as _doc doc-visibility :visibility :keys [blob->result ->analysis-info ->hash]} codeblock]
   (let [{:keys [form vars var deref-deps]} codeblock
-        {:as form-info :keys [ns-effect? no-cache? freezable? hash-fn]} (->analysis-info (if (seq vars) (first vars) form))
+        {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info (if (seq vars) (first vars) form))
         no-cache?      (or ns-effect? no-cache?)
-        hash           (when-not no-cache? (if (seq deref-deps)
-                                             (eval deref-deps) ;; TODO: use `hash-fn`
-                                             (or (get ->hash (if var var form))
-                                                 (hashing/hash-codeblock ->hash codeblock))))
-        _ (when hash-fn
-            (prn :hash-fn hash-fn :val (hash-fn "foo")))
-        _ (when (seq deref-deps)
-            (prn :deref-deps deref-deps :v (eval deref-deps)))
+        hash           (when-not no-cache? (or (get ->hash (if var var form))
+                                               (hashing/hash-codeblock ->hash codeblock)))
         digest-file    (when hash (->cache-file (str "@" hash)))
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
         visibility     (if-let [fv (hashing/->visibility form)] fv doc-visibility)
@@ -183,23 +177,25 @@
 
 (defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks visibility]}]
   (let [{:as evaluated-doc :keys [blob-ids]}
-        (reduce (fn [{:as acc :keys [blob->result]} {:as cell :keys [type]}]
-                  (let [{:as result :nextjournal/keys [blob-id]} (when (= :code type)
-                                                                   (read+eval-cached analyzed-doc cell))]
-                    (cond-> (update acc :blocks conj (cond-> cell result (assoc :result result)))
+        (reduce (fn [{:as state :keys [blob->result]} {:as cell :keys [type]}]
+                  (let [state-with-deref-deps-evaluated (hashing/hash-deref-deps state cell)
+                        {:as result :nextjournal/keys [blob-id]} (when (= :code type)
+                                                                   (read+eval-cached state cell))]
+                    (cond-> (update state-with-deref-deps-evaluated :blocks conj (cond-> cell result (assoc :result result)))
                       blob-id (update :blob-ids conj blob-id)
                       blob-id (assoc-in [:blob->result blob-id] result))))
-                (assoc analyzed-doc :blocks [] :blob-ids #{}) blocks)]
+                (assoc analyzed-doc :blocks [] :blob-ids #{})
+                blocks)]
     (-> evaluated-doc
         (update :blob->result select-keys blob-ids)
         (dissoc :blob-ids))))
-
 
 (defn +eval-results [results-last-run parsed-doc]
   (let [{:as analyzed-doc :keys [ns]} (hashing/build-graph parsed-doc)]
     (binding [*ns* ns]
       (-> analyzed-doc
-          (assoc :blob->result results-last-run :->hash (hashing/hash analyzed-doc))
+          hashing/hash
+          (assoc :blob->result results-last-run)
           eval-analyzed-doc))))
 
 (defn parse-file [file]

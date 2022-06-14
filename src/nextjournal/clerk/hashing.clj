@@ -124,10 +124,9 @@
                :no-cache? (no-cache? form)}
         var (assoc :var var)
         vars (assoc :vars vars)
-        (seq deps) (assoc :deps deps)
+        (seq deps) (assoc :deps all-deps)
         (seq deref-deps) (assoc :deref-deps deref-deps)
-        hash-fn (assoc :hash-fn (constantly (eval hash-fn)))
-        (and (not hash-fn) (seq deref-deps)) (assoc :hash-fn (constantly (eval deref-deps)))))))
+        hash-fn (assoc :hash-fn hash-fn)))))
 
 #_(:vars (analyze '(do (def a 41) (def b (inc a)))))
 #_(:vars (analyze '(defrecord Node [v l r])))
@@ -487,13 +486,16 @@
   (let [hashed-deps (into #{} (map ->hash) deps)]
     (sha1-base58 (pr-str (conj hashed-deps (if form form hash))))))
 
-(defn hash [{:keys [->analysis-info graph]}]
-  (reduce (fn [->hash k]
-            (if-let [codeblock (get ->analysis-info k)]
-              (assoc ->hash k (hash-codeblock ->hash codeblock))
-              ->hash))
-          {}
-          (dep/topo-sort graph)))
+(defn hash
+  ([{:as analyzed-doc :keys [graph]}] (hash analyzed-doc (dep/topo-sort graph)))
+  ([{:as analyzed-doc :keys [->analysis-info graph]} deps]
+   (update analyzed-doc
+           :->hash
+           (partial reduce (fn [->hash k]
+                             (if-let [codeblock (get ->analysis-info k)]
+                               (assoc ->hash k (hash-codeblock ->hash codeblock))
+                               ->hash)))
+           deps)))
 
 #_(hash (build-graph (parse-clojure-string "^{:nextjournal.clerk/hash-fn (fn [x] \"abc\")}(def contents (slurp \"notebooks/hello.clj\"))")))
 #_(hash (build-graph (parse-clojure-string (slurp "notebooks/hello.clj"))))
@@ -535,6 +537,21 @@
 
 #_(->hash-str (range 104))
 #_(->hash-str (range))
+
+(defn hash-deref-deps [{:as analyzed-doc :keys [graph ->hash blocks visibility]} {:as cell :keys [deps deref-deps hash-fn var form]}]
+  (if (seq deref-deps)
+    (let [deref-deps-to-eval (set/difference deref-deps (-> ->hash keys set))
+          doc-with-deref-dep-hashes (reduce (fn [state deref-dep]
+                                                (assoc-in state [:->hash deref-dep] (valuehash (eval deref-dep))))
+                                              analyzed-doc
+                                              deref-deps-to-eval)]
+      (hash doc-with-deref-dep-hashes (dep/transitive-dependents-set graph deref-deps-to-eval)))
+    (if hash-fn
+      (let [id (if var var form)
+            doc-with-new-hash (assoc-in analyzed-doc [:->hash id] ((eval hash-fn) (assoc analyzed-doc :cell cell)))]
+        #_(prn :hash-fn hash-fn :vh ((eval hash-fn) (assoc analyzed-doc :cell cell)))
+        (hash doc-with-new-hash (dep/transitive-dependents graph (if var var form))))
+      analyzed-doc)))
 
 (comment
   (require 'clojure.data)
