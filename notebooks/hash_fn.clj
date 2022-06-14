@@ -11,6 +11,8 @@
 
 @!state
 
+(inc @!state)
+
 (-> @!state inc dec)
 
 #_(do (swap! !state inc)

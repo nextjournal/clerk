@@ -176,15 +176,18 @@
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
 (defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks visibility]}]
-  (let [{:as evaluated-doc :keys [blob-ids]}
+  (let [deref-forms (into #{} (filter hashing/deref?) (keys ->hash))
+        {:as evaluated-doc :keys [blob-ids]}
         (reduce (fn [{:as state :keys [blob->result]} {:as cell :keys [type]}]
                   (let [state-with-deref-deps-evaluated (hashing/hash-deref-deps state cell)
                         {:as result :nextjournal/keys [blob-id]} (when (= :code type)
-                                                                   (read+eval-cached state cell))]
+                                                                   (read+eval-cached state-with-deref-deps-evaluated cell))]
                     (cond-> (update state-with-deref-deps-evaluated :blocks conj (cond-> cell result (assoc :result result)))
                       blob-id (update :blob-ids conj blob-id)
                       blob-id (assoc-in [:blob->result blob-id] result))))
-                (assoc analyzed-doc :blocks [] :blob-ids #{})
+                (-> analyzed-doc
+                    (assoc :blocks [] :blob-ids #{})
+                    (update :->hash (fn [h] (apply dissoc h deref-forms))))
                 blocks)]
     (-> evaluated-doc
         (update :blob->result select-keys blob-ids)
