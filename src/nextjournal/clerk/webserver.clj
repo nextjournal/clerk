@@ -46,12 +46,12 @@
     (throw (ex-info "namespace must be set" {:doc doc})))
   (if (contains? blob->result blob-id)
     (let [result (v/apply-viewer-unwrapping-var-from-def (blob->result blob-id))
-          desc   (v/present (v/ensure-wrapped-with-viewers
-                              (v/get-viewers ns result)
-                              (v/->value result))           ;; TODO understand why this unwrapping fixes lazy loaded table viewers
-                            fetch-opts)]
+          desc (v/present (v/ensure-wrapped-with-viewers
+                           (v/get-viewers ns result)
+                           (v/->value result))           ;; TODO understand why this unwrapping fixes lazy loaded table viewers
+                          fetch-opts)]
       (if (contains? desc :nextjournal/content-type)
-        {:body         (v/->value desc)
+        {:body (v/->value desc)
          :content-type (:nextjournal/content-type desc)}
         {:body (v/->edn desc)}))
     {:status 404}))
