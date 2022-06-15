@@ -67,12 +67,11 @@
 (defn var-dependencies [analyzed-form]
   (let [var-name (var-name analyzed-form)]
     (into #{}
-          (filter #(or (and (symbol? %)
-                            (if (qualified-symbol? %)
-                              (not= var-name %)
-                              (and (not= \. (-> % str (.charAt 0)))
-                                   (-> % resolve class?))))
-                       (deref? %)))
+          (filter #(and (symbol? %)
+                        (if (qualified-symbol? %)
+                          (not= var-name %)
+                          (and (not= \. (-> % str (.charAt 0)))
+                               (-> % resolve class?)))))
           (tree-seq (every-pred (some-fn sequential? map? set?) not-quoted?) seq analyzed-form))))
 
 #_(var-dependencies '@foo/bar)
@@ -80,6 +79,20 @@
                        (fn* ([] (nextjournal.clerk.hashing/foo "s"))
                             ([s] (clojure.string/includes?
                                   (rewrite-clj.parser/parse-string-all s) "hi")))))
+
+(defn sequential-without-fn* [form]
+  (and (sequential? form)
+       (not (contains? #{'fn*} (first form)))))
+
+#_(sequential-without-fn* '(fn* ([] :bar)))
+#_(sequential-without-fn* '(inc 41))
+
+(defn deref-dependencies [analyzed-form]
+  (let [var-name (var-name analyzed-form)]
+    (into #{}
+          (filter deref?)
+          (tree-seq (every-pred (some-fn sequential-without-fn* map? set?) not-quoted?) seq analyzed-form))))
+
 (defn analyze+emit [form]
   (-> form
       ana/analyze
@@ -111,9 +124,9 @@
           var (when (and (= 1 (count vars)) (or (def? analyzed-form)
                                                 (deflike? form)))
                 (first vars))
-          all-deps (apply disj (var-dependencies analyzed-form) vars)
-          deref-deps (into #{} (filter deref? all-deps))
-          deps (apply disj all-deps deref-deps)
+          deps (apply disj (var-dependencies analyzed-form) vars)
+          deref-deps (deref-dependencies analyzed-form)
+          all-deps (set/union deps deref-deps)
           hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
       (cond-> {:form form
                ;; TODO: drop var downstream so hash stays stable under change
@@ -124,7 +137,7 @@
                :no-cache? (no-cache? form)}
         var (assoc :var var)
         vars (assoc :vars vars)
-        (seq deps) (assoc :deps all-deps)
+        (seq all-deps) (assoc :deps all-deps)
         (seq deref-deps) (assoc :deref-deps deref-deps)
         hash-fn (assoc :hash-fn hash-fn)))))
 
@@ -543,7 +556,10 @@
     (seq deref-deps)
     (let [deref-deps-to-eval (set/difference deref-deps (-> ->hash keys set))
           doc-with-deref-dep-hashes (reduce (fn [state deref-dep]
-                                                (assoc-in state [:->hash deref-dep] (valuehash (eval deref-dep))))
+                                              (assoc-in state [:->hash deref-dep] (valuehash (try
+                                                                                               (eval deref-dep)
+                                                                                               (catch Exception e
+                                                                                                 (throw (ex-info "error during hashing of deref dep" {:deref deref-dep :cell cell} e)))))))
                                               analyzed-doc
                                               deref-deps-to-eval)]
       #_(prn :hash-deref-deps/form form :deref-deps deref-deps-to-eval)
