@@ -531,6 +531,10 @@
    {:pred array? :render-fn (partial coll-viewer {:open [:<> [:span.cmt-meta "#js "] "["] :close "]"})}])
 
 
+(defonce !path-prefix (ratom/atom nil))
+(defn set-path-prefix [path-prefix]
+  (reset! !path-prefix path-prefix))
+
 (defonce !doc (ratom/atom nil))
 (defonce !error (ratom/atom nil))
 (defonce !viewers viewer/!viewers)
@@ -1033,10 +1037,11 @@ black")}]))}
 
 
 (defn url-for [{:as src :keys [blob-id]}]
-  (if (string? src)
-    src
-    (str "/_blob/" blob-id (when-let [opts (seq (dissoc src :blob-id))]
-                             (str "?" (opts->query opts))))))
+  (str @!path-prefix
+       (if (string? src)
+         src
+         (str "/_blob/" blob-id (when-let [opts (seq (dissoc src :blob-id))]
+                                  (str "?" (opts->query opts)))))))
 
 (def ^{:doc "Stub implementation to be replaced during static site generation. Clerk is only serving one page currently."}
   doc-url

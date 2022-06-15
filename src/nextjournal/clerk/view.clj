@@ -25,7 +25,21 @@
                        (str/replace  #"require\(.*\)" ""))]
           [:style {:type "text/tailwindcss"} (slurp (io/resource "stylesheets/viewer.css"))])))
 
-(defn ->html [{:keys [conn-ws?] :or {conn-ws? true}} state]
+(defn script-contents [{:as opts :keys [conn-ws?] :or {conn-ws? true}} state]
+  (str "let viewer = nextjournal.clerk.sci_viewer\n"
+       (when-let [path-prefix (:path-prefix state)]
+         (str "viewer.set_path_prefix(" (pr-str path-prefix) ")\n"))
+       "let state = " (-> state v/->edn pr-str) "
+viewer.set_state(viewer.read_string(state))
+viewer.mount(document.getElementById('clerk'))\n"
+       (when conn-ws?
+         "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
+ws.onmessage = msg => viewer.set_state(viewer.read_string(msg.data))
+window.ws_send = msg => ws.send(msg)")))
+
+#_(println (script-contents {} {:doc []}))
+
+(defn ->html [opts state]
   (hiccup/html5
    {:class "overflow-hidden min-h-screen"}
    [:head
@@ -38,14 +52,9 @@
     (hiccup/include-css "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")]
    [:body.dark:bg-gray-900
     [:div#clerk]
-    [:script "let viewer = nextjournal.clerk.sci_viewer
-let state = " (-> state v/->edn pr-str) "
-viewer.set_state(viewer.read_string(state))
-viewer.mount(document.getElementById('clerk'))\n"
-     (when conn-ws?
-       "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
-ws.onmessage = msg => viewer.set_state(viewer.read_string(msg.data))
-window.ws_send = msg => ws.send(msg)")]]))
+    [:script (script-contents opts state)]]))
+
+#_(prn (->html {} {}))
 
 (defn ->static-app [{:as state :keys [current-path]}]
   (hiccup/html5
@@ -65,8 +74,8 @@ let app = nextjournal.clerk.static_app
 let opts = viewer.read_string(" (-> state v/->edn pr-str) ")
 app.init(opts)\n"]]))
 
-(defn doc->html [doc error]
-  (->html {} {:doc (doc->viewer {} doc) :error error}))
+(defn doc->html [opts doc error]
+  (->html {} (merge opts {:doc (doc->viewer {} doc) :error error})))
 
 (defn doc->static-html [doc]
   (->html {:conn-ws? false :live-js? false} (doc->viewer {:inline-results? true} doc)))

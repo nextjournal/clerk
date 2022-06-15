@@ -353,9 +353,10 @@
 
   Can be called multiple times and Clerk will happily serve you according to the latest config."
   [{:as config
-    :keys [browse? watch-paths port show-filter-fn]
+    :keys [browse? watch-paths port show-filter-fn path-prefix]
     :or {port 7777}}]
-  (webserver/serve! {:port port})
+  (webserver/serve! (-> (select-keys config [:path-prefix])
+                        (assoc :port port)))
   (reset! !show-filter-fn show-filter-fn)
   (halt-watcher!)
   (when (seq watch-paths)
@@ -363,7 +364,7 @@
     (reset! !watcher {:paths watch-paths
                       :watcher (apply beholder/watch #(file-event %) watch-paths)}))
   (when browse?
-    (browse/browse-url (str "http://localhost:" port)))
+    (browse/browse-url (str "http://localhost:" port path-prefix)))
   config)
 
 (defn halt!

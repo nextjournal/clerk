@@ -60,7 +60,7 @@
   {:blob-id (str/replace uri "/_blob/" "")
    :fetch-opts (get-fetch-opts query-string)})
 
-(defn app [{:as req :keys [uri]}]
+(defn handler [{:as req :keys [uri]}]
   (if (:websocket? req)
     (httpkit/as-channel req {:on-open (fn [ch] (swap! !clients conj ch))
                              :on-close (fn [ch _reason] (swap! !clients disj ch))
@@ -74,7 +74,7 @@
         "_ws" {:status 200 :body "upgrading..."}
         {:status  200
          :headers {"Content-Type" "text/html"}
-         :body    (view/doc->html @!doc @!error)})
+         :body    (view/doc->html (select-keys req [:path-prefix]) @!doc @!error)})
       (catch Throwable e
         {:status  500
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
@@ -103,12 +103,26 @@
     (println (str "Webserver running on " port ", stopped."))
     (reset! !server nil)))
 
-(defn serve! [{:keys [port] :or {port 7777}}]
+(defn handle-path-prefix [path-prefix req]
+  (-> req
+      (assoc :path-prefix path-prefix)
+      (update :uri str/replace (re-pattern (str "^" path-prefix)) "")))
+
+#_(drop-path-prefix "/clerk" {:uri "/clerk/foo"})
+#_(drop-path-prefix nil {:uri "/foo"})
+
+(defn app [{:keys [path-prefix]} req]
+  (handler (cond->> req
+             path-prefix (handle-path-prefix path-prefix))))
+
+(defn serve! [{:as opts :keys [port] :or {port 7777}}]
   (halt!)
   (try
-    (reset! !server {:port port :stop-fn (httpkit/run-server #'app {:port port})})
+    (reset! !server {:port port :stop-fn (httpkit/run-server (partial app opts) {:port port})})
     (println (str "Clerk webserver started on " port "..."))
     (catch java.net.BindException _e
       (println "Port " port " not available, server not started!"))))
 
 #_(start! {:port 7777})
+
+#_(nextjournal.clerk/serve! {:browse? true :path-prefix "/clerk"})
