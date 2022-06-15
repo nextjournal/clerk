@@ -13,6 +13,7 @@
         com.taoensso/nippy {:mvn/version "3.1.1"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
         javax.xml.bind/jaxb-api {:mvn/version "2.3.1"} ;; needed to make multihash work on JDK11+
+        com.pngencoder/pngencoder {:mvn/version "0.13.1"}
 
         http-kit/http-kit {:mvn/version "2.5.3"}
         hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
