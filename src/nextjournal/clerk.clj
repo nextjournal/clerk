@@ -510,7 +510,8 @@
 
 (defn render-fn* [sym]
   (let [ns (namespace sym)
-        file (str (munge ns) ".cljs")]
+        file (str (-> (munge ns)
+                      (str/replace "." "/")) ".cljs")]
     (reify clojure.lang.IDeref
       (deref [_]
         (let [source (slurp (io/resource file))
