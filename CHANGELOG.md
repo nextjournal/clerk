@@ -5,6 +5,12 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
+## 0.8.451 (2022-06-09)
+* ⭐ Move default viewers to vars to make inspecting & building on them easier (#167)
+* 💫 Introduce flexible grid layout viewers `row` and `col` (#162)
+* 🐜 Introduce checks for forms which cannot be cached to disk (#166)
+* 🐞 Display inline comments in code cell rather than in prose, fixes #71.
+
 ## 0.8.445 (2022-06-01)
 * 💫 First cut of Clerk Examples
 

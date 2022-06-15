@@ -45,7 +45,7 @@
                            :task (clojure "-X:demo nextjournal.clerk/build-static-app!")}
 
          test:clj {:doc "Run clojure tests"
-                   :task (clojure "-X:test")}
+                   :task (apply clojure "-X:test" *command-line-args*)}
 
          test:static-app {:doc "Run UI tests for current SHA. Provide SHA as command line arg."
                           :task (do

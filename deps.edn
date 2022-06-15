@@ -13,6 +13,7 @@
         com.taoensso/nippy {:mvn/version "3.1.1"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
         javax.xml.bind/jaxb-api {:mvn/version "2.3.1"} ;; needed to make multihash work on JDK11+
+        com.pngencoder/pngencoder {:mvn/version "0.13.0"}
 
         http-kit/http-kit {:mvn/version "2.5.3"}
         hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
@@ -41,9 +42,9 @@
                  :exec-fn nextjournal.clerk.dev-launcher/start}
 
            :test {:extra-deps {nubank/matcher-combinators {:mvn/version "3.3.1"}
-                               io.github.cognitect-labs/test-runner {:git/tag "v0.5.0" :git/sha "b3fd0d2"}}
+                               lambdaisland/kaocha {:mvn/version "1.66.1034"}}
                   :extra-paths ["test"]
-                  :exec-fn cognitect.test-runner.api/test
+                  :exec-fn kaocha.runner/exec-fn
                   :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"http://localhost:7778/js/viewer.js\"}"]}
 
            :demo {:extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}

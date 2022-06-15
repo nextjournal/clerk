@@ -98,14 +98,19 @@
   (binding [config/*in-clerk* true]
     (let [analyzed-form (analyze+emit (rewrite-defcached form))
           vars (defined-vars analyzed-form)
+          var (when (and (= 1 (count vars)) (or (def? analyzed-form)
+                                                (deflike? form)))
+                (first vars))
           deps (apply disj (var-dependencies analyzed-form) vars)]
       (cond-> {:form form
                ;; TODO: drop var downstream so hash stays stable under change
                :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
+               :freezable? (and (not (some #{'clojure.core/intern} deps))
+                                (<= (count vars) 1)
+                                (if (seq vars) (= var (first vars)) true))
                :no-cache? (no-cache? form)}
+        var (assoc :var var)
         vars (assoc :vars vars)
-        (and (= 1 (count vars)) (or (def? analyzed-form)
-                                    (deflike? form))) (assoc :var (first vars))
         (seq deps) (assoc :deps deps)))))
 
 #_(:vars (analyze '(do (def a 41) (def b (inc a)))))
@@ -122,6 +127,9 @@
               ([x] (inc x))))
 #_(analyze '(defonce !state (atom {})))
 #_(analyze '(do (def foo :bar) (def foo-2 :bar)))
+#_(analyze '(do (def foo :bar) :baz))
+#_(analyze '(intern *ns* 'foo :bar))
+#_(analyze '(import javax.imageio.ImageIO))
 
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
@@ -184,6 +192,9 @@
 (def code-tags
   #{:deref :map :meta :list :quote :reader-macro :set :token :var :vector})
 
+(def whitespace-on-line-tags
+  #{:comment :whitespace :comma})
+
 (defn ->codeblock [visibility node]
   (cond-> {:type :code :text (n/string node)}
     (and (not visibility) (-> node n/string read-string ns?))
@@ -191,20 +202,28 @@
 
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
-  ([{:as _opts :keys [doc?]} s]
-   (loop [{:as state :keys [nodes blocks visibility]} {:nodes (:children (p/parse-string-all s))
-                                                       :blocks []}]
+  ([opts s] (parse-clojure-string opts {:blocks []} s))
+  ([{:as _opts :keys [doc?]} initial-state s]
+   (loop [{:as state :keys [nodes blocks visibility add-comment-on-line?]} (assoc initial-state :nodes (:children (p/parse-string-all s)))]
      (if-let [node (first nodes)]
        (recur (cond
                 (code-tags (n/tag node))
                 (cond-> (-> state
+                            (assoc :add-comment-on-line? true)
                             (update :nodes rest)
                             (update :blocks conj (->codeblock visibility node)))
                   (not visibility)
                   (merge (-> node n/string read-string ->doc-settings)))
 
+                (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
+                (-> state
+                    (assoc :add-comment-on-line? (not (n/comment? node)))
+                    (update :nodes rest)
+                    (update-in [:blocks (dec (count blocks)) :text] str (-> node n/string str/trim-newline)))
+
                 (and doc? (n/comment? node))
                 (-> state
+                    (assoc :add-comment-on-line? false)
                     (assoc :nodes (drop-while (some-fn n/comment? n/linebreak?) nodes))
                     (update :blocks conj {:type :markdown
                                           :doc (-> (apply str (map (comp remove-leading-semicolons n/string)
@@ -212,7 +231,9 @@
                                                    markdown/parse
                                                    (select-keys [:type :content]))}))
                 :else
-                (update state :nodes rest)))
+                (-> state
+                    (assoc :add-comment-on-line? false)
+                    (update :nodes rest))))
        (merge (select-keys state [:blocks :visibility])
               (when doc?
                 (-> {:content (into []
@@ -223,19 +244,18 @@
                     (select-keys #{:title :toc})
                     (assoc-in [:toc :mode] (:toc state)))))))))
 
+#_(parse-clojure-string {:doc? true} "'code ;; foo\n;; bar")
+#_(parse-clojure-string "'code , ;; foo\n;; bar")
+#_(parse-clojure-string "'code\n;; foo\n;; bar")
 #_(keys (parse-clojure-string {:doc? true} (slurp "notebooks/viewer_api.clj")))
 
 (defn code-cell? [{:as node :keys [type]}]
   (and (= :code type) (contains? node :info)))
 
-(defn parse-markdown-cell [state markdown-code-cell]
-  (reduce (fn [{:as state :keys [visibility]} node]
-            (-> state
-                (update :blocks conj (->codeblock visibility node))
-                (cond-> (not visibility) (merge (-> node n/string read-string ->doc-settings)))))
-          state
-          (-> markdown-code-cell markdown.transform/->text str/trim p/parse-string-all :children
-              (->> (filter (comp code-tags n/tag))))))
+(defn parse-markdown-cell [{:as state :keys [nodes]}]
+  (assoc (parse-clojure-string {:doc? true} state (markdown.transform/->text (first nodes)))
+         :nodes (rest nodes)
+         ::md-slice []))
 
 (defn parse-markdown-string [{:keys [doc?]} s]
   (let [{:keys [content toc title]} (markdown/parse s)]
@@ -243,16 +263,9 @@
       (if-some [node (first nodes)]
         (recur
          (if (code-cell? node)
-           (cond-> state
-             (seq md-slice)
-             (-> #_state
-                 (update :blocks conj {:type :markdown :doc {:type :doc :content md-slice}})
-                 (assoc ::md-slice []))
-
-             :always
-             (-> #_state
-                 (parse-markdown-cell node)
-                 (update :nodes rest)))
+           (-> state
+               (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
+               parse-markdown-cell)
 
            (-> state (update :nodes rest) (cond-> doc? (update ::md-slice conj node)))))
 
@@ -315,27 +328,29 @@
   ([doc]
    (analyze-doc {:doc? true :graph (dep/graph)} doc))
   ([{:as state :keys [doc?]} doc]
-   (reduce (fn [state i]
-             (let [{:keys [type text]} (get-in state [:blocks i])]
-               (if (not= type :code)
-                 state
-                 (let [form (read-string text)
-                       {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form)
-                                                                     (:file doc) (assoc :file (:file doc)))
-                       state (cond-> (reduce (fn [state ana-key]
-                                               (assoc-in state [:->analysis-info ana-key] analyzed))
-                                             (dissoc state :doc?)
-                                             (->ana-keys analyzed))
-                               doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?)))]
-                   (when ns-effect?
-                     (eval form))
-                   (if (seq deps)
-                     (-> (reduce (partial analyze-deps analyzed) state deps)
-                         (make-deps-inherit-no-cache analyzed))
-                     state)))))
-           (cond-> state
-             doc? (merge doc))
-           (-> doc :blocks count range))))
+   (binding [*ns* *ns*]
+     (reduce (fn [state i]
+               (let [{:keys [type text]} (get-in state [:blocks i])]
+                 (if (not= type :code)
+                   state
+                   (let [form (read-string text)
+                         {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form)
+                                                                       (:file doc) (assoc :file (:file doc)))
+                         state (cond-> (reduce (fn [state ana-key]
+                                                 (assoc-in state [:->analysis-info ana-key] analyzed))
+                                               (dissoc state :doc?)
+                                               (->ana-keys analyzed))
+                                 doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
+                                 doc? (assoc :ns *ns*))]
+                     (when ns-effect?
+                       (eval form))
+                     (if (seq deps)
+                       (-> (reduce (partial analyze-deps analyzed) state deps)
+                           (make-deps-inherit-no-cache analyzed))
+                       state)))))
+             (cond-> state
+               doc? (merge doc))
+             (-> doc :blocks count range)))))
 
 #_(let [doc (parse-clojure-string {:doc? true} "(ns foo) (def a 41) (def b (inc a)) (do (def c 4) (def d (inc a)))")]
     (analyze-doc doc))

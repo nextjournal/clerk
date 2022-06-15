@@ -77,7 +77,7 @@
   (testing "random expression doesn't get cached with no-cache"
     (is (not= (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns-3) (java.util.UUID/randomUUID)")
               (clerk/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns-3) (java.util.UUID/randomUUID)"))))
-  
+
   (testing "random dependent expression doesn't get cached with no-cache"
     (let [code "(ns my-random-test-ns-4) (def ^:nextjournal.clerk/no-cache my-uuid (java.util.UUID/randomUUID)) (str my-uuid)"
           eval+get-last-block-val (fn [] (-> code clerk/eval-string :blocks peek :result :nextjournal/value))]
@@ -86,11 +86,18 @@
 
   (testing "random expression that cannot be frozen with nippy gets cached via in-memory cache"
     (let [code "(ns my-random-test-ns-5) {:my-fn inc :my-uuid (java.util.UUID/randomUUID)}"
-          result  (clerk/eval-string code)
+          result (clerk/eval-string code)
           result' (clerk/eval-string (:blob->result result) code)
           extract-my-uuid #(-> % :blocks last :result :nextjournal/value :my-uuid)]
       (is (= (extract-my-uuid result)
              (extract-my-uuid result')))))
+
+  (testing "do blocks with defs are not cached on disk"
+    (let [code "(ns my-test-ns-7) (do (defonce counter (atom 0)) (swap! counter inc))"
+          extract-value #(-> % :blocks last :result :nextjournal/value)]
+      (is (= 1 (extract-value (clerk/eval-string code))))
+      (is (= 2 (extract-value (clerk/eval-string code))))
+      (ns-unmap 'my-test-ns-7 'counter)))
 
   (testing "old values are cleared from in-memory cache"
     (let [{:keys [blob->result]} (clerk/eval-string "(ns my-random-test-ns-6) ^:nextjournal.clerk/no-cache {inc (java.util.UUID/randomUUID)}")]
@@ -177,3 +184,4 @@
   (let [paths (clerk/expand-paths ["notebooks/*clj"])]
     (is (> (count paths) 25))
     (is (every? #(str/ends-with? % ".clj") paths))))
+

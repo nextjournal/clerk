@@ -93,7 +93,7 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: 🧪 Run tests
-        run: bb test:clj
+        run: bb test:clj :kaocha/reporter '[kaocha.report/documentation]'
 
   static-build:
     runs-on: ubuntu-latest

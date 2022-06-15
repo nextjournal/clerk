@@ -52,17 +52,44 @@
                                                                    {:type :toc}]}]}})
                 (h/parse-clojure-string {:doc? true} notebook)))))
 
+(deftest parse-inline-comments
+  (is (match? {:blocks [{:doc {:content [{:content [{:text "text before"}]}]}}
+                        {:text "'some-token ;; with inline comment" :type :code}
+                        {:doc {:content [{:content [{:text "text after"}]}]}}]}
+              (h/parse-clojure-string {:doc? true}
+                                      ";; text before
+                                      'some-token ;; with inline comment
+                                      ;; text after
+                                      "))))
+
+(deftest parse-markdown-string
+  (is (match? {:title "Title"
+               :blocks [{:doc {:content [{:type :heading :content [{:text "Title"}]}]}}
+                        {:text "'code" :type :code}
+                        {:doc {:content [{:content [{:text "par one"}] :type :paragraph}
+                                         {:content [{:text "par two"}] :type :paragraph}]}}]}
+              (h/parse-markdown-string {:doc? true}
+                                       "# Title
+```
+'code
+```
+par one
+
+par two"))))
+
 (deftest no-cache?
-  (testing "are variables set to no-cache?"
-    (is (not (h/no-cache? (h/analyze+emit '(rand-int 10)))))
-    (is (not (h/no-cache? (h/analyze+emit '(def random-thing (rand-int 1000))))))
-    (is (not (h/no-cache? (h/analyze+emit '(defn random-thing [] (rand-int 1000))))))
-    (is (h/no-cache? (h/analyze+emit '(def ^:nextjournal.clerk/no-cache random-thing (rand-int 1000)))))
-    (is (h/no-cache? (h/analyze+emit '(defn ^:nextjournal.clerk/no-cache random-thing [] (rand-int 1000)))))
-    (is (h/no-cache? (h/analyze+emit '(defn ^{:nextjournal.clerk/no-cache true} random-thing [] (rand-int 1000))))))
+  (with-ns-binding 'nextjournal.clerk.hashing-test
+    (testing "are variables set to no-cache?"
+      (is (not (h/no-cache? (h/analyze+emit '(rand-int 10)))))
+      (is (not (h/no-cache? (h/analyze+emit '(def random-thing (rand-int 1000))))))
+      (is (not (h/no-cache? (h/analyze+emit '(defn random-thing [] (rand-int 1000))))))
+      (is (h/no-cache? (h/analyze+emit '(def ^:nextjournal.clerk/no-cache random-thing (rand-int 1000)))))
+      (is (h/no-cache? (h/analyze+emit '(defn ^:nextjournal.clerk/no-cache random-thing [] (rand-int 1000)))))
+      (is (h/no-cache? (h/analyze+emit '(defn ^{:nextjournal.clerk/no-cache true} random-thing [] (rand-int 1000)))))))
 
   (testing "is evaluating namespace set to no-cache?"
-    (is (not (h/no-cache? '(rand-int 10))))
+    (with-ns-binding 'nextjournal.clerk.hashing-test
+      (is (not (h/no-cache? '(rand-int 10)))))
 
     (with-ns-binding 'nextjournal.clerk.hashing
       (is (nextjournal.clerk.hashing/no-cache? '(rand-int 10))))))
@@ -172,7 +199,12 @@
                                                          :deps set?}
                                  #{1 3 2} {:form '#{1 3 2}}}}
               (analyze-string "^:nextjournal.clerk/no-cache (ns example-notebook)
-#{3 1 2}"))))
+#{3 1 2}")))
+
+  (testing "preserves *ns*"
+    (with-ns-binding 'nextjournal.clerk.hashing-test
+      (is (= (find-ns 'nextjournal.clerk.hashing-test)
+             (do (analyze-string "(ns example-notebook)") *ns*))))))
 
 (deftest no-cache-dep
   (is (match? [{:no-cache? true} {:no-cache? true} {:no-cache? true}]
