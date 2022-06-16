@@ -446,9 +446,10 @@
     :transform-fn (into-markup
                    (fn [{:as node :keys [heading-level]}]
                      [(str "h" heading-level) {:id (uri.normalize/normalize-fragment (md.transform/->text node))}]))}
-   {:name :nextjournal.markdown/image :transform-fn #(with-viewer :html [:img (-> % ->value :attrs)])}
+   {:name :nextjournal.markdown/image :transform-fn #(with-viewer :html [:img.inline (-> % ->value :attrs)])}
    {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
+   {:name :nextjournal.markdown/plain :transform-fn (into-markup [:<>])}
    {:name :nextjournal.markdown/ruler :transform-fn (into-markup [:hr])}
    {:name :nextjournal.markdown/code
     :transform-fn (fn [wrapped-value] (with-viewer :html
