@@ -62,7 +62,7 @@
     :head [(javax.imageio.ImageIO/read (java.net.URL. "https://upload.wikimedia.org/wikipedia/commons/1/17/Plus_img_364976.png"))
            (javax.imageio.ImageIO/read (java.net.URL. "https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/OCR-A_char_Hyphen-Minus.svg/543px-OCR-A_char_Hyphen-Minus.svg.png"))]}))
 
-;; ## Custom table viewers
+;; ## Custom Table Viewers
 ;; override single table components
 
 (defn add-child-viewers [viewer viewers]

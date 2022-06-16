@@ -387,6 +387,7 @@
   {:name :table/markup
    :render-fn '(fn [head+body opts]
                  (v/html (into [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose] (v/inspect-children opts) head+body)))})
+
 (def table-head-viewer
   {:name :table/head
    :render-fn '(fn [header-row {:as opts :keys [path number-col?]}]
