@@ -85,3 +85,7 @@
 
 (clerk/with-viewer (add-child-viewers v/table-viewer [table-head-viewer missing-viewer])
   {:col/a [1 2 3 4] :col/b [1 2 3] :col/c [1 2 3]})
+
+;; ## Process Table Headers
+(clerk/table {::clerk/opts {:head-transform-fn (comp str/capitalize name)}}
+  {:a [1 2 ] :b [3 4]})
