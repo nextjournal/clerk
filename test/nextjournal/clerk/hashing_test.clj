@@ -210,7 +210,11 @@ par two"))))
   (testing "preserves *ns*"
     (with-ns-binding 'nextjournal.clerk.hashing-test
       (is (= (find-ns 'nextjournal.clerk.hashing-test)
-             (do (analyze-string "(ns example-notebook)") *ns*))))))
+             (do (analyze-string "(ns example-notebook)") *ns*)))))
+
+  (testing "defmulti has no deref deps"
+    (is (empty? (-> "(defmulti foo :bar)" analyze-string :blocks first :deref-deps)))))
+
 
 (deftest no-cache-dep
   (is (match? [{:no-cache? true} {:no-cache? true} {:no-cache? true}]

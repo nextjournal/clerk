@@ -97,7 +97,7 @@
 (defn deref-dependencies [analyzed-form]
   (let [var-name (var-name analyzed-form)]
     (into #{}
-          (filter deref?)
+          (filter (every-pred deref? (complement #(str/ends-with? (-> % second name) "__auto__"))))
           (tree-seq (every-pred (some-fn sequential-without-fn* map? set?) not-quoted?) seq analyzed-form))))
 
 (defn analyze+emit [form]
@@ -167,6 +167,7 @@
 #_(analyze '(do (def foo :bar) :baz))
 #_(analyze '(intern *ns* 'foo :bar))
 #_(analyze '(import javax.imageio.ImageIO))
+#_(analyze '(defmulti foo :bar))
 
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
@@ -508,6 +509,8 @@
   (let [hashed-deps (into #{} (map ->hash) deps)]
     (sha1-base58 (pr-str (conj hashed-deps (if form form hash))))))
 
+#_(nextjournal.clerk/build-static-app! {:paths nextjournal.clerk/clerk-docs})
+
 (defn hash
   ([{:as analyzed-doc :keys [graph]}] (hash analyzed-doc (dep/topo-sort graph)))
   ([{:as analyzed-doc :keys [->analysis-info graph]} deps]
@@ -566,11 +569,11 @@
     (let [deref-deps-to-eval (set/difference deref-deps (-> ->hash keys set))
           doc-with-deref-dep-hashes (reduce (fn [state deref-dep]
                                               (assoc-in state [:->hash deref-dep] (valuehash (try
-                                                                                               (eval deref-dep)
+                                                                                               @(second deref-dep)
                                                                                                (catch Exception e
                                                                                                  (throw (ex-info "error during hashing of deref dep" {:deref deref-dep :cell cell} e)))))))
-                                              analyzed-doc
-                                              deref-deps-to-eval)]
+                                            analyzed-doc
+                                            deref-deps-to-eval)]
       #_(prn :hash-deref-deps/form form :deref-deps deref-deps-to-eval)
       (hash doc-with-deref-dep-hashes (dep/transitive-dependents-set graph deref-deps-to-eval)))
     hash-fn
