@@ -4,7 +4,8 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [next.jdbc :as jdbc]
-            [nextjournal.clerk :as clerk]))
+            [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.viewer :as v]))
 
 ;; ## SQL Queries
 (def query-results
@@ -49,9 +50,14 @@
 (clerk/table [[1 2] [3 (clerk/table [[1 2] [3 4]])]])
 
 ;; ## Header Formatting
-
 (clerk/table
  (let [head-data [[:key1 "Title A"] [:key2 "Title B"]]
-       format-head (fn [[k title]] (clerk/html [:h5.underline {:title k} title]))]
+       format-head (fn [[k title]] (clerk/html [:h5.underline.text-xl {:title k} title]))]
    {:rows (map (juxt identity inc) (range 100))
     :head (map format-head head-data)}))
+
+(clerk/with-viewers (clerk/add-viewers [(assoc v/buffered-image-viewer :render-fn '(fn [blob] (v/html [:img {:width "30px" :height "30px" :src (v/url-for blob)}])))])
+  (clerk/table
+   {:rows (map (juxt identity dec) (range 1 100))
+    :head [(javax.imageio.ImageIO/read (java.net.URL. "https://upload.wikimedia.org/wikipedia/commons/1/17/Plus_img_364976.png"))
+           (javax.imageio.ImageIO/read (java.net.URL. "https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/OCR-A_char_Hyphen-Minus.svg/543px-OCR-A_char_Hyphen-Minus.svg.png"))]}))
