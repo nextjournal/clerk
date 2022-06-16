@@ -503,7 +503,7 @@
         _ (report-fn {:stage :init :state state})
         {state :result duration :time-ms} (time-ms (mapv (comp parse-file :file) state))
         _ (report-fn {:stage :parsed :state state :duration duration})
-        {state :result duration :time-ms} (time-ms (mapv (comp (fn [doc] (assoc doc :->hash (hashing/hash doc)))
+        {state :result duration :time-ms} (time-ms (mapv (comp hashing/hash
                                                                hashing/build-graph) state))
         _ (report-fn {:stage :analyzed :state state :duration duration})
         state (mapv (fn [doc]

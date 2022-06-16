@@ -502,7 +502,9 @@
 #_(dep/immediate-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 
-(defn hash-codeblock [->hash {:as ana :keys [hash form deps]}]
+(defn hash-codeblock [->hash {:as codeblock :keys [hash form deps]}]
+  (when (and (not (ifn? ->hash)) (seq deps))
+    (throw (ex-info "->hash must be `ifn?`" {:->hash ->hash :codeblock codeblock})))
   (let [hashed-deps (into #{} (map ->hash) deps)]
     (sha1-base58 (pr-str (conj hashed-deps (if form form hash))))))
 
