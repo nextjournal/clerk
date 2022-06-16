@@ -1,5 +1,6 @@
 ;; # Hashing Things!!!!
-(ns ^:nextjournal.clerk/no-cache nextjournal.clerk.hashing
+(ns nextjournal.clerk.hashing
+  {:nextjournal.clerk/no-cache true}
   (:refer-clojure :exclude [hash read-string])
   (:require [babashka.fs :as fs]
             [clojure.core :as core]
@@ -41,15 +42,21 @@
 (defn ns? [form]
   (and (seq? form) (= 'ns (first form))))
 
+(defn no-cache-from-meta [form]
+  (when (contains? (meta form) :nextjournal.clerk/no-cache)
+    (-> form meta :nextjournal.clerk/no-cache)))
+
 (defn no-cache? [form]
-  (let [var-or-form    (if-let [vn (var-name form)] vn form)
-        no-cache-meta? (comp boolean :nextjournal.clerk/no-cache meta)]
-    (or (no-cache-meta? var-or-form)
-        (when-not (ns? form)
-          (no-cache-meta? *ns*))
-        (and (seq? form) (= `deref (first form))))))
+  (or (->> [form (var-name form) *ns*]
+           (map no-cache-from-meta)
+           (filter some?)
+           first)
+      false))
 
 #_(no-cache? '(rand-int 10))
+#_(no-cache? '^:nextjournal.clerk/no-cache (def my-rand (rand-int 10)))
+#_(no-cache? '(def ^:nextjournal.clerk/no-cache my-rand (rand-int 10)))
+#_(no-cache? '^{:nextjournal.clerk/no-cache false} (def ^:nextjournal.clerk/no-cache my-rand (rand-int 10)))
 
 (defn sha1-base58 [s]
   (-> s digest/sha1 multihash/base58))
