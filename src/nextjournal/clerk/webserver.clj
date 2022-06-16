@@ -51,50 +51,47 @@
                            (v/->value result))           ;; TODO understand why this unwrapping fixes lazy loaded table viewers
                           fetch-opts)]
       (if (contains? desc :nextjournal/content-type)
-        {:body (v/->value desc)
-         :content-type (:nextjournal/content-type desc)}
-        {:body (v/->edn desc)}))
+        {:status 200 :body (v/->value desc) :content-type (:nextjournal/content-type desc)}
+        {:status 200 :body (v/->edn desc)}))
     {:status 404}))
 
-(defn extract-blob-opts [{:as _req :keys [uri query-string]}]
-  {:blob-id    (str/replace uri "/_blob/" "")
+(defn extract-blob-opts [{:as _req :keys [uri query-string] ::keys [path-prefix]}]
+  {:blob-id (str/replace uri (str "/" path-prefix "_blob/") "")
    :fetch-opts (get-fetch-opts query-string)})
 
-(defn app [{:as    req
-            :keys  [uri websocket?]
-            ::keys [path-prefix]
-            :or    {path-prefix "/clerk/"}}]
-  (let [uri' (str/replace uri path-prefix "")
-        req' (assoc req :uri (str "/" uri'))]
-    (if websocket?
-      (httpkit/as-channel req {:on-open    (fn [ch] (swap! !clients conj ch))
-                               :on-close   (fn [ch _reason] (swap! !clients disj ch))
-                               :on-receive (fn [_ch msg] (binding [*ns* (or (:ns @!doc)
-                                                                            (create-ns 'user))]
-                                                           (eval (read-string msg))
-                                                           (eval '(nextjournal.clerk/recompute!))))})
-      (try
-        (case (re-find #"[^/]*" uri')
-          "_blob" (serve-blob @!doc (extract-blob-opts req'))
-          "_ws" {:status 200 :body "upgrading..."}
-          {:status  200
-           :headers {"Content-Type" "text/html"}
-           :body    (view/doc->html {:doc         @!doc
-                                     :error       @!error
-                                     :path-prefix path-prefix})})
-        (catch Throwable e
-          {:status 500
-           :body   (with-out-str (pprint/pprint (Throwable->map e)))})))))
+(defn ->root-path [{:as _req :keys [uri] ::keys [path-prefix]}]
+  (->> (str/replace uri (re-pattern (str "^/" path-prefix)) "")
+       (str "/")
+       (re-matches #"/([^/]*).*")
+       (second)))
 
-(defn- ensure-starts-ends-with-slash [s]
-  (cond-> s
-    (not (str/starts-with? s "/")) (->> (str "/"))
-    (not (str/ends-with? s "/")) (str "/")))
+#_(->root-path {:uri "/_blob/92387fksdjhdskufsdf"})
+#_(->root-path {:uri "/clerk/_blob/92387fksdjhdskufsdf" ::path-prefix "clerk/"})
+
+(defn app [{:as req :keys [uri websocket?] ::keys [path-prefix]}]
+  (if websocket?
+    (httpkit/as-channel req {:on-open    (fn [ch] (swap! !clients conj ch))
+                             :on-close   (fn [ch _reason] (swap! !clients disj ch))
+                             :on-receive (fn [_ch msg] (binding [*ns* (or (:ns @!doc)
+                                                                          (create-ns 'user))]
+                                                         (eval (read-string msg))
+                                                         (eval '(nextjournal.clerk/recompute!))))})
+    (try
+      (case (->root-path req)
+        "_blob" (serve-blob @!doc (extract-blob-opts req))
+        "_ws" {:status 200 :body "upgrading..."}
+        {:status  200
+         :headers {"Content-Type" "text/html"}
+         :body    (view/doc->html {:doc         @!doc
+                                   :error       @!error
+                                   :path-prefix path-prefix})})
+      (catch Throwable e
+        {:status 500
+         :body   (with-out-str (pprint/pprint (Throwable->map e)))}))))
 
 (defn wrap-path-prefix [handler {:keys [path-prefix]}]
-  (let [path-prefix' (ensure-starts-ends-with-slash path-prefix)]
-    (fn [req]
-      (handler (assoc req ::path-prefix path-prefix')))))
+  (fn [req]
+    (handler (assoc req ::path-prefix path-prefix))))
 
 (defn update-doc! [doc]
   (reset! !error nil)

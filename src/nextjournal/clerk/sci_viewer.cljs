@@ -282,12 +282,19 @@
                         (viewer/->value (error-viewer error))
                         (into [:<>] children)))}))
 
+(defonce !path-prefix (ratom/atom nil))
+(defn set-path-prefix [path-prefix]
+  (reset! !path-prefix path-prefix))
+
+(defn url-for [{:as src :keys [blob-id]}]
+  (str "/" @!path-prefix
+       (if (string? src)
+         src
+         (str "_blob/" blob-id (when-let [opts (seq (dissoc src :blob-id))]
+                                 (str "?" (opts->query opts)))))))
+
 (defn fetch! [{:keys [blob-id]} opts]
-  #_(js/console.log :fetch! blob-id opts)
-  (-> (js/fetch (str js/window.location.pathname
-                     "/_blob/" blob-id
-                     (when (seq opts)
-                       (str "?" (opts->query opts)))))
+  (-> (js/fetch (url-for (assoc opts :blob-id blob-id)))
       (.then #(.text %))
       (.then #(try (read-string %)
                    (catch js/Error e
@@ -531,7 +538,6 @@
   [{:pred #(implements? IDeref %) :render-fn #(tagged-value (-> %1 type pr-str) (inspect (deref %1) %2))}
    {:pred goog/isObject :render-fn js-object-viewer}
    {:pred array? :render-fn (partial coll-viewer {:open [:<> [:span.cmt-meta "#js "] "["] :close "]"})}])
-
 
 (defonce !doc (ratom/atom nil))
 (defonce !error (ratom/atom nil))
@@ -1032,15 +1038,6 @@ black")}]))}
               {:style {:font-size "11px" :padding "1px 3px" :left "50%" :transform "translateX(-50%)"}
                :on-click #(swap! !hidden? not)}
               [:span {:style {:transform "rotate(180deg)"}} expand-icon] " Hide code…"]]))))
-
-
-(defn url-for [{:as src :keys [blob-id]}]
-  (if (string? src)
-    src
-    (str
-      js/window.location.pathname
-      "/_blob/" blob-id (when-let [opts (seq (dissoc src :blob-id))]
-                          (str "?" (opts->query opts))))))
 
 (def ^{:doc "Stub implementation to be replaced during static site generation. Clerk is only serving one page currently."}
   doc-url
