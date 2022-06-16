@@ -77,6 +77,8 @@
   {:col/a [1 2 3 4] :col/b [1 2 3] :col/c [1 2 3]})
 
 ;; ## Process Table Headers
-;; In alternative to the above, a more compact way to manipulate headers:
-(clerk/table {::clerk/opts {:head-transform-fn (comp str/capitalize name)}}
-  {:a [1 2 ] :b [3 4]})
+;; A more succint way to manipulate headers involves performing table normalization
+(clerk/with-viewer (update v/table-viewer :transform-fn
+                           comp (v/update-val (comp (fn [table] (update table :head (partial map (comp str/capitalize name))))
+                                                    v/normalize-table-data)))
+  {:a [1 2] :b [3 4]})

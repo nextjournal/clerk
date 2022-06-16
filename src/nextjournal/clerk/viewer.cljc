@@ -658,7 +658,7 @@
 
 (def table-viewer
   {:name :table
-   :transform-fn (fn [{:as wrapped-value {:keys [head-transform-fn]} :nextjournal/opts}]
+   :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers] :keys [offset path current-path]}]
                    (if-let [{:keys [head rows]} (normalize-table-data (->value wrapped-value))]
                      (-> wrapped-value
                          (assoc :nextjournal/viewer :table/markup)
@@ -667,8 +667,7 @@
                          (assoc :nextjournal/opts {:num-cols (-> rows first count)
                                                    :number-col? (mapv number? (first rows))})
                          (assoc :nextjournal/value (cond->> [(with-viewer :table/body (map (partial with-viewer :table/row) rows))]
-                                                     head (cons (with-viewer :table/head (cond->> head
-                                                                                           head-transform-fn (map head-transform-fn)))))))
+                                                     head (cons (with-viewer :table/head head)))))
                      (-> wrapped-value
                          mark-presented
                          (assoc :nextjournal/width :wide)
