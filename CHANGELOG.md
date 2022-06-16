@@ -5,7 +5,7 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
-## unreleased
+## 0.8.463 (2022-06-16)
 * 💫 Support `:nextjournal.clerk/no-cache` meta on form also for vars.
 
     Previously it would have to go on a different place for vars than
@@ -14,6 +14,7 @@ Changes can be:
     Setting it on the var will be deprecated and so consistently
     setting it on the form is recommend from now on.
 
+* 💫 Support rich values (with viewers) in table headers
 * 🐜 Preserve `*ns*` during analysis and eval (#173)
 * 🐜 Upgrade markdown library with
     * support for loose lists
