@@ -658,7 +658,7 @@
 
 (def table-viewer
   {:name :table
-   :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers] :keys [offset path current-path]}]
+   :transform-fn (fn [wrapped-value]
                    (if-let [{:keys [head rows]} (normalize-table-data (->value wrapped-value))]
                      (-> wrapped-value
                          (assoc :nextjournal/viewer :table/markup)
