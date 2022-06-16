@@ -63,29 +63,20 @@
            (javax.imageio.ImageIO/read (java.net.URL. "https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/OCR-A_char_Hyphen-Minus.svg/543px-OCR-A_char_Hyphen-Minus.svg.png"))]}))
 
 ;; ## Custom table viewers
-;; override single table components (`:table/markup` `:table/head` `:table/body` `:table/row`)
-
-(def table-head-viewer
-  {:name :table/head
-   ;; use the transform-fn to manipulate the content of column names
-   :transform-fn (v/update-val (partial map (comp (partial str "Column: ") str/capitalize name)))
-   ;; use the :render-fn manipulate the table header appeareance
-   :render-fn '(fn [header-row {:as opts :keys [path number-col?]}]
-                 (v/html [:thead.border-b.border-grey-500.dark:border-slate-700
-                          (into [:tr]
-                                (map (fn [{:as x :nextjournal/keys [value]}]
-                                       [:th [:div.underline [v/inspect x]]])) header-row)]))})
-
-(def missing-viewer
-  {:pred #{:nextjournal/missing}
-   :render-fn '(fn [x] (v/html [:span.red "N/A"]))})
+;; override single table components
 
 (defn add-child-viewers [viewer viewers]
   (update viewer :transform-fn (partial comp #(update % :nextjournal/viewers clerk/add-viewers viewers))))
 
-(clerk/with-viewer (add-child-viewers v/table-viewer [table-head-viewer missing-viewer])
+(def custom-table-viewer
+  (add-child-viewers v/table-viewer
+                     [(assoc v/table-head-viewer :transform-fn (v/update-val (partial map (comp (partial str "Column: ") str/capitalize name))))
+                      (assoc v/table-missing-viewer :render-fn '(fn [x] (v/html [:span.red "N/A"])))]))
+
+(clerk/with-viewer custom-table-viewer
   {:col/a [1 2 3 4] :col/b [1 2 3] :col/c [1 2 3]})
 
 ;; ## Process Table Headers
+;; In alternative to the above, a more compact way to manipulate headers:
 (clerk/table {::clerk/opts {:head-transform-fn (comp str/capitalize name)}}
   {:a [1 2 ] :b [3 4]})
