@@ -10,6 +10,8 @@
    [nextjournal.clerk :as clerk]
    [nextjournal.clerk.hashing :refer [deflike?]]))
 
+
+
 (defn deps
   [form]
   (if (var? form)
@@ -32,6 +34,10 @@
                          (deflike? form))
                 (first vars))]
       (cond-> {:deps @deps
+               :deref-deps (into #{}
+                                 (comp (filter (comp #{#'deref} :var :fn))
+                                       (keep #(-> % :args first :var)))
+                                 (ana-ast/nodes analyzed))
                :vars vars}
         var (assoc :var var)))))
 
@@ -46,4 +52,5 @@
  (deps '(defmulti foo :bar))
  (deps '(defonce !counter (atom 0)))
  (deps '@!counter)
+ (deps '(deref !counter))
  )
