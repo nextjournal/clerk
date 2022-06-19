@@ -1,6 +1,7 @@
 ^{:nextjournal.clerk/visibility :hide}
 (ns deps
   (:require
+   [clojure.set :as set]
    [clojure.tools.analyzer :as ana]
    [clojure.tools.analyzer.ast :as ana-ast]
    [clojure.tools.analyzer.jvm :as ana-jvm]
@@ -10,7 +11,10 @@
    [nextjournal.clerk :as clerk]
    [nextjournal.clerk.hashing :refer [deflike?]]))
 
-
+(defn analyze
+  ([form] (analyze {} form))
+  ([bindings form]
+   (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings})))
 
 (defn deps
   [form]
@@ -24,20 +28,20 @@
                                              (var? v))]
                           (swap! deps conj v)))
                       (ana-jvm/macroexpand-1 form env))
-          analyzed (ana-jvm/analyze form (ana-jvm/empty-env)
-                                    {:bindings {#'ana/macroexpand-1 mexpander}})
+          analyzed (analyze {#'ana/macroexpand-1 mexpander} form)
+          nodes (ana-ast/nodes analyzed)
           vars (into #{}
                      (comp (filter (comp #{:def} :op))
                            (keep :var))
-                     (ana-ast/nodes analyzed))
+                     nodes)
           var (when (and (= 1 (count vars))
                          (deflike? form))
                 (first vars))]
-      (cond-> {:deps @deps
+      (cond-> {:deps (set/union @deps)
                :deref-deps (into #{}
                                  (comp (filter (comp #{#'deref} :var :fn))
                                        (keep #(-> % :args first :var)))
-                                 (ana-ast/nodes analyzed))
+                                 nodes)
                :vars vars}
         var (assoc :var var)))))
 
@@ -53,4 +57,6 @@
  (deps '(defonce !counter (atom 0)))
  (deps '@!counter)
  (deps '(deref !counter))
+ (deps '(import javax.imageio.ImageIO))
+ (deps '(do 'inc))
  )
