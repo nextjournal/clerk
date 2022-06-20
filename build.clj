@@ -36,6 +36,14 @@
   (b/jar {:class-dir class-dir
           :jar-file jar-file}))
 
+(defn install [_]
+  (jar {})
+  (b/install {:basis basis
+              :lib lib
+              :version version
+              :jar-file jar-file
+              :class-dir class-dir}))
+
 (defn deploy [opts]
   (println "Deploying version" jar-file "to Clojars.")
   (format "target/%s-%s.jar" (name lib) version)
