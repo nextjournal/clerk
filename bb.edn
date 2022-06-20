@@ -2,79 +2,90 @@
  :paths ["bb"]
  :deps {io.github.nextjournal/dejavu
         {:git/sha "3c4cf5e4dda3648e0d4c575a3433d19c511dd3e5"}}
- :tasks {:requires ([clojure.edn :as edn]
-                    [clojure.edn :as edn]
-                    [clojure.string :as str]
-                    [babashka.deps :as deps]
-                    [babashka.fs :as fs]
-                    [babashka.process :as p])
-         :init (do
-                 (defn viewer-css-path []
-                   (let [cp (str/trim (with-out-str (deps/clojure ["-A:sci" "-Spath"])))]
-                     (str/trim (:out (shell {:out :string} (str "bb -cp " cp " -e '(println (.getPath (clojure.java.io/resource \"css/viewer.css\")))'"))))))
+ :tasks
+ {:requires ([clojure.edn :as edn]
+             [clojure.edn :as edn]
+             [clojure.string :as str]
+             [babashka.deps :as deps]
+             [babashka.fs :as fs]
+             [babashka.process :as p])
+  :init (do
+          (defn viewer-css-path []
+            (let [cp (str/trim (with-out-str (deps/clojure ["-A:sci" "-Spath"])))]
+              (str/trim (:out (shell {:out :string} (str "bb -cp " cp " -e '(println (.getPath (clojure.java.io/resource \"css/viewer.css\")))'"))))))
 
-                 (defn latest-sha []
-                   (str/trim (:out (p/sh "git rev-parse HEAD")))))
+          (defn latest-sha []
+            (str/trim (:out (p/sh "git rev-parse HEAD")))))
 
-         print-viewer-css {:task (println (viewer-css-path))}
-         copy-viewer-css {:task (fs/copy (viewer-css-path) "resources/stylesheets/viewer.css" #{:replace-existing})}
+  print-viewer-css {:task (println (viewer-css-path))}
+  copy-viewer-css {:task (fs/copy (viewer-css-path) "resources/stylesheets/viewer.css" #{:replace-existing})}
 
-         yarn-install {:doc "Installs and updates npm dependencies"
-                       :task (shell "yarn install")}
+  yarn-install {:doc "Installs and updates npm dependencies"
+                :task (shell "yarn install")}
 
-         watch:cljs {:doc "Starts shadow-cljs & clerk"
-                     :task (apply clojure "-X:test:sci:demo:dev" *command-line-args*)
-                     :depends [yarn-install]}
+  watch:cljs {:doc "Starts shadow-cljs & clerk"
+              :task (apply clojure "-X:test:sci:demo:dev" *command-line-args*)
+              :depends [yarn-install]}
 
-         build:js {:doc "Builds JS"
-                   :depends [yarn-install]
-                   :task (clojure "-M:sci:demo:dev release browser")}
+  build:js {:doc "Builds JS"
+            :depends [yarn-install]
+            :task (clojure "-M:sci:demo:dev release browser")}
 
-         write-hash {:doc "Write viewer resource hash to resources. Intended to be used in a pre-commit hook."
-                     :task viewer-resources-hashing/write-viewer-resource-hash}
+  write-hash {:doc "Write viewer resource hash to resources. Intended to be used in a pre-commit hook."
+              :task viewer-resources-hashing/write-viewer-resource-hash}
 
-         build+upload-viewer-resources {:doc "Refreshes assets stored on CDN (google storage)"
-                                        :task viewer-resources-hashing/build+upload-viewer-resources}
+  build+upload-viewer-resources {:doc "Refreshes assets stored on CDN (google storage)"
+                                 :task viewer-resources-hashing/build+upload-viewer-resources}
 
-         release:js {:doc "Uploads the js release and updates the sha reference."
-                     :task (clojure "-T:build upload-to-cas :resource viewer.js")
-                     :depends [build:js]}
+  release:js {:doc "Uploads the js release and updates the sha reference."
+              :task (clojure "-T:build upload-to-cas :resource viewer.js")
+              :depends [build:js]}
 
-         build:static-app {:doc "Builds a static app with default notebooks"
-                           :depends [release:js]
-                           :task (clojure "-X:demo nextjournal.clerk/build-static-app!")}
+  build:static-app {:doc "Builds a static app with default notebooks"
+                    :depends [release:js]
+                    :task (clojure "-X:demo nextjournal.clerk/build-static-app!")}
 
-         test:clj {:doc "Run clojure tests"
-                   :task (apply clojure "-X:test" *command-line-args*)}
+  test:clj {:doc "Run clojure tests"
+            :task (apply clojure "-X:test" *command-line-args*)}
 
-         test:static-app {:doc "Run UI tests for current SHA. Provide SHA as command line arg."
-                          :task (do
-                                  (shell {:dir "ui_tests"} "yarn install")
-                                  (apply shell {:dir "ui_tests"}
-                                         "yarn nbb -m playwright-tests"
-                                         (or *command-line-args* [(latest-sha)])))}
+  test:static-app {:doc "Run UI tests for current SHA. Provide SHA as command line arg."
+                   :task (do
+                           (shell {:dir "ui_tests"} "yarn install")
+                           (apply shell {:dir "ui_tests"}
+                                  "yarn nbb -m playwright-tests"
+                                  (or *command-line-args* [(latest-sha)])))}
 
-         release:jar {:doc "Builds the jar"
-                      :task (let [rev-count (-> (p/process ["git" "rev-list" "HEAD" "--count"] {:out :string}) p/check :out str/trim Integer/parseInt)
-                                  version (format "0.8.%d" (inc rev-count))]
-                              (spit (doto (fs/file "resources/META-INF/nextjournal/clerk/meta.edn")
-                                      (-> fs/parent fs/create-dirs)) {:version version})
-                              (clojure "-T:build jar"))}
+  -update-meta {:task (let [rev-count (-> (p/process ["git" "rev-list" "HEAD" "--count"] {:out :string}) p/check :out str/trim Integer/parseInt)
+                            version (format "0.8.%d" (inc rev-count))]
+                        (spit (doto (fs/file "resources/META-INF/nextjournal/clerk/meta.edn")
+                                (-> fs/parent fs/create-dirs)) {:version version}))}
 
-         deploy {:doc "Deploys the jar to clojars"
-                 :task (clojure "-T:build deploy")}
+  release:jar {:doc "Builds the jar"
+               :depends [-update-meta]
+               :task (let [rev-count (-> (p/process ["git" "rev-list" "HEAD" "--count"] {:out :string}) p/check :out str/trim Integer/parseInt)
+                           version (format "0.8.%d" (inc rev-count))]
+                       (spit (doto (fs/file "resources/META-INF/nextjournal/clerk/meta.edn")
+                               (-> fs/parent fs/create-dirs)) {:version version})
+                       (clojure "-T:build jar"))}
 
-         tag {:doc "Tags release and pushes tag to Github."
-              :task (let [version (-> (slurp "resources/META-INF/nextjournal/clerk/meta.edn")
-                                      edn/read-string
-                                      :version)
-                          tag (str "v" version)]
-                      (shell "git tag" tag)
-                      (shell "git push origin" tag))}
+  install:jar {:doc "Installs jar"
+               :depends [-update-meta]
+               :task (clojure "-T:build install")}
 
-         install-git-hooks {:doc "Install git hooks"
-                            :task (fs/copy "dev/pre-commit" ".git/hooks" {:replace-existing true})}
+  deploy {:doc "Deploys the jar to clojars"
+          :task (clojure "-T:build deploy")}
 
-         -dev {:depends [install-git-hooks watch:cljs copy-viewer-css]}
-         dev {:doc "Start app in dev mode, compiles cljs and css"
-              :task (run '-dev {:parallel true})}}}
+  tag {:doc "Tags release and pushes tag to Github."
+       :task (let [version (-> (slurp "resources/META-INF/nextjournal/clerk/meta.edn")
+                               edn/read-string
+                               :version)
+                   tag (str "v" version)]
+               (shell "git tag" tag)
+               (shell "git push origin" tag))}
+
+  install-git-hooks {:doc "Install git hooks"
+                     :task (fs/copy "dev/pre-commit" ".git/hooks" {:replace-existing true})}
+
+  -dev {:depends [install-git-hooks watch:cljs copy-viewer-css]}
+  dev {:doc "Start app in dev mode, compiles cljs and css"
+       :task (run '-dev {:parallel true})}}}

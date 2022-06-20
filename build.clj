@@ -38,6 +38,7 @@
 
 (defn install [_]
   (jar {})
+  (println "Installing jar:" jar-file)
   (b/install {:basis basis
               :lib lib
               :version version
