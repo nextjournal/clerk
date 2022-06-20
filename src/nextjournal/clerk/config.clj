@@ -25,11 +25,12 @@
   ;; contains asset manifest in the form:
   ;; {"/js/viewer.js" "https://..."}
   (atom (or resource-manifest-from-props
-            ;; In mvn releases, the asset map is inlined here:
-            ;; BEGIN_INLINE_ASSET_MAP
-            (edn/read-string (slurp lookup-url))
-            ;; END_INLINE_ASSET_MAP
-            )))
+            ;; In mvn releases, the asset map is available in the artifact
+            (some-> (io/resource "clerk-asset-map.edn")
+                    slurp
+                    edn/read-string)
+            (-> (slurp lookup-url)
+                edn/read-string))))
 
 #_(swap! !resource->url assoc "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvAV62HzsvhcsXEkHP33uj4cV9UvdDz7DU9qLeVRCfEP9kWLFAzaMKL77trdx898DzcVyDVejdfxvxj5XB84UpWvQ")
 #_(swap! !resource->url dissoc "/css/viewer.css")

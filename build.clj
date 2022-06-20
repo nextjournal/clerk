@@ -1,6 +1,5 @@
 (ns build
   (:require
-   [babashka.fs :as fs]
    [babashka.process :as process]
    [clojure.edn :as edn]
    [clojure.string :as str]
@@ -15,12 +14,9 @@
 (def version (-> (slurp "resources/META-INF/nextjournal/clerk/meta.edn") edn/read-string :version))
 (def jar-file (format "target/%s-%s.jar" (name lib) version))
 
-(defn inline-asset-map [_]
-  (let [asset-map (slurp lookup-url)
-        config-file (fs/file class-dir "nextjournal/clerk/config.clj")
-        config-code (slurp config-file)
-        config-code (str/replace config-code #"(?s);; BEGIN_INLINE_ASSET_MAP.*;; END_INLINE_ASSET_MAP" asset-map)]
-    (spit config-file config-code)))
+(defn package-asset-map [_]
+  (let [asset-map (slurp lookup-url)]
+    (spit "target/classes/clerk-asset-map.edn" asset-map)))
 
 (defn jar [_]
   (b/delete {:path "target"})
@@ -36,7 +32,7 @@
   (b/copy-dir {:src-dirs ["src" "resources"]
                :target-dir class-dir
                :replace {}})
-  (inline-asset-map {})
+  (package-asset-map {})
   (b/jar {:class-dir class-dir
           :jar-file jar-file}))
 
