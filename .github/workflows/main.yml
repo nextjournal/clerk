@@ -176,7 +176,7 @@ jobs:
           bb test:static-app ${{ github.sha }}
 
   deploy:
-    needs: [] # disabled for testing [build-and-upload-viewer-resources, test]
+    needs: [build-and-upload-viewer-resources, test]
     runs-on: ubuntu-latest
     steps:
 
