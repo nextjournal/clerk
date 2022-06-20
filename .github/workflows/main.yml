@@ -24,7 +24,7 @@ jobs:
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.3.0
         with:
-          babashka-version: 0.7.6
+          babashka-version: 0.8.3
 
       - name: 🗝 maven cache
         uses: actions/cache@v2
@@ -79,7 +79,7 @@ jobs:
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.3.0
         with:
-          babashka-version: 0.7.6
+          babashka-version: 0.8.3
 
       - name: 🗝 maven cache
         uses: actions/cache@v2
@@ -116,7 +116,7 @@ jobs:
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.3.0
         with:
-          babashka-version: 0.7.6
+          babashka-version: 0.8.3
 
       - name: 🗝 maven cache
         uses: actions/cache@v2
@@ -169,7 +169,7 @@ jobs:
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.3.0
         with:
-          babashka-version: 0.7.6
+          babashka-version: 0.8.3
 
       - name: Run Playwright tests against static assets
         run: |
@@ -179,6 +179,16 @@ jobs:
     needs: [build-and-upload-viewer-resources, test]
     runs-on: ubuntu-latest
     steps:
+
+      - uses: actions/checkout@v2
+        with:
+          fetch_depth: 0
+
+      - name: Setup Babashka
+        uses: turtlequeue/setup-babashka@v1.3.0
+        with:
+          babashka-version: 0.8.3
+
       - run: |
           bb ci:publish
       - name: Clerk version
