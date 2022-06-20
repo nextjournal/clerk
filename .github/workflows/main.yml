@@ -24,7 +24,7 @@ jobs:
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.3.0
         with:
-          babashka-version: 0.8.3
+          babashka-version: 0.8.156
 
       - name: 🗝 maven cache
         uses: actions/cache@v2
@@ -79,7 +79,7 @@ jobs:
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.3.0
         with:
-          babashka-version: 0.8.3
+          babashka-version: 0.8.156
 
       - name: 🗝 maven cache
         uses: actions/cache@v2
@@ -116,7 +116,7 @@ jobs:
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.3.0
         with:
-          babashka-version: 0.8.3
+          babashka-version: 0.8.156
 
       - name: 🗝 maven cache
         uses: actions/cache@v2
@@ -169,7 +169,7 @@ jobs:
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.3.0
         with:
-          babashka-version: 0.8.3
+          babashka-version: 0.8.156
 
       - name: Run Playwright tests against static assets
         run: |
@@ -187,7 +187,7 @@ jobs:
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.3.0
         with:
-          babashka-version: 0.8.3
+          babashka-version: 0.8.156
 
       - run: |
           bb ci:publish
