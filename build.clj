@@ -36,7 +36,6 @@
   (b/copy-dir {:src-dirs ["src" "resources"]
                :target-dir class-dir
                :replace {}})
-  (run! prn (fs/list-dir "target/classes/nextjournal/clerk"))
   (inline-asset-map {})
   (b/jar {:class-dir class-dir
           :jar-file jar-file}))
