@@ -52,7 +52,7 @@
   (str gs-bucket "/lookup/" lookup-hash))
 
 (defn asset-name [hash suffix]
-  (str "/data/" hash
+  (str "/assets/" hash
        (when suffix
          (str "-" suffix))))
 
