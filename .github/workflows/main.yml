@@ -199,6 +199,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      - name: Install SSH key and start ssh-agent
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.NEXTJOURNAL_CI_SSH_KEY }}
+
       - run: |
           bb ci:publish
       - name: Clerk version
