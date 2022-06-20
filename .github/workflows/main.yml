@@ -177,6 +177,7 @@ jobs:
 
   deploy:
     needs: [build-and-upload-viewer-resources, test]
+    runs-on: ubuntu-latest
     steps:
       - run: |
           bb ci:publish
