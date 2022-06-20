@@ -1,19 +1,22 @@
 (ns build
-  (:require [babashka.fs :as fs]
-            [babashka.process :as process]
-            [clojure.edn :as edn]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.build.api :as b]
-            [deps-deploy.deps-deploy :as dd]
-            [nextjournal.cas :as cas]
-            [rewrite-clj.zip :as z]))
+  (:require
+   [babashka.process :as process]
+   [clojure.edn :as edn]
+   [clojure.string :as str]
+   [clojure.tools.build.api :as b]
+   [deps-deploy.deps-deploy :as dd]
+   [nextjournal.cas :as cas]
+   [nextjournal.clerk.config :refer [lookup-url]]))
 
 (def lib 'io.github.nextjournal/clerk)
 (def class-dir "target/classes")
 (def basis (b/create-basis {:project "deps.edn"}))
 (def version (-> (slurp "resources/META-INF/nextjournal/clerk/meta.edn") edn/read-string :version))
 (def jar-file (format "target/%s-%s.jar" (name lib) version))
+
+(defn package-asset-map [_]
+  (let [asset-map (slurp lookup-url)]
+    (spit "target/classes/clerk-asset-map.edn" asset-map)))
 
 (defn jar [_]
   (b/delete {:path "target"})
@@ -27,7 +30,9 @@
                       :developerConnection "scm:git:ssh://git@github.com/nextjournal/clerk.git"}
                 :src-dirs ["src"]})
   (b/copy-dir {:src-dirs ["src" "resources"]
-               :target-dir class-dir})
+               :target-dir class-dir
+               :replace {}})
+  (package-asset-map {})
   (b/jar {:class-dir class-dir
           :jar-file jar-file}))
 
