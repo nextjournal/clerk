@@ -174,3 +174,18 @@ jobs:
       - name: Run Playwright tests against static assets
         run: |
           bb test:static-app ${{ github.sha }}
+
+  deploy:
+    needs: [build-and-upload-viewer-resources, test]
+    steps:
+      - run: |
+          bb ci:publish
+      - name: Clerk version
+        id: clerk-version
+        run: |
+          CLERK_VERSION=$(bb clerk-version)
+          echo "##[set-output name=version;]${CLERK_VERSION}"
+      - uses: actions/upload-artifact@v1
+        with:
+          name: clerk-${{ steps.clerk-version.outputs.version }}.jar
+          path: target/clerk-${{ steps.clerk-version.outputs.version }}.jar
