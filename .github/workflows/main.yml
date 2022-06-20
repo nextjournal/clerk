@@ -189,6 +189,16 @@ jobs:
         with:
           babashka-version: 0.8.156
 
+      - name: 🗝 maven cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.m2
+            ~/.gitlibs
+          key: ${{ runner.os }}-maven-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
       - run: |
           bb ci:publish
       - name: Clerk version
