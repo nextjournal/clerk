@@ -5,7 +5,6 @@
    [clojure.tools.analyzer :as ana]
    [clojure.tools.analyzer.ast :as ana-ast]
    [clojure.tools.analyzer.jvm :as ana-jvm]
-   [clojure.tools.analyzer.jvm.deps :as ana-deps]
    [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef]
    [clojure.tools.analyzer.utils :as ana-utils]
    [nextjournal.clerk :as clerk]
