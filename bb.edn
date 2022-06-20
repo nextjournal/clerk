@@ -71,7 +71,7 @@
                          (-> fs/parent fs/create-dirs)) {:version version}))}
 
   jar {:doc "Build jar"
-       :task (cojure "-T:build jar")}
+       :task (clojure "-T:build jar")}
 
   install-jar {:doc "Installs jar for local testing"
                :task (clojure "-T:build install")}
