@@ -5,6 +5,11 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
+## 0.8.467 (2022-06-20)
+* 🐞 Markdown library now uses a GraalJS version compatible with Java 8. Fixes #178
+* 🛠 Bundle asset map during Maven release to allow clerk to function behind a proxy. Fixes #147
+* 🛠 Preserve asset name in content-addressed asset URL (#181)
+
 ## 0.8.463 (2022-06-16)
 * 💫 Support `:nextjournal.clerk/no-cache` meta on form also for vars.
 
