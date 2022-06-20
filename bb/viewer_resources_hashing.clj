@@ -63,7 +63,7 @@
     (when (= res ::djv/not-found)
       (tasks/run 'build:js)
       (let [content-hash (djv/sha512 (slurp "build/viewer.js"))
-            viewer-js-http-link (str (str storage-base-url (asset-name content-hash "viewer.js")))]
+            viewer-js-http-link (str storage-base-url (asset-name content-hash "viewer.js"))]
         (spit manifest {"/js/viewer.js" viewer-js-http-link})
         (println "Manifest:" (slurp manifest))
         (println "Coping manifest to" (lookup-url front-end-hash))
