@@ -346,22 +346,32 @@
    "dark:border-slate-600"
    "dark:hover:border-slate-500"])
 
+(defn triangle [expanded?]
+  [:svg {:viewBox "0 0 100 100"
+         :class (str "w-[7px] h-[7px] fill-current inline-block transition-all mr-[1px] -mt-[2px] "
+                     (if expanded? "rotate-180" "rotate-90"))}
+   [:polygon {:points "5.9,88.2 50,11.8 94.1,88.2 "}]])
+
+(def triangle-spacer [:span {:class "inline-block w-[8px]"}])
+
 (defn coll-viewer [xs {:as opts :keys [path viewer !expanded-at]}]
   (html (let [expanded? (@!expanded-at path)
               {:keys [opening-paren closing-paren]} viewer]
           [:span.inspected-value.whitespace-nowrap
            {:class (when expanded? "inline-flex")}
            [:span
-            [:span.bg-opacity-70.whitespace-nowrap
-             (when (< 1 (count xs))
-               {:on-click (partial toggle-expanded !expanded-at path)
-                :class expand-style})
-             opening-paren]
+            (if (< 1 (count xs))
+              [:span.group.hover:bg-indigo-100.rounded-sm.hover:shadow.cursor-pointer
+               {:on-click (partial toggle-expanded !expanded-at path)}
+               [:span.text-slate-400.group-hover:text-indigo-700 [triangle expanded?]]
+               [:span.group-hover:text-indigo-700 opening-paren]]
+              [:span opening-paren])
             (into [:<>]
                   (comp (inspect-children opts)
-                        (interpose (if expanded? [:<> [:br] nbsp (when (= 2 (count opening-paren)) nbsp)] " ")))
+                        (interpose (if expanded? [:<> [:br] triangle-spacer nbsp (when (= 2 (count opening-paren)) nbsp)] " ")))
                   xs)
-            (cond->> closing-paren (list? closing-paren) (into [:<>]))]])))
+            [:span
+             (cond->> closing-paren (list? closing-paren) (into [:<>]))]]])))
 
 (dc/defcard coll-viewer
   (into [:div]
@@ -407,14 +417,15 @@
           [:span.inspected-value.whitespace-nowrap
            {:class (when expanded? "inline-flex")}
            [:span
-            [:span.bg-opacity-70.whitespace-nowrap
-             (when (expandable? xs)
-               {:on-click (partial toggle-expanded !expanded-at path)
-                :class expand-style})
-             "{"]
+            (if (expandable? xs)
+              [:span.group.hover:bg-indigo-100.rounded-sm.hover:shadow.cursor-pointer
+               {:on-click (partial toggle-expanded !expanded-at path)}
+               [:span.text-slate-400.group-hover:text-indigo-700 [triangle expanded?]]
+               [:span.group-hover:text-indigo-700 "{"]]
+              [:span "{"])
             (into [:<>]
                   (comp (inspect-children opts)
-                        (interpose (if expanded? [:<> [:br] nbsp #_(repeat (inc (count path)) nbsp)] " ")))
+                        (interpose (if expanded? [:<> [:br] triangle-spacer nbsp #_(repeat (inc (count path)) nbsp)] " ")))
                   xs)
             (cond->> closing-paren (list? closing-paren) (into [:<>]))]])))
 
