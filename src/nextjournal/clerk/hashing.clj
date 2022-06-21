@@ -148,17 +148,21 @@
           var (when (and (= 1 (count vars))
                          (deflike? form))
                 (first vars))
-          deps (disj (into #{} (map symbol) @!deps) var)
           deref-deps (into #{}
                            (comp (filter (comp #{#'deref} :var :fn))
-                                 (keep #(-> % :args first :var)))
-                           (nodes-outside-of-fn analyzed))]
+                                 (keep #(-> % :args first :var))
+                                 (map #(list `deref (symbol %))))
+                           (nodes-outside-of-fn analyzed))
+          deps (set/union (disj (into #{} (map symbol) @!deps) var)
+                          deref-deps)
+          hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
       (cond-> {:form form
                :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
                :freezable? (and (not (some #{'clojure.core/intern} deps))
                                 (<= (count vars) 1)
                                 (if (seq vars) (= var (first vars)) true))
                :no-cache? (no-cache? form)}
+        hash-fn (assoc :hash-fn hash-fn)
         (seq deps) (assoc :deps deps)
         (seq deref-deps) (assoc :deref-deps deref-deps)
         (seq vars) (assoc :vars vars)
@@ -184,6 +188,9 @@
 #_(analyze '(intern *ns* 'foo :bar))
 #_(analyze '(import javax.imageio.ImageIO))
 #_(analyze '(defmulti foo :bar))
+#_(analyze '^{:nextjournal.clerk/hash-fn (fn [_] (clerk/valuehash (slurp "notebooks/hello.clj")))}
+           (def contents
+             (slurp "notebooks/hello.clj")))
 
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
@@ -588,7 +595,7 @@
           _ (prn :deref-deps-to-eval deref-deps-to-eval)
           doc-with-deref-dep-hashes (reduce (fn [state deref-dep]
                                               (assoc-in state [:->hash deref-dep] (valuehash (try
-                                                                                               @@deref-dep
+                                                                                               (eval deref-dep)
                                                                                                (catch Exception e
                                                                                                  (throw (ex-info "error during hashing of deref dep" {:deref deref-dep :cell cell} e)))))))
                                             analyzed-doc
@@ -598,7 +605,7 @@
     hash-fn
     (let [id (if var var form)
           doc-with-new-hash (assoc-in analyzed-doc [:->hash id] ((eval hash-fn) (assoc analyzed-doc :cell cell)))]
-      #_(prn :hash-deref-deps/form form :hash-fn hash-fn :valuehash ((eval hash-fn) (assoc analyzed-doc :cell cell)))
+      (prn :hash-deref-deps/form form :id (if var var form) :hash-fn hash-fn :valuehash ((eval hash-fn) (assoc analyzed-doc :cell cell)))
       (hash doc-with-new-hash (dep/transitive-dependents graph (if var var form))))
     :else
     analyzed-doc))
@@ -609,3 +616,5 @@
       (nextjournal.clerk/recompute!))
 
 #_(deref nextjournal.clerk.webserver/!doc)
+
+#_(nextjournal.clerk/clear-cache!)
