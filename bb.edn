@@ -86,10 +86,10 @@
   publish {:doc "Prepares repo for publishing via CI"
            :task (do
                    (run 'update-meta)
-                   (shell "git add resources")
+                   (shell "git add resources/viewer-js-hash resources/META-INF")
                    (shell (str "git commit -m v" (version)))
                    (run 'tag)
-                   (shell "git push --atomic v" (version)))}
+                   (shell (str "git push --atomic v" (version))))}
 
   -current-tag (->> (shell {:out :string} "git tag --points-at HEAD")
                     :out
