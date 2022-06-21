@@ -176,7 +176,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - name: Get tags
+        run: git fetch --tags origin
 
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.3.0
