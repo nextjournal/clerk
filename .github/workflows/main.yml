@@ -8,8 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
 
       - name: 🔧 Install java
         uses: actions/setup-java@v1
@@ -25,6 +23,10 @@ jobs:
         uses: turtlequeue/setup-babashka@v1.3.0
         with:
           babashka-version: 0.8.156
+
+      - name: Show branch name
+        run: |
+          bb run --prn -current-branch
 
       - name: 🗝 maven cache
         uses: actions/cache@v2
@@ -63,8 +65,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
 
       - name: 🔧 Install java
         uses: actions/setup-java@v1
@@ -100,8 +100,6 @@ jobs:
     needs: [build-and-upload-viewer-resources]
     steps:
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
 
       - name: 🔧 Install java
         uses: actions/setup-java@v1
@@ -163,8 +161,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
 
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.3.0
@@ -181,8 +177,6 @@ jobs:
     steps:
 
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
 
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.3.0
