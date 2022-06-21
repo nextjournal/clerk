@@ -204,6 +204,10 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.NEXTJOURNAL_CI_SSH_KEY }}
 
+      - name: Publish to clojars
+      - env:
+          CLOJARS_USERNAME: mkvlr
+          CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD_MKVLR }}
       - run: |
           bb ci:publish
       - name: Clerk version
