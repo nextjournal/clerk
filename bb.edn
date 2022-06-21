@@ -15,10 +15,17 @@
               (str/trim (:out (shell {:out :string} (str "bb -cp " cp " -e '(println (.getPath (clojure.java.io/resource \"css/viewer.css\")))'"))))))
 
           (defn latest-sha []
-            (str/trim (:out (p/sh "git rev-parse HEAD")))))
+            (str/trim (:out (p/sh "git rev-parse HEAD"))))
 
-  print-viewer-css {:task (println (viewer-css-path))}
-  copy-viewer-css {:task (fs/copy (viewer-css-path) "resources/stylesheets/viewer.css" #{:replace-existing})}
+          (defn version []
+            (-> (slurp "resources/META-INF/nextjournal/clerk/meta.edn")
+                edn/read-string
+                :version)))
+
+  copy-viewer-css {:doc "TODO: please complement this docstring"
+                   :task
+                   (fs/copy (viewer-css-path)
+                            "resources/stylesheets/viewer.css" #{:replace-existing})}
 
   yarn-install {:doc "Installs and updates npm dependencies"
                 :task (shell "yarn install")}
@@ -55,33 +62,50 @@
                                   "yarn nbb -m playwright-tests"
                                   (or *command-line-args* [(latest-sha)])))}
 
-  -update-meta {:task (let [rev-count (-> (p/process ["git" "rev-list" "HEAD" "--count"] {:out :string}) p/check :out str/trim Integer/parseInt)
-                            version (format "0.8.%d" (inc rev-count))]
-                        (spit (doto (fs/file "resources/META-INF/nextjournal/clerk/meta.edn")
-                                (-> fs/parent fs/create-dirs)) {:version version}))}
+  update-meta {:doc "Updates meta.edn with current version (based on commit count currently)."
+               :task
+               (let [rev-count (-> (p/process ["git" "rev-list" "HEAD" "--count"] {:out :string})
+                                   p/check :out str/trim Integer/parseInt)
+                     version (format "0.8.%d" (inc rev-count))]
+                 (spit (doto (fs/file "resources/META-INF/nextjournal/clerk/meta.edn")
+                         (-> fs/parent fs/create-dirs)) {:version version}))}
 
-  release:jar {:doc "Builds the jar"
-               :depends [-update-meta]
-               :task (let [rev-count (-> (p/process ["git" "rev-list" "HEAD" "--count"] {:out :string}) p/check :out str/trim Integer/parseInt)
-                           version (format "0.8.%d" (inc rev-count))]
-                       (spit (doto (fs/file "resources/META-INF/nextjournal/clerk/meta.edn")
-                               (-> fs/parent fs/create-dirs)) {:version version})
-                       (clojure "-T:build jar"))}
+  jar {:doc "Build jar"
+       :task (clojure "-T:build jar")}
 
-  install:jar {:doc "Installs jar"
-               :depends [-update-meta]
+  install-jar {:doc "Installs jar for local testing"
                :task (clojure "-T:build install")}
 
-  deploy {:doc "Deploys the jar to clojars"
-          :task (clojure "-T:build deploy")}
-
   tag {:doc "Tags release and pushes tag to Github."
-       :task (let [version (-> (slurp "resources/META-INF/nextjournal/clerk/meta.edn")
-                               edn/read-string
-                               :version)
-                   tag (str "v" version)]
-               (shell "git tag" tag)
-               (shell "git push origin" tag))}
+       :task (let [tag (str "v" (version))]
+               (shell "git tag" tag))}
+
+  clerk-version {:doc "Prints current version"
+                 :task (println (version))}
+
+  publish {:doc "Prepares repo for publishing via CI"
+           :task (do
+                   (run 'update-meta)
+                   (shell "git add resources")
+                   (shell (str "git commit -m v" (version)))
+                   (run 'tag)
+                   (shell "git push --atomic v" (version)))}
+
+  -current-tag (->> (shell {:out :string} "git tag --points-at HEAD")
+                    :out
+                    str/trim
+                    not-empty)
+
+  -current-branch (->> (shell {:out :string} "git rev-parse --abbrev-ref HEAD")
+                       :out
+                       str/trim)
+
+  ci:publish {:doc "Publish task which will be run on CI"
+              :depends [-current-tag -current-branch]
+              :task (if (and -current-tag (= "main" -current-branch))
+                      (clojure "-T:build deploy")
+                      ;; still build jar for artifact upload
+                      (run 'jar))}
 
   install-git-hooks {:doc "Install git hooks"
                      :task (fs/copy "dev/pre-commit" ".git/hooks" {:replace-existing true})}

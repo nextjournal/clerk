@@ -24,7 +24,7 @@ jobs:
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.3.0
         with:
-          babashka-version: 0.7.6
+          babashka-version: 0.8.156
 
       - name: 🗝 maven cache
         uses: actions/cache@v2
@@ -79,7 +79,7 @@ jobs:
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.3.0
         with:
-          babashka-version: 0.7.6
+          babashka-version: 0.8.156
 
       - name: 🗝 maven cache
         uses: actions/cache@v2
@@ -116,7 +116,7 @@ jobs:
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.3.0
         with:
-          babashka-version: 0.7.6
+          babashka-version: 0.8.156
 
       - name: 🗝 maven cache
         uses: actions/cache@v2
@@ -169,8 +169,55 @@ jobs:
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.3.0
         with:
-          babashka-version: 0.7.6
+          babashka-version: 0.8.156
 
       - name: Run Playwright tests against static assets
         run: |
           bb test:static-app ${{ github.sha }}
+
+  deploy:
+    needs: [build-and-upload-viewer-resources, test]
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@v2
+        with:
+          fetch_depth: 0
+
+      - name: Setup Babashka
+        uses: turtlequeue/setup-babashka@v1.3.0
+        with:
+          babashka-version: 0.8.156
+
+      - name: 🗝 maven cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.m2
+            ~/.gitlibs
+          key: ${{ runner.os }}-maven-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Install SSH key and start ssh-agent
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.NEXTJOURNAL_CI_SSH_KEY }}
+
+      - name: Publish to clojars
+        env:
+          CLOJARS_USERNAME: mkvlr
+          CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD_MKVLR }}
+        run: |
+          bb ci:publish
+
+      - name: Clerk version
+        id: clerk-version
+        run: |
+          CLERK_VERSION=$(bb clerk-version)
+          echo "##[set-output name=version;]${CLERK_VERSION}"
+
+      - uses: actions/upload-artifact@v1
+        with:
+          name: clerk-${{ steps.clerk-version.outputs.version }}.jar
+          path: target/clerk-${{ steps.clerk-version.outputs.version }}.jar
