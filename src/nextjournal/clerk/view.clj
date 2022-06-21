@@ -25,37 +25,14 @@
                        (str/replace  #"require\(.*\)" ""))]
           [:style {:type "text/tailwindcss"} (slurp (io/resource "stylesheets/viewer.css"))])))
 
-(defn service-worker-script []
-  "const registerServiceWorker = async () => {
-if ('serviceWorker' in navigator) {
-  try {
-    const registration = await navigator.serviceWorker.register(
-      '/js/sw.js',
-      {
-        scope: '/',
-      }
-    );
-    if (registration.installing) {
-      console.log('Service worker installing');
-    } else if (registration.waiting) {
-      console.log('Service worker installed');
-    } else if (registration.active) {
-      console.log('Service worker active');
-    }
-  } catch (error) {
-    console.error(`Registration failed with ${error}`);
-  }
-} else {
-  console.error('serviceWorker not available');
-}
-};")
-
 (defn ->html [{:keys [conn-ws?] :or {conn-ws? true}} state]
   (hiccup/html5
    {:class "overflow-hidden min-h-screen"}
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
+    [:script (str "var clerk_resources = "
+                  (pr-str [(@config/!resource->url "/js/viewer.js")]))]
     [:script "navigator.serviceWorker.register('/js/sw.js')"]
     (include-viewer-css)
     (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")

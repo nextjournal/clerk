@@ -1,5 +1,5 @@
 console.log("service worker init", this);
-  
+
 
 const addResourcesToCache = async (resources) => {
   console.log("addResourcesToCache", resources);
@@ -65,9 +65,7 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-      addResourcesToCache([
-          '/assets/viewer-2T5NqL5BsiQAAjDoMCSoqv7o9PNUjifjiyhBHFyKvx8mxDwNqEftGjyymoMeuxRpShkDHJWx2SUhvVBGUvwMvMha.js',
-    ])
+    addResourcesToCache(clerk_resources)
   );
 });
 
