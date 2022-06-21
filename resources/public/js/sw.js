@@ -64,8 +64,10 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('install', (event) => {
+  const clerkResources = JSON.parse(new URL(location).searchParams.get('preCache'));
+  console.log(clerkResources);
   event.waitUntil(
-    addResourcesToCache(clerk_resources)
+    addResourcesToCache(clerkResources)
   );
 });
 

@@ -32,6 +32,10 @@
             (-> (slurp lookup-url)
                 edn/read-string))))
 
+;; TODO: revert this before merging the sw branch
+(reset! !resource->url (-> (slurp lookup-url)
+                           edn/read-string))
+
 #_(swap! !resource->url assoc "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvAV62HzsvhcsXEkHP33uj4cV9UvdDz7DU9qLeVRCfEP9kWLFAzaMKL77trdx898DzcVyDVejdfxvxj5XB84UpWvQ")
 #_(swap! !resource->url dissoc "/css/viewer.css")
 #_(reset! !resource->url identity)

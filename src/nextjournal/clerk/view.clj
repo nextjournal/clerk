@@ -33,7 +33,8 @@
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
     [:script (str "var clerk_resources = "
                   (pr-str [(@config/!resource->url "/js/viewer.js")]))]
-    [:script "navigator.serviceWorker.register('/js/sw.js')"]
+    [:script (format "navigator.serviceWorker.register('/js/sw.js?preCache='+encodeURIComponent(JSON.stringify(%s)))"
+                     (pr-str [(@config/!resource->url "/js/viewer.js")]))]
     (include-viewer-css)
     (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
     (hiccup/include-js (@config/!resource->url "/js/viewer.js"))
