@@ -26,6 +26,10 @@ jobs:
         with:
           babashka-version: 0.8.156
 
+      - name: Show branch name
+        run: |
+          bb run --prn -current-branch
+
       - name: 🗝 maven cache
         uses: actions/cache@v2
         with:

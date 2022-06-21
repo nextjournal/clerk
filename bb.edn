@@ -99,7 +99,7 @@
                     str/trim
                     not-empty)
 
-  -current-branch (->> (shell {:out :string} "git rev-parse --abbrev-ref HEAD")
+  -current-branch (->> (shell {:out :string} "git branch --show-current")
                        :out
                        str/trim)
 
