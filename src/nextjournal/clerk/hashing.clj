@@ -155,7 +155,7 @@
                                  (keep #(-> % :args first :var))
                                  (map #(list `deref (symbol %))))
                            (nodes-outside-of-fn analyzed))
-          deps (set/union (disj (into #{} (map symbol) @!deps) var)
+          deps (set/union (set/difference (into #{} (map symbol) @!deps) vars)
                           deref-deps
                           (class-dependencies form))
           hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
