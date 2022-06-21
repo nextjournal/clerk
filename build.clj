@@ -47,8 +47,8 @@
               :class-dir class-dir}))
 
 (defn deploy [opts]
-  (println "Deploying version" jar-file "to Clojars.")
-  (format "target/%s-%s.jar" (name lib) version)
+  (jar opts)
+  (println "Deploying" jar-file "to Clojars.")
   (dd/deploy (merge {:installer :remote
                      :artifact jar-file
                      :pom-file (b/pom-path {:lib lib :class-dir class-dir})}

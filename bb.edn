@@ -89,7 +89,8 @@
                    (shell "git add resources/viewer-js-hash resources/META-INF")
                    (shell (str "git commit -m v" (version)))
                    (run 'tag)
-                   (shell (str "git push --atomic v" (version))))}
+                   (shell "git push --atomic"
+                          "origin" "main" (str "v" (version))))}
 
   -current-tag (->> (shell {:out :string} "git tag --points-at HEAD")
                     :out
