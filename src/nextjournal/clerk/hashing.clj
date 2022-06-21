@@ -532,9 +532,12 @@
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 
 (defn hash-codeblock [->hash {:as codeblock :keys [hash form deps]}]
-  (when (and (not (ifn? ->hash)) (seq deps))
-    (throw (ex-info "->hash must be `ifn?`" {:->hash ->hash :codeblock codeblock})))
-  (let [hashed-deps (into #{} (map ->hash) deps)]
+  (let [->hash' (if (and (not (ifn? ->hash)) (seq deps))
+                  (binding [*out* *err*]
+                    (println "->hash must be `ifn?`" {:->hash ->hash :codeblock codeblock})
+                    identity)
+                  ->hash)
+        hashed-deps (into #{} (map ->hash') deps)]
     (sha1-base58 (pr-str (conj hashed-deps (if form form hash))))))
 
 #_(nextjournal.clerk/build-static-app! {:paths nextjournal.clerk/clerk-docs})
