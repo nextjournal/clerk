@@ -68,7 +68,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          fetch-depth: 0
+          fetch_depth: 0
 
       - name: 🔧 Install java
         uses: actions/setup-java@v1
