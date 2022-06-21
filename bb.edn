@@ -71,7 +71,9 @@
                          (-> fs/parent fs/create-dirs)) {:version version}))}
 
   jar {:doc "Build jar"
-       :task (clojure "-T:build jar")}
+       :task (do
+               (println "Building jar")
+               (clojure "-T:build jar"))}
 
   install-jar {:doc "Installs jar for local testing"
                :task (clojure "-T:build install")}
@@ -103,10 +105,15 @@
 
   ci:publish {:doc "Publish task which will be run on CI"
               :depends [-current-tag -current-branch]
-              :task (if (and -current-tag (= "main" -current-branch))
-                      (clojure "-T:build deploy")
-                      ;; still build jar for artifact upload
-                      (run 'jar))}
+              :task (do
+                      (prn :current-tag -current-tag)
+                      (prn :current-branch -current-branch)
+                      (if (and -current-tag (= "main" -current-branch))
+                        (do
+                          (println "Deploying to clojars")
+                          (clojure "-T:build deploy"))
+                        ;; still build jar for artifact upload
+                        (run 'jar)))}
 
   install-git-hooks {:doc "Install git hooks"
                      :task (fs/copy "dev/pre-commit" ".git/hooks" {:replace-existing true})}
