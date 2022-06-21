@@ -74,25 +74,27 @@
 
 #_(sha1-base58 "hello")
 
-(defn var-dependencies [analyzed-form]
-  (let [var-name (var-name analyzed-form)]
-    (into #{}
-          (filter #(and (symbol? %)
-                        (if (qualified-symbol? %)
-                          (not= var-name %)
-                          (and (not= \. (-> % str (.charAt 0)))
-                               (-> % resolve class?)))))
-          (tree-seq (every-pred (some-fn sequential? map? set?) not-quoted?) seq analyzed-form))))
+(defn class-dependencies [form]
+  (into #{}
+        (filter #(and (symbol? %)
+                      (if (qualified-symbol? %)
+                        (-> % namespace symbol resolve class?)
+                        (and (not= \. (-> % str (.charAt 0)))
+                             (-> % resolve class?)))))
+        (tree-seq (every-pred (some-fn sequential? map? set?) not-quoted?) seq form)))
 
-#_(var-dependencies '@foo/bar)
-#_(var-dependencies '(def nextjournal.clerk.hashing/foo
-                       (fn* ([] (nextjournal.clerk.hashing/foo "s"))
-                            ([s] (clojure.string/includes?
-                                  (rewrite-clj.parser/parse-string-all s) "hi")))))
+#_(class-dependencies 'io.methvin.watcher.hashing.FileHasher)
+#_(class-dependencies 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER)
+#_(class-dependencies '@foo/bar)
+#_(class-dependencies '(def nextjournal.clerk.hashing/foo
+                         (fn* ([] (nextjournal.clerk.hashing/foo "s"))
+                              ([s] (clojure.string/includes?
+                                    (rewrite-clj.parser/parse-string-all s) "hi")))))
 
+;; TODO: remove this
 (defn analyze+emit [form]
   (-> form
-      ana/analyze
+      ana-jvm/analyze
       (ana.passes.ef/emit-form #{:hygenic :qualified-symbols})))
 
 (defn rewrite-defcached [form]
@@ -154,7 +156,8 @@
                                  (map #(list `deref (symbol %))))
                            (nodes-outside-of-fn analyzed))
           deps (set/union (disj (into #{} (map symbol) @!deps) var)
-                          deref-deps)
+                          deref-deps
+                          (class-dependencies form))
           hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
       (cond-> {:form form
                :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
