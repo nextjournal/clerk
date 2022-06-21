@@ -1,5 +1,6 @@
 (ns user
-  (:require [nextjournal.clerk :as clerk]))
+  (:require [clojure.string :as str]
+            [nextjournal.clerk :as clerk]))
 
 (comment
   ;; start without file watcher & open browser
@@ -7,7 +8,7 @@
 
   ;; start without file watcher
   (clerk/serve! {})
-  
+
   ;; start with file watcher
   (clerk/serve! {:watch-paths ["notebooks" "src"]})
 

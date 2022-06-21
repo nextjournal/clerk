@@ -7,8 +7,11 @@
             [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.string :as str]
-            [clojure.tools.analyzer.jvm :as ana]
+            [clojure.tools.analyzer :as ana]
+            [clojure.tools.analyzer.ast :as ana-ast]
+            [clojure.tools.analyzer.jvm :as ana-jvm]
             [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef]
+            [clojure.tools.analyzer.utils :as ana-utils]
             [edamame.core :as edamame]
             [multihash.core :as multihash]
             [multihash.digest :as digest]
@@ -87,19 +90,6 @@
                             ([s] (clojure.string/includes?
                                   (rewrite-clj.parser/parse-string-all s) "hi")))))
 
-(defn sequential-without-fn* [form]
-  (and (sequential? form)
-       (not (contains? #{'fn*} (first form)))))
-
-#_(sequential-without-fn* '(fn* ([] :bar)))
-#_(sequential-without-fn* '(inc 41))
-
-(defn deref-dependencies [analyzed-form]
-  (let [var-name (var-name analyzed-form)]
-    (into #{}
-          (filter (every-pred deref? (complement #(str/ends-with? (-> % second name) "__auto__"))))
-          (tree-seq (every-pred (some-fn sequential-without-fn* map? set?) not-quoted?) seq analyzed-form))))
-
 (defn analyze+emit [form]
   (-> form
       ana/analyze
@@ -124,29 +114,55 @@
 #_(deflike? '(defonce foo :bar))
 #_(deflike? '(rdef foo :bar))
 
+
+(defn- analyze-form
+  ([form] (analyze-form {} form))
+  ([bindings form]
+   (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings})))
+
+(defn- nodes-outside-of-fn
+  "Like `clojure.tools.anayzer.ast/nodes` but does not descend into children of `:fn` nodes."
+  [ast]
+  (lazy-seq
+   (when-not (-> ast :op #{:fn})
+     (cons ast (mapcat nodes-outside-of-fn (ana-ast/children ast))))))
+
 (defn analyze [form]
-  (binding [config/*in-clerk* true]
-    (let [analyzed-form (analyze+emit (rewrite-defcached form))
-          vars (defined-vars analyzed-form)
-          var (when (and (= 1 (count vars)) (or (def? analyzed-form)
-                                                (deflike? form)))
+  (if (var? form)
+    #{form}
+    (let [!deps      (atom #{})
+          mexpander (fn [form env]
+                      (let [f (if (seq? form) (first form) form)
+                            v (ana-utils/resolve-sym f env)]
+                        (when-let [var? (and (not (-> env :locals (get f)))
+                                             (var? v))]
+                          (swap! !deps conj v)))
+                      (ana-jvm/macroexpand-1 form env))
+          analyzed (analyze-form {#'ana/macroexpand-1 mexpander} form)
+          nodes (ana-ast/nodes analyzed)
+          vars (into #{}
+                     (comp (filter (comp #{:def} :op))
+                           (keep :var)
+                           (map symbol))
+                     nodes)
+          var (when (and (= 1 (count vars))
+                         (deflike? form))
                 (first vars))
-          deps (apply disj (var-dependencies analyzed-form) vars)
-          deref-deps (deref-dependencies analyzed-form)
-          all-deps (set/union deps deref-deps)
-          hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
+          deps (disj (into #{} (map symbol) @!deps) var)
+          deref-deps (into #{}
+                           (comp (filter (comp #{#'deref} :var :fn))
+                                 (keep #(-> % :args first :var)))
+                           (nodes-outside-of-fn analyzed))]
       (cond-> {:form form
-               ;; TODO: drop var downstream so hash stays stable under change
                :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
                :freezable? (and (not (some #{'clojure.core/intern} deps))
                                 (<= (count vars) 1)
                                 (if (seq vars) (= var (first vars)) true))
                :no-cache? (no-cache? form)}
-        var (assoc :var var)
-        vars (assoc :vars vars)
-        (seq all-deps) (assoc :deps all-deps)
+        (seq deps) (assoc :deps deps)
         (seq deref-deps) (assoc :deref-deps deref-deps)
-        hash-fn (assoc :hash-fn hash-fn)))))
+        (seq vars) (assoc :vars vars)
+        var (assoc :var var)))))
 
 #_(:vars (analyze '(do (def a 41) (def b (inc a)))))
 #_(:vars (analyze '(defrecord Node [v l r])))
@@ -454,15 +470,17 @@
 #_(symbol->jar 'java.net.http.HttpClient/newHttpClient)
 
 (defn find-location [sym]
-  (if (seq? sym)
-    (find-location (second sym))
-    (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
-      (or (ns->file ns)
-          (ns->jar ns))
-      (symbol->jar sym))))
+  (cond
+    (seq? sym) (find-location (second sym))
+    (var? sym) (find-location (symbol sym))
+    :else (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
+            (or (ns->file ns)
+                (ns->jar ns))
+            (symbol->jar sym))))
 
 
 #_(find-location `inc)
+#_(find-location #'inc)
 #_(find-location `dep/depend)
 #_(find-location 'java.util.UUID)
 #_(find-location 'java.util.UUID/randomUUID)
@@ -567,14 +585,15 @@
   (cond
     (seq deref-deps)
     (let [deref-deps-to-eval (set/difference deref-deps (-> ->hash keys set))
+          _ (prn :deref-deps-to-eval deref-deps-to-eval)
           doc-with-deref-dep-hashes (reduce (fn [state deref-dep]
                                               (assoc-in state [:->hash deref-dep] (valuehash (try
-                                                                                               @(second deref-dep)
+                                                                                               @@deref-dep
                                                                                                (catch Exception e
                                                                                                  (throw (ex-info "error during hashing of deref dep" {:deref deref-dep :cell cell} e)))))))
                                             analyzed-doc
                                             deref-deps-to-eval)]
-      #_(prn :hash-deref-deps/form form :deref-deps deref-deps-to-eval)
+      (prn :hash-deref-deps/form form :deref-deps deref-deps-to-eval)
       (hash doc-with-deref-dep-hashes (dep/transitive-dependents-set graph deref-deps-to-eval)))
     hash-fn
     (let [id (if var var form)
@@ -584,10 +603,9 @@
     :else
     analyzed-doc))
 
-(comment
-  (require 'clojure.data)
-  (let [file "notebooks/cache.clj"
-        g1 (build-graph file)
-        g2 (build-graph file)]
-    [:= (= g1 g2)
-     :diff (clojure.data/diff g1 g2)]))
+#_(nextjournal.clerk/show! "notebooks/hash_fn.clj")
+
+#_(do (swap! hash-fn/!state inc)
+      (nextjournal.clerk/recompute!))
+
+#_(deref nextjournal.clerk.webserver/!doc)

@@ -8,42 +8,25 @@
    [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef]
    [clojure.tools.analyzer.utils :as ana-utils]
    [nextjournal.clerk :as clerk]
-   [nextjournal.clerk.hashing :refer [deflike?]]))
+   [nextjournal.clerk.hashing :as hashing :refer [deflike?]]))
 
-(defn analyze
-  ([form] (analyze {} form))
+(defn- analyze-form
+  ([form] (analyze-form {} form))
   ([bindings form]
    (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings})))
 
+(defn- nodes-outside-of-fn
+  "Like `clojure.tools.anayzer.ast/nodes` but does not descend into children of `:fn` nodes."
+  [ast]
+  (lazy-seq
+   (when-not (-> ast :op #{:fn})
+     (cons ast (mapcat nodes-outside-of-fn (ana-ast/children ast))))))
+
 (defn deps
   [form]
-  (if (var? form)
-    #{form}
-    (let [deps      (atom #{})
-          mexpander (fn [form env]
-                      (let [f (if (seq? form) (first form) form)
-                            v (ana-utils/resolve-sym f env)]
-                        (when-let [var? (and (not (-> env :locals (get f)))
-                                             (var? v))]
-                          (swap! deps conj v)))
-                      (ana-jvm/macroexpand-1 form env))
-          analyzed (analyze {#'ana/macroexpand-1 mexpander} form)
-          nodes (ana-ast/nodes analyzed)
-          vars (into #{}
-                     (comp (filter (comp #{:def} :op))
-                           (keep :var))
-                     nodes)
-          var (when (and (= 1 (count vars))
-                         (deflike? form))
-                (first vars))]
-      (cond-> {:deps (set/union @deps)
-               :deref-deps (into #{}
-                                 (comp (filter (comp #{#'deref} :var :fn))
-                                       (keep #(-> % :args first :var)))
-                                 nodes)
-               :vars vars}
-        var (assoc :var var)))))
-
+  (-> form
+      (hashing/analyze)
+      (select-keys [:deps :vars :var :deref-deps])))
 
 (clerk/example
  (deps '(def foo :bar))
@@ -58,4 +41,12 @@
  (deps '(deref !counter))
  (deps '(import javax.imageio.ImageIO))
  (deps '(do 'inc))
+ (deps '(comment @!counter))
+ (deps '(fn [] @!counter))
+ (deps '(inc @!counter))
+ (deps '(let [my-atom (atom 0)]
+          (swap! my-atom inc)
+          @my-atom))
  )
+
+
