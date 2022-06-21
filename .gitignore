@@ -18,3 +18,4 @@ yarn.lock
 /build
 /public/build
 .nrepl-port
+.clj-kondo/marick

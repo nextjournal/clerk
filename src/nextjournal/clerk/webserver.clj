@@ -1,12 +1,12 @@
 (ns nextjournal.clerk.webserver
-  (:require [clojure.string :as str]
+  (:require [clojure.edn :as edn]
             [clojure.pprint :as pprint]
-            [clojure.edn :as edn]
-            [org.httpkit.server :as httpkit]
+            [clojure.string :as str]
+            [lambdaisland.uri :as uri]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.markdown :as md]
-            [lambdaisland.uri :as uri]))
+            [org.httpkit.server :as httpkit]))
 
 (def help-doc
   {:blocks [{:type :markdown :doc (md/parse "Use `nextjournal.clerk/show!` to make your notebook appear…")}]})
