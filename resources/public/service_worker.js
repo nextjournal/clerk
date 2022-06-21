@@ -52,6 +52,7 @@ const cacheFirst = async ({ request, preloadResponsePromise, fallbackUrl }) => {
   }
 };
 
+// TODO: do we need this?
 const enableNavigationPreload = async () => {
   if (self.registration.navigationPreload) {
     // Enable navigation preloads!
@@ -76,7 +77,7 @@ self.addEventListener('fetch', (event) => {
     cacheFirst({
       request: event.request,
       preloadResponsePromise: event.preloadResponse,
-      fallbackUrl: '/sw-test/gallery/myLittleVader.jpg',
+      fallbackUrl: '/sw-test/gallery/myLittleVader.jpg', // FIXME
     })
   );
 });

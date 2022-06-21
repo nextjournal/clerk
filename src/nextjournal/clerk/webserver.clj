@@ -70,8 +70,8 @@
                                                          (eval '(nextjournal.clerk/recompute!))))})
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
-        ("assets" "js") {:body (slurp (str "resources/public" uri))
-                         :headers {"Content-Type" "text/javascript"}}
+        ("assets" "js" "service_worker.js") {:body (slurp (str "resources/public" uri))
+                                             :headers {"Content-Type" "text/javascript"}}
         "_blob" (serve-blob @!doc (extract-blob-opts req))
         "_ws" {:status 200 :body "upgrading..."}
         {:status  200
