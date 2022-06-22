@@ -92,6 +92,7 @@
 (defn- cachable-value? [value]
   (not (or (nil? value)
            (fn? value)
+           (var? value)
            (instance? clojure.lang.IDeref value)
            (instance? clojure.lang.MultiFn value)
            (instance? clojure.lang.Namespace value))))
@@ -108,7 +109,7 @@
         result (if (and (nil? result) var (= 'defonce (first form)))
                  (find-var var)
                  result)
-        var-value (cond-> result (var? result) deref)
+        var-value (cond-> result (and var (var? result)) deref)
         no-cache? (or ns-effect?
                       no-cache?
                       config/cache-disabled?
@@ -173,6 +174,7 @@
       (prn :cache-dir/deleted config/cache-dir))
     (prn :cache-dir/does-not-exist config/cache-dir)))
 
+#_(clear-cache!)
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
 (defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks visibility]}]
