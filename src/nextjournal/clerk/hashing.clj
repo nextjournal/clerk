@@ -102,7 +102,8 @@
 (defn- analyze-form
   ([form] (analyze-form {} form))
   ([bindings form]
-   (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings})))
+   (binding [config/*in-clerk* true]
+     (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings}))))
 
 (defn- nodes-outside-of-fn
   "Like `clojure.tools.anayzer.ast/nodes` but does not descend into children of `:fn` nodes."
