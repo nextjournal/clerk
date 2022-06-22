@@ -1032,23 +1032,23 @@
         process-wrapped-value)))
 
 (defn assign-content-lengths [wrapped-value]
-  (clojure.walk/postwalk
-    (fn [x]
-      (if-let [value (and (wrapped-value? x) (:nextjournal/value x))]
-        (cond
-          (or (nil? value) (string? value) (keyword? value) (symbol? value) (number? value))
-          (assoc x :content-length (count (pr-str value)))
-          (contains? #{:map-entry} (get-in x [:nextjournal/viewer :name]))
-          (assoc x :content-length (reduce + 1 (map :content-length value)))
-          (vector? value)
-          (assoc x :content-length
-                   (->> value
+  (w/postwalk
+   (fn [x]
+     (if-let [value (and (wrapped-value? x) (:nextjournal/value x))]
+       (cond
+         (or (nil? value) (string? value) (keyword? value) (symbol? value) (number? value))
+         (assoc x :content-length (count (pr-str value)))
+         (contains? #{:map-entry} (get-in x [:nextjournal/viewer :name]))
+         (assoc x :content-length (reduce + 1 (map :content-length value)))
+         (vector? value)
+         (assoc x :content-length
+                (->> value
                      (map :content-length)
                      (reduce + (-> x (get-in [:nextjournal/viewer :opening-paren]) count inc))
                      (+ (dec (count value)))))
-          :else x)
-        x))
-    wrapped-value))
+         :else x)
+       x))
+   wrapped-value))
 
 (comment
   (= (count "[1 2 [1 [2] 3] 4 5]")
