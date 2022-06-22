@@ -185,6 +185,16 @@ par two"))))
               (with-ns-binding 'nextjournal.clerk.hashing-test
                 (h/analyze '(do (def foo :bar) (def foo-2 :bar))))))
 
+  (testing "can differentiate deref'ed symbols from deref'ed vars"
+    ;; commented out as this works in the repl but not with kaocha
+    ;; Caused by: java.lang.RuntimeException: Unable to resolve var: nextjournal.clerk.hashing-test/foo in this context
+    #_(with-ns-binding 'nextjournal.clerk.hashing-test
+        (intern *ns* 'foo :bar)
+        (is (= #{`(deref ~(var nextjournal.clerk.hashing-test/foo))}
+               (-> '(deref #'foo) h/analyze :deref-deps)))
+        (is (= #{`(deref nextjournal.clerk.hashing-test/foo)}
+               (-> '(deref foo) h/analyze :deref-deps)))))
+
   (testing "defcached should be treated like a normal def"
     (with-ns-binding 'nextjournal.clerk.hashing-test
       ;; FIXME

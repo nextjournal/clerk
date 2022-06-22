@@ -75,6 +75,7 @@
 
 (defn class-deps [analyzed]
   (set/union (into #{} (comp (keep :class)
+                             (filter class?)
                              (map (comp symbol pr-str))) (ana-ast/nodes analyzed))
              (into #{} (comp (filter (comp #{:const} :op))
                              (filter (comp #{:class} :type))
@@ -112,48 +113,50 @@
    (when-not (-> ast :op #{:fn})
      (cons ast (mapcat nodes-outside-of-fn (ana-ast/children ast))))))
 
+
 (defn analyze [form]
-  (if (var? form)
-    #{form}
-    (let [!deps      (atom #{})
-          mexpander (fn [form env]
-                      (let [f (if (seq? form) (first form) form)
-                            v (ana-utils/resolve-sym f env)]
-                        (when-let [var? (and (not (-> env :locals (get f)))
-                                             (var? v))]
-                          (swap! !deps conj v)))
-                      (ana-jvm/macroexpand-1 form env))
-          analyzed (analyze-form {#'ana/macroexpand-1 mexpander} form)
-          nodes (ana-ast/nodes analyzed)
-          vars (into #{}
-                     (comp (filter (comp #{:def} :op))
-                           (keep :var)
-                           (map symbol))
-                     nodes)
-          var (when (and (= 1 (count vars))
-                         (deflike? form))
-                (first vars))
-          deref-deps (into #{}
-                           (comp (filter (comp #{#'deref} :var :fn))
-                                 (keep #(-> % :args first :var))
-                                 (map #(list `deref (symbol %))))
-                           (nodes-outside-of-fn analyzed))
-          deps (set/union (set/difference (into #{} (map symbol) @!deps) vars)
-                          deref-deps
-                          (class-deps analyzed))
-          hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
-      (cond-> {#_#_:analyzed analyzed
-               :form form
-               :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
-               :freezable? (and (not (some #{'clojure.core/intern} deps))
-                                (<= (count vars) 1)
-                                (if (seq vars) (= var (first vars)) true))
-               :no-cache? (no-cache? form)}
-        hash-fn (assoc :hash-fn hash-fn)
-        (seq deps) (assoc :deps deps)
-        (seq deref-deps) (assoc :deref-deps deref-deps)
-        (seq vars) (assoc :vars vars)
-        var (assoc :var var)))))
+  (let [!deps      (atom #{})
+        mexpander (fn [form env]
+                    (let [f (if (seq? form) (first form) form)
+                          v (ana-utils/resolve-sym f env)]
+                      (when-let [var? (and (not (-> env :locals (get f)))
+                                           (var? v))]
+                        (swap! !deps conj v)))
+                    (ana-jvm/macroexpand-1 form env))
+        analyzed (analyze-form {#'ana/macroexpand-1 mexpander} form)
+        nodes (ana-ast/nodes analyzed)
+        vars (into #{}
+                   (comp (filter (comp #{:def} :op))
+                         (keep :var)
+                         (map symbol))
+                   nodes)
+        var (when (and (= 1 (count vars))
+                       (deflike? form))
+              (first vars))
+        deref-deps (into #{}
+                         (comp (filter (comp #{#'deref} :var :fn))
+                               (keep #(-> % :args first))
+                               (filter :var)
+                               (keep (fn [{:keys [op var]}]
+                                       (list `deref (if (= op :the-var) var (symbol var))))))
+                         (nodes-outside-of-fn analyzed))
+        deps (set/union (set/difference (into #{} (map symbol) @!deps) vars)
+                        deref-deps
+                        (class-deps analyzed)
+                        (when (var? form) #{(symbol form)}))
+        hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
+    (cond-> {#_#_:analyzed analyzed
+             :form form
+             :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
+             :freezable? (and (not (some #{'clojure.core/intern} deps))
+                              (<= (count vars) 1)
+                              (if (seq vars) (= var (first vars)) true))
+             :no-cache? (no-cache? form)}
+      hash-fn (assoc :hash-fn hash-fn)
+      (seq deps) (assoc :deps deps)
+      (seq deref-deps) (assoc :deref-deps deref-deps)
+      (seq vars) (assoc :vars vars)
+      var (assoc :var var))))
 
 #_(:vars (analyze '(do (def a 41) (def b (inc a)))))
 #_(:vars (analyze '(defrecord Node [v l r])))
@@ -164,8 +167,10 @@
 #_(analyze '(in-ns 'user))
 #_(analyze '(do (ns foo)))
 #_(analyze '(def my-inc inc))
-#_(analyze '(defn my-inc
-              ([] (my-inc 0))
+#_(analyze '(def foo :bar))
+#_(analyze '(deref #'foo))
+#_(analyze '(defn my-inc-2
+              ([] (my-inc-2 0))
               ([x] (inc x))))
 #_(analyze '(defonce !state (atom {})))
 #_(analyze '(vector :h1 (deref !state)))
@@ -186,6 +191,7 @@
               (fn* ([] (nextjournal.clerk.hashing/foo "s"))
                    ([s] (clojure.string/includes?
                          (rewrite-clj.parser/parse-string-all s) "hi")))))
+#_(type (first (:deps (analyze #'analyze-form))))
 
 
 (defn remove-leading-semicolons [s]
@@ -594,6 +600,7 @@
     (let [deref-deps-to-eval (set/difference deref-deps (-> ->hash keys set))
           doc-with-deref-dep-hashes (reduce (fn [state deref-dep]
                                               (assoc-in state [:->hash deref-dep] (valuehash (try
+                                                                                               (prn :eval deref-dep)
                                                                                                (eval deref-dep)
                                                                                                (catch Exception e
                                                                                                  (throw (ex-info "error during hashing of deref dep" {:deref deref-dep :cell cell} e)))))))
