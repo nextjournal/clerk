@@ -484,17 +484,17 @@
 
 #_(hash (build-graph (parse-clojure-string (slurp "notebooks/hello.clj"))))
 
-(defn exceeds-bounded-count-limit? [x]
-  (reduce (fn [_ xs]
-            (try
-              (let [limit config/*bounded-count-limit*]
-                (if (and (seqable? xs) (<= limit (bounded-count limit xs)))
-                  (reduced true)
-                  false))
-              (catch Exception _e
-                (reduced true))))
-          false
-          (tree-seq seqable? seq x)))
+(defn exceeds-bounded-count-limit? [xs]
+  (boolean
+   (some (fn [[i node]]
+           (cond
+             (and (seqable? node)
+                  (<= config/*bounded-count-limit*
+                      (bounded-count config/*bounded-count-limit* node))) true
+             (< config/*bounded-count-limit* i) true
+             :else false))
+         (map-indexed (fn [i x] [i x])
+                      (tree-seq seqable? seq xs)))))
 
 #_(exceeds-bounded-count-limit? (range config/*bounded-count-limit*))
 #_(exceeds-bounded-count-limit? (range (dec config/*bounded-count-limit*)))

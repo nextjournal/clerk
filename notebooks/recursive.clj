@@ -1,6 +1,6 @@
 (ns noteboks.recursive)
 
-(declare nodd?)
+(declare nodd? prime-divisors)
 
 (defn neven? [n]
   (if (zero? n) true (nodd? (dec n))))
@@ -22,3 +22,10 @@
 (defn is-prime [n] (empty? (prime-divisors n)))
 
 (take 10 primes)
+
+(comment
+  (require '[nextjournal.clerk.hashing :as h])
+  (time
+   (h/exceeds-bounded-count-limit? primes))
+  ;; => "Elapsed time: 87821.46811 msecs"
+  )
