@@ -10,7 +10,6 @@
             [clojure.tools.analyzer :as ana]
             [clojure.tools.analyzer.ast :as ana-ast]
             [clojure.tools.analyzer.jvm :as ana-jvm]
-            [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef]
             [clojure.tools.analyzer.utils :as ana-utils]
             [edamame.core :as edamame]
             [multihash.core :as multihash]
@@ -74,28 +73,14 @@
 
 #_(sha1-base58 "hello")
 
-(defn class-dependencies [form]
-  (into #{}
-        (filter #(and (symbol? %)
-                      (if (qualified-symbol? %)
-                        (-> % namespace symbol resolve class?)
-                        (and (not= \. (-> % str (.charAt 0)))
-                             (-> % resolve class?)))))
-        (tree-seq (every-pred (some-fn sequential? map? set?) not-quoted?) seq form)))
+(defn class-deps [analyzed]
+  (set/union (into #{} (comp (keep :class)
+                             (map (comp symbol pr-str))) (ana-ast/nodes analyzed))
+             (into #{} (comp (filter (comp #{:const} :op))
+                             (filter (comp #{:class} :type))
+                             (keep :form)) (ana-ast/nodes analyzed))))
 
-#_(class-dependencies 'io.methvin.watcher.hashing.FileHasher)
-#_(class-dependencies 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER)
-#_(class-dependencies '@foo/bar)
-#_(class-dependencies '(def nextjournal.clerk.hashing/foo
-                         (fn* ([] (nextjournal.clerk.hashing/foo "s"))
-                              ([s] (clojure.string/includes?
-                                    (rewrite-clj.parser/parse-string-all s) "hi")))))
-
-;; TODO: remove this
-(defn analyze+emit [form]
-  (-> form
-      ana-jvm/analyze
-      (ana.passes.ef/emit-form #{:hygenic :qualified-symbols})))
+#_(map type (:deps (analyze '(+ 1 2))))
 
 (defn rewrite-defcached [form]
   (if (and (list? form)
@@ -106,9 +91,6 @@
     form))
 
 #_(rewrite-defcached '(nextjournal.clerk/defcached foo :bar))
-
-(defn def? [form]
-  (and (seq? form) (= 'def (first form))))
 
 (defn deflike? [form]
   (and (seq? form) (symbol? (first form)) (str/starts-with? (name (first form)) "def")))
@@ -157,9 +139,10 @@
                            (nodes-outside-of-fn analyzed))
           deps (set/union (set/difference (into #{} (map symbol) @!deps) vars)
                           deref-deps
-                          (class-dependencies form))
+                          (class-deps analyzed))
           hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
-      (cond-> {:form form
+      (cond-> {#_#_:analyzed analyzed
+               :form form
                :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
                :freezable? (and (not (some #{'clojure.core/intern} deps))
                                 (<= (count vars) 1)
@@ -194,6 +177,15 @@
 #_(analyze '^{:nextjournal.clerk/hash-fn (fn [_] (clerk/valuehash (slurp "notebooks/hello.clj")))}
            (def contents
              (slurp "notebooks/hello.clj")))
+
+#_(type (first (:deps (analyze 'io.methvin.watcher.hashing.FileHasher))))
+#_(analyze 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER)
+#_(analyze '@foo/bar)
+#_(analyze '(def nextjournal.clerk.hashing/foo
+              (fn* ([] (nextjournal.clerk.hashing/foo "s"))
+                   ([s] (clojure.string/includes?
+                         (rewrite-clj.parser/parse-string-all s) "hi")))))
+
 
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
@@ -531,14 +523,15 @@
 #_(dep/immediate-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 
-(defn hash-codeblock [->hash {:as codeblock :keys [hash form deps]}]
+(defn hash-codeblock [->hash {:as codeblock :keys [hash form deps vars]}]
   (let [->hash' (if (and (not (ifn? ->hash)) (seq deps))
                   (binding [*out* *err*]
                     (println "->hash must be `ifn?`" {:->hash ->hash :codeblock codeblock})
                     identity)
                   ->hash)
         hashed-deps (into #{} (map ->hash') deps)]
-    (sha1-base58 (pr-str (conj hashed-deps (if form form hash))))))
+    (sha1-base58 (pr-str (set/union (conj hashed-deps (if form form hash))
+                                    vars)))))
 
 #_(nextjournal.clerk/build-static-app! {:paths nextjournal.clerk/clerk-docs})
 
