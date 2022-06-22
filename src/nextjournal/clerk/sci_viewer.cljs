@@ -28,7 +28,8 @@
             [reagent.ratom :as ratom]
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
-            [sci.core :as sci]))
+            [sci.core :as sci]
+            [nextjournal.clerk.viewer :as v]))
 
 (defn color-classes [selected?]
   {:value-color (if selected? "white-90" "dark-green")
@@ -572,9 +573,18 @@
         :else
         (html (error-badge "unusable viewer `" (pr-str viewer) "`"))))
 
+(defn expand-by-content-length [expanded-at {:nextjournal/keys [value] :keys [content-length path]}]
+  (let [max-length 80
+        expanded-at (if (< max-length content-length)
+                      (assoc expanded-at path true)
+                      expanded-at)]
+    (if (vector? value)
+      (reduce expand-by-content-length expanded-at value)
+      expanded-at)))
+
 (defn inspect
   ([x]
-   (r/with-let [!expanded-at (r/atom {})]
+   (r/with-let [!expanded-at (r/atom (->> (v/assign-content-lengths x) (expand-by-content-length {})))]
      [inspect {:!expanded-at !expanded-at} x]))
   ([opts x]
    (let [value (viewer/->value x)]
