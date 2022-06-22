@@ -355,7 +355,7 @@
 
 (def triangle-spacer [:span {:class "inline-block w-[8px]"}])
 
-(defn coll-viewer [xs {:as opts :keys [path viewer !expanded-at]}]
+(defn coll-viewer [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
   (html (let [expanded? (@!expanded-at path)
               {:keys [opening-paren closing-paren]} viewer]
           [:span.inspected-value.whitespace-nowrap
