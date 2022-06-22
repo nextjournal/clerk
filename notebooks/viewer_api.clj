@@ -96,4 +96,3 @@
                       (reagent/with-let [counter (reagent/atom 0)]
                         (v/html [:h3.cursor-pointer {:on-click #(swap! counter inc)} "I was clicked " @counter " times."])))
   nil)
-

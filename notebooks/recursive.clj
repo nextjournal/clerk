@@ -27,5 +27,6 @@
   (require '[nextjournal.clerk.hashing :as h])
   (time
    (h/exceeds-bounded-count-limit? primes))
-  ;; => "Elapsed time: 87821.46811 msecs"
+  ;; "Elapsed time: 87821.46811 msecs"
+  ;; => true
   )

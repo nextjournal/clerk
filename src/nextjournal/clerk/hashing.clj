@@ -487,12 +487,14 @@
 (defn exceeds-bounded-count-limit? [xs]
   (boolean
    (some (fn [[i node]]
-           (cond
-             (and (seqable? node)
-                  (<= config/*bounded-count-limit*
-                      (bounded-count config/*bounded-count-limit* node))) true
-             (< config/*bounded-count-limit* i) true
-             :else false))
+           (try
+             (cond
+               (and (seqable? node)
+                    (<= config/*bounded-count-limit*
+                        (bounded-count config/*bounded-count-limit* node))) true
+               (< config/*bounded-count-limit* i) true
+               :else false)
+             (catch Exception _ true)))
          (map-indexed (fn [i x] [i x])
                       (tree-seq seqable? seq xs)))))
 
