@@ -26,4 +26,9 @@
       (clerk/recompute!))
 
 
-
+;; ### TODO
+;; * [ ] clean up `find-location`
+;; * [ ] fix deref'ing vars, e.g. `@(var contents)`
+;; * [ ] Uncomment & fix `no-cache?` tests
+;; * [ ] Restore & fix _"defcached should be treated like a normal def"_
+;; * [ ] Fix deps graph for vars
