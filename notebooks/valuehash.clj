@@ -27,7 +27,7 @@
 
 
 ;; ### TODO
-;; * [ ] clean up `find-location`
+;; * [x] clean up `find-location`
 ;; * [x] fix deref'ing vars, e.g. `@(var contents)`
 ;; * [ ] Uncomment & fix `no-cache?` tests
 ;; * [ ] Restore & fix _"defcached should be treated like a normal def"_

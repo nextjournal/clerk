@@ -481,7 +481,6 @@
 (defn find-location [sym]
   (cond
     (seq? sym) (find-location (second sym))
-    (var? sym) (find-location (symbol sym))
     :else (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
             (or (ns->file ns)
                 (ns->jar ns))
@@ -600,7 +599,6 @@
     (let [deref-deps-to-eval (set/difference deref-deps (-> ->hash keys set))
           doc-with-deref-dep-hashes (reduce (fn [state deref-dep]
                                               (assoc-in state [:->hash deref-dep] (valuehash (try
-                                                                                               (prn :eval deref-dep)
                                                                                                (eval deref-dep)
                                                                                                (catch Exception e
                                                                                                  (throw (ex-info "error during hashing of deref dep" {:deref deref-dep :cell cell} e)))))))
