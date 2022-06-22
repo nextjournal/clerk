@@ -197,8 +197,6 @@ par two"))))
 
   (testing "defcached should be treated like a normal def"
     (with-ns-binding 'nextjournal.clerk.hashing-test
-      ;; FIXME
-      #_
       (is (= (dissoc (h/analyze '(def answer (do (Thread/sleep 4200) (inc 41)))) :form)
              (dissoc (h/analyze '(defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)
              (dissoc (h/analyze '(clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)

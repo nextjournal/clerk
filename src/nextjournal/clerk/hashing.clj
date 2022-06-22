@@ -123,7 +123,7 @@
                                            (var? v))]
                         (swap! !deps conj v)))
                     (ana-jvm/macroexpand-1 form env))
-        analyzed (analyze-form {#'ana/macroexpand-1 mexpander} form)
+        analyzed (analyze-form {#'ana/macroexpand-1 mexpander} (rewrite-defcached form))
         nodes (ana-ast/nodes analyzed)
         vars (into #{}
                    (comp (filter (comp #{:def} :op))
