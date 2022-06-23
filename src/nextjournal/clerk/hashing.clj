@@ -551,6 +551,12 @@
 #_(exceeds-bounded-count-limit-2? (reduce (fn [s _] (vector s)) 'a (range config/*bounded-count-limit*)))
 #_(exceeds-bounded-count-limit-3? (reduce (fn [s _] (vector s)) 'a (range config/*bounded-count-limit*)))
 
+;; these still all throw a StackOverflow
+#_(exceeds-bounded-count-limit?   (reduce (fn [s _] (vector s 'a)) [] (range 10000)))
+#_(exceeds-bounded-count-limit-1? (reduce (fn [s _] (vector s 'a)) [] (range 10000)))
+#_(exceeds-bounded-count-limit-2? (reduce (fn [s _] (vector s 'a)) [] (range 10000)))
+#_(exceeds-bounded-count-limit-3? (reduce (fn [s _] (vector s 'a)) [] (range 10000)))
+
 (defn valuehash [value]
   (-> value
       nippy/fast-freeze
