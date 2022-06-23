@@ -573,18 +573,9 @@
         :else
         (html (error-badge "unusable viewer `" (pr-str viewer) "`"))))
 
-(defn expand-by-content-length [expanded-at {:nextjournal/keys [value] :keys [content-length path]}]
-  (let [max-length 80
-        expanded-at (if (< max-length content-length)
-                      (assoc expanded-at path true)
-                      expanded-at)]
-    (if (vector? value)
-      (reduce expand-by-content-length expanded-at value)
-      expanded-at)))
-
 (defn inspect
   ([x]
-   (r/with-let [!expanded-at (r/atom (->> (v/assign-content-lengths x) (expand-by-content-length {})))]
+   (r/with-let [!expanded-at (r/atom (:nextjournal/expanded-at x))]
      [inspect {:!expanded-at !expanded-at} x]))
   ([opts x]
    (let [value (viewer/->value x)]

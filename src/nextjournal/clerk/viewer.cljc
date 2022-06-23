@@ -1034,22 +1034,35 @@
   (w/postwalk
     (fn [x]
       (if-let [value (and (wrapped-value? x) (:nextjournal/value x))]
-        (cond
-          (or (nil? value) (string? value) (keyword? value) (symbol? value) (number? value))
-          (assoc x :content-length (count (pr-str value)))
-          (contains? #{:elision} (get-in x [:nextjournal/viewer :name]))
-          (assoc x :content-length 1)
-          (contains? #{:map-entry} (get-in x [:nextjournal/viewer :name]))
-          (assoc x :content-length (reduce + 1 (map :content-length value)))
-          (vector? value)
-          (assoc x :content-length
+        (assoc x :content-length
+                 (cond
+                   (or (nil? value) (char? value) (string? value) (keyword? value) (symbol? value) (number? value))
+                   (count (pr-str value))
+                   (contains? #{:elision} (get-in x [:nextjournal/viewer :name]))
+                   1
+                   (contains? #{:map-entry} (get-in x [:nextjournal/viewer :name]))
+                   (reduce + 1 (map :content-length value))
+                   (vector? value)
                    (->> value
-                        (map :content-length)
-                        (reduce + (-> x (get-in [:nextjournal/viewer :opening-paren]) count inc))
-                        (+ (dec (count value)))))
-         :else x)
-       x))
+                     (map #(or (:content-length %) 0))
+                     (reduce + (-> x (get-in [:nextjournal/viewer :opening-paren]) count inc))
+                     (+ (dec (count value))))
+                   :else 0))
+        x))
    wrapped-value))
+
+(defn compute-expanded-at [expanded-at {:nextjournal/keys [value] :keys [content-length path] :or {content-length 0}}]
+  (let [max-length 80
+        expanded-at (if (< max-length content-length)
+                      (assoc expanded-at path true)
+                      expanded-at)]
+    (if (vector? value)
+      (reduce compute-expanded-at expanded-at value)
+      expanded-at)))
+
+(defn assign-expanded-at [wrapped-value]
+  (cond-> wrapped-value
+    (:content-length wrapped-value) (assoc :nextjournal/expanded-at (compute-expanded-at {} wrapped-value))))
 
 (comment
   (= (count "[1 2 [1 [2] 3] 4 5]")
@@ -1069,7 +1082,9 @@
                :current-path (:current-path opts [])}
               opts)
        present*
-       assign-closing-parens)))
+       assign-closing-parens
+       assign-content-lengths
+       assign-expanded-at)))
 
 (comment
   (present 42)
@@ -1087,7 +1102,8 @@
   (present (with-viewer :html [:ul (for [x (range 3)] [:li x])]))
   (present (range))
   (present {1 [2]})
-  (present (with-viewer '(fn [name] (html [:<> "Hello " name])) "James")))
+  (present (with-viewer '(fn [name] (html [:<> "Hello " name])) "James"))
+  (present {:foo (vec (repeat 2 {:baz (range 30) :fooze (range 40)})) :bar (range 20)}))
 
 (defn desc->values
   "Takes a `description` and returns its value. Inverse of `present`. Mostly useful for debugging."
