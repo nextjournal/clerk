@@ -979,7 +979,6 @@
       (conj (let [fetch-opts (assoc elision :offset new-offset)]
               (make-elision viewers fetch-opts))))))
 
-
 (defn present+paginate-string [{:as wrapped-value :nextjournal/keys [viewers viewer value]}]
   (let [{:as elision :keys [n total path offset]} (and (-> viewer :fetch-opts :n)
                                                        (get-elision wrapped-value))]
@@ -1033,19 +1032,21 @@
 
 (defn assign-content-lengths [wrapped-value]
   (w/postwalk
-   (fn [x]
-     (if-let [value (and (wrapped-value? x) (:nextjournal/value x))]
-       (cond
-         (or (nil? value) (string? value) (keyword? value) (symbol? value) (number? value))
-         (assoc x :content-length (count (pr-str value)))
-         (contains? #{:map-entry} (get-in x [:nextjournal/viewer :name]))
-         (assoc x :content-length (reduce + 1 (map :content-length value)))
-         (vector? value)
-         (assoc x :content-length
-                (->> value
-                     (map :content-length)
-                     (reduce + (-> x (get-in [:nextjournal/viewer :opening-paren]) count inc))
-                     (+ (dec (count value)))))
+    (fn [x]
+      (if-let [value (and (wrapped-value? x) (:nextjournal/value x))]
+        (cond
+          (or (nil? value) (string? value) (keyword? value) (symbol? value) (number? value))
+          (assoc x :content-length (count (pr-str value)))
+          (contains? #{:elision} (get-in x [:nextjournal/viewer :name]))
+          (assoc x :content-length 1)
+          (contains? #{:map-entry} (get-in x [:nextjournal/viewer :name]))
+          (assoc x :content-length (reduce + 1 (map :content-length value)))
+          (vector? value)
+          (assoc x :content-length
+                   (->> value
+                        (map :content-length)
+                        (reduce + (-> x (get-in [:nextjournal/viewer :opening-paren]) count inc))
+                        (+ (dec (count value)))))
          :else x)
        x))
    wrapped-value))
@@ -1054,7 +1055,9 @@
   (= (count "[1 2 [1 [2] 3] 4 5]")
      (:content-length (assign-content-lengths (present [1 2 [1 [2] 3] 4 5]))))
   (= (count "{:a-vector [1 2 3] :a-list (123 234 345) :a-set #{1 2 3 4}}")
-     (:content-length (assign-content-lengths (present {:a-vector [1 2 3] :a-list '(123 234 345) :a-set #{1 2 3 4}})))))
+     (:content-length (assign-content-lengths (present {:a-vector [1 2 3] :a-list '(123 234 345) :a-set #{1 2 3 4}}))))
+  ;; Check for elisions as well
+  (assign-content-lengths (present {:foo (vec (repeat 2 {:baz (range 30) :fooze (range 40)})) :bar (range 20)})))
 
 (defn present
   "Returns a subset of a given `value`."
