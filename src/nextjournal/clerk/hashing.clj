@@ -496,7 +496,7 @@
                  (recur (- limit node-count) (next nodes))
                  true))
              true)))
-       (catch Exception _ true)))
+       (catch StackOverflowError _ true)))
 
 #_(exceeds-bounded-count-limit? (range config/*bounded-count-limit*))
 #_(exceeds-bounded-count-limit? (range (dec config/*bounded-count-limit*)))
