@@ -25,7 +25,7 @@
                             :on-click #(v/clerk-eval `(reset! ~var-name ~(clojure.string/join "." (drop-last (clojure.string/split value #"\.")))))} "⏮"]]))})
 
 ^{::clerk/viewer text-input}
-(defonce ^::clerk/no-cache !ns-query (atom "nextjournal.clerk"))
+(defonce !ns-query (atom "nextjournal.clerk"))
 #_(reset! !ns-query "nextjournal.clerk")
 
 ^{::clerk/viewers (clerk/add-viewers
@@ -36,8 +36,8 @@
                      :render-fn '(fn [ns] (v/html [:button.text-xs.font-medium.font-sans.cursor-pointer.px-3.py-2.hover:bg-blue-100.text-slate-700.text-left
                                                    {:on-click #(v/clerk-eval `(reset! !ns-query ~ns))} ns]))}])}
 
-(def ^::clerk/no-cache ns-matches
-  (filter #(re-find (re-pattern @!ns-query) %) (sort (map str (all-ns)))))
+(def ns-matches
+  (filter (partial re-find (re-pattern @!ns-query)) (sort (map str (all-ns)))))
 
 ^{::clerk/viewer clerk/hide-result}
 (defn var->doc-viewer
@@ -76,6 +76,9 @@
 (def ns-doc-viewer {:pred #(instance? clojure.lang.Namespace %)
                     :transform-fn (clerk/update-val namespace->doc-viewer)})
 
-^::clerk/no-cache
 (when-let [ns-name (first ns-matches)]
   (clerk/with-viewer ns-doc-viewer (find-ns (symbol ns-name))))
+
+
+
+#_(deref nextjournal.clerk.webserver/!doc)
