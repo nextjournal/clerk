@@ -484,23 +484,62 @@
 
 #_(hash (build-graph (parse-clojure-string (slurp "notebooks/hello.clj"))))
 
-(defn exceeds-bounded-count-limit? [xs]
-  (boolean
-   (some (fn [[i node]]
-           (try
-             (cond
-               (and (seqable? node)
-                    (<= config/*bounded-count-limit*
-                        (bounded-count config/*bounded-count-limit* node))) true
-               (< config/*bounded-count-limit* i) true
-               :else false)
-             (catch Exception _ true)))
-         (map-indexed (fn [i x] [i x])
-                      (tree-seq seqable? seq xs)))))
+(defn exceeds-bounded-count-limit? [x]
+  (reduce (fn [_ xs]
+            (try
+              (let [limit config/*bounded-count-limit*]
+                (if (and (seqable? xs) (<= limit (bounded-count limit xs)))
+                  (reduced true)
+                  false))
+              (catch Exception _e
+                (reduced true))))
+          false
+          (tree-seq seqable? seq x)))
 
-#_(exceeds-bounded-count-limit? (range config/*bounded-count-limit*))
-#_(exceeds-bounded-count-limit? (range (dec config/*bounded-count-limit*)))
-#_(exceeds-bounded-count-limit? {:a-range (range)})
+(defn exceeds-bounded-count-limit-1?
+  "Checks count of child nodes recursively / decreases a total budget"
+  [xs]
+  (boolean
+   (try
+     (loop [limit config/*bounded-count-limit*
+            nodes (tree-seq seqable? seq xs)]
+       (when-some [node (first nodes)]
+         (if (neg? limit)
+           (do (prn :neg) true)
+           (let [bcount (if (seqable? node) (bounded-count limit node) 0)]
+             (if (<= limit bcount)
+               true
+               (recur (- limit bcount) (next nodes)))))))
+     (catch Exception _ true))))
+
+(defn exceeds-bounded-count-limit-2?
+  [xs]
+  (:ret
+   (reduce
+    (fn [{:as state :keys [limit]} node]
+      (try
+        (if (neg? limit)
+          (reduced (assoc state :ret true))
+          (let [bdd-count (if (seqable? node) (bounded-count limit node) 0)]
+            (if (<= limit bdd-count)
+              (reduced (assoc state :ret true))
+              (update state :limit - bdd-count))))
+        (catch Exception _
+          (reduced (assoc state :ret true)))))
+    {:limit config/*bounded-count-limit* :ret false}
+    (tree-seq seqable? seq xs))))
+
+#_(exceeds-bounded-count-limit?   (range config/*bounded-count-limit*))
+#_(exceeds-bounded-count-limit-1? (range config/*bounded-count-limit*))
+#_(exceeds-bounded-count-limit-2? (range config/*bounded-count-limit*))
+
+#_(exceeds-bounded-count-limit?   (range (dec config/*bounded-count-limit*)))
+#_(exceeds-bounded-count-limit-1? (range (dec config/*bounded-count-limit*)))
+#_(exceeds-bounded-count-limit-2? (range (dec config/*bounded-count-limit*)))
+
+#_(exceeds-bounded-count-limit?   (reduce (fn [s _] (vector s)) 'a (range config/*bounded-count-limit*)))
+#_(exceeds-bounded-count-limit-1? (reduce (fn [s _] (vector s)) 'a (range config/*bounded-count-limit*)))
+#_(exceeds-bounded-count-limit-2? (reduce (fn [s _] (vector s)) 'a (range config/*bounded-count-limit*)))
 
 (defn valuehash [value]
   (-> value
