@@ -333,7 +333,7 @@
 (defn inspect-children [opts]
   ;; TODO: move update function onto viewer
   (map-indexed (fn [idx x]
-                 (inspect (update opts :path conj idx) x))))
+                 (inspect (update opts :path (fnil conj []) idx) x))))
 
 (def expand-style
   ["cursor-pointer"
