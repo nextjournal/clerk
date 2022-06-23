@@ -1034,31 +1034,46 @@
   (w/postwalk
     (fn [x]
       (if-let [value (and (wrapped-value? x) (:nextjournal/value x))]
-        (assoc x :content-length
-                 (cond
-                   (or (nil? value) (char? value) (string? value) (keyword? value) (symbol? value) (number? value))
-                   (count (pr-str value))
-                   (contains? #{:elision} (get-in x [:nextjournal/viewer :name]))
-                   1
-                   (contains? #{:map-entry} (get-in x [:nextjournal/viewer :name]))
-                   (reduce + 1 (map :content-length value))
-                   (vector? value)
-                   (->> value
-                     (map #(or (:content-length %) 0))
-                     (reduce + (-> x (get-in [:nextjournal/viewer :opening-paren]) count inc))
-                     (+ (dec (count value))))
-                   :else 0))
+        (let [{:nextjournal/keys [viewer]} x
+              {:keys [name opening-paren closing-paren]} viewer
+              elision-content-length 6]
+          (assoc x :content-length
+                   (cond
+                     (or (nil? value) (char? value) (string? value) (keyword? value) (symbol? value) (number? value))
+                     (count (pr-str value))
+                     (contains? #{:elision} name)
+                     elision-content-length
+                     (contains? #{:map-entry} name)
+                     (reduce + 1 (map :content-length value))
+                     (vector? value)
+                     (->> value
+                       (map #(or (:content-length %) 0))
+                       (reduce + (+ (count opening-paren) (count closing-paren)))
+                       (+ (dec (count value))))
+                     :else 0)))
         x))
    wrapped-value))
 
-(defn compute-expanded-at [expanded-at {:nextjournal/keys [value] :keys [content-length path] :or {content-length 0}}]
-  (let [max-length 80
-        expanded-at (if (< max-length content-length)
-                      (assoc expanded-at path true)
-                      expanded-at)]
-    (if (vector? value)
-      (reduce compute-expanded-at expanded-at value)
-      expanded-at)))
+(defn compute-expanded-at
+  ([expanded-at wrapped-value]
+   (compute-expanded-at 0 expanded-at wrapped-value))
+  ([indent expanded-at {:nextjournal/keys [value] :keys [content-length path] :or {content-length 0}}]
+   (let [max-length (- 80 indent)
+         expanded-at (if (< max-length content-length)
+                       (assoc expanded-at path true)
+                       expanded-at)
+         indent (if (vector? value)
+                  (+ 2 indent)
+                  indent)]
+     path
+     (if (vector? value)
+       (reduce (partial compute-expanded-at indent) expanded-at value)
+       expanded-at))))
+
+(present {:foo (range 30)
+          :bar (range 20)
+          :a-key-with-a-long-name {:a-key-with-another-long-name {:and-another 123456 :and-yet-another 123456}
+                                   :short-key 1}})
 
 (defn assign-expanded-at [wrapped-value]
   (cond-> wrapped-value
