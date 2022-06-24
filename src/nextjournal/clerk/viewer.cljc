@@ -1070,11 +1070,6 @@
        (reduce (partial compute-expanded-at indent) expanded-at value)
        expanded-at))))
 
-(present {:foo (range 30)
-          :bar (range 20)
-          :a-key-with-a-long-name {:a-key-with-another-long-name {:and-another 123456 :and-yet-another 123456}
-                                   :short-key 1}})
-
 (defn assign-expanded-at [wrapped-value]
   (cond-> wrapped-value
     (:content-length wrapped-value) (assoc :nextjournal/expanded-at (compute-expanded-at {} wrapped-value))))
