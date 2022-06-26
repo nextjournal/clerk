@@ -47,8 +47,7 @@
 (defn deref? [form]
   (and (seq? form)
        (= (first form) `deref)
-       (= 2 (count form))
-       (symbol? (second form))))
+       (= 2 (count form))))
 
 #_(deref? '@foo/bar)
 
@@ -106,14 +105,6 @@
    (binding [config/*in-clerk* true]
      (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings}))))
 
-(defn- nodes-outside-of-fn
-  "Like `clojure.tools.anayzer.ast/nodes` but does not descend into children of `:fn` nodes."
-  [ast]
-  (lazy-seq
-   (when-not (-> ast :op #{:fn})
-     (cons ast (mapcat nodes-outside-of-fn (ana-ast/children ast))))))
-
-
 (defn analyze [form]
   (let [!deps      (atom #{})
         mexpander (fn [form env]
@@ -138,8 +129,9 @@
                                (keep #(-> % :args first))
                                (filter :var)
                                (keep (fn [{:keys [op var]}]
-                                       (list `deref (if (= op :the-var) var (symbol var))))))
-                         (nodes-outside-of-fn analyzed))
+                                       (when-not (= op :the-var)
+                                         (list `deref (symbol var))))))
+                         nodes)
         deps (set/union (set/difference (into #{} (map symbol) @!deps) vars)
                         deref-deps
                         (class-deps analyzed)
@@ -480,12 +472,11 @@
 
 (defn find-location [sym]
   (cond
-    (seq? sym) (find-location (second sym))
+    (deref? sym) (find-location (second sym))
     :else (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
             (or (ns->file ns)
                 (ns->jar ns))
             (symbol->jar sym))))
-
 
 #_(find-location `inc)
 #_(find-location #'inc)
