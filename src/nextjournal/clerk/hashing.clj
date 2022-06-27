@@ -1,13 +1,16 @@
 ;; # Hashing Things!!!!
-(ns ^:nextjournal.clerk/no-cache nextjournal.clerk.hashing
+(ns nextjournal.clerk.hashing
+  {:nextjournal.clerk/no-cache true}
   (:refer-clojure :exclude [hash read-string])
   (:require [babashka.fs :as fs]
             [clojure.core :as core]
             [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.string :as str]
-            [clojure.tools.analyzer.jvm :as ana]
-            [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef]
+            [clojure.tools.analyzer :as ana]
+            [clojure.tools.analyzer.ast :as ana-ast]
+            [clojure.tools.analyzer.jvm :as ana-jvm]
+            [clojure.tools.analyzer.utils :as ana-utils]
             [edamame.core :as edamame]
             [multihash.core :as multihash]
             [multihash.digest :as digest]
@@ -21,59 +24,46 @@
             [taoensso.nippy :as nippy]
             [weavejester.dependency :as dep]))
 
-(defn var-name
-  "Takes a `analyzed-form` and returns the name of the var, if it exists."
-  [analyzed-form]
-  (when (and (seq? analyzed-form)
-             (= 'def (first analyzed-form)))
-    (second analyzed-form)))
-
-(defn not-quoted? [form]
-  (not (= 'quote (first form))))
-
-(defn defined-vars [analyzed-form]
-  (into #{}
-        (keep var-name)
-        (tree-seq (every-pred sequential? not-quoted?) seq analyzed-form)))
-
-#_(:vars (analyze '(do (def foo :bar) (let [x (defn bar [] :baz)]) (defonce !state (atom {})))))
-
 (defn ns? [form]
   (and (seq? form) (= 'ns (first form))))
 
-(defn no-cache? [form]
-  (let [var-or-form    (if-let [vn (var-name form)] vn form)
-        no-cache-meta? (comp boolean :nextjournal.clerk/no-cache meta)]
-    (or (no-cache-meta? var-or-form)
-        (when-not (ns? form)
-          (no-cache-meta? *ns*))
-        (and (seq? form) (= `deref (first form))))))
+(defn deref? [form]
+  (and (seq? form)
+       (= (first form) `deref)
+       (= 2 (count form))))
+
+#_(deref? '@foo/bar)
+
+(defn no-cache-from-meta [form]
+  (when (contains? (meta form) :nextjournal.clerk/no-cache)
+    (-> form meta :nextjournal.clerk/no-cache)))
+
+(defn no-cache? [& subjects]
+  (or (->> subjects
+           (map no-cache-from-meta)
+           (filter some?)
+           first)
+      false))
 
 #_(no-cache? '(rand-int 10))
+#_(no-cache? '^:nextjournal.clerk/no-cache (def my-rand (rand-int 10)))
+#_(no-cache? '(def ^:nextjournal.clerk/no-cache my-rand (rand-int 10)))
+#_(no-cache? '^{:nextjournal.clerk/no-cache false} (def ^:nextjournal.clerk/no-cache my-rand (rand-int 10)))
 
 (defn sha1-base58 [s]
   (-> s digest/sha1 multihash/base58))
 
 #_(sha1-base58 "hello")
 
-(defn var-dependencies [analyzed-form]
-  (let [var-name (var-name analyzed-form)]
-    (into #{}
-          (filter #(and (symbol? %)
-                        (if (qualified-symbol? %)
-                          (not= var-name %)
-                          (and (not= \. (-> % str (.charAt 0)))
-                               (-> % resolve class?)))))
-          (tree-seq (every-pred (some-fn sequential? map? set?) not-quoted?) seq analyzed-form))))
+(defn class-deps [analyzed]
+  (set/union (into #{} (comp (keep :class)
+                             (filter class?)
+                             (map (comp symbol pr-str))) (ana-ast/nodes analyzed))
+             (into #{} (comp (filter (comp #{:const} :op))
+                             (filter (comp #{:class} :type))
+                             (keep :form)) (ana-ast/nodes analyzed))))
 
-#_(var-dependencies '(def nextjournal.clerk.hashing/foo
-                       (fn* ([] (nextjournal.clerk.hashing/foo "s"))
-                            ([s] (clojure.string/includes?
-                                  (rewrite-clj.parser/parse-string-all s) "hi")))))
-(defn analyze+emit [form]
-  (-> form
-      ana/analyze
-      (ana.passes.ef/emit-form #{:hygenic :qualified-symbols})))
+#_(map type (:deps (analyze '(+ 1 2))))
 
 (defn rewrite-defcached [form]
   (if (and (list? form)
@@ -85,33 +75,65 @@
 
 #_(rewrite-defcached '(nextjournal.clerk/defcached foo :bar))
 
-(defn def? [form]
-  (and (seq? form) (= 'def (first form))))
-
 (defn deflike? [form]
   (and (seq? form) (symbol? (first form)) (str/starts-with? (name (first form)) "def")))
 
 #_(deflike? '(defonce foo :bar))
 #_(deflike? '(rdef foo :bar))
 
+
+(defn- analyze-form
+  ([form] (analyze-form {} form))
+  ([bindings form]
+   (binding [config/*in-clerk* true]
+     (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings}))))
+
 (defn analyze [form]
-  (binding [config/*in-clerk* true]
-    (let [analyzed-form (analyze+emit (rewrite-defcached form))
-          vars (defined-vars analyzed-form)
-          var (when (and (= 1 (count vars)) (or (def? analyzed-form)
-                                                (deflike? form)))
-                (first vars))
-          deps (apply disj (var-dependencies analyzed-form) vars)]
-      (cond-> {:form form
-               ;; TODO: drop var downstream so hash stays stable under change
-               :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
-               :freezable? (and (not (some #{'clojure.core/intern} deps))
-                                (<= (count vars) 1)
-                                (if (seq vars) (= var (first vars)) true))
-               :no-cache? (no-cache? form)}
-        var (assoc :var var)
-        vars (assoc :vars vars)
-        (seq deps) (assoc :deps deps)))))
+  (let [!deps      (atom #{})
+        mexpander (fn [form env]
+                    (let [f (if (seq? form) (first form) form)
+                          v (ana-utils/resolve-sym f env)]
+                      (when-let [var? (and (not (-> env :locals (get f)))
+                                           (var? v))]
+                        (swap! !deps conj v)))
+                    (ana-jvm/macroexpand-1 form env))
+        analyzed (analyze-form {#'ana/macroexpand-1 mexpander} (rewrite-defcached form))
+        nodes (ana-ast/nodes analyzed)
+        vars (into #{}
+                   (comp (filter (comp #{:def} :op))
+                         (keep :var)
+                         (map symbol))
+                   nodes)
+        var (when (and (= 1 (count vars))
+                       (deflike? form))
+              (first vars))
+        def-node (when var
+                   (first (filter (comp #{:def} :op) nodes)))
+        deref-deps (into #{}
+                         (comp (filter (comp #{#'deref} :var :fn))
+                               (keep #(-> % :args first))
+                               (filter :var)
+                               (keep (fn [{:keys [op var]}]
+                                       (when-not (= op :the-var)
+                                         (list `deref (symbol var))))))
+                         nodes)
+        deps (set/union (set/difference (into #{} (map symbol) @!deps) vars)
+                        deref-deps
+                        (class-deps analyzed)
+                        (when (var? form) #{(symbol form)}))
+        hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
+    (cond-> {#_#_:analyzed analyzed
+             :form form
+             :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
+             :freezable? (and (not (some #{'clojure.core/intern} deps))
+                              (<= (count vars) 1)
+                              (if (seq vars) (= var (first vars)) true))
+             :no-cache? (no-cache? form (-> def-node :form second) *ns*)}
+      hash-fn (assoc :hash-fn hash-fn)
+      (seq deps) (assoc :deps deps)
+      (seq deref-deps) (assoc :deref-deps deref-deps)
+      (seq vars) (assoc :vars vars)
+      var (assoc :var var))))
 
 #_(:vars (analyze '(do (def a 41) (def b (inc a)))))
 #_(:vars (analyze '(defrecord Node [v l r])))
@@ -122,14 +144,32 @@
 #_(analyze '(in-ns 'user))
 #_(analyze '(do (ns foo)))
 #_(analyze '(def my-inc inc))
-#_(analyze '(defn my-inc
-              ([] (my-inc 0))
+#_(analyze '(def foo :bar))
+#_(analyze '(deref #'foo))
+#_(analyze '(defn my-inc-2
+              ([] (my-inc-2 0))
               ([x] (inc x))))
 #_(analyze '(defonce !state (atom {})))
+#_(analyze '(vector :h1 (deref !state)))
+#_(analyze '(vector :h1 @!state))
 #_(analyze '(do (def foo :bar) (def foo-2 :bar)))
 #_(analyze '(do (def foo :bar) :baz))
 #_(analyze '(intern *ns* 'foo :bar))
 #_(analyze '(import javax.imageio.ImageIO))
+#_(analyze '(defmulti foo :bar))
+#_(analyze '^{:nextjournal.clerk/hash-fn (fn [_] (clerk/valuehash (slurp "notebooks/hello.clj")))}
+           (def contents
+             (slurp "notebooks/hello.clj")))
+
+#_(type (first (:deps (analyze 'io.methvin.watcher.hashing.FileHasher))))
+#_(analyze 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER)
+#_(analyze '@foo/bar)
+#_(analyze '(def nextjournal.clerk.hashing/foo
+              (fn* ([] (nextjournal.clerk.hashing/foo "s"))
+                   ([s] (clojure.string/includes?
+                         (rewrite-clj.parser/parse-string-all s) "hi")))))
+#_(type (first (:deps (analyze #'analyze-form))))
+
 
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
@@ -328,27 +368,29 @@
   ([doc]
    (analyze-doc {:doc? true :graph (dep/graph)} doc))
   ([{:as state :keys [doc?]} doc]
-   (reduce (fn [state i]
-             (let [{:keys [type text]} (get-in state [:blocks i])]
-               (if (not= type :code)
-                 state
-                 (let [form (read-string text)
-                       {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form)
-                                                                     (:file doc) (assoc :file (:file doc)))
-                       state (cond-> (reduce (fn [state ana-key]
-                                               (assoc-in state [:->analysis-info ana-key] analyzed))
-                                             (dissoc state :doc?)
-                                             (->ana-keys analyzed))
-                               doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?)))]
-                   (when ns-effect?
-                     (eval form))
-                   (if (seq deps)
-                     (-> (reduce (partial analyze-deps analyzed) state deps)
-                         (make-deps-inherit-no-cache analyzed))
-                     state)))))
-           (cond-> state
-             doc? (merge doc))
-           (-> doc :blocks count range))))
+   (binding [*ns* *ns*]
+     (reduce (fn [state i]
+               (let [{:keys [type text]} (get-in state [:blocks i])]
+                 (if (not= type :code)
+                   state
+                   (let [form (read-string text)
+                         {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form)
+                                                                       (:file doc) (assoc :file (:file doc)))
+                         state (cond-> (reduce (fn [state ana-key]
+                                                 (assoc-in state [:->analysis-info ana-key] analyzed))
+                                               (dissoc state :doc?)
+                                               (->ana-keys analyzed))
+                                 doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
+                                 doc? (assoc :ns *ns*))]
+                     (when ns-effect?
+                       (eval form))
+                     (if (seq deps)
+                       (-> (reduce (partial analyze-deps analyzed) state deps)
+                           (make-deps-inherit-no-cache analyzed))
+                       state)))))
+             (cond-> state
+               doc? (merge doc))
+             (-> doc :blocks count range)))))
 
 #_(let [doc (parse-clojure-string {:doc? true} "(ns foo) (def a 41) (def b (inc a)) (do (def c 4) (def d (inc a)))")]
     (analyze-doc doc))
@@ -414,13 +456,15 @@
 #_(symbol->jar 'java.net.http.HttpClient/newHttpClient)
 
 (defn find-location [sym]
-  (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
-    (or (ns->file ns)
-        (ns->jar ns))
-    (symbol->jar sym)))
-
+  (cond
+    (deref? sym) (find-location (second sym))
+    :else (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
+            (or (ns->file ns)
+                (ns->jar ns))
+            (symbol->jar sym))))
 
 #_(find-location `inc)
+#_(find-location #'inc)
 #_(find-location `dep/depend)
 #_(find-location 'java.util.UUID)
 #_(find-location 'java.util.UUID/randomUUID)
@@ -461,18 +505,30 @@
 #_(dep/immediate-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 
-(defn hash-codeblock [->hash {:keys [hash form deps]}]
-  (let [hashed-deps (into #{} (map ->hash) deps)]
-    (sha1-base58 (pr-str (conj hashed-deps (if form form hash))))))
+(defn hash-codeblock [->hash {:as codeblock :keys [hash form deps vars]}]
+  (let [->hash' (if (and (not (ifn? ->hash)) (seq deps))
+                  (binding [*out* *err*]
+                    (println "->hash must be `ifn?`" {:->hash ->hash :codeblock codeblock})
+                    identity)
+                  ->hash)
+        hashed-deps (into #{} (map ->hash') deps)]
+    (sha1-base58 (pr-str (set/union (conj hashed-deps (if form form hash))
+                                    vars)))))
 
-(defn hash [{:keys [->analysis-info graph]}]
-  (reduce (fn [->hash k]
-            (if-let [codeblock (get ->analysis-info k)]
-              (assoc ->hash k (hash-codeblock ->hash codeblock))
-              ->hash))
-          {}
-          (dep/topo-sort graph)))
+#_(nextjournal.clerk/build-static-app! {:paths nextjournal.clerk/clerk-docs})
 
+(defn hash
+  ([{:as analyzed-doc :keys [graph]}] (hash analyzed-doc (dep/topo-sort graph)))
+  ([{:as analyzed-doc :keys [->analysis-info graph]} deps]
+   (update analyzed-doc
+           :->hash
+           (partial reduce (fn [->hash k]
+                             (if-let [codeblock (get ->analysis-info k)]
+                               (assoc ->hash k (hash-codeblock ->hash codeblock))
+                               ->hash)))
+           deps)))
+
+#_(hash (build-graph (parse-clojure-string "^{:nextjournal.clerk/hash-fn (fn [x] \"abc\")}(def contents (slurp \"notebooks/hello.clj\"))")))
 #_(hash (build-graph (parse-clojure-string (slurp "notebooks/hello.clj"))))
 
 (defn exceeds-bounded-count-limit? [x]
@@ -513,10 +569,32 @@
 #_(->hash-str (range 104))
 #_(->hash-str (range))
 
-(comment
-  (require 'clojure.data)
-  (let [file "notebooks/cache.clj"
-        g1 (build-graph file)
-        g2 (build-graph file)]
-    [:= (= g1 g2)
-     :diff (clojure.data/diff g1 g2)]))
+(defn hash-deref-deps [{:as analyzed-doc :keys [graph ->hash blocks visibility]} {:as cell :keys [deps deref-deps hash-fn var form]}]
+  (cond
+    (seq deref-deps)
+    (let [deref-deps-to-eval (set/difference deref-deps (-> ->hash keys set))
+          doc-with-deref-dep-hashes (reduce (fn [state deref-dep]
+                                              (assoc-in state [:->hash deref-dep] (valuehash (try
+                                                                                               (eval deref-dep)
+                                                                                               (catch Exception e
+                                                                                                 (throw (ex-info "error during hashing of deref dep" {:deref deref-dep :cell cell} e)))))))
+                                            analyzed-doc
+                                            deref-deps-to-eval)]
+      #_(prn :hash-deref-deps/form form :deref-deps deref-deps-to-eval)
+      (hash doc-with-deref-dep-hashes (dep/transitive-dependents-set graph deref-deps-to-eval)))
+    hash-fn
+    (let [id (if var var form)
+          doc-with-new-hash (assoc-in analyzed-doc [:->hash id] ((eval hash-fn) (assoc analyzed-doc :cell cell)))]
+      #_(prn :hash-deref-deps/form form :id (if var var form) :hash-fn hash-fn :valuehash ((eval hash-fn) (assoc analyzed-doc :cell cell)))
+      (hash doc-with-new-hash (dep/transitive-dependents graph (if var var form))))
+    :else
+    analyzed-doc))
+
+#_(nextjournal.clerk/show! "notebooks/hash_fn.clj")
+
+#_(do (swap! hash-fn/!state inc)
+      (nextjournal.clerk/recompute!))
+
+#_(deref nextjournal.clerk.webserver/!doc)
+
+#_(nextjournal.clerk/clear-cache!)

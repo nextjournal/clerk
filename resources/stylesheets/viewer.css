@@ -20,8 +20,13 @@
     @apply font-mono text-sm text-gray-900 bg-slate-50 px-0.5 py-px rounded dark:bg-gray-800;
   }
   code::before, code::after { @apply content-none !important; }
-  h1, h2, h3, h4, h5, h6 {
+  h1, h3, h4, h5, h6 {
     @apply font-condensed font-bold mt-8 first:mt-0;
+  }
+  h2 {
+    /*We cannot collapse margins due to nesting but we want to*/
+    /*keep the h2’s large margin visible*/
+    @apply font-condensed font-bold mt-8 first:mt-2;
   }
   h1 { @apply text-4xl; }
   h2 { @apply text-3xl; }
@@ -101,14 +106,14 @@
 /* --------------------------------------------------------------- */
 
 .task-list-item + .task-list-item,
-.viewer-markdown ul .task-list-item ul {
-  @apply mt-1;
+.viewer-markdown ul ul {
+  @apply mt-1 mb-0;
 }
 
 /* compact TOC */
 .viewer-markdown .toc ul {
   list-style: none;
-  @apply my-0;
+  @apply my-1;
 }
 
 /* Code Viewer */
@@ -222,28 +227,27 @@
     prose-hr:mt-6 prose-hr:border-t-2 prose-hr:border-solid prose-hr:border-slate-200
     prose-figure:mt-4
     prose-figcaption:mt-2 prose-figcaption:text-xs
-    prose-headings:mb-6
+    prose-headings:mb-4
+    prose-table:mt-0
     prose-th:mb-0
-    prose-img:mb-0
+    prose-img:my-0
     prose-code:font-medium prose-code:bg-slate-100
     max-w-none;
-}
-.viewer-markdown li > p {
-  @apply inline;
 }
 .viewer-markdown blockquote p:first-of-type:before,
 .viewer-markdown blockquote p:last-of-type:after {
   @apply content-none;
 }
 
+/* Images */
+/* --------------------------------------------------------------- */
+
+
 /* Todo Lists */
 /* --------------------------------------------------------------- */
 
 .contains-task-list {
   @apply pl-6 list-none;
-}
-.contains-task-list li p {
-  @apply inline m-0;
 }
 .contains-task-list input[type="checkbox"] {
   @apply appearance-none h-4 w-4 rounded border border-slate-200 relative mr-[0.3rem] ml-[-1.5rem] top-[0.15rem];
@@ -278,9 +282,10 @@
 
 .viewer-notebook { @apply py-16; }
 #clerk-static-app .viewer-notebook { @apply pt-[0.8rem] pb-16; }
-.viewer-markdown *:first-child:not(.viewer-code) { @apply mt-0; }
+.viewer-markdown *:first-child:not(.viewer-code):not(li):not(h2) { @apply mt-0; }
 .viewer + .viewer { @apply mt-6; }
-.viewer-markdown + .viewer { @apply mt-3; }
+.viewer + .viewer-result { @apply mt-0; }
+.viewer-code + .viewer-result { @apply mt-3; }
 .viewer-markdown + .viewer-markdown { @apply mt-0; }
 
 /* Sidenotes */

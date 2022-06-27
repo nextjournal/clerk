@@ -383,6 +383,36 @@
   ([added-viewers] (add-viewers (get-default-viewers) added-viewers))
   ([viewers added-viewers] (into (vec added-viewers) viewers)))
 
+(def table-missing-viewer {:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))})
+
+(def table-markup-viewer
+  {:name :table/markup
+   :render-fn '(fn [head+body opts]
+                 (v/html (into [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose] (v/inspect-children opts) head+body)))})
+
+(def table-head-viewer
+  {:name :table/head
+   :render-fn '(fn [header-row {:as opts :keys [path number-col?]}]
+                 (v/html [:thead.border-b.border-gray-300.dark:border-slate-700
+                          (into [:tr]
+                                (map-indexed (fn [i {:as header-cell :nextjournal/keys [value]}]
+                                               (let [title (when (or (string? value) (keyword? value) (symbol? value))
+                                                             value)]
+                                                 [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
+                                                  (cond-> {:class (when (number-col? i) "text-right")} title (assoc :title title))
+                                                  [:div.flex.items-center (v/inspect opts header-cell)]]))) header-row)]))})
+
+(def table-body-viewer
+  {:name :table/body :fetch-opts {:n 20}
+   :render-fn '(fn [rows opts] (v/html (into [:tbody] (map-indexed (fn [idx row] (v/inspect (update opts :path conj idx) row))) rows)))})
+
+(def table-row-viewer
+  {:name :table/row
+   :render-fn '(fn [row {:as opts :keys [path number-col?]}]
+                 (v/html (into [:tr.hover:bg-gray-200.dark:hover:bg-slate-700
+                                {:class (if (even? (peek path)) "bg-black/5 dark:bg-gray-800" "bg-white dark:bg-gray-900")}]
+                               (map-indexed (fn [idx cell] [:td.pl-6.pr-2.py-1 (when (number-col? idx) {:class "text-right"}) (v/inspect opts cell)])) row)))})
+
 (defn update-table-viewers [viewers]
   (-> viewers
       (update-viewers {(comp #{string?} :pred) #(assoc % :render-fn (quote v/string-viewer))
@@ -397,29 +427,13 @@
                                                                                                                          "bg-indigo-50 hover:bg-indigo-100 dark:bg-gray-800 dark:hover:bg-slate-700 cursor-pointer"
                                                                                                                          "text-gray-400 text-slate-500")
                                                                                                                 :on-click (fn [_] (when (fn? fetch-fn)
-                                                                                                                                   (fetch-fn fetch-opts)))}
+                                                                                                                                    (fetch-fn fetch-opts)))}
                                                                                                                (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]])])))})
-      (add-viewers [{:pred #{:nextjournal/missing} :render-fn '(fn [x] (v/html [:<>]))}
-                    {:name :table/markup
-                     :render-fn '(fn [head+body opts]
-                                   (v/html (into [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose] (v/inspect-children opts) head+body)))}
-                    {:name :table/head
-                     :render-fn '(fn [header-row {:as opts :keys [path number-col?]}]
-                                   (v/html [:thead.border-b.border-gray-300.dark:border-slate-700
-                                            (into [:tr]
-                                                  (map-indexed (fn [i {v :nextjournal/value}]
-                                                                 ;; TODO: consider not discarding viewer here
-                                                                 (let [title (str (cond-> v (keyword? v) name))]
-                                                                   [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
-                                                                    {:title title :class (when (number-col? i) "text-right")}
-                                                                    [:div.flex.items-center title]]))) header-row)]))}
-                    {:name :table/body :fetch-opts {:n 20}
-                     :render-fn '(fn [rows opts] (v/html (into [:tbody] (map-indexed (fn [idx row] (v/inspect (update opts :path conj idx) row))) rows)))}
-                    {:name :table/row
-                     :render-fn '(fn [row {:as opts :keys [path number-col?]}]
-                                   (v/html (into [:tr.hover:bg-gray-200.dark:hover:bg-slate-700
-                                                  {:class (if (even? (peek path)) "bg-black/5 dark:bg-gray-800" "bg-white dark:bg-gray-900")}]
-                                                 (map-indexed (fn [idx cell] [:td.pl-6.pr-2.py-1 (when (number-col? idx) {:class "text-right"}) (v/inspect opts cell)])) row)))}])))
+      (add-viewers [table-missing-viewer
+                    table-markup-viewer
+                    table-head-viewer
+                    table-body-viewer
+                    table-row-viewer])))
 
 #?(:clj (def utc-date-format ;; from `clojure.instant/thread-local-utc-date-format`
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
@@ -448,9 +462,10 @@
     :transform-fn (into-markup
                    (fn [{:as node :keys [heading-level]}]
                      [(str "h" heading-level) {:id (uri.normalize/normalize-fragment (md.transform/->text node))}]))}
-   {:name :nextjournal.markdown/image :transform-fn #(with-viewer :html [:img (-> % ->value :attrs)])}
+   {:name :nextjournal.markdown/image :transform-fn #(with-viewer :html [:img.inline (-> % ->value :attrs)])}
    {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
+   {:name :nextjournal.markdown/plain :transform-fn (into-markup [:<>])}
    {:name :nextjournal.markdown/ruler :transform-fn (into-markup [:hr])}
    {:name :nextjournal.markdown/code
     :transform-fn (fn [wrapped-value] (with-viewer :html
@@ -645,7 +660,7 @@
 
 (def table-viewer
   {:name :table
-   :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers] :keys [offset path current-path]}]
+   :transform-fn (fn [wrapped-value]
                    (if-let [{:keys [head rows]} (normalize-table-data (->value wrapped-value))]
                      (-> wrapped-value
                          (assoc :nextjournal/viewer :table/markup)

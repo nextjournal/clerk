@@ -114,6 +114,11 @@
     (is (match? {:blocks [{:result {:nextjournal/viewer :html}}]}
                 (clerk/eval-string "^{:nextjournal.clerk/viewer :html} (def markup [:h1 \"hi\"])"))))
 
+  (testing "var result that's not from a def should stay untouched"
+    (is (match? {:blocks [{:result {:nextjournal/value {:nextjournal.clerk/var-from-def var?}}}
+                          {:result {:nextjournal/value var?}}]}
+                (clerk/eval-string "(def foo :bar) (var foo)"))))
+
   (testing "can handle unbounded sequences"
     (is (match? {:blocks [{:result {:nextjournal/value seq?}}]}
                 (clerk/eval-string "(range)")))
@@ -184,3 +189,4 @@
   (let [paths (clerk/expand-paths ["notebooks/*clj"])]
     (is (> (count paths) 25))
     (is (every? #(str/ends-with? % ".clj") paths))))
+
