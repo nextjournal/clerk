@@ -1045,10 +1045,10 @@
                      (contains? #{:elision} name)
                      elision-content-length
                      map-entry?
-                     (reduce + 1 (map :content-length value))
+                     (reduce + 1 (map #(:content-length % 0) value))
                      (vector? value)
                      (->> value
-                       (map #(or (:content-length %) 0))
+                       (map #(:content-length % 0))
                        (reduce + (+ (count opening-paren) (count closing-paren)))
                        (+ (dec (count value))))
                      :else 0)
