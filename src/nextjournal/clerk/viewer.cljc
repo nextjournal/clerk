@@ -1036,15 +1036,14 @@
       (if-let [value (and (wrapped-value? x) (:nextjournal/value x))]
         (let [{:nextjournal/keys [viewer]} x
               {:keys [name opening-paren closing-paren]} viewer
-              elision-content-length 6
-              map-entry? (contains? #{:map-entry} name)]
+              elision-content-length 6]
           (assoc x :content-length
                    (cond
                      (or (nil? value) (char? value) (string? value) (keyword? value) (symbol? value) (number? value))
                      (count (pr-str value))
                      (contains? #{:elision} name)
                      elision-content-length
-                     map-entry?
+                     (contains? #{:map-entry} name)
                      (reduce + 1 (map #(:content-length % 0) value))
                      (vector? value)
                      (->> value
@@ -1052,25 +1051,26 @@
                        (reduce + (+ (count opening-paren) (count closing-paren)))
                        (+ (dec (count value))))
                      :else 0)
-                   :map-entry? map-entry?))
+                   :type name))
         x))
    wrapped-value))
 
-(defn compute-expanded-at [{:as state :keys [indent expanded-at]}
+(defn compute-expanded-at [{:as state :keys [indents expanded-at prev-type]}
                            {:nextjournal/keys [value]
-                            :keys [content-length map-entry? path]
+                            :keys [content-length path type]
                             :or {content-length 0}}]
-  (let [max-length (- 80 indent)
+  (let [max-length (- 80 (reduce + 0 indents))
         expanded? (< max-length content-length)
-        state' (if map-entry?
-                 state
-                 (cond-> (assoc state :expanded-at (if expanded?
-                                                     (assoc expanded-at path true)
-                                                     expanded-at)
-                                      :indent (if (vector? value)
-                                                (+ 2 indent)
-                                                indent))
-                   (not expanded?) (update :indent + content-length)))]
+        state' (assoc state :expanded-at (if expanded?
+                                           (assoc expanded-at path true)
+                                           expanded-at)
+                            :prev-type type
+                            :indents (conj
+                                       (->> indents (take (count path)) vec)
+                                       (cond
+                                         (contains? #{:map-entry} prev-type) (or content-length 0)
+                                         (vector? value) 2
+                                         :else 1)))]
     (if (vector? value)
       (reduce compute-expanded-at state' value)
       state')))
@@ -1078,7 +1078,7 @@
 (defn assign-expanded-at [wrapped-value]
   (cond-> wrapped-value
     (:content-length wrapped-value) (assoc :nextjournal/expanded-at
-                                           (:expanded-at (compute-expanded-at {:indent 0 :expanded-at {}} wrapped-value)))))
+                                           (:expanded-at (compute-expanded-at {:indents [] :expanded-at {}} wrapped-value)))))
 
 (comment
   (= (count "[1 2 [1 [2] 3] 4 5]")
