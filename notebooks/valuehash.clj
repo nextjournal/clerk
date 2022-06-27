@@ -29,6 +29,9 @@
 ;; ### TODO
 ;; * [x] clean up `find-location`
 ;; * [x] fix deref'ing vars, e.g. `@(var contents)`
-;; * [ ] Uncomment & fix `no-cache?` tests
-;; * [ ] Restore & fix _"defcached should be treated like a normal def"_
+;; * [x] Uncomment & fix `no-cache?` tests
+;; * [x] Restore & fix _"defcached should be treated like a normal def"_
 ;; * [x] Fix deps graph for vars
+;;
+;; ### Follow-up
+;; * [ ] Show error badge in notebook for unsupported usages of `::clerk/no-cache` on var meta
