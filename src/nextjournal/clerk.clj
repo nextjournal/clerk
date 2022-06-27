@@ -109,7 +109,7 @@
         result (if (and (nil? result) var (= 'defonce (first form)))
                  (find-var var)
                  result)
-        var-value (cond-> result (var? result) deref)
+        var-value (cond-> result (and var (var? result)) deref)
         no-cache? (or ns-effect?
                       no-cache?
                       config/cache-disabled?

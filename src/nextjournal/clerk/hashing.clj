@@ -24,23 +24,6 @@
             [taoensso.nippy :as nippy]
             [weavejester.dependency :as dep]))
 
-(defn var-name
-  "Takes a `analyzed-form` and returns the name of the var, if it exists."
-  [analyzed-form]
-  (when (and (seq? analyzed-form)
-             (= 'def (first analyzed-form)))
-    (second analyzed-form)))
-
-(defn not-quoted? [form]
-  (not (= 'quote (first form))))
-
-(defn defined-vars [analyzed-form]
-  (into #{}
-        (keep var-name)
-        (tree-seq (every-pred sequential? not-quoted?) seq analyzed-form)))
-
-#_(:vars (analyze '(do (def foo :bar) (let [x (defn bar [] :baz)]) (defonce !state (atom {})))))
-
 (defn ns? [form]
   (and (seq? form) (= 'ns (first form))))
 
@@ -55,8 +38,8 @@
   (when (contains? (meta form) :nextjournal.clerk/no-cache)
     (-> form meta :nextjournal.clerk/no-cache)))
 
-(defn no-cache? [form]
-  (or (->> [form (var-name form) *ns*]
+(defn no-cache? [& subjects]
+  (or (->> subjects
            (map no-cache-from-meta)
            (filter some?)
            first)
@@ -124,6 +107,8 @@
         var (when (and (= 1 (count vars))
                        (deflike? form))
               (first vars))
+        def-node (when var
+                   (first (filter (comp #{:def} :op) nodes)))
         deref-deps (into #{}
                          (comp (filter (comp #{#'deref} :var :fn))
                                (keep #(-> % :args first))
@@ -143,7 +128,7 @@
              :freezable? (and (not (some #{'clojure.core/intern} deps))
                               (<= (count vars) 1)
                               (if (seq vars) (= var (first vars)) true))
-             :no-cache? (no-cache? form)}
+             :no-cache? (no-cache? form (-> def-node :form second) *ns*)}
       hash-fn (assoc :hash-fn hash-fn)
       (seq deps) (assoc :deps deps)
       (seq deref-deps) (assoc :deref-deps deref-deps)

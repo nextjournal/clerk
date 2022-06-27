@@ -88,18 +88,15 @@ par two"))))
       (is (:no-cache? (h/analyze '^:nextjournal.clerk/no-cache (defn random-thing [] (rand-int 1000))))))
 
 
-    #_ ;; FIXME
     (testing "deprecated way to set no-cache"
       (is (:no-cache? (h/analyze '(def ^:nextjournal.clerk/no-cache random-thing (rand-int 1000)))))
       (is (:no-cache? (h/analyze '(defn ^:nextjournal.clerk/no-cache random-thing [] (rand-int 1000)))))
       (is (:no-cache? (h/analyze '(defn ^{:nextjournal.clerk/no-cache true} random-thing [] (rand-int 1000)))))))
 
   (testing "is evaluating namespace set to no-cache?"
-    (with-ns-binding 'nextjournal.clerk.hashing-test
-      (is (not (h/no-cache? '(rand-int 10)))))
+    (is (not (h/no-cache? '(rand-int 10) (find-ns 'nextjournal.clerk.hashing-test))))
 
-    (with-ns-binding 'nextjournal.clerk.hashing
-      (is (nextjournal.clerk.hashing/no-cache? '(rand-int 10))))))
+    (is (nextjournal.clerk.hashing/no-cache? '(rand-int 10) (find-ns 'nextjournal.clerk.hashing)))))
 
 (deftest deps
   (is (match? #{'clojure.string/includes?
