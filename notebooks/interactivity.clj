@@ -29,7 +29,7 @@
 @slider-2-state
 
 ;; What's the sum of our two sliders?
-^::clerk/no-cache (+ @slider-state @slider-2-state)
+(+ @slider-state @slider-2-state)
 
 ;; And a text box.
 

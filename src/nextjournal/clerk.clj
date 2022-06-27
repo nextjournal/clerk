@@ -92,6 +92,7 @@
 (defn- cachable-value? [value]
   (not (or (nil? value)
            (fn? value)
+           (var? value)
            (instance? clojure.lang.IDeref value)
            (instance? clojure.lang.MultiFn value)
            (instance? clojure.lang.Namespace value))))
@@ -108,7 +109,7 @@
         result (if (and (nil? result) var (= 'defonce (first form)))
                  (find-var var)
                  result)
-        var-value (cond-> result (var? result) deref)
+        var-value (cond-> result (and var (var? result)) deref)
         no-cache? (or ns-effect?
                       no-cache?
                       config/cache-disabled?
@@ -131,7 +132,7 @@
     (update :nextjournal/viewers eval)))
 
 (defn read+eval-cached [{:as _doc doc-visibility :visibility :keys [blob->result ->analysis-info ->hash]} codeblock]
-  (let [{:keys [form vars var]} codeblock
+  (let [{:keys [form vars var deref-deps]} codeblock
         {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info (if (seq vars) (first vars) form))
         no-cache?      (or ns-effect? no-cache?)
         hash           (when-not no-cache? (or (get ->hash (if var var form))
@@ -160,6 +161,7 @@
       (seq opts-from-form-meta)
       (merge opts-from-form-meta))))
 
+#_(show! "notebooks/scratch_cache.clj")
 
 #_(eval-file "notebooks/test123.clj")
 #_(eval-file "notebooks/how_clerk_works.clj")
@@ -172,27 +174,33 @@
       (prn :cache-dir/deleted config/cache-dir))
     (prn :cache-dir/does-not-exist config/cache-dir)))
 
+#_(clear-cache!)
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
 (defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks visibility]}]
-  (let [{:as evaluated-doc :keys [blob-ids]}
-        (reduce (fn [{:as acc :keys [blob->result]} {:as cell :keys [type]}]
-                  (let [{:as result :nextjournal/keys [blob-id]} (when (= :code type)
-                                                                   (read+eval-cached analyzed-doc cell))]
-                    (cond-> (update acc :blocks conj (cond-> cell result (assoc :result result)))
+  (let [deref-forms (into #{} (filter hashing/deref?) (keys ->hash))
+        {:as evaluated-doc :keys [blob-ids]}
+        (reduce (fn [{:as state :keys [blob->result]} {:as cell :keys [type]}]
+                  (let [state-with-deref-deps-evaluated (hashing/hash-deref-deps state cell)
+                        {:as result :nextjournal/keys [blob-id]} (when (= :code type)
+                                                                   (read+eval-cached state-with-deref-deps-evaluated cell))]
+                    (cond-> (update state-with-deref-deps-evaluated :blocks conj (cond-> cell result (assoc :result result)))
                       blob-id (update :blob-ids conj blob-id)
                       blob-id (assoc-in [:blob->result blob-id] result))))
-                (assoc analyzed-doc :blocks [] :blob-ids #{}) blocks)]
+                (-> analyzed-doc
+                    (assoc :blocks [] :blob-ids #{})
+                    (update :->hash (fn [h] (apply dissoc h deref-forms))))
+                blocks)]
     (-> evaluated-doc
         (update :blob->result select-keys blob-ids)
         (dissoc :blob-ids))))
-
 
 (defn +eval-results [results-last-run parsed-doc]
   (let [{:as analyzed-doc :keys [ns]} (hashing/build-graph parsed-doc)]
     (binding [*ns* ns]
       (-> analyzed-doc
-          (assoc :blob->result results-last-run :->hash (hashing/hash analyzed-doc))
+          hashing/hash
+          (assoc :blob->result results-last-run)
           eval-analyzed-doc))))
 
 (defn parse-file [file]
@@ -497,7 +505,7 @@
         _ (report-fn {:stage :init :state state})
         {state :result duration :time-ms} (time-ms (mapv (comp parse-file :file) state))
         _ (report-fn {:stage :parsed :state state :duration duration})
-        {state :result duration :time-ms} (time-ms (mapv (comp (fn [doc] (assoc doc :->hash (hashing/hash doc)))
+        {state :result duration :time-ms} (time-ms (mapv (comp hashing/hash
                                                                hashing/build-graph) state))
         _ (report-fn {:stage :analyzed :state state :duration duration})
         state (mapv (fn [doc]
@@ -514,6 +522,8 @@
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? false})
 #_(build-static-app! {:paths ["notebooks/viewers/**"]})
+
+(def valuehash hashing/valuehash)
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
