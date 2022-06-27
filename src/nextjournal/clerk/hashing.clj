@@ -14,13 +14,13 @@
             [edamame.core :as edamame]
             [multihash.core :as multihash]
             [multihash.digest :as digest]
-            [rewrite-clj.node :as n]
-            [rewrite-clj.parser :as p]
             [nextjournal.clerk.classpath :as cp]
             [nextjournal.clerk.config :as config]
             [nextjournal.markdown :as markdown]
             [nextjournal.markdown.parser :as markdown.parser]
             [nextjournal.markdown.transform :as markdown.transform]
+            [rewrite-clj.node :as n]
+            [rewrite-clj.parser :as p]
             [taoensso.nippy :as nippy]
             [weavejester.dependency :as dep]))
 
@@ -88,6 +88,17 @@
    (binding [config/*in-clerk* true]
      (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings}))))
 
+(defn normalize-deref-form [form]
+  (let [args (rest form)]
+    (list* 'clojure.core/deref args)))
+
+(defn nodes->deref-deps [nodes]
+  (into #{}
+        (comp (filter (comp #{#'deref} :var :fn))
+              (keep :form)
+              (map normalize-deref-form))
+        nodes))
+
 (defn analyze [form]
   (let [!deps      (atom #{})
         mexpander (fn [form env]
@@ -109,14 +120,7 @@
               (first vars))
         def-node (when var
                    (first (filter (comp #{:def} :op) nodes)))
-        deref-deps (into #{}
-                         (comp (filter (comp #{#'deref} :var :fn))
-                               (keep #(-> % :args first))
-                               (filter :var)
-                               (keep (fn [{:keys [op var]}]
-                                       (when-not (= op :the-var)
-                                         (list `deref (symbol var))))))
-                         nodes)
+        deref-deps (nodes->deref-deps nodes)
         deps (set/union (set/difference (into #{} (map symbol) @!deps) vars)
                         deref-deps
                         (class-deps analyzed)
@@ -457,7 +461,7 @@
 
 (defn find-location [sym]
   (cond
-    (deref? sym) (find-location (second sym))
+    (deref? sym) nil #_(find-location (second sym))
     :else (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
             (or (ns->file ns)
                 (ns->jar ns))
@@ -519,7 +523,7 @@
 
 (defn hash
   ([{:as analyzed-doc :keys [graph]}] (hash analyzed-doc (dep/topo-sort graph)))
-  ([{:as analyzed-doc :keys [->analysis-info graph]} deps]
+  ([{:as analyzed-doc :keys [->analysis-info]} deps]
    (update analyzed-doc
            :->hash
            (partial reduce (fn [->hash k]
@@ -569,23 +573,26 @@
 #_(->hash-str (range 104))
 #_(->hash-str (range))
 
-(defn hash-deref-deps [{:as analyzed-doc :keys [graph ->hash blocks visibility]} {:as cell :keys [deps deref-deps hash-fn var form]}]
+(defn hash-deref-deps [{:as analyzed-doc :keys [graph ->hash]}
+                       {:as cell :keys [deref-deps hash-fn var form]}]
   (cond
     (seq deref-deps)
     (let [deref-deps-to-eval (set/difference deref-deps (-> ->hash keys set))
           doc-with-deref-dep-hashes (reduce (fn [state deref-dep]
-                                              (assoc-in state [:->hash deref-dep] (valuehash (try
-                                                                                               (eval deref-dep)
-                                                                                               (catch Exception e
-                                                                                                 (throw (ex-info "error during hashing of deref dep" {:deref deref-dep :cell cell} e)))))))
+                                              (let [the-hash (valuehash (try
+                                                                          (eval deref-dep)
+                                                                          (catch Exception e
+                                                                            (throw (ex-info "error during hashing of deref dep" {:deref deref-dep :cell cell} e)))))]
+                                                (assoc-in state [:->hash deref-dep] the-hash)))
                                             analyzed-doc
-                                            deref-deps-to-eval)]
-      #_(prn :hash-deref-deps/form form :deref-deps deref-deps-to-eval)
-      (hash doc-with-deref-dep-hashes (dep/transitive-dependents-set graph deref-deps-to-eval)))
+                                            deref-deps-to-eval)
+          deps (dep/transitive-dependents-set graph deref-deps-to-eval)
+          topo (dep/topo-sort graph)
+          sorted-deps (keep deps topo)]
+      (hash doc-with-deref-dep-hashes sorted-deps ))
     hash-fn
     (let [id (if var var form)
           doc-with-new-hash (assoc-in analyzed-doc [:->hash id] ((eval hash-fn) (assoc analyzed-doc :cell cell)))]
-      #_(prn :hash-deref-deps/form form :id (if var var form) :hash-fn hash-fn :valuehash ((eval hash-fn) (assoc analyzed-doc :cell cell)))
       (hash doc-with-new-hash (dep/transitive-dependents graph (if var var form))))
     :else
     analyzed-doc))

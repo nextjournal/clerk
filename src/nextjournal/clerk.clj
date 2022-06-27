@@ -131,8 +131,9 @@
     viewers
     (update :nextjournal/viewers eval)))
 
-(defn read+eval-cached [{:as _doc doc-visibility :visibility :keys [blob->result ->analysis-info ->hash]} codeblock]
-  (let [{:keys [form vars var deref-deps]} codeblock
+(defn read+eval-cached [{:as _doc doc-visibility :visibility
+                         :keys [blob->result ->analysis-info ->hash]} codeblock]
+  (let [{:keys [form vars var]} codeblock
         {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info (if (seq vars) (first vars) form))
         no-cache?      (or ns-effect? no-cache?)
         hash           (when-not no-cache? (or (get ->hash (if var var form))
@@ -177,10 +178,10 @@
 #_(clear-cache!)
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
-(defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks visibility]}]
+(defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks]}]
   (let [deref-forms (into #{} (filter hashing/deref?) (keys ->hash))
         {:as evaluated-doc :keys [blob-ids]}
-        (reduce (fn [{:as state :keys [blob->result]} {:as cell :keys [type]}]
+        (reduce (fn [{:as state :keys []} {:as cell :keys [type]}]
                   (let [state-with-deref-deps-evaluated (hashing/hash-deref-deps state cell)
                         {:as result :nextjournal/keys [blob-id]} (when (= :code type)
                                                                    (read+eval-cached state-with-deref-deps-evaluated cell))]
