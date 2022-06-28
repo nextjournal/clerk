@@ -1,25 +1,31 @@
-(require '[nextjournal.clerk :as clerk])
+(require '[nextjournal.clerk :as clerk]
+         '[nextjournal.clerk.viewer :as v])
 
-#_(clerk/clear-cache!)
 
-^::clerk/no-cache
-(prn :--------------------------------------------------)
 
-(spit "notebooks/render_fn.cljs" ";" :append true)
+(def eval-cljs-viewer
+  {:pred #(instance? nextjournal.clerk.viewer.ViewerEval %)
+   :render-fn '(fn [code]
+                 (v/html (binding [*ns* *ns*]
+                           (let [result (load-string code)]
+                             [v/inspect-paginated result] ))))})
 
-#_(macroexpand '(clerk/render-fn 'render-fn/heading))
+(clerk/add-viewers! [eval-cljs-viewer])
 
-(def heading-fn (clerk/render-fn 'render-fn/heading))
+(defn eval-cljs [string-or-resource-or-url]
+  (clerk/with-viewer eval-cljs-viewer string-or-resource-or-url))
 
-(count (:nextjournal.clerk/render-source heading-fn))
+(eval-cljs (pr-str '(defonce foo :bar)))
 
-#_(def paragraph-fn )
+^{::clerk/no-cache true}
+(eval-cljs (slurp (clojure.java.io/resource "render_fn.cljs")))
 
+^{::clerk/no-cache true}
 (clerk/with-viewers (clerk/add-viewers
                      [{:pred number?
-                       :render-fn heading-fn}
+                       :render-fn 'render-fn/heading}
                       {:pred string?
-                       :render-fn (clerk/render-fn 'render-fn/paragraph)}])
+                       :render-fn 'render-fn/paragraph}])
   [1 "To begin at the beginning:"
    2 "It is Spring, moonless night in the small town, starless and bible-black,"
    3 "the cobblestreets silent and the hunched,"
