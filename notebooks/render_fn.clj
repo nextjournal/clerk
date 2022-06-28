@@ -15,11 +15,11 @@
 
 #_(def paragraph-fn )
 
-#_(clerk/with-viewers (clerk/add-viewers
+(clerk/with-viewers (clerk/add-viewers
                      [{:pred number?
-                       :render-fn @heading-fn}
+                       :render-fn heading-fn}
                       {:pred string?
-                       :render-fn @(clerk/render-fn 'render-fn/paragraph)}])
+                       :render-fn (clerk/render-fn 'render-fn/paragraph)}])
   [1 "To begin at the beginning:"
    2 "It is Spring, moonless night in the small town, starless and bible-black,"
    3 "the cobblestreets silent and the hunched,"
