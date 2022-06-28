@@ -5,7 +5,11 @@
 ^::clerk/no-cache
 (prn :--------------------------------------------------)
 
-(def heading-fn @(clerk/render-fn 'render-fn/heading))
+(spit "notebooks/render_fn.cljs" ";" :append true)
+
+#_(macroexpand '(clerk/render-fn 'render-fn/heading))
+
+(def heading-fn (clerk/render-fn 'render-fn/heading))
 
 (count (:nextjournal.clerk/render-source heading-fn))
 
@@ -22,3 +26,4 @@
    4 "courters'-and- rabbits' wood limping invisible"
    5 "down to the sloeblack, slow, black, crowblack, fishingboat-bobbing sea."])
 ;;;;;;;
+

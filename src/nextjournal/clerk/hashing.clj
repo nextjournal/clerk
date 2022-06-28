@@ -612,7 +612,7 @@
           deps (dep/transitive-dependents-set graph deref-deps-to-eval)
           topo (dep/topo-sort graph)
           sorted-deps (keep deps topo)]
-      (hash doc-with-deref-dep-hashes deps #_sorted-deps))
+      (hash doc-with-deref-dep-hashes sorted-deps))
     hash-fn
     (let [id (if var var form)
           doc-with-new-hash (assoc-in analyzed-doc [:->hash id] ((eval hash-fn) (assoc analyzed-doc :cell cell)))]

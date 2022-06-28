@@ -530,7 +530,13 @@
           {::render-source source
            ::render-fn sym})))))
 
-(def render-fn (memoize render-fn*))
+(defmacro render-fn [quoted-sym]
+  (let [sym (second quoted-sym)
+        ns (namespace sym)
+        var-name (name sym)
+        backed-var-name (symbol (str  "clerk__render__" ns "__" var-name))]
+    `(do (def ~backed-var-name (render-fn* ~quoted-sym))
+         (deref ~backed-var-name))))
 
 #_(build-static-app! {:paths (take 5 clerk-docs)})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
