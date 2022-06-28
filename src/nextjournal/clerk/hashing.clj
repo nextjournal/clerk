@@ -509,28 +509,51 @@
 #_(dep/immediate-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
 
+(def hash-codeblock-state (atom []))
+(defn log-hash-codeblock [x]
+  (swap! hash-codeblock-state conj x))
+(comment
+  @hash-codeblock-state
+  )
+
 (defn hash-codeblock [->hash {:as codeblock :keys [hash form deps vars]}]
   (let [->hash' (if (and (not (ifn? ->hash)) (seq deps))
                   (binding [*out* *err*]
                     (println "->hash must be `ifn?`" {:->hash ->hash :codeblock codeblock})
                     identity)
                   ->hash)
-        hashed-deps (into #{} (map ->hash') deps)]
-    (sha1-base58 (pr-str (set/union (conj hashed-deps (if form form hash))
-                                    vars)))))
+        hashed-deps (into #{} (map ->hash') deps)
+        the-hash (sha1-base58 (pr-str (set/union (conj hashed-deps (if form form hash))
+                                                 vars)))]
+    (log-hash-codeblock [:form form :the-hash the-hash :deps deps :hashed-deps hashed-deps])
+    the-hash))
 
 #_(nextjournal.clerk/build-static-app! {:paths nextjournal.clerk/clerk-docs})
+
+(def hash-state (atom []))
+(defn hash-log [x]
+  (swap! hash-state conj x))
+(comment
+
+  @hash-state
+  )
 
 (defn hash
   ([{:as analyzed-doc :keys [graph]}] (hash analyzed-doc (dep/topo-sort graph)))
   ([{:as analyzed-doc :keys [->analysis-info]} deps]
+   (def ana ->analysis-info)
+   (hash-log [:deps deps])
    (update analyzed-doc
            :->hash
-           (partial reduce (fn [->hash k]
-                             (if-let [codeblock (get ->analysis-info k)]
-                               (assoc ->hash k (hash-codeblock ->hash codeblock))
-                               ->hash)))
-           deps)))
+           (fn [->hash]
+             (reduce (fn [->hash dep]
+                               (if-let [codeblock (get ->analysis-info dep)]
+                                 (do
+                                   (hash-log [:codeblock dep codeblock (hash-codeblock ->hash codeblock)])
+                                   (assoc ->hash dep (hash-codeblock ->hash codeblock)))
+                                 ->hash))
+                     ->hash
+                     deps)))))
 
 #_(hash (build-graph (parse-clojure-string "^{:nextjournal.clerk/hash-fn (fn [x] \"abc\")}(def contents (slurp \"notebooks/hello.clj\"))")))
 #_(hash (build-graph (parse-clojure-string (slurp "notebooks/hello.clj"))))
@@ -589,7 +612,7 @@
           deps (dep/transitive-dependents-set graph deref-deps-to-eval)
           topo (dep/topo-sort graph)
           sorted-deps (keep deps topo)]
-      (hash doc-with-deref-dep-hashes sorted-deps ))
+      (hash doc-with-deref-dep-hashes deps #_sorted-deps))
     hash-fn
     (let [id (if var var form)
           doc-with-new-hash (assoc-in analyzed-doc [:->hash id] ((eval hash-fn) (assoc analyzed-doc :cell cell)))]
