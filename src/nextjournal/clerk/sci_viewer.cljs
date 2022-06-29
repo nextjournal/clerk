@@ -312,7 +312,7 @@
                                          (fn [more]
                                            (swap! !desc viewer/merge-presentations more opts)))))
                      shallow-paths (->> @!desc :nextjournal/expanded-at keys (remove #(> (count %) 1)) sort)
-                     deep-paths (->> @!desc :nextjournal/expanded-at keys (keep #(> (count %) 1)) sort)
+                     deep-paths (->> @!desc :nextjournal/expanded-at keys (filter #(> (count %) 1)) sort)
                      !expanded-at (r/atom (:nextjournal/expanded-at @!desc))
                      !drag-state (r/atom {:visible? false})
                      on-mouse-up #(swap! !drag-state assoc :visible? false)]
@@ -358,11 +358,19 @@
                                     (.preventDefault event)
                                     (.stopPropagation event)
                                     (let [{:keys [clientX clientY]} (j/lookup event)
-                                          length (Math/sqrt (+ (Math/pow (- x2 x1) 2) (Math/pow (- y2 y1) 2)))
-                                          expand-until (Math/ceil (/ length 10))]
+                                          dx (- clientX x1)
+                                          dy (- clientY y1)
+                                          expand-y-until (Math/ceil (/ (Math/abs dy) 10))
+                                          expand-x-until (Math/ceil (/ (Math/abs dx) 10))
+                                          expanded-y (reduce #(assoc %1 %2 true) {} (if (neg? dy)
+                                                                                      (drop-last expand-y-until shallow-paths)
+                                                                                      (take expand-y-until shallow-paths)))
+                                          expanded-x (reduce #(assoc %1 %2 true) {} (if (neg? dx)
+                                                                                      (drop-last expand-x-until deep-paths)
+                                                                                      (take expand-x-until deep-paths)))]
                                       (swap! !drag-state assoc :x2 clientX :y2 clientY)
-                                      (when (> expand-until 0)
-                                        (reset! !expanded-at (reduce #(assoc %1 %2 true) {} (take expand-until expandable-paths))))))}
+                                      (when (and (< 0 expand-x-until) (< 0 expand-y-until))
+                                        (reset! !expanded-at (merge expanded-x expanded-y)))))}
                   [:line {:x1 x1 :y1 y1 :x2 x2 :y2 y2 :stroke "currentColor" :stroke-width "5" :stroke-linecap "round"}]])
                [:div.overflow-x-auto.overflow-y-hidden
                 [inspect {:!expanded-at !expanded-at} @!desc]]])]])))
