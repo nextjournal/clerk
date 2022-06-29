@@ -315,7 +315,28 @@
                      deep-paths (->> @!desc :nextjournal/expanded-at keys (filter #(> (count %) 1)) sort)
                      !expanded-at (r/atom (:nextjournal/expanded-at @!desc))
                      !drag-state (r/atom {:visible? false})
-                     on-mouse-up #(swap! !drag-state assoc :visible? false)]
+                     on-mouse-move (fn [event]
+                                     (.preventDefault event)
+                                     (.stopPropagation event)
+                                     (let [{:keys [clientX clientY]} (j/lookup event)
+                                           {:keys [x1 y1]} @!drag-state
+                                           dx (- clientX x1)
+                                           dy (- clientY y1)
+                                           expand-y-until (Math/ceil (/ (Math/abs dy) 10))
+                                           expand-x-until (Math/ceil (/ (Math/abs dx) 10))
+                                           expanded-y (reduce #(assoc %1 %2 true) {} (if (neg? dy)
+                                                                                       (drop-last expand-y-until shallow-paths)
+                                                                                       (take expand-y-until shallow-paths)))
+                                           expanded-x (reduce #(assoc %1 %2 true) {} (if (neg? dx)
+                                                                                       (drop-last expand-x-until deep-paths)
+                                                                                       (take expand-x-until deep-paths)))]
+                                       (swap! !drag-state assoc :x2 clientX :y2 clientY)
+                                       (when (and (< 0 expand-x-until) (< 0 expand-y-until))
+                                         (reset! !expanded-at (merge expanded-x expanded-y)))))
+                     on-mouse-up (fn on-mouse-up* []
+                                   (swap! !drag-state assoc :visible? false)
+                                   (js/document.removeEventListener "mouseup" on-mouse-up*)
+                                   (js/document.removeEventListener "mousemove" on-mouse-move))]
           (when-not (= hash @!hash)
             ;; TODO: simplify
             (reset! !hash hash)
@@ -334,43 +355,25 @@
                   [:div.absolute.rounded-full.z-10.border-2.border-slate-300.opacity-0.group-hover:opacity-100.group-hover:animate-ping
                    {:class "w-[16px] h-[16px] top-[5px] right-[8px]"}])
                 [:div.absolute.rounded-full.transition-all.z-10.border-2.border-slate-300
-                 {:class (str "w-[16px] h-[16px] top-[5px] right-[8px] hover:right-[0px] hover:w-[32px] hover:h-[32px] hover:top-[-5px] hover:bg-slate-100 cursor-grab group-hover:opacity-100 hover:border-indigo-600 "
-                           (if visible? "opacity-100 right-[8px] w-[16px] h-[16px] border-indigo-600 bg-indigo-600" "opacity-0"))
+                 {:class (str "w-[16px] h-[16px] top-[5px] right-[8px] cursor-grab opacity-0 group-hover:opacity-100 "
+                           "hover:right-[0px] hover:w-[32px] hover:h-[32px] hover:top-[-5px] hover:bg-slate-100 hover:border-indigo-600 "
+                           (when visible? "opacity-0"))
                   :on-mouse-down (fn [event]
                                    (.preventDefault event)
                                    (.stopPropagation event)
+                                   (js/document.addEventListener "mouseup" on-mouse-up)
+                                   (js/document.addEventListener "mousemove" on-mouse-move)
                                    (let [{:keys [x y width height]} (j/lookup (.. event -target getBoundingClientRect))
                                          x (+ x (/ width 2))
                                          y (+ y (/ height 2))]
                                      (swap! !drag-state
                                        assoc :visible? true :x1 x :y1 y :x2 x :y2 y)))}]]
                (when visible?
-                 [:svg.fixed.left-0.top-0.right-0.bottom-0.cursor-grabbing.text-indigo-600
+                 [:svg.fixed.left-0.top-0.right-0.bottom-0.cursor-grabbing.text-indigo-600.pointer-events-none
                   {:xmlns "http://www.w3.org/2000/svg" :fill "currentColor"
                    :style {:z-index 1000}
-                   :ref (fn [el]
-                          (if el
-                            (do
-                              (js/document.addEventListener "mouseup" on-mouse-up)
-                              (.setAttribute el "viewBox" (str "0 0 " js/innerWidth " " js/innerHeight)))
-                            (js/document.removeEventListener "mouseup" on-mouse-up)))
-                   :on-mouse-move (fn [event]
-                                    (.preventDefault event)
-                                    (.stopPropagation event)
-                                    (let [{:keys [clientX clientY]} (j/lookup event)
-                                          dx (- clientX x1)
-                                          dy (- clientY y1)
-                                          expand-y-until (Math/ceil (/ (Math/abs dy) 10))
-                                          expand-x-until (Math/ceil (/ (Math/abs dx) 10))
-                                          expanded-y (reduce #(assoc %1 %2 true) {} (if (neg? dy)
-                                                                                      (drop-last expand-y-until shallow-paths)
-                                                                                      (take expand-y-until shallow-paths)))
-                                          expanded-x (reduce #(assoc %1 %2 true) {} (if (neg? dx)
-                                                                                      (drop-last expand-x-until deep-paths)
-                                                                                      (take expand-x-until deep-paths)))]
-                                      (swap! !drag-state assoc :x2 clientX :y2 clientY)
-                                      (when (and (< 0 expand-x-until) (< 0 expand-y-until))
-                                        (reset! !expanded-at (merge expanded-x expanded-y)))))}
+                   :ref #(when % (.setAttribute % "viewBox" (str "0 0 " js/innerWidth " " js/innerHeight)))}
+                  [:circle {:cx x1 :cy y1 :r 8 :fill "currentColor"}]
                   [:line {:x1 x1 :y1 y1 :x2 x2 :y2 y2 :stroke "currentColor" :stroke-width "5" :stroke-linecap "round"}]])
                [:div.overflow-x-auto.overflow-y-hidden
                 [inspect {:!expanded-at !expanded-at} @!desc]]])]])))
