@@ -664,9 +664,10 @@
                          (assoc :nextjournal/viewer :table/markup)
                          (update :nextjournal/width #(or % :wide))
                          (update :nextjournal/viewers update-table-viewers)
-                         (assoc :nextjournal/opts {:num-cols (-> rows first count)
-                                                   :number-col? (mapv number? (first rows))})
-                         (assoc :nextjournal/value (cond->> [(with-viewer :table/body (map (partial with-viewer :table/row) rows))]
+                         (assoc :nextjournal/opts {:num-cols (count (or head (first rows)))
+                                                   :number-col? (if (seq (first rows)) (mapv number? (first rows)) {})})
+                         (assoc :nextjournal/value (cond->> []
+                                                     (seq rows) (cons (with-viewer :table/body (map (partial with-viewer :table/row) rows)))
                                                      head (cons (with-viewer :table/head head)))))
                      (-> wrapped-value
                          mark-presented
