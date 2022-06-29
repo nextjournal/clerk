@@ -1061,9 +1061,10 @@
                             :or {content-length 0}}]
   (let [max-length (- 80 (reduce + 0 indents))
         expanded? (< max-length content-length)
-        state' (assoc state :expanded-at (if expanded?
-                                           (assoc expanded-at path true)
-                                           expanded-at)
+        state' (assoc state :expanded-at (assoc expanded-at path expanded?)
+                            #_(if expanded?
+                              (assoc expanded-at path true)
+                              expanded-at)
                             :prev-type type
                             :indents (conj
                                        (->> indents (take (count path)) vec)
@@ -1081,6 +1082,12 @@
                                            (:expanded-at (compute-expanded-at {:indents [] :expanded-at {}} wrapped-value)))))
 
 (comment
+  (-> (compute-expanded-at
+        {:indents [] :expanded-at {}}
+        (present {:a-vector [1 2 3] :a-list '(123 234 345) :a-set #{1 2 3 4}}))
+    :expanded-at
+    keys
+    sort)
   (= (count "[1 2 [1 [2] 3] 4 5]")
      (:content-length (assign-content-lengths (present [1 2 [1 [2] 3] 4 5]))))
   (= (count "{:a-vector [1 2 3] :a-list (123 234 345) :a-set #{1 2 3 4}}")

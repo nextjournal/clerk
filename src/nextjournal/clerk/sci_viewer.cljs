@@ -194,7 +194,7 @@
                (map (fn [[_inspect x :as y]]
                       (let [{viewer-name :name} (viewer/->viewer x)
                             inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
-                        [:div {:class ["viewer" "overflow-x-auto" "overflow-y-hidden"
+                        [:div {:class ["viewer"
                                        (when viewer-name (str "viewer-" (name viewer-name)))
                                        (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
                                        (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
@@ -310,7 +310,12 @@
                                 (fn [opts]
                                   (.then (fetch! @!fetch-opts opts)
                                          (fn [more]
-                                           (swap! !desc viewer/merge-presentations more opts)))))]
+                                           (swap! !desc viewer/merge-presentations more opts)))))
+                     shallow-paths (->> @!desc :nextjournal/expanded-at keys (remove #(> (count %) 1)) sort)
+                     deep-paths (->> @!desc :nextjournal/expanded-at keys (keep #(> (count %) 1)) sort)
+                     !expanded-at (r/atom (:nextjournal/expanded-at @!desc))
+                     !drag-state (r/atom {:visible? false})
+                     on-mouse-up #(swap! !drag-state assoc :visible? false)]
           (when-not (= hash @!hash)
             ;; TODO: simplify
             (reset! !hash hash)
@@ -318,8 +323,49 @@
             (reset! !desc (read-result result))
             (reset! !error nil))
           [view-context/provide {:fetch-fn fetch-fn}
-           [error-boundary !error [inspect @!desc]]]))
-  )
+           [error-boundary
+            !error
+            (let [drag-area-width "calc((100vw - 756px) / 2)"
+                  {:keys [visible? x1 y1 x2 y2]} @!drag-state]
+              [:div.relative.inspector-container
+               [:div.absolute.left-0.top-0.bottom-0.group
+                {:style {:width drag-area-width :transform "translateX(-100%)"}}
+                (when-not visible?
+                  [:div.absolute.rounded-full.z-10.border-2.border-slate-300.opacity-0.group-hover:opacity-100.group-hover:animate-ping
+                   {:class "w-[16px] h-[16px] top-[5px] right-[8px]"}])
+                [:div.absolute.rounded-full.transition-all.z-10.border-2.border-slate-300
+                 {:class (str "w-[16px] h-[16px] top-[5px] right-[8px] hover:right-[0px] hover:w-[32px] hover:h-[32px] hover:top-[-5px] hover:bg-slate-100 cursor-grab group-hover:opacity-100 hover:border-indigo-600 "
+                           (if visible? "opacity-100 right-[8px] w-[16px] h-[16px] border-indigo-600 bg-indigo-600" "opacity-0"))
+                  :on-mouse-down (fn [event]
+                                   (.preventDefault event)
+                                   (.stopPropagation event)
+                                   (let [{:keys [x y width height]} (j/lookup (.. event -target getBoundingClientRect))
+                                         x (+ x (/ width 2))
+                                         y (+ y (/ height 2))]
+                                     (swap! !drag-state
+                                       assoc :visible? true :x1 x :y1 y :x2 x :y2 y)))}]]
+               (when visible?
+                 [:svg.fixed.left-0.top-0.right-0.bottom-0.cursor-grabbing.text-indigo-600
+                  {:xmlns "http://www.w3.org/2000/svg" :fill "currentColor"
+                   :style {:z-index 1000}
+                   :ref (fn [el]
+                          (if el
+                            (do
+                              (js/document.addEventListener "mouseup" on-mouse-up)
+                              (.setAttribute el "viewBox" (str "0 0 " js/innerWidth " " js/innerHeight)))
+                            (js/document.removeEventListener "mouseup" on-mouse-up)))
+                   :on-mouse-move (fn [event]
+                                    (.preventDefault event)
+                                    (.stopPropagation event)
+                                    (let [{:keys [clientX clientY]} (j/lookup event)
+                                          length (Math/sqrt (+ (Math/pow (- x2 x1) 2) (Math/pow (- y2 y1) 2)))
+                                          expand-until (Math/ceil (/ length 10))]
+                                      (swap! !drag-state assoc :x2 clientX :y2 clientY)
+                                      (when (> expand-until 0)
+                                        (reset! !expanded-at (reduce #(assoc %1 %2 true) {} (take expand-until expandable-paths))))))}
+                  [:line {:x1 x1 :y1 y1 :x2 x2 :y2 y2 :stroke "currentColor" :stroke-width "5" :stroke-linecap "round"}]])
+               [:div.overflow-x-auto.overflow-y-hidden
+                [inspect {:!expanded-at !expanded-at} @!desc]]])]])))
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
@@ -581,9 +627,9 @@
    (let [value (viewer/->value x)]
      #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
      (or (when (react/isValidElement value) value)
-         (when-let [viewer (viewer/->viewer x)]
-           (inspect opts (render-with-viewer (merge opts {:viewer viewer} (:nextjournal/opts x)) viewer value)))
-         (throw (ex-info "inspect needs to be called on presented value" {:x x}))))))
+       (when-let [viewer (viewer/->viewer x)]
+         (inspect opts (render-with-viewer (merge opts {:viewer viewer} (:nextjournal/opts x)) viewer value)))
+       (throw (ex-info "inspect needs to be called on presented value" {:x x}))))))
 
 (defn in-process-fetch [value opts]
   (.resolve js/Promise (viewer/present value opts)))

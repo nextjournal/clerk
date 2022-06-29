@@ -1,4 +1,4 @@
-;; # Test Cases for Auto Expanding Data Structure Viewer
+;; # Test Cases for Auto-Expanding Data Structure Viewer
 ^{:nextjournal.clerk/visibility :hide-ns}
 (ns notebooks.auto_expand
   (:require [babashka.fs :as fs]
