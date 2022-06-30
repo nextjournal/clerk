@@ -7,7 +7,8 @@
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.analyzer :as analyzer]]
-                :cljs [[reagent.ratom :as ratom]])
+                :cljs [[reagent.ratom :as ratom]
+                       [sci.impl.vars :as sci.vars]])
             [nextjournal.markdown :as md]
             [nextjournal.markdown.transform :as md.transform]
             [lambdaisland.uri.normalize :as uri.normalize])
@@ -562,8 +563,10 @@
 (def map-viewer
   {:pred map? :name :map :render-fn 'v/map-viewer :opening-paren "{" :closing-paren "}" :fetch-opts {:n 10}})
 
+#?(:cljs (defn var->symbol [v] (if (sci.vars/var? v) (sci.vars/toSymbol v) (symbol v))))
+
 (def var-viewer
-  {:pred var? :transform-fn (comp symbol ->value) :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#'" (str x)]]))})
+  {:pred (some-fn var? #?(:cljs sci.vars/var?)) :transform-fn (comp #?(:cljs var->symbol :clj symbol) ->value) :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#'" (str x)]]))})
 
 (def throwable-viewer
   {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
