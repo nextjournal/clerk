@@ -9,6 +9,7 @@
             [nextjournal.beholder :as beholder]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.hashing :as hashing]
+            [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]
@@ -139,7 +140,7 @@
                                                (hashing/hash-codeblock ->hash codeblock)))
         digest-file    (when hash (->cache-file (str "@" hash)))
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
-        visibility     (if-let [fv (hashing/->visibility form)] fv doc-visibility)
+        visibility     (if-let [fv (parser/->visibility form)] fv doc-visibility)
         cached-result? (and (not no-cache?)
                             cas-hash
                             (-> cas-hash ->cache-file fs/exists?))
@@ -204,7 +205,7 @@
           eval-analyzed-doc))))
 
 (defn parse-file [file]
-  (hashing/parse-file {:doc? true} file))
+  (parser/parse-file {:doc? true} file))
 
 #_(parse-file "notebooks/elements.clj")
 #_(parse-file "notebooks/visibility.clj")
@@ -226,7 +227,7 @@
 (defn eval-string
   ([s] (eval-string {} s))
   ([results-last-run s]
-   (eval-doc results-last-run (hashing/parse-clojure-string {:doc? true} s))))
+   (eval-doc results-last-run (parser/parse-clojure-string {:doc? true} s))))
 
 #_(eval-string "(+ 39 3)")
 
