@@ -214,7 +214,3 @@
    (eval-doc results-last-run (parser/parse-clojure-string {:doc? true} s))))
 
 #_(eval-string "(+ 39 3)")
-
-
-
-
