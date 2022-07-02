@@ -8,9 +8,7 @@
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.hashing :as hashing]
             [nextjournal.clerk.parser :as parser]
-            [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
-            [nextjournal.clerk.webserver :as webserver]
             [taoensso.nippy :as nippy])
   (:import (java.awt.image BufferedImage)
            (javax.imageio ImageIO)))

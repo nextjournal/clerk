@@ -1,15 +1,11 @@
 (ns nextjournal.clerk.eval-test
-  (:require [babashka.fs :as fs]
-            [clojure.java.browse :as browse]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk.eval :as eval]
-            [nextjournal.clerk.hashing :as hashing]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]
-            [nextjournal.clerk.viewer :as viewer])
-  (:import (java.io File)))
+            [nextjournal.clerk.viewer :as viewer]))
 
 (deftest eval-string
   (testing "hello 42"
