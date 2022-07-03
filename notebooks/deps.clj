@@ -8,12 +8,12 @@
    [clojure.tools.analyzer.passes.jvm.emit-form :as ana.passes.ef]
    [clojure.tools.analyzer.utils :as ana-utils]
    [nextjournal.clerk :as clerk]
-   [nextjournal.clerk.hashing :as hashing]))
+   [nextjournal.clerk.analyzer :as analyzer]))
 
 (defn deps
   [form]
   (-> form
-      (hashing/analyze)
+      (analyzer/analyze)
       (select-keys [:deps :vars :var :deref-deps])))
 
 (clerk/example

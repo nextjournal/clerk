@@ -7,7 +7,7 @@
             [nextjournal.clerk.builder :as builder]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.eval :as eval]
-            [nextjournal.clerk.hashing :as hashing]
+            [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
@@ -31,7 +31,7 @@
 #_(parse-file "notebooks/elements.clj")
 #_(parse-file "notebooks/visibility.clj")
 
-#_(hashing/build-graph (parse-file "notebooks/test123.clj"))
+#_(analyzer/build-graph (parse-file "notebooks/test123.clj"))
 
 (def eval-doc eval/eval-doc)
 (def eval-file eval/eval-file)
@@ -192,7 +192,7 @@
 #_(serve! {:watch-paths ["src" "notebooks"]})
 #_(serve! {:watch-paths ["src" "notebooks"] :show-filter-fn #(clojure.string/starts-with? % "notebooks")})
 
-(def valuehash hashing/valuehash)
+(def valuehash analyzer/valuehash)
 
 (def build-static-app! builder/build-static-app!)
 
@@ -210,7 +210,7 @@
   (show! "notebooks/pagination.clj")
   (show! "notebooks/how_clerk_works.clj")
   (show! "notebooks/conditional_read.cljc")
-  (show! "src/nextjournal/clerk/hashing.clj")
+  (show! "src/nextjournal/clerk/analyzer.clj")
   (show! "src/nextjournal/clerk.clj")
 
   (show! "notebooks/test.clj")

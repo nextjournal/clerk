@@ -6,7 +6,7 @@
             [clojure.walk :as w]
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]
-                      [nextjournal.clerk.hashing :as hashing]]
+                      [nextjournal.clerk.analyzer :as analyzer]]
                 :cljs [[reagent.ratom :as ratom]])
             [nextjournal.markdown :as md]
             [nextjournal.markdown.transform :as md.transform]
@@ -326,7 +326,7 @@
 
                                     lazy-load?
                                     (assoc :nextjournal/fetch-opts {:blob-id blob-id}
-                                           :nextjournal/hash (hashing/->hash-str [blob-id presentd-result opts-from-form-meta])))}
+                                           :nextjournal/hash (analyzer/->hash-str [blob-id presentd-result opts-from-form-meta])))}
               (dissoc presentd-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
               ;; TODO: consider dropping this. Still needed by notebook-viewer fn to read :nextjournal/width option on result blocks
               opts-from-form-meta))))

@@ -6,7 +6,7 @@
             [multihash.core :as multihash]
             [multihash.digest :as digest]
             [nextjournal.clerk.config :as config]
-            [nextjournal.clerk.hashing :as hashing]
+            [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.viewer :as v]
             [taoensso.nippy :as nippy])
@@ -110,10 +110,10 @@
         no-cache? (or ns-effect?
                       no-cache?
                       config/cache-disabled?
-                      (hashing/exceeds-bounded-count-limit? var-value))]
+                      (analyzer/exceeds-bounded-count-limit? var-value))]
     (when (and (not no-cache?) (not ns-effect?) freezable? (cachable-value? var-value))
       (cache! digest-file var-value))
-    (let [blob-id (cond no-cache? (hashing/->hash-str var-value)
+    (let [blob-id (cond no-cache? (analyzer/->hash-str var-value)
                         (fn? var-value) nil
                         :else hash)
           result (if var
@@ -133,7 +133,7 @@
         {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info (if (seq vars) (first vars) form))
         no-cache?      (or ns-effect? no-cache?)
         hash           (when-not no-cache? (or (get ->hash (if var var form))
-                                               (hashing/hash-codeblock ->hash codeblock)))
+                                               (analyzer/hash-codeblock ->hash codeblock)))
         digest-file    (when hash (->cache-file (str "@" hash)))
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
         visibility     (if-let [fv (parser/->visibility form)] fv doc-visibility)
@@ -166,10 +166,10 @@
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
 (defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks visibility]}]
-  (let [deref-forms (into #{} (filter hashing/deref?) (keys ->hash))
+  (let [deref-forms (into #{} (filter analyzer/deref?) (keys ->hash))
         {:as evaluated-doc :keys [blob-ids]}
         (reduce (fn [{:as state :keys [blob->result]} {:as cell :keys [type]}]
-                  (let [state-with-deref-deps-evaluated (hashing/hash-deref-deps state cell)
+                  (let [state-with-deref-deps-evaluated (analyzer/hash-deref-deps state cell)
                         {:as result :nextjournal/keys [blob-id]} (when (= :code type)
                                                                    (read+eval-cached state-with-deref-deps-evaluated cell))]
                     (cond-> (update state-with-deref-deps-evaluated :blocks conj (cond-> cell result (assoc :result result)))
@@ -184,10 +184,10 @@
         (dissoc :blob-ids))))
 
 (defn +eval-results [results-last-run parsed-doc]
-  (let [{:as analyzed-doc :keys [ns]} (hashing/build-graph parsed-doc)]
+  (let [{:as analyzed-doc :keys [ns]} (analyzer/build-graph parsed-doc)]
     (binding [*ns* ns]
       (-> analyzed-doc
-          hashing/hash
+          analyzer/hash
           (assoc :blob->result results-last-run)
           eval-analyzed-doc))))
 

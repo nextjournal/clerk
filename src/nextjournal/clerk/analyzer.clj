@@ -1,5 +1,4 @@
-;; # Hashing Things!!!!
-(ns nextjournal.clerk.hashing
+(ns nextjournal.clerk.analyzer
   {:nextjournal.clerk/no-cache true}
   (:refer-clojure :exclude [hash])
   (:require [babashka.fs :as fs]
@@ -156,8 +155,8 @@
 #_(type (first (:deps (analyze 'io.methvin.watcher.hashing.FileHasher))))
 #_(analyze 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER)
 #_(analyze '@foo/bar)
-#_(analyze '(def nextjournal.clerk.hashing/foo
-              (fn* ([] (nextjournal.clerk.hashing/foo "s"))
+#_(analyze '(def nextjournal.clerk.analyzer/foo
+              (fn* ([] (nextjournal.clerk.analyzer/foo "s"))
                    ([s] (clojure.string/includes?
                          (rewrite-clj.parser/parse-string-all s) "hi")))))
 #_(type (first (:deps (analyze #'analyze-form))))
@@ -260,7 +259,7 @@
                 path)))
           (cp/classpath-directories))))
 
-#_(ns->file (find-ns 'nextjournal.clerk.hashing))
+#_(ns->file (find-ns 'nextjournal.clerk.analyzer))
 
 (defn ns->jar [ns]
   (let [path (ns->path ns)]
@@ -335,10 +334,10 @@
 #_(dep/immediate-dependencies (:graph (build-graph "notebooks/elements.clj"))  #'nextjournal.clerk.demo/fix-case)
 #_(dep/transitive-dependencies (:graph (build-graph "notebooks/elements.clj"))  #'nextjournal.clerk.demo/fix-case)
 
-#_(keys (:->analysis-info (build-graph "src/nextjournal/clerk/hashing.clj")))
-#_(dep/topo-sort (:graph (build-graph "src/nextjournal/clerk/hashing.clj")))
-#_(dep/immediate-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
-#_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/hashing.clj"))  #'nextjournal.clerk.hashing/long-thing)
+#_(keys (:->analysis-info (build-graph "src/nextjournal/clerk/analyzer.clj")))
+#_(dep/topo-sort (:graph (build-graph "src/nextjournal/clerk/analyzer.clj")))
+#_(dep/immediate-dependencies (:graph (build-graph "src/nextjournal/clerk/analyzer.clj"))  #'nextjournal.clerk.analyzer/long-thing)
+#_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/analyzer.clj"))  #'nextjournal.clerk.analyzer/long-thing)
 
 (defn hash-codeblock [->hash {:as codeblock :keys [hash form deps vars]}]
   (let [->hash' (if (and (not (ifn? ->hash)) (seq deps))

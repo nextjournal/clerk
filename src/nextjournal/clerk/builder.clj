@@ -4,7 +4,7 @@
             [clojure.java.browse :as browse]
             [clojure.string :as str]
             [nextjournal.clerk.eval :as eval]
-            [nextjournal.clerk.hashing :as hashing]
+            [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]))
 
@@ -126,8 +126,8 @@
         _ (report-fn {:stage :init :state state})
         {state :result duration :time-ms} (eval/time-ms (mapv (comp (partial parser/parse-file {:doc? true}) :file) state))
         _ (report-fn {:stage :parsed :state state :duration duration})
-        {state :result duration :time-ms} (eval/time-ms (mapv (comp hashing/hash
-                                                                    hashing/build-graph) state))
+        {state :result duration :time-ms} (eval/time-ms (mapv (comp analyzer/hash
+                                                                    analyzer/build-graph) state))
         _ (report-fn {:stage :analyzed :state state :duration duration})
         state (mapv (fn [doc]
                       (report-fn {:stage :building :doc doc})
