@@ -311,8 +311,7 @@
                                   (.then (fetch! @!fetch-opts opts)
                                          (fn [more]
                                            (swap! !desc viewer/merge-presentations more opts)))))
-                     shallow-paths (->> @!desc :nextjournal/expanded-at keys (remove #(> (count %) 1)) sort)
-                     deep-paths (->> @!desc :nextjournal/expanded-at keys (filter #(> (count %) 1)) sort)
+                     paths (->> @!desc :nextjournal/expanded-at keys sort)
                      !expanded-at (r/atom (:nextjournal/expanded-at @!desc))
                      !drag-state (r/atom {:visible? false})
                      on-mouse-move (fn [event]
@@ -320,23 +319,29 @@
                                      (.stopPropagation event)
                                      (let [{:keys [clientX clientY]} (j/lookup event)
                                            {:keys [x1 y1]} @!drag-state
-                                           dx (- clientX x1)
-                                           dy (- clientY y1)
-                                           expand-y-until (Math/ceil (/ (Math/abs dy) 10))
-                                           expand-x-until (Math/ceil (/ (Math/abs dx) 10))
-                                           expanded-y (reduce #(assoc %1 %2 true) {} (if (neg? dy)
-                                                                                       (drop-last expand-y-until shallow-paths)
-                                                                                       (take expand-y-until shallow-paths)))
-                                           expanded-x (reduce #(assoc %1 %2 true) {} (if (neg? dx)
-                                                                                       (drop-last expand-x-until deep-paths)
-                                                                                       (take expand-x-until deep-paths)))]
+                                           length (Math/sqrt (+ (Math/pow (- clientX x1) 2) (Math/pow (- clientY y1) 2)))
+                                           expand-until (Math/ceil (/ length 10))]
                                        (swap! !drag-state assoc :x2 clientX :y2 clientY)
-                                       (when (and (< 0 expand-x-until) (< 0 expand-y-until))
-                                         (reset! !expanded-at (merge expanded-x expanded-y)))))
+                                       (when (> expand-until 0)
+                                         (reset! !expanded-at (reduce #(assoc %1 %2 true) {} (take expand-until paths))))))
                      on-mouse-up (fn on-mouse-up* []
                                    (swap! !drag-state assoc :visible? false)
                                    (js/document.removeEventListener "mouseup" on-mouse-up*)
-                                   (js/document.removeEventListener "mousemove" on-mouse-move))]
+                                   (js/document.removeEventListener "mousemove" on-mouse-move))
+                     on-key-down (fn [event]
+                                   (if (.-altKey event)
+                                     (swap! !expanded-at assoc :prompt-multi-expand? true)
+                                     (swap! !expanded-at dissoc :prompt-multi-expand?)))
+                     on-key-up (fn [event]
+                                 (swap! !expanded-at dissoc :prompt-multi-expand?))
+                     ref-fn (fn [el]
+                              (if el
+                                (do
+                                  (js/document.addEventListener "keydown" on-key-down)
+                                  (js/document.addEventListener "keyup" on-key-up))
+                                (do
+                                  (js/document.removeEventListener "keydown" on-key-down)
+                                  (js/document.removeEventListener "up" on-key-up))))]
           (when-not (= hash @!hash)
             ;; TODO: simplify
             (reset! !hash hash)
@@ -354,9 +359,9 @@
                 (when-not visible?
                   [:div.absolute.rounded-full.z-10.border-2.border-slate-300.opacity-0.group-hover:opacity-100.group-hover:animate-ping
                    {:class "w-[16px] h-[16px] top-[5px] right-[8px]"}])
-                [:div.absolute.rounded-full.transition-all.z-10.border-2.border-slate-300
+                [:div.absolute.rounded-full.transition-all.z-10.border-2.border-slate-300.group
                  {:class (str "w-[16px] h-[16px] top-[5px] right-[8px] cursor-grab opacity-0 group-hover:opacity-100 "
-                           "hover:right-[0px] hover:w-[32px] hover:h-[32px] hover:top-[-5px] hover:bg-slate-100 hover:border-indigo-600 "
+                           "hover:right-[4px] hover:w-[24px] hover:h-[24px] hover:top-[1px] hover:bg-slate-100 hover:border-indigo-600 "
                            (when visible? "opacity-0"))
                   :on-mouse-down (fn [event]
                                    (.preventDefault event)
@@ -367,7 +372,9 @@
                                          x (+ x (/ width 2))
                                          y (+ y (/ height 2))]
                                      (swap! !drag-state
-                                       assoc :visible? true :x1 x :y1 y :x2 x :y2 y)))}]]
+                                       assoc :visible? true :x1 x :y1 y :x2 x :y2 y)))}]
+                [:div.opacity-0.group-hover:opacity-100.absolute.left-0.top-0
+                 {:class "w-[24px] h-[200px] rounded-full bg-slate-100.border-2.border-indigo-600"}]]
                (when visible?
                  [:svg.fixed.left-0.top-0.right-0.bottom-0.cursor-grabbing.text-indigo-600.pointer-events-none
                   {:xmlns "http://www.w3.org/2000/svg" :fill "currentColor"
@@ -376,12 +383,25 @@
                   [:circle {:cx x1 :cy y1 :r 8 :fill "currentColor"}]
                   [:line {:x1 x1 :y1 y1 :x2 x2 :y2 y2 :stroke "currentColor" :stroke-width "5" :stroke-linecap "round"}]])
                [:div.overflow-x-auto.overflow-y-hidden
+                {:ref ref-fn}
                 [inspect {:!expanded-at !expanded-at} @!desc]]])]])))
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
   (.stopPropagation event)
-  (swap! !expanded-at update path not))
+  (let [{:keys [hover-path prompt-multi-expand?]} @!expanded-at
+        hover-path-count (count hover-path)
+        hover-path-expanded? (get @!expanded-at path)]
+    (if (and hover-path prompt-multi-expand? (= (count path) hover-path-count))
+      (swap! !expanded-at (fn [expanded-at]
+                            (reduce
+                              (fn [acc [path expanded?]]
+                                (if (and (vector? path) (= (count path) hover-path-count))
+                                  (assoc acc path (not hover-path-expanded?))
+                                  (assoc acc path expanded?)))
+                              {}
+                              expanded-at)))
+      (swap! !expanded-at update path not))))
 
 (defn expandable? [xs]
   (< 1 (count xs)))
@@ -414,14 +434,21 @@
 
 (defn coll-viewer [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
   (html (let [expanded? (@!expanded-at path)
+              {:keys [hover-path prompt-multi-expand?]} @!expanded-at
+              multi-expand? (and hover-path prompt-multi-expand? (= (count path) (count hover-path)))
               {:keys [opening-paren closing-paren]} viewer]
           [:span.inspected-value.whitespace-nowrap
            {:class (when expanded? "inline-flex")}
            [:span
             (if (< 1 (count xs))
               [:span.group.hover:bg-indigo-100.rounded-sm.hover:shadow.cursor-pointer
-               {:on-click (partial toggle-expanded !expanded-at path)}
-               [:span.text-slate-400.group-hover:text-indigo-700 [triangle expanded?]]
+               {:class (when multi-expand? "bg-indigo-100 shadow ")
+                :on-click (partial toggle-expanded !expanded-at path)
+                :on-mouse-enter #(swap! !expanded-at assoc :hover-path path)
+                :on-mouse-leave #(swap! !expanded-at dissoc :hover-path)}
+               [:span.text-slate-400.group-hover:text-indigo-700
+                {:class (when multi-expand? "text-indigo-700 ")}
+                [triangle expanded?]]
                [:span.group-hover:text-indigo-700 opening-paren]]
               [:span opening-paren])
             (into [:<>]
@@ -471,14 +498,21 @@
 
 (defn map-viewer [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
   (html (let [expanded? (@!expanded-at path)
+              {:keys [hover-path prompt-multi-expand?]} @!expanded-at
+              multi-expand? (and hover-path prompt-multi-expand? (= (count path) (count hover-path)))
               {:keys [closing-paren]} viewer]
           [:span.inspected-value.whitespace-nowrap
            {:class (when expanded? "inline-flex")}
            [:span
             (if (expandable? xs)
               [:span.group.hover:bg-indigo-100.rounded-sm.hover:shadow.cursor-pointer
-               {:on-click (partial toggle-expanded !expanded-at path)}
-               [:span.text-slate-400.group-hover:text-indigo-700 [triangle expanded?]]
+               {:class (when multi-expand? "bg-indigo-100 shadow ")
+                :on-click (partial toggle-expanded !expanded-at path)
+                :on-mouse-enter #(swap! !expanded-at assoc :hover-path path)
+                :on-mouse-leave #(swap! !expanded-at dissoc :hover-path)}
+               [:span.text-slate-400.group-hover:text-indigo-700
+                {:class (when multi-expand? "text-indigo-700 ")}
+                [triangle expanded?]]
                [:span.group-hover:text-indigo-700 "{"]]
               [:span "{"])
             (into [:<>]
