@@ -545,6 +545,33 @@
 
 (def valuehash hashing/valuehash)
 
+(def eval-cljs-viewer
+  {:pred #(instance? nextjournal.clerk.viewer.ViewerEval %)
+   ;; NOTE: this is implementation detail that depends on how SCI is evaluating
+   ;; code in clerk and might change in the future!
+   :render-fn '(fn [code]
+                 (let [[kind result]
+                       (try [:success (binding [*ns* *ns*]
+                                         (load-string code))]
+                            (catch :default e
+                              [:error e]))]
+                   (js/console.log (str kind) (str result))
+                   (case kind
+                     :success
+                     [v/html
+                      [v/inspect-paginated result]]
+                     :error
+                     [v/html
+                      [v/inspect-paginated "error"]])))})
+
+;; not wrapped in html viewer
+;; A cross-origin error was thrown. React doesn't have access to the actual error object in development. See https://reactjs.org/link/crossorigin-error for more information.
+
+(add-viewers! [eval-cljs-viewer])
+
+(defn eval-cljs [string-or-resource-or-url]
+  (with-viewer eval-cljs-viewer string-or-resource-or-url))
+
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
 (comment

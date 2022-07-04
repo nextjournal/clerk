@@ -571,7 +571,7 @@
      (or (when (react/isValidElement value) value)
          (when-let [viewer (viewer/->viewer x)]
            (inspect opts (render-with-viewer (merge opts {:viewer viewer} (:nextjournal/opts x)) viewer value)))
-         (throw (ex-info "inspect needs to be called on presented value" {:x x}))))))
+         value #_(throw (ex-info "inspect needs to be called on presented value" {:x x}))))))
 
 (defn in-process-fetch [value opts]
   (.resolve js/Promise (viewer/present value opts)))
