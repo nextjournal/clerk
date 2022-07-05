@@ -1109,9 +1109,7 @@
                :current-path (:current-path opts [])}
               opts)
        present*
-       assign-closing-parens
-       assign-content-lengths
-       assign-expanded-at)))
+       assign-closing-parens)))
 
 (comment
   (present [\a \b])
