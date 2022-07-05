@@ -311,49 +311,19 @@
                                   (.then (fetch! @!fetch-opts opts)
                                          (fn [more]
                                            (swap! !desc viewer/merge-presentations more opts)))))
-                     paths (->> @!desc :nextjournal/expanded-at keys sort)
                      !expanded-at (r/atom (:nextjournal/expanded-at @!desc))
-                     !drag-state (r/atom {:visible? false})
-                     on-mouse-move (fn [event]
-                                     (.preventDefault event)
-                                     (.stopPropagation event)
-                                     (let [{:keys [clientX clientY]} (j/lookup event)
-                                           {:keys [x1 y1]} @!drag-state
-                                           length (Math/sqrt (+ (Math/pow (- clientX x1) 2) (Math/pow (- clientY y1) 2)))
-                                           expand-until (Math/ceil (/ length 10))]
-                                       (swap! !drag-state assoc :x2 clientX :y2 clientY)
-                                       (when (> expand-until 0)
-                                         (reset! !expanded-at (reduce #(assoc %1 %2 true) {} (take expand-until paths))))))
-                     on-mouse-up (fn on-mouse-up* []
-                                   (swap! !drag-state assoc :visible? false)
-                                   (js/document.removeEventListener "mouseup" on-mouse-up*)
-                                   (js/document.removeEventListener "mousemove" on-mouse-move))
                      on-key-down (fn [event]
                                    (if (.-altKey event)
                                      (swap! !expanded-at assoc :prompt-multi-expand? true)
                                      (swap! !expanded-at dissoc :prompt-multi-expand?)))
-                     on-key-up (fn [event]
-                                 (swap! !expanded-at dissoc :prompt-multi-expand?))
-                     on-mouse-down (fn [event]
-                                     (js/console.log (.-target event))
-                                     (when false
-                                       (.preventDefault event)
-                                       (.stopPropagation event)
-                                       (js/document.addEventListener "mouseup" on-mouse-up)
-                                       (js/document.addEventListener "mousemove" on-mouse-move)
-                                       (let [{:keys [x y width height]} (j/lookup (.. event -target getBoundingClientRect))
-                                             x (+ x (/ width 2))
-                                             y (+ y (/ height 2))]
-                                         (swap! !drag-state
-                                           assoc :visible? true :x1 x :y1 y :x2 x :y2 y))))
-                     ref-fn (fn [el]
-                              (if el
-                                (do
-                                  (js/document.addEventListener "keydown" on-key-down)
-                                  (js/document.addEventListener "keyup" on-key-up))
-                                (do
-                                  (js/document.removeEventListener "keydown" on-key-down)
-                                  (js/document.removeEventListener "up" on-key-up))))]
+                     on-key-up #(swap! !expanded-at dissoc :prompt-multi-expand?)
+                     ref-fn #(if %
+                               (do
+                                 (js/document.addEventListener "keydown" on-key-down)
+                                 (js/document.addEventListener "keyup" on-key-up))
+                               (do
+                                 (js/document.removeEventListener "keydown" on-key-down)
+                                 (js/document.removeEventListener "up" on-key-up)))]
           (when-not (= hash @!hash)
             ;; TODO: simplify
             (reset! !hash hash)
@@ -363,11 +333,10 @@
           [view-context/provide {:fetch-fn fetch-fn}
            [error-boundary
             !error
-            (let [{:keys [visible? x1 y1 x2 y2]} @!drag-state]
-              [:div.relative.inspector-container
-               [:div.overflow-x-auto.overflow-y-hidden
-                {:ref ref-fn}
-                [inspect {:!expanded-at !expanded-at} @!desc]]])]])))
+            [:div.relative
+             [:div.overflow-x-auto.overflow-y-hidden
+              {:ref ref-fn}
+              [inspect {:!expanded-at !expanded-at} @!desc]]]]])))
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
@@ -416,56 +385,18 @@
 (def triangle-spacer [:span {:class "inline-block w-[8px]"}])
 
 (defn expand-button [!expanded-at opening-paren path]
-  (r/with-let [on-mouse-move (fn on-mouse-move* [event]
-                               (when (:drag-state @!expanded-at)
-                                 (.preventDefault event)
-                                 (.stopPropagation event)
-                                 (let [{:keys [clientX clientY]} (j/lookup event)]
-                                   (when-not (zero? clientX)
-                                     (let [{:keys [drag-state]} @!expanded-at
-                                           {:keys [x1 y1]} drag-state
-                                           max-r 20
-                                           max-length 300
-                                           length (Math/sqrt (+ (Math/pow (- clientX x1) 2) (Math/pow (- clientY y1) 2)))
-                                           r (min 20 length)
-                                           c (* Math/PI (* 2 max-r))
-                                           progress (* 100 (/ (- (min max-length length) max-r) max-length))
-                                           expand-until (Math/ceil (/ r 10))
-                                           offset (* progress c)]
-                                       (swap! !expanded-at update :drag-state merge {:x2 clientX :y2 clientY :r r :offset offset})
-                                       #_(when (> expand-until 0)
-                                           (reset! !expanded-at (reduce #(assoc %1 %2 true) {} (take expand-until paths)))))))))
-               on-mouse-up (fn on-mouse-up* []
-                             (swap! !expanded-at dissoc :drag-state)
-                             (js/document.removeEventListener "mouseup" on-mouse-up*)
-                             (js/document.removeEventListener "mousemove" on-mouse-move))]
-    (let [expanded? (@!expanded-at path)
-          {:keys [drag-state hover-path prompt-multi-expand?]} @!expanded-at
-          multi-expand? (and hover-path prompt-multi-expand? (= (count path) (count hover-path)))]
-      [:span.group.hover:bg-indigo-100.rounded-sm.hover:shadow.cursor-pointer
-       {:class (when multi-expand? "bg-indigo-100 shadow ")
-        :on-click (partial toggle-expanded !expanded-at path)
-        :on-mouse-enter #(swap! !expanded-at assoc :hover-path path)
-        :on-mouse-leave #(swap! !expanded-at dissoc :hover-path)
-        :on-mouse-down (fn [event]
-                         (js/document.addEventListener "mouseup" on-mouse-up)
-                         (js/document.addEventListener "mousemove" on-mouse-move)
-                         (let [{:keys [x y width height]} (j/lookup (.. event -target getBoundingClientRect))
-                               x (+ x (/ width 2))
-                               y (+ y (/ height 2))]
-                           (swap! !expanded-at assoc :drag-state {:x1 x :y1 y})))}
-       (when (and (= path hover-path) drag-state (:r drag-state))
-         (let [{:keys [x1 y1 r offset]} drag-state]
-           [:svg.fixed.left-0.top-0.right-0.bottom-0.cursor-grabbing.text-indigo-600
-            {:xmlns "http://www.w3.org/2000/svg"
-             :style {:z-index 1000}
-             :ref #(when % (.setAttribute % "viewBox" (str "0 0 " js/innerWidth " " js/innerHeight)))}
-            [:circle.opacity-25 {:cx x1 :cy y1 :r r :fill "transparent" :stroke "currentColor" :stroke-width 5}]
-            [:circle.opacity-75 {:cx x1 :cy y1 :r r :fill "transparent" :stroke "currentColor" :stroke-width 5 :stroke-dasharray 565 :stroke-dashoffset offset}]]))
-       [:span.text-slate-400.group-hover:text-indigo-700
-        {:class (when multi-expand? "text-indigo-700 ")}
-        [triangle expanded?]]
-       [:span.group-hover:text-indigo-700 opening-paren]])))
+  (let [expanded? (@!expanded-at path)
+        {:keys [hover-path prompt-multi-expand?]} @!expanded-at
+        multi-expand? (and hover-path prompt-multi-expand? (= (count path) (count hover-path)))]
+    [:span.group.hover:bg-indigo-100.rounded-sm.hover:shadow.cursor-pointer
+     {:class (when multi-expand? "bg-indigo-100 shadow ")
+      :on-click (partial toggle-expanded !expanded-at path)
+      :on-mouse-enter #(swap! !expanded-at assoc :hover-path path)
+      :on-mouse-leave #(swap! !expanded-at dissoc :hover-path)}
+     [:span.text-slate-400.group-hover:text-indigo-700
+      {:class (when multi-expand? "text-indigo-700 ")}
+      [triangle expanded?]]
+     [:span.group-hover:text-indigo-700 opening-paren]]))
 
 (defn coll-viewer [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
   (html (let [expanded? (@!expanded-at path)
