@@ -579,7 +579,7 @@
                                                       (-> {:nextjournal/value (.toByteArray stream)
                                                            :nextjournal/content-type "image/png"
                                                            :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)}
-                                                        mark-presented)))
+                                                          mark-presented)))
                                     :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))}))
 
 (def ideref-viewer
@@ -588,10 +588,10 @@
                                        {:tag "object"
                                         :value (let [r (->value wrapped-value)]
                                                  (vector (type r)
-                                                   #?(:clj (with-viewer :number-hex (System/identityHashCode r)))
-                                                   (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
-                                                     (deref-as-map r)
-                                                     r)))}))})
+                                                         #?(:clj (with-viewer :number-hex (System/identityHashCode r)))
+                                                         (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
+                                                           (deref-as-map r)
+                                                           r)))}))})
 
 (def regex-viewer
   {:pred #?(:clj (partial instance? java.util.regex.Pattern) :cljs regexp?)
@@ -644,17 +644,17 @@
                             (let [item-count (count items)]
                               (v/html (into [:div {:class "md:flex md:flex-row md:gap-4 not-prose"
                                                    :style opts}]
-                                        (map (fn [item]
-                                               [:div.flex.items-center.justify-center.flex-auto
-                                                (v/inspect opts item)])) items))))})
+                                            (map (fn [item]
+                                                   [:div.flex.items-center.justify-center.flex-auto
+                                                    (v/inspect opts item)])) items))))})
 
 (def col-viewer
   {:name :col :render-fn '(fn [items opts]
                             (v/html (into [:div {:class "md:flex md:flex-col md:gap-4 clerk-grid not-prose"
                                                  :style opts}]
-                                      (map (fn [item]
-                                             [:div.flex.items-center.justify-center
-                                              (v/inspect opts item)])) items)))})
+                                          (map (fn [item]
+                                                 [:div.flex.items-center.justify-center
+                                                  (v/inspect opts item)])) items)))})
 
 (def table-viewer
   {:name :table
@@ -681,15 +681,15 @@
 (def code-block-viewer
   {:name :clerk/code-block :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
                                            (-> wrapped-value
-                                             (assoc :nextjournal/viewer (if (:fold? value) :code-folded :code))
-                                             (update :nextjournal/value :text)))})
+                                               (assoc :nextjournal/viewer (if (:fold? value) :code-folded :code))
+                                               (update :nextjournal/value :text)))})
 
 (def tagged-value-viewer
   {:name :tagged-value :render-fn '(fn [{:keys [tag value space?]}] (v/html (v/tagged-value {:space? space?} (str "#" tag) [v/inspect-paginated value])))
    :transform-fn (fn [wrapped-value]
                    (-> wrapped-value
-                     (update-in [:nextjournal/value :value] present)
-                     mark-presented))})
+                       (update-in [:nextjournal/value :value] present)
+                       mark-presented))})
 (def result-viewer
   {:name :clerk/result :render-fn (quote v/result-viewer) :transform-fn mark-presented})
 
@@ -716,9 +716,18 @@
 (def hide-result-viewer
   {:name :hide-result :transform-fn (fn [_] nil)})
 
+#?(:clj
+   (def eval-cljs-viewer
+     {:name :clerk/eval-cljs
+      :pred #(instance? ViewerEval %)
+      :transform-fn mark-presented
+      :render-fn '(fn [x]
+                    (v/html (v/inspect-paginated x)))}))
+
 (def default-viewers
   ;; maybe make this a sorted-map
-  [char-viewer
+  [#?(:clj eval-cljs-viewer)
+   char-viewer
    string-viewer
    number-viewer
    number-hex-viewer
