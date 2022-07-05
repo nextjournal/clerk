@@ -306,7 +306,7 @@
                                   (.then (fetch! @!fetch-opts opts)
                                          (fn [more]
                                            (swap! !desc viewer/merge-presentations more opts)))))
-                     !expanded-at (r/atom (:nextjournal/expanded-at @!desc))
+                     !expanded-at (r/atom (:nextjournal/expanded-at @!desc {}) )
                      on-key-down (fn [event]
                                    (if (.-altKey event)
                                      (swap! !expanded-at assoc :prompt-multi-expand? true)
