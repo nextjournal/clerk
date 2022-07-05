@@ -201,11 +201,14 @@
    ;; NOTE: this is implementation detail that depends on how SCI is evaluating
    ;; code in clerk and might change in the future!
    :render-fn '(fn [code]
-                 (v/html
-                  [v/inspect-paginated
-                   (doto (binding [*ns* *ns*]
-                           (load-string code))
-                     (-> str (js/console.log)))]))})
+                 (js/console.log "code" code)
+                 (let [v (v/html
+                          [v/inspect-paginated
+                           (let [v (binding [*ns* *ns*]
+                                     (load-string code))]
+                             v)]
+                          )]
+                   v))})
 
 (add-viewers! [eval-cljs-viewer])
 

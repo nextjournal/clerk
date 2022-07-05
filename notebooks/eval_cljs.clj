@@ -41,5 +41,3 @@
                        ;; refer to another function:
                        :render-fn 'fns/paragraph}])
   [1 "To begin at the beginning:"])
-
-(+ 1 2 3)

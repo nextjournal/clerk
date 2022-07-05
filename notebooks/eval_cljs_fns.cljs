@@ -2,7 +2,8 @@
   (:require [nextjournal.clerk.sci-viewer :as v]))
 
 (defn heading [x]
-  (v/html [(keyword (str "h" x)) (str "Heading" x)]))
+  (js/console.log "heading-fn")
+  (v/html [(keyword (str "h" x)) (str "Heading8 yolo " x)]))
 ;;x
 (defn paragraph [x]
   (v/html [:p x]))
