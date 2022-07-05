@@ -203,8 +203,9 @@
    :render-fn '(fn [code]
                  (v/html
                   [v/inspect-paginated
-                   (binding [*ns* *ns*]
-                     (load-string code))]))})
+                   (doto (binding [*ns* *ns*]
+                           (load-string code))
+                     (-> str (js/console.log)))]))})
 
 (add-viewers! [eval-cljs-viewer])
 
