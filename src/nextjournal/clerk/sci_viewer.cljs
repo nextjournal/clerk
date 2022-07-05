@@ -740,12 +740,31 @@
      [:div.fixed.top-0.left-0.w-full.h-full
       [inspect @!error]])])
 
+(declare mount)
+
 (defn ^:export set-state [{:as state :keys [doc error]}]
   (when (contains? state :doc)
-    (reset! !doc doc))
+    #_(prn (-> doc :nextjournal/value :blocks))
+    #_(doseq [[_ cell] (-> doc :nextjournal/value :blocks)
+            :let [_ (prn :cell cell)
+                  nm (-> cell :nextjournal/viewer :name)
+                  _ (prn :nm nm)]
+            ]
+      #_(*eval* form))
+    )
   (reset! !error error)
   (when-some [title (-> doc viewer/->value :title)]
-    (set! (.-title js/document) title)))
+    (set! (.-title js/document) title))
+  (mount))
+
+#_(defn ^:export set-state [{:as state :keys [doc error]}]
+  (doseq [cell (viewer/value doc)
+          :when (viewer/registration? cell)
+          :let [form (viewer/value cell)]]
+    (*eval* form))
+  (when (contains? state :doc)
+    (reset! !doc doc))
+  (reset! !error error))
 
 (dc/defcard eval-viewer
   "Viewers that are lists are evaluated using sci."
@@ -900,6 +919,7 @@ black")}]))}
        [inspect x]]]]))
 
 (defn ^:export ^:dev/after-load mount []
+  (js/console.log "mount!")
   (when-let [el (js/document.getElementById "clerk")]
     (rdom/render [root] el)))
 
@@ -1056,6 +1076,7 @@ black")}]))}
    'with-d3-require d3-require/with
    'clerk-eval clerk-eval
    'consume-view-context view-context/consume
+   'mount mount
 
    'throwable-viewer throwable-viewer
    'notebook-viewer notebook
@@ -1085,7 +1106,7 @@ black")}]))}
                                       sci.configs.js-interop/namespaces
                                       sci.configs.reagent/namespaces)})))
 
-(defn eval-form [f]
+(defn ^:export eval-form [f]
   (sci/eval-form @!sci-ctx f))
 
 (set! *eval* eval-form)

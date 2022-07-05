@@ -3,7 +3,7 @@
 
 (defn heading [x]
   (js/console.log "heading-fn")
-  (v/html [(keyword (str "h" x)) (str "Heading8 yolo " x)]))
+  (v/html [(keyword (str "h" x)) (str "Heading45 yolo " x)]))
 ;;x
 (defn paragraph [x]
   (v/html [:p x]))

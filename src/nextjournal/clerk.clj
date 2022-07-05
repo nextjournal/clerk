@@ -197,7 +197,21 @@
 (def build-static-app! builder/build-static-app!)
 
 (def eval-cljs-viewer
-  {:pred #(instance? nextjournal.clerk.viewer.ViewerEval %)
+  {:pred (partial instance? nextjournal.clerk.viewer.ViewerEval)
+   :transform-fn v/mark-presented
+   :render-fn '(fn [code]
+                 (js/console.log "code" code)
+                 (let [v (v/html
+                          [v/inspect-paginated
+                           (let [v (binding [*ns* *ns*]
+                                     (load-string code))]
+                             v)]
+                          )]
+                   v)) #_'(fn [x]
+                 (js/console.log "x" (pr-str x))
+                 (v/html [:h1 "hi"]))}
+
+  #_{:pred #(instance? nextjournal.clerk.viewer.ViewerEval %)
    ;; NOTE: this is implementation detail that depends on how SCI is evaluating
    ;; code in clerk and might change in the future!
    :render-fn '(fn [code]
@@ -208,7 +222,8 @@
                                      (load-string code))]
                              v)]
                           )]
-                   v))})
+                   v))
+   :name ::eval-cljs})
 
 (add-viewers! [eval-cljs-viewer])
 
