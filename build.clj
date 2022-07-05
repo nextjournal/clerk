@@ -4,7 +4,6 @@
    [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.tools.build.api :as b]
-   [deps-deploy.deps-deploy :as dd]
    [nextjournal.cas :as cas]
    [nextjournal.clerk.config :refer [lookup-url]]))
 
@@ -48,11 +47,16 @@
 
 (defn deploy [opts]
   (jar opts)
-  (println "Deploying" jar-file "to Clojars.")
-  (dd/deploy (merge {:installer :remote
-                     :artifact jar-file
-                     :pom-file (b/pom-path {:lib lib :class-dir class-dir})}
-                    opts)))
+  (try ((requiring-resolve 'deps-deploy.deps-deploy/deploy)
+        (merge {:installer :remote
+                :artifact jar-file
+                :pom-file (b/pom-path {:lib lib :class-dir class-dir})}
+               opts))
+       (catch Exception e
+         (if-not (str/includes? (ex-message e) "redeploying non-snapshots is not allowed")
+           (throw e)
+           (println "This release was already deployed."))))
+  opts)
 
 (defn asserting [val msg] (assert (seq val) msg) val)
 

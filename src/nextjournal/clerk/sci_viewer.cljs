@@ -253,34 +253,29 @@
     [:path {:fill-rule "evenodd" :d "M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" :clip-rule "evenodd"}]]
    (into [:div.ml-2.font-bold] content)])
 
-(defn error-viewer [error]
-  (html
-   [:div.bg-red-100.dark:bg-gray-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-300.not-prose
-    [:p.font-mono.text-red-600.dark:text-red-300.font-bold (.-message error)]
-    [:pre.text-red-600.dark:text-red-300.w-full.overflow-auto.mt-2
-     {:class "text-[11px] max-h-[155px]"}
-     (try
-       (->> (.-stack error)
-            str/split-lines
-            (drop 1)
-            (mapv str/trim)
-            (str/join "\n"))
-       (catch js/Error e
-         nil))]
-    (when-let [data (.-data error)]
-      [:div.mt-2 [inspect-paginated data]])]))
+(defn error-view [error]
+  [:div.bg-red-100.dark:bg-gray-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-300.not-prose
+   [:p.font-mono.text-red-600.dark:text-red-300.font-bold (.-message error)]
+   [:pre.text-red-600.dark:text-red-300.w-full.overflow-auto.mt-2
+    {:class "text-[11px] max-h-[155px]"}
+    (try
+      (->> (.-stack error)
+           str/split-lines
+           (drop 1)
+           (mapv str/trim)
+           (str/join "\n"))
+      (catch js/Error e nil))]
+   (when-some [data (.-data error)]
+     [:div.mt-2 [inspect-paginated data]])])
 
 (defn error-boundary [!error & _]
   (r/create-class
    {:constructor (fn [_ _])
-    :component-did-catch (fn [_ e _info]
-                           (reset! !error e))
-    :get-derived-state-from-error (fn [e]
-                                    (reset! !error e)
-                                    #js {})
+    :component-did-catch (fn [_ e _info] (reset! !error e))
+    :get-derived-state-from-error (fn [e] (reset! !error e) #js {})
     :reagent-render (fn [_error & children]
                       (if-let [error @!error]
-                        (viewer/->value (error-viewer error))
+                        (error-view error)
                         (into [:<>] children)))}))
 
 (defn fetch! [{:keys [blob-id]} opts]
@@ -293,18 +288,18 @@
                      (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
                      (unreadable-edn-viewer %))))))
 
-(defn read-result [{:nextjournal/keys [edn string]}]
+(defn read-result [{:nextjournal/keys [edn string]} !error]
   (if edn
     (try
       (read-string edn)
       (catch js/Error e
-        (error-viewer e)))
+        (reset! !error e)))
     (unreadable-edn-viewer string)))
 
 (defn result-viewer [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
   (html (r/with-let [!hash (atom hash)
                      !error (atom nil)
-                     !desc (r/atom (read-result result))
+                     !desc (r/atom (read-result result !error))
                      !fetch-opts (atom fetch-opts)
                      fetch-fn (when @!fetch-opts
                                 (fn [opts]
@@ -328,7 +323,7 @@
             ;; TODO: simplify
             (reset! !hash hash)
             (reset! !fetch-opts fetch-opts)
-            (reset! !desc (read-result result))
+            (reset! !desc (read-result result !error))
             (reset! !error nil))
           [view-context/provide {:fetch-fn fetch-fn}
            [error-boundary
@@ -607,19 +602,19 @@
           (html (error-badge "cannot find viewer named " (str viewer))))
 
         :else
-        (html (error-badge "unusable viewer `" (pr-str viewer) "`"))))
+        (html (error-badge "unusable viewer `" (pr-str viewer) "`, value `" (pr-str value) "`"))))
 
 (defn inspect
   ([x]
    (r/with-let [!expanded-at (r/atom (:nextjournal/expanded-at x))]
      [inspect {:!expanded-at !expanded-at} x]))
   ([opts x]
-   (let [value (viewer/->value x)]
-     #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
-     (or (when (react/isValidElement value) value)
-       (when-let [viewer (viewer/->viewer x)]
-         (inspect opts (render-with-viewer (merge opts {:viewer viewer} (:nextjournal/opts x)) viewer value)))
-       (throw (ex-info "inspect needs to be called on presented value" {:x x}))))))
+   (if (react/isValidElement x)
+     x
+     (let [value (viewer/->value x)
+           viewer (viewer/->viewer x)]
+       #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
+       (inspect opts (render-with-viewer (merge opts {:viewer viewer} (:nextjournal/opts x)) viewer value))))))
 
 (defn in-process-fetch [value opts]
   (.resolve js/Promise (viewer/present value opts)))

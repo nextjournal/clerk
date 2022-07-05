@@ -71,7 +71,9 @@
                          (-> fs/parent fs/create-dirs)) {:version version}))}
 
   jar {:doc "Build jar"
-       :task (clojure "-T:build jar")}
+       :task (do
+               (println "Building jar")
+               (clojure "-T:build jar"))}
 
   install-jar {:doc "Installs jar for local testing"
                :task (clojure "-T:build install")}
@@ -89,24 +91,30 @@
                    (shell "git add resources/viewer-js-hash resources/META-INF")
                    (shell (str "git commit -m v" (version)))
                    (run 'tag)
-                   (shell "git push --atomic"
-                          "origin" "main" (str "v" (version))))}
+                   (println "\n\nRun:\n\n" "  git push --atomic"
+                            "origin" "main" (str "v" (version))
+                            "\n\nto push the release and let CI build it!"))}
 
   -current-tag (->> (shell {:out :string} "git tag --points-at HEAD")
                     :out
                     str/trim
                     not-empty)
 
-  -current-branch (->> (shell {:out :string} "git rev-parse --abbrev-ref HEAD")
+  -current-branch (->> (shell {:out :string} "git branch --show-current")
                        :out
                        str/trim)
 
   ci:publish {:doc "Publish task which will be run on CI"
               :depends [-current-tag -current-branch]
-              :task (if (and -current-tag (= "main" -current-branch))
-                      (clojure "-T:build deploy")
-                      ;; still build jar for artifact upload
-                      (run 'jar))}
+              :task (do
+                      (prn :current-tag -current-tag)
+                      (prn :current-branch -current-branch)
+                      (if (and -current-tag (= "main" -current-branch))
+                        (do
+                          (println "Deploying to clojars")
+                          (clojure "-T:build deploy"))
+                        ;; still build jar for artifact upload
+                        (run 'jar)))}
 
   install-git-hooks {:doc "Install git hooks"
                      :task (fs/copy "dev/pre-commit" ".git/hooks" {:replace-existing true})}

@@ -6,7 +6,7 @@
             [clojure.walk :as w]
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]
-                      [nextjournal.clerk.hashing :as hashing]]
+                      [nextjournal.clerk.analyzer :as analyzer]]
                 :cljs [[reagent.ratom :as ratom]])
             [nextjournal.markdown :as md]
             [nextjournal.markdown.transform :as md.transform]
@@ -315,19 +315,19 @@
 #?(:clj
    (defn ->result [{:keys [inline-results?]} {:as result :nextjournal/keys [value blob-id viewers]}]
      (let [lazy-load? (and (not inline-results?) blob-id)
-           presentd-result (extract-blobs lazy-load? blob-id (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
+           presented-result (extract-blobs lazy-load? blob-id (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
            opts-from-form-meta (select-keys result [:nextjournal/width :nextjournal/opts])]
        (merge {:nextjournal/viewer :clerk/result
-               :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (merge presentd-result opts-from-form-meta))}
+               :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (merge presented-result opts-from-form-meta))}
                                                (catch Throwable _e
                                                  {:nextjournal/string (pr-str value)}))
-                                    (-> presentd-result ->viewer :name)
-                                    (assoc :nextjournal/viewer (select-keys (->viewer presentd-result) [:name]))
+                                    (-> presented-result ->viewer :name)
+                                    (assoc :nextjournal/viewer (select-keys (->viewer presented-result) [:name]))
 
                                     lazy-load?
                                     (assoc :nextjournal/fetch-opts {:blob-id blob-id}
-                                           :nextjournal/hash (hashing/->hash-str [blob-id presentd-result opts-from-form-meta])))}
-              (dissoc presentd-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
+                                           :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta])))}
+              (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
               ;; TODO: consider dropping this. Still needed by notebook-viewer fn to read :nextjournal/width option on result blocks
               opts-from-form-meta))))
 
@@ -664,9 +664,10 @@
                          (assoc :nextjournal/viewer :table/markup)
                          (update :nextjournal/width #(or % :wide))
                          (update :nextjournal/viewers update-table-viewers)
-                         (assoc :nextjournal/opts {:num-cols (-> rows first count)
-                                                   :number-col? (mapv number? (first rows))})
-                         (assoc :nextjournal/value (cond->> [(with-viewer :table/body (map (partial with-viewer :table/row) rows))]
+                         (assoc :nextjournal/opts {:num-cols (count (or head (first rows)))
+                                                   :number-col? (if (seq (first rows)) (mapv number? (first rows)) {})})
+                         (assoc :nextjournal/value (cond->> []
+                                                     (seq rows) (cons (with-viewer :table/body (map (partial with-viewer :table/row) rows)))
                                                      head (cons (with-viewer :table/head head)))))
                      (-> wrapped-value
                          mark-presented
@@ -1110,7 +1111,7 @@
        assign-expanded-at)))
 
 (comment
-  (present 42)
+  (present [\a \b])
   (present [42])
   (-> (present (range 100)) ->value peek)
   (present {:hello [1 2 3]})

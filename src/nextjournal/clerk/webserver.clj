@@ -72,12 +72,15 @@
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
         "_ws" {:status 200 :body "upgrading..."}
+        "js" {:status 200 :body (slurp (str "public" uri))}
         {:status  200
          :headers {"Content-Type" "text/html"}
          :body    (view/doc->html @!doc @!error)})
       (catch Throwable e
         {:status  500
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
+
+#_(nextjournal.clerk/serve! {})
 
 (defn update-doc! [doc]
   (reset! !error nil)
