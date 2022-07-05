@@ -17,6 +17,10 @@
 (clerk/with-viewer {:render-fn '(fn [_] (v/inspect :crash))}
   42)
 
+(clerk/with-viewer {:render-fn '(fn [_] (v/html (v/inspect :crash)))}
+  42)
 
 (clerk/with-viewer {:render-fn '(fn [_] (v/html [1 2 3]))}
   42)
+
+

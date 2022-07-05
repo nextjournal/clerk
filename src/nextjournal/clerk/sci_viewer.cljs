@@ -553,21 +553,19 @@
           (html (error-badge "cannot find viewer named " (str viewer))))
 
         :else
-        (html (error-badge "unusable viewer `" (pr-str viewer) "`"))))
+        (html (error-badge "unusable viewer `" (pr-str viewer) "`, value `" (pr-str value) "`"))))
 
 (defn inspect
   ([x]
    (r/with-let [!expanded-at (r/atom {})]
      [inspect {:!expanded-at !expanded-at} x]))
   ([opts x]
-   (r/with-let [!error (r/atom nil)]
-     (let [value (viewer/->value x)]
+   (if (react/isValidElement x)
+     x
+     (let [value (viewer/->value x)
+           viewer (viewer/->viewer x)]
        #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
-       (or (when (react/isValidElement value) value)
-           (when-let [viewer (viewer/->viewer x)]
-             [error-boundary !error
-              [inspect opts (render-with-viewer (merge opts {:viewer viewer} (:nextjournal/opts x)) viewer value)]])
-           (throw (ex-info "inspect needs to be called on presented value" {:x x})))))))
+       (inspect opts (render-with-viewer (merge opts {:viewer viewer} (:nextjournal/opts x)) viewer value))))))
 
 (defn in-process-fetch [value opts]
   (.resolve js/Promise (viewer/present value opts)))
