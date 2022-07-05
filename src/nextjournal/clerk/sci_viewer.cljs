@@ -560,12 +560,14 @@
    (r/with-let [!expanded-at (r/atom {})]
      [inspect {:!expanded-at !expanded-at} x]))
   ([opts x]
-   (let [value (viewer/->value x)]
-     #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
-     (or (when (react/isValidElement value) value)
-         (when-let [viewer (viewer/->viewer x)]
-           (inspect opts (render-with-viewer (merge opts {:viewer viewer} (:nextjournal/opts x)) viewer value)))
-         (throw (ex-info "inspect needs to be called on presented value" {:x x}))))))
+   (r/with-let [!error (r/atom nil)]
+     (let [value (viewer/->value x)]
+       #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
+       (or (when (react/isValidElement value) value)
+           (when-let [viewer (viewer/->viewer x)]
+             [error-boundary !error
+              [inspect opts (render-with-viewer (merge opts {:viewer viewer} (:nextjournal/opts x)) viewer value)]])
+           (throw (ex-info "inspect needs to be called on presented value" {:x x})))))))
 
 (defn in-process-fetch [value opts]
   (.resolve js/Promise (viewer/present value opts)))
