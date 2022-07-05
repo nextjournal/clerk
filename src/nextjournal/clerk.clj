@@ -4,10 +4,10 @@
             [clojure.java.browse :as browse]
             [clojure.string :as str]
             [nextjournal.beholder :as beholder]
+            [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.builder :as builder]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.eval :as eval]
-            [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
@@ -195,6 +195,21 @@
 (def valuehash analyzer/valuehash)
 
 (def build-static-app! builder/build-static-app!)
+
+(def eval-cljs-viewer
+  {:pred #(instance? nextjournal.clerk.viewer.ViewerEval %)
+   ;; NOTE: this is implementation detail that depends on how SCI is evaluating
+   ;; code in clerk and might change in the future!
+   :render-fn '(fn [code]
+                 (v/html
+                  [v/inspect-paginated
+                   (binding [*ns* *ns*]
+                     (load-string code))]))})
+
+(add-viewers! [eval-cljs-viewer])
+
+(defn eval-cljs [string-or-resource-or-url]
+  (with-viewer eval-cljs-viewer string-or-resource-or-url))
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
