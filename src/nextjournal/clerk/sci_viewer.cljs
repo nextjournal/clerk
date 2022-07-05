@@ -30,6 +30,8 @@
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]))
 
+(declare !sci-ctx)
+
 (defn color-classes [selected?]
   {:value-color (if selected? "white-90" "dark-green")
    :symbol-color (if selected? "white-90" "dark-blue")
@@ -189,22 +191,27 @@
            [navbar/panel !state [navbar/navbar !state]]])
         [:div.flex-auto.h-screen.overflow-y-auto
          {:ref ref-fn}
-         (into [:div.flex.flex-col.items-center.viewer-notebook.flex-auto]
-               (map (fn [[_inspect x :as y]]
-                      (let [{viewer-name :name} (viewer/->viewer x)
-                            inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
-                        [:div {:class ["viewer" "overflow-x-auto" "overflow-y-hidden"
-                                       (when viewer-name (str "viewer-" (name viewer-name)))
-                                       (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
-                                       (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
-                                         :wide "w-full max-w-wide"
-                                         :full "w-full"
-                                         "w-full max-w-prose px-8")]}
-                         y])))
-               xs)]]))))
+         [:div.flex.flex-col.items-center.viewer-notebook.flex-auto
+          (map-indexed (fn [idx [_inspect x :as y]]
+                         (let [{viewer-name :name} (viewer/->viewer x)
+                               inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
+                           ^{:key (+ idx (:eval-count @!sci-ctx))}
+                           [:div {:eval-count (:eval-count @!sci-ctx) :key (+ idx (:eval-count @!sci-ctx))
+                                  :class ["viewer" "overflow-x-auto" "overflow-y-hidden"
+                                          (when viewer-name (str "viewer-" (name viewer-name)))
+                                          (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
+                                          (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
+                                            :wide "w-full max-w-wide"
+                                            :full "w-full"
+                                            "w-full max-w-prose px-8")]}
+                            y]))
+                       xs)]]]))))
 
 (defn eval-viewer-fn [eval-f form]
-  (try (eval-f form)
+  (try (let [result (eval-f form)]
+         (swap! !sci-ctx update :eval-count (fnil inc 0))
+         (js/console.log "eval-count" (:eval-count @!sci-ctx))
+         result)
        (catch js/Error e
          (throw (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)))))
 
@@ -901,6 +908,7 @@ black")}]))}
 
 (defn ^:export ^:dev/after-load mount []
   (when-let [el (js/document.getElementById "clerk")]
+    (rdom/unmount-component-at-node el)
     (rdom/render [root] el)))
 
 (dc/defcard table [state]
@@ -1037,7 +1045,8 @@ black")}]))}
   (sci/new-var 'doc-url (fn [x] (str "#" x))))
 
 (def sci-viewer-namespace
-  {'html html-render
+  {
+   'html html-render
    'inspect inspect
    'inspect-paginated inspect-paginated
    'result-viewer result-viewer
@@ -1073,17 +1082,17 @@ black")}]))}
    'read-string read-string})
 
 (defonce !sci-ctx
-  (atom (sci/init {:async? true
-                   :disable-arity-checks true
-                   :classes {'js goog/global
-                             'framer-motion framer-motion
-                             :allow :all}
-                   :aliases {'j 'applied-science.js-interop
-                             'reagent 'reagent.core
-                             'v 'nextjournal.clerk.sci-viewer}
-                   :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace}
-                                      sci.configs.js-interop/namespaces
-                                      sci.configs.reagent/namespaces)})))
+  (r/atom (sci/init {:async? true
+                     :disable-arity-checks true
+                     :classes {'js goog/global
+                               'framer-motion framer-motion
+                               :allow :all}
+                     :aliases {'j 'applied-science.js-interop
+                               'reagent 'reagent.core
+                               'v 'nextjournal.clerk.sci-viewer}
+                     :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace}
+                                        sci.configs.js-interop/namespaces
+                                        sci.configs.reagent/namespaces)})))
 
 (defn eval-form [f]
   (sci/eval-form @!sci-ctx f))
