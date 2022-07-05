@@ -473,7 +473,7 @@
      (into [:span {:class (when expanded? "whitespace-pre")}]
            (map #(if (string? %)
                    (if expanded?
-                     (into [:<>] (interpose "\n " (str/split-lines %)))
+                     (into [:<>] (interpose [:<> "\n " triangle-spacer] (str/split-lines %)))
                      (into [:<>] (interpose [:span.text-slate-400 "↩︎"] (str/split-lines %))))
                    (inspect opts %)))
            (if (string? s) [s] s)))))
@@ -481,8 +481,7 @@
 (defn quoted-string-viewer [s {:as opts :keys [path !expanded-at] :or {path []}}]
   (html [:span.cmt-string.inspected-value.whitespace-nowrap
          (if (some #(and (string? %) (str/includes? % "\n")) (if (string? s) [s] s))
-           [:span.cursor-pointer {:class expand-style
-                                  :on-click (partial toggle-expanded !expanded-at path)} "\""]
+           [expand-button !expanded-at "\"" path]
            [:span "\""])
          (viewer/->value (string-viewer s opts)) "\""]))
 
