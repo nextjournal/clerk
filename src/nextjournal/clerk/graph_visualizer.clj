@@ -16,5 +16,5 @@
                                    (vars->verticies dep))
                           (arrowic/insert-edge! (vars->verticies var) (vars->verticies dep)))))))))
 
-#_(-> "notebooks/elements.clj" nextjournal.clerk.hashing/build-graph show-graph)
-#_(-> "src/nextjournal/clerk/hashing.clj" nextjournal.clerk.hashing/build-graph show-graph)
+#_(-> "notebooks/elements.clj" nextjournal.clerk.analyzer/build-graph show-graph)
+#_(-> "src/nextjournal/clerk/analyzer.clj" nextjournal.clerk.analyzer/build-graph show-graph)

@@ -508,7 +508,7 @@
              trace)]]]]))
 
 (defn tagged-value
-  ([tag value] ({:space? true} tagged-value tag value))
+  ([tag value] (tagged-value {:space? true} tag value))
   ([{:keys [space?]} tag value]
    [:span.inspected-value.whitespace-nowrap
     [:span.cmt-meta tag] (when space? nbsp) value]))

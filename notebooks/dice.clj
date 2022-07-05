@@ -10,8 +10,7 @@
 (defonce dice (atom nil))
 
 ;; Here, we define a viewer using hiccup that will the dice as well as a button. Note that this button has an `:on-click` event handler that uses `v/clerk-eval` to tell Clerk to evaluate the argument, in this cases `(roll!)` when clicked.
-^{::clerk/no-cache true
-  ::clerk/viewer '(fn [side]
+^{::clerk/viewer '(fn [side]
                     (v/html [:div.text-center
                              (when side
                                [:div.mt-2 {:style {:font-size "6em"}} side])

@@ -5,6 +5,38 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
+## 0.8.470 (2022-06-20)
+* 🐞 Markdown library now uses a GraalJS version compatible with Java 8. Fixes #178
+* 🐞 Bundle asset map during Maven release to allow clerk to function behind a proxy. Fixes #147
+* 🛠 Preserve asset name in content-addressed asset URL (#181)
+
+## 0.8.463 (2022-06-16)
+* 💫 Support `:nextjournal.clerk/no-cache` meta on form also for vars.
+
+    Previously it would have to go on a different place for vars than
+    for unnamed top-level expressions.
+
+    Setting it on the var will be deprecated and so consistently
+    setting it on the form is recommend from now on.
+
+* 💫 Support rich values (with viewers) in table headers
+* 🐜 Preserve `*ns*` during analysis and eval (#173)
+* 🐜 Upgrade markdown library with
+    * support for loose lists
+    * fix for rendering of inline images
+    * updated dependencies for `clojure.data.json` and `org.graalvm.js/js`
+* 🐞 Reduce margin between prose and results
+* 🐜 Fix regression in parsing markdown blocks following code cells in
+  wrong order
+* 🛠 Switch to kaocha for better test report output
+
+
+## 0.8.451 (2022-06-09)
+* ⭐ Move default viewers to vars to make inspecting & building on them easier (#167)
+* 💫 Introduce flexible grid layout viewers `row` and `col` (#162)
+* 🐜 Introduce checks for forms which cannot be cached to disk (#166)
+* 🐞 Display inline comments in code cell rather than in prose, fixes #71.
+
 ## 0.8.445 (2022-06-01)
 * 💫 First cut of Clerk Examples
 
