@@ -68,7 +68,7 @@
 
 (defn js-object-viewer [x {:as opts :keys [!expanded-at path]}]
   (let [x' (obj->clj x)
-        expanded? (@!expanded-at path)]
+        expanded? (get @!expanded-at path)]
     (html [:span.inspected-value.whitespace-nowrap "#js {"
            (into [:<>]
                  (comp (map-indexed (fn [idx k]
@@ -380,7 +380,7 @@
 (def triangle-spacer [:span {:class "inline-block w-[8px]"}])
 
 (defn expand-button [!expanded-at opening-paren path]
-  (let [expanded? (@!expanded-at path)
+  (let [expanded? (get @!expanded-at path)
         {:keys [hover-path prompt-multi-expand?]} @!expanded-at
         multi-expand? (and hover-path prompt-multi-expand? (= (count path) (count hover-path)))]
     [:span.group.hover:bg-indigo-100.rounded-sm.hover:shadow.cursor-pointer
@@ -394,7 +394,7 @@
      [:span.group-hover:text-indigo-700 opening-paren]]))
 
 (defn coll-viewer [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
-  (html (let [expanded? (@!expanded-at path)
+  (html (let [expanded? (get @!expanded-at path)
               {:keys [opening-paren closing-paren]} viewer]
           [:span.inspected-value.whitespace-nowrap
            {:class (when expanded? "inline-flex")}
@@ -448,7 +448,7 @@
                           (fetch-fn fetch-opts))} (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")])]))
 
 (defn map-viewer [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
-  (html (let [expanded? (@!expanded-at path)
+  (html (let [expanded? (get @!expanded-at path)
               {:keys [closing-paren]} viewer]
           [:span.inspected-value.whitespace-nowrap
            {:class (when expanded? "inline-flex")}
@@ -464,7 +464,7 @@
 
 (defn string-viewer [s {:as opts :keys [path !expanded-at] :or {path []}}]
   (html
-   (let [expanded? (@!expanded-at path)]
+   (let [expanded? (get @!expanded-at path)]
      (into [:span {:class (when expanded? "whitespace-pre")}]
            (map #(if (string? %)
                    (if expanded?
