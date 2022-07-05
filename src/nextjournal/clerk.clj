@@ -196,6 +196,18 @@
 
 (def build-static-app! builder/build-static-app!)
 
+(add-viewers! [{:pred (partial instance? nextjournal.clerk.viewer.ViewerEval)
+                      :transform-fn v/mark-presented
+                      :render-fn '(fn [x]
+                                    (v/html (v/inspect-paginated x)))}])
+
+(defn eval-cljs [code]
+  ;; NOTE: this relies on implementation details on how SCI code is evaluated
+  ;; and will change in a future version of Clerk
+  (v/->ViewerEval
+   (list 'binding '[*ns* *ns*]
+         (list 'load-string code))))
+
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
 (comment
