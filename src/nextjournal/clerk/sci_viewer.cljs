@@ -31,8 +31,6 @@
             [sci.core :as sci]
             [nextjournal.clerk.viewer :as v]))
 
-(defonce !eval-counter (r/atom 0))
-
 (defn color-classes [selected?]
   {:value-color (if selected? "white-90" "dark-green")
    :symbol-color (if selected? "white-90" "dark-blue")
@@ -159,8 +157,6 @@
     (when dark-mode?
       (set-dark-mode! dark-mode?))))
 
-(defonce !eval-count (r/atom 0))
-
 (defn notebook [{:as _doc xs :blocks :keys [toc]}]
   (r/with-let [local-storage-key "clerk-navbar"
                !state (r/atom {:toc (toc-items (:children toc))
@@ -199,7 +195,7 @@
            (map-indexed (fn [idx x]
                           (let [{viewer-name :name} (viewer/->viewer x)
                                 inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
-                            ^{:key (str idx "-" @!eval-counter)}
+                            ^{:key (str idx "-" @v/!eval-counter)}
                             [:div {:class ["viewer"
                                            (when viewer-name (str "viewer-" (name viewer-name)))
                                            (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
@@ -799,7 +795,7 @@
 (defn ^:export set-state [{:as state :keys [doc error]}]
   (when (contains? state :doc)
     (reset! !doc doc)
-    (reset! !eval-counter (:eval-count doc)))
+    (reset! v/!eval-counter (:eval-count doc)))
   (reset! !error error)
   (when-some [title (-> doc viewer/->value :title)]
     (set! (.-title js/document) title)))
