@@ -42,7 +42,7 @@
          "viewers/table"
          "viewers/tex"
          "viewers/vega"
-         "eval-cljs"]))
+         "eval_cljs"]))
 
 
 (defn strip-index [path]
