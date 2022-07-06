@@ -82,17 +82,17 @@
 
 (defn toc-items [items]
   (reduce
-    (fn [acc {:as item :keys [content children]}]
-      (if content
-        (let [title (md.transform/->text item)]
-          (->> {:title title
-                :path (str "#" (uri.normalize/normalize-fragment title))
-                :items (toc-items children)}
-               (conj acc)
-               vec))
-        (toc-items (:children item))))
-    []
-    items))
+   (fn [acc {:as item :keys [content children]}]
+     (if content
+       (let [title (md.transform/->text item)]
+         (->> {:title title
+               :path (str "#" (uri.normalize/normalize-fragment title))
+               :items (toc-items children)}
+              (conj acc)
+              vec))
+       (toc-items (:children item))))
+   []
+   items))
 
 (defn dark-mode-toggle [!state]
   (let [{:keys [dark-mode?]} @!state
@@ -158,6 +158,8 @@
     (when dark-mode?
       (set-dark-mode! dark-mode?))))
 
+(defonce !eval-count (r/atom 0))
+
 (defn notebook [{:as _doc xs :blocks :keys [toc]}]
   (r/with-let [local-storage-key "clerk-navbar"
                !state (r/atom {:toc (toc-items (:children toc))
@@ -192,25 +194,23 @@
         [:div.flex-auto.h-screen.overflow-y-auto
          {:ref ref-fn}
          [:div.flex.flex-col.items-center.viewer-notebook.flex-auto
-          (map-indexed (fn [idx [_inspect x :as y]]
-                         (let [{viewer-name :name} (viewer/->viewer x)
-                               inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
-                           ^{:key (+ idx (:eval-count @!sci-ctx))}
-                           [:div {:eval-count (:eval-count @!sci-ctx) :key (+ idx (:eval-count @!sci-ctx))
-                                  :class ["viewer" "overflow-x-auto" "overflow-y-hidden"
-                                          (when viewer-name (str "viewer-" (name viewer-name)))
-                                          (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
-                                          (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
-                                            :wide "w-full max-w-wide"
-                                            :full "w-full"
-                                            "w-full max-w-prose px-8")]}
-                            y]))
-                       xs)]]]))))
+          (doall
+           (map-indexed (fn [idx [_inspect x :as y]]
+                          (let [{viewer-name :name} (viewer/->viewer x)
+                                inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
+                            ^{:key (+ idx @!eval-count)}
+                            [:div {:class ["viewer" "overflow-x-auto" "overflow-y-hidden"
+                                           (when viewer-name (str "viewer-" (name viewer-name)))
+                                           (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
+                                           (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
+                                             :wide "w-full max-w-wide"
+                                             :full "w-full"
+                                             "w-full max-w-prose px-8")]}
+                             y]))
+                        xs))]]]))))
 
 (defn eval-viewer-fn [eval-f form]
   (try (let [result (eval-f form)]
-         (swap! !sci-ctx update :eval-count (fnil inc 0))
-         (js/console.log "eval-count" (:eval-count @!sci-ctx))
          result)
        (catch js/Error e
          (throw (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)))))
@@ -749,7 +749,8 @@
 
 (defn ^:export set-state [{:as state :keys [doc error]}]
   (when (contains? state :doc)
-    (reset! !doc doc))
+    (reset! !doc doc)
+    (swap! !eval-count (fnil inc 0)))
   (reset! !error error)
   (when-some [title (-> doc viewer/->value :title)]
     (set! (.-title js/document) title)))
@@ -946,8 +947,8 @@ black")}]))}
   {::dc/state #{1 2 3 4}})
 
 (dc/when-enabled
-  (defn rand-int-seq [n to]
-    (take n (repeatedly #(rand-int to)))))
+ (defn rand-int-seq [n to]
+   (take n (repeatedly #(rand-int to)))))
 
 (declare lazy-inspect-in-process)
 

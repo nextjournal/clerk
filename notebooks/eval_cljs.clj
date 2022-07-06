@@ -3,15 +3,27 @@
   (:require [clojure.java.io :as io]
             [nextjournal.clerk :as clerk]))
 
-#_(comment
-    (clerk/clear-cache!)
-  )
+;; Let's load some .cljs code from a file!
+;; Because we want to re-render this notebook when the .cljs code changes, we use `::clerk/no-cache`:
 
-^{::clerk/no-cache true}
-(clerk/eval-cljs (slurp (clojure.java.io/resource "eval_cljs_fns.cljs")))
+^{::clerk/no-cache true ::clerk/viewer '(fn [_] (v/html [:span]))}
+(def cljs-code (slurp (clojure.java.io/resource "eval_cljs_fns.cljs")))
 
-^{::clerk/no-cache true}
+;; The cljs code looks like this:
+
+(clerk/with-viewer
+  {:render-fn '(fn [code]
+                 (v/html [:pre code]))}
+  cljs-code)
+
+;; In a future version of clerk, we might be able to dynamically load a CLJs highlighter from a CDN. Stay tuned! Anyway, that's not the point here.
+;; Let's evaluate the CLJS code on the client:
+(clerk/eval-cljs cljs-code)
+
+;; And now let's use those functions!
+
 (clerk/with-viewer {:render-fn 'eval-cljs-fns/heading}
-  "My Super Duper")
+  "My awesome heading")
 
-
+(clerk/with-viewer {:render-fn 'eval-cljs-fns/paragraph}
+  "My awesome paragraph :)")
