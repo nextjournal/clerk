@@ -11,17 +11,6 @@
 
 (map inc @!state)
 
-;; In addition, folks can now specify a `::clerk/hash-fn` that makes the hashing user-extensible. Here, we use it to know when a file has changed.
-
-^{::clerk/hash-fn (fn [_] (clerk/valuehash (slurp "notebooks/hello.md")))
-  ::clerk/viewer clerk/md}
-(def contents
-  (slurp "notebooks/hello.md"))
-
-(clojure.string/split-lines contents)
-
-#_(spit "notebooks/hello.md" "## Hello, Clerk! 👋\n")
-
 #_(do (swap! !state (fn [x] (map inc x)))
       (clerk/recompute!))
 
@@ -32,3 +21,4 @@
 ;; * [x] Uncomment & fix `no-cache?` tests
 ;; * [x] Restore & fix _"defcached should be treated like a normal def"_
 ;; * [x] Fix deps graph for vars
+;; * [ ] Make `::clerk/no-cache` expression get value semantics for result (so downstream expressions only re-evaluate when the result changed)
