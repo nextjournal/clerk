@@ -909,7 +909,6 @@ black")}]))}
 
 (defn ^:export ^:dev/after-load mount []
   (when-let [el (js/document.getElementById "clerk")]
-    (rdom/unmount-component-at-node el)
     (rdom/render [root] el)))
 
 (dc/defcard table [state]
