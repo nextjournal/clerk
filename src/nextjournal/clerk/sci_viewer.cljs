@@ -296,7 +296,7 @@
         (reset! !error e)))
     (unreadable-edn-viewer string)))
 
-(defn result-viewer [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
+(defn result-viewer [{:as result :nextjournal/keys [fetch-opts hash expanded-at]} _opts]
   (html (r/with-let [!hash (atom hash)
                      !error (atom nil)
                      !desc (r/atom (read-result result !error))
@@ -306,7 +306,7 @@
                                   (.then (fetch! @!fetch-opts opts)
                                          (fn [more]
                                            (swap! !desc viewer/merge-presentations more opts)))))
-                     !expanded-at (r/atom (get @!desc :nextjournal/expanded-at {}))
+                     !expanded-at (r/atom (or expanded-at {}))
                      on-key-down (fn [event]
                                    (if (.-altKey event)
                                      (swap! !expanded-at assoc :prompt-multi-expand? true)
@@ -319,6 +319,9 @@
                                (do
                                  (js/document.removeEventListener "keydown" on-key-down)
                                  (js/document.removeEventListener "up" on-key-up)))]
+          ;; server side settings changed
+          (when-not (= (:computed-at expanded-at) (:computed-at @!expanded-at))
+            (reset! !expanded-at (or expanded-at {})))
           (when-not (= hash @!hash)
             ;; TODO: simplify
             (reset! !hash hash)

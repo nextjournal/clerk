@@ -312,11 +312,14 @@
 
 #_(get-viewers nil nil)
 
+(declare compute-expanded-at assign-content-lengths)
+
 #?(:clj
-   (defn ->result [{:keys [inline-results?]} {:as result :nextjournal/keys [value blob-id viewers]}]
+   (defn ->result [{:as doc :keys [inline-results?]} {:as result :nextjournal/keys [value blob-id viewers]}]
      (let [lazy-load? (and (not inline-results?) blob-id)
-           presented-result (extract-blobs lazy-load? blob-id (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
-           opts-from-form-meta (select-keys result [:nextjournal/width :nextjournal/opts])]
+           opts-from-form-meta (select-keys result [:nextjournal/width :nextjournal/opts])
+           auto-expand-results? (-> doc (merge (:nextjournal/opts opts-from-form-meta)) :auto-expand-results?)
+           presented-result (extract-blobs lazy-load? blob-id (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))]
        (merge {:nextjournal/viewer :clerk/result
                :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (merge presented-result opts-from-form-meta))}
                                                (catch Throwable _e
@@ -326,7 +329,15 @@
 
                                     lazy-load?
                                     (assoc :nextjournal/fetch-opts {:blob-id blob-id}
-                                           :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta])))}
+                                           :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta]))
+                                    auto-expand-results?
+                                    (assoc :nextjournal/expanded-at
+                                           ;; TODO: new fn ?
+                                           (assoc (->> presented-result
+                                                       assign-content-lengths
+                                                       (compute-expanded-at {:indents [] :expanded-at {}})
+                                                       :expanded-at)
+                                                  :computed-at (str (java.time.Instant/now)))))}
               (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
               ;; TODO: consider dropping this. Still needed by notebook-viewer fn to read :nextjournal/width option on result blocks
               opts-from-form-meta))))

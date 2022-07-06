@@ -1,11 +1,15 @@
 ;; # Test Cases for Auto-Expanding Data Structure Viewer
-^{:nextjournal.clerk/visibility :hide-ns}
+^{:nextjournal.clerk/visibility :hide-ns
+  :nextjournal.clerk/auto-expand-results? true}
 (ns notebooks.auto_expand
   (:require [babashka.fs :as fs]
             [clojure.string :as str]
             [nextjournal.clerk :as clerk]))
 
 {:a [(range)]}
+
+^{::clerk/opts {:auto-expand-results? false}}
+(map range (range 30))
 
 (map range (range 30))
 

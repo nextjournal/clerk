@@ -46,7 +46,8 @@
 
 (defn ->doc-settings [first-form]
   {:visibility (->doc-visibility first-form)
-   :toc (or (#{true :collapsed} (-> first-form meta :nextjournal.clerk/toc)) false)})
+   :toc (or (#{true :collapsed} (-> first-form meta :nextjournal.clerk/toc)) false)
+   :auto-expand-results? (-> first-form meta (:nextjournal.clerk/auto-expand-results? false))})
 
 #_(->doc-settings '(ns foo))
 #_(->doc-settings '^{:nextjournal.clerk/toc true} (ns foo))
@@ -116,7 +117,7 @@
                 (-> state
                     (assoc :add-comment-on-line? false)
                     (update :nodes rest))))
-       (merge (select-keys state [:blocks :visibility])
+       (merge (select-keys state [:blocks :visibility :auto-expand-results?])
               (when doc?
                 (-> {:content (into []
                                     (comp (filter (comp #{:markdown} :type))
@@ -153,7 +154,7 @@
 
         (-> state
             (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
-            (select-keys [:blocks :visibility])
+            (select-keys [:blocks :visibility :auto-expand-results?])
             (merge (when doc? (cond-> {:title title} (:toc state) (assoc :toc toc)))))))))
 
 (defn parse-file
