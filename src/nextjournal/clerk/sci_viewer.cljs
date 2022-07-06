@@ -213,6 +213,8 @@
 
 (defn eval-viewer-fn [eval-f form]
   (try (let [result (eval-f form)]
+         (when (= *eval* eval-f)
+           (swap! !eval-count (fnil inc 0)))
          result)
        (catch js/Error e
          (throw (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)))))
@@ -799,9 +801,7 @@
 
 (defn ^:export set-state [{:as state :keys [doc error]}]
   (when (contains? state :doc)
-    (reset! !doc doc)
-    ;; TODO: only update this when we actually evaluate something
-    (swap! !eval-count (fnil inc 0)))
+    (reset! !doc doc))
   (reset! !error error)
   (when-some [title (-> doc viewer/->value :title)]
     (set! (.-title js/document) title)))
