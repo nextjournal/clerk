@@ -207,8 +207,7 @@
                         xs))]]]))))
 
 (defn eval-viewer-fn [eval-f form]
-  (try (let [result (eval-f form)]
-         result)
+  (try (eval-f form)
        (catch js/Error e
          (throw (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)))))
 
