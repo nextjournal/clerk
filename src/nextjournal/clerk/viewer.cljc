@@ -716,17 +716,16 @@
 (def hide-result-viewer
   {:name :hide-result :transform-fn (fn [_] nil)})
 
-#?(:clj
-   (def eval-cljs-viewer
-     {:name :clerk/eval-cljs
-      :pred #(instance? ViewerEval %)
-      :transform-fn mark-presented
-      :render-fn '(fn [x]
-                    (v/html (v/inspect-paginated x)))}))
+
+(def eval-cljs-viewer
+  {:pred #(instance? ViewerEval %)
+   :transform-fn mark-presented
+   :render-fn '(fn [x]
+                 (v/html (v/inspect-paginated x)))})
 
 (def default-viewers
   ;; maybe make this a sorted-map
-  [#?(:clj eval-cljs-viewer)
+  [eval-cljs-viewer
    char-viewer
    string-viewer
    number-viewer
