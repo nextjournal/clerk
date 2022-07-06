@@ -28,7 +28,8 @@
             [reagent.ratom :as ratom]
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
-            [sci.core :as sci]))
+            [sci.core :as sci]
+            [nextjournal.clerk.viewer :as v]))
 
 (defn color-classes [selected?]
   {:value-color (if selected? "white-90" "dark-green")
@@ -67,7 +68,7 @@
 
 (defn js-object-viewer [x {:as opts :keys [!expanded-at path]}]
   (let [x' (obj->clj x)
-        expanded? (@!expanded-at path)]
+        expanded? (get @!expanded-at path)]
     (html [:span.inspected-value.whitespace-nowrap "#js {"
            (into [:<>]
                  (comp (map-indexed (fn [idx k]
@@ -193,7 +194,7 @@
                (map (fn [[_inspect x :as y]]
                       (let [{viewer-name :name} (viewer/->viewer x)
                             inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
-                        [:div {:class ["viewer" "overflow-x-auto" "overflow-y-hidden"
+                        [:div {:class ["viewer"
                                        (when viewer-name (str "viewer-" (name viewer-name)))
                                        (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
                                        (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
@@ -304,7 +305,20 @@
                                 (fn [opts]
                                   (.then (fetch! @!fetch-opts opts)
                                          (fn [more]
-                                           (swap! !desc viewer/merge-presentations more opts)))))]
+                                           (swap! !desc viewer/merge-presentations more opts)))))
+                     !expanded-at (r/atom (get @!desc :nextjournal/expanded-at {}))
+                     on-key-down (fn [event]
+                                   (if (.-altKey event)
+                                     (swap! !expanded-at assoc :prompt-multi-expand? true)
+                                     (swap! !expanded-at dissoc :prompt-multi-expand?)))
+                     on-key-up #(swap! !expanded-at dissoc :prompt-multi-expand?)
+                     ref-fn #(if %
+                               (do
+                                 (js/document.addEventListener "keydown" on-key-down)
+                                 (js/document.addEventListener "keyup" on-key-up))
+                               (do
+                                 (js/document.removeEventListener "keydown" on-key-down)
+                                 (js/document.removeEventListener "up" on-key-up)))]
           (when-not (= hash @!hash)
             ;; TODO: simplify
             (reset! !hash hash)
@@ -312,12 +326,29 @@
             (reset! !desc (read-result result !error))
             (reset! !error nil))
           [view-context/provide {:fetch-fn fetch-fn}
-           [error-boundary !error [inspect @!desc]]])))
+           [error-boundary
+            !error
+            [:div.relative
+             [:div.overflow-x-auto.overflow-y-hidden
+              {:ref ref-fn}
+              [inspect {:!expanded-at !expanded-at} @!desc]]]]])))
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
   (.stopPropagation event)
-  (swap! !expanded-at update path not))
+  (let [{:keys [hover-path prompt-multi-expand?]} @!expanded-at
+        hover-path-count (count hover-path)
+        hover-path-expanded? (get @!expanded-at path)]
+    (if (and hover-path prompt-multi-expand? (= (count path) hover-path-count))
+      (swap! !expanded-at (fn [expanded-at]
+                            (reduce
+                              (fn [acc [path expanded?]]
+                                (if (and (vector? path) (= (count path) hover-path-count))
+                                  (assoc acc path (not hover-path-expanded?))
+                                  (assoc acc path expanded?)))
+                              {}
+                              expanded-at)))
+      (swap! !expanded-at update path not))))
 
 (defn expandable? [xs]
   (< 1 (count xs)))
@@ -326,7 +357,7 @@
 (defn inspect-children [opts]
   ;; TODO: move update function onto viewer
   (map-indexed (fn [idx x]
-                 (inspect (update opts :path conj idx) x))))
+                 (inspect (update opts :path (fnil conj []) idx) x))))
 
 (def expand-style
   ["cursor-pointer"
@@ -340,22 +371,43 @@
    "dark:border-slate-600"
    "dark:hover:border-slate-500"])
 
-(defn coll-viewer [xs {:as opts :keys [path viewer !expanded-at]}]
-  (html (let [expanded? (@!expanded-at path)
+(defn triangle [expanded?]
+  [:svg {:viewBox "0 0 100 100"
+         :class (str "w-[7px] h-[7px] fill-current inline-block transition-all mr-[1px] -mt-[2px] "
+                     (if expanded? "rotate-180" "rotate-90"))}
+   [:polygon {:points "5.9,88.2 50,11.8 94.1,88.2 "}]])
+
+(def triangle-spacer [:span {:class "inline-block w-[8px]"}])
+
+(defn expand-button [!expanded-at opening-paren path]
+  (let [expanded? (get @!expanded-at path)
+        {:keys [hover-path prompt-multi-expand?]} @!expanded-at
+        multi-expand? (and hover-path prompt-multi-expand? (= (count path) (count hover-path)))]
+    [:span.group.hover:bg-indigo-100.rounded-sm.hover:shadow.cursor-pointer
+     {:class (when multi-expand? "bg-indigo-100 shadow ")
+      :on-click (partial toggle-expanded !expanded-at path)
+      :on-mouse-enter #(swap! !expanded-at assoc :hover-path path)
+      :on-mouse-leave #(swap! !expanded-at dissoc :hover-path)}
+     [:span.text-slate-400.group-hover:text-indigo-700
+      {:class (when multi-expand? "text-indigo-700 ")}
+      [triangle expanded?]]
+     [:span.group-hover:text-indigo-700 opening-paren]]))
+
+(defn coll-viewer [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
+  (html (let [expanded? (get @!expanded-at path)
               {:keys [opening-paren closing-paren]} viewer]
           [:span.inspected-value.whitespace-nowrap
            {:class (when expanded? "inline-flex")}
            [:span
-            [:span.bg-opacity-70.whitespace-nowrap
-             (when (< 1 (count xs))
-               {:on-click (partial toggle-expanded !expanded-at path)
-                :class expand-style})
-             opening-paren]
+            (if (< 1 (count xs))
+              [expand-button !expanded-at opening-paren path]
+              [:span opening-paren])
             (into [:<>]
                   (comp (inspect-children opts)
-                        (interpose (if expanded? [:<> [:br] nbsp (when (= 2 (count opening-paren)) nbsp)] " ")))
+                        (interpose (if expanded? [:<> [:br] triangle-spacer nbsp (when (= 2 (count opening-paren)) nbsp)] " ")))
                   xs)
-            (cond->> closing-paren (list? closing-paren) (into [:<>]))]])))
+            [:span
+             (cond->> closing-paren (list? closing-paren) (into [:<>]))]]])))
 
 (dc/defcard coll-viewer
   (into [:div]
@@ -396,29 +448,27 @@
                           (fetch-fn fetch-opts))} (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")])]))
 
 (defn map-viewer [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
-  (html (let [expanded? (@!expanded-at path)
+  (html (let [expanded? (get @!expanded-at path)
               {:keys [closing-paren]} viewer]
           [:span.inspected-value.whitespace-nowrap
            {:class (when expanded? "inline-flex")}
            [:span
-            [:span.bg-opacity-70.whitespace-nowrap
-             (when (expandable? xs)
-               {:on-click (partial toggle-expanded !expanded-at path)
-                :class expand-style})
-             "{"]
+            (if (expandable? xs)
+              [expand-button !expanded-at "{" path]
+              [:span "{"])
             (into [:<>]
                   (comp (inspect-children opts)
-                        (interpose (if expanded? [:<> [:br] nbsp #_(repeat (inc (count path)) nbsp)] " ")))
+                        (interpose (if expanded? [:<> [:br] triangle-spacer nbsp #_(repeat (inc (count path)) nbsp)] " ")))
                   xs)
             (cond->> closing-paren (list? closing-paren) (into [:<>]))]])))
 
 (defn string-viewer [s {:as opts :keys [path !expanded-at] :or {path []}}]
   (html
-   (let [expanded? (@!expanded-at path)]
+   (let [expanded? (get @!expanded-at path)]
      (into [:span {:class (when expanded? "whitespace-pre")}]
            (map #(if (string? %)
                    (if expanded?
-                     (into [:<>] (interpose "\n " (str/split-lines %)))
+                     (into [:<>] (interpose [:<> "\n " triangle-spacer] (str/split-lines %)))
                      (into [:<>] (interpose [:span.text-slate-400 "↩︎"] (str/split-lines %))))
                    (inspect opts %)))
            (if (string? s) [s] s)))))
@@ -426,8 +476,7 @@
 (defn quoted-string-viewer [s {:as opts :keys [path !expanded-at] :or {path []}}]
   (html [:span.cmt-string.inspected-value.whitespace-nowrap
          (if (some #(and (string? %) (str/includes? % "\n")) (if (string? s) [s] s))
-           [:span.cursor-pointer {:class expand-style
-                                  :on-click (partial toggle-expanded !expanded-at path)} "\""]
+           [expand-button !expanded-at "\"" path]
            [:span "\""])
          (viewer/->value (string-viewer s opts)) "\""]))
 
@@ -557,7 +606,7 @@
 
 (defn inspect
   ([x]
-   (r/with-let [!expanded-at (r/atom {})]
+   (r/with-let [!expanded-at (r/atom (:nextjournal/expanded-at x))]
      [inspect {:!expanded-at !expanded-at} x]))
   ([opts x]
    (if (react/isValidElement x)
