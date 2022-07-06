@@ -31,7 +31,7 @@
             [sci.core :as sci]
             [nextjournal.clerk.viewer :as v]))
 
-(declare !sci-ctx)
+(defonce !eval-counter (r/atom 0))
 
 (defn color-classes [selected?]
   {:value-color (if selected? "white-90" "dark-green")
@@ -161,7 +161,6 @@
 
 (defonce !eval-count (r/atom 0))
 
-
 (defn notebook [{:as _doc xs :blocks :keys [toc]}]
   (r/with-let [local-storage-key "clerk-navbar"
                !state (r/atom {:toc (toc-items (:children toc))
@@ -200,7 +199,7 @@
            (map-indexed (fn [idx x]
                           (let [{viewer-name :name} (viewer/->viewer x)
                                 inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
-                            ^{:key (str idx "-" @!eval-count)}
+                            ^{:key (str idx "-" @!eval-counter)}
                             [:div {:class ["viewer"
                                            (when viewer-name (str "viewer-" (name viewer-name)))
                                            (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
@@ -208,15 +207,11 @@
                                              :wide "w-full max-w-wide"
                                              :full "w-full"
                                              "w-full max-w-prose px-8")]}
-                             (do
-                               (prn :render)
-                               [inspect x])]))
+                             [inspect x]]))
                         xs))]]]))))
 
 (defn eval-viewer-fn [eval-f form]
   (try (let [result (eval-f form)]
-         (when (= *eval* eval-f)
-           (swap! !eval-count (fnil inc 0)))
          result)
        (catch js/Error e
          (throw (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)))))
@@ -276,7 +271,7 @@
            (drop 1)
            (mapv str/trim)
            (str/join "\n"))
-      (catch js/Error e nil))]
+      (catch js/Error _ nil))]
    (when-some [data (.-data error)]
      [:div.mt-2 [inspect-paginated data]])])
 
@@ -803,7 +798,8 @@
 
 (defn ^:export set-state [{:as state :keys [doc error]}]
   (when (contains? state :doc)
-    (reset! !doc doc))
+    (reset! !doc doc)
+    (reset! !eval-counter (:eval-count doc)))
   (reset! !error error)
   (when-some [title (-> doc viewer/->value :title)]
     (set! (.-title js/document) title)))

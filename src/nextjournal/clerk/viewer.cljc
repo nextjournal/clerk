@@ -1230,9 +1230,12 @@
 (defn doc-url [path]
   (->viewer-eval (list 'v/doc-url path)))
 
+(defonce eval-counter (atom 0))
+
 (defn load-cljs-string [code-string]
   ;; NOTE: this relies on implementation details on how SCI code is evaluated
   ;; and will change in a future version of Clerk
+  (swap! eval-counter inc)
   (->viewer-eval (list 'binding '[*ns* *ns*]
                        (list 'load-string code-string))))
 
