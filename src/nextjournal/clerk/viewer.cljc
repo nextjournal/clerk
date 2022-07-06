@@ -1208,19 +1208,20 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convenience api
-(def html         (partial with-viewer :html))
-(def md           (partial with-viewer :markdown))
-(def plotly       (partial with-viewer :plotly))
-(def vl           (partial with-viewer :vega-lite))
-(def table        (partial with-viewer :table))
-(def row          (partial with-viewer-extracting-opts :row))
-(def col          (partial with-viewer-extracting-opts :col))
-(def tex          (partial with-viewer :latex))
-(def hide-result  (partial with-viewer :hide-result))
-(def notebook     (partial with-viewer :clerk/notebook))
+(def html         (partial with-viewer html-viewer))
+(def md           (partial with-viewer markdown-viewer))
+(def plotly       (partial with-viewer plotly-viewer))
+(def vl           (partial with-viewer vega-lite-viewer))
+(def table        (partial with-viewer table-viewer))
+(def row          (partial with-viewer-extracting-opts row-viewer))
+(def col          (partial with-viewer-extracting-opts col-viewer))
+(def tex          (partial with-viewer katex-viewer))
+(def hide-result  (partial with-viewer hide-result-viewer))
+(def notebook     (partial with-viewer notebook-viewer))
+(def code         (partial with-viewer code-viewer))
 (defn doc-url [path]
   (->viewer-eval (list 'v/doc-url path)))
-(def code (partial with-viewer :code))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; examples

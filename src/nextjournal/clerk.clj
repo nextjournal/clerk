@@ -76,20 +76,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public viewer api
 
-;; these are refercing vars for convience when working at the REPL
-(def md             v/md)
-(def plotly         v/plotly)
-(def vl             v/vl)
-(def tex            v/tex)
-(def notebook       v/notebook)
-(def html           v/html)
-(def code           v/code)
-(def table          v/table)
-(def row            v/row)
-(def col            v/col)
-(def use-headers    v/use-headers)
-(def hide-result    v/hide-result)
-(def doc-url        v/doc-url)
 (def with-viewer    v/with-viewer)
 (def with-viewers   v/with-viewers)
 (def reset-viewers! v/reset-viewers!)
@@ -100,6 +86,88 @@
 (def update-val     v/update-val)
 (def mark-presented v/mark-presented)
 (def mark-preserve-keys v/mark-preserve-keys)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; public convenience api
+
+(defn html
+  "Wraps the given `x` such that it is shown with the html viewer. Also supports hiccup and SVG."
+  ([x] (html {} x))
+  ([viewer-opts x] (with-viewer v/html-viewer viewer-opts x)))
+
+(defn md
+  "Wraps the given `x` such that it is shown with the plotly viewer."
+  ([x] (md {} x))
+  ([viewer-opts x] (with-viewer v/markdown-viewer viewer-opts x)))
+
+(defn plotly
+  "Wraps the given `x` such that it is shown with the plotly viewer."
+  ([x] (plotly {} x))
+  ([viewer-opts x] (with-viewer v/plotly-viewer viewer-opts x)))
+
+(defn vl
+  "Wraps the given `x` such that it is shown with the vega embed viewer, supporting both vega-lite and vega."
+  ([x] (vl {} x))
+  ([viewer-opts x] (with-viewer v/vega-lite-viewer viewer-opts x)))
+
+(defn use-headers
+  "Treats the first element of the seq `xs` as a header for the table.
+
+  Meant to be used in combination with `table`."
+  [xs]
+  (v/use-headers xs))
+
+(defn table
+  "Wraps the given `x` such that it is shown with the table viewer.
+
+  Performs normalization on the data, supporting:
+  * seqs of maps
+  * maps of seqs
+  * seqs of seqs
+  
+  If you want a header for seqs of seqs use `use-headers`."
+  ([x] (table {} x))
+  ([viewer-opts x] (with-viewer v/table-viewer viewer-opts x)))
+
+(defn row
+  "Wraps `xs` such that they will be displayed as rows.
+
+  Support setting `viewer-opts` if the first argument is a map."
+  [& xs] (apply v/with-viewer-extracting-opts v/row-viewer xs))
+
+(defn col
+  "Wraps `xs` such that they will be displayed as columns.
+
+  Support setting `viewer-opts` if the first argument is a map."
+  [& xs] (apply v/with-viewer-extracting-opts v/col-viewer xs))
+
+(defn tex
+  "Wraps `x` such that they will be displayed as LaTeX using KaTex."
+  ([x] (tex {} x))
+  ([viewer-opts x] (with-viewer v/katex-viewer viewer-opts x)))
+
+(defn hide-result
+  "Wraps `x` such that it will not be shown."
+  ([x] (hide-result {} x))
+  ([viewer-opts x] (with-viewer v/hide-result-viewer viewer-opts x)))
+
+(defn hide-result
+  "Wraps `x` such that it will not be shown."
+  ([x] (hide-result {} x))
+  ([viewer-opts x] (with-viewer v/hide-result-viewer viewer-opts x)))
+
+(defn code
+  "Wraps `xs` such that they will be displayed as syntax highlighted Clojure code.
+
+  A string is shown as-is, any other arg will be pretty-printed via `clojure.pprint/pprint`."
+  ([code-string-or-form] (code {} code-string-or-form))
+  ([viewer-opts code-string-or-form] (with-viewer v/code-viewer viewer-opts code-string-or-form)))
+
+(def notebook     (partial with-viewer :clerk/notebook))
+
+(defn doc-url [path]
+  (v/->viewer-eval (list 'v/doc-url path)))
 
 (defmacro example
   "Evaluates the expressions in `body` showing code next to results in Clerk.
