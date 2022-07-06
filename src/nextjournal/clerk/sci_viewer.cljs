@@ -195,7 +195,8 @@
            (map-indexed (fn [idx x]
                           (let [{viewer-name :name} (viewer/->viewer x)
                                 inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
-                            ^{:key (str idx "-" @v/!eval-counter)}
+                            (prn :key (:nextjournal/hash x idx))
+                            ^{:key (:nextjournal/hash x idx)}
                             [:div {:class ["viewer"
                                            (when viewer-name (str "viewer-" (name viewer-name)))
                                            (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
