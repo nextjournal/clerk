@@ -183,32 +183,38 @@
         (update :blob->result select-keys blob-ids)
         (dissoc :blob-ids))))
 
-(defn +eval-results [results-last-run parsed-doc]
+(defn +eval-results
+  "Evaluates the given `parsed-doc` using the `in-memory-cache` and augments it with the results."
+  [in-memory-cache parsed-doc]
   (let [{:as analyzed-doc :keys [ns]} (analyzer/build-graph parsed-doc)]
     (binding [*ns* ns]
       (-> analyzed-doc
           analyzer/hash
-          (assoc :blob->result results-last-run)
+          (assoc :blob->result in-memory-cache)
           eval-analyzed-doc))))
 
 (defn eval-doc
+  "Evaluates the given `doc`."
   ([doc] (eval-doc {} doc))
-  ([results-last-run doc] (+eval-results results-last-run doc)))
+  ([in-memory-cache doc] (+eval-results in-memory-cache doc)))
 
 (defn eval-file
+  "Reads given `file` (using `slurp`) and evaluates it."
   ([file] (eval-file {} file))
-  ([results-last-run file]
+  ([in-memory-cache file]
    (->> file
         (parser/parse-file {:doc? true})
-        (eval-doc results-last-run))))
+        (eval-doc in-memory-cache))))
 
 #_(eval-file "notebooks/hello.clj")
 #_(eval-file "notebooks/rule_30.clj")
 #_(eval-file "notebooks/visibility.clj")
 
 (defn eval-string
-  ([s] (eval-string {} s))
-  ([results-last-run s]
-   (eval-doc results-last-run (parser/parse-clojure-string {:doc? true} s))))
+  "Evaluated the given `code-string` using the optional `in-memory-cache` map."
+  ([code-string] (eval-string {} code-string))
+  ([in-memory-cache code-string]
+   (eval-doc in-memory-cache (parser/parse-clojure-string {:doc? true} code-string))))
 
 #_(eval-string "(+ 39 3)")
+

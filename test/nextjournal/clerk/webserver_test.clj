@@ -1,6 +1,6 @@
 (ns nextjournal.clerk.webserver-test
   (:require [clojure.test :refer :all]
-            [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.webserver :as webserver]))
 
@@ -10,7 +10,7 @@
 
 (deftest serve-blob
   (testing "lazy loading of simple range"
-    (let [doc (clerk/eval-string "(range 100)")
+    (let [doc (eval/eval-string "(range 100)")
           {:nextjournal/keys [edn fetch-opts]} (-> doc view/doc->viewer :nextjournal/value :blocks second second :nextjournal/value)
           {:nextjournal/keys [value]} (read-result edn)
           {elision-viewer :nextjournal/viewer elision-fetch-opts :nextjournal/value} (peek value)

@@ -13,55 +13,18 @@
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]))
 
-(defn clear-cache! []
-  (swap! webserver/!doc dissoc :blob->result)
-  (if (fs/exists? config/cache-dir)
-    (do
-      (fs/delete-tree config/cache-dir)
-      (prn :cache-dir/deleted config/cache-dir))
-    (prn :cache-dir/does-not-exist config/cache-dir)))
-
-#_(clear-cache!)
-#_(blob->result @nextjournal.clerk.webserver/!doc)
-
-
-(defn parse-file [file]
-  (parser/parse-file {:doc? true} file))
-
-#_(parse-file "notebooks/elements.clj")
-#_(parse-file "notebooks/visibility.clj")
-
-#_(analyzer/build-graph (parse-file "notebooks/test123.clj"))
-
-(def eval-doc eval/eval-doc)
-(def eval-file eval/eval-file)
-(def eval-string eval/eval-string)
-
-(defmacro with-cache [form]
-  `(let [result# (-> ~(pr-str form) eval-string :blob->result first val)]
-     result#))
-
-#_(with-cache (do (Thread/sleep 4200) 42))
-
-(defmacro defcached [name expr]
-  `(let [result# (-> ~(pr-str expr) eval-string :blob->result first val)]
-     (def ~name result#)))
-
-#_(defcached my-expansive-thing
-    (do (Thread/sleep 4200) 42))
-
-(defonce !show-filter-fn (atom nil))
-(defonce !last-file (atom nil))
-(defonce !watcher (atom nil))
+(defonce ^:private !show-filter-fn (atom nil))
+(defonce ^:private !last-file (atom nil))
+(defonce ^:private !watcher (atom nil))
 
 (defn show!
-  "Evaluates the Clojure source in `file` and makes the webserver show it."
+  "Evaluates the Clojure source in `file` and makes Clerk show it in the browser."
   [file]
   (if config/*in-clerk*
     ::ignored
     (try
       (reset! !last-file file)
-      (let [doc (parse-file file)
+      (let [doc (parser/parse-file {:doc? true} file)
             {:keys [blob->result]} @webserver/!doc
             {:keys [result time-ms]} (eval/time-ms (eval/+eval-results blob->result doc))]
         ;; TODO diff to avoid flickering
@@ -74,7 +37,9 @@
 
 #_(show! @!last-file)
 
-(defn recompute! []
+(defn recompute!
+  "Recomputes the currently visible doc, without parsing it."
+  []
   (binding [*ns* (:ns @webserver/!doc)]
     (let [{:keys [result time-ms]} (eval/time-ms (eval/eval-analyzed-doc @webserver/!doc))]
       (println (str "Clerk recomputed '" @!last-file "' in " time-ms "ms."))
@@ -82,7 +47,7 @@
 
 #_(recompute!)
 
-(defn supported-file?
+(defn ^:private supported-file?
   "Returns whether `path` points to a file that should be shown."
   [path]
   ;; file names starting with .# are most likely Emacs lock files and should be ignored.
@@ -96,7 +61,7 @@
 #_(supported-file? (fs/path "xyz/.#name.cljc"))
 
 
-(defn file-event [{:keys [type path]}]
+(defn ^:private file-event [{:keys [type path]}]
   (when (and (contains? #{:modify :create} type)
              (supported-file? path))
     (binding [*ns* (find-ns 'user)]
@@ -137,6 +102,9 @@
 (def mark-preserve-keys v/mark-preserve-keys)
 
 (defmacro example
+  "Evaluates the expressions in `body` showing code next to results in Clerk.
+
+  Does nothing outside of Clerk, like `clojure.core/comment`."
   [& body]
   (when nextjournal.clerk.config/*in-clerk*
     `(clerk/with-viewer v/examples-viewer
@@ -146,11 +114,13 @@
 (defn file->viewer
   "Evaluates the given `file` and returns it's viewer representation."
   ([file] (file->viewer {:inline-results? true} file))
-  ([opts file] (view/doc->viewer opts (eval-file file))))
+  ([opts file] (view/doc->viewer opts (eval/eval-file file))))
 
 #_(file->viewer "notebooks/rule_30.clj")
 
-(defn- halt-watcher! []
+(defn halt-watcher!
+  "Halts the filesystem watcher when active."
+  []
   (when-let [{:keys [watcher paths]} @!watcher]
     (println "Stopping old watcher for paths" (pr-str paths))
     (beholder/stop watcher)
@@ -182,7 +152,7 @@
   config)
 
 (defn halt!
-  "Stops the Clerk webserver and file watcher"
+  "Stops the Clerk webserver and file watcher."
   []
   (webserver/halt!)
   (halt-watcher!))
@@ -195,6 +165,36 @@
 (def valuehash analyzer/valuehash)
 
 (def build-static-app! builder/build-static-app!)
+
+(defn clear-cache!
+  "Clears the in-memory and file-system caches."
+  []
+  (swap! webserver/!doc dissoc :blob->result)
+  (if (fs/exists? config/cache-dir)
+    (do
+      (fs/delete-tree config/cache-dir)
+      (prn :cache-dir/deleted config/cache-dir))
+    (prn :cache-dir/does-not-exist config/cache-dir)))
+
+#_(clear-cache!)
+#_(blob->result @nextjournal.clerk.webserver/!doc)
+
+(defmacro with-cache
+  "An expression evaluated with Clerk's caching."
+  [form]
+  `(let [result# (-> ~(pr-str form) eval/eval-string :blob->result first val)]
+     result#))
+
+#_(with-cache (do (Thread/sleep 4200) 42))
+
+(defmacro defcached
+  "Like `clojure.core/def` but with Clerk's caching of the value."
+  [name expr]
+  `(let [result# (-> ~(pr-str expr) eval/eval-string :blob->result first val)]
+     (def ~name result#)))
+
+#_(defcached my-expansive-thing
+    (do (Thread/sleep 4200) 42))
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
