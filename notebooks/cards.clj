@@ -130,19 +130,20 @@
                             (str "%"))}}]]])
    0.33))
 
-#_ ;; ## Notebook Viewer, fails ci right now but usage isn't quite right
+;; ## Notebook Viewer
 (c/card
- (v/with-viewer :clerk/notebook
-   {:blocks (map v/present
-                 [(v/with-viewer :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
-                  (v/code "(shuffle (range 10))")
-                  (v/with-viewer :clerk/code-block {:text "(+ 1 2 3)"})
-                  (v/md "# And some more\n And some more [markdown](https://daringfireball.net/projects/markdown/).")
-                  (v/code "(shuffle (range 10))")
-                  (v/md "## Some math \n This is a formula.")
-                  (v/tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")
-                  (v/plotly {:data [{:y (shuffle (range 10)) :name "The Federation"}
-                                    {:y (shuffle (range 10)) :name "The Empire"}]})])}))
+  (v/with-viewer {:render-fn v/notebook-viewer
+                  :transform-fn v/mark-presented}
+                 {:blocks (map v/present
+                               [(v/with-viewer :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
+                                (v/code "(shuffle (range 10))")
+                                (v/with-viewer :clerk/code-block {:text "(+ 1 2 3)"})
+                                (v/md "# And some more\n And some more [markdown](https://daringfireball.net/projects/markdown/).")
+                                (v/code "(shuffle (range 10))")
+                                (v/md "## Some math \n This is a formula.")
+                                (v/tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")
+                                (v/plotly {:data [{:y (shuffle (range 10)) :name "The Federation"}
+                                                  {:y (shuffle (range 10)) :name "The Empire"}]})])}))
 
 ;; ## Layouts
 ;; **FIXME**:  `v/html` cannot be nested
@@ -164,6 +165,8 @@
 
 ;; ## In-process Pagination
 
+;; FIXME: pagination works here, but makes page unresponsive
+#_
 (c/card
   (range))
 
@@ -172,3 +175,26 @@
 
 (c/card
   {:a (range 21)})
+
+;; ## Parser API
+(c/card
+  (v/html
+   [:div
+    (let [clj-code "(ns hello.foo)
+;; # This ns is _parsed_ from `cljs`
+(defn answer [] 42)
+;; ## End
+"]
+      [:div
+       [:div.viewer-code.mb-2 [v/inspect (v/code clj-code)]]
+       [v/inspect (v/parse-clojure-string {:doc? true} clj-code)]])
+    (let [md-code "# This is a _Markdown_ string
+with some **code** inside
+```clojure
+(defn answer [] 42)
+```
+;; ## End
+"]
+      [:div
+       [:div [:pre.text-white md-code]]
+       [v/inspect (v/parse-markdown-string {:doc? true} md-code)]])]))

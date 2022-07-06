@@ -9,7 +9,8 @@
             [nextjournal.markdown.parser :as markdown.parser]
             [nextjournal.markdown.transform :as markdown.transform]
             [rewrite-clj.node :as n]
-            [rewrite-clj.parser :as p]))
+            [rewrite-clj.parser :as p]
+            #?(:cljs [cljs.reader])))
 
 (defn ns? [form]
   (and (seq? form) (= 'ns (first form))))
@@ -117,22 +118,23 @@
               blocks)
       (dissoc :visibility)))
 
-(defn auto-resolves [ns]
-  (as-> (ns-aliases ns) $
-    (assoc $ :current (ns-name *ns*))
-    (zipmap (keys $)
-            (map ns-name (vals $)))))
+#?(:clj
+   (defn auto-resolves [ns]
+     (as-> (ns-aliases ns) $
+       (assoc $ :current (ns-name *ns*))
+       (zipmap (keys $)
+               (map ns-name (vals $))))))
 
 #_(auto-resolves (find-ns 'rule-30))
 
 ;; TODO: move to analyzer
 (defn read-string [s]
-  (edamame/parse-string s {:all true
-                           :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))
-                           :readers *data-readers*
-                           :read-cond :allow
-                           :regex #(list `re-pattern %)
-                           :features #{:clj}}))
+  (edamame/parse-string s (-> {:all true
+                               :readers #?(:clj *data-readers* :cljs @cljs.reader/*tag-table*)
+                               :read-cond :allow
+                               :regex #(list `re-pattern %)
+                               :features #{:clj}}
+                              #?(:clj (assoc :auto-resolve (auto-resolves (or *ns* (find-ns 'user))))))))
 
 #_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
 
@@ -218,12 +220,13 @@
             (select-keys [:blocks :visibility])
             (merge (when doc? {:title title :toc toc})))))))
 
-(defn parse-file
-  ([file] (parse-file {} file))
-  ([opts file] (-> (if (str/ends-with? file ".md")
-                     (parse-markdown-string opts (slurp file))
-                     (parse-clojure-string opts (slurp file)))
-                   (assoc :file file))))
+#?(:clj
+   (defn parse-file
+     ([file] (parse-file {} file))
+     ([opts file] (-> (if (str/ends-with? file ".md")
+                        (parse-markdown-string opts (slurp file))
+                        (parse-clojure-string opts (slurp file)))
+                      (assoc :file file)))))
 
 #_(parse-file {:doc? true} "notebooks/visibility.clj")
 #_(parse-file "notebooks/visibility.clj")
