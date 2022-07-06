@@ -41,7 +41,8 @@
          "viewers/plotly"
          "viewers/table"
          "viewers/tex"
-         "viewers/vega"]))
+         "viewers/vega"
+         "eval-cljs"]))
 
 
 (defn strip-index [path]
