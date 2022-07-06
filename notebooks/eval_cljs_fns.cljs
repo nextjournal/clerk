@@ -5,7 +5,7 @@
   (v/html [:h3 text "!"]))
 
 (defn paragraph [text]
-  (v/html [:p {:style {:color "blue"}} text
+  (v/html [:p {:style {:color "darkblue"}} text
            [:br]
            [:span {:style {:font-size "62px"}}
             "\u2767"]]))

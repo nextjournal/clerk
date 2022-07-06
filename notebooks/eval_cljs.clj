@@ -5,17 +5,17 @@
 ;; Let's load some .cljs code from a file!
 ;; Because we want to re-render this notebook when the .cljs code changes, we use `::clerk/no-cache`:
 
-^{::clerk/no-cache true ::clerk/viewer '(fn [_] (v/html [:span]))}
+^{::clerk/no-cache true ::clerk/viewer clerk/hide-result}
 (def cljs-code (slurp "notebooks/eval_cljs_fns.cljs"))
 
 ;; The cljs code looks like this:
 
-(clerk/with-viewer
+(clerk/code cljs-code)
+#_(clerk/with-viewer
   {:render-fn '(fn [code]
                  (v/html [:pre code]))}
   cljs-code)
 
-;; In a future version of clerk, we might be able to dynamically load a CLJs highlighter from a CDN. Stay tuned! Anyway, that's not the point here.
 ;; Let's evaluate the CLJS code on the client:
 (clerk/eval-cljs cljs-code)
 
