@@ -10,11 +10,8 @@
 
 ;; The cljs code looks like this:
 
+^{::clerk/visibility :hide}
 (clerk/code cljs-code)
-#_(clerk/with-viewer
-  {:render-fn '(fn [code]
-                 (v/html [:pre code]))}
-  cljs-code)
 
 ;; Let's evaluate the CLJS code on the client:
 (clerk/eval-cljs cljs-code)
