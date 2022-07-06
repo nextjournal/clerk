@@ -208,7 +208,9 @@
                                              :wide "w-full max-w-wide"
                                              :full "w-full"
                                              "w-full max-w-prose px-8")]}
-                             [inspect x]]))
+                             (do
+                               (prn :render)
+                               [inspect x])]))
                         xs))]]]))))
 
 (defn eval-viewer-fn [eval-f form]
