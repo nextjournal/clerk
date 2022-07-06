@@ -14,7 +14,6 @@
 (clerk/code cljs-code)
 
 ;; Let's evaluate the CLJS code on the client:
-^{::clerk/viewer clerk/hide-result}
 (clerk/eval-cljs cljs-code)
 
 ;; And now let's use those functions!
