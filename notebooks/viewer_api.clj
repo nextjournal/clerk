@@ -52,7 +52,8 @@
                             expression-2)))
 
 (clerk/code '(ns foo "A great ns" (:require [clojure.string :as str])))
-(clerk/code "(defn my-fn\n  \"This is a Doc String\"\n  [args]\n 42)")
+
+(clerk/code "(defn my-fn\n  \"This is a Doc String\"\n  [args]\n  42)")
 
 ;; ### 🔤 Strings
 ;; Multi-line strings can be expanded to break on newlines.
