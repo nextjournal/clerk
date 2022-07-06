@@ -105,12 +105,10 @@
     (is (match? {:blocks [{:result {:nextjournal/value {:a seq?}}}]}
                 (eval/eval-string "{:a (range)}")))))
 
-(defn eval-inspect? [x] (= x (viewer/->viewer-eval 'v/inspect)))
-
 (deftest eval-string+doc->viewer
   (testing "assigns correct width from viewer function opts"
-    (is (match? [[eval-inspect? {:nextjournal/width :wide}]
-                 [eval-inspect? {:nextjournal/width :full}]]
+    (is (match? [{:nextjournal/width :wide}
+                 {:nextjournal/width :full}]
                 (-> "^{:nextjournal.clerk/visibility :hide} (ns clerk-test-width
   (:require [nextjournal.clerk :as clerk]))
 
@@ -123,8 +121,8 @@
                     :blocks))))
 
   (testing "assigns the correct width from form meta"
-    (is (match? [[eval-inspect? {:nextjournal/width :full}]
-                 [eval-inspect? {:nextjournal/width :wide}]]
+    (is (match? [{:nextjournal/width :full}
+                 {:nextjournal/width :wide}]
                 (-> "^{:nextjournal.clerk/visibility :hide} (ns clerk-test-width)
 
 ^{:nextjournal.clerk/viewer :table :nextjournal.clerk/width :full}
@@ -140,12 +138,12 @@
                     :blocks))))
 
   (testing "can handle uncounted sequences"
-    (is (match? [[eval-inspect? {:nextjournal/viewer {:name :code}
-                                 :nextjournal/value "(range)"}]
-                 [eval-inspect? {:nextjournal/viewer {:name :clerk/result}
-                                 :nextjournal/value {:nextjournal/edn string?
-                                                     :nextjournal/fetch-opts {:blob-id string?}
-                                                     :nextjournal/hash string?}}]]
+    (is (match? [{:nextjournal/viewer {:name :code}
+                  :nextjournal/value "(range)"}
+                 {:nextjournal/viewer {:name :clerk/result}
+                  :nextjournal/value {:nextjournal/edn string?
+                                      :nextjournal/fetch-opts {:blob-id string?}
+                                      :nextjournal/hash string?}}]
                 (-> "(range)"
                     eval/eval-string
                     view/doc->viewer
@@ -153,12 +151,12 @@
                     :blocks))))
 
   (testing "assigns folded visibility"
-    (is (match? [[eval-inspect? {:nextjournal/viewer {:name :code-folded}
-                                 :nextjournal/value "^{:nextjournal.clerk/visibility :fold}{:some :map}"}]
-                 [eval-inspect? {:nextjournal/viewer {:name :clerk/result}
-                                 :nextjournal/value {:nextjournal/edn string?
-                                                     :nextjournal/fetch-opts {:blob-id string?}
-                                                     :nextjournal/hash string?}}]]
+    (is (match? [{:nextjournal/viewer {:name :code-folded}
+                  :nextjournal/value "^{:nextjournal.clerk/visibility :fold}{:some :map}"}
+                 {:nextjournal/viewer {:name :clerk/result}
+                  :nextjournal/value {:nextjournal/edn string?
+                                      :nextjournal/fetch-opts {:blob-id string?}
+                                      :nextjournal/hash string?}}]
                 (-> "^{:nextjournal.clerk/visibility :fold}{:some :map}"
                     eval/eval-string
                     view/doc->viewer
