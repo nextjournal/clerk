@@ -989,7 +989,6 @@
       (conj (let [fetch-opts (assoc elision :offset new-offset)]
               (make-elision viewers fetch-opts))))))
 
-
 (defn present+paginate-string [{:as wrapped-value :nextjournal/keys [viewers viewer value]}]
   (let [{:as elision :keys [n total path offset]} (and (-> viewer :fetch-opts :n)
                                                        (get-elision wrapped-value))]
@@ -1041,6 +1040,74 @@
                        xs)))
         process-wrapped-value)))
 
+(defn assign-content-lengths [wrapped-value]
+  (w/postwalk
+   (fn [x]
+     (if-let [value (and (wrapped-value? x) (:nextjournal/value x))]
+       (let [{:nextjournal/keys [viewer]} x
+             {:keys [name opening-paren closing-paren]} viewer
+             elision-content-length 6]
+         (assoc x
+                :content-length
+                (cond
+                  (or (nil? value) (char? value) (string? value) (keyword? value) (symbol? value) (number? value))
+                  (count (pr-str value))
+                  (contains? #{:elision} name)
+                  elision-content-length
+                  (contains? #{:map-entry} name)
+                  (reduce + 1 (map #(:content-length % 0) value))
+                  (vector? value)
+                  (->> value
+                       (map #(:content-length % 0))
+                       (reduce + (+ (count opening-paren) (count closing-paren)))
+                       (+ (dec (count value))))
+                  :else 0)
+                :type name))
+       x))
+   wrapped-value))
+
+(defn compute-expanded-at [{:as state :keys [indents expanded-at prev-type]}
+                           {:nextjournal/keys [value]
+                            :keys [content-length path type]
+                            :or {content-length 0}}]
+  (let [max-length (- 80 (reduce + 0 indents))
+        expanded? (< max-length content-length)
+        state' (assoc state
+                      :expanded-at (assoc expanded-at path expanded?)
+                      #_(if expanded?
+                          (assoc expanded-at path true)
+                          expanded-at)
+                      :prev-type type
+                      :indents (conj
+                                (->> indents (take (count path)) vec)
+                                (cond
+                                  (contains? #{:map-entry} prev-type) (or content-length 0)
+                                  (vector? value) 2
+                                  :else 1)))]
+    (if (vector? value)
+      (reduce compute-expanded-at state' value)
+      state')))
+
+(defn assign-expanded-at [wrapped-value]
+  (cond-> wrapped-value
+    (:content-length wrapped-value)
+    (assoc :nextjournal/expanded-at
+           (:expanded-at (compute-expanded-at {:indents [] :expanded-at {}} wrapped-value)))))
+
+(comment
+  (-> (compute-expanded-at
+       {:indents [] :expanded-at {}}
+       (present {:a-vector [1 2 3] :a-list '(123 234 345) :a-set #{1 2 3 4}}))
+      :expanded-at
+      keys
+      sort)
+  (= (count "[1 2 [1 [2] 3] 4 5]")
+     (:content-length (assign-content-lengths (present [1 2 [1 [2] 3] 4 5]))))
+  (= (count "{:a-vector [1 2 3] :a-list (123 234 345) :a-set #{1 2 3 4}}")
+     (:content-length (assign-content-lengths (present {:a-vector [1 2 3] :a-list '(123 234 345) :a-set #{1 2 3 4}}))))
+  ;; Check for elisions as well
+  (assign-content-lengths (present {:foo (vec (repeat 2 {:baz (range 30) :fooze (range 40)})) :bar (range 20)})))
+
 (defn present
   "Returns a subset of a given `value`."
   ([x] (present x {}))
@@ -1069,7 +1136,8 @@
   (present (with-viewer :html [:ul (for [x (range 3)] [:li x])]))
   (present (range))
   (present {1 [2]})
-  (present (with-viewer '(fn [name] (html [:<> "Hello " name])) "James")))
+  (present (with-viewer '(fn [name] (html [:<> "Hello " name])) "James"))
+  (present {:foo (vec (repeat 2 {:baz (range 30) :fooze (range 40)})) :bar (range 20)}))
 
 (defn desc->values
   "Takes a `description` and returns its value. Inverse of `present`. Mostly useful for debugging."
@@ -1159,9 +1227,17 @@
 (def tex          (partial with-viewer :latex))
 (def hide-result  (partial with-viewer :hide-result))
 (def notebook     (partial with-viewer :clerk/notebook))
+(def code (partial with-viewer :code))
+
 (defn doc-url [path]
   (->viewer-eval (list 'v/doc-url path)))
-(def code (partial with-viewer :code))
+
+(defn load-cljs-string [code-string]
+  ;; NOTE: this relies on implementation details on how SCI code is evaluated
+  ;; and will change in a future version of Clerk
+  (->viewer-eval (list 'binding '[*ns* *ns*]
+                       (list 'load-string code-string))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; examples

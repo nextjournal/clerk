@@ -404,8 +404,7 @@
 #_(->hash-str (range))
 
 (defn hash-deref-deps [{:as analyzed-doc :keys [graph ->hash blocks visibility]} {:as cell :keys [deps deref-deps hash-fn var form]}]
-  (cond
-    (seq deref-deps)
+  (if (seq deref-deps)
     (let [deref-deps-to-eval (set/difference deref-deps (-> ->hash keys set))
           doc-with-deref-dep-hashes (reduce (fn [state deref-dep]
                                               (assoc-in state [:->hash deref-dep] (valuehash (try
@@ -416,12 +415,6 @@
                                             deref-deps-to-eval)]
       #_(prn :hash-deref-deps/form form :deref-deps deref-deps-to-eval)
       (hash doc-with-deref-dep-hashes (dep/transitive-dependents-set graph deref-deps-to-eval)))
-    hash-fn
-    (let [id (if var var form)
-          doc-with-new-hash (assoc-in analyzed-doc [:->hash id] ((eval hash-fn) (assoc analyzed-doc :cell cell)))]
-      #_(prn :hash-deref-deps/form form :id (if var var form) :hash-fn hash-fn :valuehash ((eval hash-fn) (assoc analyzed-doc :cell cell)))
-      (hash doc-with-new-hash (dep/transitive-dependents graph (if var var form))))
-    :else
     analyzed-doc))
 
 #_(nextjournal.clerk/show! "notebooks/hash_fn.clj")

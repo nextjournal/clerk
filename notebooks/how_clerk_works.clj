@@ -3,6 +3,7 @@
 (ns how-clerk-works
   (:require [next.jdbc :as jdbc]
             [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.analyzer :as ana]
             [weavejester.dependency :as dep]))
@@ -15,7 +16,7 @@
 ;; ### Step 1: Parsing
 ;; First, we parse a given Clojure file using `rewrite-clj`.
 (def parsed
-  (clerk/parse-file "notebooks/how_clerk_works.clj"))
+  (parser/parse-file "notebooks/how_clerk_works.clj"))
 
 ;; ### Step 2: Analysis
 ;; Then, each expression is analysed using `tools.analyzer`. A dependency graph, the analyzed form and the originating file is recorded.
