@@ -697,8 +697,7 @@
    (defn process-blocks [viewers {:as doc :keys [ns]}]
      (-> doc
          (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
-                                                (map (comp #(vector (->ViewerEval 'v/inspect) %)
-                                                           process-wrapped-value
+                                                (map (comp process-wrapped-value
                                                            apply-viewers*
                                                            (partial ensure-wrapped-with-viewers viewers))))))
          (select-keys [:blocks :toc :title])

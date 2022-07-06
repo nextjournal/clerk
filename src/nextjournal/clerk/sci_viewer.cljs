@@ -161,6 +161,7 @@
 
 (defonce !eval-count (r/atom 0))
 
+
 (defn notebook [{:as _doc xs :blocks :keys [toc]}]
   (r/with-let [local-storage-key "clerk-navbar"
                !state (r/atom {:toc (toc-items (:children toc))
@@ -196,18 +197,18 @@
          {:ref ref-fn}
          [:div.flex.flex-col.items-center.viewer-notebook.flex-auto
           (doall
-           (map-indexed (fn [idx [_inspect x :as y]]
+           (map-indexed (fn [idx x]
                           (let [{viewer-name :name} (viewer/->viewer x)
                                 inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
-                            ^{:key (+ idx @!eval-count)}
-                            [:div {:class ["viewer" 
+                            ^{:key (str idx "-" @!eval-count)}
+                            [:div {:class ["viewer"
                                            (when viewer-name (str "viewer-" (name viewer-name)))
                                            (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
                                            (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
                                              :wide "w-full max-w-wide"
                                              :full "w-full"
                                              "w-full max-w-prose px-8")]}
-                             y]))
+                             [inspect x]]))
                         xs))]]]))))
 
 (defn eval-viewer-fn [eval-f form]
