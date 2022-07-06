@@ -51,6 +51,9 @@
                             expression-1
                             expression-2)))
 
+(clerk/code '(ns foo "A great ns" (:require [clojure.string :as str])))
+(clerk/code "(defn my-fn\n  \"This is a Doc String\"\n  [args]\n 42)")
+
 ;; ### 🔤 Strings
 ;; Multi-line strings can be expanded to break on newlines.
 (do "The\npurpose\nof\nvisualization\nis\ninsight,\nnot\npictures.")
@@ -96,4 +99,3 @@
                       (reagent/with-let [counter (reagent/atom 0)]
                         (v/html [:h3.cursor-pointer {:on-click #(swap! counter inc)} "I was clicked " @counter " times."])))
   nil)
-
