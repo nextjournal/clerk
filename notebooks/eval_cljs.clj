@@ -1,13 +1,13 @@
 ;; # Eval CLJS
 (ns eval-cljs
-  (:require [clojure.java.io :as io]
+  (:require [babashka.fs :as fs]
             [nextjournal.clerk :as clerk]))
 
 ;; Let's load some .cljs code from a file!
 ;; Because we want to re-render this notebook when the .cljs code changes, we use `::clerk/no-cache`:
 
 ^{::clerk/no-cache true ::clerk/viewer '(fn [_] (v/html [:span]))}
-(def cljs-code (slurp (clojure.java.io/resource "eval_cljs_fns.cljs")))
+(def cljs-code (slurp (fs/file (fs/parent *file*) "eval_cljs_fns.cljs")))
 
 ;; The cljs code looks like this:
 
