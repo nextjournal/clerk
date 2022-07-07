@@ -1218,7 +1218,7 @@
 (def col          (partial with-viewer-extracting-opts col-viewer))
 (def tex          (partial with-viewer katex-viewer))
 (def hide-result  (partial with-viewer hide-result-viewer))
-(def notebook     (partial with-viewer notebook-viewer))
+(def notebook     (partial with-viewer (:name notebook-viewer)))
 (def code         (partial with-viewer code-viewer))
 (defn doc-url [path]
   (->viewer-eval (list 'v/doc-url path)))

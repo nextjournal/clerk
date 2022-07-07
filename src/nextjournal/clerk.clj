@@ -215,7 +215,7 @@
 
 (def notebook
   "Experimental notebook viewer. You probably should not use this."
-  (partial with-viewer :clerk/notebook))
+  (partial with-viewer (:name v/notebook-viewer)))
 
 (defn doc-url [path]
   (v/->viewer-eval (list 'v/doc-url path)))
