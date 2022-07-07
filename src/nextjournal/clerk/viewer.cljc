@@ -1232,7 +1232,7 @@
 
 (defonce !eval-counter (#?(:clj atom :cljs ratom/atom) 0))
 
-(defn load-cljs-string [code-string]
+(defn eval-cljs-str [code-string]
   ;; NOTE: this relies on implementation details on how SCI code is evaluated
   ;; and will change in a future version of Clerk
   (swap! !eval-counter inc)

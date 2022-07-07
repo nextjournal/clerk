@@ -1,5 +1,5 @@
-;; # 📑 Load CLJS String
-(ns load-cljs-string
+;; # 📑 Eval CLJS
+(ns eval-cljs
   (:require [nextjournal.clerk :as clerk]))
 
 ;; Let's load some .cljs code from a file!
@@ -10,7 +10,7 @@
 (def cljs-code (slurp "notebooks/render_fns.cljs"))
 
 ;; Let's evaluate the CLJS code on the client:
-(clerk/load-cljs-string cljs-code)
+(clerk/eval-cljs-str cljs-code)
 
 ;; And now let's use those functions!
 

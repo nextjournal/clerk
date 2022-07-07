@@ -100,7 +100,7 @@
 (def update-val     v/update-val)
 (def mark-presented v/mark-presented)
 (def mark-preserve-keys v/mark-preserve-keys)
-(def load-cljs-string v/load-cljs-string)
+(def eval-cljs-str v/eval-cljs-str)
 
 (defmacro example
   "Evaluates the expressions in `body` showing code next to results in Clerk.
