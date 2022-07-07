@@ -134,6 +134,7 @@
 
 ;; TODO: Think of a better name
 (defn with-viewer-extracting-opts [viewer & opts+items]
+  ;; TODO: maybe support sequantial & viewer-opts?
   (cond
     (and (map? (first opts+items)) (not (wrapped-value? (first opts+items))))
     (with-viewer viewer (first opts+items) (rest opts+items))

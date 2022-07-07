@@ -76,6 +76,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public viewer api
 
+
 (def with-viewer    v/with-viewer)
 (def with-viewers   v/with-viewers)
 (def reset-viewers! v/reset-viewers!)
@@ -91,23 +92,45 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convenience api
 
+
+
 (defn html
-  "Wraps the given `x` such that it is shown with the html viewer. Also supports hiccup and SVG."
+  "Displays `x` using the html-viewer. Supports HTML and SVG as strings or hiccup.
+
+  Supports an optional first `viewer-opts` map arg with the following optional keys:
+  * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
+  * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
+  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
   ([x] (html {} x))
   ([viewer-opts x] (with-viewer v/html-viewer viewer-opts x)))
 
 (defn md
-  "Wraps the given `x` such that it is shown with the plotly viewer."
+  "Displays `x` with the markdown viewer.
+
+  Supports an optional first `viewer-opts` map arg with the following optional keys:
+  * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
+  * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
+  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
   ([x] (md {} x))
   ([viewer-opts x] (with-viewer v/markdown-viewer viewer-opts x)))
 
 (defn plotly
-  "Wraps the given `x` such that it is shown with the plotly viewer."
+  "Displays `x` with the plotly viewer.
+
+  Supports an optional first `viewer-opts` map arg with the following optional keys:
+  * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
+  * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
+  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
   ([x] (plotly {} x))
   ([viewer-opts x] (with-viewer v/plotly-viewer viewer-opts x)))
 
 (defn vl
-  "Wraps the given `x` such that it is shown with the vega embed viewer, supporting both vega-lite and vega."
+  "Displays `x` with the vega embed viewer, supporting both vega-lite and vega.
+
+  Supports an optional first `viewer-opts` map arg with the following optional keys:
+  * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
+  * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
+  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
   ([x] (vl {} x))
   ([viewer-opts x] (with-viewer v/vega-lite-viewer viewer-opts x)))
 
@@ -119,52 +142,80 @@
   (v/use-headers xs))
 
 (defn table
-  "Wraps the given `x` such that it is shown with the table viewer.
+  "Displays `xs` using the table viewer.
 
   Performs normalization on the data, supporting:
   * seqs of maps
   * maps of seqs
   * seqs of seqs
-  
-  If you want a header for seqs of seqs use `use-headers`."
-  ([x] (table {} x))
-  ([viewer-opts x] (with-viewer v/table-viewer viewer-opts x)))
+
+  If you want a header for seqs of seqs use `use-headers`.
+
+  Supports an optional first `viewer-opts` map arg with the following optional keys:
+  * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
+  * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
+  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
+  ([xs] (table {} xs))
+  ([viewer-opts xs] (with-viewer v/table-viewer viewer-opts xs)))
 
 (defn row
-  "Wraps `xs` such that they will be displayed as rows.
+  "Displays `xs` as rows.
 
-  Support setting `viewer-opts` if the first argument is a map."
+  Treats the first argument as `viewer-opts` if it is a map but not a `wrapped-value?`.
+
+  The `viewer-opts` map can contain the following optional keys:
+  * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
+  * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
+  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
   [& xs] (apply v/with-viewer-extracting-opts v/row-viewer xs))
 
 (defn col
-  "Wraps `xs` such that they will be displayed as columns.
+  "Displays `xs` as columns.
 
-  Support setting `viewer-opts` if the first argument is a map."
+  Treats the first argument as `viewer-opts` if it is a map but not a `wrapped-value?`.
+
+  The `viewer-opts` map can contain the following optional keys:
+  * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
+  * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
+  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
   [& xs] (apply v/with-viewer-extracting-opts v/col-viewer xs))
 
 (defn tex
-  "Wraps `x` such that they will be displayed as LaTeX using KaTex."
+  "Displays `x` as LaTeX using KaTeX.
+
+  Supports an optional first `viewer-opts` map arg with the following optional keys:
+  * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
+  * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
+  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn"
   ([x] (tex {} x))
   ([viewer-opts x] (with-viewer v/katex-viewer viewer-opts x)))
 
 (defn hide-result
-  "Wraps `x` such that it will not be shown."
+  "Hides the result of evaluating `x`.
+
+  Supports an optional first `viewer-opts` map arg with the following optional keys:
+  * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
+  * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
+  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn"
   ([x] (hide-result {} x))
   ([viewer-opts x] (with-viewer v/hide-result-viewer viewer-opts x)))
 
-(defn hide-result
-  "Wraps `x` such that it will not be shown."
-  ([x] (hide-result {} x))
-  ([viewer-opts x] (with-viewer v/hide-result-viewer viewer-opts x)))
 
 (defn code
-  "Wraps `xs` such that they will be displayed as syntax highlighted Clojure code.
+  "Displays `x` as syntax highlighted Clojure code.
 
-  A string is shown as-is, any other arg will be pretty-printed via `clojure.pprint/pprint`."
+  A string is shown as-is, any other arg will be pretty-printed via `clojure.pprint/pprint`.
+
+  Supports an optional first `viewer-opts` map arg with the following optional keys:
+  * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
+  * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
+  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn"
   ([code-string-or-form] (code {} code-string-or-form))
   ([viewer-opts code-string-or-form] (with-viewer v/code-viewer viewer-opts code-string-or-form)))
 
-(def notebook     (partial with-viewer :clerk/notebook))
+(def notebook
+  "Experimental notebook viewer. You probably should not use this."
+  (partial with-viewer :clerk/notebook))
 
 (defn doc-url [path]
   (v/->viewer-eval (list 'v/doc-url path)))
