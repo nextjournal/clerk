@@ -710,7 +710,7 @@
 (def notebook-viewer
   {:name :clerk/notebook
    :render-fn (quote v/notebook-viewer)
-   :transform-fn #?(:cljs identity
+   :transform-fn #?(:cljs mark-presented
                     :clj  (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
                             (-> wrapped-value
                                 (update :nextjournal/value (partial process-blocks viewers))
