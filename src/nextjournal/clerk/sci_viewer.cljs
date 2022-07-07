@@ -22,7 +22,7 @@
             [nextjournal.viewer.plotly :as plotly]
             [nextjournal.viewer.vega-lite :as vega-lite]
             [re-frame.context :as rf]
-            [react :as react]
+            ["react" :as react]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [reagent.ratom :as ratom]
