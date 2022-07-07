@@ -1090,6 +1090,8 @@ black")}]))}
   doc-url
   (sci/new-var 'doc-url (fn [x] (str "#" x))))
 
+(dc/defcard inspected-sci-var [inspect-paginated (var doc-url)])
+
 (def sci-viewer-namespace
   {'html html-render
    'inspect inspect
