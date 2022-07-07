@@ -1193,7 +1193,6 @@
                                                                        x)))
                                  xs)))))))
 
-
 (defn reset-viewers!
   ([viewers] (reset-viewers! *ns* viewers))
   ([scope viewers]
@@ -1205,10 +1204,7 @@
   (reset-viewers! *ns* (add-viewers (get-default-viewers) viewers))
   viewers)
 
-(defn ^{:deprecated "0.8"} set-viewers! [viewers]
-  (binding #?(:clj [*out* *err*] :cljs [])
-    (prn "`set-viewers!` has been deprecated, please use `add-viewers!` or `reset-viewers!` instead."))
-  (add-viewers! viewers))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convenience api

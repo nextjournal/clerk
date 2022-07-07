@@ -22,7 +22,7 @@
                                              (custom-md/update-child-viewers #(v/add-viewers % md-eval-viewers))}))
 
 ^{::clerk/viewer clerk/hide-result}
-(v/reset-viewers! viewers-with-md-eval) ;; register viewer globally for ns
+(clerk/reset-viewers! viewers-with-md-eval) ;; register viewer globally for ns
 
 ;; ---
 
