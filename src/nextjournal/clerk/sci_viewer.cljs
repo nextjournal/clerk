@@ -157,6 +157,8 @@
     (when dark-mode?
       (set-dark-mode! dark-mode?))))
 
+(defonce !eval-counter (r/atom 0))
+
 (defn notebook [{:as _doc xs :blocks :keys [toc]}]
   (r/with-let [local-storage-key "clerk-navbar"
                !state (r/atom {:toc (toc-items (:children toc))
@@ -195,7 +197,7 @@
            (map-indexed (fn [idx x]
                           (let [{viewer-name :name} (viewer/->viewer x)
                                 inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
-                            ^{:key (str idx "-" @v/!eval-counter)}
+                            ^{:key (str idx "-" @!eval-counter)}
                             [:div {:class ["viewer"
                                            (when viewer-name (str "viewer-" (name viewer-name)))
                                            (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
@@ -205,6 +207,7 @@
                                              "w-full max-w-prose px-8")]}
                              [inspect x]]))
                         xs))]]]))))
+
 
 (defn eval-viewer-fn [eval-f form]
   (try (eval-f form)
@@ -791,10 +794,13 @@
      [:div.fixed.top-0.left-0.w-full.h-full
       [inspect @!error]])])
 
-(defn ^:export set-state [{:as state :keys [doc error]}]
+(declare mount)
+
+(defn ^:export set-state [{:as state :keys [doc error remount?]}]
+  (when remount?
+    (swap! !eval-counter inc))
   (when (contains? state :doc)
-    (reset! !doc doc)
-    (reset! v/!eval-counter (:eval-count doc)))
+    (reset! !doc doc))
   (reset! !error error)
   (when-some [title (-> doc viewer/->value :title)]
     (set! (.-title js/document) title)))
@@ -953,6 +959,7 @@ black")}]))}
 
 (defn ^:export ^:dev/after-load mount []
   (when-let [el (js/document.getElementById "clerk")]
+    #_(rdom/unmount-component-at-node el)
     (rdom/render [root] el)))
 
 (dc/defcard table [state]

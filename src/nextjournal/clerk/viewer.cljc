@@ -28,6 +28,9 @@
 (defn viewer-fn? [x]
   (instance? ViewerFn x))
 
+(defn viewer-eval? [x]
+  (instance? ViewerEval x))
+
 (defn ->viewer-fn [form]
   (map->ViewerFn {:form form #?@(:cljs [:f (eval form)])}))
 
@@ -1230,12 +1233,9 @@
 (defn doc-url [path]
   (->viewer-eval (list 'v/doc-url path)))
 
-(defonce !eval-counter (#?(:clj atom :cljs ratom/atom) 0))
-
 (defn eval-cljs-str [code-string]
   ;; NOTE: this relies on implementation details on how SCI code is evaluated
   ;; and will change in a future version of Clerk
-  (swap! !eval-counter inc)
   (->viewer-eval (list 'binding '[*ns* *ns*]
                        (list 'load-string code-string))))
 
