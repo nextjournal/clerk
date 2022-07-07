@@ -738,7 +738,10 @@
   [inspect-paginated (md "### Hello Markdown\n\n* a bullet point")])
 
 (dc/defcard viewer-code
-  [inspect-paginated (code "(str (+ 1 2) \"some string\")")])
+  [inspect-paginated (code "(defn the-answer
+  \"to all questions\"
+  []
+  (inc #_ #readme/as :ignore 41)")])
 
 (dc/defcard viewer-hiccup
   [inspect (html [:h1 "Hello Hiccup 👋"])])
