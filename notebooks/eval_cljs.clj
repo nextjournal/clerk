@@ -19,3 +19,16 @@
 
 (clerk/with-viewer {:render-fn 'render-fns/paragraph}
   "My awesome paragraph :)")
+
+
+;; Now let's try to figure out a way so our slider can still be dragged:
+^{::clerk/viewers [{:pred ::clerk/var-from-def
+                    :transform-fn (comp clerk/mark-presented (clerk/update-val (fn [{::clerk/keys [var-from-def]}]
+                                                                                 {:var-name (symbol var-from-def) :value @@var-from-def})))
+                    :render-fn '(fn [{:keys [var-name value]}]
+                                  (v/html [:input {:type :range
+                                                   :value value
+                                                   :on-change #(v/clerk-eval `(reset! ~var-name (Integer/parseInt ~(.. % -target -value))))}]))}]}
+(defonce slider-state (atom 42))
+
+@slider-state
