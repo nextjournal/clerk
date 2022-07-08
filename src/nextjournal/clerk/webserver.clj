@@ -84,8 +84,8 @@
 
 (defn extract-viewer-evals [{:as _doc :keys [blocks]}]
   (into #{}
-        (comp (map (comp :nextjournal/value :result))
-              (filter v/viewer-eval?))
+        (comp (map (comp :nextjournal/value :nextjournal/value :result))
+              (filter (every-pred v/viewer-eval? :remount?)))
         blocks))
 
 #_(extract-viewer-evals @!doc)

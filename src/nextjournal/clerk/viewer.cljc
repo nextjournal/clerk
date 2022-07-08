@@ -723,16 +723,9 @@
   {:name :hide-result :transform-fn (fn [_] nil)})
 
 
-(def eval-cljs-viewer
-  {:pred #(instance? ViewerEval %)
-   :transform-fn mark-presented
-   :render-fn '(fn [x]
-                 (v/html (v/inspect-paginated x)))})
-
 (def default-viewers
   ;; maybe make this a sorted-map
-  [eval-cljs-viewer
-   char-viewer
+  [char-viewer
    string-viewer
    number-viewer
    number-hex-viewer
@@ -1232,11 +1225,18 @@
 (defn doc-url [path]
   (->viewer-eval (list 'v/doc-url path)))
 
+(def eval-cljs-result-viewer
+  {:transform-fn mark-presented
+   :render-fn '(fn [x]
+                 (v/html (v/inspect-paginated x)))})
+
 (defn eval-cljs-str [code-string]
   ;; NOTE: this relies on implementation details on how SCI code is evaluated
   ;; and will change in a future version of Clerk
-  (->viewer-eval (list 'binding '[*ns* *ns*]
-                       (list 'load-string code-string))))
+  (with-viewer eval-cljs-result-viewer
+    (-> (->viewer-eval (list 'binding '[*ns* *ns*]
+                             (list 'load-string code-string)))
+        (assoc :remount? true))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; examples
