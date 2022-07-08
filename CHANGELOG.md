@@ -18,6 +18,10 @@ Changes can be:
     This adds an affordance to make it obvious that collections can be expanded. In
     addition, we support Option-Click to expand all sibling nodes on a level.
 
+* ⭐️ Add `nextjournal.clerk/eval-cljs-str` that can be used to provide
+  viewer `:render-fn`s from other sources. Defining them in a separate
+  .cljs file makes linting work on them.
+
 * 💫 Add docstrings for Clerk's public API in `nextjournal.clerk`.
 
 * 🐞 Improve error handling in `:render-fn`s, showing better errors for
@@ -29,7 +33,7 @@ Changes can be:
   * passing an invalid hiccup form to `v/html`
 
 * 🐞 Fix Clerk's dependency analysis to detect in macros
-* 🛠 Bump deps of `io.github.nextjournal/clojure-mode` and `io.github.nextjournal/markdown
+* 🛠 Bump deps of `io.github.nextjournal/clojure-mode` and `io.github.nextjournal/markdown`
 * 🛠 Refactor `builder`, `parser` `eval`, to its own namespaces, rename `hashing` to `analysis`.
 * 🛠 Remove keyword indirection from viewer API
 * 🛠 Lean more heavily on `tools.analyzer` for depedency analysis
