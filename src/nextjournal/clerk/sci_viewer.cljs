@@ -1106,8 +1106,7 @@ black")}]))}
 (dc/defcard inspected-sci-var [inspect-paginated (var doc-url)])
 
 (def sci-viewer-namespace
-  {
-   'html html-render
+  {'html html-render
    'inspect inspect
    'inspect-paginated inspect-paginated
    'result-viewer result-viewer
@@ -1143,17 +1142,17 @@ black")}]))}
    'read-string read-string})
 
 (defonce !sci-ctx
-  (r/atom (sci/init {:async? true
-                     :disable-arity-checks true
-                     :classes {'js goog/global
-                               'framer-motion framer-motion
-                               :allow :all}
-                     :aliases {'j 'applied-science.js-interop
-                               'reagent 'reagent.core
-                               'v 'nextjournal.clerk.sci-viewer}
-                     :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace}
-                                        sci.configs.js-interop/namespaces
-                                        sci.configs.reagent/namespaces)})))
+  (atom (sci/init {:async? true
+                   :disable-arity-checks true
+                   :classes {'js goog/global
+                             'framer-motion framer-motion
+                             :allow :all}
+                   :aliases {'j 'applied-science.js-interop
+                             'reagent 'reagent.core
+                             'v 'nextjournal.clerk.sci-viewer}
+                   :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace}
+                                      sci.configs.js-interop/namespaces
+                                      sci.configs.reagent/namespaces)})))
 
 (defn eval-form [f]
   (sci/eval-form @!sci-ctx f))
