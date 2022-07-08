@@ -16,6 +16,7 @@
         (map #(str "notebooks/" % ".clj"))
         ["hello"
          "how_clerk_works"
+         "eval_cljs"
          "example"
          "pagination"
          "paren_soup"
@@ -41,8 +42,7 @@
          "viewers/plotly"
          "viewers/table"
          "viewers/tex"
-         "viewers/vega"
-         "load-cljs-string"]))
+         "viewers/vega"]))
 
 
 (defn strip-index [path]
