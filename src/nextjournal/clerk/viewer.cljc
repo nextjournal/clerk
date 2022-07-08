@@ -7,7 +7,8 @@
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.analyzer :as analyzer]]
-                :cljs [[reagent.ratom :as ratom]])
+                :cljs [[reagent.ratom :as ratom]
+                       [sci.impl.vars :as sci.vars]])
             [nextjournal.markdown :as md]
             [nextjournal.markdown.transform :as md.transform]
             [lambdaisland.uri.normalize :as uri.normalize])
@@ -137,6 +138,7 @@
 
 ;; TODO: Think of a better name
 (defn with-viewer-extracting-opts [viewer & opts+items]
+  ;; TODO: maybe support sequantial & viewer-opts?
   (cond
     (and (map? (first opts+items)) (not (wrapped-value? (first opts+items))))
     (with-viewer viewer (first opts+items) (rest opts+items))
@@ -565,8 +567,10 @@
 (def map-viewer
   {:pred map? :name :map :render-fn 'v/map-viewer :opening-paren "{" :closing-paren "}" :fetch-opts {:n 10}})
 
+#?(:cljs (defn var->symbol [v] (if (sci.vars/var? v) (sci.vars/toSymbol v) (symbol v))))
+
 (def var-viewer
-  {:pred var? :transform-fn (comp symbol ->value) :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#'" (str x)]]))})
+  {:pred (some-fn var? #?(:cljs sci.vars/var?)) :transform-fn (comp #?(:cljs var->symbol :clj symbol) ->value) :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#'" (str x)]]))})
 
 (def throwable-viewer
   {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
@@ -709,7 +713,7 @@
 (def notebook-viewer
   {:name :clerk/notebook
    :render-fn (quote v/notebook-viewer)
-   :transform-fn #?(:cljs identity
+   :transform-fn #?(:cljs mark-presented
                     :clj  (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
                             (-> wrapped-value
                                 (update :nextjournal/value (partial process-blocks viewers))
@@ -1199,7 +1203,6 @@
                                                                        x)))
                                  xs)))))))
 
-
 (defn reset-viewers!
   ([viewers] (reset-viewers! *ns* viewers))
   ([scope viewers]
@@ -1211,25 +1214,21 @@
   (reset-viewers! *ns* (add-viewers (get-default-viewers) viewers))
   viewers)
 
-(defn ^{:deprecated "0.8"} set-viewers! [viewers]
-  (binding #?(:clj [*out* *err*] :cljs [])
-    (prn "`set-viewers!` has been deprecated, please use `add-viewers!` or `reset-viewers!` instead."))
-  (add-viewers! viewers))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convenience api
-(def html         (partial with-viewer :html))
-(def md           (partial with-viewer :markdown))
-(def plotly       (partial with-viewer :plotly))
-(def vl           (partial with-viewer :vega-lite))
-(def table        (partial with-viewer :table))
-(def row          (partial with-viewer-extracting-opts :row))
-(def col          (partial with-viewer-extracting-opts :col))
-(def tex          (partial with-viewer :latex))
-(def hide-result  (partial with-viewer :hide-result))
-(def notebook     (partial with-viewer :clerk/notebook))
-(def code (partial with-viewer :code))
-
+(def html         (partial with-viewer html-viewer))
+(def md           (partial with-viewer markdown-viewer))
+(def plotly       (partial with-viewer plotly-viewer))
+(def vl           (partial with-viewer vega-lite-viewer))
+(def table        (partial with-viewer table-viewer))
+(def row          (partial with-viewer-extracting-opts row-viewer))
+(def col          (partial with-viewer-extracting-opts col-viewer))
+(def tex          (partial with-viewer katex-viewer))
+(def hide-result  (partial with-viewer hide-result-viewer))
+(def notebook     (partial with-viewer (:name notebook-viewer)))
+(def code         (partial with-viewer code-viewer))
 (defn doc-url [path]
   (->viewer-eval (list 'v/doc-url path)))
 
@@ -1238,7 +1237,6 @@
   ;; and will change in a future version of Clerk
   (->viewer-eval (list 'binding '[*ns* *ns*]
                        (list 'load-string code-string))))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; examples

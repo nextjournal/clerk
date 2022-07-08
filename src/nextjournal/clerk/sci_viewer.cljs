@@ -22,7 +22,7 @@
             [nextjournal.viewer.plotly :as plotly]
             [nextjournal.viewer.vega-lite :as vega-lite]
             [re-frame.context :as rf]
-            [react :as react]
+            ["react" :as react]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [reagent.ratom :as ratom]
@@ -439,7 +439,7 @@
                     {:a "bar"  :c (range 10) :d 1}
                     ]]
           [:div.mb-3.result-viewer
-           [inspect coll]])))
+           [inspect-paginated coll]])))
 
 (defn elision-viewer [{:as fetch-opts :keys [total offset unbounded?]} _]
   (html [view-context/consume :fetch-fn
@@ -692,7 +692,7 @@
                      ^{:nextjournal/tag 'object} ['clojure.lang.Ref 0x73aff8f1 {:status :ready, :val 1}]]]
           [:div.mb-3.result-viewer
            [:pre [:code.inspected-value (binding [*print-meta* true] (pr-str value))]] [:span.inspected-value " => "]
-           [inspect value]])))
+           [inspect-paginated value]])))
 
 
 (declare inspect)
@@ -707,53 +707,60 @@
   [inspect js/window])
 
 (dc/defcard viewer-vega-lite
-  [inspect (vl {:width 650
-                :height 400
-                :data
-                {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
-                 :format
-                 {:type "topojson" :feature "counties"}}
-                :transform
-                [{:lookup "id"
-                  :from
-                  {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
-                   :key "id"
-                   :fields ["rate"]}}]
-                :projection {:type "albersUsa"}
-                :mark "geoshape"
-                :encoding
-                {:color {:field "rate" :type "quantitative"}}})])
+  [inspect-paginated
+   (vl {:width 650
+        :height 400
+        :data
+        {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
+         :format
+         {:type "topojson" :feature "counties"}}
+        :transform
+        [{:lookup "id"
+          :from
+          {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
+           :key "id"
+           :fields ["rate"]}}]
+        :projection {:type "albersUsa"}
+        :mark "geoshape"
+        :encoding
+        {:color {:field "rate" :type "quantitative"}}})])
 
 (dc/defcard viewer-plolty
-  [inspect (plotly
-            {:data [{:y (shuffle (range 10)) :name "The Federation" }
-                    {:y (shuffle (range 10)) :name "The Empire"}]})])
+  [inspect-paginated
+   (plotly
+    {:data [{:y (shuffle (range 10)) :name "The Federation"}
+            {:y (shuffle (range 10)) :name "The Empire"}]})])
 
 (dc/defcard viewer-latex
-  [inspect (tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")])
+  [inspect-paginated (tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")])
 
 (dc/defcard viewer-mathjax
-  [inspect (with-viewer :mathjax
-             "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")])
+  [inspect-paginated
+   (with-viewer :mathjax
+     "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")])
 
 (dc/defcard viewer-markdown
   [inspect-paginated (md "### Hello Markdown\n\n* a bullet point")])
 
 (dc/defcard viewer-code
-  [inspect (code "(str (+ 1 2) \"some string\")")])
+  [inspect-paginated (code "(defn the-answer
+  \"to all questions\"
+  []
+  (inc #_ #readme/as :ignore 41)")])
 
 (dc/defcard viewer-hiccup
   [inspect (html [:h1 "Hello Hiccup 👋"])])
 
 (dc/defcard viewer-reagent-component
   "A simple counter component in reagent using `reagent.core/with-let`."
-  [inspect (with-viewer :reagent
-             (fn []
-               (r/with-let [c (r/atom 0)]
-                 [:<>
-                  [:h2 "Count: " @c]
-                  [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold.mr-2 {:on-click #(swap! c inc)} "increment"]
-                  [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold {:on-click #(swap! c dec)} "decrement"]])))])
+  [inspect-paginated
+   (with-viewer :reagent
+     (fn []
+       (r/with-let [c (r/atom 0)]
+         [:<>
+          [:h2 "Count: " @c]
+          [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold.mr-2 {:on-click #(swap! c inc)} "increment"]
+          [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold {:on-click #(swap! c dec)} "decrement"]])))])
 
 ;; TODO add svg viewer
 
@@ -816,33 +823,34 @@
   {::dc/class "p-0"
    ::dc/state
    {:blocks
-    [(with-viewer :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
-     (code "(shuffle (range 10))")
-     (with-viewer :clerk/code-block {:text "(+ 1 2 3)"})
-     (md "# And some more\n And some more [markdown](https://daringfireball.net/projects/markdown/).")
-     (code "(shuffle (range 10))")
-     (md "## Some math \n This is a formula.")
-     (tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")
-     (plotly {:data [{:y (shuffle (range 10)) :name "The Federation"}
-                     {:y (shuffle (range 10)) :name "The Empire"}]})]}})
+    (map viewer/inspect-wrapped-value
+         [(with-viewer :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
+          (code "(shuffle (range 10))")
+          (with-viewer :clerk/code-block {:text "(+ 1 2 3)"})
+          (md "# And some more\n And some more [markdown](https://daringfireball.net/projects/markdown/).")
+          (code "(shuffle (range 10))")
+          (md "## Some math \n This is a formula.")
+          (tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")
+          (plotly {:data [{:y (shuffle (range 10)) :name "The Federation"}
+                          {:y (shuffle (range 10)) :name "The Empire"}]})])}})
 
 (def ^:dynamic *viewers* nil)
 
 (dc/defcard inspect-rule-30-sci
   []
-  [inspect {:path []
-            :viewers
-            [{:pred number?
-              :render-fn (viewer/->viewer-fn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                                           :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
+  [inspect-paginated
+   (viewer/with-viewers
+    [{:pred number?
+      :render-fn (viewer/->viewer-fn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                                   :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
 black")}]))}
-             {:pred vector? :render-fn (viewer/->viewer-fn '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1)))}
-             {:pred list? :render-fn (viewer/->viewer-fn '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1)))}]}
-   '([0 1 0] [1 0 1])])
+     {:pred vector? :render-fn (viewer/->viewer-fn '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1)))}
+     {:pred list? :render-fn (viewer/->viewer-fn '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1)))}]
+    '([0 1 0] [1 0 1]))])
 
 (dc/defcard clj-long
   []
-  [inspect
+  [inspect-paginated
    '({:verts [[-0.5 -0.5] [0.5 -0.5] [0.5 0.5] [-0.5 0.5]],
       :invert? true}
      {:verts
@@ -948,14 +956,14 @@ black")}]))}
              :invert? true})]
     [:<>
      [:div.mb-4
-      [inspect '{1 ● 2 ■ 3 ▲}]]
+      [inspect-paginated '{1 ● 2 ■ 3 ▲}]]
      [:div.mb-4
-      [inspect {[[[[1 2]]]] [1 2]}]]
+      [inspect-paginated {[[[[1 2]]]] [1 2]}]]
 
      [:div
       {:style {:margin-right -12}}
       [:div.mb-4.overflow-x-hidden
-       [inspect x]]]]))
+       [inspect-paginated x]]]]))
 
 (defn ^:export ^:dev/after-load mount []
   (when-let [el (js/document.getElementById "clerk")]
@@ -963,37 +971,37 @@ black")}]))}
     (rdom/render [root] el)))
 
 (dc/defcard table [state]
-  [inspect (viewer/table @state)]
+  [inspect-paginated (viewer/table @state)]
   {::dc/state [[1 2 "ab"]
                [4 5 "cd"]]})
 
 (dc/defcard table-incomplete [state]
-  [inspect (viewer/table @state)]
+  [inspect-paginated (viewer/table @state)]
   {::dc/state [[1 2 3]
                [4]]})
 
 (dc/defcard table-col-headers [state]
-  [inspect (viewer/table @state)]
+  [inspect-paginated (viewer/table @state)]
   {::dc/state {:a [1 2 3]
                :b [4 5 6]}})
 
 (dc/defcard table-col-headers-incomplete [state]
-  [inspect (viewer/table @state)]
+  [inspect-paginated (viewer/table @state)]
   {::dc/state {:a [1 2 3]
                :b [4]}})
 
 (dc/defcard table-row-headers [state]
-  [inspect (viewer/table @state)]
+  [inspect-paginated (viewer/table @state)]
   {::dc/state [{:a 1 :b 2 :c 3}
                {:a 4 :b 5 :c 6}]})
 
 (dc/defcard table-row-headers-incomplete [state]
-  [inspect (viewer/table @state)]
+  [inspect-paginated (viewer/table @state)]
   {::dc/state [{:a 1 :b 2 :c 3}
                {:a 4}]})
 
 (dc/defcard table-error [state]
-  [inspect (viewer/table @state)]
+  [inspect-paginated (viewer/table @state)]
   {::dc/state #{1 2 3 4}})
 
 (dc/when-enabled
@@ -1094,6 +1102,8 @@ black")}]))}
 (def ^{:doc "Stub implementation to be replaced during static site generation. Clerk is only serving one page currently."}
   doc-url
   (sci/new-var 'doc-url (fn [x] (str "#" x))))
+
+(dc/defcard inspected-sci-var [inspect-paginated (var doc-url)])
 
 (def sci-viewer-namespace
   {

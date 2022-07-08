@@ -138,7 +138,7 @@
 
 .inspected-value { @apply text-xs font-mono leading-[1.25rem]; }
 .cmt-strong, .cmt-heading { @apply font-bold; }
-.cmt-emphasis { @apply italic; }
+.cmt-italic, .cmt-emphasis { @apply italic; }
 .cmt-strikethrough { @apply line-through; }
 .cmt-link { @apply underline; }
 .untyped-value { @apply whitespace-nowrap; }
@@ -157,6 +157,9 @@
 }
 .cmt-string, .cmt-deleted {
   @apply text-rose-700 dark:text-sky-300;
+}
+.cmt-italic.cmt-string {
+  @apply dark:text-sky-200;
 }
 .cmt-regexp, .cmt-escape {
   @apply text-orange-500 dark:text-orange-300;

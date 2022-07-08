@@ -1,5 +1,6 @@
 {:deps {:aliases [:sci]}
- :dev-http {7778 ["public" "classpath:public"]}
+ :dev-http {7778 {:roots ["public" "classpath:public"]
+                  :handler nextjournal.clerk.dev-http/devcards-handler}}
  :nrepl false
  :builds {:browser {:target :browser
                     :output-to "public/js/viewer.js"

@@ -5,6 +5,35 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
+## unreleased
+* 🌟 Valuehash ⚛️
+
+    Treat `clojure.core/deref` expresssions seperately in the dependency graph
+    and attempt to compute a hash at runtime based on the value of the
+    expression. This lets Clerk see an updated value for these expressions
+    without needing to opt out of Clerk's caching using `^:nextjournal.clerk/no-cache` (#187).
+  
+* ⭐️ Expand indicators & allow option-click to expand all siblings
+
+    This adds an affordance to make it obvious that collections can be expanded. In
+    addition, we support Option-Click to expand all sibling nodes on a level.
+
+* 💫 Add docstrings for Clerk's public API in `nextjournal.clerk`.
+
+* 🐞 Improve error handling in `:render-fn`s, showing better errors for
+  different failure modes:
+  
+  * undefined symbol on read
+  * runtime exception
+  * calling `inspect` without a valid presented value
+  * passing an invalid hiccup form to `v/html`
+
+* 🐞 Fix Clerk's dependency analysis to detect in macros
+* 🛠 Bump deps of `io.github.nextjournal/clojure-mode` and `io.github.nextjournal/markdown
+* 🛠 Refactor `builder`, `parser` `eval`, to its own namespaces, rename `hashing` to `analysis`.
+* 🛠 Remove keyword indirection from viewer API
+* 🛠 Lean more heavily on `tools.analyzer` for depedency analysis
+
 ## 0.8.470 (2022-06-20)
 * 🐞 Markdown library now uses a GraalJS version compatible with Java 8. Fixes #178
 * 🐞 Bundle asset map during Maven release to allow clerk to function behind a proxy. Fixes #147

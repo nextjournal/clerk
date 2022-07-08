@@ -25,17 +25,20 @@
                        (str/replace  #"require\(.*\)" ""))]
           [:style {:type "text/tailwindcss"} (slurp (io/resource "stylesheets/viewer.css"))])))
 
+(defn include-css+js []
+  (list
+   (include-viewer-css)
+   (hiccup/include-js (@config/!resource->url "/js/viewer.js"))
+   (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
+   (hiccup/include-css "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")))
+
 (defn ->html [{:keys [conn-ws?] :or {conn-ws? true}} state]
   (hiccup/html5
    {:class "overflow-hidden min-h-screen"}
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-    (include-viewer-css)
-    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
-    (hiccup/include-js (@config/!resource->url "/js/viewer.js"))
-    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
-    (hiccup/include-css "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")]
+    (include-css+js)]
    [:body.dark:bg-gray-900
     [:div#clerk]
     [:script "let viewer = nextjournal.clerk.sci_viewer
@@ -53,11 +56,8 @@ window.ws_send = msg => ws.send(msg)")]]))
    [:head
     [:title (or (and current-path (-> state :path->doc (get current-path) v/->value :title)) "Clerk")]
     [:meta {:charset "UTF-8"}]
-    [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-    (include-viewer-css)
-    (hiccup/include-js (@config/!resource->url "/js/viewer.js"))
-    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
-    (hiccup/include-css "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")]
+    [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]    
+    (include-css+js)]
    [:body
     [:div#clerk-static-app]
     [:script "let viewer = nextjournal.clerk.sci_viewer
