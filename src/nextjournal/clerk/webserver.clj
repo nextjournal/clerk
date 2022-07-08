@@ -82,9 +82,20 @@
 
 #_(nextjournal.clerk/serve! {})
 
+(defn extract-viewer-evals [{:as _doc :keys [blocks]}]
+  (into #{}
+        (comp (map (comp :nextjournal/value :nextjournal/value :result))
+              (filter (every-pred v/viewer-eval? :remount?)))
+        blocks))
+
+#_(extract-viewer-evals @!doc)
+
 (defn update-doc! [doc]
   (reset! !error nil)
-  (broadcast! {:doc (view/doc->viewer (reset! !doc doc))}))
+  (broadcast! {:remount? (not= (extract-viewer-evals @!doc)
+                               (extract-viewer-evals doc))
+               :doc (view/doc->viewer (reset! !doc doc))}))
+
 
 #_(update-doc! help-doc)
 

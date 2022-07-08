@@ -16,6 +16,7 @@
         (map #(str "notebooks/" % ".clj"))
         ["hello"
          "how_clerk_works"
+         "eval_cljs"
          "example"
          "pagination"
          "paren_soup"

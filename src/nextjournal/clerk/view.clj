@@ -7,7 +7,7 @@
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
-  ([opts {:as doc :keys [ns]}]
+  ([opts {:as doc :keys [ns file]}]
    (binding [*ns* ns]
      (-> (merge doc opts) v/notebook v/present))))
 

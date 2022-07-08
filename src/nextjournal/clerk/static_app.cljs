@@ -24,6 +24,10 @@
             relative-root (apply str (repeat dir-depth "../"))]
         (str relative-root url)))))
 
+(defn hiccup [hiccup]
+  {:nextjournal/viewer sci-viewer/html-render
+   :nextjournal/value hiccup})
+
 (defn show [{:as view-data :git/keys [sha url] :keys [doc path url->path]}]
   (let [header [:div.mb-8.text-xs.sans-serif.text-gray-400.not-prose
                 (when (not= "" path)
@@ -42,7 +46,7 @@
                      {:href (str url "/blob/" sha "/" (url->path path))} (url->path path) "@" [:span.tabular-nums (subs sha 0 7)]]])]]]
     (sci-viewer/set-state {:doc (cond-> doc
                                   (vector? (get-in doc [:nextjournal/value :blocks]))
-                                  (update-in [:nextjournal/value :blocks] (partial into [[sci-viewer/html-render header]])))})
+                                  (update-in [:nextjournal/value :blocks] (partial into [(hiccup header)])))})
     [sci-viewer/root]))
 
 (dc/defcard show []

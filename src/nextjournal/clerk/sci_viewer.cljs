@@ -81,17 +81,17 @@
 
 (defn toc-items [items]
   (reduce
-    (fn [acc {:as item :keys [content children]}]
-      (if content
-        (let [title (md.transform/->text item)]
-          (->> {:title title
-                :path (str "#" (uri.normalize/normalize-fragment title))
-                :items (toc-items children)}
-               (conj acc)
-               vec))
-        (toc-items (:children item))))
-    []
-    items))
+   (fn [acc {:as item :keys [content children]}]
+     (if content
+       (let [title (md.transform/->text item)]
+         (->> {:title title
+               :path (str "#" (uri.normalize/normalize-fragment title))
+               :items (toc-items children)}
+              (conj acc)
+              vec))
+       (toc-items (:children item))))
+   []
+   items))
 
 (defn dark-mode-toggle [!state]
   (let [{:keys [dark-mode?]} @!state
@@ -157,6 +157,8 @@
     (when dark-mode?
       (set-dark-mode! dark-mode?))))
 
+(defonce !eval-counter (r/atom 0))
+
 (defn notebook [{:as _doc xs :blocks :keys [toc]}]
   (r/with-let [local-storage-key "clerk-navbar"
                !state (r/atom {:toc (toc-items (:children toc))
@@ -190,19 +192,22 @@
            [navbar/panel !state [navbar/navbar !state]]])
         [:div.flex-auto.h-screen.overflow-y-auto
          {:ref ref-fn}
-         (into [:div.flex.flex-col.items-center.viewer-notebook.flex-auto]
-               (map (fn [[_inspect x :as y]]
-                      (let [{viewer-name :name} (viewer/->viewer x)
-                            inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
-                        [:div {:class ["viewer"
-                                       (when viewer-name (str "viewer-" (name viewer-name)))
-                                       (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
-                                       (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
-                                         :wide "w-full max-w-wide"
-                                         :full "w-full"
-                                         "w-full max-w-prose px-8")]}
-                         y])))
-               xs)]]))))
+         [:div.flex.flex-col.items-center.viewer-notebook.flex-auto
+          (doall
+           (map-indexed (fn [idx x]
+                          (let [{viewer-name :name} (viewer/->viewer x)
+                                inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
+                            ^{:key (str idx "-" @!eval-counter)}
+                            [:div {:class ["viewer"
+                                           (when viewer-name (str "viewer-" (name viewer-name)))
+                                           (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
+                                           (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
+                                             :wide "w-full max-w-wide"
+                                             :full "w-full"
+                                             "w-full max-w-prose px-8")]}
+                             [inspect x]]))
+                        xs))]]]))))
+
 
 (defn eval-viewer-fn [eval-f form]
   (try (eval-f form)
@@ -264,7 +269,7 @@
            (drop 1)
            (mapv str/trim)
            (str/join "\n"))
-      (catch js/Error e nil))]
+      (catch js/Error _ nil))]
    (when-some [data (.-data error)]
      [:div.mt-2 [inspect-paginated data]])])
 
@@ -796,7 +801,11 @@
      [:div.fixed.top-0.left-0.w-full.h-full
       [inspect @!error]])])
 
-(defn ^:export set-state [{:as state :keys [doc error]}]
+(declare mount)
+
+(defn ^:export set-state [{:as state :keys [doc error remount?]}]
+  (when remount?
+    (swap! !eval-counter inc))
   (when (contains? state :doc)
     (reset! !doc doc))
   (reset! !error error)
@@ -958,6 +967,7 @@ black")}]))}
 
 (defn ^:export ^:dev/after-load mount []
   (when-let [el (js/document.getElementById "clerk")]
+    #_(rdom/unmount-component-at-node el)
     (rdom/render [root] el)))
 
 (dc/defcard table [state]
@@ -995,8 +1005,8 @@ black")}]))}
   {::dc/state #{1 2 3 4}})
 
 (dc/when-enabled
-  (defn rand-int-seq [n to]
-    (take n (repeatedly #(rand-int to)))))
+ (defn rand-int-seq [n to]
+   (take n (repeatedly #(rand-int to)))))
 
 (declare lazy-inspect-in-process)
 

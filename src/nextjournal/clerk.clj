@@ -285,6 +285,11 @@
   ([code-string-or-form] (code {} code-string-or-form))
   ([viewer-opts code-string-or-form] (with-viewer v/code-viewer viewer-opts code-string-or-form)))
 
+(defn eval-cljs-str
+  "Evaluates the given ClojureScript `code-string` in the browser."
+  [code-string]
+  (v/eval-cljs-str code-string))
+
 (def notebook
   "Experimental notebook viewer. You probably should not use this."
   (partial with-viewer (:name v/notebook-viewer)))
