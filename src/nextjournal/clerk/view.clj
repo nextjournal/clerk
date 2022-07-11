@@ -69,8 +69,8 @@ app.init(opts)\n"]]))
   (->html {} {:doc (doc->viewer {} doc) :error error}))
 
 (defn doc->static-html [doc]
-  (->html {:conn-ws? false :live-js? false} (doc->viewer {:inline-results? true} doc)))
+  (->html {:conn-ws? false} {:doc (doc->viewer {:inline-results? true} doc)}))
 
 #_(let [out "test.html"]
-    (spit out (doc->static-html (nextjournal.clerk/eval-file "notebooks/pagination.clj")))
+    (spit out (doc->static-html (nextjournal.clerk.eval/eval-file "notebooks/pagination.clj")))
     (clojure.java.browse/browse-url out))

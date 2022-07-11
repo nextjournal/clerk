@@ -36,6 +36,7 @@
 #_(swap! !resource->url dissoc "/css/viewer.css")
 #_(reset! !resource->url identity)
 #_(reset! !resource->url default-resource-manifest)
+#_(reset! !resource->url (-> (slurp lookup-url) edn/read-string))
 
 
 (def ^:dynamic *in-clerk* false)
