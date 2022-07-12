@@ -161,4 +161,20 @@
                     eval/eval-string
                     view/doc->viewer
                     :nextjournal/value
-                    :blocks)))))
+                    :blocks))))
+
+  (testing "hides the result"
+    (is (= []
+           (-> "^{:nextjournal.clerk/viewer :hide-result
+  :nextjournal.clerk/visibility :hide}
+ {:some :map}
+^{:nextjournal.clerk/viewer nextjournal.clerk/hide-result
+  :nextjournal.clerk/visibility :hide}
+ {:another :map}
+^{:nextjournal.clerk/viewer nextjournal.clerk.viewer/hide-result-viewer
+  :nextjournal.clerk/visibility :hide}
+ {:a-third :map}"
+               eval/eval-string
+               view/doc->viewer
+               :nextjournal/value
+               :blocks)))))

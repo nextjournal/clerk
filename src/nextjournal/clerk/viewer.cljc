@@ -336,7 +336,11 @@
               ;; TODO: consider dropping this. Still needed by notebook-viewer fn to read :nextjournal/width option on result blocks
               opts-from-form-meta))))
 
-(defn result-hidden? [result] (= :hide-result (-> result ->value ->viewer)))
+(def hide-result-viewer
+  {:name :hide-result :transform-fn (fn [_] nil)})
+
+(defn result-hidden? [result]
+  (contains? #{:hide-result hide-result-viewer} (-> result ->value ->viewer)))
 
 (defn ->display [{:as code-cell :keys [result ns?]}]
   (let [{:nextjournal.clerk/keys [visibility]} result
@@ -718,10 +722,6 @@
                             (-> wrapped-value
                                 (update :nextjournal/value (partial process-blocks viewers))
                                 mark-presented)))})
-
-(def hide-result-viewer
-  {:name :hide-result :transform-fn (fn [_] nil)})
-
 
 (def default-viewers
   ;; maybe make this a sorted-map

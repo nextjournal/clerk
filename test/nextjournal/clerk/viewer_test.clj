@@ -69,7 +69,6 @@
     (is (= :full
            (:nextjournal/width (v/apply-viewers (v/table {:nextjournal.clerk/width :full} {:a [1] :b [2] :c [3]})))))))
 
-(defn viewer-eval-inspect? [x] (= x (v/->viewer-eval 'v/inspect)))
 
 (deftest present
   (testing "only transform-fn can select viewer"
@@ -77,7 +76,7 @@
                                      [:p [:span "Hello "] [:em [:span "markdown"]] [:span "!"]]]
                  :nextjournal/viewer {:name :html-}}
                 (v/present (v/with-viewer {:transform-fn (comp v/md v/->value)}
-                              "Hello _markdown_!")))))
+                             "Hello _markdown_!")))))
 
   (testing "works with sorted-map which can throw on get & contains?"
     (v/present (into (sorted-map) {'foo 'bar})))
@@ -89,7 +88,7 @@
 (deftest assign-closing-parens
   (testing "closing parenthesis are moved to right-most children in the tree"
     (let [before (#'v/present* (assoc (v/ensure-wrapped-with-viewers {:a [1 '(2 3 #{4})]
-                                                                       :b '([5 6] 7 8)}) :path []))
+                                                                      :b '([5 6] 7 8)}) :path []))
           after (v/assign-closing-parens before)]
 
       (is (= "}"
