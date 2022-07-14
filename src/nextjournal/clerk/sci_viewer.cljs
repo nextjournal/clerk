@@ -5,6 +5,7 @@
             [clojure.string :as str]
             [edamame.core :as edamame]
             [goog.object]
+            [goog.functions]
             [goog.string :as gstring]
             [lambdaisland.uri.normalize :as uri.normalize]
             [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex vl with-viewer with-viewers]]
@@ -1150,7 +1151,8 @@ black")}]))}
                    :aliases {'j 'applied-science.js-interop
                              'reagent 'reagent.core
                              'v 'nextjournal.clerk.sci-viewer}
-                   :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace}
+                   :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace
+                                       'goog.functions {'throttle goog.functions/throttle}}
                                       sci.configs.js-interop/namespaces
                                       sci.configs.reagent/namespaces)})))
 
