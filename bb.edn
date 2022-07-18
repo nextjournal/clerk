@@ -68,7 +68,7 @@
        :task (t/tag)}
 
   clerk-version {:doc "Prints current version"
-                 :task (println (version))}
+                 :task (println (t/version))}
 
   publish {:doc "Prepares repo for publishing via CI"
            :task (t/publish)}

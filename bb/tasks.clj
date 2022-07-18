@@ -53,3 +53,6 @@
 
 (defn latest-sha []
   (shared/latest-sha))
+
+(defn version []
+  (shared/version))
