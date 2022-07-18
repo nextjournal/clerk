@@ -50,3 +50,6 @@
   (println "\n\nRun:\n\n" "  git push --atomic"
            "origin" "main" (str "v" (shared/version))
            "\n\nto push the release and let CI build it!"))
+
+(defn latest-sha []
+  (shared/latest-sha))

@@ -46,7 +46,7 @@
                            (shell {:dir "ui_tests"} "yarn install")
                            (apply shell {:dir "ui_tests"}
                                   "yarn nbb -m playwright-tests"
-                                  (or *command-line-args* [(latest-sha)])))}
+                                  (or *command-line-args* [(t/latest-sha)])))}
 
   update-meta {:doc "Updates meta.edn with current version (based on commit count currently)."
                :task (t/update-meta)}
