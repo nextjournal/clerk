@@ -1,17 +1,19 @@
 (ns build
   (:require
    [babashka.process :as process]
-   [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.tools.build.api :as b]
    [nextjournal.cas :as cas]
-   [nextjournal.clerk.config :refer [lookup-url]]))
+   [nextjournal.clerk.config :refer [lookup-url]]
+   [shared]))
 
 (def lib 'io.github.nextjournal/clerk)
 (def class-dir "target/classes")
 (def basis (b/create-basis {:project "deps.edn"}))
-(def version (-> (slurp "resources/META-INF/nextjournal/clerk/meta.edn") edn/read-string :version))
+(def version (shared/version))
 (def jar-file (format "target/%s-%s.jar" (name lib) version))
+
+(prn version)
 
 (defn package-asset-map [_]
   (let [asset-map (slurp lookup-url)]

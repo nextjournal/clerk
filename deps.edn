@@ -57,5 +57,5 @@
                           io.github.nextjournal/cas {:git/url "git@github.com:nextjournal/cas"
                                                      :git/sha "5e8079b720e347b9466db9c2282ce79a125a011c"}
                           babashka/fs {:mvn/version "0.1.2"}}
-                   :extra-paths ["src" "resources"] ;; for loading lookup-url in build
+                   :extra-paths ["bb" "src" "resources"] ;; for loading lookup-url in build
                    :ns-default build}}}

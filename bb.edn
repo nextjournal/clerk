@@ -3,29 +3,10 @@
  :deps {io.github.nextjournal/dejavu
         {:git/sha "3c4cf5e4dda3648e0d4c575a3433d19c511dd3e5"}}
  :tasks
- {:requires ([clojure.edn :as edn]
-             [clojure.edn :as edn]
-             [clojure.string :as str]
-             [babashka.deps :as deps]
-             [babashka.fs :as fs]
-             [babashka.process :as p])
-  :init (do
-          (defn viewer-css-path []
-            (let [cp (str/trim (with-out-str (deps/clojure ["-A:sci" "-Spath"])))]
-              (str/trim (:out (shell {:out :string} (str "bb -cp " cp " -e '(println (.getPath (clojure.java.io/resource \"css/viewer.css\")))'"))))))
-
-          (defn latest-sha []
-            (str/trim (:out (p/sh "git rev-parse HEAD"))))
-
-          (defn version []
-            (-> (slurp "resources/META-INF/nextjournal/clerk/meta.edn")
-                edn/read-string
-                :version))
-
-          (defn today []
-            (.format
-             (java.time.LocalDate/now)
-             (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd"))))
+ {:requires
+  ([tasks :as t]
+   [clojure.string :as str]
+   [babashka.process :as p])
 
   copy-viewer-css {:doc "TODO: please complement this docstring"
                    :task
@@ -68,23 +49,12 @@
                                   (or *command-line-args* [(latest-sha)])))}
 
   update-meta {:doc "Updates meta.edn with current version (based on commit count currently)."
-               :task
-               (let [rev-count (-> (p/process ["git" "rev-list" "HEAD" "--count"] {:out :string})
-                                   p/check :out str/trim Integer/parseInt)
-                     version (format "0.8.%d" (inc rev-count))]
-                 (spit (doto (fs/file "resources/META-INF/nextjournal/clerk/meta.edn")
-                         (-> fs/parent fs/create-dirs)) {:version version}))}
+               :task (t/update-meta)}
 
   update-changelog
   {:doc "Updates CHANGELOG.md with "
    :task
-   (->> (str/replace (slurp "CHANGELOG.md")
-                     (re-pattern "## [Uu]nreleased")
-                     (str "## Unreleased\n\n...\n\n"
-                      (format "## %s (%s)"
-                              (version)
-                              (today))))
-        (spit "CHANGELOG.md"))}
+   (t/update-changelog)}
 
   jar {:doc "Build jar"
        :task (do
@@ -95,25 +65,13 @@
                :task (clojure "-T:build install")}
 
   tag {:doc "Tags release and pushes tag to Github."
-       :task (let [tag (str "v" (version))]
-               (shell "git tag" tag))}
+       :task (t/tag)}
 
   clerk-version {:doc "Prints current version"
                  :task (println (version))}
 
   publish {:doc "Prepares repo for publishing via CI"
-           :task (do
-                   (run 'update-meta)
-                   (run 'update-changelog)
-                   (shell "git add"
-                          "resources/viewer-js-hash"
-                          "resources/META-INF"
-                          "CHANGELOG.md")
-                   (shell (str "git commit -m v" (version)))
-                   (run 'tag)
-                   (println "\n\nRun:\n\n" "  git push --atomic"
-                            "origin" "main" (str "v" (version))
-                            "\n\nto push the release and let CI build it!"))}
+           :task (t/publish)}
 
   -current-tag (->> (shell {:out :string} "git tag --points-at HEAD")
                     :out
