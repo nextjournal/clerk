@@ -205,12 +205,13 @@ jobs:
           CLOJARS_USERNAME: mkvlr
           CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD_MKVLR }}
         run: |
+          bb update-meta
           bb ci:publish
 
       - name: Clerk version
         id: clerk-version
         run: |
-          CLERK_VERSION=$(bb update-meta && bb clerk-version)
+          CLERK_VERSION=$(bb clerk-version)
           echo "##[set-output name=version;]${CLERK_VERSION}"
 
       - uses: actions/upload-artifact@v1
