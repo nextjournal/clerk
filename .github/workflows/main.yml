@@ -210,7 +210,7 @@ jobs:
       - name: Clerk version
         id: clerk-version
         run: |
-          CLERK_VERSION=$(bb clerk-version)
+          CLERK_VERSION=$(bb update-meta && bb clerk-version)
           echo "##[set-output name=version;]${CLERK_VERSION}"
 
       - uses: actions/upload-artifact@v1
