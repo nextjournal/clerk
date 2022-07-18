@@ -20,7 +20,12 @@
           (defn version []
             (-> (slurp "resources/META-INF/nextjournal/clerk/meta.edn")
                 edn/read-string
-                :version)))
+                :version))
+
+          (defn today []
+            (.format
+             (java.time.LocalDate/now)
+             (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd"))))
 
   copy-viewer-css {:doc "TODO: please complement this docstring"
                    :task
@@ -70,6 +75,17 @@
                  (spit (doto (fs/file "resources/META-INF/nextjournal/clerk/meta.edn")
                          (-> fs/parent fs/create-dirs)) {:version version}))}
 
+  update-changelog
+  {:doc "Updates CHANGELOG.md with "
+   :task
+   (->> (str/replace (slurp "CHANGELOG.md")
+                     (re-pattern "## [Uu]nreleased")
+                     (str "## Unreleased\n\n...\n\n"
+                      (format "## %s (%s)"
+                              (version)
+                              (today))))
+        (spit "CHANGELOG.md"))}
+
   jar {:doc "Build jar"
        :task (do
                (println "Building jar")
@@ -88,7 +104,11 @@
   publish {:doc "Prepares repo for publishing via CI"
            :task (do
                    (run 'update-meta)
-                   (shell "git add resources/viewer-js-hash resources/META-INF")
+                   (run 'update-changelog)
+                   (shell "git add"
+                          "resources/viewer-js-hash"
+                          "resources/META-INF"
+                          "CHANGELOG.md")
                    (shell (str "git commit -m v" (version)))
                    (run 'tag)
                    (println "\n\nRun:\n\n" "  git push --atomic"
