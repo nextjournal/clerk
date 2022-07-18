@@ -9,7 +9,8 @@ Changes can be:
 
 ...
 
-## 0.8.510 (2022-07-18)
+## 0.9.513 (2022-07-18)
+
 * 🌟 Valuehash ⚛️
 
     Treat `clojure.core/deref` expresssions seperately in the dependency graph
