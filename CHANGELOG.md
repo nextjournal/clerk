@@ -5,14 +5,18 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
-## unreleased
+## Unreleased
+
+...
+
+## 0.8.510 (2022-07-18)
 * 🌟 Valuehash ⚛️
 
     Treat `clojure.core/deref` expresssions seperately in the dependency graph
     and attempt to compute a hash at runtime based on the value of the
     expression. This lets Clerk see an updated value for these expressions
     without needing to opt out of Clerk's caching using `^:nextjournal.clerk/no-cache` (#187).
-  
+
 * ⭐️ Expand indicators & allow option-click to expand all siblings
 
     This adds an affordance to make it obvious that collections can be expanded. In
