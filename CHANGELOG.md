@@ -13,7 +13,7 @@ Changes can be:
 
 * 🌟 Valuehash ⚛️
 
-    Treat `clojure.core/deref` expresssions seperately in the dependency graph
+    Treat `clojure.core/deref` expressions separately in the dependency graph
     and attempt to compute a hash at runtime based on the value of the
     expression. This lets Clerk see an updated value for these expressions
     without needing to opt out of Clerk's caching using `^:nextjournal.clerk/no-cache` (#187).
