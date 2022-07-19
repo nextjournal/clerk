@@ -613,7 +613,7 @@
                                (fn []
                                  prom))]
     ;;(prn result error)
-    (cond result [result]
+    (cond result result
           error [:div [:pre error]]
           :else [:pre "loading"])))
 
@@ -634,10 +634,12 @@
           (html (error-badge "cannot find viewer named " (str viewer))))
 
         (instance? js/Promise viewer)
-        (html [:pre "TODO"])
-        #_(html [:f> promise-component
-               (.then viewer (fn [viewer]
-                               (render-with-viewer opts viewer value)))])
+        #_(html [:pre "TODO"])
+        (reagent.core/as-element [:f> promise-component
+                                  (js/Promise.resolve (reagent.core/as-element [:pre "Hello"]))
+                                  #_(.then viewer (fn [viewer]
+                                                  (prn :viewer viewer)
+                                                  (render-with-viewer opts viewer value)))])
         :else
         (html (error-badge "unusable viewer `" (pr-str viewer) "`, value `" (pr-str value) "`"))))
 
@@ -649,7 +651,7 @@
    (cond (react/isValidElement x)
          x
          (instance? js/Promise x)
-         (html [:pre "TODO"]) #_(html [:>f (promise-component (.then x #(inspect opts %)))])
+         (html [:pre "TODO inspect"]) #_(html [:>f promise-component (.then x #(inspect opts %))])
          :else
          (let [value (viewer/->value x)
                viewer (viewer/->viewer x)]
