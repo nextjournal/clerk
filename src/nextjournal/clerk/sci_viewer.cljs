@@ -618,12 +618,19 @@
           :else [:pre "loading"])))
 
 (defn render-with-viewer [opts viewer value]
-  #_(js/console.log :render-with-viewer {:value value :viewer viewer :opts opts})
+  (prn :render-with-viewer {:value value :viewer viewer :opts opts})
   (cond (or (fn? viewer) (viewer/viewer-fn? viewer))
         (viewer value opts)
 
         (and (map? viewer) (:render-fn viewer))
-        (render-with-viewer opts (:render-fn viewer) value)
+        (let [rf (:render-fn viewer)]
+          (if (instance? js/Promise rf)
+            (html
+             [:f> promise-component
+              (.then rf (fn [rf]
+                          (js/console.log "Resolved render-fn")
+                          (render-with-viewer opts (assoc viewer :render-fn rf) value)))])
+            (render-with-viewer opts (:render-fn viewer) value)))
 
         #_#_ ;; TODO: maybe bring this back
         (keyword? viewer)
@@ -635,11 +642,14 @@
 
         (instance? js/Promise viewer)
         #_(html [:pre "TODO"])
-        (reagent.core/as-element [:f> promise-component
-                                  (js/Promise.resolve (reagent.core/as-element [:pre "Hello"]))
-                                  #_(.then viewer (fn [viewer]
-                                                  (prn :viewer viewer)
-                                                  (render-with-viewer opts viewer value)))])
+        (html [:f> promise-component
+               #_(js/Promise.resolve (reagent.core/as-element [:pre "Hello"]))
+               (.then viewer (fn [viewer]
+                               ;; this works:
+                               ;; (r/as-element [:pre "Hello"])
+                               ;; this doesn't:
+                               (js/console.log "Resolved viewer")
+                               (render-with-viewer opts viewer value)))])
         :else
         (html (error-badge "unusable viewer `" (pr-str viewer) "`, value `" (pr-str value) "`"))))
 
@@ -651,7 +661,8 @@
    (cond (react/isValidElement x)
          x
          (instance? js/Promise x)
-         (html [:pre "TODO inspect"]) #_(html [:>f promise-component (.then x #(inspect opts %))])
+         #_(html [:pre "TODO inspect"])
+         (html [:>f promise-component (.then x #(inspect opts %))])
          :else
          (let [value (viewer/->value x)
                viewer (viewer/->viewer x)]

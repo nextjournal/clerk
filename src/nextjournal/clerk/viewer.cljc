@@ -22,12 +22,23 @@
 
 (defrecord ViewerFn [form #?(:cljs f)]
   #?@(:cljs [IFn
-             (-invoke [this x] (.then (:f this)
-                                      (fn [f]
-                                        (f x))))
-             (-invoke [this x y] (.then (:f this)
-                                        (fn [f]
-                                          (f x y))))]))
+             (-invoke [this x]
+                      (if (instance? js/Promise f)
+
+                        (do
+                          (prn :prom)
+                          (.then f
+                                   (fn [f]
+                                     (f x))))
+                        (f x)))
+             (-invoke [this x y]
+                      (if (instance? js/Promise f)
+                        (do
+                          (prn :prom)
+                          (.then f
+                                 (fn [f]
+                                   (f x y))))
+                        (f x y)))]))
 
 (defn viewer-fn? [x]
   (instance? ViewerFn x))
