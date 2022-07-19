@@ -23,12 +23,14 @@
             [nextjournal.viewer.vega-lite :as vega-lite]
             [re-frame.context :as rf]
             ["react" :as react]
+            ["react-use-promise" :as use-promise]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [reagent.ratom :as ratom]
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
+            [sci.async :as scia]
             [nextjournal.clerk.viewer :as v]))
 
 (defn color-classes [selected?]
@@ -223,8 +225,24 @@
          :read-cond :allow
          :readers
          (fn [tag]
-           (or (get {'viewer-fn   (partial eval-viewer-fn viewer/->viewer-fn)
-                     'viewer-eval (partial eval-viewer-fn *eval*)} tag)
+           (or (get {'viewer-fn
+                     (fn [form]
+                       (-> (*eval* form)
+                           (.then (fn [f]
+                                    (viewer/->viewer-fn f)))
+                           (.then (fn [v]
+                                    (prn :v v)
+                                    v))
+                           (.catch (fn [err]
+                                     (js/console.log "error!!!!" err)))))
+                     'viewer-eval (fn [form]
+                                    (-> (*eval* form)
+                                        (.then (fn [v]
+                                                 (prn :v v)
+                                                 v))
+                                        (.catch
+                                         (fn [err]
+                                           (js/console.log "error!!!!" err)))))} tag)
                (fn [value]
                  (with-viewer :tagged-value
                    {:tag tag
@@ -347,12 +365,12 @@
     (if (and hover-path prompt-multi-expand? (= (count path) hover-path-count))
       (swap! !expanded-at (fn [expanded-at]
                             (reduce
-                              (fn [acc [path expanded?]]
-                                (if (and (vector? path) (= (count path) hover-path-count))
-                                  (assoc acc path (not hover-path-expanded?))
-                                  (assoc acc path expanded?)))
-                              {}
-                              expanded-at)))
+                             (fn [acc [path expanded?]]
+                               (if (and (vector? path) (= (count path) hover-path-count))
+                                 (assoc acc path (not hover-path-expanded?))
+                                 (assoc acc path expanded?)))
+                             {}
+                             expanded-at)))
       (swap! !expanded-at update path not))))
 
 (defn expandable? [xs]
@@ -590,6 +608,15 @@
 
 (declare default-viewers)
 
+(defn promise-component [prom]
+  (let [[result error _state] ((.-default use-promise)
+                               (fn []
+                                 prom))]
+    ;;(prn result error)
+    (cond result [result]
+          error [:div [:pre error]]
+          :else [:pre "loading"])))
+
 (defn render-with-viewer [opts viewer value]
   #_(js/console.log :render-with-viewer {:value value :viewer viewer :opts opts})
   (cond (or (fn? viewer) (viewer/viewer-fn? viewer))
@@ -606,6 +633,11 @@
             (render-fn value (assoc opts :fetch-opts fetch-opts)))
           (html (error-badge "cannot find viewer named " (str viewer))))
 
+        (instance? js/Promise viewer)
+        (html [:pre "TODO"])
+        #_(html [:f> promise-component
+               (.then viewer (fn [viewer]
+                               (render-with-viewer opts viewer value)))])
         :else
         (html (error-badge "unusable viewer `" (pr-str viewer) "`, value `" (pr-str value) "`"))))
 
@@ -614,12 +646,15 @@
    (r/with-let [!expanded-at (r/atom (:nextjournal/expanded-at x))]
      [inspect {:!expanded-at !expanded-at} x]))
   ([opts x]
-   (if (react/isValidElement x)
-     x
-     (let [value (viewer/->value x)
-           viewer (viewer/->viewer x)]
-       #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
-       (inspect opts (render-with-viewer (merge opts {:viewer viewer} (:nextjournal/opts x)) viewer value))))))
+   (cond (react/isValidElement x)
+         x
+         (instance? js/Promise x)
+         (html [:pre "TODO"]) #_(html [:>f (promise-component (.then x #(inspect opts %)))])
+         :else
+         (let [value (viewer/->value x)
+               viewer (viewer/->viewer x)]
+           #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
+           (inspect opts (render-with-viewer (merge opts {:viewer viewer} (:nextjournal/opts x)) viewer value))))))
 
 (defn in-process-fetch [value opts]
   (.resolve js/Promise (viewer/present value opts)))
@@ -840,13 +875,13 @@
   []
   [inspect-paginated
    (viewer/with-viewers
-    [{:pred number?
-      :render-fn (viewer/->viewer-fn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                                   :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
+     [{:pred number?
+       :render-fn (viewer/->viewer-fn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                                    :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
 black")}]))}
-     {:pred vector? :render-fn (viewer/->viewer-fn '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1)))}
-     {:pred list? :render-fn (viewer/->viewer-fn '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1)))}]
-    '([0 1 0] [1 0 1]))])
+      {:pred vector? :render-fn (viewer/->viewer-fn '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1)))}
+      {:pred list? :render-fn (viewer/->viewer-fn '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1)))}]
+     '([0 1 0] [1 0 1]))])
 
 (dc/defcard clj-long
   []
@@ -1155,7 +1190,11 @@ black")}]))}
                                       sci.configs.reagent/namespaces)})))
 
 (defn eval-form [f]
-  (sci/eval-form @!sci-ctx f))
+  ;; TODO: SCI needs scia/eval-form
+  (if (or (symbol? f)
+          (seq? f))
+    (scia/eval-string* @!sci-ctx (str f))
+    f))
 
 (set! *eval* eval-form)
 
