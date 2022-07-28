@@ -220,7 +220,7 @@
 (defn when-wrapped [f] #(cond-> % (wrapped-value? %) f))
 
 (defn inspect-wrapped-value [wrapped-value]
-  [(inspect-fn) (-> wrapped-value apply-viewers process-wrapped-value)])
+  [(inspect-fn) (-> wrapped-value present process-wrapped-value)])
 
 #_(w/postwalk (when-wrapped inspect-wrapped-value) [1 2 {:a [3 (with-viewer :latex "\\alpha")]} 4])
 
