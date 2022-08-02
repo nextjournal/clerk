@@ -19,13 +19,9 @@ println("Visiting", link);
 (await goto$(page, link));
 println("Opened link");
 if (truth_((await (await page.locator("div")).first().isVisible()))) {
-null} else {
-process.exitCode = 1;
-throw new Error("should be true")};
-if (truth_(false)) {
 return null;} else {
 process.exitCode = 1;
-throw new Error(null)}
+throw new Error("should be true")}
 };
 var console_errors = atom(vector());
 var index_page_test = async function () {

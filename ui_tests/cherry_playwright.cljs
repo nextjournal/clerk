@@ -38,8 +38,7 @@
       .first
       (.isVisible)
       js/await
-      (assert! "should be true"))
-  (assert! false))
+      (assert! "should be true")))
 
 (def console-errors (atom []))
 
