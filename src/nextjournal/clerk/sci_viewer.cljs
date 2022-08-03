@@ -7,7 +7,7 @@
             [goog.object]
             [goog.string :as gstring]
             [lambdaisland.uri.normalize :as uri.normalize]
-            [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex vl with-viewer with-viewers]]
+            [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex table vl row col with-viewer with-viewers]]
             [nextjournal.devcards :as dc]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.ui.components.d3-require :as d3-require]
@@ -1106,8 +1106,7 @@ black")}]))}
 (dc/defcard inspected-sci-var [inspect-paginated (var doc-url)])
 
 (def sci-viewer-namespace
-  {'html html-render
-   'inspect inspect
+  {'inspect inspect
    'inspect-paginated inspect-paginated
    'result-viewer result-viewer
    'coll-viewer coll-viewer
@@ -1120,8 +1119,6 @@ black")}]))}
    'quoted-string-viewer quoted-string-viewer
    'number-viewer number-viewer
    'table-error table-error
-   'with-viewer with-viewer
-   'with-viewers with-viewers
    'with-d3-require d3-require/with
    'clerk-eval clerk-eval
    'consume-view-context view-context/consume
@@ -1139,7 +1136,20 @@ black")}]))}
 
    'doc-url doc-url
    'url-for url-for
-   'read-string read-string})
+   'read-string read-string
+
+   ;; clerk viewer API
+   'code code
+   'col col
+   'html html-render
+   'md md
+   'plotly plotly
+   'row row
+   'table table
+   'tex tex
+   'vl vl
+   'with-viewer with-viewer
+   'with-viewers with-viewers})
 
 (defonce !sci-ctx
   (atom (sci/init {:async? true
