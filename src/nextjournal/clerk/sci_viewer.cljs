@@ -823,7 +823,7 @@
   {::dc/class "p-0"
    ::dc/state
    {:blocks
-    (map viewer/inspect-wrapped-value
+    (map viewer/present
          [(with-viewer :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
           (code "(shuffle (range 10))")
           (with-viewer :clerk/code-block {:text "(+ 1 2 3)"})
