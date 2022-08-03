@@ -213,7 +213,7 @@
   Performs normalization on the data, supporting:
   * seqs of maps
   * maps of seqs
-  * seqs of seqs
+  * seqs of seqs (including maps)
 
   If you want a header for seqs of seqs use `use-headers`.
 

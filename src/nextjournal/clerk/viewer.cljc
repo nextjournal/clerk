@@ -204,6 +204,7 @@
   (cond
     (and (map? data) (-> data :rows sequential?)) (normalize-seq-to-vec data)
     (and (map? data) (sequential? (first (vals data)))) (normalize-map-of-seq data)
+    (map? data) (normalize-seq-of-seq (seq data))
     (and (sequential? data) (map? (first data))) (normalize-seq-of-map data)
     (and (sequential? data) (sequential? (first data))) (normalize-seq-of-seq data)
     :else nil))
