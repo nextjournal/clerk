@@ -50,7 +50,7 @@
                            [:div.border-t.relative.py-3
                             [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
                              {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
-                            [:div.overflow-x-auto [v/inspect val]]]
+                            [:div.overflow-x-auto [v/inspect-wrapped-value val]]]
                            {:key (:nextjournal/value key)})))
    :transform-fn (comp clerk/mark-preserve-keys
                        (clerk/update-val #(update % :tapped-at inst->local-time-str)))})
@@ -82,12 +82,15 @@
 (defonce setup
   (add-tap tapped))
 
-#_(remove-tap tapped)
+#_ (remove-tap tapped)
 
 ^{::clerk/viewer clerk/hide-result}
 (comment
+  (last @!taps)
+
   (dotimes [i 5]
     (tap> (rand-int 1000)))
+
   (tap> (shuffle (range (+ 20 (rand-int 200)))))
   (tap> (clerk/md "> The purpose of visualization is **insight**, not pictures."))
   (tap> (v/plotly {:data [{:z [[1 2 3]
