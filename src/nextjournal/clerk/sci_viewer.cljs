@@ -823,6 +823,7 @@
                 async-blocks)
         (.then (fn [result]
                  (prn result)
+                 ;; TODO: assign value to block with idx
                  (when remount?
                    (swap! !eval-counter inc))
                  (when (contains? state :doc)
