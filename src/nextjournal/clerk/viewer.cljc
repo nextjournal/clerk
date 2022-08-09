@@ -7,11 +7,11 @@
             #?@(:clj [[clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.analyzer :as analyzer]]
-                :cljs [[reagent.ratom :as ratom]
-                       [sci.impl.vars :as sci.vars]])
+                :cljs [[reagent.ratom :as ratom]])
             [nextjournal.markdown :as md]
             [nextjournal.markdown.transform :as md.transform]
-            [lambdaisland.uri.normalize :as uri.normalize])
+            [lambdaisland.uri.normalize :as uri.normalize]
+            [sci.lang])
   #?(:clj (:import (clojure.lang IDeref)
                    (java.lang Throwable)
                    (java.awt.image BufferedImage)
@@ -22,23 +22,8 @@
 
 (defrecord ViewerFn [form #?(:cljs f)]
   #?@(:cljs [IFn
-             (-invoke [this x]
-                      (if (instance? js/Promise f)
-
-                        (do
-                          (prn :prom)
-                          (.then f
-                                   (fn [f]
-                                     (f x))))
-                        (f x)))
-             (-invoke [this x y]
-                      (if (instance? js/Promise f)
-                        (do
-                          (prn :prom)
-                          (.then f
-                                 (fn [f]
-                                   (f x y))))
-                        (f x y)))]))
+             (-invoke [this x] ((:f this) x))
+             (-invoke [this x y] ((:f this) x y))]))
 
 (defn viewer-fn? [x]
   (instance? ViewerFn x))
@@ -585,10 +570,12 @@
 (def map-viewer
   {:pred map? :name :map :render-fn 'v/map-viewer :opening-paren "{" :closing-paren "}" :fetch-opts {:n 10}})
 
-#?(:cljs (defn var->symbol [v] (if (sci.vars/var? v) (sci.vars/toSymbol v) (symbol v))))
+#?(:cljs (defn sci-var? [x] (instance? sci.lang/Var x)))
+
+#?(:cljs (defn var->symbol [v] (if (instance? sci.lang.Var v) (symbol (str v)) (symbol v))))
 
 (def var-viewer
-  {:pred (some-fn var? #?(:cljs sci.vars/var?)) :transform-fn (comp #?(:cljs var->symbol :clj symbol) ->value) :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#'" (str x)]]))})
+  {:pred (some-fn var? #?(:cljs sci-var?)) :transform-fn (comp #?(:cljs var->symbol :clj symbol) ->value) :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#'" (str x)]]))})
 
 (def throwable-viewer
   {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
@@ -719,14 +706,23 @@
   {:name :clerk/result :render-fn (quote v/result-viewer) :transform-fn mark-presented})
 
 #?(:clj
-   (defn process-blocks [viewers {:as doc :keys [ns]}]
-     (-> doc
-         (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
-                                                (map (comp process-wrapped-value
-                                                           apply-viewers*
-                                                           (partial ensure-wrapped-with-viewers viewers))))))
-         (select-keys [:blocks :toc :title])
-         (cond-> ns (assoc :scope (datafy-scope ns))))))
+   (defn process-blocks [viewers {:as doc :keys [ns blocks]}]
+     (let [async? #(-> % :result :nextjournal/value :nextjournal/value :eval-async)
+           async-blocks (filter async? blocks)]
+       (def a async-blocks)
+       (-> doc
+           (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
+                                                  (map (comp process-wrapped-value
+                                                             apply-viewers*
+                                                             (partial ensure-wrapped-with-viewers viewers))))))
+           (select-keys [:blocks :toc :title])
+           (cond-> ns
+             (assoc :scope (datafy-scope ns))
+             (seq async-blocks) (assoc :async-blocks async-blocks))))))
+
+(comment
+  (seq a)
+  )
 
 (def notebook-viewer
   {:name :clerk/notebook
@@ -1247,10 +1243,13 @@
 (defn eval-cljs-str [code-string]
   ;; NOTE: this relies on implementation details on how SCI code is evaluated
   ;; and will change in a future version of Clerk
-  (with-viewer eval-cljs-result-viewer
-    (-> (->viewer-eval (list 'binding '[*ns* *ns*]
-                             (list 'load-string code-string)))
-        (assoc :remount? true))))
+  (let [x (with-viewer eval-cljs-result-viewer
+            (-> {}
+                (assoc :remount? true)
+                (assoc :eval-async true)
+                (assoc :code code-string)))]
+    (prn (keys (:nextjournal/value x)))
+    x))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; examples

@@ -4,7 +4,7 @@
             [cljs.reader]
             [clojure.string :as str]
             [edamame.core :as edamame]
-            [goog.object]
+            [goog.object :as gobject]
             [goog.string :as gstring]
             [lambdaisland.uri.normalize :as uri.normalize]
             [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex vl with-viewer with-viewers]]
@@ -29,6 +29,8 @@
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
+            [sci.async :as scia]
+            ;; Note: duplicate require of nextjournal.clerk.viewer:
             [nextjournal.clerk.viewer :as v]))
 
 (defn color-classes [selected?]
@@ -195,13 +197,13 @@
          [:div.flex.flex-col.items-center.viewer-notebook.flex-auto
           (doall
            (map-indexed (fn [idx x]
-                          (let [{viewer-name :name} (viewer/->viewer x)
-                                inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
+                          (let [{viewer-name :name} (v/->viewer x)
+                                inner-viewer-name (some-> x v/->value v/->viewer :name)]
                             ^{:key (str idx "-" @!eval-counter)}
                             [:div {:class ["viewer"
                                            (when viewer-name (str "viewer-" (name viewer-name)))
                                            (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
-                                           (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
+                                           (case (or (v/width x) (case viewer-name (:code :code-folded) :wide :prose))
                                              :wide "w-full max-w-wide"
                                              :full "w-full"
                                              "w-full max-w-prose px-8")]}
@@ -223,8 +225,8 @@
          :read-cond :allow
          :readers
          (fn [tag]
-           (or (get {'viewer-fn   (partial eval-viewer-fn viewer/->viewer-fn)
-                     'viewer-eval (partial eval-viewer-fn *eval*)} tag)
+           (or (get {'viewer-fn   (partial eval-viewer-fn v/->viewer-fn)
+                     'viewer-eval identity} tag)
                (fn [value]
                  (with-viewer :tagged-value
                    {:tag tag
@@ -310,7 +312,7 @@
                                 (fn [opts]
                                   (.then (fetch! @!fetch-opts opts)
                                          (fn [more]
-                                           (swap! !desc viewer/merge-presentations more opts)))))
+                                           (swap! !desc v/merge-presentations more opts)))))
                      !expanded-at (r/atom (get @!desc :nextjournal/expanded-at {}))
                      on-key-down (fn [event]
                                    (if (.-altKey event)
@@ -347,12 +349,12 @@
     (if (and hover-path prompt-multi-expand? (= (count path) hover-path-count))
       (swap! !expanded-at (fn [expanded-at]
                             (reduce
-                              (fn [acc [path expanded?]]
-                                (if (and (vector? path) (= (count path) hover-path-count))
-                                  (assoc acc path (not hover-path-expanded?))
-                                  (assoc acc path expanded?)))
-                              {}
-                              expanded-at)))
+                             (fn [acc [path expanded?]]
+                               (if (and (vector? path) (= (count path) hover-path-count))
+                                 (assoc acc path (not hover-path-expanded?))
+                                 (assoc acc path expanded?)))
+                             {}
+                             expanded-at)))
       (swap! !expanded-at update path not))))
 
 (defn expandable? [xs]
@@ -483,7 +485,7 @@
          (if (some #(and (string? %) (str/includes? % "\n")) (if (string? s) [s] s))
            [expand-button !expanded-at "\"" path]
            [:span "\""])
-         (viewer/->value (string-viewer s opts)) "\""]))
+         (v/->value (string-viewer s opts)) "\""]))
 
 (defn number-viewer [num]
   (html [:span.cmt-number.inspected-value
@@ -801,20 +803,33 @@
      [:div.fixed.top-0.left-0.w-full.h-full
       [inspect @!error]])])
 
-(declare mount)
+(declare mount !sci-ctx)
+
+(def dyn-import (js/eval "(x) => import(x)"))
 
 (defn ^:export set-state [{:as state :keys [doc error remount?]}]
-  (when remount?
-    (swap! !eval-counter inc))
-  (when (contains? state :doc)
-    (reset! !doc doc))
-  (reset! !error error)
-  (when-some [title (-> doc viewer/->value :title)]
-    (set! (.-title js/document) title)))
+  (let [async-blocks (:async-blocks (:nextjournal/value doc))]
+    (-> (reduce (fn [p block]
+                  (.then p
+                         (fn [_]
+                           (prn (keys block))
+                           (let [code (-> block :result :nextjournal/value :nextjournal/value :code)]
+                             (prn :eval code)
+                             (scia/eval-string* @!sci-ctx code)))))
+                (js/Promise.resolve nil)
+                async-blocks)
+        (.then (fn [_]
+                 (when remount?
+                   (swap! !eval-counter inc))
+                 (when (contains? state :doc)
+                   (reset! !doc doc))
+                 (reset! !error error)
+                 (when-some [title (-> doc viewer/->value :title)]
+                   (set! (.-title js/document) title)))))))
 
 (dc/defcard eval-viewer
   "Viewers that are lists are evaluated using sci."
-  [inspect (with-viewer (viewer/->viewer-fn '(fn [x] (v/html [:h3 "Ohai, " x "! 👋"]))) "Hans")])
+  [inspect (with-viewer (v/->viewer-fn '(fn [x] (v/html [:h3 "Ohai, " x "! 👋"]))) "Hans")])
 
 (dc/defcard notebook
   "Shows how to display a notebook document"
@@ -823,7 +838,7 @@
   {::dc/class "p-0"
    ::dc/state
    {:blocks
-    (map viewer/inspect-wrapped-value
+    (map v/inspect-wrapped-value
          [(with-viewer :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
           (code "(shuffle (range 10))")
           (with-viewer :clerk/code-block {:text "(+ 1 2 3)"})
@@ -840,13 +855,13 @@
   []
   [inspect-paginated
    (viewer/with-viewers
-    [{:pred number?
-      :render-fn (viewer/->viewer-fn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                                   :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
+     [{:pred number?
+       :render-fn (viewer/->viewer-fn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
+                                                                    :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
 black")}]))}
-     {:pred vector? :render-fn (viewer/->viewer-fn '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1)))}
-     {:pred list? :render-fn (viewer/->viewer-fn '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1)))}]
-    '([0 1 0] [1 0 1]))])
+      {:pred vector? :render-fn (viewer/->viewer-fn '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1)))}
+      {:pred list? :render-fn (viewer/->viewer-fn '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1)))}]
+     '([0 1 0] [1 0 1]))])
 
 (dc/defcard clj-long
   []
@@ -1142,17 +1157,35 @@ black")}]))}
    'read-string read-string})
 
 (defonce !sci-ctx
-  (atom (sci/init {:async? true
-                   :disable-arity-checks true
-                   :classes {'js goog/global
+  (atom (sci/init {:classes {'js goog/global
                              'framer-motion framer-motion
                              :allow :all}
                    :aliases {'j 'applied-science.js-interop
                              'reagent 'reagent.core
                              'v 'nextjournal.clerk.sci-viewer}
-                   :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace}
+                   :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace
+                                       'clojure.core {'require scia/require}}
                                       sci.configs.js-interop/namespaces
-                                      sci.configs.reagent/namespaces)})))
+                                      sci.configs.reagent/namespaces)
+                   :async-load-fn
+                   (fn [m]
+                     (let [libname (:libname m)]
+                       (when (and (string? libname)
+                                  (str/starts-with? libname "http"))
+                         (let [[libname selector] (.split libname "$")
+                               selector (when selector (.split selector "."))
+                               mod (dyn-import libname)]
+                           (.then mod (fn [mod]
+                                        (let [mod (if selector
+                                                    (gobject/getValueByKeys mod selector)
+                                                    mod)
+                                              opts (:opts m)
+                                              munged (munge libname)
+                                              ns (:ns m)]
+                                          (sci/add-class! @!sci-ctx munged mod)
+                                          (when-let [as (:as opts)]
+                                            (sci/add-import! @!sci-ctx ns munged as))
+                                          {:handled true})))))))})))
 
 (defn eval-form [f]
   (sci/eval-form @!sci-ctx f))
