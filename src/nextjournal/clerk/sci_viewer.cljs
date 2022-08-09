@@ -809,8 +809,8 @@
 
 (defn ^:export set-state [{:as state :keys [doc error remount?]}]
   (let [async-blocks (:async-blocks (:nextjournal/value doc))
-        blocks (:nextjournal/value doc)]
-    (prn blocks)
+        #_#_blocks (:nextjournal/value doc)]
+    #_(cljs.pprint/pprint blocks)
     (-> (reduce (fn [p block]
                   (.then p
                          (fn [ret]
