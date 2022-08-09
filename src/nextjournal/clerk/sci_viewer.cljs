@@ -808,17 +808,21 @@
 (def dyn-import (js/eval "(x) => import(x)"))
 
 (defn ^:export set-state [{:as state :keys [doc error remount?]}]
-  (let [async-blocks (:async-blocks (:nextjournal/value doc))]
+  (let [async-blocks (:async-blocks (:nextjournal/value doc))
+        blocks (:nextjournal/value doc)]
+    (prn blocks)
     (-> (reduce (fn [p block]
                   (.then p
-                         (fn [_]
-                           (prn (keys block))
-                           (let [code (-> block :result :nextjournal/value :nextjournal/value :code)]
-                             (prn :eval code)
-                             (scia/eval-string* @!sci-ctx code)))))
-                (js/Promise.resolve nil)
+                         (fn [ret]
+                           (let [code (-> block :result :nextjournal/value :nextjournal/value :code)
+                                 pv (scia/eval-string* @!sci-ctx code)]
+                             (.then pv
+                                    (fn [v]
+                                      (assoc ret (:idx block) v)))))))
+                (js/Promise.resolve {})
                 async-blocks)
-        (.then (fn [_]
+        (.then (fn [result]
+                 (prn result)
                  (when remount?
                    (swap! !eval-counter inc))
                  (when (contains? state :doc)

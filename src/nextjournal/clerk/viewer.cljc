@@ -707,9 +707,10 @@
 
 #?(:clj
    (defn process-blocks [viewers {:as doc :keys [ns blocks]}]
-     (let [async? #(-> % :result :nextjournal/value :nextjournal/value :eval-async)
+     (let [blocks (map (fn [block i]
+                         (assoc block :idx i)) blocks (range))
+           async? #(-> % :result :nextjournal/value :nextjournal/value :eval-async)
            async-blocks (filter async? blocks)]
-       (def a async-blocks)
        (-> doc
            (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
                                                   (map (comp process-wrapped-value
@@ -719,10 +720,6 @@
            (cond-> ns
              (assoc :scope (datafy-scope ns))
              (seq async-blocks) (assoc :async-blocks async-blocks))))))
-
-(comment
-  (seq a)
-  )
 
 (def notebook-viewer
   {:name :clerk/notebook
@@ -1240,6 +1237,11 @@
    :render-fn '(fn [x]
                  (v/html (v/inspect-paginated x)))})
 
+#_(def eval-cljs-result-viewer
+  {:transform-fn mark-presented
+   :render-fn '(fn [x]
+                 (v/html (str (:code x))))})
+
 (defn eval-cljs-str [code-string]
   ;; NOTE: this relies on implementation details on how SCI code is evaluated
   ;; and will change in a future version of Clerk
@@ -1250,6 +1252,13 @@
                 (assoc :code code-string)))]
     (prn (keys (:nextjournal/value x)))
     x))
+
+#_(defn eval-cljs-str [code-string]
+  ;; NOTE: this relies on implementation details on how SCI code is evaluated
+  ;; and will change in a future version of Clerk
+  (with-viewer eval-cljs-result-viewer
+    (-> {} #_(->viewer-eval {})
+        (assoc :remount? true :eval-async true :code-string code-string))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; examples
