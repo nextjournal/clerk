@@ -1248,10 +1248,10 @@
                                                                  (v/html [:div.flex.flex-wrap
                                                                           {:class "py-[7px]"}
                                                                           [:div [:div.bg-slate-100.px-2.rounded
-                                                                                 (v/inspect opts form)]]
+                                                                                 (v/inspect-presented opts form)]]
                                                                           [:div.flex.mt-1
                                                                            [:div.mx-2.font-sans.text-xs.text-slate-500 {:class "mt-[2px]"} "⇒"]
-                                                                           (v/inspect opts val)]]))})
+                                                                           (v/inspect-presented opts val)]]))})
                        (update-in [:nextjournal/value :form] code)))})
 
 (def examples-viewer
