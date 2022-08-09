@@ -38,7 +38,7 @@
    :label-color (if selected? "white-90" "black-60")
    :badge-background-color (if selected? "bg-white-20" "bg-black-10")})
 
-(declare inspect inspect-wrapped-value reagent-viewer)
+(declare inspect inspect-presented reagent-viewer)
 
 (defn value-of
   "Safe access to a value at key a js object.
@@ -73,9 +73,9 @@
            (into [:<>]
                  (comp (map-indexed (fn [idx k]
                                       [:<>
-                                       [inspect-wrapped-value k (update opts :path conj idx)]
+                                       [inspect-presented k (update opts :path conj idx)]
                                        " "
-                                       [inspect-wrapped-value (value-of x k) (update opts :path conj idx)]]))
+                                       [inspect-presented (value-of x k) (update opts :path conj idx)]]))
                        (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) " ")] " ")))
                  (keys x')) "}"])))
 
@@ -205,7 +205,7 @@
                                              :wide "w-full max-w-wide"
                                              :full "w-full"
                                              "w-full max-w-prose px-8")]}
-                             [inspect-wrapped-value x]]))
+                             [inspect-presented x]]))
                         xs))]]]))))
 
 
@@ -336,7 +336,7 @@
             [:div.relative
              [:div.overflow-x-auto.overflow-y-hidden
               {:ref ref-fn}
-              [inspect-wrapped-value {:!expanded-at !expanded-at} @!desc]]]]])))
+              [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]])))
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
@@ -362,7 +362,7 @@
 (defn inspect-children [opts]
   ;; TODO: move update function onto viewer
   (map-indexed (fn [idx x]
-                 (inspect-wrapped-value (update opts :path (fnil conj []) idx) x))))
+                 (inspect-presented (update opts :path (fnil conj []) idx) x))))
 
 (def expand-style
   ["cursor-pointer"
@@ -475,7 +475,7 @@
                    (if expanded?
                      (into [:<>] (interpose [:<> "\n " triangle-spacer] (str/split-lines %)))
                      (into [:<>] (interpose [:span.text-slate-400 "↩︎"] (str/split-lines %))))
-                   (inspect-wrapped-value opts %)))
+                   (inspect-presented opts %)))
            (if (string? s) [s] s)))))
 
 (defn quoted-string-viewer [s {:as opts :keys [path !expanded-at] :or {path []}}]
@@ -520,7 +520,7 @@
     [:p.mt-4.font-medium "Clerk’s table viewer does not recognize the format of your data:"]
     [:div.mt-2.flex
      [:div.text-red-500.mr-2 x-icon]
-     [inspect-wrapped-value data]]
+     [inspect-presented data]]
     [:p.mt-4.font-medium "Currently, the following formats are supported:"]
     [:div.mt-2.flex.items-center
      [:div.text-green-500.mr-2 check-icon]
@@ -574,7 +574,7 @@
     x))
 
 (def js-viewers
-  [{:pred #(implements? IDeref %) :render-fn #(tagged-value (-> %1 type pr-str) (inspect-wrapped-value (deref %1) %2))}
+  [{:pred #(implements? IDeref %) :render-fn #(tagged-value (-> %1 type pr-str) (inspect-presented (deref %1) %2))}
    {:pred goog/isObject :render-fn js-object-viewer}
    {:pred array? :render-fn (partial coll-viewer {:open [:<> [:span.cmt-meta "#js "] "["] :close "]"})}])
 
@@ -609,17 +609,17 @@
         :else
         (html (error-badge "unusable viewer `" (pr-str viewer) "`, value `" (pr-str value) "`"))))
 
-(defn inspect-wrapped-value
+(defn inspect-presented
   ([x]
    (r/with-let [!expanded-at (r/atom (:nextjournal/expanded-at x))]
-     [inspect-wrapped-value {:!expanded-at !expanded-at} x]))
+     [inspect-presented {:!expanded-at !expanded-at} x]))
   ([opts x]
    (if (react/isValidElement x)
      x
      (let [value (viewer/->value x)
            viewer (viewer/->viewer x)]
        #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
-       (inspect-wrapped-value opts (render-with-viewer (merge opts {:viewer viewer} (:nextjournal/opts x)) viewer value))))))
+       (inspect-presented opts (render-with-viewer (merge opts {:viewer viewer} (:nextjournal/opts x)) viewer value))))))
 
 (defn in-process-fetch [value opts]
   (.resolve js/Promise (viewer/present value opts)))
@@ -632,7 +632,7 @@
                                        (.then (in-process-fetch value fetch-opts)
                                               (fn [more]
                                                 (swap! !state update :desc viewer/merge-presentations more))))}
-     [inspect-wrapped-value (:desc @!state)]]))
+     [inspect-presented (:desc @!state)]]))
 
 (dc/defcard inspect-paginated-one
   []
@@ -697,11 +697,11 @@
 ;; TODO
 #_
 (dc/defcard viewer-reagent-atom
-  [inspect-wrapped-value (r/atom {:hello :world})])
+  [inspect-presented (r/atom {:hello :world})])
 
 #_ ;; commented out because recursive window prop will cause a loop
 (dc/defcard viewer-js-window []
-  [inspect-wrapped-value js/window])
+  [inspect-presented js/window])
 
 (dc/defcard viewer-vega-lite
   [inspect
@@ -746,7 +746,7 @@
   (inc #_ #readme/as :ignore 41)")])
 
 (dc/defcard viewer-hiccup
-  [inspect-wrapped-value (html [:h1 "Hello Hiccup 👋"])])
+  [inspect-presented (html [:h1 "Hello Hiccup 👋"])])
 
 (dc/defcard viewer-reagent-component
   "A simple counter component in reagent using `reagent.core/with-let`."
@@ -764,7 +764,7 @@
 (dc/defcard progress-bar
   "Show how to use a function as a viewer, supports both one and two artity versions."
   [:div
-   [inspect-wrapped-value (with-viewer
+   [inspect-presented (with-viewer
               #(html
                 [:div.relative.pt-1
                  [:div.overflow-hidden.h-2.mb-4-text-xs.flex.rounded.bg-blue-200
@@ -776,7 +776,7 @@
                                        (min 100)
                                        (str "%"))}}]]])
               0.33)]
-   [inspect-wrapped-value (with-viewer
+   [inspect-presented (with-viewer
               (fn [v _opts] (html
                              [:div.relative.pt-1
                               [:div.overflow-hidden.h-2.mb-4-text-xs.flex.rounded.bg-blue-200
@@ -793,10 +793,10 @@
 
 (defn root []
   [:<>
-   [inspect-wrapped-value @!doc]
+   [inspect-presented @!doc]
    (when @!error
      [:div.fixed.top-0.left-0.w-full.h-full
-      [inspect-wrapped-value @!error]])])
+      [inspect-presented @!error]])])
 
 (declare mount)
 
@@ -811,7 +811,7 @@
 
 (dc/defcard eval-viewer
   "Viewers that are lists are evaluated using sci."
-  [inspect-wrapped-value (with-viewer (viewer/->viewer-fn '(fn [x] (v/html [:h3 "Ohai, " x "! 👋"]))) "Hans")])
+  [inspect-presented (with-viewer (viewer/->viewer-fn '(fn [x] (v/html [:h3 "Ohai, " x "! 👋"]))) "Hans")])
 
 (dc/defcard notebook
   "Shows how to display a notebook document"
@@ -1083,7 +1083,7 @@ black")}]))}
                :on-click #(swap! !hidden? not)}
               expand-icon " Show code…"]]
             [:div.viewer-code.relative {:style {:margin-top 0}}
-             [inspect-wrapped-value (code-viewer code-string)]
+             [inspect-presented (code-viewer code-string)]
              [:button.sans-serif.mx-auto.flex.items-center.rounded-t-sm.cursor-pointer.bg-indigo-200.hover:bg-indigo-300.leading-none.absolute.bottom-0
               {:style {:font-size "11px" :padding "1px 3px" :left "50%" :transform "translateX(-50%)"}
                :on-click #(swap! !hidden? not)}
@@ -1103,7 +1103,7 @@ black")}]))}
 (dc/defcard inspected-sci-var [inspect (var doc-url)])
 
 (def sci-viewer-namespace
-  {'inspect-wrapped-value inspect-wrapped-value
+  {'inspect-presented inspect-presented
    'inspect inspect
    'result-viewer result-viewer
    'coll-viewer coll-viewer

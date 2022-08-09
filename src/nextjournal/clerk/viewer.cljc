@@ -215,7 +215,7 @@
 
 (declare present present* !viewers apply-viewers apply-viewers* ensure-wrapped-with-viewers process-viewer process-wrapped-value default-viewers find-named-viewer)
 
-(defn inspect-fn []  #?(:clj (->viewer-eval 'v/inspect-wrapped-value) :cljs (eval 'v/inspect-wrapped-value)))
+(defn inspect-fn []  #?(:clj (->viewer-eval 'v/inspect-presented) :cljs (eval 'v/inspect-presented)))
 
 (defn when-wrapped [f] #(cond-> % (wrapped-value? %) f))
 
@@ -407,18 +407,18 @@
                                                              value)]
                                                  [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
                                                   (cond-> {:class (when (number-col? i) "text-right")} title (assoc :title title))
-                                                  [:div.flex.items-center (v/inspect-wrapped-value opts header-cell)]]))) header-row)]))})
+                                                  [:div.flex.items-center (v/inspect-presented opts header-cell)]]))) header-row)]))})
 
 (def table-body-viewer
   {:name :table/body :fetch-opts {:n 20}
-   :render-fn '(fn [rows opts] (v/html (into [:tbody] (map-indexed (fn [idx row] (v/inspect-wrapped-value (update opts :path conj idx) row))) rows)))})
+   :render-fn '(fn [rows opts] (v/html (into [:tbody] (map-indexed (fn [idx row] (v/inspect-presented (update opts :path conj idx) row))) rows)))})
 
 (def table-row-viewer
   {:name :table/row
    :render-fn '(fn [row {:as opts :keys [path number-col?]}]
                  (v/html (into [:tr.hover:bg-gray-200.dark:hover:bg-slate-700
                                 {:class (if (even? (peek path)) "bg-black/5 dark:bg-gray-800" "bg-white dark:bg-gray-900")}]
-                               (map-indexed (fn [idx cell] [:td.pl-6.pr-2.py-1 (when (number-col? idx) {:class "text-right"}) (v/inspect-wrapped-value opts cell)])) row)))})
+                               (map-indexed (fn [idx cell] [:td.pl-6.pr-2.py-1 (when (number-col? idx) {:class "text-right"}) (v/inspect-presented opts cell)])) row)))})
 
 (defn update-table-viewers [viewers]
   (-> viewers
@@ -657,7 +657,7 @@
                                                    :style opts}]
                                             (map (fn [item]
                                                    [:div.flex.items-center.justify-center.flex-auto
-                                                    (v/inspect-wrapped-value opts item)])) items))))})
+                                                    (v/inspect-presented opts item)])) items))))})
 
 (def col-viewer
   {:name :col :render-fn '(fn [items opts]
@@ -665,7 +665,7 @@
                                                  :style opts}]
                                           (map (fn [item]
                                                  [:div.flex.items-center.justify-center
-                                                  (v/inspect-wrapped-value opts item)])) items)))})
+                                                  (v/inspect-presented opts item)])) items)))})
 
 (def table-viewer
   {:name :table
