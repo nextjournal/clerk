@@ -11,7 +11,7 @@
             [nextjournal.markdown :as md]
             [nextjournal.markdown.transform :as md.transform]
             [lambdaisland.uri.normalize :as uri.normalize]
-            [sci.lang])
+            #?(:cljs [sci.lang]))
   #?(:clj (:import (clojure.lang IDeref)
                    (java.lang Throwable)
                    (java.awt.image BufferedImage)
