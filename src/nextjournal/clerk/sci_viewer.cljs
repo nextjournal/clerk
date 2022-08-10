@@ -334,7 +334,7 @@
            [error-boundary
             !error
             [:div.relative
-             [:div.overflow-x-auto.overflow-y-hidden
+             [:div.overflow-y-hidden
               {:ref ref-fn}
               [inspect {:!expanded-at !expanded-at} @!desc]]]]])))
 
