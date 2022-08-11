@@ -7,7 +7,7 @@
             [goog.object]
             [goog.string :as gstring]
             [lambdaisland.uri.normalize :as uri.normalize]
-            [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex vl with-viewer with-viewers]]
+            [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex table vl row col with-viewer with-viewers]]
             [nextjournal.devcards :as dc]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.ui.components.d3-require :as d3-require]
@@ -38,7 +38,7 @@
    :label-color (if selected? "white-90" "black-60")
    :badge-background-color (if selected? "bg-white-20" "bg-black-10")})
 
-(declare inspect inspect-paginated reagent-viewer)
+(declare inspect inspect-presented reagent-viewer)
 
 (defn value-of
   "Safe access to a value at key a js object.
@@ -73,9 +73,9 @@
            (into [:<>]
                  (comp (map-indexed (fn [idx k]
                                       [:<>
-                                       [inspect k (update opts :path conj idx)]
+                                       [inspect-presented k (update opts :path conj idx)]
                                        " "
-                                       [inspect (value-of x k) (update opts :path conj idx)]]))
+                                       [inspect-presented (value-of x k) (update opts :path conj idx)]]))
                        (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) " ")] " ")))
                  (keys x')) "}"])))
 
@@ -205,7 +205,7 @@
                                              :wide "w-full max-w-wide"
                                              :full "w-full"
                                              "w-full max-w-prose px-8")]}
-                             [inspect x]]))
+                             [inspect-presented x]]))
                         xs))]]]))))
 
 
@@ -271,7 +271,7 @@
            (str/join "\n"))
       (catch js/Error _ nil))]
    (when-some [data (.-data error)]
-     [:div.mt-2 [inspect-paginated data]])])
+     [:div.mt-2 [inspect data]])])
 
 (defn error-boundary [!error & _]
   (r/create-class
@@ -336,7 +336,7 @@
             [:div.relative
              [:div.overflow-y-hidden
               {:ref ref-fn}
-              [inspect {:!expanded-at !expanded-at} @!desc]]]]])))
+              [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]])))
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
@@ -362,7 +362,7 @@
 (defn inspect-children [opts]
   ;; TODO: move update function onto viewer
   (map-indexed (fn [idx x]
-                 (inspect (update opts :path (fnil conj []) idx) x))))
+                 (inspect-presented (update opts :path (fnil conj []) idx) x))))
 
 (def expand-style
   ["cursor-pointer"
@@ -425,7 +425,7 @@
                     {:a "bar"  :c (range 10) :d 1}
                     ]]
           [:div.mb-3.result-viewer
-           [inspect-paginated coll]])))
+           [inspect coll]])))
 
 (dc/defcard coll-viewer-simple
   "with a simple `inspect` and no `present` we don't move closing parens to children"
@@ -439,7 +439,7 @@
                     {:a "bar"  :c (range 10) :d 1}
                     ]]
           [:div.mb-3.result-viewer
-           [inspect-paginated coll]])))
+           [inspect coll]])))
 
 (defn elision-viewer [{:as fetch-opts :keys [total offset unbounded?]} _]
   (html [view-context/consume :fetch-fn
@@ -475,7 +475,7 @@
                    (if expanded?
                      (into [:<>] (interpose [:<> "\n " triangle-spacer] (str/split-lines %)))
                      (into [:<>] (interpose [:span.text-slate-400 "↩︎"] (str/split-lines %))))
-                   (inspect opts %)))
+                   (inspect-presented opts %)))
            (if (string? s) [s] s)))))
 
 (defn quoted-string-viewer [s {:as opts :keys [path !expanded-at] :or {path []}}]
@@ -520,21 +520,21 @@
     [:p.mt-4.font-medium "Clerk’s table viewer does not recognize the format of your data:"]
     [:div.mt-2.flex
      [:div.text-red-500.mr-2 x-icon]
-     [inspect data]]
+     [inspect-presented data]]
     [:p.mt-4.font-medium "Currently, the following formats are supported:"]
     [:div.mt-2.flex.items-center
      [:div.text-green-500.mr-2 check-icon]
-     [inspect-paginated {:column-1 [1 2]
+     [inspect {:column-1 [1 2]
                          :column-2 [3 4]}]]
     [:div.mt-2.flex.items-center
      [:div.text-green-500.mr-2 check-icon]
-     [inspect-paginated [{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]]]
+     [inspect [{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]]]
     [:div.mt-2.flex.items-center
      [:div.text-green-500.mr-2 check-icon]
-     [inspect-paginated [[1 3] [2 4]]]]
+     [inspect [[1 3] [2 4]]]]
     [:div.mt-2.flex.items-center
      [:div.text-green-500.mr-2 check-icon]
-     [inspect-paginated {:head [:column-1 :column-2]
+     [inspect {:head [:column-1 :column-2]
                          :rows [[1 3] [2 4]]}]]]))
 
 
@@ -574,7 +574,7 @@
     x))
 
 (def js-viewers
-  [{:pred #(implements? IDeref %) :render-fn #(tagged-value (-> %1 type pr-str) (inspect (deref %1) %2))}
+  [{:pred #(implements? IDeref %) :render-fn #(tagged-value (-> %1 type pr-str) (inspect-presented (deref %1) %2))}
    {:pred goog/isObject :render-fn js-object-viewer}
    {:pred array? :render-fn (partial coll-viewer {:open [:<> [:span.cmt-meta "#js "] "["] :close "]"})}])
 
@@ -609,22 +609,22 @@
         :else
         (html (error-badge "unusable viewer `" (pr-str viewer) "`, value `" (pr-str value) "`"))))
 
-(defn inspect
+(defn inspect-presented
   ([x]
    (r/with-let [!expanded-at (r/atom (:nextjournal/expanded-at x))]
-     [inspect {:!expanded-at !expanded-at} x]))
+     [inspect-presented {:!expanded-at !expanded-at} x]))
   ([opts x]
    (if (react/isValidElement x)
      x
      (let [value (viewer/->value x)
            viewer (viewer/->viewer x)]
        #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
-       (inspect opts (render-with-viewer (merge opts {:viewer viewer} (:nextjournal/opts x)) viewer value))))))
+       (inspect-presented opts (render-with-viewer (merge opts {:viewer viewer} (:nextjournal/opts x)) viewer value))))))
 
 (defn in-process-fetch [value opts]
   (.resolve js/Promise (viewer/present value opts)))
 
-(defn inspect-paginated [value]
+(defn inspect [value]
   (r/with-let [!state (r/atom nil)]
     (when (not= (:value @!state) value)
       (swap! !state assoc :value value :desc (viewer/present value)))
@@ -632,13 +632,13 @@
                                        (.then (in-process-fetch value fetch-opts)
                                               (fn [more]
                                                 (swap! !state update :desc viewer/merge-presentations more))))}
-     [inspect (:desc @!state)]]))
+     [inspect-presented (:desc @!state)]]))
 
 (dc/defcard inspect-paginated-one
   []
   [:div
    (when-let [value @(rf/subscribe [::blobs :map-1])]
-     [inspect-paginated value])]
+     [inspect value])]
   {::blobs {:vector (vec (range 30))
             :vector-nested [1 [2] 3]
             :vector-nested-taco '[l [l [l [l [🌮] r] r] r] r]
@@ -655,7 +655,7 @@
    (map (fn [[blob-id xs]]
           ^{:key blob-id}
           [:div
-           [inspect-paginated xs]])
+           [inspect xs]])
         @(rf/subscribe [::blobs]))]
   {::blobs (hash-map (random-uuid) (vec (range 30))
                      (random-uuid) (range 40)
@@ -673,7 +673,7 @@
                      'symbol
                      ::keyword
                      "a string"
-                     nil
+                     nil ;; can't inspect `nil`
                      true
                      false
                      {:some "map"}
@@ -692,22 +692,19 @@
                      ^{:nextjournal/tag 'object} ['clojure.lang.Ref 0x73aff8f1 {:status :ready, :val 1}]]]
           [:div.mb-3.result-viewer
            [:pre [:code.inspected-value (binding [*print-meta* true] (pr-str value))]] [:span.inspected-value " => "]
-           [inspect-paginated value]])))
-
-
-(declare inspect)
+           [inspect value]])))
 
 ;; TODO
 #_
 (dc/defcard viewer-reagent-atom
-  [inspect (r/atom {:hello :world})])
+  [inspect-presented (r/atom {:hello :world})])
 
 #_ ;; commented out because recursive window prop will cause a loop
 (dc/defcard viewer-js-window []
-  [inspect js/window])
+  [inspect-presented js/window])
 
 (dc/defcard viewer-vega-lite
-  [inspect-paginated
+  [inspect
    (vl {:width 650
         :height 400
         :data
@@ -726,34 +723,34 @@
         {:color {:field "rate" :type "quantitative"}}})])
 
 (dc/defcard viewer-plolty
-  [inspect-paginated
+  [inspect
    (plotly
     {:data [{:y (shuffle (range 10)) :name "The Federation"}
             {:y (shuffle (range 10)) :name "The Empire"}]})])
 
 (dc/defcard viewer-latex
-  [inspect-paginated (tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")])
+  [inspect (tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")])
 
 (dc/defcard viewer-mathjax
-  [inspect-paginated
+  [inspect
    (with-viewer :mathjax
      "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")])
 
 (dc/defcard viewer-markdown
-  [inspect-paginated (md "### Hello Markdown\n\n* a bullet point")])
+  [inspect (md "### Hello Markdown\n\n* a bullet point")])
 
 (dc/defcard viewer-code
-  [inspect-paginated (code "(defn the-answer
+  [inspect (code "(defn the-answer
   \"to all questions\"
   []
   (inc #_ #readme/as :ignore 41)")])
 
 (dc/defcard viewer-hiccup
-  [inspect (html [:h1 "Hello Hiccup 👋"])])
+  [inspect-presented (html [:h1 "Hello Hiccup 👋"])])
 
 (dc/defcard viewer-reagent-component
   "A simple counter component in reagent using `reagent.core/with-let`."
-  [inspect-paginated
+  [inspect
    (with-viewer :reagent
      (fn []
        (r/with-let [c (r/atom 0)]
@@ -767,7 +764,7 @@
 (dc/defcard progress-bar
   "Show how to use a function as a viewer, supports both one and two artity versions."
   [:div
-   [inspect (with-viewer
+   [inspect-presented (with-viewer
               #(html
                 [:div.relative.pt-1
                  [:div.overflow-hidden.h-2.mb-4-text-xs.flex.rounded.bg-blue-200
@@ -779,7 +776,7 @@
                                        (min 100)
                                        (str "%"))}}]]])
               0.33)]
-   [inspect (with-viewer
+   [inspect-presented (with-viewer
               (fn [v _opts] (html
                              [:div.relative.pt-1
                               [:div.overflow-hidden.h-2.mb-4-text-xs.flex.rounded.bg-blue-200
@@ -796,10 +793,10 @@
 
 (defn root []
   [:<>
-   [inspect @!doc]
+   [inspect-presented @!doc]
    (when @!error
      [:div.fixed.top-0.left-0.w-full.h-full
-      [inspect @!error]])])
+      [inspect-presented @!error]])])
 
 (declare mount)
 
@@ -814,16 +811,16 @@
 
 (dc/defcard eval-viewer
   "Viewers that are lists are evaluated using sci."
-  [inspect (with-viewer (viewer/->viewer-fn '(fn [x] (v/html [:h3 "Ohai, " x "! 👋"]))) "Hans")])
+  [inspect-presented (with-viewer (viewer/->viewer-fn '(fn [x] (v/html [:h3 "Ohai, " x "! 👋"]))) "Hans")])
 
 (dc/defcard notebook
   "Shows how to display a notebook document"
   [doc]
-  [inspect-paginated (with-viewer :clerk/notebook @doc)]
+  [inspect (with-viewer :clerk/notebook @doc)]
   {::dc/class "p-0"
    ::dc/state
    {:blocks
-    (map viewer/inspect-wrapped-value
+    (map viewer/present
          [(with-viewer :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
           (code "(shuffle (range 10))")
           (with-viewer :clerk/code-block {:text "(+ 1 2 3)"})
@@ -838,7 +835,7 @@
 
 (dc/defcard inspect-rule-30-sci
   []
-  [inspect-paginated
+  [inspect
    (viewer/with-viewers
     [{:pred number?
       :render-fn (viewer/->viewer-fn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
@@ -850,7 +847,7 @@ black")}]))}
 
 (dc/defcard clj-long
   []
-  [inspect-paginated
+  [inspect
    '({:verts [[-0.5 -0.5] [0.5 -0.5] [0.5 0.5] [-0.5 0.5]],
       :invert? true}
      {:verts
@@ -956,14 +953,14 @@ black")}]))}
              :invert? true})]
     [:<>
      [:div.mb-4
-      [inspect-paginated '{1 ● 2 ■ 3 ▲}]]
+      [inspect '{1 ● 2 ■ 3 ▲}]]
      [:div.mb-4
-      [inspect-paginated {[[[[1 2]]]] [1 2]}]]
+      [inspect {[[[[1 2]]]] [1 2]}]]
 
      [:div
       {:style {:margin-right -12}}
       [:div.mb-4.overflow-x-hidden
-       [inspect-paginated x]]]]))
+       [inspect x]]]]))
 
 (defn ^:export ^:dev/after-load mount []
   (when-let [el (js/document.getElementById "clerk")]
@@ -971,37 +968,37 @@ black")}]))}
     (rdom/render [root] el)))
 
 (dc/defcard table [state]
-  [inspect-paginated (viewer/table @state)]
+  [inspect (viewer/table @state)]
   {::dc/state [[1 2 "ab"]
                [4 5 "cd"]]})
 
 (dc/defcard table-incomplete [state]
-  [inspect-paginated (viewer/table @state)]
+  [inspect (viewer/table @state)]
   {::dc/state [[1 2 3]
                [4]]})
 
 (dc/defcard table-col-headers [state]
-  [inspect-paginated (viewer/table @state)]
+  [inspect (viewer/table @state)]
   {::dc/state {:a [1 2 3]
                :b [4 5 6]}})
 
 (dc/defcard table-col-headers-incomplete [state]
-  [inspect-paginated (viewer/table @state)]
+  [inspect (viewer/table @state)]
   {::dc/state {:a [1 2 3]
                :b [4]}})
 
 (dc/defcard table-row-headers [state]
-  [inspect-paginated (viewer/table @state)]
+  [inspect (viewer/table @state)]
   {::dc/state [{:a 1 :b 2 :c 3}
                {:a 4 :b 5 :c 6}]})
 
 (dc/defcard table-row-headers-incomplete [state]
-  [inspect-paginated (viewer/table @state)]
+  [inspect (viewer/table @state)]
   {::dc/state [{:a 1 :b 2 :c 3}
                {:a 4}]})
 
 (dc/defcard table-error [state]
-  [inspect-paginated (viewer/table @state)]
+  [inspect (viewer/table @state)]
   {::dc/state #{1 2 3 4}})
 
 (dc/when-enabled
@@ -1011,7 +1008,7 @@ black")}]))}
 (declare lazy-inspect-in-process)
 
 (dc/defcard table-long [state]
-  [inspect-paginated (with-viewer :table @state)]
+  [inspect (with-viewer :table @state)]
   {::dc/state (let [n 20]
                 {:species (repeat n "Adelie")
                  :island (repeat n "Biscoe")
@@ -1022,13 +1019,13 @@ black")}]))}
                  :sex (take n (repeatedly #(rand-nth [:female :male])))})})
 
 (dc/defcard table-elided-string [state]
-  [inspect-paginated (viewer/table @state)]
+  [inspect (viewer/table @state)]
   {::dc/state (repeat 3 (map (comp str/join (partial repeat 200)) ["a" "b" "c"]))})
 
 (dc/defcard table-paginated-map-of-seq [state]
   [:div
    (when-let [xs @(rf/subscribe [::blobs])]
-     [inspect-paginated (viewer/table xs)])]
+     [inspect (viewer/table xs)])]
   {::blobs (let [n 60]
              {:species (repeat n "Adelie")
               :island (repeat n "Biscoe")
@@ -1041,7 +1038,7 @@ black")}]))}
 (dc/defcard table-paginated-vec [state]
   [:div
    (when-let [xs @(rf/subscribe [::blobs])]
-     [inspect-paginated (viewer/table xs)])]
+     [inspect (viewer/table xs)])]
   {::blobs (mapv  #(conj %2 (str "#" (inc %1))) (range) (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female]))})
 
 (defn find-named-viewer [viewers viewer-name]
@@ -1086,7 +1083,7 @@ black")}]))}
                :on-click #(swap! !hidden? not)}
               expand-icon " Show code…"]]
             [:div.viewer-code.relative {:style {:margin-top 0}}
-             [inspect (code-viewer code-string)]
+             [inspect-presented (code-viewer code-string)]
              [:button.sans-serif.mx-auto.flex.items-center.rounded-t-sm.cursor-pointer.bg-indigo-200.hover:bg-indigo-300.leading-none.absolute.bottom-0
               {:style {:font-size "11px" :padding "1px 3px" :left "50%" :transform "translateX(-50%)"}
                :on-click #(swap! !hidden? not)}
@@ -1103,12 +1100,11 @@ black")}]))}
   doc-url
   (sci/new-var 'doc-url (fn [x] (str "#" x))))
 
-(dc/defcard inspected-sci-var [inspect-paginated (var doc-url)])
+(dc/defcard inspected-sci-var [inspect (var doc-url)])
 
 (def sci-viewer-namespace
-  {'html html-render
+  {'inspect-presented inspect-presented
    'inspect inspect
-   'inspect-paginated inspect-paginated
    'result-viewer result-viewer
    'coll-viewer coll-viewer
    'map-viewer map-viewer
@@ -1120,8 +1116,6 @@ black")}]))}
    'quoted-string-viewer quoted-string-viewer
    'number-viewer number-viewer
    'table-error table-error
-   'with-viewer with-viewer
-   'with-viewers with-viewers
    'with-d3-require d3-require/with
    'clerk-eval clerk-eval
    'consume-view-context view-context/consume
@@ -1139,7 +1133,20 @@ black")}]))}
 
    'doc-url doc-url
    'url-for url-for
-   'read-string read-string})
+   'read-string read-string
+
+   ;; clerk viewer API
+   'code code
+   'col col
+   'html html-render
+   'md md
+   'plotly plotly
+   'row row
+   'table table
+   'tex tex
+   'vl vl
+   'with-viewer with-viewer
+   'with-viewers with-viewers})
 
 (defonce !sci-ctx
   (atom (sci/init {:async? true
