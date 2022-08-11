@@ -12,10 +12,10 @@
             [nextjournal.markdown :as md]
             [nextjournal.markdown.transform :as md.transform]
             [lambdaisland.uri.normalize :as uri.normalize])
-  #?(:clj (:import (clojure.lang IDeref)
+  #?(:clj (:import (com.pngencoder PngEncoder)
+                   (clojure.lang IDeref)
                    (java.lang Throwable)
                    (java.awt.image BufferedImage)
-                   (javax.imageio ImageIO)
                    (java.util Base64))))
 
 (defrecord ViewerEval [form])
@@ -395,7 +395,7 @@
 (def table-markup-viewer
   {:name :table/markup
    :render-fn '(fn [head+body opts]
-                 (v/html (into [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose] (v/inspect-children opts) head+body)))})
+                 (v/html [:div.overflow-x-auto (into [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose] (v/inspect-children opts) head+body)]))})
 
 (def table-head-viewer
   {:name :table/head
@@ -582,12 +582,13 @@
 
 (def buffered-image-viewer #?(:clj {:pred #(instance? BufferedImage %)
                                     :transform-fn (fn [{image :nextjournal/value}]
-                                                    (let [stream (java.io.ByteArrayOutputStream.)
-                                                          w (.getWidth image)
+                                                    (let [w (.getWidth image)
                                                           h (.getHeight image)
                                                           r (float (/ w h))]
-                                                      (ImageIO/write image "png" stream)
-                                                      (-> {:nextjournal/value (.toByteArray stream)
+                                                      (-> {:nextjournal/value (.. (PngEncoder.)
+                                                                                  (withBufferedImage image)
+                                                                                  (withCompressionLevel 1)
+                                                                                  (toBytes))
                                                            :nextjournal/content-type "image/png"
                                                            :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)}
                                                           mark-presented)))
