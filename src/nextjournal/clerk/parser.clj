@@ -67,6 +67,7 @@
                            :readers *data-readers*
                            :read-cond :allow
                            :regex #(list `re-pattern %)
+                           :location? (constantly true)
                            :features #{:clj}}))
 
 #_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
@@ -78,7 +79,7 @@
   #{:comment :whitespace :comma})
 
 (defn ->codeblock [visibility node]
-  (cond-> {:type :code :text (n/string node)}
+  (cond-> {:type :code :text (n/string node) :loc (select-keys (meta node) [:row :col :end-row :end-col])}
     (and (not visibility) (-> node n/string read-string ns?))
     (assoc :ns? true)))
 
@@ -169,3 +170,4 @@
 #_(parse-file "notebooks/markdown.md")
 #_(parse-file {:doc? true} "notebooks/rule_30.clj")
 #_(parse-file "notebooks/src/demo/lib.cljc")
+#_(parse-file "notebooks/scratch.clj")
