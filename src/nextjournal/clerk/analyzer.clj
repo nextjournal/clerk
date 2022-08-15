@@ -77,7 +77,19 @@
   ([form] (analyze-form {} form))
   ([bindings form]
    (binding [config/*in-clerk* true]
-     (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings}))))
+     (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings
+                                                :passes-opts {:validate/unresolvable-symbol-handler
+                                                              (fn [symbol-namespace
+                                                                   symbol-name
+                                                                   ast-node]
+                                                                (throw (ex-info (str "Could not resolve var: " symbol-name)
+                                                                                {:symbol-namespace symbol-namespace
+                                                                                 :symbol-name symbol-name
+                                                                                 :ast-node ast-node
+                                                                                 :form form
+                                                                                 :form-meta (meta form)})))}}))))
+
+#_(nextjournal.clerk/show! "notebooks/scratch.clj")
 
 (defn analyze [form]
   (let [!deps      (atom #{})
