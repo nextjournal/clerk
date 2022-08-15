@@ -87,12 +87,12 @@
       nil)))
 
 (defn- cachable-value? [value]
-  (not (or (nil? value)
-           (fn? value)
-           (var? value)
-           (instance? clojure.lang.IDeref value)
-           (instance? clojure.lang.MultiFn value)
-           (instance? clojure.lang.Namespace value))))
+  (and (some? value)
+       (nippy/freezable? value)
+       (not (analyzer/exceeds-bounded-count-limit? value))))
+
+#_(cachable-value? (vec (range 100)))
+#_(cachable-value? (range))
 
 (defn- cache! [digest-file var-value]
   (try
@@ -109,8 +109,7 @@
         var-value (cond-> result (and var (var? result)) deref)
         no-cache? (or ns-effect?
                       no-cache?
-                      config/cache-disabled?
-                      (analyzer/exceeds-bounded-count-limit? var-value))]
+                      config/cache-disabled?)]
     (when (and (not no-cache?) (not ns-effect?) freezable? (cachable-value? var-value))
       (cache! digest-file var-value))
     (let [blob-id (cond no-cache? (analyzer/->hash-str var-value)

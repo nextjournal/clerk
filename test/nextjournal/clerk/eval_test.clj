@@ -35,6 +35,10 @@
       (is (match? {:blocks [{:result {:nextjournal/value -4}}]}
                   (eval/eval-doc {blob-id {:nextjournal/value -4}} doc)))))
 
+  (testing "does not hang on java.nio.Path result (issue #199)"
+    (eval/eval-string "(.toPath (clojure.java.io/file \"something\"))")
+    (eval/eval-string "[(.toPath (clojure.java.io/file \"something\"))]"))
+
   (testing "handling binding forms i.e. def, defn"
     ;; ensure "some-var" is a variable in whatever namespace we're running in
     (testing "the variable is properly defined"
