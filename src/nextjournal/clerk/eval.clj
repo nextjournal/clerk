@@ -63,7 +63,7 @@
      {:result ret#
       :time-ms (elapsed-ms start#)}))
 
-(defn- var-from-def [var]
+(defn ^:private var-from-def [var]
   (let [resolved-var (cond (var? var)
                            var
 
@@ -74,7 +74,7 @@
                            (throw (ex-info "Unable to resolve into a variable" {:data var})))]
     {:nextjournal.clerk/var-from-def resolved-var}))
 
-(defn- lookup-cached-result [introduced-var hash cas-hash visibility]
+(defn ^:private lookup-cached-result [introduced-var hash cas-hash visibility]
   (try
     (let [value (let [cached-value (thaw-from-cas cas-hash)]
                   (when introduced-var
@@ -86,7 +86,7 @@
       #_(prn :thaw-error e)
       nil)))
 
-(defn- cachable-value? [value]
+(defn ^:private cachable-value? [value]
   (and (some? value)
        (nippy/freezable? value)
        (not (analyzer/exceeds-bounded-count-limit? value))))
@@ -94,31 +94,36 @@
 #_(cachable-value? (vec (range 100)))
 #_(cachable-value? (range))
 
-(defn- cache! [digest-file var-value]
+
+(defn ^:private cache! [digest-file var-value]
   (try
     (spit digest-file (hash+store-in-cas! var-value))
     (catch Exception e
       #_(prn :freeze-error e)
       nil)))
 
-(defn- eval+cache! [{:keys [form var ns-effect? no-cache? freezable?]} hash digest-file visibility]
-  (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true] (eval form)))
-        result (if (and (nil? result) var (= 'defonce (first form)))
-                 (find-var var)
-                 result)
-        var-value (cond-> result (and var (var? result)) deref)
-        no-cache? (or ns-effect?
-                      no-cache?
-                      config/cache-disabled?)]
-    (when (and (not no-cache?) (not ns-effect?) freezable? (cachable-value? var-value))
-      (cache! digest-file var-value))
-    (let [blob-id (cond no-cache? (analyzer/->hash-str var-value)
-                        (fn? var-value) nil
-                        :else hash)
-          result (if var
-                   (var-from-def var)
-                   result)]
-      (wrapped-with-metadata result visibility blob-id))))
+(defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file visibility]
+  (try
+    (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true]
+                                      (eval form)))
+          result (if (and (nil? result) var (= 'defonce (first form)))
+                   (find-var var)
+                   result)
+          var-value (cond-> result (and var (var? result)) deref)
+          no-cache? (or ns-effect?
+                        no-cache?
+                        config/cache-disabled?)]
+      (when (and (not no-cache?) (not ns-effect?) freezable? (cachable-value? var-value))
+        (cache! digest-file var-value))
+      (let [blob-id (cond no-cache? (analyzer/->hash-str var-value)
+                          (fn? var-value) nil
+                          :else hash)
+            result (if var
+                     (var-from-def var)
+                     result)]
+        (wrapped-with-metadata result visibility blob-id)))
+    (catch Exception e
+      (throw (ex-info (ex-message e) (select-keys form-info [:file :var :form]) e)))))
 
 (defn maybe-eval-viewers [{:as opts :nextjournal/keys [viewer viewers]}]
   (cond-> opts
