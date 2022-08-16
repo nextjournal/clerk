@@ -40,6 +40,7 @@
                                     {:type :code, :text "{2 \"bar\" 1 \"foo\"}"}],
                            :visibility #{:show},
                            :title "📶 Sorting",
+                           :ns? true
                            :toc {:type :toc,
                                  :mode true,
                                  :children [{:type :toc :children [{:type :toc}

@@ -46,9 +46,11 @@
 
 (defn ->doc-settings [first-form]
   {:visibility (->doc-visibility first-form)
+   :ns? (ns? first-form)
    :toc (or (#{true :collapsed} (-> first-form meta :nextjournal.clerk/toc)) false)})
 
 #_(->doc-settings '(ns foo))
+#_(->doc-settings '(in-ns 'foo))
 #_(->doc-settings '^{:nextjournal.clerk/toc true} (ns foo))
 #_(->doc-settings '^{:nextjournal.clerk/toc :pin} (ns foo))
 #_(->doc-settings '^{:nextjournal.clerk/toc :boom} (ns foo)) ;; TODO: error
@@ -116,7 +118,7 @@
                 (-> state
                     (assoc :add-comment-on-line? false)
                     (update :nodes rest))))
-       (merge (select-keys state [:blocks :visibility])
+       (merge (select-keys state [:blocks :visibility :ns?])
               (when doc?
                 (-> {:content (into []
                                     (comp (filter (comp #{:markdown} :type))

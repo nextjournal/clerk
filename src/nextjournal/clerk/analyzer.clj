@@ -218,6 +218,14 @@
                                  doc? (assoc :ns *ns*))]
                      (when ns-effect?
                        (eval form))
+                     (when-let [missing-dep (and (:ns? doc)
+                                                 (first (set/difference (into #{}
+                                                                              (filter #(and (symbol? %)
+                                                                                            (#{(-> state :ns ns-name name)} (namespace %))))
+                                                                              deps)
+                                                                        (-> state :->analysis-info keys set))))]
+                       (throw (ex-info (str "Could not resolve var: " (name missing-dep))
+                                       (merge {:var missing-dep} (select-keys analyzed [:form]) (select-keys doc [:file])))))
                      (if (seq deps)
                        (-> (reduce (partial analyze-deps analyzed) state deps)
                            (make-deps-inherit-no-cache analyzed))

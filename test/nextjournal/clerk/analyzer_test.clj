@@ -175,7 +175,17 @@
   (testing "preserves *ns*"
     (with-ns-binding 'nextjournal.clerk.analyzer-test
       (is (= (find-ns 'nextjournal.clerk.analyzer-test)
-             (do (analyze-string "(ns example-notebook)") *ns*)))))
+             (do (analyze-string ";; boo\n\n (ns example-notebook)") *ns*)))))
+
+  (testing "should fail when var is only present at runtime but not in file"
+    (let [ns (create-ns 'missing-var)]
+      (intern (create-ns 'missing-var) 'foo :bar)
+      (is (thrown? Exception (analyze-string "(ns missing-var) foo")))))
+
+  (testing "should not fail on var present at runtime if there's no ns form"
+    (let [ns (create-ns 'existing-var)]
+      (intern (create-ns 'existing-var) 'foo :bar)
+      (analyze-string "(in-ns 'existing-var) foo")))
 
   (testing "defmulti has no deref deps"
     (is (empty? (-> "(defmulti foo :bar)" analyze-string :blocks first :deref-deps)))))
