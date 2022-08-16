@@ -39,6 +39,9 @@
     (eval/eval-string "(.toPath (clojure.java.io/file \"something\"))")
     (eval/eval-string "[(.toPath (clojure.java.io/file \"something\"))]"))
 
+  (testing "does not error on lazy seq that integer overflows on freezable check"
+    (eval/eval-string "(def fib (lazy-cat [0 1] (map + fib (rest fib))))"))
+
   (testing "handling binding forms i.e. def, defn"
     ;; ensure "some-var" is a variable in whatever namespace we're running in
     (testing "the variable is properly defined"
