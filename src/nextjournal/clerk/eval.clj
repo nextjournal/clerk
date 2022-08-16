@@ -88,7 +88,12 @@
 
 (defn ^:private cachable-value? [value]
   (and (some? value)
-       (nippy/freezable? value)
+       (try
+         (nippy/freezable? value)
+         ;; can error on e.g. lazy-cat fib
+         ;; TODO: propagate error information here
+         (catch Exception _
+           false))
        (not (analyzer/exceeds-bounded-count-limit? value))))
 
 #_(cachable-value? (vec (range 100)))
