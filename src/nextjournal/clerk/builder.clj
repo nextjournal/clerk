@@ -2,9 +2,11 @@
   "Clerk's Static App Builder."
   (:require [babashka.fs :as fs]
             [clojure.java.browse :as browse]
+            [clojure.java.io :as io]
+            [clojure.java.shell :as shell]
             [clojure.string :as str]
-            [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.analyzer :as analyzer]
+            [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]))
 
@@ -90,7 +92,8 @@
               (fs/create-dirs (fs/parent out-html))
               (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
     (when browse?
-      (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize)))))
+      (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize)))
+    docs))
 
 (defn stdout-reporter [{:as event :keys [stage state duration doc]}]
   (let [format-duration (partial format "%.3fms")
@@ -98,8 +101,10 @@
     (print (case stage
              :init (str "👷🏼 Clerk is building " (count state) " notebooks…\n🧐 Parsing… ")
              :parsed (str "Done in " duration ". ✅\n🔬 Analyzing… ")
-             (:built :analyzed) (str "Done in " duration ". ✅\n")
+             (:built :analyzed :done) (str "Done in " duration ". ✅\n")
              :building (str "🔨 Building \"" (:file doc) "\"… ")
+             :downloading-cache (str "⏬ Downloading distributed cache… ")
+             :uploading-cache (str "⏫ Uploading distributed cache… ")
              :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n"))))
   (flush))
 
@@ -120,26 +125,39 @@
 #_(expand-paths ["notebooks/viewers**"])
 
 (defn build-static-app! [opts]
-  (let [{:as opts :keys [paths]} (update opts :paths expand-paths)
+  (let [{:as opts :keys [expanded-paths paths download-cache-fn upload-cache-fn]} (assoc opts :expanded-paths (-> opts :paths expand-paths))
+        _ (when (empty? expanded-paths)
+            (throw (ex-info "nothing to build" {:expanded-paths expanded-paths :paths paths})))
         start (System/nanoTime)
         report-fn stdout-reporter
-        state (mapv #(hash-map :file %) paths)
+        state (mapv #(hash-map :file %) expanded-paths)
         _ (report-fn {:stage :init :state state})
         {state :result duration :time-ms} (eval/time-ms (mapv (comp (partial parser/parse-file {:doc? true}) :file) state))
         _ (report-fn {:stage :parsed :state state :duration duration})
         {state :result duration :time-ms} (eval/time-ms (mapv (comp analyzer/hash
                                                                     analyzer/build-graph) state))
         _ (report-fn {:stage :analyzed :state state :duration duration})
+        _ (when download-cache-fn
+            (report-fn {:stage :downloading-cache})
+            (let [{duration :time-ms} (eval/time-ms (download-cache-fn state))]
+              (report-fn {:stage :done :duration duration})))
         state (mapv (fn [doc]
                       (report-fn {:stage :building :doc doc})
                       (let [{doc+viewer :result duration :time-ms} (eval/time-ms
-                                                                    (let [doc (eval/eval-analyzed-doc doc
-                                                                                                      )]
+                                                                    (let [doc (eval/eval-analyzed-doc doc)]
                                                                       (assoc doc :viewer (view/doc->viewer {:inline-results? true} doc))))]
                         (report-fn {:stage :built :doc doc+viewer :duration duration})
                         doc+viewer)) state)
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
+    (when upload-cache-fn
+      (report-fn {:stage :uploading-cache})
+      (let [{duration :time-ms} (eval/time-ms (upload-cache-fn state))]
+        (report-fn {:stage :done :duration duration})))
     (report-fn {:stage :finished :state state :duration duration :total-duration (eval/elapsed-ms start)})))
+
+#_(build-static-app! {:paths ["notebooks/scratch_slow.clj"]
+                      :download-cache-fn (requiring-resolve 'nextjournal.clerk.distributed-cache/download!)
+                      :upload-cache-fn (requiring-resolve 'nextjournal.clerk.distributed-cache/upload!)})
 
 #_(build-static-app! {:paths (take 5 clerk-docs)})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
