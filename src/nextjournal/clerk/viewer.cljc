@@ -161,6 +161,13 @@
 
 #_(->> "x^2" (with-viewer :latex) (with-viewers [{:name :latex :render-fn :mathjax}]))
 
+(defn get-safe
+  ([key] #(get-safe % key))
+  ([map key]
+   (when (map? map)
+     (try (get map key) ;; can throw for e.g. sorted-map
+          (catch #?(:clj Exception :cljs js/Error) _e nil)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; table viewer normalization
 
@@ -199,10 +206,9 @@
         (assoc :head (first rows))
         (update :rows rest))))
 
-
 (defn normalize-table-data [data]
   (cond
-    (and (map? data) (-> data :rows sequential?)) (normalize-seq-to-vec data)
+    (and (map? data) (-> data (get-safe :rows) sequential?)) (normalize-seq-to-vec data)
     (and (map? data) (sequential? (first (vals data)))) (normalize-map-of-seq data)
     (and (sequential? data) (map? (first data))) (normalize-seq-of-map data)
     (and (sequential? data) (sequential? (first data))) (normalize-seq-of-seq data)
@@ -232,13 +238,6 @@
 
 (defn fetch-all [_opts _xs]
   (throw (ex-info "`fetch-all` is deprecated, please use a `:transform-fn` with `mark-presented` instead." {})))
-
-(defn get-safe
-  ([key] #(get-safe % key))
-  ([map key]
-   (when (map? map)
-     (try (get map key) ;; can throw for e.g. sorted-map
-          (catch #?(:clj Exception :cljs js/Error) _e nil)))))
 
 (def var-from-def?
   (get-safe :nextjournal.clerk/var-from-def))

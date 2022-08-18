@@ -12,6 +12,13 @@
          more (v/present value elision)]
      (v/desc->values (v/merge-presentations desc more elision)))))
 
+(deftest normalize-table-data
+  (testing "works with sorted-map"
+    (is (= {:head ["A" "B"]
+            :rows [["Aani" "Baal"] ["Aaron" "Baalath"]]}
+           (v/normalize-table-data (into (sorted-map) {"B" ["Baal" "Baalath"]
+                                                       "A" ["Aani" "Aaron"]}))))))
+
 (deftest resolve-elision
   (testing "range"
     (let [value (range 30)]
