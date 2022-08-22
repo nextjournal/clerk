@@ -116,8 +116,9 @@
   (testing "assigns correct width from viewer function opts"
     (is (match? [{:nextjournal/width :wide}
                  {:nextjournal/width :full}]
-                (-> "^{:nextjournal.clerk/visibility {:result :hide}} (ns clerk-test-width {:nextjournal.clerk/visibility {:code :hide}}
+                (-> "(ns clerk-test-width {:nextjournal.clerk/visibility {:code :hide}}
   (:require [nextjournal.clerk :as clerk]))
+
 
 (clerk/html {::clerk/width :wide} [:div.bg-red-200 [:h1 \"Wide Hiccup\"]])
 
@@ -130,7 +131,7 @@
   (testing "assigns the correct width from form meta"
     (is (match? [{:nextjournal/width :full}
                  {:nextjournal/width :wide}]
-                (-> "^{:nextjournal.clerk/visibility {:result :hide}} (ns clerk-test-width {:nextjournal.clerk/visibility {:code :hide}})
+                (-> "(ns clerk-test-width {:nextjournal.clerk/visibility {:code :hide}})
 
 ^{:nextjournal.clerk/viewer :table :nextjournal.clerk/width :full}
 (def dataset

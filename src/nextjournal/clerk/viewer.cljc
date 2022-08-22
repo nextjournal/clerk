@@ -344,11 +344,15 @@
 (defn ->display [{:as code-cell :keys [result ns?]}]
   (let [{:nextjournal.clerk/keys [visibility]} result
         {:keys [code result]} visibility]
-    {:result? (not= :hide result) :fold? (= code :fold) :code? (not= :hide code)}))
+    {:result? (not (or (= :hide result) ns?))
+     :fold? (= code :fold)
+     :code? (not= :hide code)}))
 
 #_(->display {:result {:nextjournal.clerk/visibility {:code :show :result :show}}})
 #_(->display {:result {:nextjournal.clerk/visibility {:code :fold :result :show}}})
 #_(->display {:result {:nextjournal.clerk/visibility {:code :fold :result :hide}}})
+#_(->display {:ns? true :result {:nextjournal.clerk/visibility {:code :hide}}})
+#_(->display {:ns? true})
 
 #?(:clj
    (defn with-block-viewer [doc {:as cell :keys [type]}]
