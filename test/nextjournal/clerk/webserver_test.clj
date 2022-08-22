@@ -20,10 +20,9 @@
       (is (= (-> body read-result :nextjournal/value first :nextjournal/value) 20)))))
 
 (deftest extract-viewer-evals
-  (testing "doens't throw on sorted-map"
-    (is (= #{} (-> '(into (sorted-map)
-                          {"A" ["A" "Aani" "Aaron"]
-                           "B" ["B" "Baal" "Baalath"]})
-                   pr-str
+  (testing "doesn't throw on sorted-map"
+    (is (= #{} (-> (pr-str '(into (sorted-map)
+                                  {"A" ["A" "Aani" "Aaron"]
+                                   "B" ["B" "Baal" "Baalath"]}))
                    eval/eval-string
                    webserver/extract-viewer-evals)))))

@@ -145,7 +145,7 @@
                                                (analyzer/hash-codeblock ->hash codeblock)))
         digest-file    (when hash (->cache-file (str "@" hash)))
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
-        visibility     (if-let [fv (parser/->visibility form)] fv doc-visibility)
+        visibility     (merge doc-visibility (parser/->visibility form))
         cached-result? (and (not no-cache?)
                             cas-hash
                             (-> cas-hash ->cache-file fs/exists?))

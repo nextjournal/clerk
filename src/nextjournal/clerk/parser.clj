@@ -16,33 +16,41 @@
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
 
-(defn ->visibility [form]
-  (when-let [visibility (-> form meta :nextjournal.clerk/visibility)]
-    (let [visibility-set (cond-> visibility (not (set? visibility)) hash-set)]
-      (when-not (every? #{:hide-ns :fold-ns :hide :show :fold} visibility-set)
-        (throw (ex-info "Invalid `:nextjournal.clerk/visibility`, valid values are `#{:hide-ns :fold-ns :hide :show :fold}`." {:visibility visibility :form form})))
-      (when (and (or (visibility-set :hide-ns) (visibility-set :fold-ns))
-                 (not (ns? form)))
-        (throw (ex-info "Cannot set `:nextjournal.clerk/visibility` to `:hide-ns` or `:fold-ns` on non ns form." {:visibility visibility :form form})))
-      visibility-set)))
+(defn parse-visibility [form visibility]
+  (when-let [visibility-map (and visibility (cond->> visibility (not (map? visibility)) (hash-map :code)))]
+    (when-not (and (every? #{:code :result} (keys visibility-map))
+                   (every? #{:hide :show :fold} (vals visibility-map)))
+      (throw (ex-info "Invalid `:nextjournal.clerk/visibility`, please pass a map with `:code` and `:result` keys, allowed values are `:hide`, `:show` and `:fold`."
+                      (cond-> {:visibility visibility}
+                        form (assoc :form form)))))
+    visibility-map))
 
-#_(->visibility '(foo :bar))
+#_(parse-visibility nil nil)
+#_(parse-visibility nil {:code :fold :result :hide})
+
+(defn ->visibility [form]
+  (parse-visibility form (-> form meta :nextjournal.clerk/visibility)))
+
 #_(->visibility (quote ^{:nextjournal.clerk/visibility :fold} (ns foo)))
-#_(->visibility (quote ^{:nextjournal.clerk/visibility #{:hide-ns :fold}} (ns foo)))
+#_(->visibility '(foo :bar))
+#_(->visibility (quote (ns foo {:nextjournal.clerk/visibility {:code :fold :result :hide}})))
+#_(->visibility (quote ^{:nextjournal.clerk/visibility {:code :fold :result :hide}} (ns foo)))
 #_(->visibility (quote ^{:nextjournal.clerk/visibility :hidden} (ns foo)))
 #_(->visibility (quote ^{:nextjournal.clerk/visibility "bam"} (ns foo)))
 #_(->visibility (quote ^{:nextjournal.clerk/visibility #{:hide-ns}} (do :foo)))
 
 (defn ->doc-visibility [first-form]
-  (or (when (ns? first-form)
-        (-> first-form
-            ->visibility
-            (disj :hide-ns :fold-ns)
-            not-empty))
-      #{:show}))
+  (merge {:code :show :result :show}
+         (when (ns? first-form)
+           (parse-visibility first-form (merge (-> first-form second meta :nextjournal.clerk/visibility)
+                                               (some :nextjournal.clerk/visibility first-form))))))
 
-#_(->doc-visibility '^{:nextjournal.clerk/visibility :fold} (ns foo))
-#_(->doc-visibility '^{:nextjournal.clerk/visibility :hide-ns} (ns foo))
+
+#_(->doc-visibility '(ns foo "my docs" {:nextjournal.clerk/visibility {:code :fold :result :hide}}))
+#_(->doc-visibility '(ns foo "my docs" {}))
+#_(->doc-visibility '(ns ^{:nextjournal.clerk/visibility {:code :fold :result :hide}} foo))
+#_(->doc-visibility '(ns ^{:nextjournal.clerk/visibility {:code :fold}} foo
+                       {:nextjournal.clerk/visibility {:result :hide}}))
 
 (defn ->doc-settings [first-form]
   {:visibility (->doc-visibility first-form)
@@ -50,6 +58,7 @@
    :toc (or (#{true :collapsed} (-> first-form meta :nextjournal.clerk/toc)) false)})
 
 #_(->doc-settings '(ns foo))
+#_(->doc-settings '(ns foo {:nextjournal.clerk/visibility {:code :fold :result :hide}}))
 #_(->doc-settings '(in-ns 'foo))
 #_(->doc-settings '^{:nextjournal.clerk/toc true} (ns foo))
 #_(->doc-settings '^{:nextjournal.clerk/toc :pin} (ns foo))

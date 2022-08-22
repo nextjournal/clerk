@@ -38,7 +38,7 @@
                                     {:type :code, :text "#{3 1 2}"}
                                     {:type :markdown, :doc {:type :doc :content [{:type :heading}]}}
                                     {:type :code, :text "{2 \"bar\" 1 \"foo\"}"}],
-                           :visibility #{:show},
+                           :visibility {:code :show, :result :show},
                            :title "📶 Sorting",
                            :ns? true
                            :toc {:type :toc,

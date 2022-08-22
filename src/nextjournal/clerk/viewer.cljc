@@ -343,23 +343,12 @@
 
 (defn ->display [{:as code-cell :keys [result ns?]}]
   (let [{:nextjournal.clerk/keys [visibility]} result
-        result? (and (contains? code-cell :result)
-                     (not (result-hidden? result))
-                     (not (contains? visibility :hide-ns))
-                     (not (and ns? (contains? visibility :hide))))
-        fold? (and (not (contains? visibility :hide-ns))
-                   (or (contains? visibility :fold)
-                       (contains? visibility :fold-ns)))
-        code? (or fold? (contains? visibility :show))]
-    {:result? result? :fold? fold? :code? code?}))
+        {:keys [code result]} visibility]
+    {:result? (not= :hide result) :fold? (= code :fold) :code? (not= :hide code)}))
 
-#_(->display {:result {:nextjournal.clerk/visibility #{:fold :hide-ns}}})
-#_(->display {:result {:nextjournal.clerk/visibility #{:fold-ns}}})
-#_(->display {:result {:nextjournal.clerk/visibility #{:hide}} :ns? false})
-#_(->display {:result {:nextjournal.clerk/visibility #{:fold}} :ns? true})
-#_(->display {:result {:nextjournal.clerk/visibility #{:fold}} :ns? false})
-#_(->display {:result {:nextjournal.clerk/visibility #{:hide} :nextjournal/value {:nextjournal/viewer :hide-result}} :ns? false})
-#_(->display {:result {:nextjournal.clerk/visibility #{:hide}} :ns? true})
+#_(->display {:result {:nextjournal.clerk/visibility {:code :show :result :show}}})
+#_(->display {:result {:nextjournal.clerk/visibility {:code :fold :result :show}}})
+#_(->display {:result {:nextjournal.clerk/visibility {:code :fold :result :hide}}})
 
 #?(:clj
    (defn with-block-viewer [doc {:as cell :keys [type]}]
