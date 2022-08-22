@@ -1,17 +1,18 @@
 ;; # 🔠 Grid Layouts
+^{:nextjournal.clerk/visibility {:code :hide}}
 (ns grid
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v])
   (:import (java.net URL)
            (javax.imageio ImageIO)))
 
-^{::clerk/visibility :hide ::clerk/viewer v/hide-result}
+^{::clerk/visibility {:code :hide :result :hide}}
 (def image-1 (ImageIO/read (URL. "https://etc.usf.edu/clipart/62300/62370/62370_letter-a_lg.gif")))
 
-^{::clerk/visibility :hide ::clerk/viewer v/hide-result}
+^{::clerk/visibility {:code :hide :result :hide}}
 (def image-2 (ImageIO/read (URL. "https://etc.usf.edu/clipart/72700/72783/72783_floral_b_lg.gif")))
 
-^{::clerk/visibility :hide ::clerk/viewer v/hide-result}
+^{::clerk/visibility {:code :hide :result :hide}}
 (def image-3 (ImageIO/read (URL. "https://etc.usf.edu/clipart/72700/72787/72787_floral_c_lg.gif")))
 
 ;; ## Layouts can be composed via `row`s and `col`s
@@ -31,13 +32,13 @@
   (v/html [:span.text-slate-500.text-xs.text-center.font-sans text]))
 
 (v/row
-  (v/col image-1 (caption "Figure 1: Decorative A"))
-  (v/col image-2 (caption "Figure 2: Decorative B"))
-  (v/col image-3 (caption "Figure 3: Decorative C")))
+ (v/col image-1 (caption "Figure 1: Decorative A"))
+ (v/col image-2 (caption "Figure 2: Decorative B"))
+ (v/col image-3 (caption "Figure 3: Decorative C")))
 
 ;; Or use it with Plotly or Vega Lite viewers to lay out a simple dashboard:
 
-^{::clerk/visibility :hide ::clerk/viewer v/hide-result}
+^{::clerk/visibility {:code :hide :result :hide}}
 (def donut-chart
   (v/plotly {:data [{:values [27 11 25 8 1 3 25]
                      :labels ["US" "China" "European Union" "Russian Federation" "Brazil" "India" "Rest of World"]
@@ -53,7 +54,7 @@
                       :annotations [{:font {:size 20} :showarrow false :x 0.5 :y 0.5 :text "CO2"}]}
              :config {:responsive true}}))
 
-^{::clerk/visibility :hide ::clerk/viewer v/hide-result}
+^{::clerk/visibility {:code :hide :result :hide}}
 (def contour-plot
   (v/plotly {:data [{:z [[10 10.625 12.5 15.625 20]
                          [5.625 6.25 8.125 11.25 15.625]

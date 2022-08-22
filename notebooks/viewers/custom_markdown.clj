@@ -2,8 +2,8 @@
 ;;
 ;; Playground for overriding markdown nodes
 
-^{:nextjournal.clerk/visibility #{:hide-ns}}
 (ns ^:nextjournal.clerk/no-cache viewers.custom-markdown
+  {:nextjournal.clerk/visibility {:code :hide}}
   (:require [nextjournal.clerk.viewer :as v]))
 
 (defn update-child-viewers [f]

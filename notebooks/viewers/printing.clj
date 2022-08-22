@@ -1,5 +1,5 @@
 ;; # 🖨 Better Printing ADR
-^{:nextjournal.clerk/visibility :hide-ns}
+^{:nextjournal.clerk/visibility {:code :hide}}
 (ns ^:nextjournal.clerk/no-cache viewers.printing
   (:require [clojure.datafy :as datafy]
             [clojure.java.io :as io]

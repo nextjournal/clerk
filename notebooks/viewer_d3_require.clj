@@ -1,5 +1,5 @@
 ;; # Custom Viewers with d3-require
-^{:nextjournal.clerk/visibility #{:hide-ns}}
+^{:nextjournal.clerk/visibility {:code :hide}}
 (ns d3-require
   (:require [nextjournal.clerk :as clerk]))
 

@@ -1,6 +1,6 @@
 ;; # Test Cases for Auto-Expanding Data Structure Viewer
-^{:nextjournal.clerk/visibility :hide-ns}
-(ns notebooks.auto_expand
+^{:nextjournal.clerk/visibility {:code :hide}}
+(ns notebooks.auto-expand
   (:require [babashka.fs :as fs]
             [clojure.string :as str]
             [nextjournal.clerk :as clerk]))
@@ -26,7 +26,7 @@
                  :role (rand-nth [:admin :operator :manager :programmer :designer])
                  :id (gensym)})))
 
-^{::clerk/visibility :hide ::clerk/viewer :hide-result}
+^{::clerk/visibility {:code :hide :result :hide}}
 (def words-path "/usr/share/dict/words")
 
 (when-let [words (and (fs/exists? words-path) (slurp words-path))]
@@ -34,7 +34,7 @@
 
 (into #{} (map str) (file-seq (clojure.java.io/file "notebooks")))
 
-^{::clerk/visibility :hide ::clerk/viewer :hide-result}
+^{::clerk/visibility {:code :hide :result :hide}}
 (defn flat->nested
   [root coll]
   (if-let [children (seq (filter #(= (:id root) (:parent %)) coll))]
@@ -42,6 +42,6 @@
     (list root)))
 
 (let [items (concat [{:id 0 :parent nil :name "item-0"}]
-              (for [x (range 1 5)]
-                {:id x :parent (dec x) :name (format "item-%d" x)}))]
+                    (for [x (range 1 5)]
+                      {:id x :parent (dec x) :name (format "item-%d" x)}))]
   (flat->nested (-> (filter #(= (:parent %) nil) items) first) items))

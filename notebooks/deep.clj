@@ -1,5 +1,5 @@
 ;; # 🕳 Deep Data
-^{:nextjournal.clerk/visibility :hide-ns}
+^{:nextjournal.clerk/visibility {:code :hide}}
 (ns ^:nextjournal.clerk/no-cache deep
   (:require [clojure.string :as str]
             [hickory.core :as hick]

@@ -1,5 +1,5 @@
 ;; # Controlling Width ↔️
-^{:nextjournal.clerk/visibility :hide-ns}
+^{:nextjournal.clerk/visibility {:code :hide}}
 (ns width
   (:require [nextjournal.clerk :as clerk]))
 

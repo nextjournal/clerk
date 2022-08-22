@@ -1,5 +1,5 @@
 ;; # Metadata-Based Viewer API
-^{:nextjournal.clerk/visibility :hide-ns}
+^{:nextjournal.clerk/visibility {:code :hide}}
 (ns ^:nextjournal.clerk/no-cache viewers-meta
   (:require [nextjournal.clerk :as clerk]))
 

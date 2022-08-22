@@ -1,10 +1,10 @@
 ;; # 📓 Doc Browser
-^{:nextjournal.clerk/visibility #{:hide-ns :hide}}
 (ns doc
+  {:nextjournal.clerk/visibility {:code :hide}}
   (:require [clojure.string :as str]
             [nextjournal.clerk :as clerk]))
 
-^{::clerk/viewer clerk/hide-result}
+^{::clerk/visibility {:result :hide}}
 (def text-input
   {:pred ::clerk/var-from-def
    :fetch-fn (fn [_ x] x)
@@ -35,11 +35,10 @@
                     {:pred string?
                      :render-fn '(fn [ns] (v/html [:button.text-xs.font-medium.font-sans.cursor-pointer.px-3.py-2.hover:bg-blue-100.text-slate-700.text-left
                                                    {:on-click #(v/clerk-eval `(reset! !ns-query ~ns))} ns]))}])}
-
 (def ns-matches
   (filter (partial re-find (re-pattern @!ns-query)) (sort (map str (all-ns)))))
 
-^{::clerk/viewer clerk/hide-result}
+^{::clerk/visibility {:result :hide}}
 (defn var->doc-viewer
   "Takes a clojure `var` and returns a Clerk viewer to display its documentation."
   [var]
@@ -56,23 +55,23 @@
 
 #_(var->doc-viewer #'var->doc-viewer)
 
-^{::clerk/viewer clerk/hide-result}
+^{::clerk/visibility {:result :hide}}
 (def var-doc-viewer {:pred ::clerk/var-from-def
                      :transform-fn (clerk/update-val (comp var->doc-viewer ::clerk/var-from-def))})
 
-^{::clerk/viewer clerk/hide-result}
+^{::clerk/visibility {:result :hide}}
 (defn namespace->doc-viewer [ns]
   (clerk/html
-    [:div.text-sm.mt-6
-     [:h1 {:style {:margin 0}} (ns-name ns)]
-     (when-let [doc (-> ns meta :doc)]
-       [:div.mt-4.leading-normal.viewer-markdown.prose
-        (clerk/md doc)])
-     (into [:<>]
-           (map (comp :nextjournal/value var->doc-viewer val))
-           (into (sorted-map) (-> ns ns-publics)))]))
+   [:div.text-sm.mt-6
+    [:h1 {:style {:margin 0}} (ns-name ns)]
+    (when-let [doc (-> ns meta :doc)]
+      [:div.mt-4.leading-normal.viewer-markdown.prose
+       (clerk/md doc)])
+    (into [:<>]
+          (map (comp :nextjournal/value var->doc-viewer val))
+          (into (sorted-map) (-> ns ns-publics)))]))
 
-^{::clerk/viewer clerk/hide-result}
+^{::clerk/visibility {:result :hide}}
 (def ns-doc-viewer {:pred #(instance? clojure.lang.Namespace %)
                     :transform-fn (clerk/update-val namespace->doc-viewer)})
 

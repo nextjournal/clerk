@@ -1,5 +1,5 @@
 ;; #  📝 _In-Text_ Evaluation
-^{:nextjournal.clerk/visibility #{:hide-ns}}
+^{:nextjournal.clerk/visibility {:code :hide}}
 (ns ^{:nextjournal.clerk/no-cache true} viewers.in-text-eval
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]
@@ -16,17 +16,17 @@
    {:name :nextjournal.markdown/ruler
     :transform-fn (constantly (v/with-viewer :html [:div.text-center (repeat @num★ "★")]))}])
 
-^{::clerk/visibility :hide ::clerk/viewer :hide-result}
+^{::clerk/visibility {:result :hide}}
 (def viewers-with-md-eval
   (v/update-viewers (v/get-default-viewers) {(comp #{:markdown} :name)
                                              (custom-md/update-child-viewers #(v/add-viewers % md-eval-viewers))}))
 
-^{::clerk/viewer clerk/hide-result}
+^{::clerk/visibility {:result :hide}}
 (clerk/reset-viewers! viewers-with-md-eval) ;; register viewer globally for ns
 
 ;; ---
 
-^{::clerk/viewer clerk/hide-result ::clerk/visibility :hide}
+^{::clerk/visibility {:result :hide}}
 (defn slider [var {:keys [min max]}]
   (clerk/with-viewer
     {:transform-fn (comp v/mark-presented (v/update-val (fn [var] {:var-name (symbol var) :value @@var})))

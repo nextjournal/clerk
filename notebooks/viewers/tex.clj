@@ -1,6 +1,6 @@
 ;; # TeX 🧮
 ;; ## With KateX and MathJax
-^{:nextjournal.clerk/visibility :hide-ns}
+^{:nextjournal.clerk/visibility {:code :hide}}
 (ns tex (:require [nextjournal.clerk :as clerk]))
 
 ;; The Einstein-Field Equations are:

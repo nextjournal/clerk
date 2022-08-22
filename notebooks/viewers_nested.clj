@@ -1,6 +1,6 @@
 ;; # Nested Viewer Examples
 
-^{:nextjournal.clerk/visibility #{:hide-ns}}
+^{:nextjournal.clerk/visibility {:code :hide}}
 (ns ^:nextjournal.clerk/no-cache viewers-nested
   (:require [nextjournal.clerk :as clerk]
             [clojure.string :as str]

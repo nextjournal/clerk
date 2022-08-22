@@ -1,6 +1,6 @@
 ;; # 🎠 Clerk Slideshow
 ;; ---
-^{:nextjournal.clerk/visibility :hide-ns}
+^{:nextjournal.clerk/visibility {:code :hide}}
 (ns slideshow
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]

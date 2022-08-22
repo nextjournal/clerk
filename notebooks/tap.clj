@@ -1,12 +1,11 @@
 ;; # 🚰 Tap Inspector
-^{:nextjournal.clerk/visibility :hide}
 (ns nextjournal.clerk.tap
+  {:nextjournal.clerk/visibility {:code :hide :result :hide}}
   (:require [clojure.core :as core]
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v])
   (:import (java.time Instant LocalTime ZoneId)))
 
-^{::clerk/viewer clerk/hide-result}
 (def switch-view
   {:transform-fn (comp clerk/mark-presented
                        (clerk/update-val (fn [{::clerk/keys [var-from-def]}]
@@ -23,26 +22,22 @@
                                    choice]) choices))
                      [:button.text-xs.rounded-full.px-3.py-1.border-2.font-sans.hover:bg-slate-100.cursor-pointer {:on-click #(v/clerk-eval `(reset-taps!))} "Clear"]])))})
 
-^{::clerk/viewer switch-view}
+^{::clerk/viewer switch-view ::clerk/visibility {:result :show}}
 (defonce !view (atom :stream))
 
-^{::clerk/viewer clerk/hide-result}
 (defonce !taps (atom []))
 
-^{::clerk/viewer clerk/hide-result}
 (defn reset-taps! []
   (reset! !taps [])
   (clerk/recompute!))
 
 #_(reset-taps!)
 
-^{::clerk/viewer clerk/hide-result}
 (defn inst->local-time-str [inst]
   (str (LocalTime/ofInstant inst (ZoneId/systemDefault))))
 
 #_(inst->local-time-str (Instant/now))
 
-^{::clerk/viewer clerk/hide-result}
 (def tap-viewer
   {:name :tapped-value
    :render-fn '(fn [{:keys [val tapped-at key]} opts]
@@ -55,21 +50,19 @@
    :transform-fn (comp clerk/mark-preserve-keys
                        (clerk/update-val #(update % :tapped-at inst->local-time-str)))})
 
-^{::clerk/viewer clerk/hide-result}
 (clerk/add-viewers! [tap-viewer])
 
-^{::clerk/viewer clerk/hide-result}
 (def taps-viewer
   {:render-fn '#(v/html (into [:div.flex.flex-col.pt-2] (v/inspect-children %2) %1))
    :transform-fn (clerk/update-val (fn [taps]
                                      (mapv (partial clerk/with-viewer :tapped-value) (reverse taps))))})
 
-^{::clerk/viewer (cond-> taps-viewer
+^{::clerk/visibility {:result :show}
+  ::clerk/viewer (cond-> taps-viewer
                    (= :latest @!view)
                    (update :transform-fn (fn [orig] (comp orig (clerk/update-val (partial take-last 1))))))}
 @!taps
 
-^{::clerk/viewer clerk/hide-result}
 (defn tapped [x]
   (swap! !taps conj {:val x :tapped-at (java.time.Instant/now) :key (str (gensym))})
   (clerk/recompute!))
@@ -78,13 +71,12 @@
 
 #_(reset! @(find-var 'clojure.core/tapset) #{})
 
-^{::clerk/viewer clerk/hide-result}
 (defonce setup
   (add-tap tapped))
 
 #_ (remove-tap tapped)
 
-^{::clerk/viewer clerk/hide-result}
+
 (comment
   (last @!taps)
 

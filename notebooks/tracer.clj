@@ -1,5 +1,5 @@
 ;; # 👩🏻‍💻 Show the code
-^{:nextjournal.clerk/visibility #{:hide-ns}}
+^{:nextjournal.clerk/visibility {:code :hide}}
 (ns tracer
   (:require [nextjournal.clerk :as clerk]))
 
@@ -112,29 +112,29 @@
 
 ^::clerk/no-cache
 (clerk/html
-  [:div.text-sm {:class "font-mono"}
-   ;; boring arithmetic example form
-   (let [t (debug-expression '(let [x 10
-                                    y (/ 20 0)
-                                    vs [3 1 4 1 5]
-                                    tab {:a 4
-                                         :b (+ 3 3)
-                                         :c 8}
-                                    ordered #{5 1 2 :eight}
-                                    a-fn (fn [] (println "Ohai 👋"))
-                                    another-fn #(+ %1 %2)]
-                                (+ (* x 5)
-                                   (apply + vs)
-                                   (:a tab)
-                                   (- (/ y 2)
-                                      (:b tab)
-                                      3))))]
-     (show-element
-       ;; result id -> value lookup table
-       (reduce (fn [m [k [_ v]]] (assoc m k v)) {} t)
-       ;; initial display depth
-       0
-       ;; id of top level form's result
-       (first (last t))
-       ;; the top level form itself
-       (first (second (last t)))))])
+ [:div.text-sm {:class "font-mono"}
+  ;; boring arithmetic example form
+  (let [t (debug-expression '(let [x 10
+                                   y (/ 20 0)
+                                   vs [3 1 4 1 5]
+                                   tab {:a 4
+                                        :b (+ 3 3)
+                                        :c 8}
+                                   ordered #{5 1 2 :eight}
+                                   a-fn (fn [] (println "Ohai 👋"))
+                                   another-fn #(+ %1 %2)]
+                               (+ (* x 5)
+                                  (apply + vs)
+                                  (:a tab)
+                                  (- (/ y 2)
+                                     (:b tab)
+                                     3))))]
+    (show-element
+     ;; result id -> value lookup table
+     (reduce (fn [m [k [_ v]]] (assoc m k v)) {} t)
+     ;; initial display depth
+     0
+     ;; id of top level form's result
+     (first (last t))
+     ;; the top level form itself
+     (first (second (last t)))))])
