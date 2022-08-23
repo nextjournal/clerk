@@ -8,7 +8,6 @@
             [goog.string :as gstring]
             [lambdaisland.uri.normalize :as uri.normalize]
             [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex table vl row col with-viewer with-viewers]]
-            [nextjournal.devcards :as dc]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.ui.components.d3-require :as d3-require]
             [nextjournal.ui.components.icon :as icon]
@@ -21,7 +20,6 @@
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
             [nextjournal.viewer.vega-lite :as vega-lite]
-            [re-frame.context :as rf]
             ["react" :as react]
             [reagent.core :as r]
             [reagent.dom :as rdom]
@@ -414,33 +412,6 @@
             [:span
              (cond->> closing-paren (list? closing-paren) (into [:<>]))]]])))
 
-(dc/defcard coll-viewer
-  (into [:div]
-        (for [coll [
-                    {:foo (into #{} (range 3))}
-                    {:foo {:bar (range 1000)}}
-                    [1 [2]]
-                    [[1] 2]
-                    {:a "bar"  :c (range 10)}
-                    {:a "bar"  :c (range 10) :d 1}
-                    ]]
-          [:div.mb-3.result-viewer
-           [inspect coll]])))
-
-(dc/defcard coll-viewer-simple
-  "with a simple `inspect` and no `present` we don't move closing parens to children"
-  (into [:div]
-        (for [coll [
-                    {:foo (into #{} (range 3))}
-                    {:foo {:bar (range 20)}}
-                    [1 [2]]
-                    [[1] 2]
-                    {:a "bar"  :c (range 10)}
-                    {:a "bar"  :c (range 10) :d 1}
-                    ]]
-          [:div.mb-3.result-viewer
-           [inspect coll]])))
-
 (defn elision-viewer [{:as fetch-opts :keys [total offset unbounded?]} _]
   (html [view-context/consume :fetch-fn
          (fn [fetch-fn]
@@ -636,163 +607,6 @@
                                                 (swap! !state update :desc viewer/merge-presentations more))))}
      [inspect-presented (:desc @!state)]]))
 
-(dc/defcard inspect-paginated-one
-  []
-  [:div
-   (when-let [value @(rf/subscribe [::blobs :map-1])]
-     [inspect value])]
-  {::blobs {:vector (vec (range 30))
-            :vector-nested [1 [2] 3]
-            :vector-nested-taco '[l [l [l [l [🌮] r] r] r] r]
-            :list (range 30)
-            :recursive-range (map range (range 100))
-            :map-1 {:hello :world}
-            :map-vec-val {:hello [:world]}
-            :map (zipmap (range 30) (range 30))}})
-
-(dc/defcard inspect-paginated-more
-  "In process inspect based on description."
-  []
-  [:div
-   (map (fn [[blob-id xs]]
-          ^{:key blob-id}
-          [:div
-           [inspect xs]])
-        @(rf/subscribe [::blobs]))]
-  {::blobs (hash-map (random-uuid) (vec (range 30))
-                     (random-uuid) (range 40)
-                     (random-uuid) (zipmap (range 50) (range 50)))})
-
-(rf/reg-sub ::blobs
-            (fn [db [blob-key id]]
-              (cond-> (get db blob-key)
-                id (get id))))
-
-(dc/defcard inspect-values
-  (into [:div]
-        (for [value [123
-                     ##NaN
-                     'symbol
-                     ::keyword
-                     "a string"
-                     nil ;; can't inspect `nil`
-                     true
-                     false
-                     {:some "map"}
-                     #{:a :set}
-                     '[vector of symbols]
-                     '(:list :of :keywords)
-                     #_#_#js {:js "object"}
-                     #js ["a" "js" "array"]
-                     #_(js/Date.)
-                     (random-uuid)
-                     (fn a-function [_foo])
-                     #_#_#_#_
-                     (atom "an atom")
-                     ^{:nextjournal/tag 'object} ['clojure.lang.Atom 0x2c42b421 {:status :ready, :val 1}]
-                     ^{:nextjournal/tag 'var} ['user/a {:foo :bar}]
-                     ^{:nextjournal/tag 'object} ['clojure.lang.Ref 0x73aff8f1 {:status :ready, :val 1}]]]
-          [:div.mb-3.result-viewer
-           [:pre [:code.inspected-value (binding [*print-meta* true] (pr-str value))]] [:span.inspected-value " => "]
-           [inspect value]])))
-
-;; TODO
-#_
-(dc/defcard viewer-reagent-atom
-  [inspect-presented (r/atom {:hello :world})])
-
-#_ ;; commented out because recursive window prop will cause a loop
-(dc/defcard viewer-js-window []
-  [inspect-presented js/window])
-
-(dc/defcard viewer-vega-lite
-  [inspect
-   (vl {:width 650
-        :height 400
-        :data
-        {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
-         :format
-         {:type "topojson" :feature "counties"}}
-        :transform
-        [{:lookup "id"
-          :from
-          {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
-           :key "id"
-           :fields ["rate"]}}]
-        :projection {:type "albersUsa"}
-        :mark "geoshape"
-        :encoding
-        {:color {:field "rate" :type "quantitative"}}})])
-
-(dc/defcard viewer-plolty
-  [inspect
-   (plotly
-    {:data [{:y (shuffle (range 10)) :name "The Federation"}
-            {:y (shuffle (range 10)) :name "The Empire"}]})])
-
-(dc/defcard viewer-latex
-  [inspect (tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")])
-
-(dc/defcard viewer-mathjax
-  [inspect
-   (with-viewer :mathjax
-     "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")])
-
-(dc/defcard viewer-markdown
-  [inspect (md "### Hello Markdown\n\n* a bullet point")])
-
-(dc/defcard viewer-code
-  [inspect (code "(defn the-answer
-  \"to all questions\"
-  []
-  (inc #_ #readme/as :ignore 41)")])
-
-(dc/defcard viewer-hiccup
-  [inspect-presented (html [:h1 "Hello Hiccup 👋"])])
-
-(dc/defcard viewer-reagent-component
-  "A simple counter component in reagent using `reagent.core/with-let`."
-  [inspect
-   (with-viewer :reagent
-     (fn []
-       (r/with-let [c (r/atom 0)]
-         [:<>
-          [:h2 "Count: " @c]
-          [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold.mr-2 {:on-click #(swap! c inc)} "increment"]
-          [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold {:on-click #(swap! c dec)} "decrement"]])))])
-
-;; TODO add svg viewer
-
-(dc/defcard progress-bar
-  "Show how to use a function as a viewer, supports both one and two artity versions."
-  [:div
-   [inspect-presented (with-viewer
-              #(html
-                [:div.relative.pt-1
-                 [:div.overflow-hidden.h-2.mb-4-text-xs.flex.rounded.bg-blue-200
-                  [:div.shadow-none.flex.flex-col.text-center.whitespace-nowrap.text-white.bg-blue-500
-                   {:style {:width (-> %
-                                       (* 100)
-                                       int
-                                       (max 0)
-                                       (min 100)
-                                       (str "%"))}}]]])
-              0.33)]
-   [inspect-presented (with-viewer
-              (fn [v _opts] (html
-                             [:div.relative.pt-1
-                              [:div.overflow-hidden.h-2.mb-4-text-xs.flex.rounded.bg-blue-200
-                               [:div.shadow-none.flex.flex-col.text-center.whitespace-nowrap.text-white.bg-blue-500
-                                {:style {:width (-> v
-                                                    (* 100)
-                                                    int
-                                                    (max 0)
-                                                    (min 100)
-                                                    (str "%"))}}]]]))
-              0.35)]])
-
-
-
 (defn root []
   [:<>
    [inspect-presented @!doc]
@@ -811,237 +625,14 @@
   (when-some [title (-> doc viewer/->value :title)]
     (set! (.-title js/document) title)))
 
-(dc/defcard eval-viewer
-  "Viewers that are lists are evaluated using sci."
-  [inspect-presented (with-viewer (viewer/->viewer-fn '(fn [x] (v/html [:h3 "Ohai, " x "! 👋"]))) "Hans")])
-
-(dc/defcard notebook
-  "Shows how to display a notebook document"
-  [doc]
-  [inspect (with-viewer :clerk/notebook @doc)]
-  {::dc/class "p-0"
-   ::dc/state
-   {:blocks
-    (map viewer/present
-         [(with-viewer :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
-          (code "(shuffle (range 10))")
-          (with-viewer :clerk/code-block {:text "(+ 1 2 3)"})
-          (md "# And some more\n And some more [markdown](https://daringfireball.net/projects/markdown/).")
-          (code "(shuffle (range 10))")
-          (md "## Some math \n This is a formula.")
-          (tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")
-          (plotly {:data [{:y (shuffle (range 10)) :name "The Federation"}
-                          {:y (shuffle (range 10)) :name "The Empire"}]})])}})
-
 (def ^:dynamic *viewers* nil)
-
-(dc/defcard inspect-rule-30-sci
-  []
-  [inspect
-   (viewer/with-viewers
-    [{:pred number?
-      :render-fn (viewer/->viewer-fn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                                   :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-
-black")}]))}
-     {:pred vector? :render-fn (viewer/->viewer-fn '#(v/html (into [:div.flex.inline-flex] (v/inspect-children %2) %1)))}
-     {:pred list? :render-fn (viewer/->viewer-fn '#(v/html (into [:div.flex.flex-col] (v/inspect-children %2) %1)))}]
-    '([0 1 0] [1 0 1]))])
-
-(dc/defcard clj-long
-  []
-  [inspect
-   '({:verts [[-0.5 -0.5] [0.5 -0.5] [0.5 0.5] [-0.5 0.5]],
-      :invert? true}
-     {:verts
-      [[-0.32999999999999996 -0.5]
-       [-0.3383203922298239 -0.44746711095625896]
-       [-0.36246711095625894 -0.40007650711027953]
-       [-0.40007650711027953 -0.36246711095625894]
-       [-0.4474671109562589 -0.3383203922298239]
-       [-0.5 -0.32999999999999996]
-       [-0.5525328890437411 -0.3383203922298239]
-       [-0.5999234928897205 -0.36246711095625894]
-       [-0.6375328890437411 -0.40007650711027953]
-       [-0.6616796077701761 -0.4474671109562589]
-       [-0.67 -0.5]
-       [-0.6616796077701761 -0.5525328890437411]
-       [-0.6375328890437411 -0.5999234928897205]
-       [-0.5999234928897205 -0.6375328890437411]
-       [-0.5525328890437411 -0.6616796077701761]
-       [-0.5 -0.67]
-       [-0.44746711095625896 -0.6616796077701761]
-       [-0.4000765071102796 -0.6375328890437411]
-       [-0.36246711095625894 -0.5999234928897205]
-       [-0.3383203922298239 -0.5525328890437411]],
-      :invert? true}
-     {:verts
-      [[0.67 0.5]
-       [0.6616796077701761 0.5525328890437411]
-       [0.6375328890437411 0.5999234928897205]
-       [0.5999234928897205 0.6375328890437411]
-       [0.5525328890437411 0.6616796077701761]
-       [0.5 0.67]
-       [0.44746711095625896 0.6616796077701761]
-       [0.4000765071102796 0.6375328890437411]
-       [0.36246711095625894 0.5999234928897205]
-       [0.3383203922298239 0.5525328890437411]
-       [0.32999999999999996 0.5]
-       [0.3383203922298239 0.4474671109562589]
-       [0.36246711095625894 0.4000765071102796]
-       [0.40007650711027953 0.36246711095625894]
-       [0.4474671109562589 0.3383203922298239]
-       [0.49999999999999994 0.32999999999999996]
-       [0.552532889043741 0.3383203922298239]
-       [0.5999234928897204 0.36246711095625894]
-       [0.6375328890437411 0.40007650711027953]
-       [0.6616796077701761 0.4474671109562589]],
-      :invert? true}
-     {:verts
-      [[-0.32999999999999996 0.5]
-       [-0.3383203922298239 0.5525328890437411]
-       [-0.36246711095625894 0.5999234928897205]
-       [-0.40007650711027953 0.6375328890437411]
-       [-0.4474671109562589 0.6616796077701761]
-       [-0.5 0.67]
-       [-0.5525328890437411 0.6616796077701761]
-       [-0.5999234928897205 0.6375328890437411]
-       [-0.6375328890437411 0.5999234928897205]
-       [-0.6616796077701761 0.5525328890437411]
-       [-0.67 0.5]
-       [-0.6616796077701761 0.4474671109562589]
-       [-0.6375328890437411 0.4000765071102796]
-       [-0.5999234928897205 0.36246711095625894]
-       [-0.5525328890437411 0.3383203922298239]
-       [-0.5 0.32999999999999996]
-       [-0.44746711095625896 0.3383203922298239]
-       [-0.4000765071102796 0.36246711095625894]
-       [-0.36246711095625894 0.40007650711027953]
-       [-0.3383203922298239 0.4474671109562589]],
-      :invert? true}
-     {:verts
-      [[0.67 -0.5]
-       [0.6616796077701761 -0.44746711095625896]
-       [0.6375328890437411 -0.40007650711027953]
-       [0.5999234928897205 -0.36246711095625894]
-       [0.5525328890437411 -0.3383203922298239]
-       [0.5 -0.32999999999999996]
-       [0.44746711095625896 -0.3383203922298239]
-       [0.4000765071102796 -0.36246711095625894]
-       [0.36246711095625894 -0.40007650711027953]
-       [0.3383203922298239 -0.4474671109562589]
-       [0.32999999999999996 -0.5]
-       [0.3383203922298239 -0.5525328890437411]
-       [0.36246711095625894 -0.5999234928897205]
-       [0.40007650711027953 -0.6375328890437411]
-       [0.4474671109562589 -0.6616796077701761]
-       [0.49999999999999994 -0.67]
-       [0.552532889043741 -0.6616796077701761]
-       [0.5999234928897204 -0.6375328890437411]
-       [0.6375328890437411 -0.5999234928897205]
-       [0.6616796077701761 -0.5525328890437411]],
-      :invert? true})])
-
-
-(dc/defcard clj-small
-  []
-  (let [x '({:verts [[-0.5 -0.5] [0.5 -0.5] [0.5 0.5] [-0.5 0.5]],
-             :invert? true}
-            {:verts
-             [[0.67 -0.5]
-              [0.6616796077701761 -0.44746711095625896]
-              [0.6375328890437411 -0.40007650711027953]],
-             :invert? true})
-        y '({:verts [[-0.5 -0.5] [0.5 -0.5] [0.5 0.5] [-0.5 0.5]],
-             :invert? true})]
-    [:<>
-     [:div.mb-4
-      [inspect '{1 ● 2 ■ 3 ▲}]]
-     [:div.mb-4
-      [inspect {[[[[1 2]]]] [1 2]}]]
-
-     [:div
-      {:style {:margin-right -12}}
-      [:div.mb-4.overflow-x-hidden
-       [inspect x]]]]))
 
 (defn ^:export ^:dev/after-load mount []
   (when-let [el (js/document.getElementById "clerk")]
     #_(rdom/unmount-component-at-node el)
     (rdom/render [root] el)))
 
-(dc/defcard table [state]
-  [inspect (viewer/table @state)]
-  {::dc/state [[1 2 "ab"]
-               [4 5 "cd"]]})
-
-(dc/defcard table-incomplete [state]
-  [inspect (viewer/table @state)]
-  {::dc/state [[1 2 3]
-               [4]]})
-
-(dc/defcard table-col-headers [state]
-  [inspect (viewer/table @state)]
-  {::dc/state {:a [1 2 3]
-               :b [4 5 6]}})
-
-(dc/defcard table-col-headers-incomplete [state]
-  [inspect (viewer/table @state)]
-  {::dc/state {:a [1 2 3]
-               :b [4]}})
-
-(dc/defcard table-row-headers [state]
-  [inspect (viewer/table @state)]
-  {::dc/state [{:a 1 :b 2 :c 3}
-               {:a 4 :b 5 :c 6}]})
-
-(dc/defcard table-row-headers-incomplete [state]
-  [inspect (viewer/table @state)]
-  {::dc/state [{:a 1 :b 2 :c 3}
-               {:a 4}]})
-
-(dc/defcard table-error [state]
-  [inspect (viewer/table @state)]
-  {::dc/state #{1 2 3 4}})
-
-(dc/when-enabled
- (defn rand-int-seq [n to]
-   (take n (repeatedly #(rand-int to)))))
-
 (declare lazy-inspect-in-process)
-
-(dc/defcard table-long [state]
-  [inspect (with-viewer :table @state)]
-  {::dc/state (let [n 20]
-                {:species (repeat n "Adelie")
-                 :island (repeat n "Biscoe")
-                 :culmen-length-mm (rand-int-seq n 50)
-                 :culmen-depth-mm (rand-int-seq n 30)
-                 :flipper-length-mm (rand-int-seq n 200)
-                 :body-mass-g (rand-int-seq n 5000)
-                 :sex (take n (repeatedly #(rand-nth [:female :male])))})})
-
-(dc/defcard table-elided-string [state]
-  [inspect (viewer/table @state)]
-  {::dc/state (repeat 3 (map (comp str/join (partial repeat 200)) ["a" "b" "c"]))})
-
-(dc/defcard table-paginated-map-of-seq [state]
-  [:div
-   (when-let [xs @(rf/subscribe [::blobs])]
-     [inspect (viewer/table xs)])]
-  {::blobs (let [n 60]
-             {:species (repeat n "Adelie")
-              :island (repeat n "Biscoe")
-              :culmen-length-mm (rand-int-seq n 50)
-              :culmen-depth-mm (rand-int-seq n 30)
-              :flipper-length-mm (rand-int-seq n 200)
-              :body-mass-g (rand-int-seq n 5000)
-              :sex (take n (repeatedly #(rand-nth [:female :male])))})})
-
-(dc/defcard table-paginated-vec [state]
-  [:div
-   (when-let [xs @(rf/subscribe [::blobs])]
-     [inspect (viewer/table xs)])]
-  {::blobs (mapv  #(conj %2 (str "#" (inc %1))) (range) (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female]))})
 
 (defn find-named-viewer [viewers viewer-name]
   (get (into {} (map (juxt :name identity)) viewers) viewer-name))
@@ -1101,8 +692,6 @@ black")}]))}
 (def ^{:doc "Stub implementation to be replaced during static site generation. Clerk is only serving one page currently."}
   doc-url
   (sci/new-var 'doc-url (fn [x] (str "#" x))))
-
-(dc/defcard inspected-sci-var [inspect (var doc-url)])
 
 (def sci-viewer-namespace
   {'inspect-presented inspect-presented

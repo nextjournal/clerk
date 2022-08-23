@@ -21,6 +21,25 @@
 (card
   (v/tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}"))
 
+;; ## Vega Lite
+(card
+  (v/vl {:width 650
+         :height 400
+         :data
+         {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
+          :format
+          {:type "topojson" :feature "counties"}}
+         :transform
+         [{:lookup "id"
+           :from
+           {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
+            :key "id"
+            :fields ["rate"]}}]
+         :projection {:type "albersUsa"}
+         :mark "geoshape"
+         :encoding
+         {:color {:field "rate" :type "quantitative"}}}))
+
 ;; ## Tables
 (card
   (v/table {:a [1 2 3] :b [4 5 6]}))
@@ -33,13 +52,29 @@
 (card
   (v/table #{1 2 3}))
 
-
 ;; ## JS Objects
 (card
   (j/obj :foo "bar"))
 
 (card
   (js/document.querySelectorAll ".mt-2"))
+
+(card js/window)
+
+;; ## Code
+
+(card
+  (v/code "(defn the-answer
+  \"to all questions\"
+  []
+  (inc #_ #readme/as :ignore 41)"))
+
+;; ## Eval
+(card
+  ;; TODO: helper to get "private" functions from sci viewer ns
+  (let [->vfn (j/get-in js/window (map munge '[nextjournal clerk viewer ->viewer-fn]))]
+    (v/with-viewer (->vfn '(fn [x] (v/html [:h4 "Ohai, " x "! 👋"])))
+                   "Hans")))
 
 ;; ## Vars
 (card
