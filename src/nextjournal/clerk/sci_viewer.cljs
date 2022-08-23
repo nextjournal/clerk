@@ -629,11 +629,6 @@
     #_(rdom/unmount-component-at-node el)
     (rdom/render [root] el)))
 
-(declare lazy-inspect-in-process)
-
-(defn find-named-viewer [viewers viewer-name]
-  (get (into {} (map (juxt :name identity)) viewers) viewer-name))
-
 (defn clerk-eval [form]
   (.ws_send ^js goog/global (pr-str form)))
 
