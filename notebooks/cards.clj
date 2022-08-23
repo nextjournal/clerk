@@ -60,20 +60,28 @@
   (v/table #{1 2 3}))
 
 ;; ## JS Objects
+;; **FIXME**:
+;; * `j/obj` breaks clerk analysis during static build
+;; * tagged literal `#js` throws _No reader function for tag js_
+
 (card
-  (j/obj :foo "bar"))
+  (clj->js {:foo "bar"}))
 
 (card
   (js/Array. 1 2 3))
 
 ;; **TODO:** fix nested objects
 (card
-  (j/obj :a (j/obj :b 1)))
-(card
-  (js/Array. (j/obj :a 1 :b 2) 3))
+  (clj->js {:a {:b 1}}))
 
 (card
-  (j/obj :a (into-array [1 (j/obj :b 2) 3])))
+  (js/Array. 1 (clj->js {:a 2}) 3))
+
+(card
+  (clj->js {:a [1 (clj->js {:b 2}) 3]}))
+
+(card
+  (clj->js {:a [1 {:b 2} 3]}))
 
 ;; **TODO**: fix missing cljs.core/array in SCI ctx
 (card
@@ -86,7 +94,8 @@
 (card
   (js/document.querySelectorAll ".mt-2"))
 
-(card js/window)
+(card
+  js/window)
 
 ;; ## Code
 
