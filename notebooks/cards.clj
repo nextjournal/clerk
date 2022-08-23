@@ -2,7 +2,9 @@
 ^{:nextjournal.clerk/toc true}
 (ns ^:nextjournal.clerk/no-cache cards
   (:require [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as v]))
+            [nextjournal.clerk.viewer :as v]
+            ;; unused but makes analyzer happy (j ns is used inside macros)
+            [applied-science.js-interop :as j]))
 
 ^{::clerk/visibility {:code :hide :result :hide}}
 (def card-viewer
