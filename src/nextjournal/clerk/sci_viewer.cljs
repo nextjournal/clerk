@@ -624,8 +624,6 @@
   (when-some [title (-> doc viewer/->value :title)]
     (set! (.-title js/document) title)))
 
-(def ^:dynamic *viewers* nil)
-
 (defn ^:export ^:dev/after-load mount []
   (when-let [el (js/document.getElementById "clerk")]
     #_(rdom/unmount-component-at-node el)
