@@ -14,7 +14,8 @@
          "notebooks/markdown.md"
          "notebooks/onwards.md"]
         (map #(str "notebooks/" % ".clj"))
-        ["hello"
+        ["cards"
+         "hello"
          "how_clerk_works"
          "eval_cljs"
          "example"
