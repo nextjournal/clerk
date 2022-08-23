@@ -76,8 +76,13 @@
 (defn- analyze-form
   ([form] (analyze-form {} form))
   ([bindings form]
-   (binding [config/*in-clerk* true]
-     (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings}))))
+   (try
+     (binding [config/*in-clerk* true]
+       (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings}))
+     (catch Throwable e
+       (throw (ex-info (str "Can't Analyze form " form ".")
+                       {:form form :bindings bindings}
+                       e))))))
 
 (defn analyze [form]
   (let [!deps      (atom #{})
