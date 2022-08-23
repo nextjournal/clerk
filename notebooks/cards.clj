@@ -1,11 +1,12 @@
 ;; # 🃏 CLJS Cards
 ^{:nextjournal.clerk/toc true}
 (ns ^:nextjournal.clerk/no-cache cards
-  (:require [nextjournal.clerk :as clerk]))
+  (:require [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.viewer :as v]))
 
 ^{::clerk/visibility {:code :hide :result :hide}}
 (def card-viewer
-  {:transform-fn (comp clerk/mark-presented (v/update-val v/->viewer-eval))
+  {:transform-fn (comp clerk/mark-presented (clerk/update-val v/->viewer-eval))
    :render-fn '(fn [data]
                  (let [is-valid-element? ;; private
                        (j/get-in js/window
@@ -17,7 +18,7 @@
 ^{::clerk/visibility {:code :hide :result :hide}}
 (defmacro card [body] `(clerk/with-viewer card-viewer '~body))
 
-;; ## Latex
+;; ## $\LaTeX$
 (card
   (v/tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}"))
 
