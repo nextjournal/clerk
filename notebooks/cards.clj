@@ -45,6 +45,10 @@
 (card
   (v/table {:a [1 2 3] :b [4 5 6]}))
 
+(card
+  (v/table {:head ['A 'B 'C]
+            :rows (map #(range 3) (range 2))}))
+
 ;; incomplete tables
 (card
   (v/table {:a [1 2 3] :b [4]}))
@@ -56,6 +60,26 @@
 ;; ## JS Objects
 (card
   (j/obj :foo "bar"))
+
+(card
+  (js/Array. 1 2 3))
+
+;; **TODO:** fix nested objects
+(card
+  (j/obj :a (j/obj :b 1)))
+(card
+  (js/Array. (j/obj :a 1 :b 2) 3))
+
+(card
+  (j/obj :a (into-array [1 (j/obj :b 2) 3])))
+
+;; **TODO**: fix missing cljs.core/array in SCI ctx
+(card
+  (j/lit [1 2 3]))
+
+(card
+  (let [a (j/get-in js/window (map munge '[cljs core array]))]
+    (a 1 2 3)))
 
 (card
   (js/document.querySelectorAll ".mt-2"))
@@ -90,7 +114,6 @@
                                       [:h2 "Count: " @c]
                                       [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold.mr-2 {:on-click #(swap! c inc)} "increment"]
                                       [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold {:on-click #(swap! c dec)} "decrement"]]))))
-
 
 ;; ## Using `v/with-viewer`
 (card
