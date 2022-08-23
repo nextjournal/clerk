@@ -1,6 +1,7 @@
 ;; # 🃏 CLJS Cards
 ^{:nextjournal.clerk/toc true}
-(ns ^:nextjournal.clerk/no-cache cards
+(ns cards
+  {:nextjournal.clerk/no-cache true}
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]
             ;; unused but makes analyzer happy (j ns is used inside macros)
@@ -10,12 +11,9 @@
 (def card-viewer
   {:transform-fn (comp clerk/mark-presented (clerk/update-val v/->viewer-eval))
    :render-fn '(fn [data]
-                 (let [is-valid-element? ;; private
-                       (j/get-in js/window
-                                 (map munge '[nextjournal clerk sci-viewer valid-react-element?]))]
-                   (if (is-valid-element? data)
-                     data
-                     (v/html [v/inspect data]))))})
+                 (if (v/valid-react-element? data)
+                   data
+                   (v/html [v/inspect data])))})
 
 ^{::clerk/visibility {:code :hide :result :hide}}
 (defmacro card [body] `(clerk/with-viewer card-viewer '~body))

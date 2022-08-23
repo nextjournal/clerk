@@ -688,6 +688,7 @@
 (def sci-viewer-namespace
   {'inspect-presented inspect-presented
    'inspect inspect
+   'valid-react-element? valid-react-element?
    'result-viewer result-viewer
    'coll-viewer coll-viewer
    'map-viewer map-viewer
