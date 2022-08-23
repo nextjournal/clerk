@@ -694,6 +694,15 @@
                    (-> wrapped-value
                        (update-in [:nextjournal/value :value] present)
                        mark-presented))})
+
+#?(:cljs
+   (def js-array-viewer
+     {:name :js-array
+      :pred array?
+      :render-fn '(fn [v opts] (v/html (v/tagged-value {:space? true} "#js" (v/coll-view v opts))))
+      :opening-paren "[" :closing-paren "]"
+      :fetch-opts {:n 20}}))
+
 (def result-viewer
   {:name :clerk/result :render-fn (quote v/result-viewer) :transform-fn mark-presented})
 
@@ -738,6 +747,7 @@
    buffered-image-viewer
    ideref-viewer
    regex-viewer
+   #?(:cljs js-array-viewer)
    fallback-viewer
    elision-viewer
    katex-viewer

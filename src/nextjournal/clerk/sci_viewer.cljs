@@ -63,19 +63,6 @@
 
 (declare html html-viewer)
 
-(defn js-object-viewer [x {:as opts :keys [!expanded-at path]}]
-  (let [x' (obj->clj x)
-        expanded? (get @!expanded-at path)]
-    (html [:span.inspected-value.whitespace-nowrap "#js {"
-           (into [:<>]
-                 (comp (map-indexed (fn [idx k]
-                                      [:<>
-                                       [inspect-presented k (update opts :path conj idx)]
-                                       " "
-                                       [inspect-presented (value-of x k) (update opts :path conj idx)]]))
-                       (interpose (if expanded? [:<> [:br] (repeat (inc (count path)) " ")] " ")))
-                 (keys x')) "}"])))
-
 (defn toc-items [items]
   (reduce
    (fn [acc {:as item :keys [content children]}]
@@ -395,21 +382,23 @@
       [triangle expanded?]]
      [:span.group-hover:text-indigo-700 opening-paren]]))
 
-(defn coll-viewer [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
-  (html (let [expanded? (get @!expanded-at path)
-              {:keys [opening-paren closing-paren]} viewer]
-          [:span.inspected-value.whitespace-nowrap
-           {:class (when expanded? "inline-flex")}
-           [:span
-            (if (< 1 (count xs))
-              [expand-button !expanded-at opening-paren path]
-              [:span opening-paren])
-            (into [:<>]
-                  (comp (inspect-children opts)
-                        (interpose (if expanded? [:<> [:br] triangle-spacer nbsp (when (= 2 (count opening-paren)) nbsp)] " ")))
-                  xs)
-            [:span
-             (cond->> closing-paren (list? closing-paren) (into [:<>]))]]])))
+(defn coll-view [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
+  (let [expanded? (get @!expanded-at path)
+        {:keys [opening-paren closing-paren]} viewer]
+    [:span.inspected-value.whitespace-nowrap
+     {:class (when expanded? "inline-flex")}
+     [:span
+      (if (< 1 (count xs))
+        [expand-button !expanded-at opening-paren path]
+        [:span opening-paren])
+      (into [:<>]
+            (comp (inspect-children opts)
+                  (interpose (if expanded? [:<> [:br] triangle-spacer nbsp (when (= 2 (count opening-paren)) nbsp)] " ")))
+            xs)
+      [:span
+       (cond->> closing-paren (list? closing-paren) (into [:<>]))]]]))
+
+(defn coll-viewer [xs opts] (html (coll-view xs opts)))
 
 (defn elision-viewer [{:as fetch-opts :keys [total offset unbounded?]} _]
   (html [view-context/consume :fetch-fn
@@ -542,12 +531,6 @@
     (with-viewer ({:html html-viewer
                    :reagent reagent-viewer} viewer viewer) x)
     x))
-
-(def js-viewers
-  [{:pred #(implements? IDeref %) :render-fn #(tagged-value (-> %1 type pr-str) (inspect-presented (deref %1) %2))}
-   {:pred goog/isObject :render-fn js-object-viewer}
-   {:pred array? :render-fn (partial coll-viewer {:open [:<> [:span.cmt-meta "#js "] "["] :close "]"})}])
-
 
 (defonce !doc (ratom/atom nil))
 (defonce !error (ratom/atom nil))
@@ -690,6 +673,7 @@
    'inspect inspect
    'valid-react-element? valid-react-element?
    'result-viewer result-viewer
+   'coll-view coll-view
    'coll-viewer coll-viewer
    'map-viewer map-viewer
    'elision-viewer elision-viewer
@@ -750,7 +734,3 @@
   (sci/eval-form @!sci-ctx f))
 
 (set! *eval* eval-form)
-
-(swap! viewer/!viewers (fn [viewers]
-                         (-> (into {} (map (juxt key (comp #(into [] (map viewer/process-render-fn) %)  val))) viewers)
-                             (update :root concat js-viewers))))
