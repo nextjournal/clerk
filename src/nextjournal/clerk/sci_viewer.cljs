@@ -37,29 +37,7 @@
 
 (declare inspect inspect-presented reagent-viewer)
 
-(defn value-of
-  "Safe access to a value at key a js object.
-
-   Returns `'forbidden` if reading the property would result in a `SecurityError`.
-   https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy"
-  [obj k]
-  (try
-    (let [v (j/get obj k)]
-      (.-constructor v) ;; test for SecurityError
-      v)
-    (catch js/Error ^js _
-      'forbidden)))
-
-(defn obj->clj [x]
-  (-> (fn [result key]
-        (let [v (aget x key)]
-          (if (= "function" (goog/typeOf v))
-            result
-            (assoc result key v))))
-      (reduce {} (goog.object/getKeys x))))
-
-(def nbsp
-  (gstring/unescapeEntities "&nbsp;"))
+(def nbsp (gstring/unescapeEntities "&nbsp;"))
 
 (declare html html-viewer)
 
