@@ -609,12 +609,14 @@
         :else
         (html (error-badge "unusable viewer `" (pr-str viewer) "`, value `" (pr-str value) "`"))))
 
+(defn valid-react-element? [x] (react/isValidElement x))
+
 (defn inspect-presented
   ([x]
    (r/with-let [!expanded-at (r/atom (:nextjournal/expanded-at x))]
      [inspect-presented {:!expanded-at !expanded-at} x]))
   ([opts x]
-   (if (react/isValidElement x)
+   (if (valid-react-element? x)
      x
      (let [value (viewer/->value x)
            viewer (viewer/->viewer x)]
@@ -1145,6 +1147,7 @@ black")}]))}
    'table table
    'tex tex
    'vl vl
+   'present viewer/present
    'with-viewer with-viewer
    'with-viewers with-viewers})
 
