@@ -411,20 +411,22 @@
              :on-click #(when (fn? fetch-fn)
                           (fetch-fn fetch-opts))} (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")])]))
 
-(defn map-viewer [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
-  (html (let [expanded? (get @!expanded-at path)
-              {:keys [closing-paren]} viewer]
-          [:span.inspected-value.whitespace-nowrap
-           {:class (when expanded? "inline-flex")}
-           [:span
-            (if (expandable? xs)
-              [expand-button !expanded-at "{" path]
-              [:span "{"])
-            (into [:<>]
-                  (comp (inspect-children opts)
-                        (interpose (if expanded? [:<> [:br] triangle-spacer nbsp #_(repeat (inc (count path)) nbsp)] " ")))
-                  xs)
-            (cond->> closing-paren (list? closing-paren) (into [:<>]))]])))
+(defn map-view [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
+  (let [expanded? (get @!expanded-at path)
+        {:keys [closing-paren]} viewer]
+    [:span.inspected-value.whitespace-nowrap
+     {:class (when expanded? "inline-flex")}
+     [:span
+      (if (expandable? xs)
+        [expand-button !expanded-at "{" path]
+        [:span "{"])
+      (into [:<>]
+            (comp (inspect-children opts)
+                  (interpose (if expanded? [:<> [:br] triangle-spacer nbsp #_(repeat (inc (count path)) nbsp)] " ")))
+            xs)
+      (cond->> closing-paren (list? closing-paren) (into [:<>]))]]))
+
+(defn map-viewer [xs opts] (html (map-view xs opts)))
 
 (defn string-viewer [s {:as opts :keys [path !expanded-at] :or {path []}}]
   (html
@@ -675,6 +677,7 @@
    'result-viewer result-viewer
    'coll-view coll-view
    'coll-viewer coll-viewer
+   'map-view map-view
    'map-viewer map-viewer
    'elision-viewer elision-viewer
    'tagged-value tagged-value

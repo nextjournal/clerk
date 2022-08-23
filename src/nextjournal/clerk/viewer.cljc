@@ -8,7 +8,8 @@
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.analyzer :as analyzer]]
                 :cljs [[reagent.ratom :as ratom]
-                       [sci.impl.vars :as sci.vars]])
+                       [sci.impl.vars :as sci.vars]
+                       [applied-science.js-interop :as j]])
             [nextjournal.markdown :as md]
             [nextjournal.markdown.transform :as md.transform]
             [lambdaisland.uri.normalize :as uri.normalize])
@@ -696,6 +697,17 @@
                        mark-presented))})
 
 #?(:cljs
+   (def js-object-viewer
+     {:name :js-array
+      :pred goog/isObject
+      :transform-fn (update-val (fn [^js o]
+                                  (let [keys (js/Object.keys o)]
+                                    (into {} (map (fn [k] [k (j/get o k)])) keys ))))
+      :render-fn '(fn [v opts] (v/html (v/tagged-value {:space? true} "#js" (v/map-view v opts))))
+      :closing-paren "}"
+      :fetch-opts {:n 20}}))
+
+#?(:cljs
    (def js-array-viewer
      {:name :js-array
       :pred array?
@@ -748,6 +760,7 @@
    ideref-viewer
    regex-viewer
    #?(:cljs js-array-viewer)
+   #?(:cljs js-object-viewer)
    fallback-viewer
    elision-viewer
    katex-viewer
