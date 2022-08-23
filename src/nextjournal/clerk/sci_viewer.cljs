@@ -26,8 +26,7 @@
             [reagent.ratom :as ratom]
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
-            [sci.core :as sci]
-            [nextjournal.clerk.viewer :as v]))
+            [sci.core :as sci]))
 
 (defn color-classes [selected?]
   {:value-color (if selected? "white-90" "dark-green")
