@@ -63,20 +63,26 @@
 ;; * tagged literal `#js` throws _No reader function for tag js_
 
 (card
-  (clj->js {:foo "bar"}))
+  (j/obj :foo "bar"))
 
 (card
   (js/Array. 1 2 3))
 
 ;; **TODO:** fix nested objects
 (card
-  (clj->js {:a {:b 1}}))
+  (j/lit {:a {:b 1 :c 2} :d 3}))
+
+;; pagination for objects
+(card
+  (into-array (range 30)))
 
 (card
-  (js/Array. 1 (clj->js {:a 2}) 3))
+  (reduce #(j/assoc! %1 (str "key" %2) %2)
+          (j/obj)
+          (range 30)))
 
 (card
-  (clj->js {:a [1 (clj->js {:b 2}) 3]}))
+  (clj->js [1 (j/obj :a 2) 3]))
 
 (card
   (clj->js {:a [1 {:b 2} 3]}))
@@ -102,13 +108,6 @@
   \"to all questions\"
   []
   (inc #_ #readme/as :ignore 41)"))
-
-;; ## Eval
-(card
-  ;; TODO: helper to get "private" functions from sci viewer ns
-  (let [->vfn (j/get-in js/window (map munge '[nextjournal clerk viewer ->viewer-fn]))]
-    (v/with-viewer (->vfn '(fn [x] (v/html [:h4 "Ohai, " x "! 👋"])))
-                   "Hans")))
 
 ;; ## Vars
 (card

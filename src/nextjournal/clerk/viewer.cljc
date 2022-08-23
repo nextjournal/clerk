@@ -710,7 +710,7 @@
 #?(:cljs
    (def js-array-viewer
      {:name :js-array
-      :pred array?
+      :pred js-iterable?
       :render-fn '(fn [v opts] (v/html (v/tagged-value {:space? true} "#js" (v/coll-view v opts))))
       :opening-paren "[" :closing-paren "]"
       :fetch-opts {:n 20}}))
