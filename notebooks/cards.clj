@@ -148,7 +148,7 @@
 (clerk/card
   (v/col
    (v/row (v/html [:h1 "🎲"]) (v/html [:h1 "🎲"]))
-   (v/row (v/html [:h1 "Three"]) (v/html [:h1 "Four"]))))
+   (v/row (v/html [:h1 "🎲"]) (v/html [:h1 "🎲"]))))
 
 ;; unlike on the JVM side
 (clerk/col
