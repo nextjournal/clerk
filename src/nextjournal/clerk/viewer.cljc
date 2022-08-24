@@ -701,8 +701,9 @@
      {:name :js-array
       :pred goog/isObject
       :transform-fn (update-val (fn [^js o]
-                                  (let [keys (js/Object.keys o)]
-                                    (into {} (map (fn [k] [k (j/get o k)])) keys ))))
+                                  (into {}
+                                        (map (fn [k] [(symbol k) (j/get o k)]))
+                                        (js/Object.keys o))))
       :render-fn '(fn [v opts] (v/html (v/tagged-value {:space? true} "#js" (v/map-view v opts))))
       :closing-paren "}"
       :fetch-opts {:n 20}}))
