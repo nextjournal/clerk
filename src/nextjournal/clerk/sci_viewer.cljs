@@ -566,7 +566,7 @@
     [view-context/provide {:fetch-fn (fn [fetch-opts]
                                        (.then (in-process-fetch value fetch-opts)
                                               (fn [more]
-                                                (swap! !state update :desc viewer/merge-presentations more))))}
+                                                (swap! !state update :desc viewer/merge-presentations more fetch-opts))))}
      [inspect-presented (:desc @!state)]]))
 
 (defn root []

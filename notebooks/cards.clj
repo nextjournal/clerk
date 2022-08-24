@@ -164,6 +164,5 @@
 (clerk/card
   (range 21))
 
-;; **FIXME**
 (clerk/card
   {:a (range 21)})
