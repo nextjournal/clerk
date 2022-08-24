@@ -2,28 +2,14 @@
 ^{:nextjournal.clerk/toc true}
 (ns cards
   {:nextjournal.clerk/no-cache true}
-  (:require [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as v]
-            ;; unused but makes analyzer happy (j ns is used inside macros)
-            [applied-science.js-interop :as j]))
-
-^{::clerk/visibility {:code :hide :result :hide}}
-(def card-viewer
-  {:transform-fn (comp clerk/mark-presented (clerk/update-val v/->viewer-eval))
-   :render-fn '(fn [data]
-                 (if (v/valid-react-element? data)
-                   data
-                   (v/html [v/inspect data])))})
-
-^{::clerk/visibility {:code :hide :result :hide}}
-(defmacro card [body] `(clerk/with-viewer card-viewer '~body))
+  (:require [nextjournal.clerk :as clerk]))
 
 ;; ## $\LaTeX$
-(card
+(clerk/card
   (v/tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}"))
 
 ;; ## Vega Lite
-(card
+(clerk/card
   (v/vl {:width 650
          :height 400
          :data
@@ -42,79 +28,77 @@
          {:color {:field "rate" :type "quantitative"}}}))
 
 ;; ## Tables
-(card
+(clerk/card
   (v/table {:a [1 2 3] :b [4 5 6]}))
 
-(card
+(clerk/card
   (v/table {:head ['A 'B 'C]
             :rows (map #(range 3) (range 2))}))
 
 ;; incomplete tables
-(card
+(clerk/card
   (v/table {:a [1 2 3] :b [4]}))
 
 ;; table with errors
-(card
+(clerk/card
   (v/table #{1 2 3}))
 
 ;; ## JS Objects
-;; **FIXME**:
-;; * `j/obj` breaks clerk analysis during static build
-;; * tagged literal `#js` throws _No reader function for tag js_
 
-(card
+(clerk/card
   (j/obj :foo "bar"))
 
-(card
+(clerk/card
   (js/Array. 1 2 3))
 
 ;; **TODO:** fix nested objects
-(card
+(clerk/card
   (j/lit {:a {:b 1 :c 2} :d 3}))
 
 ;; pagination for objects
-(card
+(clerk/card
   (into-array (range 30)))
 
-(card
+(clerk/card
   (reduce #(j/assoc! %1 (str "key" %2) %2)
           (j/obj)
           (range 30)))
 
-(card
+(clerk/card
   (clj->js [1 (j/obj :a 2) 3]))
 
-(card
+(clerk/card
   (clj->js {:a [1 {:b 2} 3]}))
 
 ;; **TODO**: fix missing cljs.core/array in SCI ctx
-(card
+(clerk/card
   (j/lit [1 2 3]))
 
-(card
+(clerk/card
   (let [a (j/get-in js/window (map munge '[cljs core array]))]
     (a 1 2 3)))
 
-(card
+(clerk/card
   (js/document.querySelectorAll ".mt-2"))
 
-(card
+(clerk/card
   js/window)
 
 ;; ## Code
 
-(card
+(clerk/card
   (v/code "(defn the-answer
   \"to all questions\"
   []
   (inc #_ #readme/as :ignore 41)"))
 
 ;; ## Vars
-(card
+(clerk/card
   (var v/doc-url))
 
 ;; ## Reagent
-(card
+
+(clerk/card
   (v/with-viewer :reagent
                  (fn []
                    (reagent/with-let [c (reagent/atom 0)]
@@ -124,7 +108,7 @@
                                       [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold {:on-click #(swap! c dec)} "decrement"]]))))
 
 ;; ## Using `v/with-viewer`
-(card
+(clerk/card
   (v/with-viewer
    #(v/html
      [:div.relative
@@ -139,7 +123,7 @@
    0.33))
 
 ;; ## Notebook Viewer
-(card
+(clerk/card
   (v/with-viewer :clerk/notebook
                  {:blocks (map v/present
                                [(v/with-viewer :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
