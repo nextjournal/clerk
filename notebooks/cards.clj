@@ -46,7 +46,7 @@
 ;; ## JS Objects
 
 (clerk/card
-  (j/obj :foo "bar"))
+  (j/obj :foo "bar" :baz identity))
 
 (clerk/card
   (js/Array. 1 2 3))

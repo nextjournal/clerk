@@ -700,13 +700,19 @@
    (def js-object-viewer
      {:name :js-array
       :pred goog/isObject
+      :fetch-opts {:n 20}
+      :opening-paren "{" :closing-paren "}"
+      :render-fn '(fn [v opts] (v/html (v/tagged-value {:space? true} "#js" (v/map-view v opts))))
       :transform-fn (update-val (fn [^js o]
                                   (into {}
-                                        (map (fn [k] [(symbol k) (j/get o k)]))
-                                        (js/Object.keys o))))
-      :render-fn '(fn [v opts] (v/html (v/tagged-value {:space? true} "#js" (v/map-view v opts))))
-      :closing-paren "}"
-      :fetch-opts {:n 20}}))
+                                        (comp (remove (fn [k] (identical? "function" (goog/typeOf (j/get o k)))))
+                                              (map (fn [k]
+                                                     [(symbol k)
+                                                      (try (let [v (j/get o k)]
+                                                             (.-constructor v) ;; test for SecurityError
+                                                             ;; https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy
+                                                             v)
+                                                           (catch js/Error _ 'forbidden))]))) (js/Object.keys o))))}))
 
 #?(:cljs
    (def js-array-viewer
