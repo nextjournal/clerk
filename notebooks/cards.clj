@@ -51,7 +51,6 @@
 (clerk/card
   (js/Array. 1 2 3))
 
-;; **TODO:** fix nested objects
 (clerk/card
   (j/lit {:a {:b 1 :c 2} :d 3}))
 
@@ -138,3 +137,21 @@
                                 (v/tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")
                                 (v/plotly {:data [{:y (shuffle (range 10)) :name "The Federation"}
                                                   {:y (shuffle (range 10)) :name "The Empire"}]})])}))
+
+;; ## Layouts
+;; **FIXME**:  `v/html` cannot be nested
+(clerk/card
+  (v/col
+   (v/row (v/html [:h1 "🎲"]) (v/html [:h1 "🎲"]))
+   (v/row (v/html [:h1 "Three"]) (v/html [:h1 "Four"]))))
+
+;; unlike on the JVM side
+(clerk/col
+ (clerk/row (clerk/html [:h1 "🎲"]) (clerk/html [:h1 "🎲"]))
+ (clerk/row (clerk/html [:h1 "🎲"]) (clerk/html [:h1 "🎲"])))
+
+;; in order for it to work, one needs the verbose syntax
+(clerk/card
+  (v/col
+   (v/row (v/with-viewer :html [:h1 "🎲"]) (v/with-viewer :html [:h1 "🎲"]))
+   (v/row (v/with-viewer :html [:h1 "🎲"]) (v/with-viewer :html [:h1 "🎲"]))))
