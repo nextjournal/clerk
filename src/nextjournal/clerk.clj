@@ -307,7 +307,7 @@
        (mapv (fn [form# val#] {:form form# :val val#}) ~(mapv (fn [x#] `'~x#) body) ~(vec body)))))
 
 (defmacro card
-  "Evaluates `body` in SCI context for cljs consumption."
+  "Evaluates and inspects `body` in SCI context for cljs consumption."
   [body]
   `(clerk/with-viewer v/card-viewer '~body))
 
