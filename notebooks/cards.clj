@@ -72,7 +72,7 @@
   (j/obj :a (into-array (range 21))))
 
 (clerk/card
-  (js/Array. 1 (into-array (range 1 22))))
+  (js/Array. 1 (into-array (range 2 23))))
 
 ;; mixed array/objects
 (clerk/card
