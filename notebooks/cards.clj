@@ -44,6 +44,11 @@
   (v/table #{1 2 3}))
 
 ;; ## JS Objects
+(clerk/card
+  (js/document.querySelectorAll ".mt-2"))
+
+(clerk/card
+  js/window)
 
 (clerk/card
   (j/obj :foo "bar" :baz identity))
@@ -64,6 +69,13 @@
           (range 30)))
 
 (clerk/card
+  (j/obj :a (into-array (range 21))))
+
+(clerk/card
+  (js/Array. 1 (into-array (range 1 22))))
+
+;; mixed array/objects
+(clerk/card
   (clj->js [1 (j/obj :a 2) 3]))
 
 (clerk/card
@@ -78,14 +90,7 @@
   (let [a (j/get-in js/window (map munge '[cljs core array]))]
     (a 1 2 3)))
 
-(clerk/card
-  (js/document.querySelectorAll ".mt-2"))
-
-(clerk/card
-  js/window)
-
 ;; ## Code
-
 (clerk/card
   (v/code "(defn the-answer
   \"to all questions\"
