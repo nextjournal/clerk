@@ -155,3 +155,15 @@
   (v/col
    (v/row (v/with-viewer :html [:h1 "🎲"]) (v/with-viewer :html [:h1 "🎲"]))
    (v/row (v/with-viewer :html [:h1 "🎲"]) (v/with-viewer :html [:h1 "🎲"]))))
+
+;; ## In-process Pagination
+
+(clerk/card
+  (range))
+
+(clerk/card
+  (range 21))
+
+;; **FIXME**
+(clerk/card
+  {:a (range 21)})
