@@ -339,8 +339,10 @@
 #_(get-viewers nil nil)
 
 #?(:clj
-   (defn ->result [{:as doc :keys [inline-results? bundle?]} {:as result :nextjournal/keys [value blob-id viewers]}]
-     (let [blob-mode (cond
+   (defn transform-result [{cell :nextjournal/value doc :nextjournal/opts}]
+     (let [{:keys [inline-results? bundle?]} doc
+           {:as result :nextjournal/keys [value blob-id viewers]} (:result cell)
+           blob-mode (cond
                        (and (not inline-results?) blob-id) :lazy-load
                        bundle? :inline ;; TODO: provide a separte setting for this
                        :else :file)
@@ -367,25 +369,30 @@
 (defn result-hidden? [result]
   (contains? #{:hide-result hide-result-viewer} (-> result ->value ->viewer)))
 
-(defn ->display [{:as code-cell :keys [result ns? visibility]}]
+(defn ->display [{:as code-cell :keys [result visibility]}]
   (let [{:keys [code result]} visibility]
     {:result? (not= :hide result)
      :fold? (= code :fold)
      :code? (not= :hide code)}))
 
-#?(:clj
-   (defn with-block-viewer [doc {:as cell :keys [type]}]
-     (case type
-       :markdown [(with-viewer :markdown (:doc cell))]
-       :code (let [{:as cell :keys [result]} (update cell :result apply-viewer-unwrapping-var-from-def)
-                   {:as display-opts :keys [code? result?]} (->display cell)]
-               (cond-> []
-                 code?
-                 (conj (with-viewer :clerk/code-block
-                         ;; TODO: display analysis could be merged into cell earlier
-                         (-> cell (merge display-opts) (dissoc :result))))
-                 result?
-                 (conj (->result doc result)))))))
+#_(->display {:result {:nextjournal.clerk/visibility {:code :show :result :show}}})
+#_(->display {:result {:nextjournal.clerk/visibility {:code :fold :result :show}}})
+#_(->display {:result {:nextjournal.clerk/visibility {:code :fold :result :hide}}})
+
+(defn with-block-viewer [doc {:as cell :keys [type]}]
+  (case type
+    :markdown [(with-viewer :markdown (:doc cell))]
+    :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
+                {:as display-opts :keys [code? result?]} (->display cell)]
+            ;; TODO: use vars instead of names
+            (cond-> []
+              code?
+              (conj (with-viewer :clerk/code-block
+                      ;; TODO: display analysis could be merged into cell earlier
+                      (-> cell (merge display-opts) (dissoc :result))))
+              result?
+              (conj (with-viewer :clerk/result-block {:nextjournal/opts doc}
+                      cell))))))
 
 (defn update-viewers [viewers select-fn->update-fn]
   (reduce (fn [viewers [pred update-fn]]
@@ -741,27 +748,30 @@
       :opening-paren "[" :closing-paren "]"
       :page-size 20}))
 
+(def result-block-viewer
+  {:name :clerk/result-block
+   :transform-fn (comp mark-presented
+                       #?(:clj transform-result))})
+
 (def result-viewer
   {:name :clerk/result :render-fn (quote v/result-viewer) :transform-fn mark-presented})
 
-#?(:clj
-   (defn process-blocks [viewers {:as doc :keys [ns]}]
-     (-> doc
-         (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
-                                                (map (comp process-wrapped-value
-                                                           apply-viewers*
-                                                           (partial ensure-wrapped-with-viewers viewers))))))
-         (select-keys [:blocks :toc :toc-visibility :title])
-         (cond-> ns (assoc :scope (datafy-scope ns))))))
+(defn process-blocks [viewers {:as doc :keys [ns]}]
+  (-> doc
+      (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
+                                             (map (comp process-wrapped-value
+                                                        apply-viewers*
+                                                        (partial ensure-wrapped-with-viewers viewers))))))
+      (select-keys [:blocks :toc :toc-visibility :title])
+      #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
 
 (def notebook-viewer
   {:name :clerk/notebook
    :render-fn (quote v/notebook-viewer)
-   :transform-fn #?(:cljs mark-presented
-                    :clj  (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
-                            (-> wrapped-value
-                                (update :nextjournal/value (partial process-blocks viewers))
-                                mark-presented)))})
+   :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
+                   (-> wrapped-value
+                       (update :nextjournal/value (partial process-blocks viewers))
+                       mark-presented))})
 
 (def default-viewers
   ;; maybe make this a sorted-map
@@ -803,6 +813,7 @@
    table-viewer
    table-error-viewer
    code-block-viewer
+   result-block-viewer
    tagged-value-viewer
    result-viewer
    notebook-viewer
