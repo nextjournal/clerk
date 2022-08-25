@@ -306,7 +306,6 @@
     `(clerk/with-viewer v/examples-viewer
        (mapv (fn [form# val#] {:form form# :val val#}) ~(mapv (fn [x#] `'~x#) body) ~(vec body)))))
 
-
 (defn file->viewer
   "Evaluates the given `file` and returns it's viewer representation."
   ([file] (file->viewer {:inline-results? true} file))

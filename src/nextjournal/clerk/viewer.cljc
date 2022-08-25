@@ -8,7 +8,8 @@
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.analyzer :as analyzer]]
                 :cljs [[reagent.ratom :as ratom]
-                       [sci.impl.vars :as sci.vars]])
+                       [sci.impl.vars :as sci.vars]
+                       [applied-science.js-interop :as j]])
             [nextjournal.markdown :as md]
             [nextjournal.markdown.transform :as md.transform]
             [lambdaisland.uri.normalize :as uri.normalize])
@@ -694,6 +695,34 @@
                    (-> wrapped-value
                        (update-in [:nextjournal/value :value] present)
                        mark-presented))})
+
+#?(:cljs
+   (def js-object-viewer
+     {:name :js-array
+      :pred goog/isObject
+      :fetch-opts {:n 20}
+      :opening-paren "{" :closing-paren "}"
+      :render-fn '(fn [v opts] (v/html (v/tagged-value {:space? true} "#js" (v/map-view v opts))))
+      :transform-fn (update-val (fn [^js o]
+                                  (into {}
+                                        (comp (remove (fn [k] (identical? "function" (goog/typeOf (j/get o k)))))
+                                              (map (fn [k]
+                                                     [(symbol k)
+                                                      (try (let [v (j/get o k)]
+                                                             (.-constructor v) ;; test for SecurityError
+                                                             ;; https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy
+                                                             v)
+                                                           (catch js/Error _ 'forbidden))]))) (js/Object.keys o))))}))
+
+#?(:cljs
+   (def js-array-viewer
+     {:name :js-array
+      :pred js-iterable?
+      :transform-fn (update-val seq)
+      :render-fn '(fn [v opts] (v/html (v/tagged-value {:space? true} "#js" (v/coll-view v opts))))
+      :opening-paren "[" :closing-paren "]"
+      :fetch-opts {:n 20}}))
+
 (def result-viewer
   {:name :clerk/result :render-fn (quote v/result-viewer) :transform-fn mark-presented})
 
@@ -738,6 +767,8 @@
    buffered-image-viewer
    ideref-viewer
    regex-viewer
+   #?(:cljs js-array-viewer)
+   #?(:cljs js-object-viewer)
    fallback-viewer
    elision-viewer
    katex-viewer
