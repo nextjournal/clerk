@@ -3,14 +3,14 @@
 (ns cards
   {:nextjournal.clerk/no-cache true}
   (:require [nextjournal.clerk :as clerk]
-            [devcards :as dc]))
+            [cards-macro :as c]))
 
 ;; ## $\LaTeX$
-(dc/defcard
+(c/card
   (v/tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}"))
 
 ;; ## Vega Lite
-(dc/defcard
+(c/card
   (v/vl {:width 650
          :height 400
          :data
@@ -29,84 +29,84 @@
          {:color {:field "rate" :type "quantitative"}}}))
 
 ;; ## Tables
-(dc/defcard
+(c/card
   (v/table {:a [1 2 3] :b [4 5 6]}))
 
-(dc/defcard
+(c/card
   (v/table {:head ['A 'B 'C]
             :rows (map #(range 3) (range 2))}))
 
 ;; incomplete tables
-(dc/defcard
+(c/card
   (v/table {:a [1 2 3] :b [4]}))
 
 ;; table with errors
-(dc/defcard
+(c/card
   (v/table #{1 2 3}))
 
 ;; ## JS Objects
-(dc/defcard
+(c/card
   (js/document.querySelectorAll ".mt-2"))
 
-(dc/defcard
+(c/card
   js/window)
 
-(dc/defcard
+(c/card
   (j/obj :foo "bar" :baz identity))
 
-(dc/defcard
+(c/card
   (js/Array. 1 2 3))
 
-(dc/defcard
+(c/card
   (j/lit {:a {:b 1 :c 2} :d 3}))
 
 ;; pagination for objects
-(dc/defcard
+(c/card
   (into-array (range 30)))
 
-(dc/defcard
+(c/card
   (reduce #(j/assoc! %1 (str "key" %2) %2)
           (j/obj)
           (range 30)))
 
-(dc/defcard
+(c/card
   (j/obj :a (into-array (range 21))))
 
-(dc/defcard
+(c/card
   (js/Array. 1 (into-array (range 2 23))))
 
 ;; mixed array/objects
-(dc/defcard
+(c/card
   (clj->js [1 (j/obj :a 2) 3]))
 
-(dc/defcard
+(c/card
   (clj->js {:a [1 {:b 2} 3]}))
 
 ;; **TODO**: fix missing cljs.core/array in SCI ctx
-(dc/defcard
+(c/card
   (j/lit [1 2 3]))
 
 ;; this one won't work when advanced-compiled
-(dc/defcard
+(c/card
   (let [a (j/get-in js/window (map munge '[cljs core array]))]
     (a 1 2 3)))
 
 ;; ## Code
-(dc/defcard
+(c/card
   (v/code "(defn the-answer
   \"to all questions\"
   []
   (inc #_ #readme/as :ignore 41)"))
 
 ;; ## Vars
-(dc/defcard
+(c/card
   (var v/doc-url))
 
 ;; ## Reagent
-(dc/defcard
+(c/card
  (reagent/as-element [:h1 "♻️"]))
 
-(dc/defcard
+(c/card
   (v/with-viewer :reagent
                  (fn []
                    (reagent/with-let [c (reagent/atom 0)]
@@ -116,7 +116,7 @@
                                       [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold {:on-click #(swap! c dec)} "decrement"]]))))
 
 ;; ## Using `v/with-viewer`
-(dc/defcard
+(c/card
   (v/with-viewer
    #(v/html
      [:div.relative
@@ -131,7 +131,7 @@
    0.33))
 
 ;; ## Notebook Viewer
-(dc/defcard
+(c/card
   (v/with-viewer :clerk/notebook
                  {:blocks (map v/present
                                [(v/with-viewer :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
@@ -146,7 +146,7 @@
 
 ;; ## Layouts
 ;; **FIXME**:  `v/html` cannot be nested
-(dc/defcard
+(c/card
   (v/col
    (v/row (v/html [:h1 "🎲"]) (v/html [:h1 "🎲"]))
    (v/row (v/html [:h1 "🎲"]) (v/html [:h1 "🎲"]))))
@@ -157,18 +157,18 @@
  (clerk/row (clerk/html [:h1 "🎲"]) (clerk/html [:h1 "🎲"])))
 
 ;; in order for it to work, one needs the verbose syntax
-(dc/defcard
+(c/card
   (v/col
    (v/row (v/with-viewer :html [:h1 "🎲"]) (v/with-viewer :html [:h1 "🎲"]))
    (v/row (v/with-viewer :html [:h1 "🎲"]) (v/with-viewer :html [:h1 "🎲"]))))
 
 ;; ## In-process Pagination
 
-(dc/defcard
+(c/card
   (range))
 
-(dc/defcard
+(c/card
   (range 21))
 
-(dc/defcard
+(c/card
   {:a (range 21)})

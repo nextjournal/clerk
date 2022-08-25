@@ -1,4 +1,4 @@
-(ns devcards
+(ns cards-macro
   (:require [nextjournal.clerk.viewer :as v]))
 
 (def card-viewer
@@ -6,4 +6,4 @@
    :render-fn '(fn [data]
                  (if (v/valid-react-element? data) data (v/html [v/inspect data])))})
 
-(defmacro defcard [body] `(v/with-viewer card-viewer '~body))
+(defmacro card [body] `(v/with-viewer card-viewer '~body))
