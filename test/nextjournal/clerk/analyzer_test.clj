@@ -160,8 +160,7 @@
                        :dependents   map?}
                :blocks [{:type :code
                          :text "^:nextjournal.clerk/no-cache (ns example-notebook)"
-                         :form '(ns example-notebook)
-                         :ns?  true}
+                         :form '(ns example-notebook)}
                         {:type :code
                          :text "#{3 1 2}"
                          :form #{1 2 3}}]
@@ -189,6 +188,29 @@
   (testing "defmulti has no deref deps"
     (is (empty? (-> "(defmulti foo :bar)" analyze-string :blocks first :deref-deps)))))
 
+
+(deftest add-ids+visbility
+  (testing "assigns doc visibility from ns metadata"
+    (is (= [{:code :fold, :result :hide} {:code :fold, :result :show}]
+           (->> "(ns foo {:nextjournal.clerk/visibility {:code :fold}}) (rand-int 42)" analyze-string :blocks (mapv :visibility)))))
+
+  (testing "assigns doc visibility from top-level visbility map marker"
+    (is (= [{:code :hide, :result :hide} {:code :fold, :result :show}]
+           (->> "{:nextjournal.clerk/visibility {:code :fold}} (rand-int 42)" analyze-string :blocks (mapv :visibility)))))
+
+  (testing "can change visibility halfway"
+    (is (= [{:code :show, :result :show} {:code :hide, :result :hide} {:code :fold, :result :hide}]
+           (->> "(rand-int 42) {:nextjournal.clerk/visibility {:code :fold :result :hide}} (rand-int 42)" analyze-string :blocks (mapv :visibility))))))
+
+(deftest add-block-ids
+  (testing "assigns block ids"
+    (is (= '[foo/anon-expr-5dqvhPjzJ6UG154FjU8PkQqrgiP5hM
+             foo/bar
+             foo/bar#2
+             foo/anon-expr-5dtdBPcb3sSBbNe7weN9FdR9hc3ME5
+             foo/anon-expr-5dtdBPcb3sSBbNe7weN9FdR9hc3ME5#2]
+           (->> "(ns foo {:nextjournal.clerk/visibility {:code :fold}}) (def bar :baz) (def bar :baz) (rand-int 42) (rand-int 42)"
+                analyze-string :blocks (mapv :id))))))
 
 (deftest no-cache-dep
   (is (match? [{:no-cache? true} {:no-cache? true} {:no-cache? true}]

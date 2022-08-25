@@ -38,4 +38,6 @@
   (clerk/show! "notebooks/sicmutils.clj")
 
   (clerk/clear-cache!)
+
+  (kaocha.repl/run :unit)
   )

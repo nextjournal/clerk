@@ -198,44 +198,73 @@
       (reduce (fn [state k]
                 (assoc-in state [:->analysis-info k :no-cache?] no-cache-deps?)) state (->ana-keys analyzed)))))
 
+(defn add-block-id [{:as state :keys [id->count]} {:as block :keys [var form type doc]}]
+  (let [id (if var
+             var
+             (let [hash-fn #(-> % nippy/fast-freeze digest/sha1 multihash/base58)]
+               (symbol (str *ns*)
+                       (case type
+                         :code (str "anon-expr-" (hash-fn form))
+                         :markdown (str "markdown-" (hash-fn doc))))))
+        unique-id (if (id->count id)
+                    (symbol (str *ns*) (str (name id) "#" (inc (id->count id))))
+                    id)]
+    (-> state
+        (update :blocks conj (assoc block :id unique-id))
+        (update :id->count update id (fnil inc 0)))))
+
+(defn add-block-ids [{:as state :keys [blocks]}]
+  (-> (reduce add-block-id (assoc state :blocks [] :id->count {} ) blocks)
+      (dissoc :id->count)))
+
+(defn add-block-visibility [{:as state :keys [blocks]}]
+  (-> (reduce (fn [{:as state :keys [visibility]} {:as block :keys [var form type doc]}]
+                (let [visibility' (merge visibility (parser/->doc-visibility form))]
+                  (cond-> (-> state
+                              (update :blocks conj (cond-> block
+                                                     (= type :code) (assoc :visibility (merge visibility' (parser/->visibility form))))))
+                    (= type :code) (assoc :visibility visibility'))))
+              (assoc state :blocks [] :visibility {:code :show :result :show})
+              blocks)
+      (dissoc :visibility)))
+
 (defn analyze-doc
   ([doc]
    (analyze-doc {:doc? true :graph (dep/graph)} doc))
   ([{:as state :keys [doc?]} doc]
    (binding [*ns* *ns*]
-     (reduce (fn [state i]
-               (let [{:keys [type text]} (get-in state [:blocks i])]
-                 (if (not= type :code)
-                   state
-                   (let [form (parser/read-string text)
-                         {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form)
-                                                                       (:file doc) (assoc :file (:file doc)))
-                         state (cond-> (reduce (fn [state ana-key]
-                                                 (assoc-in state [:->analysis-info ana-key] analyzed))
-                                               (dissoc state :doc?)
-                                               (->ana-keys analyzed))
-                                 doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
-                                 doc? (assoc :ns *ns*))]
-                     (when ns-effect?
-                       (eval form))
-                     (when-let [missing-dep (and (:ns? doc)
-                                                 (first (set/difference (into #{}
-                                                                              (filter #(and (symbol? %)
-                                                                                            (#{(-> state :ns ns-name name)} (namespace %))))
-                                                                              deps)
-                                                                        (-> state :->analysis-info keys set))))]
-                       (throw (ex-info (str "Could not resolve var: " (name missing-dep))
-                                       (merge {:var missing-dep} (select-keys analyzed [:form]) (select-keys doc [:file])))))
-                     (if (seq deps)
-                       (-> (reduce (partial analyze-deps analyzed) state deps)
-                           (make-deps-inherit-no-cache analyzed))
-                       state)))))
-             (cond-> state
-               doc? (merge doc))
-             (-> doc :blocks count range)))))
-
-#_(let [doc (parse-clojure-string {:doc? true} "(ns foo) (def a 41) (def b (inc a)) (do (def c 4) (def d (inc a)))")]
-    (analyze-doc doc))
+     (cond-> (reduce (fn [state i]
+                       (let [{:keys [type text]} (get-in state [:blocks i])]
+                         (if (not= type :code)
+                           state
+                           (let [form (parser/read-string text)
+                                 {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form)
+                                                                               (:file doc) (assoc :file (:file doc)))
+                                 state (cond-> (reduce (fn [state ana-key]
+                                                         (assoc-in state [:->analysis-info ana-key] analyzed))
+                                                       (dissoc state :doc?)
+                                                       (->ana-keys analyzed))
+                                         doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
+                                         doc? (assoc :ns *ns*)
+                                         (and doc? (not (contains? state :ns?))) (assoc :ns? (parser/ns? form)))]
+                             (when ns-effect?
+                               (eval form))
+                             (when-let [missing-dep (and (:ns? state)
+                                                         (first (set/difference (into #{}
+                                                                                      (filter #(and (symbol? %)
+                                                                                                    (#{(-> state :ns ns-name name)} (namespace %))))
+                                                                                      deps)
+                                                                                (-> state :->analysis-info keys set))))]
+                               (throw (ex-info (str "Could not resolve var: " (name missing-dep))
+                                               (merge {:var missing-dep} (select-keys analyzed [:form]) (select-keys doc [:file])))))
+                             (if (seq deps)
+                               (-> (reduce (partial analyze-deps analyzed) state deps)
+                                   (make-deps-inherit-no-cache analyzed))
+                               state)))))
+                     (cond-> state
+                       doc? (merge doc))
+                     (-> doc :blocks count range))
+       doc? (-> add-block-ids add-block-visibility)))))
 
 (defn analyze-file
   ([file] (analyze-file {:graph (dep/graph)} file))

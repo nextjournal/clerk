@@ -112,26 +112,31 @@
     (is (match? {:blocks [{:result {:nextjournal/value {:a seq?}}}]}
                 (eval/eval-string "{:a (range)}")))))
 
+(defn eval+extract-doc-blocks [code-str]
+  (-> code-str
+      eval/eval-string
+      view/doc->viewer
+      :nextjournal/value
+      :blocks))
+
 (deftest eval-string+doc->viewer
   (testing "assigns correct width from viewer function opts"
     (is (match? [{:nextjournal/width :wide}
                  {:nextjournal/width :full}]
-                (-> "(ns clerk-test-width {:nextjournal.clerk/visibility {:code :hide}}
+                (->> "(ns clerk-test-width {:nextjournal.clerk/visibility {:code :hide}}
   (:require [nextjournal.clerk :as clerk]))
 
 
 (clerk/html {::clerk/width :wide} [:div.bg-red-200 [:h1 \"Wide Hiccup\"]])
 
 (clerk/table {::clerk/width :full} {:a [1] :b [2] :c [3]})"
-                    eval/eval-string
-                    view/doc->viewer
-                    :nextjournal/value
-                    :blocks))))
+                     eval+extract-doc-blocks
+                     (mapv #(select-keys % [:nextjournal/width]))))))
 
   (testing "assigns the correct width from form meta"
     (is (match? [{:nextjournal/width :full}
                  {:nextjournal/width :wide}]
-                (-> "(ns clerk-test-width {:nextjournal.clerk/visibility {:code :hide}})
+                (->> "(ns clerk-test-width {:nextjournal.clerk/visibility {:code :hide}})
 
 ^{:nextjournal.clerk/viewer :table :nextjournal.clerk/width :full}
 (def dataset
@@ -140,10 +145,8 @@
 ^{:nextjournal.clerk/viewer :html :nextjournal.clerk/width :wide}
 [:div.bg-red-200 [:h1 \"Wide Hiccup\"]]
 "
-                    eval/eval-string
-                    view/doc->viewer
-                    :nextjournal/value
-                    :blocks))))
+                     eval+extract-doc-blocks
+                     (mapv #(select-keys % [:nextjournal/width]))))))
 
   (testing "can handle uncounted sequences"
     (is (match? [{:nextjournal/viewer {:name :code}
@@ -152,11 +155,7 @@
                   :nextjournal/value {:nextjournal/edn string?
                                       :nextjournal/fetch-opts {:blob-id string?}
                                       :nextjournal/hash string?}}]
-                (-> "(range)"
-                    eval/eval-string
-                    view/doc->viewer
-                    :nextjournal/value
-                    :blocks))))
+                (eval+extract-doc-blocks "(range)"))))
 
   (testing "assigns folded visibility"
     (is (match? [{:nextjournal/viewer {:name :code-folded}
@@ -165,11 +164,7 @@
                   :nextjournal/value {:nextjournal/edn string?
                                       :nextjournal/fetch-opts {:blob-id string?}
                                       :nextjournal/hash string?}}]
-                (-> "^{:nextjournal.clerk/visibility :fold}{:some :map}"
-                    eval/eval-string
-                    view/doc->viewer
-                    :nextjournal/value
-                    :blocks))))
+                (eval+extract-doc-blocks "^{:nextjournal.clerk/visibility :fold}{:some :map}"))))
 
   (testing "handles sorted map"
     (view/doc->viewer (eval/eval-string (pr-str '(into (sorted-map)
@@ -178,9 +173,5 @@
 
   (testing "hides the result"
     (is (= []
-           (-> "^{:nextjournal.clerk/visibility {:code :hide :result :hide}}
- {:some :map}"
-               eval/eval-string
-               view/doc->viewer
-               :nextjournal/value
-               :blocks)))))
+           (eval+extract-doc-blocks "^{:nextjournal.clerk/visibility {:code :hide :result :hide}}
+ {:some :map}")))))

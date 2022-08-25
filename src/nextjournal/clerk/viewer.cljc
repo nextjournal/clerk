@@ -342,18 +342,11 @@
 (defn result-hidden? [result]
   (contains? #{:hide-result hide-result-viewer} (-> result ->value ->viewer)))
 
-(defn ->display [{:as code-cell :keys [result ns?]}]
-  (let [{:nextjournal.clerk/keys [visibility]} result
-        {:keys [code result]} visibility]
-    {:result? (not (or (= :hide result) ns?))
+(defn ->display [{:as code-cell :keys [result ns? visibility]}]
+  (let [{:keys [code result]} visibility]
+    {:result? (not= :hide result)
      :fold? (= code :fold)
      :code? (not= :hide code)}))
-
-#_(->display {:result {:nextjournal.clerk/visibility {:code :show :result :show}}})
-#_(->display {:result {:nextjournal.clerk/visibility {:code :fold :result :show}}})
-#_(->display {:result {:nextjournal.clerk/visibility {:code :fold :result :hide}}})
-#_(->display {:ns? true :result {:nextjournal.clerk/visibility {:code :hide}}})
-#_(->display {:ns? true})
 
 #?(:clj
    (defn with-block-viewer [doc {:as cell :keys [type]}]
@@ -673,7 +666,7 @@
                                                    :number-col? (if (seq (first rows)) (mapv number? (first rows)) {})})
                          (assoc :nextjournal/value (cond->> []
                                                      (seq rows) (cons (with-viewer :table/body (map (partial with-viewer :table/row) rows)))
-                                                     head (cons (with-viewer :table/head head)))))
+                                                     head (cons (with-viewer (:name table-head-viewer table-head-viewer) head)))))
                      (-> wrapped-value
                          mark-presented
                          (assoc :nextjournal/width :wide)

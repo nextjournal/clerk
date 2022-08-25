@@ -16,6 +16,9 @@
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
 
+(defn visibility-control? [form]
+  (and (map? form) (contains? form :nextjournal.clerk/visibility)))
+
 (defn parse-visibility [form visibility]
   (when-let [visibility-map (and visibility (cond->> visibility (not (map? visibility)) (hash-map :code)))]
     (when-not (and (every? #{:code :result} (keys visibility-map))
@@ -29,7 +32,10 @@
 #_(parse-visibility nil {:code :fold :result :hide})
 
 (defn ->visibility [form]
-  (parse-visibility form (-> form meta :nextjournal.clerk/visibility)))
+  (if (visibility-control? form)
+    {:code :hide :result :hide}
+    (cond-> (parse-visibility form (-> form meta :nextjournal.clerk/visibility))
+      (ns? form) (merge {:result :hide}))))
 
 #_(->visibility (quote ^{:nextjournal.clerk/visibility :fold} (ns foo)))
 #_(->visibility '(foo :bar))
@@ -39,26 +45,26 @@
 #_(->visibility (quote ^{:nextjournal.clerk/visibility "bam"} (ns foo)))
 #_(->visibility (quote ^{:nextjournal.clerk/visibility #{:hide-ns}} (do :foo)))
 
-(defn ->doc-visibility [first-form]
-  (merge {:code :show :result :show}
-         (when (ns? first-form)
-           (parse-visibility first-form (merge (-> first-form second meta :nextjournal.clerk/visibility)
-                                               (some :nextjournal.clerk/visibility first-form))))))
-
+(defn ->doc-visibility [form]
+  (cond
+    (ns? form)
+    (parse-visibility form (merge (-> form second meta :nextjournal.clerk/visibility)
+                                  (some :nextjournal.clerk/visibility form)))
+    (visibility-control? form)
+    (parse-visibility form (:nextjournal.clerk/visibility form))))
 
 #_(->doc-visibility '(ns foo "my docs" {:nextjournal.clerk/visibility {:code :fold :result :hide}}))
+#_(->doc-visibility '{:nextjournal.clerk/visibility {:code :fold}})
 #_(->doc-visibility '(ns foo "my docs" {}))
 #_(->doc-visibility '(ns ^{:nextjournal.clerk/visibility {:code :fold :result :hide}} foo))
 #_(->doc-visibility '(ns ^{:nextjournal.clerk/visibility {:code :fold}} foo
                        {:nextjournal.clerk/visibility {:result :hide}}))
 
 (defn ->doc-settings [first-form]
-  {:visibility (->doc-visibility first-form)
-   :ns? (ns? first-form)
+  {:ns? (ns? first-form)
    :toc (or (#{true :collapsed} (-> first-form meta :nextjournal.clerk/toc)) false)})
 
 #_(->doc-settings '(ns foo))
-#_(->doc-settings '(ns foo {:nextjournal.clerk/visibility {:code :fold :result :hide}}))
 #_(->doc-settings '(in-ns 'foo))
 #_(->doc-settings '^{:nextjournal.clerk/toc true} (ns foo))
 #_(->doc-settings '^{:nextjournal.clerk/toc :pin} (ns foo))
@@ -72,6 +78,7 @@
 
 #_(auto-resolves (find-ns 'rule-30))
 
+;; TODO: move to analyzer
 (defn read-string [s]
   (edamame/parse-string s {:all true
                            :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))
@@ -88,11 +95,6 @@
 (def whitespace-on-line-tags
   #{:comment :whitespace :comma})
 
-(defn ->codeblock [visibility node]
-  (cond-> {:type :code :text (n/string node)}
-    (and (not visibility) (-> node n/string read-string ns?))
-    (assoc :ns? true)))
-
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
   ([opts s] (parse-clojure-string opts {:blocks []} s))
@@ -101,12 +103,11 @@
      (if-let [node (first nodes)]
        (recur (cond
                 (code-tags (n/tag node))
-                (cond-> (-> state
-                            (assoc :add-comment-on-line? true)
-                            (update :nodes rest)
-                            (update :blocks conj (->codeblock visibility node)))
-                  (not visibility)
-                  (merge (-> node n/string read-string ->doc-settings)))
+                (-> state
+                    (assoc :add-comment-on-line? true)
+                    (update :nodes rest)
+                    (update :blocks conj {:type :code :text (n/string node)}))
+
 
                 (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
                 (-> state
@@ -127,7 +128,7 @@
                 (-> state
                     (assoc :add-comment-on-line? false)
                     (update :nodes rest))))
-       (merge (select-keys state [:blocks :visibility :ns?])
+       (merge (select-keys state [:blocks :ns?])
               (when doc?
                 (-> {:content (into []
                                     (comp (filter (comp #{:markdown} :type))

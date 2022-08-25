@@ -29,9 +29,8 @@
 (defn ->cache-file [hash]
   (str config/cache-dir fs/file-separator hash))
 
-(defn wrapped-with-metadata [value visibility hash]
-  (cond-> {:nextjournal/value value
-           :nextjournal.clerk/visibility visibility}
+(defn wrapped-with-metadata [value hash]
+  (cond-> {:nextjournal/value value}
     hash (assoc :nextjournal/blob-id (cond-> hash (not (string? hash)) multihash/base58))))
 
 #_(wrap-with-blob-id :test "foo")
@@ -74,13 +73,13 @@
                            (throw (ex-info "Unable to resolve into a variable" {:data var})))]
     {:nextjournal.clerk/var-from-def resolved-var}))
 
-(defn ^:private lookup-cached-result [introduced-var hash cas-hash visibility]
+(defn ^:private lookup-cached-result [introduced-var hash cas-hash]
   (try
     (let [value (let [cached-value (thaw-from-cas cas-hash)]
                   (when introduced-var
                     (intern (-> introduced-var symbol namespace find-ns) (-> introduced-var symbol name symbol) cached-value))
                   cached-value)]
-      (wrapped-with-metadata (if introduced-var (var-from-def introduced-var) value) visibility hash))
+      (wrapped-with-metadata (if introduced-var (var-from-def introduced-var) value) hash))
     (catch Exception _e
       ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
       #_(prn :thaw-error e)
@@ -107,7 +106,7 @@
       #_(prn :freeze-error e)
       nil)))
 
-(defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file visibility]
+(defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
   (try
     (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true]
                                       (eval form)))
@@ -126,7 +125,7 @@
             result (if var
                      (var-from-def var)
                      result)]
-        (wrapped-with-metadata result visibility blob-id)))
+        (wrapped-with-metadata result blob-id)))
     (catch Exception e
       (throw (ex-info (ex-message e) (select-keys form-info [:file :var :form]) e)))))
 
@@ -137,7 +136,7 @@
     viewers
     (update :nextjournal/viewers eval)))
 
-(defn read+eval-cached [{:as _doc doc-visibility :visibility :keys [blob->result ->analysis-info ->hash]} codeblock]
+(defn read+eval-cached [{:as _doc :keys [blob->result ->analysis-info ->hash]} codeblock]
   (let [{:keys [form vars var deref-deps]} codeblock
         {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info (if (seq vars) (first vars) form))
         no-cache?      (or ns-effect? no-cache?)
@@ -145,7 +144,6 @@
                                                (analyzer/hash-codeblock ->hash codeblock)))
         digest-file    (when hash (->cache-file (str "@" hash)))
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
-        visibility     (merge doc-visibility (parser/->visibility form))
         cached-result? (and (not no-cache?)
                             cas-hash
                             (-> cas-hash ->cache-file fs/exists?))
@@ -160,10 +158,10 @@
            :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
     (fs/create-dirs config/cache-dir)
     (cond-> (or (when-let [blob->result (and (not no-cache?) (get-in blob->result [hash :nextjournal/value]))]
-                  (wrapped-with-metadata blob->result visibility hash))
+                  (wrapped-with-metadata blob->result hash))
                 (when (and cached-result? freezable?)
-                  (lookup-cached-result var hash cas-hash visibility))
-                (eval+cache! form-info hash digest-file visibility))
+                  (lookup-cached-result var hash cas-hash))
+                (eval+cache! form-info hash digest-file))
       (seq opts-from-form-meta)
       (merge opts-from-form-meta))))
 
@@ -174,7 +172,7 @@
 
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
-(defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks visibility]}]
+(defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks]}]
   (let [deref-forms (into #{} (filter analyzer/deref?) (keys ->hash))
         {:as evaluated-doc :keys [blob-ids]}
         (reduce (fn [{:as state :keys [blob->result]} {:as cell :keys [type]}]

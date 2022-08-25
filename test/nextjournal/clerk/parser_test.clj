@@ -31,18 +31,15 @@
 
 (deftest parse-clojure-string
   (testing "is returning blocks with types and markdown structure attached"
-    (is (match? (m/equals {:blocks [{:type :code, :text "^:nextjournal.clerk/no-cache ^:nextjournal.clerk/toc (ns example-notebook)", :ns? true}
+    (is (match? (m/equals {:blocks [{:type :code, :text "^:nextjournal.clerk/no-cache ^:nextjournal.clerk/toc (ns example-notebook)"}
                                     {:type :markdown, :doc {:type :doc :content [{:type :heading}
                                                                                  {:type :heading}
                                                                                  {:type :paragraph}]}}
                                     {:type :code, :text "#{3 1 2}"}
                                     {:type :markdown, :doc {:type :doc :content [{:type :heading}]}}
-                                    {:type :code, :text "{2 \"bar\" 1 \"foo\"}"}],
-                           :visibility {:code :show, :result :show},
+                                    {:type :code, :text "{2 \"bar\" 1 \"foo\"}"},]
                            :title "📶 Sorting",
-                           :ns? true
                            :toc {:type :toc,
-                                 :mode true,
                                  :children [{:type :toc :children [{:type :toc}
                                                                    {:type :toc}]}]}})
                 (parser/parse-clojure-string {:doc? true} notebook)))))
