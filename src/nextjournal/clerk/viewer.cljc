@@ -1285,8 +1285,3 @@
                  (v/html (into [:div.border-l-2.border-slate-300.pl-4
                                 [:div.uppercase.tracking-wider.text-xs.font-sans.text-slate-500.mt-4.mb-2 "Examples"]]
                                (v/inspect-children opts) examples)))})
-;; cards
-(def card-viewer
-  {:transform-fn (comp mark-presented (update-val ->viewer-eval))
-   :render-fn '(fn [data]
-                 (if (v/valid-react-element? data) data (v/html [v/inspect data])))})

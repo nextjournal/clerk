@@ -22,6 +22,7 @@
         rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}}
 
  :aliases {:nextjournal/clerk {:extra-deps {org.slf4j/slf4j-nop {:mvn/version "1.7.36"}}
+                               :extra-paths ["notebooks"]
                                :exec-fn nextjournal.clerk/build-static-app!
                                :exec-args {:paths nextjournal.clerk.builder/clerk-docs}}
            :sci {:extra-deps {applied-science/js-interop {:mvn/version "0.3.3"}
