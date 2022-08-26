@@ -1,4 +1,4 @@
-;; # Clerk Documentation
+;; # 📓 Clerk Documentation
 (ns docs
   {:nextjournal.clerk/toc true}
   (:require [clojure.string :as str]
@@ -10,19 +10,23 @@
             [nextjournal.clerk.viewer :as v]
             [weavejester.dependency :as dep]))
 
-;; ## Getting Started
+;; ## 🚀 Getting Started
 
-;; ### File Watcher
+;; ### ⏱ File Watcher
 
-;; ### Editor Integration
+;; ### 🔪 Editor Integration
 
-;; ## Viewers
+;; For even better flow states, we recommend you bind clerk/show! to a shortcut in your favorite editor:
+
+
+
+;; ## 🔍 Viewers
 
 ;; Clerk comes with a number of useful built-in viewers e.g. for Clojure data, html & hiccup, tables, plots &c.
 
 ;; When showing large data structures, Clerk's default viewers will show an excerpt of the data as to not overload the browser.
 
-;; ### Clojure Data
+;; ### 🧮 Clojure Data
 ;; The default set of viewers are able to render Clojure data.
 {:hello "world 👋" :tacos (map (comp #(map (constantly '🌮) %) range) (range 1 100)) :zeta {:chars [\w \a \v \e] :set (set (range 100))}}
 
@@ -32,38 +36,38 @@
 (def fib (lazy-cat [0 1] (map + fib (rest fib))))
 
 ;; In addition, there's a number of built-in viewers.
-;; ### Hiccup
+;; ### 🌐 Hiccup
 ;; The `html` viewer interprets `hiccup` when passed a vector.
 (clerk/html [:div "As Clojurians we " [:em "really"] " enjoy hiccup"])
 
 ;; Alternatively you can pass it an HTML string.
 (clerk/html "Never <strong>forget</strong>.")
 
-;; ### Tables
+;; ### 🧩 Tables
 ;; The table viewer api take a number of formats. Each viewer also takes an optional map as a first argument for customization.
 (clerk/table {::clerk/width :full} (into (sorted-map) (map (fn [c] [(keyword (str c)) (shuffle (range 5))])) "abcdefghiklmno"))
 
-;; ### Markdown
+;; ### 📒 Markdown
 ;; The Markdown viewer is useful for programmatically generated markdown.
 (clerk/md (clojure.string/join "\n" (map #(str "* Item " (inc %)) (range 3))))
 
 
-;; ### TeX
+;; ### ♾ TeX
 ;; The TeX viewer is built on [KaTeX](https://katex.org/).
 (clerk/tex "f^{\\circ n} = \\underbrace{f \\circ f \\circ \\cdots \\circ f}_{n\\text{ times}}.\\,")
 
-;; ### Vega Lite
+;; ### 🗺 Vega Lite
 (clerk/vl {:width 650 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
                                          :format {:type "topojson" :feature "counties"}}
            :transform [{:lookup "id" :from {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
                                             :key "id" :fields ["rate"]}}]
            :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}})
 
-;; ### Plotly
+;; ### 📊 Plotly
 (clerk/plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]})
 
 
-;; ### Code
+;; ### 🎼 Code
 ;; The code viewer uses [clojure-mode](https://nextjournal.github.io/clojure-mode/) for syntax highlighting.
 (clerk/code (macroexpand '(when test
                             expression-1
@@ -73,11 +77,11 @@
 
 (clerk/code "(defn my-fn\n  \"This is a Doc String\"\n  [args]\n  42)")
 
-;; ### Strings
+;; ### 📄 Strings
 ;; Multi-line strings can be expanded to break on newlines.
 (do "The\npurpose\nof\nvisualization\nis\ninsight,\nnot\npictures.")
 
-;; ### Viewer API
+;; ### 👁 Viewer API
 
 ;; Our goal with the Clerk viewer api is to _keep the toolbox open_
 ;; and let folks change both how things are displayed as well as how things behave. In this notebook, we'll go
@@ -131,7 +135,7 @@ v/default-viewers
 (v/with-viewer (assoc-in string?-viewer [:fetch-opts :n] 10)
   long-string)
 
-;; #### Turning Off Elisions
+;; #### 🔓 Turning Off Elisions
 
 ;; Or, we can turn off eliding, by dissoc'ing `:fetch-opts` alltogether.
 (v/with-viewer (dissoc string?-viewer :fetch-opts)
@@ -196,7 +200,7 @@ v/default-viewers
   nil)
 
 
-;; ### Custom Viewers
+;; ### 👷 Custom Viewers
 
 ;; This is a custom viewer for [Mermaid](https://mermaid-js.github.io/mermaid), a markdown-like syntax for creating diagrams from text. Note that this library isn't bundles with Clerk but we use a component based on [d3-require](https://github.com/d3/d3-require) to load it at runtime.
 
@@ -224,7 +228,7 @@ v/default-viewers
     Crash --> [*]")
 
 
-;; ## Controlling Visibility
+;; ## 🙈 Controlling Visibility
 {:nextjournal.clerk/visibility {:code :fold}}
 
 ;;    (ns visibility
@@ -258,13 +262,13 @@ v/default-viewers
 
 (rand-int (inc 41))
 
-;; ## Incremental Computation
-;; ### Parsing
+;; ## ⚡️ Incremental Computation
+;; ### 🔖 Parsing
 ;; First, we parse a given Clojure file using `rewrite-clj`.
 (def parsed
   (parser/parse-file "notebooks/docs.clj"))
 
-;; ### Analysis
+;; ### 🧐 Analysis
 ;; Then, each expression is analysed using `tools.analyzer`. A dependency graph, the analyzed form and the originating file is recorded.
 
 (def analyzed
@@ -285,12 +289,12 @@ v/default-viewers
 (let [{:keys [graph]} analyzed]
   (dep/transitive-dependencies graph 'how-clerk-works/analyzed))
 
-;; ### Hashing
+;; ### 🪣 Hashing
 ;; Then we can use this information to hash each expression.
 (def hashes
   (ana/hash analyzed))
 
-;; ### Cached Evaluation
+;; ### 🗃 Cached Evaluation
 ;; Clerk uses the hashes as filenames and only re-evaluates forms that haven't been seen before. The cache is using [nippy](https://github.com/ptaoussanis/nippy).
 (def rand-fifteen
   (do (Thread/sleep 10)
