@@ -10,6 +10,8 @@
             [nextjournal.clerk.viewer :as v]
             [weavejester.dependency :as dep]))
 
+;; ## ⚖️ Rationale
+
 ;; ## 🚀 Getting Started
 
 ;; ### ⏱ File Watcher
@@ -26,16 +28,23 @@
 
 ;; When showing large data structures, Clerk's default viewers will show an excerpt of the data as to not overload the browser.
 
-;; ### 🧮 Clojure Data
+;; ### 🧩 Clojure Data
 ;; The default set of viewers are able to render Clojure data.
-{:hello "world 👋" :tacos (map (comp #(map (constantly '🌮) %) range) (range 1 100)) :zeta {:chars [\w \a \v \e] :set (set (range 100))}}
+(def clojure-data
+  {:hello "world 👋"
+   :tacos (map (comp #(map (constantly '🌮) %) range) (range 1 30))
+   :zeta "The\npurpose\nof\nvisualization\nis\ninsight,\nnot\npictures."})
 
 ;; And can handle lazy infinte sequences, only partially loading data by default with the ability to load more data on request.
 (range)
 
 (def fib (lazy-cat [0 1] (map + fib (rest fib))))
 
-;; In addition, there's a number of built-in viewers.
+;; ### 📄 Strings
+;; Multi-line strings can be expanded to break on newlines.
+(do )
+
+;; In addition, there's a number of built-in viewers that we can selecting using functions.
 ;; ### 🌐 Hiccup
 ;; The `html` viewer interprets `hiccup` when passed a vector.
 (clerk/html [:div "As Clojurians we " [:em "really"] " enjoy hiccup"])
@@ -43,7 +52,7 @@
 ;; Alternatively you can pass it an HTML string.
 (clerk/html "Never <strong>forget</strong>.")
 
-;; ### 🧩 Tables
+;; ### 🔢 Tables
 ;; The table viewer api take a number of formats. Each viewer also takes an optional map as a first argument for customization.
 (clerk/table {::clerk/width :full} (into (sorted-map) (map (fn [c] [(keyword (str c)) (shuffle (range 5))])) "abcdefghiklmno"))
 
@@ -52,7 +61,7 @@
 (clerk/md (clojure.string/join "\n" (map #(str "* Item " (inc %)) (range 3))))
 
 
-;; ### ♾ TeX
+;; ### 🧮 TeX
 ;; The TeX viewer is built on [KaTeX](https://katex.org/).
 (clerk/tex "f^{\\circ n} = \\underbrace{f \\circ f \\circ \\cdots \\circ f}_{n\\text{ times}}.\\,")
 
@@ -77,11 +86,20 @@
 
 (clerk/code "(defn my-fn\n  \"This is a Doc String\"\n  [args]\n  42)")
 
-;; ### 📄 Strings
-;; Multi-line strings can be expanded to break on newlines.
-(do "The\npurpose\nof\nvisualization\nis\ninsight,\nnot\npictures.")
+;; ### 🤹🏻 Applying Viewers
 
-;; ### 👁 Viewer API
+;; In the examples above, we've used convience helper functions like `clerk/html` or `clerk/plotly` to wrap values in a viewer. If you call this on the REPL, you'll notice a given value gets wrapped in a map under the `:nextjournal/value` key with the viewer being in the `:nextjournal/viewer` key.
+
+;; You can also select a viewer using Clojure metadata in order to avoid Clerk interfering with the value.
+
+^{::clerk/viewer clerk/table}
+(def my-dataset
+  [{:temperature 41.0 :date (java.time.LocalDate/parse "2022-08-01")}
+   {:temperature 39.0 :date (java.time.LocalDate/parse "2022-08-01")}
+   {:temperature 34.0 :date (java.time.LocalDate/parse "2022-08-01")}
+   {:temperature 29.0 :date (java.time.LocalDate/parse "2022-08-01")}])
+
+;; ### 👁 Writing Viewers
 
 ;; Our goal with the Clerk viewer api is to _keep the toolbox open_
 ;; and let folks change both how things are displayed as well as how things behave. In this notebook, we'll go
@@ -89,6 +107,8 @@
 
 ;; Clerk comes with a rich set of default viewers, and this is them.
 v/default-viewers
+
+;; #### 🔬 Render
 
 ;; A Clerk viewer is just a Clojure map. Let's start with a very basic example.
 (def greeting-viewer
@@ -101,6 +121,8 @@ v/default-viewers
 ;; It is often useful, but not a neccesity to define a viewer in a clojure var, so the following expression yields the same result.
 (v/with-viewer {:render-fn '(fn [name] (v/html [:strong "Hello, " name "!"]))}
   "James Clerk Maxwell")
+
+;; #### ⚙️ Transform
 
 ;; Besides `:render-fn`, there's also a part of the viewer api, that runs directly in JVM Clojure, `:transform-fn`.
 ;; We can use it do archieve the same thing:
@@ -129,13 +151,13 @@ v/default-viewers
 
 ;; Notice that for the `string?` viewer above, there's a `{:n 80}` on there. This is the case for all collection viewers in Clerk and controls how many elements are displayed. So using the default `string?-viewer` above, we're showing the first 80 characters.
 (def long-string
-  (str/join (into [] cat (repeat 10 (range 10)))))
+  (str/join (into [] cat (repeat 10 "Denn wir sind wie Baumstämme im Schnee.\n"))))
 
 ;; If we change the viewer and set a different `:n` in `:fetch-opts`, we only see 10 characters.
 (v/with-viewer (assoc-in string?-viewer [:fetch-opts :n] 10)
   long-string)
 
-;; #### 🔓 Turning Off Elisions
+;; #### 🔓 Elisions
 
 ;; Or, we can turn off eliding, by dissoc'ing `:fetch-opts` alltogether.
 (v/with-viewer (dissoc string?-viewer :fetch-opts)
@@ -155,6 +177,11 @@ v/default-viewers
 ;; And compare it with the defaults:
 (filter :fetch-opts v/default-viewers)
 
+;; Now let's display our `clojure-data` var from above using these modified viewers.
+(clerk/with-viewers viewers-without-lazy-loading
+  clojure-data)
+
+;; #### 🧬 Examples
 
 ;; Here are some more examples:
 
@@ -200,7 +227,7 @@ v/default-viewers
   nil)
 
 
-;; ### 👷 Custom Viewers
+;; #### 👷 Loading Libraries
 
 ;; This is a custom viewer for [Mermaid](https://mermaid-js.github.io/mermaid), a markdown-like syntax for creating diagrams from text. Note that this library isn't bundles with Clerk but we use a component based on [d3-require](https://github.com/d3/d3-require) to load it at runtime.
 
@@ -316,3 +343,5 @@ v/default-viewers
     (with-open [conn (next.jdbc/get-connection ds)]
       (clerk/table (next.jdbc/execute! conn ["SELECT AlbumId, Bytes, Name, TrackID, UnitPrice FROM tracks"])))))
 
+
+;; ## 🛝 Slideshow Mode
