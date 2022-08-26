@@ -1,6 +1,6 @@
-;; # Documentation
-^{:nextjournal.clerk/toc true}
+;; # Clerk Documentation
 (ns docs
+  {:nextjournal.clerk/toc true}
   (:require [clojure.string :as str]
             [next.jdbc :as jdbc]
             [nextjournal.clerk :as clerk]
@@ -10,70 +10,19 @@
             [nextjournal.clerk.viewer :as v]
             [weavejester.dependency :as dep]))
 
-;; ## How Clerk Works
-;; ### File Watching
-;; The interface to Clerk is really simple: you save a Clojure file and Clerk takes care of turning that into a notebook.
-;; The file watcher library we're using is beholder, originally written by David Nolen for Krell.
+;; ## Getting Started
 
-;; ### Evaluation
-;; #### Step 1: Parsing
-;; First, we parse a given Clojure file using `rewrite-clj`.
-(def parsed
-  (parser/parse-file "notebooks/docs.clj"))
+;; ### File Watcher
 
-;; #### Step 2: Analysis
-;; Then, each expression is analysed using `tools.analyzer`. A dependency graph, the analyzed form and the originating file is recorded.
-
-(def analyzed
-  (ana/build-graph parsed))
-
-
-;; This analysis is done recursively, descending into all dependency symbols.
-
-(ana/find-location 'nextjournal.clerk.analyzer/analyze-file)
-
-(ana/find-location `dep/depend)
-
-(ana/find-location 'io.methvin.watcher.DirectoryChangeEvent)
-
-(ana/find-location 'java.util.UUID)
-
-
-(let [{:keys [graph]} analyzed]
-  (dep/transitive-dependencies graph 'how-clerk-works/analyzed))
-
-;; #### Step 3: Analyzer
-;; Then we can use this information to hash each expression.
-(def hashes
-  (ana/hash analyzed))
-
-;; #### Step 4: Evaluation
-;; Clerk uses the hashes as filenames and only re-evaluates forms that haven't been seen before. The cache is using [nippy](https://github.com/ptaoussanis/nippy).
-(def rand-fifteen
-  (do (Thread/sleep 10)
-      (shuffle (range 15))))
-
-;; We can look up the cache key using the var name in the hashes map.
-(when-let [form-hash (get hashes `rand-fifteen)]
-  (let [hash (slurp (eval/->cache-file (str "@" form-hash)))]
-    (eval/thaw-from-cas hash)))
-
-;; As an escape hatch, you can tag a form or var with `::clerk/no-cache` to always re-evaluate it. The following form will never be cached.
-^::clerk/no-cache (shuffle (range 42))
-
-;; For side effectful functions that should be cached, like a database query, you can add a value like this `#inst` to control when evaluation should happen.
-
-(def query-results
-  (let [_run-at #_(java.util.Date.) #inst "2021-05-20T08:28:29.445-00:00"
-        ds (next.jdbc/get-datasource {:dbtype "sqlite" :dbname "chinook.db"})]
-    (with-open [conn (next.jdbc/get-connection ds)]
-      (clerk/table (next.jdbc/execute! conn ["SELECT AlbumId, Bytes, Name, TrackID, UnitPrice FROM tracks"])))))
+;; ### Editor Integration
 
 ;; ## Viewers
 
-;; Clerk comes with a moldable viewer api that is open.
+;; Clerk comes with a number of useful built-in viewers e.g. for Clojure data, html & hiccup, tables, plots &c.
 
-;; ### Built-in Viewers
+;; When showing large data structures, Clerk's default viewers will show an excerpt of the data as to not overload the browser.
+
+;; ### Clojure Data
 ;; The default set of viewers are able to render Clojure data.
 {:hello "world 👋" :tacos (map (comp #(map (constantly '🌮) %) range) (range 1 100)) :zeta {:chars [\w \a \v \e] :set (set (range 100))}}
 
@@ -83,38 +32,38 @@
 (def fib (lazy-cat [0 1] (map + fib (rest fib))))
 
 ;; In addition, there's a number of built-in viewers.
-;; #### Hiccup
+;; ### Hiccup
 ;; The `html` viewer interprets `hiccup` when passed a vector.
 (clerk/html [:div "As Clojurians we " [:em "really"] " enjoy hiccup"])
 
 ;; Alternatively you can pass it an HTML string.
 (clerk/html "Never <strong>forget</strong>.")
 
-;; #### Tables
+;; ### Tables
 ;; The table viewer api take a number of formats. Each viewer also takes an optional map as a first argument for customization.
 (clerk/table {::clerk/width :full} (into (sorted-map) (map (fn [c] [(keyword (str c)) (shuffle (range 5))])) "abcdefghiklmno"))
 
-;; #### Markdown
+;; ### Markdown
 ;; The Markdown viewer is useful for programmatically generated markdown.
 (clerk/md (clojure.string/join "\n" (map #(str "* Item " (inc %)) (range 3))))
 
 
-;; #### TeX
+;; ### TeX
 ;; The TeX viewer is built on [KaTeX](https://katex.org/).
 (clerk/tex "f^{\\circ n} = \\underbrace{f \\circ f \\circ \\cdots \\circ f}_{n\\text{ times}}.\\,")
 
-
-;; #### Plotly
-(clerk/plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]})
-
-;; #### Vega Lite
+;; ### Vega Lite
 (clerk/vl {:width 650 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
                                          :format {:type "topojson" :feature "counties"}}
            :transform [{:lookup "id" :from {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
                                             :key "id" :fields ["rate"]}}]
            :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}})
 
-;; #### Code
+;; ### Plotly
+(clerk/plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]})
+
+
+;; ### Code
 ;; The code viewer uses [clojure-mode](https://nextjournal.github.io/clojure-mode/) for syntax highlighting.
 (clerk/code (macroexpand '(when test
                             expression-1
@@ -124,11 +73,11 @@
 
 (clerk/code "(defn my-fn\n  \"This is a Doc String\"\n  [args]\n  42)")
 
-;; #### Strings
+;; ### Strings
 ;; Multi-line strings can be expanded to break on newlines.
 (do "The\npurpose\nof\nvisualization\nis\ninsight,\nnot\npictures.")
 
-;; ### Extensibility & Customization
+;; ### Viewer API
 
 ;; Our goal with the Clerk viewer api is to _keep the toolbox open_
 ;; and let folks change both how things are displayed as well as how things behave. In this notebook, we'll go
@@ -182,6 +131,8 @@ v/default-viewers
 (v/with-viewer (assoc-in string?-viewer [:fetch-opts :n] 10)
   long-string)
 
+;; #### Turning Off Elisions
+
 ;; Or, we can turn off eliding, by dissoc'ing `:fetch-opts` alltogether.
 (v/with-viewer (dissoc string?-viewer :fetch-opts)
   long-string)
@@ -199,6 +150,7 @@ v/default-viewers
 
 ;; And compare it with the defaults:
 (filter :fetch-opts v/default-viewers)
+
 
 ;; Here are some more examples:
 
@@ -243,7 +195,44 @@ v/default-viewers
                         (v/html [:h3.cursor-pointer {:on-click #(swap! counter inc)} "I was clicked " @counter " times."])))
   nil)
 
-;; ### Controlling Visibility
+
+;; ### Custom Viewers
+
+;; This is a custom viewer for [Mermaid](https://mermaid-js.github.io/mermaid), a markdown-like syntax for creating diagrams from text. Note that this library isn't bundles with Clerk but we use a component based on [d3-require](https://github.com/d3/d3-require) to load it at runtime.
+
+
+(def mermaid-viewer
+  {:pred string?
+   :fetch-fn (fn [_ x] x)
+   :render-fn '(fn [value]
+                 (v/html
+                  (when value
+                    [v/with-d3-require {:package ["mermaid@8.14/dist/mermaid.js"]}
+                     (fn [mermaid]
+                       [:div {:ref (fn [el] (when el
+                                             (.render mermaid (str (gensym)) value #(set! (.-innerHTML el) %))))}])])))})
+
+;; We can then use  the above viewer using `with-viewer`.
+(clerk/with-viewer mermaid-viewer
+  "stateDiagram-v2
+    [*] --> Still
+    Still --> [*]
+
+    Still --> Moving
+    Moving --> Still
+    Moving --> Crash
+    Crash --> [*]")
+
+
+;; ## Controlling Visibility
+{:nextjournal.clerk/visibility {:code :fold}}
+
+;;    (ns visibility
+;;      {:nextjournal.clerk/visibility {:code :fold}})
+
+;; Visibility for code and results can be controlled document-wide or per top-level form.
+;; By default, Clerk will show the code and the results for a notebook.
+
 ;; You can control visibility in Clerk by setting the `:nextjournal.clerk/visibility` which takes a map with keys `:code` and `:result` to control the visibility for the code cells and its results.
 ;; 
 ;; Valid values are `:show`, `:hide` and `:fold` (only valid for code cells).
@@ -269,6 +258,57 @@ v/default-viewers
 
 (rand-int (inc 41))
 
-;; Further work:
-;; * [x] support setting and changing the defaults for parts of a doc using `{::clerk/visibility {:code :show}}` top-level forms.
-;; * [ ] remove the `::clerk/visibility` metadata from the displayed code cells to not distract from the essence.
+;; ## Incremental Computation
+;; ### Parsing
+;; First, we parse a given Clojure file using `rewrite-clj`.
+(def parsed
+  (parser/parse-file "notebooks/docs.clj"))
+
+;; ### Analysis
+;; Then, each expression is analysed using `tools.analyzer`. A dependency graph, the analyzed form and the originating file is recorded.
+
+(def analyzed
+  (ana/build-graph parsed))
+
+
+;; This analysis is done recursively, descending into all dependency symbols.
+
+(ana/find-location 'nextjournal.clerk.analyzer/analyze-file)
+
+(ana/find-location `dep/depend)
+
+(ana/find-location 'io.methvin.watcher.DirectoryChangeEvent)
+
+(ana/find-location 'java.util.UUID)
+
+
+(let [{:keys [graph]} analyzed]
+  (dep/transitive-dependencies graph 'how-clerk-works/analyzed))
+
+;; ### Hashing
+;; Then we can use this information to hash each expression.
+(def hashes
+  (ana/hash analyzed))
+
+;; ### Cached Evaluation
+;; Clerk uses the hashes as filenames and only re-evaluates forms that haven't been seen before. The cache is using [nippy](https://github.com/ptaoussanis/nippy).
+(def rand-fifteen
+  (do (Thread/sleep 10)
+      (shuffle (range 15))))
+
+;; We can look up the cache key using the var name in the hashes map.
+(when-let [form-hash (get hashes `rand-fifteen)]
+  (let [hash (slurp (eval/->cache-file (str "@" form-hash)))]
+    (eval/thaw-from-cas hash)))
+
+;; As an escape hatch, you can tag a form or var with `::clerk/no-cache` to always re-evaluate it. The following form will never be cached.
+^::clerk/no-cache (shuffle (range 42))
+
+;; For side effectful functions that should be cached, like a database query, you can add a value like this `#inst` to control when evaluation should happen.
+
+(def query-results
+  (let [_run-at #_(java.util.Date.) #inst "2021-05-20T08:28:29.445-00:00"
+        ds (next.jdbc/get-datasource {:dbtype "sqlite" :dbname "chinook.db"})]
+    (with-open [conn (next.jdbc/get-connection ds)]
+      (clerk/table (next.jdbc/execute! conn ["SELECT AlbumId, Bytes, Name, TrackID, UnitPrice FROM tracks"])))))
+
