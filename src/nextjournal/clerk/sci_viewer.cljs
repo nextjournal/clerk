@@ -121,7 +121,7 @@
 
 (defonce !eval-counter (r/atom 0))
 
-(defn notebook [{:as _doc xs :blocks :keys [toc]}]
+(defn notebook [{:as _doc xs :blocks :keys [toc toc-visibility]}]
   (r/with-let [local-storage-key "clerk-navbar"
                !state (r/atom {:toc (toc-items (:children toc))
                                :md-toc toc
@@ -132,18 +132,18 @@
                                :local-storage-key local-storage-key
                                :open? (if-some [stored-open? (ls/get-item local-storage-key)]
                                         stored-open?
-                                        (not= :collapsed (:mode toc)))})
+                                        (not= :collapsed toc-visibility))})
                root-ref-fn #(when % (setup-dark-mode! !state))
                ref-fn #(when % (swap! !state assoc :scroll-el %))]
     (let [{:keys [md-toc]} @!state]
       (when-not (= md-toc toc)
-        (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc :open? (not= :collapsed (:mode toc))))
+        (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc :open? (not= :collapsed toc-visibility)))
       (html
        [:div.flex
         {:ref root-ref-fn}
         [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
          [dark-mode-toggle !state]]
-        (when (and toc (:mode toc))
+        (when (and toc toc-visibility)
           [:<>
            [navbar/toggle-button !state
             [:<>

@@ -189,19 +189,6 @@
     (is (empty? (-> "(defmulti foo :bar)" analyze-string :blocks first :deref-deps)))))
 
 
-(deftest add-ids+visbility
-  (testing "assigns doc visibility from ns metadata"
-    (is (= [{:code :fold, :result :hide} {:code :fold, :result :show}]
-           (->> "(ns foo {:nextjournal.clerk/visibility {:code :fold}}) (rand-int 42)" analyze-string :blocks (mapv :visibility)))))
-
-  (testing "assigns doc visibility from top-level visbility map marker"
-    (is (= [{:code :hide, :result :hide} {:code :fold, :result :show}]
-           (->> "{:nextjournal.clerk/visibility {:code :fold}} (rand-int 42)" analyze-string :blocks (mapv :visibility)))))
-
-  (testing "can change visibility halfway"
-    (is (= [{:code :show, :result :show} {:code :hide, :result :hide} {:code :fold, :result :hide}]
-           (->> "(rand-int 42) {:nextjournal.clerk/visibility {:code :fold :result :hide}} (rand-int 42)" analyze-string :blocks (mapv :visibility))))))
-
 (deftest add-block-ids
   (testing "assigns block ids"
     (is (= '[foo/anon-expr-5dqvhPjzJ6UG154FjU8PkQqrgiP5hM

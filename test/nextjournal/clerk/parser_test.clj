@@ -4,6 +4,7 @@
             [matcher-combinators.matchers :as m]
             [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk :as clerk :refer [defcached]]
+            [nextjournal.clerk.analyzer-test :refer [analyze-string]]
             [nextjournal.clerk.parser :as parser]))
 
 (deftest read-string-tests
@@ -70,17 +71,28 @@ par one
 par two"))))
 
 
+(deftest ->doc-settings
+  (testing "supports legacy notation for toc"
+    (is (:toc-visibility (parser/->doc-settings '^{:nextjournal.clerk/toc true} (ns foo)))))
+
+  (testing "supports setting toc using ns metadata"
+    (is (:toc-visibility (parser/->doc-settings '(ns foo {:nextjournal.clerk/toc true}))))
+    (is (:toc-visibility (parser/->doc-settings '(ns foo "my foo ns docstring" {:nextjournal.clerk/toc true}))))
+    (is (:toc-visibility (parser/->doc-settings '(ns ^:nextjournal.clerk/toc foo)))))
+
+  (testing "sets toc visibility on doc"
+    (is (:toc-visibility (analyze-string "(ns foo {:nextjournal.clerk/toc true})")))))
 
 
+(deftest add-block-visbility
+  (testing "assigns doc visibility from ns metadata"
+    (is (= [{:code :fold, :result :hide} {:code :fold, :result :show}]
+           (->> "(ns foo {:nextjournal.clerk/visibility {:code :fold}}) (rand-int 42)" analyze-string :blocks (mapv :visibility)))))
 
+  (testing "assigns doc visibility from top-level visbility map marker"
+    (is (= [{:code :hide, :result :hide} {:code :fold, :result :show}]
+           (->> "{:nextjournal.clerk/visibility {:code :fold}} (rand-int 42)" analyze-string :blocks (mapv :visibility)))))
 
-
-
-
-
-
-
-
-
-
-
+  (testing "can change visibility halfway"
+    (is (= [{:code :show, :result :show} {:code :hide, :result :hide} {:code :fold, :result :hide}]
+           (->> "(rand-int 42) {:nextjournal.clerk/visibility {:code :fold :result :hide}} (rand-int 42)" analyze-string :blocks (mapv :visibility))))))

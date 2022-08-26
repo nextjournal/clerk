@@ -726,7 +726,7 @@
                                                 (map (comp process-wrapped-value
                                                            apply-viewers*
                                                            (partial ensure-wrapped-with-viewers viewers))))))
-         (select-keys [:blocks :toc :title])
+         (select-keys [:blocks :toc :toc-visibility :title])
          (cond-> ns (assoc :scope (datafy-scope ns))))))
 
 (def notebook-viewer

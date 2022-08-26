@@ -213,20 +213,9 @@
         (update :blocks conj (assoc block :id unique-id))
         (update :id->count update id (fnil inc 0)))))
 
-(defn add-block-ids [{:as state :keys [blocks]}]
-  (-> (reduce add-block-id (assoc state :blocks [] :id->count {} ) blocks)
+(defn add-block-ids [{:as analyzed-doc :keys [blocks]}]
+  (-> (reduce add-block-id (assoc analyzed-doc :blocks [] :id->count {} ) blocks)
       (dissoc :id->count)))
-
-(defn add-block-visibility [{:as state :keys [blocks]}]
-  (-> (reduce (fn [{:as state :keys [visibility]} {:as block :keys [var form type doc]}]
-                (let [visibility' (merge visibility (parser/->doc-visibility form))]
-                  (cond-> (-> state
-                              (update :blocks conj (cond-> block
-                                                     (= type :code) (assoc :visibility (merge visibility' (parser/->visibility form))))))
-                    (= type :code) (assoc :visibility visibility'))))
-              (assoc state :blocks [] :visibility {:code :show :result :show})
-              blocks)
-      (dissoc :visibility)))
 
 (defn analyze-doc
   ([doc]
@@ -240,15 +229,14 @@
                            (let [form (parser/read-string text)
                                  {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form)
                                                                                (:file doc) (assoc :file (:file doc)))
+                                 _ (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
+                                     (eval form))
                                  state (cond-> (reduce (fn [state ana-key]
                                                          (assoc-in state [:->analysis-info ana-key] analyzed))
                                                        (dissoc state :doc?)
                                                        (->ana-keys analyzed))
                                          doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
-                                         doc? (assoc :ns *ns*)
-                                         (and doc? (not (contains? state :ns?))) (assoc :ns? (parser/ns? form)))]
-                             (when ns-effect?
-                               (eval form))
+                                         (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))]
                              (when-let [missing-dep (and (:ns? state)
                                                          (first (set/difference (into #{}
                                                                                       (filter #(and (symbol? %)
@@ -264,7 +252,7 @@
                      (cond-> state
                        doc? (merge doc))
                      (-> doc :blocks count range))
-       doc? (-> add-block-ids add-block-visibility)))))
+       doc? (-> add-block-ids parser/add-block-visibility)))))
 
 (defn analyze-file
   ([file] (analyze-file {:graph (dep/graph)} file))

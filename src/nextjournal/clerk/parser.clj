@@ -1,14 +1,14 @@
 (ns nextjournal.clerk.parser
   "Clerk's Parser turns Clojure & Markdown files and strings into Clerk documents."
-  (:refer-clojure :exclude [hash read-string])
+  (:refer-clojure :exclude [read-string])
   (:require [clojure.core :as core]
             [clojure.string :as str]
             [edamame.core :as edamame]
-            [rewrite-clj.node :as n]
-            [rewrite-clj.parser :as p]
             [nextjournal.markdown :as markdown]
             [nextjournal.markdown.parser :as markdown.parser]
-            [nextjournal.markdown.transform :as markdown.transform]))
+            [nextjournal.markdown.transform :as markdown.transform]
+            [rewrite-clj.node :as n]
+            [rewrite-clj.parser :as p]))
 
 (defn ns? [form]
   (and (seq? form) (= 'ns (first form))))
@@ -16,7 +16,7 @@
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
 
-(defn visibility-control? [form]
+(defn visibility-marker? [form]
   (and (map? form) (contains? form :nextjournal.clerk/visibility)))
 
 (defn parse-visibility [form visibility]
@@ -32,7 +32,7 @@
 #_(parse-visibility nil {:code :fold :result :hide})
 
 (defn ->visibility [form]
-  (if (visibility-control? form)
+  (if (visibility-marker? form)
     {:code :hide :result :hide}
     (cond-> (parse-visibility form (-> form meta :nextjournal.clerk/visibility))
       (ns? form) (merge {:result :hide}))))
@@ -50,7 +50,7 @@
     (ns? form)
     (parse-visibility form (merge (-> form second meta :nextjournal.clerk/visibility)
                                   (some :nextjournal.clerk/visibility form)))
-    (visibility-control? form)
+    (visibility-marker? form)
     (parse-visibility form (:nextjournal.clerk/visibility form))))
 
 #_(->doc-visibility '(ns foo "my docs" {:nextjournal.clerk/visibility {:code :fold :result :hide}}))
@@ -62,13 +62,25 @@
 
 (defn ->doc-settings [first-form]
   {:ns? (ns? first-form)
-   :toc (or (#{true :collapsed} (-> first-form meta :nextjournal.clerk/toc)) false)})
+   :toc-visibility (or (#{true :collapsed} (:nextjournal.clerk/toc
+                                            (merge (-> first-form meta) ;; TODO: deprecate
+                                                   (when (ns? first-form)
+                                                     (merge (-> first-form second meta)
+                                                            (first (filter map? first-form)))))))
+                       false)})
 
-#_(->doc-settings '(ns foo))
-#_(->doc-settings '(in-ns 'foo))
-#_(->doc-settings '^{:nextjournal.clerk/toc true} (ns foo))
-#_(->doc-settings '^{:nextjournal.clerk/toc :pin} (ns foo))
 #_(->doc-settings '^{:nextjournal.clerk/toc :boom} (ns foo)) ;; TODO: error
+
+(defn add-block-visibility [{:as analyzed-doc :keys [blocks]}]
+  (-> (reduce (fn [{:as state :keys [visibility]} {:as block :keys [var form type]}]
+                (let [visibility' (merge visibility (->doc-visibility form))]
+                  (cond-> (-> state
+                              (update :blocks conj (cond-> block
+                                                     (= type :code) (assoc :visibility (merge visibility' (->visibility form))))))
+                    (= type :code) (assoc :visibility visibility'))))
+              (assoc analyzed-doc :blocks [] :visibility {:code :show :result :show})
+              blocks)
+      (dissoc :visibility)))
 
 (defn auto-resolves [ns]
   (as-> (ns-aliases ns) $
@@ -128,15 +140,14 @@
                 (-> state
                     (assoc :add-comment-on-line? false)
                     (update :nodes rest))))
-       (merge (select-keys state [:blocks :ns?])
+       (merge (select-keys state [:blocks])
               (when doc?
                 (-> {:content (into []
                                     (comp (filter (comp #{:markdown} :type))
                                           (mapcat (comp :content :doc)))
                                     blocks)}
                     markdown.parser/add-title+toc
-                    (select-keys #{:title :toc})
-                    (assoc-in [:toc :mode] (:toc state)))))))))
+                    (select-keys [:title :toc]))))))))
 
 #_(parse-clojure-string {:doc? true} "'code ;; foo\n;; bar")
 #_(parse-clojure-string "'code , ;; foo\n;; bar")
@@ -166,7 +177,7 @@
         (-> state
             (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
             (select-keys [:blocks :visibility])
-            (merge (when doc? (cond-> {:title title} (:toc state) (assoc :toc toc)))))))))
+            (merge (when doc? {:title title :toc toc})))))))
 
 (defn parse-file
   ([file] (parse-file {} file))
