@@ -284,11 +284,38 @@ v/default-viewers
 ;; viewer api.
 
 
+;; #### 🎪 Presentation
+
+;; On the JVM side, the result for each cell is _presented_. This is a
+;; recursive function that takes does a depth-first traversal of a
+;; given tree `x`, starting with the root node. It will select a
+;; viewer for this root node and unless told otherwise, descend
+;; further down the tree to present its child nodes.
+
+^{::clerk/visibility {:code :hide :result :hide}}
+(defn show-raw-value [x]
+  (clerk/code (with-out-str (clojure.pprint/pprint x))))
+
+^{::clerk/viewer show-raw-value}
+(v/present [1 2 3])
+
+
+^{::clerk/viewer show-raw-value}
+(v/present (clerk/with-viewer {:transform-fn clerk/mark-presented}
+             [1 2 3]))
+
+
+^{::clerk/viewer show-raw-value}
+(v/present (clerk/with-viewer {:transform-fn clerk/mark-preserve-keys}
+             {:hello 42}))
+
+
 ;; #### 🔬 Render
 
 ;; In it's simplest form, a viewer has just a `:render-fn`.
 (def greeting-viewer
   {:render-fn '(fn [name] (v/html [:strong "Hello, " name "!"]))})
+
 
 ;; Notice that the value is not yet a function, but a quoted form that
 ;; will be sent via a websocket to the browser. There, it will be
@@ -309,8 +336,18 @@ v/default-viewers
 ;; runs directly in JVM Clojure, `:transform-fn`.  We can use it do
 ;; archieve the same thing:
 (v/with-viewer {:transform-fn (fn [wrapped-value]
-                                (v/html [:strong "Hello, " (v/->value wrapped-value) "!"]))}
+                                (clerk/html [:strong "Hello, " (v/->value wrapped-value) "!"]))}
   "James Clerk Maxwell")
+
+(-> (v/with-viewer {:transform-fn (fn [wrapped-value]
+                                       (v/html [:strong "Hello, " (v/->value wrapped-value) "!"]))}
+         "James Clerk Maxwell")
+       (v/present))
+
+(-> (v/with-viewer {:transform-fn (fn [wrapped-value]
+                                       (v/html [:strong "Hello, " (v/->value wrapped-value) "!"]))}
+         "James Clerk Maxwell")
+       (v/present))
 
 ;; Note that this _is_ a function, not a quoted form like
 ;; `:render-fn`. It does not recieve the plain value, but it's value
@@ -327,6 +364,35 @@ v/default-viewers
    {:nextjournal/viewer {:name :html, :render-fn (v/->ViewerFn 'v/html)}
     :nextjournal/value [:strong "Hello, " "James Clerk Maxwell" "!"]})
 
+;; **TODO**
+;;
+;; * `mark-presented`
+;; * `mark-preserve-keys`
+;; * `:nextjournal/viewers`
+
+(clerk/with-viewer {:transform-fn (fn [x] (prn :x x) x)}
+  "abc")
+
+[(str/join (repeat 100 "a"))]
+
+
+(defn add-child-viewers [viewer viewers]
+  (update viewer :transform-fn (partial comp #(update % :nextjournal/viewers clerk/add-viewers viewers))))
+
+v/table-viewer
+
+(def custom-table-viewer
+  (add-child-viewers v/table-viewer
+                     [(assoc v/table-head-viewer :transform-fn (v/update-val (partial map (comp (partial str "Column: ") str/capitalize name))))
+                      (assoc v/table-missing-viewer :render-fn '(fn [x] (v/html [:span.red "N/A"])))]))
+
+(clerk/with-viewer custom-table-viewer
+  {:col/a [1 2 3 4] :col/b [1 2 3] :col/c [1 2 3]})
+
+(clerk/with-viewer custom-table-viewer
+  {:col/a [1 2 3 4] :col/b [1 2 3] :col/c [1 2 3]})
+
+
 ;; #### 🥇 Selection
 
 ;; Without a viewer specified, Clerk will go through the a sequence
@@ -335,6 +401,9 @@ v/default-viewers
 ;; value.
 (def char?-viewer
   (v/viewer-for v/default-viewers \A))
+
+(def html-viewer
+  (v/viewer-for v/default-viewers (clerk/html [:h1 "foo"])))
 
 (def string?-viewer
   (v/viewer-for v/default-viewers "Denn wir sind wie Baumstämme im Schnee."))
@@ -437,8 +506,7 @@ v/default-viewers
 
 
 (def mermaid-viewer
-  {:pred string?
-   :fetch-fn (fn [_ x] x)
+  {:transform-fn clerk/mark-presented
    :render-fn '(fn [value]
                  (v/html
                   (when value
@@ -458,6 +526,26 @@ v/default-viewers
     Moving --> Crash
     Crash --> [*]")
 
+
+(clerk/with-viewer
+  {:render-fn '(fn [value]
+                
+                 (v/html (pr-str value)))}
+  [1 2 3])
+
+(clerk/with-viewer
+  {:render-fn '(fn [value]
+                
+                 (v/html (pr-str value)))
+   :transform-fn clerk/mark-presented}
+  [1 2 3])
+
+(clerk/with-viewer
+  {:render-fn '(fn [value]
+                
+                 (v/html (pr-str value)))
+   :transform-fn clerk/mark-preserve-keys}
+  {:hello "world" :my-keyword :foo})
 
 ;; ## 🙈 Controlling Visibility
 {:nextjournal.clerk/visibility {:code :fold}}
