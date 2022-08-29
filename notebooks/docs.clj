@@ -80,8 +80,7 @@
 
 ;; ### 🔪 Editor Integration
 
-;; For even better flow states, we recommend you bind clerk/show! to a shortcut in your favorite editor:
-
+;; A recommended alternative to the file watcher is setting up a hotkey in your editor to save & `clerk/show!` the active file.
 
 ;; **Emacs**
 
@@ -154,6 +153,10 @@
 ;; You can style elements, using [Tailwind CSS](https://tailwindcss.com/docs/utility-first).
 (clerk/html [:button.bg-sky-500.hover:bg-sky-700.text-white.rounded-xl.px-2.py-1 "✨ Tailwind CSS"])
 
+;; The `html` viewer is also able to display SVG, taking either a hiccup vector or a SVG string.
+(clerk/html [:svg {:width 500 :height 100}
+             [:circle {:cx  25 :cy 50 :r 25 :fill "blue"}]
+             [:circle {:cx 100 :cy 75 :r 25 :fill "red"}]])
 
 ;; ### 🔢 Tables
 
