@@ -26,7 +26,7 @@
 
 ;; Clerk comes with a number of useful built-in viewers e.g. for Clojure data, html & hiccup, tables, plots &c.
 
-;; When showing large data structures, Clerk's default viewers will show an excerpt of the data as to not overload the browser.
+;; When showing large data structures, Clerk's default viewers will paginate the results.
 
 ;; ### 🧩 Clojure Data
 ;; The default set of viewers are able to render Clojure data.
@@ -35,12 +35,12 @@
    :tacos (map (comp #(map (constantly '🌮) %) range) (range 1 30))
    :zeta "The\npurpose\nof\nvisualization\nis\ninsight,\nnot\npictures."})
 
-;; And can handle lazy infinte sequences, only partially loading data by default with the ability to load more data on request.
+;; Viewers can handle lazy infinte sequences, partially loading data by default with the ability to load more data on request.
 (range)
 
 (def fib (lazy-cat [0 1] (map + fib (rest fib))))
 
-;; In addition, there's a number of built-in viewers that we can selecting using functions.
+;; In addition, there's a number of built-in viewers that we can be called explicity using functions.
 ;; ### 🌐 Hiccup, HTML & SVG
 ;; The `html` viewer interprets `hiccup` when passed a vector.
 (clerk/html [:div "As Clojurians we " [:em "really"] " enjoy hiccup"])
@@ -120,20 +120,29 @@
 
 ;; ### 👁 Writing Viewers
 
-;; Our goal with the Clerk viewer api is to _keep the toolbox open_
-;; and let folks change both how things are displayed as well as how they behave. In this notebook, we'll go
-;; through how the viewer api works and how you can change it.
+;; Let's explore how Clerk viewers work and how you create your own to gain better insight into your problem at hand.
 
-;; Clerk comes with a rich set of default viewers, and this is them.
 v/default-viewers
+
+;; These are the default viewers that come with Clerk.
+
+(into #{} (map type) v/default-viewers)
+
+;; Each viewer is a simple Clojure map.
+
+
+(assoc (frequencies (mapcat keys v/default-viewers)) :total (count v/default-viewers))
+
+;; We have a total of 40 viewers in the defaults. Let's start with a simple example and explain the different extensions points in the viewer api.
+
 
 ;; #### 🔬 Render
 
-;; A Clerk viewer is just a Clojure map. Let's start with a very basic example.
+;; In it's simplest form, a viewer has just a `:render-fn`.
 (def greeting-viewer
   {:render-fn '(fn [name] (v/html [:strong "Hello, " name "!"]))})
 
-;; In it's simplest form, a viewer has just a `:render-fn`. Notice that the value is not yet a function, but a quoted form that will be sent via a websocket to the browser. There, it will be evaluated using the [Small Clojure Intepreter](https://github.com/babashka/sci) or SCI for short. Let's use the viewer to confirm it does what we expect:
+;; Notice that the value is not yet a function, but a quoted form that will be sent via a websocket to the browser. There, it will be evaluated using the [Small Clojure Intepreter](https://github.com/babashka/sci) or SCI for short. Let's use the viewer to confirm it does what we expect:
 (v/with-viewer greeting-viewer
   "James Clerk Maxwell")
 
@@ -158,8 +167,10 @@ v/default-viewers
          "James Clerk Maxwell")
        (v/apply-viewers)
        (v/process-wrapped-value))
-   {:nextjournal/viewer {:name :html, :render-fn (v/->ViewerFn 'v/html)},
+   {:nextjournal/viewer {:name :html, :render-fn (v/->ViewerFn 'v/html)}
     :nextjournal/value [:strong "Hello, " "James Clerk Maxwell" "!"]})
+
+;; #### 🥇 Selection
 
 ;; Without a viewer specified, Clerk will go through the a sequence viewers and apply the `:pred` function in the viewer to find a matching one. Use `v/viewer-for` to select a viewer for a given value.
 (def char?-viewer
