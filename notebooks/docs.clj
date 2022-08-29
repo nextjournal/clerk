@@ -40,10 +40,6 @@
 
 (def fib (lazy-cat [0 1] (map + fib (rest fib))))
 
-;; ### 📄 Strings
-;; Multi-line strings can be expanded to break on newlines.
-(do )
-
 ;; In addition, there's a number of built-in viewers that we can selecting using functions.
 ;; ### 🌐 Hiccup
 ;; The `html` viewer interprets `hiccup` when passed a vector.
@@ -52,9 +48,37 @@
 ;; Alternatively you can pass it an HTML string.
 (clerk/html "Never <strong>forget</strong>.")
 
+;; You can style elements, using [Tailwind CSS](https://tailwindcss.com/docs/utility-first).
+(clerk/html [:button.bg-sky-500.hover:bg-sky-700.text-white.rounded-xl.px-2.py-1 "✨ Tailwind CSS"])
+
 ;; ### 🔢 Tables
-;; The table viewer api take a number of formats. Each viewer also takes an optional map as a first argument for customization.
-(clerk/table {::clerk/width :full} (into (sorted-map) (map (fn [c] [(keyword (str c)) (shuffle (range 5))])) "abcdefghiklmno"))
+
+;; The table viewer supports the most common formats with which to represent tables:
+;;
+;; * seq of seqs (with an optional header)
+
+;; **seq of seqs**
+(clerk/table [[1 2]
+              [3 4]])
+
+;; **seq of seqs with header**
+(clerk/table (clerk/use-headers [["odd numbers" "even numbers"]
+                                 [1 2]
+                                 [3 4]]))
+
+;; **seq of maps**
+(clerk/table [{"odd numbers" 1 "even numbers" 2}
+              {"odd numbers" 3 "even numbers" 4}])
+
+;; **map of seqs**
+(clerk/table {"odd numbers" [1 3] "even numbers" [2 4]})
+
+;; **map with `:rows` and optional `:head` keys**
+;;
+;; Internally clerk's table viewer will normalize this to a map with `:rows` and an optional `:head` key, also giving you control over the column order.
+(clerk/table {:head ["odd numbers" "even numbers"]
+              :rows [[1 2] [3 4]]})
+
 
 ;; ### 📒 Markdown
 ;; The Markdown viewer is useful for programmatically generated markdown.
