@@ -121,7 +121,7 @@
 ;; ### 👁 Writing Viewers
 
 ;; Our goal with the Clerk viewer api is to _keep the toolbox open_
-;; and let folks change both how things are displayed as well as how things behave. In this notebook, we'll go
+;; and let folks change both how things are displayed as well as how they behave. In this notebook, we'll go
 ;; through how the viewer api works and how you can change it.
 
 ;; Clerk comes with a rich set of default viewers, and this is them.
