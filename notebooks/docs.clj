@@ -362,7 +362,7 @@
 
 ;; ### 🤹🏻 Applying Viewers
 
-;; Metadata Notation
+;; **Metadata Notation**
 
 ;; In the examples above, we've used convience helper functions like
 ;; `clerk/html` or `clerk/plotly` to wrap values in a viewer. If you
@@ -616,52 +616,6 @@ v/table-viewer
 (clerk/with-viewers viewers-without-lazy-loading
   clojure-data)
 
-;; #### 🧬 Examples
-
-;; Here are some more examples:
-
-(clerk/with-viewer '#(v/html [:div "Greetings to " [:strong %] "!"])
-  "James Clerk Maxwell")
-
-^{::clerk/viewer {:render-fn '#(v/html [:span "The answer is " % "."])
-                  :transform-fn (comp inc :nextjournal/value)}}
-(do 41)
-
-(clerk/with-viewers (clerk/add-viewers [{:pred number?
-                                         :render-fn '(fn [n] (v/html [:div.inline-block [(keyword (str "h" n)) (str "Heading " n)]]))}])
-  [1 2 3 4 5])
-
-^::clerk/no-cache
-(clerk/with-viewers (clerk/add-viewers [{:pred number? :render-fn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                                                                :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}])
-  (take 10 (repeatedly #(rand-int 2))))
-
-^{::clerk/viewers
-  (clerk/add-viewers [{:pred #(and (string? %)
-                                   (re-matches
-                                    (re-pattern
-                                     (str "(?i)"
-                                          "(#(?:[0-9a-f]{2}){2,4}|(#[0-9a-f]{3})|"
-                                          "(rgb|hsl)a?\\((-?\\d+%?[,\\s]+){2,3}\\s*[\\d\\.]+%?\\))")) %))
-                       :render-fn '#(v/html [:div.inline-block.rounded-sm.shadow
-                                             {:style {:width 16
-                                                      :height 16
-                                                      :border "1px solid rgba(0,0,0,.2)"
-                                                      :background-color %}}])}])}
-["#571845"
- "rgb(144,12,62)"
- "rgba(199,0,57,1.0)"
- "hsl(11,100%,60%)"
- "hsla(46, 97%, 48%, 1.000)"]
-
-
-;; The clerk viewer api also includes `reagent` and `applied-science/js-interop`.
-(clerk/with-viewer '(fn [_]
-                      (reagent/with-let [counter (reagent/atom 0)]
-                        (v/html [:h3.cursor-pointer {:on-click #(swap! counter inc)} "I was clicked " @counter " times."])))
-  nil)
-
-
 ;; #### 👷 Loading Libraries
 
 ;; This is a custom viewer for
@@ -680,7 +634,7 @@ v/table-viewer
                     [v/with-d3-require {:package ["mermaid@8.14/dist/mermaid.js"]}
                      (fn [mermaid]
                        [:div {:ref (fn [el] (when el
-                                             (.render mermaid (str (gensym)) value #(set! (.-innerHTML el) %))))}])])))})
+                                              (.render mermaid (str (gensym)) value #(set! (.-innerHTML el) %))))}])])))})
 
 ;; We can then use  the above viewer using `with-viewer`.
 (clerk/with-viewer mermaid-viewer
