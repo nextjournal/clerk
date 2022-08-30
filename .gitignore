@@ -17,6 +17,5 @@ yarn.lock
 .work
 /build
 /public/build
-/book/public/build
 .nrepl-port
 .clj-kondo/marick
