@@ -156,7 +156,7 @@ jobs:
         with:
           authToken: ${{secrets.GITHUB_TOKEN}}
           context: 'Static App'
-          description: 'Ready'y
+          description: 'Ready'
           sha: ${{github.event.pull_request.head.sha || github.sha}}
           target_url: https://snapshots.nextjournal.com/clerk/build/${{ github.sha }}
 
