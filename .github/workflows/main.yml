@@ -143,11 +143,11 @@ jobs:
         uses: google-github-actions/setup-gcloud@v0.3.0
 
       - name: 📓 Build Clerk Book
-        run: clojure -J-Dclojure.main.report=stderr -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :browse false :paths '["book.clj"]'
+        run: clojure -J-Dclojure.main.report=stderr -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :browse\? false :bundle\? false :paths '["book.clj"]'
 
       - name: 🏗 Build Clerk Static App with default Notebooks
-        run: clojure -J-Dclojure.main.report=stderr -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :browse false
-  
+        run: clojure -J-Dclojure.main.report=stderr -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :browse\? false
+
       - name: 📠 Copy book & static build to bucket under SHA
         run: |
           gsutil cp -r public/build gs://nextjournal-snapshots/clerk/build/${{ github.sha }}
@@ -156,8 +156,7 @@ jobs:
         with:
           authToken: ${{secrets.GITHUB_TOKEN}}
           context: 'Static App'
-          description: 'Ready'
-          state: 'success'
+          description: 'Ready'y
           sha: ${{github.event.pull_request.head.sha || github.sha}}
           target_url: https://snapshots.nextjournal.com/clerk/build/${{ github.sha }}
 
