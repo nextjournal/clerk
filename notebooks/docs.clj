@@ -9,6 +9,7 @@
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.analyzer :as ana]
             [nextjournal.clerk.viewer :as v]
+            [sicmutils.env :as sicm]
             [weavejester.dependency :as dep])
   (:import (javax.imageio ImageIO)
            (java.net URL)))
@@ -361,6 +362,8 @@
 
 ;; ### 🤹🏻 Applying Viewers
 
+;; Metadata Notation
+
 ;; In the examples above, we've used convience helper functions like
 ;; `clerk/html` or `clerk/plotly` to wrap values in a viewer. If you
 ;; call this on the REPL, you'll notice a given value gets wrapped in
@@ -407,84 +410,75 @@ v/default-viewers
 ;; further down the tree to present its child nodes.
 
 ^{::clerk/visibility {:code :hide :result :hide}}
-(defn show-raw-value [x]
-  (clerk/code (with-out-str (clojure.pprint/pprint x))))
+(do
+  (set! *print-namespace-maps* false)
+  (defn show-raw-value [x]
+    (clerk/code (with-out-str (clojure.pprint/pprint x)))))
 
 ^{::clerk/viewer show-raw-value}
 (v/present [1 2 3])
 
 ;; This data structure above is what is sent over Clerk's websocket to
-;; the browser, where it will be read.
+;; the browser, where it will be read and displayed. The viewer api
+;; takes care of paginating long sequences as to not overload the
+;; browser. But this presentation and hence tranformation of nodes
+;; futher down the tree isn't always what you want. For example, the
+;; `plotly` or `vl` viewers want to recieve the child value unaltered
+;; in order to use it as a spec.
+;;
+;; To stop Clerk's presentation from descending into child nodes, use
+;; `clerk/mark-presented` as a `:transform-fn`. Compare the result
+;; below in which `[1 2 3]` appears unaltered with what you see above.
+
 
 ^{::clerk/viewer show-raw-value}
-(v/present (clerk/with-viewer {:transform-fn clerk/mark-presented}
+(v/present (clerk/with-viewer {:transform-fn clerk/mark-presented
+                               :render-fn '(fn [x] (v/html [:pre (pr-str x)]))}
              [1 2 3]))
 
+;; Clerk's presentation will also transform maps into sequences in
+;; order to paginate large maps. When you're dealing with a map that
+;; you know is bounded and would like to preserve its keys, there's
+;; `clerk/mark-preserve-keys`. This will still transform (and
+;; paginate) the values of the map, but leave the keys unaltered.
 
 ^{::clerk/viewer show-raw-value}
 (v/present (clerk/with-viewer {:transform-fn clerk/mark-preserve-keys}
              {:hello 42}))
 
-
-;; #### 🔬 Render
-
-;; In it's simplest form, a viewer has just a `:render-fn`.
-(def greeting-viewer
-  {:render-fn '(fn [name] (v/html [:strong "Hello, " name "!"]))})
-
-
-;; Notice that the value is not yet a function, but a quoted form that
-;; will be sent via a websocket to the browser. There, it will be
-;; evaluated using the [Small Clojure
-;; Intepreter](https://github.com/babashka/sci) or SCI for
-;; short. Let's use the viewer to confirm it does what we expect:
-(v/with-viewer greeting-viewer
-  "James Clerk Maxwell")
-
-;; It is often useful, but not a neccesity to define a viewer in a
-;; clojure var, so the following expression yields the same result.
-(v/with-viewer {:render-fn '(fn [name] (v/html [:strong "Hello, " name "!"]))}
-  "James Clerk Maxwell")
-
 ;; #### ⚙️ Transform
 
-;; Besides `:render-fn`, there's also a part of the viewer api, that
-;; runs directly in JVM Clojure, `:transform-fn`.  We can use it do
-;; archieve the same thing:
-(v/with-viewer {:transform-fn (fn [wrapped-value]
-                                (clerk/html [:strong "Hello, " (v/->value wrapped-value) "!"]))}
+;; When writing your own viewer, the first extention point you should reach for is `:tranform-fn`. 
+
+#_ "exercise: wrap this in `v/present` and call it at the REPL"
+(v/with-viewer {:transform-fn #(clerk/html [:pre (pr-str %)])}
+  "Exploring the viewer api")
+
+;; As you can see  the argument to the `:tansform-fn` isn't just the string we're passing it, but a `wrapped-value`. We will look at what this enables in a bit. But let's look at one of the simplest examples first.
+
+;; **A first simple example**
+
+(def greet-viewer
+  {:transform-fn (clerk/update-val #(clerk/html [:strong "Hello, " % " 👋"]))})
+
+;; For this simple `greet-viewer` we're only doing a simple value transformation. For this, `clerk/update-val` is a small helper function which takes a function `f` and returns a function to update only the value inside a `wrapped-value`, a shorthand for `#(update % :nextjournal/val f)`
+
+(v/with-viewer greet-viewer
   "James Clerk Maxwell")
 
-
-;; Note that this _is_ a function, not a quoted form like
-;; `:render-fn`. It does not recieve the plain value, but it's value
-;; is wrapped in a map under the `:nextjournal/value` key which allows
-;; it to carry and convey additional information.
-
-;; Let's use `v/apply-viewers` to look more closely at what this does:
-#_ "TODO: remove equality hack once we can display wrapped-values as-is." 
-(= (-> (v/with-viewer {:transform-fn (fn [wrapped-value]
-                                       (v/html [:strong "Hello, " (v/->value wrapped-value) "!"]))}
-         "James Clerk Maxwell")
-       (v/apply-viewers)
-       (v/process-wrapped-value))
-   {:nextjournal/viewer {:name :html, :render-fn (v/->ViewerFn 'v/html)}
-    :nextjournal/value [:strong "Hello, " "James Clerk Maxwell" "!"]})
-
-;; **TODO**
-;;
-;; * `mark-presented`
-;; * `mark-preserve-keys`
-;; * `:nextjournal/viewers`
-
-(clerk/with-viewer {:transform-fn (fn [x] (prn :x x) x)}
-  "abc")
-
-[(str/join (repeat 100 "a"))]
+;; The `:transform-fn` runs on the JVM, which means you can explore what it does at your REPL by calling `v/present` on such a value.
+^{::clerk/viewer show-raw-value}
+(v/present (v/with-viewer greet-viewer
+             "James Clerk Maxwell"))
 
 
+;; **Passing modified viewers down the tree** 
+
+#_ "TODO: move this into clerk?"
 (defn add-child-viewers [viewer viewers]
-  (update viewer :transform-fn (partial comp #(update % :nextjournal/viewers clerk/add-viewers viewers))))
+  (update viewer :transform-fn (fn [transform-fn-orig]
+                                 (fn [wrapped-value]
+                                   (update (transform-fn-orig wrapped-value) :nextjournal/viewers clerk/add-viewers viewers)))))
 
 v/table-viewer
 
@@ -499,6 +493,59 @@ v/table-viewer
 (clerk/with-viewer custom-table-viewer
   {:col/a [1 2 3 4] :col/b [1 2 3] :col/c [1 2 3]})
 
+;; #### 🔬 Render
+
+;; As we've just seen, you can also do a lot with `:transform-fn` and
+;; using `clerk/html` on the JVM. When you want to run code in the
+;; browser where Clerk's viewers are rendered, reach for
+;; `:render-fn`. As an example, we'll write a multiviewer for a
+;; sicmutils literal expression that will compute two alternative
+;; representations and let the user switch between them in the
+;; browser.
+
+;; We start with a simple function that takes a such an expression and
+;; turns it into a map with two representation, one TeX and the
+;; original form.
+
+(defn transform-literal [expr]
+  {:TeX (-> expr sicm/->TeX clerk/tex)
+   :original (clerk/code (with-out-str (sicm/print-expression (sicm/freeze expr))))})
+
+;; Our `literal-viewer` calls this `transform-literal` function and
+;; also calls `clerk/mark-preserve-keys`. This tells Clerk to leave
+;; the keys of the map as-is.
+
+;; In our `:render-fn`, which is called in the browser we will recieve
+;; this map. Note that this is a quoted form, not a function. Clerk
+;; will send this form to the browser for evaluation. There it will
+;; create a `reagent/atom` that holds the selection state. Lastly,
+;; `v/inspect-presented` is a component that takes a `wrapped-value`
+;; that ran through `v/present` and show it.
+
+(def literal-viewer
+  {:pred sicmutils.expression/literal?
+   :transform-fn (comp clerk/mark-preserve-keys
+                       (clerk/update-val transform-literal))
+   :render-fn '(fn [label->val]
+                 (v/html
+                  (reagent/with-let [!selected-label (reagent/atom (ffirst label->val))]
+                    [:<> (into
+                          [:div.flex.items-center.font-sans.text-xs.mb-3
+                           [:span.text-slate-500.mr-2 "View-as:"]]
+                          (map (fn [label]
+                                 [:button.px-3.py-1.font-medium.hover:bg-indigo-50.rounded-full.hover:text-indigo-600.transition
+                                  {:class (if (= @!selected-label label) "bg-indigo-100 text-indigo-600" "text-slate-500")
+                                   :on-click #(reset! !selected-label label)}
+                                  label]))
+                          (keys label->val))
+                     [v/inspect-presented (get label->val @!selected-label)]])))})
+
+;; Now let's see if this works. Try switching to the original
+;; representation!
+
+^{::clerk/viewer literal-viewer}
+(sicm/+ (sicm/square (sicm/sin 'x))
+        (sicm/square (sicm/cos 'x)))
 
 ;; #### 🥇 Selection
 
@@ -509,8 +556,23 @@ v/table-viewer
 (def char?-viewer
   (v/viewer-for v/default-viewers \A))
 
+;; If we select a specific viewer (here the `v/html-viewer` using
+;; `clerk/html`) this is the viewer we will get.
 (def html-viewer
   (v/viewer-for v/default-viewers (clerk/html [:h1 "foo"])))
+
+;; Instead of specifying a viewer for every value, we can also modify
+;; the viewers per namespace. Here, we add the `literal-viewer` from
+;; above to the whole namespace.
+
+(clerk/add-viewers! [literal-viewer])
+
+;; As you can see we now get this viewer automatically, without
+;; needing to explicitly select it.
+(sicm/+ (sicm/square (sicm/sin 'x))
+        (sicm/square (sicm/cos 'x)))
+
+;; #### 🔓 Elisions
 
 (def string?-viewer
   (v/viewer-for v/default-viewers "Denn wir sind wie Baumstämme im Schnee."))
@@ -525,8 +587,6 @@ v/table-viewer
 ;; If we change the viewer and set a different `:n` in `:fetch-opts`, we only see 10 characters.
 (v/with-viewer (assoc-in string?-viewer [:fetch-opts :n] 10)
   long-string)
-
-;; #### 🔓 Elisions
 
 ;; Or, we can turn off eliding, by dissoc'ing `:fetch-opts` alltogether.
 (v/with-viewer (dissoc string?-viewer :fetch-opts)
