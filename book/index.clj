@@ -718,7 +718,7 @@ v/table-viewer
 
 ;; First, we parse a given Clojure file using `rewrite-clj`.
 (def parsed
-  (parser/parse-file "notebooks/docs.clj"))
+  (parser/parse-file "index.clj"))
 
 ;; ### 🧐 Analysis
 
@@ -774,7 +774,7 @@ v/table-viewer
 
 (def query-results
   (let [_run-at #_(java.util.Date.) #inst "2021-05-20T08:28:29.445-00:00"
-        ds (next.jdbc/get-datasource {:dbtype "sqlite" :dbname "chinook.db"})]
+        ds (next.jdbc/get-datasource {:dbtype "sqlite" :dbname "../chinook.db"})]
     (with-open [conn (next.jdbc/get-connection ds)]
       (clerk/table (next.jdbc/execute! conn ["SELECT AlbumId, Bytes, Name, TrackID, UnitPrice FROM tracks"])))))
 
