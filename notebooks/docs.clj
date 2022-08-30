@@ -1,4 +1,5 @@
 ;; # 📓 Clerk Documentation
+^{:nextjournal.clerk/visibility {:code :hide}}
 (ns docs
   {:nextjournal.clerk/toc true}
   (:require [clojure.string :as str]
@@ -8,7 +9,9 @@
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.analyzer :as ana]
             [nextjournal.clerk.viewer :as v]
-            [weavejester.dependency :as dep]))
+            [weavejester.dependency :as dep])
+  (:import (javax.imageio ImageIO)
+           (java.net URL)))
 
 ;; ## ⚖️ Rationale
 
@@ -149,8 +152,9 @@
 ;; called explicity using functions.
 
 
-;; ### 🌐 Hiccup, HTML & SVG The
-;; `html` viewer interprets `hiccup` when passed a vector.
+;; ### 🌐 Hiccup, HTML & SVG
+
+;; The `html` viewer interprets `hiccup` when passed a vector.
 (clerk/html [:div "As Clojurians we " [:em "really"] " enjoy hiccup"])
 
 ;; Alternatively you can pass it an HTML string.
@@ -237,12 +241,122 @@
 
 (clerk/code "(defn my-fn\n  \"This is a Doc String\"\n  [args]\n  42)")
 
+;; ### 🏞 Images
+
+;; Clerk now has built-in support for the
+;; `java.awt.image.BufferedImage` class, which is the native image
+;; format of the JVM.
+;;
+;; When combined with javax.imageio.ImageIO/read, one can easily load
+;; images in a variety of formats from a java.io.File, an
+;; java.io.InputStream, or any resource that a java.net.URL can
+;; address.
+;;
+;; For example, we can fetch a photo of De zaaier, Vincent van Gogh's
+;; famous painting of a farmer sowing a field from Wiki Commons like
+;; this:
+
+(ImageIO/read (URL. "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/The_Sower.jpg/1510px-The_Sower.jpg"))
+
+;; We've put some effort into making the default image rendering
+;; pleasing. The viewer uses the dimensions and aspect ratio of each
+;; image to guess the best way to display it in classic DWIM
+;; fashion. For example, an image larger than 900px wide with an
+;; aspect ratio larger then two will be displayed full width:
+
+(ImageIO/read (URL. "https://images.unsplash.com/photo-1532879311112-62b7188d28ce?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8"))
+
+;; On the other hand, smaller images are centered and shown using their intrinsic dimensions:
+
+(ImageIO/read (URL. "https://etc.usf.edu/clipart/36600/36667/thermos_36667_sm.gif"))
 
 ;; ### 📒 Markdown
 
 ;; The same Markdown support Clerk uses for comment blocks is also
 ;; available programmatically:
 (clerk/md (clojure.string/join "\n" (map #(str "* Item " (inc %)) (range 3))))
+
+;; ### 🔠 Grid Layouts
+
+;; Layouts can be composed via `row`s and `col`s
+;;
+;; Passing `:width`, `:height` or any other style attributes to
+;; `::clerk/opts` will assign them on the row or col that contains
+;; your items. You can use this to size your containers accordingly.
+
+^{::clerk/visibility {:code :hide :result :hide}}
+(def image-1 (ImageIO/read (URL. "https://etc.usf.edu/clipart/62300/62370/62370_letter-a_lg.gif")))
+
+^{::clerk/visibility {:code :hide :result :hide}}
+(def image-2 (ImageIO/read (URL. "https://etc.usf.edu/clipart/72700/72783/72783_floral_b_lg.gif")))
+
+^{::clerk/visibility {:code :hide :result :hide}}
+(def image-3 (ImageIO/read (URL. "https://etc.usf.edu/clipart/72700/72787/72787_floral_c_lg.gif")))
+
+
+(clerk/row image-1 image-2 image-3)
+
+(clerk/col {::clerk/opts {:width 150}} image-1 image-2 image-3)
+
+;; Laying out stuff is not limited to images. You can use it to lay
+;; out any Clerk viewer. E.g. combine it with HTML viewers to render
+;; nice captions:
+
+(defn caption [text]
+  (clerk/html [:span.text-slate-500.text-xs.text-center.font-sans text]))
+
+(clerk/row
+ (clerk/col image-1 (caption "Figure 1: Decorative A"))
+ (clerk/col image-2 (caption "Figure 2: Decorative B"))
+ (clerk/col image-3 (caption "Figure 3: Decorative C")))
+
+;; Or use it with Plotly or Vega Lite viewers to lay out a simple
+;; dashboard:
+
+^{::clerk/visibility {:code :hide :result :hide}}
+(def donut-chart
+  (clerk/plotly {:data [{:values [27 11 25 8 1 3 25]
+                     :labels ["US" "China" "European Union" "Russian Federation" "Brazil" "India" "Rest of World"]
+                     :text "CO2"
+                     :textposition "inside"
+                     :domain {:column 1}
+                     :hoverinfo "label+percent+name"
+                     :hole 0.4
+                     :type "pie"}]
+             :layout {:showlegend false
+                      :width 200
+                      :height 200
+                      :annotations [{:font {:size 20} :showarrow false :x 0.5 :y 0.5 :text "CO2"}]}
+             :config {:responsive true}}))
+
+^{::clerk/visibility {:code :hide :result :hide}}
+(def contour-plot
+  (clerk/plotly {:data [{:z [[10 10.625 12.5 15.625 20]
+                         [5.625 6.25 8.125 11.25 15.625]
+                         [2.5 3.125 5.0 8.125 12.5]
+                         [0.625 1.25 3.125 6.25 10.625]
+                         [0 0.625 2.5 5.625 10]]
+                     :type "contour"}]}))
+
+(clerk/col
+  (clerk/row donut-chart donut-chart donut-chart)
+  contour-plot)
+
+;; **Alternative notations**
+;;
+;; By default, `row` and `col` operate on `& rest` so you can pass any
+;; number of items to the functions.  But the viewers are smart enough
+;; to accept any sequential list of items so you can assign the
+;; viewers via metadata on your data structures too.
+
+^{::clerk/viewer v/row}
+[image-1 image-2 image-3]
+
+(v/row [image-1 image-2 image-3])
+
+^{::clerk/viewer v/col ::clerk/opts {:width 150}}
+[image-1 image-2 image-3]
+
 
 
 ;; ### 🤹🏻 Applying Viewers
@@ -299,6 +413,8 @@ v/default-viewers
 ^{::clerk/viewer show-raw-value}
 (v/present [1 2 3])
 
+;; This data structure above is what is sent over Clerk's websocket to
+;; the browser, where it will be read.
 
 ^{::clerk/viewer show-raw-value}
 (v/present (clerk/with-viewer {:transform-fn clerk/mark-presented}
@@ -339,15 +455,6 @@ v/default-viewers
                                 (clerk/html [:strong "Hello, " (v/->value wrapped-value) "!"]))}
   "James Clerk Maxwell")
 
-(-> (v/with-viewer {:transform-fn (fn [wrapped-value]
-                                       (v/html [:strong "Hello, " (v/->value wrapped-value) "!"]))}
-         "James Clerk Maxwell")
-       (v/present))
-
-(-> (v/with-viewer {:transform-fn (fn [wrapped-value]
-                                       (v/html [:strong "Hello, " (v/->value wrapped-value) "!"]))}
-         "James Clerk Maxwell")
-       (v/present))
 
 ;; Note that this _is_ a function, not a quoted form like
 ;; `:render-fn`. It does not recieve the plain value, but it's value
