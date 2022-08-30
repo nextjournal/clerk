@@ -15,6 +15,7 @@
          "notebooks/onwards.md"]
         (map #(str "notebooks/" % ".clj"))
         ["cards"
+         "docs"
          "hello"
          "how_clerk_works"
          "eval_cljs"

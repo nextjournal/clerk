@@ -4,8 +4,7 @@
   (:require [nextjournal.clerk :as clerk]))
 
 ;; This is a custom viewer for [Mermaid](https://mermaid-js.github.io/mermaid), a markdown-like syntax for creating diagrams from text. Note that this library isn't bundles with Clerk but we use a component based on [d3-require](https://github.com/d3/d3-require) to load it at runtime.
-(def mermaid {:pred string?
-              :fetch-fn (fn [_ x] x)
+(def mermaid {:transform-fn clerk/mark-presented
               :render-fn '(fn [value]
                             (v/html
                              (when value

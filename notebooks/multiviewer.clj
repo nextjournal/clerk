@@ -10,32 +10,29 @@
   (let [form (v/freeze expr)]
     (with-out-str (e/print-expression form))))
 
-(defn transform-literal [l]
-  (let [simplified (simplify l)]
-    {:simplified (-> simplified ->formatted-str clerk/code)
-     :original (-> l ->formatted-str clerk/code)
-     :TeX (-> l ->TeX clerk/tex)
-     :simplified_TeX (-> simplified ->TeX clerk/tex)}))
-
-#_(transform-literal (+ (square (sin 'x)) (square (cos 'x))))
+(defn transform-literal [literal]
+  {"TeX" (-> literal ->TeX clerk/tex)
+   "Original" (-> literal ->formatted-str clerk/code)
+   "Simplified" (-> literal simplify ->formatted-str clerk/code)
+   "Simplified TeX" (-> literal simplify ->TeX clerk/tex)})
 
 (def literal-viewer
   {:pred e/literal?
-   :transform-fn (comp clerk/mark-presented
-                       (clerk/update-val (comp (partial w/postwalk (viewer/when-wrapped viewer/inspect-wrapped-value))
-                                               transform-literal)))
-   :render-fn '(fn [x]
+   :transform-fn (comp clerk/mark-preserve-keys
+                       (clerk/update-val transform-literal))
+   :render-fn '(fn [label->val]
                  (v/html
-                  (reagent/with-let [!sel (reagent/atom (-> x first key))]
-                    [:<>
-                     (into [:div.flex.items-center.font-sans.text-xs.mb-3
-                            [:span.text-slate-500.mr-2 "View-as:"]]
-                           (map (fn [[l _]]
-                                  [:button.px-3.py-1.font-medium.hover:bg-indigo-50.rounded-full.hover:text-indigo-600.transition
-                                   {:class (if (= @!sel l) "bg-indigo-100 text-indigo-600" "text-slate-500")
-                                    :on-click #(reset! !sel l)}
-                                   l]) x))
-                     (get x @!sel)])))})
+                  (reagent/with-let [!selected-label (reagent/atom (ffirst label->val))]
+                    [:<> (into
+                          [:div.flex.items-center.font-sans.text-xs.mb-3
+                           [:span.text-slate-500.mr-2 "View-as:"]]
+                          (map (fn [label]
+                                 [:button.px-3.py-1.font-medium.hover:bg-indigo-50.rounded-full.hover:text-indigo-600.transition
+                                  {:class (if (= @!selected-label label) "bg-indigo-100 text-indigo-600" "text-slate-500")
+                                   :on-click #(reset! !selected-label label)}
+                                  label]))
+                          (keys label->val))
+                     [v/inspect (get label->val @!selected-label)]])))})
 
 (clerk/add-viewers! [literal-viewer])
 
