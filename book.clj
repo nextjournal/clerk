@@ -423,7 +423,7 @@ v/default-viewers
 ;; takes care of paginating long sequences as to not overload the
 ;; browser. But this presentation and hence tranformation of nodes
 ;; futher down the tree isn't always what you want. For example, the
-;; `plotly` or `vl` viewers want to recieve the child value unaltered
+;; `plotly` or `vl` viewers want to receive the child value unaltered
 ;; in order to use it as a spec.
 ;;
 ;; To stop Clerk's presentation from descending into child nodes, use
@@ -454,7 +454,10 @@ v/default-viewers
 (v/with-viewer {:transform-fn #(clerk/html [:pre (pr-str %)])}
   "Exploring the viewer api")
 
-;; As you can see  the argument to the `:tansform-fn` isn't just the string we're passing it, but a `wrapped-value`. We will look at what this enables in a bit. But let's look at one of the simplest examples first.
+;; As you can see the argument to the `:transform-fn` isn't just the
+;; string we're passing it, but a `wrapped-value`. We will look at
+;; what this enables in a bit. But let's look at one of the simplest
+;; examples first.
 
 ;; **A first simple example**
 
