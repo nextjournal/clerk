@@ -718,7 +718,7 @@ v/table-viewer
 
 ;; First, we parse a given Clojure file using `rewrite-clj`.
 (def parsed
-  (parser/parse-file "index.clj"))
+  (parser/parse-file "book.clj"))
 
 ;; ### 🧐 Analysis
 
