@@ -120,7 +120,7 @@
 /* --------------------------------------------------------------- */
 
 .viewer-code {
-  @apply font-mono bg-slate-100 rounded-sm text-sm mt-4 overflow-x-auto dark:bg-gray-800;
+  @apply font-mono bg-slate-100 rounded-sm text-sm overflow-x-auto dark:bg-gray-800;
 }
 .viewer-code .cm-content {
   @apply py-4 px-8;
@@ -286,7 +286,7 @@
 .viewer-notebook { @apply py-16; }
 #clerk-static-app .viewer-notebook { @apply pt-[0.8rem] pb-16; }
 .viewer-markdown *:first-child:not(.viewer-code):not(li):not(h2) { @apply mt-0; }
-.viewer + .viewer { @apply mt-6; }
+/*.viewer + .viewer { @apply mt-6; }*/
 .viewer + .viewer-result { @apply mt-0; }
 .viewer-code + .viewer-result { @apply mt-3; }
 .viewer-markdown + .viewer-markdown { @apply mt-0; }
@@ -320,8 +320,14 @@
 .viewer-result + .viewer-result {
   @apply mt-2;
 }
+.viewer-code + .viewer-code-folded {
+  @apply mt-4;
+}
 .viewer-result {
-  @apply leading-tight;
+  @apply leading-tight mb-6;
+}
+.viewer-result figure {
+  @apply mt-0 !important;
 }
 @media (min-width: 768px) {
   .devcard-desc > div {
