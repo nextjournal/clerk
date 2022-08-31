@@ -21,15 +21,19 @@
     (assert (.canExecute fn-ref) (str "cannot execute " fn))
     (.execute fn-ref args)))
 
-
 (def viewer-js-source
-  (.build (Source/newBuilder "js" (slurp (@config/!asset-map "/js/viewer.js")) "viewer.js")))
+  (.build (Source/newBuilder "js" (slurp "build/viewer.js" #_(@config/!asset-map "/js/viewer.js")) "viewer.js")))
 
 (def polyfill-js-source
-  (.build (Source/newBuilder "js" "function setTimeout(f) { };" "polyfills.js")))
+  (.build (Source/newBuilder "js" "function setTimeout(t) { };" "polyfills.js")))
+
+
+
 
 (comment
   (.eval context polyfill-js-source)
   (.eval context viewer-js-source)
 
-  (execute-fn context "nextjournal.clerk.sci_viewer.read_string" "{:hello [1 2 3]}"))
+  (spit "build/static_app_state.edn" (pr-str nextjournal.clerk.builder/my-static-app-opts))
+  
+  (execute-fn context "nextjournal.clerk.static_app.ssr" (slurp "build/static_app_state.edn")))

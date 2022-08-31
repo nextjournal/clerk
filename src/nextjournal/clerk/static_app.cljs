@@ -1,12 +1,13 @@
 (ns nextjournal.clerk.static-app
-  (:require [clojure.string :as str]
-            [clojure.set :as set]
-            [nextjournal.clerk.viewer :as v]
+  (:require [clojure.set :as set]
+            [clojure.string :as str]
             [nextjournal.clerk.sci-viewer :as sci-viewer]
-            [nextjournal.ui.components.localstorage :as ls]
+            [nextjournal.clerk.viewer :as v]
             [nextjournal.devcards :as dc]
+            [nextjournal.ui.components.localstorage :as ls]
             [reagent.core :as r]
             [reagent.dom :as rdom]
+            [reagent.dom.server :as dom-server]
             [reitit.frontend :as rf]
             [reitit.frontend.easy :as rfe]
             [sci.core :as sci]))
@@ -129,7 +130,7 @@
 ;; - jit compiling css
 ;; - support viewing source clojure/markdown file (opt-in)
 
-(defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path]}]
+(defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path skip-mount?]}]
   (let [url->doc (set/rename-keys path->doc path->url)]
     (reset! !state (assoc state
                           :path->doc url->doc
@@ -140,4 +141,9 @@
       (let [router (rf/router (get-routes url->doc))]
         (rfe/start! router #(reset! !match %1) {:use-fragment true}))
       (reset! !match {:data {:view (if (str/blank? current-path) index show)} :path-params {:path (path->url current-path)}}))
-    (mount)))
+    (when-not skip-mount?
+      (mount))))
+
+(defn ^:export ssr [state-str]
+  (init (assoc (sci-viewer/read-string state-str) :skip-mount? true))
+  #_(dom-server/render-to-string [root]))
