@@ -1,14 +1,12 @@
 {:deps {:aliases [:sci]}
- :dev-http {7778 {:roots ["public" "classpath:public"]
-                  :handler nextjournal.clerk.dev-http/devcards-handler}}
+ :dev-http {7778 {:roots ["public" "classpath:public"]}}
  :nrepl false
  :builds {:browser {:target :browser
                     :output-to "public/js/viewer.js"
                     :output-dir "public/js"
+                    :build-options {:ns-aliases {nextjournal.devcards nextjournal.devcards-noop}}
                     :modules {:viewer {:entries [nextjournal.clerk.sci-viewer
-                                                 nextjournal.clerk.static-app
-                                                 nextjournal.devcards.main
-                                                 nextjournal.viewer.notebook]}}
+                                                 nextjournal.clerk.static-app]}}
 
                     :dev {:modules {:viewer {:entries [devtools]}}}
                     :release {:output-dir "build/"}
