@@ -625,17 +625,37 @@
 (defn foldable-code-viewer [code-string]
   (r/with-let [!hidden? (r/atom true)]
     (html (if @!hidden?
-            [:div.w-full.max-w-wide.sans-serif {:style {:background "var(--gray-panel-color)"}}
-             [:button.mx-auto.flex.items-center.rounded-sm.cursor-pointer.bg-indigo-200.hover:bg-indigo-300.leading-none
-              {:style {:font-size "11px" :padding "1px 3px"}
+            [:div.relative.pl-12.font-sans.text-slate-400.cursor-pointer.flex.overflow-y-hidden.group
+             [:span.hover:text-slate-500
+              {:class "text-[10px]"
                :on-click #(swap! !hidden? not)}
-              expand-icon " Show code…"]]
-            [:div.viewer-code.relative {:style {:margin-top 0}}
-             [inspect-presented (code-viewer code-string)]
-             [:button.sans-serif.mx-auto.flex.items-center.rounded-t-sm.cursor-pointer.bg-indigo-200.hover:bg-indigo-300.leading-none.absolute.bottom-0
-              {:style {:font-size "11px" :padding "1px 3px" :left "50%" :transform "translateX(-50%)"}
-               :on-click #(swap! !hidden? not)}
-              [:span {:style {:transform "rotate(180deg)"}} expand-icon] " Hide code…"]]))))
+              "show code"]
+             [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.hover:text-slate-500
+              {:class "text-[10px]"}
+              "hide result"]
+             [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-75.hover:text-slate-500
+              {:class "text-[10px]"}
+              "cached in memory"]
+             [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-150.hover:text-slate-500
+              {:class "text-[10px]"}
+              "evaluated in 0.2s"]]
+            [:<>
+             [:div.relative.pl-12.font-sans.text-slate-400.cursor-pointer.flex.overflow-y-hidden.group.mb-1
+              [:span.hover:text-slate-500
+               {:class "text-[10px]"
+                :on-click #(swap! !hidden? not)}
+               "hide code"]
+              [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.hover:text-slate-500
+               {:class "text-[10px]"}
+               "hide result"]
+              [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-75.hover:text-slate-500
+               {:class "text-[10px]"}
+               "cached in memory"]
+              [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-150.hover:text-slate-500
+               {:class "text-[10px]"}
+               "evaluated in 0.2s"]]
+             [:div.viewer-code.mb-2.relative {:style {:margin-top 0}}
+              [inspect-presented (code-viewer code-string)]]]))))
 
 
 (defn url-for [{:as src :keys [blob-id]}]
