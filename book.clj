@@ -140,10 +140,10 @@
 ;; The default set of viewers are able to render Clojure data.
 (def clojure-data
   {:hello "world 👋"
-   :tacos (map (comp #(map (constantly '🌮) %) range) (range 1 30))
+   :tacos (map #(repeat % '🌮) (range 1 30))
    :zeta "The\npurpose\nof\nvisualization\nis\ninsight,\nnot\npictures."})
 
-;; Viewers can handle lazy infinte sequences, partially loading data
+;; Viewers can handle lazy infinite sequences, partially loading data
 ;; by default with the ability to load more data on request.
 (range)
 
@@ -404,10 +404,10 @@ v/default-viewers
 ;; #### 🎪 Presentation
 
 ;; On the JVM side, the result for each cell is _presented_. This is a
-;; recursive function that takes does a depth-first traversal of a
-;; given tree `x`, starting with the root node. It will select a
-;; viewer for this root node and unless told otherwise, descend
-;; further down the tree to present its child nodes.
+;; recursive function that does a depth-first traversal of a given
+;; tree `x`, starting with the root node. It will select a viewer for
+;; this root node and unless told otherwise, descend further down the
+;; tree to present its child nodes.
 
 ^{::clerk/visibility {:code :hide :result :hide}}
 (do
