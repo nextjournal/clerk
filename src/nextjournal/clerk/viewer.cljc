@@ -304,7 +304,7 @@
      (if-let [image-type (second (re-matches #"image/(\w+)" content-type))]
        (let [dir (fs/path out-path "_data")
              file-path (fs/path dir (str (analyzer/valuehash value) "." image-type))
-             dir-depth (get (frequencies file) \/ 0) ;; TODO: normalize path in `file`
+             dir-depth (get (frequencies file) \/ 0)
              relative-root (str/join (repeat dir-depth "../"))]
          ;; TODO: support absolute paths
          (fs/create-dirs dir)
@@ -313,7 +313,7 @@
          (assoc result :nextjournal/value (str relative-root "_data/" (fs/file-name file-path))))
        result)))
 
-#_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" "notebooks/image.clj" "notebooks/viewers/image.clj"] :bundle? false :browse? false})
+#_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" #_#_"notebooks/image.clj" "notebooks/viewers/image.clj"] :bundle? false :browse? false})
 #_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" "notebooks/image.clj" "notebooks/viewers/image.clj"] :browse? false})
 
 #?(:clj
