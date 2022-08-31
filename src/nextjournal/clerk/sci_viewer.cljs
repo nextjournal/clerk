@@ -104,6 +104,7 @@
 (def local-storage-dark-mode-key "clerk-darkmode")
 
 (defn set-dark-mode! [dark-mode?]
+  #_#_
   (let [class-list (.-classList (js/document.querySelector "html"))]
     (if dark-mode?
       (.add class-list "dark")
@@ -280,10 +281,10 @@
                                      (swap! !expanded-at dissoc :prompt-multi-expand?)))
                      on-key-up #(swap! !expanded-at dissoc :prompt-multi-expand?)
                      ref-fn #(if %
-                               (do
+                               (when (exists? js/document)
                                  (js/document.addEventListener "keydown" on-key-down)
                                  (js/document.addEventListener "keyup" on-key-up))
-                               (do
+                               (when (exists? js/document)
                                  (js/document.removeEventListener "keydown" on-key-down)
                                  (js/document.removeEventListener "up" on-key-up)))]
           (when-not (= hash @!hash)
@@ -589,11 +590,11 @@
   (when (contains? state :doc)
     (reset! !doc doc))
   (reset! !error error)
-  (when-some [title (-> doc viewer/->value :title)]
+  (when-some [title (and (exists? js/document) (-> doc viewer/->value :title))]
     (set! (.-title js/document) title)))
 
 (defn ^:export ^:dev/after-load mount []
-  (when-let [el (js/document.getElementById "clerk")]
+  (when-let [el (and (exists? js/document) (js/document.getElementById "clerk"))]
     #_(rdom/unmount-component-at-node el)
     (rdom/render [root] el)))
 

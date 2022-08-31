@@ -33,7 +33,5 @@
 (comment
   (.eval context polyfill-js-source)
   (.eval context viewer-js-source)
-
-  (spit "build/static_app_state.edn" (pr-str nextjournal.clerk.builder/my-static-app-opts))
   
   (execute-fn context "nextjournal.clerk.static_app.ssr" (slurp "build/static_app_state.edn")))

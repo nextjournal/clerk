@@ -123,14 +123,15 @@
         [:pre (pr-str match)])]]))
 
 (defn ^:dev/after-load mount []
-  (when-let [el (js/document.getElementById "clerk-static-app")]
-    (rdom/render [root] el)))
+  (when (exists? js/document)
+    (when-let [el (js/document.getElementById "clerk-static-app")]
+      (rdom/render [root] el))))
 
 ;; next up
 ;; - jit compiling css
 ;; - support viewing source clojure/markdown file (opt-in)
 
-(defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path skip-mount?]}]
+(defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path]}]
   (let [url->doc (set/rename-keys path->doc path->url)]
     (reset! !state (assoc state
                           :path->doc url->doc
@@ -141,9 +142,8 @@
       (let [router (rf/router (get-routes url->doc))]
         (rfe/start! router #(reset! !match %1) {:use-fragment true}))
       (reset! !match {:data {:view (if (str/blank? current-path) index show)} :path-params {:path (path->url current-path)}}))
-    (when-not skip-mount?
-      (mount))))
+    (mount)))
 
 (defn ^:export ssr [state-str]
   (init (assoc (sci-viewer/read-string state-str) :skip-mount? true))
-  #_(dom-server/render-to-string [root]))
+  (dom-server/render-to-string [root]))
