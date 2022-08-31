@@ -21,16 +21,19 @@
     (when-not (str/blank? prop)
       (read-string prop))))
 
+(defn read-asset-manifest []
+  ;; In mvn releases, the asset map is available in the artifact
+  (or (some-> (io/resource "clerk-asset-map.edn")
+              slurp
+              edn/read-string)
+      (-> (slurp lookup-url)
+          edn/read-string)))
+
 (defonce !resource->url
   ;; contains asset manifest in the form:
   ;; {"/js/viewer.js" "https://..."}
   (atom (or resource-manifest-from-props
-            ;; In mvn releases, the asset map is available in the artifact
-            (some-> (io/resource "clerk-asset-map.edn")
-                    slurp
-                    edn/read-string)
-            (-> (slurp lookup-url)
-                edn/read-string))))
+            (read-asset-manifest))))
 
 #_(swap! !resource->url assoc "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvAV62HzsvhcsXEkHP33uj4cV9UvdDz7DU9qLeVRCfEP9kWLFAzaMKL77trdx898DzcVyDVejdfxvxj5XB84UpWvQ")
 #_(swap! !resource->url dissoc "/css/viewer.css")
