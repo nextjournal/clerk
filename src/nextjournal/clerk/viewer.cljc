@@ -4,7 +4,8 @@
             [clojure.datafy :as datafy]
             [clojure.set :as set]
             [clojure.walk :as w]
-            #?@(:clj [[clojure.repl :refer [demunge]]
+            #?@(:clj [[babashka.fs :as fs]
+                      [clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.analyzer :as analyzer]]
                 :cljs [[reagent.ratom :as ratom]
@@ -17,7 +18,8 @@
                    (clojure.lang IDeref)
                    (java.lang Throwable)
                    (java.awt.image BufferedImage)
-                   (java.util Base64))))
+                   (java.util Base64)
+                   (java.nio.file Files StandardOpenOption))))
 
 (defrecord ViewerEval [form])
 
@@ -276,11 +278,6 @@
 
 #_(->edn {:nextjournal/value :foo})
 
-#?(:clj
-   (defn base64-encode-value [{:as result :nextjournal/keys [content-type]}]
-     (update result :nextjournal/value (fn [data] (str "data:" content-type ";base64, "
-                                                       (.encodeToString (Base64/getEncoder) data))))))
-
 (defn apply-viewer-unwrapping-var-from-def [{:as result :nextjournal/keys [value viewer]}]
   (if viewer
     (let [{:keys [transform-fn]} (and (map? viewer) viewer)
@@ -297,13 +294,37 @@
 #_(apply-viewer-unwrapping-var-from-def {:nextjournal/value [:h1 "hi"] :nextjournal/viewer (resolve 'nextjournal.clerk/html)})
 
 #?(:clj
-   (defn extract-blobs [lazy-load? blob-id presentd-result]
-     (w/postwalk #(cond-> %
-                    (and (get % :nextjournal/content-type) lazy-load?)
-                    (assoc :nextjournal/value {:blob-id blob-id :path (:path %)})
-                    (and (get % :nextjournal/content-type) (not lazy-load?))
-                    base64-encode-value)
-                 presentd-result)))
+   (defn base64-encode-value [{:as result :nextjournal/keys [content-type]}]
+     (update result :nextjournal/value (fn [data] (str "data:" content-type ";base64,"
+                                                       (.encodeToString (Base64/getEncoder) data))))))
+
+#?(:clj
+   (defn maybe-store-result-as-file [{:as _doc+blob-opts :keys [blob-id file out-path]} {:as result :nextjournal/keys [content-type value]}]
+     ;; TODO: support customization via viewer api
+     (if-let [image-type (second (re-matches #"image/(\w+)" content-type))]
+       (let [dir (fs/path out-path "_data")
+             file-path (fs/path dir (str (analyzer/valuehash value) "." image-type))
+             dir-depth (get (frequencies file) \/ 0)
+             relative-root (str/join (repeat dir-depth "../"))]
+         ;; TODO: support absolute paths
+         (fs/create-dirs dir)
+         (when-not (fs/exists? file-path)
+           (Files/write file-path value (into-array [StandardOpenOption/CREATE])))
+         (assoc result :nextjournal/value (str relative-root "_data/" (fs/file-name file-path))))
+       result)))
+
+#_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" "notebooks/image.clj" "notebooks/viewers/image.clj"] :bundle? false :browse? false})
+#_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" "notebooks/image.clj" "notebooks/viewers/image.clj"] :browse? false})
+
+#?(:clj
+   (defn process-blobs [{:as doc+blob-opts :keys [blob-mode blob-id]} presented-result]
+     (w/postwalk #(if (get % :nextjournal/content-type)
+                    (case blob-mode
+                      :lazy-load (assoc % :nextjournal/value {:blob-id blob-id :path (:path %)})
+                      :inline (base64-encode-value %)
+                      :file (maybe-store-result-as-file doc+blob-opts %))
+                    %)
+                 presented-result)))
 
 (defn get-default-viewers []
   (:default @!viewers default-viewers))
@@ -318,9 +339,13 @@
 #_(get-viewers nil nil)
 
 #?(:clj
-   (defn ->result [{:keys [inline-results?]} {:as result :nextjournal/keys [value blob-id viewers]}]
-     (let [lazy-load? (and (not inline-results?) blob-id)
-           presented-result (extract-blobs lazy-load? blob-id (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
+   (defn ->result [{:as doc :keys [inline-results? bundle?]} {:as result :nextjournal/keys [value blob-id viewers]}]
+     (let [blob-mode (cond
+                       (and (not inline-results?) blob-id) :lazy-load
+                       bundle? :inline ;; TODO: provide a separte setting for this
+                       :else :file)
+           blob-opts (assoc doc :blob-mode blob-mode :blob-id blob-id)
+           presented-result (process-blobs blob-opts (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
            opts-from-form-meta (select-keys result [:nextjournal/width :nextjournal/opts])]
        (merge {:nextjournal/viewer :clerk/result
                :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (merge presented-result opts-from-form-meta))}
@@ -329,7 +354,7 @@
                                     (-> presented-result ->viewer :name)
                                     (assoc :nextjournal/viewer (select-keys (->viewer presented-result) [:name]))
 
-                                    lazy-load?
+                                    (= blob-mode :lazy-load)
                                     (assoc :nextjournal/fetch-opts {:blob-id blob-id}
                                            :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta])))}
               (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)

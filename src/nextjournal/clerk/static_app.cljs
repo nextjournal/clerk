@@ -21,7 +21,7 @@
                            (str/ends-with? url "/")))
                   (str "index.html"))
             dir-depth (get (frequencies current-path) \/ 0)
-            relative-root (apply str (repeat dir-depth "../"))]
+            relative-root (str/join (repeat dir-depth "../"))]
         (str relative-root url)))))
 
 (defn hiccup [hiccup]
