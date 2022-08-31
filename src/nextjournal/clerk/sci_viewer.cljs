@@ -409,20 +409,25 @@
 (defn string-viewer [s {:as opts :keys [path !expanded-at] :or {path []}}]
   (html
    (let [expanded? (get @!expanded-at path)]
-     (into [:span {:class (when expanded? "whitespace-pre")}]
+     (into [:span]
            (map #(if (string? %)
                    (if expanded?
-                     (into [:<>] (interpose [:<> "\n " triangle-spacer] (str/split-lines %)))
+                     (into [:<>] (interpose [:<> [:br]] (str/split-lines %)))
                      (into [:<>] (interpose [:span.text-slate-400 "↩︎"] (str/split-lines %))))
                    (inspect-presented opts %)))
            (if (string? s) [s] s)))))
 
-(defn quoted-string-viewer [s {:as opts :keys [path !expanded-at] :or {path []}}]
-  (html [:span.cmt-string.inspected-value.whitespace-nowrap
-         (if (some #(and (string? %) (str/includes? % "\n")) (if (string? s) [s] s))
-           [expand-button !expanded-at "\"" path]
-           [:span "\""])
-         (viewer/->value (string-viewer s opts)) "\""]))
+(defn quoted-string-viewer [s {:as opts :keys [path viewer !expanded-at] :or {path []}}]
+  (let [{:keys [closing-paren]} viewer]
+    (html [:span.cmt-string.inspected-value.whitespace-nowrap.inline-flex
+           [:span
+            (if (some #(and (string? %) (str/includes? % "\n")) (if (string? s) [s] s))
+              [expand-button !expanded-at "\"" path]
+              [:span "\""])]
+           [:div
+            (viewer/->value (string-viewer s opts))
+            "\""
+            closing-paren]])))
 
 (defn number-viewer [num]
   (html [:span.cmt-number.inspected-value
