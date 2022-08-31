@@ -66,6 +66,12 @@
   [path]
   (str/replace path fs/file-separator "/"))
 
+(defn process-build-opts [{:as opts :keys [paths]}]
+  (merge {:out-path (str "public" fs/file-separator "build")
+          :bundle? true
+          :browse? true}
+         opts))
+
 (defn write-static-app!
   "Creates a static html app of the seq of `docs`. Customizable with an `opts` map with keys:
 
@@ -74,8 +80,7 @@
   - `:out-path` a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
   - `:git/sha`, `:git/url` when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`"
   [opts docs]
-  (let [{:keys [out-path bundle? browse?]
-         :or {out-path (str "public" fs/file-separator "build") bundle? true browse? true}} opts
+  (let [{:as opts :keys [bundle? out-path browse?]} (process-build-opts opts)
         paths (mapv :file docs)
         path->doc (into {} (map (juxt :file :viewer)) docs)
         path->url (into {} (map (juxt identity #(cond-> (strip-index %) (not bundle?) ->html-extension))) paths)
@@ -125,7 +130,7 @@
 #_(expand-paths ["notebooks/viewers**"])
 
 (defn build-static-app! [opts]
-  (let [{:as opts :keys [expanded-paths paths download-cache-fn upload-cache-fn bundle?] :or {bundle? true}} (assoc opts :expanded-paths (-> opts :paths expand-paths))
+  (let [{:as opts :keys [expanded-paths paths download-cache-fn upload-cache-fn bundle?]} (assoc (process-build-opts opts) :expanded-paths (-> opts :paths expand-paths))
         _ (when (empty? expanded-paths)
             (throw (ex-info "nothing to build" {:expanded-paths expanded-paths :paths paths})))
         start (System/nanoTime)
@@ -145,7 +150,7 @@
                       (report-fn {:stage :building :doc doc})
                       (let [{doc+viewer :result duration :time-ms} (eval/time-ms
                                                                     (let [doc (eval/eval-analyzed-doc doc)]
-                                                                      (assoc doc :viewer (view/doc->viewer {:inline-results? true :bundle? bundle?} doc))))]
+                                                                      (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc))))]
                         (report-fn {:stage :built :doc doc+viewer :duration duration})
                         doc+viewer)) state)
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]

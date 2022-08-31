@@ -299,10 +299,10 @@
                                                        (.encodeToString (Base64/getEncoder) data))))))
 
 #?(:clj
-   (defn maybe-store-result-as-file [{:keys [blob-id file]} {:as result :nextjournal/keys [content-type value]}]
+   (defn maybe-store-result-as-file [{:as _doc+blob-opts :keys [blob-id file out-path]} {:as result :nextjournal/keys [content-type value]}]
      ;; TODO: support customization via viewer api
      (if-let [image-type (second (re-matches #"image/(\w+)" content-type))]
-       (let [dir (fs/path "public" "build" "_data") ;; TODO: get output path from build
+       (let [dir (fs/path out-path "_data")
              file-path (fs/path dir (str blob-id "." image-type)) ;; TODO: derive name from contents
              dir-depth (get (frequencies file) \/ 0) ;; TODO: normalize path in `file`
              relative-root (str/join (repeat dir-depth "../"))]
@@ -312,7 +312,6 @@
            (Files/write file-path value (into-array [StandardOpenOption/CREATE])))
          (assoc result :nextjournal/value (str relative-root "_data/" blob-id "." image-type)))
        result)))
-
 
 #_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" "notebooks/image.clj" "notebooks/viewers/image.clj"] :bundle? false :browse? false})
 #_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" "notebooks/image.clj" "notebooks/viewers/image.clj"] :browse? false})
