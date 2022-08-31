@@ -125,7 +125,7 @@
 #_(expand-paths ["notebooks/viewers**"])
 
 (defn build-static-app! [opts]
-  (let [{:as opts :keys [expanded-paths paths download-cache-fn upload-cache-fn]} (assoc opts :expanded-paths (-> opts :paths expand-paths))
+  (let [{:as opts :keys [expanded-paths paths download-cache-fn upload-cache-fn bundle?] :or {bundle? true}} (assoc opts :expanded-paths (-> opts :paths expand-paths))
         _ (when (empty? expanded-paths)
             (throw (ex-info "nothing to build" {:expanded-paths expanded-paths :paths paths})))
         start (System/nanoTime)
@@ -145,7 +145,7 @@
                       (report-fn {:stage :building :doc doc})
                       (let [{doc+viewer :result duration :time-ms} (eval/time-ms
                                                                     (let [doc (eval/eval-analyzed-doc doc)]
-                                                                      (assoc doc :viewer (view/doc->viewer {:inline-results? true} doc))))]
+                                                                      (assoc doc :viewer (view/doc->viewer {:inline-results? true :bundle? bundle?} doc))))]
                         (report-fn {:stage :built :doc doc+viewer :duration duration})
                         doc+viewer)) state)
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
