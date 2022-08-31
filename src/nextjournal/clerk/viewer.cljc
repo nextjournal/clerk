@@ -313,7 +313,7 @@
          (assoc result :nextjournal/value (str relative-root "_data/" (fs/file-name file-path))))
        result)))
 
-#_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" #_#_"notebooks/image.clj" "notebooks/viewers/image.clj"] :bundle? false :browse? false})
+#_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" "notebooks/image.clj" "notebooks/viewers/image.clj"] :bundle? false :browse? false})
 #_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" "notebooks/image.clj" "notebooks/viewers/image.clj"] :browse? false})
 
 #?(:clj
@@ -342,7 +342,7 @@
    (defn ->result [{:as doc :keys [inline-results? bundle?]} {:as result :nextjournal/keys [value blob-id viewers]}]
      (let [blob-mode (cond
                        (and (not inline-results?) blob-id) :lazy-load
-                       bundle? :inline
+                       bundle? :inline ;; TODO: provide a separte setting for this
                        :else :file)
            blob-opts (assoc doc :blob-mode blob-mode :blob-id blob-id)
            presented-result (process-blobs blob-opts (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
