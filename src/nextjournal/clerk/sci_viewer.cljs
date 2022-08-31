@@ -635,7 +635,7 @@
               {:class "text-[10px]"
                :on-click #(swap! !hidden? not)}
               "show code"]
-             [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.hover:text-slate-500
+             #_#_#_[:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.hover:text-slate-500
               {:class "text-[10px]"}
               "hide result"]
              [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-75.hover:text-slate-500
@@ -650,7 +650,7 @@
                {:class "text-[10px]"
                 :on-click #(swap! !hidden? not)}
                "hide code"]
-              [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.hover:text-slate-500
+              #_#_#_[:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.hover:text-slate-500
                {:class "text-[10px]"}
                "hide result"]
               [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-75.hover:text-slate-500
