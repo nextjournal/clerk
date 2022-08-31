@@ -303,14 +303,14 @@
      ;; TODO: support customization via viewer api
      (if-let [image-type (second (re-matches #"image/(\w+)" content-type))]
        (let [dir (fs/path out-path "_data")
-             file-path (fs/path dir (str blob-id "." image-type)) ;; TODO: derive name from contents
+             file-path (fs/path dir (str (analyzer/valuehash value) "." image-type))
              dir-depth (get (frequencies file) \/ 0) ;; TODO: normalize path in `file`
              relative-root (str/join (repeat dir-depth "../"))]
          ;; TODO: support absolute paths
          (fs/create-dirs dir)
          (when-not (fs/exists? file-path)
            (Files/write file-path value (into-array [StandardOpenOption/CREATE])))
-         (assoc result :nextjournal/value (str relative-root "_data/" blob-id "." image-type)))
+         (assoc result :nextjournal/value (str relative-root "_data/" (fs/file-name file-path))))
        result)))
 
 #_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" "notebooks/image.clj" "notebooks/viewers/image.clj"] :bundle? false :browse? false})
