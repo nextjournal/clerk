@@ -17,7 +17,8 @@
     (if bundle?
       (str "#/" url)
       (let [url (cond-> url
-                  (and (= (.. js/document -location -protocol) "file:")
+                  (and (exists? js/document)
+                       (= (.. js/document -location -protocol) "file:")
                        (or (nil? url)
                            (str/ends-with? url "/")))
                   (str "index.html"))
@@ -69,7 +70,8 @@
          :url->path {"notebooks/hello.clj" "notebooks/hello.clj"}}])
 
 (defn index [{:as view-data :keys [paths]}]
-  (set! (.-title js/document) "Clerk")
+  (when (exists? js/document)
+    (set! (.-title js/document) "Clerk"))
   (r/with-let [!state (r/atom {:dark-mode? (ls/get-item sci-viewer/local-storage-dark-mode-key)})
                ref-fn #(when % (sci-viewer/setup-dark-mode! !state))]
     [:div.bg-gray-100.dark:bg-gray-900.flex.justify-center.overflow-y-auto.w-screen.h-screen.p-4.md:p-0
@@ -123,9 +125,8 @@
         [:pre (pr-str match)])]]))
 
 (defn ^:dev/after-load mount []
-  (when (exists? js/document)
-    (when-let [el (js/document.getElementById "clerk-static-app")]
-      (rdom/render [root] el))))
+  (when-let [el (and (exists? js/document) (js/document.getElementById "clerk-static-app"))]
+    (rdom/render [root] el)))
 
 ;; next up
 ;; - jit compiling css

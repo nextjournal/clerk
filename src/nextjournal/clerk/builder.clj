@@ -93,7 +93,7 @@
       (do (when-not (contains? (-> path->url vals set) "") ;; no user-defined index page
             (spit index-html (view/->static-app (dissoc static-app-opts :path->doc))))
           (doseq [[path doc] path->doc]
-            (spit "build/static_app_state.edn" (pr-str nextjournal.clerk.builder/my-static-app-opts))
+            (spit "build/static_app_state.edn" (assoc static-app-opts :path->doc (hash-map path doc) :current-path path))
             (let [out-html (str out-path fs/file-separator (str/replace path #"(.cljc?|.md)" ".html"))]
               (fs/create-dirs (fs/parent out-html))
               (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
