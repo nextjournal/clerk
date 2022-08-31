@@ -320,6 +320,9 @@
 .viewer-result + .viewer-result {
   @apply mt-2;
 }
+.viewer-code + .viewer-code-folded {
+  @apply mt-4;
+}
 .viewer-result {
   @apply leading-tight mb-6;
 }
