@@ -1,12 +1,13 @@
 (ns nextjournal.clerk.static-app
-  (:require [clojure.string :as str]
-            [clojure.set :as set]
-            [nextjournal.clerk.viewer :as v]
+  (:require [clojure.set :as set]
+            [clojure.string :as str]
             [nextjournal.clerk.sci-viewer :as sci-viewer]
-            [nextjournal.ui.components.localstorage :as ls]
+            [nextjournal.clerk.viewer :as v]
             [nextjournal.devcards :as dc]
+            [nextjournal.ui.components.localstorage :as ls]
             [reagent.core :as r]
             [reagent.dom :as rdom]
+            [reagent.dom.server :as dom-server]
             [reitit.frontend :as rf]
             [reitit.frontend.easy :as rfe]
             [sci.core :as sci]))
@@ -16,7 +17,8 @@
     (if bundle?
       (str "#/" url)
       (let [url (cond-> url
-                  (and (= (.. js/document -location -protocol) "file:")
+                  (and (exists? js/document)
+                       (= (.. js/document -location -protocol) "file:")
                        (or (nil? url)
                            (str/ends-with? url "/")))
                   (str "index.html"))
@@ -68,7 +70,8 @@
          :url->path {"notebooks/hello.clj" "notebooks/hello.clj"}}])
 
 (defn index [{:as view-data :keys [paths]}]
-  (set! (.-title js/document) "Clerk")
+  (when (exists? js/document)
+    (set! (.-title js/document) "Clerk"))
   (r/with-let [!state (r/atom {:dark-mode? (ls/get-item sci-viewer/local-storage-dark-mode-key)})
                ref-fn #(when % (sci-viewer/setup-dark-mode! !state))]
     [:div.bg-gray-100.dark:bg-gray-900.flex.justify-center.overflow-y-auto.w-screen.h-screen.p-4.md:p-0
@@ -122,7 +125,7 @@
         [:pre (pr-str match)])]]))
 
 (defn ^:dev/after-load mount []
-  (when-let [el (js/document.getElementById "clerk-static-app")]
+  (when-let [el (and (exists? js/document) (js/document.getElementById "clerk-static-app"))]
     (rdom/render [root] el)))
 
 ;; next up
@@ -141,3 +144,7 @@
         (rfe/start! router #(reset! !match %1) {:use-fragment true}))
       (reset! !match {:data {:view (if (str/blank? current-path) index show)} :path-params {:path (path->url current-path)}}))
     (mount)))
+
+(defn ^:export ssr [state-str]
+  (init (sci-viewer/read-string state-str))
+  (dom-server/render-to-string [root]))
