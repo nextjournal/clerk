@@ -104,7 +104,6 @@
 (def local-storage-dark-mode-key "clerk-darkmode")
 
 (defn set-dark-mode! [dark-mode?]
-  #_#_
   (let [class-list (.-classList (js/document.querySelector "html"))]
     (if dark-mode?
       (.add class-list "dark")
