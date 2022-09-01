@@ -395,7 +395,7 @@
           viewers
           select-fn->update-fn))
 
-#_(update-viewers default-viewers {:fetch-opts #(dissoc % :fetch-opts)})
+#_(update-viewers default-viewers {:page-size #(dissoc % :page-size)})
 
 (defn add-viewers
   ([added-viewers] (add-viewers (get-default-viewers) added-viewers))
@@ -421,7 +421,7 @@
                                                   [:div.flex.items-center (v/inspect-presented opts header-cell)]]))) header-row)]))})
 
 (def table-body-viewer
-  {:name :table/body :fetch-opts {:n 20}
+  {:name :table/body :page-size 20
    :render-fn '(fn [rows opts] (v/html (into [:tbody] (map-indexed (fn [idx row] (v/inspect-presented (update opts :path conj idx) row))) rows)))})
 
 (def table-row-viewer
@@ -539,7 +539,7 @@
   {:pred char? :render-fn '(fn [c] (v/html [:span.cmt-string.inspected-value "\\" c]))})
 
 (def string-viewer
-  {:pred string? :render-fn (quote v/quoted-string-viewer) :fetch-opts {:n 80}})
+  {:pred string? :render-fn (quote v/quoted-string-viewer) :page-size 80})
 
 (def number-viewer
   {:pred number? :render-fn (quote v/number-viewer)})
@@ -560,7 +560,7 @@
   {:pred boolean? :render-fn '(fn [x] (v/html [:span.cmt-bool.inspected-value (str x)]))})
 
 (def map-entry-viewer
-  {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :fetch-opts {:n 2}})
+  {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (v/html (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs))) :page-size 2})
 
 (def var-from-def-viewer
   {:pred var-from-def? :transform-fn (update-val (comp deref :nextjournal.clerk/var-from-def))})
@@ -571,16 +571,16 @@
                                                   (v/unreadable-edn-viewer x))))})
 
 (def vector-viewer
-  {:pred vector? :render-fn 'v/coll-viewer :opening-paren "[" :closing-paren "]" :fetch-opts {:n 20}})
+  {:pred vector? :render-fn 'v/coll-viewer :opening-paren "[" :closing-paren "]" :page-size 20})
 
 (def set-viewer
-  {:pred set? :render-fn 'v/coll-viewer :opening-paren "#{" :closing-paren "}" :fetch-opts {:n 20}})
+  {:pred set? :render-fn 'v/coll-viewer :opening-paren "#{" :closing-paren "}" :page-size 20})
 
 (def sequential-viewer
-  {:pred sequential? :render-fn 'v/coll-viewer :opening-paren "(" :closing-paren ")" :fetch-opts {:n 20}})
+  {:pred sequential? :render-fn 'v/coll-viewer :opening-paren "(" :closing-paren ")" :page-size 20})
 
 (def map-viewer
-  {:pred map? :name :map :render-fn 'v/map-viewer :opening-paren "{" :closing-paren "}" :fetch-opts {:n 10}})
+  {:pred map? :name :map :render-fn 'v/map-viewer :opening-paren "{" :closing-paren "}" :page-size 10})
 
 #?(:cljs (defn var->symbol [v] (if (sci.vars/var? v) (sci.vars/toSymbol v) (symbol v))))
 
@@ -699,7 +699,7 @@
                          (assoc :nextjournal/viewer {:render-fn 'v/table-error}))))})
 
 (def table-error-viewer
-  {:name :table-error :render-fn (quote v/table-error) :fetch-opts {:n 1}})
+  {:name :table-error :render-fn (quote v/table-error) :page-size 1})
 
 (def code-block-viewer
   {:name :clerk/code-block :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
@@ -718,7 +718,7 @@
    (def js-object-viewer
      {:name :js-array
       :pred goog/isObject
-      :fetch-opts {:n 20}
+      :page-size 20
       :opening-paren "{" :closing-paren "}"
       :render-fn '(fn [v opts] (v/html (v/tagged-value {:space? true} "#js" (v/map-view v opts))))
       :transform-fn (update-val (fn [^js o]
@@ -739,7 +739,7 @@
       :transform-fn (update-val seq)
       :render-fn '(fn [v opts] (v/html (v/tagged-value {:space? true} "#js" (v/coll-view v opts))))
       :opening-paren "[" :closing-paren "]"
-      :fetch-opts {:n 20}}))
+      :page-size 20}))
 
 (def result-viewer
   {:name :clerk/result :render-fn (quote v/result-viewer) :transform-fn mark-presented})
@@ -987,7 +987,7 @@
                           (tree-seq (some-fn map? vector?) #(cond-> % (map? %) vals) desc)))))
 
 (defn ->fetch-opts [wrapped-value]
-  (merge (-> wrapped-value ->viewer :fetch-opts)
+  (merge {:n (-> wrapped-value ->viewer :page-size)}
          (select-keys wrapped-value [:path :offset])))
 
 (defn get-elision [wrapped-value]
@@ -1030,7 +1030,7 @@
               (make-elision viewers fetch-opts))))))
 
 (defn present+paginate-string [{:as wrapped-value :nextjournal/keys [viewers viewer value]}]
-  (let [{:as elision :keys [n total path offset]} (and (-> viewer :fetch-opts :n)
+  (let [{:as elision :keys [n total path offset]} (and (:page-size viewer)
                                                        (get-elision wrapped-value))]
     (if (and n (< n total))
       (let [new-offset (min (+ (or offset 0) n) total)]

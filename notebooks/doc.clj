@@ -7,7 +7,6 @@
 ^{::clerk/visibility {:result :hide}}
 (def text-input
   {:pred ::clerk/var-from-def
-   :fetch-fn (fn [_ x] x)
    :transform-fn (comp (clerk/update-val (fn [{::clerk/keys [var-from-def]}]
                                            {:var-name (symbol var-from-def) :value @@var-from-def}))
                        clerk/mark-presented)
@@ -31,7 +30,7 @@
 ^{::clerk/viewers (clerk/add-viewers
                    [{:pred seq?
                      :render-fn '#(v/html (into [:div.border.rounded-md.bg-white.shadow.flex.flex-col.mb-1]
-                                                (v/inspect-children %2) %1)) :fetch-opts {:n 20}}
+                                                (v/inspect-children %2) %1)) :page-size 20}
                     {:pred string?
                      :render-fn '(fn [ns] (v/html [:button.text-xs.font-medium.font-sans.cursor-pointer.px-3.py-2.hover:bg-blue-100.text-slate-700.text-left
                                                    {:on-click #(v/clerk-eval `(reset! !ns-query ~ns))} ns]))}])}
