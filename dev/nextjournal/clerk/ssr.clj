@@ -2,7 +2,7 @@
   "Server-side-rendering using `reagent.dom.server` on GraalJS.
 
   Currently wip, can load the js bundle but needs more conditional for
-  `js/document`. or exclude libraries."
+  `js/document` or exclude libraries."
   (:require [clojure.java.io :as io]
             [clojure.edn :as edn]
             [nextjournal.clerk.config :as config])
