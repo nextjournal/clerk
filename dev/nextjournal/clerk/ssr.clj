@@ -1,4 +1,8 @@
 (ns nextjournal.clerk.ssr
+  "Server-side-rendering using `reagent.dom.server` on GraalJS.
+
+  Currently wip, can load the js bundle but needs more conditional for
+  `js/document`. or exclude libraries."
   (:require [clojure.java.io :as io]
             [clojure.edn :as edn]
             [nextjournal.clerk.config :as config])
@@ -22,6 +26,7 @@
     (.execute fn-ref args)))
 
 (def viewer-js-source
+  ;; run `bb build:js` on shell to generate
   (.build (Source/newBuilder "js" (slurp "build/viewer.js" #_(@config/!asset-map "/js/viewer.js")) "viewer.js")))
 
 (def polyfill-js-source
