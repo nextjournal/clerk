@@ -146,5 +146,5 @@
     (mount)))
 
 (defn ^:export ssr [state-str]
-  (init (assoc (sci-viewer/read-string state-str) :skip-mount? true))
+  (init (sci-viewer/read-string state-str))
   (dom-server/render-to-string [root]))

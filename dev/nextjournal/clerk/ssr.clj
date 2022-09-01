@@ -27,9 +27,6 @@
 (def polyfill-js-source
   (.build (Source/newBuilder "js" "function setTimeout(t) { };" "polyfills.js")))
 
-
-
-
 (comment
   (.eval context polyfill-js-source)
   (.eval context viewer-js-source)
