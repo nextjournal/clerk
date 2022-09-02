@@ -339,15 +339,16 @@
 #_(get-viewers nil nil)
 
 #?(:clj
-   (defn transform-result [{cell :nextjournal/value doc :nextjournal/opts}]
+   (defn transform-result [{:nextjournal/keys [value viewer] doc :nextjournal/opts}]
      (let [{:keys [inline-results? bundle?]} doc
-           {:as result :nextjournal/keys [value blob-id viewers]} (:result cell)
+           {:as result :nextjournal/keys [value blob-id viewers]} (:result value)
            blob-mode (cond
                        (and (not inline-results?) blob-id) :lazy-load
                        bundle? :inline ;; TODO: provide a separte setting for this
                        :else :file)
            blob-opts (assoc doc :blob-mode blob-mode :blob-id blob-id)
-           presented-result (process-blobs blob-opts (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
+           presented-result (process-blobs blob-opts (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)
+                                                              (select-keys viewer [:budget])))
            opts-from-form-meta (select-keys result [:nextjournal/width :nextjournal/opts])]
        (merge {:nextjournal/viewer :clerk/result
                :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (merge presented-result opts-from-form-meta))}
@@ -747,6 +748,7 @@
 
 (def result-block-viewer
   {:name :clerk/result-block
+   :budget 200
    :transform-fn (comp mark-presented
                        #?(:clj transform-result))})
 
@@ -894,9 +896,14 @@
     (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
   (let [viewers (->viewers wrapped-value)
         {:as viewer :keys [render-fn transform-fn]} (viewer-for viewers wrapped-value)
+        cond-dissoc-viewer (fn [wrapped-value viewer]
+                             (cond-> wrapped-value
+                               (= viewer (->viewer wrapped-value))
+                               (dissoc :nextjournal/viewer)))
         transformed-value (ensure-wrapped-with-viewers viewers
-                                                       (cond-> (dissoc wrapped-value :nextjournal/viewer)
-                                                         transform-fn transform-fn))
+                                                       (cond-> (assoc wrapped-value :nextjournal/viewer viewer)
+                                                         transform-fn transform-fn
+                                                         true (cond-dissoc-viewer viewer)))
         wrapped-value' (cond-> transformed-value
                          (-> transformed-value ->value wrapped-value?)
                          (merge (->value transformed-value)))]
@@ -1161,10 +1168,11 @@
   ([x] (present x {}))
   ([x opts]
    (-> (ensure-wrapped-with-viewers x)
-       (merge {:!budget (atom (:budget opts 200))
-               :path (:path opts [])
+       (merge {:path (:path opts [])
                :current-path (:current-path opts [])}
-              opts)
+              opts
+              (when-let [budget (:budget opts)]
+                {:!budget (atom (:budget opts 200))}))
        present*
        assign-closing-parens)))
 

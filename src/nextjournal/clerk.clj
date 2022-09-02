@@ -119,7 +119,6 @@
   "Adds `viewers` to the viewers associated with the current `*ns*`."
   [viewers] (v/add-viewers! viewers))
 
-
 (defn ^{:deprecated "0.8"} set-viewers!
   "Deprecated, please use `add-viewers!` instead."
   [viewers]
