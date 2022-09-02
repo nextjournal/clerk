@@ -149,7 +149,7 @@
 
 (def fib (lazy-cat [0 1] (map + fib (rest fib))))
 
-;; In addition, there's a number of built-in viewers that we can be
+;; In addition, there's a number of built-in viewers that can be
 ;; called explicity using functions.
 
 
@@ -248,9 +248,9 @@
 ;; `java.awt.image.BufferedImage` class, which is the native image
 ;; format of the JVM.
 ;;
-;; When combined with javax.imageio.ImageIO/read, one can easily load
-;; images in a variety of formats from a java.io.File, an
-;; java.io.InputStream, or any resource that a java.net.URL can
+;; When combined with `javax.imageio.ImageIO/read`, one can easily
+;; load images in a variety of formats from a `java.io.File`, an
+;; `java.io.InputStream`, or any resource that a `java.net.URL` can
 ;; address.
 ;;
 ;; For example, we can fetch a photo of De zaaier, Vincent van Gogh's
@@ -314,51 +314,41 @@
 ;; Or use it with Plotly or Vega Lite viewers to lay out a simple
 ;; dashboard:
 
-^{::clerk/visibility {:code :hide :result :hide}}
-(def donut-chart
-  (clerk/plotly {:data [{:values [27 11 25 8 1 3 25]
-                     :labels ["US" "China" "European Union" "Russian Federation" "Brazil" "India" "Rest of World"]
-                     :text "CO2"
-                     :textposition "inside"
-                     :domain {:column 1}
-                     :hoverinfo "label+percent+name"
-                     :hole 0.4
-                     :type "pie"}]
-             :layout {:showlegend false
-                      :width 200
-                      :height 200
-                      :annotations [{:font {:size 20} :showarrow false :x 0.5 :y 0.5 :text "CO2"}]}
-             :config {:responsive true}}))
+^{::clerk/visibility {:code :fold}}
+(do
+  (def donut-chart
+    (clerk/plotly {:data [{:values [27 11 25 8 1 3 25]
+                           :labels ["US" "China" "European Union" "Russian Federation" "Brazil" "India" "Rest of World"]
+                           :text "CO2"
+                           :textposition "inside"
+                           :domain {:column 1}
+                           :hoverinfo "label+percent+name"
+                           :hole 0.4
+                           :type "pie"}]
+                   :layout {:showlegend false
+                            :width 200
+                            :height 200
+                            :annotations [{:font {:size 20} :showarrow false :x 0.5 :y 0.5 :text "CO2"}]}
+                   :config {:responsive true}}))
 
-^{::clerk/visibility {:code :hide :result :hide}}
-(def contour-plot
-  (clerk/plotly {:data [{:z [[10 10.625 12.5 15.625 20]
-                         [5.625 6.25 8.125 11.25 15.625]
-                         [2.5 3.125 5.0 8.125 12.5]
-                         [0.625 1.25 3.125 6.25 10.625]
-                         [0 0.625 2.5 5.625 10]]
-                     :type "contour"}]}))
+  (def contour-plot
+    (clerk/plotly {:data [{:z [[10 10.625 12.5 15.625 20]
+                               [5.625 6.25 8.125 11.25 15.625]
+                               [2.5 3.125 5.0 8.125 12.5]
+                               [0.625 1.25 3.125 6.25 10.625]
+                               [0 0.625 2.5 5.625 10]]
+                           :type "contour"}]})))
 
-(clerk/col
-  (clerk/row donut-chart donut-chart donut-chart)
-  contour-plot)
+(clerk/col (clerk/row donut-chart donut-chart donut-chart)
+           contour-plot)
 
 ;; **Alternative notations**
 ;;
 ;; By default, `row` and `col` operate on `& rest` so you can pass any
 ;; number of items to the functions.  But the viewers are smart enough
-;; to accept any sequential list of items so you can assign the
-;; viewers via metadata on your data structures too.
-
-^{::clerk/viewer v/row}
-[image-1 image-2 image-3]
+;; to accept any sequential list of items.
 
 (v/row [image-1 image-2 image-3])
-
-^{::clerk/viewer v/col ::clerk/opts {:width 150}}
-[image-1 image-2 image-3]
-
-
 
 ;; ### 🤹🏻 Applying Viewers
 
@@ -403,6 +393,17 @@ v/default-viewers
 
 ;; #### 🎪 Presentation
 
+;; As we've seen, Clerk will only send an excerpt of a large data
+;; structure to the browser in order to not overload it.
+
+{:my-long-sequence (range 1000000)}
+
+;; As is the case in this example when a result is a tree, paginating
+;; the data structure can become necessary not only at the root level,
+;; but also at deeper levels. When writing your own viewers, it helps
+;; to understand how this recursive process works and how it can be
+;; customized.
+
 ;; On the JVM side, the result for each cell is _presented_. This is a
 ;; recursive function that does a depth-first traversal of a given
 ;; tree `x`, starting with the root node. It will select a viewer for
@@ -429,6 +430,8 @@ v/default-viewers
 ;; To stop Clerk's presentation from descending into child nodes, use
 ;; `clerk/mark-presented` as a `:transform-fn`. Compare the result
 ;; below in which `[1 2 3]` appears unaltered with what you see above.
+
+(range 100000)
 
 
 ^{::clerk/viewer show-raw-value}
@@ -552,7 +555,7 @@ v/table-viewer
 
 ;; #### 🥇 Selection
 
-;; Without a viewer specified, Clerk will go through the a sequence
+;; Without a viewer specified, Clerk will go through the sequence of
 ;; viewers and apply the `:pred` function in the viewer to find a
 ;; matching one. Use `v/viewer-for` to select a viewer for a given
 ;; value.
@@ -677,7 +680,8 @@ v/table-viewer
 ;; cell is shown:
 ^{::clerk/visibility {:code :show}} (range 25)
 
-;; While this one is hidden, without the ability to uncollapse it.
+;; While this code cell is hidden, without the ability to uncollapse
+;; it, only showing the result.
 ^{::clerk/visibility {:code :hide}} (shuffle (range 25))
 
 ;; When you'd like to hide the result of a cell, set
@@ -729,7 +733,7 @@ v/table-viewer
 ;; ### 🪣 Hashing
 ;; Then we can use this information to hash each expression.
 (def hashes
-  (ana/hash analyzed))
+  (:->hash (ana/hash analyzed)))
 
 ;; ### 🗃 Cached Evaluation
 
@@ -741,6 +745,7 @@ v/table-viewer
       (shuffle (range 15))))
 
 ;; We can look up the cache key using the var name in the hashes map.
+#_ FIXME-nil
 (when-let [form-hash (get hashes `rand-fifteen)]
   (let [hash (slurp (eval/->cache-file (str "@" form-hash)))]
     (eval/thaw-from-cas hash)))
@@ -759,6 +764,3 @@ v/table-viewer
         ds (next.jdbc/get-datasource {:dbtype "sqlite" :dbname "chinook.db"})]
     (with-open [conn (next.jdbc/get-connection ds)]
       (clerk/table (next.jdbc/execute! conn ["SELECT AlbumId, Bytes, Name, TrackID, UnitPrice FROM tracks"])))))
-
-
-;; ## 🛝 Slideshow Mode
