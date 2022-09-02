@@ -650,27 +650,6 @@ v/table-viewer
     Moving --> Crash
     Crash --> [*]")
 
-
-(clerk/with-viewer
-  {:render-fn '(fn [value]
-                
-                 (v/html (pr-str value)))}
-  [1 2 3])
-
-(clerk/with-viewer
-  {:render-fn '(fn [value]
-                
-                 (v/html (pr-str value)))
-   :transform-fn clerk/mark-presented}
-  [1 2 3])
-
-(clerk/with-viewer
-  {:render-fn '(fn [value]
-                
-                 (v/html (pr-str value)))
-   :transform-fn clerk/mark-preserve-keys}
-  {:hello "world" :my-keyword :foo})
-
 ;; ## 🙈 Controlling Visibility
 {:nextjournal.clerk/visibility {:code :fold}}
 
