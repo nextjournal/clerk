@@ -7,7 +7,70 @@ Changes can be:
 
 ## Unreleased
 
-...
+* 🌟 Support setting visibility for results 🙈
+
+    Specifying code cell & result visibility is now easier & more
+    powerful. Previously setting result visibility only possible
+    per-form using a `hide-result` viewer. You can now pass a map with
+    `:code` and `:result` keys to control code & result visibility
+    individually.
+
+    To set this per-document, put the visibility on the ns form like
+    for example:
+
+      (ns my-namespace
+        "This namespace will have code cells folded and results hidden"
+        {:nextjournal.clerk/visibility {:code :fold :result :hide}})
+
+    You can still override this per-form using metadata, so the
+    following form will be shown.
+    
+      ^{:nextjournal.clerk/visibility {:code :show :result :show}}
+      (inc 41)
+    
+    or change the defaults midway through the doc using a _visibility
+    marker_:
+    
+      {:nextjournal.clerk/visibility {:code :show :result :show}}
+            
+    Also support `:nextjournal.clerk/toc` setting on ns metadata.
+    
+* ⭐️ Fail eval if var is only present at runtime but not in file 🕵🏻
+    
+    This makes Clerk be more strict than the REPL and actually complain
+    when one still depends on a var no longer present in the file.
+    
+    The check is currently only performed for the notebook being shown iff
+    it starts with an `ns` form.
+    
+    
+* 💫 Rename viewer attribute `[:fetch-opts :n]` to `:page-size`
+* 💫 More subtle indication for folded code cells
+
+* 💫 Cut down of depedencies of `nextjournal.clerk.sci-viewer` in
+  order to simplify consumption as a library and slim down bundle by
+  290kb (73kb gzip)
+
+* 💫 Unbundle images when `:bundle?` is `false` (#208)
+
+    As a quick fix to make the Clerk Book viewable we're now writing
+    images for the static build to files when `:bundle?` is set to
+    false. In a follow-up we'll support absolute urls for the images
+    and introduce a separate flag for this.
+
+* 🐜 Don't attempt to check bounded count limit for non-freezable
+  things, fixes #199 (#201)
+* 🐜 Fix regression in showing sorted-map results
+* 🐜 Fix table viewer normalization error when given sorted map
+* 🐞 Use PngEncoder lib for 10x improvement in encoding performance (#197)
+* 🐞 Overflow per single result not by result container (#198)
+    
+    When result contains multiple tables, allow scrolling each table
+    individually instead of the entire result container. Also works
+    with plots.
+
+* 🐞 Equalizes vertical spacing between Markdown, code and results
+* 🐞 Fixes the quoted string viewer layout when expanded
 
 ## 0.9.513 (2022-07-18)
 
