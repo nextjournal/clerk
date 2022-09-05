@@ -117,7 +117,7 @@
 
 ;; ## Using `v/with-viewer`
 (c/card
-  (v/with-viewer
+ (v/with-viewer
    #(v/html
      [:div.relative
       [:div.h-2.mb-4.flex.rounded.bg-blue-200.overflow-hidden
@@ -130,19 +130,19 @@
                             (str "%"))}}]]])
    0.33))
 
-;; ## Notebook Viewer
+#_ ;; ## Notebook Viewer, fails ci right now but usage isn't quite right
 (c/card
-  (v/with-viewer :clerk/notebook
-                 {:blocks (map v/present
-                               [(v/with-viewer :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
-                                (v/code "(shuffle (range 10))")
-                                (v/with-viewer :clerk/code-block {:text "(+ 1 2 3)"})
-                                (v/md "# And some more\n And some more [markdown](https://daringfireball.net/projects/markdown/).")
-                                (v/code "(shuffle (range 10))")
-                                (v/md "## Some math \n This is a formula.")
-                                (v/tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")
-                                (v/plotly {:data [{:y (shuffle (range 10)) :name "The Federation"}
-                                                  {:y (shuffle (range 10)) :name "The Empire"}]})])}))
+ (v/with-viewer :clerk/notebook
+   {:blocks (map v/present
+                 [(v/with-viewer :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
+                  (v/code "(shuffle (range 10))")
+                  (v/with-viewer :clerk/code-block {:text "(+ 1 2 3)"})
+                  (v/md "# And some more\n And some more [markdown](https://daringfireball.net/projects/markdown/).")
+                  (v/code "(shuffle (range 10))")
+                  (v/md "## Some math \n This is a formula.")
+                  (v/tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")
+                  (v/plotly {:data [{:y (shuffle (range 10)) :name "The Federation"}
+                                    {:y (shuffle (range 10)) :name "The Empire"}]})])}))
 
 ;; ## Layouts
 ;; **FIXME**:  `v/html` cannot be nested
