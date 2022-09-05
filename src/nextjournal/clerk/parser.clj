@@ -20,23 +20,21 @@
 (defn ^:private legacy-doc-visibility [form]
   (when-let [visibility (-> form meta :nextjournal.clerk/visibility)]
     (when-let [visibility-set (cond
-                                (keyword? visibility) hash-set
+                                (keyword? visibility) #{visibility}
                                 (set? visibility) visibility)]
-      (some->> (some #(get visibility-set %) [:hide :fold])
-               (hash-map :code)))))
+      {:code (or (some #(get visibility-set %) [:hide :fold]) :show)})))
 
 #_(legacy-doc-visibility '^{:nextjournal.clerk/visibility :hide-ns} (ns foo))
 #_(legacy-doc-visibility '^{:nextjournal.clerk/visibility :fold} (ns foo))
 #_(legacy-doc-visibility '^{:nextjournal.clerk/visibility :hide} (ns foo))
 
 (defn ^:private legacy-form-visibility [form visibility]
-  (when-let [visibility-set (cond
-                              (keyword? visibility) hash-set
-                              (set? visibility) visibility)]
-    (let [visibility-set' (cond-> visibility-set
-                            (:hide-ns visibility-set) (conj visibility-set :hide))]
-      (merge (some->> (some #(get visibility-set' %) [:show :hide :fold])
-                      (hash-map :code))
+  (when-let [legacy-visibility (cond
+                                 (keyword? visibility) #{visibility}
+                                 (set? visibility) visibility)]
+    (let [visibility-set' (cond-> legacy-visibility
+                            (:hide-ns legacy-visibility) (conj legacy-visibility :hide))]
+      (merge {:code (or (some #(get visibility-set' %) [:hide :fold]) :show)}
              (when (or (some-> form meta :nextjournal.clerk/viewer name (= "hide-result"))
                        (and (seq? form) (symbol? (first form)) (= "hide-result" (name (first form)))))
                {:result :hide})))))

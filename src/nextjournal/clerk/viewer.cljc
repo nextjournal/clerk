@@ -813,7 +813,8 @@
    result-block-viewer
    tagged-value-viewer
    result-viewer
-   notebook-viewer])
+   notebook-viewer
+   hide-result-viewer])
 
 (defonce
   ^{:doc "atom containing a map of and per-namespace viewers or `:defaults` overridden viewers."}
