@@ -261,15 +261,13 @@
   ([viewer-opts x] (with-viewer v/katex-viewer viewer-opts x)))
 
 (defn hide-result
-  "Hides the result of evaluating `x`.
-
-  Supports an optional first `viewer-opts` map arg with the following optional keys:
-
-  * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
-  * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
-  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn"
+  "Deprecated, please put ^{:nextjournal.clerk/visibility {:result :hide}} metadata on the form instead."
+  {:deprecated "0.10"}
   ([x] (hide-result {} x))
-  ([viewer-opts x] (with-viewer v/hide-result-viewer viewer-opts x)))
+  ([viewer-opts x]
+   (binding [*out* *err*]
+     (prn "`hide-result` has been deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead."))
+   (with-viewer v/hide-result-viewer viewer-opts x)))
 
 
 (defn code

@@ -366,9 +366,6 @@
 (def hide-result-viewer
   {:name :hide-result :transform-fn (fn [_] nil)})
 
-(defn result-hidden? [result]
-  (contains? #{:hide-result hide-result-viewer} (-> result ->value ->viewer)))
-
 (defn ->display [{:as code-cell :keys [result visibility]}]
   (let [{:keys [code result]} visibility]
     {:result? (not= :hide result)
@@ -816,8 +813,7 @@
    result-block-viewer
    tagged-value-viewer
    result-viewer
-   notebook-viewer
-   hide-result-viewer])
+   notebook-viewer])
 
 (defonce
   ^{:doc "atom containing a map of and per-namespace viewers or `:defaults` overridden viewers."}
@@ -1272,11 +1268,19 @@
 (def row          (partial with-viewer-extracting-opts row-viewer))
 (def col          (partial with-viewer-extracting-opts col-viewer))
 (def tex          (partial with-viewer katex-viewer))
-(def hide-result  (partial with-viewer hide-result-viewer))
 (def notebook     (partial with-viewer (:name notebook-viewer)))
 (def code         (partial with-viewer code-viewer))
 (defn doc-url [path]
   (->viewer-eval (list 'v/doc-url path)))
+
+(defn hide-result
+  "Deprecated, please put ^{:nextjournal.clerk/visibility {:result :hide}} metadata on the form instead."
+  {:deprecated "0.10"}
+  ([x] #?(:clj (hide-result {} x)) :cljs x)
+  ([_viewer-opts x]
+   #?(:clj (binding [*out* *err*]
+             (prn "`hide-result` has been deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead.")))
+   x))
 
 (def eval-cljs-result-viewer
   {:transform-fn mark-presented

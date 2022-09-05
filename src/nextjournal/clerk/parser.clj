@@ -16,17 +16,49 @@
 (defn remove-leading-semicolons [s]
   (str/replace s #"^[;]+" ""))
 
+
+(defn ^:private legacy-doc-visibility [form]
+  (when-let [visibility (-> form meta :nextjournal.clerk/visibility)]
+    (when-let [visibility-set (cond
+                                (keyword? visibility) hash-set
+                                (set? visibility) visibility)]
+      (some->> (some #(get visibility-set %) [:hide :fold])
+               (hash-map :code)))))
+
+#_(legacy-doc-visibility '^{:nextjournal.clerk/visibility :hide-ns} (ns foo))
+#_(legacy-doc-visibility '^{:nextjournal.clerk/visibility :fold} (ns foo))
+#_(legacy-doc-visibility '^{:nextjournal.clerk/visibility :hide} (ns foo))
+
+(defn ^:private legacy-form-visibility [form visibility]
+  (when-let [visibility-set (cond
+                              (keyword? visibility) hash-set
+                              (set? visibility) visibility)]
+    (let [visibility-set' (cond-> visibility-set
+                            (:hide-ns visibility-set) (conj visibility-set :hide))]
+      (merge (some->> (some #(get visibility-set' %) [:show :hide :fold])
+                      (hash-map :code))
+             (when (or (some-> form meta :nextjournal.clerk/viewer name (= "hide-result"))
+                       (and (seq? form) (symbol? (first form)) (= "hide-result" (name (first form)))))
+               {:result :hide})))))
+
+#_(legacy-form-visibility '^{:nextjournal.clerk/visibility :hide-ns} (ns foo) :hide-ns)
+#_(legacy-form-visibility '^{:nextjournal.clerk/visibility :fold} (ns foo) :fold)
+#_(legacy-form-visibility '^{:nextjournal.clerk/visibility :hide} (ns foo) :hide)
+#_(legacy-form-visibility '^{:nextjournal.clerk/visibility :show :nextjournal.clerk/viewer :hide-result} (def my-range (range 600)) :show)
+#_(legacy-form-visibility '^{:nextjournal.clerk/visibility :show :nextjournal.clerk/viewer nextjournal.clerk/hide-result} (def my-range (range 500)) :show)
+
 (defn visibility-marker? [form]
   (and (map? form) (contains? form :nextjournal.clerk/visibility)))
 
 (defn parse-visibility [form visibility]
-  (when-let [visibility-map (and visibility (cond->> visibility (not (map? visibility)) (hash-map :code)))]
-    (when-not (and (every? #{:code :result} (keys visibility-map))
-                   (every? #{:hide :show :fold} (vals visibility-map)))
-      (throw (ex-info "Invalid `:nextjournal.clerk/visibility`, please pass a map with `:code` and `:result` keys, allowed values are `:hide`, `:show` and `:fold`."
-                      (cond-> {:visibility visibility}
-                        form (assoc :form form)))))
-    visibility-map))
+  (or (legacy-form-visibility form visibility) ;; TODO: drop legacy visibiliy support before 1.0
+      (when-let [visibility-map (and visibility (cond->> visibility (not (map? visibility)) (hash-map :code)))]
+        (when-not (and (every? #{:code :result} (keys visibility-map))
+                       (every? #{:hide :show :fold} (vals visibility-map)))
+          (throw (ex-info "Invalid `:nextjournal.clerk/visibility`, please pass a map with `:code` and `:result` keys, allowed values are `:hide`, `:show` and `:fold`."
+                          (cond-> {:visibility visibility}
+                            form (assoc :form form)))))
+        visibility-map)))
 
 #_(parse-visibility nil nil)
 #_(parse-visibility nil {:code :fold :result :hide})
@@ -47,6 +79,10 @@
 
 (defn ->doc-visibility [form]
   (cond
+    ;; TODO: drop legacy visibility support before 1.0
+    (and (ns? form) (legacy-doc-visibility form))
+    (legacy-doc-visibility form)
+    
     (ns? form)
     (parse-visibility form (merge (-> form second meta :nextjournal.clerk/visibility)
                                   (some :nextjournal.clerk/visibility form)))
