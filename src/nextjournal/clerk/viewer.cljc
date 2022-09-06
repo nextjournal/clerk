@@ -111,7 +111,8 @@
 (defn normalize-viewer-opts [opts]
   (when-not (map? opts)
     (throw (ex-info "normalize-viewer-opts not passed `map?` opts" {:opts opts})))
-  (set/rename-keys opts {:nextjournal.clerk/viewer :nextjournal/viewer
+  (set/rename-keys opts {:nextjournal.clerk/presentation-budget :nextjournal/presentation-budget
+                         :nextjournal.clerk/viewer :nextjournal/viewer
                          :nextjournal.clerk/viewers :nextjournal/viewers
                          :nextjournal.clerk/opts :nextjournal/opts
                          :nextjournal.clerk/width :nextjournal/width}))
@@ -339,16 +340,18 @@
 #_(get-viewers nil nil)
 
 #?(:clj
-   (defn transform-result [{cell :nextjournal/value doc :nextjournal/opts}]
+   (defn transform-result [{cell :nextjournal/value doc :nextjournal/opts result-block-viewer :nextjournal/viewer-applied}]
      (let [{:keys [inline-results? bundle?]} doc
-           {:as result :nextjournal/keys [value blob-id viewers]} (:result cell)
+           {:as result :nextjournal/keys [value blob-id viewers presentation-budget]} (:result cell)
            blob-mode (cond
                        (and (not inline-results?) blob-id) :lazy-load
                        bundle? :inline ;; TODO: provide a separte setting for this
                        :else :file)
            blob-opts (assoc doc :blob-mode blob-mode :blob-id blob-id)
-           presented-result (process-blobs blob-opts (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
-           opts-from-form-meta (select-keys result [:nextjournal/width :nextjournal/opts])]
+           presented-result (process-blobs blob-opts (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)
+                                                              (when-let [budget (or presentation-budget (:presentation-budget result-block-viewer))]
+                                                                {:budget budget})))
+           opts-from-form-meta (select-keys result [:nextjournal/width :nextjournal/opts :nextjournal/presentation-budget])]
        (merge {:nextjournal/viewer :clerk/result
                :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (merge presented-result opts-from-form-meta))}
                                                (catch Throwable _e
@@ -747,6 +750,7 @@
 
 (def result-block-viewer
   {:name :clerk/result-block
+   :presentation-budget 200
    :transform-fn (comp mark-presented
                        #?(:clj transform-result))})
 
@@ -887,7 +891,7 @@
 #_(ensure-wrapped-with-viewers {:nextjournal/value 42 :nextjournal/viewers [:boo]})
 
 (defn ->opts [wrapped-value]
-  (select-keys wrapped-value [:nextjournal/width :nextjournal/opts :!budget :budget :path :current-path :offset]))
+  (select-keys wrapped-value [:nextjournal/width :nextjournal/opts :!budget :path :current-path :offset]))
 
 (defn apply-viewers* [wrapped-value]
   (when (empty? (->viewers wrapped-value))
@@ -895,7 +899,9 @@
   (let [viewers (->viewers wrapped-value)
         {:as viewer :keys [render-fn transform-fn]} (viewer-for viewers wrapped-value)
         transformed-value (ensure-wrapped-with-viewers viewers
-                                                       (cond-> (dissoc wrapped-value :nextjournal/viewer)
+                                                       (cond-> (-> wrapped-value
+                                                                   (dissoc :nextjournal/viewer)
+                                                                   (assoc :nextjournal/viewer-applied viewer))
                                                          transform-fn transform-fn))
         wrapped-value' (cond-> transformed-value
                          (-> transformed-value ->value wrapped-value?)
@@ -1171,9 +1177,9 @@
   ([x] (present x {}))
   ([x opts]
    (-> (ensure-wrapped-with-viewers x)
-       (merge {:!budget (atom (:budget opts 200))
-               :path (:path opts [])
-               :current-path (:current-path opts [])}
+       (merge (cond-> {:path (:path opts [])
+                       :current-path (:current-path opts [])}
+                (:budget opts) (assoc :!budget (atom (:budget opts))))
               opts)
        present*
        assign-closing-parens
