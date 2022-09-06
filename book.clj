@@ -654,49 +654,69 @@ v/table-viewer
     Crash --> [*]")
 
 ;; ## 🙈 Controlling Visibility
-{:nextjournal.clerk/visibility {:code :fold}}
 
-;;    (ns visibility
-;;      {:nextjournal.clerk/visibility {:code :fold}})
-
-;; Visibility for code and results can be controlled document-wide or
-;; per top-level form.  By default, Clerk will show the code and the
+;; Visibility for code and results can be controlled document-wide and
+;; per top-level form. By default, Clerk will always show code and 
 ;; results for a notebook.
 
-;; You can control visibility in Clerk by setting the
-;; `:nextjournal.clerk/visibility` which takes a map with keys `:code`
-;; and `:result` to control the visibility for the code cells and its
-;; results.
-;; 
-;; Valid values are `:show`, `:hide` and `:fold` (only valid for code
-;; cells).  A declaration on the `ns` metadata map lets all code cells
-;; in the notebook inherit the value.
+;; You can use a map of the following shape to set the visibility of
+;; code and results individually:
+;;
+;;    {:nextjournal.clerk/visibility {:code :hide :result :show}}
+;;
+;; The above example will hide the code and show only results.
+;;
+;; Valid values are `:show`, `:hide` and `:fold` (only available for `:code`).
+;; Using `{:code :fold}` will hide the code cell initially but show an
+;; indicator to toggle its visibility:
 
-;; So a cell will only show the result now while you can uncollapse
-;; the code cell.
-(+ 39 3)
+^{::clerk/visibility {:code :fold}} (shuffle (range 25))
 
-;; You can override the documents default per-form. So the following
-;; cell is shown:
-^{::clerk/visibility {:code :show}} (range 25)
+;; The visibility map can be used in the following ways:
 
-;; While this code cell is hidden, without the ability to uncollapse
-;; it, only showing the result.
+;; **Set document defaults via the `ns` form**
+;;
+;;    (ns visibility
+;;      {:nextjournal.clerk/visibility {:code :fold}})
+;;
+;; The above example will hide all code cells by default but show an indicator
+;; to toggle their visibility instead. In this case results will always show
+;; because that’s the default.
+;;
+;; **As metadata to control a single top-level form**
+;;
+;;    ^{::clerk/visibility {:code :hide}} (shuffle (range 25))
+;;
+;; This will hide the code but only show the result: 
+
 ^{::clerk/visibility {:code :hide}} (shuffle (range 25))
 
-;; When you'd like to hide the result of a cell, set
-;; `::clerk/visibility` should contain `{:result :hide}`.
-^{::clerk/visibility {:code :show :result :hide}}
-(def my-range (range 500))
+;; Setting visibility as metadata will override the document-wide
+;; visibility settings for this one specific form.
 
-(rand-int 42)
-
-;; You can change the defaults applied to the document uing a
-;; top-level map with `:nextjournal.clerk/visibility` key, so the code
-;; cells below this marker will all be shown.
-{:nextjournal.clerk/visibility {:code :show}}
-
-(rand-int (inc 41))
+;; **As top-level form to change the document defaults**
+;;
+;; Independently of what defaults are set via your `ns` form,
+;; you can use a top-level map as a marker to override the visibility
+;; settings for any forms following it.
+;;
+;; Example: Code is hidden by default but you want to show code for all
+;; top-level forms after a certain point:
+;;
+;;    (ns visibility
+;;      {:nextjournal.clerk/visibility {:code :hide}})
+;;
+;;    (+ 39 3) ;; code will be hidden
+;;    (range 25) ;; code will be hidden
+;;    
+;;    {:nextjournal.clerk/visibility {:code :show}}
+;;    
+;;    (range 500) ;; code will be visible
+;;    (rand-int 42) ;; code will be visible
+;;
+;; This comes in quite handy for debugging too! You have to make sure
+;; to use the fully qualified (`:nextjournal.clerk/visbility`) keyword
+;; for this to work, though.
 
 ;; ## ⚡️ Incremental Computation
 
