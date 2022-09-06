@@ -7,6 +7,10 @@ Changes can be:
 
 ## Unreleased
 
+...
+
+## 0.10.550 (2022-09-06)
+
 * 🌟 Support setting visibility for results 🙈
 
     Specifying code cell & result visibility is now easier & more
