@@ -714,9 +714,7 @@ v/table-viewer
 ;;    (range 500) ;; code will be visible
 ;;    (rand-int 42) ;; code will be visible
 ;;
-;; This comes in quite handy for debugging too! You have to make sure
-;; to use the fully qualified (`:nextjournal.clerk/visbility`) keyword
-;; for this to work, though.
+;; This comes in quite handy for debugging too!
 
 ;; ## ⚡️ Incremental Computation
 
