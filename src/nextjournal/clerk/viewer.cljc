@@ -1380,22 +1380,23 @@
         xs (->value wrapped-value-applied)]
     #_(prn :xs xs :type (type xs) :path path)
     (when (and !budget (not presented?))
-      (swap! !budget #(max (dec %) 0)))
-    (-> (merge (->opts wrapped-value-applied)
-               (when (empty? path) (select-keys wrapped-value [:present-elision-fn]))
-               (with-viewer (->viewer wrapped-value-applied)
-                 (cond presented?
-                       wrapped-value-applied
+      (swap! !budget dec))
+    (when-not (neg? (or (some-> !budget deref) 0))
+      (-> (merge (->opts wrapped-value-applied)
+                 (when (empty? path) (select-keys wrapped-value [:present-elision-fn]))
+                 (with-viewer (->viewer wrapped-value-applied)
+                   (cond presented?
+                         wrapped-value-applied
 
-                       (string? xs)
-                       (present+paginate-string wrapped-value-applied)
+                         (string? xs)
+                         (present+paginate-string wrapped-value-applied)
 
-                       (and xs (seqable? xs))
-                       (present+paginate-children wrapped-value-applied)
+                         (and xs (seqable? xs))
+                         (present+paginate-children wrapped-value-applied)
 
-                       :else ;; leaf value
-                       xs)))
-        process-wrapped-value)))
+                         :else ;; leaf value
+                         xs)))
+          process-wrapped-value))))
 
 (defn assign-content-lengths [wrapped-value]
   (w/postwalk
