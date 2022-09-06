@@ -34,6 +34,12 @@
                                  (today))))
        (spit "CHANGELOG.md")))
 
+(defn update-readme []
+  (->> (str/replace (slurp "README.md")
+                    (re-pattern "\\{io.github.nextjournal/clerk \\{:mvn/version \".+\"\\}\\}")
+                    (str "{io.github.nextjournal/clerk {:mvn/version " (pr-str (shared/version)) "}}"))
+       (spit "README.md")))
+
 (defn tag []
   (let [tag (str "v" (shared/version))]
     (shell "git tag" tag)))
@@ -41,9 +47,11 @@
 (defn publish []
   (update-meta)
   (update-changelog)
+  (update-readme)
   (shell "git add"
          "resources/viewer-js-hash"
          "resources/META-INF"
+         "README.md"
          "CHANGELOG.md")
   (shell (str "git commit -m v" (shared/version)))
   (tag)
