@@ -43,16 +43,15 @@
             :task (apply clojure "-X:test" *command-line-args*)}
 
   test:static-app {:doc "Run UI tests for current SHA. Provide SHA as command line arg."
-                   :depends [yarn-install]
-                   :task (shell {:dir "ui_tests"}
-                                "yarn nbb -m playwright-tests"
-                                (or (when-let [args (not-empty (cli/parse-opts *command-line-args*))]
-                                      (cond-> args
-                                        (contains? args :file)
-                                        (assoc :url (str "file://" (fs/cwd) fs/file-separator (:file args)))))
-                                    {:sha (-> (shell {:out :string} "git rev-parse HEAD")
-                                              :out
-                                              str/trim)}))}
+                   :task (do (shell {:dir "ui_tests"} "yarn install")
+                             (shell {:dir "ui_tests"} "yarn nbb -m playwright-tests"
+                                    (or (when-let [args (not-empty (cli/parse-opts *command-line-args*))]
+                                          (cond-> args
+                                            (contains? args :file)
+                                            (assoc :url (str "file://" (fs/cwd) fs/file-separator (:file args)))))
+                                        {:sha (-> (shell {:out :string} "git rev-parse HEAD")
+                                                  :out
+                                                  str/trim)})))}
 
   update-meta {:doc "Updates meta.edn with current version (based on commit count currently)."
                :task (t/update-meta)}
