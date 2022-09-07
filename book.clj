@@ -387,68 +387,64 @@ v/default-viewers
 
 (assoc (frequencies (mapcat keys v/default-viewers)) :total (count v/default-viewers))
 
-;; We have a total of 40 viewers in the defaults. Let's start with a
+;; We have a total of 41 viewers in the defaults. Let's start with a
 ;; simple example and explain the different extensions points in the
 ;; viewer api.
 
 
 ;; #### 🎪 Presentation
 
-;; As we've seen, Clerk will only send an excerpt of a large data
-;; structure to the browser in order to not overload it.
+;; Clerk's rendering happens in the browser. On the Clojure-side, a
+;; given document is _presented_. Presenting takes a value and
+;; transforms it such that Clerk can send it to the browser where it
+;; will be rendered.
 
-{:my-long-sequence (range 1000000)}
 
-;; As is the case in this example when a result is a tree, paginating
-;; the data structure can become necessary not only at the root level,
-;; but also at deeper levels. When writing your own viewers, it helps
-;; to understand how this recursive process works and how it can be
-;; customized.
-
-;; On the JVM side, the result for each cell is _presented_. This is a
-;; recursive function that does a depth-first traversal of a given
-;; tree `x`, starting with the root node. It will select a viewer for
-;; this root node and unless told otherwise, descend further down the
-;; tree to present its child nodes.
-
-^{::clerk/visibility {:code :hide :result :hide}}
+^{::clerk/visibility {:code :fold :result :hide}}
 (do
   (set! *print-namespace-maps* false)
   (defn show-raw-value [x]
     (clerk/code (with-out-str (clojure.pprint/pprint x)))))
 
-^{::clerk/viewer show-raw-value}
-(v/present [1 2 3])
+;; Let's start with one of the simplest examples. You can see that
+;; `present` takes our value `1` and transforms it into a map, with
+;; `1` under a `:nextjournal/value` key and the number viewer assigned
+;; under the `:nextjournal/viewer` key.  We call this map a
+;; `wrapped-value`.
 
-;; This data structure above is what is sent over Clerk's websocket to
-;; the browser, where it will be read and displayed. The viewer api
-;; takes care of paginating long sequences as to not overload the
-;; browser. But this presentation and hence tranformation of nodes
-;; futher down the tree isn't always what you want. For example, the
-;; `plotly` or `vl` viewers want to receive the child value unaltered
-;; in order to use it as a spec.
+
+^{::clerk/viewer show-raw-value}
+(v/present 1)
+
+;; This data structure is is sent over Clerk's websocket to the
+;; browser, where it will be displayed using the `:render-fn` found in
+;; the `:nextjournal/viewer` key.
+
+;; Now onto something slightly more complex, `#{1 2 3}`.
+
+^{::clerk/viewer show-raw-value}
+(v/present #{1 2 3})
+
+
+;; Here, we're giving it a set with 1, 2, 3 in it. In its generalized
+;; form, `present` is a function that does a depth-first traversal of
+;; a given tree, starting at the root node. It will select a viewer
+;; for this root node, and unless told otherwise, descend further down
+;; the tree to present its child nodes.
 ;;
-;; To stop Clerk's presentation from descending into child nodes, use
-;; `clerk/mark-presented` as a `:transform-fn`. Compare the result
-;; below in which `[1 2 3]` appears unaltered with what you see above.
+;; Compare this with the simple `1` example above! You should
+;; recognize the leaf values. Also note that the container is no
+;; longer a set, but it has been transformed into a vector. This
+;; transformation exists to support pagination of long unordered
+;; sequences like maps and sets and so we can efficiently access a
+;; value inside this tree using `get-in`.
 
-(range 100000)
+;; You might ask yourself why we don't just send the unmodified value
+;; to the browser. For one, we could easily overload the browser with
+;; too much data. Secondly we will look at examples of being able to
+;; select viewers based on Clojure and Java types, which cannot be
+;; serialized and sent to the browser.
 
-
-^{::clerk/viewer show-raw-value}
-(v/present (clerk/with-viewer {:transform-fn clerk/mark-presented
-                               :render-fn '(fn [x] (v/html [:pre (pr-str x)]))}
-             [1 2 3]))
-
-;; Clerk's presentation will also transform maps into sequences in
-;; order to paginate large maps. When you're dealing with a map that
-;; you know is bounded and would like to preserve its keys, there's
-;; `clerk/mark-preserve-keys`. This will still transform (and
-;; paginate) the values of the map, but leave the keys unaltered.
-
-^{::clerk/viewer show-raw-value}
-(v/present (clerk/with-viewer {:transform-fn clerk/mark-preserve-keys}
-             {:hello 42}))
 
 ;; #### ⚙️ Transform
 
@@ -499,6 +495,33 @@ v/table-viewer
 
 (clerk/with-viewer custom-table-viewer
   {:col/a [1 2 3 4] :col/b [1 2 3] :col/c [1 2 3]})
+
+;; #### 🐢 Recursion
+
+;; But this presentation and hence tranformation of nodes
+;; further down the tree isn't always what you want. For example, the
+;; `plotly` or `vl` viewers want to receive the child value unaltered
+;; in order to use it as a spec.
+;;
+;; To stop Clerk's presentation from descending into child nodes, use
+;; `clerk/mark-presented` as a `:transform-fn`. Compare the result
+;; below in which `[1 2 3]` appears unaltered with what you see above.
+
+^{::clerk/viewer show-raw-value}
+(v/present (clerk/with-viewer {:transform-fn clerk/mark-presented
+                               :render-fn '(fn [x] (v/html [:pre (pr-str x)]))}
+             [1 2 3]))
+
+;; Clerk's presentation will also transform maps into sequences in
+;; order to paginate large maps. When you're dealing with a map that
+;; you know is bounded and would like to preserve its keys, there's
+;; `clerk/mark-preserve-keys`. This will still transform (and
+;; paginate) the values of the map, but leave the keys unaltered.
+
+^{::clerk/viewer show-raw-value}
+(v/present (clerk/with-viewer {:transform-fn clerk/mark-preserve-keys}
+             {:hello 42}))
+
 
 ;; #### 🔬 Render
 
