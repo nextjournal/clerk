@@ -1,4 +1,4 @@
-;; # 📓 Clerk Documentation
+;; # 📓 Book of Clerk
 ^{:nextjournal.clerk/visibility {:code :hide}}
 (ns docs
   {:nextjournal.clerk/toc true}
@@ -311,8 +311,17 @@
  (clerk/col image-2 (caption "Figure 2: Decorative B"))
  (clerk/col image-3 (caption "Figure 3: Decorative C")))
 
-;; Or use it with Plotly or Vega Lite viewers to lay out a simple
-;; dashboard:
+;; **Alternative notations**
+;;
+;; By default, `row` and `col` operate on `& rest` so you can pass any
+;; number of items to the functions.  But the viewers are smart enough
+;; to accept any sequential list of items.
+
+(v/row [image-1 image-2 image-3])
+
+;; ### 🍱 Composing Viewers
+
+;; Viewers compose, so you can for example use the plotly viewer inside the grid viewers.
 
 ^{::clerk/visibility {:code :fold}}
 (do
@@ -341,14 +350,6 @@
 
 (clerk/col (clerk/row donut-chart donut-chart donut-chart)
            contour-plot)
-
-;; **Alternative notations**
-;;
-;; By default, `row` and `col` operate on `& rest` so you can pass any
-;; number of items to the functions.  But the viewers are smart enough
-;; to accept any sequential list of items.
-
-(v/row [image-1 image-2 image-3])
 
 ;; ### 🤹🏻 Applying Viewers
 
