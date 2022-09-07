@@ -2,16 +2,13 @@
   {:clj-kondo/config '{:skip-comments false}}
   (:require ["child_process" :as cp]
             ["playwright$default" :refer [chromium]]
+            [clojure.edn :as edn]
             [clojure.string :as str]
             [clojure.test :as t :refer [deftest is async use-fixtures]]
             [nbb.core :refer [await]]
             [promesa.core :as p]))
 
-(def sha (or (first *command-line-args*)
-             (str (cp/execSync "git rev-parse HEAD"))))
-
-(def index (str/replace "https://snapshots.nextjournal.com/clerk/build/{{sha}}/index.html"
-                        "{{sha}}" sha))
+(defonce !index (atom nil))
 
 (def browser (atom nil))
 
@@ -65,13 +62,13 @@
                                          (not (str/ends-with?
                                                (.-url (.location msg)) "favicon.ico")))
                                 (swap! console-errors conj msg))))
-                     _ (goto page index)
+                     _ (goto page @!index)
                      _ (is (-> (.locator page "h1:has-text(\"Clerk\")")
                                (.isVisible #js {:timeout 10000})))
                      links (-> (.locator page "text=/.*\\.clj$/i")
                                (.allInnerTexts))
                      links (map (fn [link]
-                                  (str index "#/" link)) links)]
+                                  (str @!index "#/" link)) links)]
                (p/run! #(test-notebook page %) links)
                (is (zero? (count @console-errors))
                    (str/join "\n" (map (fn [msg]
@@ -104,7 +101,13 @@
        vals
        (filter (comp :test meta))))
 
-(defn -main [& _args]
+(defn args-map->index [{:keys [sha url]}]
+  (cond
+    sha (str/replace "https://snapshots.nextjournal.com/clerk/build/{{sha}}/index.html" "{{sha}}" sha)
+    url url))
+
+(defn -main [args-map-str]
+  (prn :url (reset! !index (args-map->index (edn/read-string args-map-str))))
   (t/test-vars (get-test-vars)))
 
 (comment

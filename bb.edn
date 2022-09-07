@@ -1,4 +1,4 @@
-{:min-bb-version "0.7.6"
+{:min-bb-version "0.9.159"
  :paths ["bb"]
  :deps {io.github.nextjournal/dejavu
         {:git/sha "3c4cf5e4dda3648e0d4c575a3433d19c511dd3e5"}}
@@ -7,7 +7,8 @@
   ([tasks :as t]
    [clojure.string :as str]
    [babashka.process :as p]
-   [babashka.fs :as fs])
+   [babashka.fs :as fs]
+   [babashka.cli :as cli])
 
   copy-viewer-css {:doc "TODO: please complement this docstring"
                    :task
@@ -36,18 +37,21 @@
               :depends [build:js]}
 
   build:static-app {:doc "Builds a static app with default notebooks"
-                    :depends [release:js]
-                    :task (clojure "-X:demo nextjournal.clerk/build-static-app!")}
+                    :task (apply clojure "-X:demo:nextjournal/clerk" *command-line-args*)}
 
   test:clj {:doc "Run clojure tests"
             :task (apply clojure "-X:test" *command-line-args*)}
 
   test:static-app {:doc "Run UI tests for current SHA. Provide SHA as command line arg."
-                   :task (do
-                           (shell {:dir "ui_tests"} "yarn install")
-                           (apply shell {:dir "ui_tests"}
-                                  "yarn nbb -m playwright-tests"
-                                  (or *command-line-args* [(t/latest-sha)])))}
+                   :task (do (shell {:dir "ui_tests"} "yarn install")
+                             (shell {:dir "ui_tests"} "yarn nbb -m playwright-tests"
+                                    (or (when-let [args (not-empty (cli/parse-opts *command-line-args*))]
+                                          (cond-> args
+                                            (contains? args :file)
+                                            (assoc :url (str "file://" (fs/cwd) fs/file-separator (:file args)))))
+                                        {:sha (-> (shell {:out :string} "git rev-parse HEAD")
+                                                  :out
+                                                  str/trim)})))}
 
   update-meta {:doc "Updates meta.edn with current version (based on commit count currently)."
                :task (t/update-meta)}
