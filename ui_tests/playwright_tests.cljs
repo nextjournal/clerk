@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:skip-comments false}}
   (:require ["child_process" :as cp]
             ["playwright$default" :refer [chromium]]
+            [clojure.edn :as edn]
             [clojure.string :as str]
             [clojure.test :as t :refer [deftest is async use-fixtures]]
             [nbb.core :refer [await]]
@@ -105,8 +106,8 @@
     sha (str/replace "https://snapshots.nextjournal.com/clerk/build/{{sha}}/index.html" "{{sha}}" sha)
     url url))
 
-(defn -main [& args]
-  (prn :url (reset! !index (args-map->index (into {} (map read-string) args))))
+(defn -main [args-map-str]
+  (prn :url (reset! !index (args-map->index (edn/read-string args-map-str))))
   (t/test-vars (get-test-vars)))
 
 (comment
