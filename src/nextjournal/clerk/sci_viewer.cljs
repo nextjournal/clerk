@@ -310,7 +310,7 @@
       (swap! !expanded-at (fn [expanded-at]
                             (reduce
                               (fn [acc [path expanded?]]
-                                (if (and (vector? path) (= (count path) hover-path-count))
+                                (if (and (coll? path) (vector? path) (= (count path) hover-path-count))
                                   (assoc acc path (not hover-path-expanded?))
                                   (assoc acc path expanded?)))
                               {}

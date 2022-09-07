@@ -1114,7 +1114,7 @@
        x))
    wrapped-value))
 
-(defn compute-expanded-at [{:as state :keys [indents expanded-at prev-type]}
+#_(defn compute-expanded-at [{:as state :keys [indents expanded-at prev-type]}
                            {:nextjournal/keys [value]
                             :keys [content-length path type]
                             :or {content-length 0}}]
@@ -1136,11 +1136,21 @@
       (reduce compute-expanded-at state' value)
       state')))
 
-(defn assign-expanded-at [wrapped-value]
+#_(defn assign-expanded-at [wrapped-value]
   (cond-> wrapped-value
     (:content-length wrapped-value)
     (assoc :nextjournal/expanded-at
-           (:expanded-at (compute-expanded-at {:indents [] :expanded-at {}} wrapped-value)))))
+           (:expanded-at (compute-expanded-at {:expanded-at {}} wrapped-value)))))
+
+(defn compute-expanded-at [{:as state :keys [expanded-at]}
+                           {:nextjournal/keys [value] :keys [path]}]
+  (let [state' (assoc state :expanded-at (assoc expanded-at path false))]
+    (if (vector? value)
+      (reduce compute-expanded-at state' value)
+      state')))
+
+(defn assign-expanded-at [wrapped-value]
+  (assoc wrapped-value :nextjournal/expanded-at (:expanded-at (compute-expanded-at {:expanded-at {}} wrapped-value))))
 
 (comment
   (-> (compute-expanded-at
@@ -1166,7 +1176,8 @@
                :current-path (:current-path opts [])}
               opts)
        present*
-       assign-closing-parens)))
+       assign-closing-parens
+       assign-expanded-at)))
 
 (comment
   (present [\a \b])
