@@ -418,12 +418,10 @@
 (defn ->hash-str
   "Attempts to compute a hash of `value` falling back to a random string."
   [value]
-  (if-let [valuehash (try
-                       (when-not (exceeds-bounded-count-limit? value)
-                         (valuehash value))
-                       (catch Exception _))]
-    valuehash
-    (str (gensym))))
+  (or (try (when-not (exceeds-bounded-count-limit? value)
+             (valuehash value))
+           (catch Exception _))
+      (str (gensym))))
 
 #_(->hash-str (range 104))
 #_(->hash-str (range))
@@ -432,10 +430,7 @@
   (if (seq deref-deps)
     (let [deref-deps-to-eval (set/difference deref-deps (-> ->hash keys set))
           doc-with-deref-dep-hashes (reduce (fn [state deref-dep]
-                                              (assoc-in state [:->hash deref-dep] (valuehash (try
-                                                                                               (eval deref-dep)
-                                                                                               (catch Exception e
-                                                                                                 (throw (ex-info "error during hashing of deref dep" {:deref deref-dep :cell cell} e)))))))
+                                              (assoc-in state [:->hash deref-dep] (->hash-str (eval deref-dep))))
                                             analyzed-doc
                                             deref-deps-to-eval)]
       #_(prn :hash-deref-deps/form form :deref-deps deref-deps-to-eval)

@@ -110,7 +110,10 @@
     (is (match? {:blocks [{:result {:nextjournal/value seq?}}]}
                 (eval/eval-string "(range)")))
     (is (match? {:blocks [{:result {:nextjournal/value {:a seq?}}}]}
-                (eval/eval-string "{:a (range)}")))))
+                (eval/eval-string "{:a (range)}"))))
+
+  (testing "can handle failing hash computation for deref-dep"
+    (eval/eval-string "(ns test-deref-hash (:require [nextjournal.clerk :as clerk])) (defonce !state (atom [(clerk/md \"_hi_\")])) @!state")))
 
 (defn eval+extract-doc-blocks [code-str]
   (-> code-str
