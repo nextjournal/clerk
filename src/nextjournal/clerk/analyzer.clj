@@ -353,8 +353,7 @@
             (group-by find-location (unhashed-deps ->analysis-info)))))
 
 
-#_(build-graph (parse-clojure-string (slurp "notebooks/hello.clj")))
-#_(build-graph (parse-clojure-string (slurp "notebooks/test123.clj")))
+#_(build-graph (parser/parse-clojure-string (slurp "notebooks/hello.clj")))
 #_(keys (:->analysis-info (build-graph "notebooks/elements.clj")))
 #_(dep/immediate-dependencies (:graph (build-graph "notebooks/elements.clj"))  #'nextjournal.clerk.demo/fix-case)
 #_(dep/transitive-dependencies (:graph (build-graph "notebooks/elements.clj"))  #'nextjournal.clerk.demo/fix-case)
@@ -387,8 +386,8 @@
                                ->hash)))
            deps)))
 
-#_(hash (build-graph (parse-clojure-string "^{:nextjournal.clerk/hash-fn (fn [x] \"abc\")}(def contents (slurp \"notebooks/hello.clj\"))")))
-#_(hash (build-graph (parse-clojure-string (slurp "notebooks/hello.clj"))))
+#_(hash (build-graph (parser/parse-clojure-string "^{:nextjournal.clerk/hash-fn (fn [x] \"abc\")}(def contents (slurp \"notebooks/hello.clj\"))")))
+#_(hash (build-graph (parser/parse-clojure-string (slurp "notebooks/hello.clj"))))
 
 (defn exceeds-bounded-count-limit? [x]
   (reduce (fn [_ xs]

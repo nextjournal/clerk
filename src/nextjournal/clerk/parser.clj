@@ -152,7 +152,7 @@
                 (-> state
                     (assoc :add-comment-on-line? true)
                     (update :nodes rest)
-                    (update :blocks conj {:type :code :text (n/string node)}))
+                    (update :blocks conj {:type :code :meta (meta node) :text (n/string node)}))
 
 
                 (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))

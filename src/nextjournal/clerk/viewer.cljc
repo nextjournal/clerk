@@ -715,7 +715,8 @@
   {:name :clerk/code-block :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
                                            (-> wrapped-value
                                                (assoc :nextjournal/viewer (if (:fold? value) :code-folded :code))
-                                               (update :nextjournal/value :text)))})
+                                               (update :nextjournal/value :text)
+                                               (with-meta (:meta value))))})
 
 (def tagged-value-viewer
   {:name :tagged-value :render-fn '(fn [{:keys [tag value space?]}] (v/html (v/tagged-value {:space? space?} (str "#" tag) [v/inspect value])))
