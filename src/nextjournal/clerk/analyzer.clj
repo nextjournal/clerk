@@ -204,7 +204,7 @@
              (let [hash-fn #(-> % nippy/fast-freeze digest/sha1 multihash/base58)]
                (symbol (str *ns*)
                        (case type
-                         :code (str "anon-expr-" (hash-fn (with-meta form {})))
+                         :code (str "anon-expr-" (hash-fn (cond-> form (instance? clojure.lang.IObj form) (with-meta {}))))
                          :markdown (str "markdown-" (hash-fn doc))))))
         unique-id (if (id->count id)
                     (symbol (str *ns*) (str (name id) "#" (inc (id->count id))))
