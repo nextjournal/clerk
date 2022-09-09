@@ -2,6 +2,7 @@
   "Clerk's Parser turns Clojure & Markdown files and strings into Clerk documents."
   (:refer-clojure :exclude [read-string])
   (:require [clojure.core :as core]
+            [clojure.set :as set]
             [clojure.string :as str]
             [edamame.core :as edamame]
             [nextjournal.markdown :as markdown]
@@ -152,8 +153,12 @@
                 (-> state
                     (assoc :add-comment-on-line? true)
                     (update :nodes rest)
-                    (update :blocks conj {:type :code :meta (meta node) :text (n/string node)}))
-
+                    (update :blocks conj {:type :code
+                                          :text (n/string node)
+                                          :loc (-> (meta node)
+                                                   (set/rename-keys {:row :line
+                                                                     :col :column})
+                                                   (select-keys [:line :column]))}))
 
                 (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
                 (-> state

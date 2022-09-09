@@ -2,11 +2,12 @@
   "Clerk's incremental evaluation with in-memory and disk-persisted caching layers."
   (:require [babashka.fs :as fs]
             [clojure.java.io :as io]
+            [clojure.main :as main]
             [clojure.string :as str]
             [multihash.core :as multihash]
             [multihash.digest :as digest]
-            [nextjournal.clerk.config :as config]
             [nextjournal.clerk.analyzer :as analyzer]
+            [nextjournal.clerk.config :as config]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.viewer :as v]
             [taoensso.nippy :as nippy])
@@ -106,7 +107,7 @@
       #_(prn :freeze-error e)
       nil)))
 
-(defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file codeblock]
+(defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
   (try
     (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true]
                                       (eval form)))
@@ -126,13 +127,9 @@
                      (var-from-def var)
                      result)]
         (wrapped-with-metadata result blob-id)))
-    (catch Exception e
-      (throw (ex-info (ex-message e)
-                      (-> codeblock
-                          (select-keys [:file :form])
-                          (merge (select-keys form-info [:var]))
-                          (assoc :line (-> codeblock :meta :row)))
-                      e)))))
+    (catch Throwable t
+      (let [triaged (main/ex-triage (Throwable->map t))]
+        (throw (ex-info (main/ex-str triaged) triaged))))))
 
 (defn maybe-eval-viewers [{:as opts :nextjournal/keys [viewer viewers]}]
   (cond-> opts
@@ -166,7 +163,7 @@
                   (wrapped-with-metadata blob->result hash))
                 (when (and cached-result? freezable?)
                   (lookup-cached-result var hash cas-hash))
-                (eval+cache! form-info hash digest-file codeblock))
+                (eval+cache! form-info hash digest-file))
       (seq opts-from-form-meta)
       (merge opts-from-form-meta))))
 

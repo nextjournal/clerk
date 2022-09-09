@@ -204,7 +204,7 @@
              (let [hash-fn #(-> % nippy/fast-freeze digest/sha1 multihash/base58)]
                (symbol (str *ns*)
                        (case type
-                         :code (str "anon-expr-" (hash-fn form))
+                         :code (str "anon-expr-" (hash-fn (with-meta form {})))
                          :markdown (str "markdown-" (hash-fn doc))))))
         unique-id (if (id->count id)
                     (symbol (str *ns*) (str (name id) "#" (inc (id->count id))))
@@ -223,11 +223,15 @@
   ([{:as state :keys [doc?]} doc]
    (binding [*ns* *ns*]
      (cond-> (reduce (fn [state i]
-                       (let [{:keys [type text]} (get-in state [:blocks i])]
+                       (let [{:keys [type text loc]} (get-in state [:blocks i])]
                          (if (not= type :code)
                            state
                            (let [form (parser/read-string text)
-                                 {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form)
+                                 form+loc (cond-> form
+                                            (instance? clojure.lang.IObj form)
+                                            (vary-meta merge (cond-> loc
+                                                               (:file doc) (assoc :clojure.core/eval-file (:file doc)))))
+                                 {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form+loc)
                                                                                (:file doc) (assoc :file (:file doc)))
                                  _ (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
                                      (eval form))
