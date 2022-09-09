@@ -384,7 +384,7 @@
             ;; TODO: use vars instead of names
             (cond-> []
               code?
-              (conj (with-viewer :clerk/code-block
+              (conj (with-viewer :clerk/code-block {:nextjournal.clerk/opts (select-keys cell [:loc])}
                       ;; TODO: display analysis could be merged into cell earlier
                       (-> cell (merge display-opts) (dissoc :result))))
               result?
@@ -715,8 +715,7 @@
   {:name :clerk/code-block :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
                                            (-> wrapped-value
                                                (assoc :nextjournal/viewer (if (:fold? value) :code-folded :code))
-                                               (update :nextjournal/value :text)
-                                               (with-meta (:meta value))))})
+                                               (update :nextjournal/value :text)))})
 
 (def tagged-value-viewer
   {:name :tagged-value :render-fn '(fn [{:keys [tag value space?]}] (v/html (v/tagged-value {:space? space?} (str "#" tag) [v/inspect value])))
