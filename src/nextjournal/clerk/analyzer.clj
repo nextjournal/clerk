@@ -223,10 +223,11 @@
   ([{:as state :keys [doc?]} doc]
    (binding [*ns* *ns*]
      (cond-> (reduce (fn [state i]
-                       (let [{:keys [type text]} (get-in state [:blocks i])]
+                       (let [{:keys [type text loc]} (get-in state [:blocks i])]
                          (if (not= type :code)
                            state
-                           (let [form (parser/read-string text)
+                           (let [form (with-meta (parser/read-string text) (cond-> loc
+                                                                             (:file doc) (assoc :clojure.core/eval-file (:file doc))))
                                  {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form)
                                                                                (:file doc) (assoc :file (:file doc)))
                                  _ (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`

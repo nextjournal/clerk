@@ -2,11 +2,12 @@
   "Clerk's incremental evaluation with in-memory and disk-persisted caching layers."
   (:require [babashka.fs :as fs]
             [clojure.java.io :as io]
+            [clojure.main :as main]
             [clojure.string :as str]
             [multihash.core :as multihash]
             [multihash.digest :as digest]
-            [nextjournal.clerk.config :as config]
             [nextjournal.clerk.analyzer :as analyzer]
+            [nextjournal.clerk.config :as config]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.viewer :as v]
             [taoensso.nippy :as nippy])
@@ -106,7 +107,7 @@
       #_(prn :freeze-error e)
       nil)))
 
-(defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
+(defn ^:private eval+cache! [{:keys [form file var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
   (try
     (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true]
                                       (eval form)))
@@ -126,8 +127,10 @@
                      (var-from-def var)
                      result)]
         (wrapped-with-metadata result blob-id)))
-    (catch Exception e
-      (throw (ex-info (ex-message e) (select-keys form-info [:file :var :form]) e)))))
+    (catch Throwable t
+      (let [datafied-throwable (Throwable->map t)
+            triaged (main/ex-triage datafied-throwable)]
+        (throw (ex-info (main/ex-str triaged) triaged))))))
 
 (defn maybe-eval-viewers [{:as opts :nextjournal/keys [viewer viewers]}]
   (cond-> opts
