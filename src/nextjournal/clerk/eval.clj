@@ -106,7 +106,7 @@
       #_(prn :freeze-error e)
       nil)))
 
-(defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file form-line-number]
+(defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file codeblock]
   (try
     (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true]
                                       (eval form)))
@@ -128,9 +128,10 @@
         (wrapped-with-metadata result blob-id)))
     (catch Exception e
       (throw (ex-info (ex-message e)
-                      (-> form-info
-                          (select-keys [:file :var :form])
-                          (assoc :line form-line-number))
+                      (-> codeblock
+                          (select-keys [:file :form])
+                          (merge (select-keys form-info [:var]))
+                          (assoc :line (-> codeblock :meta :row)))
                       e)))))
 
 (defn maybe-eval-viewers [{:as opts :nextjournal/keys [viewer viewers]}]
@@ -165,7 +166,7 @@
                   (wrapped-with-metadata blob->result hash))
                 (when (and cached-result? freezable?)
                   (lookup-cached-result var hash cas-hash))
-                (eval+cache! form-info hash digest-file (-> codeblock :meta :row)))
+                (eval+cache! form-info hash digest-file codeblock))
       (seq opts-from-form-meta)
       (merge opts-from-form-meta))))
 
