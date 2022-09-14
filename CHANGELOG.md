@@ -9,6 +9,13 @@ Changes can be:
 
 ...
 
+## 0.10.560 (2022-09-14)
+
+* 💫 Improve errors on eval by keeping location information on form
+* 🐜 Don't throw when valuehash cannot be computed for deref dep
+* 🐞 Fix multi-expand via Option+Click
+* 🛠 Allow to run ui tests against local build
+
 ## 0.10.550 (2022-09-06)
 
 * 🌟 Support setting visibility for results 🙈
