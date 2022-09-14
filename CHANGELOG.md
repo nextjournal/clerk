@@ -9,6 +9,10 @@ Changes can be:
 
 ...
 
+## 0.10.560 (2022-09-14)
+
+...
+
 ## 0.10.559 (2022-09-14)
 
 * 💫 Improve errors on eval by keeping location information on form
