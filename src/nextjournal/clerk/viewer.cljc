@@ -384,7 +384,7 @@
             ;; TODO: use vars instead of names
             (cond-> []
               code?
-              (conj (with-viewer :clerk/code-block
+              (conj (with-viewer :clerk/code-block {:nextjournal.clerk/opts (select-keys cell [:loc])}
                       ;; TODO: display analysis could be merged into cell earlier
                       (-> cell (merge display-opts) (dissoc :result))))
               result?
