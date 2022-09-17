@@ -647,13 +647,7 @@
   {:name :plotly :render-fn (quote v/plotly-viewer) :transform-fn mark-presented})
 
 (def vega-lite-viewer
-  {:name :vega-lite
-   :render-fn '(fn [value]
-                 (v/promise->viewer (-> (v/require "vega-embed@6.21.0")
-                                        (.then (fn [vega-embed]
-                                                 (v/html [:div {:style {:overflow-x "auto"}}
-                                                          [:div.vega-lite {:ref #(when % (.embed vega-embed % (clj->js value)))}]]))))))
-   :transform-fn mark-presented})
+  {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :transform-fn mark-presented})
 
 (def markdown-viewer
   {:name :markdown :transform-fn (fn [wrapped-value]

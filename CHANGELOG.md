@@ -7,12 +7,15 @@ Changes can be:
 
 ## Unreleased
 
-...
+* 🐞 Revert "Inline vega lite viewer and make it show errors" as it
+  caused a regression that a vega visualization would only update
+  after a refresh.
 
 ## 0.10.560 (2022-09-14)
 
 * 💫 Improve errors on eval by keeping location information on form
 * 🐜 Don't throw when valuehash cannot be computed for deref dep
+* 🐞 Inline vega lite viewer and make it show errors
 * 🐞 Fix multi-expand via Option+Click
 * 🛠 Allow to run ui tests against local build
 

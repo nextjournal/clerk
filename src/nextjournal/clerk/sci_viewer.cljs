@@ -1,7 +1,5 @@
 (ns nextjournal.clerk.sci-viewer
-  (:require ["d3-require" :as d3-require]
-            ["framer-motion" :as framer-motion]
-            ["react" :as react]
+  (:require ["framer-motion" :as framer-motion]
             [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.string :as str]
@@ -11,7 +9,7 @@
             [lambdaisland.uri.normalize :as uri.normalize]
             [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex table vl row col with-viewer with-viewers]]
             [nextjournal.markdown.transform :as md.transform]
-            [nextjournal.ui.components.d3-require :as d3-require-component]
+            [nextjournal.ui.components.d3-require :as d3-require]
             [nextjournal.ui.components.icon :as icon]
             [nextjournal.ui.components.localstorage :as ls]
             [nextjournal.ui.components.motion :as motion]
@@ -22,6 +20,7 @@
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
             [nextjournal.viewer.vega-lite :as vega-lite]
+            ["react" :as react]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [reagent.ratom :as ratom]
@@ -619,20 +618,10 @@
 (defn reagent-viewer [x]
   (r/as-element (cond-> x (fn? x) vector)))
 
-(defn promise->viewer [promise]
-  (r/with-let [!state (r/atom {:loading? true})
-               _ (-> (.resolve js/Promise promise)
-                     (.then (fn [value]
-                              (reset! !state {:value value})))
-                     (.catch (fn [error] (reset! !state {:error error}))))]
-    (let [{:keys [value error loading?]} @!state]
-      (html (cond loading? "loading…"
-                  value [inspect-presented value]
-                  error [error-view error])))))
-
 (def mathjax-viewer (comp normalize-viewer-meta mathjax/viewer))
 (def code-viewer (comp normalize-viewer-meta code/viewer))
 (def plotly-viewer (comp normalize-viewer-meta plotly/viewer))
+(def vega-lite-viewer (comp normalize-viewer-meta vega-lite/viewer))
 
 (def expand-icon
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
@@ -701,8 +690,7 @@
    'quoted-string-viewer quoted-string-viewer
    'number-viewer number-viewer
    'table-error table-error
-   'require d3-require/require
-   'with-d3-require d3-require-component/with
+   'with-d3-require d3-require/with
    'clerk-eval clerk-eval
    'consume-view-context view-context/consume
 
@@ -713,14 +701,13 @@
    'code-viewer code-viewer
    'foldable-code-viewer foldable-code-viewer
    'plotly-viewer plotly-viewer
+   'vega-lite-viewer vega-lite-viewer
    'reagent-viewer reagent-viewer
    'unreadable-edn-viewer unreadable-edn-viewer
 
    'doc-url doc-url
    'url-for url-for
    'read-string read-string
-   'error-view error-view
-   'promise->viewer promise->viewer
 
    ;; clerk viewer API
    'code code
