@@ -7,6 +7,10 @@ Changes can be:
 
 ## Unreleased
 
+...
+
+## 0.10.562 (2022-09-18)
+
 * 🐞 Revert "Inline vega lite viewer and make it show errors" as it
   caused a regression that a vega visualization would only update
   after a refresh.
