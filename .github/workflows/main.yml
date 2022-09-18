@@ -210,7 +210,6 @@ jobs:
           CLOJARS_USERNAME: mkvlr
           CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD_MKVLR }}
         run: |
-          bb update-meta
           bb ci:publish
 
       - name: Clerk version

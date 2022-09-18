@@ -96,8 +96,10 @@
                         (do
                           (println "Deploying to clojars")
                           (clojure "-T:build deploy"))
-                        ;; still build jar for artifact upload
-                        (run 'jar)))}
+                        ;; still build jar with updated commit count for artifact upload
+                        (do
+                          (run 'update-meta)
+                          (run 'jar))))}
 
   install-git-hooks {:doc "Install git hooks"
                      :task (fs/copy "dev/pre-commit" ".git/hooks" {:replace-existing true})}
