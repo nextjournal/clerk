@@ -12,7 +12,7 @@
 
 Clerk takes a Clojure namespace and turns it into a notebook:
 
-![Clerk Screenshot](https://nextjournal.com/data/QmdHmfSEZWqRwsFSDju4nLqgfVukYb3UCVp6AFGk1JcrCH?content-type=image/png&node-id=2bf0921f-0943-43c7-baaa-5c1a59937f40&filename=CleanShot%202021-07-01%20at%2012.48.22@2x.png&node-kind=file)
+![Clerk Screenshot](https://cdn.nextjournal.com/data/QmeJvCtv5xqD8T7y2L3fwjnvWyCZM4DDk2iuspjqaC9QFc?filename=Screenshot+2022-09-18+at+20.09.14.png&content-type=image/png)
 
 ## 🎪 [Demos](http://nextjournal.github.io/clerk-demo/)
 
