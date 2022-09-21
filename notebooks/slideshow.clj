@@ -14,7 +14,12 @@
    {:style {:min-block-size "100vh"}}
    (into [:div.text-xl.p-20 {:class ["prose max-w-none prose-h1:mb-0 prose-h2:mb-8 rose-h3:mb-8 prose-h4:mb-8"
                                      "prose-h1:text-6xl prose-h2:text-5xl prose-h3:text-3xl prose-h4:text-2xl"]}]
-         (map (comp (fn [block] (if (:type block) (v/md block) (v/with-viewer :clerk/result block)))))
+         (map (fn [{:as block :keys [result]}]
+                (if result
+                  ;; TODO: ideally use (v/with-viewer :clerk/result-block block), currenlty messes wrapping during postwalk below
+                  (v/transform-result {:nextjournal/value block})
+                  ;; render code blocks with markdown for convenience
+                  (v/md block))))
          blocks)])
 
 ;; ---
