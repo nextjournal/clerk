@@ -210,6 +210,9 @@ my-uuid"
                    :->analysis-info
                    vals))))
 
+(deftest can-analyze-proxy-macro
+  (is (analyze-string "(ns proxy-example-notebook)\n\n(proxy [clojure.lang.ISeq] []\n    (seq [] '(this is a test seq)))")))
+
 (deftest circular-dependency
   (is (match? {:graph {:dependencies {'(ns circular) any?
                                       'circular/b #{'clojure.core/str 'circular/a+circular/b}
