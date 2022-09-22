@@ -144,18 +144,21 @@
                                              (mapv (fn [{:as doc :keys [file]}]
                                                      (try
                                                        (analyzer/hash (analyzer/build-graph doc))
-                                                       (catch Exception t
-                                                         (throw (ex-info (str "Cannot analyze notebook: " file) {:file file} t))))) state)))
+                                                       (catch Exception e
+                                                         (throw (ex-info (str "cannot analyze notebook: " file) {:file file} e))))) state)))
         _ (report-fn {:stage :analyzed :state state :duration duration})
         _ (when download-cache-fn
             (report-fn {:stage :downloading-cache})
             (let [{duration :time-ms} (eval/time-ms (download-cache-fn state))]
               (report-fn {:stage :done :duration duration})))
-        state (mapv (fn [doc]
+        state (mapv (fn [{:as doc :keys [file]}]
                       (report-fn {:stage :building :doc doc})
                       (let [{doc+viewer :result duration :time-ms} (eval/time-ms
-                                                                    (let [doc (eval/eval-analyzed-doc doc)]
-                                                                      (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc))))]
+                                                                    (try
+                                                                      (let [doc (eval/eval-analyzed-doc doc)]
+                                                                        (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc)))
+                                                                      (catch Exception e
+                                                                        (throw (ex-info (str "cannot build notebook: " file) {:file file} e)))))]
                         (report-fn {:stage :built :doc doc+viewer :duration duration})
                         doc+viewer)) state)
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
