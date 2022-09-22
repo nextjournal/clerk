@@ -106,4 +106,10 @@
 
   -dev {:depends [install-git-hooks watch:cljs copy-viewer-css]}
   dev {:doc "Start app in dev mode, compiles cljs and css"
-       :task (run '-dev {:parallel true})}}}
+       :task (run '-dev {:parallel true})}
+
+  quickdoc {:doc "Invoke quickdoc"
+            :requires ([quickdoc.api :as api])
+            :extra-deps {io.github.borkdude/quickdoc {:git/sha "66e4835e4b95d2dc2967aa5f984d11bedf4493fb"}}
+            :task (api/quickdoc {:git/branch "main"
+                                 :github/repo "https://github.com/nextjournal/clerk"})}}}
