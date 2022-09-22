@@ -124,4 +124,5 @@
                                               nextjournal.clerk.view  {:no-doc true}
                                               nextjournal.clerk.viewer  {:no-doc true}
                                               nextjournal.clerk.webserver {:no-doc true}
-                                              nextjournal.clerk.sci-viewer {:no-doc true}}})}}}
+                                              nextjournal.clerk.sci-viewer {:no-doc true}
+                                              nextjournal.clerk.static-app {:no-doc true}}})}}}
