@@ -114,4 +114,13 @@
             :task (api/quickdoc '{:git/branch "main"
                                   :github/repo "https://github.com/nextjournal/clerk"
                                   :toc true
-                                  :overrides {nextjournal.clerk.analyzer {:no-doc true}}})}}}
+                                  :overrides {nextjournal.clerk.analyzer {:no-doc true}
+                                              nextjournal.clerk.builder  {:no-doc true}
+                                              nextjournal.clerk.classpath {:no-doc true}
+                                              nextjournal.clerk.config {:no-doc true}
+                                              nextjournal.clerk.eval  {:no-doc true}
+                                              nextjournal.clerk.graph-visualizer {:no-doc true}
+                                              nextjournal.clerk.parser  {:no-doc true}
+                                              nextjournal.clerk.view  {:no-doc true}
+                                              nextjournal.clerk.viewer  {:no-doc true}
+                                              nextjournal.clerk.webserver {:no-doc true}}})}}}
