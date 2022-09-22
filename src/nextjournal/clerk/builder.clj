@@ -139,8 +139,13 @@
         _ (report-fn {:stage :init :state state})
         {state :result duration :time-ms} (eval/time-ms (mapv (comp (partial parser/parse-file {:doc? true}) :file) state))
         _ (report-fn {:stage :parsed :state state :duration duration})
-        {state :result duration :time-ms} (eval/time-ms (mapv (comp analyzer/hash
-                                                                    analyzer/build-graph) state))
+        {state :result duration :time-ms} (eval/time-ms
+                                           (try
+                                             (mapv (fn [{:as doc :keys [file]}]
+                                                     (try
+                                                       (analyzer/hash (analyzer/build-graph doc))
+                                                       (catch Exception t
+                                                         (throw (ex-info (str "Cannot analyze notebook: " file) {:file file} t))))) state)))
         _ (report-fn {:stage :analyzed :state state :duration duration})
         _ (when download-cache-fn
             (report-fn {:stage :downloading-cache})
