@@ -1,6 +1,6 @@
 ;; # 📓 Book of Clerk
 ^{:nextjournal.clerk/visibility {:code :hide}}
-(ns docs
+(ns nextjournal.clerk.book
   {:nextjournal.clerk/toc true}
   (:require [clojure.string :as str]
             [next.jdbc :as jdbc]
@@ -767,9 +767,8 @@ v/table-viewer
 
 (ana/find-location 'java.util.UUID)
 
-
 (let [{:keys [graph]} analyzed]
-  (dep/transitive-dependencies graph 'how-clerk-works/analyzed))
+  (dep/transitive-dependencies graph 'nextjournal.clerk.book/analyzed))
 
 ;; ### 🪣 Hashing
 ;; Then we can use this information to hash each expression.
@@ -786,8 +785,7 @@ v/table-viewer
       (shuffle (range 15))))
 
 ;; We can look up the cache key using the var name in the hashes map.
-#_ FIXME-nil
-(when-let [form-hash (get hashes `rand-fifteen)]
+(when-let [form-hash (get hashes 'nextjournal.clerk.book/rand-fifteen)]
   (let [hash (slurp (eval/->cache-file (str "@" form-hash)))]
     (eval/thaw-from-cas hash)))
 
