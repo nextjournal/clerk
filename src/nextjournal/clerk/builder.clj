@@ -4,6 +4,7 @@
             [clojure.java.browse :as browse]
             [clojure.string :as str]
             [nextjournal.clerk.analyzer :as analyzer]
+            [nextjournal.clerk.builder-ui :as builder-ui]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]))
@@ -66,12 +67,6 @@
   [path]
   (str/replace path fs/file-separator "/"))
 
-(defn process-build-opts [{:as opts :keys [paths]}]
-  (merge {:out-path (str "public" fs/file-separator "build")
-          :bundle? true
-          :browse? true}
-         opts))
-
 (defn write-static-app!
   "Creates a static html app of the seq of `docs`. Customizable with an `opts` map with keys:
 
@@ -113,6 +108,13 @@
              :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n"))))
   (flush))
 
+(defn process-build-opts [{:as opts :keys [paths]}]
+  (merge {:out-path (str "public" fs/file-separator "build")
+          :bundle? true
+          :browse? true
+          :report-fn stdout-reporter}
+         opts))
+
 (defn expand-paths [paths]
   (->> (if (symbol? paths)
          (let [resolved (-> paths requiring-resolve deref)]
@@ -130,11 +132,10 @@
 #_(expand-paths ["notebooks/viewers**"])
 
 (defn build-static-app! [opts]
-  (let [{:as opts :keys [expanded-paths paths download-cache-fn upload-cache-fn bundle?]} (assoc (process-build-opts opts) :expanded-paths (-> opts :paths expand-paths))
+  (let [{:as opts :keys [expanded-paths paths download-cache-fn upload-cache-fn bundle? report-fn]} (assoc (process-build-opts opts) :expanded-paths (-> opts :paths expand-paths))
         _ (when (empty? expanded-paths)
             (throw (ex-info "nothing to build" {:expanded-paths expanded-paths :paths paths})))
         start (System/nanoTime)
-        report-fn stdout-reporter
         state (mapv #(hash-map :file %) expanded-paths)
         _ (report-fn {:stage :init :state state})
         {state :result duration :time-ms} (eval/time-ms (mapv (comp (partial parser/parse-file {:doc? true}) :file) state))
@@ -159,6 +160,13 @@
       (let [{duration :time-ms} (eval/time-ms (upload-cache-fn state))]
         (report-fn {:stage :done :duration duration})))
     (report-fn {:stage :finished :state state :duration duration :total-duration (eval/elapsed-ms start)})))
+
+#_(build-static-app! {:paths (take 3 clerk-docs)
+                      :browse? false
+                      :report-fn (fn [build-state]
+                                   (reset! builder-ui/!build-state build-state)
+                                   (nextjournal.clerk/recompute!)
+                                   (stdout-reporter build-state))})
 
 #_(build-static-app! {:paths (take 5 clerk-docs)})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
