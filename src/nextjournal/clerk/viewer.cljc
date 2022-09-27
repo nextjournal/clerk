@@ -1016,8 +1016,7 @@
 
 (defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
   (-> (ensure-wrapped-with-viewers viewers value)
-      (merge (->opts wrapped-value))
-      (dissoc :offset)
+      (merge (select-keys (->opts wrapped-value) [:!budget :budget :path :current-path]))
       (update :path (fnil conj []) path-segment)
       (update :current-path (fnil conj []) path-segment)))
 
