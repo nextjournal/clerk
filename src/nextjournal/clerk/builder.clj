@@ -67,6 +67,30 @@
   [path]
   (str/replace path fs/file-separator "/"))
 
+(defn describe-event [{:as event :keys [stage state duration doc]}]
+  (let [format-duration (partial format "%.3fms")
+        duration (some-> duration format-duration)]
+    (case stage
+      :init (str "👷🏼 Clerk is building " (count state) " notebooks…\n🧐 Parsing… ")
+      :parsed (str "Done in " duration ". ✅\n🔬 Analyzing… ")
+      (:built :analyzed :done) (str "Done in " duration ". ✅\n")
+      :building (str "🔨 Building \"" (:file doc) "\"… ")
+      :downloading-cache (str "⏬ Downloading distributed cache… ")
+      :uploading-cache (str "⏫ Uploading distributed cache… ")
+      :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n"))))
+
+(defn stdout-reporter [event]
+  (doto (describe-event event)
+    (print)
+    (do (flush))))
+
+(defn process-build-opts [{:as opts :keys [paths]}]
+  (merge {:out-path (str "public" fs/file-separator "build")
+          :bundle? true
+          :browse? true
+          :report-fn stdout-reporter}
+         opts))
+
 (defn write-static-app!
   "Creates a static html app of the seq of `docs`. Customizable with an `opts` map with keys:
 
@@ -94,26 +118,6 @@
     (when browse?
       (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize)))
     docs))
-
-(defn stdout-reporter [{:as event :keys [stage state duration doc]}]
-  (let [format-duration (partial format "%.3fms")
-        duration (some-> duration format-duration)]
-    (print (case stage
-             :init (str "👷🏼 Clerk is building " (count state) " notebooks…\n🧐 Parsing… ")
-             :parsed (str "Done in " duration ". ✅\n🔬 Analyzing… ")
-             (:built :analyzed :done) (str "Done in " duration ". ✅\n")
-             :building (str "🔨 Building \"" (:file doc) "\"… ")
-             :downloading-cache (str "⏬ Downloading distributed cache… ")
-             :uploading-cache (str "⏫ Uploading distributed cache… ")
-             :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n"))))
-  (flush))
-
-(defn process-build-opts [{:as opts :keys [paths]}]
-  (merge {:out-path (str "public" fs/file-separator "build")
-          :bundle? true
-          :browse? true
-          :report-fn stdout-reporter}
-         opts))
 
 (defn expand-paths [paths]
   (->> (if (symbol? paths)
@@ -164,9 +168,9 @@
 #_(build-static-app! {:paths (take 3 clerk-docs)
                       :browse? false
                       :report-fn (fn [build-state]
-                                   (reset! builder-ui/!build-state build-state)
+                                   (reset! builder-ui/!build-state (update build-state :log str (stdout-reporter build-state)))
                                    (nextjournal.clerk/recompute!)
-                                   (stdout-reporter build-state))})
+                                   )})
 
 #_(build-static-app! {:paths (take 5 clerk-docs)})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
