@@ -736,7 +736,7 @@
                                       sci.configs.js-interop/namespaces
                                       sci.configs.reagent/namespaces)})))
 
-(defn eval-form [f]
+(defn ^:export eval-form [f]
   (sci/eval-form @!sci-ctx f))
 
 (set! *eval* eval-form)
