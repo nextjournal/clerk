@@ -139,18 +139,6 @@
                                       (mapv #(viewer/with-viewer doc-build-badge-viewer %) docs)))})
 
 
-(defn describe-event [{:as event :keys [stage state duration doc]}]
-  (let [format-duration (partial format "%.3fms")
-        duration (some-> duration format-duration)]
-    (case stage
-      :init (str "👷🏼 Clerk is building " (count state) " notebooks…\n🧐 Parsing… ")
-      :parsed (str "Done in " duration ". ✅\n🔬 Analyzing… ")
-      (:built :analyzed :done) (str "Done in " duration ". ✅\n")
-      :building (str "🔨 Building \"" (:file doc) "\"… ")
-      :downloading-cache (str "⏬ Downloading distributed cache… ")
-      :uploading-cache (str "⏫ Uploading distributed cache… ")
-      :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n"))))
-
 (defn process-docs [docs]
   (mapv (fn [{:as doc :keys [blocks]}]
           (-> doc
