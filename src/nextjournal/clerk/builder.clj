@@ -165,16 +165,6 @@
         (report-fn {:stage :done :duration duration})))
     (report-fn {:stage :finished :state state :duration duration :total-duration (eval/elapsed-ms start)})))
 
-#_(do (reset! builder-ui/!build-state-history [])
-      (build-static-app! {:paths (take 10 clerk-docs)
-                          :browse? false
-                          :report-fn (fn [build-state]
-                                       (reset! builder-ui/!build-state (update build-state :log str (stdout-reporter build-state)))
-                                       (swap! builder-ui/!build-state-history conj build-state)
-                                       #_(nextjournal.clerk/recompute!)
-                                       )})
-      :done)
-
 #_(build-static-app! {:paths (take 5 clerk-docs)})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? false})

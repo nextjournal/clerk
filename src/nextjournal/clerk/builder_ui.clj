@@ -26,6 +26,7 @@
     :style {:width size :height size}}
    [:path {:fill-rule "evenodd" :d "M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" :clip-rule "evenodd"}]])
 
+#_
 (defn blocks-view [{:keys [blocks block-counts]}]
   [:div.rounded-b.mx-2.border.border-slate-300.bg-slate-50.shadow
    (into [:div]
@@ -35,11 +36,11 @@
                        {:class ["text-[10px]"
                                 (when (= :done exec-state) "bg-green-50")]}
                        [:div.flex.items-center
-                        #_(case exec-state
-                            :done (checkmark {:size 14})
-                            :executing (spinner {:size 11})
-                            (status-light exec-state {:size 11}))
-                        [:div #_.ml-2
+                        (case exec-state
+                          :done (checkmark {:size 14})
+                          :executing (spinner {:size 11})
+                          (status-light exec-state {:size 11}))
+                        [:div.ml-2
                          (if var
                            (name var)
                            [:span.text-slate-400
@@ -49,7 +50,6 @@
                                 text
                                 (str (subs text 0 max-len) "…")))])]]
 
-                       #_
                        [:div.flex.items-center
                         (let [max-width 150]
                           [:div.rounded-full.mr-3
@@ -132,11 +132,6 @@
 (def phase-viewer
   {:transform-fn (viewer/update-val (comp viewer/html phase-view))})
 
-(defonce !build-state
-  (atom []))
-
-#_(reset! !state [])
-
 (def docs-viewer
   {:render-fn '(fn [state opts]
                  (v/html (into [:div.flex.flex-col.pt-2] (v/inspect-children opts) state)))
@@ -164,31 +159,42 @@
               (assoc :state :queued :block-counts (frequencies (map :type blocks)))))
         docs))
 
-(declare !build-state-history)
 
-(reset! !build-state
-        (reduce (fn [build-state {:as event :keys [stage state duration doc idx]}]
-                  (let [format-duration (partial format "%.3fms")
-                        duration (some-> duration format-duration)]
-                    (case stage
-                      :init (assoc build-state :docs (process-docs state))
-                      (:parsed :analyzed) (-> build-state
-                                              (assoc :docs (process-docs state))
-                                              (update ({:parsed :parsing
-                                                        :analyzed :analyzing} stage) merge {:state :done :duration duration}))
-                      :building (update-in build-state [:docs idx] merge {:state :executing})
-                      :built (update-in build-state [:docs idx] merge {:state :done :duration duration})
-                      build-state)))
-                {:parsing {:phase-name "Parsing" :state :executing}
-                 :analyzing {:phase-name "Analyzing" :state :queued}}
-                (take 14 @!build-state-history)))
+(def initial-build-state
+  {:parsing {:phase-name "Parsing" :state :executing}
+   :analyzing {:phase-name "Analyzing" :state :queued}})
 
+(defn next-build-state [build-state {:as event :keys [stage state duration doc idx]}]
+  (let [format-duration (partial format "%.3fms")
+        duration (some-> duration format-duration)]
+    (case stage
+      :init (assoc build-state :docs (process-docs state))
+      (:parsed :analyzed) (-> build-state
+                              (assoc :docs (process-docs state))
+                              (update ({:parsed :parsing
+                                        :analyzed :analyzing} stage) merge {:state :done :duration duration}))
+      :building (update-in build-state [:docs idx] merge {:state :executing})
+      :built (update-in build-state [:docs idx] merge {:state :done :duration duration})
+      build-state)))
+
+(defonce !build-state (atom initial-build-state))
+(defonce !build-events (atom []))
+
+(defn reset-build-state! []
+  (reset! !build-state initial-build-state)
+  (reset! !build-events []))
+
+
+(defn add-build-event! [event]
+  (swap! !build-state next-build-state event)
+  (swap! !build-events conj event))
 
 #_(dissoc (get @!build-state-history 3) :state)
 
 (comment
+  (reset! !build-state (reduce next-build-state initial-build-state (take 14 @!build-state-history)))
+  
   (require '[nextjournal.clerk.builder :as b])
-  (defonce !build-state-history (atom []))
 
   (reset! !build-state (get @!build-state-history 12))
   
@@ -196,12 +202,20 @@
     (reset! !build-state {:stage :init :state (mapv #(hash-map :file %) (take 3 (b/expand-paths `b/clerk-docs)))})
     (nextjournal.clerk/recompute!))
 
+  (do (reset-build-state!)
+      (nextjournal.clerk.builder/build-static-app! {:paths (take 10 nextjournal.clerk.builder/clerk-docs)
+                                                    :browse? false
+                                                    :report-fn (fn [build-event]
+                                                                 (nextjournal.clerk.builder/stdout-reporter build-event)
+                                                                 (add-build-event! build-event)
+                                                                 (binding [*out* (java.io.StringWriter.)]
+                                                                   (nextjournal.clerk/recompute!)))})
+      :done)
+
   )
 
 ;; # 👷 Clerk Builder 🔨
 {:nextjournal.clerk/visibility {:result :show}}
-
-(-> @!build-state :docs (nth 3))
 
 ^{:nextjournal.clerk/viewer phase-viewer}
 (:parsing @!build-state)
