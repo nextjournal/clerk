@@ -151,13 +151,13 @@
             (report-fn {:stage :downloading-cache})
             (let [{duration :time-ms} (eval/time-ms (download-cache-fn state))]
               (report-fn {:stage :done :duration duration})))
-        state (mapv (fn [doc]
-                      (report-fn {:stage :building :doc doc})
+        state (mapv (fn [doc idx]
+                      (report-fn {:stage :building :doc doc :idx idx})
                       (let [{doc+viewer :result duration :time-ms} (eval/time-ms
                                                                     (let [doc (eval/eval-analyzed-doc doc)]
                                                                       (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc))))]
-                        (report-fn {:stage :built :doc doc+viewer :duration duration})
-                        doc+viewer)) state)
+                        (report-fn {:stage :built :doc doc+viewer :duration duration :idx idx})
+                        doc+viewer)) state (range))
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
     (when upload-cache-fn
       (report-fn {:stage :uploading-cache})
@@ -165,12 +165,15 @@
         (report-fn {:stage :done :duration duration})))
     (report-fn {:stage :finished :state state :duration duration :total-duration (eval/elapsed-ms start)})))
 
-#_(build-static-app! {:paths (take 3 clerk-docs)
-                      :browse? false
-                      :report-fn (fn [build-state]
-                                   (reset! builder-ui/!build-state (update build-state :log str (stdout-reporter build-state)))
-                                   (nextjournal.clerk/recompute!)
-                                   )})
+#_(do (reset! builder-ui/!build-state-history [])
+      (build-static-app! {:paths (take 10 clerk-docs)
+                          :browse? false
+                          :report-fn (fn [build-state]
+                                       (reset! builder-ui/!build-state (update build-state :log str (stdout-reporter build-state)))
+                                       (swap! builder-ui/!build-state-history conj build-state)
+                                       #_(nextjournal.clerk/recompute!)
+                                       )})
+      :done)
 
 #_(build-static-app! {:paths (take 5 clerk-docs)})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
