@@ -1,6 +1,5 @@
 (ns nextjournal.clerk.builder-ui
-  {:nextjournal.clerk/visibility {:code :hide :result :hide}
-   :nextjournal.clerk/no-cache true}
+  {:nextjournal.clerk/visibility {:code :hide :result :hide}}
   (:require [nextjournal.clerk.viewer :as viewer]
             [clojure.string :as str]))
 
@@ -68,7 +67,7 @@
                            [:span.text-slate-500 "Queued"])]]])))
          blocks)])
 
-(defn doc-build-badge [{:as doc :keys [blocks block-counts code-blocks file phase state]}]
+(defn doc-build-badge [{:as doc :keys [blocks block-counts code-blocks file phase state duration max-duration]}]
   [:<>
    [:div.p-1
     [:div.rounded-md.border.border-slate-300.px-4.py-3.font-sans.shadow
@@ -87,16 +86,22 @@
                              (str "unexpected state `" (pr-str state) "`"))]
        [:div.text-sm.font-medium.leading-none
         file]]
+      
       (when-let [{:keys [code markdown code-executing]} (not-empty block-counts)]
-        [:<>
-         [:div.text-sm
+        [:div
+         [:span.text-sm.mr-2
           (when code
             [:<>
              (when code-executing
                [:<> [:span.font-bold code-executing] " of "])
              (str code " code")])
           (when markdown (str (when code " & ") markdown " markdown"))
-          " blocks"]])]]]
+          " blocks"]
+         (when duration [:span.text-sm.font-mono (int duration) "ms"])])]]
+    (when duration
+      [:div.rounded-full.bg-green-600
+       {:class "h-[4px] mt-[-5px]"
+        :style {:min-width 1 :width (str (int (* 100 (/ duration max-duration))) "%")}}])]
    #_(when (= :executing state)
        (blocks-view doc))
    #_[:div.mx-auto.w-8.border.border-t-0.border-slate-300.bg-slate-50.rounded-b.text-slate-500.flex.justify-center.shadow.hover:bg-slate-100.cursor-pointer
@@ -139,31 +144,35 @@
                                       (mapv #(viewer/with-viewer doc-build-badge-viewer %) docs)))})
 
 
+^:nextjournal.clerk/no-cache
 (defn process-docs [docs]
-  (mapv (fn [{:as doc :keys [blocks]}]
+  (mapv (fn [{:as doc :keys [blocks duration]}]
           (-> doc
               (select-keys [:file :title :blocks])
               (update :blocks (fn [blocks] (mapv #(select-keys % [:text :type :var]) blocks)))
               (assoc :state :queued :block-counts (frequencies (map :type blocks)))))
         docs))
 
+(defn update-max-duration [docs]
+  (let [max-duration (apply max (keep :duration docs))]
+    (mapv #(assoc % :max-duration max-duration) docs)))
 
 (def initial-build-state
   {:parsing {:phase-name "Parsing" :state :executing}
    :analyzing {:phase-name "Analyzing" :state :queued}})
 
 (defn next-build-state [build-state {:as event :keys [stage state duration doc idx]}]
-  (let [format-duration (partial format "%.3fms")
-        duration (some-> duration format-duration)]
-    (case stage
-      :init (assoc build-state :docs (process-docs state))
-      (:parsed :analyzed) (-> build-state
-                              (assoc :docs (process-docs state))
-                              (update ({:parsed :parsing
-                                        :analyzed :analyzing} stage) merge {:state :done :duration duration}))
-      :building (update-in build-state [:docs idx] merge {:state :executing})
-      :built (update-in build-state [:docs idx] merge {:state :done :duration duration})
-      build-state)))
+  (case stage
+    :init (assoc build-state :docs (process-docs state))
+    (:parsed :analyzed) (-> build-state
+                            (assoc :docs (process-docs state))
+                            (update ({:parsed :parsing
+                                      :analyzed :analyzing} stage) merge {:state :done :duration duration}))
+    :building (update-in build-state [:docs idx] merge {:state :executing})
+    :built (-> build-state
+               (update-in [:docs idx] merge {:state :done :duration duration})
+               (update :docs update-max-duration))
+    build-state))
 
 (defonce !build-state (atom initial-build-state))
 (defonce !build-events (atom []))
