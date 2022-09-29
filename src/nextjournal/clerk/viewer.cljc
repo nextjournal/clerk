@@ -9,6 +9,7 @@
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.analyzer :as analyzer]]
                 :cljs [[reagent.ratom :as ratom]
+                       [sci.impl.vars]
                        [sci.lang]
                        [applied-science.js-interop :as j]])
             [nextjournal.markdown :as md]
@@ -586,8 +587,12 @@
 (def map-viewer
   {:pred map? :name :map :render-fn 'v/map-viewer :opening-paren "{" :closing-paren "}" :page-size 10})
 
+#?(:cljs (defn var->symbol [v] (if (instance? sci.lang.Var v) (sci.impl.vars/toSymbol v) (symbol v))))
+
 (def var-viewer
-  {:pred (some-fn var? #?(:cljs #(instance? sci.lang.Var %))) :transform-fn (comp symbol ->value) :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#'" (str x)]]))})
+  {:pred (some-fn var? #?(:cljs #(instance? sci.lang.Var %)))
+   :transform-fn (comp #?(:cljs var->symbol :clj symbol) ->value)
+   :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#'" (str x)]]))})
 
 (def throwable-viewer
   {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
