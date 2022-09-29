@@ -116,7 +116,6 @@
     (cond-> {#_#_:analyzed analyzed
              :form form
              :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
-             :proxy? (some? (some #{'clojure.core/init-proxy} deps))
              :freezable? (and (not (some #{'clojure.core/intern} deps))
                               (<= (count vars) 1)
                               (if (seq vars) (= var (first vars)) true))
@@ -126,14 +125,6 @@
       (seq deref-deps) (assoc :deref-deps deref-deps)
       (seq vars) (assoc :vars vars)
       var (assoc :var var))))
-
-(comment
-  (macroexpand
-   '(proxy [clojure.lang.ISeq] []
-      (seq [] '(this is a test seq))))
-  (analyze
-   '(proxy [clojure.lang.ISeq] []
-     (seq [] '(this is a test seq)))))
 
 #_(:vars (analyze '(do (def a 41) (def b (inc a)))))
 #_(:vars (analyze '(defrecord Node [v l r])))
@@ -256,8 +247,10 @@
                                                                                                     (#{(-> state :ns ns-name name)} (namespace %))))
                                                                                       deps)
                                                                                 (-> state :->analysis-info keys set))))]
-                               (throw (ex-info (str "Could not resolve var: " (name missing-dep))
-                                               (merge {:var missing-dep} (select-keys analyzed [:form]) (select-keys doc [:file])))))
+                               (when-not (-> missing-dep name (str/includes? "$"))
+                                 ;; we're allowing vars fabricated during clojure macroexpansion of internal constructs like proxy
+                                 (throw (ex-info (str "Could not resolve var: " (name missing-dep))
+                                                 (merge {:var missing-dep} (select-keys analyzed [:form]) (select-keys doc [:file]))))))
                              (if (seq deps)
                                (-> (reduce (partial analyze-deps analyzed) state deps)
                                    (make-deps-inherit-no-cache analyzed))
