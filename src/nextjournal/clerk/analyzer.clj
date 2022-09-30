@@ -218,9 +218,20 @@
   (-> (reduce add-block-id (assoc analyzed-doc :blocks [] :id->count {} ) blocks)
       (dissoc :id->count)))
 
-(def clojure-internal?
-  "A var fabricated and interned during clojure macro expansion (see proxy)."
-  (comp #(str/includes? % ".proxy$") name))
+(defn ^:private internal-proxy-name?
+  "Returns true if `sym` represents a var name interned by `clojure.core/proxy`."
+  [sym]
+  (str/includes? (name sym) ".proxy$"))
+
+(defn throw-if-dep-is-missing [doc state analyzed]
+  (when-let [missing-dep (and (first (set/difference (into #{}
+                                                           (comp (filter #(and (symbol? %)
+                                                                               (#{(-> state :ns ns-name name)} (namespace %))))
+                                                                 (remove internal-proxy-name?))
+                                                           (:deps analyzed))
+                                                     (-> state :->analysis-info keys set))))]
+    (throw (ex-info (str "The var `#'" missing-dep "` exists at runtime, but Clerk cannot find it in the namespace. Did you remove it?")
+                    (merge {:var-name missing-dep} (select-keys analyzed [:form]) (select-keys doc [:file]))))))
 
 (defn analyze-doc
   ([doc]
@@ -246,16 +257,8 @@
                                                        (->ana-keys analyzed))
                                          doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
                                          (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))]
-                             (when-let [missing-dep (and (:ns? state)
-                                                         (first (set/difference (into #{}
-                                                                                      (comp (filter #(and (symbol? %)
-                                                                                                     (#{(-> state :ns ns-name name)} (namespace %))))
-                                                                                            (remove clojure-internal?))
-                                                                                      deps)
-                                                                                (-> state :->analysis-info keys set))))]
-
-                               (throw (ex-info (str "Could not resolve var: " (name missing-dep))
-                                               (merge {:var missing-dep} (select-keys analyzed [:form]) (select-keys doc [:file])))))
+                             (when (:ns? state)
+                               (throw-if-dep-is-missing doc state analyzed))
                              (if (seq deps)
                                (-> (reduce (partial analyze-deps analyzed) state deps)
                                    (make-deps-inherit-no-cache analyzed))
@@ -264,8 +267,6 @@
                        doc? (merge doc))
                      (-> doc :blocks count range))
        doc? (-> add-block-ids parser/add-block-visibility)))))
-
-#_ (analyze-doc (parser/parse-clojure-string "(ns dang) (proxy [clojure.lang.ISeq][])"))
 
 (defn analyze-file
   ([file] (analyze-file {:graph (dep/graph)} file))
