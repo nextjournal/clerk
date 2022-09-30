@@ -189,15 +189,10 @@
 #_(dissoc (get @!build-state-history 3) :state)
 
 (comment
-  (reset! !build-state (reduce next-build-state initial-build-state (take 14 @!build-state-history)))
-  
-  (require '[nextjournal.clerk.builder :as b])
 
-  (reset! !build-state (get @!build-state-history 12))
+  (do (reset! !build-state (reduce next-build-state initial-build-state (take 10 @!build-events)))
+      (nextjournal.clerk/recompute!))
   
-  (do
-    (reset! !build-state {:stage :init :state (mapv #(hash-map :file %) (take 3 (b/expand-paths `b/clerk-docs)))})
-    (nextjournal.clerk/recompute!))
 
   (do (reset-build-state!)
       (nextjournal.clerk.builder/build-static-app! {:paths (take 10 nextjournal.clerk.builder/clerk-docs)
