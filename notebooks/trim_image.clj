@@ -1,5 +1,5 @@
 ;; # ✂️ Trim Images Testbed
-(ns cards
+(ns trim-image
   {:nextjournal.clerk/no-cache true
    :nextjournal.clerk/visibility {:code :hide}}
   (:require [nextjournal.clerk :as clerk]
@@ -41,29 +41,33 @@
               (< y (dec img-height)) (recur (inc y)))))
          colored-row)))
    
-   (defn trim-image [img]
-     (let [canvas (js/document.createElement "canvas")
-           ctx (.getContext canvas "2d")
-           img-width (.-naturalWidth img)
-           img-height (.-naturalHeight img)
-           _ (.setAttribute canvas "width" img-width)
-           _ (.setAttribute canvas "height" img-height)
-           _ (.drawImage ctx img 0 0 img-width img-height)
-           img-data (.-data (.getImageData ctx 0 0 img-width img-height))
-           x1 (scan-x true img-width img-height img-data)
-           y1 (scan-y true img-width img-height img-data)
-           x2 (scan-x false img-width img-height img-data)
-           y2 (scan-y false img-width img-height img-data)
-           dx (inc (- x2 x1))
-           dy (inc (- y2 y1))
-           trimmed-data (.getImageData ctx x1 y1 dx dy)
-           _ (.setAttribute canvas "width" dx)
-           _ (.setAttribute canvas "height" dy)
-           _ (.clearRect ctx 0 0 dx dy)
-           _ (.putImageData ctx trimmed-data 0 0)
-           result-img (js/document.createElement "img")]
-       (.setAttribute result-img "src" (.toDataURL canvas "image/png"))
-       result-img))
+   (defn trim-image
+     ([img] (trim-image img {}))
+     ([img {:keys [padding] :or {padding 0}}]
+      (let [canvas (js/document.createElement "canvas")
+            ctx (.getContext canvas "2d")
+            img-width (.-naturalWidth img)
+            img-height (.-naturalHeight img)
+            _ (.setAttribute canvas "width" img-width)
+            _ (.setAttribute canvas "height" img-height)
+            _ (.drawImage ctx img 0 0 img-width img-height)
+            img-data (.-data (.getImageData ctx 0 0 img-width img-height))
+            x1 (scan-x true img-width img-height img-data)
+            y1 (scan-y true img-width img-height img-data)
+            x2 (scan-x false img-width img-height img-data)
+            y2 (scan-y false img-width img-height img-data)
+            dx (inc (- x2 x1))
+            dy (inc (- y2 y1))
+            trimmed-data (.getImageData ctx x1 y1 dx dy)
+            _ (.setAttribute canvas "width" (+ dx (* padding 2)))
+            _ (.setAttribute canvas "height" (+ dy (* padding 2)))
+            _ (.clearRect ctx 0 0 (+ dx padding) (+ dy padding))
+            _ (set! (.-fillStyle ctx) "white")
+            _ (.fillRect ctx 0 0 (.-width canvas) (.-height canvas))
+            _ (.putImageData ctx trimmed-data padding padding)
+            result-img (js/document.createElement "img")]
+        (.setAttribute result-img "src" (.toDataURL canvas "image/png"))
+        result-img)))
 
    (v/with-viewer
      #(v/html
@@ -78,10 +82,17 @@
          [:h4 "Original"]
          [:img.border.border-green-500 {:id "original"
                                         :on-load (fn [event]
-                                                   (let [result (js/document.getElementById "result")]
+                                                   (let [result (js/document.getElementById "result")
+                                                         result-padding (js/document.getElementById "result-padding")
+                                                         img (.-target event)]
                                                      (j/assoc! result :innerHTML "")
-                                                     (.appendChild result (trim-image (.-target event)))))}]
+                                                     (.appendChild result (trim-image img))
+                                                     (j/assoc! result-padding :innerHTML "")
+                                                     (.appendChild result-padding (trim-image img {:padding 20}))))}]
          [:h4 "Trimmed"]
          [:div.flex
-          [:div#result.border.border-red-500]]]])
+          [:div#result.border.border-red-500]]
+         [:h4 "Trimmed with padding"]
+         [:div.flex
+          [:div#result-padding.border.border-red-500]]]])
      nil)))
