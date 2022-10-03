@@ -33,6 +33,8 @@
   (cond->> filename
     out-dir (str out-dir "/")))
 
+
+
 (defn screenshot
   ([page] (screenshot {} page))
   ([{:keys [out-dir]} page]
@@ -46,9 +48,13 @@
          (p/let [res (.nth results i)
                  bounds (.boundingBox res)]
            (if (<= 250 (.-height bounds))
-             (do
-               (println+flush "📸 Screenshotting result with bounds" (str (.-width bounds) "×" (.-height bounds)))
-               (.screenshot res #js {:path (->path out-dir (str "result-" (inc i) ".png"))}))
+             (p/let [_ (println+flush "📸 Screenshotting result with bounds" (str (.-width bounds) "×" (.-height bounds)))
+                     buffer (.screenshot res #js {:path (->path out-dir (str "result-" (inc i) ".png"))})
+                     base64 (.toString buffer "base64")
+                     image-uri (str "data:image/png;base64," base64)
+                     _ (.evaluate res "console.log(nextjournal.clerk.sci_viewer)")
+                     _ (.evaluate res (str "nextjournal.clerk.sci_viewer.append_trimmed_image(\"" image-uri "\", \"res-" i "\")"))]
+               (js/console.log "APPENDED" (.locator page (str "#res-" i))))
              (println+flush "🦘 Skipping result with bounds" (str (.-width bounds) "×" (.-height bounds))))
            (p/recur (inc i)))
          (println+flush "✅ Done."))))))
@@ -58,7 +64,7 @@
           page (new-page url)]
     (p/do
       (screenshot opts page)
-      (.close browser))))
+      #_(.close browser))))
 
 (comment
   (def page (new-page "http://localhost:7777"))

@@ -801,4 +801,11 @@
      (.setAttribute result-img "src" (.toDataURL canvas "image/png"))
      result-img)))
 
+(defn ^:export append-trimmed-image [base64 id]
+  (let [img (js/document.createElement "img")
+        _ (.setAttribute img "src" base64)
+        trimmed-img (trim-image img {:padding 20})
+        _ (.setAttribute trimmed-img "id" id)]
+    (.. js/document -body (appendChild trimmed-img))))
+
 (set! *eval* eval-form)
