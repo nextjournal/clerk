@@ -384,8 +384,9 @@
                     identity)
                   ->hash)
         hashed-deps (into #{} (map ->hash') deps)]
-    (sha1-base58 (pr-str (set/union (conj hashed-deps (if form form hash))
-                                    vars)))))
+    (sha1-base58 (binding [*print-length* nil]
+                   (pr-str (set/union (conj hashed-deps (if form form hash))
+                                      vars))))))
 
 #_(nextjournal.clerk/build-static-app! {:paths nextjournal.clerk/clerk-docs})
 

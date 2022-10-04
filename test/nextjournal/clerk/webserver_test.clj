@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.view :as view]
+            [nextjournal.clerk.viewer :as viewer]
             [nextjournal.clerk.webserver :as webserver]))
 
 (defn read-result [s]
@@ -21,8 +22,8 @@
 
 (deftest extract-viewer-evals
   (testing "doesn't throw on sorted-map"
-    (is (= #{} (-> (pr-str '(into (sorted-map)
-                                  {"A" ["A" "Aani" "Aaron"]
-                                   "B" ["B" "Baal" "Baalath"]}))
+    (is (= #{} (-> (viewer/->edn '(into (sorted-map)
+                                        {"A" ["A" "Aani" "Aaron"]
+                                         "B" ["B" "Baal" "Baalath"]}))
                    eval/eval-string
                    webserver/extract-viewer-evals)))))
