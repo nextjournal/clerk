@@ -275,7 +275,8 @@
 #?(:clj
    (defn ->edn [x]
      (binding [*print-namespace-maps* false
-               *print-length*         nil]
+               *print-length* nil
+               *print-level* nil]
        (pr-str x))))
 
 #_(->edn {:nextjournal/value :foo})
