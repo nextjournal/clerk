@@ -246,7 +246,7 @@
                                  form+loc (cond-> form
                                             (instance? clojure.lang.IObj form)
                                             (vary-meta merge (cond-> loc
-                                                               (:file doc) (assoc :clojure.core/eval-file (:file doc)))))
+                                                               (:file doc) (assoc :clojure.core/eval-file (str (:file doc))))))
                                  {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form+loc)
                                                                                (:file doc) (assoc :file (:file doc)))
                                  _ (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
