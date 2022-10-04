@@ -67,7 +67,7 @@
                            [:span.text-slate-500 "Queued"])]]])))
          blocks)])
 
-(defn doc-build-badge [{:as doc :keys [blocks block-counts code-blocks file phase state duration max-duration]}]
+(defn doc-build-badge [{:as doc :keys [blocks block-counts code-blocks file phase state duration total-duration]}]
   [:<>
    [:div.p-1
     [:div.rounded-md.border.border-slate-300.px-4.py-3.font-sans.shadow
@@ -103,7 +103,7 @@
              {:class "h-[4px] w-[50px]"}
              [:div.bg-green-600.border-r.border-white
               {:class "h-[6px] -mt-[1px] min-w-[2px]"
-               :style {:width (str (int (* 100 (/ duration max-duration))) "%")}}]]
+               :style {:width (str (int (* 100 (/ duration total-duration))) "%")}}]]
             [:span.font-mono.ml-1
              {:class "w-[40px] text-[10px]"}
              (int duration) "ms"]])])]]]
@@ -156,9 +156,9 @@
               (assoc :state :queued :block-counts (frequencies (map :type blocks)))))
         docs))
 
-(defn update-max-duration [docs]
-  (let [max-duration (apply max (keep :duration docs))]
-    (mapv #(assoc % :max-duration max-duration) docs)))
+(defn compute-total-duration [docs]
+  (let [total-duration (apply + (keep :duration docs))]
+    (mapv #(assoc % :total-duration total-duration) docs)))
 
 (def initial-build-state
   {:parsing {:phase-name "Parsing" :state :executing}
@@ -174,7 +174,7 @@
     :building (update-in build-state [:docs idx] merge {:state :executing})
     :built (-> build-state
                (update-in [:docs idx] merge {:state :done :duration duration})
-               (update :docs update-max-duration))
+               (update :docs compute-total-duration))
     build-state))
 
 (defonce !build-state (atom initial-build-state))
