@@ -802,10 +802,11 @@
      result-img)))
 
 (defn ^:export append-trimmed-image [base64 id]
-  (let [img (js/document.createElement "img")
-        _ (.setAttribute img "src" base64)
-        trimmed-img (trim-image img {:padding 20})
-        _ (.setAttribute trimmed-img "id" id)]
-    (.. js/document -body (appendChild trimmed-img))))
+  (let [img (js/document.createElement "img")]
+    (.addEventListener img "load" (fn [event]
+                                    (let [trimmed-img (trim-image (.-target event) {:padding 20})]
+                                      (.setAttribute trimmed-img "id" id)
+                                      (.. js/document -body (appendChild trimmed-img)))))
+    (.setAttribute img "src" base64)))
 
 (set! *eval* eval-form)
