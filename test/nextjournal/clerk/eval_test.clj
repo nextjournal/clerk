@@ -170,9 +170,9 @@
                 (eval+extract-doc-blocks "^{:nextjournal.clerk/visibility :fold}{:some :map}"))))
 
   (testing "handles sorted map"
-    (view/doc->viewer (eval/eval-string (pr-str '(into (sorted-map)
-                                                       {"A" ["A" "Aani" "Aaron"]
-                                                        "B" ["B" "Baal" "Baalath"]})))))
+    (view/doc->viewer (eval/eval-string (viewer/->edn '(into (sorted-map)
+                                                             {"A" ["A" "Aani" "Aaron"]
+                                                              "B" ["B" "Baal" "Baalath"]})))))
 
   (testing "hides the result"
     (is (= []
