@@ -193,11 +193,8 @@
 
 (comment
 
-  (do (reset! !build-state (reduce next-build-state initial-build-state (take 10 @!build-events)))
-      (nextjournal.clerk/recompute!))
-  
-
   (do (reset-build-state!)
+      (nextjournal.clerk/show! (clojure.java.io/resource "nextjournal/clerk/builder_ui.clj"))
       (nextjournal.clerk.builder/build-static-app! {:paths (take 10 nextjournal.clerk.builder/clerk-docs)
                                                     :browse? false
                                                     :report-fn (fn [build-event]
