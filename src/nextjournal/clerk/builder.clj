@@ -7,7 +7,8 @@
             [nextjournal.clerk.builder-ui :as builder-ui]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
-            [nextjournal.clerk.view :as view]))
+            [nextjournal.clerk.view :as view]
+            [nextjournal.clerk.webserver :as webserver]))
 
 
 (def clerk-docs
@@ -79,16 +80,24 @@
       :uploading-cache (str "⏫ Uploading distributed cache… ")
       :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n"))))
 
-(defn stdout-reporter [event]
-  (doto (describe-event event)
+(defn stdout-reporter [build-event]
+  (doto (describe-event build-event)
     (print)
     (do (flush))))
+
+(defn build-ui-reporter [{:as build-event :keys [phase]}]
+  (when (= phase :init)
+    ((resolve 'nextjournal.clerk/show!) (clojure.java.io/resource "nextjournal/clerk/builder_ui.clj")))
+  (stdout-reporter build-event)
+  (builder-ui/add-build-event! build-event)
+  (binding [*out* (java.io.StringWriter.)]
+    ((resolve 'nextjournal.clerk/recompute!))))
 
 (defn process-build-opts [{:as opts :keys [paths]}]
   (merge {:out-path (str "public" fs/file-separator "build")
           :bundle? true
           :browse? true
-          :report-fn stdout-reporter}
+          :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
          opts))
 
 (defn write-static-app!

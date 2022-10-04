@@ -125,4 +125,4 @@
     (catch java.net.BindException _e
       (println "Port " port " not available, server not started!"))))
 
-#_(start! {:port 7777})
+#_(serve! {:port 7777})
