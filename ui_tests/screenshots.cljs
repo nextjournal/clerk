@@ -46,8 +46,15 @@
          (p/let [res (.nth results i)
                  bounds (.boundingBox res)]
            (if (<= 250 (.-height bounds))
-             (p/let [_ (println+flush (str "📸 Screenshotting result #" (inc i) " with bounds " (.-width bounds) "×" (.-height bounds)))
-                     buffer (.screenshot res)
+             (p/let [imgs (.locator res "img")
+                     imgs-count (.count imgs)
+                     single-image? (= imgs-count 1)
+                     _ (println+flush (str "🔍 Result #" (inc i) " contains " imgs-count " " (if single-image? "image" "images") "."))
+                     subject (if single-image? (.first imgs) res)
+                     _ (println+flush (str "📸 Screenshotting result #" (inc i)
+                                           " (" (if single-image? "single image" "entire result") ")"
+                                           " with bounds " (.-width bounds) "×" (.-height bounds)))
+                     buffer (.screenshot subject)
                      base64 (.toString buffer "base64")
                      image-uri (str "data:image/png;base64," base64)
                      _ (.evaluate res (str "nextjournal.clerk.sci_viewer.append_trimmed_image(\"" image-uri "\", \"res-" i "\")"))
