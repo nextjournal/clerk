@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.webserver
-  (:require [clojure.edn :as edn]
+  (:require [babashka.fs :as fs]
+            [clojure.edn :as edn]
             [clojure.pprint :as pprint]
             [clojure.string :as str]
             [lambdaisland.uri :as uri]
@@ -60,6 +61,20 @@
   {:blob-id (str/replace uri "/_blob/" "")
    :fetch-opts (get-fetch-opts query-string)})
 
+(defn serve-file [path {:as req :keys [uri]}]
+  (let [file-or-dir (str path uri)
+        file (when (fs/exists? file-or-dir)
+               (cond-> file-or-dir
+                 (fs/directory? file-or-dir) (fs/file "index.html")))
+        extension (fs/extension file)]
+    (if (fs/exists? file)
+      {:status 200
+       :headers {"Content-Type" ({"html" "text/html"
+                                  "png" "image/png"
+                                  "jpg" "image/jpeg"} extension "text/html")}
+       :body (slurp file)}
+      {:status 404})))
+
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
     (httpkit/as-channel req {:on-open (fn [ch] (swap! !clients conj ch))
@@ -71,6 +86,7 @@
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
+        "build" (serve-file "public" req)
         "_ws" {:status 200 :body "upgrading..."}
         "js" {:status 200 :body (slurp (str "public" uri))}
         {:status  200
@@ -116,6 +132,8 @@
     (stop-fn)
     (println (str "Webserver running on " port ", stopped."))
     (reset! !server nil)))
+
+#_(halt!)
 
 (defn serve! [{:keys [port] :or {port 7777}}]
   (halt!)
