@@ -73,7 +73,7 @@
     [:div.rounded-md.border.border-slate-300.px-4.py-3.font-sans.shadow
      {:class (if (= state :done) "bg-green-100" "bg-slate-100")}
      [:div.flex.justify-between.items-center
-      [:div.flex.items-center
+      [:div.flex.items-center.truncate.mr-2
        [:div.mr-2
         (case state
           :executing (spinner)
@@ -84,29 +84,29 @@
                              :done "Built"
                              :queued "Queued"
                              (str "unexpected state `" (pr-str state) "`"))]
-       [:div.text-sm.font-medium.leading-none
+       [:div.text-sm.font-medium.leading-none.truncate
         file]]
       
-      (when-let [{:keys [code markdown code-executing]} (not-empty block-counts)]
-        [:div
+      (when-let [{:keys [code code-executing]} (not-empty block-counts)]
+        [:div.flex-shrink-0.whitespace-no-wrap
          [:span.text-xs.mr-3
           (when code
             [:<>
              (when code-executing
                [:<> [:span.font-bold code-executing] " of "])
-             (str code " code")])
-          (when markdown (str (when code " & ") markdown " markdown"))
-          " blocks"]
-         (when duration
-           [:div.inline-flex.items-center
-            [:div.bg-slate-300
-             {:class "h-[4px] w-[50px]"}
-             [:div.bg-green-600.border-r.border-white
+             (str code " code blocks")])]
+         [:div.inline-flex.items-center
+          [:div.bg-slate-300
+           {:class "h-[4px] w-[50px]"}
+           (when duration
+             [:div.bg-indigo-600.border-r.border-white
               {:class "h-[6px] -mt-[1px] min-w-[2px]"
-               :style {:width (str (int (* 100 (/ duration total-duration))) "%")}}]]
-            [:span.font-mono.ml-1
-             {:class "w-[40px] text-[10px]"}
-             (int duration) "ms"]])])]]]
+               :style {:width (str (int (* 100 (/ duration total-duration))) "%")}}])]
+          [:span.font-mono.ml-1
+           {:class "w-[40px] text-[10px]"}
+           (if duration
+             (str (int duration) "ms")
+             "⏱")]]])]]]
    #_(when (= :executing state)
        (blocks-view doc))
    #_[:div.mx-auto.w-8.border.border-t-0.border-slate-300.bg-slate-50.rounded-b.text-slate-500.flex.justify-center.shadow.hover:bg-slate-100.cursor-pointer
@@ -118,7 +118,7 @@
 (def doc-build-badge-viewer
   {:transform-fn (viewer/update-val (comp viewer/html doc-build-badge))})
 
-(defn phase-view [{:keys [phase-name docs state]}]
+(defn phase-view [{:keys [phase-name docs state duration]}]
   [:div.p-1
    [:div.rounded-md.border.border-slate-300.px-4.py-3.font-sans.shadow
     {:class (if (= state :done) "bg-green-100" "bg-slate-100")}
@@ -129,12 +129,19 @@
          :executing (spinner)
          :done (checkmark)
          (status-light state))]
-      [:span.text-sm.mr-1 (case state
-                            :executing "Building"
-                            :done "Built"
-                            :queued "Queued")]
+      (if (not= state :done)
+        [:span.text-sm.mr-1 (case state
+                              :executing "Building"
+                              :queued "Queued")])
       [:div.text-sm.font-medium.leading-none
-       phase-name]]]]])
+       phase-name]]
+     [:div.flex
+      (when docs
+        [:div.text-xs.mr-3 (count docs) " Documents"])
+      (when (= state :done)
+        [:span.font-mono.ml-1
+         {:class "w-[40px] text-[10px]"}
+         (int duration) "ms"])]]]])
 
 
 (def phase-viewer
@@ -170,7 +177,7 @@
     (:parsed :analyzed) (-> build-state
                             (assoc :docs (process-docs state))
                             (update ({:parsed :parsing
-                                      :analyzed :analyzing} stage) merge {:state :done :duration duration}))
+                                      :analyzed :analyzing} stage) merge {:state :done :duration duration :phase-name (-> stage name str/capitalize)}))
     :building (update-in build-state [:docs idx] merge {:state :executing})
     :built (-> build-state
                (update-in [:docs idx] merge {:state :done :duration duration})
@@ -193,27 +200,26 @@
 
 (comment
 
-  (do (reset-build-state!)
-      (nextjournal.clerk/show! (clojure.java.io/resource "nextjournal/clerk/builder_ui.clj"))
-      (nextjournal.clerk.builder/build-static-app! {:paths (take 10 nextjournal.clerk.builder/clerk-docs)
-                                                    :browse? false
-                                                    :report-fn (fn [build-event]
-                                                                 (nextjournal.clerk.builder/stdout-reporter build-event)
-                                                                 (add-build-event! build-event)
-                                                                 (binding [*out* (java.io.StringWriter.)]
-                                                                   (nextjournal.clerk/recompute!)))})
-      :done)
+  
+  
+  (nextjournal.clerk.builder/build-static-app! {:paths (take 10 nextjournal.clerk.builder/clerk-docs)
+                                                :browse? false})
+  
 
+  (do
+    (reset! !build-state (reduce next-build-state initial-build-state (take 10 @!build-events)))
+    (nextjournal.clerk/recompute!))
+  
   )
 
 ;; # 👷 Clerk Builder 🔨
 {:nextjournal.clerk/visibility {:result :show}}
 
 ^{:nextjournal.clerk/viewer phase-viewer}
-(:parsing @!build-state)
+(merge (:parsing @!build-state) (select-keys @!build-state [:docs]))
 
 ^{:nextjournal.clerk/viewer phase-viewer}
-(:analyzing @!build-state)
+(merge (:analyzing @!build-state) (select-keys @!build-state [:docs]))
 
 ^{:nextjournal.clerk/viewer docs-viewer}
 (:docs @!build-state)
