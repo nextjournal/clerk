@@ -4,10 +4,11 @@
             [clojure.java.browse :as browse]
             [clojure.string :as str]
             [nextjournal.clerk.analyzer :as analyzer]
+            [nextjournal.clerk.builder-ui :as builder-ui]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
-            [nextjournal.clerk.view :as view]))
-
+            [nextjournal.clerk.view :as view]
+            [nextjournal.clerk.webserver :as webserver]))
 
 (def clerk-docs
   (into ["CHANGELOG.md"
@@ -66,10 +67,42 @@
   [path]
   (str/replace path fs/file-separator "/"))
 
+(defn describe-event [{:as event :keys [stage state duration doc]}]
+  (let [format-duration (partial format "%.3fms")
+        duration (some-> duration format-duration)]
+    (case stage
+      :init (str "👷🏼 Clerk is building " (count state) " notebooks…\n🧐 Parsing… ")
+      :parsed (str "Done in " duration ". ✅\n🔬 Analyzing… ")
+      (:built :analyzed :done) (str "Done in " duration ". ✅\n")
+      :building (str "🔨 Building \"" (:file doc) "\"… ")
+      :downloading-cache (str "⏬ Downloading distributed cache… ")
+      :uploading-cache (str "⏫ Uploading distributed cache… ")
+      :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n"))))
+
+(defn stdout-reporter [build-event]
+  (doto (describe-event build-event)
+    (print)
+    (do (flush))))
+
+(defn build-ui-reporter [{:as build-event :keys [stage]}]
+  (when (= stage :init)
+    (builder-ui/reset-build-state!)
+    ((resolve 'nextjournal.clerk/show!) (clojure.java.io/resource "nextjournal/clerk/builder_ui.clj"))
+    (when-let [{:keys [port]} (and (get-in build-event [:build-opts :browse?]) @webserver/!server)]
+      (browse/browse-url (str "http://localhost:" port))))
+  (stdout-reporter build-event)
+  (builder-ui/add-build-event! build-event)
+  (binding [*out* (java.io.StringWriter.)]
+    ((resolve 'nextjournal.clerk/recompute!))))
+
+(def default-out-path
+  (str "public" fs/file-separator "build"))
+
 (defn process-build-opts [{:as opts :keys [paths]}]
-  (merge {:out-path (str "public" fs/file-separator "build")
+  (merge {:out-path default-out-path
           :bundle? true
-          :browse? true}
+          :browse? true
+          :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
          opts))
 
 (defn write-static-app!
@@ -98,20 +131,9 @@
               (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
     (when browse?
       (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize)))
-    docs))
-
-(defn stdout-reporter [{:as event :keys [stage state duration doc]}]
-  (let [format-duration (partial format "%.3fms")
-        duration (some-> duration format-duration)]
-    (print (case stage
-             :init (str "👷🏼 Clerk is building " (count state) " notebooks…\n🧐 Parsing… ")
-             :parsed (str "Done in " duration ". ✅\n🔬 Analyzing… ")
-             (:built :analyzed :done) (str "Done in " duration ". ✅\n")
-             :building (str "🔨 Building \"" (:file doc) "\"… ")
-             :downloading-cache (str "⏬ Downloading distributed cache… ")
-             :uploading-cache (str "⏫ Uploading distributed cache… ")
-             :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n"))))
-  (flush))
+    {:docs docs
+     :index-html index-html
+     :build-href (if (and @webserver/!server (= out-path default-out-path)) "/build" index-html)}))
 
 (defn expand-paths [paths]
   (->> (if (symbol? paths)
@@ -130,13 +152,12 @@
 #_(expand-paths ["notebooks/viewers**"])
 
 (defn build-static-app! [opts]
-  (let [{:as opts :keys [expanded-paths paths download-cache-fn upload-cache-fn bundle?]} (assoc (process-build-opts opts) :expanded-paths (-> opts :paths expand-paths))
+  (let [{:as opts :keys [expanded-paths paths download-cache-fn upload-cache-fn bundle? report-fn]} (assoc (process-build-opts opts) :expanded-paths (-> opts :paths expand-paths))
         _ (when (empty? expanded-paths)
             (throw (ex-info "nothing to build" {:expanded-paths expanded-paths :paths paths})))
         start (System/nanoTime)
-        report-fn stdout-reporter
         state (mapv #(hash-map :file %) expanded-paths)
-        _ (report-fn {:stage :init :state state})
+        _ (report-fn {:stage :init :state state :build-opts opts})
         {state :result duration :time-ms} (eval/time-ms (mapv (comp (partial parser/parse-file {:doc? true}) :file) state))
         _ (report-fn {:stage :parsed :state state :duration duration})
         {state :result duration :time-ms} (eval/time-ms (mapv (comp analyzer/hash
@@ -146,13 +167,13 @@
             (report-fn {:stage :downloading-cache})
             (let [{duration :time-ms} (eval/time-ms (download-cache-fn state))]
               (report-fn {:stage :done :duration duration})))
-        state (mapv (fn [doc]
-                      (report-fn {:stage :building :doc doc})
+        state (mapv (fn [doc idx]
+                      (report-fn {:stage :building :doc doc :idx idx})
                       (let [{doc+viewer :result duration :time-ms} (eval/time-ms
                                                                     (let [doc (eval/eval-analyzed-doc doc)]
                                                                       (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc))))]
-                        (report-fn {:stage :built :doc doc+viewer :duration duration})
-                        doc+viewer)) state)
+                        (report-fn {:stage :built :doc doc+viewer :duration duration :idx idx})
+                        doc+viewer)) state (range))
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
     (when upload-cache-fn
       (report-fn {:stage :uploading-cache})
@@ -160,7 +181,7 @@
         (report-fn {:stage :done :duration duration})))
     (report-fn {:stage :finished :state state :duration duration :total-duration (eval/elapsed-ms start)})))
 
-#_(build-static-app! {:paths (take 5 clerk-docs)})
+#_(build-static-app! {:paths (take 15 clerk-docs)})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
-#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? false})
+#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
 #_(build-static-app! {:paths ["notebooks/viewers/**"]})
