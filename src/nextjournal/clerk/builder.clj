@@ -2,6 +2,7 @@
   "Clerk's Static App Builder."
   (:require [babashka.fs :as fs]
             [clojure.java.browse :as browse]
+            [clojure.set :as set]
             [clojure.string :as str]
             [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.builder-ui :as builder-ui]
@@ -88,7 +89,7 @@
   (when (= stage :init)
     (builder-ui/reset-build-state!)
     ((resolve 'nextjournal.clerk/show!) (clojure.java.io/resource "nextjournal/clerk/builder_ui.clj"))
-    (when-let [{:keys [port]} (and (get-in build-event [:build-opts :browse?]) @webserver/!server)]
+    (when-let [{:keys [port]} (and (get-in build-event [:build-opts :browse]) @webserver/!server)]
       (browse/browse-url (str "http://localhost:" port))))
   (stdout-reporter build-event)
   (builder-ui/add-build-event! build-event)
@@ -98,30 +99,28 @@
 (def default-out-path
   (str "public" fs/file-separator "build"))
 
+(defn ^:private migrate-deprecated-opts [opts]
+  (set/rename-keys opts {:bundle? :bundle
+                         :browse? :browse}))
+
 (defn process-build-opts [{:as opts :keys [paths]}]
   (merge {:out-path default-out-path
-          :bundle? true
-          :browse? true
+          :bundle false
+          :browse false
           :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
-         opts))
+         (migrate-deprecated-opts opts)))
 
 (defn write-static-app!
-  "Creates a static html app of the seq of `docs`. Customizable with an `opts` map with keys:
-
-  - `:paths` a vector of relative paths to notebooks to include in the build
-  - `:bundle?` builds a single page app versus a folder with an html page for each notebook (defaults to `true`)
-  - `:out-path` a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
-  - `:git/sha`, `:git/url` when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`"
   [opts docs]
-  (let [{:as opts :keys [bundle? out-path browse?]} (process-build-opts opts)
+  (let [{:as opts :keys [bundle out-path browse]} (process-build-opts opts)
         paths (mapv :file docs)
         path->doc (into {} (map (juxt :file :viewer)) docs)
-        path->url (into {} (map (juxt identity #(cond-> (strip-index %) (not bundle?) ->html-extension))) paths)
-        static-app-opts (assoc opts :bundle? bundle? :path->doc path->doc :paths (vec (keys path->doc)) :path->url path->url)
+        path->url (into {} (map (juxt identity #(cond-> (strip-index %) (not bundle) ->html-extension))) paths)
+        static-app-opts (assoc opts :bundle bundle :path->doc path->doc :paths (vec (keys path->doc)) :path->url path->url)
         index-html (str out-path fs/file-separator "index.html")]
     (when-not (fs/exists? (fs/parent index-html))
       (fs/create-dirs (fs/parent index-html)))
-    (if bundle?
+    (if bundle
       (spit index-html (view/->static-app static-app-opts))
       (do (when-not (contains? (-> path->url vals set) "") ;; no user-defined index page
             (spit index-html (view/->static-app (dissoc static-app-opts :path->doc))))
@@ -129,30 +128,43 @@
             (let [out-html (str out-path fs/file-separator (str/replace path #"(.cljc?|.md)" ".html"))]
               (fs/create-dirs (fs/parent out-html))
               (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
-    (when browse?
+    (when browse
       (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize)))
     {:docs docs
      :index-html index-html
      :build-href (if (and @webserver/!server (= out-path default-out-path)) "/build" index-html)}))
 
-(defn expand-paths [paths]
-  (->> (if (symbol? paths)
-         (let [resolved (-> paths requiring-resolve deref)]
-           (cond-> resolved
-             (fn? resolved) (apply [])))
-         paths)
+(defn expand-paths [{:keys [paths paths-fn]}]
+  (when (and paths paths-fn)
+    (binding [*out* *err*]
+      (println "[info] both `:paths` and `:paths-fn` are set, `:paths` will take precendence.")))
+  (->> (cond paths (if (sequential? paths)
+                     paths
+                     (throw (ex-info "`:paths` must be sequential" {:paths paths})))
+             paths-fn (if (qualified-symbol? paths-fn)
+                        (try
+                          (if-let [resolved-var  (requiring-resolve paths-fn)]
+                            (let [resolved-paths (cond-> @resolved-var
+                                                   (fn? @resolved-var) (apply []))]
+                              (when-not (sequential? resolved-paths)
+                                (throw (ex-info (str "#'" paths-fn " must be sequential.") {:paths-fn paths-fn :resolved-paths resolved-paths})))
+                              resolved-paths)
+                            (throw (ex-info (str "#'" paths-fn " cannot be resolved.") {:paths-fn paths-fn}))))
+                        (throw (ex-info "`:path-fn` must be a qualified symbol pointing at an existing var." {:paths-fn paths-fn}))))
        (mapcat (partial fs/glob "."))
        (filter (complement fs/directory?))
        (mapv (comp str fs/file))))
 
-#_(expand-paths ["notebooks/di*.clj"])
-#_(expand-paths `clerk-docs)
+#_(expand-paths {:paths ["notebooks/di*.clj"]})
+#_(expand-paths {:paths ['notebooks/rule_30.clj]})
+#_(expand-paths {:paths-fn `clerk-docs})
+#_(expand-paths {:paths-fn `clerk-docs-2})
 #_(do (defn my-paths [] ["notebooks/h*.clj"])
-      (expand-paths `my-paths))
-#_(expand-paths ["notebooks/viewers**"])
+      (expand-paths {:paths-fn `my-paths}))
+#_(expand-paths {:paths ["notebooks/viewers**"]})
 
 (defn build-static-app! [opts]
-  (let [{:as opts :keys [expanded-paths paths download-cache-fn upload-cache-fn bundle? report-fn]} (assoc (process-build-opts opts) :expanded-paths (-> opts :paths expand-paths))
+  (let [{:as opts :keys [expanded-paths paths download-cache-fn upload-cache-fn bundle report-fn]} (assoc (process-build-opts opts) :expanded-paths (expand-paths opts))
         _ (when (empty? expanded-paths)
             (throw (ex-info "nothing to build" {:expanded-paths expanded-paths :paths paths})))
         start (System/nanoTime)
@@ -182,6 +194,6 @@
     (report-fn {:stage :finished :state state :duration duration :total-duration (eval/elapsed-ms start)})))
 
 #_(build-static-app! {:paths (take 15 clerk-docs)})
-#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
-#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
+#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle true})
+#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle false :browse false})
 #_(build-static-app! {:paths ["notebooks/viewers/**"]})

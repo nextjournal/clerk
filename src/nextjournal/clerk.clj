@@ -357,7 +357,29 @@
 
 (def valuehash analyzer/valuehash)
 
-(def build-static-app! builder/build-static-app!)
+(defn build!
+  "Creates a static html build from a collection of notebooks.
+
+  Takes an `build-opts` map with at least `:paths` or `:paths-fn` keys:
+
+  - `:paths` a vector of relative paths to notebooks to include in the build
+  - `:paths-fn` a symbol resolving to a `def` or thunk returning the sequence of paths
+
+  When both `:paths` and `:paths-fn` are given, `:paths` takes precendence.
+
+  Can be customized with the following optional keys:
+
+  - `:bundle` if true results in a single self-contained html single-page-app including inlined images
+  - `:browse` if true will open the built page on success
+  - `:out-path` a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
+  - `:git/sha`, `:git/url` when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
+  "
+  {:org.babashka/cli {:coerce {:paths []
+                               :paths-fn :symbol}}}
+  [build-opts]
+  (builder/build-static-app! build-opts))
+
+(def ^{:deprecated "0.11"} build-static-app! build!)
 
 (defn clear-cache!
   "Clears the in-memory and file-system caches."
