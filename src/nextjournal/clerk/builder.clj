@@ -10,7 +10,6 @@
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.webserver :as webserver]))
 
-
 (def clerk-docs
   (into ["CHANGELOG.md"
          "notebooks/markdown.md"
@@ -85,8 +84,9 @@
     (print)
     (do (flush))))
 
-(defn build-ui-reporter [{:as build-event :keys [phase]}]
-  (when (= phase :init)
+(defn build-ui-reporter [{:as build-event :keys [stage]}]
+  (when (= stage :init)
+    (builder-ui/reset-build-state!)
     ((resolve 'nextjournal.clerk/show!) (clojure.java.io/resource "nextjournal/clerk/builder_ui.clj")))
   (stdout-reporter build-event)
   (builder-ui/add-build-event! build-event)
