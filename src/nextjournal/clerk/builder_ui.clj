@@ -137,7 +137,7 @@
        phase-name]]
      [:div.flex
       (when docs
-        [:div.text-xs.mr-3 (count docs) " Documents"])
+        [:div.text-xs.mr-3 (count docs) " notebooks"])
       (when (= state :done)
         [:span.font-mono.ml-1
          {:class "w-[40px] text-[10px]"}
@@ -182,6 +182,7 @@
     :built (-> build-state
                (update-in [:docs idx] merge {:state :done :duration duration})
                (update :docs compute-total-duration))
+    :finished (merge build-state (select-keys state [:index-html :build-href]))
     build-state))
 
 (defonce !build-state (atom initial-build-state))
@@ -196,24 +197,28 @@
   (swap! !build-state next-build-state event)
   (swap! !build-events conj event))
 
-#_(dissoc (get @!build-state-history 3) :state)
 
 (comment
 
-  
-  
   (nextjournal.clerk.builder/build-static-app! {:paths (take 10 nextjournal.clerk.builder/clerk-docs)
                                                 :browse? false})
   
 
   (do
-    (reset! !build-state (reduce next-build-state initial-build-state (take 10 @!build-events)))
+    (reset! !build-state (reduce next-build-state initial-build-state (take 100 @!build-events)))
     (nextjournal.clerk/recompute!))
   
   )
 
 ;; # 👷 Clerk Builder 🔨
 {:nextjournal.clerk/visibility {:result :show}}
+
+(viewer/html
+ (if-let [link (:build-href @!build-state)]
+   [:div.rounded-md.border.border-slate-300.px-4.py-3.font-sans.shadow.bg-slate-100.flex.justify-between.mx-1
+    [:div.text-lg.font-bold.mb-0 "✅ Your notebooks have been built."]
+    [:a.rounded.bg-indigo-600.font-bold.px-3.py-1.text-sm {:href link} [:span.text-white "Open 🌐"]]]
+   [:<>]))
 
 ^{:nextjournal.clerk/viewer phase-viewer}
 (merge (:parsing @!build-state) (select-keys @!build-state [:docs]))

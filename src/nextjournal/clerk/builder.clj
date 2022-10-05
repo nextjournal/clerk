@@ -87,14 +87,19 @@
 (defn build-ui-reporter [{:as build-event :keys [stage]}]
   (when (= stage :init)
     (builder-ui/reset-build-state!)
-    ((resolve 'nextjournal.clerk/show!) (clojure.java.io/resource "nextjournal/clerk/builder_ui.clj")))
+    ((resolve 'nextjournal.clerk/show!) (clojure.java.io/resource "nextjournal/clerk/builder_ui.clj"))
+    (when-let [{:keys [port]} (and (get-in build-event [:build-opts :browse?]) @webserver/!server)]
+      (browse/browse-url (str "http://localhost:" port))))
   (stdout-reporter build-event)
   (builder-ui/add-build-event! build-event)
   (binding [*out* (java.io.StringWriter.)]
     ((resolve 'nextjournal.clerk/recompute!))))
 
+(def default-out-path
+  (str "public" fs/file-separator "build"))
+
 (defn process-build-opts [{:as opts :keys [paths]}]
-  (merge {:out-path (str "public" fs/file-separator "build")
+  (merge {:out-path default-out-path
           :bundle? true
           :browse? true
           :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
@@ -126,7 +131,9 @@
               (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
     (when browse?
       (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize)))
-    docs))
+    {:docs docs
+     :index-html index-html
+     :build-href (if (and @webserver/!server (= out-path default-out-path)) "/build" index-html)}))
 
 (defn expand-paths [paths]
   (->> (if (symbol? paths)
@@ -150,7 +157,7 @@
             (throw (ex-info "nothing to build" {:expanded-paths expanded-paths :paths paths})))
         start (System/nanoTime)
         state (mapv #(hash-map :file %) expanded-paths)
-        _ (report-fn {:stage :init :state state})
+        _ (report-fn {:stage :init :state state :build-opts opts})
         {state :result duration :time-ms} (eval/time-ms (mapv (comp (partial parser/parse-file {:doc? true}) :file) state))
         _ (report-fn {:stage :parsed :state state :duration duration})
         {state :result duration :time-ms} (eval/time-ms (mapv (comp analyzer/hash
@@ -174,7 +181,7 @@
         (report-fn {:stage :done :duration duration})))
     (report-fn {:stage :finished :state state :duration duration :total-duration (eval/elapsed-ms start)})))
 
-#_(build-static-app! {:paths (take 5 clerk-docs)})
+#_(build-static-app! {:paths (take 15 clerk-docs)})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
-#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? false})
+#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
 #_(build-static-app! {:paths ["notebooks/viewers/**"]})
