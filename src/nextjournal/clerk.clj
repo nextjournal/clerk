@@ -397,7 +397,7 @@
 (defmacro with-cache
   "An expression evaluated with Clerk's caching."
   [form]
-  `(let [result# (-> ~(v/->edn form) eval/eval-string :blob->result first val)]
+  `(let [result# (-> ~(v/->edn form) eval/eval-string :blob->result first val :nextjournal/value)]
      result#))
 
 #_(with-cache (do (Thread/sleep 4200) 42))
@@ -405,7 +405,7 @@
 (defmacro defcached
   "Like `clojure.core/def` but with Clerk's caching of the value."
   [name expr]
-  `(let [result# (-> ~(v/->edn expr) eval/eval-string :blob->result first val)]
+  `(let [result# (-> ~(v/->edn expr) eval/eval-string :blob->result first val :nextjournal/value)]
      (def ~name result#)))
 
 #_(defcached my-expansive-thing

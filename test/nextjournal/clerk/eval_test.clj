@@ -2,6 +2,7 @@
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [matcher-combinators.test :refer [match?]]
+            [nextjournal.clerk :as clerk]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]
@@ -178,3 +179,12 @@
     (is (= []
            (eval+extract-doc-blocks "^{:nextjournal.clerk/visibility {:code :hide :result :hide}}
  {:some :map}")))))
+
+(deftest defcached
+  (clerk/defcached my-expansive-thing
+    (do #_(Thread/sleep 10000) 42))
+  (is (= 42 my-expansive-thing)))
+
+(deftest with-cache
+  (is (= 42 (clerk/with-cache
+              (do #_(Thread/sleep 10000) 42)))))
