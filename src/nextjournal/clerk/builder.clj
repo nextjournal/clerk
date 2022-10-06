@@ -138,19 +138,19 @@
      :index-html index-html
      :build-href (if (and @webserver/!server (= out-path default-out-path)) "/build" index-html)}))
 
-(defn ^:private maybe-add-index [index paths]
-  (cond-> paths
-    (and index (not (contains? (set paths) index)))
+(defn ^:private maybe-add-index [{:as build-opts :keys [paths paths-fn index]} resolved-paths]
+  (when (and index (or (not (string? index)) (not (fs/exists? index))))
+    (throw (ex-info "`:index` must be string and point to existing file" {:index index})))
+  (cond-> resolved-paths
+    (and index (not (contains? (set resolved-paths) index)))
     (conj index)))
 
-#_(maybe-add-index "book.clj" nil)
+#_(maybe-add-index {:index "book.clj"} nil)
 
 (defn expand-paths [{:as build-opts :keys [paths paths-fn index]}]
   (when (and paths paths-fn)
     (binding [*out* *err*]
       (println "[info] both `:paths` and `:paths-fn` are set, `:paths` will take precendence.")))
-  (when (and index (or (not (string? index)) (not (fs/exists? index))))
-    (throw (ex-info "`:index` must be string and point to existing file" {:index index})))
   (when (not (or paths paths-fn index))
     (throw (ex-info "must set either `:paths`, `:paths-fn` or `:index`." {:build-opts build-opts})))
   (->> (cond paths (if (sequential? paths)
@@ -166,7 +166,7 @@
                               resolved-paths)
                             (throw (ex-info (str "#'" paths-fn " cannot be resolved.") {:paths-fn paths-fn}))))
                         (throw (ex-info "`:path-fn` must be a qualified symbol pointing at an existing var." {:paths-fn paths-fn}))))
-       (maybe-add-index index)
+       (maybe-add-index build-opts)
        (mapcat (partial fs/glob "."))
        (filter (complement fs/directory?))
        (mapv (comp str fs/file))))
