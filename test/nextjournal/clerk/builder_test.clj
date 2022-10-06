@@ -19,12 +19,23 @@
         (fs/with-temp-dir [temp {}]
           (let [expected (-> (str/join (java.io.File/separator) [(.toString temp) "index.html"])
                              (str/replace (java.io.File/separator) "/"))]
-            (builder/build-static-app! {:paths ["notebooks/hello.clj"]
+            (builder/build-static-app! {:browse true
+                                        :paths ["notebooks/hello.clj"]
                                         :out-path temp})
             (is (= expected @url*))))))))
 
 (deftest expand-paths-test
-  (let [paths (builder/expand-paths ["notebooks/*clj"])]
-    (is (> (count paths) 25))
-    (is (every? #(str/ends-with? % ".clj") paths))))
+  (testing "expands glob patterns"
+    (let [paths (builder/expand-paths {:paths ["notebooks/*clj"]})]
+      (is (> (count paths) 25))
+      (is (every? #(str/ends-with? % ".clj") paths))))
+
+  (testing "supports index"
+    (is (= ["book.clj"] (builder/expand-paths {:index "book.clj"}))))
+
+  (testing "invalid args"
+    (is (thrown? Exception (builder/expand-paths {})))
+    (is (thrown? Exception (builder/expand-paths {:paths-fn 'foo})))
+    (is (thrown? Exception (builder/expand-paths {:paths-fn "hi"})))
+    (is (thrown? Exception (builder/expand-paths {:index ["book.clj"]})))))
 

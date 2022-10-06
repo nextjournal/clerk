@@ -7,7 +7,25 @@ Changes can be:
 
 ## Unreleased
 
-...
+* 🌟 Improvements to static building including Clerk-viewer based
+  build progress reporter
+* 💫 Add `nextjournal.clerk/build!` and document it, it supersedes the
+  now deprecated `nextjournal.clerk/build-static-app!`
+
+    * Support `:index` option for overriding the index filename
+    * Rename `:browse?` to `:browse` and default to `false`
+    * Rename `:bundle?` to `:bundle` and default to `false`
+    * Split `:paths` into `:paths` and `:paths-fn` option to make symbol
+    case explicit
+    * Improve errors when passing invalid options
+
+* 🐜 Fix results with `*print-length/depth*` being set (thanks
+  @russmatney, #224)
+* 🐜 Fix analyzer issues with clojure proxy (🙏 @zampino, fixes #222)
+* 🐞 Fix extra wrapping in clerk/defcached and clerk/with-cache
+* 🛠 Improve clerk-show emacs command (🙏 @benjamin-asdf, fixes
+  #170)
+* 🛠 Upgrade sci to 0.4.33 (🙏 @borkdude)
 
 ## 0.10.562 (2022-09-18)
 

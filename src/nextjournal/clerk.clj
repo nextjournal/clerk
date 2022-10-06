@@ -124,7 +124,7 @@
   "Deprecated, please use `add-viewers!` instead."
   [viewers]
   (binding [*out* *err*]
-    (prn "`set-viewers!` has been deprecated, please use `add-viewers!` or `reset-viewers!` instead."))
+    (println "`set-viewers!` has been deprecated, please use `add-viewers!` or `reset-viewers!` instead."))
   (add-viewers! viewers))
 
 
@@ -357,7 +357,30 @@
 
 (def valuehash analyzer/valuehash)
 
-(def build-static-app! builder/build-static-app!)
+(defn build!
+  "Creates a static html build from a collection of notebooks.
+
+  Options:
+  - `:paths`    - a vector of relative paths to notebooks to include in the build
+  - `:paths-fn` - a symbol resolving 0-arity function returning computed paths
+  - `:index`    - a string allowing to override the name of the index file, will be added to `:paths`
+
+  Passing at least one of the above is required. When both `:paths`
+  and `:paths-fn` are given, `:paths` takes precendence.
+
+  - `:bundle`   - if true results in a single self-contained html file including inlined images
+  - `:browse`   - if true will open browser with the built file on success
+  - `:out-path` - a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
+  - `:git/sha`, `:git/url` - when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
+  "
+  {:org.babashka/cli {:coerce {:paths []
+                               :paths-fn :symbol}}}
+  [build-opts]
+  (builder/build-static-app! build-opts))
+
+(defn build-static-app! {:deprecated "0.11"} [build-opts]
+  (binding [*out* *err*] (println "`build-static-app!` has been deprecated, please use `build!` instead."))
+  (build! build-opts))
 
 (defn clear-cache!
   "Clears the in-memory and file-system caches."
@@ -375,7 +398,7 @@
 (defmacro with-cache
   "An expression evaluated with Clerk's caching."
   [form]
-  `(let [result# (-> ~(pr-str form) eval/eval-string :blob->result first val)]
+  `(let [result# (-> ~(v/->edn form) eval/eval-string :blob->result first val :nextjournal/value)]
      result#))
 
 #_(with-cache (do (Thread/sleep 4200) 42))
@@ -383,7 +406,7 @@
 (defmacro defcached
   "Like `clojure.core/def` but with Clerk's caching of the value."
   [name expr]
-  `(let [result# (-> ~(pr-str expr) eval/eval-string :blob->result first val)]
+  `(let [result# (-> ~(v/->edn expr) eval/eval-string :blob->result first val :nextjournal/value)]
      (def ~name result#)))
 
 #_(defcached my-expansive-thing
