@@ -121,7 +121,7 @@
 
 (defonce !eval-counter (r/atom 0))
 
-(defn notebook [{:as _doc xs :blocks :keys [toc toc-visibility]}]
+(defn notebook [{:as _doc xs :blocks :keys [bundle? toc toc-visibility]}]
   (r/with-let [local-storage-key "clerk-navbar"
                !state (r/atom {:toc (toc-items (:children toc))
                                :md-toc toc
@@ -130,6 +130,7 @@
                                :width 220
                                :mobile-width 300
                                :local-storage-key local-storage-key
+                               :set-hash? (not bundle?)
                                :open? (if-some [stored-open? (ls/get-item local-storage-key)]
                                         stored-open?
                                         (not= :collapsed toc-visibility))})
