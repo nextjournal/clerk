@@ -57,7 +57,8 @@
                      buffer (.screenshot subject)
                      base64 (.toString buffer "base64")
                      image-uri (str "data:image/png;base64," base64)
-                     _ (.evaluate res (str "nextjournal.clerk.sci_viewer.append_trimmed_image(\"" image-uri "\", \"res-" i "\")"))
+                     _ (.evaluate res (str "nextjournal.clerk.sci_viewer.append_trimmed_image("
+                                           (pr-str image-uri) "," (pr-str (str "res-" i)) ")"))
                      trimmed-res (.locator page (str "#res-" i))
                      trimmed-bounds (.boundingBox trimmed-res)]
                (println+flush (str "🔪 Trimming result #" (inc i) " to bounds " (.-width trimmed-bounds) "×" (.-height trimmed-bounds)))
