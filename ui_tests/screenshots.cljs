@@ -1,4 +1,14 @@
 (ns screenshots
+  "Playwright script to Generate open graph preview images from a notebook's results.
+  
+  Run this via:
+  
+      cd ui_tests; yarn nbb -m screenshots --url http://localhost:7777 --out-dir screenshots
+  
+  For a REPL development workflow start a nbb nrepl server via:
+  
+      cd ui_tests; yarn nbb nrepl-server :port 1337"
+  
   {:clj-kondo/config '{:lint-as {promesa.core/let clojure.core/let}}}
   (:require ["playwright$default" :as pw :refer [chromium]]
             [promesa.core :as p]
@@ -11,10 +21,6 @@
 
 (defn goto [page url]
   (.goto page url #js{:waitUntil "networkidle"}))
-
-(comment
-  "https://snapshots.nextjournal.com/clerk/build/48574b57e77d29b28cc158b9e747e943d15757d6/index.html#/notebooks/viewers/image_layouts.clj"
-  "https://snapshots.nextjournal.com/clerk/build/48574b57e77d29b28cc158b9e747e943d15757d6/index.html#/notebooks/rule_30.clj")
 
 (def browser (await (.launch chromium #js {:headless false})))
 
