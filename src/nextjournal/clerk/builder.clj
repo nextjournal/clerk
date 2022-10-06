@@ -99,31 +99,28 @@
 (def default-out-path
   (str "public" fs/file-separator "build"))
 
-(defn ^:private migrate-deprecated-opts [opts]
-  (set/rename-keys opts {:bundle? :bundle
-                         :browse? :browse}))
-
 (defn process-build-opts [{:as opts :keys [paths index]}]
   (merge {:out-path default-out-path
-          :bundle false
-          :browse false
+          :bundle? false
+          :browse? false
           :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
-         (cond-> (migrate-deprecated-opts opts)
+         (cond-> (set/rename-keys opts {:bundle :bundle?
+                                        :browse :browse?})
            index (assoc :index (str index)))))
 
 #_(process-build-opts {:index 'book.clj})
 
 (defn write-static-app!
   [opts docs]
-  (let [{:as opts :keys [bundle out-path browse index]} (process-build-opts opts)
+  (let [{:as opts :keys [bundle? out-path browse? index]} (process-build-opts opts)
         paths (mapv :file docs)
         path->doc (into {} (map (juxt :file :viewer)) docs)
-        path->url (into {} (map (juxt identity #(cond-> (strip-index %) (not bundle) ->html-extension))) paths)
-        static-app-opts (assoc opts :bundle bundle :path->doc path->doc :paths (vec (keys path->doc)) :path->url path->url)
+        path->url (into {} (map (juxt identity #(cond-> (strip-index %) (not bundle?) ->html-extension))) paths)
+        static-app-opts (assoc opts :bundle? bundle? :path->doc path->doc :paths (vec (keys path->doc)) :path->url path->url)
         index-html (str out-path fs/file-separator "index.html")]
     (when-not (fs/exists? (fs/parent index-html))
       (fs/create-dirs (fs/parent index-html)))
-    (if bundle
+    (if bundle?
       (spit index-html (view/->static-app static-app-opts))
       (do (when-not (contains? (-> path->url vals set) (->html-extension (str index))) ;; no user-defined index page
             (spit index-html (view/->static-app (dissoc static-app-opts :path->doc))))
@@ -132,7 +129,7 @@
                   out-html (str out-path fs/file-separator (->html-extension path-with-index-mapped))]
               (fs/create-dirs (fs/parent out-html))
               (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
-    (when browse
+    (when browse?
       (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize)))
     {:docs docs
      :index-html index-html
@@ -180,7 +177,7 @@
 #_(expand-paths {:paths ["notebooks/viewers**"]})
 
 (defn build-static-app! [opts]
-  (let [{:as opts :keys [expanded-paths paths download-cache-fn upload-cache-fn bundle report-fn]} (assoc (process-build-opts opts) :expanded-paths (expand-paths opts))
+  (let [{:as opts :keys [expanded-paths paths download-cache-fn upload-cache-fn bundle? report-fn]} (assoc (process-build-opts opts) :expanded-paths (expand-paths opts))
         _ (when (empty? expanded-paths)
             (throw (ex-info "nothing to build" {:expanded-paths expanded-paths :paths paths})))
         start (System/nanoTime)
