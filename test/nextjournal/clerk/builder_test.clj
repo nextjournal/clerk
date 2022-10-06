@@ -25,7 +25,17 @@
             (is (= expected @url*))))))))
 
 (deftest expand-paths-test
-  (let [paths (builder/expand-paths {:paths ["notebooks/*clj"]})]
-    (is (> (count paths) 25))
-    (is (every? #(str/ends-with? % ".clj") paths))))
+  (testing "expands glob patterns"
+    (let [paths (builder/expand-paths {:paths ["notebooks/*clj"]})]
+      (is (> (count paths) 25))
+      (is (every? #(str/ends-with? % ".clj") paths))))
+
+  (testing "supports index"
+    (is (= ["book.clj"] (builder/expand-paths {:index "book.clj"}))))
+
+  (testing "invalid args"
+    (is (thrown? Exception (builder/expand-paths {})))
+    (is (thrown? Exception (builder/expand-paths {:paths-fn 'foo})))
+    (is (thrown? Exception (builder/expand-paths {:paths-fn "hi"})))
+    (is (thrown? Exception (builder/expand-paths {:index ["book.clj"]})))))
 

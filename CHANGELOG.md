@@ -12,6 +12,7 @@ Changes can be:
 * 💫 Add `nextjournal.clerk/build!` and document it, it supersedes the
   now deprecated `nextjournal.clerk/build-static-app!`
 
+    * Support `:index` option for overriding the index filename
     * Rename `:browse?` to `:browse` and default to `false`
     * Rename `:bundle?` to `:bundle` and default to `false`
     * Split `:paths` into `:paths` and `:paths-fn` option to make symbol

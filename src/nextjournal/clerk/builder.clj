@@ -58,7 +58,7 @@
 #_(strip-index "hello_index.cljc")
 
 (defn ->html-extension [path]
-  (str/replace path #"\.(clj|cljc|md)$" ".html"))
+  (str/replace path #"\.(cljc?|md)$" ".html"))
 
 #_(->html-extension "hello.clj")
 
@@ -103,16 +103,19 @@
   (set/rename-keys opts {:bundle? :bundle
                          :browse? :browse}))
 
-(defn process-build-opts [{:as opts :keys [paths]}]
+(defn process-build-opts [{:as opts :keys [paths index]}]
   (merge {:out-path default-out-path
           :bundle false
           :browse false
           :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
-         (migrate-deprecated-opts opts)))
+         (cond-> (migrate-deprecated-opts opts)
+           index (assoc :index (str index)))))
+
+#_(process-build-opts {:index 'book.clj})
 
 (defn write-static-app!
   [opts docs]
-  (let [{:as opts :keys [bundle out-path browse]} (process-build-opts opts)
+  (let [{:as opts :keys [bundle out-path browse index]} (process-build-opts opts)
         paths (mapv :file docs)
         path->doc (into {} (map (juxt :file :viewer)) docs)
         path->url (into {} (map (juxt identity #(cond-> (strip-index %) (not bundle) ->html-extension))) paths)
@@ -122,10 +125,11 @@
       (fs/create-dirs (fs/parent index-html)))
     (if bundle
       (spit index-html (view/->static-app static-app-opts))
-      (do (when-not (contains? (-> path->url vals set) "") ;; no user-defined index page
+      (do (when-not (contains? (-> path->url vals set) (->html-extension (str index))) ;; no user-defined index page
             (spit index-html (view/->static-app (dissoc static-app-opts :path->doc))))
           (doseq [[path doc] path->doc]
-            (let [out-html (str out-path fs/file-separator (str/replace path #"(.cljc?|.md)" ".html"))]
+            (let [path-with-index-mapped (if index ({index "index.clj"} path path) path)
+                  out-html (str out-path fs/file-separator (->html-extension path-with-index-mapped))]
               (fs/create-dirs (fs/parent out-html))
               (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
     (when browse
@@ -134,10 +138,21 @@
      :index-html index-html
      :build-href (if (and @webserver/!server (= out-path default-out-path)) "/build" index-html)}))
 
-(defn expand-paths [{:keys [paths paths-fn]}]
+(defn ^:private maybe-add-index [index paths]
+  (cond-> paths
+    (and index (not (contains? (set paths) index)))
+    (conj index)))
+
+#_(maybe-add-index "book.clj" nil)
+
+(defn expand-paths [{:as build-opts :keys [paths paths-fn index]}]
   (when (and paths paths-fn)
     (binding [*out* *err*]
       (println "[info] both `:paths` and `:paths-fn` are set, `:paths` will take precendence.")))
+  (when (and index (or (not (string? index)) (not (fs/exists? index))))
+    (throw (ex-info "`:index` must be string and point to existing file" {:index index})))
+  (when (not (or paths paths-fn index))
+    (throw (ex-info "must set either `:paths`, `:paths-fn` or `:index`." {:build-opts build-opts})))
   (->> (cond paths (if (sequential? paths)
                      paths
                      (throw (ex-info "`:paths` must be sequential" {:paths paths})))
@@ -151,6 +166,7 @@
                               resolved-paths)
                             (throw (ex-info (str "#'" paths-fn " cannot be resolved.") {:paths-fn paths-fn}))))
                         (throw (ex-info "`:path-fn` must be a qualified symbol pointing at an existing var." {:paths-fn paths-fn}))))
+       (maybe-add-index index)
        (mapcat (partial fs/glob "."))
        (filter (complement fs/directory?))
        (mapv (comp str fs/file))))
@@ -179,14 +195,14 @@
             (report-fn {:stage :downloading-cache})
             (let [{duration :time-ms} (eval/time-ms (download-cache-fn state))]
               (report-fn {:stage :done :duration duration})))
-        state (mapv (fn [doc idx]
-                      (report-fn {:stage :building :doc doc :idx idx})
-                      (let [{doc+viewer :result duration :time-ms} (eval/time-ms
-                                                                    (let [doc (eval/eval-analyzed-doc doc)]
-                                                                      (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc))))]
-                        (report-fn {:stage :built :doc doc+viewer :duration duration :idx idx})
-                        doc+viewer)) state (range))
-        {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
+        docs (mapv (fn [doc idx]
+                     (report-fn {:stage :building :doc doc :idx idx})
+                     (let [{doc+viewer :result duration :time-ms} (eval/time-ms
+                                                                   (let [doc (eval/eval-analyzed-doc doc)]
+                                                                     (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc))))]
+                       (report-fn {:stage :built :doc doc+viewer :duration duration :idx idx})
+                       doc+viewer)) state (range))
+        {state :result duration :time-ms} (eval/time-ms (write-static-app! opts docs))]
     (when upload-cache-fn
       (report-fn {:stage :uploading-cache})
       (let [{duration :time-ms} (eval/time-ms (upload-cache-fn state))]
@@ -197,3 +213,4 @@
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle true})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle false :browse false})
 #_(build-static-app! {:paths ["notebooks/viewers/**"]})
+#_(build-static-app! {:index "notebooks/rule_30.clj"  :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
