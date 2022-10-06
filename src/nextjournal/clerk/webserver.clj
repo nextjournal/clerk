@@ -139,7 +139,7 @@
   (halt!)
   (try
     (reset! !server {:port port :stop-fn (httpkit/run-server #'app {:port port})})
-    (println (str "Clerk webserver started on " port "..."))
+    (println (str "Clerk webserver started on http://localhost:" port " ..."))
     (catch java.net.BindException _e
       (println "Port " port " not available, server not started!"))))
 

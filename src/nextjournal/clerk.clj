@@ -2,12 +2,13 @@
   "Clerk's Public API."
   (:require [babashka.fs :as fs]
             [clojure.java.browse :as browse]
+            [clojure.set :as set]
             [clojure.string :as str]
             [nextjournal.beholder :as beholder]
+            [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.builder :as builder]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.eval :as eval]
-            [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
@@ -319,6 +320,10 @@
     (beholder/stop watcher)
     (reset! !watcher nil)))
 
+(defn ^:private normalize-opts [opts]
+  (set/rename-keys opts #_(into {} (map (juxt identity #(keyword (str (name %) "?")))) [:bundle :browse :dashboard])
+                   {:bundle :bundle?, :browse :browse?, :dashboard :dashboard?}))
+
 (defn serve!
   "Main entrypoint to Clerk taking an configurations map.
 
@@ -361,22 +366,26 @@
   "Creates a static html build from a collection of notebooks.
 
   Options:
-  - `:paths`    - a vector of relative paths to notebooks to include in the build
-  - `:paths-fn` - a symbol resolving 0-arity function returning computed paths
-  - `:index`    - a string allowing to override the name of the index file, will be added to `:paths`
+  - `:paths`     - a vector of relative paths to notebooks to include in the build
+  - `:paths-fn`  - a symbol resolving 0-arity function returning computed paths
+  - `:index`     - a string allowing to override the name of the index file, will be added to `:paths`
 
   Passing at least one of the above is required. When both `:paths`
   and `:paths-fn` are given, `:paths` takes precendence.
 
-  - `:bundle`   - if true results in a single self-contained html file including inlined images
-  - `:browse`   - if true will open browser with the built file on success
-  - `:out-path` - a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
+  - `:bundle`    - if true results in a single self-contained html file including inlined images
+  - `:browse`    - if true will open browser with the built file on success
+  - `:dashboard` - if true will start a server and show a rich build report in the browser (use with `:bundle` to open browser)
+  - `:out-path`  - a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
   - `:git/sha`, `:git/url` - when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
   "
   {:org.babashka/cli {:coerce {:paths []
                                :paths-fn :symbol}}}
   [build-opts]
-  (builder/build-static-app! build-opts))
+  (let [{:as build-opts-normalized :keys [dashboard?]} (normalize-opts build-opts)]
+    (when (and dashboard? (not @webserver/!server))
+      (serve! build-opts-normalized))
+    (builder/build-static-app! build-opts-normalized)))
 
 (defn build-static-app! {:deprecated "0.11"} [build-opts]
   (binding [*out* *err*] (println "`build-static-app!` has been deprecated, please use `build!` instead."))

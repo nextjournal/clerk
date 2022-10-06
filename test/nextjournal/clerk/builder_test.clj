@@ -19,7 +19,7 @@
         (fs/with-temp-dir [temp {}]
           (let [expected (-> (str/join (java.io.File/separator) [(.toString temp) "index.html"])
                              (str/replace (java.io.File/separator) "/"))]
-            (builder/build-static-app! {:browse true
+            (builder/build-static-app! {:browse? true
                                         :paths ["notebooks/hello.clj"]
                                         :out-path temp})
             (is (= expected @url*))))))))

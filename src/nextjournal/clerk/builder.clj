@@ -104,8 +104,7 @@
           :bundle? false
           :browse? false
           :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
-         (cond-> (set/rename-keys opts {:bundle :bundle?
-                                        :browse :browse?})
+         (cond-> opts
            index (assoc :index (str index)))))
 
 #_(process-build-opts {:index 'book.clj})
@@ -207,7 +206,7 @@
     (report-fn {:stage :finished :state state :duration duration :total-duration (eval/elapsed-ms start)})))
 
 #_(build-static-app! {:paths (take 15 clerk-docs)})
-#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle true})
-#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle false :browse false})
+#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
+#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
 #_(build-static-app! {:paths ["notebooks/viewers/**"]})
 #_(build-static-app! {:index "notebooks/rule_30.clj"  :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
