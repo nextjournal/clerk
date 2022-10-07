@@ -68,13 +68,15 @@
   [path]
   (str/replace path fs/file-separator "/"))
 
-(defn describe-event [{:as event :keys [stage state duration doc]}]
+(defn describe-event [{:as event :keys [stage state duration doc error]}]
   (let [format-duration (partial format "%.3fms")
         duration (some-> duration format-duration)]
     (case stage
       :init (str "👷🏼 Clerk is building " (count state) " notebooks…\n🧐 Parsing… ")
       :parsed (str "Done in " duration ". ✅\n🔬 Analyzing… ")
-      (:built :analyzed :done) (str "Done in " duration ". ✅\n")
+      (:built :analyzed :done) (if error
+                                 (str "Errored in " duration ". ❌\n")
+                                 (str "Done in " duration ". ✅\n"))
       :building (str "🔨 Building \"" (:file doc) "\"… ")
       :downloading-cache (str "⏬ Downloading distributed cache… ")
       :uploading-cache (str "⏫ Uploading distributed cache… ")
