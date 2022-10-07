@@ -75,22 +75,30 @@
                            [:span.text-slate-500 "Queued"])]]])))
          blocks)])
 
-(defn doc-build-badge [{:as doc :keys [blocks block-counts code-blocks file phase state duration total-duration]}]
+(defn bg-class [state]
+  (case state
+    :done "bg-green-100"
+    :errored "bg-red-100"
+    "bg-slate-100"))
+
+(defn doc-build-badge [{:as doc :keys [blocks block-counts code-blocks file phase error state duration total-duration]}]
   [:<>
    [:div.p-1
     [:div.rounded-md.border.border-slate-300.px-4.py-3.font-sans.shadow
-     {:class (if (= state :done) "bg-green-100" "bg-slate-100")}
+     {:class (bg-class state)}
      [:div.flex.justify-between.items-center
       [:div.flex.items-center.truncate.mr-2
        [:div.mr-2
         (case state
           :executing (spinner-svg)
           :done (checkmark-svg)
+          :errored (error-svg)
           (status-light state))]
        [:span.text-sm.mr-1 (case state
                              :executing "Building"
                              :done "Built"
                              :queued "Queued"
+                             :errored "Errored"
                              (str "unexpected state `" (pr-str state) "`"))]
        [:div.text-sm.font-medium.leading-none.truncate
         file]]
@@ -114,7 +122,9 @@
            {:class "w-[40px] text-[10px]"}
            (if duration
              (str (int duration) "ms")
-             "⏱")]]])]]]
+             "⏱")]]])]]
+    (when error
+      [:div.mt-2.rounded-md.shadow-lg.border.border-gray-300.overflow-hidden (viewer/present error)])]
    #_(when (= :executing state)
        (blocks-view doc))
    #_[:div.mx-auto.w-8.border.border-t-0.border-slate-300.bg-slate-50.rounded-b.text-slate-500.flex.justify-center.shadow.hover:bg-slate-100.cursor-pointer
@@ -130,10 +140,7 @@
 (defn phase-view [{:keys [phase-name docs error state duration]}]
   [:div.p-1
    [:div.rounded-md.border.border-slate-300.px-4.py-3.font-sans.shadow
-    {:class (case state
-              :done "bg-green-100"
-              :errored "bg-red-100"
-              "bg-slate-100")}
+    {:class (bg-class state)}
     [:div.flex.justify-between.items-center
      [:div.flex.items-center
       [:div.mr-2
@@ -201,7 +208,7 @@
                                       {:state :done :docs (process-docs state)})))
     :building (update-in build-state [:docs idx] merge {:state :executing})
     :built (-> build-state
-               (update-in [:docs idx] merge {:state :done :duration duration})
+               (update-in [:docs idx] merge {:duration duration} (if error {:state :errored :error error} {:state :done}))
                (update :docs compute-total-duration))
     :finished (merge build-state (select-keys state [:index-html :build-href]))
     build-state))
@@ -248,3 +255,4 @@
 
 ^{:nextjournal.clerk/viewer docs-viewer}
 (:docs @!build-state)
+
