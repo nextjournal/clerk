@@ -1,5 +1,5 @@
 ;; # 🧪 Clojure Tests
-(ns clojure-test-reports
+(ns tests
   {:nextjournal.clerk/no-cache true}
   (:require [nextjournal.clerk :as clerk]
             [clojure.test :refer :all :as t]
@@ -18,7 +18,7 @@
         (once-ffn (fn []
                     (println "running all tests")
                     (swap! !wv tx-fn))))                    ;; TODO: comp with tx-fn
-      (println :TH clojure.test/*testing-contexts*)
+
       (update @!wv
               :nextjournal/value
               assoc
