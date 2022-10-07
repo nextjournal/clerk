@@ -197,7 +197,9 @@
 
 (defn next-build-state [build-state {:as event :keys [stage state error duration doc idx]}]
   (case stage
-    :init (assoc build-state :docs (process-docs state))
+    :init (if error
+            (assoc build-state :error error)
+            (assoc build-state :docs (process-docs state)))
     (:parsed :analyzed) (-> build-state
                             (update ({:parsed :parsing
                                       :analyzed :analyzing} stage)
