@@ -482,28 +482,29 @@
                          :rows [[1 3] [2 4]]}]]]))
 
 
-(defn throwable-viewer [{:keys [via trace]}]
-  (html
-   [:div.w-screen.h-screen.overflow-y-auto.bg-gray-100.p-6.text-xs.monospace.flex.flex-col.not-prose
-    [:div.rounded-md.shadow-lg.border.border-gray-300.bg-white.max-w-6xl.mx-auto
-     (into
-      [:div]
-      (map
-       (fn [{:as _ex :keys [type message data _trace]}]
-         [:div.p-4.bg-red-100.border-b.border-gray-300.rounded-t-md
-          [:div.font-bold "Unhandled " type]
-          [:div.font-bold.mt-1 message]
-          [:div.mt-1 (pr-str data)]])
-       via))
-     [:div.py-6
-      [:table.w-full
-       (into [:tbody]
-             (map (fn [[call _x file line]]
-                    [:tr.hover:bg-red-100.leading-tight
-                     [:td.text-right.px-6 file ":"]
-                     [:td.text-right.pr-6 line]
-                     [:td.py-1.pr-6 call]]))
-             trace)]]]]))
+(defn throwable-view [{:keys [via trace]}]
+  [:div.bg-white.max-w-6xl.mx-auto.text-xs.monospace.not-prose
+   (into
+    [:div]
+    (map
+     (fn [{:as _ex :keys [type message data _trace]}]
+       [:div.p-4.bg-red-100.border-b.border-b-gray-300
+        [:div.font-bold "Unhandled " type]
+        [:div.font-bold.mt-1 message]
+        [:div.mt-1 [inspect data]]])
+     via))
+   [:div.py-6.overflow-x-auto
+    [:table.w-full
+     (into [:tbody]
+           (map (fn [[call _x file line]]
+                  [:tr.hover:bg-red-100.leading-tight
+                   [:td.text-right.px-6 file ":"]
+                   [:td.text-right.pr-6 line]
+                   [:td.py-1.pr-6 call]]))
+           trace)]]])
+
+(defn throwable-viewer [ex]
+  (html [throwable-view ex]))
 
 (defn tagged-value
   ([tag value] (tagged-value {:space? true} tag value))

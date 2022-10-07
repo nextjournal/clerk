@@ -184,21 +184,28 @@
         _ (report-fn {:stage :init :state state :build-opts opts})
         {state :result duration :time-ms} (eval/time-ms (mapv (comp (partial parser/parse-file {:doc? true}) :file) state))
         _ (report-fn {:stage :parsed :state state :duration duration})
-        {state :result duration :time-ms} (eval/time-ms (mapv (comp analyzer/hash
-                                                                    analyzer/build-graph) state))
-        _ (report-fn {:stage :analyzed :state state :duration duration})
+        {state :result duration :time-ms} (eval/time-ms (reduce (fn [state doc]
+                                                                  (try (conj state (-> doc analyzer/build-graph analyzer/hash))
+                                                                       (catch Exception e
+                                                                         (reduced {:error e}))))
+                                                                []
+                                                                state))
+        _ (if-let [error (:error state)]
+            (do (report-fn {:stage :analyzed :error error :duration duration})
+                (throw error))
+            (report-fn {:stage :analyzed :state state :duration duration}))
         _ (when download-cache-fn
             (report-fn {:stage :downloading-cache})
             (let [{duration :time-ms} (eval/time-ms (download-cache-fn state))]
               (report-fn {:stage :done :duration duration})))
-        docs (mapv (fn [doc idx]
-                     (report-fn {:stage :building :doc doc :idx idx})
-                     (let [{doc+viewer :result duration :time-ms} (eval/time-ms
-                                                                   (let [doc (eval/eval-analyzed-doc doc)]
-                                                                     (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc))))]
-                       (report-fn {:stage :built :doc doc+viewer :duration duration :idx idx})
-                       doc+viewer)) state (range))
-        {state :result duration :time-ms} (eval/time-ms (write-static-app! opts docs))]
+        state (mapv (fn [doc idx]
+                      (report-fn {:stage :building :doc doc :idx idx})
+                      (let [{doc+viewer :result duration :time-ms} (eval/time-ms
+                                                                    (let [doc (eval/eval-analyzed-doc doc)]
+                                                                      (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc))))]
+                        (report-fn {:stage :built :doc doc+viewer :duration duration :idx idx})
+                        doc+viewer)) state (range))
+        {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
     (when upload-cache-fn
       (report-fn {:stage :uploading-cache})
       (let [{duration :time-ms} (eval/time-ms (upload-cache-fn state))]

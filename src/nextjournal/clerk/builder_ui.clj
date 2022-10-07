@@ -11,19 +11,27 @@
     :style {:box-shadow "inset 0 1px 3px rgba(255,255,255,.6)"
             :width size :height size}}])
 
-(defn spinner [& [{:keys [size] :or {size 14}}]]
+(defn spinner-svg [& [{:keys [size] :or {size 14}}]]
   [:svg.animate-spin.text-green-600
    {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24"
     :style {:width size :height size}}
    [:circle.opacity-25 {:cx "12" :cy "12" :r "10" :stroke "currentColor" :stroke-width "4"}]
    [:path.opacity-75 {:fill "currentColor" :d "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"}]])
 
-(defn checkmark [& [{:keys [size] :or {size 18}}]]
+(defn checkmark-svg [& [{:keys [size] :or {size 18}}]]
   [:svg.text-green-600
    {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor"
     :class "-ml-[1px]"
     :style {:width size :height size}}
    [:path {:fill-rule "evenodd" :d "M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" :clip-rule "evenodd"}]])
+
+(defn error-svg [& [{:keys [size] :or {size 18}}]]
+  [:svg.text-red-600
+   {:xmlns "http://www.w3.org/2000/svg", :viewbox "0 0 20 20", :fill "currentColor"
+    :style {:width size :height size}}
+   [:path {:fill-rule "evenodd", :d "M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z", :clip-rule "evenodd"}]])
+
+
 
 #_
 (defn blocks-view [{:keys [blocks block-counts]}]
@@ -36,8 +44,8 @@
                                 (when (= :done exec-state) "bg-green-50")]}
                        [:div.flex.items-center
                         (case exec-state
-                          :done (checkmark {:size 14})
-                          :executing (spinner {:size 11})
+                          :done (checkmark-svg {:size 14})
+                          :executing (spinner-svg {:size 11})
                           (status-light exec-state {:size 11}))
                         [:div.ml-2
                          (if var
@@ -76,8 +84,8 @@
       [:div.flex.items-center.truncate.mr-2
        [:div.mr-2
         (case state
-          :executing (spinner)
-          :done (checkmark)
+          :executing (spinner-svg)
+          :done (checkmark-svg)
           (status-light state))]
        [:span.text-sm.mr-1 (case state
                              :executing "Building"
@@ -118,30 +126,39 @@
 (def doc-build-badge-viewer
   {:transform-fn (viewer/update-val (comp viewer/html doc-build-badge))})
 
-(defn phase-view [{:keys [phase-name docs state duration]}]
+
+(defn phase-view [{:keys [phase-name docs error state duration]}]
   [:div.p-1
    [:div.rounded-md.border.border-slate-300.px-4.py-3.font-sans.shadow
-    {:class (if (= state :done) "bg-green-100" "bg-slate-100")}
+    {:class (case state
+              :done "bg-green-100"
+              :errored "bg-red-100"
+              "bg-slate-100")}
     [:div.flex.justify-between.items-center
      [:div.flex.items-center
       [:div.mr-2
        (case state
-         :executing (spinner)
-         :done (checkmark)
+         :executing (spinner-svg)
+         :done (checkmark-svg)
+         :errored (error-svg)
          (status-light state))]
       (if (not= state :done)
         [:span.text-sm.mr-1 (case state
                               :executing "Building"
-                              :queued "Queued")])
+                              :queued "Queued"
+                              :errored "Errored")])
       [:div.text-sm.font-medium.leading-none
        phase-name]]
+     
      [:div.flex
       (when docs
         [:div.text-xs.mr-3 (count docs) " notebooks"])
-      (when (= state :done)
+      (when duration
         [:span.font-mono.ml-1
          {:class "w-[40px] text-[10px]"}
-         (int duration) "ms"])]]]])
+         (int duration) "ms"])]]]
+   (when error
+     [:div.mt-2.rounded-md.shadow-lg.border.border-gray-300.overflow-hidden (viewer/present error)])])
 
 
 (def phase-viewer
@@ -171,13 +188,17 @@
   {:parsing {:phase-name "Parsing" :state :executing}
    :analyzing {:phase-name "Analyzing" :state :queued}})
 
-(defn next-build-state [build-state {:as event :keys [stage state duration doc idx]}]
+(defn next-build-state [build-state {:as event :keys [stage state error duration doc idx]}]
   (case stage
     :init (assoc build-state :docs (process-docs state))
     (:parsed :analyzed) (-> build-state
-                            (assoc :docs (process-docs state))
                             (update ({:parsed :parsing
-                                      :analyzed :analyzing} stage) merge {:state :done :duration duration :phase-name (-> stage name str/capitalize)}))
+                                      :analyzed :analyzing} stage)
+                                    merge
+                                    {:phase-name (-> stage name str/capitalize) :duration duration}
+                                    (if error
+                                      {:state :errored :error error}
+                                      {:state :done :docs (process-docs state)})))
     :building (update-in build-state [:docs idx] merge {:state :executing})
     :built (-> build-state
                (update-in [:docs idx] merge {:state :done :duration duration})
@@ -196,7 +217,6 @@
 (defn add-build-event! [event]
   (swap! !build-state next-build-state event)
   (swap! !build-events conj event))
-
 
 (comment
 

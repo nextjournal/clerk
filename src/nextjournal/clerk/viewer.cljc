@@ -598,7 +598,7 @@
 
 (def throwable-viewer
   {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
-   :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp mark-presented (update-val (comp demunge-ex-data datafy/datafy)))})
+   :name :error :render-fn 'v/throwable-viewer :transform-fn (comp mark-presented (update-val (comp demunge-ex-data datafy/datafy)))})
 
 (def buffered-image-viewer #?(:clj {:pred #(instance? BufferedImage %)
                                     :transform-fn (fn [{image :nextjournal/value}]
