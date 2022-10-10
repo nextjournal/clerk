@@ -21,26 +21,37 @@
 
 
 (defn show!
-  "Evaluates the Clojure source in `file-or-ns` and makes Clerk show it in the browser."
+  "Evaluates the Clojure source in `file-or-ns` and makes Clerk show it in the browser.
+
+  Accepts ns using a quoted symbol or a `clojure.lang.Namespace`, calls `slurp` on all other arguments, e.g.:
+
+  (show! \"notebooks/vega.clj\")
+  (show! 'nextjournal.clerk.tap)
+  (show! (find-ns 'nextjournal.clerk.tap))
+  (show! \"https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj\")
+  "
   [file-or-ns]
   (if config/*in-clerk*
     ::ignored
     (try
       (let [file (cond
                    (nil? file-or-ns)
-                   (throw (ex-info (str "Could not find a file for: `nil`")
+                   (throw (ex-info (str "`nextjournal.clerk/show!` cannot show `nil`.")
                                    {:file-or-ns file-or-ns}))
 
                    (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
                    (or (some (fn [ext]
                                (io/resource (str (str/replace (namespace-munge file-or-ns) "." "/") ext)))
                              [".clj" ".cljc"])
-                       (throw (ex-info (str "Could not find a resource for: `" (pr-str file-or-ns) "`")
+                       (throw (ex-info (str "`nextjournal.clerk/show!` could not find a resource on the classpath for: `" (pr-str file-or-ns) "`")
                                        {:file-or-ns file-or-ns})))
 
                    :else
                    file-or-ns)
-            doc (parser/parse-file {:doc? true} file)
+            doc (try (parser/parse-file {:doc? true} file)
+                     (catch java.io.FileNotFoundException e
+                       (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
+                                       {:file-or-ns file-or-ns}))))
             _ (reset! !last-file file)
             {:keys [blob->result]} @webserver/!doc
             {:keys [result time-ms]} (eval/time-ms (eval/+eval-results blob->result doc))]
