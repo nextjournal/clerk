@@ -97,13 +97,4 @@
 
   (tap> (clerk/html [:h1 "Fin. 👋"]))
 
-  ;; ---
-  ;; ## TODO
-
-  ;; * [x] Avoid flickering when adding new tap
-  ;; * [x] Record & show time of tap
-  ;; * [x] Keep expanded state when adding tap
-  ;; * [x] Fix latest
-  ;; * [ ] Fix lazy loading
-  ;; * [ ] Improve performance when large image present in tap stream
   )
