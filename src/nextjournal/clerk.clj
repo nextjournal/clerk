@@ -2,6 +2,7 @@
   "Clerk's Public API."
   (:require [babashka.fs :as fs]
             [clojure.java.browse :as browse]
+            [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.string :as str]
             [nextjournal.beholder :as beholder]
@@ -18,25 +19,40 @@
 (defonce ^:private !last-file (atom nil))
 (defonce ^:private !watcher (atom nil))
 
+
 (defn show!
-  "Evaluates the Clojure source in `file` and makes Clerk show it in the browser."
-  [file]
+  "Evaluates the Clojure source in `file-or-ns` and makes Clerk show it in the browser."
+  [file-or-ns]
   (if config/*in-clerk*
     ::ignored
     (try
-      (reset! !last-file file)
-      (let [doc (parser/parse-file {:doc? true} file)
+      (let [file (cond
+                   (nil? file-or-ns)
+                   (throw (ex-info (str "Could not find a file for: `nil`")
+                                   {:file-or-ns file-or-ns}))
+
+                   (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
+                   (or (some (fn [ext]
+                               (io/resource (str (str/replace (namespace-munge file-or-ns) "." "/") ext)))
+                             [".clj" ".cljc"])
+                       (throw (ex-info (str "Could not find a resource for: `" (pr-str file-or-ns) "`")
+                                       {:file-or-ns file-or-ns})))
+
+                   :else
+                   file-or-ns)
+            doc (parser/parse-file {:doc? true} file)
+            _ (reset! !last-file file)
             {:keys [blob->result]} @webserver/!doc
             {:keys [result time-ms]} (eval/time-ms (eval/+eval-results blob->result doc))]
-        ;; TODO diff to avoid flickering
-        #_(webserver/update-doc! doc)
         (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
         (webserver/update-doc! result))
       (catch Exception e
         (webserver/show-error! e)
         (throw e)))))
 
-#_(show! @!last-file)
+#_(show! 'nextjournal.clerk.tap)
+#_(show! (do (require 'clojure.inspector) (find-ns 'clojure.inspector)))
+#_(show! "https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj")
 
 (defn recompute!
   "Recomputes the currently visible doc, without parsing it."
