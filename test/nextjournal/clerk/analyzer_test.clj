@@ -17,6 +17,13 @@
     (is (= (str "rewrite_clj" fs/file-separator "parser")
            (ana/ns->path (find-ns 'rewrite-clj.parser))))))
 
+(deftest ns->file
+  (testing "ns arg"
+    (is (= "src/nextjournal/clerk/analyzer.clj" (ana/ns->file (find-ns 'nextjournal.clerk.analyzer)))))
+
+  (testing "symbol cljc"
+    (is (= "src/nextjournal/clerk/viewer.cljc" (ana/ns->file 'nextjournal.clerk.viewer)))))
+
 (deftest no-cache?
   (with-ns-binding 'nextjournal.clerk.analyzer-test
     (testing "are variables set to no-cache?"

@@ -288,17 +288,14 @@
 (defn ns->path [ns]
   (str/replace (namespace-munge ns) "." fs/file-separator))
 
-;; TODO: handle cljc files
 (defn ns->file [ns]
-  ;; TODO: fix case upstream when ns can be nil because var can contain java classes like java.lang.String
-  (when ns
-    (some (fn [dir]
-            (when-let [path (str dir fs/file-separator (ns->path ns) ".clj")]
-              (when (fs/exists? path)
-                path)))
-          (cp/classpath-directories))))
-
-#_(ns->file (find-ns 'nextjournal.clerk.analyzer))
+  (some (fn [dir]
+          (some (fn [ext]
+                  (let [path (str dir fs/file-separator (ns->path ns) ext)]
+                    (when (fs/exists? path)
+                      path)))
+                [".clj" ".cljc"]))
+        (cp/classpath-directories)))
 
 (defn ns->jar [ns]
   (let [path (ns->path ns)]
