@@ -201,13 +201,14 @@
             (assoc build-state :error error)
             (assoc build-state :docs (process-docs state)))
     (:parsed :analyzed) (-> build-state
+                            (update :docs (fn [old-docs] (if error old-docs (process-docs state))))
                             (update ({:parsed :parsing
                                       :analyzed :analyzing} stage)
                                     merge
                                     {:phase-name (-> stage name str/capitalize) :duration duration}
                                     (if error
                                       {:state :errored :error error}
-                                      {:state :done :docs (process-docs state)})))
+                                      {:state :done})))
     :building (update-in build-state [:docs idx] merge {:state :executing})
     :built (-> build-state
                (update-in [:docs idx] merge {:duration duration} (if error {:state :errored :error error} {:state :done}))
@@ -257,4 +258,3 @@
 
 ^{:nextjournal.clerk/viewer docs-viewer}
 (:docs @!build-state)
-
