@@ -15,8 +15,11 @@
             [nextjournal.clerk.viewer :as viewer]))
 
 (deftest a-test
-  (testing "should pass"
-    (is (= 1 1))))
+  (testing "In some context"
+    (testing "should pass"
+      (is (= 1 1))
+      (testing "really"
+        (is (= 2 2))))))
 
 (deftest b-test
   (testing "should fail"
@@ -37,23 +40,45 @@
       :name name
       :state :queued
       :file (clerk.analyzer/ns->file ns)
-      :test-vars (map (fn [{:kaocha.testable/keys [meta] :kaocha.var/keys [name var]}]
-                        (assoc meta :var var :name name :state :queued)) tests)})
+      ;; we're showing test-vars as they're reported to pass/fail. As an alternative we can show them from the beginning
+      :test-vars [] #_(map (fn [{:kaocha.testable/keys [meta] :kaocha.var/keys [name var]}]
+                             (assoc meta :var var :name name :state :queued)) tests)})
    (-> test-plan :kaocha.test-plan/tests first :kaocha.test-plan/tests)))
 
 (defn initial-state [test-plan]
   {:test-nss (test-plan->test-nss test-plan)
-   :seen-ctxs 0})
+   :seen-ctxs #{}})
 
 (defn ->test-var-name [e] (-> e :kaocha/testable :kaocha.var/name))
-(defn ->test-ns-name  [e] (-> e :kaocha/testable :kaocha.ns/name))
+(defn test-var->ns-name [e] (-> e :kaocha/testable :kaocha.var/name namespace symbol))
+(defn ->test-ns-name  [e]
+  (or (-> e :kaocha/testable :kaocha.ns/name)
+      (-> e :kaocha/testable :kaocha.var/name namespace symbol)))
+
 (defn vec-update-if [pred f] (partial into [] (map (fn [item] (cond-> item (pred item) f)))))
+(defn ->test-var-data
+  ([event] (->test-var-data event :queued))
+  ([{:as _event {:kaocha.testable/keys [meta] :kaocha.var/keys [name var]} :kaocha/testable} status]
+   (assoc meta :var var :name name :state status)))
+
 (defn update-test-ns [state nsn f]
   (update state :test-nss (vec-update-if #(= nsn (:name %)) f)))
+
 (defn update-test-var [state varn f]
   (update-test-ns state
                   (-> varn namespace symbol)
                   (fn [test-ns] (update test-ns :test-vars (vec-update-if #(= varn (:name %)) f)))))
+
+(defn update-contexts [{:as state :keys [seen-ctxs]} event]
+  (let [ctxs (remove seen-ctxs t/*testing-contexts*)
+        depth (count (filter seen-ctxs t/*testing-contexts*))
+        ctx-items (map-indexed (fn [i c] {:type :ctx
+                                          :ctx/text c
+                                          :ctx/depth (+ depth i)}) (reverse ctxs))]
+    (-> state
+        (update :seen-ctxs into ctxs)
+        (update-test-ns (->test-ns-name event)
+                        #(update % :test-vars into ctx-items)))))
 
 #_ (ns-unmap *ns* 'build-test-state )
 (defmulti build-test-state (fn bts-dispatch [_state {:as _event :keys [type]}] type))
@@ -63,44 +88,44 @@
   (initial-state test-plan))
 
 (defmethod build-test-state :begin-test-ns [state event]
-  (println :E (:type event))
   (swap! !test-run-events conj event)
   (update-test-ns state (->test-ns-name event) #(assoc % :state :executing)))
 
 (defmethod build-test-state :begin-test-var [state {:as event :keys [var]}]
-  (println :E (:type event))
   (swap! !test-run-events conj event)
-  (update-test-var state (->test-var-name event) #(assoc % :state :executing)))
+  #_ (update-test-var state (->test-var-name event) #(assoc % :state :executing))
+  state)
 
 (defmethod build-test-state :pass [state event]
-  (println :Pass (with-out-str
-                   (kaocha.report/doc-print-contexts t/*testing-contexts*)))
   (swap! !test-run-events conj event)
-
-  (update-test-var state (->test-var-name event) #(assoc % :state :pass)))
+  #_ (update-test-var state (->test-var-name event) #(assoc % :state :pass))
+  (-> state
+      (update-contexts event)
+      (update-test-ns (test-var->ns-name event) #(update % :test-vars conj (->test-var-data event :pass)))))
 
 (defmethod build-test-state :fail [state event]
-  (println :E (:type event))
   (swap! !test-run-events conj event)
-  (update-test-var state (->test-var-name event) #(assoc % :state :failed)))
+  #_ (update-test-var state (->test-var-name event) #(assoc % :state :failed))
+  (-> state
+      (update-contexts event)
+      (update-test-ns (test-var->ns-name event) #(update % :test-vars conj (->test-var-data event :failed)))))
 
 (defmethod build-test-state :error [state event]
-  (println :E (:type event))
   (swap! !test-run-events conj event)
-  (update-test-var state (->test-var-name event) #(assoc % :state :errored)))
+  #_ (update-test-var state (->test-var-name event) #(assoc % :state :errored))
+  (-> state
+      (update-contexts event)
+      (update-test-ns (test-var->ns-name event) #(update % :test-vars conj (->test-var-data event :errored)))))
 
 (defmethod build-test-state :kaocha.type.var/zero-assertions [state event]
-  (println :E (:type event))
   (swap! !test-run-events conj event)
   state)
 
 (defmethod build-test-state :end-test-var [state event]
-  (println :E (:type event))
   (swap! !test-run-events conj event)
   state)
 
 (defmethod build-test-state :end-test-ns [state event]
-  (println :E (:type event))
   (swap! !test-run-events conj event)
   (update-test-ns state (->test-ns-name event)
                   (fn [{:as test-ns :keys [test-vars]}]
@@ -109,12 +134,10 @@
                              (or (some #{:errored} ss) (some #{:failed} ss) :pass))))))
 
 (defmethod build-test-state :end-test-suite [state event]
-  (println :EndTestSuite)
   (swap! !test-run-events conj event)
   state)
 
 (defmethod build-test-state :summary [state event]
-  (println :E (:type event))
   (swap! !test-run-events conj event)
   (assoc state :summary (select-keys event [:pending :file :fail :line :error :pass :test])))
 
@@ -145,14 +168,16 @@
     :failed "Failed"
     :errored "Errored"))
 
-(defn test-var-badge [{:keys [name state ctx-desc ctx-depth]}]
-  [:div.mb-2.rounded-md.border.border-slate-300.px-4.py-1.font-sans.shadow
-   {:class (bg-class state)}
-   [:div.flex.justify-between.items-center
-    [:div.flex.items-center.truncate.mr-2
-     [:div.mr-2 (status->icon state)]
-     [:span.text-sm.mr-1 (status->text state)]
-     [:div.text-sm.font-medium.leading-none.truncate name]]]])
+(defn test-var-badge [{:keys [name state] :ctx/keys [text depth]}]
+  (if text
+    [:div.text-slate-500 {:class (when (< 0 depth) (str "ml-" (* 4 depth)))} text]
+    [:div.mb-2.rounded-md.border.border-slate-300.px-4.py-1.font-sans.shadow
+     {:class (bg-class state)}
+     [:div.flex.justify-between.items-center
+      [:div.flex.items-center.truncate.mr-2
+       [:div.mr-2 (status->icon state)]
+       [:span.text-sm.mr-1 (status->text state)]
+       [:div.text-sm.font-medium.leading-none.truncate name]]]]))
 
 (defn test-ns-badge [{:keys [name state file ns test-vars]}]
   [:div.p-1.mt-2
@@ -205,7 +230,8 @@
               :ns-patterns ["test|reporter"]
               :test-paths ["notebooks/tests.clj"
                            "notebooks/kaocha_reporter.clj"
-                           "test/nextjournal/clerk/*_test.clj"]}]})
+                           #_
+                           "test/nextjournal/clerk/analyzer_test.clj"]}]})
   ;; run tests!
   (do
     (reset-state!)
@@ -221,17 +247,13 @@
   (reset! !test-report-state {:test-nss (test-plan->test-nss (kaocha.repl/test-plan cfg))})
 
   (map :type @!test-run-events)
-
   (-> @!test-report-state)
-
-
   (set! *print-namespace-maps* false)
 
+  ;; inspect events
   (defn get-event [type]
     (some #(when (= type (:type %)) %)
           @!test-run-events))
-
-  (-> (get-event :summary) :pending  )
-
+  (-> (get-event :begin-test-var) :kaocha/testable )
 
   (nextjournal.clerk/clear-cache!))
