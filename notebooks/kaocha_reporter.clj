@@ -57,8 +57,11 @@
 (defn vec-update-if [pred f] (partial into [] (map (fn [item] (cond-> item (pred item) f)))))
 (defn ->test-var-data
   ([event] (->test-var-data event :queued))
-  ([{:as _event {:kaocha.testable/keys [meta] :kaocha.var/keys [name var]} :kaocha/testable line :line} status]
-   (assoc meta :var var :name name :line line :state status)))
+  ([{:as event {:kaocha.testable/keys [meta] :kaocha.var/keys [name var]} :kaocha/testable} status]
+   (-> meta
+       (merge (select-keys event [:actual :expected :message]))
+       (assoc :var var :name name
+              :state status))))
 
 (defn update-test-ns [state nsn f]
   (update state :test-nss (vec-update-if #(= nsn (:name %)) f)))
@@ -152,11 +155,11 @@
     :errored "bg-red-100"
     "bg-slate-100"))
 
-(def failed-status [:div.font-bold "❌"])
+
 (defn status->icon [status]
   (case status
     (:queued :executing) (builder-ui/spinner-svg)
-    :failed failed-status
+    :failed [:div "❌"]
     :errored (builder-ui/error-svg)
     :pass (builder-ui/checkmark-svg)))
 (defn status->text [status]
@@ -167,7 +170,8 @@
     :failed "Failed"
     :errored "Errored"))
 
-(defn test-var-badge [{:keys [name state line] :ctx/keys [text depth]}]
+(defn test-var-badge [{:as tvar :keys [name state line expected actual] :ctx/keys [text depth]}]
+  (println :TVAR tvar)
   (if text
     [:div.text-slate-500 {:class (when (< 0 depth) (str "ml-" (* 4 depth)))} text]
     [:div.mb-2.rounded-md.border.border-slate-300.px-4.py-1.font-sans.shadow
@@ -176,7 +180,11 @@
       [:div.flex.items-center.truncate.mr-2
        [:div.mr-2 (status->icon state)]
        [:span.text-sm.mr-1 (status->text state)]
-       [:div.text-sm.font-medium.leading-none.truncate (str name ":" line)]]]]))
+       [:div.text-sm.font-medium.leading-none.truncate (str name ":" line)]]]
+     (when (= :failed state)
+       [:div.mt-2.flex.flex-col
+        [:div.flex.items-center [:div.text-medium.mr-8 "expected:"] [:div.whitespace-pre (pr-str expected)]]
+        [:div.flex.items-center [:div.text-medium.mr-8 "actual:"] [:div.whitespace-pre (pr-str actual)]]])]))
 
 (defn test-ns-badge [{:keys [name state file ns test-vars]}]
   [:div.p-1.mt-2
@@ -250,6 +258,6 @@
   (defn get-event [type]
     (some #(when (= type (:type %)) %)
           @!test-run-events))
-  (-> (get-event :fail) keys )
+  (-> (get-event :fail) :expected)
 
   (nextjournal.clerk/clear-cache!))
