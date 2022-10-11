@@ -7,7 +7,7 @@
             [nextjournal.clerk.analyzer :as clerk.analyzer]
             [nextjournal.clerk.viewer :as viewer]
             [clojure.test :as t :refer [is]]
-            [kaocha.repl :as kr]
+            [kaocha.repl]
             [kaocha.config :as config]
             [kaocha.api :as kaocha]))
 
@@ -22,6 +22,11 @@
 (defonce !test-run-events (atom []))
 (defonce !test-report-state (atom {}))
 
+(defn reset-state! []
+  (reset! !test-run-events [])
+  (reset! !test-report-state {})
+  (clerk/recompute!))
+
 (defn test-plan->test-nss [test-plan]                       ;;: {:name :ns :file :test-vars}
   (map
    (fn [{:kaocha.ns/keys [name ns] :kaocha.test-plan/keys [tests]}]
@@ -33,38 +38,33 @@
                         (assoc meta :var var :name name :state :loading)) tests)})
    (-> test-plan :kaocha.test-plan/tests first :kaocha.test-plan/tests)))
 
+(defn ->test-var [e] (-> e :kaocha/testable :kaocha.var/var))
+(defn ->test-ns-name [e] (-> e :kaocha/testable :kaocha.ns/name))
+(defn update-test-ns [state nsn f]
+  (update state
+          :test-nss
+          (partial into []
+                   (map #(cond-> % (= nsn (ns-name (:ns %))) f)))))
+(defn update-test-var [state var f]
+  (update-test-ns state
+                  (-> var symbol namespace symbol)
+                  #(update % :test-vars
+                           (partial into []
+                                    (map (fn [{:as m test-var :var}]
+                                           (cond-> m (= test-var var) f)))))))
+
 #_ (ns-unmap *ns* 'build-test-state )
 (defmulti build-test-state (fn bts-dispatch [_state {:as _event :keys [type]}] type))
 
 (defmethod build-test-state :begin-test-suite [state {:as event :kaocha/keys [test-plan]}]
   (println :E (:type event))
-
-
   (swap! !test-run-events conj event)
   (assoc state :test-nss (test-plan->test-nss test-plan)))
 
-(defmethod build-test-state :begin-test-ns [state {:as event :keys [ns]}]
+(defmethod build-test-state :begin-test-ns [state event]
   (println :E (:type event))
   (swap! !test-run-events conj event)
-  (update state
-          :test-nss
-          (partial into []
-                   (map #(cond-> %
-                           (= ns (:ns %))
-                           (assoc :state :executing))))))
-
-(defn ->test-var [e] (-> e :kaocha/testable :kaocha.var/var))
-(defn update-test-var [state var f]
-  (update state
-          :test-nss
-          (partial into []
-                   (map (fn [{:as test-ns :keys [name]}]
-                          (cond-> test-ns
-                            (= (str name) (-> var symbol namespace))
-                            (update :test-vars
-                                    (partial into []
-                                             (map (fn [{:as m test-var :var}]
-                                                    (cond-> m (= test-var var) f)))))))))))
+  (update-test-ns state (->test-ns-name event) #(assoc % :state :executing)))
 
 (defmethod build-test-state :begin-test-var [state {:as event :keys [var]}]
   (println :E (:type event))
@@ -84,7 +84,7 @@
 (defmethod build-test-state :error [state event]
   (println :E (:type event))
   (swap! !test-run-events conj event)
-  state)
+  (update-test-var state (->test-var event) #(assoc % :state :errored)))
 
 (defmethod build-test-state :kaocha.type.var/zero-assertions [state event]
   (println :E (:type event))
@@ -96,10 +96,16 @@
   (swap! !test-run-events conj event)
   state)
 
+(some (some-fn #{:errored} #{:failed}) [nil nil true :failed :errored])
+
 (defmethod build-test-state :end-test-ns [state event]
   (println :E (:type event))
   (swap! !test-run-events conj event)
-  state)
+  (update-test-ns state (->test-ns-name event)
+                  (fn [{:as test-ns :keys [test-vars]}]
+                    (assoc test-ns :state
+                           (as-> (map :state test-vars) ss
+                             (or (some #{:errored} ss) (some #{:failed} ss) :pass))))))
 
 (defmethod build-test-state :end-test-suite [state event]
   (println :E (:type event))
@@ -122,16 +128,17 @@
     :errored "bg-red-100"
     "bg-slate-100"))
 
-(defn test-var-state [{:keys [name state]}]
-  (println :test-var-badge name state)
-  [:div.rounded-md.border.border-slate-300.px-4.py-3.font-sans.shadow
+(def failed-status [:div.font-bold "❌"])
+
+(defn test-var-badge [{:keys [name state]}]
+  [:div.mb-2.rounded-md.border.border-slate-300.px-4.py-3.font-sans.shadow
    {:class (bg-class state)}
    [:div.flex.justify-between.items-center
     [:div.flex.items-center.truncate.mr-2
      [:div.mr-2
       (case state
         (:loading :executing) (builder-ui/spinner-svg)
-        :failed (builder-ui/error-svg)
+        :failed failed-status
         :errored (builder-ui/error-svg)
         :done (builder-ui/checkmark-svg))]
      [:span.text-sm.mr-1 (case state
@@ -148,7 +155,7 @@
 (defn test-ns-badge [{:keys [name state file ns test-vars]}]
   (println :test-ns-badge name state file)
   [:<>
-   [:div.p-1
+   [:div.p-1.mt-2
     [:div.rounded-md.border.border-slate-300.px-4.py-3.font-sans.shadow
      {:class (bg-class state)}
      [:div.flex.justify-between.items-center
@@ -157,6 +164,7 @@
         (case state
           (:loading :executing) (builder-ui/spinner-svg)
           :done (builder-ui/checkmark-svg)
+          :failed failed-status
           :errored (builder-ui/error-svg))]
 
        [:span.text-sm.mr-1 (case state
@@ -168,7 +176,7 @@
                              (str "unexpected state `" (pr-str state) "`"))]
        [:div.text-sm.font-medium.leading-none.truncate
         file]]]]
-    (into [:div.ml-5] (map test-var-state) test-vars)]])
+    (into [:div.ml-5.mt-2] (map test-var-badge) test-vars)]])
 
 (def test-ns-viewer {:transform-fn (viewer/update-val (comp viewer/html test-ns-badge))})
 
@@ -179,6 +187,18 @@
                  (if (seq test-nss)
                    (v/html (into [:div.flex.flex-col.pt-2] (v/inspect-children opts) test-nss))
                    (v/html [:h5 [:em.slate-100 "Waiting for tests to run..."]])))})
+
+{::clerk/visibility {:code :show :result :hide}}
+;; Evaluate the commented form to run tests
+(comment
+  (do (reset-state!)
+      (kaocha.repl/run :my-suite
+                       {:reporter [notebook-reporter]
+               :capture-output? false
+               :tests [{:id :my-suite
+                        :ns-patterns ["tests" "kaocha-reporter"]
+                        :test-paths ["notebooks/tests.clj"
+                                     "notebooks/kaocha_reporter.clj"]}]})))
 
 {::clerk/visibility {:code :hide :result :show}}
 (clerk/with-viewer test-suite-viewer @!test-report-state)
@@ -196,23 +216,20 @@
               :test-paths ["notebooks/tests.clj"
                            "notebooks/kaocha_reporter.clj"]}]})
 
-  (kr/config cfg)
+  (kaocha.repl/config cfg)
   ;; run tests!
-  (do
-    (reset! !test-run-events [])
-    (reset! !test-report-state {})
-    (clerk/recompute!))
+  (reset-state!)
 
 
   (do
     (reset! !test-run-events [])
     (reset! !test-report-state {})
-    (kr/run :my-suite cfg))
+    (kaocha.repl/run :my-suite cfg))
 
   ;; see what's going on
-  (test-plan->test-nss (kr/test-plan cfg))
+  (test-plan->test-nss (kaocha.repl/test-plan cfg))
 
-  (reset! !test-report-state {:test-nss (test-plan->test-nss (kr/test-plan cfg))})
+  (reset! !test-report-state {:test-nss (test-plan->test-nss (kaocha.repl/test-plan cfg))})
 
   (map :type @!test-run-events)
 
@@ -231,7 +248,7 @@
                    (-> (get-event :pass) :kaocha/testable :kaocha.var/var)
                    #(assoc % :state :passed))
 
-  (-> (get-event :pass)
+  (-> (get-event :begin-test-ns)
+      :kaocha/testable :kaocha.ns/name type
 
-      #_ keys   :kaocha/testable
       ))
