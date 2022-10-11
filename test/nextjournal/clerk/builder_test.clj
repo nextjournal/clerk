@@ -21,7 +21,8 @@
                              (str/replace (java.io.File/separator) "/"))]
             (builder/build-static-app! {:browse? true
                                         :paths ["notebooks/hello.clj"]
-                                        :out-path temp})
+                                        :out-path temp
+                                        :report-fn (fn noop [event] nil)})
             (is (= expected @url*))))))))
 
 (deftest expand-paths-test
@@ -38,4 +39,3 @@
     (is (thrown? Exception (builder/expand-paths {:paths-fn 'foo})))
     (is (thrown? Exception (builder/expand-paths {:paths-fn "hi"})))
     (is (thrown? Exception (builder/expand-paths {:index ["book.clj"]})))))
-
