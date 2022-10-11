@@ -7,6 +7,7 @@
             [kaocha.repl]
             [kaocha.config :as config]
             [kaocha.api :as kaocha]
+            [lambdaisland.deep-diff :as ddiff]
             [kaocha.matcher-combinators]
             [matcher-combinators.test]
             [nextjournal.clerk :as clerk]
@@ -55,13 +56,16 @@
       (-> e :kaocha/testable :kaocha.var/name namespace symbol)))
 
 (defn vec-update-if [pred f] (partial into [] (map (fn [item] (cond-> item (pred item) f)))))
+
 (defn ->test-var-data
   ([event] (->test-var-data event :queued))
-  ([{:as event {:kaocha.testable/keys [meta] :kaocha.var/keys [name var]} :kaocha/testable} status]
+  ([{:as event
+     {:kaocha.testable/keys [meta] :kaocha.var/keys [name var]} :kaocha/testable
+     ex :kaocha.result/exception} status]
    (-> meta
        (merge (select-keys event [:actual :expected :message]))
-       (assoc :var var :name name
-              :state status))))
+       (assoc :var var :name name :state status)
+       (cond-> ex (assoc :exception ex)))))
 
 (defn update-test-ns [state nsn f]
   (update state :test-nss (vec-update-if #(= nsn (:name %)) f)))
@@ -170,11 +174,10 @@
     :failed "Failed"
     :errored "Errored"))
 
-(defn test-var-badge [{:as tvar :keys [name state line expected actual] :ctx/keys [text depth]}]
-  (println :TVAR tvar)
+(defn test-var-badge [{:as tvar :keys [name state line expected actual exception] :ctx/keys [text depth]}]
   (if text
     [:div.text-slate-500 {:class (when (< 0 depth) (str "ml-" (* 4 depth)))} text]
-    [:div.mb-2.rounded-md.border.border-slate-300.px-4.py-1.font-sans.shadow
+    [:div.mb-2.rounded-md.border.border-slate-300.px-4.py-2.font-sans.shadow
      {:class (bg-class state)}
      [:div.flex.justify-between.items-center
       [:div.flex.items-center.truncate.mr-2
@@ -182,9 +185,18 @@
        [:span.text-sm.mr-1 (status->text state)]
        [:div.text-sm.font-medium.leading-none.truncate (str name ":" line)]]]
      (when (= :failed state)
-       [:div.mt-2.flex.flex-col
-        [:div.flex.items-center [:div.text-medium.mr-8 "expected:"] [:div.whitespace-pre (pr-str expected)]]
-        [:div.flex.items-center [:div.text-medium.mr-8 "actual:"] [:div.whitespace-pre (pr-str actual)]]])]))
+       ;; TODO: structural diff
+       [:table
+        [:tbody
+         [:tr.hover:bg-red-100.leading-tight
+          [:td.text-right.font-medium "expected:"]
+          [:td.text-left (viewer/code (pr-str expected))]]
+         [:tr.hover:bg-red-100.leading-tight
+          [:td.text-right.font-medium "actual:"]
+          [:td.text-left (viewer/code (pr-str actual))]]]])
+     (when (= :errored state)
+       [:div.mt-2.rounded-md.shadow-lg.border.border-gray-300.overflow-scroll {:style {:height "200px"}}
+        (viewer/present exception)])]))
 
 (defn test-ns-badge [{:keys [name state file ns test-vars]}]
   [:div.p-1.mt-2
@@ -258,6 +270,6 @@
   (defn get-event [type]
     (some #(when (= type (:type %)) %)
           @!test-run-events))
-  (-> (get-event :fail) :expected)
+  (-> (get-event :error)  )
 
   (nextjournal.clerk/clear-cache!))

@@ -491,7 +491,8 @@
        [:div.p-4.bg-red-100.border-b.border-b-gray-300
         [:div.font-bold "Unhandled " type]
         [:div.font-bold.mt-1 message]
-        [:div.mt-1 [inspect data]]])
+        (when data
+          [:div.mt-1 [inspect data]])])
      via))
    [:div.py-6.overflow-x-auto
     [:table.w-full
