@@ -50,7 +50,6 @@
    :seen-ctxs #{}})
 
 (defn ->test-var-name [e] (-> e :kaocha/testable :kaocha.var/name))
-(defn test-var->ns-name [e] (-> e :kaocha/testable :kaocha.var/name namespace symbol))
 (defn ->test-ns-name  [e]
   (or (-> e :kaocha/testable :kaocha.ns/name)
       (-> e :kaocha/testable :kaocha.var/name namespace symbol)))
@@ -58,8 +57,8 @@
 (defn vec-update-if [pred f] (partial into [] (map (fn [item] (cond-> item (pred item) f)))))
 (defn ->test-var-data
   ([event] (->test-var-data event :queued))
-  ([{:as _event {:kaocha.testable/keys [meta] :kaocha.var/keys [name var]} :kaocha/testable} status]
-   (assoc meta :var var :name name :state status)))
+  ([{:as _event {:kaocha.testable/keys [meta] :kaocha.var/keys [name var]} :kaocha/testable line :line} status]
+   (assoc meta :var var :name name :line line :state status)))
 
 (defn update-test-ns [state nsn f]
   (update state :test-nss (vec-update-if #(= nsn (:name %)) f)))
@@ -101,21 +100,21 @@
   #_ (update-test-var state (->test-var-name event) #(assoc % :state :pass))
   (-> state
       (update-contexts event)
-      (update-test-ns (test-var->ns-name event) #(update % :test-vars conj (->test-var-data event :pass)))))
+      (update-test-ns (->test-ns-name event) #(update % :test-vars conj (->test-var-data event :pass)))))
 
 (defmethod build-test-state :fail [state event]
   (swap! !test-run-events conj event)
   #_ (update-test-var state (->test-var-name event) #(assoc % :state :failed))
   (-> state
       (update-contexts event)
-      (update-test-ns (test-var->ns-name event) #(update % :test-vars conj (->test-var-data event :failed)))))
+      (update-test-ns (->test-ns-name event) #(update % :test-vars conj (->test-var-data event :failed)))))
 
 (defmethod build-test-state :error [state event]
   (swap! !test-run-events conj event)
   #_ (update-test-var state (->test-var-name event) #(assoc % :state :errored))
   (-> state
       (update-contexts event)
-      (update-test-ns (test-var->ns-name event) #(update % :test-vars conj (->test-var-data event :errored)))))
+      (update-test-ns (->test-ns-name event) #(update % :test-vars conj (->test-var-data event :errored)))))
 
 (defmethod build-test-state :kaocha.type.var/zero-assertions [state event]
   (swap! !test-run-events conj event)
@@ -168,7 +167,7 @@
     :failed "Failed"
     :errored "Errored"))
 
-(defn test-var-badge [{:keys [name state] :ctx/keys [text depth]}]
+(defn test-var-badge [{:keys [name state line] :ctx/keys [text depth]}]
   (if text
     [:div.text-slate-500 {:class (when (< 0 depth) (str "ml-" (* 4 depth)))} text]
     [:div.mb-2.rounded-md.border.border-slate-300.px-4.py-1.font-sans.shadow
@@ -177,7 +176,7 @@
       [:div.flex.items-center.truncate.mr-2
        [:div.mr-2 (status->icon state)]
        [:span.text-sm.mr-1 (status->text state)]
-       [:div.text-sm.font-medium.leading-none.truncate name]]]]))
+       [:div.text-sm.font-medium.leading-none.truncate (str name ":" line)]]]]))
 
 (defn test-ns-badge [{:keys [name state file ns test-vars]}]
   [:div.p-1.mt-2
@@ -187,7 +186,7 @@
      [:div.flex.items-center.truncate.mr-2
       [:div.mr-2 (status->icon state)]
       [:span.text-sm.mr-1 (status->text state)]
-      [:div.text-sm.font-medium.leading-none.truncate file]]]]
+      [:div.text-sm.font-semibold.leading-none.truncate file]]]]
    (into [:div.ml-5.mt-2] (map test-var-badge) test-vars)])
 
 (def test-ns-viewer {:transform-fn (viewer/update-val (comp viewer/html test-ns-badge))})
@@ -233,9 +232,7 @@
                            #_
                            "test/nextjournal/clerk/analyzer_test.clj"]}]})
   ;; run tests!
-  (do
-    (reset-state!)
-    (kaocha.repl/run :my-suite cfg))
+  (kaocha.repl/run :my-suite cfg)
 
   (kaocha.repl/config)
   (kaocha.repl/config cfg)
@@ -243,10 +240,9 @@
   (test-plan->test-nss (kaocha.repl/test-plan cfg))
   (reset-state!)
 
-
   (reset! !test-report-state {:test-nss (test-plan->test-nss (kaocha.repl/test-plan cfg))})
 
-  (map :type @!test-run-events)
+  (map :line @!test-run-events)
   (-> @!test-report-state)
   (set! *print-namespace-maps* false)
 
@@ -254,6 +250,6 @@
   (defn get-event [type]
     (some #(when (= type (:type %)) %)
           @!test-run-events))
-  (-> (get-event :begin-test-var) :kaocha/testable )
+  (-> (get-event :fail) keys )
 
   (nextjournal.clerk/clear-cache!))
