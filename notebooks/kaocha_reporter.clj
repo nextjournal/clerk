@@ -48,8 +48,7 @@
     (is (= 1 1))
     (is (= :a :b))
     (is (= 1 1))
-    (is (= 1 1))
-    ))
+    (is (= 1 1))))
 
 (defonce !test-run-events (atom []))
 (defonce !test-report-state (atom {}))
@@ -110,7 +109,7 @@
     (-> state
         (update :seen-ctxs into ctxs)
         (update-test-var (->test-var-name event)
-                        #(update % :assertions into ctx-items)))))
+                         #(update % :assertions into ctx-items)))))
 
 #_ (ns-unmap *ns* 'build-test-state )
 (defmulti build-test-state (fn bts-dispatch [_state {:as _event :keys [type]}] type))
@@ -123,7 +122,7 @@
   (swap! !test-run-events conj event)
   (update-test-ns state (->test-ns-name event) #(assoc % :status :executing)))
 
-(defmethod build-test-state :begin-test-var [state {:as event :keys [var]}]
+(defmethod build-test-state :begin-test-var [state event]
   (swap! !test-run-events conj event)
   (update-test-var state (->test-var-name event) #(assoc % :status :executing))
   state)
@@ -133,15 +132,21 @@
 
 (defmethod build-test-state :pass [state event]
   (swap! !test-run-events conj event)
-  (update-test-var state (->test-var-name event) #(update % :assertions conj (->assertion-data event))))
+  (-> state
+      (update-contexts event)
+      (update-test-var (->test-var-name event) #(update % :assertions conj (->assertion-data event)))))
 
 (defmethod build-test-state :fail [state event]
   (swap! !test-run-events conj event)
-  (update-test-var state (->test-var-name event) #(update % :assertions conj (->assertion-data event))))
+  (-> state
+      (update-contexts event)
+      (update-test-var (->test-var-name event) #(update % :assertions conj (->assertion-data event)))))
 
 (defmethod build-test-state :error [state event]
   (swap! !test-run-events conj event)
-  (update-test-var state (->test-var-name event) #(update % :assertions conj (->assertion-data event))))
+  (-> state
+      (update-contexts event)
+      (update-test-var (->test-var-name event) #(update % :assertions conj (->assertion-data event)))))
 
 (defmethod build-test-state :end-test-var [state event]
   (swap! !test-run-events conj event)
@@ -179,11 +184,11 @@
   (swap! !test-report-state #(build-test-state % event))
   (clerk/recompute!))
 
-(defn bg-class [state]
-  (case state
-    :done "bg-green-100"
-    :failed "bg-red-100"
-    :errored "bg-red-100"
+(defn bg-class [status]
+  (case status
+    :pass "bg-green-100"
+    :fail "bg-red-100"
+    :error "bg-red-100"
     "bg-slate-100"))
 
 (defn status->icon [status]
@@ -192,17 +197,19 @@
     :pass (builder-ui/checkmark-svg)
     :fail [:div "❌"]
     :error (builder-ui/error-svg)))
+
 (defn status->text [status]
   (case status
     :queued "Queued"
     :executing "Running"
-    :pass "Pass"
+    :pass "Passed"
     :fail "Failed"
     :error "Errored"))
 
 (defn assertion-badge [{:as ass :keys [status name line expected actual exception] :ctx/keys [text depth]}]
   (if text
-    [:div.text-slate-500.mb-1 {:class (when (< 0 depth) (str "ml-" (* 4 depth)))} text]
+    [:div.text-slate-500.my-2 {:class (when (< 0 depth) (str "pl-" (* 4 depth)))
+                               :style {:width "100%"}} text]
     (case status
       :pass [:div.ml-1.bg-green-600.rounded-full {:style {:width 18 :height 18}}]
       :fail [:div.flex.flex-col.p-1.my-2 {:style {:width "100%"}}
@@ -293,10 +300,13 @@
   (test-plan->test-nss (kaocha.repl/test-plan cfg))
 
   (map :type  @!test-run-events)
+  (count  @!test-run-events)
 
-  (reset! !test-report-state
-          (reduce build-test-state {}
-                  (take 1 @!test-run-events)))
+  (do
+    (reset! !test-report-state
+            (reduce build-test-state {}
+                    (take 5 @!test-run-events)))
+    (clerk/recompute!))
 
   @!test-report-state
 
