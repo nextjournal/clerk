@@ -23,16 +23,12 @@
         rewrite-clj/rewrite-clj {:mvn/version "1.1.45"}}
 
  :aliases {:nextjournal/clerk {:extra-deps {org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
-                                            org.babashka/cli {:mvn/version "0.4.37"}}
+                                            org.babashka/cli {:mvn/version "0.5.40"}}
                                :extra-paths ["notebooks"]
                                :exec-fn nextjournal.clerk/build!
                                :exec-args {:paths-fn nextjournal.clerk.builder/clerk-docs}
                                :main-opts ["-m" "babashka.cli.exec"]
                                :nextjournal.clerk/aliases [:demo]}
-           :clerk {:extra-deps {org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
-                                org.babashka/cli {:mvn/version "0.4.37"}}
-                   :exec-fn nextjournal.clerk/serve!
-                   :main-opts ["-m" "babashka.cli.exec"]}
            :sci {:extra-deps {applied-science/js-interop {:mvn/version "0.3.3"}
                               org.babashka/sci {:mvn/version "0.4.33"}
                               reagent/reagent {:mvn/version "1.1.1"}
@@ -44,7 +40,8 @@
                               binaryage/devtools {:mvn/version "1.0.3"}
                               cider/cider-nrepl {:mvn/version "0.28.3"}
                               thheller/shadow-cljs {:mvn/version "2.16.7"}
-                              org.slf4j/slf4j-nop {:mvn/version "1.7.36"}}
+                              org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
+                              org.babashka/cli {:mvn/version "0.5.40"}}
                  :extra-paths ["dev" "notebooks"]
                  :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}" "-Dpolyglot.engine.WarnInterpreterOnly=false" "-XX:-OmitStackTraceInFastThrow"]
                  :main-opts ["-m" "shadow.cljs.devtools.cli"]

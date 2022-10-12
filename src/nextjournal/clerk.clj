@@ -351,6 +351,9 @@
   (set/rename-keys opts #_(into {} (map (juxt identity #(keyword (str (name %) "?")))) [:bundle :browse :dashboard])
                    {:bundle :bundle?, :browse :browse?, :dashboard :dashboard?}))
 
+(defn ^:private started-via-bb-cli? [opts]
+  (contains? (meta opts) :org.babashka/cli))
+
 (defn serve!
   "Main entrypoint to Clerk taking an configurations map.
 
@@ -362,19 +365,36 @@
   * a `:show-filter-fn` to restrict when to re-evaluate or show a notebook as a result of file system event. Useful for e.g. pinning a notebook. Will be called with the string path of the changed file.
 
   Can be called multiple times and Clerk will happily serve you according to the latest config."
+  {:org.babashka/cli {:spec {:watch-paths {:desc "Paths on which to watch for changes and show a changed document."
+                                           :coerce []}
+                             :port {:desc "Port number for the webserver to listen on, defaults to 7777."
+                                    :coerce :number}
+                             :show-filter-fn {:desc "Symbol resolving to a fn to restrict when to show a notebook as a result of file system event."
+                                              :coerce :symbol}
+                             :browse {:desc "Opens the browser on boot when set."
+                                      :coerge :boolean}}
+                      :order [:watch-paths :port :show-filter-fn :browse]}}
   [{:as config
     :keys [browse? watch-paths port show-filter-fn]
     :or {port 7777}}]
-  (webserver/serve! {:port port})
-  (reset! !show-filter-fn show-filter-fn)
-  (halt-watcher!)
-  (when (seq watch-paths)
-    (println "Starting new watcher for paths" (pr-str watch-paths))
-    (reset! !watcher {:paths watch-paths
-                      :watcher (apply beholder/watch #(file-event %) watch-paths)}))
-  (when browse?
-    (browse/browse-url (str "http://localhost:" port)))
+  (if (:help config)
+    (if-let [format-opts (and (started-via-bb-cli? config) (requiring-resolve 'babashka.cli/format-opts))]
+      (println "Start the Clerk webserver with an optional a file watcher.\n\nOptions:"
+               (str "\n" (format-opts (-> #'serve! meta :org.babashka/cli))))
+      (println (-> #'serve! meta :doc)))
+    (do
+      (webserver/serve! {:port port})
+      (reset! !show-filter-fn show-filter-fn)
+      (halt-watcher!)
+      (when (seq watch-paths)
+        (println "Starting new watcher for paths" (pr-str watch-paths))
+        (reset! !watcher {:paths watch-paths
+                          :watcher (apply beholder/watch #(file-event %) watch-paths)}))
+      (when browse?
+        (browse/browse-url (str "http://localhost:" port)))))
   config)
+
+#_(serve! (with-meta {:help true} {:org.babashka/cli {}}))
 
 (defn halt!
   "Stops the Clerk webserver and file watcher."
@@ -394,7 +414,7 @@
 
   Options:
   - `:paths`     - a vector of relative paths to notebooks to include in the build
-  - `:paths-fn`  - a symbol resolving 0-arity function returning computed paths
+  - `:paths-fn`  - a symbol resolving to a 0-arity function returning computed paths
   - `:index`     - a string allowing to override the name of the index file, will be added to `:paths`
 
   Passing at least one of the above is required. When both `:paths`
@@ -406,13 +426,30 @@
   - `:out-path`  - a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
   - `:git/sha`, `:git/url` - when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
   "
-  {:org.babashka/cli {:coerce {:paths []
-                               :paths-fn :symbol}}}
+  {:org.babashka/cli {:spec {:paths {:desc "Paths to notebooks toc include in the build, supports glob patterns."
+                                     :coerce []}
+                             :paths-fn {:desc "Symbol resolving to a 0-arity function returning computed paths."
+                                        :coerce :symbol}
+                             :index {:desc "Override the name of the index file (default `index.clj|md`), will be added to paths."}
+                             :bundle {:desc "Flag to build a self-contained html file inlcuding inlined images"}
+                             :browse {:desc "Opens the browser on boot when set."}
+                             :dashboard {:desc "Flag to serve a dashboard with the build progress."}
+                             :out-path {:desc "Path to an build output folder, defaults to \"public/build\"."}
+                             :git/sha {:desc "Git sha to use for the backlink."}
+                             :git/url {:desc "Git url to use for the backlink."}}
+                      :order [:paths :paths-fn :index :browse :bundle :dashbaord :out-path :git/sha :git/url]}}
   [build-opts]
-  (let [{:as build-opts-normalized :keys [dashboard?]} (normalize-opts build-opts)]
-    (when (and dashboard? (not @webserver/!server))
-      (serve! build-opts-normalized))
-    (builder/build-static-app! build-opts-normalized)))
+  (if (:help build-opts)
+    (if-let [format-opts (and (started-via-bb-cli? build-opts) (requiring-resolve 'babashka.cli/format-opts))]
+      (println "Start the Clerk webserver with an optional a file watcher.\n\nOptions:"
+               (str "\n" (format-opts (-> #'build! meta :org.babashka/cli))))
+      (println (-> #'build! meta :doc)))
+    (let [{:as build-opts-normalized :keys [dashboard?]} (normalize-opts build-opts)]
+      (when (and dashboard? (not @webserver/!server))
+        (serve! build-opts-normalized))
+      (builder/build-static-app! build-opts-normalized))))
+
+#_(build! (with-meta {:help true} {:org.babashka/cli {}}))
 
 (defn build-static-app! {:deprecated "0.11"} [build-opts]
   (binding [*out* *err*] (println "`build-static-app!` has been deprecated, please use `build!` instead."))
