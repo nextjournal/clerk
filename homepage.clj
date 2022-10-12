@@ -110,24 +110,24 @@
  [:div.px-8.lg:px-0.lg:container.md:mx-auto.not-prose
   [:nav.separator-bottom.pt-12.pb-4.text-sm.flex.justify-between
    [:ul.flex
-    [:li.mr-4 [:a {:href "#use-cases"} "Use Cases"]]
     [:li.mr-4 [:a {:href "#features"} "Features"]]
+    [:li.mr-4 [:a {:href "#use-cases"} "Use Cases"]]
     [:li.mr-4 [:a {:href "#quotes"} "Quotes"]]
     [:li [:a {:href "#talks"} "Talks"]]]
    [:ul.flex
     [:li.mr-4
-     [:a.flex.items-center {:href "#use-cases"} github-icon [:span.ml-2.hidden.md:inline "GitHub"]]]
-    [:li [:a.flex.items-center {:href "#features"} star-icon [:span.ml-2.hidden.md:inline "Star on GitHub"] stars-badge]]]]
+     [:a.flex.items-center {:href "http://github.com/nextjournal/clerk"} github-icon [:span.ml-2.hidden.md:inline "GitHub"]]]
+    [:li [:a.flex.items-center {:href "http://github.com/nextjournal/clerk"} star-icon [:span.ml-2.hidden.md:inline "Star on GitHub"] stars-badge]]]]
   [:div.mt-20.text-greenish.font-iosevka.flex.items-center
    [:div.lg:max-w-xl.xl:max-w-3xl
     [:h1.flex
      clerk-type
      [:div.flex.ml-2.lg:hidden {:class "h-[62px]"} clerk-logo]]
     [:h2.text-xl.md:text-3xl.font-medium.mt-8.font-iosevka
-     [:a.link-hairline {:href "#"} "Moldable"]" Live Programming for Clojure"]
+     [:a.link-hairline {:href "https://moldabledevelopment.com" :target "_blank"} "Moldable"]" Live Programming for Clojure"]
     [:p.text-xl.md:text-3xl.font-light.mt-6
      "Clerk takes a Clojure namespace and turns it into a notebook. Learn more in the "
-     [:a.link-hairline {:href "#"} "Book of Clerk."]]]
+     [:a.link-hairline {:href "https://github.clerk.garden/nextjournal/book-of-clerk/"} "Book of Clerk."]]]
    [:figure.flex-auto.ml-10.text-center.hidden.lg:flex.flex-col.justify-center
     clerk-logo
     [:figcaption.text-greenish-60.mt-4.text-xs.font-inter
@@ -137,7 +137,7 @@
   [:div.mt-10
    [:h2.section-heading.pt-4.text-sm
     [:span.font-iosevka.font-medium.uppercase.text-greenish "Features"]
-    [:a.text-greenish-60.font-inter.font-normal.ml-3 {:href ""} "Learn more in the Book of Clerk"]]
+    [:a.text-greenish-60.font-inter.font-normal.ml-3 {:href "https://github.clerk.garden/nextjournal/book-of-clerk/"} "Learn more in the Book of Clerk"]]
    [:ul.font-medium.text-greenish.mt-10.md:grid.grid-cols-3.gap-6
     [:li
      [:div.flex.itesm-center.mb-4.text-greenish-60
@@ -178,33 +178,33 @@
   [:div.mt-20
    [:h2.section-heading.pt-4.text-sm
     [:span.font-iosevka.font-medium.uppercase.text-greenish "Use Cases"]
-    [:a.text-greenish-60.font-inter.font-normal.ml-3 {:href ""} "See Clerk Demos Repository"]]
+    [:a.text-greenish-60.font-inter.font-normal.ml-3 {:href "https://github.com/nextjournal/clerk-demo"} "See Clerk Demos Repository"]]
    [:p.text-xl.font-iosevka.text-greenish.mt-10.max-w-xl
     "Clerk is compatible with any Clojure and JVM library enabling these amazing use cases by composing libraries from Clojure's eco-system."]
    [:div.mt-10.grid.grid-cols-2.md:grid-cols-3.gap-4.md:gap-6.text-sm
-    [:a.group {:href "#"}
+    [:a.group {:href "https://snapshots.nextjournal.com/clerk-demo/build/f8112d44fa742cd0913dcbd370919eca249cbcd9/notebooks/data_science.html"}
      [:img {:src "https://cdn.nextjournal.com/data/QmWcxhxG6b2aMJSvkjkmBnRU2rNKCAhRB5rzMt8vvMwaHJ?filename=data-science.png&content-type=image/png"}]
      [:div.font-inter.text-greenish-60.mt-2.group-hover:text-white.transition-all
       [:p "Exploring the world in data using Vega, meta-csv and parsing Excel files with Docjure"]]]
-    [:a.group {:href "#"}
+    [:a.group {:href "https://snapshots.nextjournal.com/clerk-demo/build/f8112d44fa742cd0913dcbd370919eca249cbcd9/notebooks/semantic.html"}
      [:img {:src "https://cdn.nextjournal.com/data/QmVuFkrm4t48jLn5zDMHC3JCttx9hiHQvGkWKaMAJqgyde?filename=semantic.png&content-type=image/png"}]
      [:div.font-inter.text-greenish-60.mt-2.group-hover:text-white.transition-all "Semantic Queries against the world's knowledge in WikiData with Mundaneum"]]
-    [:a.group {:href "#"}
+    [:a.group {:href "https://snapshots.nextjournal.com/clerk-demo/build/f8112d44fa742cd0913dcbd370919eca249cbcd9/notebooks/sicmutils.html"}
      [:img {:src "https://cdn.nextjournal.com/data/QmZbPhh4kburooGW6JKnSoaHvQAHn51uQ3W5V2QZgoYQhi?filename=double-pendulum.png&content-type=image/png"}]
      [:div.font-inter.text-greenish-60.mt-2.group-hover:text-white.transition-all "Simulating physical systems with SICMUtils"]]
-    [:a.group {:href "#"}
+    [:a.group {:href "https://snapshots.nextjournal.com/clerk-demo/build/f8112d44fa742cd0913dcbd370919eca249cbcd9/notebooks/rule_30.html"}
      [:img {:src "https://cdn.nextjournal.com/data/Qmb9vXz1MqewaRu3SDmx2a9ge5YzhCJ18JtzMTmgR26QnP?filename=rule-30.png&content-type=image/png"}]
      [:div.font-inter.text-greenish-60.mt-2.group-hover:text-white.transition-all "Playing with cellular automata and Clerk's moldable viewers API"]]
-    [:a.group {:href "#"}
+    [:a.group {:href "http://inside-out.matt.is"}
      [:img {:src "https://cdn.nextjournal.com/data/QmTUbLE3QP37iKAxBx7CSjGuUu4CDHvjU8Gnk6QNpPCh2u?filename=docs.png&content-type=image/png"}]
      [:div.font-inter.text-greenish-60.mt-2.group-hover:text-white.transition-all "Making inside-out's library documentation interactive with custom CLJS macros"]]
-    [:a.group {:href "#"}
+    [:a.group {:href "https://github.com/zampino/osc-spirograph/"}
      [:img {:src "https://cdn.nextjournal.com/data/QmZHUCVDFnixs4vr4pxqnCuMjJhckZRm1mcYT9r3zY27qa?filename=spiro.png&content-type=image/png"}]
      [:div.font-inter.text-greenish-60.mt-2.group-hover:text-white.transition-all "Controlling a spirograph animation using Open Sound Control and your iPhone"]]]
    [:div.mt-20
     [:h2.section-heading.pt-4.text-sm
      [:span.font-iosevka.font-medium.uppercase.text-greenish "Quotes"]
-     [:a.text-greenish-60.font-inter.font-normal.ml-3 {:href ""} "See more on Twitter"]]
+     [:a.text-greenish-60.font-inter.font-normal.ml-3 {:href "https://twitter.com/search?q=clerk%20clojure&src=spelling_expansion_revert_click&f=live"} "See more on Twitter"]]
     [:div.grid.md:grid-cols-2.xl:grid-cols-4.gap-6.mt-10
      [:div.twitter-card
       [:blockquote {:class "twitter-tweet", :data-theme "dark"}
