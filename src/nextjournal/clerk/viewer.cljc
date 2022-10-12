@@ -697,7 +697,10 @@
                          (update :nextjournal/width #(or % :wide))
                          (update :nextjournal/viewers update-table-viewers)
                          (assoc :nextjournal/opts {:num-cols (count (or head (first rows)))
-                                                   :number-col? (if (seq (first rows)) (mapv number? (first rows)) {})})
+                                                   :number-col? (into #{}
+                                                                      (comp (map-indexed vector)
+                                                                            (keep #(when (number? (second %)) (first %))))
+                                                                      (not-empty (first rows)))})
                          (assoc :nextjournal/value (cond->> []
                                                      (seq rows) (cons (with-viewer :table/body (map (partial with-viewer :table/row) rows)))
                                                      head (cons (with-viewer (:name table-head-viewer table-head-viewer) head)))))
@@ -1016,8 +1019,7 @@
 
 (defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
   (-> (ensure-wrapped-with-viewers viewers value)
-      (merge (->opts wrapped-value))
-      (dissoc :offset)
+      (merge (select-keys (->opts wrapped-value) [:!budget :budget :path :current-path]))
       (update :path (fnil conj []) path-segment)
       (update :current-path (fnil conj []) path-segment)))
 
