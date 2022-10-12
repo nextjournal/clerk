@@ -119,7 +119,7 @@
         {:keys [view]} data
         view-data (merge @!state data path-params {:doc (get-in @!state [:path->doc (:path path-params "")])})]
     [:div.flex.h-screen.bg-white.dark:bg-gray-900
-     [:div.h-screen.overflow-y-auto.flex-auto
+     [:div.h-screen.overflow-y-auto.flex-auto.scroll-container
       (if view
         [view view-data]
         [:pre (pr-str match)])]]))
