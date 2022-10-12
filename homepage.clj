@@ -145,31 +145,31 @@
      [:span.text-xl.font-iosevka "Bring Your Own Editor"]
      [:p.mt-2.text-sm.text-greenish-60
       "Clerk lets you keep using your favorite editor and complements the Clojure REPL. The REPL is a peephole. See the full picture with Clerk."]]
-    [:li
+    [:li.mt-10.md:mt-0
      [:div.flex.itesm-center.mb-4.text-greenish-60
       {:class "h-[43px]"} clojure-icon]
      [:span.text-xl.font-iosevka "Just Clojure Namespaces"]
      [:p.mt-2.text-sm.text-greenish-60
       "Use plain Clojure namespaces that you can easily put into version control and use as library code. For text-heavy documents, Clerk supports Markdown too."]]
-    [:li
+    [:li.mt-10.md:mt-0
      [:div.flex.itesm-center.mb-4.text-greenish-60
       {:class "h-[43px]"} bolt-icon]
      [:span.text-xl.font-iosevka "Incremental Computation"]
      [:p.mt-2.text-sm.text-greenish-60
       "Clerk keeps the feedback loop short by only computing what's changed using a dependency graph of Clojure vars. This enables caching executions across JVM restarts and machines."]]
-    [:li
+    [:li.mt-10.md:mt-0
      [:div.flex.itesm-center.mb-4.text-greenish-60
       {:class "h-[43px]"} eye-icon]
      [:span.text-xl.font-iosevka "Rich Built-In Viewers"]
      [:p.mt-2.text-sm.text-greenish-60
       "Supports Markdown, Grid, HTML, Hiccup, SVG, Vega, Images, Plotly, TeX, tables, you name it. Plus, Clerk doesn't break a sweat when zooming into moderately-sized datasets."]]
-    [:li
+    [:li.mt-10.md:mt-0
      [:div.flex.itesm-center.mb-4.text-greenish-60
       {:class "h-[43px]"} compose-icon]
      [:span.text-xl.font-iosevka "Moldable Viewers"]
      [:p.mt-2.text-sm.text-greenish-60
       "Create custom viewers for your problem at hand. Clerk's viewer API is extensible via predicate functions, not only acting on types but also on values. Build stateful viewers with Reagent and dynamically import JavaScript libraries."]]
-    [:li
+    [:li.mt-10.md:mt-0
      [:div.flex.itesm-center.mb-4.text-greenish-60
       {:class "h-[43px]"} publish-icon]
      [:span.text-xl.font-iosevka "Static Publishing"]
@@ -205,7 +205,7 @@
     [:h2.section-heading.pt-4.text-sm
      [:span.font-iosevka.font-medium.uppercase.text-greenish "Quotes"]
      [:a.text-greenish-60.font-inter.font-normal.ml-3 {:href ""} "See more on Twitter"]]
-    [:div.grid.grid-cols-2.gap-6.mt-10
+    [:div.grid.md:grid-cols-2.xl:grid-cols-4.gap-6.mt-10
      [:div.twitter-card
       [:blockquote {:class "twitter-tweet", :data-theme "dark"}
        [:p {:lang "en", :dir "ltr"} "Huge shoutout to " 
@@ -241,7 +241,7 @@
    [:div.mt-20
     [:h2.section-heading.pt-4.text-sm
      [:span.font-iosevka.font-medium.uppercase.text-greenish "Talks"]]
-    [:div.mt-10.grid.grid-cols-2.gap-6
+    [:div.mt-10.grid.md:grid-cols-2.gap-6
      [:div.border-greenish-50
       [:iframe {:width "100%", :height "315", :src "https://www.youtube.com/embed/3ANS2NTNgig", :title "YouTube video player", :frameborder "0", :allow "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture", :allowfullscreen true}]]
      [:div.border-greenish-50
