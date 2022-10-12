@@ -63,7 +63,7 @@
      {:kaocha.testable/keys [meta] :kaocha.var/keys [name var]} :kaocha/testable
      ex :kaocha.result/exception} status]
    (-> meta
-       (merge (select-keys event [:actual :expected :message]))
+       (merge (select-keys event [:actual :expected :message :file :line]))
        (assoc :var var :name name :state status)
        (cond-> ex (assoc :exception ex)))))
 
