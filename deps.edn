@@ -1,6 +1,7 @@
 {:paths ["src" "resources"]
  :deps {org.clojure/clojure {:mvn/version "1.10.3"}
         org.clojure/java.classpath {:mvn/version "1.0.0"}
+        org.clojure/tools.analyzer {:mvn/version "1.1.0"}
         org.clojure/tools.analyzer.jvm {:mvn/version "1.1.0"}
         babashka/fs {:mvn/version "0.1.5"}
         borkdude/edamame {:mvn/version "0.0.11"}
@@ -10,7 +11,7 @@
 
         io.github.nextjournal/markdown {:mvn/version "0.4.126"}
 
-        com.taoensso/nippy {:mvn/version "3.1.1"}
+        com.taoensso/nippy {:mvn/version "3.2.0"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
         javax.xml.bind/jaxb-api {:mvn/version "2.3.1"} ;; needed to make multihash work on JDK11+
         com.pngencoder/pngencoder {:mvn/version "0.13.1"}
