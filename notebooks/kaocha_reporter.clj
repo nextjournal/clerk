@@ -176,7 +176,7 @@
 
 (defn test-var-badge [{:as tvar :keys [name state line expected actual exception] :ctx/keys [text depth]}]
   (if text
-    [:div.text-slate-500 {:class (when (< 0 depth) (str "ml-" (* 4 depth)))} text]
+    [:div.text-slate-500.mb-1 {:class (when (< 0 depth) (str "ml-" (* 4 depth)))} text]
     [:div.mb-2.rounded-md.border.border-slate-300.px-4.py-2.font-sans.shadow
      {:class (bg-class state)}
      [:div.flex.justify-between.items-center
@@ -249,8 +249,8 @@
               :ns-patterns ["test|reporter"]
               :test-paths ["notebooks/tests.clj"
                            "notebooks/kaocha_reporter.clj"
-                           #_
-                           "test/nextjournal/clerk/analyzer_test.clj"]}]})
+                           ;; #_
+                           "test/nextjournal/clerk/parser_test.clj"]}]})
   ;; run tests!
   (kaocha.repl/run :my-suite cfg)
 
