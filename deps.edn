@@ -3,8 +3,8 @@
         org.clojure/java.classpath {:mvn/version "1.0.0"}
         org.clojure/tools.analyzer {:mvn/version "1.1.0"}
         org.clojure/tools.analyzer.jvm {:mvn/version "1.1.0"}
-        babashka/fs {:mvn/version "0.1.5"}
-        borkdude/edamame {:mvn/version "0.0.11"}
+        babashka/fs {:mvn/version "0.1.11"}
+        borkdude/edamame {:mvn/version "1.0.0"}
         weavejester/dependency {:mvn/version "0.2.1"}
 
         com.nextjournal/beholder {:mvn/version "1.0.0"}
@@ -16,11 +16,11 @@
         javax.xml.bind/jaxb-api {:mvn/version "2.3.1"} ;; needed to make multihash work on JDK11+
         com.pngencoder/pngencoder {:mvn/version "0.13.1"}
 
-        http-kit/http-kit {:mvn/version "2.5.3"}
+        http-kit/http-kit {:mvn/version "2.6.0"}
         hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
-        lambdaisland/uri {:mvn/version "1.11.86"}
+        lambdaisland/uri {:mvn/version "1.13.95"}
 
-        rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}}
+        rewrite-clj/rewrite-clj {:mvn/version "1.1.45"}}
 
  :aliases {:nextjournal/clerk {:extra-deps {org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
                                             org.babashka/cli {:mvn/version "0.4.37"}}
@@ -29,6 +29,10 @@
                                :exec-args {:paths-fn nextjournal.clerk.builder/clerk-docs}
                                :main-opts ["-m" "babashka.cli.exec"]
                                :nextjournal.clerk/aliases [:demo]}
+           :clerk {:extra-deps {org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
+                                org.babashka/cli {:mvn/version "0.4.37"}}
+                   :exec-fn nextjournal.clerk/serve!
+                   :main-opts ["-m" "babashka.cli.exec"]}
            :sci {:extra-deps {applied-science/js-interop {:mvn/version "0.3.3"}
                               org.babashka/sci {:mvn/version "0.4.33"}
                               reagent/reagent {:mvn/version "1.1.1"}
@@ -46,7 +50,8 @@
                  :main-opts ["-m" "shadow.cljs.devtools.cli"]
                  :exec-fn nextjournal.clerk.dev-launcher/start}
 
-           :test {:extra-deps {nubank/matcher-combinators {:mvn/version "3.3.1"}
+           :test {:extra-deps {nubank/matcher-combinators {:mvn/version "3.5.1"}
+                               org.clojure/test.check {:mvn/version "1.1.1"}
                                lambdaisland/kaocha {:mvn/version "1.66.1034"}}
                   :extra-paths ["test"]
                   :exec-fn kaocha.runner/exec-fn

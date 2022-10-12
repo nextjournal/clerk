@@ -58,7 +58,7 @@
 (defn dark-mode-toggle [!state]
   (let [{:keys [dark-mode?]} @!state
         spring {:type :spring :stiffness 200 :damping 10}]
-    [:div.relative
+    [:div.relative.dark-mode-toggle
      [:button.text-slate-400.hover:text-slate-600.dark:hover:text-white.cursor-pointer
       {:on-click #(swap! !state assoc :dark-mode? (not dark-mode?))}
       (if dark-mode?
