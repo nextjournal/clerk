@@ -16,12 +16,15 @@
             [nextjournal.clerk.viewer :as viewer]))
 
 (deftest a-test
-  (testing "In some context"
-    (testing "should pass"
-      (is (= 1 1))
-      (is (= 1 1))
-      (testing "really"
-        (is (= 2 2))))))
+  (is true)
+  (is true)
+  (testing "When I fight against flex"
+    (is true)
+    (testing "and I want to force break a line"
+      (is true)
+      (is true)
+      (testing "and I set flex-basis..."
+        (is true)))))
 
 (deftest all-passing
   (testing "let them all pass"
@@ -40,15 +43,15 @@
   (is true))
 
 (deftest b-test
+  (is true) (is true)
   (testing "should fail somewhere"
-    (is (= 1 1))
-    (is (= 1 1))
-    (is (= 1 1))
+    (is true)
+    (is true)
     (is (= 1 2))
-    (is (= 1 1))
+    (is true)
     (is (= :a :b))
-    (is (= 1 1))
-    (is (= 1 1))))
+    (is true)
+    (is true)))
 
 (defonce !test-run-events (atom []))
 (defonce !test-report-state (atom {}))
@@ -208,20 +211,23 @@
 
 (defn assertion-badge [{:as ass :keys [status name line expected actual exception] :ctx/keys [text depth]}]
   (if text
-    [:div.text-slate-500.my-2 {:class (when (< 0 depth) (str "pl-" (* 4 depth)))
-                               :style {:width "100%"}} text]
+    [:<>
+     ;; force contexts to a new line
+     [:div.h-0.basis-full]
+     [:div.text-slate-500.my-1.mr-2 {:class (when (< 0 depth) (str "pl-" (* 4 depth)))} text]]
     (case status
-      :pass [:div.ml-1.bg-green-600.rounded-full {:style {:width 18 :height 18}}]
-      :fail [:div.flex.flex-col.p-1.my-2 {:style {:width "100%"}}
-             [:em.text-red-600.font-medium (str name ":" line)]
-             [:table
-              [:tbody
-               [:tr.hover:bg-red-100.leading-tight.border-none
-                [:td.py-0.text-right.font-medium "expected:"]
-                [:td.py-0.text-left (viewer/code (pr-str expected))]]
-               [:tr.hover:bg-red-100.leading-tight.border-none
-                [:td.py-0.text-right.font-medium "actual:"]
-                [:td.py-0.text-left (viewer/code (pr-str actual))]]]]]
+      :pass [:div.ml-1.bg-green-600.rounded-full.my-1 {:style {:width 18 :height 18}}]
+      :fail [:div.flex.flex-col.p-1.my-2.w-full
+             [:div.w-fit
+              [:em.text-red-600.font-medium (str name ":" line)]
+              [:table.not-prose.w-full
+               [:tbody
+                [:tr.hover:bg-red-100.leading-tight.border-none
+                 [:td.h-1.text-right.font-medium "expected:"]
+                 [:td.h-1.text-left (viewer/code (pr-str expected))]]
+                [:tr.hover:bg-red-100.leading-tight.border-none
+                 [:td.h-1.text-right.font-medium "actual:"]
+                 [:td.h-1.text-left (viewer/code (pr-str actual))]]]]]]
       :error [:div.p-1.my-2 {:style {:widht "100%"}}
               [:em.text-red-600.font-medium (str name ":" line)]
               [:div.mt-2.rounded-md.shadow-lg.border.border-gray-300.overflow-scroll
