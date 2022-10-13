@@ -35,9 +35,9 @@
       (is true)
       (is true)
       (testing "and I set flex-basis..."
-        (is true)))))
+        (is true) (is true) (is true) (is true) (is true)))))
 
-(deftest call-passing
+(deftest ^:kaocha/skip call-passing
   (testing "let them all pass"
     (is true)
     (is true)
@@ -53,8 +53,7 @@
   (is true)
   (is true))
 
-(deftest                                                    ;; ^:kaocha/pending
-         b-test
+(deftest ^:kaocha/pending b-test
   (is true) (is true)
   (testing "should fail somewhere"
     (is true)
@@ -75,31 +74,35 @@
   (reset! !test-report-state initial-state)
   (clerk/recompute!))
 
+(defn ->test-var-info [{:kaocha.testable/keys [meta] :kaocha.var/keys [name var]}]
+  (let [{:kaocha/keys [pending skip]} meta]
+    (assoc meta :var var :name name
+           :assertions []
+           :status (cond pending :pending skip :skip 'else :queued))))
+
 (defn test-plan->test-nss
   "Takes a kaocha test plan, gives a sequence of namespaces"
-  [test-plan]                       ;;: {:name :ns :file :test-vars}
+  [test-plan]
   (map
    (fn [{:kaocha.ns/keys [name ns] :kaocha.test-plan/keys [tests]}]
      {:ns ns
       :name name
       :status :queued
       :file (clerk.analyzer/ns->file ns)
-      :test-vars (map (fn [{:kaocha.testable/keys [meta] :kaocha.var/keys [name var]}]
-                        (assoc meta :var var :name name
-                               :assertions []
-                               :status :queued)) tests)})
+      :test-vars (keep ->test-var-info tests)})
    (-> test-plan :kaocha.test-plan/tests first :kaocha.test-plan/tests)))
 
-(defn ->test-var-name [e] (-> e :kaocha/testable :kaocha.var/name))
+(defn ->test-var-name [e] (some-> e :kaocha/testable :kaocha.var/name))
 (defn ->test-ns-name  [e]
-  (or (-> e :kaocha/testable :kaocha.ns/name)
-      (-> e :kaocha/testable :kaocha.var/name namespace symbol)))
+  (or (some-> e :kaocha/testable :kaocha.ns/name)
+      (some-> e :kaocha/testable :kaocha.var/name namespace symbol)))
 
 (defn ->assertion-data
   [{:as event :keys [type] :kaocha/keys [testable] ex :kaocha.result/exception}]
   (let [{:kaocha.var/keys [name var]} testable]
     (-> (select-keys event [:actual :expected :message :file :line])
         (cond-> ex (assoc :exception ex))
+        (cond-> (= :kaocha.type.var/zero-assertions type) (assoc :message "This test has no assertions"))
         (assoc :var var :name name
                :status (case type
                          :kaocha.type.var/zero-assertions :fail
@@ -128,9 +131,19 @@
         (update-test-var (->test-var-name event)
                          #(update % :assertions into ctx-items)))))
 
+(kaocha.hierarchy/derive! :pass :assertion)
+(kaocha.hierarchy/derive! :fail :assertion)
+(kaocha.hierarchy/derive! :error :assertion)
+(kaocha.hierarchy/derive! :kaocha.type.var/zero-assertions :assertion)
+(kaocha.hierarchy/derive! :kaocha.report/one-arg-eql :assertion)
+
 #_ (ns-unmap *ns* 'build-test-state )
 (defmulti build-test-state (fn bts-dispatch [_state {:as _event :keys [type]}] type)
           :hierarchy #'kaocha.hierarchy/hierarchy)
+
+(defmethod build-test-state :default [state event]
+  (println :Unhandled (:type event) (->test-ns-name event) (->test-var-name event))
+  state)
 
 (defmethod build-test-state :begin-test-suite [_state {:as event :kaocha/keys [test-plan]}]
   (swap! !test-run-events conj event)
@@ -147,31 +160,7 @@
 (comment
   (remove-all-methods build-test-state))
 
-(defmethod build-test-state :pass [state event]
-  (swap! !test-run-events conj event)
-  (-> state
-      (update-contexts event)
-      (update-test-var (->test-var-name event) #(update % :assertions conj (->assertion-data event)))))
-
-(defmethod build-test-state :fail [state event]
-  (swap! !test-run-events conj event)
-  (-> state
-      (update-contexts event)
-      (update-test-var (->test-var-name event) #(update % :assertions conj (->assertion-data event)))))
-
-(defmethod build-test-state :error [state event]
-  (swap! !test-run-events conj event)
-  (-> state
-      (update-contexts event)
-      (update-test-var (->test-var-name event) #(update % :assertions conj (->assertion-data event)))))
-
-(defmethod build-test-state :kaocha.type.var/zero-assertions [state event]
-  (swap! !test-run-events conj event)
-  (-> state
-      (update-contexts event)
-      (update-test-var (->test-var-name event) #(update % :assertions conj (->assertion-data event)))))
-
-(defmethod build-test-state :kaocha.report/one-arg-eql [state event]
+(defmethod build-test-state :assertion [state event]
   (swap! !test-run-events conj event)
   (-> state
       (update-contexts event)
@@ -192,14 +181,6 @@
                     (assoc test-ns :status
                            (as-> (map :status test-vars) ss
                              (or (some #{:error} ss) (some #{:fail} ss) :pass))))))
-
-(defmethod build-test-state :end-test-suite [state event]
-  (swap! !test-run-events conj event)
-  state)
-
-(defmethod build-test-state :summary [state event]
-  (swap! !test-run-events conj event)
-  state)
 
 #_ 'the-kaocha-reporter
 #_ (ns-unmap *ns* 'notebook-reporter)
@@ -226,6 +207,8 @@
 (defn status->icon [status]
   (case status
     (:queued :executing) (builder-ui/spinner-svg)
+    :pending [:div.ml-1.bg-amber-400.rounded-full.my-1 {:style {:width 18 :height 18}}]
+    :skip [:div.ml-1.bg-slate-500.rounded-full.my-1 {:style {:width 18 :height 18}}]
     :pass (builder-ui/checkmark-svg)
     :fail [:div "❌"]
     :error (builder-ui/error-svg)))
@@ -233,6 +216,8 @@
 (defn status->text [status]
   (case status
     :queued "Queued"
+    :pending "Pending"
+    :skip "Skipped"
     :executing "Running"
     :pass "Passed"
     :fail "Failed"
@@ -249,14 +234,15 @@
       :fail [:div.flex.flex-col.p-1.my-2.w-full
              [:div.w-fit
               [:em.text-red-600.font-medium (str name ":" line)]
-              [:table.not-prose.w-full
-               [:tbody
-                [:tr.hover:bg-red-100.leading-tight.border-none
-                 [:td.text-right.font-medium "expected:"]
-                 [:td.text-left (viewer/code (pr-str expected))]]
-                [:tr.hover:bg-red-100.leading-tight.border-none
-                 [:td.text-right.font-medium "actual:"]
-                 [:td.text-left (viewer/code (pr-str actual))]]]]]
+              (when (and expected actual)
+                [:table.not-prose.w-full
+                 [:tbody
+                  [:tr.hover:bg-red-100.leading-tight.border-none
+                   [:td.text-right.font-medium "expected:"]
+                   [:td.text-left (viewer/code (pr-str expected))]]
+                  [:tr.hover:bg-red-100.leading-tight.border-none
+                   [:td.text-right.font-medium "actual:"]
+                   [:td.text-left (viewer/code (pr-str actual))]]]])]
              (when message
                [:em.text-orange-500 message])]
       :error [:div.p-1.my-2 {:style {:widht "100%"}}
