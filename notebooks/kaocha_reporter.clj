@@ -15,7 +15,8 @@
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.builder-ui :as builder-ui]
             [nextjournal.clerk.analyzer :as clerk.analyzer]
-            [nextjournal.clerk.viewer :as viewer]))
+            [nextjournal.clerk.viewer :as viewer]
+            [clojure.string :as str]))
 
 (deftest no-assertions-test
   true)
@@ -277,11 +278,13 @@
 
 (def test-suite-viewer
   {:transform-fn (comp viewer/mark-preserve-keys
-                       (viewer/update-val (fn [state]
-                                            (-> state
-                                                (update :test-nss (partial map (partial viewer/with-viewer test-ns-viewer)))
-                                                (update :summary #(when (seq %) (clerk/with-viewer clerk/table (into [] %))))))))
-
+                       (viewer/update-val
+                        (fn [state]
+                          (-> state
+                              (update :test-nss (partial map (partial viewer/with-viewer test-ns-viewer)))
+                              (update :summary #(when (seq %)
+                                                  (clerk/with-viewer clerk/table
+                                                    (into [] (map (juxt (comp str/capitalize name first) second)) %))))))))
    :render-fn '(fn [{:keys [test-nss summary]} opts]
                  (v/html
                   [:div
@@ -293,7 +296,8 @@
 
 {::clerk/visibility {:code :show :result :hide}}
 (comment
-  (kaocha.repl/run :unit {:reporter [notebook-reporter]}))
+  (kaocha.repl/run :unit {:reporter [notebook-reporter]
+                          :kaocha.plugin.randomize/randomize? false}))
 
 {::clerk/visibility {:code :hide :result :show}}
 (clerk/with-viewer test-suite-viewer
