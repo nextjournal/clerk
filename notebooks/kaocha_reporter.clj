@@ -53,12 +53,14 @@
     (is true)
     (is true)))
 
+(def initial-state {:test-nss [] :seen-ctxs #{} :summary {}})
+
 (defonce !test-run-events (atom []))
-(defonce !test-report-state (atom {}))
+(defonce !test-report-state (atom initial-state))
 
 (defn reset-state! []
   (reset! !test-run-events [])
-  (reset! !test-report-state {})
+  (reset! !test-report-state initial-state)
   (clerk/recompute!))
 
 (defn test-plan->test-nss
@@ -75,10 +77,6 @@
                                :assertions []
                                :status :queued)) tests)})
    (-> test-plan :kaocha.test-plan/tests first :kaocha.test-plan/tests)))
-
-(defn initial-state [test-plan]
-  {:test-nss (test-plan->test-nss test-plan)
-   :seen-ctxs #{}})
 
 (defn ->test-var-name [e] (-> e :kaocha/testable :kaocha.var/name))
 (defn ->test-ns-name  [e]
@@ -119,7 +117,7 @@
 
 (defmethod build-test-state :begin-test-suite [_state {:as event :kaocha/keys [test-plan]}]
   (swap! !test-run-events conj event)
-  (initial-state test-plan))
+  (assoc initial-state :test-nss (test-plan->test-nss test-plan)))
 
 (defmethod build-test-state :begin-test-ns [state event]
   (swap! !test-run-events conj event)
@@ -176,21 +174,28 @@
 
 (defmethod build-test-state :summary [state event]
   (swap! !test-run-events conj event)
-  ;; TODO: reduce on the go
-  #_
-  (assoc state :summary (select-keys event [:pending :file :fail :line :error :pass :test]))
   state)
 
 #_ 'the-kaocha-reporter
-(defn notebook-reporter [event]
-  (swap! !test-report-state #(build-test-state % event))
+#_ (ns-unmap *ns* 'notebook-reporter)
+(defn notebook-reporter [{:as event :keys [type]}]
+  (swap! !test-report-state
+         #(-> %
+              (build-test-state event)
+              (update :summary
+                      (fn [m]
+                        (cond
+                          (some #{type} [:pass :error :kaocha/pending]) (update m type (fnil inc 0))
+                          (kaocha.hierarchy/isa? type :kaocha/begin-test) (update m :test (fnil inc 0))
+                          (kaocha.hierarchy/fail-type? event) (update m :fail (fnil inc 0))
+                          :else m)))))
   (clerk/recompute!))
 
 (defn bg-class [status]
   (case status
     :pass "bg-green-100"
-    :fail "bg-red-100"
-    :error "bg-red-100"
+    ;;:fail "bg-red-100"
+    ;;:error "bg-red-100"
     "bg-slate-100"))
 
 (defn status->icon [status]
@@ -262,20 +267,18 @@
                        (viewer/update-val (fn [state]
                                             (-> state
                                                 (update :test-nss (partial map (partial viewer/with-viewer test-ns-viewer)))
-                                                (update :summary #(-> % viewer/ensure-wrapped viewer/mark-presented))))))
+                                                (update :summary #(when (seq %) (clerk/with-viewer clerk/table (into [] %))))))))
 
    :render-fn '(fn [{:keys [test-nss summary]} opts]
-                 (js/console.log :TNSS (:nextjournal/value test-nss) :SUMMARY summary)
                  (v/html
-                  [:<>
+                  [:div
+                   (when (:nextjournal/value summary)
+                     [v/inspect summary])
                    (if-some [xs (seq (:nextjournal/value test-nss))]
                      (into [:div.flex.flex-col.pt-2] (v/inspect-children opts) xs)
-                     [:h5 [:em.slate-100 "Waiting for tests to run..."]])
-                   (when (:nextjournal/value summary)
-                     [:h2 "Test Summary" [v/inspect summary]])]))})
+                     [:h5 [:em.slate-100 "Waiting for tests to run..."]])]))})
 
 {::clerk/visibility {:code :show :result :hide}}
-;; Evaluate the commented form to run tests
 (comment
   (kaocha.repl/run :unit {:reporter [notebook-reporter]}))
 
@@ -288,6 +291,8 @@
   (def cfg
     {:reporter [notebook-reporter]
      :capture-output? false
+     :color? true
+     :kaocha.plugin.randomize/randomize? false
      :test-paths ["notebooks" "test"]
      :tests [{:id :my-suite
               :ns-patterns ["test|reporter"]
