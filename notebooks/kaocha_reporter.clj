@@ -5,6 +5,8 @@
   (:require [clojure.test :as t :refer [deftest testing is]]
             [kaocha.report :as r]
             [kaocha.repl]
+            [kaocha.history]
+            [kaocha.hierarchy]
             [kaocha.config :as config]
             [kaocha.api :as kaocha]
             [lambdaisland.deep-diff :as ddiff]
@@ -14,6 +16,15 @@
             [nextjournal.clerk.builder-ui :as builder-ui]
             [nextjournal.clerk.analyzer :as clerk.analyzer]
             [nextjournal.clerk.viewer :as viewer]))
+
+(deftest no-assertions-test
+  true)
+
+(deftest one-arg-eq-test
+  (is (= 1) 2))
+
+(deftest mc-test
+  (is (match? {:a [1 2 3]} {:a [1 2]})))
 
 (deftest a-test
   (is true)
@@ -26,7 +37,7 @@
       (testing "and I set flex-basis..."
         (is true)))))
 
-(deftest all-passing
+(deftest call-passing
   (testing "let them all pass"
     (is true)
     (is true)
@@ -34,7 +45,7 @@
     (is true)
     (is true)))
 
-(deftest with-errors
+(deftest zith-errors
   (is true)
   (is true)
   (is true)
@@ -42,7 +53,8 @@
   (is true)
   (is true))
 
-(deftest b-test
+(deftest                                                    ;; ^:kaocha/pending
+         b-test
   (is true) (is true)
   (testing "should fail somewhere"
     (is true)
@@ -87,8 +99,12 @@
   [{:as event :keys [type] :kaocha/keys [testable] ex :kaocha.result/exception}]
   (let [{:kaocha.var/keys [name var]} testable]
     (-> (select-keys event [:actual :expected :message :file :line])
-        (assoc :var var :name name :status type)
-        (cond-> ex (assoc :exception ex)))))
+        (cond-> ex (assoc :exception ex))
+        (assoc :var var :name name
+               :status (case type
+                         :kaocha.type.var/zero-assertions :fail
+                         :kaocha.report/one-arg-eql :fail
+                         type)))))
 
 (defn vec-update-if [pred f & args]
   (partial into [] (map (fn [item] (if-not (pred item) item (apply f item args))))))
@@ -113,7 +129,8 @@
                          #(update % :assertions into ctx-items)))))
 
 #_ (ns-unmap *ns* 'build-test-state )
-(defmulti build-test-state (fn bts-dispatch [_state {:as _event :keys [type]}] type))
+(defmulti build-test-state (fn bts-dispatch [_state {:as _event :keys [type]}] type)
+          :hierarchy #'kaocha.hierarchy/hierarchy)
 
 (defmethod build-test-state :begin-test-suite [_state {:as event :kaocha/keys [test-plan]}]
   (swap! !test-run-events conj event)
@@ -148,6 +165,18 @@
       (update-contexts event)
       (update-test-var (->test-var-name event) #(update % :assertions conj (->assertion-data event)))))
 
+(defmethod build-test-state :kaocha.type.var/zero-assertions [state event]
+  (swap! !test-run-events conj event)
+  (-> state
+      (update-contexts event)
+      (update-test-var (->test-var-name event) #(update % :assertions conj (->assertion-data event)))))
+
+(defmethod build-test-state :kaocha.report/one-arg-eql [state event]
+  (swap! !test-run-events conj event)
+  (-> state
+      (update-contexts event)
+      (update-test-var (->test-var-name event) #(update % :assertions conj (->assertion-data event)))))
+
 (defmethod build-test-state :end-test-var [state event]
   (swap! !test-run-events conj event)
   (update-test-var state (->test-var-name event)
@@ -163,10 +192,6 @@
                     (assoc test-ns :status
                            (as-> (map :status test-vars) ss
                              (or (some #{:error} ss) (some #{:fail} ss) :pass))))))
-
-(defmethod build-test-state :kaocha.type.var/zero-assertions [state event]
-  (swap! !test-run-events conj event)
-  state)
 
 (defmethod build-test-state :end-test-suite [state event]
   (swap! !test-run-events conj event)
@@ -213,7 +238,7 @@
     :fail "Failed"
     :error "Errored"))
 
-(defn assertion-badge [{:as ass :keys [status name line expected actual exception] :ctx/keys [text depth]}]
+(defn assertion-badge [{:as ass :keys [status name line expected actual exception message] :ctx/keys [text depth]}]
   (if text
     [:<>
      ;; force contexts to a new line
@@ -227,11 +252,13 @@
               [:table.not-prose.w-full
                [:tbody
                 [:tr.hover:bg-red-100.leading-tight.border-none
-                 [:td.h-1.text-right.font-medium "expected:"]
-                 [:td.h-1.text-left (viewer/code (pr-str expected))]]
+                 [:td.text-right.font-medium "expected:"]
+                 [:td.text-left (viewer/code (pr-str expected))]]
                 [:tr.hover:bg-red-100.leading-tight.border-none
-                 [:td.h-1.text-right.font-medium "actual:"]
-                 [:td.h-1.text-left (viewer/code (pr-str actual))]]]]]]
+                 [:td.text-right.font-medium "actual:"]
+                 [:td.text-left (viewer/code (pr-str actual))]]]]]
+             (when message
+               [:em.text-orange-500 message])]
       :error [:div.p-1.my-2 {:style {:widht "100%"}}
               [:em.text-red-600.font-medium (str name ":" line)]
               [:div.mt-2.rounded-md.shadow-lg.border.border-gray-300.overflow-scroll
@@ -249,7 +276,7 @@
     (when (seq assertions)
       (into [:div.flex.flex-wrap.mt-2.py-2.border-t-2] (map assertion-badge) assertions))]])
 
-(defn test-ns-badge [{:keys [name status file ns test-vars]}]
+(defn test-ns-badge [{:keys [status file test-vars]}]
   [:div.p-1.mt-2
    [:div.rounded-md.border.border-slate-300.px-4.py-3.font-sans.shadow
     {:class (bg-class status)}
