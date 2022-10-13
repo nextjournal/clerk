@@ -127,8 +127,7 @@
 
 (defmethod build-test-state :begin-test-var [state event]
   (swap! !test-run-events conj event)
-  (update-test-var state (->test-var-name event) #(assoc % :status :executing))
-  state)
+  (update-test-var state (->test-var-name event) #(assoc % :status :executing)))
 
 (comment
   (remove-all-methods build-test-state))
