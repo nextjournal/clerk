@@ -619,13 +619,13 @@
   (r/as-element (cond-> x (fn? x) vector)))
 
 (defn with-d3-require [{:keys [package then loading-view]
-                        :or {loading-view "Loading..."}} f]
+                        :or {loading-view "Loading..." then identity}} f]
   (r/with-let [!package (r/atom {:loading loading-view})
                _ (-> (if (string? package)
                        (d3-require/require package)
                        (apply d3-require/require package))
-                     (.then #(if then (then %) %))
-                     (.then #(f %))
+                     (.then then)
+                     (.then f)
                      (.then #(reset! !package {:value %}))
                      (.catch #(reset! !package {:error %})))]
     (let [{:keys [loading error value]} @!package]
