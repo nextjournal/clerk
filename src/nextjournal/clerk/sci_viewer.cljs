@@ -618,26 +618,31 @@
 (defn reagent-viewer [x]
   (r/as-element (cond-> x (fn? x) vector)))
 
-(defn with-d3-require [{:keys [package loading-view]
+(defn with-d3-require [{:keys [package then loading-view]
                         :or {loading-view "Loading..."}} f]
-  (r/with-let [!package (r/atom nil)]
-    (case @!package
-      nil (do
-            (reset! !package :loading)
-            (-> (if (string? package)
-                  (d3-require/require package)
-                  (apply d3-require/require package))
-                (j/call :then #(reset! !package %)))
-            loading-view)
-      :loading loading-view
-      (into (f @!package)))))
+  (r/with-let [!package (r/atom {:loading loading-view})
+               _ (-> (if (string? package)
+                       (d3-require/require package)
+                       (apply d3-require/require package))
+                     (.then #(if then (then %) %))
+                     (.then #(f %))
+                     (.then #(reset! !package {:value %}))
+                     (.catch #(reset! !package {:error %})))]
+    (let [{:keys [loading error value]} @!package]
+      (cond
+        loading loading
+        error [error-view error]
+        value value))))
 
 (defn vega-lite-viewer [value]
   (when value
-    (html [with-d3-require {:package ["vega-embed@6.11.1"]}
-           (j/fn [^:js {:keys [embed]}]
+    (html ^{:key value}
+          [with-d3-require {:package ["vega-embed@6.11.1"]
+                            :then (fn [embed] (.container embed (clj->js value)))}
+           (j/fn [vega-el]
              [:div {:style {:overflow-x "auto"}}
-              [:div.vega-lite {:ref #(when % (embed % (clj->js value)))}]])])))
+              [:div.vega-lite {:ref #(when %
+                                       (.appendChild % vega-el))}]])])))
 
 (def mathjax-viewer (comp normalize-viewer-meta mathjax/viewer))
 (def code-viewer (comp normalize-viewer-meta code/viewer))
