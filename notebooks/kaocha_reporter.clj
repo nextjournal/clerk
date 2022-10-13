@@ -201,17 +201,24 @@
 (defn bg-class [status]
   (case status
     :pass "bg-green-100"
-    ;;:fail "bg-red-100"
-    ;;:error "bg-red-100"
+    :fail "bg-red-50"
+    :error "bg-red-50"
     "bg-slate-100"))
+
+(defn status-light [color & [{:keys [size] :or {size 14}}]]
+  [:div.rounded-full.border
+   {:class (str "bg-" color "-400 border-" color "-700")
+    :style {:box-shadow "inset 0 1px 3px rgba(255,255,255,.6)"
+            :width size :height size}}])
 
 (defn status->icon [status]
   (case status
-    (:queued :executing) (builder-ui/spinner-svg)
-    :pending [:div.ml-1.bg-amber-400.rounded-full.my-1 {:style {:width 18 :height 18}}]
-    :skip [:div.ml-1.bg-slate-500.rounded-full.my-1 {:style {:width 18 :height 18}}]
+    :executing (builder-ui/spinner-svg)
+    :queued (status-light "slate")
+    :pending (status-light "amber")
+    :skip (status-light "slate")
     :pass (builder-ui/checkmark-svg)
-    :fail [:div "❌"]
+    :fail (status-light "red")
     :error (builder-ui/error-svg)))
 
 (defn status->text [status]
@@ -231,7 +238,7 @@
      [:div.h-0.basis-full]
      [:div.text-slate-500.my-1.mr-2 {:class (when (< 0 depth) (str "pl-" (* 4 depth)))} text]]
     (case status
-      :pass [:div.ml-1.bg-green-600.rounded-full.my-1 {:style {:width 18 :height 18}}]
+      :pass [:div.ml-1.my-1 (builder-ui/checkmark-svg {:size 20})]
       :fail [:div.flex.flex-col.p-1.my-2.w-full
              [:div.w-fit
               [:em.text-red-600.font-medium (str name ":" line)]
