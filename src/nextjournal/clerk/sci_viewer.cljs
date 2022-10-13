@@ -1,5 +1,7 @@
 (ns nextjournal.clerk.sci-viewer
-  (:require ["framer-motion" :as framer-motion]
+  (:require ["d3-require" :as d3-require]
+            ["framer-motion" :as framer-motion]
+            ["react" :as react]
             [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.string :as str]
@@ -9,7 +11,6 @@
             [lambdaisland.uri.normalize :as uri.normalize]
             [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex table vl row col with-viewer with-viewers]]
             [nextjournal.markdown.transform :as md.transform]
-            [nextjournal.ui.components.d3-require :as d3-require]
             [nextjournal.ui.components.icon :as icon]
             [nextjournal.ui.components.localstorage :as ls]
             [nextjournal.ui.components.motion :as motion]
@@ -19,8 +20,6 @@
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.mathjax :as mathjax]
             [nextjournal.viewer.plotly :as plotly]
-            [nextjournal.viewer.vega-lite :as vega-lite]
-            ["react" :as react]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [reagent.ratom :as ratom]
@@ -619,10 +618,35 @@
 (defn reagent-viewer [x]
   (r/as-element (cond-> x (fn? x) vector)))
 
+(defn with-d3-require [{:keys [package then loading-view]
+                        :or {loading-view "Loading..." then identity}} f]
+  (r/with-let [!package (r/atom {:loading loading-view})
+               _ (-> (if (string? package)
+                       (d3-require/require package)
+                       (apply d3-require/require package))
+                     (.then then)
+                     (.then f)
+                     (.then #(reset! !package {:value %}))
+                     (.catch #(reset! !package {:error %})))]
+    (let [{:keys [loading error value]} @!package]
+      (cond
+        loading loading
+        error [error-view error]
+        value value))))
+
+(defn vega-lite-viewer [value]
+  (when value
+    (html ^{:key value}
+          [with-d3-require {:package ["vega-embed@6.11.1"]
+                            :then (fn [embed] (.container embed (clj->js value)))}
+           (j/fn [vega-el]
+             [:div {:style {:overflow-x "auto"}}
+              [:div.vega-lite {:ref #(when %
+                                       (.appendChild % vega-el))}]])])))
+
 (def mathjax-viewer (comp normalize-viewer-meta mathjax/viewer))
 (def code-viewer (comp normalize-viewer-meta code/viewer))
 (def plotly-viewer (comp normalize-viewer-meta plotly/viewer))
-(def vega-lite-viewer (comp normalize-viewer-meta vega-lite/viewer))
 
 (def expand-icon
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
@@ -691,7 +715,7 @@
    'quoted-string-viewer quoted-string-viewer
    'number-viewer number-viewer
    'table-error table-error
-   'with-d3-require d3-require/with
+   'with-d3-require with-d3-require
    'clerk-eval clerk-eval
    'consume-view-context view-context/consume
 
