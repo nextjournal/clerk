@@ -291,12 +291,12 @@
             (reset! !desc (read-result result !error))
             (reset! !error nil))
           [view-context/provide {:fetch-fn fetch-fn}
-           [error-boundary
-            !error
-            [:div.relative
-             [:div.overflow-y-hidden
-              {:ref ref-fn}
-              [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]])))
+           [view-context/provide {:!error !error}
+            [error-boundary !error
+             [:div.relative
+              [:div.overflow-y-hidden
+               {:ref ref-fn}
+               [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]]])))
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
@@ -625,48 +625,46 @@
         js/Promise.resolve
         (.catch on-error))))
 
-(defn with-d3-require [{:keys [package then loading-view]
+
+(defn with-d3-require* [{:keys [package then loading-view refresh-key]
                         :or {loading-view "Loading..." then identity}} f]
-  (r/with-let [!package (r/atom {:loading loading-view})
-               _ (-> (if (string? package)
-                       (d3-require/require package)
-                       (apply d3-require/require package))
-                     (.then then)
-                     (.then
-                      (fn wrap-callback [packages]
-                        (f packages
-                           (fn wrap-callback
-                             ;; wraps callback function to display errors here, serving
-                             ;; as an error boundary.
-                             [callback]
-                             (wrap-f-async callback #(reset! !package {:error %}))))))
-                     (.then #(reset! !package {:value %}))
-                     (.catch #(reset! !package {:error %})))]
-    (let [{:keys [loading error value]} @!package]
-      (cond
-        loading loading
-        error [error-view error]
-        value value))))
+  (let [package (if (string? package) #js[package] (to-array package))
+        [loaded-package set-package!] (react/useState nil)
+        set-error! (partial reset! (react/useContext (view-context/get-context :!error)))]
+    (react/useEffect
+     (fn []
+       (-> (apply d3-require/require package)
+           (.then then)
+           ;; we use (constantly ..) because if given a function, set-package!
+           ;; applies that to the previous value, and some packages are functions
+           (.then #(set-package! (constantly %)))
+           (.catch set-error!))
+       js/undefined) ;; js/undefined is required when there is no cleanup fn
+     #js[refresh-key (str package)]) ;; re-do this whenever the package or refresh-key changes
+    (if loaded-package
+      (f loaded-package)
+      loading-view)))
+
+(defn with-d3-require [opts f]
+  [:f> with-d3-require* opts f])
 
 (defn vega-lite-viewer [value]
   (when value
     (html [with-d3-require {:package ["vega-embed@6.11.1"]
-                            :key value} ;; specify what value should trigger re-render
-           (j/fn [vega-embed wrap-callback]
+                            :refresh-key value} ;; specify what value should trigger re-render
+           (j/fn [vega-embed]
              [:div.overflow-x-auto
-              [:div.vega-lite {:ref (wrap-callback
-                                     #(when %
-                                        (.embed vega-embed % (clj->js (dissoc value :embed/opts)) (clj->js (:embed/opts value {})))))}]])])))
+              [:div.vega-lite {:ref #(when %
+                                       (.embed vega-embed % (clj->js (dissoc value :embed/opts)) (clj->js (:embed/opts value {}))))}]])])))
 
 (defn plotly-viewer [value]
   (when value
     (html [with-d3-require {:package ["plotly.js-dist@2.15.1"]
-                            :key value}
+                            :refresh-key value}
            (fn [^js plotly wrap-callback]
              [:div.overflow-x-auto
-              [:div.plotly {:ref (wrap-callback
-                                  #(when %
-                                    (.newPlot plotly % (clj->js value))))}]])])))
+              [:div.plotly {:ref #(when %
+                                    (.newPlot plotly % (clj->js value)))}]])])))
 
 (def mathjax-viewer (comp normalize-viewer-meta mathjax/viewer))
 (def code-viewer (comp normalize-viewer-meta code/viewer))
