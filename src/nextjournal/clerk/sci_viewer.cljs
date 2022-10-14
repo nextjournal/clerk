@@ -656,7 +656,7 @@
              [:div.overflow-x-auto
               [:div.vega-lite {:ref (wrap-callback
                                      #(when %
-                                        (.embed vega-embed % (clj->js value))))}]])])))
+                                        (.embed vega-embed % (clj->js (dissoc value :embed/opts)) (clj->js (:embed/opts value {})))))}]])])))
 
 (defn plotly-viewer [value]
   (when value
