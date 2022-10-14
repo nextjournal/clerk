@@ -215,8 +215,12 @@
 
 ;; ### 📊 Plotly
 
-;; Clerk also has built-in support for Plotly's low-ceremony plotting:
-(clerk/plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]})
+;; Clerk also has built-in support for Plotly's low-ceremony plotting.
+;; See [Plotly's JavaScript docs](https://plotly.com/javascript/) for more examples and [options](https://plotly.com/javascript/configuration-options/).
+(clerk/plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]
+               :layout {:margin {:l 20 :r 0 :b 20 :t 20}}
+               :config {:displayModeBar false
+                        :displayLogo false}})
 
 ;; ### 🗺 Vega Lite
 

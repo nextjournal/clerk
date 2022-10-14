@@ -26,7 +26,12 @@
 
 ;; ## Example with customized options
 
-(v/plotly {:layout {:margin {:l 20 :r 0 :b 20 :t 0} :autosize false :width 300 :height 200}
+(v/plotly {:layout {:margin {:l 20 :r 0 :b 20 :t 0}
+                    :autosize false
+                    :width 300
+                    :height 200}
+           :config {:displayModeBar false
+                    :displayLogo false}
            :data [{:x ["giraffes" "orangutans" "monkeys"]
                    :y [20 14 23]
                    :type "bar"}]})
