@@ -35,6 +35,7 @@
          "viewer_normalization"
          "viewers/custom_markdown"
          "viewers/grid"
+         "viewers/fragment"
          "viewers/html"
          "viewers/image"
          "viewers/image_layouts"

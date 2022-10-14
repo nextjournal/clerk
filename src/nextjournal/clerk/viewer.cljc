@@ -391,8 +391,9 @@
                       ;; TODO: display analysis could be merged into cell earlier
                       (-> cell (merge display-opts) (dissoc :result))))
               result?
-              (conj (with-viewer :clerk/result-block {:nextjournal/opts doc}
-                      cell))))))
+              (concat (mapv #(with-viewer :clerk/result-block {:nextjournal/opts doc} (assoc-in cell [:result :nextjournal/value] %))
+                            (or (get-safe (-> cell :result :nextjournal/value) :nextjournal.clerk/fragment)
+                                [(:result cell)])))))))
 
 (defn update-viewers [viewers select-fn->update-fn]
   (reduce (fn [viewers [pred update-fn]]
@@ -1291,6 +1292,9 @@
 (def code         (partial with-viewer code-viewer))
 (defn doc-url [path]
   (->viewer-eval (list 'v/doc-url path)))
+
+(defn fragment [& xs]
+  {:nextjournal.clerk/fragment xs})
 
 (defn hide-result
   "Deprecated, please put ^{:nextjournal.clerk/visibility {:result :hide}} metadata on the form instead."

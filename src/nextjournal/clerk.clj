@@ -311,6 +311,13 @@
   ([code-string-or-form] (code {} code-string-or-form))
   ([viewer-opts code-string-or-form] (with-viewer v/code-viewer viewer-opts code-string-or-form)))
 
+(defn fragment
+  "A utility function to splice the given `xs` into individual results.
+
+  Useful when prgrammatically generating content."
+  [& xs]
+  {:nextjournal.clerk/fragment xs})
+
 (defn eval-cljs-str
   "Evaluates the given ClojureScript `code-string` in the browser."
   [code-string]
