@@ -229,8 +229,10 @@
                                          :format {:type "topojson" :feature "counties"}}
            :transform [{:lookup "id" :from {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
                                             :key "id" :fields ["rate"]}}]
-           :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}})
+           :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}
+           :embed/opts {:actions false}})
 
+;; You can provide a map of [embed options](https://github.com/vega/vega-embed#embed) to the vega viewer via the `:embed/opts` key.
 
 ;; ### 🎼 Code
 

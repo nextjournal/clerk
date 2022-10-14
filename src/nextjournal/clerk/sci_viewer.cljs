@@ -637,7 +637,7 @@
   (when value
     (html ^{:key value}
           [with-d3-require {:package ["vega-embed@6.11.1"]
-                            :then (fn [embed] (.container embed (clj->js value)))}
+                            :then (fn [embed] (.container embed (clj->js (dissoc value :embed/opts)) (clj->js (:embed/opts value {}))))}
            (j/fn [vega-el]
              [:div {:style {:overflow-x "auto"}}
               [:div.vega-lite {:ref #(when %
