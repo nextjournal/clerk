@@ -617,6 +617,14 @@
 (defn reagent-viewer [x]
   (r/as-element (cond-> x (fn? x) vector)))
 
+(defn wrap-f-async
+  "Wraps f to catch all synchronous and asynchronous errors"
+  [f on-error]
+  (fn [& args]
+    (-> (try (apply f args) (catch js/Error e (on-error e)))
+        js/Promise.resolve
+        (.catch on-error))))
+
 (defn with-d3-require [{:keys [package then loading-view]
                         :or {loading-view "Loading..." then identity}} f]
   (r/with-let [!package (r/atom {:loading loading-view})
@@ -624,7 +632,14 @@
                        (d3-require/require package)
                        (apply d3-require/require package))
                      (.then then)
-                     (.then f)
+                     (.then
+                      (fn wrap-callback [packages]
+                        (f packages
+                           (fn wrap-callback
+                             ;; wraps callback function to display errors here, serving
+                             ;; as an error boundary.
+                             [callback]
+                             (wrap-f-async callback #(reset! !package {:error %}))))))
                      (.then #(reset! !package {:value %}))
                      (.catch #(reset! !package {:error %})))]
     (let [{:keys [loading error value]} @!package]
@@ -635,26 +650,23 @@
 
 (defn vega-lite-viewer [value]
   (when value
-    (html ^{:key value}
-          [with-d3-require {:package ["vega-embed@6.11.1"]
-                            :then (fn [embed] (.container embed (clj->js (dissoc value :embed/opts)) (clj->js (:embed/opts value {}))))}
-           (j/fn [vega-el]
-             [:div {:style {:overflow-x "auto"}}
-              [:div.vega-lite {:ref #(when %
-                                       (.appendChild % vega-el))}]])])))
+    (html [with-d3-require {:package ["vega-embed@6.11.1"]
+                            :key value} ;; specify what value should trigger re-render
+           (fn [^js vega-embed wrap-callback]
+             [:div.overflow-x-auto
+              [:div.vega-lite {:ref (wrap-callback
+                                     (fn [el]
+                                       (when el (.embed vega-embed el (clj->js value)))))}]])])))
 
 (defn plotly-viewer [value]
   (when value
-    (html ^{:key value}
-          [with-d3-require {:package ["plotly.js-dist@2.15.1"]
-                            :then (fn [^js plotly]
-                                    (let [el (js/document.createElement "div")]
-                                      (.newPlot plotly el (clj->js value))
-                                      el))}
-           (j/fn [plotly-el]
-             [:div {:style {:overflow-x "auto"}}
-              [:div.plotly {:ref #(when %
-                                    (.appendChild % plotly-el))}]])])))
+    (html [with-d3-require {:package ["plotly.js-dist@2.15.1"]
+                            :key value}
+           (fn [^js plotly wrap-callback]
+             [:div.overflow-x-auto
+              [:div.plotly {:ref (wrap-callback
+                                  (fn [el]
+                                     (.newPlot plotly el (clj->js value))))}]])])))
 
 (def mathjax-viewer (comp normalize-viewer-meta mathjax/viewer))
 (def code-viewer (comp normalize-viewer-meta code/viewer))
