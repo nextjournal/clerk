@@ -19,7 +19,6 @@
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.mathjax :as mathjax]
-            [nextjournal.viewer.plotly :as plotly]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [reagent.ratom :as ratom]
