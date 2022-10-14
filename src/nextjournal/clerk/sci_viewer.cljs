@@ -26,6 +26,9 @@
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]))
 
+(reagent.core/set-default-compiler!
+ (reagent.core/create-compiler {:function-components true}))
+
 (defn color-classes [selected?]
   {:value-color (if selected? "white-90" "dark-green")
    :symbol-color (if selected? "white-90" "dark-blue")
@@ -241,7 +244,11 @@
     :reagent-render (fn [_error & children]
                       (if-let [error @!error]
                         (error-view error)
-                        (into [:<>] children)))}))
+                        [view-context/provide {:!error !error}
+                         (into [:<>] children)]))}))
+
+(defn use-handle-error []
+  (partial reset! (react/useContext (view-context/get-context :!error))))
 
 (defn fetch! [{:keys [blob-id]} opts]
   #_(js/console.log :fetch! blob-id opts)
@@ -263,7 +270,7 @@
 
 (defn result-viewer [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
   (html (r/with-let [!hash (atom hash)
-                     !error (atom nil)
+                     !error (r/atom nil)
                      !desc (r/atom (read-result result !error))
                      !fetch-opts (atom fetch-opts)
                      fetch-fn (when @!fetch-opts
@@ -291,12 +298,11 @@
             (reset! !desc (read-result result !error))
             (reset! !error nil))
           [view-context/provide {:fetch-fn fetch-fn}
-           [view-context/provide {:!error !error}
-            [error-boundary !error
-             [:div.relative
-              [:div.overflow-y-hidden
-               {:ref ref-fn}
-               [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]]])))
+           [error-boundary !error
+            [:div.relative
+             [:div.overflow-y-hidden
+              {:ref ref-fn}
+              [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]])))
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
@@ -617,20 +623,11 @@
 (defn reagent-viewer [x]
   (r/as-element (cond-> x (fn? x) vector)))
 
-(defn wrap-f-async
-  "Wraps f to catch all synchronous and asynchronous errors"
-  [f on-error]
-  (fn [& args]
-    (-> (try (apply f args) (catch js/Error e (on-error e)))
-        js/Promise.resolve
-        (.catch on-error))))
-
-
-(defn with-d3-require* [{:keys [package then loading-view refresh-key]
+(defn with-d3-require [{:keys [package then loading-view refresh-key]
                         :or {loading-view "Loading..." then identity}} f]
   (let [package (if (string? package) #js[package] (to-array package))
         [loaded-package set-package!] (react/useState nil)
-        set-error! (partial reset! (react/useContext (view-context/get-context :!error)))]
+        handle-error (use-handle-error)]
     (react/useEffect
      (fn []
        (-> (apply d3-require/require package)
@@ -638,24 +635,23 @@
            ;; we use (constantly ..) because if given a function, set-package!
            ;; applies that to the previous value, and some packages are functions
            (.then #(set-package! (constantly %)))
-           (.catch set-error!))
+           (.catch handle-error))
        js/undefined) ;; js/undefined is required when there is no cleanup fn
      #js[refresh-key (str package)]) ;; re-do this whenever the package or refresh-key changes
     (if loaded-package
       (f loaded-package)
       loading-view)))
 
-(defn with-d3-require [opts f]
-  [:f> with-d3-require* opts f])
-
 (defn vega-lite-viewer [value]
-  (when value
-    (html [with-d3-require {:package ["vega-embed@6.11.1"]
-                            :refresh-key value} ;; specify what value should trigger re-render
-           (j/fn [vega-embed]
-             [:div.overflow-x-auto
-              [:div.vega-lite {:ref #(when %
-                                       (.embed vega-embed % (clj->js (dissoc value :embed/opts)) (clj->js (:embed/opts value {}))))}]])])))
+  (let [handle-error (use-handle-error)]
+    (when value
+      (html [with-d3-require {:package ["vega-embed@6.11.1"]
+                              :refresh-key value} ;; specify what value should trigger re-render
+             (j/fn [vega-embed]
+               [:div.overflow-x-auto
+                [:div.vega-lite {:ref #(when %
+                                         (-> (.embed vega-embed % (clj->js (dissoc value :embed/opts)) (clj->js (:embed/opts value {})))
+                                             (.catch handle-error)))}]])]))))
 
 (defn plotly-viewer [value]
   (when value
