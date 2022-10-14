@@ -19,7 +19,6 @@
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.mathjax :as mathjax]
-            [nextjournal.viewer.plotly :as plotly]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [reagent.ratom :as ratom]
@@ -644,9 +643,21 @@
               [:div.vega-lite {:ref #(when %
                                        (.appendChild % vega-el))}]])])))
 
+(defn plotly-viewer [value]
+  (when value
+    (html ^{:key value}
+          [with-d3-require {:package ["plotly.js-dist@2.15.1"]
+                            :then (fn [^js plotly]
+                                    (let [el (js/document.createElement "div")]
+                                      (.newPlot plotly el (clj->js value))
+                                      el))}
+           (j/fn [plotly-el]
+             [:div {:style {:overflow-x "auto"}}
+              [:div.plotly {:ref #(when %
+                                    (.appendChild % plotly-el))}]])])))
+
 (def mathjax-viewer (comp normalize-viewer-meta mathjax/viewer))
 (def code-viewer (comp normalize-viewer-meta code/viewer))
-(def plotly-viewer (comp normalize-viewer-meta plotly/viewer))
 
 (def expand-icon
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
