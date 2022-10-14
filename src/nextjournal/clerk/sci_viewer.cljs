@@ -652,11 +652,11 @@
   (when value
     (html [with-d3-require {:package ["vega-embed@6.11.1"]
                             :key value} ;; specify what value should trigger re-render
-           (fn [^js vega-embed wrap-callback]
+           (j/fn [vega-embed wrap-callback]
              [:div.overflow-x-auto
               [:div.vega-lite {:ref (wrap-callback
-                                     (fn [el]
-                                       (when el (.embed vega-embed el (clj->js value)))))}]])])))
+                                     #(when %
+                                        (.embed vega-embed % (clj->js value))))}]])])))
 
 (defn plotly-viewer [value]
   (when value
@@ -665,8 +665,8 @@
            (fn [^js plotly wrap-callback]
              [:div.overflow-x-auto
               [:div.plotly {:ref (wrap-callback
-                                  (fn [el]
-                                     (.newPlot plotly el (clj->js value))))}]])])))
+                                  #(when %
+                                    (.newPlot plotly % (clj->js value))))}]])])))
 
 (def mathjax-viewer (comp normalize-viewer-meta mathjax/viewer))
 (def code-viewer (comp normalize-viewer-meta code/viewer))
