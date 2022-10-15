@@ -247,6 +247,8 @@
                         [view-context/provide {:!error !error}
                          (into [:<>] children)]))}))
 
+(def default-loading-view "Loading...")
+
 (defn use-handle-error []
   (partial reset! (react/useContext (view-context/get-context :!error))))
 
@@ -634,7 +636,7 @@
     v))
 
 (defn with-d3-require [{:keys [package loading-view]
-                        :or {loading-view "Loading..."}} f]
+                        :or {loading-view default-loading-view}} f]
   (let [p (react/useMemo #(apply d3-require/require
                                  (cond-> package
                                          (string? package)
@@ -645,23 +647,38 @@
       (f package)
       loading-view)))
 
+(defn use-d3-require [package]
+  (let [p (react/useMemo #(apply d3-require/require
+                                 (cond-> package
+                                         (string? package)
+                                         list))
+                         #js[(str package)])]
+    (use-promise p)))
+
 (defn vega-lite-viewer [value]
-  (let [handle-error (use-handle-error)]
+  (let [handle-error (use-handle-error)
+        vega-embed (use-d3-require "vega-embed@6.11.1")
+        ref-fn (react/useCallback #(when %
+                                     (-> (.embed vega-embed % (clj->js (dissoc value :embed/opts)) (clj->js (:embed/opts value {})))
+                                         (.catch handle-error)))
+                                  #js[value vega-embed])]
     (when value
-      (html [with-d3-require {:package ["vega-embed@6.11.1"]}
-             (fn [vega-embed]
-               [:div.overflow-x-auto
-                [:div.vega-lite {:ref #(when %
-                                         (-> (.embed vega-embed % (clj->js (dissoc value :embed/opts)) (clj->js (:embed/opts value {})))
-                                             (.catch handle-error)))}]])]))))
+      (html (if vega-embed
+              [:div.overflow-x-auto
+               [:div.vega-lite {:ref ref-fn}]]
+              default-loading-view)))))
 
 (defn plotly-viewer [value]
-  (when value
-    (html [with-d3-require {:package ["plotly.js-dist@2.15.1"]}
-           (fn [^js plotly]
-             [:div.overflow-x-auto
-              [:div.plotly {:ref #(when %
-                                    (.newPlot plotly % (clj->js value)))}]])])))
+  (let [plotly (use-d3-require "plotly.js-dist@2.15.1")
+        ref-fn (react/useCallback #(when %
+                                     (.newPlot plotly % (clj->js value)))
+                                  #js[value plotly])]
+    (when value
+      (html
+       (if plotly
+         [:div.overflow-x-auto
+          [:div.plotly {:ref ref-fn}]]
+         default-loading-view)))))
 
 (def mathjax-viewer (comp normalize-viewer-meta mathjax/viewer))
 (def code-viewer (comp normalize-viewer-meta code/viewer))
