@@ -635,18 +635,6 @@
                                 (.catch handle-error))))
     v))
 
-(defn with-d3-require [{:keys [package loading-view]
-                        :or {loading-view default-loading-view}} f]
-  (let [p (react/useMemo #(apply d3-require/require
-                                 (cond-> package
-                                         (string? package)
-                                         list))
-                         #js[(str package)])
-        package (use-promise p)]
-    (if package
-      (f package)
-      loading-view)))
-
 (defn use-d3-require [package]
   (let [p (react/useMemo #(apply d3-require/require
                                  (cond-> package
@@ -654,6 +642,12 @@
                                          list))
                          #js[(str package)])]
     (use-promise p)))
+
+(defn with-d3-require [{:keys [package loading-view]
+                        :or {loading-view default-loading-view}} f]
+  (if-let [package (use-d3-require package)]
+    (f package)
+    loading-view))
 
 (defn vega-lite-viewer [value]
   (let [handle-error (use-handle-error)
