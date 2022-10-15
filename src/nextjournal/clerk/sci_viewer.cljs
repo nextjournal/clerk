@@ -178,25 +178,25 @@
          (throw (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)))))
 
 (defonce !edamame-opts
-         (atom {:all true
-                :row-key :line
-                :col-key :column
-                :location? seq?
-                :end-location false
-                :read-cond :allow
-                :readers
-                (fn [tag]
-                  (or (get {'viewer-fn (partial eval-viewer-fn viewer/->viewer-fn)
-                            'viewer-eval (partial eval-viewer-fn *eval*)} tag)
-                      (fn [value]
-                        (with-viewer :tagged-value
-                                     {:tag tag
-                                      :space? (not (vector? value))
-                                      :value (cond-> value
-                                                     (and (vector? value) (number? (second value)))
-                                                     (update 1 (fn [memory-address]
-                                                                 (with-viewer :number-hex memory-address))))}))))
-                :features #{:clj}}))
+  (atom {:all true
+         :row-key :line
+         :col-key :column
+         :location? seq?
+         :end-location false
+         :read-cond :allow
+         :readers
+         (fn [tag]
+           (or (get {'viewer-fn   (partial eval-viewer-fn viewer/->viewer-fn)
+                     'viewer-eval (partial eval-viewer-fn *eval*)} tag)
+               (fn [value]
+                 (with-viewer :tagged-value
+                   {:tag tag
+                    :space? (not (vector? value))
+                    :value (cond-> value
+                             (and (vector? value) (number? (second value)))
+                             (update 1 (fn [memory-address]
+                                         (with-viewer :number-hex memory-address))))}))))
+         :features #{:clj}}))
 
 
 (defn ^:export read-string [s]
@@ -259,7 +259,7 @@
       (.then #(.text %))
       (.then #(try (read-string %)
                    (catch js/Error e
-                     (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e})
+                     (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
                      (unreadable-edn-viewer %))))))
 
 (defn read-result [{:nextjournal/keys [edn string]} !error]
@@ -315,12 +315,12 @@
     (if (and hover-path prompt-multi-expand? (= (count path) hover-path-count))
       (swap! !expanded-at (fn [expanded-at]
                             (reduce
-                             (fn [acc [path expanded?]]
-                               (if (and (coll? path) (vector? path) (= (count path) hover-path-count))
-                                 (assoc acc path (not hover-path-expanded?))
-                                 (assoc acc path expanded?)))
-                             {}
-                             expanded-at)))
+                              (fn [acc [path expanded?]]
+                                (if (and (coll? path) (vector? path) (= (count path) hover-path-count))
+                                  (assoc acc path (not hover-path-expanded?))
+                                  (assoc acc path expanded?)))
+                              {}
+                              expanded-at)))
       (swap! !expanded-at update path not))))
 
 (defn expandable? [xs]
@@ -447,11 +447,11 @@
 
 (defn sort-data [{:keys [sort-index sort-order]} {:as data :keys [head rows]}]
   (cond-> data
-          head (assoc :rows (->> rows
-                                 (sort-by #(cond-> (get % sort-index)
-                                                   (string? val) str/lower-case)
-                                          (if (= sort-order :asc) #(compare %1 %2) #(compare %2 %1)))
-                                 vec))))
+    head (assoc :rows (->> rows
+                           (sort-by #(cond-> (get % sort-index)
+                                       (string? val) str/lower-case)
+                                    (if (= sort-order :asc) #(compare %1 %2) #(compare %2 %1)))
+                           vec))))
 
 (def x-icon
   [:svg.h-4.w-4 {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor"}
@@ -485,7 +485,7 @@
     [:div.mt-2.flex.items-center
      [:div.text-green-500.mr-2 check-icon]
      [inspect {:head [:column-1 :column-2]
-               :rows [[1 3] [2 4]]}]]]))
+                         :rows [[1 3] [2 4]]}]]]))
 
 
 (defn throwable-view [{:keys [via trace]}]
@@ -543,13 +543,13 @@
         (and (map? viewer) (:render-fn viewer))
         (render-with-viewer opts (:render-fn viewer) value)
 
-        #_#_;; TODO: maybe bring this back
-                (keyword? viewer)
-                (if-let [{:keys [fetch-opts render-fn]} (viewer/find-named-viewer viewers viewer)]
-                  (if-not render-fn
-                    (html (error-badge "no render function for viewer named " (str viewer)))
-                    (render-fn value (assoc opts :fetch-opts fetch-opts)))
-                  (html (error-badge "cannot find viewer named " (str viewer))))
+        #_#_ ;; TODO: maybe bring this back
+        (keyword? viewer)
+        (if-let [{:keys [fetch-opts render-fn]} (viewer/find-named-viewer viewers viewer)]
+          (if-not render-fn
+            (html (error-badge "no render function for viewer named " (str viewer)))
+            (render-fn value (assoc opts :fetch-opts fetch-opts)))
+          (html (error-badge "cannot find viewer named " (str viewer))))
 
         :else
         (html (error-badge "unusable viewer `" (pr-str viewer) "`, value `" (pr-str value) "`"))))
@@ -690,14 +690,14 @@
                :on-click #(swap! !hidden? not)}
               "show code"]
              #_#_#_[:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.hover:text-slate-500
-                    {:class "text-[10px]"}
-                    "hide result"]
-                     [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-75.hover:text-slate-500
-                      {:class "text-[10px]"}
-                      "cached in memory"]
-                     [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-150.hover:text-slate-500
-                      {:class "text-[10px]"}
-                      "evaluated in 0.2s"]]
+              {:class "text-[10px]"}
+              "hide result"]
+             [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-75.hover:text-slate-500
+              {:class "text-[10px]"}
+              "cached in memory"]
+             [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-150.hover:text-slate-500
+              {:class "text-[10px]"}
+              "evaluated in 0.2s"]]
             [:<>
              [:div.relative.pl-12.font-sans.text-slate-400.cursor-pointer.flex.overflow-y-hidden.group.mb-1
               [:span.hover:text-slate-500
@@ -705,14 +705,14 @@
                 :on-click #(swap! !hidden? not)}
                "hide code"]
               #_#_#_[:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.hover:text-slate-500
-                     {:class "text-[10px]"}
-                     "hide result"]
-                      [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-75.hover:text-slate-500
-                       {:class "text-[10px]"}
-                       "cached in memory"]
-                      [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-150.hover:text-slate-500
-                       {:class "text-[10px]"}
-                       "evaluated in 0.2s"]]
+               {:class "text-[10px]"}
+               "hide result"]
+              [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-75.hover:text-slate-500
+               {:class "text-[10px]"}
+               "cached in memory"]
+              [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-150.hover:text-slate-500
+               {:class "text-[10px]"}
+               "evaluated in 0.2s"]]
              [:div.viewer-code.mb-2.relative {:style {:margin-top 0}}
               [inspect-presented (code-viewer code-string)]]]))))
 
@@ -778,17 +778,17 @@
    'with-viewers with-viewers})
 
 (defonce !sci-ctx
-         (atom (sci/init {:async? true
-                          :disable-arity-checks true
-                          :classes {'js goog/global
-                                    'framer-motion framer-motion
-                                    :allow :all}
-                          :aliases {'j 'applied-science.js-interop
-                                    'reagent 'reagent.core
-                                    'v 'nextjournal.clerk.sci-viewer}
-                          :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace}
-                                             sci.configs.js-interop/namespaces
-                                             sci.configs.reagent/namespaces)})))
+  (atom (sci/init {:async? true
+                   :disable-arity-checks true
+                   :classes {'js goog/global
+                             'framer-motion framer-motion
+                             :allow :all}
+                   :aliases {'j 'applied-science.js-interop
+                             'reagent 'reagent.core
+                             'v 'nextjournal.clerk.sci-viewer}
+                   :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace}
+                                      sci.configs.js-interop/namespaces
+                                      sci.configs.reagent/namespaces)})))
 
 (defn ^:export eval-form [f]
   (sci/eval-form @!sci-ctx f))
