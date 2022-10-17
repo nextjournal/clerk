@@ -566,7 +566,18 @@
      (let [value (viewer/->value x)
            viewer (viewer/->viewer x)]
        #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
-       (inspect-presented opts (render-with-viewer (merge opts {:viewer viewer} (:nextjournal/opts x)) viewer value))))))
+
+       ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
+       ;; We use ^{:key viewer} so a view is only unmounted if its viewer has changed.
+       ^{:key viewer} [inspect-presented
+                       (merge opts {:viewer viewer} (:nextjournal/opts x))
+                       viewer
+                       value])))
+  ([opts viewer value]
+   (let [x (render-with-viewer opts viewer value)]
+     (if (valid-react-element? x)
+       x
+       (inspect-presented opts x)))))
 
 (defn in-process-fetch [value opts]
   (.resolve js/Promise (viewer/present value opts)))
