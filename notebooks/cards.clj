@@ -203,9 +203,10 @@
          (p/parse-clojure-string {:doc? true})
          (v/with-viewer :clerk/notebook)
          (v/with-viewers (v/add-viewers [{:name :clerk/result-block
-                                          :transform-fn (v/update-val (comp eval v/read-string :text))
-                                          :render-fn '(fn [data]
-                                                        (try
-                                                          (if (v/valid-react-element? data) data (v/html [v/inspect data]))
-                                                          (catch js/Error e
-                                                            (v/html [:div.red (.-message e)]))))}])))]))
+                                          :transform-fn (v/update-val (comp v/read-string :text))
+                                          :render-fn '(fn [form]
+                                                        (let [data (eval form)]
+                                                          (try
+                                                            (if (v/valid-react-element? data) data (v/html [v/inspect data]))
+                                                            (catch js/Error e
+                                                              (v/html [:div.red (.-message e)])))))}])))]))
