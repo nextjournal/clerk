@@ -8,7 +8,6 @@
             [edamame.core :as edamame]
             [goog.object]
             [goog.string :as gstring]
-            [lambdaisland.uri.normalize :as uri.normalize]
             [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex table vl row col with-viewer with-viewers]]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.ui.components.icon :as icon]
@@ -45,7 +44,7 @@
      (if content
        (let [title (md.transform/->text item)]
          (->> {:title title
-               :path (str "#" (uri.normalize/normalize-fragment title))
+               :path (str "#" (viewer/->slug title))
                :items (toc-items children)}
               (conj acc)
               vec))
@@ -119,7 +118,7 @@
 
 (defonce !eval-counter (r/atom 0))
 
-(defn notebook [{:as _doc xs :blocks :keys [toc toc-visibility]}]
+(defn notebook [{:as _doc xs :blocks :keys [bundle? toc toc-visibility]}]
   (r/with-let [local-storage-key "clerk-navbar"
                !state (r/atom {:toc (toc-items (:children toc))
                                :md-toc toc
@@ -128,6 +127,7 @@
                                :width 220
                                :mobile-width 300
                                :local-storage-key local-storage-key
+                               :set-hash? (not bundle?)
                                :open? (if-some [stored-open? (ls/get-item local-storage-key)]
                                         stored-open?
                                         (not= :collapsed toc-visibility))})
