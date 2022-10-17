@@ -25,10 +25,11 @@
 
   Accepts ns using a quoted symbol or a `clojure.lang.Namespace`, calls `slurp` on all other arguments, e.g.:
 
-  (show! \"notebooks/vega.clj\")
-  (show! 'nextjournal.clerk.tap)
-  (show! (find-ns 'nextjournal.clerk.tap))
-  (show! \"https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj\")
+  (nextjournal.clerk/show! \"notebooks/vega.clj\")
+  (nextjournal.clerk/show! 'nextjournal.clerk.tap)
+  (nextjournal.clerk/show! (find-ns 'nextjournal.clerk.tap))
+  (nextjournal.clerk/show! \"https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj\")
+  (nextjournal.clerk/show! (java.io.StringReader. \";; # Notebook from String 👋\n(+ 41 1)\"))
   "
   [file-or-ns]
   (if config/*in-clerk*
@@ -64,6 +65,7 @@
 #_(show! 'nextjournal.clerk.tap)
 #_(show! (do (require 'clojure.inspector) (find-ns 'clojure.inspector)))
 #_(show! "https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj")
+#_(show! (java.io.StringReader. ";; # In Memory Notebook 👋\n(+ 41 1)"))
 
 (defn recompute!
   "Recomputes the currently visible doc, without parsing it."

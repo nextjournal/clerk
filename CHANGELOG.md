@@ -7,25 +7,76 @@ Changes can be:
 
 ## Unreleased
 
+...
+
+## 0.11.603 (2022-10-17)
+
+...
+
+## 0.10.603 (2022-10-17)
+
+* 🌟 Add 🚰 **Tap Inspector** notebook to let Clerk show `clojure.core/tap>`
+  stream. Viewable via `(nextjournal.clerk/show! 'nextjournal.clerk.tap)`.
+  
 * 🌟 Improvements to static building including Clerk-viewer based
-  build progress reporter
-* 💫 Add `nextjournal.clerk/build!` and document it, it supersedes the
+  build progress reporter: Add `nextjournal.clerk/build!` and document it, it supersedes the
   now deprecated `nextjournal.clerk/build-static-app!`
 
     * Support `:index` option for overriding the index filename
-    * Rename `:browse?` to `:browse` and default to `false`
-    * Rename `:bundle?` to `:bundle` and default to `false`
+    * Support passing `:bundle` and `:browse` without `?`, making
+      cli-usage more convienient
+    * Add `:dashboard` option to show a Clerk viewer based build
+      report dashboard
+    * Change `:bundle` default to `false`
     * Split `:paths` into `:paths` and `:paths-fn` option to make symbol
     case explicit
     * Improve errors when passing invalid options
+    * Print cli usage help when `:help` is set
+
+* ⭐️ Extend `nextjournal.clerk/show!` accept more argument types:
+
+    * Symbols representing namespaces on the classath:
+      `(nextjournal.clerk/show! 'nextjournal.clerk.tap)`
+    * Namespaces: `(nextjournal.clerk/show! (find-ns
+      'nextjournal.clerk.tap))`
+    * URLs as strings or `java.net.URLs`: `(show! "https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj")`
+    * In memory string readers: `(show! (java.io.StringReader. ";; # String Notebook 👋\n(+ 41 1)"))`, fixes #168
+    * Everything that `clojure.core/slurp` supports
+
+* ⭐️ Support `babashka.cli` for `nextjournal.clerk/serve!` and
+  `nextjournal.clerk/build!` via metadata annoatations. To use it add
+  `org.babashka/cli {:mvn/version "0.5.40"}` or newer to your `:deps`
+  and set `:main-opts ["-m" "babashka.cli.exec"]`.
+  
+* 💫 Support providing embed options to vega `vl` viewer, can be passed via
+  `:embed/opts` keys
+  
+* 💫 Inline plotly and vega viewers (they were previously imported
+  from nextjournal/viewers) and improve error display for them
+  
+* 💫 Handle cljc files in analyzer/ns->file
 
 * 🐜 Fix results with `*print-length/depth*` being set (thanks
   @russmatney, #224)
+
+* 🐜 Fix display of nested `clojure.lang.IDeref`s (e.g. atoms).
+
 * 🐜 Fix analyzer issues with clojure proxy (🙏 @zampino, fixes #222)
-* 🐞 Fix extra wrapping in clerk/defcached and clerk/with-cache
+
+* 🐞 Fix extra wrapping in `clerk/defcached` and `clerk/with-cache`
+
 * 🛠 Improve clerk-show emacs command (🙏 @benjamin-asdf, fixes
   #170)
-* 🛠 Upgrade sci to 0.4.33 (🙏 @borkdude)
+
+* 🛠 Upgrade depdendencies, fixing warnings under Clojure 1.11.
+    * `babashka/fs`: `0.1.5` → `0.1.11`
+    * `babashka/sci`: `0.3.5` → `0.4.33` (🙏 @borkdude)
+    * `com.taoensso/nippy`: `3.1.1` → `3.2.0`
+    * `edamame`: `0.0.11` → `1.0.0`
+    * `http-kit`: `2.5.3` → `2.6.0`
+    * `rewrite-clj`: `1.0.699-alpha` → `1.1.45`
+    * `labdaisland/uri`: `1.11.86` → `1.13.95`
+    * `org.clojure/tools.analyzer`: `1.0.0` `1.1.0`
 
 ## 0.10.562 (2022-09-18)
 
