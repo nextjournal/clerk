@@ -2,7 +2,9 @@
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [matcher-combinators.test :refer [match?]]
-            [nextjournal.clerk.viewer :as v]))
+            [nextjournal.clerk.viewer :as v]
+            [nextjournal.clerk.eval :as eval]
+            [clojure.walk :as w]))
 
 (defn present+fetch
   ([value] (present+fetch {} value))
@@ -90,7 +92,20 @@
 
   (testing "doesn't throw on bogus input"
     (is (match? {:nextjournal/value nil, :nextjournal/viewer {:name :html}}
-                (v/present (v/html nil))))))
+                (v/present (v/html nil)))))
+
+  (testing "opts are not propagated to children during presentation"
+    (let [count-opts (fn [o]
+                       (let [c (atom 0)]
+                         (w/postwalk (fn [f] (when (= :nextjournal/opts f) (swap! c inc)) f) o)
+                         @c))]
+      (let [presented (v/present (v/col {:nextjournal.clerk/opts {:width 150}} 1 2 3))]
+        (is (= {:width 150} (:nextjournal/opts presented)))
+        (is (= 1 (count-opts presented))))
+
+      (let [presented (v/present (v/table {:col1 [1 2] :col2 '[a b]}))]
+        (is (= {:num-cols 2 :number-col? #{0}} (:nextjournal/opts presented)))
+        (is (= 1 (count-opts presented)))))))
 
 (deftest assign-closing-parens
   (testing "closing parenthesis are moved to right-most children in the tree"
@@ -123,3 +138,18 @@
                  (get 1)
                  v/->viewer
                  :closing-paren))))))
+
+(deftest doc->viewer
+  (testing "Doc options are propagated to blob processing"
+    (let [doc->viewer (resolve 'nextjournal.clerk.view/doc->viewer)
+          test-doc (eval/eval-string "(java.awt.image.BufferedImage. 20 20 1)")
+          tree-re-find (fn [data re] (->> data
+                                          (tree-seq coll? seq)
+                                          (filter string?)
+                                          (filter (partial re-find re))))]
+
+      (is (not-empty (tree-re-find (doc->viewer {:inline-results? true :bundle? true} test-doc)
+                                   #"data:image/png;base64")))
+
+      (is (not-empty (tree-re-find (doc->viewer {:inline-results? true :bundle? false} test-doc)
+                                   #"\"_data/.+\.png\""))))))

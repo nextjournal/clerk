@@ -603,7 +603,7 @@
 
 (def throwable-viewer
   {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
-   :name :error :render-fn (quote v/throwable-viewer) :transform-fn (comp mark-presented (update-val (comp demunge-ex-data datafy/datafy)))})
+   :name :error :render-fn 'v/throwable-viewer :transform-fn (comp mark-presented (update-val (comp demunge-ex-data datafy/datafy)))})
 
 (def buffered-image-viewer #?(:clj {:pred #(instance? BufferedImage %)
                                     :transform-fn (fn [{image :nextjournal/value}]
@@ -621,14 +621,14 @@
 
 (def ideref-viewer
   {:pred #(instance? IDeref %)
-   :transform-fn (fn [wrapped-value] (with-viewer :tagged-value
-                                       {:tag "object"
-                                        :value (let [r (->value wrapped-value)]
-                                                 (vector (type r)
-                                                         #?(:clj (with-viewer :number-hex (System/identityHashCode r)))
-                                                         (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
-                                                           (deref-as-map r)
-                                                           r)))}))})
+   :transform-fn (update-val (fn [ideref]
+                               (with-viewer :tagged-value
+                                 {:tag "object"
+                                  :value (vector (symbol (pr-str (type ideref)))
+                                                 #?(:clj (with-viewer :number-hex (System/identityHashCode ideref)))
+                                                 (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
+                                                   (deref-as-map ideref)
+                                                   ideref))})))})
 
 (def regex-viewer
   {:pred #?(:clj (partial instance? java.util.regex.Pattern) :cljs regexp?)
@@ -702,7 +702,10 @@
                          (update :nextjournal/width #(or % :wide))
                          (update :nextjournal/viewers update-table-viewers)
                          (assoc :nextjournal/opts {:num-cols (count (or head (first rows)))
-                                                   :number-col? (if (seq (first rows)) (mapv number? (first rows)) {})})
+                                                   :number-col? (into #{}
+                                                                      (comp (map-indexed vector)
+                                                                            (keep #(when (number? (second %)) (first %))))
+                                                                      (not-empty (first rows)))})
                          (assoc :nextjournal/value (cond->> []
                                                      (seq rows) (cons (with-viewer :table/body (map (partial with-viewer :table/row) rows)))
                                                      head (cons (with-viewer (:name table-head-viewer table-head-viewer) head)))))
@@ -722,11 +725,13 @@
                                                (update :nextjournal/value :text)))})
 
 (def tagged-value-viewer
-  {:name :tagged-value :render-fn '(fn [{:keys [tag value space?]}] (v/html (v/tagged-value {:space? space?} (str "#" tag) [v/inspect value])))
-   :transform-fn (fn [wrapped-value]
-                   (-> wrapped-value
-                       (update-in [:nextjournal/value :value] present)
-                       mark-presented))})
+  {:name :tagged-value
+   :render-fn '(fn [{:keys [tag value space?]} opts]
+                 (v/html (v/tagged-value {:space? (:nextjournal/value space?)}
+                                         (str "#" (:nextjournal/value tag))
+                                         [v/inspect-presented value])))
+   :transform-fn mark-preserve-keys})
+
 
 #?(:cljs
    (def js-object-viewer
@@ -1021,8 +1026,7 @@
 
 (defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
   (-> (ensure-wrapped-with-viewers viewers value)
-      (merge (->opts wrapped-value))
-      (dissoc :offset)
+      (merge (select-keys (->opts wrapped-value) [:!budget :budget :path :current-path]))
       (update :path (fnil conj []) path-segment)
       (update :current-path (fnil conj []) path-segment)))
 

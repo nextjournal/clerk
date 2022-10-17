@@ -1,5 +1,7 @@
 (ns nextjournal.clerk.sci-viewer
-  (:require ["framer-motion" :as framer-motion]
+  (:require ["d3-require" :as d3-require]
+            ["framer-motion" :as framer-motion]
+            ["react" :as react]
             [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.string :as str]
@@ -8,7 +10,6 @@
             [goog.string :as gstring]
             [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex table vl row col with-viewer with-viewers]]
             [nextjournal.markdown.transform :as md.transform]
-            [nextjournal.ui.components.d3-require :as d3-require]
             [nextjournal.ui.components.icon :as icon]
             [nextjournal.ui.components.localstorage :as ls]
             [nextjournal.ui.components.motion :as motion]
@@ -17,9 +18,6 @@
             [nextjournal.viewer.code :as code]
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.mathjax :as mathjax]
-            [nextjournal.viewer.plotly :as plotly]
-            [nextjournal.viewer.vega-lite :as vega-lite]
-            ["react" :as react]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [reagent.ratom :as ratom]
@@ -57,7 +55,7 @@
 (defn dark-mode-toggle [!state]
   (let [{:keys [dark-mode?]} @!state
         spring {:type :spring :stiffness 200 :damping 10}]
-    [:div.relative
+    [:div.relative.dark-mode-toggle
      [:button.text-slate-400.hover:text-slate-600.dark:hover:text-white.cursor-pointer
       {:on-click #(swap! !state assoc :dark-mode? (not dark-mode?))}
       (if dark-mode?
@@ -152,7 +150,7 @@
               {:class "text-[12px]"} "ToC"]]
             {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-3 text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
            [navbar/panel !state [navbar/navbar !state]]])
-        [:div.flex-auto.h-screen.overflow-y-auto
+        [:div.flex-auto.h-screen.overflow-y-auto.scroll-container
          {:ref ref-fn}
          [:div.flex.flex-col.items-center.viewer-notebook.flex-auto
           (doall
@@ -482,28 +480,29 @@
                          :rows [[1 3] [2 4]]}]]]))
 
 
-(defn throwable-viewer [{:keys [via trace]}]
-  (html
-   [:div.w-screen.h-screen.overflow-y-auto.bg-gray-100.p-6.text-xs.monospace.flex.flex-col.not-prose
-    [:div.rounded-md.shadow-lg.border.border-gray-300.bg-white.max-w-6xl.mx-auto
-     (into
-      [:div]
-      (map
-       (fn [{:as _ex :keys [type message data _trace]}]
-         [:div.p-4.bg-red-100.border-b.border-gray-300.rounded-t-md
-          [:div.font-bold "Unhandled " type]
-          [:div.font-bold.mt-1 message]
-          [:div.mt-1 (pr-str data)]])
-       via))
-     [:div.py-6
-      [:table.w-full
-       (into [:tbody]
-             (map (fn [[call _x file line]]
-                    [:tr.hover:bg-red-100.leading-tight
-                     [:td.text-right.px-6 file ":"]
-                     [:td.text-right.pr-6 line]
-                     [:td.py-1.pr-6 call]]))
-             trace)]]]]))
+(defn throwable-view [{:keys [via trace]}]
+  [:div.bg-white.max-w-6xl.mx-auto.text-xs.monospace.not-prose
+   (into
+    [:div]
+    (map
+     (fn [{:as _ex :keys [type message data _trace]}]
+       [:div.p-4.bg-red-100.border-b.border-b-gray-300
+        [:div.font-bold "Unhandled " type]
+        [:div.font-bold.mt-1 message]
+        [:div.mt-1 [inspect data]]])
+     via))
+   [:div.py-6.overflow-x-auto
+    [:table.w-full
+     (into [:tbody]
+           (map (fn [[call _x file line]]
+                  [:tr.hover:bg-red-100.leading-tight
+                   [:td.text-right.px-6 file ":"]
+                   [:td.text-right.pr-6 line]
+                   [:td.py-1.pr-6 call]]))
+           trace)]]])
+
+(defn throwable-viewer [ex]
+  (html [throwable-view ex]))
 
 (defn tagged-value
   ([tag value] (tagged-value {:space? true} tag value))
@@ -618,10 +617,47 @@
 (defn reagent-viewer [x]
   (r/as-element (cond-> x (fn? x) vector)))
 
+(defn with-d3-require [{:keys [package then loading-view]
+                        :or {loading-view "Loading..." then identity}} f]
+  (r/with-let [!package (r/atom {:loading loading-view})
+               _ (-> (if (string? package)
+                       (d3-require/require package)
+                       (apply d3-require/require package))
+                     (.then then)
+                     (.then f)
+                     (.then #(reset! !package {:value %}))
+                     (.catch #(reset! !package {:error %})))]
+    (let [{:keys [loading error value]} @!package]
+      (cond
+        loading loading
+        error [error-view error]
+        value value))))
+
+(defn vega-lite-viewer [value]
+  (when value
+    (html ^{:key value}
+          [with-d3-require {:package ["vega-embed@6.11.1"]
+                            :then (fn [embed] (.container embed (clj->js (dissoc value :embed/opts)) (clj->js (:embed/opts value {}))))}
+           (j/fn [vega-el]
+             [:div {:style {:overflow-x "auto"}}
+              [:div.vega-lite {:ref #(when %
+                                       (.appendChild % vega-el))}]])])))
+
+(defn plotly-viewer [value]
+  (when value
+    (html ^{:key value}
+          [with-d3-require {:package ["plotly.js-dist@2.15.1"]
+                            :then (fn [^js plotly]
+                                    (let [el (js/document.createElement "div")]
+                                      (.newPlot plotly el (clj->js value))
+                                      el))}
+           (j/fn [plotly-el]
+             [:div {:style {:overflow-x "auto"}}
+              [:div.plotly {:ref #(when %
+                                    (.appendChild % plotly-el))}]])])))
+
 (def mathjax-viewer (comp normalize-viewer-meta mathjax/viewer))
 (def code-viewer (comp normalize-viewer-meta code/viewer))
-(def plotly-viewer (comp normalize-viewer-meta plotly/viewer))
-(def vega-lite-viewer (comp normalize-viewer-meta vega-lite/viewer))
 
 (def expand-icon
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
@@ -690,7 +726,7 @@
    'quoted-string-viewer quoted-string-viewer
    'number-viewer number-viewer
    'table-error table-error
-   'with-d3-require d3-require/with
+   'with-d3-require with-d3-require
    'clerk-eval clerk-eval
    'consume-view-context view-context/consume
 

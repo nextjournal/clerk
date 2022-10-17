@@ -68,13 +68,15 @@
   [path]
   (str/replace path fs/file-separator "/"))
 
-(defn describe-event [{:as event :keys [stage state duration doc]}]
+(defn describe-event [{:as event :keys [stage state duration doc error]}]
   (let [format-duration (partial format "%.3fms")
         duration (some-> duration format-duration)]
     (case stage
       :init (str "👷🏼 Clerk is building " (count state) " notebooks…\n🧐 Parsing… ")
       :parsed (str "Done in " duration ". ✅\n🔬 Analyzing… ")
-      (:built :analyzed :done) (str "Done in " duration ". ✅\n")
+      (:built :analyzed :done) (if error
+                                 (str "Errored in " duration ". ❌\n")
+                                 (str "Done in " duration ". ✅\n"))
       :building (str "🔨 Building \"" (:file doc) "\"… ")
       :downloading-cache (str "⏬ Downloading distributed cache… ")
       :uploading-cache (str "⏫ Uploading distributed cache… ")
@@ -104,8 +106,7 @@
           :bundle? false
           :browse? false
           :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
-         (cond-> (set/rename-keys opts {:bundle :bundle?
-                                        :browse :browse?})
+         (cond-> opts
            index (assoc :index (str index)))))
 
 #_(process-build-opts {:index 'book.clj})
@@ -144,6 +145,11 @@
 
 #_(maybe-add-index {:index "book.clj"} nil)
 
+(defn ^:private throw-when-empty [{:as build-opts :keys [paths paths-fn index]} expanded-paths]
+  (if (empty? expanded-paths)
+    (throw (ex-info "nothing to build" (merge {:expanded-paths expanded-paths} (select-keys build-opts [:paths :paths-fn :index]))))
+    expanded-paths))
+
 (defn expand-paths [{:as build-opts :keys [paths paths-fn index]}]
   (when (and paths paths-fn)
     (binding [*out* *err*]
@@ -166,7 +172,8 @@
        (maybe-add-index build-opts)
        (mapcat (partial fs/glob "."))
        (filter (complement fs/directory?))
-       (mapv (comp str fs/file))))
+       (mapv (comp str fs/file))
+       (throw-when-empty build-opts)))
 
 #_(expand-paths {:paths ["notebooks/di*.clj"]})
 #_(expand-paths {:paths ['notebooks/rule_30.clj]})
@@ -177,29 +184,46 @@
 #_(expand-paths {:paths ["notebooks/viewers**"]})
 
 (defn build-static-app! [opts]
-  (let [{:as opts :keys [expanded-paths paths download-cache-fn upload-cache-fn bundle? report-fn]} (assoc (process-build-opts opts) :expanded-paths (expand-paths opts))
-        _ (when (empty? expanded-paths)
-            (throw (ex-info "nothing to build" {:expanded-paths expanded-paths :paths paths})))
+  (let [{:as opts :keys [paths download-cache-fn upload-cache-fn bundle? report-fn]} (process-build-opts opts)
+        {:keys [expanded-paths error]} (try {:expanded-paths (expand-paths opts)}
+                                            (catch Exception e
+                                              {:error e}))
         start (System/nanoTime)
         state (mapv #(hash-map :file %) expanded-paths)
         _ (report-fn {:stage :init :state state :build-opts opts})
+        _ (when error
+            (do (report-fn {:stage :parsed :error error :build-opts opts})
+                (throw error)))
         {state :result duration :time-ms} (eval/time-ms (mapv (comp (partial parser/parse-file {:doc? true}) :file) state))
         _ (report-fn {:stage :parsed :state state :duration duration})
-        {state :result duration :time-ms} (eval/time-ms (mapv (comp analyzer/hash
-                                                                    analyzer/build-graph) state))
-        _ (report-fn {:stage :analyzed :state state :duration duration})
+        {state :result duration :time-ms} (eval/time-ms (reduce (fn [state doc]
+                                                                  (try (conj state (-> doc analyzer/build-graph analyzer/hash))
+                                                                       (catch Exception e
+                                                                         (reduced {:error e}))))
+                                                                []
+                                                                state))
+        _ (if-let [error (:error state)]
+            (do (report-fn {:stage :analyzed :error error :duration duration})
+                (throw error))
+            (report-fn {:stage :analyzed :state state :duration duration}))
         _ (when download-cache-fn
             (report-fn {:stage :downloading-cache})
             (let [{duration :time-ms} (eval/time-ms (download-cache-fn state))]
               (report-fn {:stage :done :duration duration})))
-        docs (mapv (fn [doc idx]
-                     (report-fn {:stage :building :doc doc :idx idx})
-                     (let [{doc+viewer :result duration :time-ms} (eval/time-ms
-                                                                   (let [doc (eval/eval-analyzed-doc doc)]
-                                                                     (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc))))]
-                       (report-fn {:stage :built :doc doc+viewer :duration duration :idx idx})
-                       doc+viewer)) state (range))
-        {state :result duration :time-ms} (eval/time-ms (write-static-app! opts docs))]
+        state (mapv (fn [doc idx]
+                      (report-fn {:stage :building :doc doc :idx idx})
+                      (let [{result :result duration :time-ms} (eval/time-ms
+                                                                (try
+                                                                  (let [doc (eval/eval-analyzed-doc doc)]
+                                                                    (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc)))
+                                                                  (catch Exception e
+                                                                    {:error e})))]
+                        (report-fn (merge {:stage :built :duration duration :idx idx}
+                                          (if (:error result) result {:doc result})))
+                        result)) state (range))
+        _ (when-let [first-error (some :error state)]
+            (throw first-error))
+        {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
     (when upload-cache-fn
       (report-fn {:stage :uploading-cache})
       (let [{duration :time-ms} (eval/time-ms (upload-cache-fn state))]
@@ -207,8 +231,7 @@
     (report-fn {:stage :finished :state state :duration duration :total-duration (eval/elapsed-ms start)})))
 
 #_(build-static-app! {:paths (take 15 clerk-docs)})
-#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle true})
-#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle false :browse false})
+#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
+#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
 #_(build-static-app! {:paths ["notebooks/viewers/**"]})
-#_(build-static-app! {:index "notebooks/rule_30.clj"  :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
-#_(build-static-app! {:index "book.clj" :browse true})
+#_(build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
