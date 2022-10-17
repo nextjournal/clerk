@@ -213,11 +213,11 @@
 
 (defn status->icon [status]
   (case status
-    :executing (builder-ui/spinner-svg)
+    :executing [:div (builder-ui/spinner-svg)]
     :queued (status-light "slate")
     :pending (status-light "amber")
     :skip (status-light "slate")
-    :pass (builder-ui/checkmark-svg)
+    :pass (status-light "green")
     :fail (status-light "red")
     :error (builder-ui/error-svg)))
 
@@ -259,27 +259,26 @@
                {:style {:height "200px"}} (viewer/present exception)]])))
 
 (defn test-var-badge [{:keys [name status line assertions]}]
-  [:div.mb-2.rounded-md.border.border-slate-300.px-4.py-2.font-sans.shadow
-   {:class (bg-class status)}
-   [:div.flex.flex-col
-    [:div.flex.justify-between
-     [:div.flex.items-center.truncate.mr-2
-      [:div.mr-2 (status->icon status)]
-      [:span.text-sm.mr-1 (status->text status)]
-      [:div.text-sm.font-medium.leading-none.truncate (str name ":" line)]]]
-    (when (seq assertions)
-      (into [:div.flex.flex-wrap.mt-2.py-2.border-t-2] (map assertion-badge) assertions))]])
+  (let [collapsible? (seq assertions)]
+    [(if collapsible? :details :div)
+     (cond-> {:class (str "mb-2 rounded-md border border-slate-300 px-3 py-2 font-sans shadow " (bg-class status))}
+       (and collapsible? (= status :executing))
+       (assoc :open true))
+     [(if collapsible? :summary.cursor-pointer :div.pl-3)
+      [:span.mr-2.inline-block (status->icon status)]
+      [:span.inline-block.text-sm.mr-1 (status->text status)]
+      [:span.inline-block.text-sm.font-medium.leading-none (str name ":" line)]]
+     (when (seq assertions)
+       (into [:div.flex.flex-wrap.mt-2.py-2.border-t-2] (map assertion-badge) assertions))]))
 
 (defn test-ns-badge [{:keys [status file test-vars]}]
-  [:div.p-1.mt-2
-   [:div.rounded-md.border.border-slate-300.px-4.py-3.font-sans.shadow
-    {:class (bg-class status)}
-    [:div.flex.justify-between.items-center
-     [:div.flex.items-center.truncate.mr-2
-      [:div.mr-2 (status->icon status)]
-      [:span.text-sm.mr-1 (status->text status)]
-      [:div.text-sm.font-semibold.leading-none.truncate file]]]]
-   (into [:div.ml-5.mt-2] (map test-var-badge) test-vars)])
+  [:details.mb-2.rounded-md.border.border-slate-300.font-sans.shadow.px-4.py-3
+   (cond-> {:class (bg-class status)} (= status :executing) (assoc :open true))
+   [:summary
+    [:span.mr-2.inline-block (status->icon status)]
+    [:span.text-sm.mr-1 (status->text status)]
+    [:span.text-sm.font-semibold.leading-none.truncate file]]
+   (into [:div.ml-2.mt-2] (map test-var-badge) test-vars)])
 
 (def test-ns-viewer {:transform-fn (viewer/update-val (comp viewer/html test-ns-badge))})
 
