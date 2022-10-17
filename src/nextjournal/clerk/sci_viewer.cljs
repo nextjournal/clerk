@@ -9,6 +9,7 @@
             [goog.object]
             [goog.string :as gstring]
             [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex table vl row col with-viewer with-viewers]]
+            [nextjournal.clerk.parser :as clerk.parser]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.ui.components.icon :as icon]
             [nextjournal.ui.components.localstorage :as ls]
@@ -745,6 +746,7 @@
    'url-for url-for
    'read-string read-string
 
+
    ;; clerk viewer API
    'code code
    'col col
@@ -756,8 +758,11 @@
    'tex tex
    'vl vl
    'present viewer/present
+   'mark-presented viewer/mark-presented
    'with-viewer with-viewer
-   'with-viewers with-viewers})
+   'with-viewers with-viewers
+   'add-viewers viewer/add-viewers
+   'update-val viewer/update-val})
 
 (defonce !sci-ctx
   (atom (sci/init {:async? true
@@ -767,8 +772,11 @@
                              :allow :all}
                    :aliases {'j 'applied-science.js-interop
                              'reagent 'reagent.core
-                             'v 'nextjournal.clerk.sci-viewer}
-                   :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace}
+                             'v 'nextjournal.clerk.sci-viewer
+                             'p 'nextjournal.clerk.parser}
+                   :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace
+                                       'nextjournal.clerk.parser {'parse-clojure-string clerk.parser/parse-clojure-string
+                                                                  'parse-markdown-string clerk.parser/parse-markdown-string}}
                                       sci.configs.js-interop/namespaces
                                       sci.configs.reagent/namespaces)})))
 

@@ -1,10 +1,8 @@
 (ns nextjournal.clerk.parser
   "Clerk's Parser turns Clojure & Markdown files and strings into Clerk documents."
-  (:refer-clojure :exclude [read-string])
   (:require [clojure.core :as core]
             [clojure.set :as set]
             [clojure.string :as str]
-            [edamame.core :as edamame]
             [nextjournal.markdown :as markdown]
             [nextjournal.markdown.parser :as markdown.parser]
             [nextjournal.markdown.transform :as markdown.transform]
@@ -81,7 +79,7 @@
     ;; TODO: drop legacy visibility support before 1.0
     (and (ns? form) (legacy-doc-visibility form))
     (legacy-doc-visibility form)
-    
+
     (ns? form)
     (parse-visibility form (merge (-> form second meta :nextjournal.clerk/visibility)
                                   (some :nextjournal.clerk/visibility form)))
@@ -116,25 +114,6 @@
               (assoc analyzed-doc :blocks [] :visibility {:code :show :result :show})
               blocks)
       (dissoc :visibility)))
-
-(defn auto-resolves [ns]
-  (as-> (ns-aliases ns) $
-    (assoc $ :current (ns-name *ns*))
-    (zipmap (keys $)
-            (map ns-name (vals $)))))
-
-#_(auto-resolves (find-ns 'rule-30))
-
-;; TODO: move to analyzer
-(defn read-string [s]
-  (edamame/parse-string s {:all true
-                           :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))
-                           :readers *data-readers*
-                           :read-cond :allow
-                           :regex #(list `re-pattern %)
-                           :features #{:clj}}))
-
-#_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
 
 (def code-tags
   #{:deref :map :meta :list :quote :reader-macro :set :token :var :vector})
@@ -218,12 +197,13 @@
             (select-keys [:blocks :visibility])
             (merge (when doc? {:title title :toc toc})))))))
 
-(defn parse-file
-  ([file] (parse-file {} file))
-  ([opts file] (-> (if (str/ends-with? file ".md")
-                     (parse-markdown-string opts (slurp file))
-                     (parse-clojure-string opts (slurp file)))
-                   (assoc :file file))))
+#?(:clj
+   (defn parse-file
+     ([file] (parse-file {} file))
+     ([opts file] (-> (if (str/ends-with? file ".md")
+                        (parse-markdown-string opts (slurp file))
+                        (parse-clojure-string opts (slurp file)))
+                      (assoc :file file)))))
 
 #_(parse-file {:doc? true} "notebooks/visibility.clj")
 #_(parse-file "notebooks/visibility.clj")

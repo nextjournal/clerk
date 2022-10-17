@@ -1,7 +1,8 @@
 (ns nextjournal.clerk.analyzer
   {:nextjournal.clerk/no-cache true}
-  (:refer-clojure :exclude [hash])
+  (:refer-clojure :exclude [hash read-string])
   (:require [babashka.fs :as fs]
+            [edamame.core :as edamame]
             [clojure.core :as core]
             [clojure.java.io :as io]
             [clojure.set :as set]
@@ -72,6 +73,24 @@
 #_(deflike? '(defonce foo :bar))
 #_(deflike? '(rdef foo :bar))
 
+(defn auto-resolves [ns]
+  (as-> (ns-aliases ns) $
+    (assoc $ :current (ns-name *ns*))
+    (zipmap (keys $)
+            (map ns-name (vals $)))))
+
+#_(auto-resolves (find-ns 'nextjournal.clerk.parser))
+#_(auto-resolves (find-ns 'cards))
+
+(defn read-string [s]
+  (edamame/parse-string s {:all true
+                           :readers *data-readers*
+                           :read-cond :allow
+                           :regex #(list `re-pattern %)
+                           :features #{:clj}
+                           :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))}))
+
+#_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
 
 (defn- analyze-form
   ([form] (analyze-form {} form))
@@ -242,7 +261,7 @@
                        (let [{:keys [type text loc]} (get-in state [:blocks i])]
                          (if (not= type :code)
                            state
-                           (let [form (parser/read-string text)
+                           (let [form (read-string text)
                                  form+loc (cond-> form
                                             (instance? clojure.lang.IObj form)
                                             (vary-meta merge (cond-> loc

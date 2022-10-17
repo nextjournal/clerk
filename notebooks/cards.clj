@@ -130,19 +130,20 @@
                             (str "%"))}}]]])
    0.33))
 
-#_ ;; ## Notebook Viewer, fails ci right now but usage isn't quite right
+;; ## Notebook Viewer
 (c/card
- (v/with-viewer :clerk/notebook
-   {:blocks (map v/present
-                 [(v/with-viewer :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
-                  (v/code "(shuffle (range 10))")
-                  (v/with-viewer :clerk/code-block {:text "(+ 1 2 3)"})
-                  (v/md "# And some more\n And some more [markdown](https://daringfireball.net/projects/markdown/).")
-                  (v/code "(shuffle (range 10))")
-                  (v/md "## Some math \n This is a formula.")
-                  (v/tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")
-                  (v/plotly {:data [{:y (shuffle (range 10)) :name "The Federation"}
-                                    {:y (shuffle (range 10)) :name "The Empire"}]})])}))
+  (v/with-viewer {:render-fn v/notebook-viewer
+                  :transform-fn v/mark-presented}
+                 {:blocks (map v/present
+                               [(v/with-viewer :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
+                                (v/code "(shuffle (range 10))")
+                                (v/with-viewer :clerk/code-block {:text "(+ 1 2 3)"})
+                                (v/md "# And some more\n And some more [markdown](https://daringfireball.net/projects/markdown/).")
+                                (v/code "(shuffle (range 10))")
+                                (v/md "## Some math \n This is a formula.")
+                                (v/tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}")
+                                (v/plotly {:data [{:y (shuffle (range 10)) :name "The Federation"}
+                                                  {:y (shuffle (range 10)) :name "The Empire"}]})])}))
 
 ;; ## Layouts
 ;; **FIXME**:  `v/html` cannot be nested
@@ -164,6 +165,8 @@
 
 ;; ## In-process Pagination
 
+;; FIXME: pagination works here, but makes page unresponsive
+#_
 (c/card
   (range))
 
@@ -172,3 +175,37 @@
 
 (c/card
   {:a (range 21)})
+
+;; ## Parser API
+(c/card
+  (v/html
+   [v/inspect
+    (->> ";; # 👋 Hello CLJS
+;; This is `fold`
+;;
+;; $$(\\beta\\rightarrow\\alpha\\rightarrow\\beta)\\rightarrow\\beta\\rightarrow [\\alpha] \\rightarrow\\beta$$
+;;
+(defn fold [f i xs]
+  (if (seq xs)
+    (fold f (f i (first xs)) (rest xs))
+    i))
+
+(fold str \"\" (range 10))
+
+;; ## And the usual Clerk's perks
+(v/plotly {:data [{:y (shuffle (range 10)) :name \"The Federation\"}
+                  {:y (shuffle (range 10)) :name \"The Empire\"}]})
+;; tables
+(v/table {:a [1 2 3] :b [4 5 6]})
+;; html
+(v/html [:h1 \"🧨\"])
+"
+         (p/parse-clojure-string {:doc? true})
+         (v/with-viewer :clerk/notebook)
+         (v/with-viewers (v/add-viewers [{:name :clerk/result-block
+                                          :transform-fn (v/update-val (comp eval v/read-string :text))
+                                          :render-fn '(fn [data]
+                                                        (try
+                                                          (if (v/valid-react-element? data) data (v/html [v/inspect data]))
+                                                          (catch js/Error e
+                                                            (v/html [:div.red (.-message e)]))))}])))]))
