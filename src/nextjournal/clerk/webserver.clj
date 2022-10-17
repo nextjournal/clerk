@@ -32,15 +32,25 @@
 
 #_(update-if {:n "42"} :n #(Integer/parseInt %))
 
+(defn ^:private percent-decode [s]
+  (java.net.URLDecoder/decode s java.nio.charset.StandardCharsets/UTF_8))
+
+(defn ^:private decode-param-pair [param]
+  (let [[k v] (str/split param #"=")]
+    [(keyword (percent-decode k)) (if v (percent-decode (str/replace v #"\+" " ")) "")]))
+
+(defn ^:private query-string->map [s]
+  (if (str/blank? s) {} (into {} (map decode-param-pair) (str/split s #"&"))))
+
 (defn get-fetch-opts [query-string]
   (-> query-string
-      uri/query-string->map
+      query-string->map
       (update-if :n #(Integer/parseInt %))
       (update-if :offset #(Integer/parseInt %))
       (update-if :path #(edn/read-string %))))
 
-#_(get-pagination-opts "")
-#_(get-pagination-opts "foo=bar&n=42&start=20")
+#_(get-fetch-opts "")
+#_(get-fetch-opts "foo=bar&n=42&start=20")
 
 (defn serve-blob [{:as doc :keys [blob->result ns]} {:keys [blob-id fetch-opts]}]
   (when-not ns
