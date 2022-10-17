@@ -52,6 +52,7 @@
                                                            (with-viewer :number-hex (System/identityHashCode (v/->value wrapped-value)))]}))}
   (atom {:range (range 100)}))
 
+
 ;; ## Possible Solutions
 ;; ### 1. Print like Clojure's default
 ;; It's the default and it makes it pretty clear what's going on. It's also nicely uniform and shows the class for things.
@@ -114,3 +115,5 @@ inc
 (re-pattern "hel?o")
 
 (java.util.UUID/randomUUID)
+
+(atom {:eav (atom {:datoms (mapv #(vector % "foo" "bar") (range 100))})})

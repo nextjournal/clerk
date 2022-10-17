@@ -616,14 +616,14 @@
 
 (def ideref-viewer
   {:pred #(instance? IDeref %)
-   :transform-fn (fn [wrapped-value] (with-viewer :tagged-value
-                                       {:tag "object"
-                                        :value (let [r (->value wrapped-value)]
-                                                 (vector (type r)
-                                                         #?(:clj (with-viewer :number-hex (System/identityHashCode r)))
-                                                         (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
-                                                           (deref-as-map r)
-                                                           r)))}))})
+   :transform-fn (update-val (fn [ideref]
+                               (with-viewer :tagged-value
+                                 {:tag "object"
+                                  :value (vector (symbol (pr-str (type ideref)))
+                                                 #?(:clj (with-viewer :number-hex (System/identityHashCode ideref)))
+                                                 (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
+                                                   (deref-as-map ideref)
+                                                   ideref))})))})
 
 (def regex-viewer
   {:pred #?(:clj (partial instance? java.util.regex.Pattern) :cljs regexp?)
@@ -720,11 +720,13 @@
                                                (update :nextjournal/value :text)))})
 
 (def tagged-value-viewer
-  {:name :tagged-value :render-fn '(fn [{:keys [tag value space?]}] (v/html (v/tagged-value {:space? space?} (str "#" tag) [v/inspect value])))
-   :transform-fn (fn [wrapped-value]
-                   (-> wrapped-value
-                       (update-in [:nextjournal/value :value] present)
-                       mark-presented))})
+  {:name :tagged-value
+   :render-fn '(fn [{:keys [tag value space?]} opts]
+                 (v/html (v/tagged-value {:space? (:nextjournal/value space?)}
+                                         (str "#" (:nextjournal/value tag))
+                                         [v/inspect-presented value])))
+   :transform-fn mark-preserve-keys})
+
 
 #?(:cljs
    (def js-object-viewer
