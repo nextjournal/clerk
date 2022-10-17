@@ -1,16 +1,13 @@
 (ns nextjournal.clerk.parser
   "Clerk's Parser turns Clojure & Markdown files and strings into Clerk documents."
-  (:refer-clojure :exclude [read-string])
   (:require [clojure.core :as core]
             [clojure.set :as set]
             [clojure.string :as str]
-            [edamame.core :as edamame]
             [nextjournal.markdown :as markdown]
             [nextjournal.markdown.parser :as markdown.parser]
             [nextjournal.markdown.transform :as markdown.transform]
             [rewrite-clj.node :as n]
-            [rewrite-clj.parser :as p]
-            #?(:cljs [cljs.reader])))
+            [rewrite-clj.parser :as p]))
 
 (defn ns? [form]
   (and (seq? form) (= 'ns (first form))))
@@ -82,7 +79,7 @@
     ;; TODO: drop legacy visibility support before 1.0
     (and (ns? form) (legacy-doc-visibility form))
     (legacy-doc-visibility form)
-    
+
     (ns? form)
     (parse-visibility form (merge (-> form second meta :nextjournal.clerk/visibility)
                                   (some :nextjournal.clerk/visibility form)))
@@ -117,26 +114,6 @@
               (assoc analyzed-doc :blocks [] :visibility {:code :show :result :show})
               blocks)
       (dissoc :visibility)))
-
-#?(:clj
-   (defn auto-resolves [ns]
-     (as-> (ns-aliases ns) $
-       (assoc $ :current (ns-name *ns*))
-       (zipmap (keys $)
-               (map ns-name (vals $))))))
-
-#_(auto-resolves (find-ns 'rule-30))
-
-;; TODO: move to analyzer
-(defn read-string [s]
-  (edamame/parse-string s (-> {:all true
-                               :readers #?(:clj *data-readers* :cljs @cljs.reader/*tag-table*)
-                               :read-cond :allow
-                               :regex #(list `re-pattern %)
-                               :features #{:clj}}
-                              #?(:clj (assoc :auto-resolve (auto-resolves (or *ns* (find-ns 'user))))))))
-
-#_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
 
 (def code-tags
   #{:deref :map :meta :list :quote :reader-macro :set :token :var :vector})
