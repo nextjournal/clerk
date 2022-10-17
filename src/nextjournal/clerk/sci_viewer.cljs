@@ -6,7 +6,6 @@
             [edamame.core :as edamame]
             [goog.object]
             [goog.string :as gstring]
-            [lambdaisland.uri.normalize :as uri.normalize]
             [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex table vl row col with-viewer with-viewers]]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.ui.components.d3-require :as d3-require]

@@ -13,8 +13,7 @@
                        [sci.lang]
                        [applied-science.js-interop :as j]])
             [nextjournal.markdown :as md]
-            [nextjournal.markdown.transform :as md.transform]
-            [lambdaisland.uri.normalize :as uri.normalize])
+            [nextjournal.markdown.transform :as md.transform])
   #?(:clj (:import (com.pngencoder PngEncoder)
                    (clojure.lang IDeref)
                    (java.lang Throwable)
