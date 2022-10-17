@@ -479,6 +479,12 @@
 
 #_((update-val + 1) {:nextjournal/value 41})
 
+(defn ->slug [text]
+  (apply str
+         (map (comp str/lower-case
+                    (fn [c] (case c (\space \-) \_ c))) text)))
+#_ (->slug "Hello There")
+
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:div.viewer-markdown])}
 
@@ -486,7 +492,7 @@
    {:name :nextjournal.markdown/heading
     :transform-fn (into-markup
                    (fn [{:as node :keys [heading-level]}]
-                     [(str "h" heading-level) {:id (uri.normalize/normalize-fragment (md.transform/->text node))}]))}
+                     [(str "h" heading-level) {:id (->slug (md.transform/->text node))}]))}
    {:name :nextjournal.markdown/image :transform-fn #(with-viewer :html [:img.inline (-> % ->value :attrs)])}
    {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}

@@ -47,7 +47,7 @@
      (if content
        (let [title (md.transform/->text item)]
          (->> {:title title
-               :path (str "#" (uri.normalize/normalize-fragment title))
+               :path (str "#" (viewer/->slug title))
                :items (toc-items children)}
               (conj acc)
               vec))
