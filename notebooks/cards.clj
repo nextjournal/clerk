@@ -179,22 +179,34 @@
 ;; ## Parser API
 (c/card
   (v/html
-   [:div
-    (let [clj-code "(ns hello.foo)
-;; # This ns is _parsed_ from `cljs`
-(defn answer [] 42)
-;; ## End
-"]
-      [:div
-       [:div.viewer-code.mb-2 [v/inspect (v/code clj-code)]]
-       [v/inspect (v/parse-clojure-string {:doc? true} clj-code)]])
-    (let [md-code "# This is a _Markdown_ string
-with some **code** inside
-```clojure
-(defn answer [] 42)
-```
-;; ## End
-"]
-      [:div
-       [:div [:pre.text-white md-code]]
-       [v/inspect (v/parse-markdown-string {:doc? true} md-code)]])]))
+   [v/inspect
+    (->> ";; # 👋 Hello CLJS
+(ns hello-cljs
+  (:require [nextjournal.clerk.sci-viewer :as v]))
+
+;; this is _prose_
+(v/plotly {:data [{:y (shuffle (range 10)) :name \"The Federation\"}
+                  {:y (shuffle (range 10)) :name \"The Empire\"}]})
+
+(v/table {:a [1 2 3] :b [4 5 6]})
+
+(v/html [:h1 \"🧨\"])
+
+
+(defn fold [f i xs]
+  (if (seq xs)
+    (fold f (f i (first xs)) (rest xs))
+    i))
+
+(fold str \"\" (range 10))
+"
+         (p/parse-clojure-string {:doc? true})
+         (v/with-viewer :clerk/notebook)
+         (v/with-viewers (v/add-viewers [{:name :clerk/result-block
+                                          :transform-fn (comp v/mark-presented (v/update-val (comp v/read-string :text)))
+                                          :render-fn '(fn [form]
+                                                        (try
+                                                          (let [data (eval form)]
+                                                            (if (v/valid-react-element? data) data (v/html [v/inspect data])))
+                                                          (catch js/Error e
+                                                            (v/html [:div.red (.-message e)]))))}])))]))
