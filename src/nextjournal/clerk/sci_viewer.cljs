@@ -646,7 +646,7 @@
                                 (.catch handle-error))))
     v))
 
-(defn use-d3-require ^js [package]
+(defn ^js use-d3-require [package]
   (let [p (react/useMemo #(apply d3-require/require
                                  (cond-> package
                                          (string? package)
