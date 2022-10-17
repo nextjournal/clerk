@@ -5,19 +5,11 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
-## Unreleased
-
-...
-
 ## 0.11.603 (2022-10-17)
-
-...
-
-## 0.10.603 (2022-10-17)
 
 * 🌟 Add 🚰 **Tap Inspector** notebook to let Clerk show `clojure.core/tap>`
   stream. Viewable via `(nextjournal.clerk/show! 'nextjournal.clerk.tap)`.
-  
+
 * 🌟 Improvements to static building including Clerk-viewer based
   build progress reporter: Add `nextjournal.clerk/build!` and document it, it supersedes the
   now deprecated `nextjournal.clerk/build-static-app!`
@@ -37,8 +29,7 @@ Changes can be:
 
     * Symbols representing namespaces on the classath:
       `(nextjournal.clerk/show! 'nextjournal.clerk.tap)`
-    * Namespaces: `(nextjournal.clerk/show! (find-ns
-      'nextjournal.clerk.tap))`
+    * Namespaces: `(nextjournal.clerk/show! (find-ns 'nextjournal.clerk.tap))`
     * URLs as strings or `java.net.URLs`: `(show! "https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj")`
     * In memory string readers: `(show! (java.io.StringReader. ";; # String Notebook 👋\n(+ 41 1)"))`, fixes #168
     * Everything that `clojure.core/slurp` supports
