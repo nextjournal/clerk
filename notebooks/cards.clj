@@ -181,32 +181,31 @@
   (v/html
    [v/inspect
     (->> ";; # 👋 Hello CLJS
-(ns hello-cljs
-  (:require [nextjournal.clerk.sci-viewer :as v]))
-
-;; this is _prose_
-(v/plotly {:data [{:y (shuffle (range 10)) :name \"The Federation\"}
-                  {:y (shuffle (range 10)) :name \"The Empire\"}]})
-
-(v/table {:a [1 2 3] :b [4 5 6]})
-
-(v/html [:h1 \"🧨\"])
-
-
+;; This is `fold`
+;;
+;; $$(\\beta\\rightarrow\\alpha\\rightarrow\\beta)\\rightarrow\\beta\\rightarrow [\\alpha] \\rightarrow\\beta$$
+;;
 (defn fold [f i xs]
   (if (seq xs)
     (fold f (f i (first xs)) (rest xs))
     i))
 
 (fold str \"\" (range 10))
+
+;; ## And the usual Clerk's perks
+(v/plotly {:data [{:y (shuffle (range 10)) :name \"The Federation\"}
+                  {:y (shuffle (range 10)) :name \"The Empire\"}]})
+;; tables
+(v/table {:a [1 2 3] :b [4 5 6]})
+;; html
+(v/html [:h1 \"🧨\"])
 "
          (p/parse-clojure-string {:doc? true})
          (v/with-viewer :clerk/notebook)
          (v/with-viewers (v/add-viewers [{:name :clerk/result-block
-                                          :transform-fn (comp v/mark-presented (v/update-val (comp v/read-string :text)))
-                                          :render-fn '(fn [form]
+                                          :transform-fn (v/update-val (comp eval v/read-string :text))
+                                          :render-fn '(fn [data]
                                                         (try
-                                                          (let [data (eval form)]
-                                                            (if (v/valid-react-element? data) data (v/html [v/inspect data])))
+                                                          (if (v/valid-react-element? data) data (v/html [v/inspect data]))
                                                           (catch js/Error e
                                                             (v/html [:div.red (.-message e)]))))}])))]))
