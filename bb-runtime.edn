@@ -1,4 +1,4 @@
-{:min-bb-version "0.9.159"
+{:min-bb-version "1.0.164"
  :paths ["bb/stubs" "src" "notebooks" "resources"]
  :deps {;; hash replacement?
         io.replikativ/hasch {:mvn/version "0.3.7"}
