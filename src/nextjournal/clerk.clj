@@ -374,17 +374,17 @@
                              :show-filter-fn {:desc "Symbol resolving to a fn to restrict when to show a notebook as a result of file system event."
                                               :coerce :symbol}
                              :browse {:desc "Opens the browser on boot when set."
-                                      :coerge :boolean}}
+                                      :coerce :boolean}}
                       :order [:watch-paths :port :show-filter-fn :browse]}}
-  [{:as config
-    :keys [browse? watch-paths port show-filter-fn]
-    :or {port 7777}}]
+  [config]
   (if (:help config)
     (if-let [format-opts (and (started-via-bb-cli? config) (requiring-resolve 'babashka.cli/format-opts))]
       (println "Start the Clerk webserver with an optional a file watcher.\n\nOptions:"
                (str "\n" (format-opts (-> #'serve! meta :org.babashka/cli))))
       (println (-> #'serve! meta :doc)))
-    (do
+    (let [{:as normalized-config
+           :keys [browse? watch-paths port show-filter-fn]
+           :or {port 7777}} (normalize-opts config)]
       (webserver/serve! {:port port})
       (reset! !show-filter-fn show-filter-fn)
       (halt-watcher!)
