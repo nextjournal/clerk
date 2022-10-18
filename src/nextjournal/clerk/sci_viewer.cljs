@@ -10,6 +10,7 @@
             [goog.string :as gstring]
             [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex table vl row col with-viewer with-viewers]]
             [nextjournal.clerk.parser :as clerk.parser]
+            [nextjournal.markdown :as markdown]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.ui.components.icon :as icon]
             [nextjournal.ui.components.localstorage :as ls]
@@ -752,6 +753,7 @@
    'col col
    'html html-render
    'md md
+   'md->hiccup markdown/->hiccup
    'plotly plotly
    'row row
    'table table

@@ -11,8 +11,9 @@
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.viewer :as v]
             [taoensso.nippy :as nippy])
-  (:import (java.awt.image BufferedImage)
-           (javax.imageio ImageIO)))
+  #?(:bb (:import)
+     :clj (:import (java.awt.image BufferedImage)
+                   (javax.imageio ImageIO))))
 
 (comment
   (alter-var-root #'nippy/*freeze-serializable-allowlist* (fn [_] "allow-and-record"))
@@ -20,9 +21,11 @@
   (nippy/get-recorded-serializable-classes))
 
 ;; nippy tweaks
-(alter-var-root #'nippy/*thaw-serializable-allowlist* (fn [_] (conj nippy/default-thaw-serializable-allowlist "java.io.File" "clojure.lang.Var" "clojure.lang.Namespace")))
-(nippy/extend-freeze BufferedImage :java.awt.image.BufferedImage [x out] (ImageIO/write x "png" (ImageIO/createImageOutputStream out)))
-(nippy/extend-thaw :java.awt.image.BufferedImage [in] (ImageIO/read in))
+#?(:bb nil
+   :clj (do
+          (alter-var-root #'nippy/*thaw-serializable-allowlist* (fn [_] (conj nippy/default-thaw-serializable-allowlist "java.io.File" "clojure.lang.Var" "clojure.lang.Namespace")))
+          (nippy/extend-freeze BufferedImage :java.awt.image.BufferedImage [x out] (ImageIO/write x "png" (ImageIO/createImageOutputStream out)))
+          (nippy/extend-thaw :java.awt.image.BufferedImage [in] (ImageIO/read in))))
 
 #_(-> [(clojure.java.io/file "notebooks") (find-ns 'user)] nippy/freeze nippy/thaw)
 
@@ -107,6 +110,10 @@
       #_(prn :freeze-error e)
       nil)))
 
+;; NOTE: cannot add clojure.main to bb stubs
+(defn ex-triage [m] #?(:bb m :clj (main/ex-triage m)))
+(defn ex-str [m] #?(:bb (str m) :clj (main/ex-str m)))
+
 (defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
   (try
     (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true]
@@ -128,8 +135,8 @@
                      result)]
         (wrapped-with-metadata result blob-id)))
     (catch Throwable t
-      (let [triaged (main/ex-triage (Throwable->map t))]
-        (throw (ex-info (main/ex-str triaged) triaged))))))
+      (let [triaged (ex-triage (Throwable->map t))]
+        (throw (ex-info (ex-str triaged) triaged))))))
 
 (defn maybe-eval-viewers [{:as opts :nextjournal/keys [viewer viewers]}]
   (cond-> opts
@@ -196,7 +203,7 @@
   "Evaluates the given `parsed-doc` using the `in-memory-cache` and augments it with the results."
   [in-memory-cache parsed-doc]
   (let [{:as analyzed-doc :keys [ns]} (analyzer/build-graph parsed-doc)]
-    (binding [*ns* ns]
+    (binding [*ns* (or ns *ns*)]
       (-> analyzed-doc
           analyzer/hash
           (assoc :blob->result in-memory-cache)

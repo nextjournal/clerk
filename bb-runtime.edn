@@ -1,0 +1,27 @@
+{:min-bb-version "0.9.159"
+ :paths ["bb/stubs" "src" "notebooks" "resources"]
+ :deps {;; hash replacement?
+        io.replikativ/hasch {:mvn/version "0.3.7"}
+        weavejester/dependency {:mvn/version "0.2.1"}
+        ;; shiiiiet!
+        ;; io.github.nextjournal/markdown {:mvn/version "0.4.126"}
+        hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
+        }
+ :tasks
+ {nrepl
+  {:requires ([babashka.fs :as fs]
+              [babashka.nrepl.server :as srv])
+
+   :task (do (srv/start-server! {:host "localhost" :port 1339})
+             (spit ".nrepl-port" "1339")
+             (-> (Runtime/getRuntime)
+               (.addShutdownHook (Thread. (fn [] (fs/delete ".nrepl-port")))))
+             (deref (promise)))}
+
+  serve
+  {:task (clerk/serve! {:port 9999})}
+
+  clerk
+  {#_ #_ :depends [nrepl #_ serve]
+   :parallel? true
+   :task (println (ns-publics 'hiccup2.core))}}}

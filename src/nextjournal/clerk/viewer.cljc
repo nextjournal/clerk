@@ -14,7 +14,10 @@
                        [applied-science.js-interop :as j]])
             [nextjournal.markdown :as md]
             [nextjournal.markdown.transform :as md.transform])
-  #?(:clj (:import (com.pngencoder PngEncoder)
+  #?(:bb (:import (java.nio.file Files StandardOpenOption)
+                  (java.util Base64)
+                  (java.lang Throwable))
+     :clj (:import (com.pngencoder PngEncoder)
                    (clojure.lang IDeref)
                    (java.lang Throwable)
                    (java.awt.image BufferedImage)
@@ -466,7 +469,8 @@
 #?(:clj
    (defn datafy-scope [scope]
      (cond
-       (instance? clojure.lang.Namespace scope) {:namespace (-> scope str keyword)}
+       (instance? #?(:bb (type *ns*) :clj clojure.lang.Namespace) scope)
+       {:namespace (-> scope str keyword)}
        (keyword? scope) scope
        :else (throw (ex-info (str "Unsupported scope " scope) {:scope scope})))))
 
@@ -605,7 +609,8 @@
   {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
    :name :error :render-fn 'v/throwable-viewer :transform-fn (comp mark-presented (update-val (comp demunge-ex-data datafy/datafy)))})
 
-(def buffered-image-viewer #?(:clj {:pred #(instance? BufferedImage %)
+(def buffered-image-viewer #?(:bb {}
+                              :clj {:pred #(instance? BufferedImage %)
                                     :transform-fn (fn [{image :nextjournal/value}]
                                                     (let [w (.getWidth image)
                                                           h (.getHeight image)
@@ -620,15 +625,16 @@
                                     :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))}))
 
 (def ideref-viewer
-  {:pred #(instance? IDeref %)
-   :transform-fn (update-val (fn [ideref]
-                               (with-viewer :tagged-value
-                                 {:tag "object"
-                                  :value (vector (symbol (pr-str (type ideref)))
-                                                 #?(:clj (with-viewer :number-hex (System/identityHashCode ideref)))
-                                                 (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
-                                                   (deref-as-map ideref)
-                                                   ideref))})))})
+  #?(:bb {} :clj
+     {:pred #(instance? IDeref %)
+      :transform-fn (update-val (fn [ideref]
+                                  (with-viewer :tagged-value
+                                    {:tag "object"
+                                     :value (vector (symbol (pr-str (type ideref)))
+                                                    #?(:clj (with-viewer :number-hex (System/identityHashCode ideref)))
+                                                    (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
+                                                      (deref-as-map ideref)
+                                                      ideref))})))}))
 
 (def regex-viewer
   {:pred #?(:clj (partial instance? java.util.regex.Pattern) :cljs regexp?)
@@ -660,12 +666,16 @@
   {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :transform-fn mark-presented})
 
 (def markdown-viewer
-  {:name :markdown :transform-fn (fn [wrapped-value]
-                                   (-> wrapped-value
-                                       mark-presented
-                                       (update :nextjournal/value #(cond->> % (string? %) md/parse))
-                                       (update :nextjournal/viewers add-viewers markdown-viewers)
-                                       (with-md-viewer)))})
+  (-> {:name :markdown}
+      #?(:bb  (assoc :transform-fn (comp mark-presented (update-val :content)))
+         :clj (assoc :transform-fn
+                     (fn [wrapped-value]
+                       (-> wrapped-value
+                           mark-presented
+                           (update :nextjournal/value #(cond->> % (string? %) md/parse))
+                           (update :nextjournal/viewers add-viewers markdown-viewers)
+                           (with-md-viewer)))))
+      #?(:bb (assoc :render-fn '(fn [str] (js/console.log :str str) (v/html (v/md->hiccup str)))))))
 
 (def code-viewer
   {:name :code :render-fn (quote v/code-viewer) :transform-fn (comp mark-presented (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))})
@@ -1275,7 +1285,7 @@
   ([viewers] (reset-viewers! *ns* viewers))
   ([scope viewers]
    (assert (or (#{:default} scope)
-               #?(:clj (instance? clojure.lang.Namespace scope))))
+               #?(:bb :default :clj (instance? clojure.lang.Namespace scope))))
    (swap! !viewers assoc scope viewers)))
 
 (defn add-viewers! [viewers]

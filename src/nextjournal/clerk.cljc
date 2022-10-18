@@ -40,7 +40,8 @@
                    (throw (ex-info (str "`nextjournal.clerk/show!` cannot show `nil`.")
                                    {:file-or-ns file-or-ns}))
 
-                   (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
+                   ;; TODO: sci.lang.Namespace
+                   (or (symbol? file-or-ns) (instance? #?(:bb (type *ns*) :clj clojure.lang.Namespace) file-or-ns))
                    (or (some (fn [ext]
                                (io/resource (str (str/replace (namespace-munge file-or-ns) "." "/") ext)))
                              [".clj" ".cljc"])
