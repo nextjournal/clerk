@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.eval
   "Clerk's incremental evaluation (Babashka Edition) with in-memory caching layer."
+  (:refer-clojure :exclude [read-string])
   (:require [edamame.core :as edamame]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.parser :as parser]
@@ -34,7 +35,7 @@
                            (throw (ex-info "Unable to resolve into a variable" {:data var})))]
     {:nextjournal.clerk/var-from-def resolved-var}))
 
-(defn ^:private eval-form [{:keys [form var ns-effect? no-cache?]} hash]
+(defn ^:private eval-form [{:keys [form var no-cache?]} hash]
   (try
     (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true]
                                       (eval form)))
@@ -42,7 +43,7 @@
                    (find-var var)
                    result)
           var-value (cond-> result (and var (var? result)) deref)
-          no-cache? (or ns-effect? no-cache? config/cache-disabled?)]
+          no-cache? (or no-cache? config/cache-disabled?)]
       (let [blob-id (cond no-cache? "valuehash" #_#_ TODO?/valuehash (analyzer/->hash-str var-value)
                           (fn? var-value) nil
                           :else hash)
@@ -93,24 +94,34 @@
         (update :blob->result select-keys blob-ids)
         (dissoc :blob-ids))))
 
+(defn read-string [s]
+  (edamame/parse-string s
+                        {:all true
+                         :readers *data-readers*
+                         :read-cond :allow
+                         :regex #(list `re-pattern %)
+                         :features #{:clj}
+                         :auto-resolve (as-> (ns-aliases (or *ns* (find-ns 'user))) $
+                                         (zipmap (keys $) (map ns-name (vals $)))
+                                         (assoc $ :current (ns-name *ns*)))}))
+
 (defn read-forms [doc]
-  (-> doc
-      ;; TODO: read first form, create sci.lang.Namespace and eval ns-effects
-      ;; TODO: restore var, vars
-      (assoc :ns *ns*)
-      (update :blocks
-              (partial into [] (map (fn [{:as b :keys [type text]}]
-                                      (cond-> b
-                                        (= :code type)
-                                        (assoc :form
-                                               (edamame/parse-string text
-                                                                     {:all true
-                                                                      :readers *data-readers*
-                                                                      :read-cond :allow
-                                                                      :regex #(list `re-pattern %)
-                                                                      :features #{:clj}
-                                                                      ;; TODO:
-                                                                      #_#_:auto-resolve (auto-resolves (or *ns* (find-ns 'user)))})))))))))
+  (binding [*ns* *ns*]
+    (reduce (fn [doc {:as b :keys [type text]}]
+              (let [form (read-string text)
+                    ns? (= 'ns (when (list? form) (first form)))]
+                (when ns? (eval form))
+                (-> doc
+                    (cond-> (and ns? (not (:ns doc))) (assoc :ns *ns*))
+                    (update :blocks conj
+                            (cond-> b
+                              (= :code type) (assoc :form form)
+                              ns? (assoc :no-cache? true))))))
+            (assoc doc :blocks [])
+            (:blocks doc))))
+
+#_(read-forms
+   (parser/parse-file "notebooks/hello.clj"))
 
 (defn +eval-results
   "Evaluates the given `parsed-doc` using the `in-memory-cache` and augments it with the results."
