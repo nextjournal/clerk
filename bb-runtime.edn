@@ -1,8 +1,9 @@
 {:min-bb-version "1.0.164"
- :paths ["bb/stubs" "src" "notebooks" "resources"]
- :deps {hiccup/hiccup {:mvn/version "2.0.0-alpha2"}}
+ :paths ["src" "notebooks" "resources"]
+ :deps {hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
+        org.babashka/cli {:mvn/version "0.5.40"}}
  :tasks
- {clerk
+ {dev
   {:requires ([babashka.fs :as fs]
               [babashka.nrepl.server :as srv]
               [nextjournal.clerk :as clerk]
@@ -14,4 +15,10 @@
                (.addShutdownHook (Thread. (fn []
                                             (clerk/halt!)
                                             (fs/delete ".nrepl-port")))))
-             (deref (promise)))}}}
+             (deref (promise)))}
+
+  build
+  {:requires ([nextjournal.clerk :as clerk]
+              [babashka.cli :as cli])
+   :task (let [spec (-> (resolve 'nextjournal.clerk/build!) meta :org.babashka/cli)]
+           (clerk/build! (cli/parse-opts *command-line-args* spec)))}}}
