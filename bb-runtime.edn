@@ -1,12 +1,6 @@
 {:min-bb-version "1.0.164"
  :paths ["bb/stubs" "src" "notebooks" "resources"]
- :deps {;; hash replacement?
-        io.replikativ/hasch {:mvn/version "0.3.7"}
-        weavejester/dependency {:mvn/version "0.2.1"}
-        ;; shiiiiet!
-        ;; io.github.nextjournal/markdown {:mvn/version "0.4.126"}
-        hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
-        }
+ :deps {hiccup/hiccup {:mvn/version "2.0.0-alpha2"}}
  :tasks
  {clerk
   {:requires ([babashka.fs :as fs]
