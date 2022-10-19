@@ -74,10 +74,7 @@
       (seq opts-from-form-meta)
       (merge opts-from-form-meta))))
 
-;; no-op for public access from builder
-(defn analyze-doc [doc] doc)
-
-(defn eval-analyzed-doc [{:as analyzed-doc :keys [blocks]}]
+(defn eval-analyzed-doc [{:as analyzed-doc :keys [ns blocks]}]
   (let [{:as evaluated-doc :keys [blob-ids]}
         (reduce (fn [state {:as cell :keys [type]}]
                   (let [{:as result :nextjournal/keys [blob-id]} (when (= :code type) (read+eval-cached state cell))]
@@ -87,6 +84,7 @@
                 (assoc analyzed-doc :blocks [] :blob-ids #{})
                 blocks)]
     (-> evaluated-doc
+        (cond-> (not ns) (assoc :ns (find-ns 'user)))
         (update :blob->result select-keys blob-ids)
         (dissoc :blob-ids))))
 
@@ -124,6 +122,9 @@
 
 #_(read-forms
    (parser/parse-file "notebooks/hello.clj"))
+
+;; used in builder
+(def analyze-doc read-forms)
 
 (defn +eval-results
   "Evaluates the given `parsed-doc` using the `in-memory-cache` and augments it with the results."
