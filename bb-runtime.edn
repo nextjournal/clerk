@@ -5,10 +5,11 @@
  {clerk
   {:requires ([babashka.fs :as fs]
               [babashka.nrepl.server :as srv]
-              [nextjournal.clerk :as clerk])
+              [nextjournal.clerk :as clerk]
+              [babashka.cli :as cli])
    :task (do (srv/start-server! {:host "localhost" :port 1339})
              (spit ".nrepl-port" "1339")
-             (clerk/serve! {:port 9999})
+             (clerk/serve! (cli/parse-opts *command-line-args*))
              (-> (Runtime/getRuntime)
                (.addShutdownHook (Thread. (fn []
                                             (clerk/halt!)

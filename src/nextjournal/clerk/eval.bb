@@ -1,8 +1,6 @@
 (ns nextjournal.clerk.eval
-  "Clerk's incremental evaluation with in-memory and disk-persisted caching layers."
-  (:require [babashka.fs :as fs]
-            [clojure.java.io :as io]
-            [edamame.core :as edamame]
+  "Clerk's incremental evaluation (Babashka Edition) with in-memory caching layer."
+  (:require [edamame.core :as edamame]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.viewer :as v]))

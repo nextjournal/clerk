@@ -469,8 +469,7 @@
 #?(:clj
    (defn datafy-scope [scope]
      (cond
-       (instance? clojure.lang.Namespace scope)
-       {:namespace (-> scope str keyword)}
+       (instance? clojure.lang.Namespace scope) {:namespace (-> scope str keyword)}
        (keyword? scope) scope
        :else (throw (ex-info (str "Unsupported scope " scope) {:scope scope})))))
 
@@ -625,7 +624,8 @@
                                     :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))}))
 
 (def ideref-viewer
-  #?(:bb {} :clj
+  #?(:bb {}
+     :clj
      {:pred #(instance? IDeref %)
       :transform-fn (update-val (fn [ideref]
                                   (with-viewer :tagged-value
