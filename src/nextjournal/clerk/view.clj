@@ -12,7 +12,7 @@
      (-> (merge doc opts) v/notebook v/present))))
 
 
-#_(doc->viewer (nextjournal.clerk.eval/eval-file "notebooks/hello.clj"))
+#_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
 #_(nextjournal.clerk/show! "notebooks/visibility.clj")
 
@@ -56,7 +56,7 @@ window.ws_send = msg => ws.send(msg)")]]))
    [:head
     [:title (or (and current-path (-> state :path->doc (get current-path) v/->value :title)) "Clerk")]
     [:meta {:charset "UTF-8"}]
-    [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
+    [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]    
     (include-css+js)]
    [:body
     [:div#clerk-static-app]

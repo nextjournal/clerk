@@ -469,7 +469,7 @@
 #?(:clj
    (defn datafy-scope [scope]
      (cond
-       (instance? #?(:bb (type *ns*) :clj clojure.lang.Namespace) scope)
+       (instance? clojure.lang.Namespace scope)
        {:namespace (-> scope str keyword)}
        (keyword? scope) scope
        :else (throw (ex-info (str "Unsupported scope " scope) {:scope scope})))))
@@ -667,15 +667,15 @@
 
 (def markdown-viewer
   (-> {:name :markdown}
-      #?(:bb  (assoc :transform-fn (comp mark-presented (update-val :content)))
+      #?(:bb  (assoc :transform-fn (comp mark-presented (update-val :content))
+                     :render-fn '(fn [str] (js/console.log :str str) (v/html (v/md->hiccup str))))
          :clj (assoc :transform-fn
                      (fn [wrapped-value]
                        (-> wrapped-value
                            mark-presented
                            (update :nextjournal/value #(cond->> % (string? %) md/parse))
                            (update :nextjournal/viewers add-viewers markdown-viewers)
-                           (with-md-viewer)))))
-      #?(:bb (assoc :render-fn '(fn [str] (js/console.log :str str) (v/html (v/md->hiccup str)))))))
+                           (with-md-viewer)))))))
 
 (def code-viewer
   {:name :code :render-fn (quote v/code-viewer) :transform-fn (comp mark-presented (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))})
@@ -1285,7 +1285,7 @@
   ([viewers] (reset-viewers! *ns* viewers))
   ([scope viewers]
    (assert (or (#{:default} scope)
-               #?(:bb :default :clj (instance? clojure.lang.Namespace scope))))
+               #?(:clj (instance? clojure.lang.Namespace scope))))
    (swap! !viewers assoc scope viewers)))
 
 (defn add-viewers! [viewers]
