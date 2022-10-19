@@ -668,7 +668,7 @@
 (def markdown-viewer
   (-> {:name :markdown}
       #?(:bb  (assoc :transform-fn (comp mark-presented (update-val :content))
-                     :render-fn '(fn [str] (js/console.log :str str) (v/html (v/md->hiccup str))))
+                     :render-fn '(fn [str] (v/html (v/md->hiccup str))))
          :clj (assoc :transform-fn
                      (fn [wrapped-value]
                        (-> wrapped-value

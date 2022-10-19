@@ -1,7 +1,8 @@
 (ns nextjournal.clerk.eval
   "Clerk's incremental evaluation (Babashka Edition) with in-memory caching layer."
   (:refer-clojure :exclude [read-string])
-  (:require [edamame.core :as edamame]
+  (:require [clojure.string :as str]
+            [edamame.core :as edamame]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.viewer :as v]))
@@ -73,15 +74,10 @@
       (seq opts-from-form-meta)
       (merge opts-from-form-meta))))
 
-#_(show! "notebooks/scratch_cache.clj")
-
-#_(eval-file "notebooks/test123.clj")
-#_(eval-file "notebooks/how_clerk_works.clj")
-
 ;; no-op for public access from builder
 (defn analyze-doc [doc] doc)
 
-(defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks]}]
+(defn eval-analyzed-doc [{:as analyzed-doc :keys [blocks]}]
   (let [{:as evaluated-doc :keys [blob-ids]}
         (reduce (fn [state {:as cell :keys [type]}]
                   (let [{:as result :nextjournal/keys [blob-id]} (when (= :code type) (read+eval-cached state cell))]
@@ -105,18 +101,24 @@
                                          (zipmap (keys $) (map ns-name (vals $)))
                                          (assoc $ :current (ns-name *ns*)))}))
 
+(defn deflike? [form] (and (seq? form) (symbol? (first form)) (str/starts-with? (name (first form)) "def")))
+#_(deflike? (read-string "(def ^{:doc \"aloha\"} foo 123)"))
+#_(deflike? (read-string "(def ^{:doc \"aloha\"} foo 123)"))
+
 (defn read-forms [doc]
   (binding [*ns* *ns*]
     (reduce (fn [doc {:as b :keys [type text]}]
               (let [form (read-string text)
-                    ns? (= 'ns (when (list? form) (first form)))]
+                    ns? (= 'ns (when (list? form) (first form)))
+                    var (when (and (deflike? form) (symbol? (second form))) (second form))]
                 (when ns? (eval form))
                 (-> doc
                     (cond-> (and ns? (not (:ns doc))) (assoc :ns *ns*))
                     (update :blocks conj
                             (cond-> b
                               (= :code type) (assoc :form form)
-                              ns? (assoc :no-cache? true))))))
+                              ns? (assoc :no-cache? true)
+                              var (assoc :var (symbol (name (ns-name *ns*)) (name var))))))))
             (assoc doc :blocks [])
             (:blocks doc))))
 
