@@ -2,9 +2,7 @@
   "Clerk's Static App Builder."
   (:require [babashka.fs :as fs]
             [clojure.java.browse :as browse]
-            [clojure.set :as set]
             [clojure.string :as str]
-            [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.builder-ui :as builder-ui]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
@@ -197,7 +195,7 @@
         {state :result duration :time-ms} (eval/time-ms (mapv (comp (partial parser/parse-file {:doc? true}) :file) state))
         _ (report-fn {:stage :parsed :state state :duration duration})
         {state :result duration :time-ms} (eval/time-ms (reduce (fn [state doc]
-                                                                  (try (conj state (-> doc analyzer/build-graph analyzer/hash))
+                                                                  (try (conj state (eval/analyze-doc doc))
                                                                        (catch Exception e
                                                                          (reduced {:error e}))))
                                                                 []
