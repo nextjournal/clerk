@@ -16,7 +16,7 @@
         (spit (fs/file tempdir "markdown.mjs") (slurp (io/resource "js/markdown.mjs")))
         (reset! !md-mod-temp-dir (str tempdir)))))
 
-(defn escape [t] (-> t (str/replace "`" "\\`") (str/replace "'" "\\'")))
+(defn escape [t] (-> t (str/replace "\\" "\\\\\\") (str/replace "`" "\\`") (str/replace "'" "\\'")))
 (defn tokenize [text]
   (some-> (p/shell {:out :string :err :string :dir (md-mod-temp-dir)}
                    (str "qjs -e 'import(\"./markdown.mjs\").then((mod) => {print(mod.default.tokenizeJSON(`" (escape text) "`))})"
@@ -32,13 +32,11 @@
   (tokenize "# Hello")
   (parse "# Hello
 * `this`
-* _is_
+* _is_ Some $\\mathfrak{M}$ formula
 * crazy as [hello](https://hell.is)
 
-$what$
-
 ---
-```
+```clojure
 and this is code
 ```
 ")
