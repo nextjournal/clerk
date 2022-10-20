@@ -62,8 +62,7 @@
 
 (defn read+eval-cached [{:as _doc :keys [blob->result]} {:as codeblock :keys [form vars var ns-effect? no-cache?]}]
   (let [no-cache? (or ns-effect? no-cache?)
-        ;; TODO: hash for in-memory cache
-        hash (str (gensym))
+        hash (.encodeToString (java.util.Base64/getEncoder) (.getBytes (str form)))
         opts-from-form-meta (-> (meta form)
                                 (select-keys [:nextjournal.clerk/viewer :nextjournal.clerk/viewers :nextjournal.clerk/width :nextjournal.clerk/opts])
                                 v/normalize-viewer-opts
@@ -102,6 +101,14 @@
 (defn deflike? [form] (and (seq? form) (symbol? (first form)) (str/starts-with? (name (first form)) "def")))
 #_(deflike? (read-string "(def ^{:doc \"aloha\"} foo 123)"))
 #_(deflike? (read-string "(def ^{:doc \"aloha\"} foo 123)"))
+(defn no-cache-from-meta [form]
+  (when (contains? (meta form) :nextjournal.clerk/no-cache)
+    (-> form meta :nextjournal.clerk/no-cache)))
+(defn no-cache? [& subjects] (or (some no-cache-from-meta subjects) false))
+(defn deref? [form]
+  (and (seq? form)
+       (= (first form) `deref)
+       (= 2 (count form))))
 
 (defn read-forms [doc]
   (binding [*ns* *ns*]
@@ -115,7 +122,7 @@
                     (update :blocks conj
                             (cond-> b
                               (= :code type) (assoc :form form)
-                              ns? (assoc :no-cache? true)
+                              (or ns? (deref? form) (no-cache? form var *ns*)) (assoc :no-cache? true)
                               var (assoc :var (symbol (name (ns-name *ns*)) (name var))))))))
             (assoc doc :blocks [])
             (:blocks doc))))
