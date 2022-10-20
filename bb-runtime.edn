@@ -8,6 +8,8 @@
  {:init
   (let [md-mod (slurp (clojure.java.io/resource "js/markdown.mjs"))]
     ;; FIXME: hack for having qjs relative module imports work
+    (assert (= 0 (:exit (deref (babashka.process/process "which qjs"))))
+      "Quickjs needs to be installed (brew install quickjs)")
     (when-not (babashka.fs/exists? "js/markdown.mjs")
       (println "Copying nextjournal.markdown ES module:" (count md-mod))
       (babashka.fs/create-dir "js")
