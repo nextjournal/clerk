@@ -26,6 +26,9 @@
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]))
 
+(reagent.core/set-default-compiler!
+ (reagent.core/create-compiler {:function-components true}))
+
 (defn color-classes [selected?]
   {:value-color (if selected? "white-90" "dark-green")
    :symbol-color (if selected? "white-90" "dark-blue")
@@ -242,7 +245,13 @@
     :reagent-render (fn [_error & children]
                       (if-let [error @!error]
                         (error-view error)
-                        (into [:<>] children)))}))
+                        [view-context/provide {:!error !error}
+                         (into [:<>] children)]))}))
+
+(def default-loading-view "Loading...")
+
+(defn use-handle-error []
+  (partial reset! (react/useContext (view-context/get-context :!error))))
 
 (defn fetch! [{:keys [blob-id]} opts]
   #_(js/console.log :fetch! blob-id opts)
@@ -264,7 +273,7 @@
 
 (defn result-viewer [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
   (html (r/with-let [!hash (atom hash)
-                     !error (atom nil)
+                     !error (r/atom nil)
                      !desc (r/atom (read-result result !error))
                      !fetch-opts (atom fetch-opts)
                      fetch-fn (when @!fetch-opts
@@ -292,8 +301,7 @@
             (reset! !desc (read-result result !error))
             (reset! !error nil))
           [view-context/provide {:fetch-fn fetch-fn}
-           [error-boundary
-            !error
+           [error-boundary !error
             [:div.relative
              [:div.overflow-y-hidden
               {:ref ref-fn}
@@ -468,7 +476,7 @@
     [:div.mt-2.flex.items-center
      [:div.text-green-500.mr-2 check-icon]
      [inspect {:column-1 [1 2]
-                         :column-2 [3 4]}]]
+               :column-2 [3 4]}]]
     [:div.mt-2.flex.items-center
      [:div.text-green-500.mr-2 check-icon]
      [inspect [{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]]]
@@ -559,7 +567,18 @@
      (let [value (viewer/->value x)
            viewer (viewer/->viewer x)]
        #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
-       (inspect-presented opts (render-with-viewer (merge opts {:viewer viewer} (:nextjournal/opts x)) viewer value))))))
+
+       ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
+       ;; We use ^{:key viewer} so a view is only unmounted if its viewer has changed.
+       ^{:key viewer} [inspect-presented
+                       (merge opts {:viewer viewer} (:nextjournal/opts x))
+                       viewer
+                       value])))
+  ([opts viewer value]
+   (let [x (render-with-viewer opts viewer value)]
+     (if (valid-react-element? x)
+       x
+       (inspect-presented opts x)))))
 
 (defn in-process-fetch [value opts]
   (.resolve js/Promise (viewer/present value opts)))
@@ -618,44 +637,54 @@
 (defn reagent-viewer [x]
   (r/as-element (cond-> x (fn? x) vector)))
 
-(defn with-d3-require [{:keys [package then loading-view]
-                        :or {loading-view "Loading..." then identity}} f]
-  (r/with-let [!package (r/atom {:loading loading-view})
-               _ (-> (if (string? package)
-                       (d3-require/require package)
-                       (apply d3-require/require package))
-                     (.then then)
-                     (.then f)
-                     (.then #(reset! !package {:value %}))
-                     (.catch #(reset! !package {:error %})))]
-    (let [{:keys [loading error value]} @!package]
-      (cond
-        loading loading
-        error [error-view error]
-        value value))))
+(defn use-promise
+  "React hook which resolves a promise and handles errors."
+  [p]
+  (let [handle-error (use-handle-error)
+        [v v!] (react/useState)]
+    (react/useEffect (fn [] (-> p
+                                (.then #(v! (constantly %)))
+                                (.catch handle-error))))
+    v))
+
+(defn ^js use-d3-require [package]
+  (let [p (react/useMemo #(apply d3-require/require
+                                 (cond-> package
+                                         (string? package)
+                                         list))
+                         #js[(str package)])]
+    (use-promise p)))
+
+(defn with-d3-require [{:keys [package loading-view]
+                        :or {loading-view default-loading-view}} f]
+  (if-let [package (use-d3-require package)]
+    (f package)
+    loading-view))
 
 (defn vega-lite-viewer [value]
-  (when value
-    (html ^{:key value}
-          [with-d3-require {:package ["vega-embed@6.11.1"]
-                            :then (fn [embed] (.container embed (clj->js (dissoc value :embed/opts)) (clj->js (:embed/opts value {}))))}
-           (j/fn [vega-el]
-             [:div {:style {:overflow-x "auto"}}
-              [:div.vega-lite {:ref #(when %
-                                       (.appendChild % vega-el))}]])])))
+  (let [handle-error (use-handle-error)
+        vega-embed (use-d3-require "vega-embed@6.11.1")
+        ref-fn (react/useCallback #(when %
+                                     (-> (.embed vega-embed % (clj->js (dissoc value :embed/opts)) (clj->js (:embed/opts value {})))
+                                         (.catch handle-error)))
+                                  #js[value vega-embed])]
+    (when value
+      (html (if vega-embed
+              [:div.overflow-x-auto
+               [:div.vega-lite {:ref ref-fn}]]
+              default-loading-view)))))
 
 (defn plotly-viewer [value]
-  (when value
-    (html ^{:key value}
-          [with-d3-require {:package ["plotly.js-dist@2.15.1"]
-                            :then (fn [^js plotly]
-                                    (let [el (js/document.createElement "div")]
-                                      (.newPlot plotly el (clj->js value))
-                                      el))}
-           (j/fn [plotly-el]
-             [:div {:style {:overflow-x "auto"}}
-              [:div.plotly {:ref #(when %
-                                    (.appendChild % plotly-el))}]])])))
+  (let [plotly (use-d3-require "plotly.js-dist@2.15.1")
+        ref-fn (react/useCallback #(when %
+                                     (.newPlot plotly % (clj->js value)))
+                                  #js[value plotly])]
+    (when value
+      (html
+       (if plotly
+         [:div.overflow-x-auto
+          [:div.plotly {:ref ref-fn}]]
+         default-loading-view)))))
 
 (def mathjax-viewer (comp normalize-viewer-meta mathjax/viewer))
 (def code-viewer (comp normalize-viewer-meta code/viewer))
