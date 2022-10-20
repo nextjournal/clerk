@@ -666,16 +666,12 @@
   {:name :vega-lite :render-fn (quote v/vega-lite-viewer) :transform-fn mark-presented})
 
 (def markdown-viewer
-  (-> {:name :markdown}
-      #?(:bb  (assoc :transform-fn (comp mark-presented (update-val #(cond-> % (map? %) :content)))
-                     :render-fn '(fn [str] (v/html (v/md->hiccup str))))
-         :default (assoc :transform-fn
-                         (fn [wrapped-value]
-                           (-> wrapped-value
-                               mark-presented
-                               (update :nextjournal/value #(cond->> % (string? %) md/parse))
-                               (update :nextjournal/viewers add-viewers markdown-viewers)
-                               (with-md-viewer)))))))
+  {:name :markdown :transform-fn (fn [wrapped-value]
+                                   (-> wrapped-value
+                                       mark-presented
+                                       (update :nextjournal/value #(cond->> % (string? %) md/parse))
+                                       (update :nextjournal/viewers add-viewers markdown-viewers)
+                                       (with-md-viewer)))})
 
 (def code-viewer
   {:name :code :render-fn (quote v/code-viewer) :transform-fn (comp mark-presented (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))})
