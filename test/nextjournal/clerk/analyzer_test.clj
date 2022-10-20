@@ -62,6 +62,10 @@
                   (intern *ns* 'bar :bar)
                   (:deps (ana/analyze '{:k-1 foo :k-2 #{bar}})))))))
 
+(deftest read-string-tests
+  (testing "read-string should read regex's such that value equalility is preserved"
+    (is (= '(fn [x] (clojure.string/split x (clojure.core/re-pattern "/")))
+           (ana/read-string "(fn [x] (clojure.string/split x #\"/\"))")))))
 
 (deftest analyze
   (testing "quoted forms aren't confused with variable dependencies"

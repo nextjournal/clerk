@@ -30,7 +30,7 @@
   {:nextjournal/viewer sci-viewer/html-render
    :nextjournal/value hiccup})
 
-(defn show [{:as view-data :git/keys [sha url] :keys [doc path url->path]}]
+(defn show [{:as view-data :git/keys [sha url] :keys [bundle? doc path url->path]}]
   (let [header [:div.mb-8.text-xs.sans-serif.text-gray-400.not-prose
                 (when (not= "" path)
                   [:<>
@@ -46,7 +46,7 @@
                     " from "
                     [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
                      {:href (str url "/blob/" sha "/" (url->path path))} (url->path path) "@" [:span.tabular-nums (subs sha 0 7)]]])]]]
-    (sci-viewer/set-state {:doc (cond-> doc
+    (sci-viewer/set-state {:doc (cond-> (assoc doc :bundle? bundle?)
                                   (vector? (get-in doc [:nextjournal/value :blocks]))
                                   (update-in [:nextjournal/value :blocks] (partial into [(hiccup header)])))})
     [sci-viewer/root]))
@@ -137,7 +137,6 @@
     (reset! !state (assoc state
                           :path->doc url->doc
                           :url->path (set/map-invert path->url)))
-    (js/console.log :init state)
     (sci/alter-var-root sci-viewer/doc-url (constantly (partial doc-url @!state)))
     (if bundle?
       (let [router (rf/router (get-routes url->doc))]

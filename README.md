@@ -44,7 +44,7 @@ ALPHA, expect breaking changes.
 To use Clerk in your project, add the following dependency to your `deps.edn`:
 
 ```edn
-{:deps {io.github.nextjournal/clerk {:mvn/version "0.10.562"}}}
+{:deps {io.github.nextjournal/clerk {:mvn/version "0.11.603"}}}
 ```
 
 Require and start Clerk as part of your system start, e.g. in `user.clj`:

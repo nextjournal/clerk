@@ -8,8 +8,8 @@
             [edamame.core :as edamame]
             [goog.object]
             [goog.string :as gstring]
-            [lambdaisland.uri.normalize :as uri.normalize]
             [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex table vl row col with-viewer with-viewers]]
+            [nextjournal.clerk.parser :as clerk.parser]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.ui.components.icon :as icon]
             [nextjournal.ui.components.localstorage :as ls]
@@ -48,7 +48,7 @@
      (if content
        (let [title (md.transform/->text item)]
          (->> {:title title
-               :path (str "#" (uri.normalize/normalize-fragment title))
+               :path (str "#" (viewer/->slug title))
                :items (toc-items children)}
               (conj acc)
               vec))
@@ -122,7 +122,7 @@
 
 (defonce !eval-counter (r/atom 0))
 
-(defn notebook [{:as _doc xs :blocks :keys [toc toc-visibility]}]
+(defn notebook [{:as _doc xs :blocks :keys [bundle? toc toc-visibility]}]
   (r/with-let [local-storage-key "clerk-navbar"
                !state (r/atom {:toc (toc-items (:children toc))
                                :md-toc toc
@@ -131,6 +131,7 @@
                                :width 220
                                :mobile-width 300
                                :local-storage-key local-storage-key
+                               :set-hash? (not bundle?)
                                :open? (if-some [stored-open? (ls/get-item local-storage-key)]
                                         stored-open?
                                         (not= :collapsed toc-visibility))})
@@ -774,6 +775,7 @@
    'url-for url-for
    'read-string read-string
 
+
    ;; clerk viewer API
    'code code
    'col col
@@ -785,8 +787,11 @@
    'tex tex
    'vl vl
    'present viewer/present
+   'mark-presented viewer/mark-presented
    'with-viewer with-viewer
-   'with-viewers with-viewers})
+   'with-viewers with-viewers
+   'add-viewers viewer/add-viewers
+   'update-val viewer/update-val})
 
 (defonce !sci-ctx
   (atom (sci/init {:async? true
@@ -796,8 +801,11 @@
                              :allow :all}
                    :aliases {'j 'applied-science.js-interop
                              'reagent 'reagent.core
-                             'v 'nextjournal.clerk.sci-viewer}
-                   :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace}
+                             'v 'nextjournal.clerk.sci-viewer
+                             'p 'nextjournal.clerk.parser}
+                   :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace
+                                       'nextjournal.clerk.parser {'parse-clojure-string clerk.parser/parse-clojure-string
+                                                                  'parse-markdown-string clerk.parser/parse-markdown-string}}
                                       sci.configs.js-interop/namespaces
                                       sci.configs.reagent/namespaces)})))
 

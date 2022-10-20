@@ -25,10 +25,11 @@
 
   Accepts ns using a quoted symbol or a `clojure.lang.Namespace`, calls `slurp` on all other arguments, e.g.:
 
-  (show! \"notebooks/vega.clj\")
-  (show! 'nextjournal.clerk.tap)
-  (show! (find-ns 'nextjournal.clerk.tap))
-  (show! \"https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj\")
+  (nextjournal.clerk/show! \"notebooks/vega.clj\")
+  (nextjournal.clerk/show! 'nextjournal.clerk.tap)
+  (nextjournal.clerk/show! (find-ns 'nextjournal.clerk.tap))
+  (nextjournal.clerk/show! \"https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj\")
+  (nextjournal.clerk/show! (java.io.StringReader. \";; # Notebook from String 👋\n(+ 41 1)\"))
   "
   [file-or-ns]
   (if config/*in-clerk*
@@ -64,6 +65,7 @@
 #_(show! 'nextjournal.clerk.tap)
 #_(show! (do (require 'clojure.inspector) (find-ns 'clojure.inspector)))
 #_(show! "https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj")
+#_(show! (java.io.StringReader. ";; # In Memory Notebook 👋\n(+ 41 1)"))
 
 (defn recompute!
   "Recomputes the currently visible doc, without parsing it."
@@ -372,17 +374,17 @@
                              :show-filter-fn {:desc "Symbol resolving to a fn to restrict when to show a notebook as a result of file system event."
                                               :coerce :symbol}
                              :browse {:desc "Opens the browser on boot when set."
-                                      :coerge :boolean}}
+                                      :coerce :boolean}}
                       :order [:watch-paths :port :show-filter-fn :browse]}}
-  [{:as config
-    :keys [browse? watch-paths port show-filter-fn]
-    :or {port 7777}}]
+  [config]
   (if (:help config)
     (if-let [format-opts (and (started-via-bb-cli? config) (requiring-resolve 'babashka.cli/format-opts))]
       (println "Start the Clerk webserver with an optional a file watcher.\n\nOptions:"
                (str "\n" (format-opts (-> #'serve! meta :org.babashka/cli))))
       (println (-> #'serve! meta :doc)))
-    (do
+    (let [{:as normalized-config
+           :keys [browse? watch-paths port show-filter-fn]
+           :or {port 7777}} (normalize-opts config)]
       (webserver/serve! {:port port})
       (reset! !show-filter-fn show-filter-fn)
       (halt-watcher!)
