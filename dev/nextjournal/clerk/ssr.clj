@@ -1,8 +1,5 @@
 (ns nextjournal.clerk.ssr
-  "Server-side-rendering using `reagent.dom.server` on GraalJS.
-
-  Currently wip, can load the js bundle but needs more conditional for
-  `js/document` or exclude libraries."
+  "Server-side-rendering using `reagent.dom.server` on GraalJS."
   (:require [clojure.java.io :as io]
             [clojure.edn :as edn]
             [clojure.string :as str]
@@ -31,9 +28,14 @@
   ;; https://clojurians.slack.com/archives/C6N245JGG/p1666353696590419
   (str/replace script-contents (re-pattern "self") "globalThis"))
 
+(defn viewer-js-path []
+  (@config/!asset-map "/js/viewer.js")
+  ;; uncomment the following to test against a local js bundle
+  #_"build/viewer.js")
+
 (def viewer-js-source
   ;; run `bb build:js` on shell to generate
-  (.build (Source/newBuilder "js" (replace-self (slurp "build/viewer.js" #_(@config/!asset-map "/js/viewer.js"))) "viewer.mjs")))
+  (.build (Source/newBuilder "js" (replace-self (slurp (viewer-js-path))) "viewer.mjs")))
 
 (def !eval-viewer-source
   (delay (.eval context viewer-js-source)))
