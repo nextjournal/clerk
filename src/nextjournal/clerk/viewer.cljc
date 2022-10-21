@@ -517,8 +517,12 @@
    #?(:clj {:name :nextjournal.markdown/inline :transform-fn (comp eval read-string md.transform/->text)})
 
    ;; formulas
-   {:name :nextjournal.markdown/formula :transform-fn (comp :text ->value) :render-fn '(fn [tex] (v/katex-viewer tex {:inline? true}))}
-   {:name :nextjournal.markdown/block-formula :transform-fn (comp :text ->value) :render-fn 'nextjournal.clerk.render/render-katex}
+   {:name :nextjournal.markdown/formula
+    :transform-fn (comp :text ->value)
+    :render-fn '(fn [tex] (nextjournal.clerk.render/render-katex tex {:inline? true}))}
+   {:name :nextjournal.markdown/block-formula
+    :transform-fn (comp :text ->value)
+    :render-fn 'nextjournal.clerk.render/render-katex}
 
    ;; lists
    {:name :nextjournal.markdown/bullet-list :transform-fn (into-markup [:ul])}
