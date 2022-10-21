@@ -62,7 +62,8 @@
           'inspect-presented render/inspect-presented
           'inspect render/inspect
           'inspect-children render/inspect-children
-          'set-viewers! render/set-viewers!}))
+          'set-viewers! render/set-viewers!
+          'with-d3-require render/with-d3-require}))
 
 (def render-namespace
   (sci/copy-ns nextjournal.clerk.render (sci/create-ns 'nextjournal.clerk.render)))
