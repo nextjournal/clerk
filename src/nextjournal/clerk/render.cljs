@@ -119,7 +119,7 @@
 
 (defonce !eval-counter (r/atom 0))
 
-(defn notebook [{:as _doc xs :blocks :keys [bundle? toc toc-visibility]}]
+(defn render-notebook [{:as _doc xs :blocks :keys [bundle? toc toc-visibility]}]
   (r/with-let [local-storage-key "clerk-navbar"
                !state (r/atom {:toc (toc-items (:children toc))
                                :md-toc toc
@@ -361,7 +361,7 @@
 
 (defn render-coll [xs opts] (html (coll-view xs opts)))
 
-(defn elision-viewer [{:as fetch-opts :keys [total offset unbounded?]} _]
+(defn render-elision [{:as fetch-opts :keys [total offset unbounded?]} _]
   (html [view-context/consume :fetch-fn
          (fn [fetch-fn]
            [:span.sans-serif.relative.whitespace-nowrap
@@ -438,7 +438,7 @@
   [:svg.h-4.w-4 {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor"}
    [:path {:fill-rule "evenodd" :d "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" :clip-rule "evenodd"}]])
 
-(defn table-error [[data]]
+(defn render-table-error [[data]]
   ;; currently boxing the value in a vector to retain the type info
   ;; TODO: find a better way to do this
   (html
@@ -595,7 +595,7 @@
 (defn clerk-eval [form]
   (.ws_send ^js goog/global (pr-str form)))
 
-(defn katex-viewer [tex-string {:keys [inline?]}]
+(defn render-katex [tex-string {:keys [inline?]}]
   (html (katex/to-html-string tex-string (j/obj :displayMode (not inline?)))))
 
 (defn html-render [markup]
@@ -610,8 +610,11 @@
 (def html
   (partial viewer/with-viewer html-viewer))
 
-(defn reagent-viewer [x]
+(defn render-reagent [x]
   (r/as-element (cond-> x (fn? x) vector)))
+
+;; TODO: remove
+(def reagent-viewer render-reagent)
 
 (defn use-promise
   "React hook which resolves a promise and handles errors."
@@ -619,8 +622,8 @@
   (let [handle-error (use-handle-error)
         [v v!] (react/useState)]
     (react/useEffect (fn [] (-> p
-                                (.then #(v! (constantly %)))
-                                (.catch handle-error))))
+                               (.then #(v! (constantly %)))
+                               (.catch handle-error))))
     v))
 
 (defn ^js use-d3-require [package]
@@ -662,14 +665,14 @@
           [:div.plotly {:ref ref-fn}]]
          default-loading-view)))))
 
-(def mathjax-viewer (comp normalize-viewer-meta mathjax/viewer))
-(def code-viewer (comp normalize-viewer-meta code/viewer))
+(def render-mathjax (comp normalize-viewer-meta mathjax/viewer))
+(def render-code (comp normalize-viewer-meta code/viewer))
 
 (def expand-icon
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
    [:path {:fill-rule "evenodd" :d "M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" :clip-rule "evenodd"}]])
 
-(defn foldable-code-viewer [code-string]
+(defn render-folded-code [code-string]
   (r/with-let [!hidden? (r/atom true)]
     (html (if @!hidden?
             [:div.relative.pl-12.font-sans.text-slate-400.cursor-pointer.flex.overflow-y-hidden.group
@@ -702,7 +705,7 @@
                {:class "text-[10px]"}
                "evaluated in 0.2s"]]
              [:div.viewer-code.mb-2.relative {:style {:margin-top 0}}
-              [inspect-presented (code-viewer code-string)]]]))))
+              [inspect-presented (render-code code-string)]]]))))
 
 
 (defn url-for [{:as src :keys [blob-id]}]

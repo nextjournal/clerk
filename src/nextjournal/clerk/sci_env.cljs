@@ -57,23 +57,12 @@
    'result-viewer render/result-viewer
    'coll-view render/coll-view
    'map-view render/map-view
-   'elision-viewer render/elision-viewer
    'tagged-value render/tagged-value
    'inspect-children render/inspect-children
    'set-viewers! render/set-viewers!
-   'table-error render/table-error
-   'with-d3-require render/with-d3-require
    'clerk-eval render/clerk-eval
    'consume-view-context view-context/consume
 
-   'notebook-viewer render/notebook
-   'katex-viewer render/katex-viewer
-   'mathjax-viewer render/mathjax-viewer
-   'code-viewer render/code-viewer
-   'foldable-code-viewer render/foldable-code-viewer
-   'plotly-viewer render/plotly-viewer
-   'vega-lite-viewer render/vega-lite-viewer
-   'reagent-viewer render/reagent-viewer
    'unreadable-edn-viewer render/unreadable-edn-viewer
 
    'doc-url doc-url
