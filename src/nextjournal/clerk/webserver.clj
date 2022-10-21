@@ -97,7 +97,7 @@
         "_blob" (serve-blob @!doc (extract-blob-opts req))
         "build" (serve-file "public" req)
         "_ws" {:status 200 :body "upgrading..."}
-        "js" {:status 200 :body (slurp (str "public" uri))}
+        "js" {:status 200 :body (slurp (str "public" uri)) :headers {"Content-Type" "application/javascript"}}
         {:status  200
          :headers {"Content-Type" "text/html"}
          :body    (view/doc->html @!doc @!error)})
