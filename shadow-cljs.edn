@@ -1,13 +1,13 @@
 {:deps {:aliases [:sci]}
  :dev-http {7778 {:roots ["public" "classpath:public"]}}
  :nrepl false
- :builds {:browser {:target :browser
+ :builds {:browser {:target :esm
                     :output-to "public/js/viewer.js"
                     :output-dir "public/js"
+                    :runtime :custom ;; needed when developing ssr, node errors without it
                     :build-options {:ns-aliases {nextjournal.devcards nextjournal.devcards-noop}}
                     :modules {:viewer {:entries [nextjournal.clerk.sci-viewer
                                                  nextjournal.clerk.static-app]}}
-
                     :dev {:modules {:viewer {:entries [devtools]}}}
                     :release {:output-dir "build/"}
 
