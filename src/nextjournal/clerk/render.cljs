@@ -307,7 +307,7 @@
 (defn inspect-children [opts]
   ;; TODO: move update function onto viewer
   (map-indexed (fn [idx x]
-                 (inspect-presented (update opts :path (fnil conj []) idx) x))))
+                 (inspect-presented (update (assoc opts :idx idx) :path (fnil conj []) idx) x))))
 
 (def expand-style
   ["cursor-pointer"
@@ -545,11 +545,13 @@
        #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
 
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
-       ;; We use ^{:key viewer} so a view is only unmounted if its viewer has changed.
-       ^{:key viewer} [inspect-presented
-                       (merge opts {:viewer viewer} (:nextjournal/opts x))
-                       viewer
-                       value])))
+       ;; When using ^{:key viewer} we get duplicate keys in homogenous collections so also add idx key
+       ;; TODO: clarify if this is ok.
+       ^{:key (str viewer (:idx opts))}
+       [inspect-presented
+        (merge opts {:viewer viewer} (:nextjournal/opts x))
+        viewer
+        value])))
   ([opts viewer value]
    (let [x (render-with-viewer opts viewer value)]
      (if (valid-react-element? x)
