@@ -12,7 +12,6 @@
             [nextjournal.clerk.parser :as clerk.parser]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.ui.components.icon :as icon]
-            [nextjournal.ui.components.localstorage :as ls]
             [nextjournal.ui.components.motion :as motion]
             [nextjournal.ui.components.navbar :as navbar]
             [nextjournal.view.context :as view-context]
@@ -26,8 +25,18 @@
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]))
 
-(reagent.core/set-default-compiler!
- (reagent.core/create-compiler {:function-components true}))
+(defn localstorage-set! [key val]
+  (when (exists? js/window)
+    (.setItem (.-localStorage js/window) key val)))
+
+(defn localstorage-get [key]
+  (when (exists? js/window)
+    (cljs.reader/read-string (.getItem (.-localStorage js/window) key))))
+
+(when (exists? js/window)
+  ;; conditionalized currently because this throws in node
+  ;; TypeError: Cannot assign to read only property 'reagentRender' of object '#<Object>'
+  (r/set-default-compiler! (r/create-compiler {:function-components true})))
 
 (defn color-classes [selected?]
   {:value-color (if selected? "white-90" "dark-green")
@@ -109,7 +118,7 @@
     (if dark-mode?
       (.add class-list "dark")
       (.remove class-list "dark")))
-  (ls/set-item! local-storage-dark-mode-key dark-mode?))
+  (localstorage-set! local-storage-dark-mode-key dark-mode?))
 
 (defn setup-dark-mode! [!state]
   (let [{:keys [dark-mode?]} @!state]
@@ -126,13 +135,13 @@
   (r/with-let [local-storage-key "clerk-navbar"
                !state (r/atom {:toc (toc-items (:children toc))
                                :md-toc toc
-                               :dark-mode? (ls/get-item local-storage-dark-mode-key)
+                               :dark-mode? (localstorage-get local-storage-dark-mode-key)
                                :theme {:slide-over "bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900"}
                                :width 220
                                :mobile-width 300
                                :local-storage-key local-storage-key
                                :set-hash? (not bundle?)
-                               :open? (if-some [stored-open? (ls/get-item local-storage-key)]
+                               :open? (if-some [stored-open? (localstorage-get local-storage-key)]
                                         stored-open?
                                         (not= :collapsed toc-visibility))})
                root-ref-fn #(when % (setup-dark-mode! !state))
@@ -608,7 +617,7 @@
   (when (contains? state :doc)
     (reset! !doc doc))
   (reset! !error error)
-  (when-some [title (and (exists? js/document) (-> doc viewer/->value :title))]
+  (when-let [title (and (exists? js/document) (-> doc viewer/->value :title))]
     (set! (.-title js/document) title)))
 
 (defn ^:export ^:dev/after-load mount []
