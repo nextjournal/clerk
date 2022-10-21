@@ -551,10 +551,10 @@
   {:pred char? :render-fn '(fn [c] (v/html [:span.cmt-string.inspected-value "\\" c]))})
 
 (def string-viewer
-  {:pred string? :render-fn (quote v/quoted-string-viewer) :page-size 80})
+  {:pred string? :render-fn 'nextjournal.clerk.render/render-quoted-string :page-size 80})
 
 (def number-viewer
-  {:pred number? :render-fn (quote v/number-viewer)})
+  {:pred number? :render-fn 'nextjournal.clerk.render/render-number})
 
 (def number-hex-viewer
   {:name :number-hex :render-fn '(fn [num] (v/number-viewer (str "0x" (.toString (js/Number. num) 16))))})
@@ -583,16 +583,16 @@
                                                   (v/unreadable-edn-viewer x))))})
 
 (def vector-viewer
-  {:pred vector? :render-fn 'v/coll-viewer :opening-paren "[" :closing-paren "]" :page-size 20})
+  {:pred vector? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "[" :closing-paren "]" :page-size 20})
 
 (def set-viewer
-  {:pred set? :render-fn 'v/coll-viewer :opening-paren "#{" :closing-paren "}" :page-size 20})
+  {:pred set? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "#{" :closing-paren "}" :page-size 20})
 
 (def sequential-viewer
-  {:pred sequential? :render-fn 'v/coll-viewer :opening-paren "(" :closing-paren ")" :page-size 20})
+  {:pred sequential? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "(" :closing-paren ")" :page-size 20})
 
 (def map-viewer
-  {:pred map? :name :map :render-fn 'v/map-viewer :opening-paren "{" :closing-paren "}" :page-size 10})
+  {:pred map? :name :map :render-fn 'nextjournal.clerk.render/render-map :opening-paren "{" :closing-paren "}" :page-size 10})
 
 #?(:cljs (defn var->symbol [v] (if (instance? sci.lang.Var v) (sci.impl.vars/toSymbol v) (symbol v))))
 
@@ -602,8 +602,10 @@
    :render-fn '(fn [x] (v/html [:span.inspected-value [:span.cmt-meta "#'" (str x)]]))})
 
 (def throwable-viewer
-  {:pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
-   :name :error :render-fn 'v/throwable-viewer :transform-fn (comp mark-presented (update-val (comp demunge-ex-data datafy/datafy)))})
+  {:name :error
+   :render-fn 'nextjournal.clerk.render/render-throwable
+   :pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
+   :transform-fn (comp mark-presented (update-val (comp demunge-ex-data datafy/datafy)))})
 
 (def buffered-image-viewer #?(:clj {:pred #(instance? BufferedImage %)
                                     :transform-fn (fn [{image :nextjournal/value}]

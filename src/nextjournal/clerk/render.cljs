@@ -359,7 +359,7 @@
       [:span
        (cond->> closing-paren (list? closing-paren) (into [:<>]))]]]))
 
-(defn coll-viewer [xs opts] (html (coll-view xs opts)))
+(defn render-coll [xs opts] (html (coll-view xs opts)))
 
 (defn elision-viewer [{:as fetch-opts :keys [total offset unbounded?]} _]
   (html [view-context/consume :fetch-fn
@@ -387,9 +387,9 @@
             xs)
       (cond->> closing-paren (list? closing-paren) (into [:<>]))]]))
 
-(defn map-viewer [xs opts] (html (map-view xs opts)))
+(defn render-map [xs opts] (html (map-view xs opts)))
 
-(defn string-viewer [s {:as opts :keys [path !expanded-at] :or {path []}}]
+(defn render-string [s {:as opts :keys [path !expanded-at] :or {path []}}]
   (html
    (let [expanded? (get @!expanded-at path)]
      (into [:span]
@@ -400,7 +400,7 @@
                    (inspect-presented opts %)))
            (if (string? s) [s] s)))))
 
-(defn quoted-string-viewer [s {:as opts :keys [path viewer !expanded-at] :or {path []}}]
+(defn render-quoted-string [s {:as opts :keys [path viewer !expanded-at] :or {path []}}]
   (let [{:keys [closing-paren]} viewer]
     (html [:span.cmt-string.inspected-value.whitespace-nowrap.inline-flex
            [:span
@@ -408,11 +408,11 @@
               [expand-button !expanded-at "\"" path]
               [:span "\""])]
            [:div
-            (viewer/->value (string-viewer s opts))
+            (viewer/->value (render-string s opts))
             "\""
             closing-paren]])))
 
-(defn number-viewer [num]
+(defn render-number [num]
   (html [:span.cmt-number.inspected-value
          (if (js/Number.isNaN num) "NaN" (str num))]))
 
@@ -486,7 +486,7 @@
                    [:td.py-1.pr-6 call]]))
            trace)]]])
 
-(defn throwable-viewer [ex]
+(defn render-throwable [ex]
   (html [throwable-view ex]))
 
 (defn tagged-value

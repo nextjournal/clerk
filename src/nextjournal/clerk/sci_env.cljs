@@ -46,20 +46,6 @@
   (edamame/parse-string s @!edamame-opts))
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 (def ^{:doc "Stub implementation to be replaced during static site generation. Clerk is only serving one page currently."}
   doc-url
   (sci/new-var 'doc-url (fn [x] (str "#" x))))
@@ -70,22 +56,16 @@
    'valid-react-element? render/valid-react-element?
    'result-viewer render/result-viewer
    'coll-view render/coll-view
-   'coll-viewer render/coll-viewer
    'map-view render/map-view
-   'map-viewer render/map-viewer
    'elision-viewer render/elision-viewer
    'tagged-value render/tagged-value
    'inspect-children render/inspect-children
    'set-viewers! render/set-viewers!
-   'string-viewer render/string-viewer
-   'quoted-string-viewer render/quoted-string-viewer
-   'number-viewer render/number-viewer
    'table-error render/table-error
    'with-d3-require render/with-d3-require
    'clerk-eval render/clerk-eval
    'consume-view-context view-context/consume
 
-   'throwable-viewer render/throwable-viewer
    'notebook-viewer render/notebook
    'katex-viewer render/katex-viewer
    'mathjax-viewer render/mathjax-viewer
@@ -118,6 +98,9 @@
    'add-viewers viewer/add-viewers
    'update-val viewer/update-val})
 
+(def render-namespace
+  (sci/copy-ns nextjournal.clerk.render (sci/create-ns 'nextjournal.clerk.render)))
+
 (defonce !sci-ctx
   (atom (sci/init {:async? true
                    :disable-arity-checks true
@@ -128,7 +111,8 @@
                              'reagent 'reagent.core
                              'v 'nextjournal.clerk.sci-viewer
                              'p 'nextjournal.clerk.parser}
-                   :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace
+                   :namespaces (merge {'nextjournal.clerk.render render-namespace
+                                       'nextjournal.clerk.sci-viewer sci-viewer-namespace
                                        'nextjournal.clerk.parser {'parse-clojure-string clerk.parser/parse-clojure-string
                                                                   'parse-markdown-string clerk.parser/parse-markdown-string}}
                                       sci.configs.js-interop/namespaces
