@@ -6,7 +6,7 @@
                    :release {:output-dir "build/"}
                    :runtime :custom ;; needed when developing ssr, node errors without it
                    :build-options {:ns-aliases {nextjournal.devcards nextjournal.devcards-noop}}
-                   :modules {:viewer {:entries [nextjournal.clerk.sci-viewer
+                   :modules {:viewer {:entries [nextjournal.clerk.sci-env
                                                 nextjournal.clerk.static-app]}}
                    :dev {:modules {:viewer {:entries [devtools]}}}
 

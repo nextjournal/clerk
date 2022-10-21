@@ -1,10 +1,10 @@
 (ns nextjournal.clerk.static-app
   (:require [clojure.set :as set]
             [clojure.string :as str]
-            [nextjournal.clerk.sci-viewer :as sci-viewer]
+            [nextjournal.clerk.sci-env :as sci-viewer]
+            [nextjournal.clerk.render :as render]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.devcards :as dc]
-            [nextjournal.ui.components.localstorage :as ls]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [reagent.dom.server :as dom-server]
@@ -27,7 +27,7 @@
         (str relative-root url)))))
 
 (defn hiccup [hiccup]
-  {:nextjournal/viewer sci-viewer/html-render
+  {:nextjournal/viewer render/html-render
    :nextjournal/value hiccup})
 
 (defn show [{:as view-data :git/keys [sha url] :keys [bundle? doc path url->path]}]
@@ -46,10 +46,10 @@
                     " from "
                     [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
                      {:href (str url "/blob/" sha "/" (url->path path))} (url->path path) "@" [:span.tabular-nums (subs sha 0 7)]]])]]]
-    (sci-viewer/set-state {:doc (cond-> (assoc doc :bundle? bundle?)
-                                  (vector? (get-in doc [:nextjournal/value :blocks]))
-                                  (update-in [:nextjournal/value :blocks] (partial into [(hiccup header)])))})
-    [sci-viewer/root]))
+    (render/set-state {:doc (cond-> (assoc doc :bundle? bundle?)
+                              (vector? (get-in doc [:nextjournal/value :blocks]))
+                              (update-in [:nextjournal/value :blocks] (partial into [(hiccup header)])))})
+    [render/root]))
 
 (dc/defcard show []
   [show {:git/url "https://github.com/nextjournal/clerk"
@@ -72,12 +72,12 @@
 (defn index [{:as view-data :keys [paths]}]
   (when (exists? js/document)
     (set! (.-title js/document) "Clerk"))
-  (r/with-let [!state (r/atom {:dark-mode? (ls/get-item sci-viewer/local-storage-dark-mode-key)})
-               ref-fn #(when % (sci-viewer/setup-dark-mode! !state))]
+  (r/with-let [!state (r/atom {:dark-mode? (render/localstorage-get render/local-storage-dark-mode-key)})
+               ref-fn #(when % (render/setup-dark-mode! !state))]
     [:div.bg-gray-100.dark:bg-gray-900.flex.justify-center.overflow-y-auto.w-screen.h-screen.p-4.md:p-0
      {:ref ref-fn}
      [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
-      [sci-viewer/dark-mode-toggle !state]]
+      [render/dark-mode-toggle !state]]
      [:div.md:my-12.w-full.md:max-w-lg
       [:div.bg-white.dark:bg-gray-800.shadow-lg.rounded-lg.border.dark:border-gray-800.dark:text-white
        [:div.px-4.md:px-8.py-3
