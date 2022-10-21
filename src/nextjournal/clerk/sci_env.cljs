@@ -4,9 +4,10 @@
             [clojure.string :as str]
             [edamame.core :as edamame]
             [goog.object]
+            [nextjournal.clerk.parser]
             [nextjournal.clerk.render :as render]
-            [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex table vl row col with-viewer with-viewers]]
-            [nextjournal.clerk.parser :as clerk.parser]
+            [nextjournal.clerk.trim-image]
+            [nextjournal.clerk.viewer :as viewer]
             [nextjournal.view.context :as view-context]
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
@@ -30,13 +31,13 @@
            (or (get {'viewer-fn   (partial eval-viewer-fn viewer/->viewer-fn)
                      'viewer-eval (partial eval-viewer-fn *eval*)} tag)
                (fn [value]
-                 (with-viewer :tagged-value
+                 (viewer/with-viewer :tagged-value
                    {:tag tag
                     :space? (not (vector? value))
                     :value (cond-> value
                              (and (vector? value) (number? (second value)))
                              (update 1 (fn [memory-address]
-                                         (with-viewer :number-hex memory-address))))}))))
+                                         (viewer/with-viewer :number-hex memory-address))))}))))
          :features #{:clj}}))
 
 (def ^:export set-state render/set-state)
