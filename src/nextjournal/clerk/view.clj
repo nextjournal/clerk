@@ -41,7 +41,7 @@
     (include-css+js)]
    [:body.dark:bg-gray-900
     [:div#clerk]
-    [:script {:type "module"} "let viewer = nextjournal.clerk.sci_viewer
+    [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
 let state = " (-> state v/->edn pr-str) "
 viewer.set_state(viewer.read_string(state))
 viewer.mount(document.getElementById('clerk'))\n"
@@ -60,7 +60,7 @@ window.ws_send = msg => ws.send(msg)")]]))
     (include-css+js)]
    [:body
     [:div#clerk-static-app]
-    [:script {:type "module"} "let viewer = nextjournal.clerk.sci_viewer
+    [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
 let app = nextjournal.clerk.static_app
 let opts = viewer.read_string(" (-> state v/->edn pr-str) ")
 app.init(opts)\n"]]))

@@ -1,15 +1,12 @@
-(ns nextjournal.clerk.sci-viewer
+(ns nextjournal.clerk.render
   (:require ["d3-require" :as d3-require]
-            ["framer-motion" :as framer-motion]
             ["react" :as react]
             [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.string :as str]
-            [edamame.core :as edamame]
             [goog.object]
             [goog.string :as gstring]
-            [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex table vl row col with-viewer with-viewers]]
-            [nextjournal.clerk.parser :as clerk.parser]
+            [nextjournal.clerk.viewer :as viewer]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.ui.components.icon :as icon]
             [nextjournal.ui.components.motion :as motion]
@@ -20,36 +17,17 @@
             [nextjournal.viewer.mathjax :as mathjax]
             [reagent.core :as r]
             [reagent.dom :as rdom]
-            [reagent.ratom :as ratom]
-            [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
-            [sci.configs.reagent.reagent :as sci.configs.reagent]
-            [sci.core :as sci]))
+            [reagent.ratom :as ratom]))
 
-(defn localstorage-set! [key val]
-  (when (exists? js/window)
-    (.setItem (.-localStorage js/window) key val)))
-
-(defn localstorage-get [key]
-  (when (exists? js/window)
-    (cljs.reader/read-string (.getItem (.-localStorage js/window) key))))
 
 (when (exists? js/window)
   ;; conditionalized currently because this throws in node
   ;; TypeError: Cannot assign to read only property 'reagentRender' of object '#<Object>'
   (r/set-default-compiler! (r/create-compiler {:function-components true})))
 
-(defn color-classes [selected?]
-  {:value-color (if selected? "white-90" "dark-green")
-   :symbol-color (if selected? "white-90" "dark-blue")
-   :prefix-color (if selected? "white-50" "black-30")
-   :label-color (if selected? "white-90" "black-60")
-   :badge-background-color (if selected? "bg-white-20" "bg-black-10")})
-
-(declare inspect inspect-presented reagent-viewer)
+(declare inspect inspect-presented reagent-viewer html html-viewer)
 
 (def nbsp (gstring/unescapeEntities "&nbsp;"))
-
-(declare html html-viewer)
 
 (defn toc-items [items]
   (reduce
@@ -111,6 +89,16 @@
           [:circle {:cx "20.9101" :cy "6.8555" :r "1.71143" :transform "rotate(-120 20.9101 6.8555)" :fill "currentColor"}]
           [:circle {:cx "12" :cy "1.71143" :r "1.71143" :fill "currentColor"}]]])]]))
 
+
+(defn localstorage-set! [key val]
+  (when (exists? js/window)
+    (.setItem (.-localStorage js/window) key val)))
+
+(defn localstorage-get [key]
+  (when (exists? js/window)
+    (cljs.reader/read-string (.getItem (.-localStorage js/window) key))))
+
+
 (def local-storage-dark-mode-key "clerk-darkmode")
 
 (defn set-dark-mode! [dark-mode?]
@@ -131,7 +119,7 @@
 
 (defonce !eval-counter (r/atom 0))
 
-(defn notebook [{:as _doc xs :blocks :keys [bundle? toc toc-visibility]}]
+(defn render-notebook [{:as _doc xs :blocks :keys [bundle? toc toc-visibility]}]
   (r/with-let [local-storage-key "clerk-navbar"
                !state (r/atom {:toc (toc-items (:children toc))
                                :md-toc toc
@@ -181,37 +169,6 @@
                              [inspect-presented x]]))
                         xs))]]]))))
 
-
-(defn eval-viewer-fn [eval-f form]
-  (try (eval-f form)
-       (catch js/Error e
-         (throw (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)))))
-
-(defonce !edamame-opts
-  (atom {:all true
-         :row-key :line
-         :col-key :column
-         :location? seq?
-         :end-location false
-         :read-cond :allow
-         :readers
-         (fn [tag]
-           (or (get {'viewer-fn   (partial eval-viewer-fn viewer/->viewer-fn)
-                     'viewer-eval (partial eval-viewer-fn *eval*)} tag)
-               (fn [value]
-                 (with-viewer :tagged-value
-                   {:tag tag
-                    :space? (not (vector? value))
-                    :value (cond-> value
-                             (and (vector? value) (number? (second value)))
-                             (update 1 (fn [memory-address]
-                                         (with-viewer :number-hex memory-address))))}))))
-         :features #{:clj}}))
-
-
-(defn ^:export read-string [s]
-  (edamame/parse-string s @!edamame-opts))
-
 (defn opts->query [opts]
   (->> opts
        (map #(update % 0 name))
@@ -219,10 +176,11 @@
        (str/join "&")))
 
 
-
 #_(opts->query {:s 12 :num 42})
 
-(defn unreadable-edn-viewer [edn]
+
+
+(defn render-unreadable-edn [edn]
   (html [:span.inspected-value.whitespace-nowrap.cmt-default edn]))
 
 (defn error-badge [& content]
@@ -246,6 +204,9 @@
    (when-some [data (.-data error)]
      [:div.mt-2 [inspect data]])])
 
+
+
+
 (defn error-boundary [!error & _]
   (r/create-class
    {:constructor (fn [_ _])
@@ -262,6 +223,11 @@
 (defn use-handle-error []
   (partial reset! (react/useContext (view-context/get-context :!error))))
 
+;; TODO: drop this
+(defn read-string [s]
+  (js/nextjournal.clerk.sci_env.read-string s))
+
+
 (defn fetch! [{:keys [blob-id]} opts]
   #_(js/console.log :fetch! blob-id opts)
   (-> (js/fetch (str "_blob/" blob-id (when (seq opts)
@@ -270,7 +236,7 @@
       (.then #(try (read-string %)
                    (catch js/Error e
                      (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
-                     (unreadable-edn-viewer %))))))
+                     (render-unreadable-edn %))))))
 
 (defn read-result [{:nextjournal/keys [edn string]} !error]
   (if edn
@@ -278,9 +244,9 @@
       (read-string edn)
       (catch js/Error e
         (reset! !error e)))
-    (unreadable-edn-viewer string)))
+    (render-unreadable-edn string)))
 
-(defn result-viewer [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
+(defn render-result [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
   (html (r/with-let [!hash (atom hash)
                      !error (r/atom nil)
                      !desc (r/atom (read-result result !error))
@@ -325,13 +291,14 @@
     (if (and hover-path prompt-multi-expand? (= (count path) hover-path-count))
       (swap! !expanded-at (fn [expanded-at]
                             (reduce
-                              (fn [acc [path expanded?]]
-                                (if (and (coll? path) (vector? path) (= (count path) hover-path-count))
-                                  (assoc acc path (not hover-path-expanded?))
-                                  (assoc acc path expanded?)))
-                              {}
-                              expanded-at)))
+                             (fn [acc [path expanded?]]
+                               (if (and (coll? path) (vector? path) (= (count path) hover-path-count))
+                                 (assoc acc path (not hover-path-expanded?))
+                                 (assoc acc path expanded?)))
+                             {}
+                             expanded-at)))
       (swap! !expanded-at update path not))))
+
 
 (defn expandable? [xs]
   (< 1 (count xs)))
@@ -340,7 +307,7 @@
 (defn inspect-children [opts]
   ;; TODO: move update function onto viewer
   (map-indexed (fn [idx x]
-                 (inspect-presented (update opts :path (fnil conj []) idx) x))))
+                 (inspect-presented (update (assoc opts :idx idx) :path (fnil conj []) idx) x))))
 
 (def expand-style
   ["cursor-pointer"
@@ -392,9 +359,10 @@
       [:span
        (cond->> closing-paren (list? closing-paren) (into [:<>]))]]]))
 
-(defn coll-viewer [xs opts] (html (coll-view xs opts)))
+(defn render-coll [xs opts]
+  (html (coll-view xs opts)))
 
-(defn elision-viewer [{:as fetch-opts :keys [total offset unbounded?]} _]
+(defn render-elision [{:as fetch-opts :keys [total offset unbounded?]} _]
   (html [view-context/consume :fetch-fn
          (fn [fetch-fn]
            [:span.sans-serif.relative.whitespace-nowrap
@@ -420,9 +388,9 @@
             xs)
       (cond->> closing-paren (list? closing-paren) (into [:<>]))]]))
 
-(defn map-viewer [xs opts] (html (map-view xs opts)))
+(defn render-map [xs opts] (html (map-view xs opts)))
 
-(defn string-viewer [s {:as opts :keys [path !expanded-at] :or {path []}}]
+(defn render-string [s {:as opts :keys [path !expanded-at] :or {path []}}]
   (html
    (let [expanded? (get @!expanded-at path)]
      (into [:span]
@@ -433,7 +401,7 @@
                    (inspect-presented opts %)))
            (if (string? s) [s] s)))))
 
-(defn quoted-string-viewer [s {:as opts :keys [path viewer !expanded-at] :or {path []}}]
+(defn render-quoted-string [s {:as opts :keys [path viewer !expanded-at] :or {path []}}]
   (let [{:keys [closing-paren]} viewer]
     (html [:span.cmt-string.inspected-value.whitespace-nowrap.inline-flex
            [:span
@@ -441,11 +409,11 @@
               [expand-button !expanded-at "\"" path]
               [:span "\""])]
            [:div
-            (viewer/->value (string-viewer s opts))
+            (viewer/->value (render-string s opts))
             "\""
             closing-paren]])))
 
-(defn number-viewer [num]
+(defn render-number [num]
   (html [:span.cmt-number.inspected-value
          (if (js/Number.isNaN num) "NaN" (str num))]))
 
@@ -471,7 +439,7 @@
   [:svg.h-4.w-4 {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor"}
    [:path {:fill-rule "evenodd" :d "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" :clip-rule "evenodd"}]])
 
-(defn table-error [[data]]
+(defn render-table-error [[data]]
   ;; currently boxing the value in a vector to retain the type info
   ;; TODO: find a better way to do this
   (html
@@ -495,7 +463,7 @@
     [:div.mt-2.flex.items-center
      [:div.text-green-500.mr-2 check-icon]
      [inspect {:head [:column-1 :column-2]
-                         :rows [[1 3] [2 4]]}]]]))
+               :rows [[1 3] [2 4]]}]]]))
 
 
 (defn throwable-view [{:keys [via trace]}]
@@ -519,19 +487,19 @@
                    [:td.py-1.pr-6 call]]))
            trace)]]])
 
-(defn throwable-viewer [ex]
+(defn render-throwable [ex]
   (html [throwable-view ex]))
 
-(defn tagged-value
-  ([tag value] (tagged-value {:space? true} tag value))
+(defn render-tagged-value
+  ([tag value] (render-tagged-value {:space? true} tag value))
   ([{:keys [space?]} tag value]
    [:span.inspected-value.whitespace-nowrap
     [:span.cmt-meta tag] (when space? nbsp) value]))
 
 (defn normalize-viewer-meta [x]
   (if-let [viewer (-> x meta :nextjournal/viewer)]
-    (with-viewer ({:html html-viewer
-                   :reagent reagent-viewer} viewer viewer) x)
+    (viewer/with-viewer ({:html html-viewer
+                          :reagent reagent-viewer} viewer viewer) x)
     x))
 
 (defonce !doc (ratom/atom nil))
@@ -578,11 +546,13 @@
        #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
 
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
-       ;; We use ^{:key viewer} so a view is only unmounted if its viewer has changed.
-       ^{:key viewer} [inspect-presented
-                       (merge opts {:viewer viewer} (:nextjournal/opts x))
-                       viewer
-                       value])))
+       ;; When using ^{:key viewer} we get duplicate keys in homogenous collections so also add idx key
+       ;; TODO: clarify if this is ok.
+       ^{:key (str viewer (:idx opts))}
+       [inspect-presented
+        (merge opts {:viewer viewer} (:nextjournal/opts x))
+        viewer
+        value])))
   ([opts viewer value]
    (let [x (render-with-viewer opts viewer value)]
      (if (valid-react-element? x)
@@ -628,7 +598,7 @@
 (defn clerk-eval [form]
   (.ws_send ^js goog/global (pr-str form)))
 
-(defn katex-viewer [tex-string {:keys [inline?]}]
+(defn render-katex [tex-string {:keys [inline?]}]
   (html (katex/to-html-string tex-string (j/obj :displayMode (not inline?)))))
 
 (defn html-render [markup]
@@ -641,10 +611,13 @@
   {:render-fn html-render})
 
 (def html
-  (partial with-viewer html-viewer))
+  (partial viewer/with-viewer html-viewer))
 
-(defn reagent-viewer [x]
+(defn render-reagent [x]
   (r/as-element (cond-> x (fn? x) vector)))
+
+;; TODO: remove
+(def reagent-viewer render-reagent)
 
 (defn use-promise
   "React hook which resolves a promise and handles errors."
@@ -652,15 +625,15 @@
   (let [handle-error (use-handle-error)
         [v v!] (react/useState)]
     (react/useEffect (fn [] (-> p
-                                (.then #(v! (constantly %)))
-                                (.catch handle-error))))
+                               (.then #(v! (constantly %)))
+                               (.catch handle-error))))
     v))
 
 (defn ^js use-d3-require [package]
   (let [p (react/useMemo #(apply d3-require/require
                                  (cond-> package
-                                         (string? package)
-                                         list))
+                                   (string? package)
+                                   list))
                          #js[(str package)])]
     (use-promise p)))
 
@@ -670,7 +643,7 @@
     (f package)
     loading-view))
 
-(defn vega-lite-viewer [value]
+(defn render-vega-lite [value]
   (let [handle-error (use-handle-error)
         vega-embed (use-d3-require "vega-embed@6.11.1")
         ref-fn (react/useCallback #(when %
@@ -683,7 +656,7 @@
                [:div.vega-lite {:ref ref-fn}]]
               default-loading-view)))))
 
-(defn plotly-viewer [value]
+(defn render-plotly [value]
   (let [plotly (use-d3-require "plotly.js-dist@2.15.1")
         ref-fn (react/useCallback #(when %
                                      (.newPlot plotly % (clj->js value)))
@@ -695,14 +668,14 @@
           [:div.plotly {:ref ref-fn}]]
          default-loading-view)))))
 
-(def mathjax-viewer (comp normalize-viewer-meta mathjax/viewer))
-(def code-viewer (comp normalize-viewer-meta code/viewer))
+(def render-mathjax (comp normalize-viewer-meta mathjax/viewer))
+(def render-code (comp normalize-viewer-meta code/viewer))
 
 (def expand-icon
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
    [:path {:fill-rule "evenodd" :d "M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" :clip-rule "evenodd"}]])
 
-(defn foldable-code-viewer [code-string]
+(defn render-folded-code [code-string]
   (r/with-let [!hidden? (r/atom true)]
     (html (if @!hidden?
             [:div.relative.pl-12.font-sans.text-slate-400.cursor-pointer.flex.overflow-y-hidden.group
@@ -711,8 +684,8 @@
                :on-click #(swap! !hidden? not)}
               "show code"]
              #_#_#_[:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.hover:text-slate-500
-              {:class "text-[10px]"}
-              "hide result"]
+                    {:class "text-[10px]"}
+                    "hide result"]
              [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-75.hover:text-slate-500
               {:class "text-[10px]"}
               "cached in memory"]
@@ -726,8 +699,8 @@
                 :on-click #(swap! !hidden? not)}
                "hide code"]
               #_#_#_[:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.hover:text-slate-500
-               {:class "text-[10px]"}
-               "hide result"]
+                     {:class "text-[10px]"}
+                     "hide result"]
               [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-75.hover:text-slate-500
                {:class "text-[10px]"}
                "cached in memory"]
@@ -735,7 +708,7 @@
                {:class "text-[10px]"}
                "evaluated in 0.2s"]]
              [:div.viewer-code.mb-2.relative {:style {:margin-top 0}}
-              [inspect-presented (code-viewer code-string)]]]))))
+              [inspect-presented (render-code code-string)]]]))))
 
 
 (defn url-for [{:as src :keys [blob-id]}]
@@ -744,151 +717,4 @@
     (str "/_blob/" blob-id (when-let [opts (seq (dissoc src :blob-id))]
                              (str "?" (opts->query opts))))))
 
-(def ^{:doc "Stub implementation to be replaced during static site generation. Clerk is only serving one page currently."}
-  doc-url
-  (sci/new-var 'doc-url (fn [x] (str "#" x))))
 
-(def sci-viewer-namespace
-  {'inspect-presented inspect-presented
-   'inspect inspect
-   'valid-react-element? valid-react-element?
-   'result-viewer result-viewer
-   'coll-view coll-view
-   'coll-viewer coll-viewer
-   'map-view map-view
-   'map-viewer map-viewer
-   'elision-viewer elision-viewer
-   'tagged-value tagged-value
-   'inspect-children inspect-children
-   'set-viewers! set-viewers!
-   'string-viewer string-viewer
-   'quoted-string-viewer quoted-string-viewer
-   'number-viewer number-viewer
-   'table-error table-error
-   'with-d3-require with-d3-require
-   'clerk-eval clerk-eval
-   'consume-view-context view-context/consume
-
-   'throwable-viewer throwable-viewer
-   'notebook-viewer notebook
-   'katex-viewer katex-viewer
-   'mathjax-viewer mathjax-viewer
-   'code-viewer code-viewer
-   'foldable-code-viewer foldable-code-viewer
-   'plotly-viewer plotly-viewer
-   'vega-lite-viewer vega-lite-viewer
-   'reagent-viewer reagent-viewer
-   'unreadable-edn-viewer unreadable-edn-viewer
-
-   'doc-url doc-url
-   'url-for url-for
-   'read-string read-string
-
-
-   ;; clerk viewer API
-   'code code
-   'col col
-   'html html-render
-   'md md
-   'plotly plotly
-   'row row
-   'table table
-   'tex tex
-   'vl vl
-   'present viewer/present
-   'mark-presented viewer/mark-presented
-   'with-viewer with-viewer
-   'with-viewers with-viewers
-   'add-viewers viewer/add-viewers
-   'update-val viewer/update-val})
-
-(defonce !sci-ctx
-  (atom (sci/init {:async? true
-                   :disable-arity-checks true
-                   :classes {'js goog/global
-                             'framer-motion framer-motion
-                             :allow :all}
-                   :aliases {'j 'applied-science.js-interop
-                             'reagent 'reagent.core
-                             'v 'nextjournal.clerk.sci-viewer
-                             'p 'nextjournal.clerk.parser}
-                   :namespaces (merge {'nextjournal.clerk.sci-viewer sci-viewer-namespace
-                                       'nextjournal.clerk.parser {'parse-clojure-string clerk.parser/parse-clojure-string
-                                                                  'parse-markdown-string clerk.parser/parse-markdown-string}}
-                                      sci.configs.js-interop/namespaces
-                                      sci.configs.reagent/namespaces)})))
-
-(defn ^:export eval-form [f]
-  (sci/eval-form @!sci-ctx f))
-
-(defn get-rgba [x y img-width img-data]
-  (let [coord (* (+ (* img-width y) x) 4)]
-    {:r (.at img-data coord)
-     :g (.at img-data (+ coord 1))
-     :b (.at img-data (+ coord 2))
-     :a (.at img-data (+ coord 3))}))
-
-(defn white? [x y img-width img-data]
-  (= {:r 255 :g 255 :b 255 :a 255} (get-rgba x y img-width img-data)))
-
-(defn scan-y [from-top? img-width img-height img-data]
-  (loop [y (if from-top? 0 (dec img-height))
-         colored-col nil]
-    (if (and (not colored-col) (if from-top? (< y img-height) (< -1 y)))
-      (recur
-       (if from-top? (inc y) (dec y))
-       (loop [x 0]
-         (cond
-           (not (white? x y img-width img-data)) y
-           (< x (dec img-width)) (recur (inc x)))))
-      colored-col)))
-
-(defn scan-x [from-left? img-width img-height img-data]
-  (loop [x (if from-left? 0 (dec img-width))
-         colored-row nil]
-    (if (and (not colored-row) (if from-left? (< x img-width) (<= 0 x)))
-      (recur
-       (if from-left? (inc x) (dec x))
-       (loop [y 0]
-         (cond
-           (not (white? x y img-width img-data)) x
-           (< y (dec img-height)) (recur (inc y)))))
-      colored-row)))
-
-(defn ^:export trim-image
-  ([img] (trim-image img {}))
-  ([img {:keys [padding] :or {padding 0}}]
-   (let [canvas (js/document.createElement "canvas")
-         ctx (.getContext canvas "2d")
-         img-width (.-naturalWidth img)
-         img-height (.-naturalHeight img)
-         _ (.setAttribute canvas "width" img-width)
-         _ (.setAttribute canvas "height" img-height)
-         _ (.drawImage ctx img 0 0 img-width img-height)
-         img-data (.-data (.getImageData ctx 0 0 img-width img-height))
-         x1 (scan-x true img-width img-height img-data)
-         y1 (scan-y true img-width img-height img-data)
-         x2 (scan-x false img-width img-height img-data)
-         y2 (scan-y false img-width img-height img-data)
-         dx (inc (- x2 x1))
-         dy (inc (- y2 y1))
-         trimmed-data (.getImageData ctx x1 y1 dx dy)
-         _ (.setAttribute canvas "width" (+ dx (* padding 2)))
-         _ (.setAttribute canvas "height" (+ dy (* padding 2)))
-         _ (.clearRect ctx 0 0 (+ dx padding) (+ dy padding))
-         _ (set! (.-fillStyle ctx) "white")
-         _ (.fillRect ctx 0 0 (.-width canvas) (.-height canvas))
-         _ (.putImageData ctx trimmed-data padding padding)
-         result-img (js/document.createElement "img")]
-     (.setAttribute result-img "src" (.toDataURL canvas "image/png"))
-     result-img)))
-
-(defn ^:export append-trimmed-image [base64 id]
-  (let [img (js/document.createElement "img")]
-    (.addEventListener img "load" (fn [event]
-                                    (let [trimmed-img (trim-image (.-target event) {:padding 20})]
-                                      (.setAttribute trimmed-img "id" id)
-                                      (.. js/document -body (appendChild trimmed-img)))))
-    (.setAttribute img "src" base64)))
-
-(set! *eval* eval-form)

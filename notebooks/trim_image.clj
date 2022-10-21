@@ -23,9 +23,9 @@
                                                        result-padding (js/document.getElementById "result-padding")
                                                        img (.-target event)]
                                                    (j/assoc! result :innerHTML "")
-                                                   (.appendChild result (js/nextjournal.clerk.sci_viewer.trim_image img))
+                                                   (.appendChild result (js/nextjournal.clerk.trim_image.trim_image img))
                                                    (j/assoc! result-padding :innerHTML "")
-                                                   (.appendChild result-padding (js/nextjournal.clerk.sci_viewer.trim_image img {:padding 20}))))}]
+                                                   (.appendChild result-padding (js/nextjournal.clerk.trim_image.trim_image img {:padding 20}))))}]
        [:h4 "Trimmed"]
        [:div.flex
         [:div#result.border.border-red-500]]

@@ -4,6 +4,8 @@
 (def card-viewer
   {:transform-fn (comp v/mark-presented (v/update-val v/->viewer-eval))
    :render-fn '(fn [data]
-                 (if (v/valid-react-element? data) data (v/html [v/inspect data])))})
+                 (if (nextjournal.clerk.render/valid-react-element? data)
+                   data
+                   (v/html [nextjournal.clerk.render/inspect data])))})
 
 (defmacro card [body] `(v/with-viewer card-viewer '~body))
