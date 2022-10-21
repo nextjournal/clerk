@@ -53,18 +53,10 @@
 (def sci-viewer-namespace
   {'inspect-presented render/inspect-presented
    'inspect render/inspect
-   'valid-react-element? render/valid-react-element?
-   'result-viewer render/result-viewer
-   'coll-view render/coll-view
-   'map-view render/map-view
-   'tagged-value render/tagged-value
    'inspect-children render/inspect-children
    'set-viewers! render/set-viewers!
    'clerk-eval render/clerk-eval
    'consume-view-context view-context/consume
-
-   'unreadable-edn-viewer render/unreadable-edn-viewer
-
    'doc-url doc-url
    'url-for render/url-for
    'read-string read-string

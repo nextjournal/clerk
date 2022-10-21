@@ -180,7 +180,7 @@
 
 
 
-(defn unreadable-edn-viewer [edn]
+(defn render-unreadable-edn [edn]
   (html [:span.inspected-value.whitespace-nowrap.cmt-default edn]))
 
 (defn error-badge [& content]
@@ -236,7 +236,7 @@
       (.then #(try (read-string %)
                    (catch js/Error e
                      (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
-                     (unreadable-edn-viewer %))))))
+                     (render-unreadable-edn %))))))
 
 (defn read-result [{:nextjournal/keys [edn string]} !error]
   (if edn
@@ -244,9 +244,9 @@
       (read-string edn)
       (catch js/Error e
         (reset! !error e)))
-    (unreadable-edn-viewer string)))
+    (render-unreadable-edn string)))
 
-(defn result-viewer [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
+(defn render-result [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
   (html (r/with-let [!hash (atom hash)
                      !error (r/atom nil)
                      !desc (r/atom (read-result result !error))
@@ -489,8 +489,8 @@
 (defn render-throwable [ex]
   (html [throwable-view ex]))
 
-(defn tagged-value
-  ([tag value] (tagged-value {:space? true} tag value))
+(defn render-tagged-value
+  ([tag value] (render-tagged-value {:space? true} tag value))
   ([{:keys [space?]} tag value]
    [:span.inspected-value.whitespace-nowrap
     [:span.cmt-meta tag] (when space? nbsp) value]))
@@ -642,7 +642,7 @@
     (f package)
     loading-view))
 
-(defn vega-lite-viewer [value]
+(defn render-vega-lite [value]
   (let [handle-error (use-handle-error)
         vega-embed (use-d3-require "vega-embed@6.11.1")
         ref-fn (react/useCallback #(when %
@@ -655,7 +655,7 @@
                [:div.vega-lite {:ref ref-fn}]]
               default-loading-view)))))
 
-(defn plotly-viewer [value]
+(defn render-plotly [value]
   (let [plotly (use-d3-require "plotly.js-dist@2.15.1")
         ref-fn (react/useCallback #(when %
                                      (.newPlot plotly % (clj->js value)))
