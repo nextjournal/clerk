@@ -184,7 +184,7 @@
 #_(expand-paths {:paths ["notebooks/viewers**"]})
 
 (defn build-static-app! [opts]
-  (let [{:as opts :keys [paths download-cache-fn upload-cache-fn bundle? report-fn]} (process-build-opts opts)
+  (let [{:as opts :keys [paths best-effort download-cache-fn upload-cache-fn bundle? report-fn]} (process-build-opts opts)
         {:keys [expanded-paths error]} (try {:expanded-paths (expand-paths opts)}
                                             (catch Exception e
                                               {:error e}))
@@ -199,7 +199,11 @@
         {state :result duration :time-ms} (eval/time-ms (reduce (fn [state doc]
                                                                   (try (conj state (-> doc analyzer/build-graph analyzer/hash))
                                                                        (catch Exception e
-                                                                         (reduced {:error e}))))
+                                                                         (if best-effort
+                                                                           ;; Continue processing the other notebooks
+                                                                           ;; in case of errors.
+                                                                           state
+                                                                           (reduced {:error e})))))
                                                                 []
                                                                 state))
         _ (if-let [error (:error state)]

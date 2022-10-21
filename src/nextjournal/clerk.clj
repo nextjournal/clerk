@@ -425,6 +425,7 @@
   - `:bundle`    - if true results in a single self-contained html file including inlined images
   - `:browse`    - if true will open browser with the built file on success
   - `:dashboard` - if true will start a server and show a rich build report in the browser (use with `:bundle` to open browser)
+  - `:best-effort` - if true will keep processing other notebooks even in case of some failing
   - `:out-path`  - a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
   - `:git/sha`, `:git/url` - when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
   "
@@ -436,10 +437,11 @@
                              :bundle {:desc "Flag to build a self-contained html file inlcuding inlined images"}
                              :browse {:desc "Opens the browser on boot when set."}
                              :dashboard {:desc "Flag to serve a dashboard with the build progress."}
+                             :best-effort {:desc "Continue processing other notebooks in a best-effort approach even if 1 or more fail."}
                              :out-path {:desc "Path to an build output folder, defaults to \"public/build\"."}
                              :git/sha {:desc "Git sha to use for the backlink."}
                              :git/url {:desc "Git url to use for the backlink."}}
-                      :order [:paths :paths-fn :index :browse :bundle :dashbaord :out-path :git/sha :git/url]}}
+                      :order [:paths :paths-fn :index :browse :bundle :dashboard :best-effort :out-path :git/sha :git/url]}}
   [build-opts]
   (if (:help build-opts)
     (if-let [format-opts (and (started-via-bb-cli? build-opts) (requiring-resolve 'babashka.cli/format-opts))]
