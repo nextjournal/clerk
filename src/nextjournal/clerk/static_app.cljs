@@ -1,7 +1,7 @@
 (ns nextjournal.clerk.static-app
   (:require [clojure.set :as set]
             [clojure.string :as str]
-            [nextjournal.clerk.sci-env :as sci-viewer]
+            [nextjournal.clerk.sci-env :as sci-env]
             [nextjournal.clerk.render :as render]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.devcards :as dc]
@@ -137,7 +137,7 @@
     (reset! !state (assoc state
                           :path->doc url->doc
                           :url->path (set/map-invert path->url)))
-    (sci/alter-var-root sci-viewer/doc-url (constantly (partial doc-url @!state)))
+    (sci/alter-var-root sci-env/doc-url (constantly (partial doc-url @!state)))
     (if bundle?
       (let [router (rf/router (get-routes url->doc))]
         (rfe/start! router #(reset! !match %1) {:use-fragment true}))
@@ -145,5 +145,5 @@
     (mount)))
 
 (defn ^:export ssr [state-str]
-  (init (sci-viewer/read-string state-str))
+  (init (sci-env/read-string state-str))
   (dom-server/render-to-string [root]))
