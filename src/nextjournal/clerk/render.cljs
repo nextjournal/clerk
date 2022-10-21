@@ -1,13 +1,12 @@
 (ns nextjournal.clerk.render
   (:require ["d3-require" :as d3-require]
-            ["framer-motion" :as framer-motion]
             ["react" :as react]
             [applied-science.js-interop :as j]
+            [cljs.reader]
             [clojure.string :as str]
             [goog.object]
             [goog.string :as gstring]
-            [nextjournal.clerk.parser :as clerk.parser]
-            [nextjournal.clerk.viewer :as viewer :refer [code md plotly tex table vl row col with-viewer with-viewers]]
+            [nextjournal.clerk.viewer :as viewer]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.ui.components.icon :as icon]
             [nextjournal.ui.components.motion :as motion]
@@ -498,8 +497,8 @@
 
 (defn normalize-viewer-meta [x]
   (if-let [viewer (-> x meta :nextjournal/viewer)]
-    (with-viewer ({:html html-viewer
-                   :reagent reagent-viewer} viewer viewer) x)
+    (viewer/with-viewer ({:html html-viewer
+                          :reagent reagent-viewer} viewer viewer) x)
     x))
 
 (defonce !doc (ratom/atom nil))
@@ -609,7 +608,7 @@
   {:render-fn html-render})
 
 (def html
-  (partial with-viewer html-viewer))
+  (partial viewer/with-viewer html-viewer))
 
 (defn reagent-viewer [x]
   (r/as-element (cond-> x (fn? x) vector)))
