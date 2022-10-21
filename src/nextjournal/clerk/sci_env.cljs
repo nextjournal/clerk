@@ -50,37 +50,24 @@
   doc-url
   (sci/new-var 'doc-url (fn [x] (str "#" x))))
 
-(def sci-viewer-namespace
-  {'inspect-presented render/inspect-presented
-   'inspect render/inspect
-   'inspect-children render/inspect-children
-   'set-viewers! render/set-viewers!
-   'clerk-eval render/clerk-eval
-   'consume-view-context view-context/consume
-   'doc-url doc-url
-   'url-for render/url-for
-   'read-string read-string
-
-
-   ;; clerk viewer API
-   'code code
-   'col col
-   'html render/html-render
-   'md md
-   'plotly plotly
-   'row row
-   'table table
-   'tex tex
-   'vl vl
-   'present viewer/present
-   'mark-presented viewer/mark-presented
-   'with-viewer with-viewer
-   'with-viewers with-viewers
-   'add-viewers viewer/add-viewers
-   'update-val viewer/update-val})
+(def viewer-namespace
+  (merge (sci/copy-ns nextjournal.clerk.viewer (sci/create-ns 'nextjournal.clerk.viewer))
+         {'html render/html-render
+          'doc-url doc-url
+          'url-for render/url-for
+          'read-string read-string
+          'clerk-eval render/clerk-eval
+          'consume-view-context view-context/consume
+          'inspect-presented render/inspect-presented
+          'inspect render/inspect
+          'inspect-children render/inspect-children
+          'set-viewers! render/set-viewers!}))
 
 (def render-namespace
   (sci/copy-ns nextjournal.clerk.render (sci/create-ns 'nextjournal.clerk.render)))
+
+(def parser-namespace
+  (sci/copy-ns nextjournal.clerk.parser (sci/create-ns 'nextjournal.clerk.parser)))
 
 (defonce !sci-ctx
   (atom (sci/init {:async? true
@@ -90,12 +77,11 @@
                              :allow :all}
                    :aliases {'j 'applied-science.js-interop
                              'reagent 'reagent.core
-                             'v 'nextjournal.clerk.sci-viewer
+                             'v 'nextjournal.clerk.viewer
                              'p 'nextjournal.clerk.parser}
                    :namespaces (merge {'nextjournal.clerk.render render-namespace
-                                       'nextjournal.clerk.sci-viewer sci-viewer-namespace
-                                       'nextjournal.clerk.parser {'parse-clojure-string clerk.parser/parse-clojure-string
-                                                                  'parse-markdown-string clerk.parser/parse-markdown-string}}
+                                       'nextjournal.clerk.viewer viewer-namespace
+                                       'nextjournal.clerk.parser parser-namespace}
                                       sci.configs.js-interop/namespaces
                                       sci.configs.reagent/namespaces)})))
 

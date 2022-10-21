@@ -359,7 +359,8 @@
       [:span
        (cond->> closing-paren (list? closing-paren) (into [:<>]))]]]))
 
-(defn render-coll [xs opts] (html (coll-view xs opts)))
+(defn render-coll [xs opts]
+  (html (coll-view xs opts)))
 
 (defn render-elision [{:as fetch-opts :keys [total offset unbounded?]} _]
   (html [view-context/consume :fetch-fn

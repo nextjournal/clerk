@@ -742,7 +742,9 @@
       :pred goog/isObject
       :page-size 20
       :opening-paren "{" :closing-paren "}"
-      :render-fn '(fn [v opts] (v/html (nextjournal.clerk.render/render-tagged-value {:space? true} "#js" (v/map-view v opts))))
+      :render-fn '(fn [v opts] (v/html (nextjournal.clerk.render/render-tagged-value {:space? true}
+                                                                                    "#js"
+                                                                                    (nextjournal.clerk.render/map-view v opts))))
       :transform-fn (update-val (fn [^js o]
                                   (into {}
                                         (comp (remove (fn [k] (identical? "function" (goog/typeOf (j/get o k)))))
@@ -759,7 +761,10 @@
      {:name :js-array
       :pred js-iterable?
       :transform-fn (update-val seq)
-      :render-fn '(fn [v opts] (v/html (nextjournal.clerk.render/render-tagged-value {:space? true} "#js" (v/coll-view v opts))))
+      :render-fn '(fn [v opts]
+                    (v/html (nextjournal.clerk.render/render-tagged-value {:space? true}
+                                                                          "#js"
+                                                                          (nextjournal.clerk.render/coll-view v opts))))
       :opening-paren "[" :closing-paren "]"
       :page-size 20}))
 

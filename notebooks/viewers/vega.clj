@@ -3,8 +3,9 @@
   (:require [nextjournal.clerk :as clerk]))
 
 ;; ## Geoshape example with requesting data
+[1 2 3]
 
-(clerk/vl {:width 700 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
+(clerk/vl {:width 600 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
                                          :format {:type "topojson" :feature "counties"}}
            :transform [{:lookup "id" :from {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
                                             :key "id" :fields ["rate"]}}]
