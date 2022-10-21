@@ -5,6 +5,7 @@
   `js/document` or exclude libraries."
   (:require [clojure.java.io :as io]
             [clojure.edn :as edn]
+            [clojure.string :as str]
             [nextjournal.clerk.config :as config])
   (:import (org.graalvm.polyglot Context Source)))
 
@@ -25,15 +26,22 @@
     (assert (.canExecute fn-ref) (str "cannot execute " fn))
     (.execute fn-ref args)))
 
+(defn replace-self [script-contents]
+  ;; shadow's esm target currently needs this replacement, see
+  ;; https://clojurians.slack.com/archives/C6N245JGG/p1666353696590419
+  (str/replace script-contents (re-pattern "self") "globalThis"))
+
 (def viewer-js-source
   ;; run `bb build:js` on shell to generate
-  (.build (Source/newBuilder "js" (slurp "build/viewer.js" #_(@config/!asset-map "/js/viewer.js")) "viewer.js")))
+  (.build (Source/newBuilder "js" (replace-self (slurp "build/viewer.js" #_(@config/!asset-map "/js/viewer.js"))) "viewer.mjs")))
 
-(def polyfill-js-source
-  (.build (Source/newBuilder "js" "function setTimeout(t) { };" "polyfills.js")))
+(def !eval-viewer-source
+  (delay (.eval context viewer-js-source)))
+
+(defn render [edn-string]
+  (force !eval-viewer-source)
+  (execute-fn context "nextjournal.clerk.static_app.ssr" edn-string))
 
 (comment
-  (.eval context polyfill-js-source)
-  (.eval context viewer-js-source)
-  
-  (execute-fn context "nextjournal.clerk.static_app.ssr" (slurp "build/static_app_state.edn")))
+  (time
+   (render (slurp "build/static_app_state.edn"))))

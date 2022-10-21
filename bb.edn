@@ -24,7 +24,7 @@
 
   build:js {:doc "Builds JS"
             :depends [yarn-install]
-            :task (clojure "-M:sci:demo:dev release browser")}
+            :task (clojure "-M:sci:demo:dev release viewer")}
 
   write-hash {:doc "Write viewer resource hash to resources. Intended to be used in a pre-commit hook."
               :task viewer-resources-hashing/write-viewer-resource-hash}
