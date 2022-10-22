@@ -31,8 +31,8 @@
   (clerk/with-viewer
     {:transform-fn (comp v/mark-presented (v/update-val (fn [var] {:var-name (symbol var) :value @@var})))
      :render-fn `(fn [{:keys [var-name value]}]
-                   (v/html [:input {:type :range :min ~min :max ~max :value value
-                                    :on-change #(v/clerk-eval `(reset! ~var-name (Integer/parseInt ~(.. % -target -value))))}]))}
+                   [:input {:type :range :min ~min :max ~max :value value
+                            :on-change #(v/clerk-eval `(reset! ~var-name (Integer/parseInt ~(.. % -target -value))))}])}
     var))
 
 ;; Drag the following slider `(slider #'num★ {:min 1 :max 44})` to control the number of stars (currently **`(deref num★)`**) in our custom horizontal rules.

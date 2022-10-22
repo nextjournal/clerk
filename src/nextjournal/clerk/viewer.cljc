@@ -256,7 +256,7 @@
 
 (defn into-markup [markup]
   (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
-    (-> (with-viewer {:name :html- :render-fn 'v/html} wrapped-value)
+    (-> (with-viewer {:name :html- :render-fn 'identity} wrapped-value)
         mark-presented
         (update :nextjournal/value
                 (fn [{:as node :keys [text content]}]

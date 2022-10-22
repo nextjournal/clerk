@@ -11,17 +11,17 @@
                                            {:var-name (symbol var-from-def) :value @@var-from-def}))
                        clerk/mark-presented)
    :render-fn '(fn [{:keys [var-name value]}]
-                 (v/html [:div.my-1.relative
-                          [:input {:type :text
-                                   :auto-correct "off"
-                                   :spell-check "false"
-                                   :placeholder "Filter namespaces…"
-                                   :value value
-                                   :class "px-3 py-2 relative bg-white bg-white rounded text-base font-sans border border-slate-200 shadow-inner outline-none focus:outline-none focus:ring w-full"
-                                   :on-input #(v/clerk-eval `(reset! ~var-name ~(.. % -target -value)))}]
-                          [:button.absolute.right-2.text-xl.cursor-pointer
-                           {:class "top-1/2 -translate-y-1/2"
-                            :on-click #(v/clerk-eval `(reset! ~var-name ~(clojure.string/join "." (drop-last (clojure.string/split value #"\.")))))} "⏮"]]))})
+                 [:div.my-1.relative
+                  [:input {:type :text
+                           :auto-correct "off"
+                           :spell-check "false"
+                           :placeholder "Filter namespaces…"
+                           :value value
+                           :class "px-3 py-2 relative bg-white bg-white rounded text-base font-sans border border-slate-200 shadow-inner outline-none focus:outline-none focus:ring w-full"
+                           :on-input #(v/clerk-eval `(reset! ~var-name ~(.. % -target -value)))}]
+                  [:button.absolute.right-2.text-xl.cursor-pointer
+                   {:class "top-1/2 -translate-y-1/2"
+                    :on-click #(v/clerk-eval `(reset! ~var-name ~(clojure.string/join "." (drop-last (clojure.string/split value #"\.")))))} "⏮"]])})
 
 ^{::clerk/viewer text-input}
 (defonce !ns-query (atom "nextjournal.clerk"))
@@ -29,11 +29,11 @@
 
 ^{::clerk/viewers (clerk/add-viewers
                    [{:pred seq?
-                     :render-fn '#(v/html (into [:div.border.rounded-md.bg-white.shadow.flex.flex-col.mb-1]
-                                                (v/inspect-children %2) %1)) :page-size 20}
+                     :render-fn '#(into [:div.border.rounded-md.bg-white.shadow.flex.flex-col.mb-1]
+                                        (v/inspect-children %2) %1) :page-size 20}
                     {:pred string?
-                     :render-fn '(fn [ns] (v/html [:button.text-xs.font-medium.font-sans.cursor-pointer.px-3.py-2.hover:bg-blue-100.text-slate-700.text-left
-                                                   {:on-click #(v/clerk-eval `(reset! !ns-query ~ns))} ns]))}])}
+                     :render-fn '(fn [ns] [:button.text-xs.font-medium.font-sans.cursor-pointer.px-3.py-2.hover:bg-blue-100.text-slate-700.text-left
+                                          {:on-click #(v/clerk-eval `(reset! !ns-query ~ns))} ns])}])}
 (def ns-matches
   (filter (partial re-find (re-pattern @!ns-query)) (sort (map str (all-ns)))))
 
