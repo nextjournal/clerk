@@ -73,8 +73,8 @@
   [1 2 3 4 5])
 
 ^::clerk/no-cache
-(clerk/with-viewers (clerk/add-viewers [{:pred number? :render-fn '#(v[:div.inline-block {:style {:width 16 :height 16}
-                                                                                          :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}])
+(clerk/with-viewers (clerk/add-viewers [{:pred number? :render-fn '#(vector :div.inline-block {:style {:width 16 :height 16}
+                                                                                               :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")})}])
   (take 10 (repeatedly #(rand-int 2))))
 
 ^{::clerk/viewers
