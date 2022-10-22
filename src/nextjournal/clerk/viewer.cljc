@@ -132,82 +132,82 @@
 
 (defn with-viewer
 "Wraps the given value `x` and associates it with the given `viewer`. Takes an optional second `viewer-opts` arg."
-([viewer x] (with-viewer viewer nil x))
-([viewer viewer-opts x]
- (merge (when viewer-opts (normalize-viewer-opts viewer-opts))
-        (-> x
-            ensure-wrapped
-            (assoc :nextjournal/viewer (normalize-viewer viewer))))))
+  ([viewer x] (with-viewer viewer nil x))
+  ([viewer viewer-opts x]
+   (merge (when viewer-opts (normalize-viewer-opts viewer-opts))
+          (-> x
+              ensure-wrapped
+              (assoc :nextjournal/viewer (normalize-viewer viewer))))))
 
 ;; TODO: Think of a better name
 (defn with-viewer-extracting-opts [viewer & opts+items]
-;; TODO: maybe support sequantial & viewer-opts?
-(cond
-  (and (map? (first opts+items)) (not (wrapped-value? (first opts+items))))
-  (with-viewer viewer (first opts+items) (rest opts+items))
-
-  (and (sequential? (first opts+items)) (= 1 (count opts+items)))
-  (apply (partial with-viewer viewer) opts+items)
-
-  :else
-  (with-viewer viewer opts+items)))
+  ;; TODO: maybe support sequantial & viewer-opts?
+  (cond
+    (and (map? (first opts+items)) (not (wrapped-value? (first opts+items))))
+    (with-viewer viewer (first opts+items) (rest opts+items))
+    
+    (and (sequential? (first opts+items)) (= 1 (count opts+items)))
+    (apply (partial with-viewer viewer) opts+items)
+    
+    :else
+    (with-viewer viewer opts+items)))
 
 #_(with-viewer :latex "x^2")
 #_(with-viewer '#(vector :h3 "Hello " % "!") "x^2")
 
 (defn with-viewers
-"Binds viewers to types, eg {:boolean view-fn}"
-[viewers x]
-(-> x
-    ensure-wrapped
-    (assoc :nextjournal/viewers viewers)))
+  "Binds viewers to types, eg {:boolean view-fn}"
+  [viewers x]
+  (-> x
+      ensure-wrapped
+      (assoc :nextjournal/viewers viewers)))
 
 #_(->> "x^2" (with-viewer :latex) (with-viewers [{:name :latex :render-fn :mathjax}]))
 
 (defn get-safe
-([key] #(get-safe % key))
-([map key]
- (when (map? map)
-   (try (get map key) ;; can throw for e.g. sorted-map
-        (catch #?(:clj Exception :cljs js/Error) _e nil)))))
+  ([key] #(get-safe % key))
+  ([map key]
+   (when (map? map)
+     (try (get map key) ;; can throw for e.g. sorted-map
+          (catch #?(:clj Exception :cljs js/Error) _e nil)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; table viewer normalization
 
 (defn rpad-vec [v length padding]
-(vec (take length (concat v (repeat padding)))))
+  (vec (take length (concat v (repeat padding)))))
 
 (def missing-pred
-:nextjournal/missing)
+  :nextjournal/missing)
 
 (defn normalize-seq-of-seq [s]
-(let [max-count (count (apply max-key count s))]
-  {:rows (mapv #(rpad-vec (->value %) max-count missing-pred) s)}))
+  (let [max-count (count (apply max-key count s))]
+    {:rows (mapv #(rpad-vec (->value %) max-count missing-pred) s)}))
 
 (defn normalize-seq-of-map [s]
-(let [ks (->> s (mapcat keys) distinct vec)]
-  {:head ks
-   :rows (mapv (fn [m] (mapv #(get m % missing-pred) ks)) s)}))
+  (let [ks (->> s (mapcat keys) distinct vec)]
+    {:head ks
+     :rows (mapv (fn [m] (mapv #(get m % missing-pred) ks)) s)}))
 
 
 (defn normalize-map-of-seq [m]
-(let [ks (-> m keys vec)
-      m* (if (seq? (get m (first ks)))
-           (reduce (fn [acc [k s]] (assoc acc k (vec s))) {} m)
-           m)]
-  {:head ks
-   :rows (->> (range (count (val (apply max-key (comp count val) m*))))
+  (let [ks (-> m keys vec)
+        m* (if (seq? (get m (first ks)))
+             (reduce (fn [acc [k s]] (assoc acc k (vec s))) {} m)
+             m)]
+    {:head ks
+     :rows (->> (range (count (val (apply max-key (comp count val) m*))))
               (mapv (fn [i] (mapv #(get-in m* [% i] missing-pred) ks))))}))
 
 (defn normalize-seq-to-vec [{:keys [head rows]}]
-(cond-> {:rows (vec rows)}
-  head (assoc :head (vec head))))
+  (cond-> {:rows (vec rows)}
+    head (assoc :head (vec head))))
 
 (defn use-headers [s]
-(let [{:as table :keys [rows]} (normalize-seq-of-seq s)]
-  (-> table
-      (assoc :head (first rows))
-      (update :rows rest))))
+  (let [{:as table :keys [rows]} (normalize-seq-of-seq s)]
+    (-> table
+        (assoc :head (first rows))
+        (update :rows rest))))
 
 (defn normalize-table-data [data]
   (cond
