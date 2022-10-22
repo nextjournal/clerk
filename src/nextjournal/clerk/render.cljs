@@ -343,6 +343,18 @@
       [triangle expanded?]]
      [:span.group-hover:text-indigo-700 opening-paren]]))
 
+(defn push-reducer
+  ([] #js[])
+  ([out] out)
+  ([coll x] (j/push! coll x)))
+
+(defn unkeyed-list [xform children]
+  (.apply react/createElement nil
+          (transduce (comp xform (map r/as-element))
+                     push-reducer
+                     #js[react/Fragment nil]
+                     children)))
+
 (defn coll-view [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
   (let [expanded? (get @!expanded-at path)
         {:keys [opening-paren closing-paren]} viewer]
@@ -352,7 +364,10 @@
       (if (< 1 (count xs))
         [expand-button !expanded-at opening-paren path]
         [:span opening-paren])
-      (into [:<>]
+      (unkeyed-list (comp (inspect-children opts)
+                          (interpose (if expanded? [:<> [:br] triangle-spacer nbsp (when (= 2 (count opening-paren)) nbsp)] " ")))
+                    xs)
+      #_(into [:<>]
             (comp (inspect-children opts)
                   (interpose (if expanded? [:<> [:br] triangle-spacer nbsp (when (= 2 (count opening-paren)) nbsp)] " ")))
             xs)
@@ -548,7 +563,7 @@
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
        ;; When using ^{:key viewer} we get duplicate keys in homogenous collections so also add idx key
        ;; TODO: clarify if this is ok.
-       ^{:key (str viewer (:idx opts))}
+
        [inspect-presented
         (merge opts {:viewer viewer} (:nextjournal/opts x))
         viewer
