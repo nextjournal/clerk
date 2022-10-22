@@ -3,11 +3,11 @@
   (:require [nextjournal.clerk.viewer :as v]))
 
 (defn heading [text]
-  (v/html [:h3 text "!"]))
+  [:h3 text "!"])
 
 (defn paragraph
   [text]
-  (v/html [:p {:style {:color "darkblue"}} text
-           [:br]
-           [:span {:style {:font-size "62px"}}
-            "\u2767"]]))
+  [:p {:style {:color "darkblue"}} text
+   [:br]
+   [:span {:style {:font-size "62px"}}
+    "\u2767"]])

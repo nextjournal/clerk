@@ -521,14 +521,9 @@
         (and (map? viewer) (:render-fn viewer))
         (render-with-viewer opts (:render-fn viewer) value)
 
-        #_#_ ;; TODO: maybe bring this back
-        (keyword? viewer)
-        (if-let [{:keys [fetch-opts render-fn]} (viewer/find-named-viewer viewers viewer)]
-          (if-not render-fn
-            (html (error-badge "no render function for viewer named " (str viewer)))
-            (render-fn value (assoc opts :fetch-opts fetch-opts)))
-          (html (error-badge "cannot find viewer named " (str viewer))))
-
+        (and (nil? viewer) (vector? value))
+        (html value)
+        
         :else
         (html (error-badge "unusable viewer `" (pr-str viewer) "`, value `" (pr-str value) "`"))))
 
