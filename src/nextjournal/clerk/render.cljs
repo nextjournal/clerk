@@ -521,8 +521,12 @@
      (let [{:nextjournal/keys [value viewer]} x]
        #_(prn :inspect-presented value :valid-element? (react/isValidElement value) :viewer viewer)
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
-       ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
-       [render-with-viewer (merge opts (:nextjournal/opts x) {:viewer viewer}) viewer value]))))
+
+       ;; TODO: for now we want to still support `:render-fn` that call `v/html` but
+       ;; this could be further simplified by directly creating a compnent via
+       ;; [(:render-fn viewer) opts value]
+         ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
+         [render-with-viewer (merge opts (:nextjournal/opts x) {:viewer viewer}) viewer value]))))
 
 (defn in-process-fetch [value opts]
   (.resolve js/Promise (viewer/present value opts)))
