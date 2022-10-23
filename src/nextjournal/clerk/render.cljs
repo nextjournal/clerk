@@ -307,7 +307,7 @@
 (defn inspect-children [opts]
   ;; TODO: move update function onto viewer
   (map-indexed (fn [idx x]
-                 (inspect-presented (update (assoc opts :idx idx) :path (fnil conj []) idx) x))))
+                 (inspect-presented (update opts :path (fnil conj []) idx) x))))
 
 (def expand-style
   ["cursor-pointer"
@@ -513,26 +513,15 @@
 
 (declare default-viewers)
 
-(defn render-with-viewer [opts viewer value]
-  #_(js/console.log :render-with-viewer {:value value :viewer viewer :opts opts})
-  (cond (or (fn? viewer) (viewer/viewer-fn? viewer))
-        (viewer value opts)
-
-        (and (map? viewer) (:render-fn viewer))
-        (render-with-viewer opts (:render-fn viewer) value)
-
-        #_#_ ;; TODO: maybe bring this back
-        (keyword? viewer)
-        (if-let [{:keys [fetch-opts render-fn]} (viewer/find-named-viewer viewers viewer)]
-          (if-not render-fn
-            (html (error-badge "no render function for viewer named " (str viewer)))
-            (render-fn value (assoc opts :fetch-opts fetch-opts)))
-          (html (error-badge "cannot find viewer named " (str viewer))))
-
-        :else
-        (html (error-badge "unusable viewer `" (pr-str viewer) "`, value `" (pr-str value) "`"))))
-
 (defn valid-react-element? [x] (react/isValidElement x))
+
+(defn render-with-viewer [opts {:as _viewer :keys [render-fn]} value]
+  (assert (or (fn? render-fn) (viewer/viewer-fn? render-fn)) "render-fn must be `fn?` or `viewer-fn?`")
+  (let [rendered (render-fn value opts)]
+    (cond (valid-react-element? rendered) rendered
+          ;; render-fns currently start with `v/html`
+          (map? rendered) (let [{:nextjournal/keys [value viewer]} rendered]
+                            (render-with-viewer opts viewer value)))))
 
 (defn inspect-presented
   ([x]
@@ -541,23 +530,11 @@
   ([opts x]
    (if (valid-react-element? x)
      x
-     (let [value (viewer/->value x)
-           viewer (viewer/->viewer x)]
-       #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer (viewer/->viewer x))
-
+     (let [{:nextjournal/keys [value viewer]} x]
+       #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer viewer)
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
-       ;; When using ^{:key viewer} we get duplicate keys in homogenous collections so also add idx key
-       ;; TODO: clarify if this is ok.
-       ^{:key (str viewer (:idx opts))}
-       [inspect-presented
-        (merge opts {:viewer viewer} (:nextjournal/opts x))
-        viewer
-        value])))
-  ([opts viewer value]
-   (let [x (render-with-viewer opts viewer value)]
-     (if (valid-react-element? x)
-       x
-       (inspect-presented opts x)))))
+       ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
+       [render-with-viewer (merge opts (:nextjournal/opts x)) viewer value]))))
 
 (defn in-process-fetch [value opts]
   (.resolve js/Promise (viewer/present value opts)))

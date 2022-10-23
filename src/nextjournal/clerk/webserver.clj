@@ -89,15 +89,16 @@
     (httpkit/as-channel req {:on-open (fn [ch] (swap! !clients conj ch))
                              :on-close (fn [ch _reason] (swap! !clients disj ch))
                              :on-receive (fn [_ch msg] (binding [*ns* (or (:ns @!doc)
-                                                                          (create-ns 'user))]
-                                                         (eval (read-string msg))
-                                                         (eval '(nextjournal.clerk/recompute!))))})
+                                                                         (create-ns 'user))]
+                                                        (eval (read-string msg))
+                                                        (eval '(nextjournal.clerk/recompute!))))})
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
         "build" (serve-file "public" req)
         "_ws" {:status 200 :body "upgrading..."}
-        "js" {:status 200 :body (slurp (str "public" uri)) :headers {"Content-Type" "application/javascript"}}
+        "js" {:status 200 :body (slurp (str "public" uri)) :headers {"Content-Type" "application/javascript"
+                                                                     "SourceMap" (str uri ".map")}}
         {:status  200
          :headers {"Content-Type" "text/html"}
          :body    (view/doc->html @!doc @!error)})
