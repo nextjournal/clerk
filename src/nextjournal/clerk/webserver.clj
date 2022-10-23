@@ -78,11 +78,15 @@
         extension (fs/extension file)]
     (if (fs/exists? file)
       {:status 200
-       :headers {"Content-Type" ({"html" "text/html"
-                                  "png" "image/png"
-                                  "jpg" "image/jpeg"} extension "text/html")}
+       :headers (cond-> {"Content-Type" ({"html" "text/html"
+                                          "png" "image/png"
+                                          "jpg" "image/jpeg"
+                                          "js" "application/javascript"} extension "text/html")}
+                  (and (= "js" extension) (fs/exists? (str file ".map"))) (assoc "SourceMap" (str uri ".map")))
        :body (slurp file)}
       {:status 404})))
+
+#_(serve-file "public" {:uri "/js/viewer.js"})
 
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
@@ -95,10 +99,8 @@
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
-        "build" (serve-file "public" req)
+        ("build" "js") (serve-file "public" req)
         "_ws" {:status 200 :body "upgrading..."}
-        "js" {:status 200 :body (slurp (str "public" uri)) :headers {"Content-Type" "application/javascript"
-                                                                     "SourceMap" (str uri ".map")}}
         {:status  200
          :headers {"Content-Type" "text/html"}
          :body    (view/doc->html @!doc @!error)})
