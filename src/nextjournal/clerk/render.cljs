@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.render
   (:require ["d3-require" :as d3-require]
             ["react" :as react]
+            ["react-dom/client" :as react-client]
             [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.string :as str]
@@ -559,10 +560,13 @@
   (when-let [title (and (exists? js/document) (-> doc viewer/->value :title))]
     (set! (.-title js/document) title)))
 
-(defn ^:export ^:dev/after-load mount []
+(defonce react-root
   (when-let [el (and (exists? js/document) (js/document.getElementById "clerk"))]
-    #_(rdom/unmount-component-at-node el)
-    (rdom/render [root] el)))
+    (react-client/createRoot el)))
+
+(defn ^:export ^:dev/after-load mount []
+  (when react-root
+    (.render react-root (r/as-element [root]))))
 
 (defn clerk-eval [form]
   (.ws_send ^js goog/global (pr-str form)))
