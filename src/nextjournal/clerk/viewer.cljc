@@ -8,7 +8,9 @@
                       [clojure.repl :refer [demunge]]
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.analyzer :as analyzer]]
-                :cljs [[reagent.ratom :as ratom]
+                :cljs [[goog.crypt]
+                       [goog.crypt.Sha1]
+                       [reagent.ratom :as ratom]
                        [sci.impl.vars]
                        [sci.lang]
                        [applied-science.js-interop :as j]])
@@ -36,7 +38,7 @@
   (instance? ViewerEval x))
 
 (defn ->viewer-fn [form]
-  (map->ViewerFn {:form form #?@(:cljs [:f (eval form)])}))
+  (map->ViewerEval {:form form #?@(:cljs [:f (eval form)])}))
 
 (defn ->viewer-eval [form]
   (map->ViewerEval {:form form}))
@@ -992,12 +994,19 @@
     (and render-fn (not (viewer-fn? render-fn)))
     (update :render-fn ->viewer-fn)))
 
+(defn hash-sha1 [x]
+  #?(:clj (analyzer/valuehash :sha1 x)
+     :cljs (let [hasher (goog.crypt.Sha1.)]
+             (.update hasher (goog.crypt/stringToUtf8ByteArray (pr-str x)))
+             (.digest hasher))))
+
 (defn process-viewer [viewer]
   (if-not (map? viewer)
     viewer
     (-> viewer
         (dissoc :pred :transform-fn :update-viewers-fn)
-        process-render-fn)))
+        (as-> viewer (assoc viewer :hash (hash-sha1 viewer)))
+        (process-render-fn))))
 
 #_(process-viewer {:render-fn '#(vector :h1) :transform-fn mark-presented})
 

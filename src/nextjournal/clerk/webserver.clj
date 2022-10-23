@@ -78,26 +78,29 @@
         extension (fs/extension file)]
     (if (fs/exists? file)
       {:status 200
-       :headers {"Content-Type" ({"html" "text/html"
-                                  "png" "image/png"
-                                  "jpg" "image/jpeg"} extension "text/html")}
+       :headers (cond-> {"Content-Type" ({"html" "text/html"
+                                          "png" "image/png"
+                                          "jpg" "image/jpeg"
+                                          "js" "application/javascript"} extension "text/html")}
+                  (and (= "js" extension) (fs/exists? (str file ".map"))) (assoc "SourceMap" (str uri ".map")))
        :body (slurp file)}
       {:status 404})))
+
+#_(serve-file "public" {:uri "/js/viewer.js"})
 
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
     (httpkit/as-channel req {:on-open (fn [ch] (swap! !clients conj ch))
                              :on-close (fn [ch _reason] (swap! !clients disj ch))
                              :on-receive (fn [_ch msg] (binding [*ns* (or (:ns @!doc)
-                                                                          (create-ns 'user))]
-                                                         (eval (read-string msg))
-                                                         (eval '(nextjournal.clerk/recompute!))))})
+                                                                         (create-ns 'user))]
+                                                        (eval (read-string msg))
+                                                        (eval '(nextjournal.clerk/recompute!))))})
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
-        "build" (serve-file "public" req)
+        ("build" "js") (serve-file "public" req)
         "_ws" {:status 200 :body "upgrading..."}
-        "js" {:status 200 :body (slurp (str "public" uri)) :headers {"Content-Type" "application/javascript"}}
         {:status  200
          :headers {"Content-Type" "text/html"}
          :body    (view/doc->html @!doc @!error)})
