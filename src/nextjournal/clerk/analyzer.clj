@@ -436,13 +436,19 @@
 #_(exceeds-bounded-count-limit? (range (dec config/*bounded-count-limit*)))
 #_(exceeds-bounded-count-limit? {:a-range (range)})
 
-(defn valuehash [value]
-  (-> value
-      nippy/fast-freeze
-      digest/sha2-512
-      multihash/base58))
+(defn valuehash
+  ([value] (valuehash :sha512 value))
+  ([hash-type value]
+   (let [digest-fn (case hash-type
+                     :sha1 digest/sha1
+                     :sha512 digest/sha2-512)]
+     (-> value
+         nippy/fast-freeze
+         digest-fn
+         multihash/base58))))
 
 #_(valuehash (range 100))
+#_(valuehash :sha1 (range 100))
 #_(valuehash (zipmap (range 100) (range 100)))
 
 (defn ->hash-str

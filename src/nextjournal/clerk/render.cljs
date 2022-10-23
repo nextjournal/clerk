@@ -523,24 +523,6 @@
           (map? rendered) (let [{:nextjournal/keys [value viewer]} rendered]
                             (render-with-viewer opts viewer value)))))
 
-;; Auto-assign an incrementing integer to each viewer, based on its render-fn.
-;; All viewers are evaluated in the same type of React component (render-with-viewer).
-;; If we don't "key" them by some value, they will always share the same hook context,
-;; leading to bugs. We can't key by the value being rendered, because we want to keep
-;; component state when re-rendering variations coming from the same top-level form. So
-;; we disambiguate by a combination of the viewer + its index. An integer ID per viewer
-;; is useful because serializing every viewer into a string would be slow.
-
-;; Question: are render-fns ever dynamically created (& therefore never equal)?
-;; ie. could this be a memory problem/leak?
-(defonce !viewer-ids (volatile! {}))
-(defonce !last-viewer-id (volatile! 0))
-(defn viewer-id [{:keys [render-fn]}]
-  (or (@!viewer-ids render-fn)
-      (let [id (vswap! !last-viewer-id inc)]
-        (vswap! !viewer-ids assoc render-fn id)
-        id)))
-
 (defn inspect-presented
   ([x]
    (r/with-let [!expanded-at (r/atom (:nextjournal/expanded-at x))]
@@ -551,8 +533,7 @@
      (let [{:nextjournal/keys [value viewer]} x]
        #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer viewer)
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
-       ;; When using ^{:key viewer} we get duplicate keys in homogenous collections so also add idx key
-       ^{:key (str (viewer-id viewer) "@" (peek (:path opts)))}
+       ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
        [render-with-viewer (merge opts (:nextjournal/opts x)) viewer value]))))
 
 (defn in-process-fetch [value opts]
