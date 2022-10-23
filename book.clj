@@ -493,7 +493,7 @@ v/table-viewer
 (def custom-table-viewer
   (add-child-viewers v/table-viewer
                      [(assoc v/table-head-viewer :transform-fn (v/update-val (partial map (comp (partial str "Column: ") str/capitalize name))))
-                      (assoc v/table-missing-viewer :render-fn '(fn [x] (v/html [:span.red "N/A"])))]))
+                      (assoc v/table-missing-viewer :render-fn '(fn [x] [:span.red "N/A"]))]))
 
 (clerk/with-viewer custom-table-viewer
   {:col/a [1 2 3 4] :col/b [1 2 3] :col/c [1 2 3]})
@@ -514,7 +514,7 @@ v/table-viewer
 
 ^{::clerk/viewer show-raw-value}
 (v/present (clerk/with-viewer {:transform-fn clerk/mark-presented
-                               :render-fn '(fn [x] (v/html [:pre (pr-str x)]))}
+                               :render-fn '(fn [x] [:pre (pr-str x)])}
              [1 2 3]))
 
 ;; Clerk's presentation will also transform maps into sequences in
@@ -562,18 +562,17 @@ v/table-viewer
    :transform-fn (comp clerk/mark-preserve-keys
                        (clerk/update-val transform-literal))
    :render-fn '(fn [label->val]
-                 (v/html
-                  (reagent/with-let [!selected-label (reagent/atom (ffirst label->val))]
-                    [:<> (into
-                          [:div.flex.items-center.font-sans.text-xs.mb-3
-                           [:span.text-slate-500.mr-2 "View-as:"]]
-                          (map (fn [label]
-                                 [:button.px-3.py-1.font-medium.hover:bg-indigo-50.rounded-full.hover:text-indigo-600.transition
-                                  {:class (if (= @!selected-label label) "bg-indigo-100 text-indigo-600" "text-slate-500")
-                                   :on-click #(reset! !selected-label label)}
-                                  label]))
-                          (keys label->val))
-                     [v/inspect-presented (get label->val @!selected-label)]])))})
+                 (reagent/with-let [!selected-label (reagent/atom (ffirst label->val))]
+                   [:<> (into
+                         [:div.flex.items-center.font-sans.text-xs.mb-3
+                          [:span.text-slate-500.mr-2 "View-as:"]]
+                         (map (fn [label]
+                                [:button.px-3.py-1.font-medium.hover:bg-indigo-50.rounded-full.hover:text-indigo-600.transition
+                                 {:class (if (= @!selected-label label) "bg-indigo-100 text-indigo-600" "text-slate-500")
+                                  :on-click #(reset! !selected-label label)}
+                                 label]))
+                         (keys label->val))
+                    [v/inspect-presented (get label->val @!selected-label)]]))})
 
 ;; Now let's see if this works. Try switching to the original
 ;; representation!

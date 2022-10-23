@@ -137,37 +137,36 @@
     (let [{:keys [md-toc]} @!state]
       (when-not (= md-toc toc)
         (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc :open? (not= :collapsed toc-visibility)))
-      (html
-       [:div.flex
-        {:ref root-ref-fn}
-        [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
-         [dark-mode-toggle !state]]
-        (when (and toc toc-visibility)
-          [:<>
-           [navbar/toggle-button !state
-            [:<>
-             [icon/menu {:size 20}]
-             [:span.uppercase.tracking-wider.ml-1.font-bold
-              {:class "text-[12px]"} "ToC"]]
-            {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-3 text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
-           [navbar/panel !state [navbar/navbar !state]]])
-        [:div.flex-auto.h-screen.overflow-y-auto.scroll-container
-         {:ref ref-fn}
-         [:div.flex.flex-col.items-center.viewer-notebook.flex-auto
-          (doall
-           (map-indexed (fn [idx x]
-                          (let [{viewer-name :name} (viewer/->viewer x)
-                                inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
-                            ^{:key (str idx "-" @!eval-counter)}
-                            [:div {:class ["viewer"
-                                           (when viewer-name (str "viewer-" (name viewer-name)))
-                                           (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
-                                           (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
-                                             :wide "w-full max-w-wide"
-                                             :full "w-full"
-                                             "w-full max-w-prose px-8")]}
-                             [inspect-presented x]]))
-                        xs))]]]))))
+      [:div.flex
+       {:ref root-ref-fn}
+       [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
+        [dark-mode-toggle !state]]
+       (when (and toc toc-visibility)
+         [:<>
+          [navbar/toggle-button !state
+           [:<>
+            [icon/menu {:size 20}]
+            [:span.uppercase.tracking-wider.ml-1.font-bold
+             {:class "text-[12px]"} "ToC"]]
+           {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-3 text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
+          [navbar/panel !state [navbar/navbar !state]]])
+       [:div.flex-auto.h-screen.overflow-y-auto.scroll-container
+        {:ref ref-fn}
+        [:div.flex.flex-col.items-center.viewer-notebook.flex-auto
+         (doall
+          (map-indexed (fn [idx x]
+                         (let [{viewer-name :name} (viewer/->viewer x)
+                               inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
+                           ^{:key (str idx "-" @!eval-counter)}
+                           [:div {:class ["viewer"
+                                          (when viewer-name (str "viewer-" (name viewer-name)))
+                                          (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
+                                          (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
+                                            :wide "w-full max-w-wide"
+                                            :full "w-full"
+                                            "w-full max-w-prose px-8")]}
+                            [inspect-presented x]]))
+                       xs))]]])))
 
 (defn opts->query [opts]
   (->> opts
@@ -181,7 +180,7 @@
 
 
 (defn render-unreadable-edn [edn]
-  (html [:span.inspected-value.whitespace-nowrap.cmt-default edn]))
+  [:span.inspected-value.whitespace-nowrap.cmt-default edn])
 
 (defn error-badge [& content]
   [:div.bg-red-50.rounded-sm.text-xs.text-red-400.px-2.py-1.items-center.sans-serif.inline-flex
@@ -247,40 +246,40 @@
     (render-unreadable-edn string)))
 
 (defn render-result [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
-  (html (r/with-let [!hash (atom hash)
-                     !error (r/atom nil)
-                     !desc (r/atom (read-result result !error))
-                     !fetch-opts (atom fetch-opts)
-                     fetch-fn (when @!fetch-opts
-                                (fn [opts]
-                                  (.then (fetch! @!fetch-opts opts)
-                                         (fn [more]
-                                           (swap! !desc viewer/merge-presentations more opts)))))
-                     !expanded-at (r/atom (get @!desc :nextjournal/expanded-at {}))
-                     on-key-down (fn [event]
-                                   (if (.-altKey event)
-                                     (swap! !expanded-at assoc :prompt-multi-expand? true)
-                                     (swap! !expanded-at dissoc :prompt-multi-expand?)))
-                     on-key-up #(swap! !expanded-at dissoc :prompt-multi-expand?)
-                     ref-fn #(if %
-                               (when (exists? js/document)
-                                 (js/document.addEventListener "keydown" on-key-down)
-                                 (js/document.addEventListener "keyup" on-key-up))
-                               (when (exists? js/document)
-                                 (js/document.removeEventListener "keydown" on-key-down)
-                                 (js/document.removeEventListener "up" on-key-up)))]
-          (when-not (= hash @!hash)
-            ;; TODO: simplify
-            (reset! !hash hash)
-            (reset! !fetch-opts fetch-opts)
-            (reset! !desc (read-result result !error))
-            (reset! !error nil))
-          [view-context/provide {:fetch-fn fetch-fn}
-           [error-boundary !error
-            [:div.relative
-             [:div.overflow-y-hidden
-              {:ref ref-fn}
-              [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]])))
+  (r/with-let [!hash (atom hash)
+               !error (r/atom nil)
+               !desc (r/atom (read-result result !error))
+               !fetch-opts (atom fetch-opts)
+               fetch-fn (when @!fetch-opts
+                          (fn [opts]
+                            (.then (fetch! @!fetch-opts opts)
+                                   (fn [more]
+                                     (swap! !desc viewer/merge-presentations more opts)))))
+               !expanded-at (r/atom (get @!desc :nextjournal/expanded-at {}))
+               on-key-down (fn [event]
+                             (if (.-altKey event)
+                               (swap! !expanded-at assoc :prompt-multi-expand? true)
+                               (swap! !expanded-at dissoc :prompt-multi-expand?)))
+               on-key-up #(swap! !expanded-at dissoc :prompt-multi-expand?)
+               ref-fn #(if %
+                         (when (exists? js/document)
+                           (js/document.addEventListener "keydown" on-key-down)
+                           (js/document.addEventListener "keyup" on-key-up))
+                         (when (exists? js/document)
+                           (js/document.removeEventListener "keydown" on-key-down)
+                           (js/document.removeEventListener "up" on-key-up)))]
+    (when-not (= hash @!hash)
+      ;; TODO: simplify
+      (reset! !hash hash)
+      (reset! !fetch-opts fetch-opts)
+      (reset! !desc (read-result result !error))
+      (reset! !error nil))
+    [view-context/provide {:fetch-fn fetch-fn}
+     [error-boundary !error
+      [:div.relative
+       [:div.overflow-y-hidden
+        {:ref ref-fn}
+        [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]]))
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
@@ -343,7 +342,7 @@
       [triangle expanded?]]
      [:span.group-hover:text-indigo-700 opening-paren]]))
 
-(defn coll-view [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
+(defn render-coll [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
   (let [expanded? (get @!expanded-at path)
         {:keys [opening-paren closing-paren]} viewer]
     [:span.inspected-value.whitespace-nowrap
@@ -359,21 +358,18 @@
       [:span
        (cond->> closing-paren (list? closing-paren) (into [:<>]))]]]))
 
-(defn render-coll [xs opts]
-  (html (coll-view xs opts)))
-
 (defn render-elision [{:as fetch-opts :keys [total offset unbounded?]} _]
-  (html [view-context/consume :fetch-fn
-         (fn [fetch-fn]
-           [:span.sans-serif.relative.whitespace-nowrap
-            {:style {:border-radius 2 :padding (when (fn? fetch-fn) "1px 3px") :font-size 11 :top -1}
-             :class (if (fn? fetch-fn)
-                      "cursor-pointer bg-indigo-200 hover:bg-indigo-300 dark:bg-gray-700 dark:hover:bg-slate-600 text-gray-900 dark:text-white"
-                      "text-gray-400 dark:text-slate-300")
-             :on-click #(when (fn? fetch-fn)
-                          (fetch-fn fetch-opts))} (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")])]))
+  [view-context/consume :fetch-fn
+   (fn [fetch-fn]
+     [:span.sans-serif.relative.whitespace-nowrap
+      {:style {:border-radius 2 :padding (when (fn? fetch-fn) "1px 3px") :font-size 11 :top -1}
+       :class (if (fn? fetch-fn)
+                "cursor-pointer bg-indigo-200 hover:bg-indigo-300 dark:bg-gray-700 dark:hover:bg-slate-600 text-gray-900 dark:text-white"
+                "text-gray-400 dark:text-slate-300")
+       :on-click #(when (fn? fetch-fn)
+                    (fetch-fn fetch-opts))} (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")])])
 
-(defn map-view [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
+(defn render-map [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
   (let [expanded? (get @!expanded-at path)
         {:keys [closing-paren]} viewer]
     [:span.inspected-value.whitespace-nowrap
@@ -388,34 +384,32 @@
             xs)
       (cond->> closing-paren (list? closing-paren) (into [:<>]))]]))
 
-(defn render-map [xs opts] (html (map-view xs opts)))
 
 (defn render-string [s {:as opts :keys [path !expanded-at] :or {path []}}]
-  (html
-   (let [expanded? (get @!expanded-at path)]
-     (into [:span]
-           (map #(if (string? %)
-                   (if expanded?
-                     (into [:<>] (interpose [:<> [:br]] (str/split-lines %)))
-                     (into [:<>] (interpose [:span.text-slate-400 "↩︎"] (str/split-lines %))))
-                   (inspect-presented opts %)))
-           (if (string? s) [s] s)))))
+  (let [expanded? (get @!expanded-at path)]
+    (into [:span]
+          (map #(if (string? %)
+                  (if expanded?
+                    (into [:<>] (interpose [:<> [:br]] (str/split-lines %)))
+                    (into [:<>] (interpose [:span.text-slate-400 "↩︎"] (str/split-lines %))))
+                  (inspect-presented opts %)))
+          (if (string? s) [s] s))))
 
 (defn render-quoted-string [s {:as opts :keys [path viewer !expanded-at] :or {path []}}]
   (let [{:keys [closing-paren]} viewer]
-    (html [:span.cmt-string.inspected-value.whitespace-nowrap.inline-flex
-           [:span
-            (if (some #(and (string? %) (str/includes? % "\n")) (if (string? s) [s] s))
-              [expand-button !expanded-at "\"" path]
-              [:span "\""])]
-           [:div
-            (viewer/->value (render-string s opts))
-            "\""
-            closing-paren]])))
+    [:span.cmt-string.inspected-value.whitespace-nowrap.inline-flex
+     [:span
+      (if (some #(and (string? %) (str/includes? % "\n")) (if (string? s) [s] s))
+        [expand-button !expanded-at "\"" path]
+        [:span "\""])]
+     [:div
+      (viewer/->value (render-string s opts))
+      "\""
+      closing-paren]]))
 
 (defn render-number [num]
-  (html [:span.cmt-number.inspected-value
-         (if (js/Number.isNaN num) "NaN" (str num))]))
+  [:span.cmt-number.inspected-value
+   (if (js/Number.isNaN num) "NaN" (str num))])
 
 (defn sort! [!sort i k]
   (let [{:keys [sort-key sort-order]} @!sort]
@@ -442,28 +436,27 @@
 (defn render-table-error [[data]]
   ;; currently boxing the value in a vector to retain the type info
   ;; TODO: find a better way to do this
-  (html
-   [:div.bg-red-100.dark:bg-gray-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-400.not-prose
-    [:h4.mt-0.uppercase.text-xs.dark:text-red-400.tracking-wide "Table Error"]
-    [:p.mt-4.font-medium "Clerk’s table viewer does not recognize the format of your data:"]
-    [:div.mt-2.flex
-     [:div.text-red-500.mr-2 x-icon]
-     [inspect-presented data]]
-    [:p.mt-4.font-medium "Currently, the following formats are supported:"]
-    [:div.mt-2.flex.items-center
-     [:div.text-green-500.mr-2 check-icon]
-     [inspect {:column-1 [1 2]
-               :column-2 [3 4]}]]
-    [:div.mt-2.flex.items-center
-     [:div.text-green-500.mr-2 check-icon]
-     [inspect [{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]]]
-    [:div.mt-2.flex.items-center
-     [:div.text-green-500.mr-2 check-icon]
-     [inspect [[1 3] [2 4]]]]
-    [:div.mt-2.flex.items-center
-     [:div.text-green-500.mr-2 check-icon]
-     [inspect {:head [:column-1 :column-2]
-               :rows [[1 3] [2 4]]}]]]))
+  [:div.bg-red-100.dark:bg-gray-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-400.not-prose
+   [:h4.mt-0.uppercase.text-xs.dark:text-red-400.tracking-wide "Table Error"]
+   [:p.mt-4.font-medium "Clerk’s table viewer does not recognize the format of your data:"]
+   [:div.mt-2.flex
+    [:div.text-red-500.mr-2 x-icon]
+    [inspect-presented data]]
+   [:p.mt-4.font-medium "Currently, the following formats are supported:"]
+   [:div.mt-2.flex.items-center
+    [:div.text-green-500.mr-2 check-icon]
+    [inspect {:column-1 [1 2]
+              :column-2 [3 4]}]]
+   [:div.mt-2.flex.items-center
+    [:div.text-green-500.mr-2 check-icon]
+    [inspect [{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]]]
+   [:div.mt-2.flex.items-center
+    [:div.text-green-500.mr-2 check-icon]
+    [inspect [[1 3] [2 4]]]]
+   [:div.mt-2.flex.items-center
+    [:div.text-green-500.mr-2 check-icon]
+    [inspect {:head [:column-1 :column-2]
+              :rows [[1 3] [2 4]]}]]])
 
 
 (defn throwable-view [{:keys [via trace]}]
@@ -488,19 +481,13 @@
            trace)]]])
 
 (defn render-throwable [ex]
-  (html [throwable-view ex]))
+  [throwable-view ex])
 
 (defn render-tagged-value
   ([tag value] (render-tagged-value {:space? true} tag value))
   ([{:keys [space?]} tag value]
    [:span.inspected-value.whitespace-nowrap
     [:span.cmt-meta tag] (when space? nbsp) value]))
-
-(defn normalize-viewer-meta [x]
-  (if-let [viewer (-> x meta :nextjournal/viewer)]
-    (viewer/with-viewer ({:html html-viewer
-                          :reagent reagent-viewer} viewer viewer) x)
-    x))
 
 (defonce !doc (ratom/atom nil))
 (defonce !error (ratom/atom nil))
@@ -519,9 +506,10 @@
   (assert (or (fn? render-fn) (viewer/viewer-fn? render-fn)) "render-fn must be `fn?` or `viewer-fn?`")
   (let [rendered (render-fn value opts)]
     (cond (valid-react-element? rendered) rendered
-          ;; render-fns currently start with `v/html`
+          (vector? rendered) (r/as-element rendered)
+          ;; legacy support for `:render-fn`s with `v/html`
           (map? rendered) (let [{:nextjournal/keys [value viewer]} rendered]
-                            (render-with-viewer opts viewer value)))))
+                            (render-with-viewer (assoc opts :viewer viewer) viewer value)))))
 
 (defn inspect-presented
   ([x]
@@ -531,10 +519,14 @@
    (if (valid-react-element? x)
      x
      (let [{:nextjournal/keys [value viewer]} x]
-       #_(prn :inspect value :valid-element? (react/isValidElement value) :viewer viewer)
+       #_(prn :inspect-presented value :valid-element? (react/isValidElement value) :viewer viewer)
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
-       ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
-       [render-with-viewer (merge opts (:nextjournal/opts x)) viewer value]))))
+
+       ;; TODO: for now we want to still support `:render-fn` that call `v/html` but
+       ;; this could be further simplified by directly creating a compnent via
+       ;; [(:render-fn viewer) opts value]
+         ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
+         [render-with-viewer (merge opts (:nextjournal/opts x) {:viewer viewer}) viewer value]))))
 
 (defn in-process-fetch [value opts]
   (.resolve js/Promise (viewer/present value opts)))
@@ -576,7 +568,7 @@
   (.ws_send ^js goog/global (pr-str form)))
 
 (defn render-katex [tex-string {:keys [inline?]}]
-  (html (katex/to-html-string tex-string (j/obj :displayMode (not inline?)))))
+  (katex/to-html-string tex-string (j/obj :displayMode (not inline?))))
 
 (defn html-render [markup]
   (r/as-element
@@ -628,10 +620,10 @@
                                          (.catch handle-error)))
                                   #js[value vega-embed])]
     (when value
-      (html (if vega-embed
-              [:div.overflow-x-auto
-               [:div.vega-lite {:ref ref-fn}]]
-              default-loading-view)))))
+      (if vega-embed
+        [:div.overflow-x-auto
+         [:div.vega-lite {:ref ref-fn}]]
+        default-loading-view))))
 
 (defn render-plotly [value]
   (let [plotly (use-d3-require "plotly.js-dist@2.15.1")
@@ -639,14 +631,13 @@
                                      (.newPlot plotly % (clj->js value)))
                                   #js[value plotly])]
     (when value
-      (html
-       (if plotly
-         [:div.overflow-x-auto
-          [:div.plotly {:ref ref-fn}]]
-         default-loading-view)))))
+      (if plotly
+        [:div.overflow-x-auto
+         [:div.plotly {:ref ref-fn}]]
+        default-loading-view))))
 
-(def render-mathjax (comp normalize-viewer-meta mathjax/viewer))
-(def render-code (comp normalize-viewer-meta code/viewer))
+(def render-mathjax mathjax/viewer)
+(def render-code code/viewer)
 
 (def expand-icon
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
@@ -654,38 +645,38 @@
 
 (defn render-folded-code [code-string]
   (r/with-let [!hidden? (r/atom true)]
-    (html (if @!hidden?
-            [:div.relative.pl-12.font-sans.text-slate-400.cursor-pointer.flex.overflow-y-hidden.group
-             [:span.hover:text-slate-500
-              {:class "text-[10px]"
-               :on-click #(swap! !hidden? not)}
-              "show code"]
-             #_#_#_[:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.hover:text-slate-500
-                    {:class "text-[10px]"}
-                    "hide result"]
-             [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-75.hover:text-slate-500
+    (if @!hidden?
+      [:div.relative.pl-12.font-sans.text-slate-400.cursor-pointer.flex.overflow-y-hidden.group
+       [:span.hover:text-slate-500
+        {:class "text-[10px]"
+         :on-click #(swap! !hidden? not)}
+        "show code"]
+       #_#_#_[:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.hover:text-slate-500
               {:class "text-[10px]"}
-              "cached in memory"]
-             [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-150.hover:text-slate-500
-              {:class "text-[10px]"}
-              "evaluated in 0.2s"]]
-            [:<>
-             [:div.relative.pl-12.font-sans.text-slate-400.cursor-pointer.flex.overflow-y-hidden.group.mb-1
-              [:span.hover:text-slate-500
-               {:class "text-[10px]"
-                :on-click #(swap! !hidden? not)}
-               "hide code"]
-              #_#_#_[:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.hover:text-slate-500
-                     {:class "text-[10px]"}
-                     "hide result"]
-              [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-75.hover:text-slate-500
+              "hide result"]
+       [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-75.hover:text-slate-500
+        {:class "text-[10px]"}
+        "cached in memory"]
+       [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-150.hover:text-slate-500
+        {:class "text-[10px]"}
+        "evaluated in 0.2s"]]
+      [:<>
+       [:div.relative.pl-12.font-sans.text-slate-400.cursor-pointer.flex.overflow-y-hidden.group.mb-1
+        [:span.hover:text-slate-500
+         {:class "text-[10px]"
+          :on-click #(swap! !hidden? not)}
+         "hide code"]
+        #_#_#_[:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.hover:text-slate-500
                {:class "text-[10px]"}
-               "cached in memory"]
-              [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-150.hover:text-slate-500
-               {:class "text-[10px]"}
-               "evaluated in 0.2s"]]
-             [:div.viewer-code.mb-2.relative {:style {:margin-top 0}}
-              [inspect-presented (render-code code-string)]]]))))
+               "hide result"]
+        [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-75.hover:text-slate-500
+         {:class "text-[10px]"}
+         "cached in memory"]
+        [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-150.hover:text-slate-500
+         {:class "text-[10px]"}
+         "evaluated in 0.2s"]]
+       [:div.viewer-code.mb-2.relative {:style {:margin-top 0}}
+        [inspect-presented (render-code code-string)]]])))
 
 
 (defn url-for [{:as src :keys [blob-id]}]

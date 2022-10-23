@@ -173,7 +173,7 @@
 
 (def docs-viewer
   {:render-fn '(fn [state opts]
-                 (v/html (into [:div.flex.flex-col.pt-2] (v/inspect-children opts) state)))
+                 (into [:div.flex.flex-col.pt-2] (v/inspect-children opts) state))
    :transform-fn (viewer/update-val (fn [docs]
                                       (mapv #(viewer/with-viewer doc-build-badge-viewer %) docs)))})
 

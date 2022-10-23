@@ -6,6 +6,6 @@
    :render-fn '(fn [data]
                  (if (nextjournal.clerk.render/valid-react-element? data)
                    data
-                   (v/html [nextjournal.clerk.render/inspect data])))})
+                   [nextjournal.clerk.render/inspect data]))})
 
 (defmacro card [body] `(v/with-viewer card-viewer '~body))
