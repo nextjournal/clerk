@@ -27,7 +27,7 @@
         (str relative-root url)))))
 
 (defn hiccup [hiccup]
-  {:nextjournal/viewer render/html-render
+  {:nextjournal/viewer render/html-viewer
    :nextjournal/value hiccup})
 
 (defn show [{:as view-data :git/keys [sha url] :keys [bundle? doc path url->path]}]
