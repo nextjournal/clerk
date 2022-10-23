@@ -749,7 +749,7 @@
       :opening-paren "{" :closing-paren "}"
       :render-fn '(fn [v opts] (nextjournal.clerk.render/render-tagged-value {:space? true}
                                                                             "#js"
-                                                                            (nextjournal.clerk.render/map-view v opts)))
+                                                                            (nextjournal.clerk.render/render-map v opts)))
       :transform-fn (update-val (fn [^js o]
                                   (into {}
                                         (comp (remove (fn [k] (identical? "function" (goog/typeOf (j/get o k)))))
@@ -769,7 +769,7 @@
       :render-fn '(fn [v opts]
                     (nextjournal.clerk.render/render-tagged-value {:space? true}
                                                                   "#js"
-                                                                  (nextjournal.clerk.render/coll-view v opts)))
+                                                                  (nextjournal.clerk.render/render-coll v opts)))
       :opening-paren "[" :closing-paren "]"
       :page-size 20}))
 
