@@ -606,6 +606,7 @@
         [v v!] (react/useState)]
     (react/useEffect (fn [] ((doto (fn [] (-> p
                                             (.then #(v! (constantly %)))
+                                            (.then (constantly nil))
                                             (.catch handle-error)))
                               (set-async!))))
                      #js [])
