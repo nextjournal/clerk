@@ -559,6 +559,14 @@
   (when-let [title (and (exists? js/document) (-> doc viewer/->value :title))]
     (set! (.-title js/document) title)))
 
+(defn swap-fn! [atom & swap-args]
+  (apply swap! atom swap-args)
+  (if-let [var-name (-> atom meta :var-name)]
+    ;; TODO: for now sending whole state but could also diff
+    (do (prn :ws-send js/ws_send :msg {:type :swap! :var-name var-name :args [(list 'fn ['_] @atom)]})
+        (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] @atom)]})))
+    (prn :no-varname-set)))
+
 (defn ^:export dispatch [{:as msg :keys [type]}]
   (let [dispatch-fn ({:set-state! set-state}
                      type
