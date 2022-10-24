@@ -567,8 +567,13 @@
         (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] @atom)]})))
     (prn :no-varname-set)))
 
+(defn swap-clerk-atom! [{:as event :keys [var-name args]}]
+  (prn :swap! var-name :args args)
+  #_(apply swap! @var args))
+
 (defn ^:export dispatch [{:as msg :keys [type]}]
-  (let [dispatch-fn ({:set-state! set-state}
+  (let [dispatch-fn ({:set-state! set-state
+                      :swap! swap-clerk-atom!}
                      type
                      (fn [type]
                        (js/console.warn (str "no on-message dispatch for type `" (pr-str type) "`"))))]

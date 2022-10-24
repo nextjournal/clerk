@@ -91,14 +91,23 @@
 (def ws-handlers
   {:on-open (fn [ch] (swap! !clients conj ch))
    :on-close (fn [ch _reason] (swap! !clients disj ch))
-   :on-receive (fn [_ch edn-string]
+   :on-receive (fn [sender-ch edn-string]
                  (binding [*ns* (or (:ns @!doc)
                                     (create-ns 'user))]
                    (let [{:as msg :keys [type]} (read-string edn-string)]
                      (prn :<= msg)
                      (case type
                        :eval (do (eval (:form msg))
-                                 (eval '(nextjournal.clerk/recompute!)))))))})
+                                 (eval '(nextjournal.clerk/recompute!)))
+                       :swap! (do (prn :swap! @(resolve (:var-name msg)) :args (:args msg))
+                                  (apply swap! @(resolve (:var-name msg)) (eval (:args msg)))
+                                  (doseq [ch @!clients :when (not= sender-ch ch)]
+                                    (httpkit/send! ch edn-string))
+                                  (eval '(nextjournal.clerk/recompute!)))))))})
+
+#_(do 
+    (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
+    (eval '(nextjournal.clerk/recompute!)))
 
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
