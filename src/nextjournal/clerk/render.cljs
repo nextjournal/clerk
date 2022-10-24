@@ -564,7 +564,7 @@
                      type
                      (fn [type]
                        (js/console.warn (str "no on-message dispatch for type `" (pr-str type) "`"))))]
-    (prn :<= type := msg)
+    #_(prn :<= type := msg)
     (dispatch-fn msg)))
 
 (defn ^:export ^:dev/after-load mount []
