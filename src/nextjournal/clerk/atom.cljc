@@ -2,7 +2,9 @@
   "Clerks two-way bindings."
   {:nextjournal.clerk/visibility {:code :hide :result :hide}}
   (:require [clojure.core :as core]
-            [nextjournal.clerk :as clerk]))
+            [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.viewer :as viewer]))
+
 (def atom-viewer
   {:transform-fn (comp clerk/mark-presented
                        (clerk/update-val (fn [{:nextjournal.clerk/keys [var-from-def]}]
@@ -15,8 +17,7 @@
                                                         (with-meta (reagent/atom state)
                                                           {:var-name var-name}))))
                                     render-fn' (eval (second render-fn))]
-                   (js/console.log (pr-str :render-fn render-fn :render-fn' render-fn'))
-                   (or (when render-fn [render-fn' @var])
+                   (or (when render-fn (v/html [render-fn' @var]))
                        [:div "☯️☯️☯️ " [nextjournal.clerk.render/inspect @@var]])))})
 
 (def counter-viewer
@@ -46,7 +47,13 @@
 
 ;; We `defonce` an atom and show it using the `atom-viewer`. This will create a corresponding (reagent) atom in the browser.
 ^{::clerk/viewer atom-viewer
-  ::clerk/opts {:render-fn '(fn [x] [:h3 (pr-str @x)])}}
+  ::clerk/opts {:render-fn '(fn [atom]
+                              [:input {:type :range
+                                       :default-value (:counter @atom)
+                                       :on-change (fn [e]
+                                                    (js/console.log (int (.. e -target -value)))
+                                                    (nextjournal.clerk.render/swap-fn! atom update :counter (constantly (int (.. e -target -value))))
+                                                    nil)}])}}
 (defonce my-state
   (atom {:counter 0}))
 
