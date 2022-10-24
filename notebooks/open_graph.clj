@@ -9,10 +9,11 @@
   (:import (javax.imageio ImageIO)
            (java.net URL)))
 
+;; ## Proposal
 ;; Clerk static page generator need to produce valid [Open Graph](https://ogp.me) metadata.
 
 ;; A Specific result may be specified via metadata
-^::clerk/open-graph-image
+^{::clerk/open-graph {:image :result}}
 (clerk/col
  (clerk/html [:h1 "This is my Card"]))
 
