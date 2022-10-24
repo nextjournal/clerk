@@ -49,7 +49,17 @@
 
 #?(:clj
    (defmethod print-method ViewerEval [v ^java.io.Writer w]
-     (.write w (str "#viewer-eval " (pr-str `~(:form v))))))
+     (.write w (str "#viewer-eval " (pr-str `~(:form v)))))
+   :cljs
+   (extend-type ViewerEval
+     IPrintWithWriter
+     (-pr-writer [obj w opts]
+       (-write w (str "#viewer-eval "))
+       (-write w (pr-str (:form obj))))))
+
+(def data-readers
+  {'viewer-fn ->viewer-fn
+   'viewer-eval ->viewer-eval})
 
 #_(binding [*data-readers* {'viewer-fn ->viewer-fn}]
     (read-string (pr-str (->viewer-fn '(fn [x] x)))))

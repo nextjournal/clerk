@@ -24,9 +24,7 @@
   {:transform-fn (comp (clerk/update-val symbol)
                        clerk/mark-presented)
    :render-fn '(fn [var-name]
-                 (js/console.log (pr-str var-name))
                  (let [atom @(resolve var-name)]
-                   (js/console.log (pr-str atom))
                    [:div
                     [:h2 "Counter Example"]
                     [:button.px-2.py-1.bg-blue-200.mr-1 {:on-click #(nextjournal.clerk.render/swap-fn! atom update :counter inc)} "+"]

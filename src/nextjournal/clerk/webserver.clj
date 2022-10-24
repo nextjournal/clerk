@@ -88,22 +88,27 @@
 
 #_(serve-file "public" {:uri "/js/viewer.js"})
 
+(defn read-msg [s]
+  (binding [*data-readers* v/data-readers]
+    (read-string s)))
+
+#_(pr-str (read-msg "#viewer-eval (resolve 'clojure.core/inc)"))
+
 (def ws-handlers
   {:on-open (fn [ch] (swap! !clients conj ch))
    :on-close (fn [ch _reason] (swap! !clients disj ch))
    :on-receive (fn [sender-ch edn-string]
                  (binding [*ns* (or (:ns @!doc)
                                     (create-ns 'user))]
-                   (let [{:as msg :keys [type]} (read-string edn-string)]
-                     (prn :<= msg)
+                   (let [{:as msg :keys [type]} (read-msg edn-string)]
                      (case type
                        :eval (do (eval (:form msg))
                                  (eval '(nextjournal.clerk/recompute!)))
-                       :swap! (do (prn :swap! @(resolve (:var-name msg)) :args (:args msg))
-                                  (apply swap! @(resolve (:var-name msg)) (eval (:args msg)))
-                                  (doseq [ch @!clients :when (not= sender-ch ch)]
-                                    (httpkit/send! ch edn-string))
-                                  (eval '(nextjournal.clerk/recompute!)))))))})
+                       :swap! (do
+                                (apply swap! @(eval (:form (:var msg))) (eval (:form (:args msg))))
+                                (doseq [ch @!clients :when (not= sender-ch ch)]
+                                  (httpkit/send! ch edn-string))
+                                (eval '(nextjournal.clerk/recompute!)))))))})
 
 #_(do 
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))

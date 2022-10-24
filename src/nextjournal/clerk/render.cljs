@@ -563,13 +563,12 @@
   (apply swap! atom swap-args)
   (if-let [var-name (-> atom meta :var-name)]
     ;; TODO: for now sending whole state but could also diff
-    (do (prn :ws-send js/ws_send :msg {:type :swap! :var-name var-name :args [(list 'fn ['_] @atom)]})
-        (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] @atom)]})))
-    (prn :no-varname-set)))
+    (js/ws_send (pr-str {:type :swap! :var-name var-name :args (viewer/->viewer-eval [(list 'fn ['_] @atom)]) :var (viewer/->viewer-eval (list 'resolve (list 'quote var-name)))}))
+    (js/console.warn "clerk/swap-fn! called on an atom that doesn't have var-name set!")))
 
-(defn swap-clerk-atom! [{:as event :keys [var-name args]}]
-  (prn :swap! var-name :args args)
-  #_(apply swap! @var args))
+(defn swap-clerk-atom! [{:as event :keys [var var-name args]}]
+  (prn :swap! var-name :args args :var var)
+  (apply swap! @var args))
 
 (defn ^:export dispatch [{:as msg :keys [type]}]
   (let [dispatch-fn ({:set-state! set-state
