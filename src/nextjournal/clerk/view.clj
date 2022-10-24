@@ -47,7 +47,7 @@ viewer.set_state(viewer.read_string(state))
 viewer.mount(document.getElementById('clerk'))\n"
      (when conn-ws?
        "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
-ws.onmessage = msg => viewer.set_state(viewer.read_string(msg.data))
+ws.onmessage = viewer.onmessage;
 window.ws_send = msg => ws.send(msg)")]]))
 
 (defn ->static-app [{:as state :keys [current-path]}]

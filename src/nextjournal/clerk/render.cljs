@@ -559,13 +559,21 @@
   (when-let [title (and (exists? js/document) (-> doc viewer/->value :title))]
     (set! (.-title js/document) title)))
 
+(defn ^:export dispatch [{:as msg :keys [type]}]
+  (let [dispatch-fn ({:set-state! set-state}
+                     type
+                     (fn [type]
+                       (js/console.warn (str "no on-message dispatch for type `" (pr-str type) "`"))))]
+    (prn :<= type := msg)
+    (dispatch-fn msg)))
+
 (defn ^:export ^:dev/after-load mount []
   (when-let [el (and (exists? js/document) (js/document.getElementById "clerk"))]
     #_(rdom/unmount-component-at-node el)
     (rdom/render [root] el)))
 
 (defn clerk-eval [form]
-  (.ws_send ^js goog/global (pr-str form)))
+  (.ws_send ^js goog/global (pr-str {:type :eval :form form})))
 
 (defn render-katex [tex-string {:keys [inline?]}]
   (katex/to-html-string tex-string (j/obj :displayMode (not inline?))))

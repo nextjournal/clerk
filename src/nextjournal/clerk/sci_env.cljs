@@ -87,6 +87,9 @@
                                       sci.configs.js-interop/namespaces
                                       sci.configs.reagent/namespaces)})))
 
+(defn ^:export onmessage [ws-msg]
+  (render/dispatch (read-string (.-data ws-msg))))
+
 (defn ^:export eval-form [f]
   (sci/eval-form @!sci-ctx f))
 

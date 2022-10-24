@@ -88,14 +88,21 @@
 
 #_(serve-file "public" {:uri "/js/viewer.js"})
 
+(def ws-handlers
+  {:on-open (fn [ch] (swap! !clients conj ch))
+   :on-close (fn [ch _reason] (swap! !clients disj ch))
+   :on-receive (fn [_ch edn-string]
+                 (binding [*ns* (or (:ns @!doc)
+                                    (create-ns 'user))]
+                   (let [{:as msg :keys [type]} (read-string edn-string)]
+                     (prn :<= msg)
+                     (case type
+                       :eval (do (eval (:form msg))
+                                 (eval '(nextjournal.clerk/recompute!)))))))})
+
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
-    (httpkit/as-channel req {:on-open (fn [ch] (swap! !clients conj ch))
-                             :on-close (fn [ch _reason] (swap! !clients disj ch))
-                             :on-receive (fn [_ch msg] (binding [*ns* (or (:ns @!doc)
-                                                                         (create-ns 'user))]
-                                                        (eval (read-string msg))
-                                                        (eval '(nextjournal.clerk/recompute!))))})
+    (httpkit/as-channel req ws-handlers)
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
@@ -120,7 +127,8 @@
 
 (defn update-doc! [doc]
   (reset! !error nil)
-  (broadcast! {:remount? (not= (extract-viewer-evals @!doc)
+  (broadcast! {:type :set-state!
+               :remount? (not= (extract-viewer-evals @!doc)
                                (extract-viewer-evals doc))
                :doc (view/doc->viewer (reset! !doc doc))}))
 
