@@ -592,14 +592,23 @@
 ;; TODO: remove
 (def reagent-viewer render-reagent)
 
+(def async-constructor
+  (js/eval "(async function () {}).constructor"))
+
+(defn set-async! [f]
+  (set! (.-constructor f) async-constructor)
+  f)
+
 (defn use-promise
   "React hook which resolves a promise and handles errors."
   [p]
   (let [handle-error (use-handle-error)
         [v v!] (react/useState)]
-    (react/useEffect (fn [] (-> p
-                               (.then #(v! (constantly %)))
-                               (.catch handle-error))))
+    (react/useEffect (fn [] ((doto (fn [] (-> p
+                                            (.then #(v! (constantly %)))
+                                            (.catch handle-error)))
+                              (set-async!))))
+                     #js [])
     v))
 
 (defn ^js use-d3-require [package]
