@@ -2,10 +2,11 @@
 (ns open-graph
   {:nextjournal.clerk/open-graph
    {:url "https://clerk.vision"
-    :image "https://url-to-image"}}
+    :image "https://cdn.nextjournal.com/data/QmSucfUyXCMKg1QbgR3QmLEWiRJ9RJvPum5GqjLPsAyngx?filename=clerk-eye.png&content-type=image/png"}}
   (:require [nextjournal.clerk :as clerk]
             [clojure.java.shell :as shell]
-            [babashka.fs :as fs])
+            [babashka.fs :as fs]
+            [nextjournal.clerk.viewer :as viewer])
   (:import (javax.imageio ImageIO)
            (java.net URL)))
 
@@ -30,10 +31,10 @@
   {:transform-fn (comp clerk/mark-presented (clerk/update-val :open-graph))
    :render-fn
    '(fn [{:as open-graph :keys [title description image]}]
-      [:div.flex.flex-col.items-center
-       [:div.border.border-gray-200 {:style {:width "10rem"}}
+      [:div.flex.flex-col.items-center.m-20
+       [:div.border.border-gray-200.mb-10 {:style {:width "20rem"}}
         [:h2 title]
-        [:img {:src "build/foo/bar.png"}]
+        [:img {:src image}]
         [:div description]]
        [:div.viewer-code.border.border-grey-200
         [nextjournal.clerk.render/inspect
@@ -45,16 +46,19 @@
                 open-graph))]]])})
 
 (clerk/with-viewer og-card-preview
-  @nextjournal.clerk.webserver/!doc
-  #_ #_ use-this-if-the-above-hangs-show
+  #_ @nextjournal.clerk.webserver/!doc
   {:open-graph {:type "article:clerk",
                 :title "My title",
                 :description "Clerk static page generator need to produce valid Open Graph metadata.",
                 :url "https://clerk.vision",
                 :image "https://url-to-image"}})
 
+(clerk/add-viewers! [(assoc og-card-preview :name :clerk/notebook)])
+
 ^{:nextjournal.clerk/visibility {:code :hide :result :hide}}
 (comment
+  ;; reset viewers
+  (clerk/reset-viewers! viewer/default-viewers)
 
   (do
     (fs/delete-tree "ui_tests/screenshots")
