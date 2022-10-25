@@ -285,7 +285,7 @@
                      (cond-> state
                        doc? (merge doc))
                      (-> doc :blocks count range))
-       doc? (-> add-block-ids parser/add-block-visibility)))))
+       doc? (-> add-block-ids parser/add-block-visibility parser/add-open-graph-metadata)))))
 
 (defn analyze-file
   ([file] (analyze-file {:graph (dep/graph)} file))

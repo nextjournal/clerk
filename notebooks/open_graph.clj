@@ -2,7 +2,6 @@
 (ns open-graph
   {:nextjournal.clerk/open-graph
    {:title "My title"
-    :type "article"
     :url "https://clerk.vision"
     :image "https://url-to-image"}}
   (:require [nextjournal.clerk :as clerk])
@@ -19,3 +18,14 @@
 
 ;; By default the last result will serve the purpose.
 (ImageIO/read (URL. "https://etc.usf.edu/clipart/186600/186669/186669-trees-in-the-winter_sm.gif"))
+
+(defn render-open-graph-metadata [{:as doc :keys [open-graph]}]
+  (into [:<>]
+        (keep (fn [[prop content]]
+                (when (string? content)
+                  [:meta {:property (str "ogs" prop) :content content}])))
+        open-graph))
+
+(clerk/code
+ (some-> @nextjournal.clerk.webserver/!doc
+         render-open-graph-metadata))

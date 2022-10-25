@@ -102,6 +102,24 @@
                                                             (first (filter map? first-form)))))))
                        false)})
 
+(defn ->open-graph [{:keys [title blocks]}]
+  (merge {:type "article:clerk"
+          :title title
+          :description (first (sequence
+                               (comp (keep :doc)
+                                     (mapcat :content)
+                                     (filter (comp #{:paragraph} :type))
+                                     (map markdown.transform/->text)) blocks))}
+         (some (fn [form] (when (ns? form)
+                            (some :nextjournal.clerk/open-graph form)))
+               (map :form blocks))))
+
+#_(->open-graph
+   (nextjournal.clerk.analyzer/analyze-doc
+    (parse-file {:doc? true} "notebooks/open_graph.clj")))
+
+(defn add-open-graph-metadata [doc] (assoc doc :open-graph (->open-graph doc)))
+
 #_(->doc-settings '^{:nextjournal.clerk/toc :boom} (ns foo)) ;; TODO: error
 
 (defn add-block-visibility [{:as analyzed-doc :keys [blocks]}]
