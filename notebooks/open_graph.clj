@@ -3,8 +3,7 @@
   {:nextjournal.clerk/no-cache true
    :nextjournal.clerk/open-graph
    {:url "https://clerk.vision"
-    #_#_
-    :image "https://cdn.nextjournal.com/data/QmSucfUyXCMKg1QbgR3QmLEWiRJ9RJvPum5GqjLPsAyngx?filename=clerk-eye.png&content-type=image/png"}}
+    :title "🔫 So OG"}}
   (:require [nextjournal.clerk :as clerk]
             [clojure.string :as str]
             [clojure.java.shell :as shell]
@@ -15,7 +14,9 @@
            (java.net URL)))
 
 ;; ## Proposal
-;; Clerk static page generator need to produce valid [Open Graph](https://ogp.me) metadata.
+;; The first paragraph of the notebook should be used as description in open graph meta.
+;;
+;; For context see [Open Graph](https://ogp.me) metadata.
 
 ;; A Specific result may be specified via metadata
 ^{::clerk/open-graph {:image :result}}
@@ -70,7 +71,8 @@
   #_ @nextjournal.clerk.webserver/!doc
   {:open-graph {:type "article:clerk",
                 :title "My title",
-                :description "Clerk static page generator need to produce valid Open Graph metadata.",
+                :description "Some description"
+                :image "https://cdn.nextjournal.com/data/QmSucfUyXCMKg1QbgR3QmLEWiRJ9RJvPum5GqjLPsAyngx?filename=clerk-eye.png&content-type=image/png"
                 :url "https://clerk.vision"}})
 
 (defn take-screenshots-and-preview! []
