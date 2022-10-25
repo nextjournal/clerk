@@ -1,14 +1,14 @@
 (ns screenshots
   "Playwright script to Generate open graph preview images from a notebook's results.
-  
+
   Run this via:
-  
+
       cd ui_tests; yarn nbb -m screenshots --url http://localhost:7777 --out-dir screenshots
-  
+
   For a REPL development workflow start a nbb nrepl server via:
-  
+
       cd ui_tests; yarn nbb nrepl-server :port 1337"
-  
+
   {:clj-kondo/config '{:lint-as {promesa.core/let clojure.core/let}}}
   (:require ["playwright$default" :as pw :refer [chromium]]
             [promesa.core :as p]
@@ -41,7 +41,11 @@
   ([page] (screenshot {} page))
   ([{:keys [out-dir]} page]
    (println+flush "📷 Starting screenshotting…")
-   (p/let [results (.locator page ".viewer-result")
+   (p/let [og-captures (.locator page ".og-image-capture")
+           og-captures-count (.count og-captures)
+           results (if (< 0 og-captures-count)
+                     og-captures
+                     (.locator page ".viewer-result"))
            results-count (.count results)]
      (println+flush "📸 Screenshotting page with bounds" (str page-width "×" page-height))
      (.screenshot page #js {:path (->path out-dir "page.png")})
