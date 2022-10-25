@@ -1,12 +1,16 @@
 ;; # 🗂 Open Graph Metadata
 (ns open-graph
-  {:nextjournal.clerk/open-graph
+  {:nextjournal.clerk/no-cache true
+   :nextjournal.clerk/open-graph
    {:url "https://clerk.vision"
+    #_#_
     :image "https://cdn.nextjournal.com/data/QmSucfUyXCMKg1QbgR3QmLEWiRJ9RJvPum5GqjLPsAyngx?filename=clerk-eye.png&content-type=image/png"}}
   (:require [nextjournal.clerk :as clerk]
+            [clojure.string :as str]
             [clojure.java.shell :as shell]
             [babashka.fs :as fs]
-            [nextjournal.clerk.viewer :as viewer])
+            [nextjournal.clerk.viewer :as viewer]
+            [clojure.string :as str])
   (:import (javax.imageio ImageIO)
            (java.net URL)))
 
@@ -27,8 +31,24 @@
 ;; By default the last result will serve the purpose.
 (ImageIO/read (URL. "https://etc.usf.edu/clipart/186600/186669/186669-trees-in-the-winter_sm.gif"))
 
+(def screenshots-dir "public/build/_data/screenshots")
+
+(defn take-screenshots! []
+  (fs/delete-tree screenshots-dir)
+  (shell/sh "yarn" "nbb" "-m" "screenshots" "--url" "localhost:7777" "--out-dir" (str "../" screenshots-dir)
+            :dir "ui_tests"))
+
+(defn add-screenshots [{:as og :keys [image]}]
+  (cond-> og
+    (and (not image) (fs/exists? screenshots-dir))
+    (assoc :image
+           (str "http://localhost:7777/build/_data/screenshots/"
+                (or (some #(and (str/starts-with? % "result") %)
+                          (map fs/file-name (fs/list-dir screenshots-dir)))
+                    "page.png")))))
+
 (def og-card-preview
-  {:transform-fn (comp clerk/mark-presented (clerk/update-val :open-graph))
+  {:transform-fn (comp clerk/mark-presented (clerk/update-val (comp add-screenshots :open-graph)))
    :render-fn
    '(fn [{:as open-graph :keys [title description image]}]
       [:div.flex.flex-col.items-center.m-20
@@ -46,28 +66,28 @@
                 open-graph))]]])})
 
 (clerk/with-viewer og-card-preview
+  ;; FIXME: can't use this here
   #_ @nextjournal.clerk.webserver/!doc
   {:open-graph {:type "article:clerk",
                 :title "My title",
                 :description "Clerk static page generator need to produce valid Open Graph metadata.",
-                :url "https://clerk.vision",
-                :image "https://url-to-image"}})
+                :url "https://clerk.vision"}})
 
-(clerk/add-viewers! [(assoc og-card-preview :name :clerk/notebook)])
+(defn take-screenshots-and-preview! []
+  (take-screenshots!)
+  (clerk/add-viewers! [(assoc og-card-preview :name :clerk/notebook)])
+  (clerk/recompute!))
+
+(defn reset-notebook! []
+  (clerk/reset-viewers! viewer/default-viewers)
+  (clerk/recompute!))
 
 ^{:nextjournal.clerk/visibility {:code :hide :result :hide}}
 (comment
-  ;; reset viewers
-  (clerk/reset-viewers! viewer/default-viewers)
+  ;; take screenshots of the current shown doc
+  (take-screenshots-and-preview!)
+  ;; reset view
+  (reset-notebook!)
 
-  (do
-    (fs/delete-tree "ui_tests/screenshots")
-    (shell/sh "yarn" "nbb" "-m" "screenshots"
-              "--url" "localhost:7777"
-              "--out-dir" "screenshots"
-              :dir "ui_tests")
-    (as-> (fs/path "ui_tests/screenshots") dir
-      (when (fs/exists? dir)
-        (fs/list-dir dir))))
-
+  (take 20 (.getBytes (slurp "public/build/_data/screenshots/page.png")))
   )
