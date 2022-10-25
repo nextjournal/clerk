@@ -20,6 +20,9 @@
   (flush))
 
 (defn goto [page url]
+  (when-not url
+    (throw (ex-info "⚠️ Must provide an URL." {})))
+  (println+flush "🌍 Visiting page:" url)
   (.goto page url #js{:waitUntil "networkidle"}))
 
 (def browser (await (.launch chromium #js {:headless false})))
@@ -27,13 +30,8 @@
 (def page-width 1280)
 (def page-height 720)
 
-(defn new-page [url]
-  (when-not url
-    (throw (ex-info "⚠️ Must provide an URL." {})))
-  (println+flush "🌍 Visiting page:" url)
-  (p/let [page (.newPage browser #js {:viewport #js {:width page-width :height page-height}})
-          _ (goto page url)]
-    page))
+(defn new-page []
+  (.newPage browser #js {:viewport #js {:width page-width :height page-height}}))
 
 (defn ->path [out-dir filename]
   (cond->> filename
@@ -75,12 +73,15 @@
 
 (defn -main [& args]
   (p/let [{:as opts :keys [url]} (:opts (cli/parse-args args {:alias {:u :url :o :out-dir}}))
-          page (new-page url)]
-    (p/do
-      (.waitForEvent page "load")
-      (screenshot opts page)
-      (.close browser))))
+          page (new-page)]
+    (let [loaded? (.waitForEvent page "load")]
+      (p/do
+        (goto page url)
+        loaded?
+        (screenshot opts page)
+        (.close browser)))))
 
 (comment
-  (def page (new-page "http://localhost:7777"))
+  (def page (new-page))
+  (goto page "http://localhost:7777")
   (screenshot page))
