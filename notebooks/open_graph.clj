@@ -23,7 +23,7 @@
   (into [:<>]
         (keep (fn [[prop content]]
                 (when (string? content)
-                  [:meta {:property (str "ogs" prop) :content content}])))
+                  [:meta {:property (str "og" prop) :content content}])))
         open-graph))
 
 (clerk/code

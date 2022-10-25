@@ -360,6 +360,9 @@
                                     (-> presented-result ->viewer :name)
                                     (assoc :nextjournal/viewer (select-keys (->viewer presented-result) [:name]))
 
+                                    (-> cell :form meta :nextjournal.clerk/open-graph :image)
+                                    (assoc :nextjournal/og-image-capture true)
+
                                     (= blob-mode :lazy-load)
                                     (assoc :nextjournal/fetch-opts {:blob-id blob-id}
                                            :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta])))}

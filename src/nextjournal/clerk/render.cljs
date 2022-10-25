@@ -159,6 +159,7 @@
                                inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
                            ^{:key (str idx "-" @!eval-counter)}
                            [:div {:class ["viewer"
+                                          (when (:nextjournal/og-image-capture (viewer/->value x)) "og-image-capture")
                                           (when viewer-name (str "viewer-" (name viewer-name)))
                                           (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
                                           (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
