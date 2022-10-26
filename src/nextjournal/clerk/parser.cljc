@@ -110,9 +110,9 @@
                                      (mapcat :content)
                                      (filter (comp #{:paragraph} :type))
                                      (map markdown.transform/->text)) blocks))}
-         (some (fn [form] (when (ns? form)
-                            (some :nextjournal.clerk/open-graph form)))
-               (map :form blocks))))
+         (some (fn [{:keys [form]}]
+                 (or (when (ns? form) (some :nextjournal.clerk/open-graph form))
+                     (when (map? form) (:nextjournal.clerk/open-graph form)))) blocks)))
 
 #_(->open-graph
    (nextjournal.clerk.analyzer/analyze-doc
