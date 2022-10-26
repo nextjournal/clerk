@@ -8,7 +8,8 @@
             [clojure.string :as str]
             [clojure.java.shell :as shell]
             [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as viewer])
+            [nextjournal.clerk.viewer :as viewer]
+            [nextjournal.clerk.webserver :as webserver])
   (:import (javax.imageio ImageIO)
            (java.net URL)))
 
@@ -69,9 +70,10 @@
                 :image "https://cdn.nextjournal.com/data/QmSucfUyXCMKg1QbgR3QmLEWiRJ9RJvPum5GqjLPsAyngx?filename=clerk-eye.png&content-type=image/png"
                 :url "https://clerk.vision"}})
 
-(defn take-screenshots-and-preview! []
-  (take-screenshots!)
-  (clerk/add-viewers! [(assoc og-card-preview :name :clerk/notebook)])
+(defn take-screenshots-and-preview! [& {:keys [screenshots?] :or {screenshots? false}}]
+  (when screenshots? (take-screenshots!))
+  (viewer/reset-viewers! (or (:ns @webserver/!doc) *ns*)
+                         (viewer/add-viewers [(assoc og-card-preview :name :clerk/notebook)]))
   (clerk/recompute!))
 
 (defn reset-notebook! []
@@ -80,10 +82,11 @@
 
 ^{:nextjournal.clerk/visibility {:code :hide :result :hide}}
 (comment
+  ;; show! any notebook, then evaluate the following to preview Open Graph stuff
   ;; take screenshots of the current shown doc
   (take-screenshots-and-preview!)
+  (take-screenshots-and-preview! :screenshots? true)
   ;; reset view
   (reset-notebook!)
 
-  (take 20 (.getBytes (slurp "public/build/_data/screenshots/page.png")))
-  )
+  (:open-graph @webserver/!doc))
