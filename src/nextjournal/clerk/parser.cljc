@@ -74,17 +74,21 @@
 #_(->visibility (quote ^{:nextjournal.clerk/visibility "bam"} (ns foo)))
 #_(->visibility (quote ^{:nextjournal.clerk/visibility #{:hide-ns}} (do :foo)))
 
+(defn read-form-option [form key]
+  (or (when (ns? form) (merge (-> form second meta key) (some key form)))
+      (when (map? form) (get form key))))
+
+(defn read-doc-option [doc key]
+  (->> doc :blocks (map :form) (some #(read-form-option % key))))
+
 (defn ->doc-visibility [form]
   (cond
     ;; TODO: drop legacy visibility support before 1.0
     (and (ns? form) (legacy-doc-visibility form))
     (legacy-doc-visibility form)
 
-    (ns? form)
-    (parse-visibility form (merge (-> form second meta :nextjournal.clerk/visibility)
-                                  (some :nextjournal.clerk/visibility form)))
-    (visibility-marker? form)
-    (parse-visibility form (:nextjournal.clerk/visibility form))))
+    (or (ns? form) (visibility-marker? form))
+    (parse-visibility form (read-form-option form :nextjournal.clerk/visibility))))
 
 #_(->doc-visibility '(ns foo "my docs" {:nextjournal.clerk/visibility {:code :fold :result :hide}}))
 #_(->doc-visibility '{:nextjournal.clerk/visibility {:code :fold}})
@@ -102,7 +106,7 @@
                                                             (first (filter map? first-form)))))))
                        false)})
 
-(defn ->open-graph [{:keys [title blocks]}]
+(defn ->open-graph [{:as doc :keys [title blocks]}]
   (merge {:type "article:clerk"
           :title title
           :description (first (sequence
@@ -110,9 +114,7 @@
                                      (mapcat :content)
                                      (filter (comp #{:paragraph} :type))
                                      (map markdown.transform/->text)) blocks))}
-         (some (fn [{:keys [form]}]
-                 (or (when (ns? form) (some :nextjournal.clerk/open-graph form))
-                     (when (map? form) (:nextjournal.clerk/open-graph form)))) blocks)))
+         (read-doc-option doc :nextjournal.clerk/open-graph)))
 
 #_(->open-graph
    (nextjournal.clerk.analyzer/analyze-doc
