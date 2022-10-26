@@ -99,7 +99,7 @@ par two"))))
                     analyze-string
                     :open-graph)))
 
-    (is (match? {:title "Doc Title" :description "first paragraph"}
+    (is (match? {:title "Doc Title" :description "first paragraph" :url "https://ogp.me"}
                 (-> ";; # Doc Title\n(ns my.ns2 {:nextjournal.clerk/open-graph {:url \"https://ogp.me\"}})\n;; ---\n;; first paragraph"
                     analyze-string
                     :open-graph)))))
