@@ -49,15 +49,17 @@
                     "page.png")))))
 
 (def og-card-preview
-  {:transform-fn (comp clerk/mark-presented (clerk/update-val (comp add-screenshots :open-graph)))
+  {:transform-fn (comp clerk/mark-presented
+                       #(assoc % :nextjournal/width :full)
+                       (clerk/update-val (comp add-screenshots :open-graph)))
    :render-fn
    '(fn [{:as open-graph :keys [title description image]}]
       [:div.flex.flex-col.items-center.m-20
-       [:div.border.border-gray-200.mb-10 {:style {:width "20rem"}}
+       [:div.border.border-gray-200.mb-10
         [:h2 title]
         [:img {:src image}]
         [:div description]]
-       [:div.viewer-code.border.border-grey-200
+       [:div.viewer-code.overflow-scroll
         [nextjournal.clerk.render/inspect
          (v/code (v/open-graph-metas open-graph))]]])})
 
@@ -70,7 +72,7 @@
                 :image "https://cdn.nextjournal.com/data/QmSucfUyXCMKg1QbgR3QmLEWiRJ9RJvPum5GqjLPsAyngx?filename=clerk-eye.png&content-type=image/png"
                 :url "https://clerk.vision"}})
 
-(defn take-screenshots-and-preview! [& {:keys [screenshots?] :or {screenshots? false}}]
+(defn preview-open-graph-card! [& {:keys [screenshots?] :or {screenshots? false}}]
   (when screenshots? (take-screenshots!))
   (viewer/reset-viewers! (or (:ns @webserver/!doc) *ns*)
                          (viewer/add-viewers [(assoc og-card-preview :name :clerk/notebook)]))
@@ -84,8 +86,8 @@
 (comment
   ;; show! any notebook, then evaluate the following to preview Open Graph stuff
   ;; take screenshots of the current shown doc
-  (take-screenshots-and-preview!)
-  (take-screenshots-and-preview! :screenshots? true)
+  (preview-open-graph-card!)
+  (preview-open-graph-card! :screenshots? true)
   ;; reset view
   (reset-notebook!)
 
