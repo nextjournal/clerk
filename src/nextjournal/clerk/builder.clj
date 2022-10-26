@@ -3,13 +3,16 @@
   (:require [babashka.fs :as fs]
             [clojure.java.browse :as browse]
             [clojure.set :as set]
+            [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.java.shell :refer [sh]]
             [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.builder-ui :as builder-ui]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]
-            [nextjournal.clerk.webserver :as webserver]))
+            [nextjournal.clerk.webserver :as webserver]
+            [nextjournal.clerk.config :as config]))
 
 (def clerk-docs
   (into ["CHANGELOG.md"
@@ -235,3 +238,22 @@
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
 #_(build-static-app! {:paths ["notebooks/viewers/**"]})
 #_(build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
+
+(comment
+  ;; copy tw config
+  (spit "tailwind.config.cjs"
+        (slurp (io/resource "stylesheets/tailwind.config.js")))
+  ;; copy js contents
+  (do
+    (fs/create-dirs "build")
+    (spit "build/viewer.js"
+          (slurp (-> config/lookup-url slurp clojure.edn/read-string (get "/js/viewer.js")))))
+
+  ;; run script
+  (sh "yarn" "tailwindcss"
+      "--config" "tailwind.config.cjs"
+      "--output" "output.css"
+      "--minify"
+      :in (slurp (io/resource "stylesheets/viewer.css")))
+
+  (sh "ls" "-lah" "output.css"))
