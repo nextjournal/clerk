@@ -74,17 +74,18 @@
 #_(->visibility (quote ^{:nextjournal.clerk/visibility "bam"} (ns foo)))
 #_(->visibility (quote ^{:nextjournal.clerk/visibility #{:hide-ns}} (do :foo)))
 
+(defn get-doc-setting [form key]
+  (or (when (ns? form) (merge (-> form second meta key) (some key form)))
+      (when (map? form) (get form key))))
+
 (defn ->doc-visibility [form]
   (cond
     ;; TODO: drop legacy visibility support before 1.0
     (and (ns? form) (legacy-doc-visibility form))
     (legacy-doc-visibility form)
 
-    (ns? form)
-    (parse-visibility form (merge (-> form second meta :nextjournal.clerk/visibility)
-                                  (some :nextjournal.clerk/visibility form)))
-    (visibility-marker? form)
-    (parse-visibility form (:nextjournal.clerk/visibility form))))
+    (or (ns? form) (visibility-marker? form))
+    (parse-visibility form (get-doc-setting form :nextjournal.clerk/visibility))))
 
 #_(->doc-visibility '(ns foo "my docs" {:nextjournal.clerk/visibility {:code :fold :result :hide}}))
 #_(->doc-visibility '{:nextjournal.clerk/visibility {:code :fold}})
@@ -101,6 +102,22 @@
                                                      (merge (-> first-form second meta)
                                                             (first (filter map? first-form)))))))
                        false)})
+
+(defn ->open-graph [{:keys [title blocks]}]
+  (merge {:type "article:clerk"
+          :title title
+          :description (first (sequence
+                               (comp (keep :doc)
+                                     (mapcat :content)
+                                     (filter (comp #{:paragraph} :type))
+                                     (map markdown.transform/->text)) blocks))}
+         (some #(get-doc-setting (:form %) :nextjournal.clerk/open-graph) blocks)))
+
+#_(->open-graph
+   (nextjournal.clerk.analyzer/analyze-doc
+    (parse-file {:doc? true} "notebooks/open_graph.clj")))
+
+(defn add-open-graph-metadata [doc] (assoc doc :open-graph (->open-graph doc)))
 
 #_(->doc-settings '^{:nextjournal.clerk/toc :boom} (ns foo)) ;; TODO: error
 

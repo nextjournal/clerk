@@ -91,3 +91,15 @@ par two"))))
   (testing "can change visibility halfway"
     (is (= [{:code :show, :result :show} {:code :hide, :result :hide} {:code :fold, :result :hide}]
            (->> "(rand-int 42) {:nextjournal.clerk/visibility {:code :fold :result :hide}} (rand-int 42)" analyze-string :blocks (mapv :visibility))))))
+
+(deftest add-open-graph-metadata
+  (testing "OG metadata should be inferred, but customizable via ns map"
+    (is (match? {:title "OG Title"}
+                (-> ";; # Doc Title\n(ns my.ns1 {:nextjournal.clerk/open-graph {:title \"OG Title\"}})"
+                    analyze-string
+                    :open-graph)))
+
+    (is (match? {:title "Doc Title" :description "first paragraph" :url "https://ogp.me"}
+                (-> ";; # Doc Title\n(ns my.ns2 {:nextjournal.clerk/open-graph {:url \"https://ogp.me\"}})\n;; ---\n;; first paragraph"
+                    analyze-string
+                    :open-graph)))))

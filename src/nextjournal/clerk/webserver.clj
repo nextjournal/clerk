@@ -83,7 +83,7 @@
                                           "jpg" "image/jpeg"
                                           "js" "application/javascript"} extension "text/html")}
                   (and (= "js" extension) (fs/exists? (str file ".map"))) (assoc "SourceMap" (str uri ".map")))
-       :body (slurp file)}
+       :body (fs/read-all-bytes file)}
       {:status 404})))
 
 #_(serve-file "public" {:uri "/js/viewer.js"})
