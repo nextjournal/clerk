@@ -159,7 +159,7 @@
                                inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
                            ^{:key (str idx "-" @!eval-counter)}
                            [:div {:class ["viewer"
-                                          (when (:nextjournal/og-image-capture (viewer/->value x)) "og-image-capture")
+                                          (when (:nextjournal/open-graph-image-capture (viewer/->value x)) "open-graph-image-capture")
                                           (when viewer-name (str "viewer-" (name viewer-name)))
                                           (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
                                           (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
@@ -685,5 +685,3 @@
     src
     (str "/_blob/" blob-id (when-let [opts (seq (dissoc src :blob-id))]
                              (str "?" (opts->query opts))))))
-
-

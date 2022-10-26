@@ -41,7 +41,7 @@
   ([page] (screenshot {} page))
   ([{:keys [out-dir]} page]
    (println+flush "📷 Starting screenshotting…")
-   (p/let [og-captures (.locator page ".og-image-capture")
+   (p/let [og-captures (.locator page ".open-graph-image-capture")
            og-captures-count (.count og-captures)
            results (if (< 0 og-captures-count)
                      og-captures

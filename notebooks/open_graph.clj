@@ -48,7 +48,7 @@
                           (map fs/file-name (fs/list-dir screenshots-dir)))
                     "page.png")))))
 
-(def og-card-preview
+(def open-graph-card-preview
   {:transform-fn (comp clerk/mark-presented
                        #(assoc % :nextjournal/width :full)
                        (clerk/update-val (comp add-screenshots :open-graph)))
@@ -63,7 +63,7 @@
         [nextjournal.clerk.render/inspect
          (v/code (v/open-graph-metas open-graph))]]])})
 
-(clerk/with-viewer og-card-preview
+(clerk/with-viewer open-graph-card-preview
   ;; FIXME: can't use this here
   #_ @nextjournal.clerk.webserver/!doc
   {:open-graph {:type "article:clerk",
@@ -75,7 +75,7 @@
 (defn preview-open-graph-card! [& {:keys [screenshots?] :or {screenshots? false}}]
   (when screenshots? (take-screenshots!))
   (viewer/reset-viewers! (or (:ns @webserver/!doc) *ns*)
-                         (viewer/add-viewers [(assoc og-card-preview :name :clerk/notebook)]))
+                         (viewer/add-viewers [(assoc open-graph-card-preview :name :clerk/notebook)]))
   (clerk/recompute!))
 
 (defn reset-notebook! []

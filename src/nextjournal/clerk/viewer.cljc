@@ -45,7 +45,7 @@
 
 (defn open-graph-metas [open-graph-properties]
   (map (fn [[prop content]] [:meta {:property (str "og:" (name prop)) :content content}])
-        open-graph-properties))
+       open-graph-properties))
 
 #?(:clj
    (defmethod print-method ViewerFn [v ^java.io.Writer w]
@@ -365,7 +365,7 @@
                                     (assoc :nextjournal/viewer (select-keys (->viewer presented-result) [:name]))
 
                                     (-> cell :form meta :nextjournal.clerk/open-graph :image)
-                                    (assoc :nextjournal/og-image-capture true)
+                                    (assoc :nextjournal/open-graph-image-capture true)
 
                                     (= blob-mode :lazy-load)
                                     (assoc :nextjournal/fetch-opts {:blob-id blob-id}

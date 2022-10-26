@@ -74,12 +74,9 @@
 #_(->visibility (quote ^{:nextjournal.clerk/visibility "bam"} (ns foo)))
 #_(->visibility (quote ^{:nextjournal.clerk/visibility #{:hide-ns}} (do :foo)))
 
-(defn read-form-option [form key]
+(defn get-doc-setting [form key]
   (or (when (ns? form) (merge (-> form second meta key) (some key form)))
       (when (map? form) (get form key))))
-
-(defn read-doc-option [doc key]
-  (->> doc :blocks (map :form) (some #(read-form-option % key))))
 
 (defn ->doc-visibility [form]
   (cond
@@ -88,7 +85,7 @@
     (legacy-doc-visibility form)
 
     (or (ns? form) (visibility-marker? form))
-    (parse-visibility form (read-form-option form :nextjournal.clerk/visibility))))
+    (parse-visibility form (get-doc-setting form :nextjournal.clerk/visibility))))
 
 #_(->doc-visibility '(ns foo "my docs" {:nextjournal.clerk/visibility {:code :fold :result :hide}}))
 #_(->doc-visibility '{:nextjournal.clerk/visibility {:code :fold}})
@@ -106,7 +103,7 @@
                                                             (first (filter map? first-form)))))))
                        false)})
 
-(defn ->open-graph [{:as doc :keys [title blocks]}]
+(defn ->open-graph [{:keys [title blocks]}]
   (merge {:type "article:clerk"
           :title title
           :description (first (sequence
@@ -114,7 +111,7 @@
                                      (mapcat :content)
                                      (filter (comp #{:paragraph} :type))
                                      (map markdown.transform/->text)) blocks))}
-         (read-doc-option doc :nextjournal.clerk/open-graph)))
+         (some #(get-doc-setting (:form %) :nextjournal.clerk/open-graph) blocks)))
 
 #_(->open-graph
    (nextjournal.clerk.analyzer/analyze-doc

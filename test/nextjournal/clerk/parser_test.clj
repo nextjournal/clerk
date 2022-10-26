@@ -92,7 +92,7 @@ par two"))))
     (is (= [{:code :show, :result :show} {:code :hide, :result :hide} {:code :fold, :result :hide}]
            (->> "(rand-int 42) {:nextjournal.clerk/visibility {:code :fold :result :hide}} (rand-int 42)" analyze-string :blocks (mapv :visibility))))))
 
-(deftest add-open-graph-metadatta
+(deftest add-open-graph-metadata
   (testing "OG metadata should be inferred, but customizable via ns map"
     (is (match? {:title "OG Title"}
                 (-> ";; # Doc Title\n(ns my.ns1 {:nextjournal.clerk/open-graph {:title \"OG Title\"}})"
