@@ -19,11 +19,13 @@
 (defn include-viewer-css []
   (if-let [css-url (@config/!resource->url "/css/viewer.css")]
     (hiccup/include-css css-url)
-    (list (hiccup/include-js "https://cdn.tailwindcss.com?plugins=typography")
+    (list "<!-- live-tailwind -->"
+          (hiccup/include-js "https://cdn.tailwindcss.com?plugins=typography")
           [:script (-> (slurp (io/resource "stylesheets/tailwind.config.js"))
-                       (str/replace  #"^module.exports" "tailwind.config")
-                       (str/replace  #"require\(.*\)" ""))]
-          [:style {:type "text/tailwindcss"} (slurp (io/resource "stylesheets/viewer.css"))])))
+                       (str/replace #"^module.exports" "tailwind.config")
+                       (str/replace #"require\(.*\)" ""))]
+          [:style {:type "text/tailwindcss"} (slurp (io/resource "stylesheets/viewer.css"))]
+          "<!-- live-tailwind -->")))
 
 (defn include-css+js []
   (list
