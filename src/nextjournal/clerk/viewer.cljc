@@ -43,6 +43,10 @@
 (defn ->viewer-eval [form]
   (map->ViewerEval {:form form}))
 
+(defn open-graph-metas [open-graph-properties]
+  (map (fn [[prop content]] [:meta {:property (str "og:" (name prop)) :content content}])
+        open-graph-properties))
+
 #?(:clj
    (defmethod print-method ViewerFn [v ^java.io.Writer w]
      (.write w (str "#viewer-fn " (pr-str `~(:form v))))))
@@ -147,10 +151,10 @@
   (cond
     (and (map? (first opts+items)) (not (wrapped-value? (first opts+items))))
     (with-viewer viewer (first opts+items) (rest opts+items))
-    
+
     (and (sequential? (first opts+items)) (= 1 (count opts+items)))
     (apply (partial with-viewer viewer) opts+items)
-    
+
     :else
     (with-viewer viewer opts+items)))
 
@@ -790,7 +794,7 @@
                                              (map (comp process-wrapped-value
                                                         apply-viewers*
                                                         (partial ensure-wrapped-with-viewers viewers))))))
-      (select-keys [:blocks :toc :toc-visibility :title])
+      (select-keys [:blocks :toc :toc-visibility :title :open-graph])
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
 
 (def notebook-viewer

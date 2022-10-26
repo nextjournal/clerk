@@ -4,12 +4,11 @@
    :nextjournal.clerk/open-graph
    {:url "https://clerk.vision"
     :title "🔫 So OG"}}
-  (:require [nextjournal.clerk :as clerk]
+  (:require [babashka.fs :as fs]
             [clojure.string :as str]
             [clojure.java.shell :as shell]
-            [babashka.fs :as fs]
-            [nextjournal.clerk.viewer :as viewer]
-            [clojure.string :as str])
+            [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.viewer :as viewer])
   (:import (javax.imageio ImageIO)
            (java.net URL)))
 
@@ -59,12 +58,7 @@
         [:div description]]
        [:div.viewer-code.border.border-grey-200
         [nextjournal.clerk.render/inspect
-         (v/code
-          (into [:<>]
-                (keep (fn [[prop content]]
-                        (when (string? content)
-                          [:meta {:property (str "og" prop) :content content}])))
-                open-graph))]]])})
+         (v/code (v/open-graph-metas open-graph))]]])})
 
 (clerk/with-viewer og-card-preview
   ;; FIXME: can't use this here

@@ -56,7 +56,8 @@ window.ws_send = msg => ws.send(msg)")]]))
    [:head
     [:title (or (and current-path (-> state :path->doc (get current-path) v/->value :title)) "Clerk")]
     [:meta {:charset "UTF-8"}]
-    [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]    
+    [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
+    (when current-path (v/open-graph-metas (-> state :path->doc (get current-path) v/->value :open-graph)))
     (include-css+js)]
    [:body
     [:div#clerk-static-app]
