@@ -133,11 +133,22 @@
 
 (defn extract-viewer-evals [{:as _doc :keys [blocks]}]
   (into #{}
-        (comp (map #(-> % :result :nextjournal/value (v/get-safe :nextjournal/value)))
+        (comp (keep #(-> % :result :nextjournal/value (v/get-safe :nextjournal/value)))
               (filter (every-pred v/viewer-eval? :remount?)))
         blocks))
 
+
 #_(extract-viewer-evals @!doc)
+
+(defn extract-clerk-atoms [{:as _doc :keys [blocks]}]
+  (into #{}
+        (comp (keep #(-> % :result :nextjournal/value (v/get-safe :nextjournal.clerk/var-from-def)))
+              (filter (fn [var] (and (contains? (meta var) :nextjournal.clerk/sync)
+                                     (instance? clojure.lang.IAtom (deref var))))))
+        blocks))
+
+#_(extract-clerk-atoms @!doc)
+
 
 (defn update-doc! [doc]
   (reset! !error nil)

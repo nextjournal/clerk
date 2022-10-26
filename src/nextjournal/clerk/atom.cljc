@@ -11,14 +11,13 @@
                                            {:var-name (symbol var-from-def) :state @@var-from-def})))
    :render-fn '(fn [{:keys [var-name state]} {:as opts :keys [render-fn]}]
                  (reagent/with-let [var (or (resolve var-name)
-                                            (do (js/console.log (pr-str (list 'defatom var-name (list 'atom state))))
-                                                (intern (create-ns (symbol (namespace var-name)))
-                                                        (symbol (name var-name))
-                                                        (with-meta (reagent/atom state)
-                                                          {:var-name var-name}))))
+                                            (intern (create-ns (symbol (namespace var-name)))
+                                                    (symbol (name var-name))
+                                                    (with-meta (reagent/atom state)
+                                                      {:var-name var-name})))
                                     render-fn' (eval (second render-fn))]
                    (or (when render-fn (v/html [render-fn' @var]))
-                       [:div "☯️☯️☯️ " [nextjournal.clerk.render/inspect @@var]])))})
+                       [:div "☯️ " [nextjournal.clerk.render/inspect @@var]])))})
 
 (def counter-viewer
   {:transform-fn (comp (clerk/update-val symbol)
@@ -36,32 +35,20 @@
   {:transform-fn (clerk/update-val symbol)
    :render-fn '(fn [x] [nextjournal.clerk.render/inspect x])})
 
-(defn atom
-  [initial-state]
-  (core/atom initial-state))
-
-
 {:nextjournal.clerk/visibility {:code :show :result :show}}
 
 ;; # 🧮 Counter in Clerk
 
 ;; We `defonce` an atom and show it using the `atom-viewer`. This will create a corresponding (reagent) atom in the browser.
-^{::clerk/viewer atom-viewer
-  ::clerk/opts {:render-fn '(fn [atom]
-                              [:input {:type :range
-                                       :default-value (:counter @atom)
-                                       :on-change (fn [e]
-                                                    (js/console.log (int (.. e -target -value)))
-                                                    (nextjournal.clerk.render/swap-fn! atom update :counter (constantly (int (.. e -target -value))))
-                                                    nil)}])}}
-(defonce my-state
+^{::clerk/viewer atom-viewer #_#_::clerk/visibility {:result :hide}}
+(defonce ^::clerk/sync my-state
   (atom {:counter 0}))
 
 ;; This is showing the state that the JVM has.
 @my-state
 
 ^{::clerk/viewer counter-viewer}
-(do #'my-state)
+#'my-state
 
 
 #_(-> (atom {}) meta)
