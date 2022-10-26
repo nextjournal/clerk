@@ -77,7 +77,7 @@
   (clerk/recompute!))
 
 (defn reset-notebook! []
-  (clerk/reset-viewers! viewer/default-viewers)
+  (viewer/reset-viewers! (or (:ns @webserver/!doc) *ns*) viewer/default-viewers)
   (clerk/recompute!))
 
 ^{:nextjournal.clerk/visibility {:code :hide :result :hide}}
