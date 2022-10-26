@@ -243,6 +243,10 @@
   ;; copy tw config
   (spit "tailwind.config.cjs"
         (slurp (io/resource "stylesheets/tailwind.config.js")))
+
+  ;; copy input
+  (spit "input.css" (slurp (io/resource "stylesheets/viewer.css")))
+
   ;; copy js contents
   (do
     (fs/create-dirs "build")
@@ -251,9 +255,10 @@
 
   ;; run script
   (sh "yarn" "tailwindcss"
+      "--input" "input.css"
       "--config" "tailwind.config.cjs"
       "--output" "output.css"
-      "--minify"
-      :in (slurp (io/resource "stylesheets/viewer.css")))
+      #_ "--minify")
 
+  (fs/delete "output.css" )
   (sh "ls" "-lah" "output.css"))
