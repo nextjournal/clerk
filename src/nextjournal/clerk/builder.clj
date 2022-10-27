@@ -71,7 +71,7 @@
   [path]
   (str/replace path fs/file-separator "/"))
 
-(defn describe-event [{:as event :keys [stage state duration doc error message]}]
+(defn describe-event [{:as event :keys [stage state duration doc error]}]
   (let [format-duration (partial format "%.3fms")
         duration (some-> duration format-duration)]
     (case stage
@@ -81,10 +81,10 @@
                                  (str "Errored in " duration ". ❌\n")
                                  (str "Done in " duration ". ✅\n"))
       :building (str "🔨 Building \"" (:file doc) "\"… ")
+      :compiling-css "🎨 Optimizing CSS… "
       :downloading-cache (str "⏬ Downloading distributed cache… ")
       :uploading-cache (str "⏫ Uploading distributed cache… ")
-      :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n")
-      message)))
+      :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n"))))
 
 (defn stdout-reporter [build-event]
   (doto (describe-event build-event)
@@ -189,7 +189,6 @@
 
 (defn compile-css
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
-  {:nextjournal.clerk/build-message "🎨 Optimizing CSS… "}
   [{:as opts :keys [bundle? report-fn out-path]} docs]
   (def opts opts)
   (def docs docs)
@@ -204,7 +203,7 @@
             (fs/create-dirs (fs/parent path))
             (str path))
           (pr-str viewer)))
-  (sh "yarn" "tailwindcss"
+  (sh "npx" "tailwindcss"
       "--input" "input.css"
       "--config" "tailwind.config.cjs"
       "--output" (str (fs/path out-path "viewer.css"))
@@ -212,7 +211,7 @@
   (swap! config/!resource->url assoc "/css/viewer.css" "viewer.css"))
 
 (defn build-static-app! [opts]
-  (let [{:as opts :keys [paths download-cache-fn upload-cache-fn bundle? report-fn optimize-css? compile-css-fn]}
+  (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css?]}
         (process-build-opts opts)
         {:keys [expanded-paths error]} (try {:expanded-paths (expand-paths opts)}
                                             (catch Exception e
@@ -252,18 +251,10 @@
                         result)) state (range))
         _ (when-let [first-error (some :error state)]
             (throw first-error))
-        _ (when compile-css-fn
-            (assert (or (symbol? compile-css-fn) (var? compile-css-fn))
-                    "`clekr/build!` failed, `:compile-css-fn` needs to be a Var or a Symbol.")
-            (let [compile-css-fn' (cond-> compile-css-fn (symbol? compile-css-fn) requiring-resolve)
-                  message (or (-> compile-css-fn' meta :nextjournal.clerk/build-message)
-                              (str "🔨 Executing " (symbol compile-css-fn') " …"))]
-              (report-fn {:message message})
-              (try
-                (let [{duration :time-ms} (eval/time-ms (compile-css-fn' opts state))]
-                  (report-fn {:stage :done :duration duration}))
-                (catch Throwable ex
-                  (report-fn {:stage :done :error (ex-message ex)})))))
+        _ (when compile-css?
+            (report-fn {:stage :compiling-css})
+            (let [{duration :time-ms} (eval/time-ms (compile-css opts state))]
+              (report-fn {:stage :done :duration duration})))
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
     (when upload-cache-fn
       (report-fn {:stage :uploading-cache})
@@ -276,8 +267,9 @@
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
 #_(build-static-app! {:paths ["notebooks/viewers/**"]})
 #_(build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
-#_(build-static-app! {:paths ["notebooks/hello.clj" "notebooks/rule_30.clj" "notebooks/viewers/image.clj"]
-                      :bundle? true
-                      :compile-css-fn #'compile-css})
+#_(build-static-app! {:paths ["notebooks/hello.clj" "notebooks/rule_30.clj" "notebooks/viewers/image.clj" "book.clj"]
+                      :bundle? false
+                      :compile-css? true})
 #_(swap! config/!resource->url assoc
          "/js/viewer.js" (-> config/lookup-url slurp clojure.edn/read-string (get "/js/viewer.js")))
+#_(swap! config/!resource->url dissoc "/css/viewer.css")

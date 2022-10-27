@@ -17,7 +17,7 @@
 #_(nextjournal.clerk/show! "notebooks/visibility.clj")
 
 (defn relative? [url]
-  (and (not (isAbsolute (URI. url)))
+  (and (not (.isAbsolute (URI. url)))
        (not (str/starts-with? url "/"))))
 #_ (relative? "/hello/css")
 #_ (relative? "hello/css")
