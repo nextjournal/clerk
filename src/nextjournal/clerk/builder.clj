@@ -204,9 +204,12 @@
   (sh "npx" "tailwindcss"
       "--input" "input.css"
       "--config" "tailwind.config.cjs"
-      "--output" (str (fs/path out-path "viewer.css"))
+      "--output" "viewer.css"
       "--minify")
-  (swap! config/!resource->url assoc "/css/viewer.css" "viewer.css"))
+  (let [content-addressed (fs/file "_data" (str (analyzer/valuehash (slurp "viewer.css")) ".css"))]
+    (fs/create-dirs (fs/parent (fs/file out-path content-addressed)))
+    (fs/copy "viewer.css" (fs/file out-path content-addressed) {:replace-existing false})
+    (swap! config/!resource->url assoc "/css/viewer.css" (str content-addressed))))
 
 (defn build-static-app! [opts]
   (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css?]}
