@@ -32,13 +32,11 @@
     (hiccup/include-css (cond-> css-url
                           (and current-path (relative? css-url))
                           (relativize current-path)))
-    (list "<!--tw[-->"
-          (hiccup/include-js "https://cdn.tailwindcss.com?plugins=typography")
+    (list (hiccup/include-js "https://cdn.tailwindcss.com?plugins=typography")
           [:script (-> (slurp (io/resource "stylesheets/tailwind.config.js"))
                        (str/replace #"^module.exports" "tailwind.config")
                        (str/replace #"require\(.*\)" ""))]
-          [:style {:type "text/tailwindcss"} (slurp (io/resource "stylesheets/viewer.css"))]
-          "<!--]tw-->")))
+          [:style {:type "text/tailwindcss"} (slurp (io/resource "stylesheets/viewer.css"))])))
 
 (defn include-css+js [state]
   (list
