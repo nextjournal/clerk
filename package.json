@@ -1,4 +1,5 @@
-{"type": "module",
+{
+  "type": "module",
   "dependencies": {
     "@codemirror/autocomplete": "^6.0.2",
     "@codemirror/commands": "^6.0.0",
@@ -24,6 +25,7 @@
     "punycode": "2.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "use-sync-external-store": "^1.2.0",
     "w3c-keyname": "2.2.4"
   },
   "devDependencies": {
