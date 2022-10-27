@@ -25,8 +25,10 @@
                                             org.babashka/cli {:mvn/version "0.5.40"}}
                                :extra-paths ["notebooks"]
                                :exec-fn nextjournal.clerk/build!
-                               :exec-args {:paths-fn nextjournal.clerk.builder/clerk-docs}
+                               :exec-args {:paths-fn nextjournal.clerk.builder/clerk-docs
+                                           :post-process-fns [nextjournal.clerk.builder/compile-css]}
                                :main-opts ["-m" "babashka.cli.exec"]
+                               :jvm-opts ["-Dclojure.main.report=stdout"]
                                :nextjournal.clerk/aliases [:demo]}
            :sci {:extra-deps {applied-science/js-interop {:mvn/version "0.3.3"}
                               org.babashka/sci {:mvn/version "0.5.34"}
