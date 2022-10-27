@@ -438,8 +438,10 @@
                              :dashboard {:desc "Flag to serve a dashboard with the build progress."}
                              :out-path {:desc "Path to an build output folder, defaults to \"public/build\"."}
                              :git/sha {:desc "Git sha to use for the backlink."}
-                             :git/url {:desc "Git url to use for the backlink."}}
-                      :order [:paths :paths-fn :index :browse :bundle :dashbaord :out-path :git/sha :git/url]}}
+                             :git/url {:desc "Git url to use for the backlink."}
+                             :post-process-fns {:desc "A collection of symbols resolving to functions to be called after html pages have been produced."
+                                                :coerce [:symbol]}}
+                      :order [:paths :paths-fn :index :browse :bundle :dashbaord :out-path :git/sha :git/url :post-process-fns]}}
   [build-opts]
   (if (:help build-opts)
     (if-let [format-opts (and (started-via-bb-cli? build-opts) (requiring-resolve 'babashka.cli/format-opts))]

@@ -187,7 +187,7 @@
       (expand-paths {:paths-fn `my-paths}))
 #_(expand-paths {:paths ["notebooks/viewers**"]})
 
-(defn compile-css!
+(defn compile-css
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
   {:nextjournal.clerk/build-message "🎨 Optimizing CSS…"}
   [{:as opts :keys [report-fn out-path]} {:as state :keys [docs]}]
@@ -195,7 +195,7 @@
   (def state state)
   (spit "tailwind.config.cjs" (slurp (io/resource "stylesheets/tailwind.config.js")))
   (spit "input.css" (slurp (io/resource "stylesheets/viewer.css")))
-  (report-fn {:message (str "\nUsing js at:\n" (get @config/!resource->url "/js/viewer.js") "…")})
+  #_ (report-fn {:message (str "\nUsing js at:\n" (get @config/!resource->url "/js/viewer.js") "…\n")})
   (fs/create-dirs "build")
   (spit "build/viewer.js" (slurp (-> config/lookup-url slurp clojure.edn/read-string (get "/js/viewer.js"))))
   (sh "yarn" "install")
@@ -211,7 +211,7 @@
                        (str "<link href=\"/viewer.css\" rel=\"stylesheet\" type=\"text/css\">")))))
 
 (defn build-static-app! [opts]
-  (let [{:as opts :keys [paths download-cache-fn upload-cache-fn bundle? report-fn optimize-css? additional-stage-fns]}
+  (let [{:as opts :keys [paths download-cache-fn upload-cache-fn bundle? report-fn optimize-css? post-process-fns]}
         (process-build-opts opts)
         {:keys [expanded-paths error]} (try {:expanded-paths (expand-paths opts)}
                                             (catch Exception e
@@ -257,7 +257,7 @@
       (let [{duration :time-ms} (eval/time-ms (upload-cache-fn state))]
         (report-fn {:stage :done :duration duration})))
 
-    (doseq [stage-fn additional-stage-fns]
+    (doseq [stage-fn post-process-fns]
       (assert (or (symbol? stage-fn) (var? stage-fn))
               "`clekr/build!` failed, `:additional-stage-fns` needs to be a collection of vars or symbols.")
       (let [stage-fn (cond-> stage-fn (symbol? stage-fn) requiring-resolve)
@@ -274,3 +274,7 @@
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
 #_(build-static-app! {:paths ["notebooks/viewers/**"]})
 #_(build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
+#_(build-static-app! {:paths ["notebooks/hello.clj" "notebooks/rule_30.clj" "notebooks/viewers/image.clj"]
+                      :post-process-fns [#'compile-css]})
+#_(swap! config/!resource->url assoc
+         "/js/viewer.js" (-> config/lookup-url slurp clojure.edn/read-string (get "/js/viewer.js")))
