@@ -211,7 +211,7 @@
                        (str "<link href=\"/viewer.css\" rel=\"stylesheet\" type=\"text/css\">")))))
 
 (defn build-static-app! [opts]
-  (let [{:as opts :keys [paths download-cache-fn upload-cache-fn bundle? report-fn optimize-css? post-process-fns]}
+  (let [{:as opts :keys [paths download-cache-fn upload-cache-fn bundle? report-fn optimize-css? compile-css-fn]}
         (process-build-opts opts)
         {:keys [expanded-paths error]} (try {:expanded-paths (expand-paths opts)}
                                             (catch Exception e
@@ -258,15 +258,15 @@
       (let [{duration :time-ms} (eval/time-ms (upload-cache-fn state))]
         (report-fn {:stage :done :duration duration})))
 
-    (doseq [stage-fn post-process-fns]
-      (assert (or (symbol? stage-fn) (var? stage-fn))
-              "`clekr/build!` failed, `:additional-stage-fns` needs to be a collection of vars or symbols.")
-      (let [stage-fn (cond-> stage-fn (symbol? stage-fn) requiring-resolve)
-            message (or (-> stage-fn meta :nextjournal.clerk/build-message)
-                        (str "🔨 Executing " (symbol stage-fn) " …"))]
+    (when compile-css-fn
+      (assert (or (symbol? compile-css-fn) (var? compile-css-fn))
+              "`clekr/build!` failed, `:compile-css-fn` needs to be a Var or a Symbol.")
+      (let [compile-css-fn' (cond-> compile-css-fn (symbol? compile-css-fn) requiring-resolve)
+            message (or (-> compile-css-fn' meta :nextjournal.clerk/build-message)
+                        (str "🔨 Executing " (symbol compile-css-fn') " …"))]
         (report-fn {:message message})
         (try
-          (let [{duration :time-ms} (eval/time-ms (stage-fn opts state))]
+          (let [{duration :time-ms} (eval/time-ms (compile-css-fn' opts state))]
             (report-fn {:stage :done :duration duration}))
           (catch Throwable ex (report-fn {:stage :done :error (ex-message ex)})))))
 
@@ -277,8 +277,8 @@
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
 #_(build-static-app! {:paths ["notebooks/viewers/**"]})
 #_(build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
-#_(build-static-app! {:paths ["notebooks/hello.clj" "notebooks/rule_30.clj" "notebooks/viewers/image.clj" "book.clj"]
+#_(build-static-app! {:paths ["notebooks/hello.clj" "notebooks/rule_30.clj" "notebooks/viewers/image.clj"]
                       :bundle? true
-                      :post-process-fns [#'compile-css]})
+                      :compile-css-fn #'compile-css})
 #_(swap! config/!resource->url assoc
          "/js/viewer.js" (-> config/lookup-url slurp clojure.edn/read-string (get "/js/viewer.js")))

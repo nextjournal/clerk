@@ -439,9 +439,9 @@
                              :out-path {:desc "Path to an build output folder, defaults to \"public/build\"."}
                              :git/sha {:desc "Git sha to use for the backlink."}
                              :git/url {:desc "Git url to use for the backlink."}
-                             :post-process-fns {:desc "A collection of symbols resolving to functions to be called after html pages have been produced."
-                                                :coerce [:symbol]}}
-                      :order [:paths :paths-fn :index :browse :bundle :dashbaord :out-path :git/sha :git/url :post-process-fns]}}
+                             :compile-css-fn {:desc "A symbol resolving to a function for compiling CSS. Must return an absolute path to the CSS artefact."
+                                              :coerce :symbol}}
+                      :order [:paths :paths-fn :index :browse :bundle :dashbaord :out-path :git/sha :git/url :compile-css-fn]}}
   [build-opts]
   (if (:help build-opts)
     (if-let [format-opts (and (started-via-bb-cli? build-opts) (requiring-resolve 'babashka.cli/format-opts))]
