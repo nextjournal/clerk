@@ -189,7 +189,7 @@
 
 (defn compile-css!
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
-  [{:as opts :keys [bundle? report-fn out-path]} docs]
+  [{:keys [out-path]} docs]
   (assert (and (= 0 (:exit (sh "which" "npx"))) (= 0 (:exit (sh "npx" "tailwindcss"))))
           "Clerk's CSS optimizaiton failed: node and tailwind need to be installed. Please run `npm install -D tailwindcss @tailwindcss/typography` and retry.")
   (spit "tailwind.config.cjs" (slurp (io/resource "stylesheets/tailwind.config.js")))
