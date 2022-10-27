@@ -83,6 +83,7 @@
       :building (str "🔨 Building \"" (:file doc) "\"… ")
       :downloading-cache (str "⏬ Downloading distributed cache… ")
       :uploading-cache (str "⏫ Uploading distributed cache… ")
+      :optimize-css "🎨 Optimizing CSS"
       :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n"))))
 
 (defn stdout-reporter [build-event]
@@ -186,8 +187,28 @@
       (expand-paths {:paths-fn `my-paths}))
 #_(expand-paths {:paths ["notebooks/viewers**"]})
 
+(defn optimize-css [{:as opts :keys [out-path]} {:as state :keys [docs]}]
+  (def opts opts)
+  (def state state)
+  (spit "tailwind.config.cjs" (slurp (io/resource "stylesheets/tailwind.config.js")))
+  (spit "input.css" (slurp (io/resource "stylesheets/viewer.css")))
+  (println "Using js from" (get @config/!resource->url "/js/viewer.js"))
+  (fs/create-dirs "build")
+  (spit "build/viewer.js" (slurp (-> config/lookup-url slurp clojure.edn/read-string (get "/js/viewer.js"))))
+  (sh "yarn" "install")
+  (sh "yarn" "tailwindcss"
+      "--input" "input.css"
+      "--config" "tailwind.config.cjs"
+      "--output" (str (fs/path out-path "viewer.css"))
+      #_ "--minify")
+  (doseq [f (->> (file-seq (fs/file out-path)) (filter (comp #{"html"} fs/extension)))]
+    (spit (str f)
+          (str/replace (slurp f)
+                       #"<\!--tw\[-->[\S\s]*<\!--\]tw-->"
+                       (str "<link href=\"/viewer.css\" rel=\"stylesheet\" type=\"text/css\">")))))
+
 (defn build-static-app! [opts]
-  (let [{:as opts :keys [paths download-cache-fn upload-cache-fn bundle? report-fn]} (process-build-opts opts)
+  (let [{:as opts :keys [paths download-cache-fn upload-cache-fn bundle? report-fn optimize-css?]} (process-build-opts opts)
         {:keys [expanded-paths error]} (try {:expanded-paths (expand-paths opts)}
                                             (catch Exception e
                                               {:error e}))
@@ -231,6 +252,10 @@
       (report-fn {:stage :uploading-cache})
       (let [{duration :time-ms} (eval/time-ms (upload-cache-fn state))]
         (report-fn {:stage :done :duration duration})))
+    (when optimize-css?
+      (report-fn {:stage :optimize-css})
+      (let [{duration :time-ms} (eval/time-ms (optimize-css opts state))]
+        (report-fn {:stage :done :duration duration})))
     (report-fn {:stage :finished :state state :duration duration :total-duration (eval/elapsed-ms start)})))
 
 #_(build-static-app! {:paths clerk-docs :bundle? true})
@@ -238,27 +263,3 @@
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
 #_(build-static-app! {:paths ["notebooks/viewers/**"]})
 #_(build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
-
-(comment
-  ;; copy tw config
-  (spit "tailwind.config.cjs"
-        (slurp (io/resource "stylesheets/tailwind.config.js")))
-
-  ;; copy input
-  (spit "input.css" (slurp (io/resource "stylesheets/viewer.css")))
-
-  ;; copy js contents
-  (do
-    (fs/create-dirs "build")
-    (spit "build/viewer.js"
-          (slurp (-> config/lookup-url slurp clojure.edn/read-string (get "/js/viewer.js")))))
-
-  ;; run script
-  (sh "yarn" "tailwindcss"
-      "--input" "input.css"
-      "--config" "tailwind.config.cjs"
-      "--output" "output.css"
-      #_ "--minify")
-
-  (fs/delete "output.css" )
-  (sh "ls" "-lah" "output.css"))
