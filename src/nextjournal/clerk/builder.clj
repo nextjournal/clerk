@@ -81,7 +81,7 @@
                                  (str "Errored in " duration ". ❌\n")
                                  (str "Done in " duration ". ✅\n"))
       :building (str "🔨 Building \"" (:file doc) "\"… ")
-      :compiling-css "🎨 Optimizing CSS… "
+      :compiling-css "🎨 Compiling CSS… "
       :downloading-cache (str "⏬ Downloading distributed cache… ")
       :uploading-cache (str "⏫ Uploading distributed cache… ")
       :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n"))))

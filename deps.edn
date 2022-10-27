@@ -26,7 +26,7 @@
                                :extra-paths ["notebooks"]
                                :exec-fn nextjournal.clerk/build!
                                :exec-args {:paths-fn nextjournal.clerk.builder/clerk-docs
-                                           :compile-css? true}
+                                           :compile-css true}
                                :main-opts ["-m" "babashka.cli.exec"]
                                :jvm-opts ["-Dclojure.main.report=stdout"]
                                :nextjournal.clerk/aliases [:demo]}
