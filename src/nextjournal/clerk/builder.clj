@@ -197,7 +197,7 @@
   (spit "input.css" (slurp (io/resource "stylesheets/viewer.css")))
   #_ (report-fn {:message (str "\nUsing js at:\n" (get @config/!resource->url "/js/viewer.js") "…\n")})
   (fs/create-dirs "build")
-  (spit "build/viewer.js" (slurp (-> config/lookup-url slurp clojure.edn/read-string (get "/js/viewer.js"))))
+  (spit "build/viewer.js" (slurp (get @config/!resource->url "/js/viewer.js")))
   (sh "yarn" "install")
   (sh "yarn" "tailwindcss"
       "--input" "input.css"
@@ -251,6 +251,7 @@
                         result)) state (range))
         _ (when-let [first-error (some :error state)]
             (throw first-error))
+
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
     (when upload-cache-fn
       (report-fn {:stage :uploading-cache})
@@ -264,8 +265,10 @@
             message (or (-> stage-fn meta :nextjournal.clerk/build-message)
                         (str "🔨 Executing " (symbol stage-fn) " …"))]
         (report-fn {:message message})
-        (let [{duration :time-ms} (eval/time-ms (stage-fn opts state))]
-          (report-fn {:stage :done :duration duration}))))
+        (try
+          (let [{duration :time-ms} (eval/time-ms (stage-fn opts state))]
+            (report-fn {:stage :done :duration duration}))
+          (catch Throwable ex (report-fn {:stage :done :error (ex-message ex)})))))
 
     (report-fn {:stage :finished :state state :duration duration :total-duration (eval/elapsed-ms start)})))
 
@@ -274,7 +277,8 @@
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
 #_(build-static-app! {:paths ["notebooks/viewers/**"]})
 #_(build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
-#_(build-static-app! {:paths ["notebooks/hello.clj" "notebooks/rule_30.clj" "notebooks/viewers/image.clj"]
+#_(build-static-app! {:paths ["notebooks/hello.clj" "notebooks/rule_30.clj" "notebooks/viewers/image.clj" "book.clj"]
+                      :bundle? true
                       :post-process-fns [#'compile-css]})
 #_(swap! config/!resource->url assoc
          "/js/viewer.js" (-> config/lookup-url slurp clojure.edn/read-string (get "/js/viewer.js")))
