@@ -351,7 +351,7 @@
 
 (defn ^:private normalize-opts [opts]
   (set/rename-keys opts #_(into {} (map (juxt identity #(keyword (str (name %) "?")))) [:bundle :browse :dashboard])
-                   {:bundle :bundle?, :browse :browse?, :dashboard :dashboard?}))
+                   {:bundle :bundle?, :browse :browse?, :dashboard :dashboard? :compile-css :compile-css?}))
 
 (defn ^:private started-via-bb-cli? [opts]
   (contains? (meta opts) :org.babashka/cli))
@@ -438,8 +438,15 @@
                              :dashboard {:desc "Flag to serve a dashboard with the build progress."}
                              :out-path {:desc "Path to an build output folder, defaults to \"public/build\"."}
                              :git/sha {:desc "Git sha to use for the backlink."}
-                             :git/url {:desc "Git url to use for the backlink."}}
-                      :order [:paths :paths-fn :index :browse :bundle :dashbaord :out-path :git/sha :git/url]}}
+                             :git/url {:desc "Git url to use for the backlink."}
+                             :compile-css {:desc "Flag to compile all viewer stylesheets and add a minimized CSS file to the output folder.
+
+Assumes tailwind installed, as per
+```
+npm install -D tailwindcss @tailwindcss/typography
+```
+"}}
+                      :order [:paths :paths-fn :index :browse :bundle :dashbaord :out-path :git/sha :git/url :compile-css]}}
   [build-opts]
   (if (:help build-opts)
     (if-let [format-opts (and (started-via-bb-cli? build-opts) (requiring-resolve 'babashka.cli/format-opts))]
