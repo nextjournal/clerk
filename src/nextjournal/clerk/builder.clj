@@ -203,7 +203,7 @@
       "--input" "input.css"
       "--config" "tailwind.config.cjs"
       "--output" (str (fs/path out-path "viewer.css"))
-      #_ "--minify")
+      "--minify")
   (doseq [f (->> (file-seq (fs/file out-path)) (filter (comp #{"html"} fs/extension)))]
     (spit (str f)
           (str/replace (slurp f)
