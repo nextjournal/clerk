@@ -192,7 +192,7 @@
   [{:keys [out-path]} docs]
   (assert (and (= 0 (:exit (sh "which" "npx"))) (= 0 (:exit (sh "npx" "tailwindcss"))))
           "Clerk's CSS optimizaiton failed: node and tailwind need to be installed. Please run `npm install -D tailwindcss @tailwindcss/typography` and retry.")
-  (spit "tailwind.config.cjs" (slurp (io/resource "stylesheets/tailwind.config.js")))
+  (spit "tailwind.config.js" (slurp (io/resource "stylesheets/tailwind.config.js")))
   (spit "input.css" (slurp (io/resource "stylesheets/viewer.css")))
   (fs/create-dirs "build")
   (spit "build/viewer.js" (slurp (get @config/!resource->url "/js/viewer.js")))
