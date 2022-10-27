@@ -192,7 +192,7 @@
   [{:keys [out-path]} docs]
   (assert (and (= 0 (:exit (sh "which" "npx"))) (= 0 (:exit (sh "npx" "tailwindcss"))))
           "Clerk's CSS optimizaiton failed: node and tailwind need to be installed. Please run `npm install -D tailwindcss @tailwindcss/typography` and retry.")
-  (spit "tailwind.config.js" (slurp (io/resource "stylesheets/tailwind.config.js")))
+  (spit "tailwind.config.cjs" (slurp (io/resource "stylesheets/tailwind.config.js")))
   (spit "input.css" (slurp (io/resource "stylesheets/viewer.css")))
   (fs/create-dirs "build")
   (spit "build/viewer.js" (slurp (get @config/!resource->url "/js/viewer.js")))
@@ -201,15 +201,24 @@
             (fs/create-dirs (fs/parent path))
             (str path))
           (pr-str viewer)))
-  (sh "npx" "tailwindcss"
-      "--input" "input.css"
-      "--config" "tailwind.config.cjs"
-      "--output" "viewer.css"
-      "--minify")
+  (let [{:as ret :keys [out err exit]}
+        (sh "npx" "tailwindcss"
+            "--input" "input.css"
+            "--config" "tailwind.config.cjs"
+            "--output" "viewer.css"
+            "--minify")]
+    (when-not (= 0 exit)
+      (throw (ex-info (str "Clerk build! failed\n" out "\n" err) ret))))
   (let [content-addressed (fs/file "_data" (str (analyzer/valuehash (slurp "viewer.css")) ".css"))]
     (fs/create-dirs (fs/parent (fs/file out-path content-addressed)))
-    (fs/copy "viewer.css" (fs/file out-path content-addressed) {:replace-existing false})
-    (swap! config/!resource->url assoc "/css/viewer.css" (str content-addressed))))
+    (when-not (fs/exists? (fs/file out-path content-addressed))
+      (fs/copy "viewer.css" (fs/file out-path content-addressed)))
+    (swap! config/!resource->url assoc "/css/viewer.css" (str content-addressed))
+    ;; cleanup
+    (fs/delete-tree "build")
+    (fs/delete-if-exists "input.css")
+    (fs/delete-if-exists "tailwind.config.cjs")
+    (fs/delete-if-exists "viewer.css")))
 
 (defn build-static-app! [opts]
   (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css?]}
@@ -268,7 +277,8 @@
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
 #_(build-static-app! {:paths ["notebooks/viewers/**"]})
 #_(build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
-#_(build-static-app! {:paths ["notebooks/hello.clj" "notebooks/rule_30.clj" "notebooks/viewers/image.clj" "book.clj"]
+#_(fs/delete-tree "public/build")
+#_(build-static-app! {:paths ["notebooks/hello.clj" "notebooks/rule_30.clj" "notebooks/viewers/image.clj"]
                       :bundle? false
                       :compile-css? true})
 #_(swap! config/!resource->url assoc
