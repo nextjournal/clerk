@@ -140,19 +140,21 @@
 
 #_(extract-viewer-evals @!doc)
 
-(defn extract-clerk-atoms [{:as _doc :keys [blocks]}]
-  (into #{}
+(defn extract-clerk-atom-vars [{:as _doc :keys [blocks]}]
+  (into {}
         (comp (keep #(-> % :result :nextjournal/value (v/get-safe :nextjournal.clerk/var-from-def)))
               (filter (fn [var] (and (contains? (meta var) :nextjournal.clerk/sync)
-                                     (instance? clojure.lang.IAtom (deref var))))))
+                                     (instance? clojure.lang.IAtom (deref var)))))
+              (map (juxt symbol #(-> % deref deref))))
         blocks))
 
-#_(extract-clerk-atoms @!doc)
+#_(extract-clerk-atom-vars @!doc)
 
 
 (defn update-doc! [doc]
   (reset! !error nil)
   (broadcast! {:type :set-state!
+               :atom-var-name->state (extract-clerk-atom-vars doc)
                :remount? (not= (extract-viewer-evals @!doc)
                                (extract-viewer-evals doc))
                :doc (view/doc->viewer (reset! !doc doc))}))

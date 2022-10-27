@@ -17,7 +17,8 @@
             [nextjournal.viewer.mathjax :as mathjax]
             [reagent.core :as r]
             [reagent.dom :as rdom]
-            [reagent.ratom :as ratom]))
+            [reagent.ratom :as ratom]
+            [sci.core :as sci]))
 
 
 (when (exists? js/window)
@@ -551,7 +552,19 @@
 
 (declare mount)
 
-(defn ^:export set-state [{:as state :keys [doc error remount?]}]
+(defn intern-atom! [sci-ctx [var-name state]]
+  (prn :intern-atom! var-name :existing (sci/resolve sci-ctx var-name))
+  (if-let [existing-var (sci/resolve sci-ctx var-name)]
+    (reset! @existing-var state)
+    (sci/intern sci-ctx
+                (sci/create-ns (symbol (namespace var-name)))
+                (symbol (name var-name))
+                (with-meta (r/atom state)
+                  {:var-name var-name}))))
+
+(defn ^:export set-state [{:as state :keys [doc error remount? atom-var-name->state sci-ctx]}]
+  (doseq [atom-var atom-var-name->state]
+    (intern-atom! sci-ctx atom-var))
   (when remount?
     (swap! !eval-counter inc))
   (when (contains? state :doc)
