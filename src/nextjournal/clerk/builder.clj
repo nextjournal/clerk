@@ -71,7 +71,7 @@
   [path]
   (str/replace path fs/file-separator "/"))
 
-(defn describe-event [{:as event :keys [stage state duration doc error]}]
+(defn describe-event [{:as event :keys [stage state duration doc error message]}]
   (let [format-duration (partial format "%.3fms")
         duration (some-> duration format-duration)]
     (case stage
@@ -83,8 +83,8 @@
       :building (str "🔨 Building \"" (:file doc) "\"… ")
       :downloading-cache (str "⏬ Downloading distributed cache… ")
       :uploading-cache (str "⏫ Uploading distributed cache… ")
-      :optimize-css "🎨 Optimizing CSS"
-      :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n"))))
+      :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n")
+      message)))
 
 (defn stdout-reporter [build-event]
   (doto (describe-event build-event)
@@ -187,12 +187,15 @@
       (expand-paths {:paths-fn `my-paths}))
 #_(expand-paths {:paths ["notebooks/viewers**"]})
 
-(defn optimize-css [{:as opts :keys [out-path]} {:as state :keys [docs]}]
+(defn compile-css!
+  "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
+  {:nextjournal.clerk/build-message "🎨 Optimizing CSS…"}
+  [{:as opts :keys [report-fn out-path]} {:as state :keys [docs]}]
   (def opts opts)
   (def state state)
   (spit "tailwind.config.cjs" (slurp (io/resource "stylesheets/tailwind.config.js")))
   (spit "input.css" (slurp (io/resource "stylesheets/viewer.css")))
-  (println "Using js from" (get @config/!resource->url "/js/viewer.js"))
+  (report-fn {:message (str "\nUsing js at:\n" (get @config/!resource->url "/js/viewer.js") "…")})
   (fs/create-dirs "build")
   (spit "build/viewer.js" (slurp (-> config/lookup-url slurp clojure.edn/read-string (get "/js/viewer.js"))))
   (sh "yarn" "install")
@@ -208,7 +211,8 @@
                        (str "<link href=\"/viewer.css\" rel=\"stylesheet\" type=\"text/css\">")))))
 
 (defn build-static-app! [opts]
-  (let [{:as opts :keys [paths download-cache-fn upload-cache-fn bundle? report-fn optimize-css?]} (process-build-opts opts)
+  (let [{:as opts :keys [paths download-cache-fn upload-cache-fn bundle? report-fn optimize-css? additional-stage-fns]}
+        (process-build-opts opts)
         {:keys [expanded-paths error]} (try {:expanded-paths (expand-paths opts)}
                                             (catch Exception e
                                               {:error e}))
@@ -252,10 +256,17 @@
       (report-fn {:stage :uploading-cache})
       (let [{duration :time-ms} (eval/time-ms (upload-cache-fn state))]
         (report-fn {:stage :done :duration duration})))
-    (when optimize-css?
-      (report-fn {:stage :optimize-css})
-      (let [{duration :time-ms} (eval/time-ms (optimize-css opts state))]
-        (report-fn {:stage :done :duration duration})))
+
+    (doseq [stage-fn additional-stage-fns]
+      (assert (or (symbol? stage-fn) (var? stage-fn))
+              "`clekr/build!` failed, `:additional-stage-fns` needs to be a collection of vars or symbols.")
+      (let [stage-fn (cond-> stage-fn (symbol? stage-fn) requiring-resolve)
+            message (or (-> stage-fn meta :nextjournal.clerk/build-message)
+                        (str "🔨 Executing " (symbol stage-fn) " …"))]
+        (report-fn {:message message})
+        (let [{duration :time-ms} (eval/time-ms (stage-fn opts state))]
+          (report-fn {:stage :done :duration duration}))))
+
     (report-fn {:stage :finished :state state :duration duration :total-duration (eval/elapsed-ms start)})))
 
 #_(build-static-app! {:paths clerk-docs :bundle? true})
