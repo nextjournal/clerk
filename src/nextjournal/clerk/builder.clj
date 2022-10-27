@@ -187,17 +187,15 @@
       (expand-paths {:paths-fn `my-paths}))
 #_(expand-paths {:paths ["notebooks/viewers**"]})
 
-(defn compile-css
+(defn compile-css!
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
   [{:as opts :keys [bundle? report-fn out-path]} docs]
   (assert (and (= 0 (:exit (sh "which" "npx"))) (= 0 (:exit (sh "npx" "tailwindcss"))))
           "Clerk's CSS optimizaiton failed: node and tailwind need to be installed. Please run `npm install -D tailwindcss @tailwindcss/typography` and retry.")
   (spit "tailwind.config.cjs" (slurp (io/resource "stylesheets/tailwind.config.js")))
   (spit "input.css" (slurp (io/resource "stylesheets/viewer.css")))
-  #_ (report-fn {:message (str "\nUsing js at:\n" (get @config/!resource->url "/js/viewer.js") "…\n")})
   (fs/create-dirs "build")
   (spit "build/viewer.js" (slurp (get @config/!resource->url "/js/viewer.js")))
-  (sh "yarn" "install")
   (doseq [{:keys [file viewer]} docs]
     (spit (let [path (fs/path "build" (str/replace file #"\.(cljc?|md)$" ".edn"))]
             (fs/create-dirs (fs/parent path))
@@ -253,7 +251,7 @@
             (throw first-error))
         _ (when compile-css?
             (report-fn {:stage :compiling-css})
-            (let [{duration :time-ms} (eval/time-ms (compile-css opts state))]
+            (let [{duration :time-ms} (eval/time-ms (compile-css! opts state))]
               (report-fn {:stage :done :duration duration})))
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
     (when upload-cache-fn
