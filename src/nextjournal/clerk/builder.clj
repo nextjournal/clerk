@@ -190,7 +190,7 @@
 (defn compile-css
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
   {:nextjournal.clerk/build-message "🎨 Optimizing CSS…"}
-  [{:as opts :keys [report-fn out-path]} {:as state :keys [docs]}]
+  [{:as opts :keys [bundle? report-fn out-path]} {:as state :keys [docs]}]
   (def opts opts)
   (def state state)
   (spit "tailwind.config.cjs" (slurp (io/resource "stylesheets/tailwind.config.js")))
@@ -204,11 +204,16 @@
       "--config" "tailwind.config.cjs"
       "--output" (str (fs/path out-path "viewer.css"))
       "--minify")
-  (doseq [f (->> (file-seq (fs/file out-path)) (filter (comp #{"html"} fs/extension)))]
-    (spit (str f)
-          (str/replace (slurp f)
-                       #"<\!--tw\[-->[\S\s]*<\!--\]tw-->"
-                       (str "<link href=\"/viewer.css\" rel=\"stylesheet\" type=\"text/css\">")))))
+  (let [relative-resource-url
+        (fn rrurl [path]
+          (cond->> "viewer.css"
+            (not bundle?)
+            (str (str/join (repeat (get (frequencies (str (fs/relativize path out-path))) \/ 0) "../")))))]
+    (doseq [f (->> (file-seq (fs/file out-path)) (filter (comp #{"html"} fs/extension)))]
+      (spit (str f)
+            (str/replace (slurp f)
+                         #"<\!--tw\[-->[\S\s]*<\!--\]tw-->"
+                         (str "<link href=\"" (relative-resource-url (str f)) "\" rel=\"stylesheet\" type=\"text/css\">"))))))
 
 (defn build-static-app! [opts]
   (let [{:as opts :keys [paths download-cache-fn upload-cache-fn bundle? report-fn optimize-css? compile-css-fn]}
