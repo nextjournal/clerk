@@ -190,28 +190,26 @@
 (defn compile-css
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
   {:nextjournal.clerk/build-message "🎨 Optimizing CSS… "}
-  [{:as opts :keys [bundle? report-fn out-path]} {:as state :keys [docs]}]
+  [{:as opts :keys [bundle? report-fn out-path]} docs]
   (def opts opts)
-  (def state state)
+  (def docs docs)
   (spit "tailwind.config.cjs" (slurp (io/resource "stylesheets/tailwind.config.js")))
   (spit "input.css" (slurp (io/resource "stylesheets/viewer.css")))
   #_ (report-fn {:message (str "\nUsing js at:\n" (get @config/!resource->url "/js/viewer.js") "…\n")})
   (fs/create-dirs "build")
   (spit "build/viewer.js" (slurp (get @config/!resource->url "/js/viewer.js")))
   (sh "yarn" "install")
+  (doseq [{:keys [file viewer]} docs]
+    (spit (let [path (fs/path "build" (str/replace file #"\.(cljc?|md)$" ".edn"))]
+            (fs/create-dirs (fs/parent path))
+            (str path))
+          (pr-str viewer)))
   (sh "yarn" "tailwindcss"
       "--input" "input.css"
       "--config" "tailwind.config.cjs"
       "--output" (str (fs/path out-path "viewer.css"))
       "--minify")
-  (doseq [f (->> (file-seq (fs/file out-path)) (filter (comp #{"html"} fs/extension)))]
-    (let [relative-path (cond->> "viewer.css"
-                          (not bundle?)
-                          (str (str/join (repeat (get (frequencies (str (fs/relativize f out-path))) \/ 0) "../"))))]
-      (spit (str f)
-            (str/replace (slurp f)
-                         #"<\!--tw\[-->[\S\s]*<\!--\]tw-->"
-                         (str "<link href=\"" relative-path "\" rel=\"stylesheet\" type=\"text/css\">"))))))
+  (swap! config/!resource->url assoc "/css/viewer.css" "viewer.css"))
 
 (defn build-static-app! [opts]
   (let [{:as opts :keys [paths download-cache-fn upload-cache-fn bundle? report-fn optimize-css? compile-css-fn]}
@@ -254,25 +252,23 @@
                         result)) state (range))
         _ (when-let [first-error (some :error state)]
             (throw first-error))
-
+        _ (when compile-css-fn
+            (assert (or (symbol? compile-css-fn) (var? compile-css-fn))
+                    "`clekr/build!` failed, `:compile-css-fn` needs to be a Var or a Symbol.")
+            (let [compile-css-fn' (cond-> compile-css-fn (symbol? compile-css-fn) requiring-resolve)
+                  message (or (-> compile-css-fn' meta :nextjournal.clerk/build-message)
+                              (str "🔨 Executing " (symbol compile-css-fn') " …"))]
+              (report-fn {:message message})
+              (try
+                (let [{duration :time-ms} (eval/time-ms (compile-css-fn' opts state))]
+                  (report-fn {:stage :done :duration duration}))
+                (catch Throwable ex
+                  (report-fn {:stage :done :error (ex-message ex)})))))
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
     (when upload-cache-fn
       (report-fn {:stage :uploading-cache})
       (let [{duration :time-ms} (eval/time-ms (upload-cache-fn state))]
         (report-fn {:stage :done :duration duration})))
-
-    (when compile-css-fn
-      (assert (or (symbol? compile-css-fn) (var? compile-css-fn))
-              "`clekr/build!` failed, `:compile-css-fn` needs to be a Var or a Symbol.")
-      (let [compile-css-fn' (cond-> compile-css-fn (symbol? compile-css-fn) requiring-resolve)
-            message (or (-> compile-css-fn' meta :nextjournal.clerk/build-message)
-                        (str "🔨 Executing " (symbol compile-css-fn') " …"))]
-        (report-fn {:message message})
-        (try
-          (let [{duration :time-ms} (eval/time-ms (compile-css-fn' opts state))]
-            (report-fn {:stage :done :duration duration}))
-          (catch Throwable ex (report-fn {:stage :done :error (ex-message ex)})))))
-
     (report-fn {:stage :finished :state state :duration duration :total-duration (eval/elapsed-ms start)})))
 
 #_(build-static-app! {:paths clerk-docs :bundle? true})

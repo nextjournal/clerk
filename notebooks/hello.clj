@@ -4,7 +4,7 @@
 (ns hello
   (:require [nextjournal.clerk :as clerk]))
 
-(clerk/html [:h1.bg-amber-200 "Ahoi"])
+(clerk/html [:h1.bg-amber-600 "Ahoi"])
 
 ;; Here's a visualization of unemployment in the US.
 (clerk/vl {:width 700 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
