@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "cherry-cljs": "^0.0.0-alpha.57",
     "nbb": "^0.2.4",
     "playwright": "^1.19.1"
   }

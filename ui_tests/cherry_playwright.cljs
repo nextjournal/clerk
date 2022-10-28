@@ -2,9 +2,9 @@
   {:clj-kondo/config '{:skip-comments false}}
   (:require ["child_process" :as cp]
             ["playwright$default" :refer [chromium]])
-  (:require-macros ["./cherry_macros.mjs" :refer [assert!]]))
+  (:require-macros [cherry-macros :refer [assert!]]))
 
-(def sha (str (cp/execSync "git rev-parse HEAD")))
+(def sha (.trim (str (cp/execSync "git rev-parse HEAD"))))
 
 (def index (.replace "https://snapshots.nextjournal.com/clerk/build/{{sha}}/index.html"
                      "{{sha}}" sha))
@@ -24,8 +24,7 @@
 (def close-browser true)
 
 (defn goto [page url]
-  ;; TODO (.goto ...) is munged in cherry, should not happen
-  ((.-goto page) url #js{:waitUntil "networkidle"}))
+  (.goto page url #js{:waitUntil "networkidle"}))
 
 ;; https://snapshots.nextjournal.com/clerk/build/549f9956870c69ef0951ca82d55a8e5ec2e49ed4/index.html
 
