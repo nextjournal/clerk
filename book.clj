@@ -1,7 +1,12 @@
 ;; # 📓 Book of Clerk
 ^{:nextjournal.clerk/visibility {:code :hide}}
 (ns nextjournal.clerk.book
-  {:nextjournal.clerk/toc true}
+  {:nextjournal.clerk/toc true
+   :nextjournal.clerk/open-graph
+   {:url "https://book.clerk.vision"
+    :title "The Book of Clerk"
+    :description "Clerk’s official documentation."
+    :image "https://cdn.nextjournal.com/data/QmbHy6nYRgveyxTvKDJvyy2VF9teeXYkAXXDbgbKZK6YRC?filename=book-of-clerk-og-image.png&content-type=image/png"}}
   (:require [clojure.string :as str]
             [next.jdbc :as jdbc]
             [nextjournal.clerk :as clerk]

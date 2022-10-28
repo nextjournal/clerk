@@ -3,7 +3,8 @@
             [nextjournal.clerk.viewer :as v]
             [hiccup.page :as hiccup]
             [clojure.string :as str]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io])
+  (:import (java.net URI)))
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
@@ -11,23 +12,35 @@
    (binding [*ns* ns]
      (-> (merge doc opts) v/notebook v/present))))
 
-
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
 #_(nextjournal.clerk/show! "notebooks/visibility.clj")
 
-(defn include-viewer-css []
+(defn relative? [url]
+  (and (not (.isAbsolute (URI. url)))
+       (not (str/starts-with? url "/"))))
+#_ (relative? "/hello/css")
+#_ (relative? "hello/css")
+#_ (relative? "https://cdn.stylesheet.css")
+
+(defn relativize [url current-path]
+  (str (str/join (repeat (get (frequencies current-path) \/ 0) "../"))
+       url))
+
+(defn include-viewer-css [{:keys [current-path]}]
   (if-let [css-url (@config/!resource->url "/css/viewer.css")]
-    (hiccup/include-css css-url)
+    (hiccup/include-css (cond-> css-url
+                          (and current-path (relative? css-url))
+                          (relativize current-path)))
     (list (hiccup/include-js "https://cdn.tailwindcss.com?plugins=typography")
           [:script (-> (slurp (io/resource "stylesheets/tailwind.config.js"))
-                       (str/replace  #"^module.exports" "tailwind.config")
-                       (str/replace  #"require\(.*\)" ""))]
+                       (str/replace #"^module.exports" "tailwind.config")
+                       (str/replace #"require\(.*\)" ""))]
           [:style {:type "text/tailwindcss"} (slurp (io/resource "stylesheets/viewer.css"))])))
 
-(defn include-css+js []
+(defn include-css+js [state]
   (list
-   (include-viewer-css)
+   (include-viewer-css state)
    [:script {:type "module" :src (@config/!resource->url "/js/viewer.js")}]
    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
    (hiccup/include-css "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")))
@@ -38,7 +51,7 @@
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-    (include-css+js)]
+    (include-css+js state)]
    [:body.dark:bg-gray-900
     [:div#clerk]
     [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
@@ -56,8 +69,9 @@ window.ws_send = msg => ws.send(msg)")]]))
    [:head
     [:title (or (and current-path (-> state :path->doc (get current-path) v/->value :title)) "Clerk")]
     [:meta {:charset "UTF-8"}]
-    [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]    
-    (include-css+js)]
+    [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
+    (when current-path (v/open-graph-metas (-> state :path->doc (get current-path) v/->value :open-graph)))
+    (include-css+js state)]
    [:body
     [:div#clerk-static-app]
     [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env

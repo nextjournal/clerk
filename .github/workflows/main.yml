@@ -142,6 +142,9 @@ jobs:
       - name: 🔧 Setup Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v0.3.0
 
+      - name: 🔧 NPM install
+        run: npm install
+
       - name: 📓 Build Clerk Book
         run: clojure -J-Dclojure.main.report=stderr -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :paths '["book.clj"]'
 
