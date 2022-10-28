@@ -40,7 +40,7 @@
            :dev {:extra-deps {arrowic/arrowic {:mvn/version "0.1.1"}
                               binaryage/devtools {:mvn/version "1.0.3"}
                               cider/cider-nrepl {:mvn/version "0.28.3"}
-                              thheller/shadow-cljs {:mvn/version "2.16.7"}
+                              thheller/shadow-cljs {:mvn/version "2.20.7"}
                               org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
                               org.babashka/cli {:mvn/version "0.5.40"}}
                  :extra-paths ["dev" "notebooks"]

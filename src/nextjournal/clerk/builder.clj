@@ -115,15 +115,22 @@
 
 #_(process-build-opts {:index 'book.clj})
 
+(defn ^:private map-index [{:as _opts :keys [index]} path]
+  (if index
+    ({index "index.clj"} path path)
+    path))
+
+(defn build-static-app-opts [{:as opts :keys [bundle? out-path browse? index]} docs]
+  (let [paths (mapv :file docs)
+        path->doc (into {} (map (juxt :file :viewer)) docs)
+        path->url (into {} (map (juxt identity #(cond-> (->> % (map-index opts) strip-index) (not bundle?) ->html-extension))) paths)]
+    (assoc opts :bundle? bundle? :path->doc path->doc :paths (vec (keys path->doc)) :path->url path->url)))
+
 (defn write-static-app!
   [opts docs]
   (let [{:as opts :keys [bundle? out-path browse? index]} (process-build-opts opts)
-        paths (mapv :file docs)
-        path->doc (into {} (map (juxt :file :viewer)) docs)
-        map-index-fn (if index (fn [path] ({index "index.clj"} path path)) identity)
-        path->url (into {} (map (juxt identity #(cond-> (-> % map-index-fn strip-index) (not bundle?) ->html-extension))) paths)
-        static-app-opts (assoc opts :bundle? bundle? :path->doc path->doc :paths (vec (keys path->doc)) :path->url path->url)
-        index-html (str out-path fs/file-separator "index.html")]
+        index-html (str out-path fs/file-separator "index.html")
+        {:as static-app-opts :keys [path->url path->doc]} (build-static-app-opts opts docs)]
     (when-not (fs/exists? (fs/parent index-html))
       (fs/create-dirs (fs/parent index-html)))
     (if bundle?
@@ -131,7 +138,7 @@
       (do (when-not (contains? (-> path->url vals set) "") ;; no user-defined index page
             (spit index-html (view/->static-app (dissoc static-app-opts :path->doc))))
           (doseq [[path doc] path->doc]
-            (let [out-html (str out-path fs/file-separator (-> path map-index-fn ->html-extension))]
+            (let [out-html (str out-path fs/file-separator (->> path (map-index opts) ->html-extension))]
               (fs/create-dirs (fs/parent out-html))
               (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
     (when browse?
