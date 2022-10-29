@@ -125,12 +125,20 @@
         [view view-data]
         [:pre (pr-str match)])]]))
 
+(defonce container
+  (and (exists? js/document) (js/document.getElementById "clerk-static-app")))
+
+(defonce hydrate?
+  (pos? (.-childElementCount container)))
+
 (defonce react-root
-  (when-let [el (and (exists? js/document) (js/document.getElementById "clerk-static-app"))]
-    (react-client/createRoot el)))
+  (when container
+    (if hydrate?
+      (react-client/hydrateRoot container (r/as-element [root]))
+      (react-client/createRoot container))))
 
 (defn ^:dev/after-load mount []
-  (when react-root
+  (when (and react-root (not hydrate?))
     (.render react-root (r/as-element [root]))))
 
 ;; next up

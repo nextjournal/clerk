@@ -63,7 +63,7 @@ viewer.mount(document.getElementById('clerk'))\n"
 ws.onmessage = msg => viewer.set_state(viewer.read_string(msg.data))
 window.ws_send = msg => ws.send(msg)")]]))
 
-(defn ->static-app [{:as state :keys [current-path]}]
+(defn ->static-app [{:as state :keys [current-path html]}]
   (hiccup/html5
    {:class "overflow-hidden min-h-screen"}
    [:head
@@ -73,7 +73,7 @@ window.ws_send = msg => ws.send(msg)")]]))
     (when current-path (v/open-graph-metas (-> state :path->doc (get current-path) v/->value :open-graph)))
     (include-css+js state)]
    [:body
-    [:div#clerk-static-app]
+    [:div#clerk-static-app html]
     [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
 let app = nextjournal.clerk.static_app
 let opts = viewer.read_string(" (-> state v/->edn pr-str) ")

@@ -126,9 +126,21 @@
         path->url (into {} (map (juxt identity #(cond-> (->> % (map-index opts) strip-index) (not bundle?) ->html-extension))) paths)]
     (assoc opts :bundle? bundle? :path->doc path->doc :paths (vec (keys path->doc)) :path->url path->url)))
 
+
+(defn ssr!
+  "Shells out to node to generate server-side-rendered html."
+  [static-app-opts]
+  (when-not (fs/exists? "build/viewer.js")
+    (spit "build/viewer.js" (slurp (@config/!asset-map "/js/viewer.js"))))
+  (spit "clerk_ssr.js" "import './build/viewer.js';console.log(nextjournal.clerk.static_app.ssr(process.argv[2]))")
+  (let [{:as ret :keys [out err exit]} (sh "node" "--abort-on-uncaught-exception" "clerk_ssr.js" (pr-str static-app-opts))]
+    (if (= 0 exit)
+      (assoc static-app-opts :html out)
+      (throw (ex-info (str "Clerk ssr! failed\n" out "\n" err) ret)))))
+
 (defn write-static-app!
   [opts docs]
-  (let [{:as opts :keys [bundle? out-path browse? index]} (process-build-opts opts)
+  (let [{:as opts :keys [bundle? out-path browse? index ssr?]} (process-build-opts opts)
         index-html (str out-path fs/file-separator "index.html")
         {:as static-app-opts :keys [path->url path->doc]} (build-static-app-opts opts docs)]
     (when-not (fs/exists? (fs/parent index-html))
@@ -140,7 +152,8 @@
           (doseq [[path doc] path->doc]
             (let [out-html (str out-path fs/file-separator (->> path (map-index opts) ->html-extension))]
               (fs/create-dirs (fs/parent out-html))
-              (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
+              (spit out-html (view/->static-app (cond-> (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)
+                                                  ssr? ssr!)))))))
     (when browse?
       (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize)))
     {:docs docs
@@ -290,6 +303,8 @@
         (report-fn {:stage :done :duration duration})))
     (report-fn {:stage :finished :state state :duration duration :total-duration (eval/elapsed-ms start)})))
 
+
+#_(build-static-app! {:ssr? true :index "notebooks/rule_30.clj" :browse? true})
 #_(build-static-app! {:paths clerk-docs :bundle? true})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
