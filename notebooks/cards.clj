@@ -80,11 +80,10 @@
   (clj->js [1 (j/obj :a 2) 3]))
 
 (c/card
-  (clj->js {:a [1 {:b 2} 3]}))
+ (clj->js {:a [1 {:b 2} 3]}))
 
-;; **TODO**: fix missing cljs.core/array in SCI ctx
 (c/card
-  (j/lit [1 2 3]))
+ (j/lit [1 2 3]))
 
 ;; this one won't work when advanced-compiled
 (c/card
