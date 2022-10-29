@@ -1,8 +1,9 @@
 (ns nextjournal.clerk.static-app
-  (:require [clojure.set :as set]
+  (:require ["react-dom/client" :as react-client]
+            [clojure.set :as set]
             [clojure.string :as str]
-            [nextjournal.clerk.sci-env :as sci-env]
             [nextjournal.clerk.render :as render]
+            [nextjournal.clerk.sci-env :as sci-env]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.devcards :as dc]
             [reagent.core :as r]
@@ -124,9 +125,21 @@
         [view view-data]
         [:pre (pr-str match)])]]))
 
+(defonce container
+  (and (exists? js/document) (js/document.getElementById "clerk-static-app")))
+
+(defonce hydrate?
+  (pos? (.-childElementCount container)))
+
+(defonce react-root
+  (when container
+    (if hydrate?
+      (react-client/hydrateRoot container (r/as-element [root]))
+      (react-client/createRoot container))))
+
 (defn ^:dev/after-load mount []
-  (when-let [el (and (exists? js/document) (js/document.getElementById "clerk-static-app"))]
-    (rdom/render [root] el)))
+  (when (and react-root (not hydrate?))
+    (.render react-root (r/as-element [root]))))
 
 ;; next up
 ;; - jit compiling css

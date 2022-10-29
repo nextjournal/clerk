@@ -4,7 +4,9 @@
   {:nextjournal.clerk/toc true
    :nextjournal.clerk/open-graph
    {:url "https://book.clerk.vision"
-    :image "https://cdn.nextjournal.com/data/QmSucfUyXCMKg1QbgR3QmLEWiRJ9RJvPum5GqjLPsAyngx?filename=clerk-eye.png&content-type=image/png"}}
+    :title "The Book of Clerk"
+    :description "Clerk’s official documentation."
+    :image "https://cdn.nextjournal.com/data/QmbHy6nYRgveyxTvKDJvyy2VF9teeXYkAXXDbgbKZK6YRC?filename=book-of-clerk-og-image.png&content-type=image/png"}}
   (:require [clojure.string :as str]
             [next.jdbc :as jdbc]
             [nextjournal.clerk :as clerk]
