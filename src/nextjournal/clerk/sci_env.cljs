@@ -40,9 +40,6 @@
                                          (viewer/with-viewer :number-hex memory-address))))}))))
          :features #{:clj}}))
 
-(def ^:export set-state render/set-state)
-(def ^:export mount render/mount)
-
 (defn ^:export read-string [s]
   (edamame/parse-string s @!edamame-opts))
 
@@ -92,5 +89,11 @@
 
 (defn ^:export eval-form [f]
   (sci/eval-form @!sci-ctx f))
+
+(defn ^:export set-state [state]
+  (render/set-state (assoc state :sci-ctx @!sci-ctx)))
+
+(def ^:export mount render/mount)
+
 
 (set! *eval* eval-form)

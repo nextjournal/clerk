@@ -632,7 +632,7 @@
 (declare mount)
 
 (defn intern-atom! [sci-ctx [var-name state]]
-  (prn :intern-atom! var-name :existing (sci/resolve sci-ctx var-name))
+  (assert sci-ctx "sci-ctx must be set")
   (if-let [existing-var (sci/resolve sci-ctx var-name)]
     (reset! @existing-var state)
     (sci/intern sci-ctx
@@ -641,8 +641,8 @@
                 (with-meta (r/atom state)
                   {:var-name var-name}))))
 
-(defn ^:export set-state [{:as state :keys [doc error remount? atom-var-name->state sci-ctx]}]
-  (doseq [atom-var atom-var-name->state]
+(defn ^:export set-state [{:as state :keys [doc error remount? sci-ctx]}]
+  (doseq [atom-var (get-in doc [:nextjournal/value :atom-var-name->state])]
     (intern-atom! sci-ctx atom-var))
   (when remount?
     (swap! !eval-counter inc))
