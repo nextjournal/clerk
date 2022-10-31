@@ -78,7 +78,8 @@
         extension (fs/extension file)]
     (if (fs/exists? file)
       {:status 200
-       :headers (cond-> {"Content-Type" ({"html" "text/html"
+       :headers (cond-> {"Content-Type" ({"css" "text/css"
+                                          "html" "text/html"
                                           "png" "image/png"
                                           "jpg" "image/jpeg"
                                           "js" "application/javascript"} extension "text/html")}

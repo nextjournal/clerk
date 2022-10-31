@@ -221,7 +221,7 @@
     ;; NOTE: a .cjs extension is safer in case the current npm project is of type module (like Clerk's): in this case all .js files
     ;; are treated as ES modules and this is not the case of our tw config.
     (spit tw-input (slurp (io/resource "stylesheets/viewer.css")))
-    (spit tw-viewer (slurp (get @config/!resource->url "/js/viewer.js")))
+    (spit tw-viewer (slurp (get @config/!asset-map "/js/viewer.js")))
     (doseq [{:keys [file viewer]} docs]
       (spit (let [path (fs/path tw-folder (str/replace file #"\.(cljc?|md)$" ".edn"))]
               (fs/create-dirs (fs/parent path))
