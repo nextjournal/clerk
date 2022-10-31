@@ -24,7 +24,8 @@
 ;; # 🧮 Counter in Clerk
 
 ;; We `defonce` an atom and tag it with `^::clerk/sync`. This will create a corresponding (reagent) atom in the browser.
-(defonce ^::clerk/sync my-state
+^::clerk/sync
+(defonce my-state
   (atom {:counter 0}))
 
 ;; This is showing the state that the JVM has.
