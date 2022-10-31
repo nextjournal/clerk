@@ -660,7 +660,6 @@
     (js/console.warn "clerk/swap-fn! called on an atom that doesn't have var-name set!")))
 
 (defn swap-clerk-atom! [{:as event :keys [var var-name args]}]
-  (prn :swap! var-name :args args :var var)
   (apply swap! @var args))
 
 (defn ^:export dispatch [{:as msg :keys [type]}]
