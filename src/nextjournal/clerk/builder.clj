@@ -131,6 +131,7 @@
   "Shells out to node to generate server-side-rendered html."
   [static-app-opts]
   (when-not (fs/exists? "build/viewer.js")
+    (fs/create-dirs "build")
     (spit "build/viewer.js" (slurp (@config/!asset-map "/js/viewer.js"))))
   (spit "clerk_ssr.js" "import './build/viewer.js';console.log(nextjournal.clerk.static_app.ssr(process.argv[2]))")
   (let [{:as ret :keys [out err exit]} (sh "node" "--abort-on-uncaught-exception" "clerk_ssr.js" (pr-str static-app-opts))]
