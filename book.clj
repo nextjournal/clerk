@@ -1,4 +1,4 @@
-;; # 📓 Book of Clerk
+;; # 📖 Book of Clerk
 ^{:nextjournal.clerk/visibility {:code :hide}}
 (ns nextjournal.clerk.book
   {:nextjournal.clerk/toc true
