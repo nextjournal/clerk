@@ -129,7 +129,8 @@
   (and (exists? js/document) (js/document.getElementById "clerk-static-app")))
 
 (defonce hydrate?
-  (pos? (.-childElementCount container)))
+  (when container
+    (pos? (.-childElementCount container))))
 
 (defonce react-root
   (when container
