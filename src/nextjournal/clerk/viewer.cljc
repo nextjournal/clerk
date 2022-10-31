@@ -53,7 +53,17 @@
 
 #?(:clj
    (defmethod print-method ViewerEval [v ^java.io.Writer w]
-     (.write w (str "#viewer-eval " (pr-str `~(:form v))))))
+     (.write w (str "#viewer-eval " (pr-str `~(:form v)))))
+   :cljs
+   (extend-type ViewerEval
+     IPrintWithWriter
+     (-pr-writer [obj w opts]
+       (-write w (str "#viewer-eval "))
+       (-write w (pr-str (:form obj))))))
+
+(def data-readers
+  {'viewer-fn ->viewer-fn
+   'viewer-eval ->viewer-eval})
 
 #_(binding [*data-readers* {'viewer-fn ->viewer-fn}]
     (read-string (pr-str (->viewer-fn '(fn [x] x)))))
@@ -788,13 +798,24 @@
 (def result-viewer
   {:name :clerk/result :render-fn 'nextjournal.clerk.render/render-result :transform-fn mark-presented})
 
+(defn extract-clerk-atom-vars [{:as _doc :keys [blocks]}]
+  (into {}
+        (comp (keep (fn [{:keys [result form]}]
+                      (when-let [var (-> result :nextjournal/value (get-safe :nextjournal.clerk/var-from-def))]
+                        (when (and (contains? (meta form) :nextjournal.clerk/sync)
+                                   #?(:clj (instance? clojure.lang.IAtom (deref var))))
+                          var))))
+              (map (juxt symbol #(-> % deref deref))))
+        blocks))
+
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc
+      (assoc :atom-var-name->state (extract-clerk-atom-vars doc))
       (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
                                              (map (comp process-wrapped-value
                                                         apply-viewers*
                                                         (partial ensure-wrapped-with-viewers viewers))))))
-      (select-keys [:blocks :toc :toc-visibility :title :open-graph])
+      (select-keys [:atom-var-name->state :blocks :toc :toc-visibility :title :open-graph])
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
 
 (def notebook-viewer

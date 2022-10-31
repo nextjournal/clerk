@@ -19,7 +19,8 @@
             [nextjournal.viewer.mathjax :as mathjax]
             [reagent.core :as r]
             [reagent.dom :as rdom]
-            [reagent.ratom :as ratom]))
+            [reagent.ratom :as ratom]
+            [sci.core :as sci]))
 
 ;; a type for wrapping react/useState to support reset! and swap!
 (deftype WrappedState [st]
@@ -630,7 +631,19 @@
 
 (declare mount)
 
-(defn ^:export set-state [{:as state :keys [doc error remount?]}]
+(defn intern-atom! [sci-ctx [var-name state]]
+  (assert sci-ctx "sci-ctx must be set")
+  (if-let [existing-var (sci/resolve sci-ctx var-name)]
+    (reset! @existing-var state)
+    (sci/intern sci-ctx
+                (sci/create-ns (symbol (namespace var-name)))
+                (symbol (name var-name))
+                (with-meta (r/atom state)
+                  {:var-name var-name}))))
+
+(defn ^:export set-state [{:as state :keys [doc error remount? sci-ctx]}]
+  (doseq [atom-var (get-in doc [:nextjournal/value :atom-var-name->state])]
+    (intern-atom! sci-ctx atom-var))
   (when remount?
     (swap! !eval-counter inc))
   (when (contains? state :doc)
@@ -638,6 +651,25 @@
   (reset! !error error)
   (when-let [title (and (exists? js/document) (-> doc viewer/->value :title))]
     (set! (.-title js/document) title)))
+
+(defn swap-fn! [atom & swap-args]
+  (apply swap! atom swap-args)
+  (if-let [var-name (-> atom meta :var-name)]
+    ;; TODO: for now sending whole state but could also diff
+    (js/ws_send (pr-str {:type :swap! :var-name var-name :args (viewer/->viewer-eval [(list 'fn ['_] @atom)]) :var (viewer/->viewer-eval (list 'resolve (list 'quote var-name)))}))
+    (js/console.warn "clerk/swap-fn! called on an atom that doesn't have var-name set!")))
+
+(defn swap-clerk-atom! [{:as event :keys [var var-name args]}]
+  (apply swap! @var args))
+
+(defn ^:export dispatch [{:as msg :keys [type]}]
+  (let [dispatch-fn ({:set-state! set-state
+                      :swap! swap-clerk-atom!}
+                     type
+                     (fn [type]
+                       (js/console.warn (str "no on-message dispatch for type `" (pr-str type) "`"))))]
+    #_(prn :<= type := msg)
+    (dispatch-fn msg)))
 
 (defonce react-root
   (when-let [el (and (exists? js/document) (js/document.getElementById "clerk"))]
@@ -648,7 +680,7 @@
     (.render react-root (r/as-element [root]))))
 
 (defn clerk-eval [form]
-  (.ws_send ^js goog/global (pr-str form)))
+  (.ws_send ^js goog/global (pr-str {:type :eval :form form})))
 
 (defn render-katex [tex-string {:keys [inline?]}]
   (katex/to-html-string tex-string (j/obj :displayMode (not inline?))))
