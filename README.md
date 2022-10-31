@@ -6,7 +6,7 @@
 
 ## Local-First Notebooks for Clojure
 
-[🎪 View Demos](http://nextjournal.github.io/clerk-demo/) •
+[🎪 View Demos](https://github.clerk.garden/nextjournal/clerk-demo/) •
 [👩‍🎨 Using Clerk](#-using-clerk) •
 [🪚 Development](#-developing-clerk)
 
@@ -14,7 +14,7 @@ Clerk takes a Clojure namespace and turns it into a notebook:
 
 ![Clerk Screenshot](https://cdn.nextjournal.com/data/QmeJvCtv5xqD8T7y2L3fwjnvWyCZM4DDk2iuspjqaC9QFc?filename=Screenshot+2022-09-18+at+20.09.14.png&content-type=image/png)
 
-## 🎪 [Demos](http://nextjournal.github.io/clerk-demo/)
+## 🎪 [Demos](https://github.clerk.garden/nextjournal/clerk-demo/)
 
 Clerk comes with a [demo repo](https://github.com/nextjournal/clerk-demo/) full of interesting use cases. Check them out and feel free to add your own via PRs.
 
