@@ -126,15 +126,19 @@
         path->url (into {} (map (juxt identity #(cond-> (->> % (map-index opts) strip-index) (not bundle?) ->html-extension))) paths)]
     (assoc opts :bundle? bundle? :path->doc path->doc :paths (vec (keys path->doc)) :path->url path->url)))
 
-
 (defn ssr!
   "Shells out to node to generate server-side-rendered html."
   [static-app-opts]
-  (when-not (fs/exists? "build/viewer.js")
-    (fs/create-dirs "build")
-    (spit "build/viewer.js" (slurp (@config/!asset-map "/js/viewer.js"))))
-  (spit "clerk_ssr.js" "import './build/viewer.js';console.log(nextjournal.clerk.static_app.ssr(process.argv[2]))")
-  (let [{:as ret :keys [out err exit]} (sh "node" "--abort-on-uncaught-exception" "clerk_ssr.js" (pr-str static-app-opts))]
+  (let [{:as ret :keys [out err exit]}
+        (sh "node"
+            "--abort-on-uncaught-exception"
+            "--experimental-network-imports"
+            "--input-type=module"
+            "--eval"
+            (str "import '" (@config/!asset-map "/js/viewer.js")
+                 "';console.log(nextjournal.clerk.static_app.ssr("
+                 (pr-str (pr-str static-app-opts))
+                 "))"))]
     (if (= 0 exit)
       (assoc static-app-opts :html out)
       (throw (ex-info (str "Clerk ssr! failed\n" out "\n" err) ret)))))
