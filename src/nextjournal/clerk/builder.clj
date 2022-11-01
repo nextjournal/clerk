@@ -208,8 +208,6 @@
 (defn compile-css!
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
   [{:keys [out-path]} docs]
-  (assert (and (= 0 (:exit (sh "which" "npx"))) (= 0 (:exit (sh "npx" "tailwindcss"))))
-          "Clerk's CSS optimizaiton failed: node and tailwind need to be installed. Please run `npm install -D tailwindcss @tailwindcss/typography` and retry.")
   (let [tw-folder (fs/create-dirs "tw")
         tw-input (str tw-folder "/input.css")
         tw-config (str tw-folder "/tailwind.config.cjs")
@@ -226,7 +224,7 @@
               (str path))
             (pr-str viewer)))
     (let [{:as ret :keys [out err exit]}
-          (sh "npx" "tailwindcss"
+          (sh "tailwindcss"
               "--input"  tw-input
               "--config" tw-config
               ;; FIXME: pass inline
@@ -311,7 +309,8 @@
 #_(swap! config/!resource->url assoc
          "/js/viewer.js" (-> config/lookup-url slurp clojure.edn/read-string (get "/js/viewer.js")))
 #_(swap! config/!resource->url dissoc "/css/viewer.css")
-#_ (build-static-app! {:compile-css? true
-                       :index "notebooks/rule_30.clj"
-                       :paths ["notebooks/hello.clj"
-                               "notebooks/markdown.md"]})
+#_(fs/delete-tree "public/build")
+#_(build-static-app! {:compile-css? true
+                      :index "notebooks/rule_30.clj"
+                      :paths ["notebooks/hello.clj"
+                              "notebooks/markdown.md"]})
