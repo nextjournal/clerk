@@ -20,6 +20,7 @@
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [reagent.ratom :as ratom]
+            [shadow.cljs.modern :refer [defclass]]
             [sci.core :as sci]))
 
 ;; a type for wrapping react/useState to support reset! and swap!
@@ -100,10 +101,7 @@
       #js[x])
      #(binding [reagent.ratom/*ratom-context* nil] @x))))
 
-(when (exists? js/window)
-  ;; conditionalized currently because this throws in node
-  ;; TypeError: Cannot assign to read only property 'reagentRender' of object '#<Object>'
-  (r/set-default-compiler! (r/create-compiler {:function-components true})))
+(r/set-default-compiler! (r/create-compiler {:function-components true}))
 
 (declare inspect inspect-presented reagent-viewer html html-viewer)
 
@@ -284,19 +282,32 @@
    (when-some [data (.-data error)]
      [:div.mt-2 [inspect data]])])
 
+(def ErrorProvider (j/get (view-context/get-context :!error) :Provider))
 
+(defclass ErrorBoundary
+  (extends react/Component)
+  (field !error)
+  (constructor [this ^js props]
 
+               (super props)
+               (set! !error (j/get props :!error))
+               (set! (.-state this) #js{:error @!error}))
+  Object
+  (componentDidMount [this]
+                     (add-watch !error this
+                                (fn [_ _ _ new-val]
+                                  (j/call this :setState #js{:error new-val}))))
+  (componentWillUnmount [this] (remove-watch !error this))
+  (render [^js this props]
+          (j/let [^js {{:keys [error]} :state
+                       {:keys [children]} :props} this]
+            (if error
+              (r/as-element [error-view error])
+              (.apply react/createElement nil
+                      (.concat #js[ErrorProvider #js{:value !error}] children))))))
 
-(defn error-boundary [!error & _]
-  (r/create-class
-   {:constructor (fn [_ _])
-    :component-did-catch (fn [_ e _info] (reset! !error e))
-    :get-derived-state-from-error (fn [e] (reset! !error e) #js {})
-    :reagent-render (fn [_error & children]
-                      (if-let [error @!error]
-                        (error-view error)
-                        [view-context/provide {:!error !error}
-                         (into [:<>] children)]))}))
+(j/!set ErrorBoundary
+        :getDerivedStateFromError (fn [error] #js{:error error}))
 
 (def default-loading-view "Loading...")
 
@@ -356,7 +367,7 @@
       (reset! !desc (read-result result !error))
       (reset! !error nil))
     [view-context/provide {:fetch-fn fetch-fn}
-     [error-boundary !error
+     [:> ErrorBoundary {:!error !error}
       [:div.relative
        [:div.overflow-y-hidden
         {:ref ref-fn}
