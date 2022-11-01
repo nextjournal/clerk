@@ -793,7 +793,7 @@
          {:class "text-[10px]"}
          "evaluated in 0.2s"]]
        [:div.viewer-code.mb-2.relative {:style {:margin-top 0}}
-        [inspect-presented (render-code code-string)]]])))
+        [render-code code-string]]])))
 
 
 (defn url-for [{:as src :keys [blob-id]}]
