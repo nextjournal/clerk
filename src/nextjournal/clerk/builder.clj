@@ -135,10 +135,8 @@
             "--experimental-network-imports"
             "--input-type=module"
             "--eval"
-            (str "import '" (@config/!asset-map "/js/viewer.js")
-                 "';console.log(nextjournal.clerk.static_app.ssr("
-                 (pr-str (pr-str static-app-opts))
-                 "))"))]
+            (str "import '" (@config/!asset-map "/js/viewer.js") "';"
+                 "console.log(nextjournal.clerk.static_app.ssr(" (pr-str (pr-str static-app-opts)) "))"))]
     (if (= 0 exit)
       (assoc static-app-opts :html out)
       (throw (ex-info (str "Clerk ssr! failed\n" out "\n" err) ret)))))

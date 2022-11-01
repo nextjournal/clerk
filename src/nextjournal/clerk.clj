@@ -351,7 +351,7 @@
 
 (defn ^:private normalize-opts [opts]
   (set/rename-keys opts #_(into {} (map (juxt identity #(keyword (str (name %) "?")))) [:bundle :browse :dashboard])
-                   {:bundle :bundle?, :browse :browse?, :dashboard :dashboard? :compile-css :compile-css?}))
+                   {:bundle :bundle?, :browse :browse?, :dashboard :dashboard? :compile-css :compile-css? :ssr :ssr?}))
 
 (defn ^:private started-via-bb-cli? [opts]
   (contains? (meta opts) :org.babashka/cli))
@@ -422,9 +422,11 @@
   Passing at least one of the above is required. When both `:paths`
   and `:paths-fn` are given, `:paths` takes precendence.
 
-  - `:bundle`    - if true results in a single self-contained html file including inlined images
-  - `:browse`    - if true will open browser with the built file on success
-  - `:dashboard` - if true will start a server and show a rich build report in the browser (use with `:bundle` to open browser)
+  - `:bundle`      - if true results in a single self-contained html file including inlined images
+  - `:compile-css` - if true compiles css file containing only the used classes
+  - `:ssr`         - if true runs react server-side-rendering and includes the generated markup in the html
+  - `:browse`      - if true will open browser with the built file on success
+  - `:dashboard`   - if true will start a server and show a rich build report in the browser (use with `:bundle` to open browser)
   - `:out-path`  - a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
   - `:git/sha`, `:git/url` - when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
   "
@@ -437,16 +439,11 @@
                              :browse {:desc "Opens the browser on boot when set."}
                              :dashboard {:desc "Flag to serve a dashboard with the build progress."}
                              :out-path {:desc "Path to an build output folder, defaults to \"public/build\"."}
+                             :ssr {:desc "Flag to run server-side-rendering to include pre-rendered markup in html output."}
+                             :compile-css {:desc "Flag to run tailwindcss to compile a minimal stylesheet containing only the used classes."}
                              :git/sha {:desc "Git sha to use for the backlink."}
-                             :git/url {:desc "Git url to use for the backlink."}
-                             :compile-css {:desc "Flag to compile all viewer stylesheets and add a minimized CSS file to the output folder.
-
-Assumes tailwind installed, as per
-```
-npm install -D tailwindcss @tailwindcss/typography
-```
-"}}
-                      :order [:paths :paths-fn :index :browse :bundle :dashbaord :out-path :git/sha :git/url :compile-css]}}
+                             :git/url {:desc "Git url to use for the backlink."}}
+                      :order [:paths :paths-fn :index :browse :dashbaord :compile-css :ssr :bundle :out-path :git/sha :git/url]}}
   [build-opts]
   (if (:help build-opts)
     (if-let [format-opts (and (started-via-bb-cli? build-opts) (requiring-resolve 'babashka.cli/format-opts))]
