@@ -20,6 +20,7 @@
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [reagent.ratom :as ratom]
+            [shadow.cljs.modern :refer [defclass]]
             [sci.core :as sci]))
 
 ;; a type for wrapping react/useState to support reset! and swap!
@@ -284,8 +285,32 @@
    (when-some [data (.-data error)]
      [:div.mt-2 [inspect data]])])
 
+(def ErrorProvider (j/get (view-context/get-context :!error) :Provider))
 
+(defclass ErrorBoundary
+  (extends react/Component)
+  (field !error)
+  (constructor [this ^js props]
 
+               (super props)
+               (set! !error (j/get props :!error))
+               (set! (.-state this) #js{:error @!error}))
+  Object
+  (componentDidMount [this]
+                     (add-watch !error this
+                                (fn [_ _ _ new-val]
+                                  (j/call this :setState #js{:error new-val}))))
+  (componentWillUnmount [this] (remove-watch !error this))
+  (render [^js this props]
+          (j/let [^js {{:keys [error]} :state
+                       {:keys [children]} :props} this]
+            (if error
+              (r/as-element [error-view error])
+              (.apply react/createElement nil
+                      (.concat #js[ErrorProvider #js{:value !error}] children))))))
+
+(j/!set ErrorBoundary
+        :getDerivedStateFromError (fn [error] #js{:error error}))
 
 (defn error-boundary [!error & _]
   (r/create-class
@@ -356,7 +381,8 @@
       (reset! !desc (read-result result !error))
       (reset! !error nil))
     [view-context/provide {:fetch-fn fetch-fn}
-     [error-boundary !error
+     [#_#_error-boundary !error
+      :> ErrorBoundary {:!error !error}
       [:div.relative
        [:div.overflow-y-hidden
         {:ref ref-fn}
