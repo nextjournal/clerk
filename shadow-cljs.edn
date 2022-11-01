@@ -2,7 +2,7 @@
  :dev-http {7778 {:roots ["public" "classpath:public"]}}
  :nrepl false
  :builds {:viewer {:target :esm
-                   :runtime :browser #_  :custom ;; needed when developing ssr, node errors without it
+                   :runtime :browser ;; `:custom` needed when developing ssr, will see WebSocket errors without it
                    :output-dir "public/js"
                    :release {:output-dir "build/"}
                    :compiler-options {:source-map true}
