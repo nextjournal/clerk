@@ -44,8 +44,9 @@
   (map->ViewerEval {:form form}))
 
 (defn open-graph-metas [open-graph-properties]
-  (map (fn [[prop content]] [:meta {:property (str "og:" (name prop)) :content content}])
-       open-graph-properties))
+  (into (list [:meta {:name "twitter:card" :content "summary_large_image"}])
+        (map (fn [[prop content]] [:meta {:property (str "og:" (name prop)) :content content}]))
+        open-graph-properties))
 
 #?(:clj
    (defmethod print-method ViewerFn [v ^java.io.Writer w]
