@@ -101,10 +101,7 @@
       #js[x])
      #(binding [reagent.ratom/*ratom-context* nil] @x))))
 
-(when (exists? js/window)
-  ;; conditionalized currently because this throws in node
-  ;; TypeError: Cannot assign to read only property 'reagentRender' of object '#<Object>'
-  (r/set-default-compiler! (r/create-compiler {:function-components true})))
+(r/set-default-compiler! (r/create-compiler {:function-components true}))
 
 (declare inspect inspect-presented reagent-viewer html html-viewer)
 
@@ -312,17 +309,6 @@
 (j/!set ErrorBoundary
         :getDerivedStateFromError (fn [error] #js{:error error}))
 
-(defn error-boundary [!error & _]
-  (r/create-class
-   {:constructor (fn [_ _])
-    :component-did-catch (fn [_ e _info] (reset! !error e))
-    :get-derived-state-from-error (fn [e] (reset! !error e) #js {})
-    :reagent-render (fn [_error & children]
-                      (if-let [error @!error]
-                        (error-view error)
-                        [view-context/provide {:!error !error}
-                         (into [:<>] children)]))}))
-
 (def default-loading-view "Loading...")
 
 (defn use-handle-error []
@@ -381,8 +367,7 @@
       (reset! !desc (read-result result !error))
       (reset! !error nil))
     [view-context/provide {:fetch-fn fetch-fn}
-     [#_#_error-boundary !error
-      :> ErrorBoundary {:!error !error}
+     [:> ErrorBoundary {:!error !error}
       [:div.relative
        [:div.overflow-y-hidden
         {:ref ref-fn}
