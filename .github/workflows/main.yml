@@ -143,7 +143,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v0.3.0
 
       - name: 🔧 NPM install
-        run: npm install
+        run: npm install -g tailwindcss @tailwindcss/typography
 
       - name: 📓 Build Clerk Book
         run: clojure -J-Dclojure.main.report=stderr -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :paths '["book.clj"]'
