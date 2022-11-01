@@ -11,16 +11,12 @@
 (clerk/with-viewer {:render-fn '(fn [x] (throw (ex-info "I blow up when called" {})))}
   :boom)
 
-(clerk/with-viewer {:render-fn '(fn [x] x)}
+(clerk/with-viewer {:render-fn '(fn [_] (v/inspect-presented :crash))}
   42)
 
-(clerk/with-viewer {:render-fn '(fn [_] (v/inspect :crash))}
-  42)
-
-(clerk/with-viewer {:render-fn '(fn [_] (v/html (v/inspect :crash)))}
+(clerk/with-viewer {:render-fn '(fn [_] (v/html (v/inspect-presented :crash)))}
   42)
 
 (clerk/with-viewer {:render-fn '(fn [_] (v/html [1 2 3]))}
   42)
-
 
