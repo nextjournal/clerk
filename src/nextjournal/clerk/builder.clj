@@ -2,17 +2,18 @@
   "Clerk's Static App Builder."
   (:require [babashka.fs :as fs]
             [clojure.java.browse :as browse]
-            [clojure.set :as set]
             [clojure.java.io :as io]
-            [clojure.string :as str]
             [clojure.java.shell :refer [sh]]
+            [clojure.set :as set]
+            [clojure.string :as str]
             [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.builder-ui :as builder-ui]
+            [nextjournal.clerk.config :as config]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
+            [nextjournal.clerk.ssr :as ssr]
             [nextjournal.clerk.view :as view]
-            [nextjournal.clerk.webserver :as webserver]
-            [nextjournal.clerk.config :as config]))
+            [nextjournal.clerk.webserver :as webserver]))
 
 (def clerk-docs
   (into ["CHANGELOG.md"
@@ -122,19 +123,9 @@
     (assoc opts :bundle? bundle? :path->doc path->doc :paths (vec (keys path->doc)) :path->url path->url)))
 
 (defn ssr!
-  "Shells out to node to generate server-side-rendered html."
+  "Generate server-side-rendered html using GraalJS."
   [static-app-opts]
-  (let [{:as ret :keys [out err exit]}
-        (sh "node"
-            "--abort-on-uncaught-exception"
-            "--experimental-network-imports"
-            "--input-type=module"
-            "--eval"
-            (str "import '" (@config/!asset-map "/js/viewer.js") "';"
-                 "console.log(nextjournal.clerk.static_app.ssr(" (pr-str (pr-str static-app-opts)) "))"))]
-    (if (= 0 exit)
-      (assoc static-app-opts :html out)
-      (throw (ex-info (str "Clerk ssr! failed\n" out "\n" err) ret)))))
+  (assoc static-app-opts :html (ssr/render (pr-str static-app-opts))))
 
 (defn write-static-app!
   [opts docs]
@@ -300,7 +291,7 @@
     (report-fn {:stage :finished :state state :duration duration :total-duration (eval/elapsed-ms start)})))
 
 
-#_(build-static-app! {:ssr? true :index "notebooks/rule_30.clj" :browse? true})
+#_(build-static-app! {:ssr? true :index "notebooks/rule_30.clj"})
 #_(build-static-app! {:paths clerk-docs :bundle? true})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
@@ -311,6 +302,7 @@
 #_(swap! config/!resource->url dissoc "/css/viewer.css")
 #_(fs/delete-tree "public/build")
 #_(build-static-app! {:compile-css? true
+                      :ssr? true
                       :index "notebooks/rule_30.clj"
                       :paths ["notebooks/hello.clj"
                               "notebooks/markdown.md"]})

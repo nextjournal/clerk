@@ -1,9 +1,5 @@
 (ns nextjournal.clerk.ssr
-  "Server-side-rendering using `reagent.dom.server` on GraalJS.
-
-  Status: working in GraalJS `org.graalvm.js/js {:mvn/version \"22.3.0\"}`
-
-  To try this ad the dep above to e.g. the `:sci` alias."
+  "Server-side-rendering using `reagent.dom.server` on GraalJS."
   (:require [clojure.java.io :as io]
             [clojure.edn :as edn]
             [clojure.string :as str]
@@ -27,20 +23,14 @@
     (assert (.canExecute fn-ref) (str "cannot execute " fn))
     (.execute fn-ref args)))
 
-(defn viewer-js-path []
-  (@config/!asset-map "/js/viewer.js")
-  ;; uncomment the following to test against a local js bundle
-  #_"build/viewer.js")
-
-(def viewer-js-source
-  ;; run `bb build:js` on shell to generate
-  (.build (Source/newBuilder "js" (str (slurp "https://gist.githubusercontent.com/Yaffle/5458286/raw/1aa5caa5cdd9938fe0fe202357db6c6b33af24f4/TextEncoderTextDecoder.js") ;; tiny utf8 only TextEncoder polyfill
-                                       "\n"
-                                       (slurp (viewer-js-path))) "viewer.mjs")))
-
+(defn viewer-js-source []
+  ;; tiny utf8 only `TextEncoder` polyfill
+  (str (slurp "https://gist.githubusercontent.com/Yaffle/5458286/raw/1aa5caa5cdd9938fe0fe202357db6c6b33af24f4/TextEncoderTextDecoder.js")
+       "\n"
+       (slurp (@config/!asset-map "/js/viewer.js"))))
 
 (def !eval-viewer-source
-  (delay (.eval context viewer-js-source)))
+  (delay (.eval context (.build (Source/newBuilder "js" (viewer-js-source) "viewer.mjs")))))
 
 (defn render [edn-string]
   (force !eval-viewer-source)
@@ -62,6 +52,6 @@
     (spit "build/static_app_state_hello.edn" (pr-str (file->static-app-opts "notebooks/hello.clj")))
     (spit "build/static_app_state_rule_30.edn" (pr-str (file->static-app-opts "notebooks/rule_30.clj")))
 
-    (time (render (slurp "build/static_app_state_hello.edn")))))
+    (time (render (slurp "build/static_app_state_rule_30.edn")))))
 
 
