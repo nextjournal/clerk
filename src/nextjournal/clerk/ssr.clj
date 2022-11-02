@@ -47,7 +47,9 @@
     (defn file->static-app-opts [file]
       (-> (eval/eval-file file)
           (as-> doc (assoc doc :viewer (view/doc->viewer {} doc)))
-          (as-> doc+viewer (builder/build-static-app-opts (builder/process-build-opts {:index file}) [doc+viewer]))))
+          (as-> doc+viewer
+            (builder/build-static-app-opts (builder/process-build-opts {:index file}) [doc+viewer])
+            (assoc doc+viewer :current-path file))))
 
     (spit "build/static_app_state_hello.edn" (pr-str (file->static-app-opts "notebooks/hello.clj")))
     (spit "build/static_app_state_rule_30.edn" (pr-str (file->static-app-opts "notebooks/rule_30.clj")))
