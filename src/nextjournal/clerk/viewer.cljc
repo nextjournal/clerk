@@ -1177,51 +1177,38 @@
        x))
    wrapped-value))
 
-#_(defn compute-expanded-at [{:as state :keys [indents expanded-at prev-type]}
-                             {:nextjournal/keys [value]
-                              :keys [content-length path type]
-                              :or {content-length 0}}]
-    (let [max-length (- 80 (reduce + 0 indents))
-          expanded? (< max-length content-length)
-          state' (assoc state
-                        :expanded-at (assoc expanded-at path expanded?)
-                        #_(if expanded?
-                            (assoc expanded-at path true)
-                            expanded-at)
-                        :prev-type type
-                        :indents (conj
-                                  (->> indents (take (count path)) vec)
-                                  (cond
-                                    (contains? #{:map-entry} prev-type) (or content-length 0)
-                                    (vector? value) 2
-                                    :else 1)))]
-      (if (vector? value)
-        (reduce compute-expanded-at state' value)
-        state')))
-
-#_(defn assign-expanded-at [wrapped-value]
-    (cond-> wrapped-value
-      (:content-length wrapped-value)
-      (assoc :nextjournal/expanded-at
-             (:expanded-at (compute-expanded-at {:expanded-at {}} wrapped-value)))))
-
-(defn compute-expanded-at [{:as state :keys [expanded-at]}
-                           {:nextjournal/keys [value] :keys [path]}]
-  (let [state' (assoc state :expanded-at (assoc expanded-at path false))]
+(defn compute-expanded-at [{:as state :keys [indents expanded-at prev-type]}
+                           {:nextjournal/keys [value]
+                            :keys [content-length path type]
+                            :or {content-length 0}}]
+  (let [max-length (- 80 (reduce + 0 indents))
+        expanded? (< max-length content-length)
+        state' (assoc state
+                      :expanded-at (assoc expanded-at path expanded?)
+                      #_(if expanded?
+                          (assoc expanded-at path true)
+                          expanded-at)
+                      :prev-type type
+                      :indents (conj
+                                (->> indents (take (count path)) vec)
+                                (cond
+                                  (contains? #{:map-entry} prev-type) (or content-length 0)
+                                  (vector? value) 2
+                                  :else 1)))]
     (if (vector? value)
       (reduce compute-expanded-at state' value)
       state')))
 
 (defn assign-expanded-at [wrapped-value]
-  (assoc wrapped-value :nextjournal/expanded-at (:expanded-at (compute-expanded-at {:expanded-at {}} wrapped-value))))
+  (cond-> wrapped-value
+    (:content-length wrapped-value)
+    (assoc :nextjournal/expanded-at
+           (:expanded-at (compute-expanded-at {:expanded-at {}} wrapped-value)))))
+
+
 
 (comment
-  (-> (compute-expanded-at
-       {:indents [] :expanded-at {}}
-       (present {:a-vector [1 2 3] :a-list '(123 234 345) :a-set #{1 2 3 4}}))
-      :expanded-at
-      keys
-      sort)
+  (:nextjournal/expanded-at (present {:a-vector [1 2 3] :a-list '(123 234 345) :a-set #{1 2 3 4}}))
   (= (count "[1 2 [1 [2] 3] 4 5]")
      (:content-length (assign-content-lengths (present [1 2 [1 [2] 3] 4 5]))))
   (= (count "{:a-vector [1 2 3] :a-list (123 234 345) :a-set #{1 2 3 4}}")
@@ -1240,6 +1227,8 @@
               opts)
        present*
        assign-closing-parens
+       ;; TODO: conditionalize these two steps, make them opt-in via doc opts for now?
+       assign-content-lengths
        assign-expanded-at)))
 
 (comment
