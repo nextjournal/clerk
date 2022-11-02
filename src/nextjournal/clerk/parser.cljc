@@ -119,6 +119,12 @@
 
 (defn add-open-graph-metadata [doc] (assoc doc :open-graph (->open-graph doc)))
 
+;; TODO: Unify with get-doc-settings
+(defn add-auto-expand-results [{:as doc :keys [blocks]}]
+  (assoc doc :auto-expand-results? (some (fn [{:keys [form]}]
+                                           (when (ns? form) (some :nextjournal.clerk/auto-expand-results? form)))
+                                         blocks)))
+
 #_(->doc-settings '^{:nextjournal.clerk/toc :boom} (ns foo)) ;; TODO: error
 
 (defn add-block-visibility [{:as analyzed-doc :keys [blocks]}]

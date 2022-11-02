@@ -366,7 +366,7 @@
                        bundle? :inline ;; TODO: provide a separte setting for this
                        :else :file)
            blob-opts (assoc doc :blob-mode blob-mode :blob-id blob-id)
-           presented-result (process-blobs blob-opts (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
+           presented-result (process-blobs blob-opts (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value) doc))
            opts-from-form-meta (select-keys result [:nextjournal/width :nextjournal/opts])]
        (merge {:nextjournal/viewer :clerk/result
                :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (merge presented-result opts-from-form-meta))}
@@ -1219,7 +1219,7 @@
 (defn present
   "Returns a subset of a given `value`."
   ([x] (present x {}))
-  ([x opts]
+  ([x {:as opts :keys [auto-expand-results?]}]
    (-> (ensure-wrapped-with-viewers x)
        (merge {:!budget (atom (:budget opts 200))
                :path (:path opts [])
@@ -1227,9 +1227,8 @@
               opts)
        present*
        assign-closing-parens
-       ;; TODO: conditionalize these two steps, make them opt-in via doc opts for now?
-       assign-content-lengths
-       assign-expanded-at)))
+       (cond-> auto-expand-results?
+         (-> assign-content-lengths assign-expanded-at)))))
 
 (comment
   (present [\a \b])
