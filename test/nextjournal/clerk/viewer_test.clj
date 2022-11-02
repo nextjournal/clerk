@@ -157,4 +157,4 @@
       (is (not-empty (tree-re-find (doc->viewer {:inline-results? true
                                                  :bundle? false
                                                  :out-path builder/default-out-path} test-doc)
-                                   #"\"_data/.+\.png\""))))))
+                                   #"\"_data.+\.png\""))))))
