@@ -330,15 +330,14 @@
        (str cas-path))))
 
 #?(:clj
-   (defn maybe-store-result-as-file [{:as doc+blob-opts :keys [file]} {:as result :nextjournal/keys [content-type value]}]
+   (defn maybe-store-result-as-file [{:as doc+blob-opts :keys [out-path file]} {:as result :nextjournal/keys [content-type value]}]
      ;; TODO: support customization via viewer api
      (if-let [image-type (second (re-matches #"image/(\w+)" content-type))]
-       (let [cas-path (store-in-cas! (assoc doc+blob-opts :ext image-type) value)
-             dir-depth (get (frequencies file) \/ 0)
-             relative-root (str/join (repeat dir-depth "../"))]
-         ;; TODO: support absolute paths
-         ;; TODO: unify relativizing paths
-         (assoc result :nextjournal/value (str relative-root "_data/" (fs/file-name cas-path))))
+       ;; TODO: support absolute paths
+       ;; TODO: unify relativizing paths
+       (assoc result :nextjournal/value
+              (str (str/join (repeat (get (frequencies file) \/ 0) "../"))
+                   (fs/relativize out-path (store-in-cas! (assoc doc+blob-opts :ext image-type) value))))
        result)))
 
 #_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" "notebooks/image.clj" "notebooks/viewers/image.clj"] :bundle? false :browse? false})
