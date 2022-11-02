@@ -773,11 +773,8 @@
 (defn render-code [value]
   (let [ref (use-ref nil)]
     (use-effect (fn []
-                  (js/console.log :mounting @ref :with value)
                   (let [^js editor-view (render.code/cm-view value @ref)]
-                    (fn []
-                      (js/console.log :unmounting value)
-                      (.destroy editor-view)))) [value])
+                    #(.destroy editor-view))) [value])
     [:div {:ref ref}]))
 
 (def expand-icon
