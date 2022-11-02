@@ -1,10 +1,11 @@
 (ns nextjournal.clerk.viewer-test
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
+            [clojure.walk :as w]
             [matcher-combinators.test :refer [match?]]
+            [nextjournal.clerk.builder :as builder]
             [nextjournal.clerk.viewer :as v]
-            [nextjournal.clerk.eval :as eval]
-            [clojure.walk :as w]))
+            [nextjournal.clerk.eval :as eval]))
 
 (defn present+fetch
   ([value] (present+fetch {} value))
@@ -150,10 +151,10 @@
 
       (is (not-empty (tree-re-find (doc->viewer {:inline-results? true
                                                  :bundle? true
-                                                 :out-path "public/build"} test-doc)
+                                                 :out-path builder/default-out-path} test-doc)
                                    #"data:image/png;base64")))
 
       (is (not-empty (tree-re-find (doc->viewer {:inline-results? true
                                                  :bundle? false
-                                                 :out-path "public/build"} test-doc)
+                                                 :out-path builder/default-out-path} test-doc)
                                    #"\"_data/.+\.png\""))))))
