@@ -6,6 +6,8 @@
             [clojure.walk :as w]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
+                      [multihash.core :as multihash]
+                      [multihash.digest :as digest]
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.analyzer :as analyzer]]
                 :cljs [[goog.crypt]
@@ -318,18 +320,25 @@
                                                        (.encodeToString (Base64/getEncoder) data))))))
 
 #?(:clj
-   (defn maybe-store-result-as-file [{:as _doc+blob-opts :keys [blob-id file out-path]} {:as result :nextjournal/keys [content-type value]}]
+   ;; TODO: move away from viewer ns
+   (defn store-in-cas! [{:keys [out-path ext]} content]
+     (assert out-path) (assert ext)
+     (let [cas-path (fs/path out-path "_data" (str (multihash/base58 (digest/sha2-512 content)) "." ext))]
+       (fs/create-dirs (fs/parent cas-path))
+       (when-not (fs/exists? cas-path)
+         (Files/write cas-path content (into-array [StandardOpenOption/CREATE])))
+       (str cas-path))))
+
+#?(:clj
+   (defn maybe-store-result-as-file [{:as doc+blob-opts :keys [file]} {:as result :nextjournal/keys [content-type value]}]
      ;; TODO: support customization via viewer api
      (if-let [image-type (second (re-matches #"image/(\w+)" content-type))]
-       (let [dir (fs/path out-path "_data")
-             file-path (fs/path dir (str (analyzer/valuehash value) "." image-type))
+       (let [cas-path (store-in-cas! (assoc doc+blob-opts :ext image-type) value)
              dir-depth (get (frequencies file) \/ 0)
              relative-root (str/join (repeat dir-depth "../"))]
          ;; TODO: support absolute paths
-         (fs/create-dirs dir)
-         (when-not (fs/exists? file-path)
-           (Files/write file-path value (into-array [StandardOpenOption/CREATE])))
-         (assoc result :nextjournal/value (str relative-root "_data/" (fs/file-name file-path))))
+         ;; TODO: unify relativizing paths
+         (assoc result :nextjournal/value (str relative-root "_data/" (fs/file-name cas-path))))
        result)))
 
 #_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" "notebooks/image.clj" "notebooks/viewers/image.clj"] :bundle? false :browse? false})

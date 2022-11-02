@@ -148,8 +148,12 @@
                                           (filter string?)
                                           (filter (partial re-find re))))]
 
-      (is (not-empty (tree-re-find (doc->viewer {:inline-results? true :bundle? true} test-doc)
+      (is (not-empty (tree-re-find (doc->viewer {:inline-results? true
+                                                 :bundle? true
+                                                 :out-path "public/build"} test-doc)
                                    #"data:image/png;base64")))
 
-      (is (not-empty (tree-re-find (doc->viewer {:inline-results? true :bundle? false} test-doc)
+      (is (not-empty (tree-re-find (doc->viewer {:inline-results? true
+                                                 :bundle? false
+                                                 :out-path "public/build"} test-doc)
                                    #"\"_data/.+\.png\""))))))
