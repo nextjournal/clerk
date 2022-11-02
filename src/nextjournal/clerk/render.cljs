@@ -768,7 +768,6 @@
         default-loading-view))))
 
 (def render-mathjax mathjax/viewer)
-#_(def render-code code/viewer)
 
 (defn render-code [value]
   (let [ref (use-ref nil)]
