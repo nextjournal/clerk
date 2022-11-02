@@ -48,7 +48,8 @@
    (include-viewer-css state)
    [:script {:type "module" :src (@config/!resource->url "/js/viewer.js")}]
    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
-   (hiccup/include-css "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")))
+   [:link {:rel "preconnect" :href "https://fonts.bunny.net"}]
+   (hiccup/include-css "https://fonts.bunny.net/css?family=fira-code:400,700%7Cfira-mono:400,700%7Cfira-sans:400,400i,500,500i,700,700i%7Cfira-sans-condensed:700,700i%7Cpt-serif:400,400i,700,700i")))
 
 (defn ->html [{:keys [conn-ws?] :or {conn-ws? true}} state]
   (hiccup/html5

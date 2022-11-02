@@ -597,15 +597,6 @@
 
 (defn valid-react-element? [x] (react/isValidElement x))
 
-(defn render-with-viewer [opts {:as _viewer :keys [render-fn]} value]
-  (assert (or (fn? render-fn) (viewer/viewer-fn? render-fn)) "render-fn must be `fn?` or `viewer-fn?`")
-  (let [rendered (render-fn value opts)]
-    (cond (valid-react-element? rendered) rendered
-          (vector? rendered) (r/as-element rendered)
-          ;; legacy support for `:render-fn`s with `v/html`
-          (map? rendered) (let [{:nextjournal/keys [value viewer]} rendered]
-                            (render-with-viewer (assoc opts :viewer viewer) viewer value)))))
-
 (defn inspect-presented
   ([x]
    (r/with-let [!expanded-at (r/atom (:nextjournal/expanded-at x))]
@@ -616,12 +607,8 @@
      (let [{:nextjournal/keys [value viewer]} x]
        #_(prn :inspect-presented value :valid-element? (react/isValidElement value) :viewer viewer)
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
-
-       ;; TODO: for now we want to still support `:render-fn` that call `v/html` but
-       ;; this could be further simplified by directly creating a compnent via
-       ;; [(:render-fn viewer) opts value]
-         ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
-         [render-with-viewer (merge opts (:nextjournal/opts x) {:viewer viewer}) viewer value]))))
+       ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
+       [(:render-fn viewer) value (merge opts (:nextjournal/opts x) {:viewer viewer})]))))
 
 (defn in-process-fetch [value opts]
   (.resolve js/Promise (viewer/present value opts)))
@@ -697,7 +684,7 @@
   (.ws_send ^js goog/global (pr-str {:type :eval :form form})))
 
 (defn render-katex [tex-string {:keys [inline?]}]
-  (katex/to-html-string tex-string (j/obj :displayMode (not inline?))))
+  [:span {:dangerouslySetInnerHTML {:__html (katex/to-html-string tex-string (j/obj :displayMode (not inline?)))}}])
 
 (defn html-render [markup]
   (r/as-element
