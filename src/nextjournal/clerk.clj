@@ -334,12 +334,37 @@
     `(clerk/with-viewer v/examples-viewer
        (mapv (fn [form# val#] {:form form# :val val#}) ~(mapv (fn [x#] `'~x#) body) ~(vec body)))))
 
+(defmacro cljs
+  "Returns a value that treats the supplied forms in the rendered Clerk notebook
+  as if they were the body of a `:render-fn` with no arguments.
+
+  If the final form in the body is a vector it's interpreted as a Reagent
+  component. Else, the form is rendered with `v/inspect`.
+
+  For example:
+
+  ```clj
+  (cljs
+    [:div \"This is a \"
+      [:strong \"strong statement!\"]])
+  ```"
+  [& body]
+  `(with-viewer
+     {:transform-fn mark-presented
+      :render-fn '(fn [_#]
+                    (let [result# (do ~@body)]
+                      (v/html
+                       (if (vector? result#)
+                         result#
+                         [v/inspect result#]))))}
+     {}))
+
 (defn file->viewer
   "Evaluates the given `file` and returns it's viewer representation."
   ([file] (file->viewer {:inline-results? true} file))
   ([opts file] (view/doc->viewer opts (eval/eval-file file))))
 
-#_(file->viewer "notebooks/rule_30.clj")
+  #_(file->viewer "notebooks/rule_30.clj")
 
 (defn halt-watcher!
   "Halts the filesystem watcher when active."
@@ -359,14 +384,14 @@
 (defn serve!
   "Main entrypoint to Clerk taking an configurations map.
 
-  Will obey the following optional configuration entries:
+Will obey the following optional configuration entries:
 
-  * a `:port` for the webserver to listen on, defaulting to `7777`
-  * `:browse?` will open Clerk in a browser after it's been started
-  * a sequence of `:watch-paths` that Clerk will watch for file system events and show any changed file
-  * a `:show-filter-fn` to restrict when to re-evaluate or show a notebook as a result of file system event. Useful for e.g. pinning a notebook. Will be called with the string path of the changed file.
+* a `:port` for the webserver to listen on, defaulting to `7777`
+* `:browse?` will open Clerk in a browser after it's been started
+* a sequence of `:watch-paths` that Clerk will watch for file system events and show any changed file
+* a `:show-filter-fn` to restrict when to re-evaluate or show a notebook as a result of file system event. Useful for e.g. pinning a notebook. Will be called with the string path of the changed file.
 
-  Can be called multiple times and Clerk will happily serve you according to the latest config."
+Can be called multiple times and Clerk will happily serve you according to the latest config."
   {:org.babashka/cli {:spec {:watch-paths {:desc "Paths on which to watch for changes and show a changed document."
                                            :coerce []}
                              :port {:desc "Port number for the webserver to listen on, defaults to 7777."
@@ -404,9 +429,9 @@
   (webserver/halt!)
   (halt-watcher!))
 
-#_(serve! {})
-#_(serve! {:browse? true})
-#_(serve! {:watch-paths ["src" "notebooks"]})
+  #_(serve! {})
+  #_(serve! {:browse? true})
+  #_(serve! {:watch-paths ["src" "notebooks"]})
 #_(serve! {:watch-paths ["src" "notebooks"] :show-filter-fn #(clojure.string/starts-with? % "notebooks")})
 
 (def valuehash analyzer/valuehash)
@@ -414,22 +439,22 @@
 (defn build!
   "Creates a static html build from a collection of notebooks.
 
-  Options:
-  - `:paths`     - a vector of relative paths to notebooks to include in the build
-  - `:paths-fn`  - a symbol resolving to a 0-arity function returning computed paths
-  - `:index`     - a string allowing to override the name of the index file, will be added to `:paths`
+Options:
+- `:paths`     - a vector of relative paths to notebooks to include in the build
+- `:paths-fn`  - a symbol resolving to a 0-arity function returning computed paths
+- `:index`     - a string allowing to override the name of the index file, will be added to `:paths`
 
-  Passing at least one of the above is required. When both `:paths`
-  and `:paths-fn` are given, `:paths` takes precendence.
+Passing at least one of the above is required. When both `:paths`
+and `:paths-fn` are given, `:paths` takes precendence.
 
-  - `:bundle`      - if true results in a single self-contained html file including inlined images
-  - `:compile-css` - if true compiles css file containing only the used classes
-  - `:ssr`         - if true runs react server-side-rendering and includes the generated markup in the html
-  - `:browse`      - if true will open browser with the built file on success
-  - `:dashboard`   - if true will start a server and show a rich build report in the browser (use with `:bundle` to open browser)
-  - `:out-path`  - a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
-  - `:git/sha`, `:git/url` - when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
-  "
+- `:bundle`      - if true results in a single self-contained html file including inlined images
+- `:compile-css` - if true compiles css file containing only the used classes
+- `:ssr`         - if true runs react server-side-rendering and includes the generated markup in the html
+- `:browse`      - if true will open browser with the built file on success
+- `:dashboard`   - if true will start a server and show a rich build report in the browser (use with `:bundle` to open browser)
+- `:out-path`  - a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
+- `:git/sha`, `:git/url` - when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
+"
   {:org.babashka/cli {:spec {:paths {:desc "Paths to notebooks toc include in the build, supports glob patterns."
                                      :coerce []}
                              :paths-fn {:desc "Symbol resolving to a 0-arity function returning computed paths."
@@ -471,29 +496,29 @@
       (prn :cache-dir/deleted config/cache-dir))
     (prn :cache-dir/does-not-exist config/cache-dir)))
 
-#_(clear-cache!)
-#_(blob->result @nextjournal.clerk.webserver/!doc)
+  #_(clear-cache!)
+  #_(blob->result @nextjournal.clerk.webserver/!doc)
 
-(defmacro with-cache
+  (defmacro with-cache
   "An expression evaluated with Clerk's caching."
   [form]
   `(let [result# (-> ~(v/->edn form) eval/eval-string :blob->result first val :nextjournal/value)]
      result#))
 
-#_(with-cache (do (Thread/sleep 4200) 42))
+  #_(with-cache (do (Thread/sleep 4200) 42))
 
-(defmacro defcached
+  (defmacro defcached
   "Like `clojure.core/def` but with Clerk's caching of the value."
   [name expr]
   `(let [result# (-> ~(v/->edn expr) eval/eval-string :blob->result first val :nextjournal/value)]
      (def ~name result#)))
 
-#_(defcached my-expansive-thing
+  #_(defcached my-expansive-thing
     (do (Thread/sleep 4200) 42))
 
-;; And, as is the culture of our people, a commend block containing
-;; pieces of code with which to pilot the system during development.
-(comment
+  ;; And, as is the culture of our people, a commend block containing
+  ;; pieces of code with which to pilot the system during development.
+  (comment
   (def watcher
     (beholder/watch #(file-event %) "notebooks" "src"))
 
