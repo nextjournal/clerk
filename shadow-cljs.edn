@@ -2,6 +2,7 @@
  :dev-http {7778 {:roots ["public" "classpath:public"]}}
  :nrepl false
  :builds {:viewer {:target :esm
+                   :build-hooks [(nextjournal.clerk.dev-launcher/extra-namespaces)]
                    :runtime :browser ;; `:custom` needed when developing ssr, will see WebSocket errors without it
                    :output-dir "public/js"
                    :release {:output-dir "build/"}
