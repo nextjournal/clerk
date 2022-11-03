@@ -339,7 +339,7 @@
        ;; TODO: unify relativizing paths
        (assoc result :nextjournal/value
               (str (relative-root-prefix-from file)
-                   (fs/relativize out-path (store-in-cas! (assoc doc+blob-opts :ext image-type) value))))
+                   "_data/" (fs/file-name (store-in-cas! (assoc doc+blob-opts :ext image-type) value))))
        result)))
 
 #_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" "notebooks/image.clj" "notebooks/viewers/image.clj"] :bundle? false :browse? false})
