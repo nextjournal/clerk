@@ -337,7 +337,7 @@
         (reset! !error e)))
     (render-unreadable-edn string)))
 
-(defn render-result [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
+(defn render-result [{:as result :nextjournal/keys [fetch-opts hash]} {:as _opts :keys [auto-expand-results?]}]
   (r/with-let [!hash (atom hash)
                !error (r/atom nil)
                !desc (r/atom (read-result result !error))
@@ -347,7 +347,10 @@
                             (.then (fetch! @!fetch-opts opts)
                                    (fn [more]
                                      (swap! !desc viewer/merge-presentations more opts)))))
-               !expanded-at (r/atom (get @!desc :nextjournal/expanded-at {}))
+               !expanded-at (r/atom (-> @!desc
+                                        (cond-> auto-expand-results?
+                                          (-> viewer/assign-content-lengths viewer/assign-expanded-at))
+                                        (get :nextjournal/expanded-at {})))
                on-key-down (fn [event]
                              (if (.-altKey event)
                                (swap! !expanded-at assoc :prompt-multi-expand? true)

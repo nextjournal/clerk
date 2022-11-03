@@ -359,15 +359,17 @@
 
 #?(:clj
    (defn transform-result [{cell :nextjournal/value doc :nextjournal/opts}]
-     (let [{:keys [inline-results? bundle?]} doc
+     (let [{:keys [auto-expand-results? inline-results? bundle?]} doc
            {:as result :nextjournal/keys [value blob-id viewers]} (:result cell)
            blob-mode (cond
                        (and (not inline-results?) blob-id) :lazy-load
                        bundle? :inline ;; TODO: provide a separte setting for this
                        :else :file)
            blob-opts (assoc doc :blob-mode blob-mode :blob-id blob-id)
-           presented-result (process-blobs blob-opts (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value) doc))
-           opts-from-form-meta (select-keys result [:nextjournal/width :nextjournal/opts])]
+           presented-result (process-blobs blob-opts (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
+           opts-from-form-meta (-> result
+                                   (select-keys [:nextjournal/width :nextjournal/opts])
+                                   (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %)))]
        (merge {:nextjournal/viewer :clerk/result
                :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (merge presented-result opts-from-form-meta))}
                                                (catch Throwable _e
@@ -816,7 +818,7 @@
                                              (map (comp process-wrapped-value
                                                         apply-viewers*
                                                         (partial ensure-wrapped-with-viewers viewers))))))
-      (select-keys [:atom-var-name->state :blocks :toc :toc-visibility :title :open-graph])
+      (select-keys [:atom-var-name->state :auto-expand-results? :blocks :toc :toc-visibility :title :open-graph])
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
 
 (def notebook-viewer
@@ -1219,16 +1221,14 @@
 (defn present
   "Returns a subset of a given `value`."
   ([x] (present x {}))
-  ([x {:as opts :keys [auto-expand-results?]}]
+  ([x opts]
    (-> (ensure-wrapped-with-viewers x)
        (merge {:!budget (atom (:budget opts 200))
                :path (:path opts [])
                :current-path (:current-path opts [])}
               opts)
        present*
-       assign-closing-parens
-       (cond-> auto-expand-results?
-         (-> assign-content-lengths assign-expanded-at)))))
+       assign-closing-parens)))
 
 (comment
   (present [\a \b])
