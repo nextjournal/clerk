@@ -329,6 +329,8 @@
          (Files/write cas-path content (into-array [StandardOpenOption/CREATE])))
        (str cas-path))))
 
+#?(:clj (defn relative-root-prefix-from [path] (str/join (repeat (get (frequencies (str path)) \/ 0) "../"))))
+
 #?(:clj
    (defn maybe-store-result-as-file [{:as doc+blob-opts :keys [out-path file]} {:as result :nextjournal/keys [content-type value]}]
      ;; TODO: support customization via viewer api
@@ -336,7 +338,7 @@
        ;; TODO: support absolute paths
        ;; TODO: unify relativizing paths
        (assoc result :nextjournal/value
-              (str (str/join (repeat (get (frequencies file) \/ 0) "../"))
+              (str (relative-root-prefix-from file)
                    (fs/relativize out-path (store-in-cas! (assoc doc+blob-opts :ext image-type) value))))
        result)))
 
