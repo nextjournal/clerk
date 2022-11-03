@@ -236,9 +236,9 @@
       (when-not (= 0 exit)
         (throw (ex-info (str "Clerk build! failed\n" out "\n" err) ret))))
     (swap! config/!resource->url assoc
-           "/css/viewer.css" (str (fs/relativize out-path
-                                                 (viewer/store-in-cas! (assoc opts :ext "css")
-                                                                       (fs/read-all-bytes tw-output)))))
+           "/css/viewer.css" (str "_data/"
+                                  (fs/file-name (viewer/store-in-cas! (assoc opts :ext "css")
+                                                                      (fs/read-all-bytes tw-output)))))
     (fs/delete-tree tw-folder)))
 
 (defn build-static-app! [opts]
