@@ -369,7 +369,8 @@
            presented-result (process-blobs blob-opts (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
            opts-from-form-meta (-> result
                                    (select-keys [:nextjournal/width :nextjournal/opts])
-                                   (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %)))]
+                                   (cond-> (some? auto-expand-results?)
+                                     (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))]
        (merge {:nextjournal/viewer :clerk/result
                :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (merge presented-result opts-from-form-meta))}
                                                (catch Throwable _e
