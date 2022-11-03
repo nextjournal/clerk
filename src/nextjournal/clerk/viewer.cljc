@@ -320,7 +320,6 @@
                                                        (.encodeToString (Base64/getEncoder) data))))))
 
 #?(:clj
-   ;; TODO: move away from viewer ns
    (defn store-in-cas! [{:keys [out-path ext]} content]
      (assert out-path) (assert ext)
      (let [cas-path (fs/path out-path "_data" (str (multihash/base58 (digest/sha2-512 content)) "." ext))]
@@ -329,14 +328,14 @@
          (Files/write cas-path content (into-array [StandardOpenOption/CREATE])))
        (str cas-path))))
 
-#?(:clj (defn relative-root-prefix-from [path] (str/join (repeat (get (frequencies (str path)) \/ 0) "../"))))
+#?(:clj
+   (defn relative-root-prefix-from [path]
+     (str/join (repeat (get (frequencies (str path)) \/ 0) "../"))))
 
 #?(:clj
    (defn maybe-store-result-as-file [{:as doc+blob-opts :keys [out-path file]} {:as result :nextjournal/keys [content-type value]}]
      ;; TODO: support customization via viewer api
      (if-let [image-type (second (re-matches #"image/(\w+)" content-type))]
-       ;; TODO: support absolute paths
-       ;; TODO: unify relativizing paths
        (assoc result :nextjournal/value
               (str (relative-root-prefix-from file)
                    "_data/" (fs/file-name (store-in-cas! (assoc doc+blob-opts :ext image-type) value))))
