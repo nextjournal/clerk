@@ -320,13 +320,14 @@
                                                        (.encodeToString (Base64/getEncoder) data))))))
 
 #?(:clj
-   (defn store-in-cas! [{:keys [out-path ext]} content]
+   (defn store+get-cas-url! [{:keys [out-path ext]} content]
      (assert out-path) (assert ext)
-     (let [cas-path (fs/path out-path "_data" (str (multihash/base58 (digest/sha2-512 content)) "." ext))]
+     (let [cas-url (str "_data/" (multihash/base58 (digest/sha2-512 content)) "." ext)
+           cas-path (fs/path out-path cas-url)]
        (fs/create-dirs (fs/parent cas-path))
        (when-not (fs/exists? cas-path)
          (Files/write cas-path content (into-array [StandardOpenOption/CREATE])))
-       (str cas-path))))
+       cas-url)))
 
 #?(:clj
    (defn relative-root-prefix-from [path]
@@ -338,7 +339,7 @@
      (if-let [image-type (second (re-matches #"image/(\w+)" content-type))]
        (assoc result :nextjournal/value
               (str (relative-root-prefix-from file)
-                   "_data/" (fs/file-name (store-in-cas! (assoc doc+blob-opts :ext image-type) value))))
+                   (store+get-cas-url! (assoc doc+blob-opts :ext image-type) value)))
        result)))
 
 #_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" "notebooks/image.clj" "notebooks/viewers/image.clj"] :bundle? false :browse? false})
