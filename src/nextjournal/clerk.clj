@@ -334,7 +334,7 @@
     `(clerk/with-viewer v/examples-viewer
        (mapv (fn [form# val#] {:form form# :val val#}) ~(mapv (fn [x#] `'~x#) body) ~(vec body)))))
 
-(defmacro cljs
+(defmacro render
   "Returns a value that treats the supplied forms in the rendered Clerk notebook
   as if they were the body of a `:render-fn` with no arguments.
 
@@ -344,7 +344,7 @@
   For example:
 
   ```clj
-  (cljs
+  (render
     [:div \"This is a \"
       [:strong \"strong statement!\"]])
   ```"
