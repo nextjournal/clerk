@@ -410,20 +410,21 @@
 #_(->display {:result {:nextjournal.clerk/visibility {:code :fold :result :show}}})
 #_(->display {:result {:nextjournal.clerk/visibility {:code :fold :result :hide}}})
 
-(defn with-block-viewer [doc {:as cell :keys [type]}]
-  (case type
-    :markdown [(with-viewer :markdown (:doc cell))]
-    :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
-                {:as display-opts :keys [code? result?]} (->display cell)]
-            ;; TODO: use vars instead of names
-            (cond-> []
-              code?
-              (conj (with-viewer :clerk/code-block {:nextjournal.clerk/opts (select-keys cell [:loc])}
-                      ;; TODO: display analysis could be merged into cell earlier
-                      (-> cell (merge display-opts) (dissoc :result))))
-              result?
-              (conj (with-viewer :clerk/result-block {:nextjournal/opts doc}
-                      cell))))))
+(defn with-block-viewer [doc {:as cell :keys [type id]}]
+  (->> (case type
+         :markdown [(with-viewer :markdown (:doc cell))]
+         :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
+                     {:as display-opts :keys [code? result?]} (->display cell)]
+                 ;; TODO: use vars instead of names
+                 (cond-> []
+                   code?
+                   (conj (with-viewer :clerk/code-block {:nextjournal.clerk/opts (select-keys cell [:loc])}
+                           ;; TODO: display analysis could be merged into cell earlier
+                           (-> cell (merge display-opts) (dissoc :result))))
+                   result?
+                   (conj (with-viewer :clerk/result-block {:nextjournal/opts doc}
+                           cell)))))
+       (mapv #(assoc % :originating-block-id id))))
 
 (defn update-viewers [viewers select-fn->update-fn]
   (reduce (fn [viewers [pred update-fn]]
@@ -821,15 +822,36 @@
               (map (juxt symbol #(-> % deref deref))))
         blocks))
 
-(defn process-blocks [viewers {:as doc :keys [ns]}]
+(defn get-process-block-xf [viewers doc]
+  (comp (mapcat (partial with-block-viewer doc))
+        (map (comp process-wrapped-value
+                   apply-viewers*
+                   (partial ensure-wrapped-with-viewers viewers)))))
+
+(defn process-blocks [viewers {:as doc :keys [ns changed-blocks processed-blocks]}]
   (-> doc
       (assoc :atom-var-name->state (extract-clerk-atom-vars doc))
-      (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
-                                             (map (comp process-wrapped-value
-                                                        apply-viewers*
-                                                        (partial ensure-wrapped-with-viewers viewers))))))
+      (update :blocks #(if (and changed-blocks)
+                         (into []
+                               (let [!seen (atom #{})]
+                                 (prn :changed changed-blocks)
+                                 (mapcat (fn [processed-block]
+                                           (let [block-id (-> processed-block :originating-block-id)]
+                                             #_(prn :id block-id :contains? (contains? changed-blocks block-id))
+                                             (if (contains? changed-blocks block-id)
+                                               (if (contains? @!seen block-id)
+                                                 (do (prn :seen block-id)
+                                                     nil)
+                                                 (do (prn :contains block-id)
+                                                     (swap! !seen conj block-id)
+                                                     (doto (into [] (get-process-block-xf viewers doc) (filter (comp #{block-id} :id) (:blocks doc)))
+                                                       (prn))))
+                                               [processed-block])))))
+                               processed-blocks)
+                         (into [] (get-process-block-xf viewers doc) %)))
       (select-keys [:atom-var-name->state :blocks :toc :toc-visibility :title :open-graph])
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
+
 
 (def notebook-viewer
   {:name :clerk/notebook
@@ -956,7 +978,7 @@
 #_(ensure-wrapped-with-viewers {:nextjournal/value 42 :nextjournal/viewers [:boo]})
 
 (defn ->opts [wrapped-value]
-  (select-keys wrapped-value [:nextjournal/width :nextjournal/opts :!budget :budget :path :current-path :offset]))
+  (select-keys wrapped-value [:nextjournal/width :nextjournal/opts :!budget :budget :path :current-path :offset :originating-block-id]))
 
 (defn apply-viewers* [wrapped-value]
   (when (empty? (->viewers wrapped-value))
@@ -1053,7 +1075,7 @@
 
 (defn process-wrapped-value [wrapped-value]
   (-> wrapped-value
-      (select-keys [:nextjournal/viewer :nextjournal/value :nextjournal/width :nextjournal/content-type :nextjournal/opts :path :offset :n])
+      (select-keys [:nextjournal/viewer :nextjournal/value :nextjournal/width :nextjournal/content-type :nextjournal/opts :path :offset :n :originating-block-id])
       (update :nextjournal/viewer process-viewer)))
 
 #_(process-wrapped-value (apply-viewers 42))

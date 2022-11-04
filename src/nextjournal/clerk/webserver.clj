@@ -143,21 +143,50 @@
 #_(extract-viewer-evals @!doc)
 
 (defn present+reset! [doc]
-  (let [presented (view/doc->viewer doc)]
+  (let [old-doc @!doc
+        edits (editscript/get-edits (editscript/diff (:blocks old-doc) (:blocks doc)))
+        changed-blocks (into #{}
+                             (comp (map ffirst)
+                                   (map #(get-in old-doc [:blocks % :id])))
+                             edits)
+        doc+old-blocks (assoc doc
+                              :changed-blocks changed-blocks
+                              :processed-blocks (-> @!doc meta :nextjournal/value :blocks)
+                              :edits edits)
+        
+        presented (view/doc->viewer doc+old-blocks)]
+    (prn changed-blocks)
+
+    (def doc+old-blocks doc+old-blocks)
     (reset! !doc (with-meta doc presented))
     presented))
 
+(let [processed-blocks
+      (-> @!doc meta :nextjournal/value :blocks)]
+  (mapv :originating-block-id processed-blocks)
+  (take 1 processed-blocks)
+  processed-blocks)
+
+(mapv :originating-block-id (:processed-blocks doc+old-blocks))
+
+
+
+(:changed-blocks doc+old-blocks)
+
+(nth (:processed-blocks doc+old-blocks) 5)
+
+(def changed-id (first (:changed-blocks doc+old-blocks)))
+
+(:originating-block-id (nth (:processed-blocks doc+old-blocks) 4))
 
 (defn update-doc! [doc]
   (reset! !error nil)
   (time
    (broadcast! (if (= (:ns @!doc) (:ns doc))
-                 (let [old-viewer (meta @!doc)
-                       patch (editscript/diff old-viewer (present+reset! doc))]
-                   {:type :patch-doc!
-                    :patch (editscript/get-edits patch)
-                    #_#_
-                    :args ['nextjournal.clerk.render/patch (editscript/diff @!doc doc)]})
+                 {:type :patch-doc!
+                  :patch (doto (-> (editscript/diff (meta @!doc) (present+reset! doc))
+                                   (editscript/get-edits))
+                           prn)}
                  {:type :set-state!
                   :remount? (not= (extract-viewer-evals @!doc)
                                   (extract-viewer-evals doc))
