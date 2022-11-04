@@ -347,6 +347,7 @@
                    :layout {:showlegend false
                             :width 200
                             :height 200
+                            :margin {:t 0 :b 0 :r 0 :l 0}
                             :annotations [{:font {:size 20} :showarrow false :x 0.5 :y 0.5 :text "CO2"}]}
                    :config {:responsive true}}))
 
@@ -356,7 +357,8 @@
                                [2.5 3.125 5.0 8.125 12.5]
                                [0.625 1.25 3.125 6.25 10.625]
                                [0 0.625 2.5 5.625 10]]
-                           :type "contour"}]})))
+                           :type "contour"}]
+                   :layout {:margin {:t 0 :b 0 :r 0 :l 0}}})))
 
 (clerk/col (clerk/row donut-chart donut-chart donut-chart)
            contour-plot)
