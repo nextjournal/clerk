@@ -5,9 +5,12 @@
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as viewer]))
 
+(def transform-var
+  (comp (clerk/update-val symbol)
+        clerk/mark-presented))
+
 (def counter-viewer
-  {:transform-fn (comp clerk/mark-presented
-                       (clerk/update-val symbol))
+  {:transform-fn transform-var
    :render-fn '(fn [var-name]
                  (if-let [var (resolve var-name)]
                    (let [atom @var]
@@ -18,6 +21,11 @@
                       [:button.px-2.py-1.bg-blue-200.mr-1 {:on-click #(nextjournal.clerk.render/swap-fn! atom (fn [_] {:counter 0}))} "reset"]
                       [nextjournal.clerk.render/inspect @atom]])
                    [:div "could not resolve" var-name]))})
+
+(def slider-viewer
+  {:render-fn '(fn [x]
+                 [:input {:type :range :on-change #(nextjournal.clerk.render/swap-fn! @(resolve x) assoc :counter (int (.. % -target -value)))}])
+   :transform-fn transform-var})
 
 {::clerk/visibility {:code :show :result :show}}
 
@@ -35,6 +43,8 @@
 #'my-state
 
 
+^{::clerk/viewer slider-viewer}
+#'my-state
 
 #_(-> (atom {}) meta)
 
