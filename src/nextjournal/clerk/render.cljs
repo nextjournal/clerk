@@ -6,6 +6,7 @@
             [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.string :as str]
+            [editscript.core :as editscript]
             [goog.object]
             [goog.string :as gstring]
             [nextjournal.clerk.viewer :as viewer]
@@ -329,13 +330,14 @@
                      (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
                      (render-unreadable-edn %))))))
 
-(defn read-result [{:nextjournal/keys [edn string]} !error]
-  (if edn
-    (try
-      (read-string edn)
-      (catch js/Error e
-        (reset! !error e)))
-    (render-unreadable-edn string)))
+(defn read-result [{:as res :nextjournal/keys [edn string value]} !error]
+  (prn :read-result res)
+  (cond value value
+        edn (try
+              (read-string edn)
+              (catch js/Error e
+                (reset! !error e)))
+        string (render-unreadable-edn string)))
 
 (defn render-result [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
   (r/with-let [!hash (atom hash)
@@ -657,11 +659,18 @@
     (js/ws_send (pr-str {:type :swap! :var-name var-name :args (viewer/->viewer-eval [(list 'fn ['_] @atom)]) :var (viewer/->viewer-eval (list 'resolve (list 'quote var-name)))}))
     (js/console.warn "clerk/swap-fn! called on an atom that doesn't have var-name set!")))
 
+(defn apply-patch [x patch]
+  (editscript/patch x patch))
+
+(defn patch-doc! [{:keys [patch]}]
+  (swap! !doc apply-patch (editscript/edits->script patch)))
+
 (defn swap-clerk-atom! [{:as event :keys [var var-name args]}]
   (apply swap! @var args))
 
 (defn ^:export dispatch [{:as msg :keys [type]}]
-  (let [dispatch-fn ({:set-state! set-state
+  (let [dispatch-fn ({:patch-doc! patch-doc!
+                      :set-state! set-state
                       :swap! swap-clerk-atom!}
                      type
                      (fn [type]

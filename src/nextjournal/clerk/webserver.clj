@@ -3,6 +3,7 @@
             [clojure.edn :as edn]
             [clojure.pprint :as pprint]
             [clojure.string :as str]
+            [editscript.core :as editscript]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.markdown :as md]
@@ -141,12 +142,36 @@
 
 #_(extract-viewer-evals @!doc)
 
+(comment
+  (def a [2 {:a 42} 3 {:b 4} {:c 29}])
+  (def b [{:a 5} {:b 5}])
+
+
+
+  (def d (editscript/diff a b))
+
+  (editscript/get-edits d)
+
+  (= b (editscript/patch a d)))
+
 (defn update-doc! [doc]
   (reset! !error nil)
-  (broadcast! {:type :set-state!
-               :remount? (not= (extract-viewer-evals @!doc)
-                               (extract-viewer-evals doc))
-               :doc (view/doc->viewer (reset! !doc doc))}))
+  (broadcast! (if (= (:ns @!doc) (:ns doc))
+                (let [patch (editscript/diff (view/doc->viewer @!doc)
+                                             (view/doc->viewer (reset! !doc doc)))]
+                  (prn :patch patch)
+                  {:type :patch-doc!
+                   :patch (editscript/get-edits patch)
+                   #_#_
+                   :args ['nextjournal.clerk.render/patch (editscript/diff @!doc doc)]})
+                {:type :set-state!
+                 :remount? (not= (extract-viewer-evals @!doc)
+                                 (extract-viewer-evals doc))
+                 :doc (view/doc->viewer (reset! !doc doc))})))
+
+
+
+(def doc @!doc)
 
 
 #_(update-doc! help-doc)

@@ -379,6 +379,7 @@
            presented-result (process-blobs blob-opts (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
            opts-from-form-meta (select-keys result [:nextjournal/width :nextjournal/opts])]
        (merge {:nextjournal/viewer :clerk/result
+               #_#_
                :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (merge presented-result opts-from-form-meta))}
                                                (catch Throwable _e
                                                  {:nextjournal/string (pr-str value)}))
@@ -391,6 +392,7 @@
                                     (= blob-mode :lazy-load)
                                     (assoc :nextjournal/fetch-opts {:blob-id blob-id}
                                            :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta])))}
+              presented-result
               (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
               ;; TODO: consider dropping this. Still needed by notebook-viewer fn to read :nextjournal/width option on result blocks
               opts-from-form-meta))))
