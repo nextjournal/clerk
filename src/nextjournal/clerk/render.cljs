@@ -593,7 +593,6 @@
 (declare default-viewers)
 
 (defn valid-react-element? [x] (react/isValidElement x))
-
 (defn inspect-presented
   ([x]
    (r/with-let [!expanded-at (r/atom (:nextjournal/expanded-at x))]

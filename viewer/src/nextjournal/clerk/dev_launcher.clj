@@ -3,17 +3,24 @@
   
   Avoiding other ns requires here so the REPL comes up early."
   (:require [nrepl.cmdline :as nrepl]
+            [clojure.java.io :as io]
             [shadow.cljs.devtools.config :as config])
   (:import (java.lang.management ManagementFactory)
            (java.util Locale)))
+
+(defn get-build [opts]
+  (-> (io/resource "nextjournal/clerk/shadow-cljs.edn")
+      config/read-config
+      config/normalize
+      (->> (merge config/default-config))
+      (config/get-build :viewer)
+      (assoc :nextjournal.clerk/extra-namespaces (:extra-namespaces opts))))
 
 (defn start [serve-opts]
   (future (nrepl/dispatch-commands {:middleware '[cider.nrepl/cider-middleware]}))
   (require 'shadow.cljs.silence-default-loggers)
   ((requiring-resolve 'shadow.cljs.devtools.server/start!))
-  ((requiring-resolve 'shadow.cljs.devtools.api/watch)
-   (-> (config/get-build! :viewer)
-       (assoc :nextjournal.clerk/extra-namespaces (:extra-namespaces serve-opts))))
+  ((requiring-resolve 'shadow.cljs.devtools.api/watch) (get-build serve-opts))
   ((requiring-resolve 'nextjournal.clerk/serve!) serve-opts)
   (set! *print-namespace-maps* false)
   (println "Clerk dev system ready in"
@@ -29,6 +36,9 @@
              (-> state
                  :shadow.build/config
                  :nextjournal.clerk/extra-namespaces)))
+
+(defn release [opts]
+  ((requiring-resolve 'shadow.cljs.devtools.api/release) (get-build opts)))
 
 (comment
 

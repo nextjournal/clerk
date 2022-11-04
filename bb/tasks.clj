@@ -8,7 +8,7 @@
    [shared :refer [rev-count meta-edn]]))
 
 (defn viewer-css-path []
-  (let [cp (str/trim (with-out-str (deps/clojure ["-A:sci" "-Spath"])))]
+  (let [cp (str/trim (with-out-str (deps/clojure ["-A:viewer" "-Spath"])))]
     (str/trim (:out (shell {:out :string} (str "bb -cp " cp " -e '(println (.getPath (clojure.java.io/resource \"css/viewer.css\")))'"))))))
 
 (defn update-meta []
