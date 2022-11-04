@@ -142,37 +142,26 @@
 
 #_(extract-viewer-evals @!doc)
 
-(comment
-  (def a [2 {:a 42} 3 {:b 4} {:c 29}])
-  (def b [{:a 5} {:b 5}])
+(defn present+reset! [doc]
+  (let [presented (view/doc->viewer doc)]
+    (reset! !doc (with-meta doc presented))
+    presented))
 
-
-
-  (def d (editscript/diff a b))
-
-  (editscript/get-edits d)
-
-  (= b (editscript/patch a d)))
 
 (defn update-doc! [doc]
   (reset! !error nil)
-  (broadcast! (if (= (:ns @!doc) (:ns doc))
-                (let [patch (editscript/diff (view/doc->viewer @!doc)
-                                             (view/doc->viewer (reset! !doc doc)))]
-                  (prn :patch patch)
-                  {:type :patch-doc!
-                   :patch (editscript/get-edits patch)
-                   #_#_
-                   :args ['nextjournal.clerk.render/patch (editscript/diff @!doc doc)]})
-                {:type :set-state!
-                 :remount? (not= (extract-viewer-evals @!doc)
-                                 (extract-viewer-evals doc))
-                 :doc (view/doc->viewer (reset! !doc doc))})))
-
-
-
-(def doc @!doc)
-
+  (time
+   (broadcast! (if (= (:ns @!doc) (:ns doc))
+                 (let [old-viewer (meta @!doc)
+                       patch (editscript/diff old-viewer (present+reset! doc))]
+                   {:type :patch-doc!
+                    :patch (editscript/get-edits patch)
+                    #_#_
+                    :args ['nextjournal.clerk.render/patch (editscript/diff @!doc doc)]})
+                 {:type :set-state!
+                  :remount? (not= (extract-viewer-evals @!doc)
+                                  (extract-viewer-evals doc))
+                  :doc (present+reset! doc)}))))
 
 #_(update-doc! help-doc)
 
