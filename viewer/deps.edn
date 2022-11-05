@@ -5,7 +5,7 @@
                           #_#_#_#_:git/url "https://github.com/babashka/sci"
                           :git/sha "a766b73f668e8ba59855ce229fad1aee08038922"}
         reagent/reagent {:mvn/version "1.1.1"}
-        io.github.babashka/sci.configs {:git/sha "fcd367c6a6115c5c4e41f3a08ee5a8d5b3387a18"}
+        io.github.babashka/sci.configs {:git/sha "b5335b79c237344d003f16358321197a0b0a2ac6"}
         io.github.nextjournal/viewers {:git/sha "1aaedea7709611cbb393add4c85c7a2dd551260e"}
         metosin/reitit-frontend {:mvn/version "0.5.15"}
         thheller/shadow-cljs {:mvn/version "2.20.7"}}}

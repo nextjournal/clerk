@@ -429,6 +429,7 @@
   - `:dashboard`   - if true will start a server and show a rich build report in the browser (use with `:bundle` to open browser)
   - `:out-path`  - a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
   - `:git/sha`, `:git/url` - when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
+  - `:extra-namespaces` - a quoted list of ClojureScript namespaces to be included in the build
   "
   {:org.babashka/cli {:spec {:paths {:desc "Paths to notebooks toc include in the build, supports glob patterns."
                                      :coerce []}
