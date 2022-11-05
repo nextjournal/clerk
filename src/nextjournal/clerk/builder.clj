@@ -225,7 +225,8 @@
               (str path))
             (pr-str viewer)))
     (let [{:as ret :keys [out err exit]}
-          (sh "tailwindcss"
+          (sh "yarn"
+              "tailwindcss"
               "--input"  tw-input
               "--config" tw-config
               ;; FIXME: pass inline
