@@ -16,15 +16,15 @@
                    (let [atom @var]
                      [:div
                       [:h2 "Counter Example"]
-                      [:button.px-2.py-1.bg-blue-200.mr-1 {:on-click #(nextjournal.clerk.render/swap-fn! atom update :counter inc)} "+"]
-                      [:button.px-2.py-1.bg-blue-200.mr-1 {:on-click #(nextjournal.clerk.render/swap-fn! atom update :counter dec)} "-"]
-                      [:button.px-2.py-1.bg-blue-200.mr-1 {:on-click #(nextjournal.clerk.render/swap-fn! atom (fn [_] {:counter 0}))} "reset"]
+                      [:button.px-2.py-1.bg-blue-200.mr-1 {:on-click #(nextjournal.clerk.render/clerk-swap! atom update :counter inc)} "+"]
+                      [:button.px-2.py-1.bg-blue-200.mr-1 {:on-click #(nextjournal.clerk.render/clerk-swap! atom update :counter dec)} "-"]
+                      [:button.px-2.py-1.bg-blue-200.mr-1 {:on-click #(nextjournal.clerk.render/clerk-swap! atom (fn [_] {:counter 0}))} "reset"]
                       [nextjournal.clerk.render/inspect @atom]])
                    [:div "could not resolve" var-name]))})
 
 (def slider-viewer
   {:render-fn '(fn [x]
-                 [:input {:type :range :on-change #(nextjournal.clerk.render/swap-fn! @(resolve x) assoc :counter (int (.. % -target -value)))}])
+                 [:input {:type :range :on-change #(nextjournal.clerk.render/clerk-swap! @(resolve x) assoc :counter (int (.. % -target -value)))}])
    :transform-fn transform-var})
 
 {::clerk/visibility {:code :show :result :show}}

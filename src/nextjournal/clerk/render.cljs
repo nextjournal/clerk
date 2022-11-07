@@ -21,8 +21,8 @@
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [reagent.ratom :as ratom]
-            [shadow.cljs.modern :refer [defclass]]
-            [sci.core :as sci]))
+            [sci.core :as sci]
+            [shadow.cljs.modern :refer [defclass]]))
 
 ;; a type for wrapping react/useState to support reset! and swap!
 (deftype WrappedState [st]
@@ -330,9 +330,8 @@
                      (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
                      (render-unreadable-edn %))))))
 
-(defn read-result [{:as res :nextjournal/keys [edn string value]} !error]
-  (prn :read-result res)
-  (cond value value
+(defn read-result [{:as res :nextjournal/keys [edn string presented]} !error]
+  (cond presented presented
         edn (try
               (read-string edn)
               (catch js/Error e
@@ -652,18 +651,17 @@
   (when-let [title (and (exists? js/document) (-> doc viewer/->value :title))]
     (set! (.-title js/document) title)))
 
-(defn swap-fn! [atom & swap-args]
-  (apply swap! atom swap-args)
-  (if-let [var-name (-> atom meta :var-name)]
+(defn clerk-swap! [atom & swap-args]
+  (when-let [var-name (-> atom meta :var-name)]
     ;; TODO: for now sending whole state but could also diff
-    (js/ws_send (pr-str {:type :swap! :var-name var-name :args (viewer/->viewer-eval [(list 'fn ['_] @atom)]) :var (viewer/->viewer-eval (list 'resolve (list 'quote var-name)))}))
-    (js/console.warn "clerk/swap-fn! called on an atom that doesn't have var-name set!")))
+    (js/ws_send (pr-str {:type :swap! :var-name var-name :args (viewer/->viewer-eval [(list 'fn ['_] @atom)]) :var (viewer/->viewer-eval (list 'resolve (list 'quote var-name)))})))
+  (apply swap! atom swap-args))
 
 (defn apply-patch [x patch]
-  (editscript/patch x patch))
+  (editscript/patch x (editscript/edits->script patch)))
 
 (defn patch-doc! [{:keys [patch]}]
-  (swap! !doc apply-patch (editscript/edits->script patch)))
+  (swap! !doc apply-patch patch))
 
 (defn swap-clerk-atom! [{:as event :keys [var var-name args]}]
   (apply swap! @var args))

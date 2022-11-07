@@ -4,8 +4,9 @@
             [clojure.walk :as w]
             [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk.builder :as builder]
-            [nextjournal.clerk.viewer :as v]
-            [nextjournal.clerk.eval :as eval]))
+            [nextjournal.clerk.eval :as eval]
+            [nextjournal.clerk.view :as view]
+            [nextjournal.clerk.viewer :as v]))
 
 (defn present+fetch
   ([value] (present+fetch {} value))
@@ -142,19 +143,18 @@
 
 (deftest doc->viewer
   (testing "Doc options are propagated to blob processing"
-    (let [doc->viewer (resolve 'nextjournal.clerk.view/doc->viewer)
-          test-doc (eval/eval-string "(java.awt.image.BufferedImage. 20 20 1)")
+    (let [test-doc (eval/eval-string "(java.awt.image.BufferedImage. 20 20 1)")
           tree-re-find (fn [data re] (->> data
                                           (tree-seq coll? seq)
                                           (filter string?)
                                           (filter (partial re-find re))))]
-
-      (is (not-empty (tree-re-find (doc->viewer {:inline-results? true
-                                                 :bundle? true
-                                                 :out-path builder/default-out-path} test-doc)
+      (is (not-empty (tree-re-find (view/doc->viewer {:inline-results? true
+                                                      :bundle? true
+                                                      :out-path builder/default-out-path} test-doc)
                                    #"data:image/png;base64")))
 
-      (is (not-empty (tree-re-find (doc->viewer {:inline-results? true
-                                                 :bundle? false
-                                                 :out-path builder/default-out-path} test-doc)
-                                   #"\"_data/.+\.png\""))))))
+      (is (not-empty (tree-re-find (view/doc->viewer {:inline-results? true
+                                                      :bundle? false
+                                                      :out-path builder/default-out-path} test-doc)
+                                   #"_data/.+\.png"))))))
+

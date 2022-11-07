@@ -40,7 +40,9 @@
   (instance? ViewerEval x))
 
 (defn ->viewer-fn [form]
-  (map->ViewerFn {:form form #?@(:cljs [:f (eval form)])}))
+  (map->ViewerFn {:form form #?@(:cljs [:f (try (eval form)
+                                                (catch js/Error e
+                                                  (fn [_] [(eval 'nextjournal.clerk.render/error-view) e])))])}))
 
 (defn ->viewer-eval [form]
   (map->ViewerEval {:form form}))
@@ -367,8 +369,10 @@
 
 #_(get-viewers nil nil)
 
+(declare result-viewer)
+
 #?(:clj
-   (defn transform-result [{cell :nextjournal/value doc :nextjournal/opts}]
+   (defn transform-result [doc cell]
      (let [{:keys [inline-results? bundle?]} doc
            {:as result :nextjournal/keys [value blob-id viewers]} (:result cell)
            blob-mode (cond
@@ -377,25 +381,28 @@
                        :else :file)
            blob-opts (assoc doc :blob-mode blob-mode :blob-id blob-id)
            presented-result (process-blobs blob-opts (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
-           opts-from-form-meta (select-keys result [:nextjournal/width :nextjournal/opts])]
-       (merge {:nextjournal/viewer :clerk/result
-               #_#_
-               :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (merge presented-result opts-from-form-meta))}
-                                               (catch Throwable _e
-                                                 {:nextjournal/string (pr-str value)}))
-                                    (-> presented-result ->viewer :name)
-                                    (assoc :nextjournal/viewer (select-keys (->viewer presented-result) [:name]))
+           opts-from-form-meta (select-keys result [:nextjournal/width :nextjournal/opts])
+           edn-wrapping? false]
+       (with-viewer result-viewer
+         (merge {:nextjournal/value (cond-> (if edn-wrapping?
+                                              (try {:nextjournal/edn (->edn (merge presented-result opts-from-form-meta))}
+                                                   (catch Throwable _e
+                                                     {:nextjournal/string (pr-str value)}))
+                                              {:nextjournal/presented (merge presented-result opts-from-form-meta)})
+                                      (-> presented-result ->viewer :name)
+                                      (assoc :nextjournal/viewer (select-keys (->viewer presented-result) [:name]))
 
-                                    (-> cell :form meta :nextjournal.clerk/open-graph :image)
-                                    (assoc :nextjournal/open-graph-image-capture true)
+                                      (-> cell :form meta :nextjournal.clerk/open-graph :image)
+                                      (assoc :nextjournal/open-graph-image-capture true)
 
-                                    (= blob-mode :lazy-load)
-                                    (assoc :nextjournal/fetch-opts {:blob-id blob-id}
-                                           :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta])))}
-              presented-result
-              (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
-              ;; TODO: consider dropping this. Still needed by notebook-viewer fn to read :nextjournal/width option on result blocks
-              opts-from-form-meta))))
+                                      (= blob-mode :lazy-load)
+                                      (assoc :nextjournal/fetch-opts {:blob-id blob-id}
+                                             :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta])))}
+                (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
+                ;; TODO: consider dropping this. Still needed by notebook-viewer fn to read :nextjournal/width option on result blocks
+                opts-from-form-meta)))))
+
+#_(nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)
 
 (def hide-result-viewer
   {:name :hide-result :transform-fn (fn [_] nil)})
@@ -422,8 +429,7 @@
                       ;; TODO: display analysis could be merged into cell earlier
                       (-> cell (merge display-opts) (dissoc :result))))
               result?
-              (conj (with-viewer :clerk/result-block {:nextjournal/opts doc}
-                      cell))))))
+              (conj #?(:clj (transform-result doc cell) :cljs cell))))))
 
 (defn update-viewers [viewers select-fn->update-fn]
   (reduce (fn [viewers [pred update-fn]]
@@ -803,13 +809,9 @@
       :opening-paren "[" :closing-paren "]"
       :page-size 20}))
 
-(def result-block-viewer
-  {:name :clerk/result-block
-   :transform-fn (comp mark-presented
-                       #?(:clj transform-result))})
-
 (def result-viewer
-  {:name :clerk/result :render-fn 'nextjournal.clerk.render/render-result :transform-fn mark-presented})
+  {:render-fn 'nextjournal.clerk.render/render-result
+   :transform-fn mark-presented})
 
 (defn extract-clerk-atom-vars [{:as _doc :keys [blocks]}]
   (into {}
@@ -879,9 +881,8 @@
    table-viewer
    table-error-viewer
    code-block-viewer
-   result-block-viewer
-   tagged-value-viewer
    result-viewer
+   tagged-value-viewer
    notebook-viewer
    hide-result-viewer])
 
@@ -1026,7 +1027,6 @@
 #_(sequence (drop+take-xf {:n 10}) (range 100))
 #_(sequence (drop+take-xf {:n 10 :offset 10}) (range 100))
 #_(sequence (drop+take-xf {}) (range 9))
-
 
 (declare assign-closing-parens)
 
