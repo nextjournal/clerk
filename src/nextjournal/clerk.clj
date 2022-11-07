@@ -383,9 +383,9 @@
                (str "\n" (format-opts (-> #'serve! meta :org.babashka/cli))))
       (println (-> #'serve! meta :doc)))
     (let [{:as normalized-config
-           :keys [browse? watch-paths port show-filter-fn]
+           :keys [browse? watch-paths port show-filter-fn resource-urls]
            :or {port 7777}} (normalize-opts config)]
-      (webserver/serve! {:port port})
+      (webserver/serve! {:port port :resource-urls resource-urls})
       (reset! !show-filter-fn show-filter-fn)
       (halt-watcher!)
       (when (seq watch-paths)

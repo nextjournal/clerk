@@ -83,6 +83,8 @@
                                  (str "Done in " duration ". ✅\n"))
       :building (str "🔨 Building \"" (:file doc) "\"… ")
       :compiling-css "🎨 Compiling CSS… "
+      :compile-viewer "👁️ Compiling Viewer… "
+      :compiled-viewer (str "Done in " duration ". ✅\n")
       :downloading-cache (str "⏬ Downloading distributed cache… ")
       :uploading-cache (str "⏫ Uploading distributed cache… ")
       :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n"))))
@@ -207,8 +209,8 @@
 #_(expand-paths {:paths ["notebooks/viewers**"]})
 
 (defn compile-css!
-  "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
-  [{:as opts :keys [out-path]} docs]
+  "Compiles a minimal tailwind css stylesheet with only the used styles included, returns the generated stylesheet link."
+  [opts docs viewer-url]
   (let [tw-folder (fs/create-dirs "tw")
         tw-input (str tw-folder "/input.css")
         tw-config (str tw-folder "/tailwind.config.cjs")
@@ -218,7 +220,7 @@
     ;; NOTE: a .cjs extension is safer in case the current npm project is of type module (like Clerk's): in this case all .js files
     ;; are treated as ES modules and this is not the case of our tw config.
     (spit tw-input (slurp (io/resource "stylesheets/viewer.css")))
-    (spit tw-viewer (slurp (get @config/!asset-map "/js/viewer.js")))
+    (spit tw-viewer (slurp viewer-url)) ;; I can't tell how this is being used? --Matt
     (doseq [{:keys [file viewer]} docs]
       (spit (let [path (fs/path tw-folder (str/replace file #"\.(cljc?|md)$" ".edn"))]
               (fs/create-dirs (fs/parent path))
@@ -235,16 +237,17 @@
               "--minify")]
       (when-not (= 0 exit)
         (throw (ex-info (str "Clerk build! failed\n" out "\n" err) ret))))
-    (swap! config/!resource->url assoc
-           "/css/viewer.css" (viewer/store+get-cas-url! (assoc opts :ext "css") (fs/read-all-bytes tw-output)))
-    (fs/delete-tree tw-folder)))
+    (let [url (viewer/store+get-cas-url! (assoc opts :ext "css") (fs/read-all-bytes tw-output))]
+      (fs/delete-tree tw-folder)
+      url)))
 
 (defn build-static-app! [opts]
-  (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css?]}
+  (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css? extra-namespaces resource-urls]}
         (process-build-opts opts)
         {:keys [expanded-paths error]} (try {:expanded-paths (expand-paths opts)}
                                             (catch Exception e
                                               {:error e}))
+        !resource-urls (atom (merge config/static-resource-urls resource-urls))
         start (System/nanoTime)
         state (mapv #(hash-map :file %) expanded-paths)
         _ (report-fn {:stage :init :state state :build-opts opts})
@@ -280,11 +283,21 @@
                         result)) state (range))
         _ (when-let [first-error (some :error state)]
             (throw first-error))
+        _ (when extra-namespaces
+            (report-fn {:stage :compile-viewer})
+            (let [{duration :time-ms js-url :result} (eval/time-ms ((requiring-resolve 'nextjournal.clerk.viewer.builder/release!) opts state))]
+              (swap! !resource-urls assoc "/js/viewer.js" js-url)
+              (report-fn {:stage :compiled-viewer :duration duration})))
         _ (when compile-css?
             (report-fn {:stage :compiling-css})
-            (let [{duration :time-ms} (eval/time-ms (compile-css! opts state))]
+            (let [{duration :time-ms css-url :result} (eval/time-ms (compile-css! (assoc opts :resource-urls @!resource-urls)
+                                                                                  state
+                                                                                  (if extra-namespaces
+                                                                                    (str (:out-path opts) (@!resource-urls "/js/viewer.js"))
+                                                                                    (get @config/!asset-map "/js/viewer.js"))))]
+              (swap! !resource-urls assoc "/css/viewer.css" css-url)
               (report-fn {:stage :done :duration duration})))
-        {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
+        {state :result duration :time-ms} (eval/time-ms (write-static-app! (assoc opts :resource-urls @!resource-urls) state))]
     (when upload-cache-fn
       (report-fn {:stage :uploading-cache})
       (let [{duration :time-ms} (eval/time-ms (upload-cache-fn state))]

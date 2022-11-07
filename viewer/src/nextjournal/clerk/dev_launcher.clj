@@ -7,22 +7,11 @@
             [shadow.cljs.devtools.config :as config]
             [shadow.cljs.devtools.api :as shadow]
             [shadow.cljs.devtools.server :as shadow.server]
-            [nextjournal.clerk :as clerk])
+            [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.config :as clerk.config]
+            [nextjournal.clerk.viewer.builder :refer [get-config get-build]])
   (:import (java.lang.management ManagementFactory)
            (java.util Locale)))
-
-(defn get-config [opts]
-  (-> (io/resource "nextjournal/clerk/shadow-cljs.edn")
-      config/read-config
-      (assoc-in [:builds :viewer :output-dir] (str (:out-path opts) "/js"))
-      (assoc-in [:builds :viewer :release :output-dir] (str (:out-path opts) "/js"))
-      config/normalize
-      (->> (merge config/default-config))))
-
-(defn get-build [opts]
-  (-> (get-config opts)
-      (config/get-build :viewer)
-      (assoc :nextjournal.clerk/extra-namespaces (:extra-namespaces opts))))
 
 (defn start [serve-opts]
   (future (nrepl/dispatch-commands {:middleware '[cider.nrepl/cider-middleware]}))
@@ -30,28 +19,13 @@
 
   (shadow.server/start! (get-config serve-opts))
   (shadow/watch (get-build serve-opts))
-  (clerk/serve! serve-opts)
+  (clerk/serve! (assoc serve-opts :resource-urls {"/js/viewer.js" "/js/viewer.js"}))
 
   (set! *print-namespace-maps* false)
   (println "Clerk dev system ready in"
            (String/format (Locale. "en-US")
                           "%.2fs"
                           (to-array [(/ (.. ManagementFactory getRuntimeMXBean getUptime) 1000.0)]))))
-
-(defn extra-namespaces
-  {:shadow.build/stage :configure}
-  [state]
-  (update-in state [:shadow.build.modules/config :viewer :entries]
-             into
-             (-> state
-                 :shadow.build/config
-                 :nextjournal.clerk/extra-namespaces)))
-
-(defn release [clerk-opts shadow-opts]
-  (shadow/with-runtime
-   (shadow/release*
-    (get-build clerk-opts)
-    shadow-opts)))
 
 (comment
 

@@ -115,7 +115,7 @@
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
     (eval '(nextjournal.clerk/recompute!)))
 
-(defn app [{:as req :keys [uri]}]
+(defn app [{:as req :keys [uri resource-urls]}]
   (if (:websocket? req)
     (httpkit/as-channel req ws-handlers)
     (try
@@ -125,7 +125,8 @@
         "_ws" {:status 200 :body "upgrading..."}
         {:status  200
          :headers {"Content-Type" "text/html"}
-         :body    (view/doc->html @!doc @!error)})
+         :body    (view/doc->html @!doc {:error @!error
+                                         :resource-urls resource-urls})})
       (catch Throwable e
         {:status  500
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
@@ -171,10 +172,14 @@
 
 #_(halt!)
 
-(defn serve! [{:keys [port] :or {port 7777}}]
+(defn serve! [{:keys [port resource-urls] :or {port 7777}}]
   (halt!)
   (try
-    (reset! !server {:port port :stop-fn (httpkit/run-server #'app {:port port})})
+    (let [resource-urls (merge @config/!resource->url resource-urls)]
+      (reset! !server {:port port :stop-fn (httpkit/run-server
+                                            (fn [req]
+                                              (#'app (assoc req :resource-urls resource-urls)))
+                                            {:port port})}))
     (println (str "Clerk webserver started on http://localhost:" port " ..."))
     (catch java.net.BindException _e
       (println "Port " port " not available, server not started!"))))
