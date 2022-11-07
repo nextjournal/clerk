@@ -369,7 +369,7 @@
 
 #?(:clj
    (defn transform-result [{cell :nextjournal/value doc :nextjournal/opts}]
-     (let [{:keys [inline-results? bundle?]} doc
+     (let [{:keys [auto-expand-results? inline-results? bundle?]} doc
            {:as result :nextjournal/keys [value blob-id viewers]} (:result cell)
            blob-mode (cond
                        (and (not inline-results?) blob-id) :lazy-load
@@ -377,7 +377,10 @@
                        :else :file)
            blob-opts (assoc doc :blob-mode blob-mode :blob-id blob-id)
            presented-result (process-blobs blob-opts (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
-           opts-from-form-meta (select-keys result [:nextjournal/width :nextjournal/opts])]
+           opts-from-form-meta (-> result
+                                   (select-keys [:nextjournal/width :nextjournal/opts])
+                                   (cond-> #_result
+                                     (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))]
        (merge {:nextjournal/viewer :clerk/result
                :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (merge presented-result opts-from-form-meta))}
                                                (catch Throwable _e
@@ -453,7 +456,7 @@
                                        (let [title (when (or (string? value) (keyword? value) (symbol? value))
                                                      value)]
                                          [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
-                                          (cond-> {:class (when (number-col? i) "text-right")} title (assoc :title title))
+                                          (cond-> {:class (when (and (ifn? number-col?) (number-col? i)) "text-right")} title (assoc :title title))
                                           [:div.flex.items-center (nextjournal.clerk.render/inspect-presented opts header-cell)]]))) header-row)])})
 
 (def table-body-viewer
@@ -465,7 +468,7 @@
    :render-fn '(fn [row {:as opts :keys [path number-col?]}]
                  (into [:tr.hover:bg-gray-200.dark:hover:bg-slate-700
                         {:class (if (even? (peek path)) "bg-black/5 dark:bg-gray-800" "bg-white dark:bg-gray-900")}]
-                       (map-indexed (fn [idx cell] [:td.pl-6.pr-2.py-1 (when (number-col? idx) {:class "text-right"}) (nextjournal.clerk.render/inspect-presented opts cell)])) row))})
+                       (map-indexed (fn [idx cell] [:td.pl-6.pr-2.py-1 (when (and (ifn? number-col?) (number-col? idx)) {:class "text-right"}) (nextjournal.clerk.render/inspect-presented opts cell)])) row))})
 
 (defn update-table-viewers [viewers]
   (-> viewers
@@ -826,7 +829,7 @@
                                              (map (comp process-wrapped-value
                                                         apply-viewers*
                                                         (partial ensure-wrapped-with-viewers viewers))))))
-      (select-keys [:atom-var-name->state :blocks :toc :toc-visibility :title :open-graph])
+      (select-keys [:atom-var-name->state :auto-expand-results? :blocks :toc :toc-visibility :title :open-graph])
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
 
 (def notebook-viewer
@@ -1187,51 +1190,38 @@
        x))
    wrapped-value))
 
-#_(defn compute-expanded-at [{:as state :keys [indents expanded-at prev-type]}
-                             {:nextjournal/keys [value]
-                              :keys [content-length path type]
-                              :or {content-length 0}}]
-    (let [max-length (- 80 (reduce + 0 indents))
-          expanded? (< max-length content-length)
-          state' (assoc state
-                        :expanded-at (assoc expanded-at path expanded?)
-                        #_(if expanded?
-                            (assoc expanded-at path true)
-                            expanded-at)
-                        :prev-type type
-                        :indents (conj
-                                  (->> indents (take (count path)) vec)
-                                  (cond
-                                    (contains? #{:map-entry} prev-type) (or content-length 0)
-                                    (vector? value) 2
-                                    :else 1)))]
-      (if (vector? value)
-        (reduce compute-expanded-at state' value)
-        state')))
-
-#_(defn assign-expanded-at [wrapped-value]
-    (cond-> wrapped-value
-      (:content-length wrapped-value)
-      (assoc :nextjournal/expanded-at
-             (:expanded-at (compute-expanded-at {:expanded-at {}} wrapped-value)))))
-
-(defn compute-expanded-at [{:as state :keys [expanded-at]}
-                           {:nextjournal/keys [value] :keys [path]}]
-  (let [state' (assoc state :expanded-at (assoc expanded-at path false))]
+(defn compute-expanded-at [{:as state :keys [indents expanded-at prev-type]}
+                           {:nextjournal/keys [value]
+                            :keys [content-length path type]
+                            :or {content-length 0}}]
+  (let [max-length (- 80 (reduce + 0 indents))
+        expanded? (< max-length content-length)
+        state' (assoc state
+                      :expanded-at (assoc expanded-at path expanded?)
+                      #_(if expanded?
+                          (assoc expanded-at path true)
+                          expanded-at)
+                      :prev-type type
+                      :indents (conj
+                                (->> indents (take (count path)) vec)
+                                (cond
+                                  (contains? #{:map-entry} prev-type) (or content-length 0)
+                                  (vector? value) 2
+                                  :else 1)))]
     (if (vector? value)
       (reduce compute-expanded-at state' value)
       state')))
 
 (defn assign-expanded-at [wrapped-value]
-  (assoc wrapped-value :nextjournal/expanded-at (:expanded-at (compute-expanded-at {:expanded-at {}} wrapped-value))))
+  (cond-> wrapped-value
+    (:content-length wrapped-value)
+    (assoc :nextjournal/expanded-at
+           (:expanded-at (compute-expanded-at {:expanded-at {}} wrapped-value)))))
+
+
 
 (comment
-  (-> (compute-expanded-at
-       {:indents [] :expanded-at {}}
-       (present {:a-vector [1 2 3] :a-list '(123 234 345) :a-set #{1 2 3 4}}))
-      :expanded-at
-      keys
-      sort)
+  (:nextjournal/expanded-at (present {:a-vector [1 2 3] :a-list '(123 234 345) :a-set #{1 2 3 4}}))
   (= (count "[1 2 [1 [2] 3] 4 5]")
      (:content-length (assign-content-lengths (present [1 2 [1 [2] 3] 4 5]))))
   (= (count "{:a-vector [1 2 3] :a-list (123 234 345) :a-set #{1 2 3 4}}")
@@ -1249,8 +1239,7 @@
                :current-path (:current-path opts [])}
               opts)
        present*
-       assign-closing-parens
-       assign-expanded-at)))
+       assign-closing-parens)))
 
 (comment
   (present [\a \b])
