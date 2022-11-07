@@ -614,7 +614,7 @@
 
 (defn inspect [value]
   (r/with-let [!state (r/atom nil)]
-    (when (not= (:value @!state) value)
+    (when (not= (:value @!state ::not-found) value)
       (swap! !state assoc :value value :desc (viewer/present value)))
     [view-context/provide {:fetch-fn (fn [fetch-opts]
                                        (.then (in-process-fetch value fetch-opts)

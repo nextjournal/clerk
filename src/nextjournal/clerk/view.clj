@@ -23,10 +23,6 @@
 #_ (relative? "hello/css")
 #_ (relative? "https://cdn.stylesheet.css")
 
-(defn relativize [url current-path]
-  (str (str/join (repeat (get (frequencies current-path) \/ 0) "../"))
-       url))
-
 (defn map-index [{:as _opts :keys [index]} path]
   (if index
     ({index "index.clj"} path path)
@@ -36,7 +32,7 @@
   (if-let [css-url (@config/!resource->url "/css/viewer.css")]
     (hiccup/include-css (cond-> css-url
                           (and current-path (relative? css-url))
-                          (relativize (map-index state current-path))))
+                          (->> (str (v/relative-root-prefix-from (map-index state current-path))))))
     (list (hiccup/include-js "https://cdn.tailwindcss.com?plugins=typography")
           [:script (-> (slurp (io/resource "stylesheets/tailwind.config.js"))
                        (str/replace #"^module.exports" "tailwind.config")

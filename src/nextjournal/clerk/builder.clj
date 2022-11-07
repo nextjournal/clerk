@@ -11,6 +11,7 @@
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]
+            [nextjournal.clerk.viewer :as viewer]
             [nextjournal.clerk.webserver :as webserver]
             [nextjournal.clerk.config :as config]))
 
@@ -207,7 +208,7 @@
 
 (defn compile-css!
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
-  [{:keys [out-path]} docs]
+  [{:as opts :keys [out-path]} docs]
   (let [tw-folder (fs/create-dirs "tw")
         tw-input (str tw-folder "/input.css")
         tw-config (str tw-folder "/tailwind.config.cjs")
@@ -234,18 +235,9 @@
               "--minify")]
       (when-not (= 0 exit)
         (throw (ex-info (str "Clerk build! failed\n" out "\n" err) ret))))
-    (let [content-addressed (fs/file "_data" (str (analyzer/valuehash (slurp tw-output)) ".css"))]
-      (fs/create-dirs (fs/parent (fs/file out-path content-addressed)))
-      (when-not (fs/exists? (fs/file out-path content-addressed))
-        (fs/copy tw-output (fs/file out-path content-addressed)))
-      (swap! config/!resource->url assoc "/css/viewer.css" (str content-addressed))
-      ;; cleanup
-      (fs/delete-tree tw-folder))))
-
-#_(fs/delete-tree "public/build")
-#_(build-static-app! {:paths ["notebooks/hello.clj" "notebooks/markdown.md" "notebooks/viewers/image.clj"]
-                      :bundle? false
-                      :compile-css? true})
+    (swap! config/!resource->url assoc
+           "/css/viewer.css" (viewer/store+get-cas-url! (assoc opts :ext "css") (fs/read-all-bytes tw-output)))
+    (fs/delete-tree tw-folder)))
 
 (defn build-static-app! [opts]
   (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css?]}
