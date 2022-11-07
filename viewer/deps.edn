@@ -1,5 +1,6 @@
 {:paths ["src"]
- :deps {applied-science/js-interop {:mvn/version "0.3.3"}
+ :deps {io.github.nextjournal/clerk {:local/root ".."}
+        applied-science/js-interop {:mvn/version "0.3.3"}
         binaryage/devtools {:mvn/version "1.0.3"}
         org.babashka/sci {:mvn/version "0.5.34"
                           #_#_#_#_:git/url "https://github.com/babashka/sci"
