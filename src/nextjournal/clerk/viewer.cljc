@@ -369,8 +369,8 @@
            presented-result (process-blobs blob-opts (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
            opts-from-form-meta (-> result
                                    (select-keys [:nextjournal/width :nextjournal/opts])
-                                   (cond-> (some? auto-expand-results?)
-                                     (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))]
+                                   (cond-> #_result
+                                     (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))]
        (merge {:nextjournal/viewer :clerk/result
                :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (merge presented-result opts-from-form-meta))}
                                                (catch Throwable _e
@@ -446,7 +446,7 @@
                                        (let [title (when (or (string? value) (keyword? value) (symbol? value))
                                                      value)]
                                          [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
-                                          (cond-> {:class (when (number-col? i) "text-right")} title (assoc :title title))
+                                          (cond-> {:class (when (and (ifn? number-col?) (number-col? i)) "text-right")} title (assoc :title title))
                                           [:div.flex.items-center (nextjournal.clerk.render/inspect-presented opts header-cell)]]))) header-row)])})
 
 (def table-body-viewer
@@ -458,7 +458,7 @@
    :render-fn '(fn [row {:as opts :keys [path number-col?]}]
                  (into [:tr.hover:bg-gray-200.dark:hover:bg-slate-700
                         {:class (if (even? (peek path)) "bg-black/5 dark:bg-gray-800" "bg-white dark:bg-gray-900")}]
-                       (map-indexed (fn [idx cell] [:td.pl-6.pr-2.py-1 (when (number-col? idx) {:class "text-right"}) (nextjournal.clerk.render/inspect-presented opts cell)])) row))})
+                       (map-indexed (fn [idx cell] [:td.pl-6.pr-2.py-1 (when (and (ifn? number-col?) (number-col? idx)) {:class "text-right"}) (nextjournal.clerk.render/inspect-presented opts cell)])) row))})
 
 (defn update-table-viewers [viewers]
   (-> viewers
