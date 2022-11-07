@@ -107,7 +107,9 @@
                                            (var? v))]
                         (swap! !deps conj v)))
                     (ana-jvm/macroexpand-1 form env))
-        analyzed (analyze-form {#'ana/macroexpand-1 mexpander} (rewrite-defcached form))
+        analyzed (try (analyze-form {#'ana/macroexpand-1 mexpander} (rewrite-defcached form))
+                      (catch Throwable e
+                        nil))
         nodes (ana-ast/nodes analyzed)
         vars (into #{}
                    (comp (filter (comp #{:def} :op))
@@ -252,15 +254,24 @@
     (throw (ex-info (str "The var `#'" missing-dep "` exists at runtime, but Clerk cannot find it in the namespace. Did you remove it?")
                     (merge {:var-name missing-dep} (select-keys analyzed [:form]) (select-keys doc [:file]))))))
 
-(defn potemkin-lazy-deftype? [{:keys [->analysis-info]}]
-  ;; potemkin deftype+ macro emits deftype code just once per subsequent evals
-  ;; this incurs our check for missing variables when using the -><TypeName> notation
-  ;; see https://github.com/clj-commons/potemkin/blob/0ff48d4bd9e72c24a0605630fc871b5f44ba274e/src/potemkin/types.clj#L291-L312
-  (contains? (into #{} (mapcat :deps) (vals ->analysis-info))
-             'potemkin.types/deftype+))
 
-(defn check-missing-runtime-vars? [{:as state :keys [ns?]}]
-  (and ns? (not (potemkin-lazy-deftype? state))))
+(defn all-seen-deps [{:keys [->analysis-info]}]
+  (into #{} (mapcat :deps) (vals ->analysis-info)))
+
+(defn check-missing-runtime-vars? [{:as state :keys [ns? ->analysis-info]}]
+  (and ns?
+       (not (some
+             #{
+               'potemkin.types/deftype+
+               ;; potemkin deftype+ macro emits deftype code just once per subsequent evals
+               ;; this incurs our check for missing variables when using the -><TypeName> notation
+               ;; see https://github.com/clj-commons/potemkin/blob/0ff48d4bd9e72c24a0605630fc871b5f44ba274e/src/potemkin/types.clj#L291-L312
+
+               'hugsql.core/intern-db-fn
+               'hugsql.core/intern-sqlvec-fn
+               ;; hugsql interns vars within several of their macros
+               }
+             (all-seen-deps state)))))
 
 (defn analyze-doc
   ([doc]
