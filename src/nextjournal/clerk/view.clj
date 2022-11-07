@@ -27,20 +27,20 @@
     ({index "index.clj"} path path)
     path))
 
-(defn include-viewer-css [{:as state :keys [current-path resource-urls]}]
+(defn include-viewer-css [{:as opts :keys [current-path resource-urls]}]
   (if-let [css-url (resource-urls "/css/viewer.css")]
     (hiccup/include-css (cond-> css-url
-                          (and current-path (relative? css-url))
-                          (->> (str (v/relative-root-prefix-from (map-index state current-path))))))
+                                (and current-path (relative? css-url))
+                                (->> (str (v/relative-root-prefix-from (map-index opts current-path))))))
     (list (hiccup/include-js "https://cdn.tailwindcss.com?plugins=typography")
           [:script (-> (slurp (io/resource "stylesheets/tailwind.config.js"))
                        (str/replace #"^module.exports" "tailwind.config")
                        (str/replace #"require\(.*\)" ""))]
           [:style {:type "text/tailwindcss"} (slurp (io/resource "stylesheets/viewer.css"))])))
 
-(defn include-css+js [{:as state :keys [resource-urls]}]
+(defn include-css+js [{:as opts :keys [resource-urls]}]
   (list
-   (include-viewer-css state)
+   (include-viewer-css opts)
    [:script {:type "module" :src (resource-urls "/js/viewer.js")}]
    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
    [:link {:rel "preconnect" :href "https://fonts.bunny.net"}]
@@ -64,20 +64,20 @@ viewer.mount(document.getElementById('clerk'))\n"
 ws.onmessage = viewer.onmessage;
 window.ws_send = msg => ws.send(msg)")]]))
 
-(defn ->static-app [{:as state :keys [current-path html]}]
+(defn ->static-app [{:as opts :keys [current-path html]}]
   (hiccup/html5
    {:class "overflow-hidden min-h-screen"}
    [:head
-    [:title (or (and current-path (-> state :path->doc (get current-path) v/->value :title)) "Clerk")]
+    [:title (or (and current-path (-> opts :path->doc (get current-path) v/->value :title)) "Clerk")]
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-    (when current-path (v/open-graph-metas (-> state :path->doc (get current-path) v/->value :open-graph)))
-    (include-css+js state)]
+    (when current-path (v/open-graph-metas (-> opts :path->doc (get current-path) v/->value :open-graph)))
+    (include-css+js opts)]
    [:body
     [:div#clerk-static-app html]
     [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
 let app = nextjournal.clerk.static_app
-let opts = viewer.read_string(" (-> state v/->edn pr-str) ")
+let opts = viewer.read_string(" (-> opts v/->edn pr-str) ")
 app.init(opts)\n"]]))
 
 (defn doc->html [doc state]

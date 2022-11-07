@@ -109,12 +109,13 @@
   (str "public" fs/file-separator "build"))
 
 (defn process-build-opts [{:as opts :keys [paths index]}]
-  (merge {:out-path default-out-path
-          :bundle? false
-          :browse? false
-          :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
-         (cond-> opts
-           index (assoc :index (str index)))))
+  (-> (merge {:out-path default-out-path
+              :bundle? false
+              :browse? false
+              :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
+             opts)
+      (update :resource-urls (partial merge {} config/static-resource-urls))
+      (cond-> index (assoc :index (str index)))))
 
 #_(process-build-opts {:index 'book.clj})
 
@@ -242,12 +243,11 @@
       url)))
 
 (defn build-static-app! [opts]
-  (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css? extra-namespaces resource-urls]}
+  (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css? extra-namespaces]}
         (process-build-opts opts)
         {:keys [expanded-paths error]} (try {:expanded-paths (expand-paths opts)}
                                             (catch Exception e
                                               {:error e}))
-        !resource-urls (atom (merge config/static-resource-urls resource-urls))
         start (System/nanoTime)
         state (mapv #(hash-map :file %) expanded-paths)
         _ (report-fn {:stage :init :state state :build-opts opts})
@@ -283,21 +283,24 @@
                         result)) state (range))
         _ (when-let [first-error (some :error state)]
             (throw first-error))
-        _ (when extra-namespaces
-            (report-fn {:stage :compile-viewer})
-            (let [{duration :time-ms js-url :result} (eval/time-ms ((requiring-resolve 'nextjournal.clerk.viewer.builder/release!) opts state))]
-              (swap! !resource-urls assoc "/js/viewer.js" js-url)
-              (report-fn {:stage :compiled-viewer :duration duration})))
-        _ (when compile-css?
-            (report-fn {:stage :compiling-css})
-            (let [{duration :time-ms css-url :result} (eval/time-ms (compile-css! (assoc opts :resource-urls @!resource-urls)
-                                                                                  state
-                                                                                  (if extra-namespaces
-                                                                                    (str (:out-path opts) (@!resource-urls "/js/viewer.js"))
-                                                                                    (get @config/!asset-map "/js/viewer.js"))))]
-              (swap! !resource-urls assoc "/css/viewer.css" css-url)
-              (report-fn {:stage :done :duration duration})))
-        {state :result duration :time-ms} (eval/time-ms (write-static-app! (assoc opts :resource-urls @!resource-urls) state))]
+        opts (if extra-namespaces
+               (do
+                 (report-fn {:stage :compile-viewer})
+                 (let [{duration :time-ms js-url :result} (eval/time-ms ((requiring-resolve 'nextjournal.clerk.viewer.builder/release!) opts state))]
+                   (report-fn {:stage :compiled-viewer :duration duration})
+                   (assoc-in opts [:resource-urls "/js/viewer.js"] js-url)))
+               opts)
+        opts (if compile-css?
+               (do (report-fn {:stage :compiling-css})
+                   (let [{duration :time-ms css-url :result} (eval/time-ms (compile-css! opts
+                                                                                         state
+                                                                                         (if extra-namespaces
+                                                                                           (str (:out-path opts) ((:resource-urls state) "/js/viewer.js"))
+                                                                                           (get @config/!asset-map "/js/viewer.js"))))]
+                     (report-fn {:stage :done :duration duration})
+                     (assoc-in opts [:resource-urls "/css/viewer.css"] css-url)))
+               opts)
+        {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
     (when upload-cache-fn
       (report-fn {:stage :uploading-cache})
       (let [{duration :time-ms} (eval/time-ms (upload-cache-fn state))]

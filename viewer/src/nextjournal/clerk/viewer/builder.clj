@@ -20,6 +20,7 @@
 (defn release!
   "Builds a release of Clerk viewer, returns asset path."
   [opts shadow-opts]
+  (require 'shadow.cljs.silence-default-loggers)
   (shadow.server/start! (get-config opts))
   (let [state (shadow/with-runtime
                (shadow/release*
