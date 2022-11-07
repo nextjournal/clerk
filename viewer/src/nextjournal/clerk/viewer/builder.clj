@@ -1,7 +1,8 @@
 (ns nextjournal.clerk.viewer.builder
-  (:require [shadow.cljs.devtools.api :as shadow]
+  (:require [clojure.java.io :as io]
+            [shadow.cljs.devtools.api :as shadow]
             [shadow.cljs.devtools.config :as config]
-            [clojure.java.io :as io]))
+            [shadow.cljs.devtools.server :as shadow.server]))
 
 (defn get-config [opts]
   (-> (io/resource "nextjournal/clerk/shadow-cljs.edn")
@@ -19,6 +20,7 @@
 (defn release!
   "Builds a release of Clerk viewer, returns asset path."
   [opts shadow-opts]
+  (shadow.server/start! (get-config opts))
   (let [state (shadow/with-runtime
                (shadow/release*
                 (get-build opts)
