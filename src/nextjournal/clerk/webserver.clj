@@ -3,6 +3,7 @@
             [clojure.edn :as edn]
             [clojure.pprint :as pprint]
             [clojure.string :as str]
+            [nextjournal.clerk.config :as config]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.markdown :as md]
@@ -175,7 +176,7 @@
 (defn serve! [{:keys [port resource-urls] :or {port 7777}}]
   (halt!)
   (try
-    (let [resource-urls (merge @config/!resource->url resource-urls)]
+    (let [resource-urls (merge @config/static-resource-urls resource-urls)]
       (reset! !server {:port port :stop-fn (httpkit/run-server
                                             (fn [req]
                                               (#'app (assoc req :resource-urls resource-urls)))
