@@ -252,6 +252,16 @@
     (throw (ex-info (str "The var `#'" missing-dep "` exists at runtime, but Clerk cannot find it in the namespace. Did you remove it?")
                     (merge {:var-name missing-dep} (select-keys analyzed [:form]) (select-keys doc [:file]))))))
 
+(defn potemkin-lazy-deftype? [{:keys [->analysis-info]}]
+  ;; potemkin deftype+ macro emits deftype code just once per subsequent evals
+  ;; this incurs our check for missing variables when using the -><TypeName> notation
+  ;; see https://github.com/clj-commons/potemkin/blob/0ff48d4bd9e72c24a0605630fc871b5f44ba274e/src/potemkin/types.clj#L291-L312
+  (contains? (into #{} (mapcat :deps) (vals ->analysis-info))
+             'potemkin.types/deftype+))
+
+(defn check-missing-runtime-vars? [{:as state :keys [ns?]}]
+  (and ns? (not (potemkin-lazy-deftype? state))))
+
 (defn analyze-doc
   ([doc]
    (analyze-doc {:doc? true :graph (dep/graph)} doc))
@@ -276,7 +286,7 @@
                                                        (->ana-keys analyzed))
                                          doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
                                          (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))]
-                             (when (:ns? state)
+                             (when (check-missing-runtime-vars? state)
                                (throw-if-dep-is-missing doc state analyzed))
                              (if (seq deps)
                                (-> (reduce (partial analyze-deps analyzed) state deps)
