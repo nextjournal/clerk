@@ -295,7 +295,7 @@
                    (let [{duration :time-ms css-url :result} (eval/time-ms (compile-css! opts
                                                                                          state
                                                                                          (if extra-namespaces
-                                                                                           (str (:out-path opts) ((:resource-urls state) "/js/viewer.js"))
+                                                                                           (str (:out-path opts) ((:resource-urls opts) "/js/viewer.js"))
                                                                                            (get @config/!asset-map "/js/viewer.js"))))]
                      (report-fn {:stage :done :duration duration})
                      (assoc-in opts [:resource-urls "/css/viewer.css"] css-url)))
