@@ -176,7 +176,7 @@
 (defn serve! [{:keys [port resource-urls] :or {port 7777}}]
   (halt!)
   (try
-    (let [resource-urls (merge @config/static-resource-urls resource-urls)]
+    (let [resource-urls (merge config/static-resource-urls resource-urls)]
       (reset! !server {:port port :stop-fn (httpkit/run-server
                                             (fn [req]
                                               (#'app (assoc req :resource-urls resource-urls)))
