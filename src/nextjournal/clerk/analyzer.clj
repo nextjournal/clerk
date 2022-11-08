@@ -269,11 +269,23 @@
           (analyze-doc doc))
       state)))
 
+(defmacro with-interns-recording [& body]
+  `(let [core-intern# @(resolve 'clojure.core/intern)
+         interns# (atom nil)
+         ret# (with-redefs [clojure.core/intern
+                            (fn
+                              ([ns# name#] (swap! interns# conj name#) (core-intern# ns# name#))
+                              ([ns# name# val#] (swap! interns# conj name#) (core-intern# ns# name# val#)))]
+                ~@body)]
+     {:result ret#
+      :interns (deref interns#)}))
+
 (defn analyze-doc
   ([doc]
    (analyze-doc {:doc? true :graph (dep/graph) :scheduled-paths #{}} doc))
   ([{:as state :keys [sym doc?]} doc]
-   (println :analyze-doc/visiting (if sym (namespace sym) (:file doc)))
+   (println :analyze-doc/visiting sym (if sym (namespace sym) (:file doc)))
+   ;; FIXME: we're visiting root notebook twice
    (binding [*ns* *ns*]
      (cond-> (reduce (fn [state i]
                        (let [{:keys [type text loc]} (get-in doc [:blocks i])]
@@ -303,12 +315,14 @@
                                                           (remove (comp #{"clojure.core"} namespace)) ;; add more leaves + hash jars
                                                           (remove (set (keys (:->analysis-info state))))) ;; see unhashed-deps
                                                     deps)
-                                 {:as state :keys [graph]} (reduce analyze-parent-doc state foreign-deps)]
-                             ;; TODO: eval form or guess name
-                             (when (and doc? ;; we only need to eval root notebook forms, deps are loaded per ns-requires
-                                        (dep/depends? graph (first (->ana-keys analyzed)) 'clojure.core/intern))
-                               (throw (ex-info "depends on intern!" {:form form :file (:file doc)})))
-
+                                 {:as state :keys [graph]} (reduce analyze-parent-doc state foreign-deps)
+                                 {:keys [interns]} (when (and doc? ;; we only need to eval root notebook forms, deps are loaded per ns-requires
+                                                              (not ns-effect?) ;; TODO: unify with ns-effect?
+                                                              (dep/depends? graph (first (->ana-keys analyzed)) 'clojure.core/intern))
+                                                     (with-interns-recording
+                                                      (eval form)))]
+                             (when (seq interns)
+                               (println (str "Recorded interns: " interns)))
                              (when (:ns? state)
                                (throw-if-dep-is-missing doc state analyzed))
                              state))))
