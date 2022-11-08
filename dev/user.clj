@@ -41,5 +41,6 @@
 
   (clerk/clear-cache!)
 
-  (kaocha.repl/run :unit)
+  (do (require 'kaocha.repl)
+      (kaocha.repl/run :unit))
   )

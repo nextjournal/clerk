@@ -3,10 +3,13 @@
             [clojure.edn :as edn]
             [clojure.pprint :as pprint]
             [clojure.string :as str]
+            [editscript.core :as editscript]
+            [editscript.edit]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.markdown :as md]
-            [org.httpkit.server :as httpkit]))
+            [org.httpkit.server :as httpkit])
+  (:import (nextjournal.clerk.viewer ViewerFn ViewerEval)))
 
 (def help-doc
   {:blocks [{:type :markdown :doc (md/parse "Use `nextjournal.clerk/show!` to make your notebook appear…")}]})
@@ -105,8 +108,8 @@
                      (case type
                        :eval (do (eval (:form msg))
                                  (eval '(nextjournal.clerk/recompute!)))
-                       :swap! (do
-                                (apply swap! @(eval (:form (:var msg))) (eval (:form (:args msg))))
+                       :swap! (when-let [var (resolve (:var-name msg))]
+                                (apply swap! @var (eval (:args msg)))
                                 (doseq [ch @!clients :when (not= sender-ch ch)]
                                   (httpkit/send! ch edn-string))
                                 (eval '(nextjournal.clerk/recompute!)))))))})
@@ -141,18 +144,35 @@
 
 #_(extract-viewer-evals @!doc)
 
+(defn present+reset! [doc]
+  (let [presented (view/doc->viewer doc)]
+    (reset! !doc (with-meta doc presented))
+    presented))
+
+
+;; Make sure `ViewerFn` and `ViewerEval` is changed atomically
+(extend-protocol editscript.edit/IType
+  ViewerFn
+  (get-type [_] :val)
+
+  ViewerEval
+  (get-type [_] :val))
+
 (defn update-doc! [doc]
   (reset! !error nil)
-  (broadcast! {:type :set-state!
-               :remount? (not= (extract-viewer-evals @!doc)
-                               (extract-viewer-evals doc))
-               :doc (view/doc->viewer (reset! !doc doc))}))
-
+  (broadcast! (if (= (:ns @!doc) (:ns doc))
+                (let [old-viewer (meta @!doc)
+                      patch (editscript/diff old-viewer (present+reset! doc))]
+                  {:type :patch-state! :patch (editscript/get-edits patch)})
+                {:type :set-state!
+                 :remount? (not= (extract-viewer-evals @!doc)
+                                 (extract-viewer-evals doc))
+                 :doc (present+reset! doc)})))
 
 #_(update-doc! help-doc)
 
 (defn show-error! [e]
-  (broadcast! {:error (reset! !error (v/present e))}))
+  (broadcast! {:type :set-state! :error (reset! !error (v/present e))}))
 
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")

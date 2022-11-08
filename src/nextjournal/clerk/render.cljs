@@ -6,6 +6,7 @@
             [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.string :as str]
+            [editscript.core :as editscript]
             [goog.object]
             [goog.string :as gstring]
             [nextjournal.clerk.viewer :as viewer]
@@ -20,8 +21,8 @@
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [reagent.ratom :as ratom]
-            [shadow.cljs.modern :refer [defclass]]
-            [sci.core :as sci]))
+            [sci.core :as sci]
+            [shadow.cljs.modern :refer [defclass]]))
 
 ;; a type for wrapping react/useState to support reset! and swap!
 (deftype WrappedState [st]
@@ -329,55 +330,49 @@
                      (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
                      (render-unreadable-edn %))))))
 
-(defn read-result [{:nextjournal/keys [edn string]} !error]
-  (if edn
-    (try
-      (read-string edn)
-      (catch js/Error e
-        (reset! !error e)))
-    (render-unreadable-edn string)))
+(defn ->expanded-at [auto-expand? presented]
+  (cond-> presented
+    auto-expand? (-> viewer/assign-content-lengths)
+    true (-> viewer/assign-expanded-at (get :nextjournal/expanded-at {}))))
 
-(defn render-result [{:as result :nextjournal/keys [fetch-opts hash]} {:as _opts :keys [auto-expand-results?]}]
-  (r/with-let [!hash (atom hash)
-               !error (r/atom nil)
-               !desc (r/atom (read-result result !error))
-               !fetch-opts (atom fetch-opts)
-               !expanded-at (r/atom (when (map? @!desc)
-                                      (cond-> @!desc
-                                        auto-expand-results? (-> viewer/assign-content-lengths)
-                                        true (-> viewer/assign-expanded-at (get :nextjournal/expanded-at {})))))
-               fetch-fn (when @!fetch-opts
-                          (fn [opts]
-                            (.then (fetch! @!fetch-opts opts)
-                                   (fn [more]
-                                     (swap! !desc viewer/merge-presentations more opts)
-                                     (swap! !expanded-at #(merge (cond-> @!desc
-                                                                   auto-expand-results? viewer/assign-content-lengths
-                                                                   true (-> viewer/assign-expanded-at (get :nextjournal/expanded-at {}))) %))))))
-               on-key-down (fn [event]
-                             (if (.-altKey event)
-                               (swap! !expanded-at assoc :prompt-multi-expand? true)
-                               (swap! !expanded-at dissoc :prompt-multi-expand?)))
-               on-key-up #(swap! !expanded-at dissoc :prompt-multi-expand?)
-               ref-fn #(if %
-                         (when (exists? js/document)
-                           (js/document.addEventListener "keydown" on-key-down)
-                           (js/document.addEventListener "keyup" on-key-up))
-                         (when (exists? js/document)
-                           (js/document.removeEventListener "keydown" on-key-down)
-                           (js/document.removeEventListener "up" on-key-up)))]
-    (when-not (= hash @!hash)
-      ;; TODO: simplify
-      (reset! !hash hash)
-      (reset! !fetch-opts fetch-opts)
-      (reset! !desc (read-result result !error))
-      (reset! !error nil))
-    [view-context/provide {:fetch-fn fetch-fn}
-     [:> ErrorBoundary {:!error !error}
-      [:div.relative
-       [:div.overflow-y-hidden
-        {:ref ref-fn}
-        [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]]))
+(defn render-result [{:as result :nextjournal/keys [fetch-opts hash presented]} {:as opts :keys [auto-expand-results?]}]
+  (let [!error (use-memo #(r/atom nil))
+        !desc (use-memo #(r/atom presented))
+        !fetch-opts (use-memo #(r/atom fetch-opts))
+        !expanded-at (use-memo #(r/atom (when (map? @!desc)
+                                          (->expanded-at auto-expand-results? @!desc))))
+        fetch-fn (use-callback (when fetch-opts
+                                 (fn [opts]
+                                   (.then (fetch! @!fetch-opts opts)
+                                          (fn [more]
+                                            (swap! !desc viewer/merge-presentations more opts)
+                                            (swap! !expanded-at #(merge (->expanded-at auto-expand-results? @!desc) %))))))
+                               [hash])
+        on-key-down (use-callback (fn [event]
+                                    (if (.-altKey event)
+                                      (swap! !expanded-at assoc :prompt-multi-expand? true)
+                                      (swap! !expanded-at dissoc :prompt-multi-expand?))))
+        on-key-up (use-callback #(swap! !expanded-at dissoc :prompt-multi-expand?))
+        ref-fn (use-callback #(if %
+                                (when (exists? js/document)
+                                  (js/document.addEventListener "keydown" on-key-down)
+                                  (js/document.addEventListener "keyup" on-key-up))
+                                (when (exists? js/document)
+                                  (js/document.removeEventListener "keydown" on-key-down)
+                                  (js/document.removeEventListener "up" on-key-up))))]
+    (use-effect (fn []
+                  (reset! !error nil)
+                  (reset! !desc presented)
+                  (reset! !fetch-opts fetch-opts)
+                  nil)
+                [hash])
+    (when @!desc
+      [view-context/provide {:fetch-fn fetch-fn}
+       [:> ErrorBoundary {:!error !error}
+        [:div.relative
+         [:div.overflow-y-hidden
+          {:ref ref-fn}
+          [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]])))
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
@@ -645,7 +640,7 @@
                 (with-meta (r/atom state)
                   {:var-name var-name}))))
 
-(defn ^:export set-state [{:as state :keys [doc error remount? sci-ctx]}]
+(defn ^:export set-state! [{:as state :keys [doc error remount? sci-ctx]}]
   (doseq [atom-var (get-in doc [:nextjournal/value :atom-var-name->state])]
     (intern-atom! sci-ctx atom-var))
   (when remount?
@@ -656,23 +651,30 @@
   (when-let [title (and (exists? js/document) (-> doc viewer/->value :title))]
     (set! (.-title js/document) title)))
 
-(defn swap-fn! [atom & swap-args]
-  (apply swap! atom swap-args)
-  (if-let [var-name (-> atom meta :var-name)]
-    ;; TODO: for now sending whole state but could also diff
-    (js/ws_send (pr-str {:type :swap! :var-name var-name :args (viewer/->viewer-eval [(list 'fn ['_] @atom)]) :var (viewer/->viewer-eval (list 'resolve (list 'quote var-name)))}))
-    (js/console.warn "clerk/swap-fn! called on an atom that doesn't have var-name set!")))
+(defn apply-patch [x patch]
+  (editscript/patch x (editscript/edits->script patch)))
+
+(defn patch-state! [{:keys [patch]}]
+  (swap! !doc apply-patch patch))
+
+(defn clerk-swap! [atom & swap-args]
+  (let [new-val (apply swap! atom swap-args)]
+    (when-let [var-name (-> atom meta :var-name)]
+      ;; TODO: for now sending whole state but could also diff
+      (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] new-val)]})))
+    new-val))
 
 (defn swap-clerk-atom! [{:as event :keys [var var-name args]}]
   (apply swap! @var args))
 
 (defn ^:export dispatch [{:as msg :keys [type]}]
-  (let [dispatch-fn ({:set-state! set-state
-                      :swap! swap-clerk-atom!}
-                     type
-                     (fn [type]
-                       (js/console.warn (str "no on-message dispatch for type `" (pr-str type) "`"))))]
-    #_(prn :<= type := msg)
+  (let [dispatch-fn (get {:patch-state! patch-state!
+                          :set-state! set-state!
+                          :swap! swap-clerk-atom!}
+                         type
+                         (fn [_]
+                           (js/console.warn (str "no on-message dispatch for type `" type "`"))))]
+    #_(js/console.log :<= type := msg)
     (dispatch-fn msg)))
 
 (defonce react-root

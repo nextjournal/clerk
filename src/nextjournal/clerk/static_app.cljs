@@ -47,9 +47,9 @@
                     " from "
                     [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
                      {:href (str url "/blob/" sha "/" (url->path path))} (url->path path) "@" [:span.tabular-nums (subs sha 0 7)]]])]]]
-    (render/set-state {:doc (cond-> (assoc doc :bundle? bundle?)
-                              (vector? (get-in doc [:nextjournal/value :blocks]))
-                              (update-in [:nextjournal/value :blocks] (partial into [(hiccup header)])))})
+    (render/set-state! {:doc (cond-> (assoc doc :bundle? bundle?)
+                               (vector? (get-in doc [:nextjournal/value :blocks]))
+                               (update-in [:nextjournal/value :blocks] (partial into [(hiccup header)])))})
     [render/root]))
 
 (dc/defcard show []
