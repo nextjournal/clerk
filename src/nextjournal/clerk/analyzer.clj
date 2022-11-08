@@ -252,9 +252,10 @@
     (throw (ex-info (str "The var `#'" missing-dep "` exists at runtime, but Clerk cannot find it in the namespace. Did you remove it?")
                     (merge {:var-name missing-dep} (select-keys analyzed [:form]) (select-keys doc [:file]))))))
 
+(declare ns->path analyze-doc)
+
 (defn sym->path [sym]
-  (some-> sym namespace symbol find-ns
-    nextjournal.clerk.analyzer/ns->path (str ".clj")))
+  (some-> sym namespace symbol find-ns ns->path (str ".clj")))
 
 (defn parent-doc [sym]
   (some-> sym sym->path io/resource nextjournal.clerk.parser/parse-file))
@@ -283,9 +284,10 @@
 (defn analyze-doc
   ([doc]
    (analyze-doc {:doc? true :graph (dep/graph) :scheduled-paths #{}} doc))
-  ([{:as state :keys [sym doc?]} doc]
-   (println :analyze-doc/visiting sym (if sym (namespace sym) (:file doc)))
-   ;; FIXME: we're visiting root notebook twice
+  ([{:as state :keys [sym parent-sym doc?]} doc]
+   (println :analyze-doc/visiting (:file doc))
+   (when sym (println :analyze-doc/sym sym))
+   (when parent-sym (println :analyze-doc/parent-sym parent-sym))
    (binding [*ns* *ns*]
      (cond-> (reduce (fn [state i]
                        (let [{:keys [type text loc]} (get-in doc [:blocks i])]
@@ -296,8 +298,12 @@
                                             (instance? clojure.lang.IObj form)
                                             (vary-meta merge (cond-> loc
                                                                (:file doc) (assoc :clojure.core/eval-file (str (:file doc))))))
-                                 {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form+loc)
-                                                                               (:file doc) (assoc :file (:file doc)))
+                                 {:as analyzed :keys [vars deps ns-effect?]}
+                                 (try (cond-> (analyze form+loc)
+                                        (:file doc) (assoc :file (:file doc)))
+                                      (catch Exception e
+                                        (throw (ex-info (str "Clerk: cannot analyze form: " form)
+                                                        {:form form :file (:file doc) :sym sym} e))))
                                  _ (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
                                      (eval form))
                                  state (cond-> (reduce (fn [state ana-key]
@@ -312,10 +318,12 @@
                                          state)
                                  foreign-deps (into #{}
                                                     (comp (filter qualified-symbol?)
-                                                          (remove (comp #{"clojure"} first #(str/split % #"\.") namespace)) ;; add more leaves + hash jars
+                                                          (remove (comp #{"nextjournal" "clojure"} first #(str/split % #"\.") namespace)) ;; add more leaves + hash jars
                                                           (remove (set (keys (:->analysis-info state))))) ;; see unhashed-deps
                                                     deps)
-                                 {:as state :keys [graph]} (reduce analyze-parent-doc state foreign-deps)
+                                 {:as state :keys [graph]} (reduce analyze-parent-doc
+                                                                   (assoc state :parent-sym (first (->ana-keys analyzed)))
+                                                                   foreign-deps)
                                  {:keys [interns]} (when (and doc? ;; we only need to eval root notebook forms, deps are loaded per ns-requires
                                                               (not ns-effect?) ;; TODO: unify with ns-effect?
                                                               (dep/depends? graph (first (->ana-keys analyzed)) 'clojure.core/intern))
