@@ -312,7 +312,7 @@
                                          state)
                                  foreign-deps (into #{}
                                                     (comp (filter qualified-symbol?)
-                                                          (remove (comp #{"clojure.core"} namespace)) ;; add more leaves + hash jars
+                                                          (remove (comp #{"clojure"} first #(str/split % #"\.") namespace)) ;; add more leaves + hash jars
                                                           (remove (set (keys (:->analysis-info state))))) ;; see unhashed-deps
                                                     deps)
                                  {:as state :keys [graph]} (reduce analyze-parent-doc state foreign-deps)
