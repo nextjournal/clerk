@@ -7,6 +7,7 @@
             [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.string :as str]
+            [clojure.tools.reader :as tools.reader]
             [clojure.tools.analyzer :as ana]
             [clojure.tools.analyzer.ast :as ana-ast]
             [clojure.tools.analyzer.jvm :as ana-jvm]
@@ -84,9 +85,7 @@
 
 (defn read-string [s]
   (edamame/parse-string s {:all true
-                           :syntax-quote {:resolve-symbol #(if-let [sym-ns (some-> % namespace symbol)]
-                                                             (symbol (str (get (ns-aliases *ns*) sym-ns sym-ns)) (name %))
-                                                             (symbol (str *ns*) (str %)))}
+                           :syntax-quote {:resolve-symbol tools.reader/resolve-symbol}
                            :readers *data-readers*
                            :read-cond :allow
                            :regex #(list `re-pattern %)
