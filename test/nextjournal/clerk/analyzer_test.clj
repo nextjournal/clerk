@@ -65,7 +65,12 @@
 (deftest read-string-tests
   (testing "read-string should read regex's such that value equalility is preserved"
     (is (= '(fn [x] (clojure.string/split x (clojure.core/re-pattern "/")))
-           (ana/read-string "(fn [x] (clojure.string/split x #\"/\"))")))))
+           (ana/read-string "(fn [x] (clojure.string/split x #\"/\"))"))))
+
+  (testing "read-string can handle syntax quote"
+    (is (match? '['nextjournal.clerk.analyzer-test/foo 'nextjournal.clerk/foo 'nextjournal.clerk/foo]
+                (with-ns-binding 'nextjournal.clerk.analyzer-test
+                  (ana/read-string "[`foo `clerk/foo `nextjournal.clerk/foo]"))))))
 
 (deftest analyze
   (testing "quoted forms aren't confused with variable dependencies"

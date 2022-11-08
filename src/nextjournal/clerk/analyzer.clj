@@ -84,6 +84,9 @@
 
 (defn read-string [s]
   (edamame/parse-string s {:all true
+                           :syntax-quote {:resolve-symbol #(if-let [sym-ns (some-> % namespace symbol)]
+                                                             (symbol (str (get (ns-aliases *ns*) sym-ns sym-ns)) (name %))
+                                                             (symbol (str *ns*) (str %)))}
                            :readers *data-readers*
                            :read-cond :allow
                            :regex #(list `re-pattern %)
@@ -416,6 +419,9 @@
                                (assoc ->hash k (hash-codeblock ->hash codeblock))
                                ->hash)))
            deps)))
+
+(binding [*ns* (create-ns 'my-foo)]
+  (analyze-doc (parser/parse-clojure-string "(ns my-foo) `bar")))
 
 #_(hash (build-graph (parser/parse-clojure-string "^{:nextjournal.clerk/hash-fn (fn [x] \"abc\")}(def contents (slurp \"notebooks/hello.clj\"))")))
 #_(hash (build-graph (parser/parse-clojure-string (slurp "notebooks/hello.clj"))))

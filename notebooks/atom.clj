@@ -43,10 +43,5 @@
 ^{::clerk/viewer counter-viewer}
 #'my-state
 
-
 ^{::clerk/viewer slider-viewer}
-#'my-state
-
-#_(-> (atom {}) meta)
-
-
+`my-state
