@@ -259,20 +259,21 @@
 (defn parent-doc [sym]
   (some-> sym sym->path io/resource nextjournal.clerk.parser/parse-file))
 
-(defn analyze-parent-doc [{:as state :keys [visited-paths]} sym]
-  (if (contains? visited-paths (sym->path sym))
+(defn analyze-parent-doc [{:as state :keys [scheduled-paths]} sym]
+  (if (contains? scheduled-paths (sym->path sym))
     state
     (if-some [doc (parent-doc sym)]
       (-> state
-          (assoc :doc? false)
-          (update :visited-paths conj (sym->path sym))
+          (assoc :doc? false :sym sym)
+          (update :scheduled-paths conj (sym->path sym))
           (analyze-doc doc))
       state)))
 
 (defn analyze-doc
   ([doc]
-   (analyze-doc {:doc? true :graph (dep/graph) :visited-paths #{}} doc))
-  ([{:as state :keys [doc?]} doc]
+   (analyze-doc {:doc? true :graph (dep/graph) :scheduled-paths #{}} doc))
+  ([{:as state :keys [sym doc?]} doc]
+   (println :analyze-doc/visiting (if sym (namespace sym) (:file doc)))
    (binding [*ns* *ns*]
      (cond-> (reduce (fn [state i]
                        (let [{:keys [type text loc]} (get-in doc [:blocks i])]
@@ -299,14 +300,15 @@
                                          state)
                                  foreign-deps (into #{}
                                                     (comp (filter qualified-symbol?)
-                                                          (remove (comp #{"clojure.core"} namespace))
+                                                          (remove (comp #{"clojure.core"} namespace)) ;; add more leaves + hash jars
                                                           (remove (set (keys (:->analysis-info state))))) ;; see unhashed-deps
                                                     deps)
                                  {:as state :keys [graph]} (reduce analyze-parent-doc state foreign-deps)]
                              ;; TODO: eval form or guess name
-                             (when (and doc?  ;; we only need to eval
+                             (when (and doc? ;; we only need to eval root notebook forms, deps are loaded per ns-requires
                                         (dep/depends? graph (first (->ana-keys analyzed)) 'clojure.core/intern))
                                (throw (ex-info "depends on intern!" {:form form :file (:file doc)})))
+
                              (when (:ns? state)
                                (throw-if-dep-is-missing doc state analyzed))
                              state))))
@@ -317,6 +319,15 @@
                 parser/add-block-visibility
                 parser/add-open-graph-metadata
                 parser/add-auto-expand-results)))))
+
+(comment
+  (time
+   (-> (parser/parse-file "notebooks/scratch/hugsql/repro.clj")
+       analyze-doc))
+
+  (-> *e ex-data :form )
+  (-> *e ex-data :file )
+  )
 
 (defn analyze-file
   ([file] (analyze-file {:graph (dep/graph)} file))
