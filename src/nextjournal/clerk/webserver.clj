@@ -150,23 +150,19 @@
 
 (defn update-doc! [doc]
   (reset! !error nil)
-  (time
-   (broadcast! (if (= (:ns @!doc) (:ns doc))
-                 (let [old-viewer (meta @!doc)
-                       patch (editscript/diff old-viewer (present+reset! doc))]
-                   {:type :patch-doc!
-                    :patch (editscript/get-edits patch)
-                    #_#_
-                    :args ['nextjournal.clerk.render/patch (editscript/diff @!doc doc)]})
-                 {:type :set-state!
-                  :remount? (not= (extract-viewer-evals @!doc)
-                                  (extract-viewer-evals doc))
-                  :doc (present+reset! doc)}))))
+  (broadcast! (if (= (:ns @!doc) (:ns doc))
+                (let [old-viewer (meta @!doc)
+                      patch (editscript/diff old-viewer (present+reset! doc))]
+                  {:type :patch-doc! :patch (editscript/get-edits patch)})
+                {:type :set-state!
+                 :remount? (not= (extract-viewer-evals @!doc)
+                                 (extract-viewer-evals doc))
+                 :doc (present+reset! doc)})))
 
 #_(update-doc! help-doc)
 
 (defn show-error! [e]
-  (broadcast! {:error (reset! !error (v/present e))}))
+  (broadcast! {:type :set-state! :error (reset! !error (v/present e))}))
 
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
