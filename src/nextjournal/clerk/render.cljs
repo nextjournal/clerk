@@ -651,10 +651,11 @@
   (swap! !doc apply-patch patch))
 
 (defn clerk-swap! [atom & swap-args]
-  (when-let [var-name (-> atom meta :var-name)]
-    ;; TODO: for now sending whole state but could also diff
-    (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] @atom)]})))
-  (apply swap! atom swap-args))
+  (let [new-val (apply swap! atom swap-args)]
+    (when-let [var-name (-> atom meta :var-name)]
+      ;; TODO: for now sending whole state but could also diff
+      (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] new-val)]})))
+    new-val))
 
 (defn swap-clerk-atom! [{:as event :keys [var var-name args]}]
   (apply swap! @var args))
