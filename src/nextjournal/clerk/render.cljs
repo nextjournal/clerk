@@ -342,14 +342,17 @@
                !error (r/atom nil)
                !desc (r/atom (read-result result !error))
                !fetch-opts (atom fetch-opts)
+               !expanded-at (r/atom (cond-> @!desc
+                                      auto-expand-results? (-> viewer/assign-content-lengths)
+                                      true (-> viewer/assign-expanded-at (get :nextjournal/expanded-at {}))))
                fetch-fn (when @!fetch-opts
                           (fn [opts]
                             (.then (fetch! @!fetch-opts opts)
                                    (fn [more]
-                                     (swap! !desc viewer/merge-presentations more opts)))))
-               !expanded-at (r/atom (cond-> @!desc
-                                      auto-expand-results? (-> viewer/assign-content-lengths viewer/assign-expanded-at)
-                                      true (get :nextjournal/expanded-at {})))
+                                     (swap! !desc viewer/merge-presentations more opts)
+                                     (swap! !expanded-at #(merge (cond-> @!desc
+                                                                   auto-expand-results? viewer/assign-content-lengths
+                                                                   true (-> viewer/assign-expanded-at (get :nextjournal/expanded-at {}))) %))))))
                on-key-down (fn [event]
                              (if (.-altKey event)
                                (swap! !expanded-at assoc :prompt-multi-expand? true)

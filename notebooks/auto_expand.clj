@@ -10,6 +10,8 @@
 
 (map range (range 30))
 
+(map (comp #(map (constantly '🌮) %) range) (range 1 100))
+
 {:foo (range 30)
  :bar (range 20)
  :a-key-with-a-long-name {:a-key-with-another-long-name {:and-another 123456 :and-yet-another 123456}
