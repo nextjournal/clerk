@@ -320,9 +320,14 @@
                                                               (not ns-effect?) ;; TODO: unify with ns-effect?
                                                               (dep/depends? graph (first (->ana-keys analyzed)) 'clojure.core/intern))
                                                      (with-interns-recording
-                                                      (eval form)))]
-                             (when (seq interns)
-                               (println (str "Recorded interns: " interns)))
+                                                      (eval form)))
+                                 state (cond-> state ;; add fabricated interns to info keys to
+                                         (seq interns)
+                                         (update :->analysis-info into
+                                                 (map (fn [i] (let [var (symbol (str *ns*) (name i))]
+                                                                [var {:var var :vars #{var}}])))
+                                                 interns))]
+                             (when (seq interns) (println (str "Recorded interns: " interns)))
                              (when (:ns? state)
                                (throw-if-dep-is-missing doc state analyzed))
                              state))))
@@ -429,6 +434,9 @@
   Recursively decends into dependency vars as well as given they can be found in the classpath.
   "
   [doc]
+  (analyze-doc doc)
+  ;; TODO: rebuild hash of jar deps
+  #_
   (let [{:as graph :keys [->analysis-info]} (analyze-doc doc)]
     (reduce (fn [g [source symbols]]
               (if (or (nil? source)
