@@ -98,3 +98,6 @@
 
 
 (set! *eval* eval-form)
+
+(sci/alter-var-root sci/print-fn (constantly *print-fn*))
+(sci/alter-var-root sci/print-err-fn (constantly *print-err-fn*))
