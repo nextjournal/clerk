@@ -8,7 +8,9 @@
 
 {:a [(range)]}
 
-(map range (range 10 30))
+(map range (range 30))
+
+(map (comp #(map (constantly '🌮) %) range) (range 1 100))
 
 {:foo (range 30)
  :bar (range 20)
