@@ -639,7 +639,7 @@
                 (with-meta (r/atom state)
                   {:var-name var-name}))))
 
-(defn ^:export set-state [{:as state :keys [doc error remount? sci-ctx]}]
+(defn ^:export set-state! [{:as state :keys [doc error remount? sci-ctx]}]
   (doseq [atom-var (get-in doc [:nextjournal/value :atom-var-name->state])]
     (intern-atom! sci-ctx atom-var))
   (when remount?
@@ -650,29 +650,29 @@
   (when-let [title (and (exists? js/document) (-> doc viewer/->value :title))]
     (set! (.-title js/document) title)))
 
-(defn clerk-swap! [atom & swap-args]
-  (when-let [var-name (-> atom meta :var-name)]
-    ;; TODO: for now sending whole state but could also diff
-    (js/ws_send (pr-str {:type :swap! :var-name var-name :args (viewer/->viewer-eval [(list 'fn ['_] @atom)]) :var (viewer/->viewer-eval (list 'resolve (list 'quote var-name)))})))
-  (apply swap! atom swap-args))
-
 (defn apply-patch [x patch]
   (editscript/patch x (editscript/edits->script patch)))
 
-(defn patch-doc! [{:keys [patch]}]
+(defn patch-state! [{:keys [patch]}]
   (swap! !doc apply-patch patch))
+
+(defn clerk-swap! [atom & swap-args]
+  (when-let [var-name (-> atom meta :var-name)]
+    ;; TODO: for now sending whole state but could also diff
+    (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] @atom)]})))
+  (apply swap! atom swap-args))
 
 (defn swap-clerk-atom! [{:as event :keys [var var-name args]}]
   (apply swap! @var args))
 
 (defn ^:export dispatch [{:as msg :keys [type]}]
-  (let [dispatch-fn ({:patch-doc! patch-doc!
-                      :set-state! set-state
-                      :swap! swap-clerk-atom!}
-                     type
-                     (fn [type]
-                       (js/console.warn (str "no on-message dispatch for type `" (pr-str type) "`"))))]
-    #_(prn :<= type := msg)
+  (let [dispatch-fn (get {:patch-state! patch-state!
+                          :set-state! set-state!
+                          :swap! swap-clerk-atom!}
+                         type
+                         (fn [_]
+                           (js/console.warn (str "no on-message dispatch for type `" type "`"))))]
+    #_(js/console.log :<= type := msg)
     (dispatch-fn msg)))
 
 (defonce react-root

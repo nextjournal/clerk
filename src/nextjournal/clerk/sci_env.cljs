@@ -91,7 +91,7 @@
   (sci/eval-form @!sci-ctx f))
 
 (defn ^:export set-state [state]
-  (render/set-state (assoc state :sci-ctx @!sci-ctx)))
+  (render/set-state! (assoc state :sci-ctx @!sci-ctx)))
 
 (def ^:export mount render/mount)
 

@@ -100,14 +100,15 @@
   {:on-open (fn [ch] (swap! !clients conj ch))
    :on-close (fn [ch _reason] (swap! !clients disj ch))
    :on-receive (fn [sender-ch edn-string]
+                 (prn :edn edn-string)
                  (binding [*ns* (or (:ns @!doc)
                                     (create-ns 'user))]
                    (let [{:as msg :keys [type]} (read-msg edn-string)]
                      (case type
                        :eval (do (eval (:form msg))
                                  (eval '(nextjournal.clerk/recompute!)))
-                       :swap! (do
-                                (apply swap! @(eval (:form (:var msg))) (eval (:form (:args msg))))
+                       :swap! (when-let [var (resolve (:var-name msg))]
+                                (apply swap! @var (eval (:args msg)))
                                 (doseq [ch @!clients :when (not= sender-ch ch)]
                                   (httpkit/send! ch edn-string))
                                 (eval '(nextjournal.clerk/recompute!)))))))})
@@ -153,7 +154,7 @@
   (broadcast! (if (= (:ns @!doc) (:ns doc))
                 (let [old-viewer (meta @!doc)
                       patch (editscript/diff old-viewer (present+reset! doc))]
-                  {:type :patch-doc! :patch (editscript/get-edits patch)})
+                  {:type :patch-state! :patch (editscript/get-edits patch)})
                 {:type :set-state!
                  :remount? (not= (extract-viewer-evals @!doc)
                                  (extract-viewer-evals doc))
