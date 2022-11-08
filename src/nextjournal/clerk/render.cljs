@@ -330,16 +330,10 @@
                      (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
                      (render-unreadable-edn %))))))
 
-(defn read-result [{:as res :nextjournal/keys [edn string presented]}]
-  (try {:value (cond presented presented
-                     edn (read-string edn)
-                     string (render-unreadable-edn string))}
-       (catch js/Error e {:error e})))
 
-(defn render-result [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
-  (let [{desc-value :value desc-error :error} (use-memo #(read-result result) [hash])
-        !error (use-memo #(r/atom desc-error))
-        !desc (use-memo #(r/atom desc-value))
+(defn render-result [{:as result :nextjournal/keys [fetch-opts hash presented]} _opts]
+  (let [!error (use-memo #(r/atom nil))
+        !desc (use-memo #(r/atom presented))
         fetch-fn (use-callback (when fetch-opts
                                  (fn [opts]
                                    (.then (fetch! fetch-opts opts)
@@ -360,9 +354,9 @@
                                   (js/document.removeEventListener "keydown" on-key-down)
                                   (js/document.removeEventListener "up" on-key-up))))]
     (use-effect (fn []
-                  (reset! !error desc-error)
-                  (reset! !desc desc-value)
-                  (reset! !expanded-at (get desc-value :nextjournal/expanded-at {}))
+                  (reset! !error nil)
+                  (reset! !desc presented)
+                  (reset! !expanded-at (get presented :nextjournal/expanded-at {}))
                   nil)
                 [hash])
     (when @!desc

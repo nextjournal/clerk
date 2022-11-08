@@ -384,13 +384,7 @@
            opts-from-form-meta (select-keys result [:nextjournal/width :nextjournal/opts])
            edn-wrapping? false]
        (with-viewer result-viewer
-         (merge {:nextjournal/value (cond-> (if edn-wrapping?
-                                              (try {:nextjournal/edn (->edn (merge presented-result opts-from-form-meta))}
-                                                   (catch Throwable _e
-                                                     {:nextjournal/string (pr-str value)}))
-                                              {:nextjournal/presented (merge presented-result opts-from-form-meta)})
-                                      (-> presented-result ->viewer :name)
-                                      (assoc :nextjournal/viewer (select-keys (->viewer presented-result) [:name]))
+         (merge {:nextjournal/value (cond-> {:nextjournal/presented (merge presented-result)}
 
                                       (-> cell :form meta :nextjournal.clerk/open-graph :image)
                                       (assoc :nextjournal/open-graph-image-capture true)
@@ -399,7 +393,6 @@
                                       (assoc :nextjournal/fetch-opts {:blob-id blob-id}
                                              :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta])))}
                 (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
-                ;; TODO: consider dropping this. Still needed by notebook-viewer fn to read :nextjournal/width option on result blocks
                 opts-from-form-meta)))))
 
 #_(nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)
