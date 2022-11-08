@@ -342,9 +342,10 @@
                !error (r/atom nil)
                !desc (r/atom (read-result result !error))
                !fetch-opts (atom fetch-opts)
-               !expanded-at (r/atom (cond-> @!desc
-                                      auto-expand-results? (-> viewer/assign-content-lengths)
-                                      true (-> viewer/assign-expanded-at (get :nextjournal/expanded-at {}))))
+               !expanded-at (r/atom (when (map? @!desc)
+                                      (cond-> @!desc
+                                        auto-expand-results? (-> viewer/assign-content-lengths)
+                                        true (-> viewer/assign-expanded-at (get :nextjournal/expanded-at {})))))
                fetch-fn (when @!fetch-opts
                           (fn [opts]
                             (.then (fetch! @!fetch-opts opts)
