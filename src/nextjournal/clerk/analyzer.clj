@@ -203,7 +203,7 @@
 
 (defn- analyze-deps [{:as analyzed :keys [form vars]} state dep]
   (try (reduce (fn [state var]
-                 (update state :graph #(dep/depend % (if var var form) dep)))
+                 (update state :graph #(dep/depend % var dep)))
                state
                (->ana-keys analyzed))
        (catch Exception e
@@ -252,13 +252,30 @@
     (throw (ex-info (str "The var `#'" missing-dep "` exists at runtime, but Clerk cannot find it in the namespace. Did you remove it?")
                     (merge {:var-name missing-dep} (select-keys analyzed [:form]) (select-keys doc [:file]))))))
 
+(defn sym->path [sym]
+  (some-> sym namespace symbol find-ns
+    nextjournal.clerk.analyzer/ns->path (str ".clj")))
+
+(defn parent-doc [sym]
+  (some-> sym sym->path io/resource nextjournal.clerk.parser/parse-file))
+
+(defn analyze-parent-doc [{:as state :keys [visited-paths]} sym]
+  (if (contains? visited-paths (sym->path sym))
+    state
+    (if-some [doc (parent-doc sym)]
+      (-> state
+          (assoc :doc? false)
+          (update :visited-paths conj (sym->path sym))
+          (analyze-doc doc))
+      state)))
+
 (defn analyze-doc
   ([doc]
-   (analyze-doc {:doc? true :graph (dep/graph)} doc))
+   (analyze-doc {:doc? true :graph (dep/graph) :visited-paths #{}} doc))
   ([{:as state :keys [doc?]} doc]
    (binding [*ns* *ns*]
      (cond-> (reduce (fn [state i]
-                       (let [{:keys [type text loc]} (get-in state [:blocks i])]
+                       (let [{:keys [type text loc]} (get-in doc [:blocks i])]
                          (if (not= type :code)
                            state
                            (let [form (read-string text)
@@ -275,13 +292,24 @@
                                                        (dissoc state :doc?)
                                                        (->ana-keys analyzed))
                                          doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
-                                         (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))]
+                                         (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))
+                                 state (if (seq deps)
+                                         (-> (reduce (partial analyze-deps analyzed) state deps)
+                                             (make-deps-inherit-no-cache analyzed))
+                                         state)
+                                 foreign-deps (into #{}
+                                                    (comp (filter qualified-symbol?)
+                                                          (remove (comp #{"clojure.core"} namespace))
+                                                          (remove (set (keys (:->analysis-info state))))) ;; see unhashed-deps
+                                                    deps)
+                                 {:as state :keys [graph]} (reduce analyze-parent-doc state foreign-deps)]
+                             ;; TODO: eval form or guess name
+                             (when (and doc?  ;; we only need to eval
+                                        (dep/depends? graph (first (->ana-keys analyzed)) 'clojure.core/intern))
+                               (throw (ex-info "depends on intern!" {:form form :file (:file doc)})))
                              (when (:ns? state)
                                (throw-if-dep-is-missing doc state analyzed))
-                             (if (seq deps)
-                               (-> (reduce (partial analyze-deps analyzed) state deps)
-                                   (make-deps-inherit-no-cache analyzed))
-                               state)))))
+                             state))))
                      (cond-> state
                        doc? (merge doc))
                      (-> doc :blocks count range))
