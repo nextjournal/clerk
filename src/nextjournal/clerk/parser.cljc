@@ -133,7 +133,7 @@
       (dissoc :visibility)))
 
 (def code-tags
-  #{:deref :map :meta :list :quote :reader-macro :set :token :var :vector})
+  #{:deref :map :meta :list :quote :syntax-quote :reader-macro :set :token :var :vector})
 
 (def whitespace-on-line-tags
   #{:comment :whitespace :comma})
