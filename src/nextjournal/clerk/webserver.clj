@@ -4,10 +4,12 @@
             [clojure.pprint :as pprint]
             [clojure.string :as str]
             [editscript.core :as editscript]
+            [editscript.edit]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.markdown :as md]
-            [org.httpkit.server :as httpkit]))
+            [org.httpkit.server :as httpkit])
+  (:import (nextjournal.clerk.viewer ViewerFn ViewerEval)))
 
 (def help-doc
   {:blocks [{:type :markdown :doc (md/parse "Use `nextjournal.clerk/show!` to make your notebook appear…")}]})
@@ -100,7 +102,6 @@
   {:on-open (fn [ch] (swap! !clients conj ch))
    :on-close (fn [ch _reason] (swap! !clients disj ch))
    :on-receive (fn [sender-ch edn-string]
-                 (prn :edn edn-string)
                  (binding [*ns* (or (:ns @!doc)
                                     (create-ns 'user))]
                    (let [{:as msg :keys [type]} (read-msg edn-string)]
@@ -148,6 +149,14 @@
     (reset! !doc (with-meta doc presented))
     presented))
 
+
+;; Make sure `ViewerFn` and `ViewerEval` is changed atomically
+(extend-protocol editscript.edit/IType
+  ViewerFn
+  (get-type [_] :val)
+
+  ViewerEval
+  (get-type [_] :val))
 
 (defn update-doc! [doc]
   (reset! !error nil)
