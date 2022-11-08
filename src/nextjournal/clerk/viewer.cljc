@@ -1198,9 +1198,6 @@
         expanded? (< max-length content-length)
         state' (assoc state
                       :expanded-at (assoc expanded-at path expanded?)
-                      #_(if expanded?
-                          (assoc expanded-at path true)
-                          expanded-at)
                       :prev-type type
                       :indents (conj
                                 (->> indents (take (count path)) vec)
@@ -1212,13 +1209,16 @@
       (reduce compute-expanded-at state' value)
       state')))
 
-(defn assign-expanded-at [wrapped-value]
-  (cond-> wrapped-value
-    (:content-length wrapped-value)
-    (assoc :nextjournal/expanded-at
-           (:expanded-at (compute-expanded-at {:expanded-at {}} wrapped-value)))))
+(defn collect-expandable-paths [state {:nextjournal/keys [value] :keys [path]}]
+  (let [state' (assoc-in state [:expanded-at path] false)]
+    (if (vector? value)
+      (reduce collect-expandable-paths state' value)
+      state')))
 
-
+(defn assign-expanded-at [{:as wrapped-value :keys [content-length]}]
+  (assoc wrapped-value :nextjournal/expanded-at (:expanded-at (if content-length
+                                                                (compute-expanded-at {:expanded-at {}} wrapped-value)
+                                                                (collect-expandable-paths {:expanded-at {}} wrapped-value)))))
 
 (comment
   (:nextjournal/expanded-at (present {:a-vector [1 2 3] :a-list '(123 234 345) :a-set #{1 2 3 4}}))
