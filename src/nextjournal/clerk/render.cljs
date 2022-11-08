@@ -330,49 +330,48 @@
                      (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
                      (render-unreadable-edn %))))))
 
-(defn read-result [{:as res :nextjournal/keys [edn string presented]} !error]
-  (cond presented presented
-        edn (try
-              (read-string edn)
-              (catch js/Error e
-                (reset! !error e)))
-        string (render-unreadable-edn string)))
+(defn read-result [{:as res :nextjournal/keys [edn string presented]}]
+  (try {:value (cond presented presented
+                     edn (read-string edn)
+                     string (render-unreadable-edn string))}
+       (catch js/Error e {:error e})))
 
 (defn render-result [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
-  (r/with-let [!hash (atom hash)
-               !error (r/atom nil)
-               !desc (r/atom (read-result result !error))
-               !fetch-opts (atom fetch-opts)
-               fetch-fn (when @!fetch-opts
-                          (fn [opts]
-                            (.then (fetch! @!fetch-opts opts)
-                                   (fn [more]
-                                     (swap! !desc viewer/merge-presentations more opts)))))
-               !expanded-at (r/atom (get @!desc :nextjournal/expanded-at {}))
-               on-key-down (fn [event]
-                             (if (.-altKey event)
-                               (swap! !expanded-at assoc :prompt-multi-expand? true)
-                               (swap! !expanded-at dissoc :prompt-multi-expand?)))
-               on-key-up #(swap! !expanded-at dissoc :prompt-multi-expand?)
-               ref-fn #(if %
-                         (when (exists? js/document)
-                           (js/document.addEventListener "keydown" on-key-down)
-                           (js/document.addEventListener "keyup" on-key-up))
-                         (when (exists? js/document)
-                           (js/document.removeEventListener "keydown" on-key-down)
-                           (js/document.removeEventListener "up" on-key-up)))]
-    (when-not (= hash @!hash)
-      ;; TODO: simplify
-      (reset! !hash hash)
-      (reset! !fetch-opts fetch-opts)
-      (reset! !desc (read-result result !error))
-      (reset! !error nil))
-    [view-context/provide {:fetch-fn fetch-fn}
-     [:> ErrorBoundary {:!error !error}
-      [:div.relative
-       [:div.overflow-y-hidden
-        {:ref ref-fn}
-        [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]]))
+  (let [{desc-value :value desc-error :error} (use-memo #(read-result result) [hash])
+        !error (use-memo #(r/atom desc-error))
+        !desc (use-memo #(r/atom desc-value))
+        fetch-fn (use-callback (when fetch-opts
+                                 (fn [opts]
+                                   (.then (fetch! fetch-opts opts)
+                                          (fn [more]
+                                            (swap! !desc viewer/merge-presentations more opts)))))
+                               [hash])
+        !expanded-at (use-memo #(r/atom (get @!desc :nextjournal/expanded-at {})))
+        on-key-down (use-callback (fn [event]
+                                    (if (.-altKey event)
+                                      (swap! !expanded-at assoc :prompt-multi-expand? true)
+                                      (swap! !expanded-at dissoc :prompt-multi-expand?))))
+        on-key-up (use-callback #(swap! !expanded-at dissoc :prompt-multi-expand?))
+        ref-fn (use-callback #(if %
+                                (when (exists? js/document)
+                                  (js/document.addEventListener "keydown" on-key-down)
+                                  (js/document.addEventListener "keyup" on-key-up))
+                                (when (exists? js/document)
+                                  (js/document.removeEventListener "keydown" on-key-down)
+                                  (js/document.removeEventListener "up" on-key-up))))]
+    (use-effect (fn []
+                  (reset! !error desc-error)
+                  (reset! !desc desc-value)
+                  (reset! !expanded-at (get desc-value :nextjournal/expanded-at {}))
+                  nil)
+                [hash])
+    (when @!desc
+      [view-context/provide {:fetch-fn fetch-fn}
+       [:> ErrorBoundary {:!error !error}
+        [:div.relative
+         [:div.overflow-y-hidden
+          {:ref ref-fn}
+          [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]])))
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
