@@ -330,17 +330,25 @@
                      (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
                      (render-unreadable-edn %))))))
 
+(defn ->expanded-at [auto-expand? presented]
+  (cond-> presented
+    auto-expand? (-> viewer/assign-content-lengths)
+    true (-> viewer/assign-expanded-at (get :nextjournal/expanded-at {}))))
 
-(defn render-result [{:as result :nextjournal/keys [fetch-opts hash presented]} _opts]
+(defn render-result [{:as result :nextjournal/keys [fetch-opts hash presented]} {:as opts :keys [auto-expand-results?]}]
+  (js/console.log :r auto-expand-results?)
   (let [!error (use-memo #(r/atom nil))
         !desc (use-memo #(r/atom presented))
+        !fetch-opts (use-memo #(r/atom fetch-opts))
+        !expanded-at (use-memo #(r/atom (when (map? @!desc)
+                                          (->expanded-at auto-expand-results? @!desc))))
         fetch-fn (use-callback (when fetch-opts
                                  (fn [opts]
-                                   (.then (fetch! fetch-opts opts)
+                                   (.then (fetch! @!fetch-opts opts)
                                           (fn [more]
-                                            (swap! !desc viewer/merge-presentations more opts)))))
+                                            (swap! !desc viewer/merge-presentations more opts)
+                                            (swap! !expanded-at #(merge (->expanded-at auto-expand-results? @!desc) %))))))
                                [hash])
-        !expanded-at (use-memo #(r/atom (get @!desc :nextjournal/expanded-at {})))
         on-key-down (use-callback (fn [event]
                                     (if (.-altKey event)
                                       (swap! !expanded-at assoc :prompt-multi-expand? true)
@@ -356,7 +364,7 @@
     (use-effect (fn []
                   (reset! !error nil)
                   (reset! !desc presented)
-                  (reset! !expanded-at (get presented :nextjournal/expanded-at {}))
+                  (reset! !fetch-opts fetch-opts)
                   nil)
                 [hash])
     (when @!desc
@@ -606,7 +614,7 @@
 
 (defn inspect [value]
   (r/with-let [!state (r/atom nil)]
-    (when (not= (:value @!state) value)
+    (when (not= (:value @!state ::not-found) value)
       (swap! !state assoc :value value :desc (viewer/present value)))
     [view-context/provide {:fetch-fn (fn [fetch-opts]
                                        (.then (in-process-fetch value fetch-opts)
