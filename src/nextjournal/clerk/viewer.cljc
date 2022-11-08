@@ -810,7 +810,7 @@
       :page-size 20}))
 
 (def result-viewer
-  {:render-fn '(fn [x] [nextjournal.clerk.render/render-result x])
+  {:render-fn 'nextjournal.clerk.render/render-result
    :transform-fn mark-presented})
 
 (defn extract-clerk-atom-vars [{:as _doc :keys [blocks]}]
