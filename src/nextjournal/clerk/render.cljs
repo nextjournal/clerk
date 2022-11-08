@@ -336,7 +336,6 @@
     true (-> viewer/assign-expanded-at (get :nextjournal/expanded-at {}))))
 
 (defn render-result [{:as result :nextjournal/keys [fetch-opts hash presented]} {:as opts :keys [auto-expand-results?]}]
-  (js/console.log :r auto-expand-results?)
   (let [!error (use-memo #(r/atom nil))
         !desc (use-memo #(r/atom presented))
         !fetch-opts (use-memo #(r/atom fetch-opts))
