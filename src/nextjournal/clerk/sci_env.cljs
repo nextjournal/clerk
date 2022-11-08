@@ -80,7 +80,8 @@
                              'p 'nextjournal.clerk.parser}
                    :namespaces (merge {'nextjournal.clerk.render render-namespace
                                        'nextjournal.clerk.viewer viewer-namespace
-                                       'nextjournal.clerk.parser parser-namespace}
+                                       'nextjournal.clerk.parser parser-namespace
+                                       'clojure.core {'swap! nextjournal.clerk.render/clerk-swap!}}
                                       sci.configs.js-interop/namespaces
                                       sci.configs.reagent/namespaces)})))
 
