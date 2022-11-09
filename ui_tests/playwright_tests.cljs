@@ -48,8 +48,10 @@
 (defn test-notebook [page link]
   (println "Visiting" link)
   (p/do (goto page link)
-        (is (-> (.locator page "div.viewer:has-text(\"Hello, Clerk\")")
-                (.isVisible)))))
+        (p/let [loc (.locator page "div")
+                loc (.first loc)
+                visible? (.isVisible loc)]
+          (is visible?))))
 
 (def console-errors (atom []))
 
@@ -67,6 +69,7 @@
                                (.isVisible #js {:timeout 10000})))
                      links (-> (.locator page "text=/.*\\.clj$/i")
                                (.allInnerTexts))
+                     _ (is (pos? (count links)))
                      links (map (fn [link]
                                   (str @!index "#/" link)) links)]
                (p/run! #(test-notebook page %) links)
