@@ -69,6 +69,7 @@
                                (.isVisible #js {:timeout 10000})))
                      links (-> (.locator page "text=/.*\\.clj$/i")
                                (.allInnerTexts))
+                     _ (is (pos? (count links)))
                      links (map (fn [link]
                                   (str @!index "#/" link)) links)]
                (p/run! #(test-notebook page %) links)
