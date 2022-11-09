@@ -87,6 +87,7 @@
  (j/lit [1 2 3]))
 
 ;; this one won't work when advanced-compiled
+#_
 (c/card
   (let [a (j/get-in js/window (map munge '[cljs core array]))]
     (a 1 2 3)))
