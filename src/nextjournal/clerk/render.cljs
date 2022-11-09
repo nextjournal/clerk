@@ -3,6 +3,7 @@
             ["react" :as react]
             ["react-dom/client" :as react-client]
             ["use-sync-external-store/shim" :refer [useSyncExternalStore]]
+            ["use-state-with-deps" :refer [useStateWithDeps]]
             [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.string :as str]
@@ -68,6 +69,12 @@
   "React hook: useState. Can be used like react/useState but also behaves like an atom."
   [init]
   (WrappedState. (react/useState init)))
+
+
+(defn use-state-with-deps
+  "React hook: useStateWithDeps. Can be used like react/useState but also behaves like an atom."
+  [init deps]
+  (WrappedState. (useStateWithDeps init (as-array deps))))
 
 (defn- specify-atom! [ref-obj]
   (specify! ref-obj
@@ -346,7 +353,7 @@
     true (-> viewer/assign-expanded-at (get :nextjournal/expanded-at {}))))
 
 (defn render-result [{:as result :nextjournal/keys [fetch-opts hash presented]} {:as opts :keys [auto-expand-results?]}]
-  (let [!desc (use-state presented)
+  (let [!desc (use-state-with-deps presented [presented])
         !expanded-at (use-state (when (map? @!desc)
                                   (->expanded-at auto-expand-results? @!desc)))
         fetch-fn (use-callback (when fetch-opts
