@@ -697,7 +697,10 @@
   {:name :html
    :render-fn 'identity
    :transform-fn (comp mark-presented
-                       (update-val (partial w/postwalk (when-wrapped inspect-wrapped-value))))})
+                       (update-val (fn [data]
+                                     (if (string? data)
+                                       [:div {:dangerouslySetInnerHTML {:__html data}}]
+                                       (w/postwalk (when-wrapped inspect-wrapped-value) data)))))})
 
 (def plotly-viewer
   {:name :plotly :render-fn 'nextjournal.clerk.render/render-plotly :transform-fn mark-presented})
