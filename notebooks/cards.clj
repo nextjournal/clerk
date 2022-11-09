@@ -204,9 +204,13 @@
 "
       doc
       (nextjournal.clerk.parser/parse-clojure-string {:doc? true} doc)
-      (update doc :blocks (partial map
-                                   (fn [{:as b :keys [type text]}]
-                                     (cond-> b
-                                       (= :code type)
-                                       (assoc :result {:nextjournal/value (eval (read-string text))})))))
+      (update doc :blocks (partial map (fn [{:as b :keys [type text]}]
+                                         (cond-> b
+                                           (= :code type)
+                                           (assoc :result
+                                                  {:nextjournal/value
+                                                   (let [val (eval (read-string text))]
+                                                     (cond->> val
+                                                       (nextjournal.clerk.render/valid-react-element? val)
+                                                       (v/with-viewer v/reagent-viewer)))})))))
       (v/with-viewer v/notebook-viewer doc))]))
