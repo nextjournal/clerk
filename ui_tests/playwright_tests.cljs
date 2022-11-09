@@ -48,8 +48,10 @@
 (defn test-notebook [page link]
   (println "Visiting" link)
   (p/do (goto page link)
-        (is (-> (.locator page "div.viewer:has-text(\"Hello, Clerk\")")
-                (.isVisible)))))
+        (p/let [loc (.locator page "div")
+                loc (.first loc)
+                visible? (.isVisible loc)]
+          (is visible?))))
 
 (def console-errors (atom []))
 
