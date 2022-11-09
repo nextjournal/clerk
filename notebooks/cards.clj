@@ -180,9 +180,8 @@
 ;; ## Parser API
 
 (c/card
-  (v/html
-   [v/inspect
-    (as-> ";; # 👋 Hello CLJS
+  [v/inspect
+   (as-> ";; # 👋 Hello CLJS
 ;; This is `fold`
 ;;
 ;; $$(\\beta\\rightarrow\\alpha\\rightarrow\\beta)\\rightarrow\\beta\\rightarrow [\\alpha] \\rightarrow\\beta$$
@@ -202,17 +201,17 @@
 ;; html
 (v/html [:h1 \"🧨\"])
 "
-      doc
-      (nextjournal.clerk.parser/parse-clojure-string {:doc? true} doc)
-      (update doc :blocks (partial map (fn [{:as b :keys [type text]}]
-                                         (cond-> b
-                                           (= :code type)
-                                           (assoc :result
-                                                  {:nextjournal/value
-                                                   (let [val (eval (read-string text))]
-                                                     ;; FIXME: this won't be necessary once we unify v/html in SCI env to be the same as in nextjournal.clerk.viewer
-                                                     ;; v/html is currently html-render for supporting legacy render-fns
-                                                     (cond->> val
-                                                       (nextjournal.clerk.render/valid-react-element? val)
-                                                       (v/with-viewer v/reagent-viewer)))})))))
-      (v/with-viewer v/notebook-viewer doc))]))
+     doc
+     (nextjournal.clerk.parser/parse-clojure-string {:doc? true} doc)
+     (update doc :blocks (partial map (fn [{:as b :keys [type text]}]
+                                        (cond-> b
+                                          (= :code type)
+                                          (assoc :result
+                                                 {:nextjournal/value
+                                                  (let [val (eval (read-string text))]
+                                                    ;; FIXME: this won't be necessary once we unify v/html in SCI env to be the same as in nextjournal.clerk.viewer
+                                                    ;; v/html is currently html-render for supporting legacy render-fns
+                                                    (cond->> val
+                                                      (nextjournal.clerk.render/valid-react-element? val)
+                                                      (v/with-viewer v/reagent-viewer)))})))))
+     (v/with-viewer v/notebook-viewer doc))])
