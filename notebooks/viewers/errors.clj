@@ -19,4 +19,3 @@
 
 (clerk/with-viewer {:render-fn '(fn [_] (v/html [1 2 3]))}
   42)
-

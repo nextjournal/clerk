@@ -72,7 +72,7 @@
 
 
 (defn use-state-with-deps
-  "React hook: useStateWithDeps. Can be used like react/useState but also behaves like an atom."
+  "React hook: useStateWithDeps, like `use-state` but will reset state to `init` when `deps` change."
   [init deps]
   (WrappedState. (useStateWithDeps init (as-array deps))))
 
@@ -301,24 +301,18 @@
                (set! (.-state this) #js {:error nil :hash (j/get props :hash)})
                (set! hash (j/get props :hash))
                (set! handle-error (fn [error]
-                                    (js/console.log :error/set error)
                                     (set! (.-state this) #js {:error error}))))
   Object
   (render [this ^js props]
           (j/let [^js {{:keys [error]} :state
                        {:keys [children]} :props} this]
-            (js/console.log :error/render error)
             (if error
               (r/as-element [error-view error])
-              children
-              #_(.apply react/createElement nil
-                        (.concat #js [HandleErrorProvider #js {:value handle-error}] children))))))
+              children))))
 
 (j/!set ErrorBoundary
         :getDerivedStateFromError (fn [error] #js {:error error})
         :getDerivedStateFromProps (fn [props state]
-                                    (js/console.log :getDerivedStateFromProps (not= (j/get props :hash)
-                                                                                    (j/get state :hash)))
                                     (when (not= (j/get props :hash)
                                                 (j/get state :hash))
                                       #js {:hash (j/get props :hash) :error nil})))
@@ -375,7 +369,6 @@
                                 (when (exists? js/document)
                                   (js/document.removeEventListener "keydown" on-key-down)
                                   (js/document.removeEventListener "up" on-key-up))))]
-    (js/console.log :hash hash :fetch-opts fetch-opts)
     (when @!desc
       [view-context/provide {:fetch-fn fetch-fn}
        [:> ErrorBoundary {:hash hash}
