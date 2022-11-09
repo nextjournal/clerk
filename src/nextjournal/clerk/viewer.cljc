@@ -371,31 +371,30 @@
 
 (declare result-viewer)
 
-(defn transform-result [doc cell]
-  (let [{:keys [auto-expand-results? inline-results? bundle?]} doc
-        {:as result :nextjournal/keys [value blob-id viewers]} (:result cell)
-        blob-mode (cond
-                    (and (not inline-results?) blob-id) :lazy-load
-                    bundle? :inline                         ;; TODO: provide a separte setting for this
-                    :else :file)
-        blob-opts (assoc doc :blob-mode blob-mode :blob-id blob-id)
-        presented-result (->> (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)) #?(:clj (process-blobs blob-opts)))
-        opts-from-form-meta (-> result
-                                (select-keys [:nextjournal/width :nextjournal/opts])
-                                (cond-> #_result
-                                  (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))]
-    (with-viewer (:name result-viewer)
-      (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result
-                                          :nextjournal/cell (select-keys cell [:text :form])}
+#?(:clj
+   (defn transform-result [{:as _cell :keys [doc result form]}]
+     (let [{:keys [auto-expand-results? inline-results? bundle?]} doc
+           {:nextjournal/keys [value blob-id viewers]} result
+           blob-mode (cond
+                       (and (not inline-results?) blob-id) :lazy-load
+                       bundle? :inline ;; TODO: provide a separte setting for this
+                       :else :file)
+           blob-opts (assoc doc :blob-mode blob-mode :blob-id blob-id)
+           presented-result (process-blobs blob-opts (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
+           opts-from-form-meta (-> result
+                                   (select-keys [:nextjournal/width :nextjournal/opts])
+                                   (cond-> #_result
+                                     (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))]
+       (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result}
 
-                                   (-> cell :form meta :nextjournal.clerk/open-graph :image)
-                                   (assoc :nextjournal/open-graph-image-capture true)
+                                    (-> form meta :nextjournal.clerk/open-graph :image)
+                                    (assoc :nextjournal/open-graph-image-capture true)
 
-                                   (= blob-mode :lazy-load)
-                                   (assoc :nextjournal/fetch-opts {:blob-id blob-id}
-                                          #?@(:clj [:nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta])])))}
-             (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
-             opts-from-form-meta))))
+                                    (= blob-mode :lazy-load)
+                                    (assoc :nextjournal/fetch-opts {:blob-id blob-id}
+                                           :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta])))}
+              (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
+              opts-from-form-meta))))
 
 #_(nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)
 
@@ -424,7 +423,8 @@
                       ;; TODO: display analysis could be merged into cell earlier
                       (-> cell (merge display-opts) (dissoc :result))))
               result?
-              (conj (transform-result doc cell))))))
+              (conj (with-viewer (:name result-viewer)
+                      (assoc cell :doc doc)))))))
 
 (defn update-viewers [viewers select-fn->update-fn]
   (reduce (fn [viewers [pred update-fn]]
@@ -807,7 +807,7 @@
 (def result-viewer
   {:name :clerk/result
    :render-fn 'nextjournal.clerk.render/render-result
-   :transform-fn mark-presented})
+   :transform-fn (comp mark-presented #?(:clj (update-val transform-result)))})
 
 (defn extract-clerk-atom-vars [{:as _doc :keys [blocks]}]
   (into {}

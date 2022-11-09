@@ -206,8 +206,7 @@
         (v/with-viewer :clerk/notebook)
         (v/with-viewers (v/add-viewers [(assoc v/result-viewer
                                                :transform-fn (comp v/mark-presented
-                                                                   (v/update-val (fn [{:nextjournal/keys [cell]}]
-                                                                                   (read-string (:text cell)))))
+                                                                   (v/update-val (fn [{:as _cell :keys [text]}] (read-string text))))
                                                :render-fn (fn [form _]
                                                             (let [data (eval form)]
                                                               (cond
