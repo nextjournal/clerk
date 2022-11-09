@@ -210,6 +210,8 @@
                                            (assoc :result
                                                   {:nextjournal/value
                                                    (let [val (eval (read-string text))]
+                                                     ;; FIXME: this won't be necessary once we unify v/html in SCI env to be the same as in nextjournal.clerk.viewer
+                                                     ;; v/html is currently html-render for supporting legacy render-fns
                                                      (cond->> val
                                                        (nextjournal.clerk.render/valid-react-element? val)
                                                        (v/with-viewer v/reagent-viewer)))})))))
