@@ -3,7 +3,8 @@
 (ns cards
   {:nextjournal.clerk/no-cache true}
   (:require [nextjournal.clerk :as clerk]
-            [cards-macro :as c]))
+            [cards-macro :as c]
+            [nextjournal.clerk.viewer :as v]))
 
 ;; ## $\LaTeX$
 (c/card
@@ -176,8 +177,7 @@
   {:a (range 21)})
 
 ;; ## Parser API
-;; FIXME
-#_
+
 (c/card
  (v/html
   [v/inspect
@@ -203,11 +203,13 @@
 "
         (nextjournal.clerk.parser/parse-clojure-string {:doc? true})
         (v/with-viewer :clerk/notebook)
-        (v/with-viewers (v/add-viewers [{:name :clerk/result-block
-                                         :transform-fn (v/update-val (comp v/read-string :text))
-                                         :render-fn '(fn [form]
-                                                       (let [data (eval form)]
-                                                         (try
-                                                           (if (nextjournal.clerk.render/valid-react-element? data) data (v/html [v/inspect data]))
-                                                           (catch js/Error e
-                                                             (v/html [:div.red (.-message e)])))))}])))]))
+        (v/with-viewers (v/add-viewers [(assoc v/result-viewer
+                                               :transform-fn (comp v/mark-presented
+                                                                   (v/update-val (fn [{:nextjournal/keys [cell]}]
+                                                                                   (read-string (:text cell)))))
+                                               :render-fn (fn [form _]
+                                                            (let [data (eval form)]
+                                                              (cond
+                                                                (nextjournal.clerk.render/valid-react-element? data) data
+                                                                (vector? data) data
+                                                                'else [nextjournal.clerk.render/inspect data]))))])))]))

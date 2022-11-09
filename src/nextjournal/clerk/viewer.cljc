@@ -371,31 +371,31 @@
 
 (declare result-viewer)
 
-#?(:clj
-   (defn transform-result [doc cell]
-     (let [{:keys [auto-expand-results? inline-results? bundle?]} doc
-           {:as result :nextjournal/keys [value blob-id viewers]} (:result cell)
-           blob-mode (cond
-                       (and (not inline-results?) blob-id) :lazy-load
-                       bundle? :inline ;; TODO: provide a separte setting for this
-                       :else :file)
-           blob-opts (assoc doc :blob-mode blob-mode :blob-id blob-id)
-           presented-result (process-blobs blob-opts (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
-           opts-from-form-meta (-> result
-                                   (select-keys [:nextjournal/width :nextjournal/opts])
-                                   (cond-> #_result
-                                     (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))]
-       (with-viewer result-viewer
-         (merge {:nextjournal/value (cond-> {:nextjournal/presented (merge presented-result)}
+(defn transform-result [doc cell]
+  (let [{:keys [auto-expand-results? inline-results? bundle?]} doc
+        {:as result :nextjournal/keys [value blob-id viewers]} (:result cell)
+        blob-mode (cond
+                    (and (not inline-results?) blob-id) :lazy-load
+                    bundle? :inline                         ;; TODO: provide a separte setting for this
+                    :else :file)
+        blob-opts (assoc doc :blob-mode blob-mode :blob-id blob-id)
+        presented-result (->> (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)) #?(:clj (process-blobs blob-opts)))
+        opts-from-form-meta (-> result
+                                (select-keys [:nextjournal/width :nextjournal/opts])
+                                (cond-> #_result
+                                  (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))]
+    (with-viewer (:name result-viewer)
+      (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result
+                                          :nextjournal/cell (select-keys cell [:text :form])}
 
-                                      (-> cell :form meta :nextjournal.clerk/open-graph :image)
-                                      (assoc :nextjournal/open-graph-image-capture true)
+                                   (-> cell :form meta :nextjournal.clerk/open-graph :image)
+                                   (assoc :nextjournal/open-graph-image-capture true)
 
-                                      (= blob-mode :lazy-load)
-                                      (assoc :nextjournal/fetch-opts {:blob-id blob-id}
-                                             :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta])))}
-                (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
-                opts-from-form-meta)))))
+                                   (= blob-mode :lazy-load)
+                                   (assoc :nextjournal/fetch-opts {:blob-id blob-id}
+                                          #?@(:clj [:nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta])])))}
+             (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
+             opts-from-form-meta))))
 
 #_(nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)
 
@@ -424,7 +424,7 @@
                       ;; TODO: display analysis could be merged into cell earlier
                       (-> cell (merge display-opts) (dissoc :result))))
               result?
-              (conj #?(:clj (transform-result doc cell) :cljs cell))))))
+              (conj (transform-result doc cell))))))
 
 (defn update-viewers [viewers select-fn->update-fn]
   (reduce (fn [viewers [pred update-fn]]
