@@ -6,6 +6,7 @@
             [clojure.walk :as w]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
+                      [editscript.edit]
                       [multihash.core :as multihash]
                       [multihash.digest :as digest]
                       [nextjournal.clerk.config :as config]
@@ -32,6 +33,14 @@
              (-invoke [this x] ((:f this) x))
              (-invoke [this x y] ((:f this) x y))]))
 
+;; Make sure `ViewerFn` and `ViewerEval` is changed atomically
+#?(:clj
+   (extend-protocol editscript.edit/IType
+     ViewerFn
+     (get-type [_] :val)
+
+     ViewerEval
+     (get-type [_] :val)))
 
 (defn viewer-fn? [x]
   (instance? ViewerFn x))

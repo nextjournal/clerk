@@ -4,7 +4,6 @@
             [clojure.pprint :as pprint]
             [clojure.string :as str]
             [editscript.core :as editscript]
-            [editscript.edit]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.markdown :as md]
@@ -148,15 +147,6 @@
   (let [presented (view/doc->viewer doc)]
     (reset! !doc (with-meta doc presented))
     presented))
-
-
-;; Make sure `ViewerFn` and `ViewerEval` is changed atomically
-(extend-protocol editscript.edit/IType
-  ViewerFn
-  (get-type [_] :val)
-
-  ViewerEval
-  (get-type [_] :val))
 
 (defn update-doc! [doc]
   (reset! !error nil)
