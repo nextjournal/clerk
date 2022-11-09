@@ -6,6 +6,7 @@
             [clojure.walk :as w]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
+                      [editscript.edit]
                       [multihash.core :as multihash]
                       [multihash.digest :as digest]
                       [nextjournal.clerk.config :as config]
@@ -32,6 +33,14 @@
              (-invoke [this x] ((:f this) x))
              (-invoke [this x y] ((:f this) x y))]))
 
+;; Make sure `ViewerFn` and `ViewerEval` is changed atomically
+#?(:clj
+   (extend-protocol editscript.edit/IType
+     ViewerFn
+     (get-type [_] :val)
+
+     ViewerEval
+     (get-type [_] :val)))
 
 (defn viewer-fn? [x]
   (instance? ViewerFn x))
@@ -370,32 +379,30 @@
 #_(get-viewers nil nil)
 
 (declare result-viewer)
+(defn transform-result [{:as _cell :keys [doc result form]}]
+  (let [{:keys [auto-expand-results? inline-results? bundle?]} doc
+        {:nextjournal/keys [value blob-id viewers]} result
+        blob-mode (cond
+                    (and (not inline-results?) blob-id) :lazy-load
+                    bundle? :inline ;; TODO: provide a separte setting for this
+                    :else :file)
+        blob-opts (assoc doc :blob-mode blob-mode :blob-id blob-id)
+        presented-result (->> (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value))
+                              #?(:clj (process-blobs blob-opts)))
+        opts-from-form-meta (-> result
+                                (select-keys [:nextjournal/width :nextjournal/opts])
+                                (cond-> #_result
+                                  (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))]
+    (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result}
 
-#?(:clj
-   (defn transform-result [doc cell]
-     (let [{:keys [auto-expand-results? inline-results? bundle?]} doc
-           {:as result :nextjournal/keys [value blob-id viewers]} (:result cell)
-           blob-mode (cond
-                       (and (not inline-results?) blob-id) :lazy-load
-                       bundle? :inline ;; TODO: provide a separte setting for this
-                       :else :file)
-           blob-opts (assoc doc :blob-mode blob-mode :blob-id blob-id)
-           presented-result (process-blobs blob-opts (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
-           opts-from-form-meta (-> result
-                                   (select-keys [:nextjournal/width :nextjournal/opts])
-                                   (cond-> #_result
-                                     (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))]
-       (with-viewer result-viewer
-         (merge {:nextjournal/value (cond-> {:nextjournal/presented (merge presented-result)}
+                                 (-> form meta :nextjournal.clerk/open-graph :image)
+                                 (assoc :nextjournal/open-graph-image-capture true)
 
-                                      (-> cell :form meta :nextjournal.clerk/open-graph :image)
-                                      (assoc :nextjournal/open-graph-image-capture true)
-
-                                      (= blob-mode :lazy-load)
-                                      (assoc :nextjournal/fetch-opts {:blob-id blob-id}
-                                             :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta])))}
-                (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
-                opts-from-form-meta)))))
+                                 #?@(:clj [(= blob-mode :lazy-load)
+                                           (assoc :nextjournal/fetch-opts {:blob-id blob-id}
+                                                  :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta]))]))}
+           (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
+           opts-from-form-meta)))
 
 #_(nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)
 
@@ -424,7 +431,8 @@
                       ;; TODO: display analysis could be merged into cell earlier
                       (-> cell (merge display-opts) (dissoc :result))))
               result?
-              (conj #?(:clj (transform-result doc cell) :cljs cell))))))
+              (conj (with-viewer (:name result-viewer)
+                      (assoc cell :doc doc)))))))
 
 (defn update-viewers [viewers select-fn->update-fn]
   (reduce (fn [viewers [pred update-fn]]
@@ -689,7 +697,10 @@
   {:name :html
    :render-fn 'identity
    :transform-fn (comp mark-presented
-                       (update-val (partial w/postwalk (when-wrapped inspect-wrapped-value))))})
+                       (update-val (fn [data]
+                                     (if (string? data)
+                                       [:div {:dangerouslySetInnerHTML {:__html data}}]
+                                       (w/postwalk (when-wrapped inspect-wrapped-value) data)))))})
 
 (def plotly-viewer
   {:name :plotly :render-fn 'nextjournal.clerk.render/render-plotly :transform-fn mark-presented})
@@ -807,7 +818,7 @@
 (def result-viewer
   {:name :clerk/result
    :render-fn 'nextjournal.clerk.render/render-result
-   :transform-fn mark-presented})
+   :transform-fn (comp mark-presented (update-val transform-result))})
 
 (defn extract-clerk-atom-vars [{:as _doc :keys [blocks]}]
   (into {}
