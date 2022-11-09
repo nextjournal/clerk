@@ -287,28 +287,19 @@
 
 (defclass ErrorBoundary
   (extends react/Component)
-  (field !error)
   (constructor [this ^js props]
-
                (super props)
-               (set! !error (j/get props :!error))
-               (set! (.-state this) #js{:error @!error}))
+               (set! (.-state this) #js {:error nil}))
   Object
-  (componentDidMount [this]
-                     (add-watch !error this
-                                (fn [_ _ _ new-val]
-                                  (j/call this :setState #js{:error new-val}))))
-  (componentWillUnmount [this] (remove-watch !error this))
-  (render [^js this props]
+  (render [this ^js props]
           (j/let [^js {{:keys [error]} :state
                        {:keys [children]} :props} this]
             (if error
               (r/as-element [error-view error])
-              (.apply react/createElement nil
-                      (.concat #js[ErrorProvider #js{:value !error}] children))))))
+              children))))
 
 (j/!set ErrorBoundary
-        :getDerivedStateFromError (fn [error] #js{:error error}))
+        :getDerivedStateFromError (fn [error] #js {:error error}))
 
 (def default-loading-view "Loading...")
 
@@ -336,11 +327,10 @@
     true (-> viewer/assign-expanded-at (get :nextjournal/expanded-at {}))))
 
 (defn render-result [{:as result :nextjournal/keys [fetch-opts hash presented]} {:as opts :keys [auto-expand-results?]}]
-  (let [!error (use-memo #(r/atom nil))
-        !desc (use-memo #(r/atom presented))
-        !fetch-opts (use-memo #(r/atom fetch-opts))
-        !expanded-at (use-memo #(r/atom (when (map? @!desc)
-                                          (->expanded-at auto-expand-results? @!desc))))
+  (let [!desc (use-state presented)
+        !fetch-opts (use-state fetch-opts)
+        !expanded-at (use-state (when (map? @!desc)
+                                  (->expanded-at auto-expand-results? @!desc)))
         fetch-fn (use-callback (when fetch-opts
                                  (fn [opts]
                                    (.then (fetch! @!fetch-opts opts)
@@ -361,14 +351,13 @@
                                   (js/document.removeEventListener "keydown" on-key-down)
                                   (js/document.removeEventListener "up" on-key-up))))]
     (use-effect (fn []
-                  (reset! !error nil)
                   (reset! !desc presented)
                   (reset! !fetch-opts fetch-opts)
                   nil)
                 [hash])
     (when @!desc
       [view-context/provide {:fetch-fn fetch-fn}
-       [:> ErrorBoundary {:!error !error}
+       [:> ErrorBoundary
         [:div.relative
          [:div.overflow-y-hidden
           {:ref ref-fn}
