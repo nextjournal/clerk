@@ -384,7 +384,7 @@
         {:nextjournal/keys [value blob-id viewers]} result
         blob-mode (cond
                     (and (not inline-results?) blob-id) :lazy-load
-                    bundle? :inline                         ;; TODO: provide a separte setting for this
+                    bundle? :inline ;; TODO: provide a separte setting for this
                     :else :file)
         blob-opts (assoc doc :blob-mode blob-mode :blob-id blob-id)
         presented-result (->> (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value))
