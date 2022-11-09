@@ -51,7 +51,7 @@
 
 (defn use-callback
   "React hook: useCallback. Defaults to an empty `deps` array."
-  ([x] (use-callback x #js[]))
+  ([x] (use-callback x #js []))
   ([x deps] (react/useCallback x (to-array deps))))
 
 (defn- wrap-effect
@@ -283,28 +283,47 @@
    (when-some [data (.-data error)]
      [:div.mt-2 [inspect data]])])
 
-(def ErrorProvider (j/get (view-context/get-context :!error) :Provider))
+#_(def HandleErrorProvider (j/get (view-context/get-context :handle-error) :Provider))
 
 (defclass ErrorBoundary
   (extends react/Component)
+  (field handle-error)
+  (field hash)
   (constructor [this ^js props]
                (super props)
-               (set! (.-state this) #js {:error nil}))
+               (set! (.-state this) #js {:error nil :hash (j/get props :hash)})
+               (set! hash (j/get props :hash))
+               (set! handle-error (fn [error]
+                                    (js/console.log :error/set error)
+                                    (set! (.-state this) #js {:error error}))))
   Object
   (render [this ^js props]
           (j/let [^js {{:keys [error]} :state
                        {:keys [children]} :props} this]
+            (js/console.log :error/render error)
             (if error
               (r/as-element [error-view error])
-              children))))
+              children
+              #_(.apply react/createElement nil
+                        (.concat #js [HandleErrorProvider #js {:value handle-error}] children))))))
 
 (j/!set ErrorBoundary
-        :getDerivedStateFromError (fn [error] #js {:error error}))
+        :getDerivedStateFromError (fn [error] #js {:error error})
+        :getDerivedStateFromProps (fn [props state]
+                                    (js/console.log :getDerivedStateFromProps (not= (j/get props :hash)
+                                                                                    (j/get state :hash)))
+                                    (when (not= (j/get props :hash)
+                                                (j/get state :hash))
+                                      #js {:hash (j/get props :hash) :error nil})))
+
 
 (def default-loading-view "Loading...")
 
-(defn use-handle-error []
-  (partial reset! (react/useContext (view-context/get-context :!error))))
+(defn use-error-handler []
+  (let [[_ set-error] (use-state nil)]
+    (use-callback (fn [error]
+                    (set-error (fn [] (throw error))))
+                  [set-error])))
 
 ;; TODO: drop this
 (defn read-string [s]
@@ -328,12 +347,11 @@
 
 (defn render-result [{:as result :nextjournal/keys [fetch-opts hash presented]} {:as opts :keys [auto-expand-results?]}]
   (let [!desc (use-state presented)
-        !fetch-opts (use-state fetch-opts)
         !expanded-at (use-state (when (map? @!desc)
                                   (->expanded-at auto-expand-results? @!desc)))
         fetch-fn (use-callback (when fetch-opts
                                  (fn [opts]
-                                   (.then (fetch! @!fetch-opts opts)
+                                   (.then (fetch! fetch-opts opts)
                                           (fn [more]
                                             (swap! !desc viewer/merge-presentations more opts)
                                             (swap! !expanded-at #(merge (->expanded-at auto-expand-results? @!desc) %))))))
@@ -350,14 +368,10 @@
                                 (when (exists? js/document)
                                   (js/document.removeEventListener "keydown" on-key-down)
                                   (js/document.removeEventListener "up" on-key-up))))]
-    (use-effect (fn []
-                  (reset! !desc presented)
-                  (reset! !fetch-opts fetch-opts)
-                  nil)
-                [hash])
+    (js/console.log :hash hash :fetch-opts fetch-opts)
     (when @!desc
       [view-context/provide {:fetch-fn fetch-fn}
-       [:> ErrorBoundary
+       [:> ErrorBoundary {:hash hash}
         [:div.relative
          [:div.overflow-y-hidden
           {:ref ref-fn}
@@ -701,7 +715,7 @@
 (defn use-promise
   "React hook which resolves a promise and handles errors."
   [p]
-  (let [handle-error (use-handle-error)
+  (let [handle-error (use-error-handler)
         !state (use-state nil)]
     (use-effect (fn []
                   (-> p
@@ -725,7 +739,7 @@
     loading-view))
 
 (defn render-vega-lite [value]
-  (let [handle-error (use-handle-error)
+  (let [handle-error (use-error-handler)
         vega-embed (use-d3-require "vega-embed@6.11.1")
         ref-fn (react/useCallback #(when %
                                      (-> (.embed vega-embed % (clj->js (dissoc value :embed/opts)) (clj->js (:embed/opts value {})))
