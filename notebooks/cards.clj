@@ -1,5 +1,5 @@
 ;; # 🃏 CLJS Cards
-^{:nextjournal.clerk/toc true}
+^{:nextjournal.clerk/toc true :nextjournal.clerk/visibility {:code :hide}}
 (ns cards
   {:nextjournal.clerk/no-cache true}
   (:require [nextjournal.clerk :as clerk]
@@ -176,6 +176,8 @@
   {:a (range 21)})
 
 ;; ## Parser API
+;; FIXME
+#_
 (c/card
  (v/html
   [v/inspect
