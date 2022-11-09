@@ -290,7 +290,6 @@
    (when-some [data (.-data error)]
      [:div.mt-2 [inspect data]])])
 
-#_(def HandleErrorProvider (j/get (view-context/get-context :handle-error) :Provider))
 
 (defclass ErrorBoundary
   (extends react/Component)
