@@ -180,9 +180,9 @@
 ;; ## Parser API
 
 (c/card
- (v/html
-  [v/inspect
-   (->> ";; # 👋 Hello CLJS
+  (v/html
+   [v/inspect
+    (as-> ";; # 👋 Hello CLJS
 ;; This is `fold`
 ;;
 ;; $$(\\beta\\rightarrow\\alpha\\rightarrow\\beta)\\rightarrow\\beta\\rightarrow [\\alpha] \\rightarrow\\beta$$
@@ -202,14 +202,11 @@
 ;; html
 (v/html [:h1 \"🧨\"])
 "
-        (nextjournal.clerk.parser/parse-clojure-string {:doc? true})
-        (v/with-viewer :clerk/notebook)
-        (v/with-viewers (v/add-viewers [(assoc v/result-viewer
-                                               :transform-fn (comp v/mark-presented
-                                                                   (v/update-val (fn [{:as _cell :keys [text]}] (read-string text))))
-                                               :render-fn (fn [form _]
-                                                            (let [data (eval form)]
-                                                              (cond
-                                                                (nextjournal.clerk.render/valid-react-element? data) data
-                                                                (vector? data) data
-                                                                'else [nextjournal.clerk.render/inspect data]))))])))]))
+      doc
+      (nextjournal.clerk.parser/parse-clojure-string {:doc? true} doc)
+      (update doc :blocks (partial map
+                                   (fn [{:as b :keys [type text]}]
+                                     (cond-> b
+                                       (= :code type)
+                                       (assoc :result {:nextjournal/value (eval (read-string text))})))))
+      (v/with-viewer v/notebook-viewer doc))]))
