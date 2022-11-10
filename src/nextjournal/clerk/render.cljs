@@ -87,6 +87,13 @@
   ([] (use-ref nil))
   ([init] (specify-atom! (react/useRef init))))
 
+(defn- eval-fn
+  "Evaluate (f x) if f is a function, otherwise return f"
+  [f x]
+  (if (fn? f)
+    (f x)
+    f))
+
 (defn use-force-update []
   (-> (react/useReducer inc 0)
       (aget 1)))
