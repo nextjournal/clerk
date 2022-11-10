@@ -657,6 +657,7 @@
   (editscript/patch x (editscript/edits->script patch)))
 
 (defn patch-state! [{:keys [patch]}]
+  (reset! !error nil)
   (swap! !doc apply-patch patch))
 
 (defn clerk-swap! [atom & swap-args]
