@@ -7,6 +7,7 @@
             [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.string :as str]
+            [clojure.tools.reader :as tools.reader]
             [clojure.tools.analyzer :as ana]
             [clojure.tools.analyzer.ast :as ana-ast]
             [clojure.tools.analyzer.jvm :as ana-jvm]
@@ -84,6 +85,7 @@
 
 (defn read-string [s]
   (edamame/parse-string s {:all true
+                           :syntax-quote {:resolve-symbol tools.reader/resolve-symbol}
                            :readers *data-readers*
                            :read-cond :allow
                            :regex #(list `re-pattern %)
@@ -285,7 +287,10 @@
                      (cond-> state
                        doc? (merge doc))
                      (-> doc :blocks count range))
-       doc? (-> add-block-ids parser/add-block-visibility parser/add-open-graph-metadata)))))
+       doc? (-> add-block-ids
+                parser/add-block-visibility
+                parser/add-open-graph-metadata
+                parser/add-auto-expand-results)))))
 
 (defn analyze-file
   ([file] (analyze-file {:graph (dep/graph)} file))
@@ -416,6 +421,9 @@
                                (assoc ->hash k (hash-codeblock ->hash codeblock))
                                ->hash)))
            deps)))
+
+(binding [*ns* (create-ns 'my-foo)]
+  (analyze-doc (parser/parse-clojure-string "(ns my-foo) `bar")))
 
 #_(hash (build-graph (parser/parse-clojure-string "^{:nextjournal.clerk/hash-fn (fn [x] \"abc\")}(def contents (slurp \"notebooks/hello.clj\"))")))
 #_(hash (build-graph (parser/parse-clojure-string (slurp "notebooks/hello.clj"))))

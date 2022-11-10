@@ -1,9 +1,10 @@
 ;; # 🃏 CLJS Cards
-^{:nextjournal.clerk/toc true}
+^{:nextjournal.clerk/toc true :nextjournal.clerk/visibility {:code :hide}}
 (ns cards
   {:nextjournal.clerk/no-cache true}
   (:require [nextjournal.clerk :as clerk]
-            [cards-macro :as c]))
+            [cards-macro :as c]
+            [nextjournal.clerk.viewer :as v]))
 
 ;; ## $\LaTeX$
 (c/card
@@ -86,6 +87,7 @@
  (j/lit [1 2 3]))
 
 ;; this one won't work when advanced-compiled
+#_
 (c/card
   (let [a (j/get-in js/window (map munge '[cljs core array]))]
     (a 1 2 3)))
@@ -176,10 +178,10 @@
   {:a (range 21)})
 
 ;; ## Parser API
+
 (c/card
- (v/html
   [v/inspect
-   (->> ";; # 👋 Hello CLJS
+   (as-> ";; # 👋 Hello CLJS
 ;; This is `fold`
 ;;
 ;; $$(\\beta\\rightarrow\\alpha\\rightarrow\\beta)\\rightarrow\\beta\\rightarrow [\\alpha] \\rightarrow\\beta$$
@@ -199,13 +201,17 @@
 ;; html
 (v/html [:h1 \"🧨\"])
 "
-        (nextjournal.clerk.parser/parse-clojure-string {:doc? true})
-        (v/with-viewer :clerk/notebook)
-        (v/with-viewers (v/add-viewers [{:name :clerk/result-block
-                                         :transform-fn (v/update-val (comp v/read-string :text))
-                                         :render-fn '(fn [form]
-                                                       (let [data (eval form)]
-                                                         (try
-                                                           (if (nextjournal.clerk.render/valid-react-element? data) data (v/html [v/inspect data]))
-                                                           (catch js/Error e
-                                                             (v/html [:div.red (.-message e)])))))}])))]))
+     doc
+     (nextjournal.clerk.parser/parse-clojure-string {:doc? true} doc)
+     (update doc :blocks (partial map (fn [{:as b :keys [type text]}]
+                                        (cond-> b
+                                          (= :code type)
+                                          (assoc :result
+                                                 {:nextjournal/value
+                                                  (let [val (eval (read-string text))]
+                                                    ;; FIXME: this won't be necessary once we unify v/html in SCI env to be the same as in nextjournal.clerk.viewer
+                                                    ;; v/html is currently html-render for supporting legacy render-fns
+                                                    (cond->> val
+                                                      (nextjournal.clerk.render/valid-react-element? val)
+                                                      (v/with-viewer v/reagent-viewer)))})))))
+     (v/with-viewer v/notebook-viewer doc))])

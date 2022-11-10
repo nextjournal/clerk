@@ -80,7 +80,8 @@
                              'p 'nextjournal.clerk.parser}
                    :namespaces (merge {'nextjournal.clerk.render render-namespace
                                        'nextjournal.clerk.viewer viewer-namespace
-                                       'nextjournal.clerk.parser parser-namespace}
+                                       'nextjournal.clerk.parser parser-namespace
+                                       'clojure.core {'swap! nextjournal.clerk.render/clerk-swap!}}
                                       sci.configs.js-interop/namespaces
                                       sci.configs.reagent/namespaces)})))
 
@@ -91,9 +92,12 @@
   (sci/eval-form @!sci-ctx f))
 
 (defn ^:export set-state [state]
-  (render/set-state (assoc state :sci-ctx @!sci-ctx)))
+  (render/set-state! (assoc state :sci-ctx @!sci-ctx)))
 
 (def ^:export mount render/mount)
 
 
 (set! *eval* eval-form)
+
+(sci/alter-var-root sci/print-fn (constantly *print-fn*))
+(sci/alter-var-root sci/print-err-fn (constantly *print-err-fn*))

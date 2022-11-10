@@ -3,9 +3,11 @@
             ["react" :as react]
             ["react-dom/client" :as react-client]
             ["use-sync-external-store/shim" :refer [useSyncExternalStore]]
+            ["use-state-with-deps" :refer [useStateWithDeps]]
             [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.string :as str]
+            [editscript.core :as editscript]
             [goog.object]
             [goog.string :as gstring]
             [nextjournal.clerk.render.code :as render.code]
@@ -21,8 +23,8 @@
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [reagent.ratom :as ratom]
-            [shadow.cljs.modern :refer [defclass]]
-            [sci.core :as sci]))
+            [sci.core :as sci]
+            [shadow.cljs.modern :refer [defclass]]))
 
 ;; a type for wrapping react/useState to support reset! and swap!
 (deftype WrappedState [st]
@@ -51,7 +53,7 @@
 
 (defn use-callback
   "React hook: useCallback. Defaults to an empty `deps` array."
-  ([x] (use-callback x #js[]))
+  ([x] (use-callback x #js []))
   ([x deps] (react/useCallback x (to-array deps))))
 
 (defn- wrap-effect
@@ -68,6 +70,12 @@
   "React hook: useState. Can be used like react/useState but also behaves like an atom."
   [init]
   (WrappedState. (react/useState init)))
+
+
+(defn use-state-with-deps
+  "React hook: useStateWithDeps, like `use-state` but will reset state to `init` when `deps` change."
+  [init deps]
+  (WrappedState. (useStateWithDeps init (as-array deps))))
 
 (defn- specify-atom! [ref-obj]
   (specify! ref-obj
@@ -283,39 +291,41 @@
    (when-some [data (.-data error)]
      [:div.mt-2 [inspect data]])])
 
-(def ErrorProvider (j/get (view-context/get-context :!error) :Provider))
 
 (defclass ErrorBoundary
   (extends react/Component)
-  (field !error)
+  (field handle-error)
+  (field hash)
   (constructor [this ^js props]
-
                (super props)
-               (js/console.log :Error props (type props) (j/get props :!error) )
+               (set! (.-state this) #js {:error nil :hash (j/get props :hash)})
+               (set! hash (j/get props :hash))
+               (set! handle-error (fn [error]
+                                    (set! (.-state this) #js {:error error}))))
 
-               (set! !error (j/get props :!error))
-               (set! (.-state this) #js{:error @!error}))
   Object
-  (componentDidMount [this]
-                     (add-watch !error this
-                                (fn [_ _ _ new-val]
-                                  (j/call this :setState #js{:error new-val}))))
-  (componentWillUnmount [this] (remove-watch !error this))
-  (render [^js this props]
+  (render [this ^js props]
           (j/let [^js {{:keys [error]} :state
                        {:keys [children]} :props} this]
             (if error
               (r/as-element [error-view error])
-              (.apply react/createElement nil
-                      (.concat #js[ErrorProvider #js{:value !error}] children))))))
+              children))))
 
 (j/!set ErrorBoundary
-        :getDerivedStateFromError (fn [error] #js{:error error}))
+        :getDerivedStateFromError (fn [error] #js {:error error})
+        :getDerivedStateFromProps (fn [props state]
+                                    (when (not= (j/get props :hash)
+                                                (j/get state :hash))
+                                      #js {:hash (j/get props :hash) :error nil})))
+
 
 (def default-loading-view "Loading...")
 
-(defn use-handle-error []
-  (partial reset! (react/useContext (view-context/get-context :!error))))
+(defn use-error-handler []
+  (let [[_ set-error] (use-state nil)]
+    (use-callback (fn [error]
+                    (set-error (fn [] (throw error))))
+                  [set-error])))
 
 ;; TODO: drop this
 (defn read-string [s]
@@ -332,49 +342,41 @@
                      (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
                      (render-unreadable-edn %))))))
 
-(defn read-result [{:nextjournal/keys [edn string]} !error]
-  (if edn
-    (try
-      (read-string edn)
-      (catch js/Error e
-        (reset! !error e)))
-    (render-unreadable-edn string)))
+(defn ->expanded-at [auto-expand? presented]
+  (cond-> presented
+    auto-expand? (-> viewer/assign-content-lengths)
+    true (-> viewer/assign-expanded-at (get :nextjournal/expanded-at {}))))
 
-(defn render-result [{:as result :nextjournal/keys [fetch-opts hash]} _opts]
-  (r/with-let [!hash (atom hash)
-               !error (r/atom nil)
-               !desc (r/atom (read-result result !error))
-               !fetch-opts (atom fetch-opts)
-               fetch-fn (when @!fetch-opts
-                          (fn [opts]
-                            (.then (fetch! @!fetch-opts opts)
-                                   (fn [more]
-                                     (swap! !desc viewer/merge-presentations more opts)))))
-               !expanded-at (r/atom (get @!desc :nextjournal/expanded-at {}))
-               on-key-down (fn [event]
-                             (if (.-altKey event)
-                               (swap! !expanded-at assoc :prompt-multi-expand? true)
-                               (swap! !expanded-at dissoc :prompt-multi-expand?)))
-               on-key-up #(swap! !expanded-at dissoc :prompt-multi-expand?)
-               ref-fn #(if %
-                         (when (exists? js/document)
-                           (js/document.addEventListener "keydown" on-key-down)
-                           (js/document.addEventListener "keyup" on-key-up))
-                         (when (exists? js/document)
-                           (js/document.removeEventListener "keydown" on-key-down)
-                           (js/document.removeEventListener "up" on-key-up)))]
-    (when-not (= hash @!hash)
-      ;; TODO: simplify
-      (reset! !hash hash)
-      (reset! !fetch-opts fetch-opts)
-      (reset! !desc (read-result result !error))
-      (reset! !error nil))
-    [view-context/provide {:fetch-fn fetch-fn}
-     [:> ErrorBoundary {:!error !error}
-      [:div.relative
-       [:div.overflow-y-hidden
-        {:ref ref-fn}
-        [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]]))
+(defn render-result [{:as result :nextjournal/keys [fetch-opts hash presented]} {:as opts :keys [auto-expand-results?]}]
+  (let [!desc (use-state-with-deps presented [hash])
+        !expanded-at (use-state (when (map? @!desc)
+                                  (->expanded-at auto-expand-results? @!desc)))
+        fetch-fn (use-callback (when fetch-opts
+                                 (fn [opts]
+                                   (.then (fetch! fetch-opts opts)
+                                          (fn [more]
+                                            (swap! !desc viewer/merge-presentations more opts)
+                                            (swap! !expanded-at #(merge (->expanded-at auto-expand-results? @!desc) %))))))
+                               [hash])
+        on-key-down (use-callback (fn [event]
+                                    (if (.-altKey event)
+                                      (swap! !expanded-at assoc :prompt-multi-expand? true)
+                                      (swap! !expanded-at dissoc :prompt-multi-expand?))))
+        on-key-up (use-callback #(swap! !expanded-at dissoc :prompt-multi-expand?))
+        ref-fn (use-callback #(if %
+                                (when (exists? js/document)
+                                  (js/document.addEventListener "keydown" on-key-down)
+                                  (js/document.addEventListener "keyup" on-key-up))
+                                (when (exists? js/document)
+                                  (js/document.removeEventListener "keydown" on-key-down)
+                                  (js/document.removeEventListener "up" on-key-up))))]
+    (when @!desc
+      [view-context/provide {:fetch-fn fetch-fn}
+       [:> ErrorBoundary {:hash hash}
+        [:div.relative
+         [:div.overflow-y-hidden
+          {:ref ref-fn}
+          [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]])))
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
@@ -615,7 +617,7 @@
 
 (defn inspect [value]
   (r/with-let [!state (r/atom nil)]
-    (when (not= (:value @!state) value)
+    (when (not= (:value @!state ::not-found) value)
       (swap! !state assoc :value value :desc (viewer/present value)))
     [view-context/provide {:fetch-fn (fn [fetch-opts]
                                        (.then (in-process-fetch value fetch-opts)
@@ -642,7 +644,7 @@
                 (with-meta (r/atom state)
                   {:var-name var-name}))))
 
-(defn ^:export set-state [{:as state :keys [doc error remount? sci-ctx]}]
+(defn ^:export set-state! [{:as state :keys [doc error remount? sci-ctx]}]
   (doseq [atom-var (get-in doc [:nextjournal/value :atom-var-name->state])]
     (intern-atom! sci-ctx atom-var))
   (when remount?
@@ -653,23 +655,31 @@
   (when-let [title (and (exists? js/document) (-> doc viewer/->value :title))]
     (set! (.-title js/document) title)))
 
-(defn swap-fn! [atom & swap-args]
-  (apply swap! atom swap-args)
-  (if-let [var-name (-> atom meta :var-name)]
-    ;; TODO: for now sending whole state but could also diff
-    (js/ws_send (pr-str {:type :swap! :var-name var-name :args (viewer/->viewer-eval [(list 'fn ['_] @atom)]) :var (viewer/->viewer-eval (list 'resolve (list 'quote var-name)))}))
-    (js/console.warn "clerk/swap-fn! called on an atom that doesn't have var-name set!")))
+(defn apply-patch [x patch]
+  (editscript/patch x (editscript/edits->script patch)))
+
+(defn patch-state! [{:keys [patch]}]
+  (reset! !error nil)
+  (swap! !doc apply-patch patch))
+
+(defn clerk-swap! [atom & swap-args]
+  (let [new-val (apply swap! atom swap-args)]
+    (when-let [var-name (-> atom meta :var-name)]
+      ;; TODO: for now sending whole state but could also diff
+      (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] new-val)]})))
+    new-val))
 
 (defn swap-clerk-atom! [{:as event :keys [var var-name args]}]
   (apply swap! @var args))
 
 (defn ^:export dispatch [{:as msg :keys [type]}]
-  (let [dispatch-fn ({:set-state! set-state
-                      :swap! swap-clerk-atom!}
-                     type
-                     (fn [type]
-                       (js/console.warn (str "no on-message dispatch for type `" (pr-str type) "`"))))]
-    #_(prn :<= type := msg)
+  (let [dispatch-fn (get {:patch-state! patch-state!
+                          :set-state! set-state!
+                          :swap! swap-clerk-atom!}
+                         type
+                         (fn [_]
+                           (js/console.warn (str "no on-message dispatch for type `" type "`"))))]
+    #_(js/console.log :<= type := msg)
     (dispatch-fn msg)))
 
 (defonce react-root
@@ -707,7 +717,7 @@
 (defn use-promise
   "React hook which resolves a promise and handles errors."
   [p]
-  (let [handle-error (use-handle-error)
+  (let [handle-error (use-error-handler)
         !state (use-state nil)]
     (use-effect (fn []
                   (-> p
@@ -731,7 +741,7 @@
     loading-view))
 
 (defn render-vega-lite [value]
-  (let [handle-error (use-handle-error)
+  (let [handle-error (use-error-handler)
         vega-embed (use-d3-require "vega-embed@6.11.1")
         ref-fn (react/useCallback #(when %
                                      (-> (.embed vega-embed % (clj->js (dissoc value :embed/opts)) (clj->js (:embed/opts value {})))
