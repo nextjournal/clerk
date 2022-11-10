@@ -340,8 +340,8 @@
     [:span.group.hover:bg-indigo-100.rounded-sm.hover:shadow.cursor-pointer
      {:class (when multi-expand? "bg-indigo-100 shadow ")
       :on-click (partial toggle-expanded !expanded-at path)
-      :on-mohooks/use-enter #(swap! !expanded-at assoc :hover-path path)
-      :on-mohooks/use-leave #(swap! !expanded-at dissoc :hover-path)}
+      :on-mouse-enter #(swap! !expanded-at assoc :hover-path path)
+      :on-mouse-leave #(swap! !expanded-at dissoc :hover-path)}
      [:span.text-slate-400.group-hover:text-indigo-700
       {:class (when multi-expand? "text-indigo-700 ")}
       [triangle expanded?]]
