@@ -3,6 +3,7 @@
             ["@lezer/highlight" :refer [tags]]
             ["@codemirror/state" :refer [EditorState]]
             ["@codemirror/view" :refer [EditorView]]
+            [nextjournal.clerk.render.hooks :as hooks]
             [applied-science.js-interop :as j]
             [nextjournal.clojure-mode :as clojure-mode]))
 
@@ -70,3 +71,11 @@
 (defn cm-view [doc parent]
   (EditorView. (j/obj :state (.create EditorState (j/obj :doc doc :extensions cm-extensions))
                       :parent parent)))
+
+(defn render-code [value]
+  (let [ref (hooks/use-ref nil)]
+    (hooks/use-effect (fn []
+                        (let [^js editor-view (cm-view value @ref)]
+                          #(.destroy editor-view))) [value])
+    [:div {:ref ref}]))
+
