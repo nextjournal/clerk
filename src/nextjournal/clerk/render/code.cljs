@@ -88,7 +88,7 @@
             (cons {:from from :to to :val val}
                   (lazy-seq (step))))))))))
 
-(def syntax (clojure-mode/syntax))
+(def ^js syntax (clojure-mode/syntax))
 
 (defn style-markup [^js text {:keys [from to val]}]
   (j/let [^js {:keys [tagName class]} val]
@@ -104,21 +104,23 @@
               (recur end
                      (next lds)
                      (concat buf (cond-> (list (style-markup text d))
-                                   (< pos start) (conj (.sliceString text pos start)))))
+                                   (< pos start)
+                                   (conj (.sliceString text pos start)))))
               (cond-> buf
-                (< pos to) (concat [(.sliceString text pos to)])))))))
+                (< pos to)
+                (concat [(.sliceString text pos to)])))))))
 
 (defn ssr [^String code]
   (let [builder (RangeSetBuilder.)
-        tree (.. syntax -parser (parse code))
-        _ (highlightTree tree highlight-style (fn [from to style]
-                                                (.add builder from to (.mark Decoration (j/obj :class style)))))
-        deco-rangeset (.finish builder)
+        _ (highlightTree (.. syntax -parser (parse code)) highlight-style
+                         (fn [from to style]
+                           (.add builder from to (.mark Decoration (j/obj :class style)))))
+        decorations-rangeset (.finish builder)
         text (.of Text (.split code "\n"))]
     [:div.cm-editor
      [:cm-scroller
-      (into [:div.cm-content]
-            (map (partial style-line deco-rangeset text))
+      (into [:div.cm-content.whitespace-pre]
+            (map (partial style-line decorations-rangeset text))
             (range 1 (inc (.-lines text))))]]))
 
 (defn render-code [value]
