@@ -346,7 +346,7 @@
     true (-> viewer/assign-expanded-at (get :nextjournal/expanded-at {}))))
 
 (defn render-result [{:as result :nextjournal/keys [fetch-opts hash presented]} {:as opts :keys [auto-expand-results?]}]
-  (let [!desc (use-state-with-deps presented [presented])
+  (let [!desc (use-state-with-deps presented [hash])
         !expanded-at (use-state (when (map? @!desc)
                                   (->expanded-at auto-expand-results? @!desc)))
         fetch-fn (use-callback (when fetch-opts
