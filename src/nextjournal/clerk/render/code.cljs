@@ -1,11 +1,13 @@
 (ns nextjournal.clerk.render.code
   (:require ["@codemirror/language" :refer [syntaxHighlighting HighlightStyle]]
-            ["@lezer/highlight" :refer [tags]]
-            ["@codemirror/state" :refer [EditorState]]
-            ["@codemirror/view" :refer [EditorView]]
+            ["@lezer/highlight" :refer [tags highlightTree]]
+            ["@codemirror/state" :refer [EditorState RangeSetBuilder Text]]
+            ["@codemirror/view" :refer [EditorView Decoration]]
+
             [nextjournal.clerk.render.hooks :as hooks]
             [applied-science.js-interop :as j]
-            [nextjournal.clojure-mode :as clojure-mode]))
+            [nextjournal.clojure-mode :as clojure-mode]
+            [clojure.string :as str]))
 
 ;; code viewer
 (def theme
@@ -74,10 +76,57 @@
 (defn make-view [state parent]
   (EditorView. (j/obj :state state :parent parent)))
 
+(defn rangeset-seq
+  "Returns a lazy-seq of ranges inside a RangeSet (like a Decoration set)"
+  ([rset] (rangeset-seq rset 0))
+  ([^js rset from]
+   (let [iterator (.iter rset from)]
+     ((fn step []
+        (when-some [val (.-value iterator)]
+          (let [from (.-from iterator) to (.-to iterator)]
+            (.next iterator)
+            (cons {:from from :to to :val val}
+                  (lazy-seq (step))))))))))
+
+(def syntax (clojure-mode/syntax))
+
+(defn style-markup [^js text {:keys [from to val]}]
+  (j/let [^js {:keys [tagName class]} val]
+    [(keyword (str tagName "." class)) (.sliceString text from to)]))
+
+(defn style-line [decos ^js text i]
+  (j/let [^js {:keys [from to]} (.line text i)]
+    (into [:div.cm-line]
+          (loop [pos from
+                 lds (take-while #(<= (:to %) to) (rangeset-seq decos from))
+                 buf ()]
+            (if-some [{:as d start :from end :to} (first lds)]
+              (recur end
+                     (next lds)
+                     (concat buf (cond-> (list (style-markup text d))
+                                   (< pos start) (conj (.sliceString text pos start)))))
+              (cond-> buf
+                (< pos to) (concat [(.sliceString text pos to)])))))))
+
+(defn ssr [^String code]
+  (let [builder (RangeSetBuilder.)
+        tree (.. syntax -parser (parse code))
+        _ (highlightTree tree highlight-style (fn [from to style]
+                                                (.add builder from to (.mark Decoration (j/obj :class style)))))
+        deco-rangeset (.finish builder)
+        text (.of Text (.split code "\n"))]
+    [:div.cm-editor
+     [:cm-scroller
+      (into [:div.cm-content]
+            (map (partial style-line deco-rangeset text))
+            (range 1 (inc (.-lines text))))]]))
+
 (defn render-code [value]
-  (let [!container-el (hooks/use-ref nil)
-        !view (hooks/use-ref nil)]
-    (hooks/use-layout-effect (fn [] (let [^js view (reset! !view (make-view (make-state value) @!container-el))]
-                                      #(.destroy view))))
-    (hooks/use-effect (fn [] (.setState @!view (make-state value))) [value])
-    [:div {:ref !container-el}]))
+  (if-not (exists? js/document)
+    (ssr value)
+    (let [!container-el (hooks/use-ref nil)
+          !view (hooks/use-ref nil)]
+      (hooks/use-layout-effect (fn [] (let [^js view (reset! !view (make-view (make-state value) @!container-el))]
+                                        #(.destroy view))))
+      (hooks/use-effect (fn [] (.setState @!view (make-state value))) [value])
+      [:div {:ref !container-el}])))
