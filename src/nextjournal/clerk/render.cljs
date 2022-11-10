@@ -3,7 +3,6 @@
             ["react" :as react]
             ["react-dom/client" :as react-client]
             ["use-sync-external-store/shim" :refer [useSyncExternalStore]]
-            ["use-state-with-deps" :refer [useStateWithDeps]]
             [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.string :as str]
@@ -70,12 +69,6 @@
   [init]
   (WrappedState. (react/useState init)))
 
-
-(defn use-state-with-deps
-  "React hook: useStateWithDeps, like `use-state` but will reset state to `init` when `deps` change."
-  [init deps]
-  (WrappedState. (useStateWithDeps init (as-array deps))))
-
 (defn- specify-atom! [ref-obj]
   (specify! ref-obj
     IDeref
@@ -93,6 +86,35 @@
   "React hook: useRef. Can also be used like an atom."
   ([] (use-ref nil))
   ([init] (specify-atom! (react/useRef init))))
+
+(defn use-force-update []
+  (-> (react/useReducer inc 0)
+      (aget 1)))
+
+(defn use-state-with-deps
+  ;; see https://github.com/peterjuras/use-state-with-deps/blob/main/src/index.ts
+  "React hook: like `use-state` but will reset state to `init` when `deps` change.
+  - init may be a function, receiving previous state
+  - deps will be compared using clojure ="
+  [init deps]
+  (let [!state (use-ref
+                (use-memo
+                 #(eval-fn init nil)))
+        !prev-deps (use-ref deps)
+        _ (when-not (= deps @!prev-deps)
+            (reset! !state (eval-fn init @!state))
+            (reset! !prev-deps deps))
+        force-update! (use-force-update)
+        update-fn (use-callback
+                   (fn [x]
+                     (let [prev-state @!state
+                           next-state (eval-fn x prev-state)]
+                       (when (not= prev-state next-state)
+                         (reset! !state next-state)
+                         (force-update!))
+                       next-state)))]
+    (WrappedState. #js[@!state update-fn])))
+
 
 (defn use-sync-external-store [subscribe get-snapshot]
   (useSyncExternalStore subscribe get-snapshot))
