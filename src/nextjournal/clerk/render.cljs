@@ -3,6 +3,7 @@
             ["react" :as react]
             ["react-dom/client" :as react-client]
             ["use-sync-external-store/shim" :refer [useSyncExternalStore]]
+            ["use-state-with-deps" :refer [useStateWithDeps]]
             [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.string :as str]
@@ -51,7 +52,7 @@
 
 (defn use-callback
   "React hook: useCallback. Defaults to an empty `deps` array."
-  ([x] (use-callback x #js[]))
+  ([x] (use-callback x #js []))
   ([x deps] (react/useCallback x (to-array deps))))
 
 (defn- wrap-effect
@@ -68,6 +69,12 @@
   "React hook: useState. Can be used like react/useState but also behaves like an atom."
   [init]
   (WrappedState. (react/useState init)))
+
+
+(defn use-state-with-deps
+  "React hook: useStateWithDeps, like `use-state` but will reset state to `init` when `deps` change."
+  [init deps]
+  (WrappedState. (useStateWithDeps init (as-array deps))))
 
 (defn- specify-atom! [ref-obj]
   (specify! ref-obj
@@ -283,37 +290,40 @@
    (when-some [data (.-data error)]
      [:div.mt-2 [inspect data]])])
 
-(def ErrorProvider (j/get (view-context/get-context :!error) :Provider))
 
 (defclass ErrorBoundary
   (extends react/Component)
-  (field !error)
+  (field handle-error)
+  (field hash)
   (constructor [this ^js props]
-
                (super props)
-               (set! !error (j/get props :!error))
-               (set! (.-state this) #js{:error @!error}))
+               (set! (.-state this) #js {:error nil :hash (j/get props :hash)})
+               (set! hash (j/get props :hash))
+               (set! handle-error (fn [error]
+                                    (set! (.-state this) #js {:error error}))))
   Object
-  (componentDidMount [this]
-                     (add-watch !error this
-                                (fn [_ _ _ new-val]
-                                  (j/call this :setState #js{:error new-val}))))
-  (componentWillUnmount [this] (remove-watch !error this))
-  (render [^js this props]
+  (render [this ^js props]
           (j/let [^js {{:keys [error]} :state
                        {:keys [children]} :props} this]
             (if error
               (r/as-element [error-view error])
-              (.apply react/createElement nil
-                      (.concat #js[ErrorProvider #js{:value !error}] children))))))
+              children))))
 
 (j/!set ErrorBoundary
-        :getDerivedStateFromError (fn [error] #js{:error error}))
+        :getDerivedStateFromError (fn [error] #js {:error error})
+        :getDerivedStateFromProps (fn [props state]
+                                    (when (not= (j/get props :hash)
+                                                (j/get state :hash))
+                                      #js {:hash (j/get props :hash) :error nil})))
+
 
 (def default-loading-view "Loading...")
 
-(defn use-handle-error []
-  (partial reset! (react/useContext (view-context/get-context :!error))))
+(defn use-error-handler []
+  (let [[_ set-error] (use-state nil)]
+    (use-callback (fn [error]
+                    (set-error (fn [] (throw error))))
+                  [set-error])))
 
 ;; TODO: drop this
 (defn read-string [s]
@@ -336,14 +346,12 @@
     true (-> viewer/assign-expanded-at (get :nextjournal/expanded-at {}))))
 
 (defn render-result [{:as result :nextjournal/keys [fetch-opts hash presented]} {:as opts :keys [auto-expand-results?]}]
-  (let [!error (use-memo #(r/atom nil))
-        !desc (use-memo #(r/atom presented))
-        !fetch-opts (use-memo #(r/atom fetch-opts))
-        !expanded-at (use-memo #(r/atom (when (map? @!desc)
-                                          (->expanded-at auto-expand-results? @!desc))))
+  (let [!desc (use-state-with-deps presented [hash])
+        !expanded-at (use-state (when (map? @!desc)
+                                  (->expanded-at auto-expand-results? @!desc)))
         fetch-fn (use-callback (when fetch-opts
                                  (fn [opts]
-                                   (.then (fetch! @!fetch-opts opts)
+                                   (.then (fetch! fetch-opts opts)
                                           (fn [more]
                                             (swap! !desc viewer/merge-presentations more opts)
                                             (swap! !expanded-at #(merge (->expanded-at auto-expand-results? @!desc) %))))))
@@ -360,15 +368,9 @@
                                 (when (exists? js/document)
                                   (js/document.removeEventListener "keydown" on-key-down)
                                   (js/document.removeEventListener "up" on-key-up))))]
-    (use-effect (fn []
-                  (reset! !error nil)
-                  (reset! !desc presented)
-                  (reset! !fetch-opts fetch-opts)
-                  nil)
-                [hash])
     (when @!desc
       [view-context/provide {:fetch-fn fetch-fn}
-       [:> ErrorBoundary {:!error !error}
+       [:> ErrorBoundary {:hash hash}
         [:div.relative
          [:div.overflow-y-hidden
           {:ref ref-fn}
@@ -655,6 +657,7 @@
   (editscript/patch x (editscript/edits->script patch)))
 
 (defn patch-state! [{:keys [patch]}]
+  (reset! !error nil)
   (swap! !doc apply-patch patch))
 
 (defn clerk-swap! [atom & swap-args]
@@ -712,7 +715,7 @@
 (defn use-promise
   "React hook which resolves a promise and handles errors."
   [p]
-  (let [handle-error (use-handle-error)
+  (let [handle-error (use-error-handler)
         !state (use-state nil)]
     (use-effect (fn []
                   (-> p
@@ -736,7 +739,7 @@
     loading-view))
 
 (defn render-vega-lite [value]
-  (let [handle-error (use-handle-error)
+  (let [handle-error (use-error-handler)
         vega-embed (use-d3-require "vega-embed@6.11.1")
         ref-fn (react/useCallback #(when %
                                      (-> (.embed vega-embed % (clj->js (dissoc value :embed/opts)) (clj->js (:embed/opts value {})))
