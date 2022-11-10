@@ -19,3 +19,13 @@
 
 (clerk/with-viewer {:render-fn '(fn [_] (v/html [1 2 3]))}
   42)
+
+
+(clerk/with-viewer {:render-fn '(fn [x] (let [handle-error (nextjournal.clerk.render/use-error-handler)
+                                              ref(nextjournal.clerk.render/use-callback (fn [_]
+                                                                                          (-> (js/Promise. (fn [resolve reject]
+                                                                                                             (js/setTimeout (fn [] (resolve 1)), 200)))
+                                                                                              (.then (fn [x] (throw (js/Error "async error 💥"))))
+                                                                                              (.catch handle-error))))]
+                                          [:h3 {:ref ref} (str x)]))}
+  42)
