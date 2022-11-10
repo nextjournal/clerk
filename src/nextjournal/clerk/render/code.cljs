@@ -77,12 +77,10 @@
         !state (hooks/use-ref (cm-state value))]
     (hooks/use-effect (fn []
                         (js/console.log :create-view value)
-                        (let [^js view (cm-view @!state @!container)]
-                          (reset! !view view)
-                          #(do (js/console.log :destroy-view) (.destroy view)))) [])
+                        (let [^js view (reset! !view (cm-view @!state @!container))]
+                          #(do (js/console.log :destroy-view value) (.destroy view)))) [])
     (hooks/use-effect (fn []
-                        (js/console.log :create-state value)
-                        (let [state (cm-state value)]
-                          (reset! !state state)
-                          (when @!view (.setState @!view state)))) [value])
+                        (js/console.log :reset-state value)
+                        (cond->> (reset! !state (cm-state value))
+                          @!view (.setState @!view))) [value])
     [:div {:ref !container}]))

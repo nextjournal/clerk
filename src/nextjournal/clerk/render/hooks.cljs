@@ -15,7 +15,8 @@
   (-reset! [^js this new-value]
     ;; `constantly` here ensures that if we reset state to a fn,
     ;; it is stored as-is and not applied to prev value.
-    ((aget st 1) (constantly new-value)))
+    ((aget st 1) (constantly new-value))
+    new-value)
   ISwap
   (-swap! [this f] ((aget st 1) f))
   (-swap! [this f a] ((aget st 1) #(f % a)))
@@ -54,7 +55,9 @@
     IDeref
     (-deref [^js this] (.-current this))
     IReset
-    (-reset! [^js this new-value] (set! (.-current this) new-value))
+    (-reset! [^js this new-value]
+      (set! (.-current this) new-value)
+      new-value)
     ISwap
     (-swap!
       ([o f] (reset! o (f o)))
