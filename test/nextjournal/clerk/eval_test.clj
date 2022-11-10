@@ -155,18 +155,14 @@
   (testing "can handle uncounted sequences"
     (is (match? [{:nextjournal/viewer {:name :code}
                   :nextjournal/value "(range)"}
-                 {:nextjournal/viewer {:name :clerk/result}
-                  :nextjournal/value {:nextjournal/edn string?
-                                      :nextjournal/fetch-opts {:blob-id string?}
+                 {:nextjournal/value {:nextjournal/fetch-opts {:blob-id string?}
                                       :nextjournal/hash string?}}]
                 (eval+extract-doc-blocks "(range)"))))
 
   (testing "assigns folded visibility"
     (is (match? [{:nextjournal/viewer {:name :code-folded}
                   :nextjournal/value "^{:nextjournal.clerk/visibility :fold}{:some :map}"}
-                 {:nextjournal/viewer {:name :clerk/result}
-                  :nextjournal/value {:nextjournal/edn string?
-                                      :nextjournal/fetch-opts {:blob-id string?}
+                 {:nextjournal/value {:nextjournal/fetch-opts {:blob-id string?}
                                       :nextjournal/hash string?}}]
                 (eval+extract-doc-blocks "^{:nextjournal.clerk/visibility :fold}{:some :map}"))))
 

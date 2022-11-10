@@ -6,6 +6,7 @@
             [goog.object]
             [nextjournal.clerk.parser]
             [nextjournal.clerk.render :as render]
+            [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clerk.trim-image]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.view.context :as view-context]
@@ -68,6 +69,9 @@
 (def parser-namespace
   (sci/copy-ns nextjournal.clerk.parser (sci/create-ns 'nextjournal.clerk.parser)))
 
+(def hooks-namespace
+  (sci/copy-ns nextjournal.clerk.render.hooks (sci/create-ns 'nextjournal.clerk.render.hooks)))
+
 (defonce !sci-ctx
   (atom (sci/init {:async? true
                    :disable-arity-checks true
@@ -79,8 +83,10 @@
                              'v 'nextjournal.clerk.viewer
                              'p 'nextjournal.clerk.parser}
                    :namespaces (merge {'nextjournal.clerk.render render-namespace
+                                       'nextjournal.clerk.render.hooks hooks-namespace
                                        'nextjournal.clerk.viewer viewer-namespace
-                                       'nextjournal.clerk.parser parser-namespace}
+                                       'nextjournal.clerk.parser parser-namespace
+                                       'clojure.core {'swap! nextjournal.clerk.render/clerk-swap!}}
                                       sci.configs.js-interop/namespaces
                                       sci.configs.reagent/namespaces)})))
 
@@ -91,9 +97,12 @@
   (sci/eval-form @!sci-ctx f))
 
 (defn ^:export set-state [state]
-  (render/set-state (assoc state :sci-ctx @!sci-ctx)))
+  (render/set-state! (assoc state :sci-ctx @!sci-ctx)))
 
 (def ^:export mount render/mount)
 
 
 (set! *eval* eval-form)
+
+(sci/alter-var-root sci/print-fn (constantly *print-fn*))
+(sci/alter-var-root sci/print-err-fn (constantly *print-err-fn*))

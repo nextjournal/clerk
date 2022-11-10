@@ -6,6 +6,7 @@
             [clojure.walk :as w]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
+                      [editscript.edit]
                       [multihash.core :as multihash]
                       [multihash.digest :as digest]
                       [nextjournal.clerk.config :as config]
@@ -32,6 +33,14 @@
              (-invoke [this x] ((:f this) x))
              (-invoke [this x y] ((:f this) x y))]))
 
+;; Make sure `ViewerFn` and `ViewerEval` is changed atomically
+#?(:clj
+   (extend-protocol editscript.edit/IType
+     ViewerFn
+     (get-type [_] :val)
+
+     ViewerEval
+     (get-type [_] :val)))
 
 (defn viewer-fn? [x]
   (instance? ViewerFn x))
@@ -40,7 +49,9 @@
   (instance? ViewerEval x))
 
 (defn ->viewer-fn [form]
-  (map->ViewerFn {:form form #?@(:cljs [:f (eval form)])}))
+  (map->ViewerFn {:form form #?@(:cljs [:f (try (eval form)
+                                                (catch js/Error e
+                                                  (fn [_] [(eval 'nextjournal.clerk.render/error-view) e])))])}))
 
 (defn ->viewer-eval [form]
   (map->ViewerEval {:form form}))
@@ -367,33 +378,33 @@
 
 #_(get-viewers nil nil)
 
-#?(:clj
-   (defn transform-result [{cell :nextjournal/value doc :nextjournal/opts}]
-     (let [{:keys [inline-results? bundle?]} doc
-           {:as result :nextjournal/keys [value blob-id viewers]} (:result cell)
-           blob-mode (cond
-                       (and (not inline-results?) blob-id) :lazy-load
-                       bundle? :inline ;; TODO: provide a separte setting for this
-                       :else :file)
-           blob-opts (assoc doc :blob-mode blob-mode :blob-id blob-id)
-           presented-result (process-blobs blob-opts (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)))
-           opts-from-form-meta (select-keys result [:nextjournal/width :nextjournal/opts])]
-       (merge {:nextjournal/viewer :clerk/result
-               :nextjournal/value (cond-> (try {:nextjournal/edn (->edn (merge presented-result opts-from-form-meta))}
-                                               (catch Throwable _e
-                                                 {:nextjournal/string (pr-str value)}))
-                                    (-> presented-result ->viewer :name)
-                                    (assoc :nextjournal/viewer (select-keys (->viewer presented-result) [:name]))
+(declare result-viewer)
+(defn transform-result [{:as _cell :keys [doc result form]}]
+  (let [{:keys [auto-expand-results? inline-results? bundle?]} doc
+        {:nextjournal/keys [value blob-id viewers]} result
+        blob-mode (cond
+                    (and (not inline-results?) blob-id) :lazy-load
+                    bundle? :inline ;; TODO: provide a separte setting for this
+                    :else :file)
+        blob-opts (assoc doc :blob-mode blob-mode :blob-id blob-id)
+        presented-result (->> (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value))
+                              #?(:clj (process-blobs blob-opts)))
+        opts-from-form-meta (-> result
+                                (select-keys [:nextjournal/width :nextjournal/opts])
+                                (cond-> #_result
+                                  (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))]
+    (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result}
 
-                                    (-> cell :form meta :nextjournal.clerk/open-graph :image)
-                                    (assoc :nextjournal/open-graph-image-capture true)
+                                 (-> form meta :nextjournal.clerk/open-graph :image)
+                                 (assoc :nextjournal/open-graph-image-capture true)
 
-                                    (= blob-mode :lazy-load)
-                                    (assoc :nextjournal/fetch-opts {:blob-id blob-id}
-                                           :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta])))}
-              (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
-              ;; TODO: consider dropping this. Still needed by notebook-viewer fn to read :nextjournal/width option on result blocks
-              opts-from-form-meta))))
+                                 #?@(:clj [(= blob-mode :lazy-load)
+                                           (assoc :nextjournal/fetch-opts {:blob-id blob-id}
+                                                  :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta]))]))}
+           (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
+           opts-from-form-meta)))
+
+#_(nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)
 
 (def hide-result-viewer
   {:name :hide-result :transform-fn (fn [_] nil)})
@@ -420,8 +431,8 @@
                       ;; TODO: display analysis could be merged into cell earlier
                       (-> cell (merge display-opts) (dissoc :result))))
               result?
-              (conj (with-viewer :clerk/result-block {:nextjournal/opts doc}
-                      cell))))))
+              (conj (with-viewer (:name result-viewer)
+                      (assoc cell :doc doc)))))))
 
 (defn update-viewers [viewers select-fn->update-fn]
   (reduce (fn [viewers [pred update-fn]]
@@ -453,7 +464,7 @@
                                        (let [title (when (or (string? value) (keyword? value) (symbol? value))
                                                      value)]
                                          [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
-                                          (cond-> {:class (when (number-col? i) "text-right")} title (assoc :title title))
+                                          (cond-> {:class (when (and (ifn? number-col?) (number-col? i)) "text-right")} title (assoc :title title))
                                           [:div.flex.items-center (nextjournal.clerk.render/inspect-presented opts header-cell)]]))) header-row)])})
 
 (def table-body-viewer
@@ -465,7 +476,7 @@
    :render-fn '(fn [row {:as opts :keys [path number-col?]}]
                  (into [:tr.hover:bg-gray-200.dark:hover:bg-slate-700
                         {:class (if (even? (peek path)) "bg-black/5 dark:bg-gray-800" "bg-white dark:bg-gray-900")}]
-                       (map-indexed (fn [idx cell] [:td.pl-6.pr-2.py-1 (when (number-col? idx) {:class "text-right"}) (nextjournal.clerk.render/inspect-presented opts cell)])) row))})
+                       (map-indexed (fn [idx cell] [:td.pl-6.pr-2.py-1 (when (and (ifn? number-col?) (number-col? idx)) {:class "text-right"}) (nextjournal.clerk.render/inspect-presented opts cell)])) row))})
 
 (defn update-table-viewers [viewers]
   (-> viewers
@@ -686,7 +697,10 @@
   {:name :html
    :render-fn 'identity
    :transform-fn (comp mark-presented
-                       (update-val (partial w/postwalk (when-wrapped inspect-wrapped-value))))})
+                       (update-val (fn [data]
+                                     (if (string? data)
+                                       [:div {:dangerouslySetInnerHTML {:__html data}}]
+                                       (w/postwalk (when-wrapped inspect-wrapped-value) data)))))})
 
 (def plotly-viewer
   {:name :plotly :render-fn 'nextjournal.clerk.render/render-plotly :transform-fn mark-presented})
@@ -801,13 +815,10 @@
       :opening-paren "[" :closing-paren "]"
       :page-size 20}))
 
-(def result-block-viewer
-  {:name :clerk/result-block
-   :transform-fn (comp mark-presented
-                       #?(:clj transform-result))})
-
 (def result-viewer
-  {:name :clerk/result :render-fn 'nextjournal.clerk.render/render-result :transform-fn mark-presented})
+  {:name :clerk/result
+   :render-fn 'nextjournal.clerk.render/render-result
+   :transform-fn (comp mark-presented (update-val transform-result))})
 
 (defn extract-clerk-atom-vars [{:as _doc :keys [blocks]}]
   (into {}
@@ -826,7 +837,7 @@
                                              (map (comp process-wrapped-value
                                                         apply-viewers*
                                                         (partial ensure-wrapped-with-viewers viewers))))))
-      (select-keys [:atom-var-name->state :blocks :toc :toc-visibility :title :open-graph])
+      (select-keys [:atom-var-name->state :auto-expand-results? :blocks :toc :toc-visibility :title :open-graph])
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
 
 (def notebook-viewer
@@ -877,9 +888,8 @@
    table-viewer
    table-error-viewer
    code-block-viewer
-   result-block-viewer
-   tagged-value-viewer
    result-viewer
+   tagged-value-viewer
    notebook-viewer
    hide-result-viewer])
 
@@ -1024,7 +1034,6 @@
 #_(sequence (drop+take-xf {:n 10}) (range 100))
 #_(sequence (drop+take-xf {:n 10 :offset 10}) (range 100))
 #_(sequence (drop+take-xf {}) (range 9))
-
 
 (declare assign-closing-parens)
 
@@ -1187,51 +1196,38 @@
        x))
    wrapped-value))
 
-#_(defn compute-expanded-at [{:as state :keys [indents expanded-at prev-type]}
-                             {:nextjournal/keys [value]
-                              :keys [content-length path type]
-                              :or {content-length 0}}]
-    (let [max-length (- 80 (reduce + 0 indents))
-          expanded? (< max-length content-length)
-          state' (assoc state
-                        :expanded-at (assoc expanded-at path expanded?)
-                        #_(if expanded?
-                            (assoc expanded-at path true)
-                            expanded-at)
-                        :prev-type type
-                        :indents (conj
-                                  (->> indents (take (count path)) vec)
-                                  (cond
-                                    (contains? #{:map-entry} prev-type) (or content-length 0)
-                                    (vector? value) 2
-                                    :else 1)))]
-      (if (vector? value)
-        (reduce compute-expanded-at state' value)
-        state')))
-
-#_(defn assign-expanded-at [wrapped-value]
-    (cond-> wrapped-value
-      (:content-length wrapped-value)
-      (assoc :nextjournal/expanded-at
-             (:expanded-at (compute-expanded-at {:expanded-at {}} wrapped-value)))))
-
-(defn compute-expanded-at [{:as state :keys [expanded-at]}
-                           {:nextjournal/keys [value] :keys [path]}]
-  (let [state' (assoc state :expanded-at (assoc expanded-at path false))]
+(defn compute-expanded-at [{:as state :keys [indents expanded-at prev-type]}
+                           {:nextjournal/keys [value]
+                            :keys [content-length path type]
+                            :or {content-length 0}}]
+  (let [max-length (- 80 (reduce + 0 indents))
+        expanded? (< max-length content-length)
+        state' (assoc state
+                      :expanded-at (assoc expanded-at path expanded?)
+                      :prev-type type
+                      :indents (conj
+                                (->> indents (take (count path)) vec)
+                                (cond
+                                  (contains? #{:map-entry} prev-type) (or content-length 0)
+                                  (vector? value) 2
+                                  :else 1)))]
     (if (vector? value)
       (reduce compute-expanded-at state' value)
       state')))
 
-(defn assign-expanded-at [wrapped-value]
-  (assoc wrapped-value :nextjournal/expanded-at (:expanded-at (compute-expanded-at {:expanded-at {}} wrapped-value))))
+(defn collect-expandable-paths [state {:nextjournal/keys [value] :keys [path]}]
+  (let [state' (assoc-in state [:expanded-at path] false)]
+    (if (vector? value)
+      (reduce collect-expandable-paths state' value)
+      state')))
+
+(defn assign-expanded-at [{:as wrapped-value :keys [content-length]}]
+  (assoc wrapped-value :nextjournal/expanded-at (:expanded-at (if content-length
+                                                                (compute-expanded-at {:expanded-at {}} wrapped-value)
+                                                                (collect-expandable-paths {:expanded-at {}} wrapped-value)))))
 
 (comment
-  (-> (compute-expanded-at
-       {:indents [] :expanded-at {}}
-       (present {:a-vector [1 2 3] :a-list '(123 234 345) :a-set #{1 2 3 4}}))
-      :expanded-at
-      keys
-      sort)
+  (:nextjournal/expanded-at (present {:a-vector [1 2 3] :a-list '(123 234 345) :a-set #{1 2 3 4}}))
   (= (count "[1 2 [1 [2] 3] 4 5]")
      (:content-length (assign-content-lengths (present [1 2 [1 [2] 3] 4 5]))))
   (= (count "{:a-vector [1 2 3] :a-list (123 234 345) :a-set #{1 2 3 4}}")
@@ -1249,8 +1245,7 @@
                :current-path (:current-path opts [])}
               opts)
        present*
-       assign-closing-parens
-       assign-expanded-at)))
+       assign-closing-parens)))
 
 (comment
   (present [\a \b])
