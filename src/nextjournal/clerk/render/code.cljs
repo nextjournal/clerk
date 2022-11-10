@@ -3,11 +3,9 @@
             ["@lezer/highlight" :refer [tags highlightTree]]
             ["@codemirror/state" :refer [EditorState RangeSetBuilder Text]]
             ["@codemirror/view" :refer [EditorView Decoration]]
-
             [nextjournal.clerk.render.hooks :as hooks]
             [applied-science.js-interop :as j]
-            [nextjournal.clojure-mode :as clojure-mode]
-            [clojure.string :as str]))
+            [nextjournal.clojure-mode :as clojure-mode]))
 
 ;; code viewer
 (def theme
