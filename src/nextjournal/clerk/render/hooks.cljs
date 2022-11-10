@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.render.hooks
   (:require ["d3-require" :as d3-require]
             ["react" :as react]
+            [reagent.ratom]
             ["use-sync-external-store/shim" :refer [useSyncExternalStore]]))
 
 ;; a type for wrapping react/useState to support reset! and swap!

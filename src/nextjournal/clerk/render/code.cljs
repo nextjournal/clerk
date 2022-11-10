@@ -68,14 +68,21 @@
        (.. EditorView -editable (of false))
        cm-theme])
 
-(defn cm-view [doc parent]
-  (EditorView. (j/obj :state (.create EditorState (j/obj :doc doc :extensions cm-extensions))
-                      :parent parent)))
+(defn cm-state [doc] (.create EditorState (j/obj :doc doc :extensions cm-extensions)))
+(defn cm-view [state parent] (EditorView. (j/obj :state state :parent parent)))
 
 (defn render-code [value]
-  (let [ref (hooks/use-ref nil)]
+  (let [!container (hooks/use-ref nil)
+        !view (hooks/use-ref nil)
+        !state (hooks/use-ref (cm-state value))]
     (hooks/use-effect (fn []
-                        (let [^js editor-view (cm-view value @ref)]
-                          #(.destroy editor-view))) [value])
-    [:div {:ref ref}]))
-
+                        (js/console.log :create-view value)
+                        (let [^js view (cm-view @!state @!container)]
+                          (reset! !view view)
+                          #(do (js/console.log :destroy-view) (.destroy view)))) [])
+    (hooks/use-effect (fn []
+                        (js/console.log :create-state value)
+                        (let [state (cm-state value)]
+                          (reset! !state state)
+                          (when @!view (.setState @!view state)))) [value])
+    [:div {:ref !container}]))
