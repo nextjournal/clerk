@@ -8,7 +8,7 @@
             [nextjournal.clojure-mode :as clojure-mode]))
 
 ;; code viewer
-(def cm-theme
+(def theme
   (.theme EditorView
           (j/lit {"&.cm-focused" {:outline "none"}
                   ".cm-line" {:padding "0"
@@ -30,7 +30,7 @@
                   ".cm-tooltip > ul > li:first-child" {:border-top-left-radius "3px"
                                                        :border-top-right-radius "3px"}})))
 
-(def cm-highlight-style
+(def highlight-style
   (.define HighlightStyle
            (clj->js [{:tag (.-meta tags) :class "cmt-meta"}
                      {:tag (.-link tags) :class "cmt-link"}
@@ -62,25 +62,22 @@
                      {:tag (.-comment tags) :class "cmt-comment"}
                      {:tag (.-invalid tags) :class "cmt-invalid"}])))
 
-(def cm-extensions
+(def extensions
   #js [clojure-mode/default-extensions
-       (syntaxHighlighting cm-highlight-style)
+       (syntaxHighlighting highlight-style)
        (.. EditorView -editable (of false))
-       cm-theme])
+       theme])
 
-(defn cm-state [doc] (.create EditorState (j/obj :doc doc :extensions cm-extensions)))
-(defn cm-view [state parent] (EditorView. (j/obj :state state :parent parent)))
+(defn make-state [doc]
+  (.create EditorState (j/obj :doc doc :extensions extensions)))
+
+(defn make-view [state parent]
+  (EditorView. (j/obj :state state :parent parent)))
 
 (defn render-code [value]
-  (let [!container (hooks/use-ref nil)
-        !view (hooks/use-ref nil)
-        !state (hooks/use-ref (cm-state value))]
-    (hooks/use-effect (fn []
-                        (js/console.log :create-view value)
-                        (let [^js view (reset! !view (cm-view @!state @!container))]
-                          #(do (js/console.log :destroy-view value) (.destroy view)))) [])
-    (hooks/use-effect (fn []
-                        (js/console.log :reset-state value)
-                        (cond->> (reset! !state (cm-state value))
-                          @!view (.setState @!view))) [value])
-    [:div {:ref !container}]))
+  (let [!container-el (hooks/use-ref nil)
+        !view (hooks/use-ref nil)]
+    (hooks/use-effect (fn [] (let [^js view (reset! !view (make-view (make-state value) @!container-el))]
+                               #(.destroy view))))
+    (hooks/use-effect (fn [] (.setState @!view (make-state value))) [value])
+    [:div {:ref !container-el}]))
