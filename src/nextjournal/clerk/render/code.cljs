@@ -77,7 +77,7 @@
 (defn render-code [value]
   (let [!container-el (hooks/use-ref nil)
         !view (hooks/use-ref nil)]
-    (hooks/use-effect (fn [] (let [^js view (reset! !view (make-view (make-state value) @!container-el))]
-                               #(.destroy view))))
+    (hooks/use-layout-effect (fn [] (let [^js view (reset! !view (make-view (make-state value) @!container-el))]
+                                      #(.destroy view))))
     (hooks/use-effect (fn [] (.setState @!view (make-state value))) [value])
     [:div {:ref !container-el}]))

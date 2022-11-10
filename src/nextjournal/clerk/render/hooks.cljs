@@ -45,6 +45,12 @@
   ([f] (react/useEffect (wrap-effect f) #js[]))
   ([f deps] (react/useEffect (wrap-effect f) (as-array deps))))
 
+(defn use-layout-effect
+  "React hook: useLayoutEffect. Defaults to an empty `deps` array.
+   Wraps `f` to return js/undefined for any non-function value."
+  ([f] (react/useLayoutEffect (wrap-effect f) #js[]))
+  ([f deps] (react/useLayoutEffect (wrap-effect f) (as-array deps))))
+
 (defn use-state
   "React hook: useState. Can be used like react/useState but also behaves like an atom."
   [init]
