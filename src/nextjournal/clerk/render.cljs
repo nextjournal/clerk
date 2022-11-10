@@ -88,7 +88,7 @@
   ([init] (specify-atom! (react/useRef init))))
 
 (defn- eval-fn
-  "Evaluate (f x) if f is a function, otherwise return f"
+  "Invoke (f x) if f is a function, otherwise return f"
   [f x]
   (if (fn? f)
     (f x)
