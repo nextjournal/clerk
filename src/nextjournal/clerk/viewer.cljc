@@ -48,13 +48,26 @@
 (defn viewer-eval? [x]
   (instance? ViewerEval x))
 
+(defn resolve-symbol-alias [aliases sym]
+  (if-let [full-ns (some->> sym namespace symbol (get aliases) str)]
+    (symbol full-ns (name sym))
+    sym))
+
+#_(resolve-symbol-alias {'v (find-ns 'nextjournal.clerk.viewer)} 'v/render-code)
+
+(defn resolve-aliases [aliases form]
+  (w/postwalk #(cond->> %
+                 (symbol? %) (resolve-symbol-alias aliases))
+              form))
+
 (defn ->viewer-fn [form]
-  (map->ViewerFn {:form form #?@(:cljs [:f (try (eval form)
-                                                (catch js/Error e
-                                                  (fn [_] [(eval 'nextjournal.clerk.render/error-view) e])))])}))
+  (map->ViewerFn {:form #?(:clj (resolve-aliases (ns-aliases *ns*) form) :cljs form)
+                  #?@(:cljs [:f (try (eval form)
+                                     (catch js/Error e
+                                       (fn [_] [(eval 'nextjournal.clerk.render/error-view) e])))])}))
 
 (defn ->viewer-eval [form]
-  (map->ViewerEval {:form form}))
+  (map->ViewerEval {:form #?(:clj (resolve-aliases (ns-aliases *ns*) form) :cljs form)}))
 
 (defn open-graph-metas [open-graph-properties]
   (into (list [:meta {:name "twitter:card" :content "summary_large_image"}])
