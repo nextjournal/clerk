@@ -39,7 +39,8 @@
                               io.github.nextjournal/viewers {:git/sha "1aaedea7709611cbb393add4c85c7a2dd551260e"}
                               metosin/reitit-frontend {:mvn/version "0.5.15"}}}
 
-           :dev {:extra-deps {arrowic/arrowic {:mvn/version "0.1.1"}
+           :dev {:extra-deps {org.clojure/clojure {:mvn/version "1.11.1"} ;; for `:as-alias` support but only in dev
+                              arrowic/arrowic {:mvn/version "0.1.1"}
                               binaryage/devtools {:mvn/version "1.0.3"}
                               cider/cider-nrepl {:mvn/version "0.28.3"}
                               thheller/shadow-cljs {:mvn/version "2.20.7"}
