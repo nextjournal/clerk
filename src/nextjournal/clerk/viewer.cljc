@@ -61,13 +61,13 @@
               form))
 
 (defn ->viewer-fn [form]
-  (map->ViewerFn {:form #?(:clj (resolve-aliases (ns-aliases *ns*) form) :cljs form)
+  (map->ViewerFn {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)
                   #?@(:cljs [:f (try (eval form)
                                      (catch js/Error e
                                        (fn [_] [(eval 'nextjournal.clerk.render/error-view) e])))])}))
 
 (defn ->viewer-eval [form]
-  (map->ViewerEval {:form #?(:clj (resolve-aliases (ns-aliases *ns*) form) :cljs form)}))
+  (map->ViewerEval {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)}))
 
 (defn open-graph-metas [open-graph-properties]
   (into (list [:meta {:name "twitter:card" :content "summary_large_image"}])
