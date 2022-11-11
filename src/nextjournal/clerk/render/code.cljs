@@ -1,34 +1,10 @@
 (ns nextjournal.clerk.render.code
-  (:require ["@codemirror/language" :refer [syntaxHighlighting HighlightStyle]]
+  (:require ["@codemirror/language" :refer [HighlightStyle]]
             ["@lezer/highlight" :refer [tags highlightTree]]
-            ["@codemirror/state" :refer [EditorState RangeSetBuilder Text]]
-            ["@codemirror/view" :refer [EditorView Decoration]]
-            [nextjournal.clerk.render.hooks :as hooks]
-            [applied-science.js-interop :as j]
-            [nextjournal.clojure-mode :as clojure-mode]))
-
-;; code viewer
-(def theme
-  (.theme EditorView
-          (j/lit {"&.cm-focused" {:outline "none"}
-                  ".cm-line" {:padding "0"
-                              :line-height "1.6"
-                              :font-size "15px"
-                              :font-family "\"Fira Mono\", monospace"}
-                  ".cm-matchingBracket" {:border-bottom "1px solid var(--teal-color)"
-                                         :color "inherit"}
-
-                  ;; only show cursor when focused
-                  ".cm-cursor" {:visibility "hidden"}
-                  "&.cm-focused .cm-cursor" {:visibility "visible"
-                                             :animation "steps(1) cm-blink 1.2s infinite"}
-                  "&.cm-focused .cm-selectionBackground" {:background-color "Highlight"}
-                  ".cm-tooltip" {:border "1px solid rgba(0,0,0,.1)"
-                                 :border-radius "3px"
-                                 :overflow "hidden"}
-                  ".cm-tooltip > ul > li" {:padding "3px 10px 3px 0 !important"}
-                  ".cm-tooltip > ul > li:first-child" {:border-top-left-radius "3px"
-                                                       :border-top-right-radius "3px"}})))
+            ["@codemirror/state" :refer [RangeSetBuilder Text]]
+            ["@codemirror/view" :refer [Decoration]]
+            ["@nextjournal/lang-clojure" :refer [clojureLanguage]]
+            [applied-science.js-interop :as j]))
 
 (def highlight-style
   (.define HighlightStyle
@@ -62,17 +38,6 @@
                      {:tag (.-comment tags) :class "cmt-comment"}
                      {:tag (.-invalid tags) :class "cmt-invalid"}])))
 
-(def extensions
-  #js [clojure-mode/default-extensions
-       (syntaxHighlighting highlight-style)
-       (.. EditorView -editable (of false))
-       theme])
-
-(defn make-state [doc]
-  (.create EditorState (j/obj :doc doc :extensions extensions)))
-
-(defn make-view [state parent]
-  (EditorView. (j/obj :state state :parent parent)))
 
 (defn rangeset-seq
   "Returns a lazy-seq of ranges inside a RangeSet (like a Decoration set)"
@@ -85,8 +50,6 @@
             (.next iterator)
             (cons {:from from :to to :val val}
                   (lazy-seq (step))))))))))
-
-(def ^js syntax (clojure-mode/syntax))
 
 (defn style-markup [^js text {:keys [from to val]}]
   (j/let [^js {:keys [tagName class]} val]
@@ -108,9 +71,10 @@
                 (< pos to)
                 (concat [(.sliceString text pos to)])))))))
 
-(defn ssr [^String code]
+
+(defn render-code [^String code]
   (let [builder (RangeSetBuilder.)
-        _ (highlightTree (.. syntax -parser (parse code)) highlight-style
+        _ (highlightTree (.. clojureLanguage -parser (parse code)) highlight-style
                          (fn [from to style]
                            (.add builder from to (.mark Decoration (j/obj :class style)))))
         decorations-rangeset (.finish builder)
@@ -120,13 +84,3 @@
       (into [:div.cm-content.whitespace-pre]
             (map (partial style-line decorations-rangeset text))
             (range 1 (inc (.-lines text))))]]))
-
-(defn render-code [value]
-  (if-not (exists? js/document)
-    (ssr value)
-    (let [!container-el (hooks/use-ref nil)
-          !view (hooks/use-ref nil)]
-      (hooks/use-layout-effect (fn [] (let [^js view (reset! !view (make-view (make-state value) @!container-el))]
-                                        #(.destroy view))))
-      (hooks/use-effect (fn [] (.setState @!view (make-state value))) [value])
-      [:div {:ref !container-el}])))
