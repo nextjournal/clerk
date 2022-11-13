@@ -287,19 +287,21 @@
                (do
                  (report-fn {:stage :compile-viewer})
                  (let [{duration :time-ms js-path :result} (eval/time-ms ((requiring-resolve 'nextjournal.clerk.builder.cljs/release) opts state))
-                       js-path-hashed (viewer/store+get-cas-url! (assoc opts :ext "js")
+                       js-path-stored (viewer/store+get-cas-url! (assoc opts :ext "js")
                                                                  (fs/read-all-bytes (str (:out-path opts)
+                                                                                         "/"
                                                                                          js-path)))]
                    (report-fn {:stage :compiled-viewer :duration duration})
-                   (assoc-in opts [:resource-urls js-path-hashed] js-path)))
+                   (assoc-in opts [:resource-urls "/js/viewer.js"] js-path-stored)))
                opts)
         opts (if compile-css?
                (do (report-fn {:stage :compiling-css})
                    (let [{duration :time-ms css-path :result} (eval/time-ms (compile-css! opts
                                                                                           state
                                                                                           (if extra-namespaces
-                                                                                           (str (:out-path opts) ((:resource-urls opts) "/js/viewer.js"))
-                                                                                           (get @config/!asset-map "/js/viewer.js"))))]
+                                                                                            (->> (get-in opts [:resource-urls "/js/viewer.js"])
+                                                                                                 (str (:out-path opts) "/"))
+                                                                                              (get @config/!asset-map "/js/viewer.js"))))]
                      (report-fn {:stage :done :duration duration})
                      (assoc-in opts [:resource-urls "/css/viewer.css"] css-path)))
                opts)
