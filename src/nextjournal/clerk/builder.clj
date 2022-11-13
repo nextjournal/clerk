@@ -286,7 +286,7 @@
         opts (if extra-namespaces
                (do
                  (report-fn {:stage :compile-viewer})
-                 (let [{duration :time-ms js-path :result} (eval/time-ms ((requiring-resolve 'nextjournal.clerk.builder.cljs/release!) opts state))
+                 (let [{duration :time-ms js-path :result} (eval/time-ms ((requiring-resolve 'nextjournal.clerk.builder.cljs/release) opts state))
                        js-path-hashed (viewer/store+get-cas-url! (assoc opts :ext "js")
                                                                  (fs/read-all-bytes (str (:out-path opts)
                                                                                          js-path)))]
