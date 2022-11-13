@@ -19,12 +19,14 @@
                 :task (shell "yarn install")}
 
   watch:cljs {:doc "Starts shadow-cljs & clerk"
-              :task (apply clojure "-X:test:viewer:demo:dev" *command-line-args*)
-              :depends [yarn-install]}
+              :depends [yarn-install]
+              :task (apply clojure "-X:test:demo:dev:viewer nextjournal.clerk.builder.cljs/start-watch"
+                      (rest *command-line-args*))}
 
   build:js {:doc "Builds JS"
             :depends [yarn-install]
-            :task (clojure "-M:demo:dev:viewer release viewer")}
+            :task (apply clojure "-X:dev:viewer nextjournal.clerk.builder.cljs/release"
+                    (rest *command-line-args*))}
 
   write-hash {:doc "Write viewer resource hash to resources. Intended to be used in a pre-commit hook."
               :task viewer-resources-hashing/write-viewer-resource-hash}

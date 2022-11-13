@@ -286,7 +286,7 @@
         opts (if extra-namespaces
                (do
                  (report-fn {:stage :compile-viewer})
-                 (let [{duration :time-ms js-url :result} (eval/time-ms ((requiring-resolve 'nextjournal.clerk.viewer.builder/release!) opts state))]
+                 (let [{duration :time-ms js-url :result} (eval/time-ms ((requiring-resolve 'nextjournal.clerk.builder.cljs/release!) opts state))]
                    (report-fn {:stage :compiled-viewer :duration duration})
                    (assoc-in opts [:resource-urls "/js/viewer.js"] js-url)))
                opts)

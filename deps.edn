@@ -37,9 +37,7 @@
                               org.babashka/cli {:mvn/version "0.5.40"}}
                  :extra-paths ["notebooks"]}
            :viewer {:extra-deps {nextjournal.clerk/viewer {:local/root "viewer"}}
-                    :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}" "-Dpolyglot.engine.WarnInterpreterOnly=false" "-XX:-OmitStackTraceInFastThrow"]
-                    :main-opts ["-m" "nextjournal.clerk.dev-launcher"]
-                    :exec-fn nextjournal.clerk.dev-launcher/start}
+                    :jvm-opts ["-Dpolyglot.engine.WarnInterpreterOnly=false" "-XX:-OmitStackTraceInFastThrow"]}
            :test {:extra-deps {nubank/matcher-combinators {:mvn/version "3.5.1"}
                                org.clojure/test.check {:mvn/version "1.1.1"}
                                lambdaisland/kaocha {:mvn/version "1.66.1034"}}
