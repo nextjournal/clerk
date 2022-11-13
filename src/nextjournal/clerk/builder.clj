@@ -287,23 +287,24 @@
                (do
                  (report-fn {:stage :compile-viewer})
                  (let [{duration :time-ms js-path :result} (eval/time-ms ((requiring-resolve 'nextjournal.clerk.builder.cljs/release) opts state))
-                       js-path-stored (viewer/store+get-cas-url! (assoc opts :ext "js")
-                                                                 (fs/read-all-bytes (str (:out-path opts)
-                                                                                         "/"
-                                                                                         js-path)))]
+                       js-path (viewer/store+get-cas-url! (assoc opts :ext "js")
+                                                          (fs/read-all-bytes (str (:out-path opts)
+                                                                                  "/"
+                                                                                  js-path)))]
                    (report-fn {:stage :compiled-viewer :duration duration})
-                   (assoc-in opts [:resource-urls "/js/viewer.js"] js-path-stored)))
+                   (assoc-in opts [:resource-urls "/js/viewer.js"] (str "/" js-path))))
                opts)
         opts (if compile-css?
                (do (report-fn {:stage :compiling-css})
                    (let [{duration :time-ms css-path :result} (eval/time-ms (compile-css! opts
                                                                                           state
                                                                                           (if extra-namespaces
-                                                                                            (->> (get-in opts [:resource-urls "/js/viewer.js"])
-                                                                                                 (str (:out-path opts) "/"))
+                                                                                            (str (:out-path opts)
+                                                                                                 "/"
+                                                                                                 (get-in opts [:resource-urls "/js/viewer.js"]))
                                                                                               (get @config/!asset-map "/js/viewer.js"))))]
                      (report-fn {:stage :done :duration duration})
-                     (assoc-in opts [:resource-urls "/css/viewer.css"] css-path)))
+                     (assoc-in opts [:resource-urls "/css/viewer.css"] (str "/" css-path))))
                opts)
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
     (when upload-cache-fn
