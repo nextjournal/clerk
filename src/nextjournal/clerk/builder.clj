@@ -221,7 +221,7 @@
     ;; NOTE: a .cjs extension is safer in case the current npm project is of type module (like Clerk's): in this case all .js files
     ;; are treated as ES modules and this is not the case of our tw config.
     (spit tw-input (slurp (io/resource "stylesheets/viewer.css")))
-    (spit tw-viewer (slurp viewer-url)) ;; I can't tell how this is being used? --Matt
+    (spit tw-viewer (slurp viewer-url))
     (doseq [{:keys [file viewer]} docs]
       (spit (let [path (fs/path tw-folder (str/replace file #"\.(cljc?|md)$" ".edn"))]
               (fs/create-dirs (fs/parent path))
@@ -286,19 +286,22 @@
         opts (if extra-namespaces
                (do
                  (report-fn {:stage :compile-viewer})
-                 (let [{duration :time-ms js-url :result} (eval/time-ms ((requiring-resolve 'nextjournal.clerk.builder.cljs/release!) opts state))]
+                 (let [{duration :time-ms js-path :result} (eval/time-ms ((requiring-resolve 'nextjournal.clerk.builder.cljs/release!) opts state))
+                       js-path-hashed (viewer/store+get-cas-url! (assoc opts :ext "js")
+                                                                 (fs/read-all-bytes (str (:out-path opts)
+                                                                                         js-path)))]
                    (report-fn {:stage :compiled-viewer :duration duration})
-                   (assoc-in opts [:resource-urls "/js/viewer.js"] js-url)))
+                   (assoc-in opts [:resource-urls js-path-hashed] js-path)))
                opts)
         opts (if compile-css?
                (do (report-fn {:stage :compiling-css})
-                   (let [{duration :time-ms css-url :result} (eval/time-ms (compile-css! opts
-                                                                                         state
-                                                                                         (if extra-namespaces
+                   (let [{duration :time-ms css-path :result} (eval/time-ms (compile-css! opts
+                                                                                          state
+                                                                                          (if extra-namespaces
                                                                                            (str (:out-path opts) ((:resource-urls opts) "/js/viewer.js"))
                                                                                            (get @config/!asset-map "/js/viewer.js"))))]
                      (report-fn {:stage :done :duration duration})
-                     (assoc-in opts [:resource-urls "/css/viewer.css"] css-url)))
+                     (assoc-in opts [:resource-urls "/css/viewer.css"] css-path)))
                opts)
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
     (when upload-cache-fn
