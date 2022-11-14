@@ -5,6 +5,7 @@
             [shadow.cljs.devtools.api :as shadow]
             [shadow.cljs.devtools.config :as config]
             [shadow.cljs.devtools.server :as shadow.server]
+            [shadow.cljs.devtools.server.npm-deps :as npm-deps]
             [shadow.cljs.devtools.server.runtime :as runtime])
   (:import (java.lang.management ManagementFactory)
            (java.util Locale)))
@@ -18,10 +19,6 @@
       config/normalize
       (->> (merge config/default-config))))
 
-(defn get-build [opts]
-  (-> (get-config opts)
-      (config/get-build :viewer)))
-
 (def default-release-opts
   {:compile-css true
    :bundle? false
@@ -32,12 +29,14 @@
   ([opts] (release opts {}))
   ([opts shadow-opts]
    (require 'shadow.cljs.silence-default-loggers)
-   (let [opts (merge default-release-opts opts)
+   (let [config (get-config opts)
+         _ (npm-deps/main config nil)
+         opts (merge default-release-opts opts)
          server-running? (runtime/get-instance)
-         _ (when-not server-running? (shadow.server/start! (get-config opts)))
+         _ (when-not server-running? (shadow.server/start! config))
          state (shadow/with-runtime
                 (shadow/release*
-                 (get-build opts)
+                 (config/get-build config :viewer)
                  shadow-opts))
          _ (when-not server-running? (shadow.server/stop!))
          output-name (->> (or (:shadow.build.closure/modules state)
@@ -53,10 +52,11 @@
 
   (future (nrepl.cmdline/dispatch-commands {:middleware '[cider.nrepl/cider-middleware]}))
   (require 'shadow.cljs.silence-default-loggers)
-
-  (shadow.server/start! (get-config serve-opts))
-  (shadow/watch (get-build serve-opts))
-  (clerk/serve! (assoc serve-opts :resource-urls {"/js/viewer.js" "/js/viewer.js"}))
+  (let [config (get-config serve-opts)]
+    (npm-deps/main config nil)
+    (shadow.server/start! config)
+    (shadow/watch (config/get-build config :viewer))
+    (clerk/serve! (assoc serve-opts :resource-urls {"/js/viewer.js" "/js/viewer.js"})))
 
   (set! *print-namespace-maps* false)
   (println "Clerk dev system ready in"
