@@ -57,9 +57,16 @@
                                    (cons "." (interpose "." (str/split class #" "))))))
      (.sliceString text from to)]))
 
+;; NOTE: these styles are partially overlapping with those for the `.viewer-code` container
+;; but are needed to fix rendered code _outside_ of it. e.g. in Clerk results
+(def line-styles {:padding "0"
+                  :line-height "1.6"
+                  :font-size "15px"
+                  :font-family "\"Fira Mono\", monospace"})
+
 (defn style-line [decos ^js text i]
   (j/let [^js {:keys [from to]} (.line text i)]
-    (into [:div.cm-line]
+    (into [:div.cm-line {:style line-styles}]
           (loop [pos from
                  lds (take-while #(<= (:to %) to) (rangeset-seq decos from))
                  buf ()]
