@@ -8,7 +8,7 @@
 ;; tagged with `^::clerk/sync`
 
 ^::clerk/sync
-(defonce syncstate (atom nil))
+(defonce vega-selection (atom nil))
 
 ;; a vega-lite bar chart where you can select an interval on the chart.
 ;; Selection events are captured and used to update a synce atom
@@ -46,11 +46,11 @@
                           ;; selection, avoiding many updates to sync'd atom on
                           ;; every intermediate selection change
                           (.addEventListener view "mouseup" (fn [_event _item]
-                                                              (swap! viewers.vega-callback-with-atom-sync/syncstate
+                                                              (swap! @(resolve 'viewers.vega-callback-with-atom-sync/vega-selection)
                                                                      (constantly (deref !selection-state))))))
                         embedded-vega))
    :embed/opts {:actions false}})
 
 ;; show the atom that was updated by selecting an interval on the graph on the
 ;; browser side
-@syncstate
+@vega-selection
