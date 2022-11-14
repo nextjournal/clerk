@@ -222,6 +222,10 @@
 (defn vl
   "Displays `x` with the vega embed viewer, supporting both vega-lite and vega.
 
+  `x` should be the standard vega view description map, accepting the following addtional keys:
+  * `:embed/callback` a function to be called on the vega-embed object after creation.
+  * `:embed/opts` a map of vega-embed options (see https://github.com/vega/vega-embed#options)
+
   Supports an optional first `viewer-opts` map arg with the following optional keys:
 
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`

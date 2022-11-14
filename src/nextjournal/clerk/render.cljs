@@ -632,8 +632,15 @@
 (defn render-vega-lite [value]
   (let [handle-error (hooks/use-error-handler)
         vega-embed (hooks/use-d3-require "vega-embed@6.11.1")
+        opts (get value :embed/opts {})
         ref-fn (react/useCallback #(when %
-                                     (-> (.embed vega-embed % (clj->js (dissoc value :embed/opts)) (clj->js (:embed/opts value {})))
+                                     (-> (.embed vega-embed
+                                                 %
+                                                 (clj->js (dissoc value :embed/opts :embed/callback))
+                                                 (clj->js opts))
+                                         (.then (fn [result] (if-let [callback (:embed/callback value)]
+                                                               (callback result)
+                                                               result)))
                                          (.catch handle-error)))
                                   #js[value vega-embed])]
     (when value
