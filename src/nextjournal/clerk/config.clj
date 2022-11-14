@@ -26,11 +26,11 @@
   (delay (or (some-> (io/resource "clerk-asset-map.edn") slurp edn/read-string)
              (-> lookup-url slurp edn/read-string))))
 
-(defonce !resource->url
+(def static-resource-urls
   ;; contains asset manifest in the form:
   ;; {"/js/viewer.js" "https://..."}
-  (atom (or resource-manifest-from-props
-            @!asset-map)))
+  (or resource-manifest-from-props
+      @!asset-map))
 
 #_(swap! !resource->url assoc "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvAV62HzsvhcsXEkHP33uj4cV9UvdDz7DU9qLeVRCfEP9kWLFAzaMKL77trdx898DzcVyDVejdfxvxj5XB84UpWvQ")
 #_(swap! !resource->url dissoc "/css/viewer.css")

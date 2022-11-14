@@ -365,6 +365,7 @@
   * `:browse?` will open Clerk in a browser after it's been started
   * a sequence of `:watch-paths` that Clerk will watch for file system events and show any changed file
   * a `:show-filter-fn` to restrict when to re-evaluate or show a notebook as a result of file system event. Useful for e.g. pinning a notebook. Will be called with the string path of the changed file.
+  * a `:resource-urls` map to override asset paths
 
   Can be called multiple times and Clerk will happily serve you according to the latest config."
   {:org.babashka/cli {:spec {:watch-paths {:desc "Paths on which to watch for changes and show a changed document."
@@ -383,9 +384,9 @@
                (str "\n" (format-opts (-> #'serve! meta :org.babashka/cli))))
       (println (-> #'serve! meta :doc)))
     (let [{:as normalized-config
-           :keys [browse? watch-paths port show-filter-fn]
+           :keys [browse? watch-paths port show-filter-fn resource-urls]
            :or {port 7777}} (normalize-opts config)]
-      (webserver/serve! {:port port})
+      (webserver/serve! {:port port :resource-urls resource-urls})
       (reset! !show-filter-fn show-filter-fn)
       (halt-watcher!)
       (when (seq watch-paths)

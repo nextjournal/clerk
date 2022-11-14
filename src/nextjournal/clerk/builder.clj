@@ -107,12 +107,13 @@
   (str "public" fs/file-separator "build"))
 
 (defn process-build-opts [{:as opts :keys [paths index]}]
-  (merge {:out-path default-out-path
-          :bundle? false
-          :browse? false
-          :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
-         (cond-> opts
-           index (assoc :index (str index)))))
+  (-> (merge {:out-path default-out-path
+              :bundle? false
+              :browse? false
+              :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
+             opts)
+      (update :resource-urls (partial merge {} config/static-resource-urls))
+      (cond-> index (assoc :index (str index)))))
 
 #_(process-build-opts {:index 'book.clj})
 
@@ -208,7 +209,7 @@
 
 (defn compile-css!
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
-  [{:as opts :keys [out-path]} docs]
+  [{:as opts :keys [resource-urls]} docs]
   (let [tw-folder (fs/create-dirs "tw")
         tw-input (str tw-folder "/input.css")
         tw-config (str tw-folder "/tailwind.config.cjs")
@@ -218,7 +219,7 @@
     ;; NOTE: a .cjs extension is safer in case the current npm project is of type module (like Clerk's): in this case all .js files
     ;; are treated as ES modules and this is not the case of our tw config.
     (spit tw-input (slurp (io/resource "stylesheets/viewer.css")))
-    (spit tw-viewer (slurp (get @config/!asset-map "/js/viewer.js")))
+    (spit tw-viewer (slurp (resource-urls "/js/viewer.js")))
     (doseq [{:keys [file viewer]} docs]
       (spit (let [path (fs/path tw-folder (str/replace file #"\.(cljc?|md)$" ".edn"))]
               (fs/create-dirs (fs/parent path))
@@ -235,9 +236,9 @@
               "--minify")]
       (when-not (= 0 exit)
         (throw (ex-info (str "Clerk build! failed\n" out "\n" err) ret))))
-    (swap! config/!resource->url assoc
-           "/css/viewer.css" (viewer/store+get-cas-url! (assoc opts :ext "css") (fs/read-all-bytes tw-output)))
-    (fs/delete-tree tw-folder)))
+    (let [url (viewer/store+get-cas-url! (assoc opts :ext "css") (fs/read-all-bytes tw-output))]
+      (fs/delete-tree tw-folder)
+      url)))
 
 (defn build-static-app! [opts]
   (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css?]}
@@ -280,10 +281,12 @@
                         result)) state (range))
         _ (when-let [first-error (some :error state)]
             (throw first-error))
-        _ (when compile-css?
-            (report-fn {:stage :compiling-css})
-            (let [{duration :time-ms} (eval/time-ms (compile-css! opts state))]
-              (report-fn {:stage :done :duration duration})))
+        opts (if compile-css?
+               (do (report-fn {:stage :compiling-css})
+                   (let [{duration :time-ms css-path :result} (eval/time-ms (compile-css! opts state))]
+                     (report-fn {:stage :done :duration duration})
+                     (assoc-in opts [:resource-urls "/css/viewer.css"] (str "/" css-path))))
+               opts)
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
     (when upload-cache-fn
       (report-fn {:stage :uploading-cache})
