@@ -423,13 +423,14 @@
   Passing at least one of the above is required. When both `:paths`
   and `:paths-fn` are given, `:paths` takes precendence.
 
-  - `:bundle`      - if true results in a single self-contained html file including inlined images
-  - `:compile-css` - if true compiles css file containing only the used classes
-  - `:ssr`         - if true runs react server-side-rendering and includes the generated markup in the html
-  - `:browse`      - if true will open browser with the built file on success
-  - `:dashboard`   - if true will start a server and show a rich build report in the browser (use with `:bundle` to open browser)
-  - `:out-path`  - a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
-  - `:git/sha`, `:git/url` - when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
+  - `:bundle`        - if true results in a single self-contained html file including inlined images
+  - `:compile-css`   - if true compiles css file containing only the used classes
+  - `:ssr`           - if true runs react server-side-rendering and includes the generated markup in the html
+  - `:browse`        - if true will open browser with the built file on success
+  - `:dashboard`     - if true will start a server and show a rich build report in the browser (use with `:bundle` to open browser)
+  - `:out-path`      - a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
+  - `:git/sha`, `:git/url` - when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)
+  - `:resource-urls` - a map to override asset paths
   "
   {:org.babashka/cli {:spec {:paths {:desc "Paths to notebooks toc include in the build, supports glob patterns."
                                      :coerce []}
