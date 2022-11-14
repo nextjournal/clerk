@@ -1,6 +1,5 @@
 (ns nextjournal.clerk.render
-  (:require ["d3-require" :as d3-require]
-            ["react" :as react]
+  (:require ["react" :as react]
             ["react-dom/client" :as react-client]
             [applied-science.js-interop :as j]
             [cljs.reader]
@@ -19,7 +18,6 @@
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.mathjax :as mathjax]
             [reagent.core :as r]
-            [reagent.dom :as rdom]
             [reagent.ratom :as ratom]
             [sci.core :as sci]
             [shadow.cljs.modern :refer [defclass]]))

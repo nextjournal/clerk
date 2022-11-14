@@ -9,7 +9,8 @@
            nextjournal.devcards/defcard clj-kondo.lint-as/def-catch-all
            taoensso.encore/defonce clojure.core/defonce
            taoensso.encore/defalias clojure.core/def
-           promesa.core/let clojure.core/let}
+           promesa.core/let clojure.core/let
+           shadow.cljs.modern/defclass clojure.core/defprotocol}
  :linters {:consistent-alias {:aliases {datomic.api datomic
                                         nextjournal.log log
                                         clojure.string str
@@ -21,6 +22,6 @@
                                          (taoensso.nippy/extend-freeze)
                                          (taoensso.nippy/extend-thaw)]}
            :unused-namespace {:exclude [clojure.string
-                                        nextjournal.devcards
-                                        nextjournal.log]}}
+                                        nextjournal.log]}
+           :unused-binding :off}
  :hooks {:macroexpand {multihash.digest/defhash hooks/defhash}}}
