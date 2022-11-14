@@ -29,9 +29,9 @@
   ([opts] (release opts {}))
   ([opts shadow-opts]
    (require 'shadow.cljs.silence-default-loggers)
-   (let [config (get-config opts)
+   (let [opts (merge default-release-opts opts)
+         config (get-config opts)
          _ (npm-deps/main config nil)
-         opts (merge default-release-opts opts)
          server-running? (runtime/get-instance)
          _ (when-not server-running? (shadow.server/start! config))
          state (shadow/with-runtime

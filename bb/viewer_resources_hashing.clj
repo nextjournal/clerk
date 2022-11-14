@@ -24,7 +24,7 @@
 
 (defn classpath-dirs []
   (tasks/run 'yarn-install);
-  (->> (shell {:out :string} "yarn --silent shadow-cljs classpath")
+  (->> (shell {:out :string} "clojure -A:viewer -Spath")
        :out
        str/trim
        str/split-lines
@@ -37,7 +37,7 @@
 (defn file-set []
   (reduce into []
           [["deps.edn"
-            "shadow-cljs.edn"
+            "nextjournal/clerk/shadow-cljs.edn"
             "yarn.lock"]
            (djv/cljs-files (classpath-dirs))]))
 
