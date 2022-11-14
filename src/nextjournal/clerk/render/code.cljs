@@ -4,7 +4,8 @@
             ["@codemirror/state" :refer [RangeSetBuilder Text]]
             ["@codemirror/view" :refer [Decoration]]
             ["@nextjournal/lang-clojure" :refer [clojureLanguage]]
-            [applied-science.js-interop :as j]))
+            [applied-science.js-interop :as j]
+            [clojure.string :as str]))
 
 (def highlight-style
   (.define HighlightStyle
@@ -38,7 +39,6 @@
                      {:tag (.-comment tags) :class "cmt-comment"}
                      {:tag (.-invalid tags) :class "cmt-invalid"}])))
 
-
 (defn rangeset-seq
   "Returns a lazy-seq of ranges inside a RangeSet (like a Decoration set)"
   ([rset] (rangeset-seq rset 0))
@@ -53,7 +53,9 @@
 
 (defn style-markup [^js text {:keys [from to val]}]
   (j/let [^js {:keys [tagName class]} val]
-    [(keyword (str tagName "." class)) (.sliceString text from to)]))
+    [(keyword (apply str tagName (when class
+                                   (cons "." (interpose "." (str/split class #" "))))))
+     (.sliceString text from to)]))
 
 (defn style-line [decos ^js text i]
   (j/let [^js {:keys [from to]} (.line text i)]
