@@ -61,7 +61,7 @@ let state = " (-> state v/->edn pr-str) "
 viewer.set_state(viewer.read_string(state))
 viewer.mount(document.getElementById('clerk'))\n"
      (when conn-ws?
-       "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
+       "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + document.location.pathname + '_ws')
 ws.onmessage = viewer.onmessage;
 window.ws_send = msg => ws.send(msg)")]]))
 
