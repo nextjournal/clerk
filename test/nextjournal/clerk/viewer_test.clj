@@ -81,6 +81,17 @@
            (:nextjournal/width (v/apply-viewers (v/table {:nextjournal.clerk/width :full} {:a [1] :b [2] :c [3]})))))))
 
 
+(deftest resolve-aliases
+  (testing "it resolves aliases"
+    (is (= '[nextjournal.clerk.viewer/render-code
+             nextjournal.clerk.render.hooks/use-callback
+             nextjournal.clerk.render/render-code]
+           (v/resolve-aliases {'v (find-ns 'nextjournal.clerk.viewer)
+                               'my-hooks (create-ns 'nextjournal.clerk.render.hooks)}
+                              '[v/render-code
+                                my-hooks/use-callback
+                                nextjournal.clerk.render/render-code])))))
+
 (deftest present
   (testing "only transform-fn can select viewer"
     (is (match? {:nextjournal/value [:div.viewer-markdown
