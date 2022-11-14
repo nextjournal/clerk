@@ -37,7 +37,7 @@
 (defn file-set []
   (reduce into []
           [["deps.edn"
-            "nextjournal/clerk/shadow-cljs.edn"
+            "viewer/src/nextjournal/clerk/shadow-cljs.edn"
             "yarn.lock"]
            (djv/cljs-files (classpath-dirs))]))
 
