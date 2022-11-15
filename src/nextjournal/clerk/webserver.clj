@@ -72,22 +72,23 @@
   {:blob-id (str/replace uri "/_blob/" "")
    :fetch-opts (get-fetch-opts query-string)})
 
-(defn serve-file [path {:as req :keys [uri]}]
-  (let [file-or-dir (str path uri)
-        file (when (fs/exists? file-or-dir)
-               (cond-> file-or-dir
-                 (fs/directory? file-or-dir) (fs/file "index.html")))
-        extension (fs/extension file)]
-    (if (fs/exists? file)
-      {:status 200
-       :headers (cond-> {"Content-Type" ({"css" "text/css"
-                                          "html" "text/html"
-                                          "png" "image/png"
-                                          "jpg" "image/jpeg"
-                                          "js" "application/javascript"} extension "text/html")}
-                  (and (= "js" extension) (fs/exists? (str file ".map"))) (assoc "SourceMap" (str uri ".map")))
-       :body (fs/read-all-bytes file)}
-      {:status 404})))
+(defn serve-file [paths uri]
+  (let [extension (fs/extension uri)]
+    (first
+     (for [path paths
+           :let [file-or-dir (str path uri)
+                 file (when (fs/exists? file-or-dir)
+                        (cond-> file-or-dir
+                                (fs/directory? file-or-dir) (fs/file "index.html")))]
+           :when (fs/exists? file)]
+       {:status 200
+        :headers (cond-> {"Content-Type" ({"css" "text/css"
+                                           "html" "text/html"
+                                           "png" "image/png"
+                                           "jpg" "image/jpeg"
+                                           "js" "application/javascript"} extension "text/html")}
+                         (and (= "js" extension) (fs/exists? (str file ".map"))) (assoc "SourceMap" (str uri ".map")))
+        :body (fs/read-all-bytes file)}))))
 
 #_(serve-file "public" {:uri "/js/viewer.js"})
 
@@ -117,17 +118,19 @@
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
     (eval '(nextjournal.clerk/recompute!)))
 
-(defn app [{:as req :keys [uri]}]
+(defn app [{:keys [serve-paths]} {:as req :keys [uri]}]
   (if (:websocket? req)
     (httpkit/as-channel req ws-handlers)
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
-        ("build" "js") (serve-file "public" req)
         "_ws" {:status 200 :body "upgrading..."}
-        {:status  200
-         :headers {"Content-Type" "text/html"}
-         :body    (view/doc->html @!doc @!error)})
+        (or (serve-file (into ["public"] serve-paths) uri)
+            (when (re-find #"^/?(build|js)" uri)
+              {:status 404})
+            {:status  200
+             :headers {"Content-Type" "text/html"}
+             :body    (view/doc->html @!doc {:error @!error})}))
       (catch Throwable e
         {:status  500
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
@@ -181,10 +184,12 @@
 
 #_(halt!)
 
-(defn serve! [{:keys [port] :or {port 7777}}]
+(defn serve! [{:as opts :keys [port] :or {port 7777}}]
   (halt!)
   (try
-    (reset! !server {:port port :stop-fn (httpkit/run-server #'app {:port port})})
+    (reset! !server {:port port :stop-fn (httpkit/run-server
+                                          (partial #'app opts)
+                                          {:port port})})
     (println (str "Clerk webserver started on http://localhost:" port " ..."))
     (catch java.net.BindException _e
       (println "Port " port " not available, server not started!"))))
