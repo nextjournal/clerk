@@ -1,6 +1,5 @@
 (ns nextjournal.clerk.render
-  (:require ["d3-require" :as d3-require]
-            ["react" :as react]
+  (:require ["react" :as react]
             ["react-dom/client" :as react-client]
             [applied-science.js-interop :as j]
             [cljs.reader]
@@ -19,9 +18,9 @@
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.mathjax :as mathjax]
             [reagent.core :as r]
-            [reagent.dom :as rdom]
             [reagent.ratom :as ratom]
             [sci.core :as sci]
+            [sci.ctx-store]
             [shadow.cljs.modern :refer [defclass]]))
 
 (r/set-default-compiler! (r/create-compiler {:function-components true}))
@@ -542,19 +541,19 @@
 
 (declare mount)
 
-(defn intern-atom! [sci-ctx [var-name state]]
-  (assert sci-ctx "sci-ctx must be set")
-  (if-let [existing-var (sci/resolve sci-ctx var-name)]
+(defn intern-atom! [[var-name state]]
+  (assert (sci.ctx-store/get-ctx) "sci-ctx must be set")
+  (if-let [existing-var (sci/resolve (sci.ctx-store/get-ctx) var-name)]
     (reset! @existing-var state)
-    (sci/intern sci-ctx
+    (sci/intern (sci.ctx-store/get-ctx)
                 (sci/create-ns (symbol (namespace var-name)))
                 (symbol (name var-name))
                 (with-meta (r/atom state)
                   {:var-name var-name}))))
 
-(defn ^:export set-state! [{:as state :keys [doc error remount? sci-ctx]}]
+(defn ^:export set-state! [{:as state :keys [doc error remount?]}]
   (doseq [atom-var (get-in doc [:nextjournal/value :atom-var-name->state])]
-    (intern-atom! sci-ctx atom-var))
+    (intern-atom! atom-var))
   (when remount?
     (swap! !eval-counter inc))
   (when (contains? state :doc)
