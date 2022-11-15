@@ -3,6 +3,7 @@
             ["react-dom/client" :as react-client]
             [applied-science.js-interop :as j]
             [cljs.reader]
+            [clojure.set :as set]
             [clojure.string :as str]
             [editscript.core :as editscript]
             [goog.object]
@@ -541,7 +542,7 @@
 
 (declare mount)
 
-(defn intern-atom! [[var-name state]]
+(defn intern-atom! [var-name state]
   (assert (sci.ctx-store/get-ctx) "sci-ctx must be set")
   (if-let [existing-var (sci/resolve (sci.ctx-store/get-ctx) var-name)]
     (reset! @existing-var state)
@@ -551,9 +552,23 @@
                 (with-meta (r/atom state)
                   {:var-name var-name}))))
 
+(defonce ^:private !synced-atom-vars
+  (atom #{}))
+
+(defn sci-ns-unmap! [ns-sym var-sym]
+  (let [ns-unmap (sci/eval-string* (sci.ctx-store/get-ctx) "ns-unmap")]
+    (ns-unmap ns-sym var-sym)))
+
+(defn intern-atoms! [atom-var-name->state]
+  (let [vars-in-use (into #{} (keys atom-var-name->state))
+        vars-interned @!synced-atom-vars]
+    (doseq [var-name-to-unmap (set/difference vars-interned vars-in-use)]
+      (sci-ns-unmap! (symbol (namespace var-name-to-unmap)) (symbol (name var-name-to-unmap))))
+    (doseq [var-name (set/difference vars-in-use vars-interned)]
+      (intern-atom! var-name (atom-var-name->state var-name)))
+    (reset! !synced-atom-vars vars-in-use)))
+
 (defn ^:export set-state! [{:as state :keys [doc error remount?]}]
-  (doseq [atom-var (get-in doc [:nextjournal/value :atom-var-name->state])]
-    (intern-atom! atom-var))
   (when remount?
     (swap! !eval-counter inc))
   (when (contains? state :doc)
@@ -631,8 +646,15 @@
 (defn render-vega-lite [value]
   (let [handle-error (hooks/use-error-handler)
         vega-embed (hooks/use-d3-require "vega-embed@6.11.1")
+        opts (get value :embed/opts {})
         ref-fn (react/useCallback #(when %
-                                     (-> (.embed vega-embed % (clj->js (dissoc value :embed/opts)) (clj->js (:embed/opts value {})))
+                                     (-> (.embed vega-embed
+                                                 %
+                                                 (clj->js (dissoc value :embed/opts :embed/callback))
+                                                 (clj->js opts))
+                                         (.then (fn [result] (if-let [callback (:embed/callback value)]
+                                                               (callback result)
+                                                               result)))
                                          (.catch handle-error)))
                                   #js[value vega-embed])]
     (when value
