@@ -73,23 +73,25 @@
 (def hooks-namespace
   (sci/copy-ns nextjournal.clerk.render.hooks (sci/create-ns 'nextjournal.clerk.render.hooks)))
 
-(defn setup-sci-ctx! []
-  (sci.ctx-store/reset-ctx! (sci/init {:async? true
-                                       :disable-arity-checks true
-                                       :classes {'js goog/global
-                                                 'framer-motion framer-motion
-                                                 :allow :all}
-                                       :aliases {'j 'applied-science.js-interop
-                                                 'reagent 'reagent.core
-                                                 'v 'nextjournal.clerk.viewer
-                                                 'p 'nextjournal.clerk.parser}
-                                       :namespaces (merge {'nextjournal.clerk.render render-namespace
-                                                           'nextjournal.clerk.render.hooks hooks-namespace
-                                                           'nextjournal.clerk.viewer viewer-namespace
-                                                           'nextjournal.clerk.parser parser-namespace
-                                                           'clojure.core {'swap! nextjournal.clerk.render/clerk-swap!}}
-                                                          sci.configs.js-interop/namespaces
-                                                          sci.configs.reagent/namespaces)})))
+(def initial-sci-opts
+  {:async? true
+   :disable-arity-checks true
+   :classes {'js goog/global
+             'framer-motion framer-motion
+             :allow :all}
+   :aliases {'j 'applied-science.js-interop
+             'reagent 'reagent.core
+             'v 'nextjournal.clerk.viewer
+             'p 'nextjournal.clerk.parser}
+   :namespaces (merge {'nextjournal.clerk.render render-namespace
+                       'nextjournal.clerk.render.hooks hooks-namespace
+                       'nextjournal.clerk.viewer viewer-namespace
+                       'nextjournal.clerk.parser parser-namespace
+                       'clojure.core {'swap! nextjournal.clerk.render/clerk-swap!}}
+                      sci.configs.js-interop/namespaces
+                      sci.configs.reagent/namespaces)})
+
+
 
 (defn ^:export onmessage [ws-msg]
   (render/dispatch (read-string (.-data ws-msg))))
@@ -102,10 +104,10 @@
 
 (def ^:export mount render/mount)
 
-
-(set! *eval* eval-form)
-
+(sci.ctx-store/reset-ctx! (sci/init initial-sci-opts))
 (sci/alter-var-root sci/print-fn (constantly *print-fn*))
 (sci/alter-var-root sci/print-err-fn (constantly *print-err-fn*))
 
-(setup-sci-ctx!)
+(set! *eval* eval-form)
+
+
