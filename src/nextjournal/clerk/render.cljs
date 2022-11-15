@@ -3,6 +3,7 @@
             ["react-dom/client" :as react-client]
             [applied-science.js-interop :as j]
             [cljs.reader]
+            [clojure.set :as set]
             [clojure.string :as str]
             [editscript.core :as editscript]
             [goog.object]
@@ -551,9 +552,21 @@
                 (with-meta (r/atom state)
                   {:var-name var-name}))))
 
+(defonce ^:private !synced-atom-vars
+  (atom #{}))
+
+(defn sci-ns-unmap! [ns-sym var-sym]
+  (let [ns-unmap (sci/eval-string* (sci.ctx-store/get-ctx) "ns-unmap")]
+    (ns-unmap ns-sym var-sym)))
+
 (defn intern-atoms! [atom-var-name->state]
-  (doseq [[var-name state] atom-var-name->state]
-    (intern-atom! var-name state)))
+  (let [vars-in-use (into #{} (keys atom-var-name->state))
+        vars-interned @!synced-atom-vars]
+    (doseq [var-name-to-unmap (set/difference vars-interned vars-in-use)]
+      (sci-ns-unmap! (symbol (namespace var-name-to-unmap)) (symbol (name var-name-to-unmap))))
+    (doseq [var-name (set/difference vars-in-use vars-interned)]
+      (intern-atom! var-name (atom-var-name->state var-name)))
+    (reset! !synced-atom-vars vars-in-use)))
 
 (defn ^:export set-state! [{:as state :keys [doc error remount?]}]
   (when remount?
