@@ -37,6 +37,7 @@
 (defn file-set []
   (reduce into []
           [["deps.edn"
+            "render/deps.edn"
             "shadow-cljs.edn"
             "yarn.lock"]
            (djv/cljs-files (classpath-dirs))]))
