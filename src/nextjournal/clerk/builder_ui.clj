@@ -298,7 +298,7 @@
      [:div.flex.items-center
       (checkmark-svg)
       [:div.text-lg.ml-2.mb-0.font-medium "Your notebooks have been built."]]
-     [:a.font-medium.rounded-full.text-sm.px-3.py-1.bg-greenish-20.flex.items-center.border-2.border-greenish.animate-border-pulse
+     [:a.font-medium.rounded-full.text-sm.px-3.py-1.bg-greenish-20.flex.items-center.border-2.border-greenish.animate-border-pulse.hover:border-white.hover:animate-none
       {:href link}
       [:div publish-icon-svg]
       [:span.ml-2 "Open"]]]
