@@ -689,7 +689,7 @@
                                                  #?(:clj (with-viewer :number-hex (System/identityHashCode ideref)))
                                                  (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
                                                    (deref-as-map ideref)
-                                                   ideref))})))})
+                                                   (deref ideref)))})))})
 
 (def regex-viewer
   {:pred #?(:clj (partial instance? java.util.regex.Pattern) :cljs regexp?)
