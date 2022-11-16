@@ -1366,6 +1366,8 @@
 (def notebook     (partial with-viewer (:name notebook-viewer)))
 (def code         (partial with-viewer code-viewer))
 
+(defn ^:dynamic doc-url [path] (str "#/" path))
+
 (defn hide-result
   "Deprecated, please put ^{:nextjournal.clerk/visibility {:result :hide}} metadata on the form instead."
   {:deprecated "0.10"}

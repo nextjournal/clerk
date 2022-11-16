@@ -250,7 +250,7 @@
            "/css/viewer.css" (viewer/store+get-cas-url! (assoc opts :ext "css") (fs/read-all-bytes tw-output)))
     (fs/delete-tree tw-folder)))
 
-(defn build-static-app! [opts]
+(defn build-static-app! [{:as opts :keys [bundle?]}]
   (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css?]}
         (process-build-opts opts)
         {:keys [expanded-paths error]} (try {:expanded-paths (expand-paths opts)}
@@ -282,9 +282,12 @@
                       (report-fn {:stage :building :doc doc :idx idx})
                       (let [{result :result duration :time-ms} (eval/time-ms
                                                                 (try
-                                                                  (let [doc (binding [*opts* (assoc opts
-                                                                                                    :current-path file
-                                                                                                    :path->url (build-path->url opts state))]
+                                                                  (let [doc (binding [viewer/doc-url
+                                                                                      (fn [path]
+                                                                                        (let [url (get (build-path->url opts state) path)]
+                                                                                          (if bundle?
+                                                                                            (str "#/" url)
+                                                                                            (str (viewer/relative-root-prefix-from file) url))))]
                                                                               (eval/eval-analyzed-doc doc))]
                                                                     (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc)))
                                                                   (catch Exception e
