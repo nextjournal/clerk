@@ -15,6 +15,8 @@
             [nextjournal.clerk.webserver :as webserver]
             [nextjournal.clerk.config :as config]))
 
+(def ^:dynamic *opts* nil)
+
 (def clerk-docs
   (into ["CHANGELOG.md"
          "notebooks/markdown.md"
@@ -115,12 +117,21 @@
            index (assoc :index (str index)))))
 
 #_(process-build-opts {:index 'book.clj})
+(defn build-path->url [{:as opts :keys [bundle?]} docs]
+  (into {}
+        (map (comp (juxt identity #(cond-> (->> % (view/map-index opts) strip-index) (not bundle?) ->html-extension))
+                   :file))
+        docs))
+#_(build-path->url {:bundle? false} [{:file "notebooks/foo.clj"} {:file "index.clj"}])
+#_(build-path->url {:bundle? true}  [{:file "notebooks/foo.clj"} {:file "index.clj"}])
 
 (defn build-static-app-opts [{:as opts :keys [bundle? out-path browse? index]} docs]
-  (let [paths (mapv :file docs)
-        path->doc (into {} (map (juxt :file :viewer)) docs)
-        path->url (into {} (map (juxt identity #(cond-> (->> % (view/map-index opts) strip-index) (not bundle?) ->html-extension))) paths)]
-    (assoc opts :bundle? bundle? :path->doc path->doc :paths (vec (keys path->doc)) :path->url path->url)))
+  (let [path->doc (into {} (map (juxt :file :viewer)) docs)]
+    (assoc opts
+           :bundle? bundle?
+           :path->doc path->doc
+           :paths (vec (keys path->doc))
+           :path->url (build-path->url opts docs))))
 
 (defn ssr!
   "Shells out to node to generate server-side-rendered html."
@@ -267,11 +278,14 @@
             (report-fn {:stage :downloading-cache})
             (let [{duration :time-ms} (eval/time-ms (download-cache-fn state))]
               (report-fn {:stage :done :duration duration})))
-        state (mapv (fn [doc idx]
+        state (mapv (fn [{:as doc :keys [file]} idx]
                       (report-fn {:stage :building :doc doc :idx idx})
                       (let [{result :result duration :time-ms} (eval/time-ms
                                                                 (try
-                                                                  (let [doc (eval/eval-analyzed-doc doc)]
+                                                                  (let [doc (binding [*opts* (assoc opts
+                                                                                                    :current-path file
+                                                                                                    :path->url (build-path->url opts state))]
+                                                                              (eval/eval-analyzed-doc doc))]
                                                                     (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc)))
                                                                   (catch Exception e
                                                                     {:error e})))]

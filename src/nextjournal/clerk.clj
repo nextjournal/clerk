@@ -327,7 +327,13 @@
   (partial with-viewer (:name v/notebook-viewer)))
 
 (defn doc-url [path]
-  (v/->viewer-eval (list 'v/doc-url path)))
+  (if-not builder/*opts*
+    (str "#/" path)
+    (let [{:keys [bundle? path->url current-path]} builder/*opts*]
+      (let [url (get path->url path)]
+        (if bundle?
+          (str "#/" url)
+          (str (v/relative-root-prefix-from current-path) url))))))
 
 (defmacro example
   "Evaluates the expressions in `body` showing code next to results in Clerk.
