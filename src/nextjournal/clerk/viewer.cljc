@@ -53,7 +53,7 @@
     (symbol full-ns (name sym))
     sym))
 
-#_(resolve-symbol-alias {'v (find-ns 'nextjournal.clerk.viewer)} 'v/render-code)
+#_(resolve-symbol-alias {'v (find-ns 'nextjournal.clerk.viewer)} 'nextjournal.clerk.render/render-code)
 
 (defn resolve-aliases [aliases form]
   (w/postwalk #(cond->> %
@@ -267,7 +267,7 @@
 
 (declare present present* !viewers apply-viewers apply-viewers* ensure-wrapped-with-viewers process-viewer process-wrapped-value default-viewers find-named-viewer)
 
-(defn inspect-fn []  #?(:clj (->viewer-eval 'nextjournal.clerk.render/inspect-presented) :cljs (eval 'v/inspect-presented)))
+(defn inspect-fn []  #?(:clj (->viewer-eval 'nextjournal.clerk.render/inspect-presented) :cljs (eval 'nextjournal.clerk.render/inspect-presented)))
 
 (defn when-wrapped [f] #(cond-> % (wrapped-value? %) f))
 
@@ -482,7 +482,7 @@
 
 (def table-body-viewer
   {:name :table/body :page-size 20
-   :render-fn '(fn [rows opts] (into [:tbody] (map-indexed (fn [idx row] (v/inspect-presented (update opts :path conj idx) row))) rows))})
+   :render-fn '(fn [rows opts] (into [:tbody] (map-indexed (fn [idx row] (nextjournal.clerk.render/inspect-presented (update opts :path conj idx) row))) rows))})
 
 (def table-row-viewer
   {:name :table/row
@@ -496,16 +496,18 @@
       (update-viewers {(comp #{string?} :pred) #(assoc % :render-fn 'nextjournal.clerk.render/render-string)
                        (comp #{number?} :pred) #(assoc % :render-fn '(fn [x] [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))
                        (comp #{:elision} :name) #(assoc % :render-fn '(fn [{:as fetch-opts :keys [total offset unbounded?]} {:keys [num-cols]}]
-                                                                        [v/consume-view-context :fetch-fn (fn [fetch-fn]
-                                                                                                            [:tr.border-t.dark:border-slate-700
-                                                                                                             [:td.text-center.py-1
-                                                                                                              {:col-span num-cols
-                                                                                                               :class (if (fn? fetch-fn)
-                                                                                                                        "bg-indigo-50 hover:bg-indigo-100 dark:bg-gray-800 dark:hover:bg-slate-700 cursor-pointer"
-                                                                                                                        "text-gray-400 text-slate-500")
-                                                                                                               :on-click (fn [_] (when (fn? fetch-fn)
-                                                                                                                                  (fetch-fn fetch-opts)))}
-                                                                                                              (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]])]))})
+                                                                        [nextjournal.clerk.render/consume-view-context
+                                                                         :fetch-fn
+                                                                         (fn [fetch-fn]
+                                                                           [:tr.border-t.dark:border-slate-700
+                                                                            [:td.text-center.py-1
+                                                                             {:col-span num-cols
+                                                                              :class (if (fn? fetch-fn)
+                                                                                       "bg-indigo-50 hover:bg-indigo-100 dark:bg-gray-800 dark:hover:bg-slate-700 cursor-pointer"
+                                                                                       "text-gray-400 text-slate-500")
+                                                                              :on-click (fn [_] (when (fn? fetch-fn)
+                                                                                                  (fetch-fn fetch-opts)))}
+                                                                             (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]])]))})
       (add-viewers [table-missing-viewer
                     table-markup-viewer
                     table-head-viewer
@@ -629,15 +631,15 @@
   {:pred boolean? :render-fn '(fn [x] [:span.cmt-bool.inspected-value (str x)])})
 
 (def map-entry-viewer
-  {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (into [:<>] (comp (v/inspect-children opts) (interpose " ")) xs)) :page-size 2})
+  {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (into [:<>] (comp (nextjournal.clerk.render/inspect-children opts) (interpose " ")) xs)) :page-size 2})
 
 (def var-from-def-viewer
   {:pred var-from-def? :transform-fn (update-val (comp deref :nextjournal.clerk/var-from-def))})
 
 (def read+inspect-viewer
-  {:name :read+inspect :render-fn '(fn [x] (try [nextjournal.clerk.render/inspect (v/read-string x)]
-                                               (catch js/Error _e
-                                                 (nextjournal.clerk.render/render-unreadable-edn x))))})
+  {:name :read+inspect :render-fn '(fn [x] (try [nextjournal.clerk.render/inspect (read-string x)]
+                                                (catch js/Error _e
+                                                  (nextjournal.clerk.render/render-unreadable-edn x))))})
 
 (def vector-viewer
   {:pred vector? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "[" :closing-paren "]" :page-size 20})
@@ -676,7 +678,7 @@
                                                            :nextjournal/content-type "image/png"
                                                            :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)}
                                                           mark-presented)))
-                                    :render-fn '(fn [blob] [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]])}))
+                                    :render-fn '(fn [blob] [:figure.flex.flex-col.items-center.not-prose [:img {:src (nextjournal.clerk.render/url-for blob)}]])}))
 
 (def ideref-viewer
   {:pred #(instance? IDeref %)
@@ -753,7 +755,7 @@
                                          :style opts}]
                                   (map (fn [item]
                                          [:div.flex.items-center.justify-center
-                                          (v/inspect-presented opts item)])) items))})
+                                          (nextjournal.clerk.render/inspect-presented opts item)])) items))})
 
 (def table-viewer
   {:name :table
@@ -1364,7 +1366,7 @@
 (def notebook     (partial with-viewer (:name notebook-viewer)))
 (def code         (partial with-viewer code-viewer))
 (defn doc-url [path]
-  (->viewer-eval (list 'v/doc-url path)))
+  (->viewer-eval (list 'nextjournal.clerk.render/doc-url path)))
 
 (defn hide-result
   "Deprecated, please put ^{:nextjournal.clerk/visibility {:result :hide}} metadata on the form instead."
@@ -1401,7 +1403,7 @@
                                                                          (nextjournal.clerk.render/inspect-presented opts form)]]
                                                                   [:div.flex.mt-1
                                                                    [:div.mx-2.font-sans.text-xs.text-slate-500 {:class "mt-[2px]"} "⇒"]
-                                                                   (v/inspect-presented opts val)]])})
+                                                                   (nextjournal.clerk.render/inspect-presented opts val)]])})
                        (update-in [:nextjournal/value :form] code)))})
 
 (def examples-viewer
