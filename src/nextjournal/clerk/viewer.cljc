@@ -681,7 +681,7 @@
                                     :render-fn '(fn [blob] [:figure.flex.flex-col.items-center.not-prose [:img {:src (nextjournal.clerk.render/url-for blob)}]])}))
 
 (def ideref-viewer
-  {:pred #(instance? IDeref %)
+  {:pred #(#?(:clj instance? :cljs satisfies?) IDeref %)
    :transform-fn (update-val (fn [ideref]
                                (with-viewer :tagged-value
                                  {:tag "object"
