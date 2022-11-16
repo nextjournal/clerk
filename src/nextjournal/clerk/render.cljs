@@ -723,3 +723,5 @@
     src
     (str "/_blob/" blob-id (when-let [opts (seq (dissoc src :blob-id))]
                              (str "?" (opts->query opts))))))
+
+(def consume-view-context view-context/consume)
