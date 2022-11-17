@@ -2,7 +2,6 @@
   "Clerk's Static App Builder."
   (:require [babashka.fs :as fs]
             [clojure.java.browse :as browse]
-            [clojure.set :as set]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.java.shell :refer [sh]]
