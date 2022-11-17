@@ -19,7 +19,7 @@
 ;; customize extensions
 (clerk/with-viewer
   '(fn [code-str _]
-     [:div.viewer-code
+     [:div.bg-slate-100
       [render.code/editable code-str {:extensions (.concat (codemirror.view/lineNumbers)
                                                            nextjournal.clerk.render.code/default-extensions
                                                            nextjournal.clerk.render.code/paredit-keymap)}]])
