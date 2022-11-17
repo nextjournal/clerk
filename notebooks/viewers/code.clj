@@ -21,8 +21,8 @@
   '(fn [code-str _]
      [:div.bg-slate-100
       [render.code/editable code-str {:extensions (.concat (codemirror.view/lineNumbers)
-                                                           nextjournal.clerk.render.code/default-extensions
-                                                           nextjournal.clerk.render.code/paredit-keymap)}]])
+                                                           render.code/default-extensions
+                                                           render.code/paredit-keymap)}]])
   "(def fib
   (lazy-cat [0 1]
             (map + fib (rest fib))))")
