@@ -37,6 +37,7 @@
          "viewer_d3_require"
          "viewers_nested"
          "viewer_normalization"
+         "viewers/code"
          "viewers/custom_markdown"
          "viewers/grid"
          "viewers/html"
