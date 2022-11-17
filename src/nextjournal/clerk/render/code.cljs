@@ -2,7 +2,7 @@
   (:require ["@codemirror/language" :refer [HighlightStyle syntaxHighlighting]]
             ["@lezer/highlight" :refer [tags highlightTree]]
             ["@codemirror/state" :refer [EditorState RangeSetBuilder Text]]
-            ["@codemirror/view" :as view :refer [EditorView Decoration keymap]]
+            ["@codemirror/view" :refer [EditorView Decoration keymap]]
             ["@nextjournal/lang-clojure" :refer [clojureLanguage]]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
@@ -123,7 +123,7 @@
 (def ^js paredit-keymap (.of keymap clojure-mode.keymap/paredit))
 
 (def read-only (.. EditorView -editable (of false)))
-(defn on-change [f]
+(defn on-change-ext [f]
   (.. EditorState -changeFilter
       (of (fn [^js tr]
             (when (.-docChanged tr) (f (.. tr -state sliceDoc)))
@@ -142,10 +142,12 @@
 
 (defn editor
   ([code-str] (editor code-str {:extensions default-extensions}))
-  ([code-str {:keys [extensions]}]
+  ([code-str {:keys [extensions on-change]}]
    (let [!container-el (hooks/use-ref nil)
-         !view (hooks/use-ref nil)]
-     (hooks/use-layout-effect (fn [] (let [^js view (reset! !view (make-view (make-state code-str extensions) @!container-el))]
+         !view (hooks/use-ref nil)
+         exts (cond-> extensions on-change (.concat (on-change-ext on-change)))]
+     (hooks/use-layout-effect (fn [] (let [^js view (reset! !view (make-view (make-state code-str exts) @!container-el))]
                                        #(.destroy view))))
-     (hooks/use-effect (fn [] (.setState @!view (make-state code-str extensions))) [code-str])
+     (hooks/use-effect (fn [] (.setState @!view (make-state code-str exts)))
+                       (cond-> [] (not on-change) (conj code-str)))
      [:div {:ref !container-el}])))
