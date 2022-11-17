@@ -429,7 +429,7 @@
   - `:compile-css` - if true compiles css file containing only the used classes
   - `:ssr`         - if true runs react server-side-rendering and includes the generated markup in the html
   - `:browse`      - if true will open browser with the built file on success
-  - `:dashboard`   - if true will start a server and show a rich build report in the browser (use with `:bundle` to open browser)
+  - `:dashboard`   - if true will start a server and show a rich build report in the browser (use with `:browse` to open browser)
   - `:out-path`  - a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
   - `:git/sha`, `:git/url` - when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
   "
