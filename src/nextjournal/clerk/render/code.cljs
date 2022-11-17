@@ -141,13 +141,16 @@
   (EditorView. (j/obj :state state :parent parent)))
 
 (defn editor
-  ([code-str] (editor code-str {:extensions default-extensions}))
+  ([code-str] (editor code-str {}))
   ([code-str {:keys [extensions on-change]}]
    (let [!container-el (hooks/use-ref nil)
          !view (hooks/use-ref nil)
-         exts (cond-> extensions on-change (.concat (on-change-ext on-change)))]
-     (hooks/use-layout-effect (fn [] (let [^js view (reset! !view (make-view (make-state code-str exts) @!container-el))]
-                                       #(.destroy view))))
+         exts (cond-> default-extensions
+                (seq extensions) (.concat extensions)
+                on-change (.concat (on-change-ext on-change)))]
+     (hooks/use-layout-effect
+      (fn [] (let [^js view (reset! !view (make-view (make-state code-str exts) @!container-el))]
+               #(.destroy view))))
      ;; when passing an `on-change` callback we assume the caller context is fine
      ;; with not resetting editor state when initial-value changes (e.g. in the ::clerk/sync case)
      ;; we probably don't need to reset in any case

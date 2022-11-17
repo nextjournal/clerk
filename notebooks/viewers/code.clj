@@ -24,7 +24,6 @@
        {:extensions
         (.concat (codemirror.view/lineNumbers)
                  (codemirror.view/highlightActiveLine)
-                 nextjournal.clerk.render.code/default-extensions
                  nextjournal.clerk.render.code/paredit-keymap)}]])
   "(def fib
   (lazy-cat [0 1]
@@ -40,7 +39,6 @@
        [nextjournal.clerk.render.code/editor @code-state
         {:extensions (.concat (codemirror.view/lineNumbers)
                               (codemirror.view/highlightActiveLine)
-                              nextjournal.clerk.render.code/default-extensions
                               nextjournal.clerk.render.code/paredit-keymap)
          :on-change (fn [text] (swap! code-state (constantly text)))}]])})
 
