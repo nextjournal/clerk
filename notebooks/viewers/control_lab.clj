@@ -15,7 +15,12 @@
                                       (symbol? x) (viewer/->viewer-eval x)
                                       (var? x) (recur (symbol x))
                                       (viewer/var-from-def? x) (recur (:nextjournal.clerk/var-from-def x))))))
-   :render-fn 'nextjournal.clerk.render/inspect})
+   :render-fn '(fn [x opts]
+                 (if (satisfies? IDeref x) ;; special atoms handling to support reactivity
+                   [nextjournal.clerk.render/render-tagged-value {:space? false}
+                    "#object"
+                    [nextjournal.clerk.render/inspect [(symbol (pr-str (type x))) @x]]]
+                   [nextjournal.clerk.render/inspect x]))})
 
 (clerk/add-viewers! [viewer-eval-viewer])
 
@@ -47,11 +52,9 @@
   (viewer/->viewer-eval `!num))
 
 
-#_#_ ;; TODO: plain (not quoted) symbol
+#_ ;; TODO: plain (not quoted) symbol
 ^{::clerk/viewer (make-slider {})}
 !num
-;; TODO: reactivity with default viewer
-(viewer/->viewer-eval `!num)
 
 ;; We can customise the slider by passing different opts (that are merged).
 
@@ -62,5 +65,9 @@
 (clerk/with-viewer (assoc viewer-eval-viewer :render-fn '(fn [x] [:h2.bg-green-500.rounded-xl.text-center @x]))
   `!num)
 
+(clerk/with-viewer viewer-eval-viewer
+  `!num)
+
 @!num
 
+(viewer/->viewer-eval `!num)
