@@ -552,13 +552,11 @@
 
 (defn intern-atom! [var-name state]
   (assert (sci.ctx-store/get-ctx) "sci-ctx must be set")
-  (if-let [existing-var (sci/resolve (sci.ctx-store/get-ctx) var-name)]
-    (reset! @existing-var state)
-    (sci/intern (sci.ctx-store/get-ctx)
-                (sci/create-ns (symbol (namespace var-name)))
-                (symbol (name var-name))
-                (with-meta (r/atom state)
-                  {:var-name var-name}))))
+  (sci/intern (sci.ctx-store/get-ctx)
+              (sci/create-ns (symbol (namespace var-name)))
+              (symbol (name var-name))
+              (with-meta (r/atom state)
+                         {:var-name var-name})))
 
 (defonce ^:private !synced-atom-vars
   (atom #{}))
@@ -572,8 +570,10 @@
         vars-interned @!synced-atom-vars]
     (doseq [var-name-to-unmap (set/difference vars-interned vars-in-use)]
       (sci-ns-unmap! (symbol (namespace var-name-to-unmap)) (symbol (name var-name-to-unmap))))
-    (doseq [var-name (set/difference vars-in-use vars-interned)]
-      (intern-atom! var-name (atom-var-name->state var-name)))
+    (doseq [var-name vars-in-use]
+      (if-let [existing-var (sci/resolve (sci.ctx-store/get-ctx) var-name)]
+        (reset! @existing-var (atom-var-name->state var-name))
+        (intern-atom! var-name (atom-var-name->state var-name))))
     (reset! !synced-atom-vars vars-in-use)))
 
 (defn ^:export set-state! [{:as state :keys [doc error remount?]}]
