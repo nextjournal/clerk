@@ -16,7 +16,6 @@
             [sci.core :as sci]
             [sci.ctx-store]))
 
-
 (defn eval-viewer-fn [eval-f form]
   (try (eval-f form)
        (catch js/Error e

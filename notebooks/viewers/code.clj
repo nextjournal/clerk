@@ -20,9 +20,12 @@
 (clerk/with-viewer
   '(fn [code-str _]
      [:div.bg-slate-100
-      [render.code/editor code-str {:extensions (.concat (codemirror.view/lineNumbers)
-                                                         render.code/default-extensions
-                                                         render.code/paredit-keymap)}]])
+      [render.code/editor code-str {:extensions
+                                    (.concat (codemirror.view/lineNumbers)
+                                             render.code/default-extensions
+                                             render.code/paredit-keymap
+                                             (render.code/on-change (fn [text]
+                                                                      (js/console.log :text-changed text))))}]])
   "(def fib
   (lazy-cat [0 1]
             (map + fib (rest fib))))")
