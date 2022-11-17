@@ -37,10 +37,10 @@
    '(fn [code-state _]
       [:div.bg-neutral-50
        [nextjournal.clerk.render.code/editor @code-state
-        {:extensions (.concat (codemirror.view/lineNumbers)
+        {:on-change (fn [text] (swap! code-state (constantly text)))
+         :extensions (.concat (codemirror.view/lineNumbers)
                               (codemirror.view/highlightActiveLine)
-                              nextjournal.clerk.render.code/paredit-keymap)
-         :on-change (fn [text] (swap! code-state (constantly text)))}]])})
+                              nextjournal.clerk.render.code/paredit-keymap)}]])})
 
 ^{::clerk/sync true ::clerk/viewer editor-sync-viewer}
 (defonce editable-code (atom "(def fib
