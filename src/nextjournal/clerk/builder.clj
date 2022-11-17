@@ -37,6 +37,7 @@
          "viewer_d3_require"
          "viewers_nested"
          "viewer_normalization"
+         "viewers/control_lab"
          "viewers/custom_markdown"
          "viewers/grid"
          "viewers/html"
@@ -305,7 +306,6 @@
       (let [{duration :time-ms} (eval/time-ms (upload-cache-fn state))]
         (report-fn {:stage :done :duration duration})))
     (report-fn {:stage :finished :state state :duration duration :total-duration (eval/elapsed-ms start)})))
-
 
 #_(build-static-app! {:ssr? true :index "notebooks/rule_30.clj" :browse? true})
 #_(build-static-app! {:paths clerk-docs :bundle? true})

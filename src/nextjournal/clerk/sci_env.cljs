@@ -88,6 +88,7 @@
                        'nextjournal.clerk.viewer viewer-namespace
                        'nextjournal.clerk.parser parser-namespace
                        'clojure.core {'swap! nextjournal.clerk.render/clerk-swap!
+                                      'reset! nextjournal.clerk.render/clerk-reset!
                                       'read-string read-string}}
                       sci.configs.js-interop/namespaces
                       sci.configs.reagent/namespaces)})
