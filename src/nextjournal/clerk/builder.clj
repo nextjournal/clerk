@@ -15,8 +15,6 @@
             [nextjournal.clerk.webserver :as webserver]
             [nextjournal.clerk.config :as config]))
 
-(def ^:dynamic *opts* nil)
-
 (def clerk-docs
   (into ["CHANGELOG.md"
          "notebooks/markdown.md"
