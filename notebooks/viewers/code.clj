@@ -11,7 +11,7 @@
 
 ;; Editable code viewer
 (clerk/with-viewer
-  '(fn [code-str _] [:div.viewer-code [render.code/editable code-str]])
+  '(fn [code-str _] [:div.viewer-code [render.code/editor code-str]])
   "(def fib
   (lazy-cat [0 1]
             (map + fib (rest fib))))")
@@ -20,9 +20,9 @@
 (clerk/with-viewer
   '(fn [code-str _]
      [:div.bg-slate-100
-      [render.code/editable code-str {:extensions (.concat (codemirror.view/lineNumbers)
-                                                           render.code/default-extensions
-                                                           render.code/paredit-keymap)}]])
+      [render.code/editor code-str {:extensions (.concat (codemirror.view/lineNumbers)
+                                                         render.code/default-extensions
+                                                         render.code/paredit-keymap)}]])
   "(def fib
   (lazy-cat [0 1]
             (map + fib (rest fib))))")

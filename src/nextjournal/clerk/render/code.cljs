@@ -135,8 +135,8 @@
 (defn make-view [state parent]
   (EditorView. (j/obj :state state :parent parent)))
 
-(defn editable
-  ([code-str] (editable code-str {:extensions default-extensions}))
+(defn editor
+  ([code-str] (editor code-str {:extensions default-extensions}))
   ([code-str {:keys [extensions]}]
    (let [!container-el (hooks/use-ref nil)
          !view (hooks/use-ref nil)]
