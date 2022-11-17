@@ -148,6 +148,9 @@
          exts (cond-> extensions on-change (.concat (on-change-ext on-change)))]
      (hooks/use-layout-effect (fn [] (let [^js view (reset! !view (make-view (make-state code-str exts) @!container-el))]
                                        #(.destroy view))))
+     ;; when passing an `on-change` callback we assume the caller context is fine
+     ;; with not re-rendering when initial-value changes (e.g. in the ::clerk/sync case)
+     ;; we probably don't need to re-render in any case
      (hooks/use-effect (fn [] (.setState @!view (make-state code-str exts)))
                        (cond-> [] (not on-change) (conj code-str)))
      [:div {:ref !container-el}])))

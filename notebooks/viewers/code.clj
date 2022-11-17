@@ -2,7 +2,7 @@
 (ns viewers.code
   {:nextjournal.clerk/no-cache true}
   (:require [nextjournal.clerk :as clerk]
-            [viewer.control-lab :as controls]))
+            [nextjournal.clerk.viewer :as viewer]))
 
 ;; Code as data
 (clerk/code '(def fib (lazy-cat [0 1] (map + fib (rest fib)))))
@@ -29,20 +29,22 @@
   (lazy-cat [0 1]
             (map + fib (rest fib))))")
 
-^{::clerk/sync true
-  ::clerk/viewer
-  (assoc controls/viewer-eval-viewer
-         :render-fn
-         '(fn [code-state _]
-            [:div.bg-slate-100
-             [nextjournal.clerk.render.code/editor @code-state
-              {:extensions (.concat (codemirror.view/lineNumbers)
-                                    nextjournal.clerk.render.code/default-extensions
-                                    nextjournal.clerk.render.code/paredit-keymap)
-               :on-change (fn [text] (swap! code-state (constantly text)))}]]))}
+(def editor-sync-viewer
+  {:transform-fn (comp viewer/mark-presented
+                       (viewer/update-val
+                        (comp viewer/->viewer-eval symbol :nextjournal.clerk/var-from-def)))
+   :render-fn
+   '(fn [code-state _]
+      [:div.bg-slate-100
+       [nextjournal.clerk.render.code/editor @code-state
+        {:extensions (.concat (codemirror.view/lineNumbers)
+                              nextjournal.clerk.render.code/default-extensions
+                              nextjournal.clerk.render.code/paredit-keymap)
+         :on-change (fn [text] (swap! code-state (constantly text)))}]])})
 
-(defonce editable-code-2 (atom "(def fib
+^{::clerk/sync true ::clerk/viewer editor-sync-viewer}
+(defonce editable-code (atom "(def fib
   (lazy-cat [0 1]
             (map + fib (rest fib))))"))
 
-@editable-code-2
+@editable-code
