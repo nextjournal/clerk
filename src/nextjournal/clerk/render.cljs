@@ -203,7 +203,7 @@
            (str/join "\n"))
       (catch js/Error _ nil))]
    (when-some [data (.-data error)]
-     [:div.mt-2 [inspect data]])])
+     [:div.mt-2.overflow-auto [inspect data]])])
 
 
 (defclass ErrorBoundary
@@ -471,9 +471,11 @@
     (map
      (fn [{:as _ex :keys [type message data _trace]}]
        [:div.p-4.bg-red-100.border-b.border-b-gray-300
-        [:div.font-bold "Unhandled " type]
+        (when type
+          [:div.font-bold "Unhandled " type])
         [:div.font-bold.mt-1 message]
-        [:div.mt-1 [inspect data]]])
+        (when data
+          [:div.mt-1 [inspect data]])])
      via))
    [:div.py-6.overflow-x-auto
     [:table.w-full

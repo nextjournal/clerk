@@ -4,6 +4,7 @@
             [clojure.datafy :as datafy]
             [clojure.set :as set]
             [clojure.walk :as w]
+            [clojure.core.protocols :as protocols]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
                       [editscript.edit]
@@ -62,9 +63,7 @@
 
 (defn ->viewer-fn [form]
   (map->ViewerFn {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)
-                  #?@(:cljs [:f (try (eval form)
-                                     (catch js/Error e
-                                       (fn [_] [(eval 'nextjournal.clerk.render/error-view) e])))])}))
+                  #?@(:cljs [:f (eval form)])}))
 
 (defn ->viewer-eval [form]
   (map->ViewerEval {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)}))
@@ -326,9 +325,9 @@
 (defn apply-viewer-unwrapping-var-from-def [{:as result :nextjournal/keys [value viewer]}]
   (if viewer
     (let [{:keys [transform-fn]} (and (map? viewer) viewer)
-          value (if (and (not transform-fn) (get value :nextjournal.clerk/var-from-def))
-                  (-> value :nextjournal.clerk/var-from-def deref)
-                  value)]
+          #_#_value (if (and (not transform-fn) (get value :nextjournal.clerk/var-from-def))
+                      (-> value :nextjournal.clerk/var-from-def deref)
+                      value)]
       (assoc result :nextjournal/value (if (or (var? viewer) (fn? viewer))
                                          (viewer value)
                                          {:nextjournal/value value
@@ -660,11 +659,14 @@
    :transform-fn (comp #?(:cljs var->symbol :clj symbol) ->value)
    :render-fn '(fn [x] [:span.inspected-value [:span.cmt-meta "#'" (str x)]])})
 
+#?(:cljs
+   (defn Error->Map [e] {:via [{:message (.-message e)}]}))
+
 (def throwable-viewer
   {:name :error
    :render-fn 'nextjournal.clerk.render/render-throwable
    :pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
-   :transform-fn (comp mark-presented (update-val (comp demunge-ex-data datafy/datafy)))})
+   :transform-fn (comp mark-presented (update-val (comp demunge-ex-data #?(:clj datafy/datafy :cljs Error->Map))))})
 
 (def buffered-image-viewer #?(:clj {:pred #(instance? BufferedImage %)
                                     :transform-fn (fn [{image :nextjournal/value}]
