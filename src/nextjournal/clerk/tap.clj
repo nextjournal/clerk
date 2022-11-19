@@ -7,7 +7,8 @@
   (:import (java.time Instant LocalTime ZoneId)))
 
 (def switch-view
-  {:transform-fn (comp clerk/mark-presented
+  {::clerk/var-from-def true
+   :transform-fn (comp clerk/mark-presented
                        (clerk/update-val (fn [{::clerk/keys [var-from-def]}]
                                            {:var-name (symbol var-from-def) :value @@var-from-def})))
    :render-fn '(fn [{:keys [var-name value]}]

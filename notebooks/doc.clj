@@ -60,9 +60,6 @@
 
 #_(var->doc-viewer #'var->doc-viewer)
 
-(def var-doc-viewer {:pred ::clerk/var-from-def
-                     :transform-fn (clerk/update-val (comp var->doc-viewer ::clerk/var-from-def))})
-
 (defn namespace->doc-viewer [ns]
   (clerk/html
    [:div.text-sm.mt-6

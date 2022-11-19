@@ -284,9 +284,6 @@
 (defn fetch-all [_opts _xs]
   (throw (ex-info "`fetch-all` is deprecated, please use a `:transform-fn` with `mark-presented` instead." {})))
 
-(def var-from-def?
-  (get-safe :nextjournal.clerk/var-from-def))
-
 (def datafied?
   (get-safe :nextjournal.clerk/datafied))
 
@@ -322,20 +319,32 @@
 
 #_(->edn {:nextjournal/value :foo})
 
-(defn apply-viewer-unwrapping-var-from-def [{:as result :nextjournal/keys [value viewer]}]
-  (if viewer
-    (let [{:keys [transform-fn]} (and (map? viewer) viewer)
-          #_#_value (if (and (not transform-fn) (get value :nextjournal.clerk/var-from-def))
-                      (-> value :nextjournal.clerk/var-from-def deref)
-                      value)]
-      (assoc result :nextjournal/value (if (or (var? viewer) (fn? viewer))
-                                         (viewer value)
-                                         {:nextjournal/value value
-                                          :nextjournal/viewer (normalize-viewer viewer)})))
-    result))
+(defn update-val [f & args]
+  (fn [wrapped-value] (apply update wrapped-value :nextjournal/value f args)))
 
-#_(apply-viewer-unwrapping-var-from-def {:nextjournal/value [:h1 "hi"] :nextjournal/viewer :html})
-#_(apply-viewer-unwrapping-var-from-def {:nextjournal/value [:h1 "hi"] :nextjournal/viewer (resolve 'nextjournal.clerk/html)})
+#_((update-val + 1) {:nextjournal/value 41})
+
+(def var-from-def?
+  (get-safe :nextjournal.clerk/var-from-def))
+
+(def var-from-def-viewer
+  {:pred var-from-def? :transform-fn (update-val (comp deref :nextjournal.clerk/var-from-def))})
+
+(defn apply-viewer-unwrapping-var-from-def
+  "Applies the `viewer` (if set) to the given result `result`. In case
+  the `value` is a `var-from-def?` it will be unwrapped unless the
+  viewer opts out with a truthy `:nextjournal.clerk/var-from-def`."
+  [{:as result :nextjournal/keys [value viewer]}]
+  (if viewer
+    (let [value+viewer (if (or (var? viewer) (fn? viewer))
+                         (viewer value)
+                         {:nextjournal/value value
+                          :nextjournal/viewer (normalize-viewer viewer)})
+          {unwrap-var :transform-fn var-from-def? :pred} var-from-def-viewer]
+      (assoc result :nextjournal/value (cond-> value+viewer
+                                         (and (var-from-def? value) (not (var-from-def? (->viewer value+viewer))))
+                                         unwrap-var)))
+    result))
 
 #?(:clj
    (defn base64-encode-value [{:as result :nextjournal/keys [content-type]}]
@@ -527,11 +536,6 @@
 #_(datafy-scope *ns*)
 #_(datafy-scope #'datafy-scope)
 
-(defn update-val [f & args]
-  (fn [wrapped-value] (apply update wrapped-value :nextjournal/value f args)))
-
-#_((update-val + 1) {:nextjournal/value 41})
-
 (defn ->slug [text]
   (apply str
          (map (comp str/lower-case
@@ -631,9 +635,6 @@
 
 (def map-entry-viewer
   {:pred map-entry? :name :map-entry :render-fn '(fn [xs opts] (into [:<>] (comp (nextjournal.clerk.render/inspect-children opts) (interpose " ")) xs)) :page-size 2})
-
-(def var-from-def-viewer
-  {:pred var-from-def? :transform-fn (update-val (comp deref :nextjournal.clerk/var-from-def))})
 
 (def read+inspect-viewer
   {:name :read+inspect :render-fn '(fn [x] (try [nextjournal.clerk.render/inspect (read-string x)]
