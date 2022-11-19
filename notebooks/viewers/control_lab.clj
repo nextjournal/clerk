@@ -14,7 +14,6 @@
    :transform-fn (comp viewer/mark-presented
                        (viewer/update-val
                         (fn [x]
-                          (prn :x x)
                           (cond (viewer/viewer-eval? x) x
                                 (seq? x) (viewer/->viewer-eval x)
                                 (symbol? x) (viewer/->viewer-eval x)

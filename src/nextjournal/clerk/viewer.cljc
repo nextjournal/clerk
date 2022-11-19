@@ -260,7 +260,9 @@
     :else nil))
 
 (defn demunge-ex-data [ex-data]
-  (update ex-data :trace (fn [traces] (mapv #(update % 0 (comp demunge pr-str)) traces))))
+  (cond-> ex-data
+    (map? ex-data)
+    (update :trace (fn [traces] (mapv #(update % 0 (comp demunge pr-str)) traces)))))
 
 #_(demunge-ex-data (datafy/datafy (ex-info "foo" {:bar :baz})))
 
@@ -660,14 +662,11 @@
    :transform-fn (comp #?(:cljs var->symbol :clj symbol) ->value)
    :render-fn '(fn [x] [:span.inspected-value [:span.cmt-meta "#'" (str x)]])})
 
-#?(:cljs
-   (defn Error->Map [e] {:via [{:message (.-message e)}]}))
-
 (def throwable-viewer
   {:name :error
    :render-fn 'nextjournal.clerk.render/render-throwable
    :pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
-   :transform-fn (comp mark-presented (update-val (comp demunge-ex-data #?(:clj datafy/datafy :cljs Error->Map))))})
+   :transform-fn (comp mark-presented (update-val (comp demunge-ex-data datafy/datafy)))})
 
 (def buffered-image-viewer #?(:clj {:pred #(instance? BufferedImage %)
                                     :transform-fn (fn [{image :nextjournal/value}]

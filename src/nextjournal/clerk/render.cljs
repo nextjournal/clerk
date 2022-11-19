@@ -191,19 +191,23 @@
    (into [:div.ml-2.font-bold] content)])
 
 (defn error-view [error]
-  [:div.bg-red-100.dark:bg-gray-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-300.not-prose
-   [:p.font-mono.text-red-600.dark:text-red-300.font-bold (.-message error)]
-   [:pre.text-red-600.dark:text-red-300.w-full.overflow-auto.mt-2
-    {:class "text-[11px] max-h-[155px]"}
-    (try
-      (->> (.-stack error)
-           str/split-lines
-           (drop 1)
-           (mapv str/trim)
-           (str/join "\n"))
-      (catch js/Error _ nil))]
-   (when-some [data (.-data error)]
-     [:div.mt-2.overflow-auto [inspect data]])])
+  (let [!stack-expanded (hooks/use-state false)]
+    [:div.bg-red-100.dark:bg-gray-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-300.not-prose
+     [:p.font-mono.text-red-600.dark:text-red-300.font-bold (or (:message error) (.-message error))]
+     (when-let [data (or (:data error) (.-data error))]
+       [:div.mt-2.overflow-auto [inspect data]])
+     (when-let [stack (try
+                        (->> (or (:stack error) (.-stack error))
+                             str/split-lines
+                             (drop 1)
+                             (mapv str/trim))
+                        (catch js/Error _ nil))]
+       [:pre.text-red-600.dark:text-red-300.w-full.overflow-auto.mt-2 {:class "text-[11px] max-h-[155px]"}
+        [:span.underline.cursor-pointer {:on-click #(swap! !stack-expanded not)}
+         (if @!stack-expanded "Hide" "Show")
+         " Stacktrace (" (count stack) " lines)\n"]
+        (when @!stack-expanded
+          (str/join "\n" stack))])]))
 
 
 (defclass ErrorBoundary
@@ -488,7 +492,9 @@
            trace)]]])
 
 (defn render-throwable [ex]
-  [throwable-view ex])
+  (if (or (:stack ex) (instance? js/Error ex))
+    [error-view ex]
+    [throwable-view ex]))
 
 (defn render-tagged-value
   ([tag value] (render-tagged-value {:space? true} tag value))
