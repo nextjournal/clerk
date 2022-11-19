@@ -62,9 +62,7 @@
 
 (defn ->viewer-fn [form]
   (map->ViewerFn {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)
-                  #?@(:cljs [:f (try (eval form)
-                                     (catch js/Error e
-                                       (fn [_] [(eval 'nextjournal.clerk.render/error-view) e])))])}))
+                  #?@(:cljs [:f (eval form)])}))
 
 (defn ->viewer-eval [form]
   (map->ViewerEval {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)}))
@@ -261,7 +259,9 @@
     :else nil))
 
 (defn demunge-ex-data [ex-data]
-  (update ex-data :trace (fn [traces] (mapv #(update % 0 (comp demunge pr-str)) traces))))
+  (cond-> ex-data
+    (map? ex-data)
+    (update :trace (fn [traces] (mapv #(update % 0 (comp demunge pr-str)) traces)))))
 
 #_(demunge-ex-data (datafy/datafy (ex-info "foo" {:bar :baz})))
 
