@@ -4,7 +4,6 @@
             [clojure.datafy :as datafy]
             [clojure.set :as set]
             [clojure.walk :as w]
-            [clojure.core.protocols :as protocols]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
                       [editscript.edit]
