@@ -10,6 +10,7 @@
 
 (def viewer-eval-viewer
   {:pred viewer/viewer-eval?
+   :nextjournal.clerk/var-from-def true
    :transform-fn (comp viewer/mark-presented
                        (viewer/update-val
                         (fn [x]
