@@ -81,6 +81,21 @@
            (:nextjournal/width (v/apply-viewers (v/table {:nextjournal.clerk/width :full} {:a [1] :b [2] :c [3]})))))))
 
 
+(deftest apply-viewer-unwrapping-var-from-def
+  (def my-test-var [:h1 "hi"])
+  (let [apply+get-value #(-> % v/apply-viewer-unwrapping-var-from-def :nextjournal/value :nextjournal/value)]
+    (testing "unwraps var when viewer doens't opt out"
+      (is (= my-test-var
+             (apply+get-value {:nextjournal/value [:h1 "hi"]                                      :nextjournal/viewer v/html})
+             (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var} :nextjournal/viewer v/html})
+             (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var} :nextjournal/viewer v/html-viewer}))))
+
+    (testing "leaves var wrapped when viewer opts out"
+      (is (= {:nextjournal.clerk/var-from-def #'my-test-var}
+             (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var}
+                               :nextjournal/viewer (assoc v/html-viewer :nextjournal.clerk/var-from-def true)}))))))
+
+
 (deftest resolve-aliases
   (testing "it resolves aliases"
     (is (= '[nextjournal.clerk.viewer/render-code
