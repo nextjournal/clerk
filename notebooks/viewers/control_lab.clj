@@ -1,5 +1,5 @@
 ;; # 🎛 Control Lab 🧑🏼‍🔬
-(ns viewer.control-lab
+(ns viewers.control-lab
   {:nextjournal.clerk/visibility {:code :hide :result :hide}}
   (:require [clojure.string :as str]
             [nextjournal.clerk :as clerk]
@@ -27,7 +27,7 @@
                    [nextjournal.clerk.render/inspect x]))})
 
 (clerk/with-viewer viewer-eval-viewer
-  'viewer.control-lab/!num)
+  'viewers.control-lab/!num)
 
 (clerk/add-viewers! [viewer-eval-viewer])
 
