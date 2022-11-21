@@ -56,6 +56,5 @@
 ;; and counter accordingly:
 (comment
   (do
-    (swap! my-state assoc :counter 20)
-    (clerk/show! *ns*))
-  )
+    (swap! my-state update :counter #(mod (+ % 33) 100))
+    (clerk/recompute!)))
