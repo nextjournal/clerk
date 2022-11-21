@@ -172,6 +172,8 @@ jobs:
         with:
           babashka-version: 0.9.162
 
+      - run: cd ui_tests && npm install
+
       - name: Run Playwright tests against static assets
         run: |
           bb test:static-app ${{ github.sha }}
