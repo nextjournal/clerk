@@ -43,8 +43,8 @@
             :task (apply clojure "-X:test" *command-line-args*)}
 
   test:static-app {:doc "Run UI tests for current SHA. Provide SHA as command line arg."
-                   :task (do (shell {:dir "ui_tests"} "npm install")
-                             (shell {:dir "ui_tests"} "npx nbb -m playwright-tests"
+                   :task (do (shell {:dir "ui_tests"} "yarn install")
+                             (shell {:dir "ui_tests"} "yarn nbb -m playwright-tests"
                                     (or (when-let [args (not-empty (cli/parse-opts *command-line-args*))]
                                           (cond-> args
                                             (contains? args :file)
