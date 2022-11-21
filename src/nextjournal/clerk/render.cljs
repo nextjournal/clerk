@@ -572,11 +572,11 @@
         vars-interned @!synced-atom-vars]
     (doseq [var-name-to-unmap (set/difference vars-interned vars-in-use)]
       (sci-ns-unmap! (symbol (namespace var-name-to-unmap)) (symbol (name var-name-to-unmap))))
-    (doseq [var-name vars-in-use]
+    (doseq [[var-name value] atom-var-name->state]
       (if-let [existing-var (sci/resolve (sci.ctx-store/get-ctx) var-name)]
         (when (not= sender-id client-id)
-          (reset! @existing-var (atom-var-name->state var-name)))
-        (intern-atom! var-name (atom-var-name->state var-name))))
+          (reset! @existing-var value))
+        (intern-atom! var-name value)))
     (reset! !synced-atom-vars vars-in-use)))
 
 (defn ^:export set-state! [{:as state :keys [doc error remount?]}]
