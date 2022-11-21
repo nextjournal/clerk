@@ -846,9 +846,9 @@
               (map (juxt #(list 'quote (symbol %)) #(-> % deref deref))))
         blocks))
 
-(defn process-blocks [viewers {:as doc :keys [ns]}]
+(defn process-blocks [viewers {:as doc :keys [ns sender-id]}]
   (-> doc
-      (assoc :atom-var-name->state (->viewer-eval (list 'nextjournal.clerk.render/intern-atoms! (extract-clerk-atom-vars doc))))
+      (assoc :atom-var-name->state (->viewer-eval (list 'nextjournal.clerk.render/intern-atoms! (extract-clerk-atom-vars doc) sender-id)))
       (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
                                              (map (comp process-wrapped-value
                                                         apply-viewers*

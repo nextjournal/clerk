@@ -24,6 +24,8 @@
             [sci.ctx-store]
             [shadow.cljs.modern :refer [defclass]]))
 
+(def client-id (keyword (gensym)))
+
 (r/set-default-compiler! (r/create-compiler {:function-components true}))
 
 (declare inspect inspect-presented reagent-viewer html html-viewer)
@@ -565,14 +567,15 @@
   (let [ns-unmap (sci/eval-string* (sci.ctx-store/get-ctx) "ns-unmap")]
     (ns-unmap ns-sym var-sym)))
 
-(defn intern-atoms! [atom-var-name->state]
+(defn intern-atoms! [atom-var-name->state sender-id]
   (let [vars-in-use (into #{} (keys atom-var-name->state))
         vars-interned @!synced-atom-vars]
     (doseq [var-name-to-unmap (set/difference vars-interned vars-in-use)]
       (sci-ns-unmap! (symbol (namespace var-name-to-unmap)) (symbol (name var-name-to-unmap))))
     (doseq [var-name vars-in-use]
       (if-let [existing-var (sci/resolve (sci.ctx-store/get-ctx) var-name)]
-        (reset! @existing-var (atom-var-name->state var-name))
+        (when (not= sender-id client-id)
+          (reset! @existing-var (atom-var-name->state var-name)))
         (intern-atom! var-name (atom-var-name->state var-name))))
     (reset! !synced-atom-vars vars-in-use)))
 
@@ -596,7 +599,7 @@
   (let [new-val (apply swap! atom swap-args)]
     (when-let [var-name (-> atom meta :var-name)]
       ;; TODO: for now sending whole state but could also diff
-      (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] new-val)]})))
+      (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] new-val)] :sender-id client-id})))
     new-val))
 
 (defn clerk-reset! [atom new-val]

@@ -103,7 +103,7 @@
    :on-receive (fn [sender-ch edn-string]
                  (binding [*ns* (or (:ns @!doc)
                                     (create-ns 'user))]
-                   (let [{:as msg :keys [type]} (read-msg edn-string)]
+                   (let [{:as msg :keys [type sender-id]} (read-msg edn-string)]
                      (case type
                        :eval (do (eval (:form msg))
                                  (eval '(nextjournal.clerk/recompute!)))
@@ -111,9 +111,9 @@
                                 (apply swap! @var (eval (:args msg)))
                                 (doseq [ch @!clients :when (not= sender-ch ch)]
                                   (httpkit/send! ch edn-string))
-                                (eval '(nextjournal.clerk/recompute!)))))))})
+                                (eval `(nextjournal.clerk/recompute! {:sender-id ~sender-id})))))))})
 
-#_(do 
+#_(do
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
     (eval '(nextjournal.clerk/recompute!)))
 
