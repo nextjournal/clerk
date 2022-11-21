@@ -110,6 +110,7 @@
 (defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
   (try
     (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true]
+                                      (assert form "form must be set")
                                       (eval form)))
           result (if (and (nil? result) var (= 'defonce (first form)))
                    (find-var var)
@@ -139,10 +140,10 @@
     (update :nextjournal/viewers eval)))
 
 (defn read+eval-cached [{:as _doc :keys [blob->result ->analysis-info ->hash]} codeblock]
-  (let [{:keys [form vars var deref-deps]} codeblock
-        {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info (if (seq vars) (first vars) form))
+  (let [{:keys [form vars var id deref-deps]} codeblock
+        {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info (if (seq vars) (first vars) (analyzer/->key codeblock)))
         no-cache?      (or ns-effect? no-cache?)
-        hash           (when-not no-cache? (or (get ->hash (if var var form))
+        hash           (when-not no-cache? (or (get ->hash (analyzer/->key codeblock))
                                                (analyzer/hash-codeblock ->hash codeblock)))
         digest-file    (when hash (->cache-file (str "@" hash)))
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))

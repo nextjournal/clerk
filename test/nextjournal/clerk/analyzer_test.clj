@@ -172,19 +172,12 @@
       ana/analyze-doc))
 
 (deftest analyze-doc
-  (is (match? {:graph {:dependencies {'(ns example-notebook) set?}
-                       :dependents   map?}
-               :blocks [{:type :code
-                         :text "^:nextjournal.clerk/no-cache (ns example-notebook)"
-                         :form '(ns example-notebook)}
-                        {:type :code
-                         :text "#{3 1 2}"
-                         :form #{1 2 3}}]
-               :->analysis-info {'(ns example-notebook) {:form '(ns example-notebook),
-                                                         :deps set?}
-                                 #{1 3 2} {:form '#{1 3 2}}}}
-              (analyze-string "^:nextjournal.clerk/no-cache (ns example-notebook)
-#{3 1 2}")))
+  (is (match? #{{:form '(ns example-notebook),
+                 :deps set?}
+                {:form '#{1 3 2}}}
+              (-> "^:nextjournal.clerk/no-cache (ns example-notebook)
+#{3 1 2}"
+                  analyze-string :->analysis-info vals set)))
 
   (testing "preserves *ns*"
     (with-ns-binding 'nextjournal.clerk.analyzer-test
@@ -202,8 +195,10 @@
       (analyze-string "(in-ns 'existing-var) foo")))
 
   (testing "defmulti has no deref deps"
-    (is (empty? (-> "(defmulti foo :bar)" analyze-string :blocks first :deref-deps)))))
+    (is (empty? (-> "(defmulti foo :bar)" analyze-string :blocks first :deref-deps))))
 
+  (testing "can analyze plain var reference (issue #289)"
+    (ana/build-graph (analyze-string "clojure.core/inc"))))
 
 (deftest add-block-ids
   (testing "assigns block ids"
@@ -230,9 +225,8 @@ my-uuid"
   (is (analyze-string "(ns proxy-example-notebook) (proxy [clojure.lang.ISeq][] (seq [] '(this is a test seq)))")))
 
 (deftest circular-dependency
-  (is (match? {:graph {:dependencies {'(ns circular) any?
-                                      'circular/b #{'clojure.core/str 'circular/a+circular/b}
-                                      'circular/a #{'clojure.core/declare 'clojure.core/str 'circular/a+circular/b}}}
+  (is (match? {:graph {:dependencies {'circular/b #{'clojure.core/str 'circular/a+circular/b}
+                                      'circular/a #{#_'clojure.core/declare 'clojure.core/str 'circular/a+circular/b}}}
                :->analysis-info {'circular/a any?
                                  'circular/b any?
                                  'circular/a+circular/b {:form '(do (def a (str "boom " b)) (def b (str a " boom")))}}}

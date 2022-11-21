@@ -187,8 +187,6 @@
 (defn- circular-dependency-error? [e]
   (-> e ex-data :reason #{::dep/circular-dependency}))
 
-(defn ->key [{:as _analyzed :keys [vars deps form]}])
-
 (defn- analyze-circular-dependency [state vars form dep {:keys [node dependency]}]
   (let [rec-form (concat '(do) [form (get-in state [:->analysis-info dependency :form])])
         rec-var (symbol (str/join "+" (sort (conj vars dep))))
@@ -200,12 +198,18 @@
                             (dep/depend dep rec-var)))
         (assoc-in [:->analysis-info rec-var :form] rec-form))))
 
-(defn ->ana-keys [{:as _analyzed :keys [form vars]}]
-  (if (seq vars) vars [form]))
 
-(defn- analyze-deps [{:as analyzed :keys [form vars]} state dep]
+(defn ->key [{:as codeblock :keys [var id]}]
+  (if var var id))
+
+(defn ->ana-keys [{:as analyzed :keys [form vars id]}]
+  (if (seq vars) vars [(->key analyzed)]))
+
+#_(->> (nextjournal.clerk.eval/eval-string "(rand-int 100) (rand-int 100) (rand-int 100)") :blocks (mapv #(-> % :result :nextjournal/value)))
+
+(defn- analyze-deps [{:as analyzed :keys [form vars id]} state dep]
   (try (reduce (fn [state var]
-                 (update state :graph #(dep/depend % (if var var form) dep)))
+                 (update state :graph #(dep/depend % (->key analyzed) dep)))
                state
                (->ana-keys analyzed))
        (catch Exception e
@@ -220,24 +224,19 @@
       (reduce (fn [state k]
                 (assoc-in state [:->analysis-info k :no-cache?] no-cache-deps?)) state (->ana-keys analyzed)))))
 
-(defn add-block-id [{:as state :keys [id->count]} {:as block :keys [var form type doc]}]
-  (let [id (if var
+(defn get-block-id [!id->count {:as block :keys [var form type doc]}]
+  (let [id->count @!id->count
+        id (if var
              var
              (let [hash-fn #(-> % nippy/fast-freeze digest/sha1 multihash/base58)]
                (symbol (str *ns*)
                        (case type
                          :code (str "anon-expr-" (hash-fn (cond-> form (instance? clojure.lang.IObj form) (with-meta {}))))
-                         :markdown (str "markdown-" (hash-fn doc))))))
-        unique-id (if (id->count id)
-                    (symbol (str *ns*) (str (name id) "#" (inc (id->count id))))
-                    id)]
-    (-> state
-        (update :blocks conj (assoc block :id unique-id))
-        (update :id->count update id (fnil inc 0)))))
-
-(defn add-block-ids [{:as analyzed-doc :keys [blocks]}]
-  (-> (reduce add-block-id (assoc analyzed-doc :blocks [] :id->count {} ) blocks)
-      (dissoc :id->count)))
+                         :markdown (str "markdown-" (hash-fn doc))))))]
+    (swap! !id->count update id (fnil inc 0))
+    (if (id->count id)
+      (symbol (str *ns*) (str (name id) "#" (inc (id->count id))))
+      id)))
 
 (defn ^:private internal-proxy-name?
   "Returns true if `sym` represents a var name interned by `clojure.core/proxy`."
@@ -259,38 +258,43 @@
    (analyze-doc {:doc? true :graph (dep/graph)} doc))
   ([{:as state :keys [doc?]} doc]
    (binding [*ns* *ns*]
-     (cond-> (reduce (fn [state i]
-                       (let [{:keys [type text loc]} (get-in state [:blocks i])]
-                         (if (not= type :code)
-                           state
-                           (let [form (read-string text)
-                                 form+loc (cond-> form
-                                            (instance? clojure.lang.IObj form)
-                                            (vary-meta merge (cond-> loc
-                                                               (:file doc) (assoc :clojure.core/eval-file (str (:file doc))))))
-                                 {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form+loc)
-                                                                               (:file doc) (assoc :file (:file doc)))
-                                 _ (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
-                                     (eval form))
-                                 state (cond-> (reduce (fn [state ana-key]
-                                                         (assoc-in state [:->analysis-info ana-key] analyzed))
-                                                       (dissoc state :doc?)
-                                                       (->ana-keys analyzed))
-                                         doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
-                                         (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))]
-                             (when (:ns? state)
-                               (throw-if-dep-is-missing doc state analyzed))
-                             (if (seq deps)
-                               (-> (reduce (partial analyze-deps analyzed) state deps)
-                                   (make-deps-inherit-no-cache analyzed))
-                               state)))))
-                     (cond-> state
-                       doc? (merge doc))
-                     (-> doc :blocks count range))
-       doc? (-> add-block-ids
-                parser/add-block-visibility
-                parser/add-open-graph-metadata
-                parser/add-auto-expand-results)))))
+     (let [!id->count (atom {})]
+       (cond-> (reduce (fn [state i]
+                         (let [{:as block :keys [type text loc]} (get-in state [:blocks i])]
+                           (if (not= type :code)
+                             state
+                             (let [form (read-string text)
+                                   form+loc (cond-> form
+                                              (instance? clojure.lang.IObj form)
+                                              (vary-meta merge (cond-> loc
+                                                                 (:file doc) (assoc :clojure.core/eval-file (str (:file doc))))))
+                                   {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form+loc)
+                                                                                 (:file doc) (assoc :file (:file doc)))
+                                   _ (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
+                                       (eval form))
+                                   block-id (get-block-id !id->count (merge analyzed block))
+                                   analyzed (assoc analyzed :id block-id)
+                                   state (cond-> (reduce (fn [state ana-key]
+                                                           (assoc-in state [:->analysis-info ana-key] analyzed))
+                                                         (dissoc state :doc?)
+                                                         (->ana-keys analyzed))
+                                           doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
+                                           (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))]
+                               (when (:ns? state)
+                                 (throw-if-dep-is-missing doc state analyzed))
+                               (if (seq deps)
+                                 (-> (reduce (partial analyze-deps analyzed) state deps)
+                                     (make-deps-inherit-no-cache analyzed))
+                                 state)))))
+                       (cond-> state
+                         doc? (merge doc))
+                       (-> doc :blocks count range))
+         doc? (-> parser/add-block-visibility
+                  parser/add-open-graph-metadata
+                  parser/add-auto-expand-results))))))
+
+#_(let [parsed (nextjournal.clerk.parser/parse-clojure-string "clojure.core/dec")]
+    (build-graph (analyze-doc parsed)))
 
 (defn analyze-file
   ([file] (analyze-file {:graph (dep/graph)} file))
@@ -398,7 +402,7 @@
 #_(dep/immediate-dependencies (:graph (build-graph "src/nextjournal/clerk/analyzer.clj"))  #'nextjournal.clerk.analyzer/long-thing)
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/analyzer.clj"))  #'nextjournal.clerk.analyzer/long-thing)
 
-(defn hash-codeblock [->hash {:as codeblock :keys [hash form deps vars]}]
+(defn hash-codeblock [->hash {:as codeblock :keys [hash form id deps vars]}]
   (let [->hash' (if (and (not (ifn? ->hash)) (seq deps))
                   (binding [*out* *err*]
                     (println "->hash must be `ifn?`" {:->hash ->hash :codeblock codeblock})
@@ -408,8 +412,6 @@
     (sha1-base58 (binding [*print-length* nil]
                    (pr-str (set/union (conj hashed-deps (if form form hash))
                                       vars))))))
-
-#_(nextjournal.clerk/build-static-app! {:paths nextjournal.clerk/clerk-docs})
 
 (defn hash
   ([{:as analyzed-doc :keys [graph]}] (hash analyzed-doc (dep/topo-sort graph)))
@@ -421,9 +423,6 @@
                                (assoc ->hash k (hash-codeblock ->hash codeblock))
                                ->hash)))
            deps)))
-
-(binding [*ns* (create-ns 'my-foo)]
-  (analyze-doc (parser/parse-clojure-string "(ns my-foo) `bar")))
 
 #_(hash (build-graph (parser/parse-clojure-string "^{:nextjournal.clerk/hash-fn (fn [x] \"abc\")}(def contents (slurp \"notebooks/hello.clj\"))")))
 #_(hash (build-graph (parser/parse-clojure-string (slurp "notebooks/hello.clj"))))
