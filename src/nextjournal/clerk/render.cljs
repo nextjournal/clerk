@@ -24,7 +24,7 @@
             [sci.ctx-store]
             [shadow.cljs.modern :refer [defclass]]))
 
-(def client-id (keyword (gensym)))
+(def client-id (keyword (str (random-uuid))))
 
 (r/set-default-compiler! (r/create-compiler {:function-components true}))
 
