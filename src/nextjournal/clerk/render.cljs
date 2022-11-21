@@ -606,13 +606,9 @@
   (clerk-swap! atom (constantly new-val))
   new-val)
 
-(defn swap-clerk-atom! [{:as event :keys [var var-name args]}]
-  (apply swap! @var args))
-
 (defn ^:export dispatch [{:as msg :keys [type]}]
   (let [dispatch-fn (get {:patch-state! patch-state!
-                          :set-state! set-state!
-                          :swap! swap-clerk-atom!}
+                          :set-state! set-state!}
                          type
                          (fn [_]
                            (js/console.warn (str "no on-message dispatch for type `" type "`"))))]

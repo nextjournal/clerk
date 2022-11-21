@@ -109,8 +109,6 @@
                                  (eval '(nextjournal.clerk/recompute!)))
                        :swap! (when-let [var (resolve (:var-name msg))]
                                 (apply swap! @var (eval (:args msg)))
-                                (doseq [ch @!clients :when (not= sender-ch ch)]
-                                  (httpkit/send! ch edn-string))
                                 (eval `(nextjournal.clerk/recompute! {:sender-id ~sender-id})))))))})
 
 #_(do
