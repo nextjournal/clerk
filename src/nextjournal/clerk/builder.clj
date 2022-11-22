@@ -51,6 +51,7 @@
          "viewers/plotly"
          "viewers/table"
          "viewers/tex"
+         "viewers/var_from_def"
          "viewers/vega"]))
 
 

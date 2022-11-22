@@ -325,11 +325,13 @@
 
 #_((update-val + 1) {:nextjournal/value 41})
 
-(def var-from-def?
-  (get-safe :nextjournal.clerk/var-from-def))
+(defn guard [p x] (when (p x) x))
+
+(defn var-from-def? [x] (guard var? (get-safe x :nextjournal.clerk/var-from-def)))
 
 (def var-from-def-viewer
-  {:pred var-from-def? :transform-fn (update-val (comp deref :nextjournal.clerk/var-from-def))})
+  {:pred var-from-def?
+   :transform-fn (update-val (comp deref :nextjournal.clerk/var-from-def))})
 
 (defn apply-viewer-unwrapping-var-from-def
   "Applies the `viewer` (if set) to the given result `result`. In case
@@ -343,7 +345,7 @@
                           :nextjournal/viewer (normalize-viewer viewer)})
           {unwrap-var :transform-fn var-from-def? :pred} var-from-def-viewer]
       (assoc result :nextjournal/value (cond-> value+viewer
-                                         (and (var-from-def? value) (not (var-from-def? (->viewer value+viewer))))
+                                         (and (var-from-def? value) (not (:var-from-def? (->viewer value+viewer))))
                                          unwrap-var)))
     result))
 
