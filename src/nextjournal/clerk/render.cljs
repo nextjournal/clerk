@@ -556,7 +556,7 @@
               (sci/create-ns (symbol (namespace var-name)))
               (symbol (name var-name))
               (with-meta (r/atom state)
-                         {:var-name var-name})))
+                {:var-name var-name})))
 
 (defonce ^:private !synced-atom-vars
   (atom #{}))
