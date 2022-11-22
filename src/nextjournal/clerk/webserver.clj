@@ -107,14 +107,14 @@
    :on-receive (fn [sender-ch edn-string]
                  (binding [*ns* (or (:ns @!doc)
                                     (create-ns 'user))]
-                   (let [{:as msg :keys [type sender-id]} (read-msg edn-string)]
+                   (let [{:as msg :keys [type]} (read-msg edn-string)]
                      (case type
                        :eval (do (eval (:form msg))
                                  (eval '(nextjournal.clerk/recompute!)))
                        :swap! (when-let [var (resolve (:var-name msg))]
                                 (apply swap! @var (eval (:args msg)))
                                 (binding [*sender-ch* sender-ch]
-                                  (eval `(nextjournal.clerk/recompute!))))))))})
+                                  (eval '(nextjournal.clerk/recompute!))))))))})
 
 #_(do
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
