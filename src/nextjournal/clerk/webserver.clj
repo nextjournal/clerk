@@ -20,9 +20,11 @@
 #_(view/doc->viewer @!doc)
 #_(reset! !doc help-doc)
 
-(defn broadcast! [msg]
+(defn broadcast-fn! [msg-fn]
   (doseq [ch @!clients]
-    (httpkit/send! ch (v/->edn msg))))
+    (httpkit/send! ch (v/->edn (msg-fn ch)))))
+
+(defn broadcast! [msg] (broadcast-fn! (constantly msg)))
 
 #_(broadcast! [{:random (rand-int 10000) :range (range 100)}])
 
@@ -97,6 +99,8 @@
 
 #_(pr-str (read-msg "#viewer-eval (resolve 'clojure.core/inc)"))
 
+(def ^:dynamic *sender-ch* nil)
+
 (def ws-handlers
   {:on-open (fn [ch] (swap! !clients conj ch))
    :on-close (fn [ch _reason] (swap! !clients disj ch))
@@ -109,7 +113,8 @@
                                  (eval '(nextjournal.clerk/recompute!)))
                        :swap! (when-let [var (resolve (:var-name msg))]
                                 (apply swap! @var (eval (:args msg)))
-                                (eval `(nextjournal.clerk/recompute! {:sender-id ~sender-id})))))))})
+                                (binding [*sender-ch* sender-ch]
+                                  (eval `(nextjournal.clerk/recompute!))))))))})
 
 #_(do
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
@@ -141,21 +146,24 @@
 
 #_(extract-viewer-evals @!doc)
 
-(defn present+reset! [doc]
-  (let [presented (view/doc->viewer doc)]
-    (reset! !doc (with-meta doc presented))
-    presented))
+(defn present+reset!
+  ([doc] (present+reset! doc {}))
+  ([doc opts]
+   (let [presented (view/doc->viewer opts doc)]
+     (reset! !doc (with-meta doc presented))
+     presented)))
 
 (defn update-doc! [doc]
   (reset! !error nil)
-  (broadcast! (if (= (:ns @!doc) (:ns doc))
-                (let [old-viewer (meta @!doc)
-                      patch (editscript/diff old-viewer (present+reset! doc))]
-                  {:type :patch-state! :patch (editscript/get-edits patch)})
-                {:type :set-state!
-                 :remount? (not= (extract-viewer-evals @!doc)
-                                 (extract-viewer-evals doc))
-                 :doc (present+reset! doc)})))
+  (broadcast-fn! (fn [ch]
+                   (if (= (:ns @!doc) (:ns doc))
+                     (let [old-viewer (meta @!doc)
+                           patch (editscript/diff old-viewer (present+reset! doc {:ignore-sync-existing-vars? (= ch *sender-ch*)}))]
+                       {:type :patch-state! :patch (editscript/get-edits patch)})
+                     {:type :set-state!
+                      :remount? (not= (extract-viewer-evals @!doc)
+                                      (extract-viewer-evals doc))
+                      :doc (present+reset! doc)}))))
 
 #_(update-doc! help-doc)
 
