@@ -120,7 +120,7 @@
 
 (defonce !eval-counter (r/atom 0))
 
-(defn render-notebook [{:as _doc xs :blocks :keys [bundle? toc toc-visibility]}]
+(defn render-notebook [{:as _doc xs :blocks :keys [bundle? class toc toc-visibility]}]
   (r/with-let [local-storage-key "clerk-navbar"
                !state (r/atom {:toc (toc-items (:children toc))
                                :md-toc toc
@@ -153,20 +153,23 @@
           [navbar/panel !state [navbar/navbar !state]]])
        [:div.flex-auto.h-screen.overflow-y-auto.scroll-container
         {:ref ref-fn}
-        [:div.flex.flex-col.items-center.viewer-notebook.flex-auto
+        [:div {:class (or class "flex flex-col items-center viewer-notebook flex-auto")}
          (doall
           (map-indexed (fn [idx x]
                          (let [{viewer-name :name} (viewer/->viewer x)
+                               viewer-class (viewer/class x)
                                inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
                            ^{:key (str idx "-" @!eval-counter)}
-                           [:div {:class ["viewer"
-                                          (when (:nextjournal/open-graph-image-capture (viewer/->value x)) "open-graph-image-capture")
-                                          (when viewer-name (str "viewer-" (name viewer-name)))
-                                          (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
-                                          (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
-                                            :wide "w-full max-w-wide"
-                                            :full "w-full"
-                                            "w-full max-w-prose px-8")]}
+                           [:div {:class [(when (:nextjournal/open-graph-image-capture (viewer/->value x)) "open-graph-image-capture")
+                                          (when-not viewer-class "viewer")
+                                          (when (and (not viewer-class) viewer-name) (str "viewer-" (name viewer-name)))
+                                          (when (and (not viewer-class) inner-viewer-name) (str "viewer-" (name inner-viewer-name)))
+                                          viewer-class
+                                          (when-not viewer-class
+                                            (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
+                                              :wide "w-full max-w-wide"
+                                              :full "w-full"
+                                              "w-full max-w-prose px-8"))]}
                             [inspect-presented x]]))
                        xs))]]])))
 

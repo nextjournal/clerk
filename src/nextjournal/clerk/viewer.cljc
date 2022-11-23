@@ -148,6 +148,11 @@
   (when (wrapped-value? x)
     (:nextjournal/width x)))
 
+(defn class
+  "Returns the `:nextjournal/class` for a given wrapped value `x`, `nil` otherwise."
+  [x]
+  (when (wrapped-value? x)
+    (:nextjournal/class x)))
 
 (defn normalize-viewer-opts [opts]
   (when-not (map? opts)
@@ -155,7 +160,8 @@
   (set/rename-keys opts {:nextjournal.clerk/viewer :nextjournal/viewer
                          :nextjournal.clerk/viewers :nextjournal/viewers
                          :nextjournal.clerk/opts :nextjournal/opts
-                         :nextjournal.clerk/width :nextjournal/width}))
+                         :nextjournal.clerk/width :nextjournal/width
+                         :nextjournal.clerk/class :nextjournal/class}))
 
 (defn normalize-viewer [viewer]
   (cond (keyword? viewer) viewer
@@ -414,7 +420,7 @@
         presented-result (->> (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value))
                               #?(:clj (process-blobs blob-opts)))
         opts-from-form-meta (-> result
-                                (select-keys [:nextjournal/width :nextjournal/opts])
+                                (select-keys [:nextjournal/class :nextjournal/width :nextjournal/opts])
                                 (cond-> #_result
                                   (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))]
     (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result}
@@ -855,7 +861,7 @@
                                              (map (comp process-wrapped-value
                                                         apply-viewers*
                                                         (partial ensure-wrapped-with-viewers viewers))))))
-      (select-keys [:atom-var-name->state :auto-expand-results? :blocks :toc :toc-visibility :title :open-graph])
+      (select-keys [:atom-var-name->state :auto-expand-results? :blocks :class :toc :toc-visibility :title :open-graph])
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
 
 (def notebook-viewer
@@ -982,7 +988,7 @@
 #_(ensure-wrapped-with-viewers {:nextjournal/value 42 :nextjournal/viewers [:boo]})
 
 (defn ->opts [wrapped-value]
-  (select-keys wrapped-value [:nextjournal/width :nextjournal/opts :!budget :budget :path :current-path :offset]))
+  (select-keys wrapped-value [:nextjournal/class :nextjournal/width :nextjournal/opts :!budget :budget :path :current-path :offset]))
 
 (defn apply-viewers* [wrapped-value]
   (when (empty? (->viewers wrapped-value))
@@ -1078,7 +1084,7 @@
 
 (defn process-wrapped-value [wrapped-value]
   (-> wrapped-value
-      (select-keys [:nextjournal/viewer :nextjournal/value :nextjournal/width :nextjournal/content-type :nextjournal/opts :path :offset :n])
+      (select-keys [:nextjournal/viewer :nextjournal/value :nextjournal/class :nextjournal/width :nextjournal/content-type :nextjournal/opts :path :offset :n])
       (update :nextjournal/viewer process-viewer)))
 
 #_(process-wrapped-value (apply-viewers 42))

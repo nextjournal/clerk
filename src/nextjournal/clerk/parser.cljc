@@ -125,6 +125,14 @@
                                            (when (ns? form) (some :nextjournal.clerk/auto-expand-results? form)))
                                          blocks)))
 
+(defn add-notebook-class [{:as doc :keys [blocks]}]
+  (prn :add-notebook-class (some (fn [{:keys [form]}]
+                                   (when (ns? form) (some :nextjournal.clerk/class form)))
+                                 blocks))
+  (assoc doc :class (some (fn [{:keys [form]}]
+                            (when (ns? form) (some :nextjournal.clerk/class form)))
+                          blocks)))
+
 #_(->doc-settings '^{:nextjournal.clerk/toc :boom} (ns foo)) ;; TODO: error
 
 (defn add-block-visibility [{:as analyzed-doc :keys [blocks]}]

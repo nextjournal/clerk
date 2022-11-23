@@ -291,7 +291,8 @@
                        (-> doc :blocks count range))
          doc? (-> parser/add-block-visibility
                   parser/add-open-graph-metadata
-                  parser/add-auto-expand-results))))))
+                  parser/add-auto-expand-results
+                  parser/add-notebook-class))))))
 
 #_(let [parsed (nextjournal.clerk.parser/parse-clojure-string "clojure.core/dec")]
     (build-graph (analyze-doc parsed)))
