@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.sci-env
   (:require ["framer-motion" :as framer-motion]
+            ["@codemirror/view" :as codemirror-view]
             [cljs.reader]
             [clojure.string :as str]
             [edamame.core :as edamame]
@@ -14,7 +15,6 @@
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
             [sci.ctx-store]))
-
 
 (defn ->viewer-fn-with-error [form]
   (try (viewer/->viewer-fn form)
@@ -82,6 +82,9 @@
 (def hooks-namespace
   (sci/copy-ns nextjournal.clerk.render.hooks (sci/create-ns 'nextjournal.clerk.render.hooks)))
 
+(def code-namespace
+  (sci/copy-ns nextjournal.clerk.render.code (sci/create-ns 'nextjournal.clerk.render.code)))
+
 (def initial-sci-opts
   {:async? true
    :disable-arity-checks true
@@ -94,6 +97,7 @@
              'p 'nextjournal.clerk.parser}
    :namespaces (merge {'nextjournal.clerk.render render-namespace
                        'nextjournal.clerk.render.hooks hooks-namespace
+                       'nextjournal.clerk.render.code code-namespace
                        'nextjournal.clerk.viewer viewer-namespace
                        'nextjournal.clerk.parser parser-namespace
                        'clojure.core {'swap! nextjournal.clerk.render/clerk-swap!
@@ -101,8 +105,6 @@
                                       'read-string read-string}}
                       sci.configs.js-interop/namespaces
                       sci.configs.reagent/namespaces)})
-
-
 
 (defn ^:export onmessage [ws-msg]
   (render/dispatch (read-string (.-data ws-msg))))
@@ -115,7 +117,9 @@
 
 (def ^:export mount render/mount)
 
-(sci.ctx-store/reset-ctx! (sci/init initial-sci-opts))
+(sci.ctx-store/reset-ctx! (doto (sci/init initial-sci-opts)
+                            (sci/add-class! 'codemirror.view codemirror-view)))
+
 (sci/alter-var-root sci/print-fn (constantly *print-fn*))
 (sci/alter-var-root sci/print-err-fn (constantly *print-err-fn*))
 

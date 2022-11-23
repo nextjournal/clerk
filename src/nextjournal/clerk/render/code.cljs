@@ -1,11 +1,14 @@
 (ns nextjournal.clerk.render.code
-  (:require ["@codemirror/language" :refer [HighlightStyle]]
+  (:require ["@codemirror/language" :refer [HighlightStyle syntaxHighlighting]]
             ["@lezer/highlight" :refer [tags highlightTree]]
-            ["@codemirror/state" :refer [RangeSetBuilder Text]]
-            ["@codemirror/view" :refer [Decoration]]
+            ["@codemirror/state" :refer [EditorState RangeSetBuilder Text]]
+            ["@codemirror/view" :refer [EditorView Decoration keymap]]
             ["@nextjournal/lang-clojure" :refer [clojureLanguage]]
             [applied-science.js-interop :as j]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [nextjournal.clerk.render.hooks :as hooks]
+            [nextjournal.clojure-mode :as clojure-mode]
+            [nextjournal.clojure-mode.keymap :as clojure-mode.keymap]))
 
 (def highlight-style
   (.define HighlightStyle
@@ -91,3 +94,74 @@
       (into [:div.cm-content.whitespace-pre]
             (map (partial style-line decorations-rangeset text))
             (range 1 (inc (.-lines text))))]]))
+
+;; editable code viewer
+(def theme
+  (.theme EditorView
+          (j/lit {"&.cm-focused" {:outline "none"}
+                  ".cm-line" {:padding "0"
+                              :line-height "1.6"
+                              :font-size "15px"
+                              :font-family "\"Fira Mono\", monospace"}
+                  ".cm-matchingBracket" {:border-bottom "1px solid var(--teal-color)"
+                                         :color "inherit"}
+
+                  ;; only show cursor when focused
+                  ".cm-cursor" {:visibility "hidden"}
+                  "&.cm-focused .cm-cursor" {:visibility "visible"
+                                             :animation "steps(1) cm-blink 1.2s infinite"}
+                  "&.cm-focused .cm-selectionBackground" {:background-color "Highlight"}
+                  ".cm-tooltip" {:border "1px solid rgba(0,0,0,.1)"
+                                 :border-radius "3px"
+                                 :overflow "hidden"}
+                  ".cm-tooltip > ul > li" {:padding "3px 10px 3px 0 !important"}
+                  ".cm-tooltip > ul > li:first-child" {:border-top-left-radius "3px"
+                                                       :border-top-right-radius "3px"}})))
+
+(def ^js complete-keymap (.of keymap clojure-mode.keymap/complete))
+(def ^js builtin-keymap (.of keymap clojure-mode.keymap/builtin))
+(def ^js paredit-keymap (.of keymap clojure-mode.keymap/paredit))
+
+(def read-only (.. EditorView -editable (of false)))
+
+(defn on-change-ext [f]
+  (.. EditorState -transactionExtender
+      (of (fn [^js tr]
+            (when (.-docChanged tr) (f (.. tr -state sliceDoc)))
+            #js {}))))
+
+(def ^:export default-extensions
+  #js [clojure-mode/default-extensions
+       (syntaxHighlighting highlight-style)
+       theme])
+
+(defn make-state [doc extensions]
+  (.create EditorState (j/obj :doc doc :extensions extensions)))
+
+(defn make-view [state parent]
+  (EditorView. (j/obj :state state :parent parent)))
+
+(defn editor
+  ([!code-str] (editor !code-str {}))
+  ([!code-str {:keys [extensions on-change]}]
+   (let [!container-el (hooks/use-ref nil)
+         !view (hooks/use-ref nil)]
+     ;; view instance is built only once
+     (hooks/use-effect
+      (fn []
+        (let [^js view
+              (reset! !view (make-view (make-state @!code-str
+                                                   (cond-> default-extensions
+                                                     (seq extensions) (.concat extensions)
+                                                     on-change (.concat (on-change-ext on-change)))) @!container-el))]
+          #(.destroy view))))
+     (hooks/use-effect
+      (fn []
+        (let [^js state (.-state @!view)]
+          (when (not= @!code-str (.sliceDoc state))
+            (.dispatch @!view
+                       (.update state
+                                (j/lit {:changes [{:insert @!code-str
+                                                   :from 0 :to (.. state -doc -length)}]}))))))
+      [@!code-str])
+     [:div {:ref !container-el}])))
