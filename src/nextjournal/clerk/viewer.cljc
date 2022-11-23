@@ -148,14 +148,32 @@
   (when (wrapped-value? x)
     (:nextjournal/width x)))
 
+(defn css-class
+  "Returns the `:nextjournal/css-class` for a given wrapped value `x`, `nil` otherwise."
+  [x]
+  (when (wrapped-value? x)
+    (:nextjournal/css-class x)))
 
-(defn normalize-viewer-opts [opts]
+
+(def viewer-opts-normalization
+  (into {}
+        (map #(vector (keyword "nextjournal.clerk" (name %))
+                      (keyword "nextjournal"       (name %))))
+        [:viewer :viewers :opts :width :css-class]))
+
+(defn throw-when-viewer-opts-invalid [opts]
   (when-not (map? opts)
     (throw (ex-info "normalize-viewer-opts not passed `map?` opts" {:opts opts})))
-  (set/rename-keys opts {:nextjournal.clerk/viewer :nextjournal/viewer
-                         :nextjournal.clerk/viewers :nextjournal/viewers
-                         :nextjournal.clerk/opts :nextjournal/opts
-                         :nextjournal.clerk/width :nextjournal/width}))
+  (when-let [width (:nextjournal/width opts)]
+    (when-not (contains? #{:full :wide :prose} width)
+      (throw (ex-info "Invalid `:nextjournal.clerk/width`, allowed values are `:full`, `:wide` and `:prose`." {:width width})))
+    (when-let [css-class (:nextjournal/css-class opts)]
+      (throw (ex-info "Conflicting viewer options `:nextjournal.clerk/width` and `:nextjournal.clerk/css-class`. Please remove either one."
+                      {:width width :css-class css-class}))))
+  opts)
+
+(defn normalize-viewer-opts [opts]
+  (throw-when-viewer-opts-invalid (set/rename-keys opts viewer-opts-normalization)))
 
 (defn normalize-viewer [viewer]
   (cond (keyword? viewer) viewer
@@ -325,11 +343,12 @@
 
 #_((update-val + 1) {:nextjournal/value 41})
 
-(def var-from-def?
-  (get-safe :nextjournal.clerk/var-from-def))
+(defn var-from-def? [x]
+  (var? (get-safe x :nextjournal.clerk/var-from-def)))
 
 (def var-from-def-viewer
-  {:pred var-from-def? :transform-fn (update-val (comp deref :nextjournal.clerk/var-from-def))})
+  {:pred var-from-def?
+   :transform-fn (update-val (comp deref :nextjournal.clerk/var-from-def))})
 
 (defn apply-viewer-unwrapping-var-from-def
   "Applies the `viewer` (if set) to the given result `result`. In case
@@ -343,7 +362,8 @@
                           :nextjournal/viewer (normalize-viewer viewer)})
           {unwrap-var :transform-fn var-from-def? :pred} var-from-def-viewer]
       (assoc result :nextjournal/value (cond-> value+viewer
-                                         (and (var-from-def? value) (not (var-from-def? (->viewer value+viewer))))
+                                         (and (var-from-def? value)
+                                              (-> value+viewer ->viewer :var-from-def? not))
                                          unwrap-var)))
     result))
 
@@ -401,6 +421,7 @@
 #_(get-viewers nil nil)
 
 (declare result-viewer)
+
 (defn transform-result [{:as _cell :keys [doc result form]}]
   (let [{:keys [auto-expand-results? inline-results? bundle?]} doc
         {:nextjournal/keys [value blob-id viewers]} result
@@ -412,7 +433,7 @@
         presented-result (->> (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value))
                               #?(:clj (process-blobs blob-opts)))
         opts-from-form-meta (-> result
-                                (select-keys [:nextjournal/width :nextjournal/opts])
+                                (select-keys [:nextjournal/css-class :nextjournal/width :nextjournal/opts])
                                 (cond-> #_result
                                   (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))]
     (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result}
@@ -853,7 +874,7 @@
                                              (map (comp process-wrapped-value
                                                         apply-viewers*
                                                         (partial ensure-wrapped-with-viewers viewers))))))
-      (select-keys [:atom-var-name->state :auto-expand-results? :blocks :toc :toc-visibility :title :open-graph])
+      (select-keys [:atom-var-name->state :auto-expand-results? :blocks :css-class :toc :toc-visibility :title :open-graph])
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
 
 (def notebook-viewer
@@ -980,7 +1001,7 @@
 #_(ensure-wrapped-with-viewers {:nextjournal/value 42 :nextjournal/viewers [:boo]})
 
 (defn ->opts [wrapped-value]
-  (select-keys wrapped-value [:nextjournal/width :nextjournal/opts :!budget :budget :path :current-path :offset]))
+  (select-keys wrapped-value [:nextjournal/css-class :nextjournal/width :nextjournal/opts :!budget :budget :path :current-path :offset]))
 
 (defn apply-viewers* [wrapped-value]
   (when (empty? (->viewers wrapped-value))
@@ -1074,9 +1095,13 @@
 
 #_(process-viewer {:render-fn '#(vector :h1) :transform-fn mark-presented})
 
+(def processed-keys
+  (into [:path :offset :n :nextjournal/content-type :nextjournal/value]
+        (-> viewer-opts-normalization vals set (disj :nextjournal/viewers))))
+
 (defn process-wrapped-value [wrapped-value]
   (-> wrapped-value
-      (select-keys [:nextjournal/viewer :nextjournal/value :nextjournal/width :nextjournal/content-type :nextjournal/opts :path :offset :n])
+      (select-keys processed-keys)
       (update :nextjournal/viewer process-viewer)))
 
 #_(process-wrapped-value (apply-viewers 42))

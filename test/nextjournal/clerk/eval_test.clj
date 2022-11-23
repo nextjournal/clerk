@@ -62,6 +62,12 @@
       (is (= result
              (eval/eval-string blob->result "(ns my-random-test-ns-2) {inc (java.util.UUID/randomUUID)}")))))
 
+  (testing "var gets cached in cas"
+    (let [code-str (format "(ns nextjournal.clerk.eval-test-%s) (def my-uuid (java.util.UUID/randomUUID))" (rand-int 100000))
+          get-uuid #(-> % :blocks peek :result :nextjournal/value :nextjournal.clerk/var-from-def deref)]
+      (is (= (get-uuid (eval/eval-string code-str))
+             (get-uuid (eval/eval-string code-str))))))
+
   (testing "random expression doesn't get cached with no-cache"
     (is (not= (eval/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns-3) (java.util.UUID/randomUUID)")
               (eval/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns-3) (java.util.UUID/randomUUID)"))))
