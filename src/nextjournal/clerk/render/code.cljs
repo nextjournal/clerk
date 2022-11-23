@@ -123,6 +123,7 @@
 (def ^js paredit-keymap (.of keymap clojure-mode.keymap/paredit))
 
 (def read-only (.. EditorView -editable (of false)))
+
 (defn on-change-ext [f]
   (.. EditorState -changeFilter
       (of (fn [^js tr]
@@ -130,7 +131,8 @@
             true))))
 
 (def ^:export default-extensions
-  #js [clojure-mode/default-extensions
+  #js [ ;; FIXME: auto formatting changed lines break state updates
+       (doto (.concat clojure-mode/default-extensions) (.splice 4 1))
        (syntaxHighlighting highlight-style)
        theme])
 
