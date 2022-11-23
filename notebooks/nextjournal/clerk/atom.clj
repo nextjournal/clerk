@@ -2,8 +2,7 @@
   "Demo of Clerk's two-way bindings."
   {:nextjournal.clerk/visibility {:code :hide :result :hide}}
   (:require [clojure.core :as core]
-            [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as viewer]))
+            [nextjournal.clerk :as clerk]))
 
 (def transform-var
   (comp (clerk/update-val symbol)
@@ -23,8 +22,7 @@
                    [:div "could not resolve" var-name]))})
 
 (def slider-viewer
-  {:render-fn '(fn [x]
-                 [:input {:type :range :on-change #(swap! @(resolve x) assoc :counter (int (.. % -target -value)))}])
+  {:render-fn '(fn [x] [:input {:type :range :value (:counter @@(resolve x)) :on-change #(swap! @(resolve x) assoc :counter (int (.. % -target -value)))}])
    :transform-fn transform-var})
 
 {::clerk/visibility {:code :show :result :show}}
@@ -36,7 +34,6 @@
 (defonce my-state
   (atom {:counter 0}))
 
-
 ;; This is showing the state that the JVM has.
 @my-state
 
@@ -45,3 +42,10 @@
 
 ^{::clerk/viewer slider-viewer}
 `my-state
+
+;; changing my-state on the JVM and running clerk/show! will update the slider
+;; and counter accordingly:
+(comment
+  (do
+    (swap! my-state update :counter #(mod (+ % 33) 100))
+    (clerk/recompute!)))
