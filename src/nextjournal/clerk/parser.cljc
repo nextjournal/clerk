@@ -125,6 +125,11 @@
                                            (when (ns? form) (some :nextjournal.clerk/auto-expand-results? form)))
                                          blocks)))
 
+(defn add-css-class [{:as doc :keys [blocks]}]
+  (assoc doc :css-class (some (fn [{:keys [form]}]
+                                (when (ns? form) (some :nextjournal.clerk/css-class form)))
+                              blocks)))
+
 #_(->doc-settings '^{:nextjournal.clerk/toc :boom} (ns foo)) ;; TODO: error
 
 (defn add-block-visibility [{:as analyzed-doc :keys [blocks]}]
