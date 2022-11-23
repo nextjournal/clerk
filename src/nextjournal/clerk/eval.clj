@@ -154,7 +154,7 @@
                             (or (get-in blob->result [hash :nextjournal/value])
                                 (-> cas-hash ->cache-file fs/exists?)))
         opts-from-form-meta (-> (meta form)
-                                (select-keys [:nextjournal.clerk/viewer :nextjournal.clerk/viewers :nextjournal.clerk/css-class :nextjournal.clerk/width :nextjournal.clerk/opts])
+                                (select-keys (keys v/viewer-opts-normalization))
                                 v/normalize-viewer-opts
                                 maybe-eval-viewers)]
     #_(prn :cached? (cond no-cache? :no-cache

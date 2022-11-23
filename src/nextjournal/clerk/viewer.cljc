@@ -154,30 +154,26 @@
   (when (wrapped-value? x)
     (:nextjournal/css-class x)))
 
-(defn ns-map [names]
-  (into {}
-        (map (fn [kw]
-               [(keyword "nextjournal.clerk" (name kw))
-                (keyword "nextjournal" (name kw))]))
-        names))
 
-(def viewer-normalization-keys
-  (ns-map [:viewer :viewers :opts :width :css-class]))
+(def viewer-opts-normalization
+  (into {}
+        (map #(vector (keyword "nextjournal.clerk" (name %))
+                      (keyword "nextjournal"       (name %))))
+        [:viewer :viewers :opts :width :css-class]))
 
 (defn throw-when-viewer-opts-invalid [opts]
+  (when-not (map? opts)
+    (throw (ex-info "normalize-viewer-opts not passed `map?` opts" {:opts opts})))
   (when-let [width (:nextjournal/width opts)]
     (when-not (contains? #{:full :wide :prose} width)
       (throw (ex-info "Invalid `:nextjournal.clerk/width`, allowed values are `:full`, `:wide` and `:prose`." {:width width})))
-    (when (and width (:nextjournal/css-class opts))
+    (when-let [css-class (:nextjournal/css-class opts)]
       (throw (ex-info "Conflicting viewer options `:nextjournal.clerk/width` and `:nextjournal.clerk/css-class`. Please remove either one."
-                      {:width width
-                       :css-class (:nextjournal/css-class opts)}))))
+                      {:width width :css-class css-class}))))
   opts)
 
 (defn normalize-viewer-opts [opts]
-  (when-not (map? opts)
-    (throw (ex-info "normalize-viewer-opts not passed `map?` opts" {:opts opts})))
-  (throw-when-viewer-opts-invalid (set/rename-keys opts viewer-normalization-keys)))
+  (throw-when-viewer-opts-invalid (set/rename-keys opts viewer-opts-normalization)))
 
 (defn normalize-viewer [viewer]
   (cond (keyword? viewer) viewer
@@ -425,6 +421,7 @@
 #_(get-viewers nil nil)
 
 (declare result-viewer)
+
 (defn transform-result [{:as _cell :keys [doc result form]}]
   (let [{:keys [auto-expand-results? inline-results? bundle?]} doc
         {:nextjournal/keys [value blob-id viewers]} result
@@ -1098,9 +1095,13 @@
 
 #_(process-viewer {:render-fn '#(vector :h1) :transform-fn mark-presented})
 
+(def processed-keys
+  (into [:path :offset :n :nextjournal/content-type :nextjournal/value]
+        (-> viewer-opts-normalization vals set (disj :nextjournal/viewers))))
+
 (defn process-wrapped-value [wrapped-value]
   (-> wrapped-value
-      (select-keys [:nextjournal/viewer :nextjournal/value :nextjournal/css-class :nextjournal/width :nextjournal/content-type :nextjournal/opts :path :offset :n])
+      (select-keys processed-keys)
       (update :nextjournal/viewer process-viewer)))
 
 #_(process-wrapped-value (apply-viewers 42))
