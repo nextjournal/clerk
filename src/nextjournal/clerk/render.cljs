@@ -160,16 +160,18 @@
                                viewer-class (viewer/class x)
                                inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
                            ^{:key (str idx "-" @!eval-counter)}
-                           [:div {:class [(when (:nextjournal/open-graph-image-capture (viewer/->value x)) "open-graph-image-capture")
-                                          (when-not viewer-class "viewer")
-                                          (when (and (not viewer-class) viewer-name) (str "viewer-" (name viewer-name)))
-                                          (when (and (not viewer-class) inner-viewer-name) (str "viewer-" (name inner-viewer-name)))
-                                          viewer-class
-                                          (when-not viewer-class
-                                            (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
-                                              :wide "w-full max-w-wide"
-                                              :full "w-full"
-                                              "w-full max-w-prose px-8"))]}
+                           [:div {:class (concat
+                                          [(when (:nextjournal/open-graph-image-capture (viewer/->value x)) "open-graph-image-capture")]
+                                          (if viewer-class
+                                            (cond-> viewer-class
+                                              (string? viewer-class) vector)
+                                            ["viewer"
+                                             (when viewer-name (str "viewer-" (name viewer-name)))
+                                             (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
+                                             (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
+                                               :wide "w-full max-w-wide"
+                                               :full "w-full"
+                                               "w-full max-w-prose px-8")]))}
                             [inspect-presented x]]))
                        xs))]]])))
 
