@@ -117,7 +117,7 @@
                        :swap! (when-let [var (resolve (:var-name msg))]
                                 (apply swap! @var (eval (:args msg)))
                                 (binding [*sender-ch* sender-ch]
-                                  (eval `(nextjournal.clerk/recompute!))))))))})
+                                  (eval '(nextjournal.clerk/recompute!))))))))})
 
 #_(do
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
