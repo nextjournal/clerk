@@ -75,16 +75,18 @@
     {:nextjournal.clerk/var-from-def resolved-var}))
 
 (defn ^:private lookup-cached-result [introduced-var hash cas-hash]
-  (try
-    (let [value (let [cached-value (thaw-from-cas cas-hash)]
-                  (when introduced-var
-                    (intern (-> introduced-var symbol namespace find-ns) (-> introduced-var symbol name symbol) cached-value))
-                  cached-value)]
-      (wrapped-with-metadata (if introduced-var (var-from-def introduced-var) value) hash))
-    (catch Exception _e
-      ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
-      #_(prn :thaw-error e)
-      nil)))
+  (when-let [cached-value (try (thaw-from-cas cas-hash)
+                               (catch Exception _e
+                                 ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
+                                 #_(prn :thaw-error e)
+                                 nil))]
+    (wrapped-with-metadata (if introduced-var
+                             (var-from-def (intern (-> introduced-var namespace symbol)
+                                                   (-> introduced-var name symbol)
+                                                   cached-value))
+                             cached-value)
+                           hash)))
+
 
 (defn ^:private cachable-value? [value]
   (and (some? value)
@@ -149,13 +151,16 @@
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
         cached-result? (and (not no-cache?)
                             cas-hash
-                            (-> cas-hash ->cache-file fs/exists?))
+                            (or (get-in blob->result [hash :nextjournal/value])
+                                (-> cas-hash ->cache-file fs/exists?)))
         opts-from-form-meta (-> (meta form)
                                 (select-keys [:nextjournal.clerk/viewer :nextjournal.clerk/viewers :nextjournal.clerk/width :nextjournal.clerk/opts])
                                 v/normalize-viewer-opts
                                 maybe-eval-viewers)]
     #_(prn :cached? (cond no-cache? :no-cache
-                          cached-result? true
+                          cached-result? (if (get-in blob->result [hash :nextjournal/value])
+                                           :in-memory
+                                           :in-cas)
                           cas-hash :no-cas-file
                           :else :no-digest-file)
            :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
@@ -227,4 +232,3 @@
    (eval-doc in-memory-cache (parser/parse-clojure-string {:doc? true} code-string))))
 
 #_(eval-string "(+ 39 3)")
-

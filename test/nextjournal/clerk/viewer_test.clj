@@ -93,7 +93,7 @@
     (testing "leaves var wrapped when viewer opts out"
       (is (= {:nextjournal.clerk/var-from-def #'my-test-var}
              (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var}
-                               :nextjournal/viewer (assoc v/html-viewer :nextjournal.clerk/var-from-def true)}))))))
+                               :nextjournal/viewer (assoc v/html-viewer :var-from-def? true)}))))))
 
 
 (deftest resolve-aliases
@@ -183,4 +183,3 @@
                                                       :bundle? false
                                                       :out-path builder/default-out-path} test-doc)
                                    #"_data/.+\.png"))))))
-
