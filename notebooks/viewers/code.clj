@@ -1,4 +1,4 @@
-;; # 🧷 Code Viewer
+;; # 👔 Code Viewer
 (ns viewers.code
   {:nextjournal.clerk/no-cache true}
   (:require [nextjournal.clerk :as clerk]
@@ -15,6 +15,11 @@
   "(def fib
   (lazy-cat [0 1]
             (map + fib (rest fib))))")
+
+;; Tiny code viewer
+(clerk/with-viewer
+  '(fn [code-str _] [nextjournal.clerk.render.code/editor code-str])
+  "{:search :query}")
 
 ;; customize extensions
 (clerk/with-viewer
