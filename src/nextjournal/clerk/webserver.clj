@@ -23,13 +23,10 @@
 
 (def ^:dynamic *sender-ch* nil)
 
-(defn broadcast! [msg]
-  (doseq [ch @!clients]
-    (when (not= @!last-sender-ch *sender-ch*)
-      (httpkit/send! ch (v/->edn {:type :patch-state! :patch []
-                                  :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-ch* ch)))]})))
-    (httpkit/send! ch (v/->edn msg)))
-  (reset! !last-sender-ch *sender-ch*))
+(defn broadcast-fn! [msg-fn]
+  (doseq [ch @!clients] (httpkit/send! ch (v/->edn (msg-fn ch)))))
+
+(defn broadcast! [msg] (broadcast-fn! (constantly msg)))
 
 #_(broadcast! [{:random (rand-int 10000) :range (range 100)}])
 
@@ -156,14 +153,19 @@
 
 (defn update-doc! [doc]
   (reset! !error nil)
-  (broadcast! (if (= (:ns @!doc) (:ns doc))
-                (let [old-viewer (meta @!doc)
-                      patch (editscript/diff old-viewer (present+reset! doc))]
-                  {:type :patch-state! :patch (editscript/get-edits patch)})
-                {:type :set-state!
-                 :remount? (not= (extract-viewer-evals @!doc)
-                                 (extract-viewer-evals doc))
-                 :doc (present+reset! doc)})))
+  (let [msg (if (= (:ns @!doc) (:ns doc))
+              (let [old-viewer (meta @!doc)
+                    patch (editscript/diff old-viewer (present+reset! doc))]
+                [[:type :patch-state!]
+                 [:patch (editscript/get-edits patch)]])
+              [[:type :set-state!]
+               [:remount? (not= (extract-viewer-evals @!doc) (extract-viewer-evals doc))]
+               [:doc (present+reset! doc)]])]
+    (broadcast-fn! (fn [ch]
+                     (cond->> msg
+                       (not= *sender-ch* @!last-sender-ch)
+                       (into [[:effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-ch* ch)))]]]))))
+    (reset! !last-sender-ch *sender-ch*)))
 
 #_(update-doc! help-doc)
 

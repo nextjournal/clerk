@@ -105,7 +105,7 @@
 
 
 (defn ^:export onmessage [ws-msg]
-  (render/dispatch (read-string (.-data ws-msg))))
+  (render/dispatch (into {} (read-string (.-data ws-msg)))))
 
 (defn ^:export eval-form [f]
   (sci/eval-form (sci.ctx-store/get-ctx) f))
