@@ -27,6 +27,7 @@
 (defn ->viewer-eval-with-error [form]
   (try (*eval* form)
        (catch js/Error e
+         (js/console.error "error in viewer-eval" e)
          (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))
 
 (defonce !edamame-opts

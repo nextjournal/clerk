@@ -557,13 +557,11 @@
 
 (defn intern-atom! [var-name state]
   (assert (sci.ctx-store/get-ctx) "sci-ctx must be set")
-  (if-let [existing-var (sci/resolve (sci.ctx-store/get-ctx) var-name)]
-    (reset! @existing-var state)
-    (sci/intern (sci.ctx-store/get-ctx)
-                (sci/create-ns (symbol (namespace var-name)))
-                (symbol (name var-name))
-                (with-meta (r/atom state)
-                  {:var-name var-name}))))
+  (sci/intern (sci.ctx-store/get-ctx)
+              (sci/create-ns (symbol (namespace var-name)))
+              (symbol (name var-name))
+              (with-meta (r/atom state)
+                {:var-name var-name})))
 
 (defonce ^:private !synced-atom-vars
   (atom #{}))
@@ -572,13 +570,19 @@
   (let [ns-unmap (sci/eval-string* (sci.ctx-store/get-ctx) "ns-unmap")]
     (ns-unmap ns-sym var-sym)))
 
+(defonce ^:dynamic *reset-sync-atoms?* true)
+(defn set-reset-sync-atoms! [new-val] (set! *reset-sync-atoms?* new-val))
+
 (defn intern-atoms! [atom-var-name->state]
   (let [vars-in-use (into #{} (keys atom-var-name->state))
         vars-interned @!synced-atom-vars]
     (doseq [var-name-to-unmap (set/difference vars-interned vars-in-use)]
       (sci-ns-unmap! (symbol (namespace var-name-to-unmap)) (symbol (name var-name-to-unmap))))
-    (doseq [var-name (set/difference vars-in-use vars-interned)]
-      (intern-atom! var-name (atom-var-name->state var-name)))
+    (doseq [[var-name value] atom-var-name->state]
+      (if-let [existing-var (sci/resolve (sci.ctx-store/get-ctx) var-name)]
+        (when *reset-sync-atoms?*
+          (reset! @existing-var value))
+        (intern-atom! var-name value)))
     (reset! !synced-atom-vars vars-in-use)))
 
 (defn ^:export set-state! [{:as state :keys [doc error remount?]}]
@@ -608,13 +612,9 @@
   (clerk-swap! atom (constantly new-val))
   new-val)
 
-(defn swap-clerk-atom! [{:as event :keys [var var-name args]}]
-  (apply swap! @var args))
-
 (defn ^:export dispatch [{:as msg :keys [type]}]
   (let [dispatch-fn (get {:patch-state! patch-state!
-                          :set-state! set-state!
-                          :swap! swap-clerk-atom!}
+                          :set-state! set-state!}
                          type
                          (fn [_]
                            (js/console.warn (str "no on-message dispatch for type `" type "`"))))]

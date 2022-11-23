@@ -16,13 +16,20 @@
 (defonce !clients (atom #{}))
 (defonce !doc (atom help-doc))
 (defonce !error (atom nil))
+(defonce !last-sender-ch (atom nil))
 
 #_(view/doc->viewer @!doc)
 #_(reset! !doc help-doc)
 
+(def ^:dynamic *sender-ch* nil)
+
 (defn broadcast! [msg]
   (doseq [ch @!clients]
-    (httpkit/send! ch (v/->edn msg))))
+    (when (not= @!last-sender-ch *sender-ch*)
+      (httpkit/send! ch (v/->edn {:type :patch-state! :patch []
+                                  :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-ch* ch)))]})))
+    (httpkit/send! ch (v/->edn msg)))
+  (reset! !last-sender-ch *sender-ch*))
 
 #_(broadcast! [{:random (rand-int 10000) :range (range 100)}])
 
@@ -109,11 +116,10 @@
                                  (eval '(nextjournal.clerk/recompute!)))
                        :swap! (when-let [var (resolve (:var-name msg))]
                                 (apply swap! @var (eval (:args msg)))
-                                (doseq [ch @!clients :when (not= sender-ch ch)]
-                                  (httpkit/send! ch edn-string))
-                                (eval '(nextjournal.clerk/recompute!)))))))})
+                                (binding [*sender-ch* sender-ch]
+                                  (eval '(nextjournal.clerk/recompute!))))))))})
 
-#_(do 
+#_(do
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
     (eval '(nextjournal.clerk/recompute!)))
 
