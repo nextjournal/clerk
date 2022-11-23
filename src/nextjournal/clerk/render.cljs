@@ -565,10 +565,7 @@
   (let [ns-unmap (sci/eval-string* (sci.ctx-store/get-ctx) "ns-unmap")]
     (ns-unmap ns-sym var-sym)))
 
-(defonce ^:private ^:dynamic *reset-sync-atoms?* true)
-
-(defn set-reset-sync-atoms! [{:keys [new-value]}]
-  (set! *reset-sync-atoms?* new-value))
+(defonce ^:dynamic *reset-sync-atoms?* true)
 
 (defn intern-atoms! [atom-var-name->state]
   (let [vars-in-use (into #{} (keys atom-var-name->state))
@@ -611,8 +608,7 @@
 
 (defn ^:export dispatch [{:as msg :keys [type]}]
   (let [dispatch-fn (get {:patch-state! patch-state!
-                          :set-state! set-state!
-                          :set-reset-sync-atoms! set-reset-sync-atoms!}
+                          :set-state! set-state!}
                          type
                          (fn [_]
                            (js/console.warn (str "no on-message dispatch for type `" type "`"))))]

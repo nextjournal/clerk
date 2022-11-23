@@ -27,8 +27,9 @@
   (doseq [ch @!clients]
     (when (not= @!last-sender-ch *sender-ch*)
       (reset! !last-sender-ch *sender-ch*)
-      (httpkit/send! ch (v/->edn {:type :set-reset-sync-atoms! :new-value (not= *sender-ch* ch)})))
-    (httpkit/send! ch (v/->edn (assoc msg :reset-sync-atoms? (not= *sender-ch* ch))))))
+      (httpkit/send! ch (v/->edn {:type :patch-state! :patch []
+                                  :effects [(v/->ViewerEval (list 'set! 'nextjournal.clerk.render/*reset-sync-atoms?* (not= *sender-ch* ch)))]})))
+    (httpkit/send! ch (v/->edn msg))))
 
 #_(broadcast! [{:random (rand-int 10000) :range (range 100)}])
 
