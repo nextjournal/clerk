@@ -383,6 +383,13 @@
    {:temperature 34.0 :date (java.time.LocalDate/parse "2022-08-01")}
    {:temperature 29.0 :date (java.time.LocalDate/parse "2022-08-01")}])
 
+;; As you can see above, the table viewer is being applied to the
+;; value of the `my-dataset` var, not the var itself. If you want your viewer to access the raw var, you can opt out of this with a truthy `:var-from-def?` key on the viewer.
+
+^{::clerk/viewer (assoc v/fallback-viewer :var-from-def? true)}
+(def raw-var :baz)
+
+
 ;; ### 👁 Writing Viewers
 
 ;; Let's explore how Clerk viewers work and how you create your own to
