@@ -125,14 +125,13 @@
 (def read-only (.. EditorView -editable (of false)))
 
 (defn on-change-ext [f]
-  (.. EditorState -changeFilter
+  (.. EditorState -transactionExtender
       (of (fn [^js tr]
             (when (.-docChanged tr) (f (.. tr -state sliceDoc)))
-            true))))
+            #js {}))))
 
 (def ^:export default-extensions
-  #js [ ;; FIXME: auto formatting changed lines break state updates
-       (doto (.concat clojure-mode/default-extensions) (.splice 4 1))
+  #js [clojure-mode/default-extensions
        (syntaxHighlighting highlight-style)
        theme])
 
