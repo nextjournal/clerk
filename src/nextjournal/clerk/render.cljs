@@ -566,6 +566,7 @@
     (ns-unmap ns-sym var-sym)))
 
 (defonce ^:dynamic *reset-sync-atoms?* true)
+(defn set-reset-sync-atoms! [new-val] (set! *reset-sync-atoms?* new-val))
 
 (defn intern-atoms! [atom-var-name->state]
   (let [vars-in-use (into #{} (keys atom-var-name->state))
