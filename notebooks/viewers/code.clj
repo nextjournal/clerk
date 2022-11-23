@@ -11,21 +11,21 @@
 
 ;; Editable code viewer
 (clerk/with-viewer
-  '(fn [code-str _] [:div.viewer-code [nextjournal.clerk.render.code/editor code-str]])
+  '(fn [code-str _] [:div.viewer-code [nextjournal.clerk.render.code/editor (reagent/atom code-str)]])
   "(def fib
   (lazy-cat [0 1]
             (map + fib (rest fib))))")
 
 ;; Tiny code viewer
 (clerk/with-viewer
-  '(fn [code-str _] [nextjournal.clerk.render.code/editor code-str])
+  '(fn [code-str _] [nextjournal.clerk.render.code/editor (reagent/atom code-str)])
   "{:search :query}")
 
 ;; customize extensions
 (clerk/with-viewer
   '(fn [code-str _]
      [:div.bg-neutral-50
-      [nextjournal.clerk.render.code/editor code-str
+      [nextjournal.clerk.render.code/editor (reagent/atom code-str)
        {:extensions
         (.concat (codemirror.view/lineNumbers)
                  (codemirror.view/highlightActiveLine)
@@ -40,8 +40,8 @@
    :render-fn
    '(fn [code-state _]
       [:div.bg-neutral-50
-       [nextjournal.clerk.render.code/editor @code-state
-        {:on-change (fn [text] (swap! code-state (constantly text)))
+       [nextjournal.clerk.render.code/editor code-state
+        {:on-change (fn [text] (reset! code-state text))
          :extensions (.concat (codemirror.view/lineNumbers)
                               (codemirror.view/highlightActiveLine)
                               nextjournal.clerk.render.code/paredit-keymap)}]])})
@@ -52,3 +52,10 @@
             (map + fib (rest fib))))"))
 
 @editable-code
+
+(comment
+  (do
+    (reset! editable-code "(def fib
+  (lazy-cat [0 1]
+            (map + fib (rest fib))))")
+    (clerk/recompute!)))

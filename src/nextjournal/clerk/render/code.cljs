@@ -141,20 +141,26 @@
   (EditorView. (j/obj :state state :parent parent)))
 
 (defn editor
-  ([code-str] (editor code-str {}))
-  ([code-str {:keys [extensions on-change]}]
+  ([!code-str] (editor !code-str {}))
+  ([!code-str {:keys [extensions on-change]}]
    (let [!container-el (hooks/use-ref nil)
-         !view (hooks/use-ref nil)
-         exts (cond-> default-extensions
-                (seq extensions) (.concat extensions)
-                on-change (.concat (on-change-ext on-change)))]
-     (hooks/use-layout-effect
-      (fn [] (let [^js view (reset! !view (make-view (make-state code-str exts) @!container-el))]
-               #(.destroy view))))
-     ;; when passing an `on-change` callback we assume the caller context is fine
-     ;; with not resetting editor state when initial-value changes (e.g. in the ::clerk/sync case)
-     ;; we probably don't need to reset in any case
-     (when-not on-change
-       (hooks/use-effect (fn [] (.setState @!view (make-state code-str exts)))
-                         [code-str]))
+         !view (hooks/use-ref nil)]
+     ;; view instance is built only once
+     (hooks/use-effect
+      (fn []
+        (let [^js view
+              (reset! !view (make-view (make-state @!code-str
+                                                   (cond-> default-extensions
+                                                     (seq extensions) (.concat extensions)
+                                                     on-change (.concat (on-change-ext on-change)))) @!container-el))]
+          #(.destroy view))))
+     (hooks/use-effect
+      (fn []
+        (let [^js state (.-state @!view)]
+          (when (not= @!code-str (.sliceDoc state))
+            (.dispatch @!view
+                       (.update state
+                                (j/lit {:changes [{:insert @!code-str
+                                                   :from 0 :to (.. state -doc -length)}]}))))))
+      [@!code-str])
      [:div {:ref !container-el}])))
