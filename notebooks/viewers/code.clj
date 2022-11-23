@@ -35,7 +35,8 @@
             (map + fib (rest fib))))")
 
 (def editor-sync-viewer
-  {:transform-fn (comp viewer/mark-presented (viewer/update-val (comp viewer/->viewer-eval symbol)))
+  {:transform-fn (comp viewer/mark-presented (viewer/update-val (comp viewer/->viewer-eval symbol ::clerk/var-from-def)))
+   :var-from-def? true
    :render-fn
    '(fn [code-state _]
       [:div.bg-neutral-50
@@ -45,11 +46,9 @@
                               (codemirror.view/highlightActiveLine)
                               nextjournal.clerk.render.code/paredit-keymap)}]])})
 
-^{::clerk/sync true}
+^{::clerk/sync true ::clerk/viewer editor-sync-viewer}
 (defonce editable-code (atom "(def fib
   (lazy-cat [0 1]
             (map + fib (rest fib))))"))
-
-(clerk/with-viewer editor-sync-viewer #'editable-code)
 
 @editable-code
