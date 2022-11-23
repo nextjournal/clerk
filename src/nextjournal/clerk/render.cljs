@@ -24,8 +24,6 @@
             [sci.ctx-store]
             [shadow.cljs.modern :refer [defclass]]))
 
-(def client-id (keyword (str (random-uuid))))
-
 (r/set-default-compiler! (r/create-compiler {:function-components true}))
 
 (declare inspect inspect-presented reagent-viewer html html-viewer)
@@ -567,14 +565,19 @@
   (let [ns-unmap (sci/eval-string* (sci.ctx-store/get-ctx) "ns-unmap")]
     (ns-unmap ns-sym var-sym)))
 
-(defn intern-atoms! [atom-var-name->state sender-id]
+(defonce ^:private ^:dynamic *reset-sync-atoms?* true)
+
+(defn set-reset-sync-atoms! [{:keys [new-value]}]
+  (set! *reset-sync-atoms?* new-value))
+
+(defn intern-atoms! [atom-var-name->state]
   (let [vars-in-use (into #{} (keys atom-var-name->state))
         vars-interned @!synced-atom-vars]
     (doseq [var-name-to-unmap (set/difference vars-interned vars-in-use)]
       (sci-ns-unmap! (symbol (namespace var-name-to-unmap)) (symbol (name var-name-to-unmap))))
     (doseq [[var-name value] atom-var-name->state]
       (if-let [existing-var (sci/resolve (sci.ctx-store/get-ctx) var-name)]
-        (when (not= sender-id client-id)
+        (when *reset-sync-atoms?*
           (reset! @existing-var value))
         (intern-atom! var-name value)))
     (reset! !synced-atom-vars vars-in-use)))
@@ -599,7 +602,7 @@
   (let [new-val (apply swap! atom swap-args)]
     (when-let [var-name (-> atom meta :var-name)]
       ;; TODO: for now sending whole state but could also diff
-      (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] new-val)] :sender-id client-id})))
+      (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] new-val)]})))
     new-val))
 
 (defn clerk-reset! [atom new-val]
@@ -608,7 +611,8 @@
 
 (defn ^:export dispatch [{:as msg :keys [type]}]
   (let [dispatch-fn (get {:patch-state! patch-state!
-                          :set-state! set-state!}
+                          :set-state! set-state!
+                          :set-reset-sync-atoms! set-reset-sync-atoms!}
                          type
                          (fn [_]
                            (js/console.warn (str "no on-message dispatch for type `" type "`"))))]
