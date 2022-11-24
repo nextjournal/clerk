@@ -290,7 +290,7 @@
 
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
-  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn"
+  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
   ([x] (tex {} x))
   ([viewer-opts x] (with-viewer v/katex-viewer viewer-opts x)))
 
@@ -313,7 +313,7 @@
 
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
-  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn"
+  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
   ([code-string-or-form] (code {} code-string-or-form))
   ([viewer-opts code-string-or-form] (with-viewer v/code-viewer viewer-opts code-string-or-form)))
 
