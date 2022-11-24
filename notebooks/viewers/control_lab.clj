@@ -8,28 +8,8 @@
 ;; Experimenting with ways of making controls. We start with two
 ;; little helper functions, one in sci and one in Clojure.
 
-(def viewer-eval-viewer
-  {:pred viewer/viewer-eval?
-   :var-from-def? true
-   :transform-fn (comp viewer/mark-presented
-                       (viewer/update-val
-                        (fn [x]
-                          (cond (viewer/viewer-eval? x) x
-                                (seq? x) (viewer/->viewer-eval x)
-                                (symbol? x) (viewer/->viewer-eval x)
-                                (var? x) (recur (symbol x) #_(list 'resolve (list 'quote (symbol x))))
-                                (viewer/var-from-def? x) (recur (-> x :nextjournal.clerk/var-from-def symbol))))))
-   :render-fn '(fn [x opts]
-                 (if (and (satisfies? IDeref x) (not ((:pred viewer/var-viewer) x))) ;; special atoms handling to support reactivity
-                   [nextjournal.clerk.render/render-tagged-value {:space? false}
-                    "#object"
-                    [nextjournal.clerk.render/inspect [(symbol (pr-str (type x))) @x]]]
-                   [nextjournal.clerk.render/inspect x]))})
-
-(clerk/with-viewer viewer-eval-viewer
+(clerk/with-viewer viewer/viewer-eval-viewer
   'viewers.control-lab/!num)
-
-(clerk/add-viewers! [viewer-eval-viewer])
 
 
 (defn make-render-slider
@@ -56,7 +36,7 @@
 (defn slider
   ([!state] (slider {} !state))
   ([opts !state]
-   (clerk/with-viewer (assoc viewer-eval-viewer :render-fn (make-render-slider opts)) !state)))
+   (clerk/with-viewer (assoc viewer/viewer-eval-viewer :render-fn (make-render-slider opts)) !state)))
 
 
 ;; Let's go through the ways we can use this.
@@ -73,16 +53,13 @@
 ;; 2️⃣ On a sharp quoted symbol (works with a fully qualified one as well, ofc).
 (slider `!num)
 
-;; 3️⃣ On a var
-(slider #'!num)
 
-;; 4️⃣ On an explicit `ViewerEval` type
+;; 3️⃣ On an explicit `ViewerEval` type
 (slider (viewer/->viewer-eval `!num))
 
 
-#_ ;; TODO: plain (not quoted) symbol
-^{::clerk/viewer (make-slider {})}
-!num
+#_ ;; TODO: 4️⃣ plain (not quoted) symbol
+(slider !num)
 
 ;; We can customise the slider by passing different opts (that are merged).
 
@@ -90,7 +67,7 @@
 
 ;; Or use a completely custom `:render-fn`.
 (clerk/with-viewer
-  (assoc viewer-eval-viewer
+  (assoc viewer/viewer-eval-viewer
          :render-fn
          '(fn [x]
             [:div.inline-flex.items-center.bg-green-400.rounded-xl.px-2.text-xl.select-none.gap-1
@@ -102,7 +79,8 @@
 
 ;; This is the default viewer for a `ViewerEval` type.
 
-(clerk/with-viewer viewer-eval-viewer `!num)
+(clerk/with-viewer viewer/viewer-eval-viewer `!num)
+
 
 ;; This is the value from the JVM.
 

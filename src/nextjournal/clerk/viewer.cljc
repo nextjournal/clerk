@@ -885,6 +885,24 @@
                        (update :nextjournal/value (partial process-blocks viewers))
                        mark-presented))})
 
+(def viewer-eval-viewer
+  {:pred viewer-eval?
+   :var-from-def? true
+   :transform-fn (comp mark-presented
+                       (update-val
+                        (fn [x]
+                          (cond (viewer-eval? x) x
+                                (seq? x) (->viewer-eval x)
+                                (symbol? x) (->viewer-eval x)
+                                (var? x) (->viewer-eval (list 'resolve (list 'quote (symbol x))))
+                                (var-from-def? x) (recur (-> x :nextjournal.clerk/var-from-def symbol))))))
+   :render-fn '(fn [x opts]
+                 (if (nextjournal.clerk.render/reagent-atom? x) ;; special atoms handling to support reactivity
+                   [nextjournal.clerk.render/render-tagged-value {:space? false}
+                    "#object"
+                    [nextjournal.clerk.render/inspect [(symbol (pr-str (type x))) @x]]]
+                   [nextjournal.clerk.render/inspect x]))})
+
 (def default-viewers
   ;; maybe make this a sorted-map
   [char-viewer
@@ -901,6 +919,7 @@
    vector-viewer
    set-viewer
    sequential-viewer
+   viewer-eval-viewer
    map-viewer
    var-viewer
    throwable-viewer

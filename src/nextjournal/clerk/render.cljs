@@ -30,6 +30,9 @@
 
 (def nbsp (gstring/unescapeEntities "&nbsp;"))
 
+(defn reagent-atom? [x]
+  (satisfies? ratom/IReactiveAtom x))
+
 (defn toc-items [items]
   (reduce
    (fn [acc {:as item :keys [content children]}]
