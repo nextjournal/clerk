@@ -441,6 +441,8 @@
                              :bundle {:desc "Flag to build a self-contained html file inlcuding inlined images"}
                              :browse {:desc "Opens the browser on boot when set."}
                              :dashboard {:desc "Flag to serve a dashboard with the build progress."}
+                             :post-build-fn {:desc "Symbol resolving to a 1-arity function to run after the build has finished. Gets passed `opts` as a map."
+                                             :coerce :symbol}
                              :out-path {:desc "Path to an build output folder, defaults to \"public/build\"."}
                              :ssr {:desc "Flag to run server-side-rendering to include pre-rendered markup in html output."}
                              :compile-css {:desc "Flag to run tailwindcss to compile a minimal stylesheet containing only the used classes."}

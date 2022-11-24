@@ -225,6 +225,15 @@
      :index-html index-html
      :build-href (if (and @webserver/!server (= out-path default-out-path)) "/build" index-html)}))
 
+(defn resolve-fn [key opts]
+  (let [f (get opts key)]
+    (if (qualified-symbol? f)
+      (if-let [resolved-var  (requiring-resolve f)]
+        (if (fn? @resolved-var)
+          (@resolved-var opts)
+          (throw (ex-info (format "%s is not a function." f) (select-keys opts [key]))))
+        (throw (ex-info (format "#'%s cannot be resolved." f) (select-keys opts [key]))))
+      (throw (ex-info (format "`%s` must be a qualified symbol pointing at an existing var." key) (select-keys opts [key]))))))
 
 (defn compile-css!
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
@@ -259,8 +268,8 @@
            "/css/viewer.css" (viewer/store+get-cas-url! (assoc opts :ext "css") (fs/read-all-bytes tw-output)))
     (fs/delete-tree tw-folder)))
 
-(defn build-static-app! [{:as opts :keys [bundle?]}]
-  (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css? expanded-paths error]}
+(defn build-static-app! [opts]
+  (let [{:as opts :keys [bundle? download-cache-fn upload-cache-fn report-fn post-build-fn compile-css? expanded-paths error]}
         (try (process-build-opts (assoc opts :expand-paths? true))
              (catch Exception e
                {:error e}))
@@ -310,6 +319,8 @@
             (let [{duration :time-ms} (eval/time-ms (compile-css! opts state))]
               (report-fn {:stage :done :duration duration})))
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
+    (when post-build-fn
+      (resolve-fn :post-build-fn opts))
     (when upload-cache-fn
       (report-fn {:stage :uploading-cache})
       (let [{duration :time-ms} (eval/time-ms (upload-cache-fn state))]
