@@ -5,6 +5,7 @@
             [cljs.reader]
             [clojure.set :as set]
             [clojure.string :as str]
+            [clojure.walk :as w]
             [editscript.core :as editscript]
             [goog.object]
             [goog.string :as gstring]
@@ -588,11 +589,18 @@
         (intern-atom! var-name value)))
     (reset! !synced-atom-vars vars-in-use)))
 
-(defn ^:export set-state! [{:as state :keys [doc error remount?]}]
-  (when remount?
-    (swap! !eval-counter inc))
+(defn remount? [doc-or-patch]
+  (true? (some #(= % :nextjournal.clerk/remount) (tree-seq coll? seq doc-or-patch))))
+
+(defn re-eval-viewer-fns [doc]
+  (let [re-eval #(viewer/->viewer-fn (:form %))]
+    (w/postwalk #(cond-> % (viewer/viewer-fn? %) re-eval) doc)))
+
+(defn ^:export set-state! [{:as state :keys [doc error]}]
   (when (contains? state :doc)
     (reset! !doc doc))
+  (when (remount? doc)
+    (swap! !eval-counter inc))
   (reset! !error error)
   (when-let [title (and (exists? js/document) (-> doc viewer/->value :title))]
     (set! (.-title js/document) title)))
@@ -602,7 +610,11 @@
 
 (defn patch-state! [{:keys [patch]}]
   (reset! !error nil)
-  (swap! !doc apply-patch patch))
+  (if (remount? patch)
+    (do (swap! !doc #(re-eval-viewer-fns (apply-patch % patch)))
+        ;; TODO: figure out why it doesn't work without `js/setTimeout`
+        (js/setTimeout #(swap! !eval-counter inc) 10))
+    (swap! !doc apply-patch patch)))
 
 (defn clerk-swap! [atom & swap-args]
   (let [new-val (apply swap! atom swap-args)]

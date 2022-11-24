@@ -16,10 +16,3 @@
       (is body)
       (is (= (-> body webserver/read-msg :nextjournal/value first :nextjournal/value) 20)))))
 
-(deftest extract-viewer-evals
-  (testing "doesn't throw on sorted-map"
-    (is (= #{} (-> (viewer/->edn '(into (sorted-map)
-                                        {"A" ["A" "Aani" "Aaron"]
-                                         "B" ["B" "Baal" "Baalath"]}))
-                   eval/eval-string
-                   webserver/extract-viewer-evals)))))

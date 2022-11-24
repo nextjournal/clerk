@@ -140,15 +140,6 @@
 
 #_(nextjournal.clerk/serve! {})
 
-(defn extract-viewer-evals [{:as _doc :keys [blocks]}]
-  (into #{}
-        (comp (keep #(-> % :result :nextjournal/value (v/get-safe :nextjournal/value)))
-              (filter (every-pred v/viewer-eval? :remount?)))
-        blocks))
-
-
-#_(extract-viewer-evals @!doc)
-
 (defn present+reset! [doc]
   (let [presented (view/doc->viewer doc)]
     (reset! !doc (with-meta doc presented))
@@ -160,10 +151,7 @@
                 (let [old-viewer (meta @!doc)
                       patch (editscript/diff old-viewer (present+reset! doc))]
                   {:type :patch-state! :patch (editscript/get-edits patch)})
-                {:type :set-state!
-                 :remount? (not= (extract-viewer-evals @!doc)
-                                 (extract-viewer-evals doc))
-                 :doc (present+reset! doc)})))
+                {:type :set-state! :doc (present+reset! doc)})))
 
 #_(update-doc! help-doc)
 
