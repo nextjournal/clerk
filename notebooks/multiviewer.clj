@@ -21,18 +21,17 @@
    :transform-fn (comp clerk/mark-preserve-keys
                        (clerk/update-val transform-literal))
    :render-fn '(fn [label->val]
-                 (v/html
-                  (reagent/with-let [!selected-label (reagent/atom (ffirst label->val))]
-                    [:<> (into
-                          [:div.flex.items-center.font-sans.text-xs.mb-3
-                           [:span.text-slate-500.mr-2 "View-as:"]]
-                          (map (fn [label]
-                                 [:button.px-3.py-1.font-medium.hover:bg-indigo-50.rounded-full.hover:text-indigo-600.transition
-                                  {:class (if (= @!selected-label label) "bg-indigo-100 text-indigo-600" "text-slate-500")
-                                   :on-click #(reset! !selected-label label)}
-                                  label]))
-                          (keys label->val))
-                     [v/inspect (get label->val @!selected-label)]])))})
+                 (reagent/with-let [!selected-label (reagent/atom (ffirst label->val))]
+                   [:<> (into
+                         [:div.flex.items-center.font-sans.text-xs.mb-3
+                          [:span.text-slate-500.mr-2 "View-as:"]]
+                         (map (fn [label]
+                                [:button.px-3.py-1.font-medium.hover:bg-indigo-50.rounded-full.hover:text-indigo-600.transition
+                                 {:class (if (= @!selected-label label) "bg-indigo-100 text-indigo-600" "text-slate-500")
+                                  :on-click #(reset! !selected-label label)}
+                                 label]))
+                         (keys label->val))
+                    [nextjournal.clerk.render/inspect (get label->val @!selected-label)]]))})
 
 (clerk/add-viewers! [literal-viewer])
 
