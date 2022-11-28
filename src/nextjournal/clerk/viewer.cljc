@@ -383,15 +383,15 @@
        cas-url)))
 
 #?(:clj
-   (defn relative-root-prefix-from [path]
-     (str/join (repeat (get (frequencies (str path)) \/ 0) "../"))))
+   (defn relative-root-prefix-from [index path]
+     (if (= index path) "" (str/join (repeat (get (frequencies (str path)) \/ 0) "../")))))
 
 #?(:clj
-   (defn maybe-store-result-as-file [{:as doc+blob-opts :keys [out-path file]} {:as result :nextjournal/keys [content-type value]}]
+   (defn maybe-store-result-as-file [{:as doc+blob-opts :keys [index out-path file]} {:as result :nextjournal/keys [content-type value]}]
      ;; TODO: support customization via viewer api
      (if-let [image-type (second (re-matches #"image/(\w+)" content-type))]
        (assoc result :nextjournal/value
-              (str (relative-root-prefix-from file)
+              (str (relative-root-prefix-from index file)
                    (store+get-cas-url! (assoc doc+blob-opts :ext image-type) value)))
        result)))
 
