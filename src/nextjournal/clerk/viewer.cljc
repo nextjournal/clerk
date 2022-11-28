@@ -20,7 +20,7 @@
             [nextjournal.markdown :as md]
             [nextjournal.markdown.transform :as md.transform])
   #?(:clj (:import (com.pngencoder PngEncoder)
-                   (clojure.lang IDeref)
+                   (clojure.lang IDeref IAtom)
                    (java.lang Throwable)
                    (java.awt.image BufferedImage)
                    (java.util Base64)
@@ -857,12 +857,19 @@
    :render-fn 'nextjournal.clerk.render/render-result
    :transform-fn (comp mark-presented (update-val transform-result))})
 
+#?(:clj
+   (defn assert-valid-sync-value! [value]
+     (when-not (instance? IAtom value)
+       (throw (ex-info "Clerk cannot sync non-atom values. Vars meant for sync need to hold clojure atom values"
+                       {:value value}
+                       (IllegalArgumentException.))))))
+
 (defn extract-clerk-atom-vars [{:as _doc :keys [blocks]}]
   (into {}
         (comp (keep (fn [{:keys [result form]}]
                       (when-let [var (-> result :nextjournal/value (get-safe :nextjournal.clerk/var-from-def))]
                         (when (and (contains? (meta form) :nextjournal.clerk/sync)
-                                   #?(:clj (instance? clojure.lang.IAtom (deref var))))
+                                   #?(:clj (assert-valid-sync-value! (deref var))))
                           var))))
               (map (juxt #(list 'quote (symbol %)) #(-> % deref deref))))
         blocks))
