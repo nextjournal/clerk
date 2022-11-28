@@ -860,9 +860,14 @@
 #?(:clj
    (defn assert-valid-sync-value! [value]
      (when-not (instance? IAtom value)
-       (throw (ex-info "Clerk cannot sync non-atom values. Vars meant for sync need to hold clojure atom values"
-                       {:value value}
-                       (IllegalArgumentException.))))))
+       (throw (ex-info "Clerk cannot sync non-atom values. Vars meant for sync need to hold clojure atom values."
+                       {:value-str (pr-str value)}
+                       (IllegalArgumentException.))))
+     (try (read-string (->edn @value))
+          (catch Exception _
+            (throw (ex-info "Clerk can only sync values which are EDN serializable."
+                            {:value-str (pr-str @value)}
+                            (IllegalArgumentException.)))))))
 
 (defn extract-clerk-atom-vars [{:as _doc :keys [blocks]}]
   (into {}
