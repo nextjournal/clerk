@@ -20,9 +20,8 @@
 ;;
 ;;
 ;; ### Functions
-(comment
-  ^{::clerk/sync true}
-  (defonce syncrash-2 (atom (fn [x] "whatever"))))
+^{::clerk/sync true}
+(defonce syncrash-2 (atom (fn [x] "whatever")))
 ;; blank screen of death (after reload) / browser console:
 ;;
 ;;     uncaught error:
