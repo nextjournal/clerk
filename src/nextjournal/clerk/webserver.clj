@@ -104,6 +104,9 @@
 
 #_(pr-str (read-msg "#viewer-eval (resolve 'clojure.core/inc)"))
 
+(defn show-error! [e]
+  (broadcast! {:type :set-state! :error (reset! !error (v/present e))}))
+
 (def ws-handlers
   {:on-open (fn [ch] (swap! !clients conj ch))
    :on-close (fn [ch _reason] (swap! !clients disj ch))
@@ -115,9 +118,15 @@
                        :eval (do (eval (:form msg))
                                  (eval '(nextjournal.clerk/recompute!)))
                        :swap! (when-let [var (resolve (:var-name msg))]
-                                (apply swap! @var (eval (:args msg)))
-                                (binding [*sender-ch* sender-ch]
-                                  (eval '(nextjournal.clerk/recompute!))))))))})
+                                (try
+                                  (apply swap! @var (eval (:args msg)))
+                                  (binding [*sender-ch* sender-ch]
+                                    (eval '(nextjournal.clerk/recompute!)))
+                                  (catch Exception ex
+                                    (let [e (ex-info (str "Clerk cannot sync var " (:var-name msg))
+                                                     {:sync-args (:args msg)} ex)]
+                                      (show-error! e)
+                                      (throw e)))))))))})
 
 #_(do
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
@@ -154,10 +163,6 @@
                 {:type :set-state! :doc (present+reset! doc)})))
 
 #_(update-doc! help-doc)
-
-(defn show-error! [e]
-  (broadcast! {:type :set-state! :error (reset! !error (v/present e))}))
-
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
 
