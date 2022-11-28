@@ -24,8 +24,8 @@
 #_ (relative? "https://cdn.stylesheet.css")
 
 (defn map-index [{:as _opts :keys [index]} path]
-  (if index
-    ({index "index.clj"} path path)
+  (if (and index (= index path))
+    "index.clj"
     path))
 
 (defn include-viewer-css [{:as state :keys [current-path]}]
