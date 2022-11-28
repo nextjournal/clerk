@@ -864,6 +864,7 @@
                        {:value-str (pr-str value)}
                        (IllegalArgumentException.))))
      (try (read-string (->edn @value))
+          true
           (catch Exception _
             (throw (ex-info "Clerk can only sync values which are EDN serializable."
                             {:value-str (pr-str @value)}
