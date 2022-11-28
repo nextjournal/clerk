@@ -1,4 +1,4 @@
-;; # Viewers as Functions
+;; # 🔄 Sync Troubles
 (ns sync-troubles
   {:nextjournal.clerk/no-cache true}
   (:require [nextjournal.clerk :as clerk]
