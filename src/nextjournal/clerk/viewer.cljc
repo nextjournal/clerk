@@ -877,7 +877,7 @@
                         (when (and (contains? (meta form) :nextjournal.clerk/sync)
                                    #?(:clj (assert-valid-sync-value! (deref var))))
                           var))))
-              (map (juxt #(list 'quote (symbol %)) #(-> % deref deref))))
+              (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote)))))
         blocks))
 
 (defn process-blocks [viewers {:as doc :keys [ns]}]

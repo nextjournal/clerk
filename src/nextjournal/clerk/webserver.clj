@@ -98,14 +98,18 @@
 
 #_(serve-file "public" {:uri "/js/viewer.js"})
 
-(defn read-msg [s]
-  (binding [*data-readers* v/data-readers]
-    (read-string s)))
-
-#_(pr-str (read-msg "#viewer-eval (resolve 'clojure.core/inc)"))
-
 (defn show-error! [e]
   (broadcast! {:type :set-state! :error (reset! !error (v/present e))}))
+
+(defn read-msg [s]
+  (binding [*data-readers* v/data-readers]
+    (try (read-string s)
+         (catch Exception ex
+           (throw (doto (ex-info (str "Clerk encountered the following error attempting to read an incoming message: "
+                                      (ex-message ex))
+                                 {:message s} ex) show-error!))))))
+
+#_(pr-str (read-msg "#viewer-eval (resolve 'clojure.core/inc)"))
 
 (def ws-handlers
   {:on-open (fn [ch] (swap! !clients conj ch))
@@ -123,10 +127,7 @@
                                   (binding [*sender-ch* sender-ch]
                                     (eval '(nextjournal.clerk/recompute!)))
                                   (catch Exception ex
-                                    (let [e (ex-info (str "Clerk cannot sync var " (:var-name msg))
-                                                     {:sync-args (:args msg)} ex)]
-                                      (show-error! e)
-                                      (throw e)))))))))})
+                                    (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) show-error!)))))))))})
 
 #_(do
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))

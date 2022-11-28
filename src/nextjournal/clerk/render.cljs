@@ -620,7 +620,7 @@
   (let [new-val (apply swap! atom swap-args)]
     (when-let [var-name (-> atom meta :var-name)]
       ;; TODO: for now sending whole state but could also diff
-      (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] new-val)]})))
+      (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] (list 'quote new-val))]})))
     new-val))
 
 (defn clerk-reset! [atom new-val]
