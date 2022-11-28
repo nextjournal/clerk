@@ -472,13 +472,14 @@
 
 (defn hash-deref-deps [{:as analyzed-doc :keys [graph ->hash blocks visibility]} {:as cell :keys [deps deref-deps hash-fn var form]}]
   (if (seq deref-deps)
-    (let [deref-deps-to-eval (set/difference deref-deps (-> ->hash keys set))
+    (let [topo-comp (dep/topo-comparator graph)
+          deref-deps-to-eval (set/difference deref-deps (-> ->hash keys set))
           doc-with-deref-dep-hashes (reduce (fn [state deref-dep]
                                               (assoc-in state [:->hash deref-dep] (->hash-str (eval deref-dep))))
                                             analyzed-doc
-                                            deref-deps-to-eval)]
+                                            (sort topo-comp deref-deps-to-eval))]
       #_(prn :hash-deref-deps/form form :deref-deps deref-deps-to-eval)
-      (hash doc-with-deref-dep-hashes (dep/transitive-dependents-set graph deref-deps-to-eval)))
+      (hash doc-with-deref-dep-hashes (sort topo-comp (dep/transitive-dependents-set graph deref-deps-to-eval))))
     analyzed-doc))
 
 #_(nextjournal.clerk/show! "notebooks/hash_fn.clj")
@@ -489,3 +490,9 @@
 #_(deref nextjournal.clerk.webserver/!doc)
 
 #_(nextjournal.clerk/clear-cache!)
+
+#_(def my-num 42)
+
+#_(do (reset! scratch-recompute/!state my-num) (nextjournal.clerk/recompute!))
+#_(do (reset! scratch-recompute/!state my-num) (nextjournal.clerk/show! 'scratch-recompute))
+

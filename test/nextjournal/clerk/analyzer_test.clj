@@ -234,3 +234,21 @@ my-uuid"
 (declare a)
 (def b (str a \" boom\"))
 (def a (str \"boom \" b))"))))
+
+
+(deftest hash-deref-deps
+  (testing "transitive dep gets new hash"
+    (let [analyzed-doc (-> (pr-str '(ns nextjournal.clerk.test.deref-dep)
+                                   '(defonce !state (atom 42))
+                                   '(def foo @!state)
+                                   '(def foo+1 (inc foo))
+                                   '(def foo+2 (inc foo+1)))
+                           analyze-string
+                           ana/hash)
+          static-hash (get-in analyzed-doc [:->hash 'nextjournal.clerk.test.deref-dep/foo+2])
+          _ (intern 'nextjournal.clerk.test.deref-dep '!state (atom 0))
+          block-with-deref-dep (first (->> analyzed-doc :blocks (filter :deref-deps)))
+          runtime-doc (ana/hash-deref-deps analyzed-doc block-with-deref-dep)
+          runtime-hash (get-in runtime-doc [:->hash 'nextjournal.clerk.test.deref-dep/foo+2])]
+      (is (match? {:deref-deps #{`(deref nextjournal.clerk.test.deref-dep/!state)}} block-with-deref-dep))
+      (is (not= static-hash runtime-hash)))))
