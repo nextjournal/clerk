@@ -140,6 +140,8 @@
                               (when-not (sequential? resolved-paths)
                                 (throw (ex-info (str "#'" paths-fn " must be sequential.") {:paths-fn paths-fn :resolved-paths resolved-paths})))
                               resolved-paths)
+                            (throw (ex-info (str "#'" paths-fn " cannot be resolved.") {:paths-fn paths-fn})))
+                          (catch Exception e
                             (throw (ex-info (str "#'" paths-fn " cannot be resolved.") {:paths-fn paths-fn}))))
                         (throw (ex-info "`:path-fn` must be a qualified symbol pointing at an existing var." {:paths-fn paths-fn}))))
        (maybe-add-index build-opts)
