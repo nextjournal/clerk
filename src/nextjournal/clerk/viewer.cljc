@@ -391,7 +391,7 @@
      (get {index "index.clj"} path path)))
 
 #?(:clj
-   (defn maybe-store-result-as-file [{:as doc+blob-opts :keys [index out-path file]} {:as result :nextjournal/keys [content-type value]}]
+   (defn maybe-store-result-as-file [{:as doc+blob-opts :keys [out-path file]} {:as result :nextjournal/keys [content-type value]}]
      ;; TODO: support customization via viewer api
      (if-let [image-type (second (re-matches #"image/(\w+)" content-type))]
        (assoc result :nextjournal/value
