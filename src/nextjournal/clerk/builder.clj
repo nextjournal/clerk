@@ -120,7 +120,7 @@
 #_(process-build-opts {:index 'book.clj})
 (defn build-path->url [{:as opts :keys [bundle?]} docs]
   (into {}
-        (map (comp (juxt identity #(cond-> (->> % (view/map-index opts) strip-index) (not bundle?) ->html-extension))
+        (map (comp (juxt identity #(cond-> (->> % (viewer/map-index opts) strip-index) (not bundle?) ->html-extension))
                    :file))
         docs))
 #_(build-path->url {:bundle? false} [{:file "notebooks/foo.clj"} {:file "index.clj"}])
@@ -161,7 +161,7 @@
       (do (when-not (contains? (-> path->url vals set) "") ;; no user-defined index page
             (spit index-html (view/->static-app (dissoc static-app-opts :path->doc))))
           (doseq [[path doc] path->doc]
-            (let [out-html (str out-path fs/file-separator (->> path (view/map-index opts) ->html-extension))]
+            (let [out-html (str out-path fs/file-separator (->> path (viewer/map-index opts) ->html-extension))]
               (fs/create-dirs (fs/parent out-html))
               (spit out-html (view/->static-app (cond-> (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)
                                                   ssr? ssr!)))))))
