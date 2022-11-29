@@ -45,8 +45,7 @@
 (deftest process-build-opts
   (testing "assigns index when only one path is given"
     (is (= (str (fs/file "notebooks" "rule_30.clj"))
-           (:index (builder/process-build-opts {:paths [(str (fs/file "notebooks" "rule_30.clj"))]
-                                                :expand-paths? true})))))
+           (:index (builder/process-build-opts {:paths ["notebooks/rule_30.clj"] :expand-paths? true})))))
 
   (testing "coerces index symbol arg and adds it to expanded-paths"
     (is (= ["book.clj"] (:expanded-paths (builder/process-build-opts {:index 'book.clj :expand-paths? true}))))))
