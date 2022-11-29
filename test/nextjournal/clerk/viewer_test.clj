@@ -168,6 +168,20 @@
                  :closing-paren))))))
 
 (deftest doc->viewer
+  (testing "extraction of synced vars"
+    (is (not-empty (-> (view/doc->viewer (eval/eval-string "(ns nextjournal.clerk.test.sync-vars (:require [nextjournal.clerk :as clerk]))
+                                     ^::clerk/sync (def sync-me (atom {:a ['b 'c 3]}))"))
+                       :nextjournal/value
+                       :atom-var-name->state
+                       :form
+                       second)))
+
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Clerk can only sync values which can be round-tripped in EDN"
+         (view/doc->viewer (eval/eval-string "(ns nextjournal.clerk.test.sync-vars (:require [nextjournal.clerk :as clerk]))
+                                     ^::clerk/sync (def sync-me (atom {:a (fn [x] x)}))")))))
+
   (testing "Doc options are propagated to blob processing"
     (let [test-doc (eval/eval-string "(java.awt.image.BufferedImage. 20 20 1)")
           tree-re-find (fn [data re] (->> data

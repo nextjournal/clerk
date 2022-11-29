@@ -882,8 +882,8 @@
   (into {}
         (comp (keep (fn [{:keys [result form]}]
                       (when-let [var (-> result :nextjournal/value (get-safe :nextjournal.clerk/var-from-def))]
-                        (when (and (contains? (meta form) :nextjournal.clerk/sync)
-                                   #?(:clj (throw-if-sync-var-is-invalid var)))
+                        (when (contains? (meta form) :nextjournal.clerk/sync)
+                          #?(:clj (throw-if-sync-var-is-invalid var))
                           var))))
               (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote)))))
         blocks))
