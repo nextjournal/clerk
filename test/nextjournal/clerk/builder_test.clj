@@ -4,7 +4,8 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [nextjournal.clerk.builder :as builder])
-  (:import (java.io File)))
+  (:import (clojure.lang ExceptionInfo)
+           (java.io File)))
 
 (deftest url-canonicalize
   (testing "canonicalization of file components into url components"
@@ -37,10 +38,14 @@
     (is (= ["book.clj"] (builder/expand-paths {:paths ["book.clj"]}))))
 
   (testing "invalid args"
-    (is (thrown? Exception (builder/expand-paths {})))
-    (is (thrown? Exception (builder/expand-paths {:paths-fn 'foo})))
-    (is (thrown? Exception (builder/expand-paths {:paths-fn "hi"})))
-    (is (thrown? Exception (builder/expand-paths {:index ["book.clj"]})))))
+    (is (thrown? ExceptionInfo (builder/expand-paths {})))
+    (is (thrown? ExceptionInfo (builder/expand-paths {:paths-fn :foo})))
+    (is (thrown? ExceptionInfo (builder/expand-paths {:paths-fn 'foo})))
+    (is (thrown? ExceptionInfo (builder/expand-paths {:paths-fn 'foo/bar})))
+    (is (thrown? ExceptionInfo (builder/expand-paths {:paths-fn 'clojure.core/inc})))
+    (is (thrown? ExceptionInfo (builder/expand-paths {:paths-fn 'clojure.core/+})))
+    (is (thrown? ExceptionInfo (builder/expand-paths {:paths-fn "hi"})))
+    (is (thrown? ExceptionInfo (builder/expand-paths {:index ["book.clj"]})))))
 
 (deftest process-build-opts
   (testing "assigns index when only one path is given"
