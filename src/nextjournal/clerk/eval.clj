@@ -113,7 +113,8 @@
   (try
     (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true]
                                       (assert form "form must be set")
-                                      (eval form)))
+                                      (with-redefs [clojure.core/intern analyzer/intern!]
+                                        (eval form))))
           result (if (and (nil? result) var (= 'defonce (first form)))
                    (find-var var)
                    result)

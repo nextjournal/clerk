@@ -94,22 +94,30 @@
 
 #_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
 
+(defn unresolvable-symbol-handler [ns sym ast-node]
+  (println (str "Clerk cannot resolve symbol " sym " in namespace " ns))
+  ast-node)
+
+(def analyzer-passes-opts
+  (assoc ana-jvm/default-passes-opts
+         :validate/unresolvable-symbol-handler unresolvable-symbol-handler))
+
 (defn- analyze-form
   ([form] (analyze-form {} form))
   ([bindings form]
    (binding [config/*in-clerk* true]
-     (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings}))))
+     (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings
+                                                :passes-opts analyzer-passes-opts}))))
 
 (defn analyze [form]
   (let [!deps      (atom #{})
         mexpander (fn [form env]
                     (let [f (if (seq? form) (first form) form)
                           v (ana-utils/resolve-sym f env)]
-                      (when-let [var? (and (not (-> env :locals (get f)))
-                                           (var? v))]
+                      (when (and (not (-> env :locals (get f))) (var? v))
                         (swap! !deps conj v)))
                     (ana-jvm/macroexpand-1 form env))
-        analyzed (analyze-form {#'ana/macroexpand-1 mexpander} (rewrite-defcached form))
+        analyzed  (analyze-form {#'ana/macroexpand-1 mexpander} (rewrite-defcached form))
         nodes (ana-ast/nodes analyzed)
         vars (into #{}
                    (comp (filter (comp #{:def} :op))
@@ -243,13 +251,22 @@
   [sym]
   (str/includes? (name sym) ".proxy$"))
 
+(defonce !interned-symbols (atom #{}))
+(defn record-interned-symbol! [ns sym]
+  (swap! !interned-symbols conj (symbol (name (ns-name (the-ns ns))) (name sym))))
+(def core-intern intern)
+(defn intern!
+  ([ns name] (record-interned-symbol! ns name) (core-intern ns name))
+  ([ns name val] (record-interned-symbol! ns name) (core-intern ns name val)))
+
 (defn throw-if-dep-is-missing [doc state analyzed]
   (when-let [missing-dep (and (first (set/difference (into #{}
                                                            (comp (filter #(and (symbol? %)
                                                                                (#{(-> state :ns ns-name name)} (namespace %))))
                                                                  (remove internal-proxy-name?))
                                                            (:deps analyzed))
-                                                     (-> state :->analysis-info keys set))))]
+                                                     (set/union (-> state :->analysis-info keys set)
+                                                                @!interned-symbols))))]
     (throw (ex-info (str "The var `#'" missing-dep "` exists at runtime, but Clerk cannot find it in the namespace. Did you remove it?")
                     (merge {:var-name missing-dep} (select-keys analyzed [:form]) (select-keys doc [:file]))))))
 
@@ -495,4 +512,3 @@
 
 #_(do (reset! scratch-recompute/!state my-num) (nextjournal.clerk/recompute!))
 #_(do (reset! scratch-recompute/!state my-num) (nextjournal.clerk/show! 'scratch-recompute))
-
