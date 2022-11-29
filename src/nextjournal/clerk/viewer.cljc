@@ -387,11 +387,15 @@
      (str/join (repeat (get (frequencies (str path)) \/ 0) "../"))))
 
 #?(:clj
+   (defn map-index [{:as _opts :keys [index]} path]
+     (get {index "index.clj"} path path)))
+
+#?(:clj
    (defn maybe-store-result-as-file [{:as doc+blob-opts :keys [out-path file]} {:as result :nextjournal/keys [content-type value]}]
      ;; TODO: support customization via viewer api
      (if-let [image-type (second (re-matches #"image/(\w+)" content-type))]
        (assoc result :nextjournal/value
-              (str (relative-root-prefix-from file)
+              (str (relative-root-prefix-from (map-index doc+blob-opts file))
                    (store+get-cas-url! (assoc doc+blob-opts :ext image-type) value)))
        result)))
 
