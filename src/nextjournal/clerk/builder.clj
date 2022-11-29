@@ -124,8 +124,7 @@
 
 (defn ^:private resolve-var [sym]
   (when-not (qualified-symbol? sym)
-    (throw (ex-info (format "`%s` must be a qualified symbol pointing at an existing var." key)
-                    {:sym sym})))
+    (throw (ex-info (format "`%s` must be a qualified symbol pointing at an existing var." sym) {:sym sym})))
   (try (requiring-resolve sym)
        (catch clojure.lang.Compiler$CompilerException e
          (throw (ex-info (format "'%s cannot be resolved." sym) {:sym sym} e)))))
@@ -315,14 +314,14 @@
             (let [{duration :time-ms} (eval/time-ms (compile-css! opts state))]
               (report-fn {:stage :done :duration duration})))
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
-    (when-let [post-build-f (and post-build-fn
-                                 (if (fn? post-build-fn)
-                                   post-build-fn
-                                   (let [resolved-var (resolve-var post-build-fn)]
-                                     (when-not (fn? @resolved-var)
-                                       (throw (ex-info "`:post-build-fn` must be a fn or a qualified symbol pointing at a fn var." {:post-build-fn post-build-fn}))
-                                       resolved-var))))]
-      (post-build-f opts))
+    (when post-build-fn
+      (let [post-build-f (if (fn? post-build-fn)
+                           post-build-fn
+                           (let [resolved-var (resolve-var post-build-fn)]
+                             (when-not (fn? @resolved-var)
+                               (throw (ex-info "`:post-build-fn` must be a fn or a qualified symbol pointing at a fn var." {:post-build-fn post-build-fn}))
+                               resolved-var)))]
+        (post-build-f opts)))
     (when upload-cache-fn
       (report-fn {:stage :uploading-cache})
       (let [{duration :time-ms} (eval/time-ms (upload-cache-fn state))]
