@@ -862,24 +862,28 @@
    :transform-fn (comp mark-presented (update-val transform-result))})
 
 #?(:clj
-   (defn assert-valid-sync-value! [value]
-     (when-not (instance? IAtom value)
+   (defn edn-roundtrippable? [x]
+     (= x (-> x ->edn read-string))))
+
+#?(:clj
+   (defn throw-if-sync-var-is-invalid [var]
+     (when-not (instance? IAtom @var)
        (throw (ex-info "Clerk cannot sync non-atom values. Vars meant for sync need to hold clojure atom values."
-                       {:value-str (pr-str value)}
+                       {:var var :value @var}
                        (IllegalArgumentException.))))
-     (try (read-string (->edn @value))
-          true
-          (catch Exception _
-            (throw (ex-info "Clerk can only sync values which are EDN serializable."
-                            {:value-str (pr-str @value)}
-                            (IllegalArgumentException.)))))))
+     (try (when-not (edn-roundtrippable? @@var)
+            (throw (IllegalArgumentException.)))
+          (catch Exception ex
+            (throw (ex-info "Clerk can only sync values which can be round-tripped in EDN."
+                            {:var var :value @var}
+                            ex))))))
 
 (defn extract-clerk-atom-vars [{:as _doc :keys [blocks]}]
   (into {}
         (comp (keep (fn [{:keys [result form]}]
                       (when-let [var (-> result :nextjournal/value (get-safe :nextjournal.clerk/var-from-def))]
                         (when (and (contains? (meta form) :nextjournal.clerk/sync)
-                                   #?(:clj (assert-valid-sync-value! (deref var))))
+                                   #?(:clj (throw-if-sync-var-is-invalid var)))
                           var))))
               (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote)))))
         blocks))
