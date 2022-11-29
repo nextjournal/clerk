@@ -54,6 +54,15 @@
 (defn ^:export read-string [s]
   (edamame/parse-string s @!edamame-opts))
 
+(defn ^:export read-state-with-error [s]
+  (try
+    (read-string s)
+    (catch js/Error e
+      {:error (viewer/present (ex-info (str "Clerk encountered an error attempting to read the state: " (ex-message e))
+                                       (let [{:keys [line column]} (ex-data e)]
+                                         (assoc (ex-data e) :string (subs s 774)))
+                                       e))})))
+
 
 (def ^{:doc "Stub implementation to be replaced during static site generation. Clerk is only serving one page currently."}
   doc-url

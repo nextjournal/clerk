@@ -53,7 +53,7 @@
     [:div#clerk]
     [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
 let state = " (-> state v/->edn pr-str) "
-viewer.set_state(viewer.read_string(state))
+viewer.set_state(viewer.read_state_with_error(state))
 viewer.mount(document.getElementById('clerk'))\n"
      (when conn-ws?
        "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')

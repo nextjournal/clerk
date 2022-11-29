@@ -552,7 +552,8 @@
 
 (defn root []
   [:<>
-   [inspect-presented @!doc]
+   (when @!doc
+     [inspect-presented @!doc])
    (when @!error
      [:div.fixed.top-0.left-0.w-full.h-full
       [inspect-presented @!error]])])
@@ -597,10 +598,11 @@
     (w/postwalk #(cond-> % (viewer/viewer-fn? %) re-eval) doc)))
 
 (defn ^:export set-state! [{:as state :keys [doc error]}]
+  (js/console.log :set-state :error error)
   (when (contains? state :doc)
-    (reset! !doc doc))
-  (when (remount? doc)
-    (swap! !eval-counter inc))
+    (reset! !doc doc)
+    (when (remount? doc)
+      (swap! !eval-counter inc)))
   (reset! !error error)
   (when-let [title (and (exists? js/document) (-> doc viewer/->value :title))]
     (set! (.-title js/document) title)))
