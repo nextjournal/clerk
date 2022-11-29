@@ -131,18 +131,15 @@
   (->> (cond paths (if (sequential? paths)
                      paths
                      (throw (ex-info "`:paths` must be sequential" {:paths paths})))
-             paths-fn (if (qualified-symbol? paths-fn)
-                        (try
-                          (if-let [resolved-var  (requiring-resolve paths-fn)]
-                            (let [resolved-paths (cond-> @resolved-var
+             paths-fn (if paths-fn
+                        (do (when-not (qualified-symbol? paths-fn)
+                              (throw (ex-info "`:path-fn` must be a qualified symbol pointing at an existing var." {:paths-fn paths-fn})))
+                            (let [resolved-var (resolve-var paths-fn)
+                                  resolved-paths (cond-> @resolved-var
                                                    (fn? @resolved-var) (apply []))]
                               (when-not (sequential? resolved-paths)
                                 (throw (ex-info (str "#'" paths-fn " must be sequential.") {:paths-fn paths-fn :resolved-paths resolved-paths})))
-                              resolved-paths)
-                            (throw (ex-info (str "#'" paths-fn " cannot be resolved.") {:paths-fn paths-fn})))
-                          (catch clojure.lang.Compiler$CompilerException e
-                            (throw (ex-info (str "#'" paths-fn " cannot be resolved.") {:paths-fn paths-fn}))))
-                        (throw (ex-info "`:path-fn` must be a qualified symbol pointing at an existing var." {:paths-fn paths-fn}))))
+                              resolved-paths))))
        (maybe-add-index build-opts)
        (mapcat (partial fs/glob "."))
        (filter (complement fs/directory?))
@@ -226,17 +223,13 @@
      :index-html index-html
      :build-href (if (and @webserver/!server (= out-path default-out-path)) "/build" index-html)}))
 
-(defn resolve-fn [key opts]
-  (let [f (get opts key)]
-    (if (qualified-symbol? f)
-      (try (if-let [resolved-var (requiring-resolve f)]
-             (if (fn? @resolved-var)
-               @resolved-var
-               (throw (ex-info (format "%s is not a function." f) (select-keys opts [key]))))
-             (throw (ex-info (format "#'%s cannot be resolved." f) (select-keys opts [key]))))
-           (catch clojure.lang.Compiler$CompilerException e
-             (throw (ex-info (format "#'%s cannot be resolved." f) (select-keys opts [key])))))
-      (throw (ex-info (format "`%s` must be a qualified symbol pointing at an existing var." key) (select-keys opts [key]))))))
+(defn resolve-var [sym]
+  (when-not (qualified-symbol? sym)
+    (throw (ex-info (format "`%s` must be a qualified symbol pointing at an existing var." key)
+                    {:sym sym})))
+  (try (requiring-resolve sym)
+       (catch clojure.lang.Compiler$CompilerException e
+         (throw (ex-info (format "'%s cannot be resolved." sym) {:sym sym} e)))))
 
 (defn compile-css!
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
@@ -322,9 +315,14 @@
             (let [{duration :time-ms} (eval/time-ms (compile-css! opts state))]
               (report-fn {:stage :done :duration duration})))
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
-    (when post-build-fn
-      (let [f (resolve-fn :post-build-fn opts)]
-        (f opts)))
+    (when-let [post-build-f (and post-build-fn
+                                 (if (fn? post-build-fn)
+                                   post-build-fn
+                                   (let [resolved-var (resolve-var post-build-fn)]
+                                     (when-not (fn? @resolved-var)
+                                       (throw (ex-info "`:post-build-fn` must be a fn or a qualified symbol pointing at a fn var." {:post-build-fn post-build-fn}))
+                                       resolved-var))))]
+      (post-build-f opts))
     (when upload-cache-fn
       (report-fn {:stage :uploading-cache})
       (let [{duration :time-ms} (eval/time-ms (upload-cache-fn state))]
