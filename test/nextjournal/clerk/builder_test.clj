@@ -24,7 +24,7 @@
                                         :out-path temp})
             (is (= expected @url*))))))))
 
-(deftest expand-paths-test
+(deftest expand-paths
   (testing "expands glob patterns"
     (let [paths (builder/expand-paths {:paths ["notebooks/*clj"]})]
       (is (> (count paths) 25))
@@ -33,9 +33,19 @@
   (testing "supports index"
     (is (= ["book.clj"] (builder/expand-paths {:index "book.clj"}))))
 
+  (testing "supports index"
+    (is (= ["book.clj"] (builder/expand-paths {:paths ["book.clj"]}))))
+
   (testing "invalid args"
     (is (thrown? Exception (builder/expand-paths {})))
     (is (thrown? Exception (builder/expand-paths {:paths-fn 'foo})))
     (is (thrown? Exception (builder/expand-paths {:paths-fn "hi"})))
     (is (thrown? Exception (builder/expand-paths {:index ["book.clj"]})))))
+
+(deftest process-build-opts
+  (testing "assigns index when only one path is given"
+    (is (= "notebooks/rule_30.clj" (:index (builder/process-build-opts {:paths ["notebooks/rule_30.clj"] :expand-paths? true})))))
+
+  (testing "coerces index symbol arg and adds it to expanded-paths"
+    (is (= ["book.clj"] (:expanded-paths (builder/process-build-opts {:index 'book.clj :expand-paths? true}))))))
 

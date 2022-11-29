@@ -109,15 +109,69 @@
 (def default-out-path
   (str "public" fs/file-separator "build"))
 
-(defn process-build-opts [{:as opts :keys [paths index]}]
+(defn ^:private throw-when-empty [{:as build-opts :keys [paths paths-fn index]} expanded-paths]
+  (if (empty? expanded-paths)
+    (throw (ex-info "nothing to build" (merge {:expanded-paths expanded-paths} (select-keys build-opts [:paths :paths-fn :index]))))
+    expanded-paths))
+
+(defn ^:private maybe-add-index [{:as build-opts :keys [paths paths-fn index]} resolved-paths]
+  (when (and index (or (not (string? index)) (not (fs/exists? index))))
+    (throw (ex-info "`:index` must be string and point to existing file" {:index index})))
+  (cond-> resolved-paths
+    (and index (not (contains? (set resolved-paths) index)))
+    (conj index)))
+
+#_(maybe-add-index {:index "book.clj"} nil)
+
+(defn expand-paths [{:as build-opts :keys [paths paths-fn index]}]
+  (when (and paths paths-fn)
+    (binding [*out* *err*]
+      (println "[info] both `:paths` and `:paths-fn` are set, `:paths` will take precendence.")))
+  (when (not (or paths paths-fn index))
+    (throw (ex-info "must set either `:paths`, `:paths-fn` or `:index`." {:build-opts build-opts})))
+  (->> (cond paths (if (sequential? paths)
+                     paths
+                     (throw (ex-info "`:paths` must be sequential" {:paths paths})))
+             paths-fn (if (qualified-symbol? paths-fn)
+                        (try
+                          (if-let [resolved-var  (requiring-resolve paths-fn)]
+                            (let [resolved-paths (cond-> @resolved-var
+                                                   (fn? @resolved-var) (apply []))]
+                              (when-not (sequential? resolved-paths)
+                                (throw (ex-info (str "#'" paths-fn " must be sequential.") {:paths-fn paths-fn :resolved-paths resolved-paths})))
+                              resolved-paths)
+                            (throw (ex-info (str "#'" paths-fn " cannot be resolved.") {:paths-fn paths-fn}))))
+                        (throw (ex-info "`:path-fn` must be a qualified symbol pointing at an existing var." {:paths-fn paths-fn}))))
+       (maybe-add-index build-opts)
+       (mapcat (partial fs/glob "."))
+       (filter (complement fs/directory?))
+       (mapv (comp str fs/file))
+       (throw-when-empty build-opts)))
+
+#_(expand-paths {:paths ["notebooks/di*.clj"]})
+#_(expand-paths {:paths ['notebooks/rule_30.clj]})
+#_(expand-paths {:paths-fn `clerk-docs})
+#_(expand-paths {:paths-fn `clerk-docs-2})
+#_(do (defn my-paths [] ["notebooks/h*.clj"])
+      (expand-paths {:paths-fn `my-paths}))
+#_(expand-paths {:paths ["notebooks/viewers**"]})
+
+(defn process-build-opts [{:as opts :keys [paths index expand-paths?]}]
   (merge {:out-path default-out-path
           :bundle? false
           :browse? false
           :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
-         (cond-> opts
-           index (assoc :index (str index)))))
+         (let [opts' (cond-> opts
+                       index (assoc :index (str index)))
+               expanded-paths (when expand-paths? (expand-paths opts'))]
+           (cond-> opts'
+             expand-paths? (dissoc :expand-paths?)
+             expanded-paths (assoc :expanded-paths expanded-paths)
+             (and (not index) (= 1 (count expanded-paths))) (assoc :index (first expanded-paths))))))
 
-#_(process-build-opts {:index 'book.clj})
+#_(process-build-opts {:index 'book.clj :expand-paths? true})
+#_(process-build-opts {:paths ["notebooks/rule_30.clj"] :expand-paths? true})
+
 (defn build-path->url [{:as opts :keys [bundle?]} docs]
   (into {}
         (map (comp (juxt identity #(cond-> (->> % (viewer/map-index opts) strip-index) (not bundle?) ->html-extension))
@@ -171,52 +225,6 @@
      :index-html index-html
      :build-href (if (and @webserver/!server (= out-path default-out-path)) "/build" index-html)}))
 
-(defn ^:private maybe-add-index [{:as build-opts :keys [paths paths-fn index]} resolved-paths]
-  (when (and index (or (not (string? index)) (not (fs/exists? index))))
-    (throw (ex-info "`:index` must be string and point to existing file" {:index index})))
-  (cond-> resolved-paths
-    (and index (not (contains? (set resolved-paths) index)))
-    (conj index)))
-
-#_(maybe-add-index {:index "book.clj"} nil)
-
-(defn ^:private throw-when-empty [{:as build-opts :keys [paths paths-fn index]} expanded-paths]
-  (if (empty? expanded-paths)
-    (throw (ex-info "nothing to build" (merge {:expanded-paths expanded-paths} (select-keys build-opts [:paths :paths-fn :index]))))
-    expanded-paths))
-
-(defn expand-paths [{:as build-opts :keys [paths paths-fn index]}]
-  (when (and paths paths-fn)
-    (binding [*out* *err*]
-      (println "[info] both `:paths` and `:paths-fn` are set, `:paths` will take precendence.")))
-  (when (not (or paths paths-fn index))
-    (throw (ex-info "must set either `:paths`, `:paths-fn` or `:index`." {:build-opts build-opts})))
-  (->> (cond paths (if (sequential? paths)
-                     paths
-                     (throw (ex-info "`:paths` must be sequential" {:paths paths})))
-             paths-fn (if (qualified-symbol? paths-fn)
-                        (try
-                          (if-let [resolved-var  (requiring-resolve paths-fn)]
-                            (let [resolved-paths (cond-> @resolved-var
-                                                   (fn? @resolved-var) (apply []))]
-                              (when-not (sequential? resolved-paths)
-                                (throw (ex-info (str "#'" paths-fn " must be sequential.") {:paths-fn paths-fn :resolved-paths resolved-paths})))
-                              resolved-paths)
-                            (throw (ex-info (str "#'" paths-fn " cannot be resolved.") {:paths-fn paths-fn}))))
-                        (throw (ex-info "`:path-fn` must be a qualified symbol pointing at an existing var." {:paths-fn paths-fn}))))
-       (maybe-add-index build-opts)
-       (mapcat (partial fs/glob "."))
-       (filter (complement fs/directory?))
-       (mapv (comp str fs/file))
-       (throw-when-empty build-opts)))
-
-#_(expand-paths {:paths ["notebooks/di*.clj"]})
-#_(expand-paths {:paths ['notebooks/rule_30.clj]})
-#_(expand-paths {:paths-fn `clerk-docs})
-#_(expand-paths {:paths-fn `clerk-docs-2})
-#_(do (defn my-paths [] ["notebooks/h*.clj"])
-      (expand-paths {:paths-fn `my-paths}))
-#_(expand-paths {:paths ["notebooks/viewers**"]})
 
 (defn compile-css!
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
@@ -252,11 +260,10 @@
     (fs/delete-tree tw-folder)))
 
 (defn build-static-app! [{:as opts :keys [bundle?]}]
-  (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css?]}
-        (process-build-opts opts)
-        {:keys [expanded-paths error]} (try {:expanded-paths (expand-paths opts)}
-                                            (catch Exception e
-                                              {:error e}))
+  (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css? expanded-paths error]}
+        (try (process-build-opts (assoc opts :expand-paths? true))
+             (catch Exception e
+               {:error e}))
         start (System/nanoTime)
         state (mapv #(hash-map :file %) expanded-paths)
         _ (report-fn {:stage :init :state state :build-opts opts})
