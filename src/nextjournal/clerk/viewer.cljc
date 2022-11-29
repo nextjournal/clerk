@@ -20,7 +20,7 @@
             [nextjournal.markdown :as md]
             [nextjournal.markdown.transform :as md.transform])
   #?(:clj (:import (com.pngencoder PngEncoder)
-                   (clojure.lang IDeref)
+                   (clojure.lang IDeref IAtom)
                    (java.lang Throwable)
                    (java.awt.image BufferedImage)
                    (java.util Base64)
@@ -861,14 +861,31 @@
    :render-fn 'nextjournal.clerk.render/render-result
    :transform-fn (comp mark-presented (update-val transform-result))})
 
+#?(:clj
+   (defn edn-roundtrippable? [x]
+     (= x (-> x ->edn read-string))))
+
+#?(:clj
+   (defn throw-if-sync-var-is-invalid [var]
+     (when-not (instance? IAtom @var)
+       (throw (ex-info "Clerk cannot sync non-atom values. Vars meant for sync need to hold clojure atom values."
+                       {:var var :value @var}
+                       (IllegalArgumentException.))))
+     (try (when-not (edn-roundtrippable? @@var)
+            (throw (IllegalArgumentException.)))
+          (catch Exception ex
+            (throw (ex-info "Clerk can only sync values which can be round-tripped in EDN."
+                            {:var var :value @var}
+                            ex))))))
+
 (defn extract-clerk-atom-vars [{:as _doc :keys [blocks]}]
   (into {}
         (comp (keep (fn [{:keys [result form]}]
                       (when-let [var (-> result :nextjournal/value (get-safe :nextjournal.clerk/var-from-def))]
                         (when (and (contains? (meta form) :nextjournal.clerk/sync)
-                                   #?(:clj (instance? clojure.lang.IAtom (deref var))))
+                                   #?(:clj (throw-if-sync-var-is-invalid var)))
                           var))))
-              (map (juxt #(list 'quote (symbol %)) #(-> % deref deref))))
+              (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote)))))
         blocks))
 
 (defn process-blocks [viewers {:as doc :keys [ns]}]

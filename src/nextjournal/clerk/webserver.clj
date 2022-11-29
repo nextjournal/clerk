@@ -98,9 +98,16 @@
 
 #_(serve-file "public" {:uri "/js/viewer.js"})
 
+(defn show-error! [e]
+  (broadcast! {:type :set-state! :error (reset! !error (v/present e))}))
+
 (defn read-msg [s]
   (binding [*data-readers* v/data-readers]
-    (read-string s)))
+    (try (read-string s)
+         (catch Exception ex
+           (throw (doto (ex-info (str "Clerk encountered the following error attempting to read an incoming message: "
+                                      (ex-message ex))
+                                 {:message s} ex) show-error!))))))
 
 #_(pr-str (read-msg "#viewer-eval (resolve 'clojure.core/inc)"))
 
@@ -115,9 +122,12 @@
                        :eval (do (eval (:form msg))
                                  (eval '(nextjournal.clerk/recompute!)))
                        :swap! (when-let [var (resolve (:var-name msg))]
-                                (apply swap! @var (eval (:args msg)))
-                                (binding [*sender-ch* sender-ch]
-                                  (eval '(nextjournal.clerk/recompute!))))))))})
+                                (try
+                                  (apply swap! @var (eval (:args msg)))
+                                  (binding [*sender-ch* sender-ch]
+                                    (eval '(nextjournal.clerk/recompute!)))
+                                  (catch Exception ex
+                                    (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) show-error!)))))))))})
 
 #_(do
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
@@ -154,10 +164,6 @@
                 {:type :set-state! :doc (present+reset! doc)})))
 
 #_(update-doc! help-doc)
-
-(defn show-error! [e]
-  (broadcast! {:type :set-state! :error (reset! !error (v/present e))}))
-
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
 
