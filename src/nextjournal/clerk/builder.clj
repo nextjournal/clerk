@@ -140,7 +140,7 @@
                      (throw (ex-info "`:paths` must be sequential" {:paths paths})))
              paths-fn (if paths-fn
                         (do (when-not (qualified-symbol? paths-fn)
-                              (throw (ex-info "`:path-fn` must be a qualified symbol pointing at an existing var." {:paths-fn paths-fn})))
+                              (throw (ex-info "`:paths-fn` must be a qualified symbol pointing at an existing var." {:paths-fn paths-fn})))
                             (let [resolved-var (resolve-var paths-fn)
                                   resolved-paths (cond-> @resolved-var
                                                    (fn? @resolved-var) (apply []))]
