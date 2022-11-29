@@ -152,3 +152,9 @@
                                    list))
                          #js[(str package)])]
     (use-promise p)))
+
+(def js-dynamic-import (js/eval "(module) => import(module)"))
+
+(defn ^js use-dynamic-import [mod]
+  (let [p (use-memo #(js-dynamic-import mod) [mod])]
+    (use-promise p)))
