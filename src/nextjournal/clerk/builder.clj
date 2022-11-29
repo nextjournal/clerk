@@ -231,7 +231,7 @@
     (if (qualified-symbol? f)
       (try (if-let [resolved-var (requiring-resolve f)]
              (if (fn? @resolved-var)
-               (@resolved-var opts)
+               @resolved-var
                (throw (ex-info (format "%s is not a function." f) (select-keys opts [key]))))
              (throw (ex-info (format "#'%s cannot be resolved." f) (select-keys opts [key]))))
            (catch clojure.lang.Compiler$CompilerException e
@@ -323,7 +323,8 @@
               (report-fn {:stage :done :duration duration})))
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
     (when post-build-fn
-      (resolve-fn :post-build-fn opts))
+      (let [f (resolve-fn :post-build-fn opts)]
+        (f opts)))
     (when upload-cache-fn
       (report-fn {:stage :uploading-cache})
       (let [{duration :time-ms} (eval/time-ms (upload-cache-fn state))]
