@@ -229,11 +229,13 @@
 (defn resolve-fn [key opts]
   (let [f (get opts key)]
     (if (qualified-symbol? f)
-      (if-let [resolved-var  (requiring-resolve f)]
-        (if (fn? @resolved-var)
-          (@resolved-var opts)
-          (throw (ex-info (format "%s is not a function." f) (select-keys opts [key]))))
-        (throw (ex-info (format "#'%s cannot be resolved." f) (select-keys opts [key]))))
+      (try (if-let [resolved-var (requiring-resolve f)]
+             (if (fn? @resolved-var)
+               (@resolved-var opts)
+               (throw (ex-info (format "%s is not a function." f) (select-keys opts [key]))))
+             (throw (ex-info (format "#'%s cannot be resolved." f) (select-keys opts [key]))))
+           (catch clojure.lang.Compiler$CompilerException e
+             (throw (ex-info (format "#'%s cannot be resolved." f) (select-keys opts [key])))))
       (throw (ex-info (format "`%s` must be a qualified symbol pointing at an existing var." key) (select-keys opts [key]))))))
 
 (defn compile-css!
