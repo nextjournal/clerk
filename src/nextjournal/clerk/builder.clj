@@ -122,6 +122,14 @@
 
 #_(maybe-add-index {:index "book.clj"} nil)
 
+(defn ^:private resolve-var [sym]
+  (when-not (qualified-symbol? sym)
+    (throw (ex-info (format "`%s` must be a qualified symbol pointing at an existing var." key)
+                    {:sym sym})))
+  (try (requiring-resolve sym)
+       (catch clojure.lang.Compiler$CompilerException e
+         (throw (ex-info (format "'%s cannot be resolved." sym) {:sym sym} e)))))
+
 (defn expand-paths [{:as build-opts :keys [paths paths-fn index]}]
   (when (and paths paths-fn)
     (binding [*out* *err*]
@@ -222,14 +230,6 @@
     {:docs docs
      :index-html index-html
      :build-href (if (and @webserver/!server (= out-path default-out-path)) "/build" index-html)}))
-
-(defn resolve-var [sym]
-  (when-not (qualified-symbol? sym)
-    (throw (ex-info (format "`%s` must be a qualified symbol pointing at an existing var." key)
-                    {:sym sym})))
-  (try (requiring-resolve sym)
-       (catch clojure.lang.Compiler$CompilerException e
-         (throw (ex-info (format "'%s cannot be resolved." sym) {:sym sym} e)))))
 
 (defn compile-css!
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
