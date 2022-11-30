@@ -109,10 +109,12 @@
       #_(prn :freeze-error e)
       nil)))
 
-(defn record-interned-symbol [store ns sym]
+(defn ^:private record-interned-symbol [store ns sym]
   (swap! store conj (symbol (name (ns-name (the-ns ns))) (name sym))))
-(def core-intern intern)
-(defn intern+record
+
+(def ^:private core-intern intern)
+
+(defn ^:private intern+record
   ([store ns name] (record-interned-symbol store ns name) (core-intern ns name))
   ([store ns name val] (record-interned-symbol store ns name) (core-intern ns name val)))
 
