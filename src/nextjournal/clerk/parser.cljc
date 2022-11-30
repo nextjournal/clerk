@@ -99,7 +99,7 @@
   (if-some [setting (when (ns? first-form)
                       (get-doc-setting first-form :nextjournal.clerk/error-on-missing-vars))]
     (do (when-not (#{:on :off} setting)
-          (throw (ex-info (format "Invalid setting `%s` for `:nextjournal.clerk/error-on-missing-vars`. Valid values are `:on` and `:off`." (pr-str setting))
+          (throw (ex-info (str "Invalid setting `" (pr-str setting) "` for `:nextjournal.clerk/error-on-missing-vars`. Valid values are `:on` and `:off`.")
                           {:nextjournal.clerk/error-on-missing-vars setting})))
         setting)
     (if (ns? first-form) :on :off)))
