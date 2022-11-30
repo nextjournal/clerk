@@ -109,13 +109,12 @@
       #_(prn :freeze-error e)
       nil)))
 
-(defn record-interned-symbol! [store ns sym]
+(defn record-interned-symbol [store ns sym]
   (swap! store conj (symbol (name (ns-name (the-ns ns))) (name sym))))
-
 (def core-intern intern)
 (defn intern+record
-  ([store ns name] (record-interned-symbol! store ns name) (core-intern ns name))
-  ([store ns name val] (record-interned-symbol! store ns name) (core-intern ns name val)))
+  ([store ns name] (record-interned-symbol store ns name) (core-intern ns name))
+  ([store ns name val] (record-interned-symbol store ns name) (core-intern ns name val)))
 
 (defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
   (try
