@@ -132,16 +132,21 @@
   (->> (cond paths (if (sequential? paths)
                      paths
                      (throw (ex-info "`:paths` must be sequential" {:paths paths})))
-             paths-fn (if (qualified-symbol? paths-fn)
-                        (try
-                          (if-let [resolved-var  (requiring-resolve paths-fn)]
-                            (let [resolved-paths (cond-> @resolved-var
-                                                   (fn? @resolved-var) (apply []))]
-                              (when-not (sequential? resolved-paths)
-                                (throw (ex-info (str "#'" paths-fn " must be sequential.") {:paths-fn paths-fn :resolved-paths resolved-paths})))
-                              resolved-paths)
-                            (throw (ex-info (str "#'" paths-fn " cannot be resolved.") {:paths-fn paths-fn}))))
-                        (throw (ex-info "`:path-fn` must be a qualified symbol pointing at an existing var." {:paths-fn paths-fn}))))
+             paths-fn (let [ex-msg "`:path-fn` must be a qualified symbol pointing at an existing var."]
+                        (when-not (qualified-symbol? paths-fn)
+                          (throw (ex-info ex-msg {:paths-fn paths-fn})))
+                        (if-let [resolved-var  (try (requiring-resolve paths-fn)
+                                                    (catch Exception e
+                                                      (throw (ex-info ex-msg {:paths-fn paths-fn}))))]
+                          (let [resolved-paths (try (cond-> @resolved-var
+                                                      (fn? @resolved-var) (apply []))
+                                                    (catch Exception e
+                                                      (throw (ex-info (str "An error occured invoking `" (pr-str resolved-var) "`: " (ex-message e))
+                                                                      {:paths-fn paths-fn} e))))]
+                            (when-not (sequential? resolved-paths)
+                              (throw (ex-info (str "`:paths-fn` must compute sequential value.") {:paths-fn paths-fn :resolved-paths resolved-paths})))
+                            resolved-paths)
+                          (throw (ex-info ex-msg {:paths-fn paths-fn})))))
        (maybe-add-index build-opts)
        (mapcat (partial fs/glob "."))
        (filter (complement fs/directory?))
