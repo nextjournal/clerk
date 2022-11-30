@@ -44,7 +44,7 @@
                          (map char (range 97 127))))]})
 
 ;; ## Table with images
-(clerk/table [[1 2] [3 (javax.imageio.ImageIO/read (java.net.URL. "https://etc.usf.edu/clipart/36600/36667/thermos_36667_sm.gif"))]])
+(clerk/table [[1 2] [3 (javax.imageio.ImageIO/read (java.net.URL. "https://nextjournal.com/data/QmSJ6eu6kUFeWrqXyYaiWRgJxAVQt2ivaoNWc1dtTEADCf?filename=thermo.png&content-type=image/png"))]])
 
 ;; ## Table within tables
 (clerk/table [[1 2] [3 (clerk/table [[1 2] [3 4]])]])

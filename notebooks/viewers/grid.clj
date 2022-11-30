@@ -7,13 +7,13 @@
            (javax.imageio ImageIO)))
 
 ^{::clerk/visibility {:code :hide :result :hide}}
-(def image-1 (ImageIO/read (URL. "https://etc.usf.edu/clipart/62300/62370/62370_letter-a_lg.gif")))
+(def image-1 (ImageIO/read (URL. "https://nextjournal.com/data/QmPej5pgx1Stmw6top5NzetBg7xBQe3fT6MAH2w5ud4MBK?filename=a.png&content-type=image/png")))
 
 ^{::clerk/visibility {:code :hide :result :hide}}
-(def image-2 (ImageIO/read (URL. "https://etc.usf.edu/clipart/72700/72783/72783_floral_b_lg.gif")))
+(def image-2 (ImageIO/read (URL. "https://nextjournal.com/data/QmXeU121xCqCiLghuXa5PwkVjx8duBDGj2PkZ66vvqHu2i?filename=b.png&content-type=image/png")))
 
 ^{::clerk/visibility {:code :hide :result :hide}}
-(def image-3 (ImageIO/read (URL. "https://etc.usf.edu/clipart/72700/72787/72787_floral_c_lg.gif")))
+(def image-3 (ImageIO/read (URL. "https://nextjournal.com/data/QmT4uYsrhLfjNs5RhLTF98YuLS3WWTCxEaNFgFP7ECD7Sx?filename=c.png&content-type=image/png")))
 
 ;; ## Layouts can be composed via `row`s and `col`s
 ;;
