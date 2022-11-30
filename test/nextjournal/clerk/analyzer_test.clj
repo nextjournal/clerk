@@ -225,7 +225,6 @@ my-uuid"
 (def b (str a \" boom\"))
 (def a (str \"boom \" b))"))))
 
-
 (deftest hash-deref-deps
   (testing "transitive dep gets new hash"
     (let [analyzed-doc (-> (pr-str '(ns nextjournal.clerk.test.deref-dep)
