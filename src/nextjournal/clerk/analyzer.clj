@@ -251,16 +251,21 @@
   [sym]
   (str/includes? (name sym) ".proxy$"))
 
-(defn throw-if-dep-is-missing [doc state analyzed]
-  (when-let [missing-dep (and (first (set/difference (into #{}
-                                                           (comp (filter #(and (symbol? %)
-                                                                               (#{(-> state :ns ns-name name)} (namespace %))))
-                                                                 (remove internal-proxy-name?))
-                                                           (:deps analyzed))
-                                                     (set/union (-> state :->analysis-info keys set)
-                                                                (into #{} (mapcat :nextjournal/interned) (-> state :blob->result vals))))))]
-    (throw (ex-info (str "The var `#'" missing-dep "` exists at runtime, but Clerk cannot find it in the namespace. Did you remove it?")
-                    (merge {:var-name missing-dep} (select-keys analyzed [:form]) (select-keys doc [:file]))))))
+(defn throw-if-dep-is-missing [{:keys [blob->result blocks ns ->analysis-info file]}]
+  (let [block-ids (into #{} (keep :id) blocks)
+        ;; only take current blocks into account
+        current-analyis (into {} (filter (comp block-ids :id second) ->analysis-info))
+        defined (set/union (-> current-analyis keys set)
+                           (into #{} (mapcat :nextjournal/interned) (vals blob->result)))]
+    (doseq [{:keys [form deps]} (vals current-analyis)]
+      (when (seq deps)
+        (when-some [missing-dep (first (set/difference (into #{}
+                                                             (comp (filter #(and (symbol? %) (= (-> ns ns-name name) (namespace %))))
+                                                                   (remove internal-proxy-name?))
+                                                             deps)
+                                                       defined))]
+          (throw (ex-info (str "The var `#'" missing-dep "` exists at runtime, but Clerk cannot find it in the namespace. Did you remove it?")
+                          {:var-name missing-dep :form form :defined defined :file file})))))))
 
 (defn analyze-doc
   ([doc]
@@ -289,8 +294,6 @@
                                                          (->ana-keys analyzed))
                                            doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
                                            (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))]
-                               (when (:ns? state)
-                                 (throw-if-dep-is-missing doc state analyzed))
                                (if (seq deps)
                                  (-> (reduce (partial analyze-deps analyzed) state deps)
                                      (make-deps-inherit-no-cache analyzed))

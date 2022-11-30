@@ -206,9 +206,9 @@
                     (assoc :blocks [] :blob-ids #{})
                     (update :->hash (fn [h] (apply dissoc h deref-forms))))
                 blocks)]
-    (-> evaluated-doc
-        (update :blob->result select-keys blob-ids)
-        (dissoc :blob-ids))))
+    (doto (-> evaluated-doc
+              (update :blob->result select-keys blob-ids)
+              (dissoc :blob-ids)) analyzer/throw-if-dep-is-missing)))
 
 (defn +eval-results
   "Evaluates the given `parsed-doc` using the `in-memory-cache` and augments it with the results."
