@@ -251,14 +251,6 @@
   [sym]
   (str/includes? (name sym) ".proxy$"))
 
-(defonce !interned-symbols (atom #{}))
-(defn record-interned-symbol! [ns sym]
-  (swap! !interned-symbols conj (symbol (name (ns-name (the-ns ns))) (name sym))))
-(def core-intern intern)
-(defn intern!
-  ([ns name] (record-interned-symbol! ns name) (core-intern ns name))
-  ([ns name val] (record-interned-symbol! ns name) (core-intern ns name val)))
-
 (defn throw-if-dep-is-missing [doc state analyzed]
   (when-let [missing-dep (and (first (set/difference (into #{}
                                                            (comp (filter #(and (symbol? %)
@@ -266,7 +258,7 @@
                                                                  (remove internal-proxy-name?))
                                                            (:deps analyzed))
                                                      (set/union (-> state :->analysis-info keys set)
-                                                                @!interned-symbols))))]
+                                                                (into #{} (mapcat :nextjournal/interned) (-> state :blob->result vals))))))]
     (throw (ex-info (str "The var `#'" missing-dep "` exists at runtime, but Clerk cannot find it in the namespace. Did you remove it?")
                     (merge {:var-name missing-dep} (select-keys analyzed [:form]) (select-keys doc [:file]))))))
 

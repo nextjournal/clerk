@@ -109,11 +109,20 @@
       #_(prn :freeze-error e)
       nil)))
 
+(defn record-interned-symbol! [store ns sym]
+  (swap! store conj (symbol (name (ns-name (the-ns ns))) (name sym))))
+
+(def core-intern intern)
+(defn intern+record
+  ([store ns name] (record-interned-symbol! store ns name) (core-intern ns name))
+  ([store ns name val] (record-interned-symbol! store ns name) (core-intern ns name val)))
+
 (defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
   (try
-    (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true]
+    (let [!interned-vars (atom #{})
+          {:keys [result]} (time-ms (binding [config/*in-clerk* true]
                                       (assert form "form must be set")
-                                      (with-redefs [clojure.core/intern analyzer/intern!]
+                                      (with-redefs [clojure.core/intern (partial intern+record !interned-vars)]
                                         (eval form))))
           result (if (and (nil? result) var (= 'defonce (first form)))
                    (find-var var)
@@ -121,6 +130,7 @@
           var-value (cond-> result (and var (var? result)) deref)
           no-cache? (or ns-effect?
                         no-cache?
+                        (boolean (seq @!interned-vars))
                         config/cache-disabled?)]
       (when (and (not no-cache?) (not ns-effect?) freezable? (cachable-value? var-value))
         (cache! digest-file var-value))
@@ -130,7 +140,9 @@
             result (if var
                      (var-from-def var)
                      result)]
-        (wrapped-with-metadata result blob-id)))
+        (cond-> (wrapped-with-metadata result blob-id)
+          (seq @!interned-vars)
+          (assoc :nextjournal/interned @!interned-vars))))
     (catch Throwable t
       (let [triaged (main/ex-triage (Throwable->map t))]
         (throw (ex-info (main/ex-str triaged) triaged))))))
@@ -202,11 +214,11 @@
 (defn +eval-results
   "Evaluates the given `parsed-doc` using the `in-memory-cache` and augments it with the results."
   [in-memory-cache parsed-doc]
-  (let [{:as analyzed-doc :keys [ns]} (analyzer/build-graph parsed-doc)]
+  (let [{:as analyzed-doc :keys [ns]} (analyzer/build-graph
+                                       (assoc parsed-doc :blob->result in-memory-cache))]
     (binding [*ns* ns]
       (-> analyzed-doc
           analyzer/hash
-          (assoc :blob->result in-memory-cache)
           eval-analyzed-doc))))
 
 (defn eval-doc
