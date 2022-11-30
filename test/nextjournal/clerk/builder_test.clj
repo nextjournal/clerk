@@ -4,7 +4,8 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [nextjournal.clerk.builder :as builder])
-  (:import (java.io File)))
+  (:import (clojure.lang ExceptionInfo)
+           (java.io File)))
 
 (deftest url-canonicalize
   (testing "canonicalization of file components into url components"
@@ -37,10 +38,24 @@
     (is (= ["book.clj"] (builder/expand-paths {:paths ["book.clj"]}))))
 
   (testing "invalid args"
-    (is (thrown? Exception (builder/expand-paths {})))
-    (is (thrown? Exception (builder/expand-paths {:paths-fn 'foo})))
-    (is (thrown? Exception (builder/expand-paths {:paths-fn "hi"})))
-    (is (thrown? Exception (builder/expand-paths {:index ["book.clj"]})))))
+    (let [msg #"must be a qualified symbol pointing at an existing var"]
+      (is (thrown-with-msg? ExceptionInfo #"must set either"
+                            (builder/expand-paths {})))
+      (is (thrown-with-msg? ExceptionInfo #"must be a qualified symbol pointing at an existing var"
+                            (builder/expand-paths {:paths-fn :foo})))
+      (is (thrown-with-msg? ExceptionInfo #"must be a qualified symbol pointing at an existing var"
+                            (builder/expand-paths {:paths-fn 'foo})))
+      (is (thrown-with-msg? ExceptionInfo #"must be a qualified symbol pointing at an existing var"
+                            (builder/expand-paths {:paths-fn 'foo/bar})))
+      (is (thrown-with-msg? ExceptionInfo #"must be a qualified symbol pointing at an existing var"
+                            (builder/expand-paths {:paths-fn 'clojure.core/non-existant-var})))
+      (is (thrown-with-msg? ExceptionInfo #"must be a qualified symbol pointing at an existing var"
+                            (builder/expand-paths {:paths-fn "hi"})))
+      (is (thrown-with-msg? ExceptionInfo #"An error occured invoking"
+                            (builder/expand-paths {:paths-fn 'clojure.core/inc})))
+      (is (thrown-with-msg? ExceptionInfo #"`:paths-fn` must compute sequential value"
+                            (builder/expand-paths {:paths-fn 'clojure.core/+})))
+      (is (thrown? ExceptionInfo (builder/expand-paths {:index ["book.clj"]}))))))
 
 (deftest process-build-opts
   (testing "assigns index when only one path is given"
@@ -50,3 +65,16 @@
   (testing "coerces index symbol arg and adds it to expanded-paths"
     (is (= ["book.clj"] (:expanded-paths (builder/process-build-opts {:index 'book.clj :expand-paths? true}))))))
 
+
+(deftest doc-url
+  (testing "link to same dir unbundled"
+    (is (= "../notebooks/rule_30.html" ;; NOTE: could also be just "rule_30.html"
+           (builder/doc-url {:bundle? false} [{:file "notebooks/viewer_api.clj"} {:file "notebooks/rule_30.clj"}] "notebooks/viewer_api.clj" "notebooks/rule_30.clj"))))
+
+  (testing "respects the mapped index"
+    (is (= "notebooks/rule_30.html"
+           (builder/doc-url {:bundle? false} [{:file "index.clj"} {:file "notebooks/rule_30.clj"}] "index.clj" "notebooks/rule_30.clj"))))
+
+  (testing "bundle case"
+    (is (= "#/notebooks/rule_30.clj"
+           (builder/doc-url {:bundle? true} [{:file "notebooks/index.clj"} {:file "notebooks/rule_30.clj"}] "index.clj" "notebooks/rule_30.clj")))))
