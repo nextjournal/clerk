@@ -251,13 +251,13 @@
   [sym]
   (str/includes? (name sym) ".proxy$"))
 
-(defn throw-if-dep-is-missing [{:keys [blob->result blocks ns ns? ->analysis-info file]}]
+(defn throw-if-dep-is-missing [{:keys [blocks ns ns? ->analysis-info file]}]
   (when ns?
     (let [block-ids (into #{} (keep :id) blocks)
           ;; only take current blocks into account
           current-analyis (into {} (filter (comp block-ids :id second) ->analysis-info))
           defined (set/union (-> current-analyis keys set)
-                             (into #{} (mapcat :nextjournal/interned) (vals blob->result)))]
+                             (into #{} (mapcat (comp :nextjournal/interned :result)) blocks))]
       (doseq [{:keys [form deps]} (vals current-analyis)]
         (when (seq deps)
           (when-some [missing-dep (first (set/difference (into #{}
