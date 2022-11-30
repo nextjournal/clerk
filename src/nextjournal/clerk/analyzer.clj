@@ -251,8 +251,17 @@
   [sym]
   (str/includes? (name sym) ".proxy$"))
 
+
+(defn error-on-missing-vars? [ns-form]
+  (if-some [setting (parser/get-doc-setting ns-form :nextjournal.clerk/error-on-missing-vars)]
+    (do (when-not (#{:on :off} setting)
+          (throw (ex-info (format "Invalid setting `%s` for `:nextjournal.clerk/error-on-missing-vars`. Valid values are `:on` and `:off`." (pr-str setting))
+                          {:nextjournal.clerk/error-on-missing-vars setting})))
+        (not= :off setting))
+    true))
+
 (defn throw-if-dep-is-missing [{:keys [blocks ns ns? ->analysis-info file]}]
-  (when ns?
+  (when (and ns? (error-on-missing-vars? (some :form blocks)))
     (let [block-ids (into #{} (keep :id) blocks)
           ;; only take current blocks into account
           current-analyis (into {} (filter (comp block-ids :id val) ->analysis-info))
@@ -265,8 +274,8 @@
                                                                      (remove internal-proxy-name?))
                                                                deps)
                                                          defined))]
-            (throw (ex-info (str "The var `#'" missing-dep "` exists at runtime, but Clerk cannot find it in the namespace. Did you remove it?")
-                            {:var-name missing-dep :form form :defined defined :file file}))))))))
+            (throw (ex-info (str "The var `#'" missing-dep "` is being referenced, but Clerk can't find it in the namespace's source code. Did you remove it? This validation can fail when the namespace is mutated programmatically (e.g. using `clojure.core/intern` or side-effecting macros). You can turn off this check by adding `{:nextjournal.clerk/error-on-missing-vars :off}` to the namespace metadata.")
+                            {:var-name missing-dep :form form :file file #_#_:defined defined }))))))))
 
 (defn analyze-doc
   ([doc]
