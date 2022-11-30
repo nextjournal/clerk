@@ -251,17 +251,8 @@
   [sym]
   (str/includes? (name sym) ".proxy$"))
 
-
-(defn error-on-missing-vars? [ns-form]
-  (if-some [setting (parser/get-doc-setting ns-form :nextjournal.clerk/error-on-missing-vars)]
-    (do (when-not (#{:on :off} setting)
-          (throw (ex-info (format "Invalid setting `%s` for `:nextjournal.clerk/error-on-missing-vars`. Valid values are `:on` and `:off`." (pr-str setting))
-                          {:nextjournal.clerk/error-on-missing-vars setting})))
-        (not= :off setting))
-    true))
-
-(defn throw-if-dep-is-missing [{:keys [blocks ns ns? ->analysis-info file]}]
-  (when (and ns? (error-on-missing-vars? (some :form blocks)))
+(defn throw-if-dep-is-missing [{:keys [blocks ns error-on-missing-vars ->analysis-info file]}]
+  (when (= :on error-on-missing-vars)
     (let [block-ids (into #{} (keep :id) blocks)
           ;; only take current blocks into account
           current-analyis (into {} (filter (comp block-ids :id val) ->analysis-info))

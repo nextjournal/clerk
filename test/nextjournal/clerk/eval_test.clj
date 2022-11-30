@@ -186,7 +186,7 @@
   (testing "should fail when var is only present at runtime but not in file"
     (intern (create-ns 'missing-var) 'foo :bar)
     (is (thrown-with-msg? Exception
-                          #"exists at runtime, but Clerk cannot find it in the namespace"
+                          #"is being referenced, but Clerk can't find it in the namespace's source code"
                           (eval/eval-string "(ns missing-var) foo"))))
 
   (testing "should not fail on var present at runtime if there's no ns form"
