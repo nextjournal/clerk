@@ -182,6 +182,17 @@
            (eval+extract-doc-blocks "^{:nextjournal.clerk/visibility {:code :hide :result :hide}}
  {:some :map}")))))
 
+(deftest eval-analyzed-doc
+  (testing "should fail when var is only present at runtime but not in file"
+    (let [ns (create-ns 'missing-var)]
+      (intern (create-ns 'missing-var) 'foo :bar)
+      (is (thrown? Exception (eval/eval-string "(ns missing-var) foo")))))
+
+  (testing "should not fail on var present at runtime if there's no ns form"
+    (let [ns (create-ns 'existing-var)]
+      (intern (create-ns 'existing-var) 'foo :bar)
+      (eval/eval-string "(in-ns 'existing-var) foo"))))
+
 (deftest defcached
   (clerk/defcached my-expansive-thing
     (do #_(Thread/sleep 10000) 42))
