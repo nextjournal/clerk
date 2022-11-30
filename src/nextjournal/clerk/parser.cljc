@@ -75,7 +75,8 @@
 #_(->visibility (quote ^{:nextjournal.clerk/visibility #{:hide-ns}} (do :foo)))
 
 (defn get-doc-setting [form key]
-  (or (when (ns? form) (merge (-> form second meta key) (some key form)))
+  (or (when (ns? form) (or (some key form)
+                           (-> form second meta key)))
       (when (map? form) (get form key))))
 
 (defn ->doc-visibility [form]
@@ -94,8 +95,18 @@
 #_(->doc-visibility '(ns ^{:nextjournal.clerk/visibility {:code :fold}} foo
                        {:nextjournal.clerk/visibility {:result :hide}}))
 
+(defn parse-error-on-missing-vars [first-form]
+  (if-some [setting (when (ns? first-form)
+                      (get-doc-setting first-form :nextjournal.clerk/error-on-missing-vars))]
+    (do (when-not (#{:on :off} setting)
+          (throw (ex-info (str "Invalid setting `" (pr-str setting) "` for `:nextjournal.clerk/error-on-missing-vars`. Valid values are `:on` and `:off`.")
+                          {:nextjournal.clerk/error-on-missing-vars setting})))
+        setting)
+    (if (ns? first-form) :on :off)))
+
 (defn ->doc-settings [first-form]
   {:ns? (ns? first-form)
+   :error-on-missing-vars (parse-error-on-missing-vars first-form)
    :toc-visibility (or (#{true :collapsed} (:nextjournal.clerk/toc
                                             (merge (-> first-form meta) ;; TODO: deprecate
                                                    (when (ns? first-form)

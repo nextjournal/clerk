@@ -94,19 +94,27 @@
 
 #_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
 
+(defn unresolvable-symbol-handler [ns sym ast-node]
+  (println (str "Clerk analyzer cannot resolve symbol '" sym "'" (when ns (str " in namespace '" ns "'"))))
+  ast-node)
+
+(def analyzer-passes-opts
+  (assoc ana-jvm/default-passes-opts
+         :validate/unresolvable-symbol-handler unresolvable-symbol-handler))
+
 (defn- analyze-form
   ([form] (analyze-form {} form))
   ([bindings form]
    (binding [config/*in-clerk* true]
-     (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings}))))
+     (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings
+                                                :passes-opts analyzer-passes-opts}))))
 
 (defn analyze [form]
   (let [!deps      (atom #{})
         mexpander (fn [form env]
                     (let [f (if (seq? form) (first form) form)
                           v (ana-utils/resolve-sym f env)]
-                      (when-let [var? (and (not (-> env :locals (get f)))
-                                           (var? v))]
+                      (when (and (not (-> env :locals (get f))) (var? v))
                         (swap! !deps conj v)))
                     (ana-jvm/macroexpand-1 form env))
         analyzed (analyze-form {#'ana/macroexpand-1 mexpander} (rewrite-defcached form))
@@ -243,15 +251,22 @@
   [sym]
   (str/includes? (name sym) ".proxy$"))
 
-(defn throw-if-dep-is-missing [doc state analyzed]
-  (when-let [missing-dep (and (first (set/difference (into #{}
-                                                           (comp (filter #(and (symbol? %)
-                                                                               (#{(-> state :ns ns-name name)} (namespace %))))
-                                                                 (remove internal-proxy-name?))
-                                                           (:deps analyzed))
-                                                     (-> state :->analysis-info keys set))))]
-    (throw (ex-info (str "The var `#'" missing-dep "` exists at runtime, but Clerk cannot find it in the namespace. Did you remove it?")
-                    (merge {:var-name missing-dep} (select-keys analyzed [:form]) (select-keys doc [:file]))))))
+(defn throw-if-dep-is-missing [{:keys [blocks ns error-on-missing-vars ->analysis-info file]}]
+  (when (= :on error-on-missing-vars)
+    (let [block-ids (into #{} (keep :id) blocks)
+          ;; only take current blocks into account
+          current-analyis (into {} (filter (comp block-ids :id val) ->analysis-info))
+          defined (set/union (-> current-analyis keys set)
+                             (into #{} (mapcat (comp :nextjournal/interned :result)) blocks))]
+      (doseq [{:keys [form deps]} (vals current-analyis)]
+        (when (seq deps)
+          (when-some [missing-dep (first (set/difference (into #{}
+                                                               (comp (filter #(and (symbol? %) (= (-> ns ns-name name) (namespace %))))
+                                                                     (remove internal-proxy-name?))
+                                                               deps)
+                                                         defined))]
+            (throw (ex-info (str "The var `#'" missing-dep "` is being referenced, but Clerk can't find it in the namespace's source code. Did you remove it? This validation can fail when the namespace is mutated programmatically (e.g. using `clojure.core/intern` or side-effecting macros). You can turn off this check by adding `{:nextjournal.clerk/error-on-missing-vars :off}` to the namespace metadata.")
+                            {:var-name missing-dep :form form :file file #_#_:defined defined }))))))))
 
 (defn analyze-doc
   ([doc]
@@ -280,8 +295,6 @@
                                                          (->ana-keys analyzed))
                                            doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
                                            (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))]
-                               (when (:ns? state)
-                                 (throw-if-dep-is-missing doc state analyzed))
                                (if (seq deps)
                                  (-> (reduce (partial analyze-deps analyzed) state deps)
                                      (make-deps-inherit-no-cache analyzed))
@@ -495,4 +508,3 @@
 
 #_(do (reset! scratch-recompute/!state my-num) (nextjournal.clerk/recompute!))
 #_(do (reset! scratch-recompute/!state my-num) (nextjournal.clerk/show! 'scratch-recompute))
-

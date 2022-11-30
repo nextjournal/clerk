@@ -46,7 +46,7 @@
       (is (thrown-with-msg? ExceptionInfo #"must be a qualified symbol pointing at an existing var"
                             (builder/expand-paths {:paths-fn 'foo})))
       (is (thrown-with-msg? ExceptionInfo #"must be a qualified symbol pointing at an existing var"
-                            (builder/expand-paths {:paths-fn 'foo/bar})))
+                            (builder/expand-paths {:paths-fn 'clerk.test.non-existant-name-space/bar})))
       (is (thrown-with-msg? ExceptionInfo #"must be a qualified symbol pointing at an existing var"
                             (builder/expand-paths {:paths-fn 'clojure.core/non-existant-var})))
       (is (thrown-with-msg? ExceptionInfo #"must be a qualified symbol pointing at an existing var"

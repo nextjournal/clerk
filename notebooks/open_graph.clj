@@ -30,7 +30,7 @@
                         :type "bar"}]}))
 
 ;; By default the last result will serve the purpose.
-(ImageIO/read (URL. "https://etc.usf.edu/clipart/186600/186669/186669-trees-in-the-winter_sm.gif"))
+(ImageIO/read (URL. "https://nextjournal.com/data/QmS7YdXsuN8Db5frzdny9XxUsDmTV7rq5fUG9XMoePWY5y?filename=trees.png&content-type=image/png"))
 
 (def screenshots-dir "public/build/_data/screenshots")
 

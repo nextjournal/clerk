@@ -14,4 +14,4 @@
   (macroexpand '(example (+ 1 2)))
   (clerk/html [:h1 "👋"])
   (range)
-  (javax.imageio.ImageIO/read (java.net.URL. "https://etc.usf.edu/clipart/36600/36667/thermos_36667_sm.gif")))
+  (javax.imageio.ImageIO/read (java.net.URL. "https://nextjournal.com/data/QmeyvaR3Q5XSwe14ZS6D5WBQGg1zaBaeG3SeyyuUURE2pq?filename=thermos.gif&content-type=image/gif")))

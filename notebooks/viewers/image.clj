@@ -10,8 +10,8 @@
 (ImageIO/read (URL. "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg"))
 
 ;; Smaller images are centered and shown using thier intrinsic dimensions.
-(ImageIO/read (URL. "https://etc.usf.edu/clipart/36600/36667/thermos_36667_sm.gif"))
+(ImageIO/read (URL. "https://nextjournal.com/data/QmeyvaR3Q5XSwe14ZS6D5WBQGg1zaBaeG3SeyyuUURE2pq?filename=thermos.gif&content-type=image/gif"))
 
-(ImageIO/read (URL. "https://etc.usf.edu/clipart/186600/186669/186669-trees-in-the-winter_sm.gif"))
+(ImageIO/read (URL. "https://nextjournal.com/data/QmS7YdXsuN8Db5frzdny9XxUsDmTV7rq5fUG9XMoePWY5y?filename=trees.png&content-type=image/png"))
 
 (ImageIO/read (URL. "https://nextjournal.com/data/QmUyFWw9L8nZ6wvFTfJvtyqxtDyJiAr7EDZQxLVn64HASX?filename=Requiem-Ornaments-Byline.png&content-type=image/png"))
