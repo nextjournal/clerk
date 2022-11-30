@@ -29,9 +29,22 @@ b
 c
 
 (comment
-  @clerk.analyzer/!interned-symbols
+  ;; remove interned vars
+  (ns-unmap *ns* 'variable)
+  (ns-unmap (find-ns 'foreign) 'variable)
+
   (reset! nextjournal.clerk.webserver/!doc nextjournal.clerk.webserver/help-doc)
- (ex-data *e)
- (clerk/clear-cache!)
- (clerk.analyzer/analyze '(def b (+ foo/bar a)))
- )
+
+  ;; inspect recorded interns
+  (-> @nextjournal.clerk.webserver/!doc
+      :blocks (->> (mapcat (comp :nextjournal/interned :result))))
+
+  (ex-data *e)
+  (clerk/clear-cache!)
+
+  ;; the first time analyzer finds an unresolvable symbol it won't just complain / won't add it to deps
+  (clerk.analyzer/analyze '(def y (+ foo/bar x)))
+  ;; analyzer runs _after_ vars being interned or defined, it will resolve them and add to deps
+  (def x 1)
+
+  )
