@@ -255,7 +255,7 @@
   (when ns?
     (let [block-ids (into #{} (keep :id) blocks)
           ;; only take current blocks into account
-          current-analyis (into {} (filter (comp block-ids :id second) ->analysis-info))
+          current-analyis (into {} (filter (comp block-ids :id val) ->analysis-info))
           defined (set/union (-> current-analyis keys set)
                              (into #{} (mapcat (comp :nextjournal/interned :result)) blocks))]
       (doseq [{:keys [form deps]} (vals current-analyis)]
