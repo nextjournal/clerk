@@ -259,6 +259,12 @@
            "/css/viewer.css" (viewer/store+get-cas-url! (assoc opts :ext "css") (fs/read-all-bytes tw-output)))
     (fs/delete-tree tw-folder)))
 
+(defn doc-url [{:as opts :keys [bundle?]} docs file path]
+  (let [url (get (build-path->url opts docs) path)]
+    (if bundle?
+      (str "#/" url)
+      (str (viewer/relative-root-prefix-from (viewer/map-index opts file)) url))))
+
 (defn build-static-app! [{:as opts :keys [bundle?]}]
   (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css? expanded-paths error]}
         (try (process-build-opts (assoc opts :expand-paths? true))
@@ -290,12 +296,7 @@
                       (report-fn {:stage :building :doc doc :idx idx})
                       (let [{result :result duration :time-ms} (eval/time-ms
                                                                 (try
-                                                                  (let [doc (binding [viewer/doc-url
-                                                                                      (fn [path]
-                                                                                        (let [url (get (build-path->url opts state) path)]
-                                                                                          (if bundle?
-                                                                                            (str "#/" url)
-                                                                                            (str (viewer/relative-root-prefix-from file) url))))]
+                                                                  (let [doc (binding [viewer/doc-url (partial doc-url opts state file)]
                                                                               (eval/eval-analyzed-doc doc))]
                                                                     (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc)))
                                                                   (catch Exception e
@@ -318,7 +319,7 @@
 
 #_(build-static-app! {:ssr? true :index "notebooks/rule_30.clj" :browse? true})
 #_(build-static-app! {:paths clerk-docs :bundle? true})
-#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
+#_(build-static-app! {:paths ["notebooks/index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :index "notebooks/index.clj"})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
 #_(build-static-app! {:paths ["notebooks/viewers/**"]})
 #_(build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
