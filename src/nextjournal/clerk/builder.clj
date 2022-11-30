@@ -44,7 +44,7 @@
          "viewers/grid"
          "viewers/html"
          "viewers/image"
-         "viewers/image_layouts"
+         #_"viewers/image_layouts" ;; commented out until https://etc.usf.edu is back online
          "viewers/in_text_eval"
          "viewers/instants"
          "viewers/last_result"
