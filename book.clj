@@ -296,13 +296,13 @@
 ;; your items. You can use this to size your containers accordingly.
 
 ^{::clerk/visibility {:code :hide :result :hide}}
-(def image-1 (ImageIO/read (URL. "https://nextjournal.com/data/QmPej5pgx1Stmw6top5NzetBg7xBQe3fT6MAH2w5ud4MBK?filename=a.png&content-type=image/png")))
+(def image-1 (ImageIO/read (URL. "https://nextjournal.com/data/QmU9dbBd89MUK631CoCtTwBi5fX4Hgx2tTPpiL4VStg8J7?filename=a.gif&content-type=image/gif")))
 
 ^{::clerk/visibility {:code :hide :result :hide}}
-(def image-2 (ImageIO/read (URL. "https://nextjournal.com/data/QmXeU121xCqCiLghuXa5PwkVjx8duBDGj2PkZ66vvqHu2i?filename=b.png&content-type=image/png")))
+(def image-2 (ImageIO/read (URL. "https://nextjournal.com/data/QmfKZzHCBQKU7KKXQqcje5cgR6zLge3CcxeuZe8moUkJxf?filename=b.gif&content-type=image/gif")))
 
 ^{::clerk/visibility {:code :hide :result :hide}}
-(def image-3 (ImageIO/read (URL. "https://nextjournal.com/data/QmT4uYsrhLfjNs5RhLTF98YuLS3WWTCxEaNFgFP7ECD7Sx?filename=c.png&content-type=image/png")))
+(def image-3 (ImageIO/read (URL. "https://nextjournal.com/data/QmXALbNeDD6NSudgVfHE5SvY1Xjzbj7TSWnARqcZrvXsss?filename=c.gif&content-type=image/gif")))
 
 
 (clerk/row image-1 image-2 image-3)
