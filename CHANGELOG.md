@@ -5,6 +5,33 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
+## Unreleased
+
+* 🌟 Clerk synced vars (#253, #268)
+* 🌟 Wrappers around [React hooks](https://reactjs.org/docs/hooks-intro.html) are exposed in the default SCI context and Expose more namespaces to build rendering components (#237, #242)
+* 🌟 Viewer CSS class customizations (#294)
+* ⭐ Calling `v/html` is no longer needed in render functions of custom viewers, vector values will be handled as reagent components.
+* ⭐  Alias resolution for `:render-fn`s (#276)
+* ⭐ Callback for vega viewer to access the vega-embed object (#279)
+* ⭐ Allow to configure Open Graph Metadata for notebooks (#243)
+* ⭐ Editable Code Viewer (#285)
+* ⭐ Move render deps to separate deps root (#278). This allows folks to take over the cljs build of clerk in order to support additional namespaces.
+* 💫 Server-side Rendering in static Builds (#254, #275)
+* 💫 Add a CSS compile step with Tailwind (#246)
+* 💫 Make `n.clerk.parser` usable in CLJS
+* 💫 Set #-fragment when clicking on TOC items (works in unbundled case)
+* 💫 Bring back auto-expand and make it opt-in (#258)
+* 💫 Let viewer opt out of var-from-def unwrapping
+* 🐜 Fix circular dep error referencing fully-qualified var (#289)
+* 🐜  Detect interned vars to not consider them as missing, introduce setting to opt-out of throwing when missing vars are detected (#301). Fixing (#247).
+* 🐞 Fixes behaviour of `clerk/doc-url` in static app (#284)
+* 🐞 Fix glitches when showing vega graphs (#231)
+* 🐞 Fix links to clerk-demo build (#252)
+* 🐞 Bump sci with cljs.core/array (#250)
+* 🐞 ErrorBoundary using shadow.cljs.modern defclass (#255)
+* 🐞 Fix content-addressing of image-blobs and compiled CSS during static build (#259)
+* 🐞 Fixe inspect with nil values (#263)
+
 ## 0.11.603 (2022-10-17)
 
 * 🌟 Add 🚰 **Tap Inspector** notebook to let Clerk show `clojure.core/tap>`
