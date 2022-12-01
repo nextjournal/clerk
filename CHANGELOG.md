@@ -19,30 +19,31 @@ Changes can be:
     
 * 🌟 Improvements to Clerk's SCI Environment running in the Browser
 
-    * Upgrade to React 18.2 and introduce wrappers around [React
-      hooks](https://reactjs.org/docs/hooks-intro.html) are exposed in
-      the default SCI context and expose more namespaces to build
-      rendering components (#237, #242)
-   * Simplify writing of viewer `:render-fn`s by dropping need
-     `v/html` is no longer needed in render functions of custom
-     viewers, vector values will be handled as reagent components.
-   * Introduce `nextjournal.clerk.render` namespace to hold all
+    * Simplify writing of viewer `:render-fn`s by dropping need
+      `v/html` is no longer needed in render functions of custom
+      viewers, vector values will be handled as reagent components.
+    * Introduce `nextjournal.clerk.render` namespace to hold all
      `:render-fn`s and reference them using fully qualifed names from
      `nextjournal.clerk.viewer` to make it obvious where they are
      coming from. Also refactor `nextjournal.clerk.sci-viewer` to
      `nextjournal.clerk.sci-env`.
-   * Support alias resolution for `:render-fn`s (#276)
-   * Expose Editable Code Viewer (#285)
-   * Improve error handling with `ErrorBoundary` rewrite using
-     `shadow.cljs.modern/defclass` (#255)
-   * Fix page jump between updates for Vega and Plotly viewer and
-     improve error display. This is implemented using React
-     Hooks. (#231)
-   * Support callback for vega viewer to access the vega-embed object
-     (#279)
-   * Move sci env `deps.edn` to separate deps root (#278). This allows
-     folks to take over the cljs build of clerk in order to support
-     additional namespaces.
+    * Support alias resolution for `:render-fn`s (#276)
+    * Upgrade to React 18.2 and introduce
+      `nextjournal.clerk.render.hoooks` as a thin cljs wrapper around
+      [React hooks](https://reactjs.org/docs/hooks-intro.html) also
+      useable from the sci env. (#237, #242)
+    * Introduce `nextjournal.clerk.render.code` ns with support for
+      read-only and editable code cells (#285)
+    * Improve error handling with `ErrorBoundary` rewrite using
+      `shadow.cljs.modern/defclass` (#255)
+    * Fix page jump between updates for Vega and Plotly viewer and
+      improve error display. This is implemented using React
+      Hooks. (#231)
+    * Support callback for vega viewer to access the vega-embed object
+      (#279)
+    * Move sci env `deps.edn` to separate deps root (#278). This allows
+      folks to take over the cljs build of clerk in order to support
+      additional namespaces.
 
 * 💫 Show shape of data using auto-expansion of results (opt-in for now) (#258)
 
@@ -53,11 +54,11 @@ Changes can be:
   
 * 💫 Improvement to static `nextjournal.clerk/build!`
 
-  * Allow to set Open Graph Metadata for notebooks using
-    `:nextjournal.clerk/open-graph` map in ns metadata with `:url`,
-    `:title`, `:description` and `:image` keys (#243)
-  * Support `:ssr` setting for server-side rendering in static builds (#254, #275)
-  * Support `:compile-css` attribute to compile step with Tailwind (#246)
+    * Allow to set Open Graph Metadata for notebooks using
+      `:nextjournal.clerk/open-graph` map in ns metadata with `:url`,
+      `:title`, `:description` and `:image` keys (#243)
+    * Support `:ssr` setting for server-side rendering in static builds (#254, #275)
+    * Support `:compile-css` attribute to compile step with Tailwind (#246)
 
 * 🌟 Support Viewer CSS class customizations (#294)
 
