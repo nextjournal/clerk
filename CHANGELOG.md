@@ -29,7 +29,7 @@ Changes can be:
      `nextjournal.clerk.sci-env`.
     * Support alias resolution for `:render-fn`s (#276)
     * Upgrade to React 18.2 and introduce
-      `nextjournal.clerk.render.hoooks` as a thin cljs wrapper around
+      `nextjournal.clerk.render.hooks` as a thin cljs wrapper around
       [React hooks](https://reactjs.org/docs/hooks-intro.html) also
       useable from the sci env. (#237, #242)
     * Introduce `nextjournal.clerk.render.code` ns with support for
@@ -79,6 +79,8 @@ Changes can be:
     `:var-from-def?` key.
 
 * 💫 Make `nextjournal.clerk.parser` usable in CLJS
+
+* 💫 Support clearing the cache of a single result using `clerk/clear-cache!`
 
 * 💫 Set #-fragment when clicking on TOC items (works in unbundled
   case)

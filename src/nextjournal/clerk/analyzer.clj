@@ -507,3 +507,23 @@
 
 #_(do (reset! scratch-recompute/!state my-num) (nextjournal.clerk/recompute!))
 #_(do (reset! scratch-recompute/!state my-num) (nextjournal.clerk/show! 'scratch-recompute))
+
+(defn find-blocks
+  "Finds the first matching block in the given `analyzed-doc` using
+  `sym-or-form`:
+   * when given a symbol by `:var` or `:id`
+   * when given a by `:form`"
+  [{:as _analyzed-doc :keys [blocks ns]} sym-or-form]
+  (cond (symbol? sym-or-form)
+        (let [qualified-symbol (if (qualified-symbol? sym-or-form)
+                                 sym-or-form
+                                 (symbol (str ns) (name sym-or-form)))]
+          (filter #(or (= qualified-symbol (:var %))
+                       (= qualified-symbol (:id %)))
+                  blocks))
+        (seq? sym-or-form)
+        (filter #(= sym-or-form (:form %)) blocks)))
+
+#_(find-blocks  'scratch/foo)
+#_(find-blocks @nextjournal.clerk.webserver/!doc 'foo)
+#_(find-blocks @nextjournal.clerk.webserver/!doc '(rand-int 1000))

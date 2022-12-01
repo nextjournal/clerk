@@ -465,16 +465,33 @@
   (build! build-opts))
 
 (defn clear-cache!
-  "Clears the in-memory and file-system caches."
-  []
-  (swap! webserver/!doc dissoc :blob->result)
-  (if (fs/exists? config/cache-dir)
-    (do
-      (fs/delete-tree config/cache-dir)
-      (prn :cache-dir/deleted config/cache-dir))
-    (prn :cache-dir/does-not-exist config/cache-dir)))
+  "Clears the in-memory and file-system caches when called with no arguments.
+
+  Clears the cache for a single result identitfied by `sym-or-form` argument which can be:
+  * a symbol representing the var name (qualified or not)
+  * the form of an anonymous expression"
+  ([]
+   (swap! webserver/!doc dissoc :blob->result)
+   (if (fs/exists? config/cache-dir)
+     (do (fs/delete-tree config/cache-dir)
+         (prn :cache-dir/deleted config/cache-dir))
+     (prn :cache-dir/does-not-exist config/cache-dir)))
+  ([sym-or-form]
+   (if-let [{:as block :keys [id result]} (first (analyzer/find-blocks @webserver/!doc sym-or-form))]
+     (let [{:nextjournal/keys [blob-id]} result
+           cache-file (fs/file config/cache-dir (str "@" blob-id))
+           cached-in-memory? (contains? (:blob->result @webserver/!doc) blob-id)
+           cached-on-fs? (fs/exists? cache-file)]
+       (if-not (or cached-in-memory? cached-on-fs?)
+         (prn :cache/not-cached {:id id})
+         (do (swap! webserver/!doc update :blob->result dissoc blob-id)
+             (fs/delete-if-exists cache-file)
+             (prn :cache/removed {:id id :cached-in-memory? cached-in-memory? :cached-on-fs? cached-on-fs?}))))
+     (prn :cache/no-block-found {:sym-or-form sym-or-form}))))
 
 #_(clear-cache!)
+#_(clear-cache! 'foo)
+#_(clear-cache! '(rand-int 1000))
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
 (defmacro with-cache
