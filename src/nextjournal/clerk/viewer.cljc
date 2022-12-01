@@ -534,14 +534,16 @@
                                                                          :fetch-fn
                                                                          (fn [fetch-fn]
                                                                            [:tr.border-t.dark:border-slate-700
-                                                                            [:td.text-center.py-1
+                                                                            [:td.py-1.relative
                                                                              {:col-span num-cols
                                                                               :class (if (fn? fetch-fn)
                                                                                        "bg-indigo-50 hover:bg-indigo-100 dark:bg-gray-800 dark:hover:bg-slate-700 cursor-pointer"
                                                                                        "text-gray-400 text-slate-500")
                                                                               :on-click (fn [_] (when (fn? fetch-fn)
-                                                                                                  (fetch-fn fetch-opts)))}
-                                                                             (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]])]))})
+                                                                                                 (fetch-fn fetch-opts)))}
+                                                                             [:span.sticky
+                                                                              {:style {:left "min(50vw, 50%)"} :class "-translate-x-1/2"}
+                                                                              (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]]])]))})
       (add-viewers [table-missing-viewer
                     table-markup-viewer
                     table-head-viewer
