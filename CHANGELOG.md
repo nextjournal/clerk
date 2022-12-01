@@ -7,30 +7,101 @@ Changes can be:
 
 ## Unreleased
 
-* 🌟 Clerk synced vars (#253, #268)
-* 🌟 Wrappers around [React hooks](https://reactjs.org/docs/hooks-intro.html) are exposed in the default SCI context and Expose more namespaces to build rendering components (#237, #242)
-* 🌟 Viewer CSS class customizations (#294)
-* ⭐ Calling `v/html` is no longer needed in render functions of custom viewers, vector values will be handled as reagent components.
-* ⭐  Alias resolution for `:render-fn`s (#276)
-* ⭐ Callback for vega viewer to access the vega-embed object (#279)
-* ⭐ Allow to configure Open Graph Metadata for notebooks (#243)
-* ⭐ Editable Code Viewer (#285)
-* ⭐ Move render deps to separate deps root (#278). This allows folks to take over the cljs build of clerk in order to support additional namespaces.
-* 💫 Server-side Rendering in static Builds (#254, #275)
-* 💫 Add a CSS compile step with Tailwind (#246)
-* 💫 Make `n.clerk.parser` usable in CLJS
-* 💫 Set #-fragment when clicking on TOC items (works in unbundled case)
-* 💫 Bring back auto-expand and make it opt-in (#258)
+* 🌟 Clerk sync for vars holding atoms (#253, #268)
+
+    Introduce `^:nextjournal.clerk/sync` metadata annotation for vars
+    holding atoms to enable automatically syncing state between JVM
+    Clojure and the SCI environment running in the browser: the var
+    will be interned by Clerk in the sci environment and calls to
+    `swap!` or `reset!` will be syncronized to the JVM. Use editscript
+    for sending a minimal patch to the browser to enable 60fps
+    updates.
+    
+* 🌟 Improvements to Clerk's SCI Environment running in the Browser
+
+    * Upgrade to React 18.2 and introduce wrappers around [React
+      hooks](https://reactjs.org/docs/hooks-intro.html) are exposed in
+      the default SCI context and expose more namespaces to build
+      rendering components (#237, #242)
+   * Simplify writing of viewer `:render-fn`s by dropping need
+     `v/html` is no longer needed in render functions of custom
+     viewers, vector values will be handled as reagent components.
+   * Introduce `nextjournal.clerk.render` namespace to hold all
+     `:render-fn`s and reference them using fully qualifed names from
+     `nextjournal.clerk.viewer` to make it obvious where they are
+     coming from. Also refactor `nextjournal.clerk.sci-viewer` to
+     `nextjournal.clerk.sci-env`.
+   * Support alias resolution for `:render-fn`s (#276)
+   * Expose Editable Code Viewer (#285)
+   * Improve error handling with `ErrorBoundary` rewrite using
+     `shadow.cljs.modern/defclass` (#255)
+   * Fix page jump between updates for Vega and Plotly viewer and
+     improve error display. This is implemented using React
+     Hooks. (#231)
+   * Support callback for vega viewer to access the vega-embed object
+     (#279)
+   * Move sci env `deps.edn` to separate deps root (#278). This allows
+     folks to take over the cljs build of clerk in order to support
+     additional namespaces.
+
+* 💫 Show shape of data using auto-expansion of results (opt-in for now) (#258)
+
+    This allows letting Clerk auto expand data results via the
+    `:nextjournal.clerk/auto-expand-results? true` setting in the
+    `ns` metadata. You can use the same key in `::clerk/opts` on single result
+    too.
+  
+* 💫 Improvement to static `nextjournal.clerk/build!`
+
+  * Allow to set Open Graph Metadata for notebooks using
+    `:nextjournal.clerk/open-graph` map in ns metadata with `:url`,
+    `:title`, `:description` and `:image` keys (#243)
+  * Support `:ssr` setting for server-side rendering in static builds (#254, #275)
+  * Support `:compile-css` attribute to compile step with Tailwind (#246)
+
+* 🌟 Support Viewer CSS class customizations (#294)
+
+    This supports providing custom classes to viewers and the notebook
+    viewer which should allow for most use cases and does not require
+    actually overriding the base styles. Once a
+    `:nextjournal.clerk/css-class` is available on the viewer or in
+    document settings, the available class will be used and no further
+    viewer classes will be assigned.
+
 * 💫 Let viewer opt out of var-from-def unwrapping
+
+    This fixes an inconsistency in the viewer api: until now we'd unwrap
+    a `:nextjournal.clerk/var-from-def` when a viewer is applied using an
+    `fn?` like `clerk/table` but not when given a viewer map.
+    
+    We now always unwrap the var unless the viewer opts out with a truthy
+    `:var-from-def?` key.
+
+* 💫 Make `nextjournal.clerk.parser` usable in CLJS
+
+* 💫 Set #-fragment when clicking on TOC items (works in unbundled
+  case)
+  
+* 🛠 Use `sci.ctx-store` and bump sci (#282)
+
+* 🐜 Detect interned vars to not consider them as missing, introduce
+  setting to opt-out of throwing when missing vars are detected
+  (#301). Fixing #247. 
+
 * 🐜 Fix circular dep error referencing fully-qualified var (#289)
-* 🐜  Detect interned vars to not consider them as missing, introduce setting to opt-out of throwing when missing vars are detected (#301). Fixing (#247).
+
 * 🐞 Fixes behaviour of `clerk/doc-url` in static app (#284)
-* 🐞 Fix glitches when showing vega graphs (#231)
+
 * 🐞 Fix links to clerk-demo build (#252)
+
 * 🐞 Bump sci with cljs.core/array (#250)
-* 🐞 ErrorBoundary using shadow.cljs.modern defclass (#255)
-* 🐞 Fix content-addressing of image-blobs and compiled CSS during static build (#259)
-* 🐞 Fixe inspect with nil values (#263)
+
+* 🐞 Fix content-addressing of image-blobs and compiled CSS during
+  static build (#259)
+  
+* 🐞 Add validation for `:nextjournal.clerk/width` fixing #217.
+
+* 🐞 Fix inspect with `nil` values (#263)
 
 ## 0.11.603 (2022-10-17)
 
