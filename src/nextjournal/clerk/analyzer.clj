@@ -95,7 +95,6 @@
 #_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
 
 (defn unresolvable-symbol-handler [ns sym ast-node]
-  (println (str "Clerk analyzer cannot resolve symbol '" sym "'" (when ns (str " in namespace '" ns "'"))))
   ast-node)
 
 (def analyzer-passes-opts
