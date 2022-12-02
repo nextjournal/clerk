@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.sci-env
   (:require ["framer-motion" :as framer-motion]
             ["@codemirror/view" :as codemirror-view]
+            ["vh-sticky-table-header" :refer [StickyTableHeader]]
             [cljs.reader]
             [clojure.string :as str]
             [edamame.core :as edamame]
@@ -85,11 +86,25 @@
 (def code-namespace
   (sci/copy-ns nextjournal.clerk.render.code (sci/create-ns 'nextjournal.clerk.render.code)))
 
+(defn table-with-sticky-header [& children]
+  (let [!table-ref (hooks/use-ref nil)
+        !table-clone-ref (hooks/use-ref nil)]
+    (hooks/use-layout-effect (fn []
+                               (when (and @!table-ref (.querySelector @!table-ref "thead") @!table-clone-ref)
+                                 (let [sticky (StickyTableHeader. @!table-ref @!table-clone-ref #js{:max 0})]
+                                   (fn [] (.destroy sticky))))))
+    [:div
+     [:div.overflow-x-auto.overflow-y-hidden.w-full
+      (into [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-ref}] children)]
+     [:div.overflow-x-auto.overflow-y-hidden.w-full.shadow
+      [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-clone-ref :style {:margin 0}}]]]))
+
 (def initial-sci-opts
   {:async? true
    :disable-arity-checks true
    :classes {'js goog/global
              'framer-motion framer-motion
+             'table-with-sticky-header table-with-sticky-header
              :allow :all}
    :aliases {'j 'applied-science.js-interop
              'reagent 'reagent.core

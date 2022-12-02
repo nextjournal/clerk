@@ -500,17 +500,18 @@
 (def table-markup-viewer
   {:name :table/markup
    :render-fn '(fn [head+body opts]
-                 [:div.overflow-x-auto (into [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose] (nextjournal.clerk.render/inspect-children opts) head+body)])})
+                 [:div
+                  (into [table-with-sticky-header] (nextjournal.clerk.render/inspect-children opts) head+body)])})
 
 (def table-head-viewer
   {:name :table/head
    :render-fn '(fn [header-row {:as opts :keys [path number-col?]}]
-                 [:thead.border-b.border-gray-300.dark:border-slate-700
+                 [:thead
                   (into [:tr]
                         (map-indexed (fn [i {:as header-cell :nextjournal/keys [value]}]
                                        (let [title (when (or (string? value) (keyword? value) (symbol? value))
                                                      value)]
-                                         [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
+                                         [:th.pl-6.pr-2.py-1.align-bottom.font-medium.top-0.z-10.bg-white.dark:bg-slate-900.border-b.border-gray-300.dark:border-slate-700
                                           (cond-> {:class (when (and (ifn? number-col?) (number-col? i)) "text-right")} title (assoc :title title))
                                           [:div.flex.items-center (nextjournal.clerk.render/inspect-presented opts header-cell)]]))) header-row)])})
 
