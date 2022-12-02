@@ -7,6 +7,10 @@ Changes can be:
 
 ## Unreleased
 
+...
+
+## 0.12.699 (2022-12-02)
+
 * 🌟 Clerk sync for vars holding atoms (#253, #268)
 
     Introduce `^:nextjournal.clerk/sync` metadata annotation for vars
