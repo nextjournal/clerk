@@ -10,16 +10,25 @@
             [org.httpkit.server :as httpkit])
   (:import (nextjournal.clerk.viewer ViewerFn ViewerEval)))
 
-(def help-doc
-  {:blocks [{:type :markdown :doc (md/parse "Use `nextjournal.clerk/show!` to make your notebook appear…")}]})
+(defn help-hiccup []
+  [:p "Call " [:span.code "nextjournal.clerk/show!"] " from your REPL"
+   (when-let [watch-paths (seq (:paths @@(resolve 'nextjournal.clerk/!watcher)))]
+     (into [:<> " or save a file in "]
+           (interpose " or " (map #(vector :span.code %) watch-paths))))
+   " to make your notebook appear…"])
+
+(defn help-doc []
+  {:blocks [{:type :code
+             :visibility {:code :hide, :result :show}
+             :result {:nextjournal/value (v/html (help-hiccup))}}]})
 
 (defonce !clients (atom #{}))
-(defonce !doc (atom help-doc))
+(defonce !doc (atom nil))
 (defonce !error (atom nil))
 (defonce !last-sender-ch (atom nil))
 
 #_(view/doc->viewer @!doc)
-#_(reset! !doc help-doc)
+#_(reset! !doc nil)
 
 (def ^:dynamic *sender-ch* nil)
 
@@ -143,7 +152,7 @@
         "_ws" {:status 200 :body "upgrading..."}
         {:status  200
          :headers {"Content-Type" "text/html"}
-         :body    (view/doc->html @!doc @!error)})
+         :body    (view/doc->html (or @!doc (help-doc)) @!error)})
       (catch Throwable e
         {:status  500
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
