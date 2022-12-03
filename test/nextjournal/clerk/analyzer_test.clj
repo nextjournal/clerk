@@ -6,7 +6,8 @@
             [nextjournal.clerk :as clerk :refer [defcached]]
             [nextjournal.clerk.analyzer :as ana]
             [nextjournal.clerk.parser :as parser]
-            [weavejester.dependency :as dep]))
+            [weavejester.dependency :as dep])
+  (:import (clojure.lang ExceptionInfo)))
 
 (defmacro with-ns-binding [ns-sym & body]
   `(binding [*ns* (find-ns ~ns-sym)]
@@ -159,7 +160,10 @@
       (is (= (dissoc (ana/analyze '(def answer (do (Thread/sleep 4200) (inc 41)))) :form)
              (dissoc (ana/analyze '(defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)
              (dissoc (ana/analyze '(clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)
-             (dissoc (ana/analyze '(nextjournal.clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form))))))
+             (dissoc (ana/analyze '(nextjournal.clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)))))
+
+  (testing "tools.analyzer AssertionError is rethrown as ExceptionInfo (#307)"
+    (is (thrown? ExceptionInfo (ana/analyze '(def foo [] :bar))))))
 
 (deftest symbol->jar
   (is (ana/symbol->jar 'io.methvin.watcher.PathUtils))

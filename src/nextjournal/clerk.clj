@@ -530,7 +530,8 @@
 
   (show! "notebooks/test.clj")
 
+  (serve! {:port 7777 :watch-paths ["notebooks"]})
+
   ;; Clear cache
   (clear-cache!)
-
   )

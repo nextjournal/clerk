@@ -105,8 +105,14 @@
   ([form] (analyze-form {} form))
   ([bindings form]
    (binding [config/*in-clerk* true]
-     (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings
-                                                :passes-opts analyzer-passes-opts}))))
+     (try
+       (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings
+                                                  :passes-opts analyzer-passes-opts})
+       (catch java.lang.AssertionError e
+         (throw (ex-info "Failed to analyze form"
+                         (-> (select-keys (meta form) [:line :col :clojure.core/eval-file])
+                             (assoc  :form form))
+                         e)))))))
 
 (defn analyze [form]
   (let [!deps      (atom #{})
@@ -524,6 +530,6 @@
         (seq? sym-or-form)
         (filter #(= sym-or-form (:form %)) blocks)))
 
-#_(find-blocks  'scratch/foo)
+#_(find-blocks @nextjournal.clerk.webserver/!doc 'scratch/foo)
 #_(find-blocks @nextjournal.clerk.webserver/!doc 'foo)
 #_(find-blocks @nextjournal.clerk.webserver/!doc '(rand-int 1000))
