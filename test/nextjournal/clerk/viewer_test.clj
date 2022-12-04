@@ -197,3 +197,18 @@
                                                       :bundle? false
                                                       :out-path builder/default-out-path} test-doc)
                                    #"_data/.+\.png"))))))
+
+(deftest ->edn
+  (testing "normal symbols and keywords"
+    (is (= "normal-symbol" (pr-str 'normal-symbol)))
+    (is (= ":namespaced/keyword" (pr-str :namespaced/keyword))))
+
+  (testing "unreadable symbols and keywords print as viewer-eval"
+    (is (= "#viewer-eval (keyword \"with spaces\")"
+           (pr-str (keyword "with spaces"))))
+    (is (= "#viewer-eval (keyword \"with ns\" \"and spaces\")"
+           (pr-str (keyword "with ns" "and spaces"))))
+    (is (= "#viewer-eval (symbol \"with spaces\")"
+           (pr-str (symbol "with spaces"))))
+    (is (= "#viewer-eval (symbol \"with ns\" \"and spaces\")"
+           (pr-str (symbol "with ns" "and spaces"))))))
