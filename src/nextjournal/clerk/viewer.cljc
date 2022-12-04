@@ -329,6 +329,31 @@
                                                        [(inspect-fn) (process-wrapped-value w)])))
                                             content))))))))
 
+#?(:clj (defn roundtrippable? [x]
+          (= x (-> x str read-string))))
+
+#?(:clj
+   (defmethod print-method clojure.lang.Keyword [o w]
+     (if (roundtrippable? o)
+       (.write w (str o))
+       (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
+                                          (list 'keyword ns (name o))
+                                          (list 'keyword (name o)))))))))
+
+#_(pr-str (keyword "with spaces"))
+#_(pr-str (keyword "with ns" "and spaces"))
+
+#?(:clj
+   (defmethod print-method clojure.lang.Symbol [o w]
+     (if (roundtrippable? o)
+       (.write w (str o))
+       (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
+                                          (list 'symbol ns (name o))
+                                          (list 'symbol (name o)))))))))
+
+#_(pr-str (symbol "with spaces"))
+#_(pr-str (symbol "with ns" "and spaces"))
+
 #?(:clj
    (defn ->edn [x]
      (binding [*print-namespace-maps* false
@@ -337,6 +362,7 @@
        (pr-str x))))
 
 #_(->edn {:nextjournal/value :foo})
+#_(->edn {(keyword "with spaces") :foo})
 
 (defn update-val [f & args]
   (fn [wrapped-value] (apply update wrapped-value :nextjournal/value f args)))
