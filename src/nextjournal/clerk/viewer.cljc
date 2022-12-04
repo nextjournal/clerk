@@ -178,8 +178,9 @@
 (defn normalize-viewer [viewer]
   (cond (keyword? viewer) viewer
         (map? viewer) viewer
-        (or (symbol? viewer) (seq? viewer) #?(:cljs (fn? viewer))) {:render-fn viewer}
-        #?@(:clj [(fn? viewer) {:transform-fn viewer}])
+        #?@(:clj [(qualified-symbol? viewer) (recur @(requiring-resolve viewer))
+                  (fn? viewer) {:transform-fn viewer}])
+        (or (seq? viewer) #?(:cljs (fn? viewer))) {:render-fn viewer}
         :else (throw (ex-info "cannot normalize viewer" {:viewer viewer}))))
 
 #_(normalize-viewer '#(vector :h3 "Hello " % "!"))
