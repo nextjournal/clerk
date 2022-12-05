@@ -1,10 +1,9 @@
-{:config-paths ["rewrite-clj/rewrite-clj"]
+{:config-paths ["../resources/clj-kondo.exports/nextjournal/clerk"]
  :lint-as {applied-science.js-interop/defn clojure.core/defn
            applied-science.js-interop/fn clojure.core/fn
            applied-science.js-interop/let clojure.core/let
            cljs.core/specify! cljs.core/reify
            reagent.core/with-let clojure.core/let
-           nextjournal.clerk/defcached clojure.core/def
            nextjournal.view/defview clojure.core/defn
            nextjournal.devcards/defcard clj-kondo.lint-as/def-catch-all
            taoensso.encore/defonce clojure.core/defonce
@@ -23,6 +22,10 @@
                                          (taoensso.nippy/extend-thaw)]}
            :unused-namespace {:exclude [clojure.string
                                         nextjournal.log]}
-           :unused-binding :off}
- :hooks {:macroexpand {multihash.digest/defhash hooks/defhash}
-         :analyze-call {nextjournal.clerk.viewer/->viewer-fn hooks/->viewer-fn}}}
+           :unused-binding {:level :off}
+           ;; TODO: clj-kondo should split this linter into two and clerk would
+           ;; like to disable it only for function args:
+           ;; :unused-function-args
+           ;; :unused-let-bindings
+           }
+ :hooks {:macroexpand {multihash.digest/defhash hooks/defhash}}}

@@ -1,16 +1,29 @@
 ;; # 🤾🏼 Jump to Definition
 (ns jump-to-definition
-  (:require [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as viewer]
-            [clojure.string :as str]
-            [nextjournal.clerk.render :as-alias render]))
+  (:require
+   [clojure.string :as str]
+   [nextjournal.clerk :as clerk]
+   [nextjournal.clerk.render :as-alias render]
+   [nextjournal.clerk.render.hooks :as-alias hooks]
+   [nextjournal.clerk.viewer :as viewer]))
 
 ;; Trying various ways to support jump to definition
 (clerk/code (slurp ".clj-kondo/hooks.clj"))
 
-(viewer/->ViewerFn '(fn [x opts]
-                      [nextjournal.clerk.render/render-code x]))
+(viewer/->viewer-fn
+ '(fn [spec] (let [plotly (hooks/use-d3-require "plotly.js-dist@2.15.1")
+                   ref-fn (hooks/use-callback #(when % (.newPlot plotly % (clj->js spec ))) [spec plotly])]
+               (js/console.log "dude")
+               (when spec
+                 (if plotly
+                   [:div.overflow-x-auto [:div.plotly {:ref ref-fn}]]
+                   render/default-loading-view)))))
 
-(viewer/->ViewerFn 'nextjournal.clerk.render/render-code)
-
-(viewer/->ViewerFn `render/render-code)
+(viewer/->viewer-eval
+ '(fn [spec] (let [plotly (hooks/use-d3-require "plotly.js-dist@2.15.1")
+                   ref-fn (hooks/use-callback #(when % (.newPlot plotly % (clj->js spec))) [spec plotly])]
+               (js/console.log "dude")
+               (when spec
+                 (if plotly
+                   [:div.overflow-x-auto [:div.plotly {:ref ref-fn}]]
+                   render/default-loading-view)))))
