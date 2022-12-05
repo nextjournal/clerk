@@ -10,12 +10,6 @@
 (clerk/code "(def fib (lazy-cat [0 1] (map + fib (rest fib))))")
 
 ;; Stings with line-breaks and whitespace
-(def s
-  "0000
-   0000
-
-   1111
-   1111")
 
 (def ex
   (identity "1000

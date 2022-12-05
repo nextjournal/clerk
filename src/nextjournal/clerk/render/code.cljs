@@ -88,7 +88,6 @@
                   (< pos to)
                   (concat [(.sliceString text pos to)]))))))))
 
-
 (defn render-code [^String code]
   (let [builder (RangeSetBuilder.)
         _ (highlightTree (.. clojureLanguage -parser (parse code)) highlight-style
