@@ -21,11 +21,11 @@
                                          (taoensso.nippy/extend-freeze)
                                          (taoensso.nippy/extend-thaw)]}
            :unused-namespace {:exclude [clojure.string
-                                        nextjournal.log]}
-           :unused-binding {:level :off}
-           ;; TODO: clj-kondo should split this linter into two and clerk would
-           ;; like to disable it only for function args:
-           ;; :unused-function-args
-           ;; :unused-let-bindings
-           }
- :hooks {:macroexpand {multihash.digest/defhash hooks/defhash}}}
+                                        nextjournal.log]}}
+ :hooks {:macroexpand {multihash.digest/defhash hooks/defhash}}
+ :config-in-call {clojure.core/defn {:linters {:unused-binding {:level :off}}}
+                  cljs.core/defn {:linters {:unused-binding {:level :off}}}
+                  clojure.core/fn {:linters {:unused-binding {:level :warning}}}
+                  cljs.core/fn {:linters {:unused-binding {:level :warning}}}
+                  clojure.core/let {:linters {:unused-binding {:level :warning}}}
+                  cljs.core/let {:linters {:unused-binding {:level :warning}}}}}
