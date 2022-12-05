@@ -54,11 +54,10 @@
             (cons {:from from :to to :val val}
                   (lazy-seq (step))))))))))
 
-(defn style-markup [text style]
-  (j/let [^js {:keys [tagName class]} style]
-    [(keyword (apply str tagName (when class
-                                   (cons "." (interpose "." (str/split class #" "))))))
-     text]))
+(j/defn style->hiccup-tag [^js {:keys [tagName class]}]
+  (keyword (apply str tagName
+                  (when class
+                    (cons "." (interpose "." (str/split class #" ")))))))
 
 (j/defn intersects? [^js {:keys [from to]} range]
   (or
@@ -79,10 +78,10 @@
             (loop [pos from
                    lds (filter (partial intersects? line) (rangeset-seq decos))
                    buf ()]
-              (if-some [{:as d start :from end :to style :val} (first lds)]
+              (if-some [{start :from end :to style :val} (first lds)]
                 (recur end
                        (next lds)
-                       (concat buf (cond-> (list (style-markup (.sliceString text (max from start) (min to end)) style))
+                       (concat buf (cond-> (list [(style->hiccup-tag style) (.sliceString text (max from start) (min to end))])
                                      (< pos start)
                                      (conj (.sliceString text pos start)))))
                 (cond-> buf
