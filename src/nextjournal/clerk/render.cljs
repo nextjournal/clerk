@@ -415,15 +415,13 @@
 
 (defn render-quoted-string [s {:as opts :keys [path viewer !expanded-at] :or {path []}}]
   (let [{:keys [closing-paren]} viewer]
-    [:span.cmt-string.inspected-value.inline-flex
-     [:span
-      (if (some #(and (string? %) (str/includes? % "\n")) (if (string? s) [s] s))
-        [expand-button !expanded-at "\"" path]
-        [:span "\""])]
-     [:div
-      (viewer/->value (render-string s opts))
-      "\""
-      closing-paren]]))
+    [:span.cmt-string.inspected-value
+     (if (some #(and (string? %) (str/includes? % "\n")) (if (string? s) [s] s))
+       [expand-button !expanded-at "\"" path]
+       "\"")
+     (viewer/->value (render-string s opts))
+     "\""
+     closing-paren]))
 
 (defn render-number [num]
   [:span.cmt-number.inspected-value
