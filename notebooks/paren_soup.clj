@@ -30,6 +30,11 @@
 
 {1 [2] 3 [4]}
 
+[1 "a\nb"]
+
+[[1 "a\nb"]]
+
+{:a 1 :b [[3 4 "a\nb"]]}
 
 #_(nextjournal.clerk/build-static-app! {:paths ["notebooks/paren_soup.clj"]})
 #_(nextjournal.clerk/show! "notebooks/paren_soup.clj")
