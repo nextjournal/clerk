@@ -36,5 +36,7 @@
 
 {:a 1 :b [[3 4 "a\nb"]]}
 
+{:a 1 :b [[3 4 (apply str (repeat 81 "x"))]]}
+
 #_(nextjournal.clerk/build-static-app! {:paths ["notebooks/paren_soup.clj"]})
 #_(nextjournal.clerk/show! "notebooks/paren_soup.clj")
