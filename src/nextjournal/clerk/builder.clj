@@ -26,6 +26,7 @@
          "how_clerk_works"
          "eval_cljs"
          "example"
+         "js_import"
          "multiviewer"
          "pagination"
          "paren_soup"
