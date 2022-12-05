@@ -1408,13 +1408,15 @@
          viewer (->viewer node)
          closing (:closing-paren viewer)
          non-leaf? (and (vector? value) (wrapped-value? (first value)))
-         string-node? (every-pred wrapped-value?
-                                  (comp #{'nextjournal.clerk.render/render-quoted-string} :form :render-fn ->viewer))
+         string-node? (comp #{'nextjournal.clerk.render/render-quoted-string} :form :render-fn ->viewer)
+         has-closing-paren? (comp :closing-paren ->viewer)
          defer-closing? (and non-leaf?
-                             (or (-> value last :nextjournal/viewer :closing-paren) ;; the last element can carry parens
+                             (or (-> value last has-closing-paren?) ;; the last element can carry parens
                                  (-> value last string-node?) ;; the last element is a string
                                  (and (= :map-entry (-> value last :nextjournal/viewer :name)) ;; the last element is a map entry whose value can carry parens
-                                      (-> value last :nextjournal/value last :nextjournal/viewer :closing-paren))))]
+                                      (-> value last :nextjournal/value last (as-> v
+                                                                               (or (has-closing-paren? v)
+                                                                                   (string-node? v)))))))]
      (cond-> (cond
                (and (string-node? node) (seq closing-parens))
                (update node :nextjournal/viewer assoc :closing-paren closing-parens)
