@@ -24,4 +24,5 @@
            :unused-namespace {:exclude [clojure.string
                                         nextjournal.log]}
            :unused-binding :off}
- :hooks {:macroexpand {multihash.digest/defhash hooks/defhash}}}
+ :hooks {:macroexpand {multihash.digest/defhash hooks/defhash}
+         :analyze-call {nextjournal.clerk.viewer/->viewer-fn hooks/->viewer-fn}}}
