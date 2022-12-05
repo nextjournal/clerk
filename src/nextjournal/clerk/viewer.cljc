@@ -659,7 +659,11 @@
   {:pred char? :render-fn '(fn [c] [:span.cmt-string.inspected-value "\\" c])})
 
 (def string-viewer
-  {:pred string? :render-fn 'nextjournal.clerk.render/render-quoted-string :page-size 80})
+  {:pred string?
+   :render-fn 'nextjournal.clerk.render/render-quoted-string
+   :opening-paren "\""
+   :closing-paren "\""
+   :page-size 80})
 
 (def number-viewer
   {:pred number? :render-fn 'nextjournal.clerk.render/render-number})
@@ -1408,18 +1412,11 @@
          viewer (->viewer node)
          closing (:closing-paren viewer)
          non-leaf? (and (vector? value) (wrapped-value? (first value)))
-         string-node? (comp #{'nextjournal.clerk.render/render-quoted-string} :form :render-fn ->viewer)
-         has-closing-paren? (comp :closing-paren ->viewer)
          defer-closing? (and non-leaf?
-                             (or (-> value last has-closing-paren?) ;; the last element can carry parens
-                                 (-> value last string-node?) ;; the last element is a string
+                             (or (-> value last :nextjournal/viewer :closing-paren) ;; the last element can carry parens
                                  (and (= :map-entry (-> value last :nextjournal/viewer :name)) ;; the last element is a map entry whose value can carry parens
-                                      (-> value last :nextjournal/value last (as-> v
-                                                                               (or (has-closing-paren? v)
-                                                                                   (string-node? v)))))))]
+                                      (-> value last :nextjournal/value last :nextjournal/viewer :closing-paren))))]
      (cond-> (cond
-               (and (string-node? node) (seq closing-parens))
-               (update node :nextjournal/viewer assoc :closing-paren closing-parens)
                (not closing) node
                defer-closing? (update node :nextjournal/viewer dissoc :closing-paren)
                :else (update-in node [:nextjournal/viewer :closing-paren] cons closing-parens))

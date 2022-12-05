@@ -36,7 +36,7 @@
 
 [[1 "a\nb"]]
 
-{:a 1 :b [[3 4 "a\nb"]]}
+{:a 1 :b [[3 4 "aaaa\nbbb\nccc\ndd\ne"]]}
 
 {:a 1 :b [[3 4 (apply str (cons "a\n" (repeat 80 "b")))]]}
 
