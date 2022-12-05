@@ -54,33 +54,39 @@
             (cons {:from from :to to :val val}
                   (lazy-seq (step))))))))))
 
-(defn style-markup [^js text {:keys [from to val]}]
-  (j/let [^js {:keys [tagName class]} val]
-    [(keyword (apply str tagName (when class
-                                   (cons "." (interpose "." (str/split class #" "))))))
-     (.sliceString text from to)]))
+(j/defn style->hiccup-tag [^js {:keys [tagName class]}]
+  (keyword (apply str tagName
+                  (when class
+                    (cons "." (interpose "." (str/split class #" ")))))))
+
+(j/defn intersects? [^js {:keys [from to]} range]
+  (or
+   (and (<= from (:from range)) (< (:from range) to))
+   (and (< from (:to range)) (<= (:to range) to))
+   (and (<= (:from range) from) (<= to (:to range)))))
 
 (defn style-line [decos ^js text i]
-  (j/let [^js {:keys [from to]} (.line text i)]
+  (j/let [^js {:as line :keys [from to length]} (.line text i)]
     ;; NOTE: these styles are partially overlapping with those for the `.viewer-code` container
     ;; but are needed to fix rendered code _outside_ of it. e.g. in Clerk results
     (into [:div.cm-line {:style {:padding "0"
                                  :line-height "1.6"
                                  :font-size "15px"
                                  :font-family "\"Fira Mono\", monospace"}}]
-          (loop [pos from
-                 lds (take-while #(<= (:to %) to) (rangeset-seq decos from))
-                 buf ()]
-            (if-some [{:as d start :from end :to} (first lds)]
-              (recur end
-                     (next lds)
-                     (concat buf (cond-> (list (style-markup text d))
-                                   (< pos start)
-                                   (conj (.sliceString text pos start)))))
-              (cond-> buf
-                (< pos to)
-                (concat [(.sliceString text pos to)])))))))
-
+          (if (zero? length)
+            "\n"
+            (loop [pos from
+                   lds (filter (partial intersects? line) (rangeset-seq decos))
+                   buf ()]
+              (if-some [{start :from end :to style :val} (first lds)]
+                (recur end
+                       (next lds)
+                       (concat buf (cond-> (list [(style->hiccup-tag style) (.sliceString text (max from start) (min to end))])
+                                     (< pos start)
+                                     (conj (.sliceString text pos start)))))
+                (cond-> buf
+                  (< pos to)
+                  (concat [(.sliceString text pos to)]))))))))
 
 (defn render-code [^String code]
   (let [builder (RangeSetBuilder.)
