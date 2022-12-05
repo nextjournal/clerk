@@ -1408,7 +1408,6 @@
          viewer (->viewer node)
          closing (:closing-paren viewer)
          non-leaf? (and (vector? value) (wrapped-value? (first value)))
-         ;; TODO: check this works with resolved aliases
          expandable-string-node? (every-pred wrapped-value?
                                              (comp string? ->value)
                                              (comp #(str/includes? % "\n") ->value)
