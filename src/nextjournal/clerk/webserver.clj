@@ -6,9 +6,7 @@
             [editscript.core :as editscript]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
-            [nextjournal.markdown :as md]
-            [org.httpkit.server :as httpkit])
-  (:import (nextjournal.clerk.viewer ViewerFn ViewerEval)))
+            [org.httpkit.server :as httpkit]))
 
 (defn help-hiccup []
   [:p "Call " [:span.code "nextjournal.clerk/show!"] " from your REPL"

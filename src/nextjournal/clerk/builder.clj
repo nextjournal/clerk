@@ -2,7 +2,6 @@
   "Clerk's Static App Builder."
   (:require [babashka.fs :as fs]
             [clojure.java.browse :as browse]
-            [clojure.set :as set]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.java.shell :refer [sh]]
@@ -90,10 +89,13 @@
       :uploading-cache (str "⏫ Uploading distributed cache… ")
       :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n"))))
 
+(defn ^:private print+flush [x]
+  (print x)
+  (flush))
+
 (defn stdout-reporter [build-event]
   (doto (describe-event build-event)
-    (print)
-    (do (flush))))
+    print+flush))
 
 (defn build-ui-reporter [{:as build-event :keys [stage]}]
   (when (= stage :init)
@@ -136,7 +138,7 @@
                         (when-not (qualified-symbol? paths-fn)
                           (throw (ex-info ex-msg {:paths-fn paths-fn})))
                         (if-let [resolved-var  (try (requiring-resolve paths-fn)
-                                                    (catch Exception e
+                                                    (catch Exception _e
                                                       (throw (ex-info ex-msg {:paths-fn paths-fn}))))]
                           (let [resolved-paths (try (cond-> @resolved-var
                                                       (fn? @resolved-var) (apply []))
@@ -210,7 +212,7 @@
 
 (defn write-static-app!
   [opts docs]
-  (let [{:as opts :keys [bundle? out-path browse? index ssr?]} (process-build-opts opts)
+  (let [{:as opts :keys [bundle? out-path browse? ssr?]} (process-build-opts opts)
         index-html (str out-path fs/file-separator "index.html")
         {:as static-app-opts :keys [path->url path->doc]} (build-static-app-opts opts docs)]
     (when-not (fs/exists? (fs/parent index-html))
@@ -279,8 +281,8 @@
         state (mapv #(hash-map :file %) expanded-paths)
         _ (report-fn {:stage :init :state state :build-opts opts})
         _ (when error
-            (do (report-fn {:stage :parsed :error error :build-opts opts})
-                (throw error)))
+            (report-fn {:stage :parsed :error error :build-opts opts})
+            (throw error))
         {state :result duration :time-ms} (eval/time-ms (mapv (comp (partial parser/parse-file {:doc? true}) :file) state))
         _ (report-fn {:stage :parsed :state state :duration duration})
         {state :result duration :time-ms} (eval/time-ms (reduce (fn [state doc]

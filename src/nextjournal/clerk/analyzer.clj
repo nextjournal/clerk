@@ -220,8 +220,8 @@
 
 #_(->> (nextjournal.clerk.eval/eval-string "(rand-int 100) (rand-int 100) (rand-int 100)") :blocks (mapv #(-> % :result :nextjournal/value)))
 
-(defn- analyze-deps [{:as analyzed :keys [form vars id]} state dep]
-  (try (reduce (fn [state var]
+(defn- analyze-deps [{:as analyzed :keys [form vars]} state dep]
+  (try (reduce (fn [state _var] ;; TODO: check if `_var` needs to be used
                  (update state :graph #(dep/depend % (->key analyzed) dep)))
                state
                (->ana-keys analyzed))
@@ -288,8 +288,8 @@
                                               (instance? clojure.lang.IObj form)
                                               (vary-meta merge (cond-> loc
                                                                  (:file doc) (assoc :clojure.core/eval-file (str (:file doc))))))
-                                   {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form+loc)
-                                                                                 (:file doc) (assoc :file (:file doc)))
+                                   {:as analyzed :keys [deps ns-effect?]} (cond-> (analyze form+loc)
+                                                                            (:file doc) (assoc :file (:file doc)))
                                    _ (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
                                        (eval form))
                                    block-id (get-block-id !id->count (merge analyzed block))

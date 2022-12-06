@@ -82,7 +82,7 @@
    :cljs
    (extend-type ViewerEval
      IPrintWithWriter
-     (-pr-writer [obj w opts]
+     (-pr-writer [obj w _opts]
        (-write w (str "#viewer-eval "))
        (-write w (pr-str (:form obj))))))
 
@@ -96,7 +96,7 @@
     (read-string (pr-str (->viewer-fn 'number?))))
 
 (comment
-  (def num? (form->fn+form 'number?))
+  (def num? (->viewer-fn 'number?))
   (num? 42)
   (:form num?)
   (pr-str num?))
@@ -307,7 +307,7 @@
   (get-safe :nextjournal.clerk/datafied))
 
 (defn with-md-viewer [wrapped-value]
-  (let [{:as node :keys [type]} (->value wrapped-value)]
+  (let [{:as _node :keys [type]} (->value wrapped-value)]
     (when-not type
       (throw (ex-info "no type given for with-md-viewer" {:wrapped-value wrapped-value})))
     (with-viewer (keyword "nextjournal.markdown" (name type)) wrapped-value)))
@@ -1187,7 +1187,7 @@
          (select-keys wrapped-value [:path :offset])))
 
 (defn get-elision [wrapped-value]
-  (let [{:as fetch-opts :keys [path offset n]} (->fetch-opts wrapped-value)]
+  (let [{:as fetch-opts :keys [n]} (->fetch-opts wrapped-value)]
     (merge fetch-opts (bounded-count-opts n (->value wrapped-value)))))
 
 #_(get-elision (present (range)))
@@ -1204,7 +1204,7 @@
       (update :current-path (fnil conj []) path-segment)))
 
 (defn present+paginate-children [{:as wrapped-value :nextjournal/keys [viewers preserve-keys?] :keys [!budget budget]}]
-  (let [{:as fetch-opts :keys [path offset n]} (->fetch-opts wrapped-value)
+  (let [{:as fetch-opts :keys [offset n]} (->fetch-opts wrapped-value)
         xs (->value wrapped-value)
         paginate? (and (number? n) (not preserve-keys?))
         fetch-opts' (cond-> fetch-opts
@@ -1461,7 +1461,7 @@
 (defn hide-result
   "Deprecated, please put ^{:nextjournal.clerk/visibility {:result :hide}} metadata on the form instead."
   {:deprecated "0.10"}
-  ([x] #?(:clj (hide-result {} x)) :cljs x)
+  ([x] (hide-result {} x))
   ([_viewer-opts x]
    #?(:clj (binding [*out* *err*]
              (prn "`hide-result` has been deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead.")))
@@ -1489,7 +1489,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; examples
 (def example-viewer
-  {:transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers] :keys [path current-path]}]
+  {:transform-fn (fn [wrapped-value]
                    (-> wrapped-value
                        mark-preserve-keys
                        (assoc :nextjournal/viewer {:render-fn '(fn [{:keys [form val]} opts]
