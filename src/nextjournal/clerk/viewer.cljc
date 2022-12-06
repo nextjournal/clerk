@@ -659,7 +659,11 @@
   {:pred char? :render-fn '(fn [c] [:span.cmt-string.inspected-value "\\" c])})
 
 (def string-viewer
-  {:pred string? :render-fn 'nextjournal.clerk.render/render-quoted-string :page-size 80})
+  {:pred string?
+   :render-fn 'nextjournal.clerk.render/render-quoted-string
+   :opening-paren "\""
+   :closing-paren "\""
+   :page-size 80})
 
 (def number-viewer
   {:pred number? :render-fn 'nextjournal.clerk.render/render-number})
