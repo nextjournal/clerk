@@ -4,7 +4,7 @@
   (:require [clojure.core :as core]
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v])
-  (:import (java.time Instant LocalTime ZoneId)))
+  (:import (java.time LocalTime ZoneId)))
 
 (def switch-view
   {:var-from-def? true
@@ -80,7 +80,7 @@
 (comment
   (last @!taps)
 
-  (dotimes [i 5]
+  (dotimes [_i 5]
     (tap> (rand-int 1000)))
 
   (tap> (shuffle (range (+ 20 (rand-int 200)))))

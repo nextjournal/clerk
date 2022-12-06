@@ -1,0 +1,12 @@
+(ns nextjournal.clerk.viewer
+  (:require [clj-kondo.hooks-api :as api]
+            [clojure.string :as str]))
+
+(defn ->viewer-fn [{:keys [node]}]
+  (let [[name-node quoted-node] (:children node)
+        quoted-tag (api/tag quoted-node)]
+    (when (= :quote quoted-tag)
+      (let [quoted-node {:tag :syntax-quote
+                         :children (:children quoted-node)}
+            fn-node (first (:children quoted-node))]
+        {:node fn-node}))))

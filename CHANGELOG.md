@@ -7,6 +7,16 @@ Changes can be:
 
 ## Unreleased
 
+* 🐜 Make edn transmission not fail on bad keywords and symbols, fixes
+  #116
+* 🐜 Fix silent failure when analyzing invalid def, fixes #307
+* 🐞 Fixes an issue with codemirror syntax highlighting which
+  prevented multi-line strings to be displayed correctly
+* 🐞 Preserve whitespace in string viewer
+* 🐞 Fix parens placement when expanded string viewer is embedded in coll (#320)
+
+## 0.12.699 (2022-12-02)
+
 * 🌟 Clerk sync for vars holding atoms (#253, #268)
 
     Introduce `^:nextjournal.clerk/sync` metadata annotation for vars

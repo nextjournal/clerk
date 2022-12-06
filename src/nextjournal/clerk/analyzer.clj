@@ -105,8 +105,14 @@
   ([form] (analyze-form {} form))
   ([bindings form]
    (binding [config/*in-clerk* true]
-     (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings
-                                                :passes-opts analyzer-passes-opts}))))
+     (try
+       (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings
+                                                  :passes-opts analyzer-passes-opts})
+       (catch java.lang.AssertionError e
+         (throw (ex-info "Failed to analyze form"
+                         (-> (select-keys (meta form) [:line :col :clojure.core/eval-file])
+                             (assoc  :form form))
+                         e)))))))
 
 (defn analyze [form]
   (let [!deps      (atom #{})
@@ -214,8 +220,8 @@
 
 #_(->> (nextjournal.clerk.eval/eval-string "(rand-int 100) (rand-int 100) (rand-int 100)") :blocks (mapv #(-> % :result :nextjournal/value)))
 
-(defn- analyze-deps [{:as analyzed :keys [form vars id]} state dep]
-  (try (reduce (fn [state var]
+(defn- analyze-deps [{:as analyzed :keys [form vars]} state dep]
+  (try (reduce (fn [state _var] ;; TODO: check if `_var` needs to be used
                  (update state :graph #(dep/depend % (->key analyzed) dep)))
                state
                (->ana-keys analyzed))
@@ -282,8 +288,8 @@
                                               (instance? clojure.lang.IObj form)
                                               (vary-meta merge (cond-> loc
                                                                  (:file doc) (assoc :clojure.core/eval-file (str (:file doc))))))
-                                   {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form+loc)
-                                                                                 (:file doc) (assoc :file (:file doc)))
+                                   {:as analyzed :keys [deps ns-effect?]} (cond-> (analyze form+loc)
+                                                                            (:file doc) (assoc :file (:file doc)))
                                    _ (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
                                        (eval form))
                                    block-id (get-block-id !id->count (merge analyzed block))
@@ -524,6 +530,6 @@
         (seq? sym-or-form)
         (filter #(= sym-or-form (:form %)) blocks)))
 
-#_(find-blocks  'scratch/foo)
+#_(find-blocks @nextjournal.clerk.webserver/!doc 'scratch/foo)
 #_(find-blocks @nextjournal.clerk.webserver/!doc 'foo)
 #_(find-blocks @nextjournal.clerk.webserver/!doc '(rand-int 1000))

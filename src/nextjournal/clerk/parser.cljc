@@ -1,7 +1,6 @@
 (ns nextjournal.clerk.parser
   "Clerk's Parser turns Clojure & Markdown files and strings into Clerk documents."
-  (:require [clojure.core :as core]
-            [clojure.set :as set]
+  (:require [clojure.set :as set]
             [clojure.string :as str]
             [nextjournal.markdown :as markdown]
             [nextjournal.markdown.parser :as markdown.parser]
@@ -144,7 +143,7 @@
 #_(->doc-settings '^{:nextjournal.clerk/toc :boom} (ns foo)) ;; TODO: error
 
 (defn add-block-visibility [{:as analyzed-doc :keys [blocks]}]
-  (-> (reduce (fn [{:as state :keys [visibility]} {:as block :keys [var form type]}]
+  (-> (reduce (fn [{:as state :keys [visibility]} {:as block :keys [form type]}]
                 (let [visibility' (merge visibility (->doc-visibility form))]
                   (cond-> (-> state
                               (update :blocks conj (cond-> block

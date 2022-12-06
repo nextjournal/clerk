@@ -9,6 +9,33 @@
 ;; Code as string
 (clerk/code "(def fib (lazy-cat [0 1] (map + fib (rest fib))))")
 
+;; Stings with line-breaks and whitespace
+
+(def ex
+  (identity "1000
+2000
+3000
+
+4000
+
+5000
+6000
+
+7000
+8000
+9000
+
+10000"))
+
+;; strings with whitespace
+(do "    this is    a    string
+
+with     quite
+
+
+                some
+   whitespace      ")
+
 ;; Editable code viewer
 (clerk/with-viewer
   '(fn [code-str _] [:div.viewer-code [nextjournal.clerk.render.code/editor (reagent/atom code-str)]])

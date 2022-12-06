@@ -1,6 +1,6 @@
 (ns nextjournal.clerk.viewer-test
   (:require [clojure.string :as str]
-            [clojure.test :refer :all]
+            [clojure.test :refer [deftest is testing]]
             [clojure.walk :as w]
             [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk.builder :as builder]
@@ -38,7 +38,7 @@
       (is (= value (str/join (present+fetch value))))))
 
   (testing "deep vector"
-    (let [value (reduce (fn [acc i] (vector acc)) :fin (range 30 0 -1))]
+    (let [value (reduce (fn [acc _i] (vector acc)) :fin (range 30 0 -1))]
       (is (= value (present+fetch {:budget 21} value)))))
 
   (testing "deep vector with element before"
@@ -197,3 +197,18 @@
                                                       :bundle? false
                                                       :out-path builder/default-out-path} test-doc)
                                    #"_data/.+\.png"))))))
+
+(deftest ->edn
+  (testing "normal symbols and keywords"
+    (is (= "normal-symbol" (pr-str 'normal-symbol)))
+    (is (= ":namespaced/keyword" (pr-str :namespaced/keyword))))
+
+  (testing "unreadable symbols and keywords print as viewer-eval"
+    (is (= "#viewer-eval (keyword \"with spaces\")"
+           (pr-str (keyword "with spaces"))))
+    (is (= "#viewer-eval (keyword \"with ns\" \"and spaces\")"
+           (pr-str (keyword "with ns" "and spaces"))))
+    (is (= "#viewer-eval (symbol \"with spaces\")"
+           (pr-str (symbol "with spaces"))))
+    (is (= "#viewer-eval (symbol \"with ns\" \"and spaces\")"
+           (pr-str (symbol "with ns" "and spaces"))))))
