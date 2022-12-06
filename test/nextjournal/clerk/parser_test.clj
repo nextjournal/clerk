@@ -1,9 +1,7 @@
 (ns nextjournal.clerk.parser-test
-  (:require [babashka.fs :as fs]
-            [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing]]
             [matcher-combinators.matchers :as m]
             [matcher-combinators.test :refer [match?]]
-            [nextjournal.clerk :as clerk :refer [defcached]]
             [nextjournal.clerk.analyzer-test :refer [analyze-string]]
             [nextjournal.clerk.parser :as parser]))
 

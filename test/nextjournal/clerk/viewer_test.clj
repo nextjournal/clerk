@@ -1,6 +1,6 @@
 (ns nextjournal.clerk.viewer-test
   (:require [clojure.string :as str]
-            [clojure.test :refer :all]
+            [clojure.test :refer [deftest is testing]]
             [clojure.walk :as w]
             [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk.builder :as builder]
@@ -38,7 +38,7 @@
       (is (= value (str/join (present+fetch value))))))
 
   (testing "deep vector"
-    (let [value (reduce (fn [acc i] (vector acc)) :fin (range 30 0 -1))]
+    (let [value (reduce (fn [acc _i] (vector acc)) :fin (range 30 0 -1))]
       (is (= value (present+fetch {:budget 21} value)))))
 
   (testing "deep vector with element before"

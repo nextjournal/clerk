@@ -200,7 +200,7 @@
          :done (checkmark-svg)
          :errored (error-svg)
          (status-light state))]
-      (if (not= state :done)
+      (when (not= state :done)
         [:span.text-sm.mr-1 (case state
                               :executing "Building"
                               :queued "Queued"
@@ -231,7 +231,7 @@
 
 ^:nextjournal.clerk/no-cache
 (defn process-docs [docs]
-  (mapv (fn [{:as doc :keys [blocks duration]}]
+  (mapv (fn [{:as doc :keys [blocks]}]
           (-> doc
               (select-keys [:file :title :blocks])
               (update :blocks (fn [blocks] (mapv #(select-keys % [:text :type :var]) blocks)))

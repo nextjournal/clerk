@@ -124,6 +124,8 @@
                :deps       #{'clojure.core/inc}}
               (ana/analyze '(def my-inc inc))))
 
+  (ana/analyze '(do (def my-inc inc) (def my-dec dec)))
+  
   (is (match? {:ns-effect? false
                :vars '#{nextjournal.clerk.analyzer-test/!state}
                :deps       #{'clojure.lang.Var

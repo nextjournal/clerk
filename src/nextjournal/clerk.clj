@@ -50,7 +50,7 @@
                    :else
                    file-or-ns)
             doc (try (parser/parse-file {:doc? true} file)
-                     (catch java.io.FileNotFoundException e
+                     (catch java.io.FileNotFoundException _e
                        (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
                                        {:file-or-ns file-or-ns}))))
             _ (reset! !last-file file)
@@ -385,7 +385,7 @@
       (println "Start the Clerk webserver with an optional a file watcher.\n\nOptions:"
                (str "\n" (format-opts (-> #'serve! meta :org.babashka/cli))))
       (println (-> #'serve! meta :doc)))
-    (let [{:as normalized-config
+    (let [{:as _normalized-config
            :keys [browse? watch-paths port show-filter-fn]
            :or {port 7777}} (normalize-opts config)]
       (webserver/serve! {:port port})
