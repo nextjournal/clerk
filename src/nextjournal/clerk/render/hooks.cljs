@@ -140,9 +140,9 @@
   (let [handle-error (use-error-handler)
         !state (use-state nil)]
     (use-effect (fn []
-                  (-> p
-                      (.then #(reset! !state %))
-                      (.catch handle-error)))
+                  (some-> p
+                    (.then #(reset! !state %))
+                    (.catch handle-error)))
                 #js [])
     @!state))
 
@@ -155,5 +155,5 @@
     (use-promise p)))
 
 (defn ^js use-dynamic-import [mod]
-  (let [p (use-memo #(esm/dynamic-import mod) [mod])]
+  (let [p (use-memo #(when mod (esm/dynamic-import mod)) [mod])]
     (use-promise p)))

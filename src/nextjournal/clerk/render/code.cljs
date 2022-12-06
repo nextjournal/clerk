@@ -1,6 +1,6 @@
 (ns nextjournal.clerk.render.code
-  (:require ["@codemirror/language" :refer [HighlightStyle syntaxHighlighting]]
-            ["@lezer/highlight" :refer [tags highlightTree]]
+  (:require ["@codemirror/language" :refer [HighlightStyle syntaxHighlighting defaultHighlightStyle]]
+            ["@lezer/highlight" :refer [tags highlightTree classHighlighter]]
             ["@codemirror/state" :refer [EditorState RangeSetBuilder Text]]
             ["@codemirror/view" :refer [EditorView Decoration keymap]]
             ["@nextjournal/lang-clojure" :refer [clojureLanguage]]
@@ -88,18 +88,36 @@
                   (< pos to)
                   (concat [(.sliceString text pos to)]))))))))
 
-(defn render-code [^String code]
+(defn highlighted-lines [code ^js parser]
   (let [builder (RangeSetBuilder.)
-        _ (highlightTree (.. clojureLanguage -parser (parse code)) highlight-style
+        _ (highlightTree (.parse parser code) highlight-style
                          (fn [from to style]
                            (.add builder from to (.mark Decoration (j/obj :class style)))))
         decorations-rangeset (.finish builder)
         text (.of Text (.split code "\n"))]
+    (map (partial style-line decorations-rangeset text)
+         (range 1 (inc (.-lines text))))))
+
+(def lang->import-spec
+  {#{"javascript" "js"} ["https://cdn.skypack.dev/@codemirror/lang-javascript"
+                         (fn [^js mod] (.. mod -javascriptLanguage -parser))]})
+
+(defn language-info [lang]
+  (or (some (fn [[kset val]] (when (kset lang) val)) lang->import-spec)
+      [nil (constantly (.. clojureLanguage -parser))]))
+
+(defn render-code [^String code {:keys [language]}]
+  (let [[mod-url lang->parser] (language-info language)
+        mod (hooks/use-dynamic-import mod-url)
+        !lines (hooks/use-state [])]
+    (hooks/use-effect
+     #(when (or (not language) mod)
+        (reset! !lines (highlighted-lines code (lang->parser mod))))
+     [code language mod])
     [:div.cm-editor
      [:cm-scroller
       (into [:div.cm-content.whitespace-pre]
-            (map (partial style-line decorations-rangeset text))
-            (range 1 (inc (.-lines text))))]]))
+            @!lines)]]))
 
 ;; editable code viewer
 (def theme

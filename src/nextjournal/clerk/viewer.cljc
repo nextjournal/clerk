@@ -602,9 +602,11 @@
    {:name :nextjournal.markdown/plain :transform-fn (into-markup [:<>])}
    {:name :nextjournal.markdown/ruler :transform-fn (into-markup [:hr])}
    {:name :nextjournal.markdown/code
-    :transform-fn (fn [wrapped-value] (with-viewer :html
-                                        [:div.viewer-code (with-viewer :code
-                                                            (md.transform/->text (->value wrapped-value)))]))}
+    :transform-fn (fn [wrapped-value]
+                    (let [node (->value wrapped-value)]
+                      (with-viewer :html
+                        [:div.viewer-code (with-viewer :code {:nextjournal/opts (select-keys node [:language :info])}
+                                            (md.transform/->text node))])))}
 
    ;; marks
    {:name :nextjournal.markdown/em :transform-fn (into-markup [:em])}
