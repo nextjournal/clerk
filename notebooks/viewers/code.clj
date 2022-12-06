@@ -27,6 +27,15 @@
 
 10000"))
 
+;; strings with whitespace
+(do "    this is    a    string
+
+with     quite
+
+
+                some
+   whitespace      ")
+
 ;; Editable code viewer
 (clerk/with-viewer
   '(fn [code-str _] [:div.viewer-code [nextjournal.clerk.render.code/editor (reagent/atom code-str)]])

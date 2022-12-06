@@ -405,7 +405,7 @@
 
 (defn render-string [s {:as opts :keys [path !expanded-at] :or {path []}}]
   (let [expanded? (get @!expanded-at path)]
-    (into [:span]
+    (into [:span.whitespace-pre]
           (map #(if (string? %)
                   (if expanded?
                     (into [:<>] (interpose [:<> [:br]] (str/split-lines %)))
@@ -414,16 +414,15 @@
           (if (string? s) [s] s))))
 
 (defn render-quoted-string [s {:as opts :keys [path viewer !expanded-at] :or {path []}}]
-  (let [{:keys [closing-paren]} viewer]
-    [:span.cmt-string.inspected-value.whitespace-nowrap.inline-flex
-     [:span
+  (let [{:keys [opening-paren closing-paren]} viewer]
+    [:span.inspected-value.inline-flex
+     [:span.cmt-string
       (if (some #(and (string? %) (str/includes? % "\n")) (if (string? s) [s] s))
-        [expand-button !expanded-at "\"" path]
-        [:span "\""])]
+        [expand-button !expanded-at opening-paren path]
+        [:span opening-paren])]
      [:div
-      (viewer/->value (render-string s opts))
-      "\""
-      closing-paren]]))
+      [:span.cmt-string (viewer/->value (render-string s opts)) (first closing-paren)]
+      (when (list? closing-paren) (into [:<>] (rest closing-paren)))]]))
 
 (defn render-number [num]
   [:span.cmt-number.inspected-value
