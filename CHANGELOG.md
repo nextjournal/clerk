@@ -7,6 +7,10 @@ Changes can be:
 
 ## Unreleased
 
+...
+
+## 0.12.707 (2022-12-06)
+
 * 🐜 Make edn transmission not fail on bad keywords and symbols, fixes
   #116
 * 🐜 Fix silent failure when analyzing invalid def, fixes #307
