@@ -41,10 +41,11 @@
   ::clerk/visibility {:result :show}}
 palmer-penguins
 
-;; dynamic import hook
+;; or use `js/import` directly:
 ^{::clerk/visibility {:result :show :code :show} ::clerk/no-cache true}
-(clerk/with-viewer
+(nextjournal.clerk/with-viewer
   '(fn [n]
-     (let [mod (nextjournal.clerk.render.hooks/use-dynamic-import "https://cdn.skypack.dev/canvas-confetti")]
-       (nextjournal.clerk.render.hooks/use-effect #(when mod (.default mod)) [n])
+     (let [cc (nextjournal.clerk.render.hooks/use-promise
+               (js/import "https://cdn.skypack.dev/canvas-confetti"))]
+       (nextjournal.clerk.render.hooks/use-effect #(when cc (.default cc)) [n])
        [:<>])) (rand))
