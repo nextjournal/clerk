@@ -93,6 +93,7 @@
    :disable-arity-checks true
    :classes {'js (j/assoc! goog/global "import" shadow.esm/dynamic-import)
              'framer-motion framer-motion
+             'codemirror.view codemirror-view
              :allow :all}
    :aliases {'j 'applied-science.js-interop
              'reagent 'reagent.core
@@ -120,8 +121,7 @@
 
 (def ^:export mount render/mount)
 
-(sci.ctx-store/reset-ctx! (doto (sci/init initial-sci-opts)
-                            (sci/add-class! 'codemirror.view codemirror-view)))
+(sci.ctx-store/reset-ctx! (sci/init initial-sci-opts))
 
 (sci/alter-var-root sci/print-fn (constantly *print-fn*))
 (sci/alter-var-root sci/print-err-fn (constantly *print-err-fn*))
