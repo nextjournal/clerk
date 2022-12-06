@@ -42,10 +42,15 @@
 palmer-penguins
 
 ;; or use `js/import` directly:
-^{::clerk/visibility {:result :show :code :show} ::clerk/no-cache true}
+^{::clerk/visibility {:result :show :code :show} ::clerk/no-cache true ::clerk/width :wide}
 (nextjournal.clerk/with-viewer
   '(fn [n]
      (let [cc (nextjournal.clerk.render.hooks/use-promise
-               (js/import "https://cdn.skypack.dev/canvas-confetti"))]
-       (nextjournal.clerk.render.hooks/use-effect #(when cc (.default cc)) [n])
-       [:<>])) (rand))
+               (js/import "https://cdn.skypack.dev/canvas-confetti"))
+           ref (nextjournal.clerk.render.hooks/use-callback
+                (fn [el]
+                  (when (and cc el)
+                    ((.create cc el) (j/lit {:spread 80 :angle 45 :startVelocity 20
+                                             :origin {:x 0.25 :y 0.5}})))) [n])]
+       [:canvas.border
+        {:style {:width "100%" :height "500px"} :ref ref}])) (rand))
