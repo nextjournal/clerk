@@ -1458,14 +1458,15 @@
 
 (defn ^:dynamic doc-url [path] (str "#/" path))
 
+(defn print-hide-result-deprecation-warning []
+  #?(:clj (binding [*out* *err*]
+            (prn "`hide-result` has been deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead."))))
+
 (defn hide-result
   "Deprecated, please put ^{:nextjournal.clerk/visibility {:result :hide}} metadata on the form instead."
   {:deprecated "0.10"}
-  ([x] (hide-result {} x))
-  ([_viewer-opts x]
-   #?(:clj (binding [*out* *err*]
-             (prn "`hide-result` has been deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead.")))
-   x))
+  ([x] (print-hide-result-deprecation-warning) (with-viewer hide-result-viewer {} x))
+  ([viewer-opts x] (print-hide-result-deprecation-warning) (with-viewer hide-result-viewer viewer-opts x)))
 
 (def eval-cljs-result-viewer
   {:transform-fn mark-presented
