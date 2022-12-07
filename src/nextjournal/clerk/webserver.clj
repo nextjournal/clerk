@@ -30,11 +30,14 @@
 
 (def ^:dynamic *sender-ch* nil)
 
+(defn send! [ch msg]
+  (httpkit/send! ch (v/->edn msg)))
+
 (defn broadcast! [msg]
   (doseq [ch @!clients]
     (when (not= @!last-sender-ch *sender-ch*)
-      (httpkit/send! ch (v/->edn {:type :patch-state! :patch []
-                                  :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-ch* ch)))]})))
+      (send! ch {:type :patch-state! :patch []
+                 :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-ch* ch)))]}))
     (httpkit/send! ch (v/->edn msg)))
   (reset! !last-sender-ch *sender-ch*))
 
@@ -126,7 +129,10 @@
                                     (create-ns 'user))]
                    (let [{:as msg :keys [type]} (read-msg edn-string)]
                      (case type
-                       :eval (do (eval (:form msg))
+                       :eval (do (send! ch (merge {:type :eval-reply :eval-id (:eval-id msg)}
+                                                  (try {:reply (eval (:form msg))}
+                                                       (catch Exception e
+                                                         {:error (Throwable->map e)}))))
                                  (eval '(nextjournal.clerk/recompute!)))
                        :swap! (when-let [var (resolve (:var-name msg))]
                                 (try
