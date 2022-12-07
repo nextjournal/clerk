@@ -683,6 +683,17 @@
 ;; TODO: remove
 (def reagent-viewer render-reagent)
 
+(defn render-promise [p opts]
+  (let [!state (hooks/use-state {:pending true})]
+    (hooks/use-effect (fn []
+                        (-> p
+                            (.then #(reset! !state {:value %}))
+                            (.catch #(reset! !state {:error %})))))
+    (let [{:keys [pending value error]} @!state]
+      (if pending
+        default-loading-view
+        [inspect (or pending value error)]))))
+
 
 (defn with-d3-require [{:keys [package loading-view]
                         :or {loading-view default-loading-view}} f]

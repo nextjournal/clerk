@@ -21,5 +21,4 @@
           [nextjournal.clerk.render/inspect @!result])]))
   "nextjournal.clerk.builder/clerk-docs")
 
-
 ;; We now get a reply from `v/clerk-eval`. To try it, press the `eval!` button above. ☝️

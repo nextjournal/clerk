@@ -850,19 +850,7 @@
 
 #?(:cljs
    (def js-promise-viewer
-     {:name :js-promise
-      :pred #(instance? js/Promise %)
-      :render-fn '(fn [p opts]
-                    (let [!state (nextjournal.clerk.render.hooks/use-state {:pending true})]
-                      (nextjournal.clerk.render.hooks/use-effect (fn []
-                                                                   (-> p
-                                                                       (.then #(reset! !state {:value %}))
-                                                                       (.catch #(reset! !state {:error %}))))
-                                                                 #js [])
-                      (let [{:keys [pending value error]} @!state]
-                        (if pending
-                          nextjournal.clerk.render/default-loading-view
-                          [nextjournal.clerk.render/inspect (or pending value error)]))))}))
+     {:name :js-promise :pred #(instance? js/Promise %) :render-fn 'nextjournal.clerk.render/render-promise}))
 
 #?(:cljs
    (def js-object-viewer

@@ -101,14 +101,8 @@
 (c/card (js/Promise. (fn [resolve reject]
                        (js/setTimeout #(resolve 42) 2000))))
 
-;; `js/fetch`
-(c/card (-> (js/fetch "/")
-            (.then #(.text %))))
-
-;; Rejected
-(c/card (.reject js/Promise (ex-info "boom 💥" {:additional :data})))
-
-
+;; Rejected (commented out because it logs an error to the console)
+#_(c/card (.reject js/Promise (ex-info "boom 💥" {:additional :data})))
 
 ;; ## Code
 (c/card
