@@ -860,7 +860,9 @@
                                                                        (.catch #(reset! !state {:error %}))))
                                                                  #js [])
                       (let [{:keys [pending value error]} @!state]
-                        [nextjournal.clerk.render/inspect (or pending value error)])))}))
+                        (if pending
+                          nextjournal.clerk.render/default-loading-view
+                          [nextjournal.clerk.render/inspect (or pending value error)]))))}))
 
 #?(:cljs
    (def js-object-viewer

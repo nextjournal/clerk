@@ -1,11 +1,6 @@
 (ns cards-macro
   (:require [nextjournal.clerk.viewer :as v]))
 
-(defmacro card [& body]
-  `(v/with-viewer '(fn [_ _]
-                     (let [data# (do ~@body)]
-                       (cond
-                         (nextjournal.clerk.render/valid-react-element? data#) data#
-                         (vector? data#) data#
-                         'else
-                         [nextjournal.clerk.render/inspect data#]))) {:nextjournal.clerk/width :wide} nil))
+(defmacro card
+  ([body] `(v/->viewer-eval '~body))
+  ([opts body] (v/with-viewer {:tranform-fn identity} opts `(v/->viewer-eval '~body))))
