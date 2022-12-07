@@ -17,7 +17,7 @@
         [:p "Enter a form to be evaluated using " [:code "v/clerk-eval"] ":"]
         [:div.flex.mb-4
          [:div.shadow-inner.border.rounded.bg-slate-100.px-2.py-1.flex-auto
-          [nextjournal.clerk.render.code/editor !code {:on-change (fn [text] (reset! !code text))}]]
+          [nextjournal.clerk.render.code/editor !code]]
          [:button.rounded.px-3.py-1.bg-indigo-600.text-white.font-sans.font-bold.ml-2
           {:on-click #(reset! !result (v/clerk-eval (read-string @!code)))}
           "eval!"]]

@@ -1,14 +1,16 @@
 (ns nextjournal.clerk.render.code
   (:require ["@codemirror/language" :refer [HighlightStyle syntaxHighlighting]]
-            ["@lezer/highlight" :refer [tags highlightTree]]
             ["@codemirror/state" :refer [EditorState RangeSetBuilder Text]]
             ["@codemirror/view" :refer [EditorView Decoration keymap]]
+            ["@lezer/highlight" :refer [tags highlightTree]]
             ["@nextjournal/lang-clojure" :refer [clojureLanguage]]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
             [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clojure-mode :as clojure-mode]
-            [nextjournal.clojure-mode.keymap :as clojure-mode.keymap]))
+            [nextjournal.clojure-mode.keymap :as clojure-mode.keymap]
+            [sci.core :as sci]
+            [sci.ctx-store]))
 
 (def highlight-style
   (.define HighlightStyle
@@ -149,7 +151,10 @@
 
 (defn editor
   ([!code-str] (editor !code-str {}))
-  ([!code-str {:keys [extensions on-change]}]
+  ([!code-str {:keys [extensions on-change]
+               :or {on-change (fn [text]
+                                ;; TODO: using resolve to avoid a circular dep, find a better solution
+                                ((resolve 'nextjournal.clerk.render/clerk-reset!) !code-str text))}}]
    (let [!container-el (hooks/use-ref nil)
          !view (hooks/use-ref nil)]
      ;; view instance is built only once
