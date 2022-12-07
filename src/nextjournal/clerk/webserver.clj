@@ -129,10 +129,11 @@
                                     (create-ns 'user))]
                    (let [{:as msg :keys [type]} (read-msg edn-string)]
                      (case type
-                       :eval (do (send! ch (merge {:type :eval-reply :eval-id (:eval-id msg)}
-                                                  (try {:reply (eval (:form msg))}
-                                                       (catch Exception e
-                                                         {:error (Throwable->map e)}))))
+                       :eval (do (send! sender-ch
+                                        (merge {:type :eval-reply :eval-id (:eval-id msg)}
+                                               (try {:reply (eval (:form msg))}
+                                                    (catch Exception e
+                                                      {:error (Throwable->map e)}))))
                                  (eval '(nextjournal.clerk/recompute!)))
                        :swap! (when-let [var (resolve (:var-name msg))]
                                 (try
