@@ -62,16 +62,8 @@ with     quite
             (map + fib (rest fib))))")
 
 (def editor-sync-viewer
-  {:transform-fn (comp viewer/mark-presented (viewer/update-val (comp viewer/->viewer-eval symbol ::clerk/var-from-def)))
-   :var-from-def? true
-   :render-fn
-   '(fn [code-state _]
-      [:div.bg-neutral-50
-       [nextjournal.clerk.render.code/editor code-state
-        {:on-change (fn [text] (reset! code-state text))
-         :extensions (.concat (codemirror.view/lineNumbers)
-                              (codemirror.view/highlightActiveLine)
-                              nextjournal.clerk.render.code/paredit-keymap)}]])})
+  (assoc viewer/viewer-eval-viewer :render-fn '(fn [!code _]
+                                                 [:div.bg-neutral-50 [nextjournal.clerk.render.code/editor !code]])))
 
 ^{::clerk/sync true ::clerk/viewer editor-sync-viewer}
 (defonce editable-code (atom "(def fib

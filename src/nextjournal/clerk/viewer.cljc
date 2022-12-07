@@ -849,14 +849,18 @@
 
 
 #?(:cljs
+   (def js-promise-viewer
+     {:name :js-promise :pred #(instance? js/Promise %) :render-fn 'nextjournal.clerk.render/render-promise}))
+
+#?(:cljs
    (def js-object-viewer
      {:name :js-array
       :pred goog/isObject
       :page-size 20
       :opening-paren "{" :closing-paren "}"
       :render-fn '(fn [v opts] (nextjournal.clerk.render/render-tagged-value {:space? true}
-                                                                            "#js"
-                                                                            (nextjournal.clerk.render/render-map v opts)))
+                                                                             "#js"
+                                                                             (nextjournal.clerk.render/render-map v opts)))
       :transform-fn (update-val (fn [^js o]
                                   (into {}
                                         (comp (remove (fn [k] (identical? "function" (goog/typeOf (j/get o k)))))
@@ -971,6 +975,7 @@
    buffered-image-viewer
    ideref-viewer
    regex-viewer
+   #?(:cljs js-promise-viewer)
    #?(:cljs js-array-viewer)
    #?(:cljs js-object-viewer)
    fallback-viewer
