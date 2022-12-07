@@ -6,7 +6,8 @@
             [nextjournal.markdown.parser :as markdown.parser]
             [nextjournal.markdown.transform :as markdown.transform]
             [rewrite-clj.node :as n]
-            [rewrite-clj.parser :as p]))
+            [rewrite-clj.parser :as p]
+            [rewrite-clj.zip :as z]))
 
 (defn ns? [form]
   (and (seq? form) (= 'ns (first form))))
@@ -159,6 +160,44 @@
 (def whitespace-on-line-tags
   #{:comment :whitespace :comma})
 
+(defn strip-clerk-keys [m]
+  (apply dissoc m
+         (filter (fn [k] (when (keyword? k)
+                           (#{"??_clerk_??" "nextjournal.clerk"} (namespace k))))
+                 (keys m))))
+
+(defn strip-meta [node]
+  (if-not (= :meta (n/tag node))
+    node
+    (let [meta-sexpr (-> node n/children first n/sexpr)
+          meta-loc (-> node z/of-node z/down)]
+      (cond (map? meta-sexpr)
+            (if-some [stripped-meta (-> meta-sexpr strip-clerk-keys not-empty)]
+              (n/meta-node stripped-meta (-> meta-loc z/right z/node strip-meta))
+              (-> meta-loc z/right z/node strip-meta))
+            (keyword? meta-sexpr)
+            (if (#{"??_clerk_??" "nextjournal.clerk"} (namespace meta-sexpr))
+              (-> meta-loc z/right z/node strip-meta)
+              (n/meta-node meta-sexpr (-> meta-loc z/right z/node strip-meta)))
+            'else
+            (n/meta-node meta-sexpr (-> meta-loc z/right z/node strip-meta))))))
+
+#_(parse-clojure-string "
+^::clerk/no-cache
+(do effect)
+
+^{::clerk/visibility {:code :hide}}
+^:keep-me
+(view this)
+
+^:keep-me
+^{::clerk/visibility {:code :hide}}
+(view that)
+
+^:should
+(do nothing)
+")
+
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
   ([opts s] (parse-clojure-string opts {:blocks []} s))
@@ -170,12 +209,16 @@
                 (-> state
                     (assoc :add-comment-on-line? true)
                     (update :nodes rest)
-                    (update :blocks conj {:type :code
-                                          :text (n/string node)
-                                          :loc (-> (meta node)
-                                                   (set/rename-keys {:row :line
-                                                                     :col :column})
-                                                   (select-keys [:line :column]))}))
+                    (update :blocks conj (as-> {:type :code
+                                                :text (n/string node)
+                                                :loc (-> (meta node)
+                                                         (set/rename-keys {:row :line
+                                                                           :col :column})
+                                                         (select-keys [:line :column]))} block
+                                           (let [node' (strip-meta node)]
+                                             (cond-> block
+                                               (not= node' node)
+                                               (assoc :text* (n/string node')))))))
 
                 (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
                 (-> state
