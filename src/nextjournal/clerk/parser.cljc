@@ -6,8 +6,7 @@
             [nextjournal.markdown.parser :as markdown.parser]
             [nextjournal.markdown.transform :as markdown.transform]
             [rewrite-clj.node :as n]
-            [rewrite-clj.parser :as p]
-            [rewrite-clj.zip :as z]))
+            [rewrite-clj.parser :as p]))
 
 (defn ns? [form]
   (and (seq? form) (= 'ns (first form))))
@@ -160,6 +159,8 @@
 (def whitespace-on-line-tags
   #{:comment :whitespace :comma})
 
+(def whitespace (conj whitespace-on-line-tags :newline))
+
 (defn strip-clerk-keys [m]
   (apply dissoc m
          (filter (fn [k] (when (keyword? k)
@@ -169,18 +170,19 @@
 (defn strip-meta [node]
   (if-not (= :meta (n/tag node))
     node
-    (let [meta-sexpr (-> node n/children first n/sexpr)
-          meta-loc (-> node z/of-node z/down)]
+    (let [meta-sexpr (-> node n/children first n/sexpr)]
       (cond (map? meta-sexpr)
             (if-some [stripped-meta (-> meta-sexpr strip-clerk-keys not-empty)]
-              (n/meta-node stripped-meta (-> meta-loc z/right z/node strip-meta))
-              (-> meta-loc z/right z/node strip-meta))
+              (n/meta-node (cons stripped-meta (map strip-meta (-> node :children rest))))
+              (n/forms-node (map strip-meta (drop-while (comp whitespace n/tag) (-> node :children rest)))))
+
             (keyword? meta-sexpr)
             (if (#{"??_clerk_??" "nextjournal.clerk"} (namespace meta-sexpr))
-              (-> meta-loc z/right z/node strip-meta)
-              (n/meta-node meta-sexpr (-> meta-loc z/right z/node strip-meta)))
+              (n/forms-node (map strip-meta (drop-while (comp whitespace n/tag) (-> node :children rest))))
+              (n/meta-node (cons meta-sexpr (map strip-meta (-> node :children rest)))))
+
             'else
-            (n/meta-node meta-sexpr (-> meta-loc z/right z/node strip-meta))))))
+            (n/meta-node (cons meta-sexpr (map strip-meta (-> node :children rest))))))))
 
 #_(parse-clojure-string "
 ^::clerk/no-cache
