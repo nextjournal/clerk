@@ -26,13 +26,13 @@
 (defonce !taps (atom []))
 
 (defn reset-taps! []
-(reset! !taps [])
-(clerk/recompute!))
+  (reset! !taps [])
+  (clerk/recompute!))
 
 #_(reset-taps!)
 
 (defn inst->local-time-str [inst]
-(str (LocalTime/ofInstant inst (ZoneId/systemDefault))))
+  (str (LocalTime/ofInstant inst (ZoneId/systemDefault))))
 
 #_(inst->local-time-str (Instant/now))
 
@@ -51,48 +51,48 @@
 (clerk/add-viewers! [tap-viewer])
 
 (def taps-viewer
-{:render-fn '#(into [:div.flex.flex-col.pt-2] (v/inspect-children %2) %1)
- :transform-fn (clerk/update-val (fn [taps]
-                                   (mapv (partial clerk/with-viewer :tapped-value) (reverse taps))))})
+  {:render-fn '#(into [:div.flex.flex-col.pt-2] (v/inspect-children %2) %1)
+   :transform-fn (clerk/update-val (fn [taps]
+                                     (mapv (partial clerk/with-viewer :tapped-value) (reverse taps))))})
 
 ^{::clerk/visibility {:result :show}
-::clerk/viewer (cond-> taps-viewer
-                 (= :latest @!view)
-                 (update :transform-fn (fn [orig] (comp orig (clerk/update-val (partial take-last 1))))))}
+  ::clerk/viewer (cond-> taps-viewer
+                   (= :latest @!view)
+                   (update :transform-fn (fn [orig] (comp orig (clerk/update-val (partial take-last 1))))))}
 @!taps
 
 (defn tapped [x]
-(swap! !taps conj {:val x :tapped-at (java.time.Instant/now) :key (str (gensym))})
-(clerk/recompute!))
+  (swap! !taps conj {:val x :tapped-at (java.time.Instant/now) :key (str (gensym))})
+  (clerk/recompute!))
 
 #_(tapped (rand-int 1000))
 
 #_(reset! @(find-var 'clojure.core/tapset) #{})
 
 (defonce setup
-(add-tap tapped))
+  (add-tap tapped))
 
 #_ (remove-tap tapped)
 
 
 (comment
-(last @!taps)
+  (last @!taps)
 
-(dotimes [_i 5]
-  (tap> (rand-int 1000)))
+  (dotimes [_i 5]
+    (tap> (rand-int 1000)))
 
-(tap> (shuffle (range (+ 20 (rand-int 200)))))
-(tap> (clerk/md "> The purpose of visualization is **insight**, not pictures."))
-(tap> (v/plotly {:data [{:z [[1 2 3]
-                             [3 2 1]]
-                         :type "surface"}]}))
-(tap> (javax.imageio.ImageIO/read (java.net.URL. "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")))
+  (tap> (shuffle (range (+ 20 (rand-int 200)))))
+  (tap> (clerk/md "> The purpose of visualization is **insight**, not pictures."))
+  (tap> (v/plotly {:data [{:z [[1 2 3]
+                               [3 2 1]]
+                           :type "surface"}]}))
+  (tap> (javax.imageio.ImageIO/read (java.net.URL. "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")))
 
-(do (require 'rule-30)
-    (tap> (clerk/with-viewers (clerk/add-viewers rule-30/viewers) rule-30/rule-30)))
+  (do (require 'rule-30)
+      (tap> (clerk/with-viewers (clerk/add-viewers rule-30/viewers) rule-30/rule-30)))
 
-(tap> (clerk/with-viewers (clerk/add-viewers rule-30/viewers) rule-30/board))
+  (tap> (clerk/with-viewers (clerk/add-viewers rule-30/viewers) rule-30/board))
 
-(tap> (clerk/html [:h1 "Fin. 👋"]))
+  (tap> (clerk/html [:h1 "Fin. 👋"]))
 
-)
+  )
