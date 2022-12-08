@@ -106,7 +106,9 @@ par two"))))
   (is (match? {:blocks [{:text* "(do effect)"}
                         {:text* "^{:some-meta 123}\n^:keep-me\n(view this)"}
                         {:text* "^:keep-me\n(view that)"}
-                        {:text* "^:should\n(do nothing)"}]}
+                        {:text* "^:should\n(do nothing)"}
+                        {:text* "^also\n(do nothing)"}
+                        {:text* "^{:this \"as well\"}\n(do nothing)"}]}
               (parser/parse-clojure-string "
 ^::clerk/no-cache
 (do effect)
@@ -120,5 +122,11 @@ par two"))))
 (view that)
 
 ^:should
+(do nothing)
+
+^also
+(do nothing)
+
+^{:this \"as well\"}
 (do nothing)
 "))))

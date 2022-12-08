@@ -161,28 +161,31 @@
 
 (def whitespace (conj whitespace-on-line-tags :newline))
 
-(defn strip-clerk-keys [m]
-  (apply dissoc m
-         (filter (fn [k] (when (keyword? k)
-                           (#{"??_clerk_??" "nextjournal.clerk"} (namespace k))))
-                 (keys m))))
-
+(defn guard [p f] (fn [x] (when (p x) (f x))))
 (defn strip-meta [node]
   (if-not (= :meta (n/tag node))
     node
-    (let [meta-sexpr (-> node n/children first n/sexpr)]
-      (cond (map? meta-sexpr)
-            (if-some [stripped-meta (-> meta-sexpr strip-clerk-keys not-empty)]
-              (n/meta-node (cons stripped-meta (map strip-meta (-> node n/children rest))))
-              (n/forms-node (map strip-meta (drop-while (comp whitespace n/tag) (-> node n/children rest)))))
+    (let [meta-sexpr (-> node n/children first n/sexpr)
+          clerk-meta-key (comp #{"??_clerk_??" "nextjournal.clerk"} namespace)
+          stripped-map-meta (when (map? meta-sexpr)
+                              (not-empty (apply dissoc meta-sexpr
+                                                (filter (guard keyword? clerk-meta-key)
+                                                        (keys meta-sexpr)))))]
+      (if-some [new-meta (or stripped-map-meta
+                             (when (or (and (not (keyword? meta-sexpr))
+                                            (not (map? meta-sexpr)))
+                                       (and (keyword? meta-sexpr)
+                                            (not (clerk-meta-key meta-sexpr))))
+                               meta-sexpr))]
+        (n/meta-node (cons new-meta (map strip-meta (-> node n/children rest))))
+        (n/forms-node (map strip-meta (drop-while (comp whitespace n/tag)
+                                                  (-> node n/children rest))))))))
 
-            (keyword? meta-sexpr)
-            (if (#{"??_clerk_??" "nextjournal.clerk"} (namespace meta-sexpr))
-              (n/forms-node (map strip-meta (drop-while (comp whitespace n/tag) (-> node n/children rest))))
-              (n/meta-node (cons meta-sexpr (map strip-meta (-> node n/children rest)))))
-
-            'else
-            (n/meta-node (cons meta-sexpr (map strip-meta (-> node n/children rest))))))))
+#_
+(-> "^::clerk/foo \n^{::clerk/bar true :some-key false}     (view that)\n"
+    p/parse-string
+    strip-meta
+    n/string)
 
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
