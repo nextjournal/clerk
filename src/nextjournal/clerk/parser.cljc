@@ -184,22 +184,6 @@
             'else
             (n/meta-node (cons meta-sexpr (map strip-meta (-> node :children rest))))))))
 
-#_(parse-clojure-string "
-^::clerk/no-cache
-(do effect)
-
-^{::clerk/visibility {:code :hide}}
-^:keep-me
-(view this)
-
-^:keep-me
-^{::clerk/visibility {:code :hide}}
-(view that)
-
-^:should
-(do nothing)
-")
-
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
   ([opts s] (parse-clojure-string opts {:blocks []} s))

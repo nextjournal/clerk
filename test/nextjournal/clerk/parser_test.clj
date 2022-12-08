@@ -101,3 +101,26 @@ par two"))))
                 (-> ";; # Doc Title\n(ns my.ns2 {:nextjournal.clerk/open-graph {:url \"https://ogp.me\"}})\n;; ---\n;; first paragraph"
                     analyze-string
                     :open-graph)))))
+
+(deftest remove-metadata-annotation
+  (is (match? {:blocks [{:text* "(do effect)"}
+                        {:text* "^{:some-meta 123}\n^:keep-me\n(view this)"}
+                        {:text* "^:keep-me\n(view that)"}
+                        {:text* "^:should\n(do nothing)"}]}
+              (parser/parse-clojure-string "
+^::clerk/no-cache
+(do effect)
+
+^{::clerk/visibility {:code :hide} :some-meta 123}
+^:keep-me
+(view this)
+
+^:keep-me
+^{::clerk/visibility {:code :hide}}
+(view that)
+
+^:should
+(do nothing)
+"))))
+
+(clojure.test/run-tests *ns*)
