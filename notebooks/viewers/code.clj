@@ -1,16 +1,17 @@
 ;; # 👔 Code Viewer
 (ns viewers.code
-  {:nextjournal.clerk/no-cache true}
+  {:nextjournal.clerk/no-cache true
+   :nextjournal.clerk/toc true}
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as viewer]))
 
-;; Code as data
+;; ## Code as data
 (clerk/code '(def fib (lazy-cat [0 1] (map + fib (rest fib)))))
-;; Code as string
+;; ## Code as string
 (clerk/code "(def fib (lazy-cat [0 1] (map + fib (rest fib))))")
 
-;; Stings with line-breaks and whitespace
-
+;; ## Clojure Syntax Highlight
+;; strings with whitespace
 (def ex
   (identity "1000
 2000
@@ -27,7 +28,6 @@
 
 10000"))
 
-;; strings with whitespace
 (do "    this is    a    string
 
 with     quite
@@ -36,7 +36,7 @@ with     quite
                 some
    whitespace      ")
 
-;; Editable code viewer
+;; ## Editable code viewer
 (clerk/with-viewer
   '(fn [code-str _] [:div.viewer-code [nextjournal.clerk.render.code/editor (reagent/atom code-str)]])
   "(def fib
@@ -61,9 +61,10 @@ with     quite
   (lazy-cat [0 1]
             (map + fib (rest fib))))")
 
+;; ### Synced Editor
 (def editor-sync-viewer
-  (assoc viewer/viewer-eval-viewer :render-fn '(fn [!code _]
-                                                 [:div.bg-neutral-50 [nextjournal.clerk.render.code/editor !code]])))
+  (assoc viewer/viewer-eval-viewer
+         :render-fn '(fn [!code _] [:div.bg-neutral-100 [nextjournal.clerk.render.code/editor !code]])))
 
 ^{::clerk/sync true ::clerk/viewer editor-sync-viewer}
 (defonce editable-code (atom "(def fib
@@ -78,3 +79,12 @@ with     quite
   (lazy-cat [0 1]
             (map + fib (rest fib))))")
     (clerk/recompute!)))
+
+;; ## Clerk Meta Annotations
+;; keep user stuff
+^clojure.lang.PersistentHashMap
+^{::clerk/visibility {:result :hide} :please "keep me"}
+{:a 'nice-map}
+;; remove everything
+^{::clerk/visibility {:result :show} ::clerk/no-cache true ::clerk/width :wide}
+(repeat 2 (random-uuid))
