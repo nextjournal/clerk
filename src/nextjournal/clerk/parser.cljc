@@ -2,6 +2,7 @@
   "Clerk's Parser turns Clojure & Markdown files and strings into Clerk documents."
   (:require [clojure.set :as set]
             [clojure.string :as str]
+            [clojure.zip]
             [nextjournal.markdown :as markdown]
             [nextjournal.markdown.parser :as markdown.parser]
             [nextjournal.markdown.transform :as markdown.transform]
@@ -160,44 +161,52 @@
 (def whitespace-on-line-tags
   #{:comment :whitespace :comma})
 
-(defn guard [p f] (fn [x] (when (p x) (f x))))
-(def  clerk-meta-key (comp #{"??_clerk_??" "nextjournal.clerk"} namespace))
-
-(defn remove-clerk-meta [node]
-  (let [map-loc (-> node z/of-node z/next z/node z/of-node)
-        map-node (loop [loc (z/down map-loc) parent map-loc]
-                   (if-not loc
-                     (z/root parent)
-                     (let [s (-> loc z/node n/sexpr)]
-                       (if (and (keyword? s) (clerk-meta-key s))
-                         (let [updated (-> loc z/right z/remove z/remove)]
-                           (recur (z/next updated) (z/up updated)))
-                         (recur (-> loc z/right z/right) parent)))))]
-    (when (seq (n/sexpr map-node))
-      map-node)))
+(def clerk-meta-key (comp #{"??_clerk_??" "nextjournal.clerk"} namespace))
+(defn remove-clerk-keys
+  "Returns a rewrite-clj node corresponding to the original map node with all ::clerk namespaced keys removed.
+   Whitespace is preserved when possible."
+  [map-node]
+  (let [map-loc (z/of-node map-node)
+        filtered-map-node (loop [loc (z/down map-loc) parent map-loc]
+                            (if-not loc
+                              (z/root parent)
+                              (let [s (-> loc z/node n/sexpr)]
+                                (if (and (keyword? s) (clerk-meta-key s))
+                                  (let [updated (-> loc z/right z/remove z/remove)]
+                                    (recur (z/next updated) (z/up updated)))
+                                  (recur (-> loc z/right z/right) parent)))))]
+    (when (seq (n/sexpr filtered-map-node))
+      filtered-map-node)))
 
 (defn strip-meta [node]
   (cond-> node
     (= :meta (n/tag node))
     (as-> node
       (try
-        (let [meta-sexpr (-> node n/child-sexprs first)
-              user-map-meta (when (map? meta-sexpr) (remove-clerk-meta node))]
+        (let [loc (z/of-node node)
+              meta-sexpr (-> node n/child-sexprs first)
+              user-map-meta (when (map? meta-sexpr)
+                              (remove-clerk-keys (-> loc z/down z/node)))]
           (if-some [new-meta (or user-map-meta
                                  (when (or (and (not (keyword? meta-sexpr))
                                                 (not (map? meta-sexpr)))
                                            (and (keyword? meta-sexpr)
                                                 (not (clerk-meta-key meta-sexpr))))
                                    meta-sexpr))]
-            (n/meta-node (cons new-meta (map strip-meta (-> node n/children rest))))
-            (n/forms-node (map strip-meta (drop-while n/whitespace? (-> node n/children rest))))))
+            (-> loc z/down
+                (z/replace new-meta)
+                z/right (clojure.zip/edit strip-meta) z/root)
+            (strip-meta (-> loc z/down z/right z/node))))
         (catch #?(:clj Exception :cljs js/Error) _ node)))))
 
 #_
-(-> "^::clerk/foo \n^{::clerk/bar true :some-key false}     (view that)\n"
+(-> "^{::clerk/foo 'what}\n^ keep \n^{::clerk/bar true :some-key false}     (view that)"
     p/parse-string
     strip-meta
     n/string)
+
+#_(nextjournal.clerk.eval/time-ms (parse-file "book.clj"))
+#_(nextjournal.clerk.eval/time-ms (parse-file "notebooks/viewers/code.clj"))
 
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))

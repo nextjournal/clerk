@@ -110,8 +110,8 @@ with     quite
 'some-symbol
 
 ;; white space is preserved
-^:foo
-^{:this   :weird    :map 'is
+^   :foo
+^ {:this   :weird    :map 'is
   ::clerk/removed true
   :is  :all
      :kept
