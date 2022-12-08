@@ -6,7 +6,8 @@
             [nextjournal.markdown.parser :as markdown.parser]
             [nextjournal.markdown.transform :as markdown.transform]
             [rewrite-clj.node :as n]
-            [rewrite-clj.parser :as p]))
+            [rewrite-clj.parser :as p]
+            [rewrite-clj.zip :as z]))
 
 (defn ns? [form]
   (and (seq? form) (= 'ns (first form))))
@@ -160,18 +161,28 @@
   #{:comment :whitespace :comma})
 
 (defn guard [p f] (fn [x] (when (p x) (f x))))
+(def  clerk-meta-key (comp #{"??_clerk_??" "nextjournal.clerk"} namespace))
+
+(defn remove-clerk-meta [node]
+  (let [map-loc (-> node z/of-node z/next z/node z/of-node)
+        map-node (loop [loc (z/down map-loc) parent map-loc]
+                   (if-not loc
+                     (z/root parent)
+                     (let [s (-> loc z/node n/sexpr)]
+                       (if (and (keyword? s) (clerk-meta-key s))
+                         (let [updated (-> loc z/right z/remove z/remove)]
+                           (recur (z/next updated) (z/up updated)))
+                         (recur (-> loc z/right z/right) parent)))))]
+    (when (seq (n/sexpr map-node))
+      map-node)))
 
 (defn strip-meta [node]
   (cond-> node
     (= :meta (n/tag node))
     (as-> node
       (try
-        (let [meta-sexpr (-> node n/children first n/sexpr)
-              clerk-meta-key (comp #{"??_clerk_??" "nextjournal.clerk"} namespace)
-              user-map-meta (when (map? meta-sexpr)
-                              (not-empty (apply dissoc meta-sexpr
-                                                (filter (guard keyword? clerk-meta-key)
-                                                        (keys meta-sexpr)))))]
+        (let [meta-sexpr (-> node n/child-sexprs first)
+              user-map-meta (when (map? meta-sexpr) (remove-clerk-meta node))]
           (if-some [new-meta (or user-map-meta
                                  (when (or (and (not (keyword? meta-sexpr))
                                                 (not (map? meta-sexpr)))

@@ -101,12 +101,22 @@ with     quite
 
 ;; comments in-between should be preserved
 ^{:some/key 123 :and 'this ::clerk/no-cache true}
-;; wait
+;; this should be kept
 'some-symbol
 
 ^::clerk/no-cache
+
 ;; wait
 'some-symbol
+
+;; white space is preserved
+^:foo
+^{:this   :weird    :map 'is
+  ::clerk/removed true
+  :is  :all
+     :kept
+  123}
+'foo
 
 ;; meta with unbalanced maps should throw as late as read-time not parse-time
 ;;
