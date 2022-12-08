@@ -74,6 +74,7 @@ with     quite
 
 ^{::clerk/visibility {:code :hide}}
 (comment
+  @editable-code
   (do
     (reset! editable-code "(def fib
   (lazy-cat [0 1]
@@ -87,7 +88,11 @@ with     quite
 {:a 'nice-map}
 ;; remove everything
 ^{::clerk/visibility {:result :show} ::clerk/no-cache true ::clerk/width :wide}
-(repeat 2 (random-uuid))
+(clerk/html
+ [:h4
+  (apply str (repeat 10 "♦︎"))
+  [:span.mx-5 (rand-int 1000)]
+  (apply str (repeat 10 "♦︎"))])
 ;; simple truthy meta
 ^::clerk/no-cache
 (def random-thing (rand-int 1000))
