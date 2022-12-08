@@ -836,7 +836,7 @@
   {:name :clerk/code-block :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
                                            (-> wrapped-value
                                                (assoc :nextjournal/viewer (if (:fold? value) :code-folded :code))
-                                               (update :nextjournal/value (some-fn :text* :text))))})
+                                               (update :nextjournal/value :text*)))})
 
 (def tagged-value-viewer
   {:name :tagged-value
