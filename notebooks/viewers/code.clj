@@ -100,10 +100,20 @@ with     quite
 (def ^::clerk/no-cache random-thing-2 (rand-int 1000))
 
 ;; comments in-between should be preserved
-^{:what/is-this 123 :and 'this ::clerk/no-cache true}
+^{:some/key 123 :and 'this ::clerk/no-cache true}
 ;; wait
-'fooalsdkfj
+'some-symbol
 
 ^::clerk/no-cache
 ;; wait
-'fooalsdkfj
+'some-symbol
+
+;; meta with unbalanced maps should throw as late as read-time not parse-time
+;;
+;;     ^{:a 1 :c}
+;;    'what
+
+#_
+(comment
+  ^{:a 1 :c}
+  'what)

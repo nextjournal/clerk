@@ -162,22 +162,25 @@
 (defn guard [p f] (fn [x] (when (p x) (f x))))
 
 (defn strip-meta [node]
-  (if-not (= :meta (n/tag node))
-    node
-    (let [meta-sexpr (-> node n/children first n/sexpr)
-          clerk-meta-key (comp #{"??_clerk_??" "nextjournal.clerk"} namespace)
-          user-map-meta (when (map? meta-sexpr)
-                          (not-empty (apply dissoc meta-sexpr
-                                            (filter (guard keyword? clerk-meta-key)
-                                                    (keys meta-sexpr)))))]
-      (if-some [new-meta (or user-map-meta
-                             (when (or (and (not (keyword? meta-sexpr))
-                                            (not (map? meta-sexpr)))
-                                       (and (keyword? meta-sexpr)
-                                            (not (clerk-meta-key meta-sexpr))))
-                               meta-sexpr))]
-        (n/meta-node (cons new-meta (map strip-meta (-> node n/children rest))))
-        (n/forms-node (map strip-meta (drop-while n/whitespace? (-> node n/children rest))))))))
+  (cond-> node
+    (= :meta (n/tag node))
+    (as-> node
+      (try
+        (let [meta-sexpr (-> node n/children first n/sexpr)
+              clerk-meta-key (comp #{"??_clerk_??" "nextjournal.clerk"} namespace)
+              user-map-meta (when (map? meta-sexpr)
+                              (not-empty (apply dissoc meta-sexpr
+                                                (filter (guard keyword? clerk-meta-key)
+                                                        (keys meta-sexpr)))))]
+          (if-some [new-meta (or user-map-meta
+                                 (when (or (and (not (keyword? meta-sexpr))
+                                                (not (map? meta-sexpr)))
+                                           (and (keyword? meta-sexpr)
+                                                (not (clerk-meta-key meta-sexpr))))
+                                   meta-sexpr))]
+            (n/meta-node (cons new-meta (map strip-meta (-> node n/children rest))))
+            (n/forms-node (map strip-meta (drop-while n/whitespace? (-> node n/children rest))))))
+        (catch #?(:clj Exception :cljs js/Error) _ node)))))
 
 #_
 (-> "^::clerk/foo \n^{::clerk/bar true :some-key false}     (view that)\n"

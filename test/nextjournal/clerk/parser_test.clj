@@ -108,7 +108,8 @@ par two"))))
                         {:text* "^:keep-me\n(view that)"}
                         {:text* "^:should\n(do nothing)"}
                         {:text* "^also\n(do nothing)"}
-                        {:text* "^{:this \"as well\"}\n(do nothing)"}]}
+                        {:text* "^{:this \"as well\"}\n(do nothing)"}
+                        {:text* "^{:un :balanced :map}\n(do nothing)"}]}
               (parser/parse-clojure-string "
 ^::clerk/no-cache
 (do effect)
@@ -128,5 +129,8 @@ par two"))))
 (do nothing)
 
 ^{:this \"as well\"}
+(do nothing)
+
+^{:un :balanced :map}
 (do nothing)
 "))))
