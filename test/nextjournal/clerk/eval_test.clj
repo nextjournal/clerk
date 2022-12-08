@@ -167,7 +167,7 @@
 
   (testing "assigns folded visibility"
     (is (match? [{:nextjournal/viewer {:name :code-folded}
-                  :nextjournal/value "^{:nextjournal.clerk/visibility :fold}{:some :map}"}
+                  :nextjournal/value "{:some :map}"}
                  {:nextjournal/value {:nextjournal/fetch-opts {:blob-id string?}
                                       :nextjournal/hash string?}}]
                 (eval+extract-doc-blocks "^{:nextjournal.clerk/visibility :fold}{:some :map}"))))
