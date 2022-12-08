@@ -122,5 +122,3 @@ par two"))))
 ^:should
 (do nothing)
 "))))
-
-(clojure.test/run-tests *ns*)

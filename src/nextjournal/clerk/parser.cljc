@@ -173,16 +173,16 @@
     (let [meta-sexpr (-> node n/children first n/sexpr)]
       (cond (map? meta-sexpr)
             (if-some [stripped-meta (-> meta-sexpr strip-clerk-keys not-empty)]
-              (n/meta-node (cons stripped-meta (map strip-meta (-> node :children rest))))
-              (n/forms-node (map strip-meta (drop-while (comp whitespace n/tag) (-> node :children rest)))))
+              (n/meta-node (cons stripped-meta (map strip-meta (-> node n/children rest))))
+              (n/forms-node (map strip-meta (drop-while (comp whitespace n/tag) (-> node n/children rest)))))
 
             (keyword? meta-sexpr)
             (if (#{"??_clerk_??" "nextjournal.clerk"} (namespace meta-sexpr))
-              (n/forms-node (map strip-meta (drop-while (comp whitespace n/tag) (-> node :children rest))))
-              (n/meta-node (cons meta-sexpr (map strip-meta (-> node :children rest)))))
+              (n/forms-node (map strip-meta (drop-while (comp whitespace n/tag) (-> node n/children rest))))
+              (n/meta-node (cons meta-sexpr (map strip-meta (-> node n/children rest)))))
 
             'else
-            (n/meta-node (cons meta-sexpr (map strip-meta (-> node :children rest))))))))
+            (n/meta-node (cons meta-sexpr (map strip-meta (-> node n/children rest))))))))
 
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
