@@ -198,16 +198,13 @@
                 (-> state
                     (assoc :add-comment-on-line? true)
                     (update :nodes rest)
-                    (update :blocks conj (as-> {:type :code
-                                                :text (n/string node)
-                                                :loc (-> (meta node)
-                                                         (set/rename-keys {:row :line
-                                                                           :col :column})
-                                                         (select-keys [:line :column]))} block
-                                           (let [node' (strip-meta node)]
-                                             (cond-> block
-                                               (not= node' node)
-                                               (assoc :text* (n/string node')))))))
+                    (update :blocks conj {:type :code
+                                          :text (n/string node)
+                                          :text* (n/string (strip-meta node))
+                                          :loc (-> (meta node)
+                                                   (set/rename-keys {:row :line
+                                                                     :col :column})
+                                                   (select-keys [:line :column]))}))
 
                 (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
                 (-> state
