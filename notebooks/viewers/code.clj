@@ -1,7 +1,6 @@
 ;; # 👔 Code Viewer
 (ns viewers.code
-  {:nextjournal.clerk/no-cache true
-   :nextjournal.clerk/toc true}
+  {:nextjournal.clerk/toc true}
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as viewer]))
 
@@ -73,6 +72,7 @@ with     quite
 
 @editable-code
 
+^{::clerk/visibility {:code :hide}}
 (comment
   (do
     (reset! editable-code "(def fib
@@ -88,3 +88,8 @@ with     quite
 ;; remove everything
 ^{::clerk/visibility {:result :show} ::clerk/no-cache true ::clerk/width :wide}
 (repeat 2 (random-uuid))
+;; simple truthy meta
+^::clerk/no-cache
+(def random-thing (rand-int 1000))
+;; not addressed
+(def ^::clerk/no-cache random-thing-2 (rand-int 1000))
