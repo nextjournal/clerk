@@ -98,3 +98,12 @@ with     quite
 (def random-thing (rand-int 1000))
 ;; not addressed
 (def ^::clerk/no-cache random-thing-2 (rand-int 1000))
+
+;; comments in-between should be preserved
+^{:what/is-this 123 :and 'this ::clerk/no-cache true}
+;; wait
+'fooalsdkfj
+
+^::clerk/no-cache
+;; wait
+'fooalsdkfj

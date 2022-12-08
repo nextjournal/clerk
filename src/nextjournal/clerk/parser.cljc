@@ -159,8 +159,6 @@
 (def whitespace-on-line-tags
   #{:comment :whitespace :comma})
 
-(def whitespace (conj whitespace-on-line-tags :newline))
-
 (defn guard [p f] (fn [x] (when (p x) (f x))))
 (defn strip-meta [node]
   (if-not (= :meta (n/tag node))
@@ -178,7 +176,7 @@
                                             (not (clerk-meta-key meta-sexpr))))
                                meta-sexpr))]
         (n/meta-node (cons new-meta (map strip-meta (-> node n/children rest))))
-        (n/forms-node (map strip-meta (drop-while (comp whitespace n/tag)
+        (n/forms-node (map strip-meta (drop-while (comp n/whitespace? n/tag)
                                                   (-> node n/children rest))))))))
 
 #_
