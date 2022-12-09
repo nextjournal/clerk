@@ -1,4 +1,5 @@
-{:deps {applied-science/js-interop {:mvn/version "0.3.3"}
+{:paths ["."]
+ :deps {applied-science/js-interop {:mvn/version "0.3.3"}
         binaryage/devtools {:mvn/version "1.0.3"}
         cider/cider-nrepl {:mvn/version "0.28.3"}
         org.babashka/sci {:mvn/version "0.5.36"}
