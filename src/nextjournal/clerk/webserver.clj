@@ -154,9 +154,9 @@
         "_blob" (serve-blob @!doc (extract-blob-opts req))
         ("build" "js") (serve-file "public" req)
         "_ws" {:status 200 :body "upgrading..."}
-        {:status  200
+        {:status 200
          :headers {"Content-Type" "text/html"}
-         :body    (view/doc->html (or @!doc (help-doc)) @!error)})
+         :body (view/doc->html {:doc (or @!doc (help-doc)) :error @!error})})
       (catch Throwable e
         {:status  500
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))

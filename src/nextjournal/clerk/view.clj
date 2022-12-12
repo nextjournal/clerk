@@ -76,16 +76,7 @@ let app = nextjournal.clerk.static_app
 let opts = viewer.read_string(" (-> state v/->edn pr-str) ")
 app.init(opts)\n"]]))
 
-(defn doc->html [doc error]
-  (->html {:doc (doc->viewer doc)
-           :error error
-           :resource->url @config/!resource->url}))
-
-(defn doc->static-html [doc]
-  (->html {:conn-ws? false
-           :doc (doc->viewer {:inline-results? true} doc)
-           :resource->url @config/!resource->url}))
-
-#_(let [out "test.html"]
-    (spit out (doc->static-html (nextjournal.clerk.eval/eval-file "notebooks/pagination.clj")))
-    (clojure.java.browse/browse-url out))
+(defn doc->html [opts]
+  (->html (-> opts
+              (update :doc doc->viewer)
+              (assoc :resource->url @config/!resource->url))))
