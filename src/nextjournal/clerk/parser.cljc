@@ -224,6 +224,7 @@
               (when doc?
                 (select-keys md-context [:title :toc])))))))
 
+#_(parse-clojure-string {:doc? true} "'code ;; foo\n;; bar")
 #_(parse-clojure-string "'code , ;; foo\n;; bar")
 #_(parse-clojure-string "'code\n;; foo\n;; bar")
 #_(keys (parse-clojure-string {:doc? true} (slurp "notebooks/viewer_api.clj")))
