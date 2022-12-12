@@ -176,10 +176,10 @@
         [_ index] path]
     (-> state
         (assoc :md-context doc)
-        ;; take only new nodes, keep context intact
         (update :blocks conj {:type :markdown
                               :doc (-> doc
                                        (select-keys [:type :content])
+                                       ;; take only new nodes, keep context intact
                                        (update :content subvec (inc index)))}))))
 
 #_(-> {:md-context (markdown-context)
