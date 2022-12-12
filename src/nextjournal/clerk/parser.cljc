@@ -162,8 +162,9 @@
 (defn markdown-context []
   (update markdown.parser/empty-doc
           :text-tokenizers (partial map markdown.parser/normalize-tokenizer)))
+
 #_(markdown-context)
-;; TODO: move to markdown lib
+
 (defn parse-markdown
   "Like `n.markdown.parser/parse` but allows to reuse the same context in successive calls"
   [ctx md]
