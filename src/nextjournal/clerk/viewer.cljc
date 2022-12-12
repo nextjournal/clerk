@@ -582,20 +582,14 @@
 #_(datafy-scope *ns*)
 #_(datafy-scope #'datafy-scope)
 
-(defn ->slug [text]
-  (apply str
-         (map (comp str/lower-case
-                    (fn [c] (case c (\space \-) \_ c))) text)))
-#_ (->slug "Hello There")
-
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:div.viewer-markdown])}
 
    ;; blocks
    {:name :nextjournal.markdown/heading
     :transform-fn (into-markup
-                   (fn [{:as node :keys [heading-level]}]
-                     [(str "h" heading-level) {:id (->slug (md.transform/->text node))}]))}
+                   (fn [{:keys [id heading-level]}]
+                     [(str "h" heading-level) {:id id}]))}
    {:name :nextjournal.markdown/image :transform-fn #(with-viewer :html [:img.inline (-> % ->value :attrs)])}
    {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}

@@ -36,7 +36,7 @@
 
 (defn toc-items [items]
   (reduce
-   (fn [acc {:as item :keys [content children]}]
+   (fn [acc {:as item :keys [content children id]}]
      (if content
        (let [title (md.transform/->text item)]
          (->> {:title title
