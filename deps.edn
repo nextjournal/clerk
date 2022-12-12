@@ -49,8 +49,8 @@
                                org.clojure/test.check {:mvn/version "1.1.1"}
                                lambdaisland/kaocha {:mvn/version "1.66.1034"}}
                   :extra-paths ["test"]
-                  :exec-fn kaocha.runner/exec-fn
-                  :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"http://localhost:7778/js/viewer.js\"}"]}
+                  :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}"]
+                  :exec-fn kaocha.runner/exec-fn}
 
            :demo {:extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
                                org.xerial/sqlite-jdbc {:mvn/version "3.34.0"}
