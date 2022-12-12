@@ -266,7 +266,7 @@
         (throw (ex-info (str "Clerk build! failed\n" out "\n" err) ret))))
     (let [url (viewer/store+get-cas-url! (assoc opts :ext "css") (fs/read-all-bytes tw-output))]
       (fs/delete-tree tw-folder)
-      url)))
+      (update opts :resource->url assoc "/css/viewer.css" url))))
 
 (defn doc-url [{:as opts :keys [bundle?]} docs file path]
   (let [url (get (build-path->url opts docs) path)]
@@ -315,13 +315,12 @@
                         result)) state (range))
         _ (when-let [first-error (some :error state)]
             (throw first-error))
-
         opts (if compile-css?
                (do
                  (report-fn {:stage :compiling-css})
-                 (let [{duration :time-ms resource-url :result} (eval/time-ms (compile-css! opts state))]
+                 (let [{duration :time-ms opts :result} (eval/time-ms (compile-css! opts state))]
                    (report-fn {:stage :done :duration duration})
-                   (update opts :resource->url assoc "/css/viewer.css" resource-url)))
+                   opts))
                opts)
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
     (when upload-cache-fn
