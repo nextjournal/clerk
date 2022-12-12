@@ -81,7 +81,8 @@
       :init (str "👷🏼 Clerk is building " (count state) " notebooks…\n🧐 Parsing… ")
       :parsed (str "Done in " duration ". ✅\n🔬 Analyzing… ")
       (:built :analyzed :done) (if error
-                                 (str "Errored in " duration ". ❌\n")
+                                 (let [verb (case state :build "building " :analyzed "analyzing " :done "completing " "handling ")]
+                                   (str "Errored " verb (:file doc) " in " duration ". ❌\n"))
                                  (str "Done in " duration ". ✅\n"))
       :building (str "🔨 Building \"" (:file doc) "\"… ")
       :compiling-css "🎨 Compiling CSS… "
@@ -290,11 +291,12 @@
         {state :result duration :time-ms} (eval/time-ms (reduce (fn [state doc]
                                                                   (try (conj state (-> doc analyzer/build-graph analyzer/hash))
                                                                        (catch Exception e
-                                                                         (reduced {:error e}))))
+                                                                         (reduced {:doc doc
+                                                                                   :error e}))))
                                                                 []
                                                                 state))
         _ (if-let [error (:error state)]
-            (do (report-fn {:stage :analyzed :error error :duration duration})
+            (do (report-fn {:stage :analyzed :doc (:doc state) :error error :duration duration})
                 (throw error))
             (report-fn {:stage :analyzed :state state :duration duration}))
         _ (when download-cache-fn
