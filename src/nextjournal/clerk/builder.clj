@@ -171,10 +171,12 @@
          (let [opts' (cond-> opts
                        index (assoc :index (str index)))
                expanded-paths (when expand-paths? (expand-paths opts'))]
-           (cond-> opts'
-             expand-paths? (dissoc :expand-paths?)
-             expanded-paths (assoc :expanded-paths expanded-paths)
-             (and (not index) (= 1 (count expanded-paths))) (assoc :index (first expanded-paths))))))
+           (-> opts'
+               (update :resource->url (partial merge {} @config/!resource->url))
+               (cond->
+                 expand-paths? (dissoc :expand-paths?)
+                 expanded-paths (assoc :expanded-paths expanded-paths)
+                 (and (not index) (= 1 (count expanded-paths))) (assoc :index (first expanded-paths)))))))
 
 #_(process-build-opts {:index 'book.clj :expand-paths? true})
 #_(process-build-opts {:paths ["notebooks/rule_30.clj"] :expand-paths? true})
@@ -197,14 +199,14 @@
 
 (defn ssr!
   "Shells out to node to generate server-side-rendered html."
-  [static-app-opts]
+  [{:as static-app-opts :keys [resource->url]}]
   (let [{:as ret :keys [out err exit]}
         (sh "node"
             "--abort-on-uncaught-exception"
             "--experimental-network-imports"
             "--input-type=module"
             "--eval"
-            (str "import '" (@config/!asset-map "/js/viewer.js") "';"
+            (str "import '" (resource->url "/js/viewer.js") "';"
                  "console.log(nextjournal.clerk.static_app.ssr(" (pr-str (pr-str static-app-opts)) "))"))]
     (if (= 0 exit)
       (assoc static-app-opts :html out)
@@ -235,7 +237,7 @@
 
 (defn compile-css!
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
-  [{:as opts :keys [out-path]} docs]
+  [{:as opts :keys [resource->url]} docs]
   (let [tw-folder (fs/create-dirs "tw")
         tw-input (str tw-folder "/input.css")
         tw-config (str tw-folder "/tailwind.config.cjs")
@@ -245,7 +247,7 @@
     ;; NOTE: a .cjs extension is safer in case the current npm project is of type module (like Clerk's): in this case all .js files
     ;; are treated as ES modules and this is not the case of our tw config.
     (spit tw-input (slurp (io/resource "stylesheets/viewer.css")))
-    (spit tw-viewer (slurp (get @config/!asset-map "/js/viewer.js")))
+    (spit tw-viewer (slurp (get resource->url "/js/viewer.js")))
     (doseq [{:keys [file viewer]} docs]
       (spit (let [path (fs/path tw-folder (str/replace file #"\.(cljc?|md)$" ".edn"))]
               (fs/create-dirs (fs/parent path))
@@ -262,9 +264,9 @@
               "--minify")]
       (when-not (= 0 exit)
         (throw (ex-info (str "Clerk build! failed\n" out "\n" err) ret))))
-    (swap! config/!resource->url assoc
-           "/css/viewer.css" (viewer/store+get-cas-url! (assoc opts :ext "css") (fs/read-all-bytes tw-output)))
-    (fs/delete-tree tw-folder)))
+    (let [url (viewer/store+get-cas-url! (assoc opts :ext "css") (fs/read-all-bytes tw-output))]
+      (fs/delete-tree tw-folder)
+      url)))
 
 (defn doc-url [{:as opts :keys [bundle?]} docs file path]
   (let [url (get (build-path->url opts docs) path)]
@@ -313,10 +315,14 @@
                         result)) state (range))
         _ (when-let [first-error (some :error state)]
             (throw first-error))
-        _ (when compile-css?
-            (report-fn {:stage :compiling-css})
-            (let [{duration :time-ms} (eval/time-ms (compile-css! opts state))]
-              (report-fn {:stage :done :duration duration})))
+
+        opts (if compile-css?
+               (do
+                 (report-fn {:stage :compiling-css})
+                 (let [{duration :time-ms resource-url :result} (eval/time-ms (compile-css! opts state))]
+                   (report-fn {:stage :done :duration duration})
+                   (update opts :resource->url assoc "/css/viewer.css" resource-url)))
+               opts)
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
     (when upload-cache-fn
       (report-fn {:stage :uploading-cache})

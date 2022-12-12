@@ -23,8 +23,8 @@
 #_ (relative? "hello/css")
 #_ (relative? "https://cdn.stylesheet.css")
 
-(defn include-viewer-css [{:as state :keys [current-path]}]
-  (if-let [css-url (@config/!resource->url "/css/viewer.css")]
+(defn include-viewer-css [{:as state :keys [current-path resource->url]}]
+  (if-let [css-url (resource->url "/css/viewer.css")]
     (hiccup/include-css (cond-> css-url
                           (and current-path (relative? css-url))
                           (->> (str (v/relative-root-prefix-from (v/map-index state current-path))))))
@@ -37,12 +37,12 @@
 (defn include-css+js [state]
   (list
    (include-viewer-css state)
-   [:script {:type "module" :src (@config/!resource->url "/js/viewer.js")}]
+   [:script {:type "module" :src (get-in state [:resource->url "/js/viewer.js"])}]
    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
    [:link {:rel "preconnect" :href "https://fonts.bunny.net"}]
    (hiccup/include-css "https://fonts.bunny.net/css?family=fira-code:400,700%7Cfira-mono:400,700%7Cfira-sans:400,400i,500,500i,700,700i%7Cfira-sans-condensed:700,700i%7Cpt-serif:400,400i,700,700i")))
 
-(defn ->html [{:keys [conn-ws?] :or {conn-ws? true}} state]
+(defn ->html [{:as state :keys [conn-ws?] :or {conn-ws? true}}]
   (hiccup/html5
    {:class "overflow-hidden min-h-screen"}
    [:head
@@ -77,10 +77,14 @@ let opts = viewer.read_string(" (-> state v/->edn pr-str) ")
 app.init(opts)\n"]]))
 
 (defn doc->html [doc error]
-  (->html {} {:doc (doc->viewer {} doc) :error error}))
+  (->html {:doc (doc->viewer doc)
+           :error error
+           :resource->url @config/!resource->url}))
 
 (defn doc->static-html [doc]
-  (->html {:conn-ws? false} {:doc (doc->viewer {:inline-results? true} doc)}))
+  (->html {:conn-ws? false
+           :doc (doc->viewer {:inline-results? true} doc)
+           :resource->url @config/!resource->url}))
 
 #_(let [out "test.html"]
     (spit out (doc->static-html (nextjournal.clerk.eval/eval-file "notebooks/pagination.clj")))
