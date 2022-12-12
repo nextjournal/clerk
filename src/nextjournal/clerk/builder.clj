@@ -172,7 +172,7 @@
                        index (assoc :index (str index)))
                expanded-paths (when expand-paths? (expand-paths opts'))]
            (-> opts'
-               (update :resource->url (partial merge {} @config/!resource->url))
+               (update :resource->url #(merge {} %2 %1) @config/!resource->url)
                (cond->
                  expand-paths? (dissoc :expand-paths?)
                  expanded-paths (assoc :expanded-paths expanded-paths)
