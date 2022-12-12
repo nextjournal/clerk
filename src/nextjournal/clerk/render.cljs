@@ -40,7 +40,7 @@
      (if content
        (let [title (md.transform/->text item)]
          (->> {:title title
-               :path (str "#" (viewer/->slug title))
+               :path (str "#" id)
                :items (toc-items children)}
               (conj acc)
               vec))
