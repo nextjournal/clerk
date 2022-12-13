@@ -11,11 +11,11 @@
             [goog.string :as gstring]
             [nextjournal.clerk.render.code :as code]
             [nextjournal.clerk.render.hooks :as hooks]
+            [nextjournal.clerk.render.navbar :as navbar]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.ui.components.icon :as icon]
             [nextjournal.ui.components.motion :as motion]
-            [nextjournal.ui.components.navbar :as navbar]
             [nextjournal.view.context :as view-context]
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.mathjax :as mathjax]
@@ -126,20 +126,25 @@
 
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class toc toc-visibility]}]
   (r/with-let [local-storage-key "clerk-navbar"
+               navbar-width 220
                !state (r/atom {:toc (toc-items (:children toc))
                                :md-toc toc
                                :dark-mode? (localstorage-get local-storage-dark-mode-key)
                                :theme {:slide-over "bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900"}
-                               :width 220
+                               :width navbar-width
                                :mobile-width 300
                                :local-storage-key local-storage-key
                                :set-hash? (not bundle?)
+                               :scroll-el (js/document.querySelector "html")
                                :open? (if-some [stored-open? (localstorage-get local-storage-key)]
                                         stored-open?
                                         (not= :collapsed toc-visibility))})
-               root-ref-fn #(when % (setup-dark-mode! !state))
-               ref-fn #(when % (swap! !state assoc :scroll-el %))]
-    (let [{:keys [md-toc]} @!state]
+               root-ref-fn #(when % (setup-dark-mode! !state))]
+    (let [{:keys [md-toc mobile? open?]} @!state
+          doc-inset (cond
+                      mobile? 0
+                      open? navbar-width
+                      :else 0)]
       (when-not (= md-toc toc)
         (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc :open? (not= :collapsed toc-visibility)))
       [:div.flex
@@ -153,11 +158,15 @@
             [icon/menu {:size 20}]
             [:span.uppercase.tracking-wider.ml-1.font-bold
              {:class "text-[12px]"} "ToC"]]
-           {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-3 text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
+           {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-[7px] text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
           [navbar/panel !state [navbar/navbar !state]]])
        [:div.flex-auto.w-screen.scroll-container
-        {:ref ref-fn}
-        [:div {:class (or css-class "flex flex-col items-center viewer-notebook flex-auto")}
+        [:> motion/div
+         {:key "viewer-notebook"
+          :initial {:margin-left doc-inset}
+          :animate {:margin-left doc-inset}
+          :transition navbar/spring
+          :class (or css-class "flex flex-col items-center viewer-notebook flex-auto")}
          (doall
           (map-indexed (fn [idx x]
                          (let [{viewer-name :name} (viewer/->viewer x)
