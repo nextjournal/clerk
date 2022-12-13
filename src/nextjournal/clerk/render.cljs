@@ -405,7 +405,7 @@
 
 (defn render-string [s {:as opts :keys [path !expanded-at] :or {path []}}]
   (let [expanded? (get @!expanded-at path)]
-    (into [:span]
+    (into [:span.whitespace-pre]
           (map #(if (string? %)
                   (if expanded?
                     (into [:<>] (interpose [:<> [:br]] (str/split-lines %)))
@@ -414,16 +414,15 @@
           (if (string? s) [s] s))))
 
 (defn render-quoted-string [s {:as opts :keys [path viewer !expanded-at] :or {path []}}]
-  (let [{:keys [closing-paren]} viewer]
-    [:span.cmt-string.inspected-value.whitespace-nowrap.inline-flex
-     [:span
+  (let [{:keys [opening-paren closing-paren]} viewer]
+    [:span.inspected-value.inline-flex
+     [:span.cmt-string
       (if (some #(and (string? %) (str/includes? % "\n")) (if (string? s) [s] s))
-        [expand-button !expanded-at "\"" path]
-        [:span "\""])]
+        [expand-button !expanded-at opening-paren path]
+        [:span opening-paren])]
      [:div
-      (viewer/->value (render-string s opts))
-      "\""
-      closing-paren]]))
+      [:span.cmt-string (viewer/->value (render-string s opts)) (first closing-paren)]
+      (when (list? closing-paren) (into [:<>] (rest closing-paren)))]]))
 
 (defn render-number [num]
   [:span.cmt-number.inspected-value
@@ -627,9 +626,28 @@
   (clerk-swap! atom (constantly new-val))
   new-val)
 
+(defonce !pending-clerk-eval-replies
+  (atom {}))
+
+(defn clerk-eval [form]
+  (let [eval-id (gensym)
+        promise (js/Promise. (fn [resolve reject]
+                               (swap! !pending-clerk-eval-replies assoc eval-id {:resolve resolve :reject reject})))]
+    (.ws_send ^js goog/global (pr-str {:type :eval :form form :eval-id eval-id}))
+    promise))
+
+(defn process-eval-reply! [{:keys [eval-id reply error]}]
+  (if-let [{:keys [resolve reject]} (get @!pending-clerk-eval-replies eval-id)]
+    (do (swap! !pending-clerk-eval-replies dissoc eval-id)
+        (cond reply (resolve reply)
+              error (reject error)))
+    (js/console.warn :process-eval-reply!/not-found :eval-id eval-id :keys (keys @!pending-clerk-eval-replies))))
+
+
 (defn ^:export dispatch [{:as msg :keys [type]}]
   (let [dispatch-fn (get {:patch-state! patch-state!
-                          :set-state! set-state!}
+                          :set-state! set-state!
+                          :eval-reply process-eval-reply!}
                          type
                          (fn [_]
                            (js/console.warn (str "no on-message dispatch for type `" type "`"))))]
@@ -643,9 +661,6 @@
 (defn ^:export ^:dev/after-load mount []
   (when react-root
     (.render react-root (r/as-element [root]))))
-
-(defn clerk-eval [form]
-  (.ws_send ^js goog/global (pr-str {:type :eval :form form})))
 
 (defn render-katex [tex-string {:keys [inline?]}]
   [:span {:dangerouslySetInnerHTML {:__html (katex/to-html-string tex-string (j/obj :displayMode (not inline?)))}}])
@@ -667,6 +682,17 @@
 
 ;; TODO: remove
 (def reagent-viewer render-reagent)
+
+(defn render-promise [p opts]
+  (let [!state (hooks/use-state {:pending true})]
+    (hooks/use-effect (fn []
+                        (-> p
+                            (.then #(reset! !state {:value %}))
+                            (.catch #(reset! !state {:error %})))))
+    (let [{:keys [pending value error]} @!state]
+      (if pending
+        default-loading-view
+        [inspect (or pending value error)]))))
 
 
 (defn with-d3-require [{:keys [package loading-view]

@@ -105,8 +105,14 @@
   ([form] (analyze-form {} form))
   ([bindings form]
    (binding [config/*in-clerk* true]
-     (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings
-                                                :passes-opts analyzer-passes-opts}))))
+     (try
+       (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings
+                                                  :passes-opts analyzer-passes-opts})
+       (catch java.lang.AssertionError e
+         (throw (ex-info "Failed to analyze form"
+                         (-> (select-keys (meta form) [:line :col :clojure.core/eval-file])
+                             (assoc  :form form))
+                         e)))))))
 
 (defn analyze [form]
   (let [!deps      (atom #{})
@@ -214,8 +220,8 @@
 
 #_(->> (nextjournal.clerk.eval/eval-string "(rand-int 100) (rand-int 100) (rand-int 100)") :blocks (mapv #(-> % :result :nextjournal/value)))
 
-(defn- analyze-deps [{:as analyzed :keys [form vars id]} state dep]
-  (try (reduce (fn [state var]
+(defn- analyze-deps [{:as analyzed :keys [form vars]} state dep]
+  (try (reduce (fn [state _var] ;; TODO: check if `_var` needs to be used
                  (update state :graph #(dep/depend % (->key analyzed) dep)))
                state
                (->ana-keys analyzed))
@@ -267,6 +273,9 @@
             (throw (ex-info (str "The var `#'" missing-dep "` is being referenced, but Clerk can't find it in the namespace's source code. Did you remove it? This validation can fail when the namespace is mutated programmatically (e.g. using `clojure.core/intern` or side-effecting macros). You can turn off this check by adding `{:nextjournal.clerk/error-on-missing-vars :off}` to the namespace metadata.")
                             {:var-name missing-dep :form form :file file #_#_:defined defined }))))))))
 
+(defn filter-code-blocks-without-form [doc]
+  (update doc :blocks #(filterv (some-fn :form (complement parser/code?)) %)))
+
 (defn analyze-doc
   ([doc]
    (analyze-doc {:doc? true :graph (dep/graph)} doc))
@@ -282,8 +291,8 @@
                                               (instance? clojure.lang.IObj form)
                                               (vary-meta merge (cond-> loc
                                                                  (:file doc) (assoc :clojure.core/eval-file (str (:file doc))))))
-                                   {:as analyzed :keys [vars deps ns-effect?]} (cond-> (analyze form+loc)
-                                                                                 (:file doc) (assoc :file (:file doc)))
+                                   {:as analyzed :keys [deps ns-effect?]} (cond-> (analyze form+loc)
+                                                                            (:file doc) (assoc :file (:file doc)))
                                    _ (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
                                        (eval form))
                                    block-id (get-block-id !id->count (merge analyzed block))
@@ -304,7 +313,8 @@
          doc? (-> parser/add-block-visibility
                   parser/add-open-graph-metadata
                   parser/add-auto-expand-results
-                  parser/add-css-class))))))
+                  parser/add-css-class
+                  filter-code-blocks-without-form))))))
 
 #_(let [parsed (nextjournal.clerk.parser/parse-clojure-string "clojure.core/dec")]
     (build-graph (analyze-doc parsed)))
@@ -507,3 +517,23 @@
 
 #_(do (reset! scratch-recompute/!state my-num) (nextjournal.clerk/recompute!))
 #_(do (reset! scratch-recompute/!state my-num) (nextjournal.clerk/show! 'scratch-recompute))
+
+(defn find-blocks
+  "Finds the first matching block in the given `analyzed-doc` using
+  `sym-or-form`:
+   * when given a symbol by `:var` or `:id`
+   * when given a by `:form`"
+  [{:as _analyzed-doc :keys [blocks ns]} sym-or-form]
+  (cond (symbol? sym-or-form)
+        (let [qualified-symbol (if (qualified-symbol? sym-or-form)
+                                 sym-or-form
+                                 (symbol (str ns) (name sym-or-form)))]
+          (filter #(or (= qualified-symbol (:var %))
+                       (= qualified-symbol (:id %)))
+                  blocks))
+        (seq? sym-or-form)
+        (filter #(= sym-or-form (:form %)) blocks)))
+
+#_(find-blocks @nextjournal.clerk.webserver/!doc 'scratch/foo)
+#_(find-blocks @nextjournal.clerk.webserver/!doc 'foo)
+#_(find-blocks @nextjournal.clerk.webserver/!doc '(rand-int 1000))

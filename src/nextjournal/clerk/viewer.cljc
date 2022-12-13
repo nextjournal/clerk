@@ -82,7 +82,7 @@
    :cljs
    (extend-type ViewerEval
      IPrintWithWriter
-     (-pr-writer [obj w opts]
+     (-pr-writer [obj w _opts]
        (-write w (str "#viewer-eval "))
        (-write w (pr-str (:form obj))))))
 
@@ -96,7 +96,7 @@
     (read-string (pr-str (->viewer-fn 'number?))))
 
 (comment
-  (def num? (form->fn+form 'number?))
+  (def num? (->viewer-fn 'number?))
   (num? 42)
   (:form num?)
   (pr-str num?))
@@ -307,7 +307,7 @@
   (get-safe :nextjournal.clerk/datafied))
 
 (defn with-md-viewer [wrapped-value]
-  (let [{:as node :keys [type]} (->value wrapped-value)]
+  (let [{:as _node :keys [type]} (->value wrapped-value)]
     (when-not type
       (throw (ex-info "no type given for with-md-viewer" {:wrapped-value wrapped-value})))
     (with-viewer (keyword "nextjournal.markdown" (name type)) wrapped-value)))
@@ -329,6 +329,25 @@
                                                        [(inspect-fn) (process-wrapped-value w)])))
                                             content))))))))
 
+#?(:clj (defn roundtrippable? [x]
+          (= x (-> x str read-string))))
+
+#?(:clj
+   (defmethod print-method clojure.lang.Keyword [o w]
+     (if (roundtrippable? o)
+       (.write w (str o))
+       (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
+                                          (list 'keyword ns (name o))
+                                          (list 'keyword (name o)))))))))
+
+#?(:clj
+   (defmethod print-method clojure.lang.Symbol [o w]
+     (if (roundtrippable? o)
+       (.write w (str o))
+       (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
+                                          (list 'symbol ns (name o))
+                                          (list 'symbol (name o)))))))))
+
 #?(:clj
    (defn ->edn [x]
      (binding [*print-namespace-maps* false
@@ -337,6 +356,7 @@
        (pr-str x))))
 
 #_(->edn {:nextjournal/value :foo})
+#_(->edn {(keyword "with spaces") :foo})
 
 (defn update-val [f & args]
   (fn [wrapped-value] (apply update wrapped-value :nextjournal/value f args)))
@@ -642,7 +662,11 @@
   {:pred char? :render-fn '(fn [c] [:span.cmt-string.inspected-value "\\" c])})
 
 (def string-viewer
-  {:pred string? :render-fn 'nextjournal.clerk.render/render-quoted-string :page-size 80})
+  {:pred string?
+   :render-fn 'nextjournal.clerk.render/render-quoted-string
+   :opening-paren "\""
+   :closing-paren "\""
+   :page-size 80})
 
 (def number-viewer
   {:pred number? :render-fn 'nextjournal.clerk.render/render-number})
@@ -828,14 +852,18 @@
 
 
 #?(:cljs
+   (def js-promise-viewer
+     {:name :js-promise :pred #(instance? js/Promise %) :render-fn 'nextjournal.clerk.render/render-promise}))
+
+#?(:cljs
    (def js-object-viewer
      {:name :js-array
       :pred goog/isObject
       :page-size 20
       :opening-paren "{" :closing-paren "}"
       :render-fn '(fn [v opts] (nextjournal.clerk.render/render-tagged-value {:space? true}
-                                                                            "#js"
-                                                                            (nextjournal.clerk.render/render-map v opts)))
+                                                                             "#js"
+                                                                             (nextjournal.clerk.render/render-map v opts)))
       :transform-fn (update-val (fn [^js o]
                                   (into {}
                                         (comp (remove (fn [k] (identical? "function" (goog/typeOf (j/get o k)))))
@@ -950,6 +978,7 @@
    buffered-image-viewer
    ideref-viewer
    regex-viewer
+   #?(:cljs js-promise-viewer)
    #?(:cljs js-array-viewer)
    #?(:cljs js-object-viewer)
    fallback-viewer
@@ -1166,7 +1195,7 @@
          (select-keys wrapped-value [:path :offset])))
 
 (defn get-elision [wrapped-value]
-  (let [{:as fetch-opts :keys [path offset n]} (->fetch-opts wrapped-value)]
+  (let [{:as fetch-opts :keys [n]} (->fetch-opts wrapped-value)]
     (merge fetch-opts (bounded-count-opts n (->value wrapped-value)))))
 
 #_(get-elision (present (range)))
@@ -1183,7 +1212,7 @@
       (update :current-path (fnil conj []) path-segment)))
 
 (defn present+paginate-children [{:as wrapped-value :nextjournal/keys [viewers preserve-keys?] :keys [!budget budget]}]
-  (let [{:as fetch-opts :keys [path offset n]} (->fetch-opts wrapped-value)
+  (let [{:as fetch-opts :keys [offset n]} (->fetch-opts wrapped-value)
         xs (->value wrapped-value)
         paginate? (and (number? n) (not preserve-keys?))
         fetch-opts' (cond-> fetch-opts
@@ -1437,14 +1466,15 @@
 
 (defn ^:dynamic doc-url [path] (str "#/" path))
 
+(defn print-hide-result-deprecation-warning []
+  #?(:clj (binding [*out* *err*]
+            (prn "`hide-result` has been deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead."))))
+
 (defn hide-result
   "Deprecated, please put ^{:nextjournal.clerk/visibility {:result :hide}} metadata on the form instead."
   {:deprecated "0.10"}
-  ([x] #?(:clj (hide-result {} x)) :cljs x)
-  ([_viewer-opts x]
-   #?(:clj (binding [*out* *err*]
-             (prn "`hide-result` has been deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead.")))
-   x))
+  ([x] (print-hide-result-deprecation-warning) (with-viewer hide-result-viewer {} x))
+  ([viewer-opts x] (print-hide-result-deprecation-warning) (with-viewer hide-result-viewer viewer-opts x)))
 
 (def eval-cljs-result-viewer
   {:transform-fn mark-presented
@@ -1468,7 +1498,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; examples
 (def example-viewer
-  {:transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers] :keys [path current-path]}]
+  {:transform-fn (fn [wrapped-value]
                    (-> wrapped-value
                        mark-preserve-keys
                        (assoc :nextjournal/viewer {:render-fn '(fn [{:keys [form val]} opts]

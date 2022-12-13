@@ -19,3 +19,4 @@ yarn.lock
 /public/build
 .nrepl-port
 .clj-kondo/marick
+.clj-kondo/nextjournal/clerk

@@ -9,6 +9,33 @@
 ;; Code as string
 (clerk/code "(def fib (lazy-cat [0 1] (map + fib (rest fib))))")
 
+;; Stings with line-breaks and whitespace
+
+(def ex
+  (identity "1000
+2000
+3000
+
+4000
+
+5000
+6000
+
+7000
+8000
+9000
+
+10000"))
+
+;; strings with whitespace
+(do "    this is    a    string
+
+with     quite
+
+
+                some
+   whitespace      ")
+
 ;; Editable code viewer
 (clerk/with-viewer
   '(fn [code-str _] [:div.viewer-code [nextjournal.clerk.render.code/editor (reagent/atom code-str)]])
@@ -35,16 +62,8 @@
             (map + fib (rest fib))))")
 
 (def editor-sync-viewer
-  {:transform-fn (comp viewer/mark-presented (viewer/update-val (comp viewer/->viewer-eval symbol ::clerk/var-from-def)))
-   :var-from-def? true
-   :render-fn
-   '(fn [code-state _]
-      [:div.bg-neutral-50
-       [nextjournal.clerk.render.code/editor code-state
-        {:on-change (fn [text] (reset! code-state text))
-         :extensions (.concat (codemirror.view/lineNumbers)
-                              (codemirror.view/highlightActiveLine)
-                              nextjournal.clerk.render.code/paredit-keymap)}]])})
+  (assoc viewer/viewer-eval-viewer :render-fn '(fn [!code _]
+                                                 [:div.bg-neutral-50 [nextjournal.clerk.render.code/editor !code]])))
 
 ^{::clerk/sync true ::clerk/viewer editor-sync-viewer}
 (defonce editable-code (atom "(def fib

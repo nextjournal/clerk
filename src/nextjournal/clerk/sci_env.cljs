@@ -1,6 +1,6 @@
 (ns nextjournal.clerk.sci-env
-  (:require ["framer-motion" :as framer-motion]
-            ["@codemirror/view" :as codemirror-view]
+  (:require ["@codemirror/view" :as codemirror-view]
+            ["framer-motion" :as framer-motion]
             ["vh-sticky-table-header" :refer [StickyTableHeader]]
             [cljs.reader]
             [clojure.string :as str]
@@ -8,7 +8,8 @@
             [goog.object]
             [nextjournal.clerk.parser]
             [nextjournal.clerk.render :as render]
-            [nextjournal.clerk.render.hooks :as hooks]
+            [nextjournal.clerk.render.code]
+            [nextjournal.clerk.render.hooks]
             [nextjournal.clerk.trim-image]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.view.context :as view-context]

@@ -1,0 +1,7 @@
+{:config-in-call {nextjournal.clerk.viewer/->viewer-fn {:linters {:unresolved-symbol {:exclude [clj->js]}
+                                                                  :unresolved-namespace {:exclude [js]}}}
+                  nextjournal.clerk.viewer/->viewer-eval {:linters {:unresolved-symbol {:exclude [clj->js]}
+                                                                    :unresolved-namespace {:exclude [js]}}}}
+ :hooks {:analyze-call {nextjournal.clerk.viewer/->viewer-fn nextjournal.clerk.viewer/->viewer-fn
+                        nextjournal.clerk.viewer/->viewer-eval nextjournal.clerk.viewer/->viewer-fn}}
+ :lint-as {nextjournal.clerk/defcached clojure.core/def}}

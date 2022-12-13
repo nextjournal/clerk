@@ -1,6 +1,6 @@
 (ns nextjournal.clerk.eval-test
   (:require [clojure.string :as str]
-            [clojure.test :refer :all]
+            [clojure.test :refer [deftest is testing]]
             [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.eval :as eval]
@@ -195,9 +195,9 @@
 
 (deftest defcached
   (clerk/defcached my-expansive-thing
-    (do #_(Thread/sleep 10000) 42))
+    (do (Thread/sleep 1 #_10000) 42))
   (is (= 42 my-expansive-thing)))
 
 (deftest with-cache
   (is (= 42 (clerk/with-cache
-              (do #_(Thread/sleep 10000) 42)))))
+              (do (Thread/sleep 1 #_10000) 42)))))

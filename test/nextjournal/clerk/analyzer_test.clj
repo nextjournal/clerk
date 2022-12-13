@@ -6,7 +6,8 @@
             [nextjournal.clerk :as clerk :refer [defcached]]
             [nextjournal.clerk.analyzer :as ana]
             [nextjournal.clerk.parser :as parser]
-            [weavejester.dependency :as dep]))
+            [weavejester.dependency :as dep])
+  (:import (clojure.lang ExceptionInfo)))
 
 (defmacro with-ns-binding [ns-sym & body]
   `(binding [*ns* (find-ns ~ns-sym)]
@@ -123,6 +124,8 @@
                :deps       #{'clojure.core/inc}}
               (ana/analyze '(def my-inc inc))))
 
+  (ana/analyze '(do (def my-inc inc) (def my-dec dec)))
+  
   (is (match? {:ns-effect? false
                :vars '#{nextjournal.clerk.analyzer-test/!state}
                :deps       #{'clojure.lang.Var
@@ -159,7 +162,10 @@
       (is (= (dissoc (ana/analyze '(def answer (do (Thread/sleep 4200) (inc 41)))) :form)
              (dissoc (ana/analyze '(defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)
              (dissoc (ana/analyze '(clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)
-             (dissoc (ana/analyze '(nextjournal.clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form))))))
+             (dissoc (ana/analyze '(nextjournal.clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)))))
+
+  (testing "tools.analyzer AssertionError is rethrown as ExceptionInfo (#307)"
+    (is (thrown? ExceptionInfo (ana/analyze '(def foo [] :bar))))))
 
 (deftest symbol->jar
   (is (ana/symbol->jar 'io.methvin.watcher.PathUtils))
@@ -188,7 +194,10 @@
     (is (empty? (-> "(defmulti foo :bar)" analyze-string :blocks first :deref-deps))))
 
   (testing "can analyze plain var reference (issue #289)"
-    (ana/build-graph (analyze-string "clojure.core/inc"))))
+    (ana/build-graph (analyze-string "clojure.core/inc")))
+
+  (testing "removes block with reader conditional without clj branch (issue #332)"
+    (is (empty? (:blocks (analyze-string "#?(:cljs (inc 41))"))))))
 
 (deftest add-block-ids
   (testing "assigns block ids"

@@ -50,7 +50,7 @@
                    :else
                    file-or-ns)
             doc (try (parser/parse-file {:doc? true} file)
-                     (catch java.io.FileNotFoundException e
+                     (catch java.io.FileNotFoundException _e
                        (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
                                        {:file-or-ns file-or-ns}))))
             _ (reset! !last-file file)
@@ -295,13 +295,10 @@
   ([viewer-opts x] (with-viewer v/katex-viewer viewer-opts x)))
 
 (defn hide-result
-  "Deprecated, please put ^{:nextjournal.clerk/visibility {:result :hide}} metadata on the form instead."
+  "Deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead."
   {:deprecated "0.10"}
-  ([x] (hide-result {} x))
-  ([viewer-opts x]
-   (binding [*out* *err*]
-     (prn "`hide-result` has been deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead."))
-   (with-viewer v/hide-result-viewer viewer-opts x)))
+  ([x] (v/print-hide-result-deprecation-warning) (with-viewer v/hide-result-viewer {} x))
+  ([viewer-opts x] (v/print-hide-result-deprecation-warning) (with-viewer v/hide-result-viewer viewer-opts x)))
 
 
 (defn code
@@ -385,7 +382,7 @@
       (println "Start the Clerk webserver with an optional a file watcher.\n\nOptions:"
                (str "\n" (format-opts (-> #'serve! meta :org.babashka/cli))))
       (println (-> #'serve! meta :doc)))
-    (let [{:as normalized-config
+    (let [{:as _normalized-config
            :keys [browse? watch-paths port show-filter-fn]
            :or {port 7777}} (normalize-opts config)]
       (webserver/serve! {:port port})
@@ -465,16 +462,33 @@
   (build! build-opts))
 
 (defn clear-cache!
-  "Clears the in-memory and file-system caches."
-  []
-  (swap! webserver/!doc dissoc :blob->result)
-  (if (fs/exists? config/cache-dir)
-    (do
-      (fs/delete-tree config/cache-dir)
-      (prn :cache-dir/deleted config/cache-dir))
-    (prn :cache-dir/does-not-exist config/cache-dir)))
+  "Clears the in-memory and file-system caches when called with no arguments.
+
+  Clears the cache for a single result identitfied by `sym-or-form` argument which can be:
+  * a symbol representing the var name (qualified or not)
+  * the form of an anonymous expression"
+  ([]
+   (swap! webserver/!doc dissoc :blob->result)
+   (if (fs/exists? config/cache-dir)
+     (do (fs/delete-tree config/cache-dir)
+         (prn :cache-dir/deleted config/cache-dir))
+     (prn :cache-dir/does-not-exist config/cache-dir)))
+  ([sym-or-form]
+   (if-let [{:as block :keys [id result]} (first (analyzer/find-blocks @webserver/!doc sym-or-form))]
+     (let [{:nextjournal/keys [blob-id]} result
+           cache-file (fs/file config/cache-dir (str "@" blob-id))
+           cached-in-memory? (contains? (:blob->result @webserver/!doc) blob-id)
+           cached-on-fs? (fs/exists? cache-file)]
+       (if-not (or cached-in-memory? cached-on-fs?)
+         (prn :cache/not-cached {:id id})
+         (do (swap! webserver/!doc update :blob->result dissoc blob-id)
+             (fs/delete-if-exists cache-file)
+             (prn :cache/removed {:id id :cached-in-memory? cached-in-memory? :cached-on-fs? cached-on-fs?}))))
+     (prn :cache/no-block-found {:sym-or-form sym-or-form}))))
 
 #_(clear-cache!)
+#_(clear-cache! 'foo)
+#_(clear-cache! '(rand-int 1000))
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
 (defmacro with-cache
@@ -513,7 +527,8 @@
 
   (show! "notebooks/test.clj")
 
+  (serve! {:port 7777 :watch-paths ["notebooks"]})
+
   ;; Clear cache
   (clear-cache!)
-
   )

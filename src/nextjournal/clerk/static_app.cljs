@@ -4,10 +4,8 @@
             [clojure.string :as str]
             [nextjournal.clerk.render :as render]
             [nextjournal.clerk.sci-env :as sci-env]
-            [nextjournal.clerk.viewer :as v]
             [nextjournal.devcards :as dc]
             [reagent.core :as r]
-            [reagent.dom :as rdom]
             [reagent.dom.server :as dom-server]
             [reitit.frontend :as rf]
             [reitit.frontend.easy :as rfe]
@@ -52,7 +50,7 @@
                                (update-in [:nextjournal/value :blocks] (partial into [(hiccup header)])))})
     [render/root]))
 
-(dc/defcard show []
+(dc/defcard show-card []
   [show {:git/url "https://github.com/nextjournal/clerk"
          :git/sha "1026e6199f723e0f6ea92301b9678c9cf7024ba0"
          :path "notebooks/hello.clj"
@@ -97,7 +95,7 @@
         {:href "https://github.com/nextjournal/clerk"}
         "Generated with Clerk."]]]]))
 
-(dc/defcard index []
+(dc/defcard index-card []
   [index {:git/url "https://github.com/nextjournal/clerk"
           :git/sha "1026e6199f723e0f6ea92301b9678c9cf7024ba0"
           :paths ["notebooks/hello.clj"],

@@ -1,10 +1,9 @@
-{:config-paths ["rewrite-clj/rewrite-clj"]
+{:config-paths ["../resources/clj-kondo.exports/nextjournal/clerk"]
  :lint-as {applied-science.js-interop/defn clojure.core/defn
            applied-science.js-interop/fn clojure.core/fn
            applied-science.js-interop/let clojure.core/let
            cljs.core/specify! cljs.core/reify
            reagent.core/with-let clojure.core/let
-           nextjournal.clerk/defcached clojure.core/def
            nextjournal.view/defview clojure.core/defn
            nextjournal.devcards/defcard clj-kondo.lint-as/def-catch-all
            taoensso.encore/defonce clojure.core/defonce
@@ -22,6 +21,11 @@
                                          (taoensso.nippy/extend-freeze)
                                          (taoensso.nippy/extend-thaw)]}
            :unused-namespace {:exclude [clojure.string
-                                        nextjournal.log]}
-           :unused-binding :off}
- :hooks {:macroexpand {multihash.digest/defhash hooks/defhash}}}
+                                        nextjournal.log]}}
+ :hooks {:macroexpand {multihash.digest/defhash hooks/defhash}}
+ :config-in-call {clojure.core/defn {:linters {:unused-binding {:level :off}}}
+                  cljs.core/defn {:linters {:unused-binding {:level :off}}}
+                  clojure.core/fn {:linters {:unused-binding {:level :warning}}}
+                  cljs.core/fn {:linters {:unused-binding {:level :warning}}}
+                  clojure.core/let {:linters {:unused-binding {:level :warning}}}
+                  cljs.core/let {:linters {:unused-binding {:level :warning}}}}}

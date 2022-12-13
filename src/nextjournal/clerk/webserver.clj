@@ -6,28 +6,38 @@
             [editscript.core :as editscript]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
-            [nextjournal.markdown :as md]
-            [org.httpkit.server :as httpkit])
-  (:import (nextjournal.clerk.viewer ViewerFn ViewerEval)))
+            [org.httpkit.server :as httpkit]))
 
-(def help-doc
-  {:blocks [{:type :markdown :doc (md/parse "Use `nextjournal.clerk/show!` to make your notebook appear…")}]})
+(defn help-hiccup []
+  [:p "Call " [:span.code "nextjournal.clerk/show!"] " from your REPL"
+   (when-let [watch-paths (seq (:paths @@(resolve 'nextjournal.clerk/!watcher)))]
+     (into [:<> " or save a file in "]
+           (interpose " or " (map #(vector :span.code %) watch-paths))))
+   " to make your notebook appear…"])
+
+(defn help-doc []
+  {:blocks [{:type :code
+             :visibility {:code :hide, :result :show}
+             :result {:nextjournal/value (v/html (help-hiccup))}}]})
 
 (defonce !clients (atom #{}))
-(defonce !doc (atom help-doc))
+(defonce !doc (atom nil))
 (defonce !error (atom nil))
 (defonce !last-sender-ch (atom nil))
 
 #_(view/doc->viewer @!doc)
-#_(reset! !doc help-doc)
+#_(reset! !doc nil)
 
 (def ^:dynamic *sender-ch* nil)
+
+(defn send! [ch msg]
+  (httpkit/send! ch (v/->edn msg)))
 
 (defn broadcast! [msg]
   (doseq [ch @!clients]
     (when (not= @!last-sender-ch *sender-ch*)
-      (httpkit/send! ch (v/->edn {:type :patch-state! :patch []
-                                  :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-ch* ch)))]})))
+      (send! ch {:type :patch-state! :patch []
+                 :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-ch* ch)))]}))
     (httpkit/send! ch (v/->edn msg)))
   (reset! !last-sender-ch *sender-ch*))
 
@@ -119,7 +129,10 @@
                                     (create-ns 'user))]
                    (let [{:as msg :keys [type]} (read-msg edn-string)]
                      (case type
-                       :eval (do (eval (:form msg))
+                       :eval (do (send! sender-ch (merge {:type :eval-reply :eval-id (:eval-id msg)}
+                                                         (try {:reply (eval (:form msg))}
+                                                              (catch Exception e
+                                                                {:error (Throwable->map e)}))))
                                  (eval '(nextjournal.clerk/recompute!)))
                        :swap! (when-let [var (resolve (:var-name msg))]
                                 (try
@@ -141,9 +154,9 @@
         "_blob" (serve-blob @!doc (extract-blob-opts req))
         ("build" "js") (serve-file "public" req)
         "_ws" {:status 200 :body "upgrading..."}
-        {:status  200
+        {:status 200
          :headers {"Content-Type" "text/html"}
-         :body    (view/doc->html @!doc @!error)})
+         :body (view/doc->html {:doc (or @!doc (help-doc)) :error @!error})})
       (catch Throwable e
         {:status  500
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))

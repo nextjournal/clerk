@@ -1,8 +1,7 @@
 (ns nextjournal.clerk.webserver-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing]]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.view :as view]
-            [nextjournal.clerk.viewer :as viewer]
             [nextjournal.clerk.webserver :as webserver]))
 
 (deftest serve-blob

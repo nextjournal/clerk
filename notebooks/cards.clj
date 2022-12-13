@@ -89,12 +89,24 @@
 ;; this one won't work when advanced-compiled
 #_
 (c/card
-  (let [a (j/get-in js/window (map munge '[cljs core array]))]
-    (a 1 2 3)))
+ (let [a (j/get-in js/window (map munge '[cljs core array]))]
+   (a 1 2 3)))
+
+;; ## Promises
+
+;; Resolved
+(c/card (.resolve js/Promise 42))
+
+;; Resolving after 2s
+(c/card (js/Promise. (fn [resolve reject]
+                       (js/setTimeout #(resolve 42) 2000))))
+
+;; Rejected (commented out because it logs an error to the console)
+#_(c/card (.reject js/Promise (ex-info "boom 💥" {:additional :data})))
 
 ;; ## Code
 (c/card
-  (v/code "(defn the-answer
+ (v/code "(defn the-answer
   \"to all questions\"
   []
   (inc #_ #readme/as :ignore 41)"))
@@ -132,6 +144,7 @@
    0.33))
 
 ;; ## Notebook Viewer
+^{::clerk/width :wide}
 (c/card
  (v/with-viewer {:render-fn 'nextjournal.clerk.render/render-notebook
                  :transform-fn v/mark-presented}
@@ -175,13 +188,13 @@
   (range 21))
 
 (c/card
-  {:a (range 21)})
+ {:a (range 21)})
 
 ;; ## Parser API
 
-(c/card
-  [v/inspect
-   (as-> ";; # 👋 Hello CLJS
+^{::clerk/width :wide}
+(c/card 
+ (as-> ";; # 👋 Hello CLJS
 ;; This is `fold`
 ;;
 ;; $$(\\beta\\rightarrow\\alpha\\rightarrow\\beta)\\rightarrow\\beta\\rightarrow [\\alpha] \\rightarrow\\beta$$
@@ -202,16 +215,17 @@
 (v/html [:h1 \"🧨\"])
 "
      doc
-     (nextjournal.clerk.parser/parse-clojure-string {:doc? true} doc)
-     (update doc :blocks (partial map (fn [{:as b :keys [type text]}]
-                                        (cond-> b
-                                          (= :code type)
-                                          (assoc :result
-                                                 {:nextjournal/value
-                                                  (let [val (eval (read-string text))]
-                                                    ;; FIXME: this won't be necessary once we unify v/html in SCI env to be the same as in nextjournal.clerk.viewer
-                                                    ;; v/html is currently html-render for supporting legacy render-fns
-                                                    (cond->> val
-                                                      (nextjournal.clerk.render/valid-react-element? val)
-                                                      (v/with-viewer v/reagent-viewer)))})))))
-     (v/with-viewer v/notebook-viewer doc))])
+   (nextjournal.clerk.parser/parse-clojure-string {:doc? true} doc)
+   (update doc :blocks (partial map (fn [{:as b :keys [type text]}]
+                                      (cond-> b
+                                        (= :code type)
+                                        (assoc :result
+                                               {:nextjournal/value
+                                                (let [val (eval (read-string text))]
+                                                  ;; FIXME: this won't be necessary once we unify v/html in SCI env to be the same as in nextjournal.clerk.viewer
+                                                  ;; v/html is currently html-render for supporting legacy render-fns
+                                                  (cond->> val
+                                                    (nextjournal.clerk.render/valid-react-element? val)
+                                                    (v/with-viewer v/reagent-viewer)))})))))
+   (v/with-viewer v/notebook-viewer {::clerk/width :wide} doc))
+ )
