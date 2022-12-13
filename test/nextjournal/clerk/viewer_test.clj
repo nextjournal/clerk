@@ -122,6 +122,12 @@
     (is (match? {:nextjournal/value nil, :nextjournal/viewer {:name :html}}
                 (v/present (v/html nil)))))
 
+  (testing "big ints and ratios are represented as strings (issue #335)"
+    (is (match? {:nextjournal/value "1142497398145249635243N"}
+                (v/present 1142497398145249635243N)))
+    (is (match? {:nextjournal/value "10/33"}
+                (v/present 10/33))))
+
   (testing "opts are not propagated to children during presentation"
     (let [count-opts (fn [o]
                        (let [c (atom 0)]
@@ -211,4 +217,7 @@
     (is (= "#viewer-eval (symbol \"with spaces\")"
            (pr-str (symbol "with spaces"))))
     (is (= "#viewer-eval (symbol \"with ns\" \"and spaces\")"
-           (pr-str (symbol "with ns" "and spaces"))))))
+           (pr-str (symbol "with ns" "and spaces")))))
+
+  (testing "splicing reader conditional prints normally (issue #338)"
+    (is (= "?@" (pr-str (symbol "?@"))))))

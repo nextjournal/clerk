@@ -38,10 +38,13 @@
                               arrowic/arrowic {:mvn/version "0.1.1"}
                               binaryage/devtools {:mvn/version "1.0.3"}
                               cider/cider-nrepl {:mvn/version "0.28.3"}
+                              com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.0.3"}
                               org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
                               org.babashka/cli {:mvn/version "0.5.40"}}
                  :extra-paths ["dev" "notebooks"]
-                 :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}" "-Dpolyglot.engine.WarnInterpreterOnly=false" "-XX:-OmitStackTraceInFastThrow"]
+                 :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}"
+                            "-Dpolyglot.engine.WarnInterpreterOnly=false" "-XX:-OmitStackTraceInFastThrow"
+                            "-Djdk.attach.allowAttachSelf"]
                  :main-opts ["-m" "shadow.cljs.devtools.cli"]
                  :exec-fn nextjournal.clerk.dev-launcher/start}
 
