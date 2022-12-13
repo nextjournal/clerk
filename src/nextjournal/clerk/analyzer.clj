@@ -286,7 +286,13 @@
                          (let [{:as block :keys [type text loc]} (get-in state [:blocks i])]
                            (if (not= type :code)
                              state
-                             (let [form (read-string text)
+                             (let [form (try (read-string text)
+                                             (catch Exception e
+                                               (throw (ex-info (str "Clerk analysis failed reading block: "
+                                                                    (ex-message e))
+                                                               {:block block
+                                                                :file (:file doc)}
+                                                               e))))
                                    form+loc (cond-> form
                                               (instance? clojure.lang.IObj form)
                                               (vary-meta merge (cond-> loc
