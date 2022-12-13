@@ -24,7 +24,9 @@
                    (java.lang Throwable)
                    (java.awt.image BufferedImage)
                    (java.util Base64)
-                   (java.nio.file Files StandardOpenOption))))
+                   (java.net URL)
+                   (java.nio.file Files StandardOpenOption)
+                   (javax.imageio ImageIO))))
 
 (defrecord ViewerEval [form])
 
@@ -728,7 +730,7 @@
                                                            :nextjournal/content-type "image/png"
                                                            :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)}
                                                           mark-presented)))
-                                    :render-fn '(fn [blob] [:figure.flex.flex-col.items-center.not-prose [:img {:src (nextjournal.clerk.render/url-for blob)}]])}))
+                                    :render-fn '(fn [blob] [:div.flex.flex-col.items-center.not-prose [:img {:src (nextjournal.clerk.render/url-for blob)}]])}))
 
 (def ideref-viewer
   {:pred #(#?(:clj instance? :cljs satisfies?) IDeref %)
@@ -1460,6 +1462,15 @@
 (def tex          (partial with-viewer katex-viewer))
 (def notebook     (partial with-viewer (:name notebook-viewer)))
 (def code         (partial with-viewer code-viewer))
+
+(defn image [url]
+  #?(:clj
+     (ImageIO/read (if (string? url) (URL. url) url))))
+
+(defn figure [{img :image :keys [caption]}]
+  (col
+   (image img)
+   (html [:figcaption.text-xs.text-slate-500.text-center.mt-1 caption])))
 
 (defn ^:dynamic doc-url [path] (str "#/" path))
 
