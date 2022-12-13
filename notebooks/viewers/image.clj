@@ -1,5 +1,6 @@
 ;; # 🏞 Image Viewer
 (ns image
+  (:require [nextjournal.clerk :as clerk])
   (:import (java.net URL)
            (javax.imageio ImageIO)))
 
