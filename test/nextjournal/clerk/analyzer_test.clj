@@ -194,7 +194,10 @@
     (is (empty? (-> "(defmulti foo :bar)" analyze-string :blocks first :deref-deps))))
 
   (testing "can analyze plain var reference (issue #289)"
-    (ana/build-graph (analyze-string "clojure.core/inc"))))
+    (ana/build-graph (analyze-string "clojure.core/inc")))
+
+  (testing "removes block with reader conditional without clj branch (issue #332)"
+    (is (empty? (:blocks (analyze-string "#?(:cljs (inc 41))"))))))
 
 (deftest add-block-ids
   (testing "assigns block ids"

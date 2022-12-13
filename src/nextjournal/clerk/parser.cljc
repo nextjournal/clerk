@@ -142,13 +142,19 @@
 
 #_(->doc-settings '^{:nextjournal.clerk/toc :boom} (ns foo)) ;; TODO: error
 
+(defn markdown? [{:as block :keys [type]}]
+  (contains? #{:markdown} type))
+
+(defn code? [{:as block :keys [type]}]
+  (contains? #{:code} type))
+
 (defn add-block-visibility [{:as analyzed-doc :keys [blocks]}]
-  (-> (reduce (fn [{:as state :keys [visibility]} {:as block :keys [form type]}]
+  (-> (reduce (fn [{:as state :keys [visibility]} {:as block :keys [form]}]
                 (let [visibility' (merge visibility (->doc-visibility form))]
                   (cond-> (-> state
                               (update :blocks conj (cond-> block
-                                                     (= type :code) (assoc :visibility (merge visibility' (->visibility form))))))
-                    (= type :code) (assoc :visibility visibility'))))
+                                                     (code? block) (assoc :visibility (merge visibility' (->visibility form))))))
+                    (code? block) (assoc :visibility visibility'))))
               (assoc analyzed-doc :blocks [] :visibility {:code :show :result :show})
               blocks)
       (dissoc :visibility)))
@@ -234,9 +240,6 @@
 (do 123)
 ;; ## Section")
 
-(defn code-cell? [{:as node :keys [type]}]
-  (and (= :code type) (contains? node :info)))
-
 (defn parse-markdown-cell [{:as state :keys [nodes]}]
   (assoc (parse-clojure-string {:doc? true} state (markdown.transform/->text (first nodes)))
          :nodes (rest nodes)
@@ -247,7 +250,7 @@
     (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes content}]
       (if-some [node (first nodes)]
         (recur
-         (if (code-cell? node)
+         (if (and (code? node) (contains? node :info))
            (-> state
                (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
                parse-markdown-cell)
