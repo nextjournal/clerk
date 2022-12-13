@@ -497,27 +497,38 @@
       [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-clone-ref :style {:margin 0}}]]]))
 
 (defn throwable-view [{:keys [via trace]}]
-  [:div.bg-white.max-w-6xl.mx-auto.text-xs.monospace.not-prose
-   (into
-    [:div]
-    (map
-     (fn [{:as _ex :keys [type message data _trace]}]
-       [:div.p-4.bg-red-100.border-b.border-b-gray-300
-        (when type
-          [:div.font-bold "Unhandled " type])
-        [:div.font-bold.mt-1 message]
-        (when data
-          [:div.mt-1 [inspect data]])])
-     via))
-   [:div.py-6.overflow-x-auto
-    [:table.w-full
-     (into [:tbody]
-           (map (fn [[call _x file line]]
-                  [:tr.hover:bg-red-100.leading-tight
-                   [:td.text-right.px-6 file ":"]
-                   [:td.text-right.pr-6 line]
-                   [:td.py-1.pr-6 call]]))
-           trace)]]])
+  (let [!collapse-stacktrace? (hooks/use-state true)
+        !ref (hooks/use-ref nil)]
+    (hooks/use-effect #(.scrollIntoViewIfNeeded @!ref))
+    [:div.bg-red-100.dark:bg-gray-800.pt-4.rounded-md.text-xs.dark:border-2.dark:border-red-300.not-prose.overflow-hidden
+     {:ref !ref}
+     (into
+      [:div.px-6]
+      (map
+       (fn [{:as _ex :keys [type message data _trace]}]
+         [:<>
+          [:p.font-mono.text-red-600.dark:text-red-300
+           (when type
+             [:div.font-bold "Unhandled " type])
+           [:div.font-bold message]]
+          (when data
+            [:div.mt-2.overflow-auto [inspect data]])])
+       via))
+     [:div.mt-2.border-t.border-red-200
+      [:div.px-6.py-2.font-sans.cursor-pointer.text-red-600.hover:bg-red-50
+       {:on-click #(swap! !collapse-stacktrace? not)}
+       (if @!collapse-stacktrace? "Show" "Hide")
+       " Stacktrace (" (count trace) " lines)\n"]
+      (when-not @!collapse-stacktrace?
+        [:div.overflow-x-auto.font-mono.pb-4
+         [:table.w-full
+          (into [:tbody]
+                (map (fn [[call _x file line]]
+                       [:tr.hover:bg-red-50.leading-tight
+                        [:td.text-right.px-6 file ":"]
+                        [:td.text-right.pr-6 line]
+                        [:td.py-1.pr-6 call]]))
+                trace)]])]]))
 
 (defn render-throwable [ex]
   (if (or (:stack ex) (instance? js/Error ex))
@@ -575,7 +586,7 @@
   [:<>
    [inspect-presented @!doc]
    (when @!error
-     [:div.fixed.top-0.left-0.w-full.h-full
+     [:div.fixed.top-0.left-0.w-screen.h-screen.z-10.bg-white
       [inspect-presented @!error]])])
 
 (declare mount)
