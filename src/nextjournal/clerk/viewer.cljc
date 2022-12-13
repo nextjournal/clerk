@@ -329,6 +329,13 @@
                                                        [(inspect-fn) (process-wrapped-value w)])))
                                             content))))))))
 
+;; A hack for making Clerk not fail in the precense of
+;; programmatically generated keywords or symbols that cannot be read.
+;;
+;; Unfortunately there's currently no solution to override
+;; `print-method` locally, see
+;; https://clojurians.slack.com/archives/C03S1KBA2/p1667334982789659
+
 #?(:clj (defn roundtrippable? [x]
           (= x (-> x str read-string))))
 
@@ -342,7 +349,8 @@
 
 #?(:clj
    (defmethod print-method clojure.lang.Symbol [o w]
-     (if (roundtrippable? o)
+     (if (or (roundtrippable? o)
+             (= (name o) "?@")) ;; splicing reader conditional, see issue #338
        (.write w (str o))
        (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
                                           (list 'symbol ns (name o))
@@ -520,17 +528,18 @@
 (def table-markup-viewer
   {:name :table/markup
    :render-fn '(fn [head+body opts]
-                 [:div.overflow-x-auto (into [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose] (nextjournal.clerk.render/inspect-children opts) head+body)])})
+                 [:div
+                  (into [table-with-sticky-header] (nextjournal.clerk.render/inspect-children opts) head+body)])})
 
 (def table-head-viewer
   {:name :table/head
    :render-fn '(fn [header-row {:as opts :keys [path number-col?]}]
-                 [:thead.border-b.border-gray-300.dark:border-slate-700
+                 [:thead
                   (into [:tr]
                         (map-indexed (fn [i {:as header-cell :nextjournal/keys [value]}]
                                        (let [title (when (or (string? value) (keyword? value) (symbol? value))
                                                      value)]
-                                         [:th.relative.pl-6.pr-2.py-1.align-bottom.font-medium
+                                         [:th.pl-6.pr-2.py-1.align-bottom.font-medium.top-0.z-10.bg-white.dark:bg-slate-900.border-b.border-gray-300.dark:border-slate-700
                                           (cond-> {:class (when (and (ifn? number-col?) (number-col? i)) "text-right")} title (assoc :title title))
                                           [:div.flex.items-center (nextjournal.clerk.render/inspect-presented opts header-cell)]]))) header-row)])})
 
@@ -554,14 +563,16 @@
                                                                          :fetch-fn
                                                                          (fn [fetch-fn]
                                                                            [:tr.border-t.dark:border-slate-700
-                                                                            [:td.text-center.py-1
+                                                                            [:td.py-1.relative
                                                                              {:col-span num-cols
                                                                               :class (if (fn? fetch-fn)
                                                                                        "bg-indigo-50 hover:bg-indigo-100 dark:bg-gray-800 dark:hover:bg-slate-700 cursor-pointer"
                                                                                        "text-gray-400 text-slate-500")
                                                                               :on-click (fn [_] (when (fn? fetch-fn)
-                                                                                                  (fetch-fn fetch-opts)))}
-                                                                             (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]])]))})
+                                                                                                 (fetch-fn fetch-opts)))}
+                                                                             [:span.sticky
+                                                                              {:style {:left "min(50vw, 50%)"} :class "-translate-x-1/2"}
+                                                                              (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]]])]))})
       (add-viewers [table-missing-viewer
                     table-markup-viewer
                     table-head-viewer
@@ -666,7 +677,11 @@
    :page-size 80})
 
 (def number-viewer
-  {:pred number? :render-fn 'nextjournal.clerk.render/render-number})
+  {:pred number?
+   :render-fn 'nextjournal.clerk.render/render-number
+   #?@(:clj [:transform-fn (update-val #(cond-> %
+                                          (or (instance? clojure.lang.Ratio %)
+                                              (instance? clojure.lang.BigInt %)) pr-str))])})
 
 (def number-hex-viewer
   {:name :number-hex :render-fn '(fn [num] (nextjournal.clerk.render/render-number (str "0x" (.toString (js/Number. num) 16))))})
@@ -1381,7 +1396,7 @@
   [desc]
   (let [x (->value desc)
         viewer-name (-> desc ->viewer :name)]
-    (cond (= viewer-name :elision) (with-meta '… x)
+    (cond (= viewer-name :elision) (with-meta '... x)
           (coll? x) (into (case viewer-name
                             ;; TODO: fix table viewer
                             (:map :table) {}

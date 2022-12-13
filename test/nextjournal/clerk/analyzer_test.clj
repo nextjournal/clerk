@@ -178,6 +178,13 @@
       ana/analyze-doc))
 
 (deftest analyze-doc
+  (testing "reading a bad block shows block and file info in raised exception"
+    (is (thrown-match? ExceptionInfo
+                       {:block {:type :code :text "##boom"}
+                        :file any?}
+                       (-> (parser/parse-clojure-string {:doc? true} "(ns some-ns (:require []))")
+                           (update-in [:blocks 0 :text] (constantly "##boom"))
+                           ana/analyze-doc))))
   (is (match? #{{:form '(ns example-notebook),
                  :deps set?}
                 {:form '#{1 3 2}}}
@@ -194,7 +201,14 @@
     (is (empty? (-> "(defmulti foo :bar)" analyze-string :blocks first :deref-deps))))
 
   (testing "can analyze plain var reference (issue #289)"
-    (ana/build-graph (analyze-string "clojure.core/inc"))))
+    (ana/build-graph (analyze-string "clojure.core/inc")))
+
+  (testing "removes block with reader conditional without clj branch (issue #332)"
+    (is (empty? (:blocks (analyze-string "#?(:cljs (inc 41))")))))
+
+  (testing "can handle splicing reader-conditional (issue #338)"
+    (is (match? [{:form '(do) :text "(do #?@(:cljs []))"}]
+                (-> "(do #?@(:cljs []))" analyze-string :blocks)))))
 
 (deftest add-block-ids
   (testing "assigns block ids"
