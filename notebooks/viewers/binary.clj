@@ -7,15 +7,31 @@
 (defn binary->hex [xs]
   (let [bytes-per-row 16
         bytes-per-cell 2]
-    (clerk/html [:pre (->> (javax.xml.bind.DatatypeConverter/printHexBinary xs)
-                           (str/lower-case)
-                           (partition bytes-per-cell)
-                           (mapv str/join)
-                           (partition bytes-per-row)
-                           (mapv #(str (str/join " " %) " | " (str/join (mapv (fn [hex] (char (Integer/parseInt hex 16))) %))))
-                           (into [] (map-indexed (fn [idx s]
-                                                   (format "%08x %s" (* bytes-per-row idx) s))))
-                           (str/join "\n"))])))
+    (clerk/html
+     [:div.font-mono.text-xs.leading-none
+      [:div.pl-1
+       (into [:div.flex.gap-2.text-slate-500.pl-1 {:class "ml-[80px]"}]
+             (map (fn [i]
+                    [:div
+                     {:class "p-[3px] pb-[7px]"} (format "%02x" i)])
+                  (range 0 bytes-per-row)))]
+      [:div.flex
+       (into [:div]
+             (->> (javax.xml.bind.DatatypeConverter/printHexBinary xs)
+                  (str/lower-case)
+                  (partition bytes-per-cell)
+                  (partition bytes-per-row)
+                  (map-indexed (fn [i cells]
+                                 [:div.flex.hover:bg-indigo-100
+                                  [:div.mr-2.pl-1.text-slate-500 {:class "py-[3px] w-[80px]"} (format "%08x" (* bytes-per-row i))]
+                                  (into [:div.flex.mr-2.gap-2.pr-2]
+                                        (mapv (fn [cell]
+                                                (into [:div.hover:bg-indigo-600.hover:text-white.transition-all.hover:scale-150.duration-150
+                                                       {:class "p-[3px]"}]
+                                                      cell))
+                                              cells))
+                                  [:div.px-1 {:class "py-[3px]"}
+                                   (str/join (mapv (fn [cell] (char (Integer/parseInt (str/join cell) 16))) cells))]]))))]])))
 
 
 
