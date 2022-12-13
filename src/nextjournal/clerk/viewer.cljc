@@ -1389,7 +1389,7 @@
   [desc]
   (let [x (->value desc)
         viewer-name (-> desc ->viewer :name)]
-    (cond (= viewer-name :elision) (with-meta '… x)
+    (cond (= viewer-name :elision) (with-meta '... x)
           (coll? x) (into (case viewer-name
                             ;; TODO: fix table viewer
                             (:map :table) {}
