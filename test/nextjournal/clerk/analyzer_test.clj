@@ -178,6 +178,13 @@
       ana/analyze-doc))
 
 (deftest analyze-doc
+  (testing "reading a bad block shows block and file info in raised exception"
+    (is (thrown-match? ExceptionInfo
+                       {:block {:type :code :text "##boom"}
+                        :file any?}
+                       (-> (parser/parse-clojure-string {:doc? true} "(ns some-ns (:require []))")
+                           (update-in [:blocks 0 :text] (constantly "##boom"))
+                           ana/analyze-doc))))
   (is (match? #{{:form '(ns example-notebook),
                  :deps set?}
                 {:form '#{1 3 2}}}
