@@ -9,12 +9,7 @@
 
         com.nextjournal/beholder {:mvn/version "1.0.0"}
 
-        ;; TODO: release
-        io.github.nextjournal/markdown {:git/sha "66ab686a42b376dcc45c1519b7e7e880c8285c38"
-                                        #_#_
-                                        :local/root "../markdown"
-                                        #_#_
-                                        :mvn/version "0.4.126"}
+        io.github.nextjournal/markdown {:mvn/version "0.4.130"}
 
         com.taoensso/nippy {:mvn/version "3.2.0"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
