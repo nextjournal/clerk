@@ -9,7 +9,7 @@
             [nextjournal.clerk.parser]
             [nextjournal.clerk.render :as render]
             [nextjournal.clerk.render.code]
-            [nextjournal.clerk.render.hooks]
+            [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clerk.trim-image]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.view.context :as view-context]
