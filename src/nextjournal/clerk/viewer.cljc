@@ -329,6 +329,13 @@
                                                        [(inspect-fn) (process-wrapped-value w)])))
                                             content))))))))
 
+;; A hack for making Clerk not fail in the precense of
+;; programmatically generated keywords or symbols that cannot be read.
+;;
+;; Unfortunately there's currently no solution to override
+;; `print-method` locally, see
+;; https://clojurians.slack.com/archives/C03S1KBA2/p1667334982789659
+
 #?(:clj (defn roundtrippable? [x]
           (= x (-> x str read-string))))
 
@@ -342,7 +349,8 @@
 
 #?(:clj
    (defmethod print-method clojure.lang.Symbol [o w]
-     (if (roundtrippable? o)
+     (if (or (roundtrippable? o)
+             (= (name o) "?@")) ;; splicing reader conditional, see issue #338
        (.write w (str o))
        (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
                                           (list 'symbol ns (name o))
