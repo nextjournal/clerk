@@ -588,8 +588,8 @@
    ;; blocks
    {:name :nextjournal.markdown/heading
     :transform-fn (into-markup
-                   (fn [{:keys [id heading-level]}]
-                     [(str "h" heading-level) {:id id}]))}
+                   (fn [{:keys [attrs heading-level]}]
+                     [(str "h" heading-level) attrs]))}
    {:name :nextjournal.markdown/image :transform-fn #(with-viewer :html [:img.inline (-> % ->value :attrs)])}
    {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}

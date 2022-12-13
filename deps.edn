@@ -10,7 +10,7 @@
         com.nextjournal/beholder {:mvn/version "1.0.0"}
 
         ;; TODO: release
-        io.github.nextjournal/markdown {:git/sha "816c8c5bff2640c4ef59246fe25e29e3ea485066"
+        io.github.nextjournal/markdown {:git/sha "9f383878b52d43a6702b41ab5885be6619388f4f"
                                         #_#_
                                         :local/root "../markdown"
                                         #_#_
