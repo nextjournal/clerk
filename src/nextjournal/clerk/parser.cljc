@@ -195,9 +195,13 @@
 
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
-  ([opts s] (parse-clojure-string opts {:blocks [] :md-context (markdown-context)} s))
+  ([{:as opts :keys [doc?]} s]
+   (as-> (parse-clojure-string opts {:blocks [] :md-context (markdown-context)} s)
+     doc
+     (merge doc (when doc? (:md-context doc)))
+     (select-keys doc [:blocks :title :toc])))
   ([{:as _opts :keys [doc?]} initial-state s]
-   (loop [{:as state :keys [nodes blocks md-context add-comment-on-line?]} (assoc initial-state :nodes (:children (p/parse-string-all s)))]
+   (loop [{:as state :keys [nodes blocks add-comment-on-line?]} (assoc initial-state :nodes (:children (p/parse-string-all s)))]
      (if-let [node (first nodes)]
        (recur (cond
                 (code-tags (n/tag node))
@@ -227,9 +231,7 @@
                 (-> state
                     (assoc :add-comment-on-line? false)
                     (update :nodes rest))))
-       (merge (select-keys state [:blocks])
-              (when doc?
-                (select-keys md-context [:title :toc])))))))
+       state))))
 
 #_(parse-clojure-string {:doc? true} "'code ;; foo\n;; bar")
 #_(parse-clojure-string "'code , ;; foo\n;; bar")
@@ -240,27 +242,40 @@
 (do 123)
 ;; ## Section")
 
-(defn parse-markdown-cell [{:as state :keys [nodes]}]
-  (assoc (parse-clojure-string {:doc? true} state (markdown.transform/->text (first nodes)))
+(defn parse-markdown-cell [{:as state :keys [nodes]} opts]
+  (assoc (parse-clojure-string opts state (markdown.transform/->text (first nodes)))
          :nodes (rest nodes)
          ::md-slice []))
 
-(defn parse-markdown-string [{:keys [doc?]} s]
-  (let [{:keys [content toc title]} (markdown/parse s)]
-    (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes content}]
+(defn parse-markdown-string [{:as opts :keys [doc?]} s]
+  (let [{:as ctx :keys [content toc title]} (parse-markdown (markdown-context) s)]
+    (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes content :md-context ctx}]
       (if-some [node (first nodes)]
         (recur
          (if (and (code? node) (contains? node :info))
            (-> state
                (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
-               parse-markdown-cell)
-
+               (parse-markdown-cell opts))
            (-> state (update :nodes rest) (cond-> doc? (update ::md-slice conj node)))))
 
         (-> state
             (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
             (select-keys [:blocks :visibility])
             (merge (when doc? {:title title :toc toc})))))))
+
+#_(parse-markdown-string {:doc? true} "# Hello
+```
+1
+;; # Hello
+2
+```
+hey
+```
+3
+;; # Hello
+4
+```
+")
 
 #?(:clj
    (defn parse-file
