@@ -678,10 +678,10 @@
 
 (def number-viewer
   {:pred number?
-   :transform-fn (update-val #(cond-> %
-                                (or (instance? clojure.lang.Ratio %)
-                                    (instance? clojure.lang.BigInt %)) pr-str))
-   :render-fn 'nextjournal.clerk.render/render-number})
+   :render-fn 'nextjournal.clerk.render/render-number
+   #?@(:clj [:transform-fn (update-val #(cond-> %
+                                          (or (instance? clojure.lang.Ratio %)
+                                              (instance? clojure.lang.BigInt %)) pr-str))])})
 
 (def number-hex-viewer
   {:name :number-hex :render-fn '(fn [num] (nextjournal.clerk.render/render-number (str "0x" (.toString (js/Number. num) 16))))})
