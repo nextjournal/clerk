@@ -238,9 +238,9 @@
 #_(parse-clojure-string "'code\n;; foo\n;; bar")
 #_(keys (parse-clojure-string {:doc? true} (slurp "notebooks/viewer_api.clj")))
 #_(parse-clojure-string {:doc? true} ";; # Hello
-;; ## Section
+;; ## 👋 Section
 (do 123)
-;; ## Section")
+;; ## 🤚🏽 Section")
 
 (defn parse-markdown-cell [{:as state :keys [nodes]} opts]
   (assoc (parse-clojure-string opts state (markdown.transform/->text (first nodes)))
