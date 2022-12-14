@@ -32,6 +32,9 @@
   build+upload-viewer-resources {:doc "Refreshes assets stored on CDN (google storage)"
                                  :task viewer-resources-hashing/build+upload-viewer-resources}
 
+  lint {:doc "Lints project using clj-kondo"
+        :task (shell "clj-kondo --lint src test")}
+
   release:js {:doc "Uploads the js release and updates the sha reference."
               :task (clojure "-T:build upload-to-cas :resource viewer.js")
               :depends [build:js]}
