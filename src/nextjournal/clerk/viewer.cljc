@@ -1377,6 +1377,7 @@
   (present {:viewers [{:pred sequential? :render-fn pr-str}]} (range 100))
   (present (map vector (range)))
   (present (subs (slurp "/usr/share/dict/words") 0 1000))
+  #_:clj-kondo/ignore ;; remove when clj-kondo is released
   (present (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
   (present [(with-viewer :html [:h1 "hi"])])
   (present (with-viewer :html [:ul (for [x (range 3)] [:li x])]))
@@ -1447,7 +1448,7 @@
 
 (defn reset-viewers!
   ([viewers] (reset-viewers! *ns* viewers))
-  ([scope viewers]
+  ([scope viewers] #_:clj-kondo/ignore ;; remove when clj-kondo is released
    (assert (or (#{:default} scope)
                #?(:clj (instance? clojure.lang.Namespace scope))))
    (swap! !viewers assoc scope viewers)))
