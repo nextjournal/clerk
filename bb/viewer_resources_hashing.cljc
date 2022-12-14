@@ -35,13 +35,12 @@
        (remove #(str/includes? % "test"))))
 
 (defn file-set []
-  (filter fs/exists?
-          (reduce into []
-                  [["deps.edn"
-                    "render/deps.edn"
-                    "shadow-cljs.edn"
-                    "yarn.lock"]
-                   (djv/cljs-files ["src" "resources"] #_(classpath-dirs))])))
+  (reduce into []
+          [["deps.edn"
+            "render/deps.edn"
+            "shadow-cljs.edn"
+            "yarn.lock"]
+           (djv/cljs-files ["src" "resources"] #_(classpath-dirs))]))
 
 (defn front-end-hash []
   (str (djv/file-set-hash (file-set))))
