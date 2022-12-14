@@ -57,7 +57,7 @@ jobs:
           bb: latest
           clj-kondo: latest
 
-      - name: Run Playwright tests against static assets
+      - name: Run clj-kondo linter
         run: |
           bb lint
 
