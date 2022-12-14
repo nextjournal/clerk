@@ -33,7 +33,7 @@
 ;; Clerk is a notebook library for Clojure that aims to address these problems by doing less, namely:
 
 ;; * no editing environment, folks can keep using the editors they know and love
-;; * no new format: Clerk notebooks are regular Clojure namespaces (interspersed with markdown comments). This also means Clerk notebooks are meant to be stored in source control.
+;; * no new format: Clerk notebooks are either regular Clojure namespaces (interspersed with markdown comments) or regular markdown files (interspersed with Clojure code fences). This also means Clerk notebooks are meant to be stored in source control.
 ;; * no out-of-order execution: Clerk notebooks always evaluate from top to bottom. Clerk builds a dependency graph of Clojure vars and only recomputes the needed changes to keep the feedback loop fast.
 ;; * no external process: Clerk runs inside your Clojure process, giving Clerk access to all code on the classpath.
 
@@ -82,7 +82,7 @@
 ;; ```clojure
 ;; (clerk/serve! {:watch-paths ["notebooks" "src"]})
 ;; ```
-;; ... which will automatically reload and re-eval any clj or md files that change, displaying the most recently changed one in your browser.
+;; ... which will automatically reload and re-eval any clojure (clj) or markdown (md) files that change, displaying the most recently changed one in your browser.
 
 ;; To make this performant enough to feel good, Clerk caches the computations it performs while evaluating each file. Likewise, to make sure it doesn't send too much data to the browser at once, Clerk paginates data structures within an interactive viewer.
 
@@ -286,6 +286,10 @@
 ;; The same Markdown support Clerk uses for comment blocks is also
 ;; available programmatically:
 (clerk/md (clojure.string/join "\n" (map #(str "* Item " (inc %)) (range 3))))
+
+;; For a more advanced example of ingesting markdown files and transforming the
+;; content to HTML using Hiccup, see [notebooks/markdown.md](https://github.com/nextjournal/clerk-demo/blob/47e95fdc38dd5321632f73bb50a049da4055e041/notebooks/markdown.md)
+;; in the clerk-demo repo.
 
 ;; ### 🔠 Grid Layouts
 
