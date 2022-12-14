@@ -278,8 +278,9 @@
 
 (defn ns-resolver [notebook-ns]
   (if notebook-ns
-    identity #_ TODO
+    (into {} (map (juxt key (comp ns-name val))) (ns-aliases notebook-ns))
     identity))
+#_ (ns-resolver *ns*)
 
 (defn analyze-doc
   ([doc]

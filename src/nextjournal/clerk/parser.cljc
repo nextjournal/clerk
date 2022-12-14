@@ -167,17 +167,16 @@
 (def whitespace-on-line-tags
   #{:comment :whitespace :comma})
 
-(def clerk-meta-key (comp #{"??_clerk_??" "nextjournal.clerk"} namespace))
+(def clerk-namespace? (comp #{"nextjournal.clerk"} namespace))
 (defn remove-clerk-keys
   "Returns a rewrite-clj node corresponding to the original map node with all ::clerk namespaced keys removed.
    Whitespace is preserved when possible."
-  [map-node]
-  (let [map-loc (z/of-node map-node)
-        filtered-map-node (loop [loc (z/down map-loc) parent map-loc]
+  [map-loc]
+  (let [filtered-map-node (loop [loc (z/down map-loc) parent map-loc]
                             (if-not loc
                               (z/root parent)
-                              (let [s (-> loc z/node n/sexpr)]
-                                (if (and (keyword? s) (clerk-meta-key s))
+                              (let [s (-> loc z/sexpr)]
+                                (if (and (keyword? s) (clerk-namespace? s))
                                   (let [updated (-> loc z/right z/remove z/remove)]
                                     (recur (z/next updated) (z/up updated)))
                                   (recur (-> loc z/right z/right) parent)))))]
@@ -189,15 +188,16 @@
     (= :meta (n/tag node))
     (as-> node
       (try
-        (let [loc (z/of-node node)
-              meta-sexpr (-> node n/child-sexprs first)
+        (let [loc (z/of-node node {:auto-resolve ns-resolver})
+              meta-sexpr (-> loc z/down z/sexpr)
               user-map-meta (when (map? meta-sexpr)
-                              (remove-clerk-keys (-> loc z/down z/node)))]
+                              ;; can't do it in-place at location
+                              (remove-clerk-keys (-> loc z/down z/node (z/of-node {:auto-resolve ns-resolver}))))]
           (if-some [new-meta (or user-map-meta
                                  (when (or (and (not (keyword? meta-sexpr))
                                                 (not (map? meta-sexpr)))
                                            (and (keyword? meta-sexpr)
-                                                (not (clerk-meta-key meta-sexpr))))
+                                                (not (clerk-namespace? meta-sexpr))))
                                    meta-sexpr))]
             (-> loc z/down
                 (z/replace new-meta)
@@ -209,11 +209,8 @@
 (defn text-with-clerk-metadata-removed [code ns-resolver]
   (-> code p/parse-string (node-with-clerk-metadata-removed ns-resolver) n/string))
 
-#_
-(-> "^{::clerk/foo 'what}\n^ keep \n^{::clerk/bar true :some-key false}     (view that)" node-with-clerk-metadata-removed n/string)
-
-#_(nextjournal.clerk.eval/time-ms (parse-file "book.clj"))
-#_(nextjournal.clerk.eval/time-ms (parse-file "notebooks/viewers/code.clj"))
+#_(text-with-clerk-metadata-removed "^::clerk/bar ^{::clerk/foo 'what}\n^ keep \n^{::clerk/bar true :some-key false}  (view that)" {'clerk 'nextjournal.clerk})
+#_(text-with-clerk-metadata-removed "^foo    'form" {'clerk 'nextjournal.clerk})
 
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
