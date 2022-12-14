@@ -32,12 +32,20 @@
   build+upload-viewer-resources {:doc "Refreshes assets stored on CDN (google storage)"
                                  :task viewer-resources-hashing/build+upload-viewer-resources}
 
+  lint {:doc "Lints project using clj-kondo"
+        :task (apply shell "clj-kondo --lint src test" *command-line-args*)}
+
   release:js {:doc "Uploads the js release and updates the sha reference."
               :task (clojure "-T:build upload-to-cas :resource viewer.js")
               :depends [build:js]}
 
   build:static-app {:doc "Builds a static app with default notebooks"
                     :task (apply clojure "-X:demo:nextjournal/clerk" *command-line-args*)}
+
+  -check {:depends [lint test:clj]}
+
+  check {:doc "Check to run before pushing"
+         :task (run '-check {:parallel true})}
 
   test:clj {:doc "Run clojure tests"
             :task (apply clojure "-X:test" *command-line-args*)}
