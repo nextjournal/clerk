@@ -43,14 +43,8 @@
                     "yarn.lock"]
                    (djv/cljs-files ["src" "resources"] #_(classpath-dirs))])))
 
-(def viewer-js-hash-file "resources/viewer-js-hash")
-
 (defn front-end-hash []
   (str (djv/file-set-hash (file-set))))
-
-(defn write-viewer-resource-hash
-  []
-  (spit viewer-js-hash-file (front-end-hash)))
 
 (defn lookup-url [lookup-hash]
   (str gs-bucket "/lookup/" lookup-hash))
@@ -62,7 +56,7 @@
 
 #?(:bb
    (defn build+upload-viewer-resources []
-     (let [front-end-hash (str/trim (slurp viewer-js-hash-file))
+     (let [front-end-hash (front-end-hash)
            manifest (str (fs/create-temp-file))
            res (djv/gs-copy (str (lookup-url front-end-hash)) manifest false)]
        (when (= res ::djv/not-found)

@@ -6,7 +6,7 @@
    [viewer-resources-hashing :as vr-hash]))
 
 (def gs-url-prefix "https://storage.googleapis.com/nextjournal-cas-eu")
-(def lookup-hash (vr-hash/front-end-hash) #_(str/trim (slurp (io/resource "viewer-js-hash"))))
+(def lookup-hash (vr-hash/front-end-hash))
 (def lookup-url (str gs-url-prefix "/lookup/" lookup-hash))
 
 (def cache-dir
