@@ -139,7 +139,12 @@
                                :open? (if-some [stored-open? (localstorage-get local-storage-key)]
                                         stored-open?
                                         (not= :collapsed toc-visibility))})
-               root-ref-fn #(when % (setup-dark-mode! !state))]
+               root-ref-fn (fn [el]
+                             (when el
+                               (setup-dark-mode! !state)
+                               (when-some [heading (when (exists? js/location)
+                                                     (some-> js/location .-hash not-empty js/document.querySelector))]
+                                 (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
     (let [{:keys [md-toc mobile? open?]} @!state
           doc-inset (cond
                       mobile? 0
