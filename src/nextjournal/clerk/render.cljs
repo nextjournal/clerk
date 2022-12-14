@@ -143,7 +143,7 @@
                              (when el
                                (setup-dark-mode! !state)
                                (when-some [heading (when (exists? js/location)
-                                                     (some-> js/location .-hash not-empty js/document.querySelector))]
+                                                     (some-> js/location .-hash not-empty js/decodeURI js/document.querySelector))]
                                  (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
     (let [{:keys [md-toc mobile? open?]} @!state
           doc-inset (cond
