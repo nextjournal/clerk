@@ -35,12 +35,13 @@
        (remove #(str/includes? % "test"))))
 
 (defn file-set []
-  (reduce into []
-          [["deps.edn"
-            "render/deps.edn"
-            "shadow-cljs.edn"
-            "yarn.lock"]
-           (djv/cljs-files ["src" "resources"] #_(classpath-dirs))]))
+  (filter fs/exists?
+          (reduce into []
+                  [["deps.edn"
+                    "render/deps.edn"
+                    "shadow-cljs.edn"
+                    "yarn.lock"]
+                   (djv/cljs-files ["src" "resources"] #_(classpath-dirs))])))
 
 (def viewer-js-hash-file "resources/viewer-js-hash")
 

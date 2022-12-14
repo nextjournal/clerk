@@ -22,10 +22,14 @@
     (when-not (str/blank? prop)
       (read-string prop))))
 
+(defn try-slurp [s]
+  (try (slurp s)
+       (catch Exception _ nil)))
+
 (def !asset-map
   ;; In mvn releases, the asset map is available in the artifact
   (delay (or (some-> (io/resource "clerk-asset-map.edn") slurp edn/read-string)
-             (-> lookup-url slurp edn/read-string))))
+             (some-> lookup-url try-slurp edn/read-string))))
 
 (defonce !resource->url
   ;; contains asset manifest in the form:
