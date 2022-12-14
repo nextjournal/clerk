@@ -932,7 +932,7 @@
                                              (map (comp process-wrapped-value
                                                         apply-viewers*
                                                         (partial ensure-wrapped-with-viewers viewers))))))
-      (select-keys [:atom-var-name->state :auto-expand-results? :blocks :css-class :toc :toc-visibility :title :open-graph])
+      (select-keys [:atom-var-name->state :auto-expand-results? :blocks :css-class :toc :toc-visibility :title :open-graph :bundle?])
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
 
 (def notebook-viewer
