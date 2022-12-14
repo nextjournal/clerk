@@ -1,4 +1,4 @@
-{:paths ["src" "resources"]
+{:paths ["src" "resources" "bb"]
  :deps {org.clojure/clojure {:mvn/version "1.10.3"}
         org.clojure/java.classpath {:mvn/version "1.0.0"}
         org.clojure/tools.analyzer {:mvn/version "1.1.0"}
@@ -10,6 +10,7 @@
         com.nextjournal/beholder {:mvn/version "1.0.0"}
 
         io.github.nextjournal/markdown {:mvn/version "0.4.126"}
+        io.github.nextjournal/dejavu {:git/sha "a8ed3dfae827dba4ac9619b8e221910360fbe514"}
 
         com.taoensso/nippy {:mvn/version "3.2.0"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
