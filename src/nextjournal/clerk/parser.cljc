@@ -188,18 +188,12 @@
                                        ;; take only new nodes, keep context intact
                                        (update :content subvec (inc index)))}))))
 
-#_(-> {:md-context (markdown-context)
-       :blocks []}
-      (update-markdown-blocks "# Section")
-      (update-markdown-blocks "# Section"))
-
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
   ([{:as opts :keys [doc?]} s]
-   (as-> (parse-clojure-string opts {:blocks [] :md-context (markdown-context)} s)
-     doc
-     (merge doc (when doc? (:md-context doc)))
-     (select-keys doc [:blocks :title :toc])))
+   (let [doc (parse-clojure-string opts {:blocks [] :md-context (markdown-context)} s)]
+     (select-keys (cond-> doc doc? (merge (:md-context doc)))
+                  [:blocks :title :toc])))
   ([{:as _opts :keys [doc?]} initial-state s]
    (loop [{:as state :keys [nodes blocks add-comment-on-line?]} (assoc initial-state :nodes (:children (p/parse-string-all s)))]
      (if-let [node (first nodes)]
@@ -237,10 +231,7 @@
 #_(parse-clojure-string "'code , ;; foo\n;; bar")
 #_(parse-clojure-string "'code\n;; foo\n;; bar")
 #_(keys (parse-clojure-string {:doc? true} (slurp "notebooks/viewer_api.clj")))
-#_(parse-clojure-string {:doc? true} ";; # Hello
-;; ## 👋 Section
-(do 123)
-;; ## 🤚🏽 Section")
+#_(parse-clojure-string {:doc? true} ";; # Hello\n;; ## 👋 Section\n(do 123)\n;; ## 🤚🏽 Section")
 
 (defn parse-markdown-cell [{:as state :keys [nodes]} opts]
   (assoc (parse-clojure-string opts state (markdown.transform/->text (first nodes)))
@@ -263,19 +254,7 @@
             (select-keys [:blocks :visibility])
             (merge (when doc? {:title title :toc toc})))))))
 
-#_(parse-markdown-string {:doc? true} "# Hello
-```
-1
-;; # 1️⃣ Hello
-2
-```
-hey
-```
-3
-;; # 2️⃣ Hello
-4
-```
-")
+#_(parse-markdown-string {:doc? true} "# Hello\n```\n1\n;; # 1️⃣ Hello\n2\n\n```\nhey\n```\n3\n;; # 2️⃣ Hello\n4\n```\n")
 
 #?(:clj
    (defn parse-file
