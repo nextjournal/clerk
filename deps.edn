@@ -6,7 +6,6 @@
         babashka/fs {:mvn/version "0.1.11"}
         borkdude/edamame {:mvn/version "1.0.0"}
         weavejester/dependency {:mvn/version "0.2.1"}
-
         com.nextjournal/beholder {:mvn/version "1.0.0"}
 
         io.github.nextjournal/markdown {:mvn/version "0.4.132"}

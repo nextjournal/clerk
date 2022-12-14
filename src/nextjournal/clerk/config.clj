@@ -2,12 +2,8 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
-   [clojure.string :as str]
-   [viewer-resources-hashing :as vr-hash]))
+   [clojure.string :as str]))
 
-(def gs-url-prefix "https://storage.googleapis.com/nextjournal-cas-eu")
-(def lookup-hash (vr-hash/front-end-hash))
-(def lookup-url (str gs-url-prefix "/lookup/" lookup-hash))
 
 (def cache-dir
   (or (System/getProperty "clerk.cache_dir")
@@ -26,10 +22,20 @@
   (try (slurp s)
        (catch Exception _ nil)))
 
+(defn read-dynamic-asset-map!
+  "Computes a hash for Clerk's cljs bundle and tries to load the asset manifest for it.
+
+  Used only when Clerk is used as a git dep, should never be called from the jar."
+  []
+  (if-let [front-end-hash (try (requiring-resolve 'viewer-resources-hashing/front-end-hash)
+                               (catch Exception _ nil))]
+    (edn/read-string (slurp (str "https://storage.googleapis.com/nextjournal-cas-eu" "/lookup/" (front-end-hash))))
+    (throw (ex-info "Error reading dynamic asset map" {}))))
+
 (def !asset-map
   ;; In mvn releases, the asset map is available in the artifact
   (delay (or (some-> (io/resource "clerk-asset-map.edn") slurp edn/read-string)
-             (some-> lookup-url try-slurp edn/read-string))))
+             (read-dynamic-asset-map!))))
 
 (defonce !resource->url
   ;; contains asset manifest in the form:

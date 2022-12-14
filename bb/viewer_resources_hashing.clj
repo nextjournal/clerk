@@ -1,7 +1,8 @@
 (ns viewer-resources-hashing
-  (:require [babashka.fs :as fs]
-            [clojure.string :as str]
-            [nextjournal.dejavu :as djv]))
+  (:require [alphabase.base58 :refer [encode] :rename {encode base-58}]
+            [babashka.fs :as fs]
+            [clojure.string :as str])
+  (:import (java.security MessageDigest)))
 
 (def output-dirs ["resources/public/ui"
                   "resources/public/build"])
@@ -11,6 +12,42 @@
 
 (def gs-bucket "gs://nextjournal-cas-eu")
 (def storage-base-url "https://storage.googleapis.com/nextjournal-cas-eu")
+
+(defn sha [s algo]
+  (let [instance (MessageDigest/getInstance algo)
+        bytes (.digest instance (cond (string? s)
+                                      (.getBytes s)
+                                      (fs/exists? s)
+                                      (fs/read-all-bytes s)
+                                      :else (throw (IllegalArgumentException. (str (type s))))))
+        string (base-58 bytes)]
+    string))
+
+(defn sha1 [s]
+  (sha s "SHA-1"))
+
+(defn sha512 [s]
+  (sha s "SHA-512"))
+
+(defn sha1-file [f]
+  (let [fn (str/replace f fs/file-separator "|")
+        fn (str fn ".sha1")]
+    fn))
+
+(defn file-set-hash
+  "Returns combined sha1 of file-set contents."
+  [file-set]
+  (let [out-dir (fs/file ".work/.fileset_hash")
+        _ (fs/create-dirs out-dir)
+        out-file (fs/file out-dir "aggregate.txt")]
+    (spit out-file "")
+    (doseq [f (sort file-set)]
+      (let [sf (sha1-file f)]
+        (spit out-file (str sf ":" (sha1 (slurp f)) "\n") :append true)))
+    (println "Aggregate sha-1 hash:")
+    (println (slurp out-file))
+    (println "SHA-1:" (sha1 (slurp out-file)))
+    (sha1 (slurp out-file))))
 
 (defn sha512s []
   (let [files (map str (mapcat #(fs/glob % "**.{js,css}") output-dirs))
