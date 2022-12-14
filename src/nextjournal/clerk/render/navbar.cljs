@@ -1,7 +1,5 @@
 (ns nextjournal.clerk.render.navbar
-  (:require [nextjournal.devcards :as dc]
-            [nextjournal.ui.components.icon :as icon]
-            [nextjournal.ui.components.localstorage :as ls]
+  (:require [nextjournal.ui.components.localstorage :as ls]
             [nextjournal.ui.components.motion :as motion]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
@@ -177,8 +175,7 @@
                            (js/addEventListener "resize" resize)
                            (resize))
                          (js/removeEventListener "resize" resize))]
-    (let [{:keys [animating? animation-mode hide-toggle? open? mobile-open? mobile? mobile-width theme width]} @!state
-          slide-over-classes "fixed top-0 left-0 "
+    (let [{:keys [animation-mode hide-toggle? open? mobile-open? mobile? mobile-width theme width]} @!state
           w (if mobile? mobile-width width)]
       [:div.flex.h-screen
        {:ref ref-fn}

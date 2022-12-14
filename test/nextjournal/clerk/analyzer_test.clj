@@ -1,12 +1,12 @@
 (ns nextjournal.clerk.analyzer-test
   (:require [babashka.fs :as fs]
-            [clojure.test :refer :all]
+            [clojure.test :refer [deftest is testing]]
             [matcher-combinators.matchers :as m]
             [matcher-combinators.test :refer [match?]]
+            #_:clj-kondo/ignore
             [nextjournal.clerk :as clerk :refer [defcached]]
             [nextjournal.clerk.analyzer :as ana]
-            [nextjournal.clerk.parser :as parser]
-            [weavejester.dependency :as dep])
+            [nextjournal.clerk.parser :as parser])
   (:import (clojure.lang ExceptionInfo)))
 
 (defmacro with-ns-binding [ns-sym & body]
@@ -52,8 +52,8 @@
                 'clojure.core/defn
                 'rewrite-clj.parser/parse-string-all}
               (:deps (ana/analyze '(defn foo
-                                   ([] (foo "s"))
-                                   ([s] (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi")))))))
+                                     ([] (foo "s"))
+                                     ([s] (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi")))))))
 
   (testing "finds deps inside maps and sets"
     (is (match? '#{nextjournal.clerk.analyzer-test/foo
@@ -235,11 +235,12 @@ my-uuid"
   (is (analyze-string "(ns proxy-example-notebook) (proxy [clojure.lang.ISeq][] (seq [] '(this is a test seq)))")))
 
 (deftest circular-dependency
-  (is (match? {:graph {:dependencies {'circular/b #{'clojure.core/str 'circular/a+circular/b}
-                                      'circular/a #{#_'clojure.core/declare 'clojure.core/str 'circular/a+circular/b}}}
+  (is (match? {:graph {:dependencies {'circular/b #{'clojure.core/str
+                                                    (symbol "circular/a+circular/b")}
+                                      'circular/a #{#_'clojure.core/declare 'clojure.core/str (symbol "circular/a+circular/b")}}}
                :->analysis-info {'circular/a any?
                                  'circular/b any?
-                                 'circular/a+circular/b {:form '(do (def a (str "boom " b)) (def b (str a " boom")))}}}
+                                 (symbol "circular/a+circular/b") {:form '(do (def a (str "boom " b)) (def b (str a " boom")))}}}
               (analyze-string "(ns circular)
 (declare a)
 (def b (str a \" boom\"))
