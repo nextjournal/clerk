@@ -461,7 +461,7 @@
                     (and (not inline-results?) blob-id) :lazy-load
                     bundle? :inline ;; TODO: provide a separte setting for this
                     :else :file)
-        blob-opts (assoc doc :blob-mode blob-mode :blob-id blob-id)
+        #?(:clj blob-opts :cljs _) (assoc doc :blob-mode blob-mode :blob-id blob-id)
         presented-result (->> (present (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value))
                               #?(:clj (process-blobs blob-opts)))
         opts-from-form-meta (-> result
@@ -593,20 +593,14 @@
 #_(datafy-scope *ns*)
 #_(datafy-scope #'datafy-scope)
 
-(defn ->slug [text]
-  (apply str
-         (map (comp str/lower-case
-                    (fn [c] (case c (\space \-) \_ c))) text)))
-#_ (->slug "Hello There")
-
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:div.viewer-markdown])}
 
    ;; blocks
    {:name :nextjournal.markdown/heading
     :transform-fn (into-markup
-                   (fn [{:as node :keys [heading-level]}]
-                     [(str "h" heading-level) {:id (->slug (md.transform/->text node))}]))}
+                   (fn [{:keys [attrs heading-level]}]
+                     [(str "h" heading-level) attrs]))}
    {:name :nextjournal.markdown/image :transform-fn #(with-viewer :html [:img.inline (-> % ->value :attrs)])}
    {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
@@ -938,7 +932,7 @@
                                              (map (comp process-wrapped-value
                                                         apply-viewers*
                                                         (partial ensure-wrapped-with-viewers viewers))))))
-      (select-keys [:atom-var-name->state :auto-expand-results? :blocks :css-class :toc :toc-visibility :title :open-graph])
+      (select-keys [:atom-var-name->state :auto-expand-results? :blocks :bundle? :css-class :open-graph :title :toc :toc-visibility])
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
 
 (def notebook-viewer
@@ -1383,6 +1377,7 @@
   (present {:viewers [{:pred sequential? :render-fn pr-str}]} (range 100))
   (present (map vector (range)))
   (present (subs (slurp "/usr/share/dict/words") 0 1000))
+  #_:clj-kondo/ignore ;; remove when clj-kondo is released
   (present (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
   (present [(with-viewer :html [:h1 "hi"])])
   (present (with-viewer :html [:ul (for [x (range 3)] [:li x])]))
@@ -1450,9 +1445,10 @@
                                                                        x)))
                                  xs)))))))
 
+
 (defn reset-viewers!
   ([viewers] (reset-viewers! *ns* viewers))
-  ([scope viewers]
+  ([scope viewers] #_:clj-kondo/ignore ;; remove when clj-kondo is released
    (assert (or (#{:default} scope)
                #?(:clj (instance? clojure.lang.Namespace scope))))
    (swap! !viewers assoc scope viewers)))

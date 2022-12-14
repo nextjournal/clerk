@@ -197,7 +197,7 @@
 (defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks]}]
   (let [deref-forms (into #{} (filter analyzer/deref?) (keys ->hash))
         {:as evaluated-doc :keys [blob-ids]}
-        (reduce (fn [state {:as cell :keys [type]}]
+        (reduce (fn [state cell]
                   (let [state-with-deref-deps-evaluated (analyzer/hash-deref-deps state cell)
                         {:as result :nextjournal/keys [blob-id]} (when (parser/code? cell)
                                                                    (read+eval-cached state-with-deref-deps-evaluated cell))]

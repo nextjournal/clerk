@@ -193,9 +193,10 @@
     (intern (create-ns 'existing-var) 'foo :bar)
     (is (eval/eval-string "(in-ns 'existing-var) foo"))))
 
+(clerk/defcached my-expansive-thing
+  (do (Thread/sleep 1 #_10000) 42))
+
 (deftest defcached
-  (clerk/defcached my-expansive-thing
-    (do (Thread/sleep 1 #_10000) 42))
   (is (= 42 my-expansive-thing)))
 
 (deftest with-cache

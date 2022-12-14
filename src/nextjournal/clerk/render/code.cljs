@@ -8,9 +8,7 @@
             [clojure.string :as str]
             [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clojure-mode :as clojure-mode]
-            [nextjournal.clojure-mode.keymap :as clojure-mode.keymap]
-            [sci.core :as sci]
-            [sci.ctx-store]))
+            [nextjournal.clojure-mode.keymap :as clojure-mode.keymap]))
 
 (def highlight-style
   (.define HighlightStyle
