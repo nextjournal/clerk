@@ -266,13 +266,13 @@
 #_(parse-markdown-string {:doc? true} "# Hello
 ```
 1
-;; # Hello
+;; # 1️⃣ Hello
 2
 ```
 hey
 ```
 3
-;; # Hello
+;; # 2️⃣ Hello
 4
 ```
 ")
