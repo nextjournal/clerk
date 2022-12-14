@@ -36,11 +36,11 @@
 
 (defn toc-items [items]
   (reduce
-   (fn [acc {:as item :keys [content children]}]
+   (fn [acc {:as item :keys [content children attrs]}]
      (if content
        (let [title (md.transform/->text item)]
          (->> {:title title
-               :path (str "#" (viewer/->slug title))
+               :path (str "#" (:id attrs))
                :items (toc-items children)}
               (conj acc)
               vec))
@@ -139,7 +139,15 @@
                                :open? (if-some [stored-open? (localstorage-get local-storage-key)]
                                         stored-open?
                                         (not= :collapsed toc-visibility))})
-               root-ref-fn #(when % (setup-dark-mode! !state))]
+               root-ref-fn (fn [el]
+                             (when el
+                               (setup-dark-mode! !state)
+                               (when-some [heading (when (and (exists? js/location) (not bundle?))
+                                                     (try (some-> js/location .-hash not-empty js/decodeURI js/document.querySelector)
+                                                          (catch js/Error _
+                                                            (js/console.warn (str "Clerk render-notebook, invalid selector: "
+                                                                                   (.-hash js/location))))))]
+                                 (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
     (let [{:keys [md-toc mobile? open?]} @!state
           doc-inset (cond
                       mobile? 0
