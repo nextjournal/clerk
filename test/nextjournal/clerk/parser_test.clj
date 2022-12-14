@@ -102,35 +102,24 @@ par two"))))
                     analyze-string
                     :open-graph)))))
 
-(deftest remove-metadata-annotation
-  (is (match? {:blocks [{:text* "(do effect)"}
-                        {:text* "^{:some-meta 123}\n^:keep-me\n(view this)"}
-                        {:text* "^:keep-me\n(view that)"}
-                        {:text* "^:should\n(do nothing)"}
-                        {:text* "^also\n(do nothing)"}
-                        {:text* "^{:this \"as well\"}\n(do nothing)"}
-                        {:text* "^{:un :balanced :map}\n(do nothing)"}]}
-              (parser/parse-clojure-string "
-^::clerk/no-cache
-(do effect)
+(deftest remove-metadata-annotations
+  (is (= (parser/text-with-clerk-metadata-removed "^::clerk/no-cache\n(do effect)" identity)
+         "(do effect)"))
 
-^{::clerk/visibility {:code :hide} :some-meta 123}
-^:keep-me
-(view this)
+  (is (= (parser/text-with-clerk-metadata-removed "^{::clerk/visibility {:code :hide} :some-meta 123}\n^:keep-me\n(view this)" identity)
+         "^{:some-meta 123}\n^:keep-me\n(view this)"))
 
-^:keep-me
-^{::clerk/visibility {:code :hide}}
-(view that)
+  (is (= (parser/text-with-clerk-metadata-removed "^:keep-me\n  ^{::clerk/visibility {:code :hide}}  \n(view that)" identity)
+         "^:keep-me\n  (view that)"))
 
-^:should
-(do nothing)
+  (is (= (parser/text-with-clerk-metadata-removed "^:should\n  (do nothing)" identity)
+         "^:should\n  (do nothing)"))
 
-^also
-(do nothing)
+  (is (= (parser/text-with-clerk-metadata-removed "^also (do nothing)" identity)
+         "^also (do nothing)"))
 
-^{:this \"as well\"}
-(do nothing)
+  (is (= (parser/text-with-clerk-metadata-removed "^{:this \"as well should\"}\n(do nothing)" identity)
+         "^{:this \"as well should\"}\n(do nothing)"))
 
-^{:un :balanced :map}
-(do nothing)
-"))))
+  (is (= (parser/text-with-clerk-metadata-removed "^{:un :balanced :map} (do nothing)" identity)
+         "^{:un :balanced :map} (do nothing)")))

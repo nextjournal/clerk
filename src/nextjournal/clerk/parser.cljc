@@ -184,7 +184,7 @@
     (when (seq (n/sexpr filtered-map-node))
       filtered-map-node)))
 
-(defn strip-meta [node]
+(defn node-with-clerk-metadata-removed [node ns-resolver]
   (cond-> node
     (= :meta (n/tag node))
     (as-> node
@@ -201,15 +201,16 @@
                                    meta-sexpr))]
             (-> loc z/down
                 (z/replace new-meta)
-                z/right (clojure.zip/edit strip-meta) z/root)
-            (strip-meta (-> loc z/down z/right z/node))))
+                z/right (clojure.zip/edit node-with-clerk-metadata-removed ns-resolver)
+                z/root)
+            (-> loc z/down z/right z/node (node-with-clerk-metadata-removed ns-resolver))))
         (catch #?(:clj Exception :cljs js/Error) _ node)))))
 
+(defn text-with-clerk-metadata-removed [code ns-resolver]
+  (-> code p/parse-string (node-with-clerk-metadata-removed ns-resolver) n/string))
+
 #_
-(-> "^{::clerk/foo 'what}\n^ keep \n^{::clerk/bar true :some-key false}     (view that)"
-    p/parse-string
-    strip-meta
-    n/string)
+(-> "^{::clerk/foo 'what}\n^ keep \n^{::clerk/bar true :some-key false}     (view that)" node-with-clerk-metadata-removed n/string)
 
 #_(nextjournal.clerk.eval/time-ms (parse-file "book.clj"))
 #_(nextjournal.clerk.eval/time-ms (parse-file "notebooks/viewers/code.clj"))
@@ -227,7 +228,6 @@
                     (update :nodes rest)
                     (update :blocks conj {:type :code
                                           :text (n/string node)
-                                          :text* (n/string (strip-meta node))
                                           :loc (-> (meta node)
                                                    (set/rename-keys {:row :line
                                                                      :col :column})
