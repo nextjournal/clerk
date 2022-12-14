@@ -130,17 +130,21 @@
       items))))
 
 (defn navbar [!state]
-  (let [{:keys [items theme toc]} @!state]
+  (let [{:keys [items theme toc]} @!state
+        items? (seq items)]
     [:div.relative.overflow-x-hidden.h-full
-     [:div.absolute.left-0.top-0.w-full.h-full.overflow-y-auto.transition.transform.pb-10
-      {:class (str (theme-class theme :project) " "
-                   (if toc "-translate-x-full" "translate-x-0"))}
-      [:div.px-3.mb-1
-       {:class (theme-class theme :heading)}
-       "Project"]
-      [navbar-items !state (:items @!state) [:items]]]
-     [:div.absolute.left-0.top-0.w-full.h-full.overflow-y-auto.transition.transform
-      {:class (str (theme-class theme :toc) " " (if toc "translate-x-0" "translate-x-full"))}
+     (when items?
+       [:div.absolute.left-0.top-0.w-full.h-full.overflow-y-auto.transform.transition.pb-10
+        {:class (str (theme-class theme :project) " "
+                     (if toc "-translate-x-full" "translate-x-0"))}
+        [:div.px-3.mb-1
+         {:class (theme-class theme :heading)}
+         "Project"]
+        [navbar-items !state (:items @!state) [:items]]])
+     [:div.absolute.left-0.top-0.w-full.h-full.overflow-y-auto.transform
+      {:class (str (when items? "transition ")
+                   (theme-class theme :toc) " "
+                   (if toc "translate-x-0" "translate-x-full"))}
       (if (and (seq items) (seq toc))
         [:div.px-3.py-1.cursor-pointer
          {:class (theme-class theme :back)
