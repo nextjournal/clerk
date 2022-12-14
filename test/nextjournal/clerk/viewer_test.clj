@@ -81,8 +81,9 @@
            (:nextjournal/width (v/apply-viewers (v/table {:nextjournal.clerk/width :full} {:a [1] :b [2] :c [3]})))))))
 
 
+(def my-test-var [:h1 "hi"])
+
 (deftest apply-viewer-unwrapping-var-from-def
-  (def my-test-var [:h1 "hi"])
   (let [apply+get-value #(-> % v/apply-viewer-unwrapping-var-from-def :nextjournal/value :nextjournal/value)]
     (testing "unwraps var when viewer doens't opt out"
       (is (= my-test-var
