@@ -25,11 +25,9 @@
             :depends [yarn-install]
             :task (clojure "-M:sci:demo:dev release viewer")}
 
-  write-hash {:doc "Write viewer resource hash to resources. Intended to be used in a pre-commit hook."
-              :task viewer-resources-hashing/write-viewer-resource-hash}
-
   build+upload-viewer-resources {:doc "Refreshes assets stored on CDN (google storage)"
-                                 :task viewer-resources-hashing/build+upload-viewer-resources}
+                                 :extra-paths ["src"]
+                                 :task nextjournal.clerk.render.hashing/build+upload-viewer-resources}
 
   lint {:doc "Lints project using clj-kondo"
         :task (apply shell "clj-kondo --lint src test" *command-line-args*)}

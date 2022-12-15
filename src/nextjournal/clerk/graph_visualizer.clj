@@ -1,4 +1,5 @@
 (ns nextjournal.clerk.graph-visualizer
+  {:no-doc true}
   (:require [arrowic.core :as arrowic]
             [weavejester.dependency :as dep]))
 

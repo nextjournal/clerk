@@ -1,4 +1,6 @@
-(ns viewer-resources-hashing
+(ns nextjournal.clerk.render.hashing
+  "Computes a hash based for Clerk's render cljs bundle."
+  {:no-doc true}
   (:require [babashka.fs :as fs]
             [clojure.edn :as edn]
             [clojure.string :as str]
