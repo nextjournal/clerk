@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [clojure.tools.build.api :as b]
    [nextjournal.cas :as cas]
-   [viewer-resources-hashing :refer [lookup-url]]
+   [nextjournal.clerk.render.hashing :refer [lookup-url]]
    [shared]))
 
 (def lib 'io.github.nextjournal/clerk)
