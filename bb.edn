@@ -1,7 +1,6 @@
 {:min-bb-version "0.9.159"
  :paths ["bb"]
- :deps {io.github.nextjournal/dejavu
-        {:git/sha "3c4cf5e4dda3648e0d4c575a3433d19c511dd3e5"}}
+ :deps {io.github.nextjournal/dejavu {:git/sha "31bdc12d78d3a8f48cbd6c3df5b8c79ca88df4f1"}}
  :tasks
  {:requires
   ([tasks :as t]
@@ -26,11 +25,9 @@
             :depends [yarn-install]
             :task (clojure "-M:sci:demo:dev release viewer")}
 
-  write-hash {:doc "Write viewer resource hash to resources. Intended to be used in a pre-commit hook."
-              :task viewer-resources-hashing/write-viewer-resource-hash}
-
   build+upload-viewer-resources {:doc "Refreshes assets stored on CDN (google storage)"
-                                 :task viewer-resources-hashing/build+upload-viewer-resources}
+                                 :extra-paths ["src"]
+                                 :task nextjournal.clerk.render.hashing/build+upload-viewer-resources}
 
   lint {:doc "Lints project using clj-kondo"
         :task (apply shell "clj-kondo --lint src test" *command-line-args*)}
@@ -109,9 +106,9 @@
                           (run 'update-meta)
                           (run 'jar))))}
 
-  install-git-hooks {:doc "Install git hooks"
-                     :task (fs/copy "dev/pre-commit" ".git/hooks" {:replace-existing true})}
+  uninstall-git-hooks {:doc "Uninstall git hooks we installed previously and no longer need"
+                       :task (fs/delete-if-exists ".git/hooks/pre-commit")}
 
-  -dev {:depends [install-git-hooks watch:cljs copy-viewer-css]}
+  -dev {:depends [uninstall-git-hooks watch:cljs copy-viewer-css]}
   dev {:doc "Start app in dev mode, compiles cljs and css"
        :task (run '-dev {:parallel true})}}}
