@@ -15,7 +15,6 @@
             [nextjournal.clerk.render.navbar :as navbar]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.markdown.transform :as md.transform]
-            [nextjournal.ui.components.icon :as icon]
             [nextjournal.ui.components.motion :as motion]
             [nextjournal.view.context :as view-context]
             [reagent.core :as r]
@@ -162,7 +161,8 @@
          [:<>
           [navbar/toggle-button !state
            [:<>
-            [icon/menu {:size 20}]
+            [:svg {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke "currentColor" :width 20 :height 20}
+             [:path {:stroke-linecap "round" :stroke-linejoin "round" :stroke-width "2" :d "M4 6h16M4 12h16M4 18h16"}]]
             [:span.uppercase.tracking-wider.ml-1.font-bold
              {:class "text-[12px]"} "ToC"]]
            {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-[7px] text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
