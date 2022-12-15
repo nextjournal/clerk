@@ -168,42 +168,41 @@
   #{:comment :whitespace :comma})
 
 (def clerk-namespace? (comp #{"nextjournal.clerk"} namespace))
+
 (defn remove-clerk-keys
-  "Returns a rewrite-clj node corresponding to the original map node with all ::clerk namespaced keys removed.
+  "Takes a map zipper location, returns a new location representing the input map node with all ::clerk namespaced keys removed.
    Whitespace is preserved when possible."
   [map-loc]
-  (let [filtered-map-node (loop [loc (z/down map-loc) parent map-loc]
-                            (if-not loc
-                              (z/root parent)
-                              (let [s (-> loc z/sexpr)]
-                                (if (and (keyword? s) (clerk-namespace? s))
-                                  (let [updated (-> loc z/right z/remove z/remove)]
-                                    (recur (z/next updated) (z/up updated)))
-                                  (recur (-> loc z/right z/right) parent)))))]
-    (when (seq (n/sexpr filtered-map-node))
-      filtered-map-node)))
+  (let [zdepth (fn [zloc] (-> zloc second :pnodes count))
+        up-to-depth (fn [zloc depth] (if (= depth (zdepth zloc)) zloc (recur (z/up zloc) depth)))]
+    (loop [loc (z/down map-loc)
+           parent map-loc]
+      (if-not loc
+        parent
+        (let [s (-> loc z/sexpr)]
+          (if (and (keyword? s) (clerk-namespace? s))
+            (let [updated (-> loc z/right z/remove z/remove)]
+              (recur (z/next updated) (up-to-depth updated (zdepth map-loc))))
+            (recur (-> loc z/right z/right) parent)))))))
 
 (defn node-with-clerk-metadata-removed [node ns-resolver]
   (cond-> node
     (= :meta (n/tag node))
     (as-> node
       (try
-        (let [loc (z/of-node node {:auto-resolve ns-resolver})
-              meta-sexpr (-> loc z/down z/sexpr)
-              user-map-meta (when (map? meta-sexpr)
-                              ;; can't do it in-place at location
-                              (remove-clerk-keys (-> loc z/down z/node (z/of-node {:auto-resolve ns-resolver}))))]
-          (if-some [new-meta (or user-map-meta
-                                 (when (or (and (not (keyword? meta-sexpr))
-                                                (not (map? meta-sexpr)))
-                                           (and (keyword? meta-sexpr)
-                                                (not (clerk-namespace? meta-sexpr))))
-                                   meta-sexpr))]
-            (-> loc z/down
-                (z/replace new-meta)
+        (let [meta-loc (z/down (z/of-node node {:auto-resolve ns-resolver}))
+              meta-sexpr (z/sexpr meta-loc)
+              map-meta-loc (when (z/map? meta-loc)
+                             (remove-clerk-keys meta-loc))]
+          (if (or (and map-meta-loc (seq (z/sexpr map-meta-loc)))
+                  (or (and (not (keyword? meta-sexpr)) (not (map? meta-sexpr)))
+                      (and (keyword? meta-sexpr) (not (clerk-namespace? meta-sexpr)))))
+            ;; we keep the meta node, possibly a filtered map, move to right and repeat, move to root
+            (-> (or map-meta-loc meta-loc)
                 z/right (clojure.zip/edit node-with-clerk-metadata-removed ns-resolver)
                 z/root)
-            (-> loc z/down z/right z/node (node-with-clerk-metadata-removed ns-resolver))))
+            ;; or just skip meta node and move to right and repeat
+            (-> meta-loc z/right z/node (node-with-clerk-metadata-removed ns-resolver))))
         (catch #?(:clj Exception :cljs js/Error) _ node)))))
 
 (defn text-with-clerk-metadata-removed [code ns-resolver]
