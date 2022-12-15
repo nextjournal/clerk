@@ -146,7 +146,7 @@
                                                      (try (some-> js/location .-hash not-empty js/decodeURI js/document.querySelector)
                                                           (catch js/Error _
                                                             (js/console.warn (str "Clerk render-notebook, invalid selector: "
-                                                                                   (.-hash js/location))))))]
+                                                                                  (.-hash js/location))))))]
                                  (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
     (let [{:keys [md-toc mobile? open?]} @!state
           doc-inset (cond
@@ -171,8 +171,8 @@
        [:div.flex-auto.w-screen.scroll-container
         [:> motion/div
          {:key "viewer-notebook"
-          :initial {:margin-left doc-inset}
-          :animate {:margin-left doc-inset}
+          :initial (when toc {:margin-left doc-inset})
+          :animate (when toc {:margin-left doc-inset})
           :transition navbar/spring
           :class (or css-class "flex flex-col items-center viewer-notebook flex-auto")}
          (doall
