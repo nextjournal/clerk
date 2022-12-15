@@ -18,7 +18,6 @@
             [nextjournal.ui.components.icon :as icon]
             [nextjournal.ui.components.motion :as motion]
             [nextjournal.view.context :as view-context]
-            [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.mathjax :as mathjax]
             [reagent.core :as r]
             [reagent.ratom :as ratom]
@@ -690,9 +689,6 @@
   (when react-root
     (.render react-root (r/as-element [root]))))
 
-(defn render-katex [tex-string {:keys [inline?]}]
-  [:span {:dangerouslySetInnerHTML {:__html (katex/to-html-string tex-string (j/obj :displayMode (not inline?)))}}])
-
 (defn html-render [markup]
   (r/as-element
    (if (string? markup)
@@ -759,6 +755,12 @@
         [:div.overflow-x-auto
          [:div.plotly {:ref ref-fn}]]
         default-loading-view))))
+
+(defn render-katex [tex-string {:keys [inline?]}]
+  (let [katex (hooks/use-d3-require "katex@0.16.4")]
+    (if katex
+      [:span {:dangerouslySetInnerHTML {:__html (.renderToString katex tex-string (j/obj :displayMode (not inline?)))}}]
+      default-loading-view)))
 
 (def render-mathjax mathjax/viewer)
 
