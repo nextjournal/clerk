@@ -18,7 +18,6 @@
             [nextjournal.ui.components.icon :as icon]
             [nextjournal.ui.components.motion :as motion]
             [nextjournal.view.context :as view-context]
-            [nextjournal.viewer.mathjax :as mathjax]
             [reagent.core :as r]
             [reagent.ratom :as ratom]
             [sci.core :as sci]
@@ -762,7 +761,19 @@
       [:span {:dangerouslySetInnerHTML {:__html (.renderToString katex tex-string (j/obj :displayMode (not inline?)))}}]
       default-loading-view)))
 
-(def render-mathjax mathjax/viewer)
+(defn render-mathjax [value]
+  (let [mathjax (hooks/use-d3-require "https://run.nextjournalusercontent.com/data/QmQadTUYtF4JjbwhUFzQy9BQiK52ace3KqVHreUqL7ohoZ?filename=es5/tex-svg-full.js&content-type=application/javascript")
+        ref-fn (react/useCallback (fn [el]
+                                    (when el
+                                      (let [r (.tex2svg js/MathJax value)]
+                                        (if-let [c (.-firstChild el)]
+                                          (.replaceChild el r c)
+                                          (.appendChild el r)))))
+                                  #js[value mathjax])]
+    (if mathjax
+      [:div.overflow-x-auto
+       [:div {:ref ref-fn}]]
+      default-loading-view)))
 
 (def render-code code/render-code)
 
