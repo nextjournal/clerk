@@ -457,20 +457,18 @@
 #_(hash (build-graph (parser/parse-clojure-string (slurp "notebooks/hello.clj"))))
 
 (defn exceeds-bounded-count-limit? [x]
-  (reduce (fn [_ xs]
-            (try
-              (let [limit config/*bounded-count-limit*]
-                (if (and (seqable? xs) (<= limit (bounded-count limit xs)))
+  (let [limit config/*bounded-count-limit*]
+    (reduce (fn [_ xs]
+              (try
+                (if (and (seq? xs) (<= limit (bounded-count limit xs)))
                   (reduced true)
-                  false))
-              (catch Exception _e
-                (reduced true))))
-          false
-          (tree-seq seqable? seq x)))
+                  false)
+                (catch Exception _e
+                  (reduced true))))
+            false
+            (tree-seq coll? seq x))))
 
-#_(exceeds-bounded-count-limit? (range config/*bounded-count-limit*))
-#_(exceeds-bounded-count-limit? (range (dec config/*bounded-count-limit*)))
-#_(exceeds-bounded-count-limit? {:a-range (range)})
+#_(time (exceeds-bounded-count-limit? viewers.table/letter->words))
 
 (defn valuehash
   ([value] (valuehash :sha512 value))

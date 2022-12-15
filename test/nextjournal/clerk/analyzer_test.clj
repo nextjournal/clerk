@@ -6,6 +6,7 @@
             #_:clj-kondo/ignore
             [nextjournal.clerk :as clerk :refer [defcached]]
             [nextjournal.clerk.analyzer :as ana]
+            [nextjournal.clerk.config :as config]
             [nextjournal.clerk.parser :as parser])
   (:import (clojure.lang ExceptionInfo)))
 
@@ -45,6 +46,11 @@
     (is (not (ana/no-cache? '(rand-int 10) (find-ns 'nextjournal.clerk.analyzer-test))))
 
     (is (nextjournal.clerk.analyzer/no-cache? '(rand-int 10) (find-ns 'nextjournal.clerk.analyzer)))))
+
+(deftest exceeds-bounded-count-limit?
+  (is (ana/exceeds-bounded-count-limit? (range config/*bounded-count-limit*)))
+  (is (not (ana/exceeds-bounded-count-limit? (range (dec config/*bounded-count-limit*)))))
+  (is (ana/exceeds-bounded-count-limit? {:a-range (range)})))
 
 (deftest deps
   (is (match? #{'clojure.string/includes?

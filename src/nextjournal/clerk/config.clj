@@ -16,6 +16,8 @@
     (when-not (str/blank? prop)
       (read-string prop))))
 
+
+
 (def !asset-map
   ;; In mvn releases, the asset map is available in the artifact
   (delay (or (some-> (io/resource "clerk-asset-map.edn") slurp edn/read-string)
