@@ -24,8 +24,11 @@
 (defn front-end-hash []
   (str (djv/file-set-hash (file-set))))
 
-(defn lookup-url [lookup-hash]
+(defn bucket-lookup-url [lookup-hash]
   (str gs-bucket "/lookup/" lookup-hash))
+
+(def lookup-url
+  (str storage-base-url "/lookup/" (front-end-hash)))
 
 (defn asset-name [hash suffix]
   (str "/assets/" hash
@@ -37,24 +40,23 @@
 
   Used only when Clerk is used as a git dep, should never be called from the jar."
   []
-  (let [lookup-url (str storage-base-url "/lookup/" (front-end-hash))]
-    (edn/read-string (try
-                       (slurp lookup-url)
-                       (catch java.io.FileNotFoundException e
-                         (throw (ex-info (str "Clerk could not find dynamic asset map at " lookup-url) {:url lookup-url} e)))))))
+  (edn/read-string (try
+                     (slurp lookup-url)
+                     (catch java.io.FileNotFoundException e
+                       (throw (ex-info (str "Clerk could not find dynamic asset map at " lookup-url) {:url lookup-url} e))))))
 
 #_(read-dynamic-asset-map!)
 
 (defn build+upload-viewer-resources []
   (let [front-end-hash (front-end-hash)
         manifest (str (fs/create-temp-file))
-        res (djv/gs-copy (str (lookup-url front-end-hash)) manifest false)]
+        res (djv/gs-copy (str (bucket-lookup-url front-end-hash)) manifest false)]
     (when (= res ::djv/not-found)
       ((requiring-resolve 'babashka.tasks/run) 'build:js)
       (let [content-hash (djv/sha512 (slurp "build/viewer.js"))
             viewer-js-http-link (str storage-base-url (asset-name content-hash "viewer.js"))]
         (spit manifest {"/js/viewer.js" viewer-js-http-link})
         (println "Manifest:" (slurp manifest))
-        (println "Coping manifest to" (lookup-url front-end-hash))
-        (djv/gs-copy manifest (lookup-url front-end-hash))
+        (println "Coping manifest to" (bucket-lookup-url front-end-hash))
+        (djv/gs-copy manifest (bucket-lookup-url front-end-hash))
         (djv/gs-copy "build/viewer.js" (str gs-bucket (asset-name content-hash "viewer.js")))))))

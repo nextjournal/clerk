@@ -62,10 +62,10 @@
                                sicmutils/sicmutils {:mvn/version "0.20.0"}
                                io.github.nextjournal/clerk-slideshow {:git/sha "562f634494a1e1a9149ed78d5d39fd9486cc00ba"}}}
 
-           :build {:deps {io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}
+           :build {:deps {io.github.nextjournal/clerk {:local/root "."}
+                          io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}
                           io.github.slipset/deps-deploy {:git/sha "b4359c5d67ca002d9ed0c4b41b710d7e5a82e3bf"}
                           io.github.nextjournal/cas {:git/url "git@github.com:nextjournal/cas"
-                                                     :git/sha "5e8079b720e347b9466db9c2282ce79a125a011c"}
-                          babashka/fs {:mvn/version "0.1.2"}}
+                                                     :git/sha "5e8079b720e347b9466db9c2282ce79a125a011c"}}
                    :extra-paths ["bb" "src" "resources"] ;; for loading lookup-url in build
                    :ns-default build}}}
