@@ -1,6 +1,7 @@
 (ns viewer-resources-hashing
   (:require [alphabase.base58 :refer [encode] :rename {encode base-58}]
             [babashka.fs :as fs]
+            [clojure.edn :as edn]
             [clojure.string :as str])
   (:import (java.security MessageDigest)))
 
@@ -75,6 +76,19 @@
   (str "/assets/" hash
        (when suffix
          (str "-" suffix))))
+
+(defn read-dynamic-asset-map!
+  "Computes a hash for Clerk's cljs bundle and tries to load the asset manifest for it.
+
+  Used only when Clerk is used as a git dep, should never be called from the jar."
+  []
+  (let [lookup-url (str "https://storage.googleapis.com/nextjournal-cas-eu" "/lookup/" (front-end-hash))]
+    (edn/read-string (try
+                       (slurp lookup-url)
+                       (catch java.io.FileNotFoundException e
+                         (throw (ex-info (str "Clerk could not find dynamic asset map at " lookup-url) {:url lookup-url} e)))))))
+
+#_(read-dynamic-asset-map!)
 
 (defn build+upload-viewer-resources []
   (let [front-end-hash (front-end-hash)
