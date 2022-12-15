@@ -217,7 +217,7 @@
         (clojure.zip/edit node-with-clerk-metadata-removed ns-resolver)
         z/root)
 
-    'else node))
+    :else node))
 
 (defn text-with-clerk-metadata-removed [code ns-resolver]
   (-> code p/parse-string (node-with-clerk-metadata-removed ns-resolver) n/string))
