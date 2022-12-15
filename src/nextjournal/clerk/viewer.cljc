@@ -973,6 +973,7 @@
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc
       (assoc :atom-var-name->state (atom-var-name->state doc))
+      (assoc :ns (->viewer-eval (list 'ns (if ns (ns-name ns) 'user))))
       (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
                                              (map (comp process-wrapped-value
                                                         apply-viewers*
@@ -982,6 +983,7 @@
                     :blocks :bundle?
                     :css-class
                     :open-graph
+                    :ns
                     :title
                     :toc
                     :toc-visibility])
