@@ -171,8 +171,8 @@
        [:div.flex-auto.w-screen.scroll-container
         [:> motion/div
          {:key "viewer-notebook"
-          :initial (when toc {:margin-left doc-inset})
-          :animate (when toc {:margin-left doc-inset})
+          :initial (when toc-visibility {:margin-left doc-inset})
+          :animate (when toc-visibility {:margin-left doc-inset})
           :transition navbar/spring
           :class (or css-class "flex flex-col items-center viewer-notebook flex-auto")}
          (doall
