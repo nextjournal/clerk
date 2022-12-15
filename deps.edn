@@ -9,7 +9,7 @@
         com.nextjournal/beholder {:mvn/version "1.0.0"}
 
         io.github.nextjournal/markdown {:mvn/version "0.4.132"}
-        io.github.nextjournal/dejavu {:git/sha "a8ed3dfae827dba4ac9619b8e221910360fbe514"}
+        io.github.nextjournal/dejavu {:git/sha "c0e030df52393b487a2e4f084ca631fdc5c3d336"}
 
         com.taoensso/nippy {:mvn/version "3.2.0"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
