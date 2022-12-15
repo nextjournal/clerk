@@ -21,7 +21,9 @@
   (delay (or (some-> (io/resource "clerk-asset-map.edn") slurp edn/read-string)
              (try ((requiring-resolve 'viewer-resources-hashing/read-dynamic-asset-map!))
                   (catch Exception e
-                    (throw (ex-info "Error reading dynamic asset map" (ex-data e) e)))))))
+                    (throw (ex-info "Error reading dynamic asset map"
+                                    (or (ex-data e)
+                                        {}) e)))))))
 
 (defonce !resource->url
   ;; contains asset manifest in the form:
