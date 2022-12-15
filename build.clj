@@ -10,7 +10,9 @@
 (def lib 'io.github.nextjournal/clerk)
 (def class-dir "target/classes")
 
-(def basis (b/create-basis {:project "deps.edn"}))
+(def basis (-> (b/create-basis {:project "deps.edn"})
+               (update :libs dissoc 'io.github.nextjournal/dejavu)))
+
 (def version (shared/version))
 (def jar-file (format "target/%s-%s.jar" (name lib) version))
 
