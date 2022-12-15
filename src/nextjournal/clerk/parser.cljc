@@ -167,6 +167,13 @@
 (def whitespace-on-line-tags
   #{:comment :whitespace :comma})
 
+(defn deflike-node? [node]
+  (and (= :list (n/tag node))
+       (when-some [first-child (some-> node n/children first)]
+         (and (n/sexpr-able? first-child)
+              (when-some [s (n/sexpr first-child)]
+                (and (symbol? s) (nil? (namespace s)) (str/starts-with? (name s) "def")))))))
+
 (def clerk-namespace? (comp #{"nextjournal.clerk"} namespace))
 
 (defn remove-clerk-keys
@@ -186,30 +193,38 @@
             (recur (-> loc z/right z/right) parent)))))))
 
 (defn node-with-clerk-metadata-removed [node ns-resolver]
-  (cond-> node
+  (cond
     (= :meta (n/tag node))
-    (as-> node
-      (try
-        (let [meta-loc (z/down (z/of-node node {:auto-resolve ns-resolver}))
-              meta-sexpr (z/sexpr meta-loc)
-              map-meta-loc (when (z/map? meta-loc)
-                             (remove-clerk-keys meta-loc))]
-          (if (or (and map-meta-loc (seq (z/sexpr map-meta-loc)))
-                  (or (and (not (keyword? meta-sexpr)) (not (map? meta-sexpr)))
-                      (and (keyword? meta-sexpr) (not (clerk-namespace? meta-sexpr)))))
-            ;; we keep the meta node, possibly a filtered map, move to right and repeat, move to root
-            (-> (or map-meta-loc meta-loc)
-                z/right (clojure.zip/edit node-with-clerk-metadata-removed ns-resolver)
-                z/root)
-            ;; or just skip meta node and move to right and repeat
-            (-> meta-loc z/right z/node (node-with-clerk-metadata-removed ns-resolver))))
-        (catch #?(:clj Exception :cljs js/Error) _ node)))))
+    (try
+      (let [meta-loc (z/down (z/of-node node {:auto-resolve ns-resolver}))
+            meta-sexpr (z/sexpr meta-loc)
+            map-meta-loc (when (z/map? meta-loc)
+                           (remove-clerk-keys meta-loc))]
+        (if (or (and map-meta-loc (seq (z/sexpr map-meta-loc)))
+                (or (and (not (keyword? meta-sexpr)) (not (map? meta-sexpr)))
+                    (and (keyword? meta-sexpr) (not (clerk-namespace? meta-sexpr)))))
+          ;; we keep the meta node, possibly a filtered map, move to right and repeat, move to root
+          (-> (or map-meta-loc meta-loc)
+              z/right (clojure.zip/edit node-with-clerk-metadata-removed ns-resolver)
+              z/root)
+          ;; or just skip meta node and move to right and repeat
+          (-> meta-loc z/right z/node (node-with-clerk-metadata-removed ns-resolver))))
+      (catch #?(:clj Exception :cljs js/Error) _ node))
+
+    (deflike-node? node)
+    (-> node (z/of-node {:auto-resolve ns-resolver})
+        z/down z/right
+        (clojure.zip/edit node-with-clerk-metadata-removed ns-resolver)
+        z/root)
+
+    'else node))
 
 (defn text-with-clerk-metadata-removed [code ns-resolver]
   (-> code p/parse-string (node-with-clerk-metadata-removed ns-resolver) n/string))
 
 #_(text-with-clerk-metadata-removed "^::clerk/bar ^{::clerk/foo 'what}\n^ keep \n^{::clerk/bar true :some-key false}  (view that)" {'clerk 'nextjournal.clerk})
 #_(text-with-clerk-metadata-removed "^foo    'form" {'clerk 'nextjournal.clerk})
+#_(text-with-clerk-metadata-removed "(def ^::clerk/no-cache random-thing (rand-int 1000))" {'clerk 'nextjournal.clerk})
 
 (defn markdown-context []
   (update markdown.parser/empty-doc

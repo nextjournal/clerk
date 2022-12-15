@@ -21,8 +21,10 @@
 (rand-int 100)
 
 ;; ## Meta on Vars
-;; `def` forms with meta on the var are not currently addressed
-(def ^::clerk/no-cache random-thing-2 (rand-int 1000))
+;; Should also be hidden
+
+(def ^::clerk/no-cache random-thing (rand-int 1000))
+(defonce ^{::clerk/no-cache true} once-random-thing (rand-int 1000))
 
 ;; ## Whitespace
 ;; All whitespace and comments in-between annotations should be preserved:

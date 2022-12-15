@@ -227,7 +227,6 @@
 (str my-uuid)
 my-uuid"
                    analyze-string
-                   ana/analyze-doc
                    :->analysis-info
                    vals))))
 
