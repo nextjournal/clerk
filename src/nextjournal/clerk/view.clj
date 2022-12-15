@@ -19,14 +19,15 @@
 (defn relative? [url]
   (and (not (.isAbsolute (URI. url)))
        (not (str/starts-with? url "/"))))
-#_ (relative? "/hello/css")
-#_ (relative? "hello/css")
-#_ (relative? "https://cdn.stylesheet.css")
+
+#_(relative? "/hello/css")
+#_(relative? "hello/css")
+#_(relative? "https://cdn.stylesheet.css")
 
 (defn adjust-relative-path [{:as state :keys [current-path]} url]
-  (cond-> url
+  (cond->> url
     (and current-path (relative? url))
-    (->> (str (v/relative-root-prefix-from (v/map-index state current-path))))))
+    (str (v/relative-root-prefix-from (v/map-index state current-path)))))
 
 (defn include-viewer-css [state]
   (if-let [css-url (get-in state [:resource->url "/css/viewer.css"])]
