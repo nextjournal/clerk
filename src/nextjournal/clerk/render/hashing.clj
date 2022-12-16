@@ -31,7 +31,7 @@
 #_(System/setProperty "nextjournal.dejavu.debug" "1")
 
 (defn front-end-hash []
-  (str (djv/file-set-hash (file-set))))
+  (str (djv/file-set-hash base-dir (file-set))))
 
 (defn bucket-lookup-url [lookup-hash]
   (str gs-bucket "/lookup/" lookup-hash))
