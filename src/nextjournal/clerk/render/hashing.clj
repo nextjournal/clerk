@@ -28,7 +28,7 @@
                                         "yarn.lock"])
            (djv/cljs-files (mapv #(fs/file base-dir %) ["src" "resources"]))]))
 
-#_(System/setProperty "nextjournal.dejavu.debug" "1")
+(System/setProperty "nextjournal.dejavu.debug" "1")
 
 (defn front-end-hash []
   (str (djv/file-set-hash base-dir (file-set))))
