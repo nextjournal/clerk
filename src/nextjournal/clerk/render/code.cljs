@@ -150,9 +150,7 @@
 (defn editor
   ([!code-str] (editor !code-str {}))
   ([!code-str {:keys [extensions on-change]
-               :or {on-change (fn [text]
-                                ;; TODO: using resolve to avoid a circular dep, find a better solution
-                                ((resolve 'nextjournal.clerk.render/clerk-reset!) !code-str text))}}]
+               :or {on-change #(reset! !code-str %)}}]
    (let [!container-el (hooks/use-ref nil)
          !view (hooks/use-ref nil)]
      ;; view instance is built only once

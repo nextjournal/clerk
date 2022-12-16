@@ -575,13 +575,21 @@
 
 (declare mount)
 
+(defonce ^:private ^:dynamic *sync* true)
+
+(defn atom-changed [var-name _atom _old-state new-state]
+  (when *sync*
+    ;; TODO: for now sending whole state but could also diff
+    (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] (list 'quote new-state))]}))))
+
 (defn intern-atom! [var-name state]
   (assert (sci.ctx-store/get-ctx) "sci-ctx must be set")
   (sci/intern (sci.ctx-store/get-ctx)
               (sci/create-ns (symbol (namespace var-name)))
               (symbol (name var-name))
-              (with-meta (r/atom state)
-                {:var-name var-name})))
+              (doto (r/atom state)
+                (add-watch var-name atom-changed))))
+
 
 (defonce ^:private !synced-atom-vars
   (atom #{}))
@@ -601,7 +609,8 @@
     (doseq [[var-name value] atom-var-name->state]
       (if-let [existing-var (sci/resolve (sci.ctx-store/get-ctx) var-name)]
         (when *reset-sync-atoms?*
-          (reset! @existing-var value))
+          (binding [*sync* false]
+            (reset! @existing-var value)))
         (intern-atom! var-name value)))
     (reset! !synced-atom-vars vars-in-use)))
 
@@ -631,17 +640,6 @@
         ;; TODO: figure out why it doesn't work without `js/setTimeout`
         (js/setTimeout #(swap! !eval-counter inc) 10))
     (swap! !doc apply-patch patch)))
-
-(defn clerk-swap! [atom & swap-args]
-  (let [new-val (apply swap! atom swap-args)]
-    (when-let [var-name (-> atom meta :var-name)]
-      ;; TODO: for now sending whole state but could also diff
-      (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] (list 'quote new-val))]})))
-    new-val))
-
-(defn clerk-reset! [atom new-val]
-  (clerk-swap! atom (constantly new-val))
-  new-val)
 
 (defonce !pending-clerk-eval-replies
   (atom {}))
