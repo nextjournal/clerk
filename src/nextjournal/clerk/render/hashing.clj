@@ -5,7 +5,7 @@
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [nextjournal.dejavu :as djv :refer [sha1 sha1-file log]]))
+            [nextjournal.dejavu :as djv]))
 
 (def output-dirs ["resources/public/ui"
                   "resources/public/build"])
@@ -28,25 +28,10 @@
                                         "yarn.lock"])
            (djv/cljs-files (mapv #(fs/file base-dir %) ["src" "resources"]))]))
 
-(System/setProperty "nextjournal.dejavu.debug" "1")
-
-(defn file-set-hash
-  "Returns combined sha1 of file-set contents."
-  ([file-set] (file-set-hash (fs/file ".") file-set))
-  ([base-dir file-set]
-   (let [aggregate (str/join "\n"
-                             (into []
-                                   (map (fn [f] (let [sf (sha1-file base-dir f)]
-                                                  (str sf ":" (sha1 (slurp f))))))
-                                   (sort file-set)))]
-     (log "Aggregate sha-1 hash:")
-     (log aggregate)
-     (prn :aggregate aggregate)
-     (log "SHA-1:" (sha1 aggregate))
-     (sha1 aggregate))))
+#_(System/setProperty "nextjournal.dejavu.debug" "1")
 
 (defn front-end-hash []
-  (str (file-set-hash base-dir (file-set))))
+  (str (djv/file-set-hash base-dir (file-set))))
 
 (defn bucket-lookup-url [lookup-hash]
   (str gs-bucket "/lookup/" lookup-hash))
