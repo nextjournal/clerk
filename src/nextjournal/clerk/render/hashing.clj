@@ -3,6 +3,7 @@
   {:no-doc true}
   (:require [babashka.fs :as fs]
             [clojure.edn :as edn]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [nextjournal.dejavu :as djv]))
 
@@ -15,13 +16,19 @@
 (def gs-bucket "gs://nextjournal-cas-eu")
 (def storage-base-url "https://storage.googleapis.com/nextjournal-cas-eu")
 
+(def base-dir
+  (-> (fs/file (io/resource "nextjournal/clerk.clj")) fs/parent fs/parent fs/parent))
+
 (defn file-set []
-  (reduce into []
-          [["deps.edn"
-            "render/deps.edn"
-            "shadow-cljs.edn"
-            "yarn.lock"]
-           (djv/cljs-files ["src" "resources"] #_(classpath-dirs))]))
+  (reduce into
+          []
+          [(mapv #(fs/file base-dir %) ["deps.edn"
+                                        "render/deps.edn"
+                                        "shadow-cljs.edn"
+                                        "yarn.lock"])
+           (djv/cljs-files (mapv #(fs/file base-dir %) ["src" "resources"]))]))
+
+#_(System/setProperty "nextjournal.dejavu.debug" "1")
 
 (defn front-end-hash []
   (str (djv/file-set-hash (file-set))))
