@@ -285,12 +285,14 @@
 
 (declare present present* !viewers apply-viewers apply-viewers* ensure-wrapped-with-viewers process-viewer process-wrapped-value default-viewers find-named-viewer)
 
-(defn inspect-fn []  #?(:clj (->viewer-eval 'nextjournal.clerk.render/inspect-presented) :cljs (eval 'nextjournal.clerk.render/inspect-presented)))
+(defn inspect-fn []
+  #?(:clj (->viewer-eval 'nextjournal.clerk.render/inspect-presented)
+     :cljs (eval 'nextjournal.clerk.render/inspect-presented)))
 
 (defn when-wrapped [f] #(cond-> % (wrapped-value? %) f))
 
 (defn inspect-wrapped-value [wrapped-value]
-  [(inspect-fn) (-> wrapped-value apply-viewers process-wrapped-value)])
+  [(inspect-fn) (-> wrapped-value apply-viewers present*)])
 
 #_(w/postwalk (when-wrapped inspect-wrapped-value) [1 2 {:a [3 (with-viewer :latex "\\alpha")]} 4])
 
