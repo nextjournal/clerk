@@ -531,7 +531,9 @@
   {:name :table/markup
    :render-fn '(fn [head+body opts]
                  [:div
-                  (into [table-with-sticky-header] (nextjournal.clerk.render/inspect-children opts) head+body)])})
+                  (into [nextjournal.clerk.render/render-table-with-sticky-header]
+                        (nextjournal.clerk.render/inspect-children opts)
+                        head+body)])})
 
 (def table-head-viewer
   {:name :table/head
