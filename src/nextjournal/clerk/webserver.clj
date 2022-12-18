@@ -2,6 +2,7 @@
   (:require [babashka.fs :as fs]
             [clojure.edn :as edn]
             [clojure.pprint :as pprint]
+            [clojure.set :as set]
             [clojure.string :as str]
             [editscript.core :as editscript]
             [nextjournal.clerk.view :as view]
@@ -136,9 +137,9 @@
                                  (eval '(nextjournal.clerk/recompute!)))
                        :swap! (when-let [var (resolve (:var-name msg))]
                                 (try
-                                  (apply swap! @var (eval (:args msg)))
                                   (binding [*sender-ch* sender-ch]
-                                    (eval '(nextjournal.clerk/recompute!)))
+                                    ;; TODO: check if this works with watches
+                                    (apply swap! @var (eval (:args msg))))
                                   (catch Exception ex
                                     (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) show-error!)))))))))})
 
@@ -163,8 +164,18 @@
 
 #_(nextjournal.clerk/serve! {})
 
+(defn sync-atom-changed [key atom old-state new-state]
+  (prn :sync-atom-changed key *sender-ch*)
+  (eval '(nextjournal.clerk/recompute!)))
+
 (defn present+reset! [doc]
-  (let [presented (view/doc->viewer doc)]
+  (let [presented (view/doc->viewer doc)
+        sync-vars-old (v/extract-sync-atom-vars @!doc)
+        sync-vars (v/extract-sync-atom-vars doc)]
+    (doseq [sync-var (set/difference sync-vars sync-vars-old)]
+      (add-watch @sync-var (symbol sync-var) sync-atom-changed))
+    (doseq [sync-var (set/difference sync-vars-old sync-vars)]
+      (remove-watch @sync-var (symbol sync-var)))
     (reset! !doc (with-meta doc presented))
     presented))
 
