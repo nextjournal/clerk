@@ -201,8 +201,8 @@
             map-meta-loc (when (z/map? meta-loc)
                            (remove-clerk-keys meta-loc))]
         (if (or (and map-meta-loc (seq (z/sexpr map-meta-loc)))
-                (or (and (not (keyword? meta-sexpr)) (not (map? meta-sexpr)))
-                    (and (keyword? meta-sexpr) (not (clerk-namespace? meta-sexpr)))))
+                (and (not (keyword? meta-sexpr)) (not (map? meta-sexpr)))
+                (and (keyword? meta-sexpr) (not (clerk-namespace? meta-sexpr))))
           ;; we keep the meta node, possibly a filtered map, move to right and repeat, move to root
           (-> (or map-meta-loc meta-loc)
               z/right (clojure.zip/edit node-with-clerk-metadata-removed ns-resolver)
