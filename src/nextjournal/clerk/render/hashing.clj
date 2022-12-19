@@ -17,27 +17,31 @@
 (def storage-base-url "https://storage.googleapis.com/nextjournal-cas-eu")
 
 (def base-dir
-  (-> (fs/file (io/resource "nextjournal/clerk.clj")) fs/parent fs/parent fs/parent))
+  (let [resource (io/resource "nextjournal/clerk.clj")]
+    (when (= "file" (.getProtocol resource))
+      (-> (fs/file resource) fs/parent fs/parent fs/parent))))
 
 (defn file-set []
-  (reduce into
-          []
-          [(mapv #(fs/file base-dir %) ["deps.edn"
-                                        "render/deps.edn"
-                                        "shadow-cljs.edn"
-                                        "yarn.lock"])
-           (djv/cljs-files (mapv #(fs/file base-dir %) ["src" "resources"]))]))
+  (if base-dir
+    (reduce into
+            []
+            [(mapv #(fs/file base-dir %) ["deps.edn"
+                                          "render/deps.edn"
+                                          "shadow-cljs.edn"
+                                          "yarn.lock"])
+             (djv/cljs-files (mapv #(fs/file base-dir %) ["src" "resources"]))])
+    (binding [*out* *err*]
+      (println "[clerk] Warning: unable to compute cljs hash because `base-dir` is `nil`, see https://github.com/nextjournal/clerk/issues/351 for more info"))))
 
 #_(System/setProperty "nextjournal.dejavu.debug" "1")
 
 (defn front-end-hash []
+  (when-not (seq (file-set))
+    (throw (ex-info "Clerk could note compute `font-end-hash` for cljs bundle." {:base-dir base-dir})))
   (str (djv/file-set-hash base-dir (file-set))))
 
 (defn bucket-lookup-url [lookup-hash]
   (str gs-bucket "/lookup/" lookup-hash))
-
-(def lookup-url
-  (str storage-base-url "/lookup/" (front-end-hash)))
 
 (defn asset-name [hash suffix]
   (str "/assets/" hash
@@ -49,10 +53,11 @@
 
   Used only when Clerk is used as a git dep, should never be called from the jar."
   []
-  (edn/read-string (try
-                     (slurp lookup-url)
-                     (catch java.io.FileNotFoundException e
-                       (throw (ex-info (str "Clerk could not find dynamic asset map at " lookup-url) {:url lookup-url} e))))))
+  (let [lookup-url (str storage-base-url "/lookup/" (front-end-hash))]
+    (edn/read-string (try
+                       (slurp lookup-url)
+                       (catch java.io.FileNotFoundException e
+                         (throw (ex-info (str "Clerk could not find dynamic asset map at " lookup-url) {:url lookup-url} e)))))))
 
 #_(read-dynamic-asset-map!)
 
