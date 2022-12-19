@@ -1,14 +1,13 @@
 (ns nextjournal.clerk.render.code
   (:require ["@codemirror/language" :refer [HighlightStyle syntaxHighlighting]]
             ["@codemirror/state" :refer [EditorState RangeSetBuilder Text]]
-            ["@codemirror/view" :refer [EditorView Decoration keymap]]
+            ["@codemirror/view" :refer [EditorView Decoration]]
             ["@lezer/highlight" :refer [tags highlightTree]]
             ["@nextjournal/lang-clojure" :refer [clojureLanguage]]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
             [nextjournal.clerk.render.hooks :as hooks]
-            [nextjournal.clojure-mode :as clojure-mode]
-            [nextjournal.clojure-mode.keymap :as clojure-mode.keymap]))
+            [nextjournal.clojure-mode :as clojure-mode]))
 
 (def highlight-style
   (.define HighlightStyle
