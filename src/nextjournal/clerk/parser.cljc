@@ -227,6 +227,10 @@
 (defn text-with-clerk-metadata-removed [code ns-resolver]
   (-> code p/parse-string (node-with-clerk-metadata-removed ns-resolver) n/string))
 
+#_(text-with-clerk-metadata-removed "^::clerk/bar ^{::clerk/foo 'what}\n^ keep \n^{::clerk/bar true :some-key false}  (view that)" {'clerk 'nextjournal.clerk})
+#_(text-with-clerk-metadata-removed "^foo    'form" {'clerk 'nextjournal.clerk})
+#_(text-with-clerk-metadata-removed "(def ^::clerk/no-cache random-thing (rand-int 1000))" {'clerk 'nextjournal.clerk})
+
 (defn hide-clerk-metadata [{:as doc :keys [blocks ns]} ns-resolver]
   (reduce (fn [{:as doc :nextjournal.clerk/keys [show-meta]} {:as block :keys [form type text]}]
             (-> doc
@@ -241,10 +245,6 @@
               (assoc :blocks [])
               (merge (select-keys (meta ns) [:nextjournal.clerk/show-meta])))
           blocks))
-
-#_(text-with-clerk-metadata-removed "^::clerk/bar ^{::clerk/foo 'what}\n^ keep \n^{::clerk/bar true :some-key false}  (view that)" {'clerk 'nextjournal.clerk})
-#_(text-with-clerk-metadata-removed "^foo    'form" {'clerk 'nextjournal.clerk})
-#_(text-with-clerk-metadata-removed "(def ^::clerk/no-cache random-thing (rand-int 1000))" {'clerk 'nextjournal.clerk})
 
 (defn markdown-context []
   (update markdown.parser/empty-doc
