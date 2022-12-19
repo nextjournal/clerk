@@ -87,6 +87,5 @@
 
 
 ;; ## Nesting tables inside html
-(clerk/html [:div.bg-amber-100
-             (clerk/table [["one" 2]
-                           ["three" 4]])])
+(clerk/html [:div.bg-amber-100.p-2
+             (clerk/table [[1 2] [3 4] [5 6]])])
