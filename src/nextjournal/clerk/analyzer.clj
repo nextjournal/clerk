@@ -314,7 +314,8 @@
                                                          (dissoc state :doc?)
                                                          (->ana-keys analyzed))
                                            doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
-                                           doc? (update-in [:blocks i :text] parser/text-with-clerk-metadata-removed (ns-resolver notebook-ns))
+                                           doc? (assoc-in [:blocks i :text-without-meta]
+                                                          (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))
                                            (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))]
                                (if (seq deps)
                                  (-> (reduce (partial analyze-deps analyzed) state deps)

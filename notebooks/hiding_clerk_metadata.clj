@@ -6,7 +6,7 @@
 ;; All metadata on forms in the `nextjournal.clerk` namespace should be hidden from the user, while all other keys should be displayed.
 
 ^clojure.lang.PersistentHashMap
-^{::clerk/visibility {:result :hide} :please "keep me"}
+^{::clerk/visibility {:result :hide} :please   "keep me"}
 {:a 'nice-map}
 ;; map metadata with all-clerk keys should just not be displayed
 ^{::clerk/visibility {:result :show} ::clerk/width :wide ::clerk/no-cache true}
@@ -16,15 +16,15 @@
   [:span.mx-5 (rand-int 1000)]
   (apply str (repeat 10 "♦︎"))])
 
-;; simple truthy meta `^::clerk/no-cache` should be removed
+;; simple truthy meta like `^::clerk/no-cache` should be removed
 ^::clerk/no-cache
 (rand-int 100)
 
-;; ## Meta on Vars
+;; ## Clerk metadata on Vars
 ;; Should also be hidden
 
-(def ^::clerk/no-cache random-thing (rand-int 1000))
-(defonce ^{::clerk/no-cache true} once-random-thing (rand-int 1000))
+(def ^::clerk/no-cache ^:private random-thing (rand-int 1000))
+(defonce ^{::clerk/no-cache true :doc "this should stay"}  once-random-thing (rand-int 1000))
 
 ;; ## Whitespace
 ;; All whitespace and comments in-between annotations should be preserved:
@@ -41,7 +41,7 @@
 'foo
 
 ;; ## Unreadable forms
-;; meta with unbalanced maps should throw as late as read-time not parse-time
+;; meta with e.g. unbalanced maps should throw as expected
 ;;
 ;;     ^{:a 1 :c}
 ;;    'what
