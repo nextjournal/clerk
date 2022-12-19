@@ -124,10 +124,6 @@
                   ".cm-tooltip > ul > li:first-child" {:border-top-left-radius "3px"
                                                        :border-top-right-radius "3px"}})))
 
-(def ^js complete-keymap (.of keymap clojure-mode.keymap/complete))
-(def ^js builtin-keymap (.of keymap clojure-mode.keymap/builtin))
-(def ^js paredit-keymap (.of keymap clojure-mode.keymap/paredit))
-
 (def read-only (.. EditorView -editable (of false)))
 
 (defn on-change-ext [f]

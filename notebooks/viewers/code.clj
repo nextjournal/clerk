@@ -51,14 +51,13 @@ with     quite
 ;; customize extensions
 (clerk/with-viewer
   '(fn [code-str _]
-     (require '["@codemirror/view" :refer [lineNumbers highlightActiveLine]])
+     (require '["@codemirror/view" :refer [keymap lineNumbers highlightActiveLine]])
      [:div.bg-neutral-50
       [nextjournal.clerk.render.code/editor (reagent/atom code-str)
        {:extensions
         (.concat (lineNumbers)
                  (highlightActiveLine)
-                 ;; TODO: expose clojure-mode nss
-                 nextjournal.clerk.render.code/paredit-keymap)}]])
+                 (.of keymap nextjournal.clojure-mode.keymap/paredit))}]])
   "(def fib
   (lazy-cat [0 1]
             (map + fib (rest fib))))")

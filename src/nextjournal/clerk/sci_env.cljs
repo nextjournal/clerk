@@ -1,4 +1,5 @@
 (ns nextjournal.clerk.sci-env
+  (:require-macros [nextjournal.clerk.sci-env :refer [sci-copy-nss]])
   (:require ["@codemirror/view" :as codemirror-view]
             ["@codemirror/state" :as codemirror-state]
             ["framer-motion" :as framer-motion]
@@ -13,6 +14,11 @@
             [nextjournal.clerk.render.hooks]
             [nextjournal.clerk.trim-image]
             [nextjournal.clerk.viewer :as viewer]
+
+            [nextjournal.clojure-mode.commands]
+            [nextjournal.clojure-mode.extensions.eval-region]
+            [nextjournal.clojure-mode.keymap]
+
             [nextjournal.view.context :as view-context]
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
@@ -125,6 +131,11 @@
                        'nextjournal.clerk.viewer viewer-namespace
                        'nextjournal.clerk.parser parser-namespace
                        'clojure.core {'read-string read-string}}
+
+                      (sci-copy-nss 'nextjournal.clojure-mode.keymap
+                                    'nextjournal.clojure-mode.commands
+                                    'nextjournal.clojure-mode.extensions.eval-region)
+
                       sci.configs.js-interop/namespaces
                       sci.configs.reagent/namespaces)})
 
