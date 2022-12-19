@@ -189,6 +189,7 @@
         (let [s (-> loc z/sexpr)]
           (if (and (keyword? s) (clerk-namespace? s))
             (let [updated (-> loc z/right z/remove z/remove)]
+              ;; z/remove could land inside the value on the left of the removed key, therefore a single z/up may not be sufficient
               (recur (z/next updated) (up-to-depth updated (zdepth map-loc))))
             (recur (-> loc z/right z/right) parent)))))))
 
