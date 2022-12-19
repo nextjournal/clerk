@@ -18,11 +18,8 @@ jobs:
         uses: DeLaGuardo/setup-clojure@master
         with:
           cli: '1.10.3.943'
-
-      - name: Setup Babashka
-        uses: turtlequeue/setup-babashka@v1.5.0
-        with:
-          babashka-version: 0.9.162
+          bb: latest
+          clj-kondo: latest
 
       - name: Show branch name
         run: |
@@ -48,6 +45,22 @@ jobs:
 
       - name: Build and upload viewer resources
         run: bb build+upload-viewer-resources
+
+  clj-kondo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: 🔧 Install clojure
+        uses: DeLaGuardo/setup-clojure@master
+        with:
+          bb: latest
+          clj-kondo: latest
+
+      - name: Run clj-kondo linter
+        run: |
+          bb lint
+
 
   test:
     runs-on: ${{matrix.sys.os}}
@@ -75,11 +88,7 @@ jobs:
         uses: DeLaGuardo/setup-clojure@master
         with:
           cli: '1.10.3.943'
-
-      - name: Setup Babashka
-        uses: turtlequeue/setup-babashka@v1.5.0
-        with:
-          babashka-version: 0.9.162
+          bb: latest
 
       - name: 🗝 maven cache
         uses: actions/cache@v2
@@ -112,11 +121,7 @@ jobs:
         uses: DeLaGuardo/setup-clojure@master
         with:
           cli: '1.10.3.943'
-
-      - name: Setup Babashka
-        uses: turtlequeue/setup-babashka@v1.5.0
-        with:
-          babashka-version: 0.9.162
+          bb: latest
 
       - name: 🗝 maven cache
         uses: actions/cache@v2
@@ -143,7 +148,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v0.3.0
 
       - name: 📓 Build Clerk Book
-        run: clojure -J-Dclojure.main.report=stderr -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :paths '["book.clj"]'
+        run: clojure -J-Dclojure.main.report=stderr -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :paths '["book.clj" "CHANGELOG.md"]'
 
       - name: 🏗 Build Clerk Static App with default Notebooks
         run: clojure -J-Dclojure.main.report=stderr -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :bundle true
@@ -167,10 +172,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Setup Babashka
-        uses: turtlequeue/setup-babashka@v1.5.0
+      - name: 🔧 Install clojure
+        uses: DeLaGuardo/setup-clojure@master
         with:
-          babashka-version: 0.9.162
+          bb: latest
 
       - name: Run Playwright tests against static assets
         run: |
@@ -185,10 +190,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Babashka
-        uses: turtlequeue/setup-babashka@v1.5.0
+      - name: 🔧 Install clojure
+        uses: DeLaGuardo/setup-clojure@master
         with:
-          babashka-version: 0.9.162
+          bb: latest
 
       - name: 🗝 maven cache
         uses: actions/cache@v2

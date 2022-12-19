@@ -19,15 +19,19 @@
 (defn relative? [url]
   (and (not (.isAbsolute (URI. url)))
        (not (str/starts-with? url "/"))))
-#_ (relative? "/hello/css")
-#_ (relative? "hello/css")
-#_ (relative? "https://cdn.stylesheet.css")
 
-(defn include-viewer-css [{:as state :keys [current-path resource->url]}]
-  (if-let [css-url (resource->url "/css/viewer.css")]
-    (hiccup/include-css (cond-> css-url
-                          (and current-path (relative? css-url))
-                          (->> (str (v/relative-root-prefix-from (v/map-index state current-path))))))
+#_(relative? "/hello/css")
+#_(relative? "hello/css")
+#_(relative? "https://cdn.stylesheet.css")
+
+(defn adjust-relative-path [{:as state :keys [current-path]} url]
+  (cond->> url
+    (and current-path (relative? url))
+    (str (v/relative-root-prefix-from (v/map-index state current-path)))))
+
+(defn include-viewer-css [state]
+  (if-let [css-url (get-in state [:resource->url "/css/viewer.css"])]
+    (hiccup/include-css (adjust-relative-path state css-url))
     (list (hiccup/include-js "https://cdn.tailwindcss.com?plugins=typography")
           [:script (-> (slurp (io/resource "stylesheets/tailwind.config.js"))
                        (str/replace #"^module.exports" "tailwind.config")
@@ -37,14 +41,13 @@
 (defn include-css+js [state]
   (list
    (include-viewer-css state)
-   [:script {:type "module" :src (get-in state [:resource->url "/js/viewer.js"])}]
+   [:script {:type "module" :src (adjust-relative-path state (get-in state [:resource->url "/js/viewer.js"]))}]
    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
    [:link {:rel "preconnect" :href "https://fonts.bunny.net"}]
    (hiccup/include-css "https://fonts.bunny.net/css?family=fira-code:400,700%7Cfira-mono:400,700%7Cfira-sans:400,400i,500,500i,700,700i%7Cfira-sans-condensed:700,700i%7Cpt-serif:400,400i,700,700i")))
 
 (defn ->html [{:as state :keys [conn-ws?] :or {conn-ws? true}}]
   (hiccup/html5
-   {:class "overflow-hidden min-h-screen"}
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
@@ -62,7 +65,6 @@ window.ws_send = msg => ws.send(msg)")]]))
 
 (defn ->static-app [{:as state :keys [current-path html]}]
   (hiccup/html5
-   {:class "overflow-hidden min-h-screen"}
    [:head
     [:title (or (and current-path (-> state :path->doc (get current-path) v/->value :title)) "Clerk")]
     [:meta {:charset "UTF-8"}]

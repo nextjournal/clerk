@@ -168,14 +168,16 @@
           :bundle? false
           :browse? false
           :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
-         (let [opts' (cond-> opts
-                       index (assoc :index (str index)))
-               expanded-paths (when expand-paths? (expand-paths opts'))]
+         (let [opts+index (cond-> opts
+                            index (assoc :index (str index)))
+               {:as opts' :keys [expanded-paths]} (cond-> opts+index
+                                                    expand-paths? (merge (try {:expanded-paths (expand-paths opts+index)}
+                                                                              (catch Exception e
+                                                                                {:error e}))))]
            (-> opts'
                (update :resource->url #(merge {} %2 %1) @config/!resource->url)
-               (cond->
+               (cond-> #_opts'
                  expand-paths? (dissoc :expand-paths?)
-                 expanded-paths (assoc :expanded-paths expanded-paths)
                  (and (not index) (= 1 (count expanded-paths))) (assoc :index (first expanded-paths)))))))
 
 #_(process-build-opts {:index 'book.clj :expand-paths? true})

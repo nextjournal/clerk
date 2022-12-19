@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.render
   (:require ["react" :as react]
             ["react-dom/client" :as react-client]
+            ["vh-sticky-table-header" :as sticky-table-header]
             [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.set :as set]
@@ -11,11 +12,11 @@
             [goog.string :as gstring]
             [nextjournal.clerk.render.code :as code]
             [nextjournal.clerk.render.hooks :as hooks]
+            [nextjournal.clerk.render.navbar :as navbar]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.ui.components.icon :as icon]
             [nextjournal.ui.components.motion :as motion]
-            [nextjournal.ui.components.navbar :as navbar]
             [nextjournal.view.context :as view-context]
             [nextjournal.viewer.katex :as katex]
             [nextjournal.viewer.mathjax :as mathjax]
@@ -36,11 +37,11 @@
 
 (defn toc-items [items]
   (reduce
-   (fn [acc {:as item :keys [content children]}]
+   (fn [acc {:as item :keys [content children attrs]}]
      (if content
        (let [title (md.transform/->text item)]
          (->> {:title title
-               :path (str "#" (viewer/->slug title))
+               :path (str "#" (:id attrs))
                :items (toc-items children)}
               (conj acc)
               vec))
@@ -126,20 +127,33 @@
 
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class toc toc-visibility]}]
   (r/with-let [local-storage-key "clerk-navbar"
+               navbar-width 220
                !state (r/atom {:toc (toc-items (:children toc))
                                :md-toc toc
                                :dark-mode? (localstorage-get local-storage-dark-mode-key)
                                :theme {:slide-over "bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900"}
-                               :width 220
+                               :width navbar-width
                                :mobile-width 300
                                :local-storage-key local-storage-key
                                :set-hash? (not bundle?)
+                               :scroll-el (js/document.querySelector "html")
                                :open? (if-some [stored-open? (localstorage-get local-storage-key)]
                                         stored-open?
                                         (not= :collapsed toc-visibility))})
-               root-ref-fn #(when % (setup-dark-mode! !state))
-               ref-fn #(when % (swap! !state assoc :scroll-el %))]
-    (let [{:keys [md-toc]} @!state]
+               root-ref-fn (fn [el]
+                             (when el
+                               (setup-dark-mode! !state)
+                               (when-some [heading (when (and (exists? js/location) (not bundle?))
+                                                     (try (some-> js/location .-hash not-empty js/decodeURI js/document.querySelector)
+                                                          (catch js/Error _
+                                                            (js/console.warn (str "Clerk render-notebook, invalid selector: "
+                                                                                  (.-hash js/location))))))]
+                                 (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
+    (let [{:keys [md-toc mobile? open?]} @!state
+          doc-inset (cond
+                      mobile? 0
+                      open? navbar-width
+                      :else 0)]
       (when-not (= md-toc toc)
         (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc :open? (not= :collapsed toc-visibility)))
       [:div.flex
@@ -153,11 +167,15 @@
             [icon/menu {:size 20}]
             [:span.uppercase.tracking-wider.ml-1.font-bold
              {:class "text-[12px]"} "ToC"]]
-           {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-3 text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
+           {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-[7px] text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
           [navbar/panel !state [navbar/navbar !state]]])
-       [:div.flex-auto.h-screen.overflow-y-auto.scroll-container
-        {:ref ref-fn}
-        [:div {:class (or css-class "flex flex-col items-center viewer-notebook flex-auto")}
+       [:div.flex-auto.w-screen.scroll-container
+        [:> motion/div
+         {:key "viewer-notebook"
+          :initial (when toc-visibility {:margin-left doc-inset})
+          :animate (when toc-visibility {:margin-left doc-inset})
+          :transition navbar/spring
+          :class (or css-class "flex flex-col items-center viewer-notebook flex-auto")}
          (doall
           (map-indexed (fn [idx x]
                          (let [{viewer-name :name} (viewer/->viewer x)
@@ -475,6 +493,18 @@
     [inspect {:head [:column-1 :column-2]
               :rows [[1 3] [2 4]]}]]])
 
+(defn render-table-with-sticky-header [& children]
+  (let [!table-ref (hooks/use-ref nil)
+        !table-clone-ref (hooks/use-ref nil)]
+    (hooks/use-layout-effect (fn []
+                               (when (and @!table-ref (.querySelector @!table-ref "thead") @!table-clone-ref)
+                                 (let [sticky (sticky-table-header/StickyTableHeader. @!table-ref @!table-clone-ref #js{:max 0})]
+                                   (fn [] (.destroy sticky))))))
+    [:div
+     [:div.overflow-x-auto.overflow-y-hidden.w-full
+      (into [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-ref}] children)]
+     [:div.overflow-x-auto.overflow-y-hidden.w-full.shadow
+      [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-clone-ref :style {:margin 0}}]]]))
 
 (defn throwable-view [{:keys [via trace]}]
   [:div.bg-white.max-w-6xl.mx-auto.text-xs.monospace.not-prose
@@ -558,13 +588,21 @@
 
 (declare mount)
 
+(defonce ^:private ^:dynamic *sync* true)
+
+(defn atom-changed [var-name _atom _old-state new-state]
+  (when *sync*
+    ;; TODO: for now sending whole state but could also diff
+    (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] (list 'quote new-state))]}))))
+
 (defn intern-atom! [var-name state]
   (assert (sci.ctx-store/get-ctx) "sci-ctx must be set")
   (sci/intern (sci.ctx-store/get-ctx)
               (sci/create-ns (symbol (namespace var-name)))
               (symbol (name var-name))
-              (with-meta (r/atom state)
-                {:var-name var-name})))
+              (doto (r/atom state)
+                (add-watch var-name atom-changed))))
+
 
 (defonce ^:private !synced-atom-vars
   (atom #{}))
@@ -584,7 +622,8 @@
     (doseq [[var-name value] atom-var-name->state]
       (if-let [existing-var (sci/resolve (sci.ctx-store/get-ctx) var-name)]
         (when *reset-sync-atoms?*
-          (reset! @existing-var value))
+          (binding [*sync* false]
+            (reset! @existing-var value)))
         (intern-atom! var-name value)))
     (reset! !synced-atom-vars vars-in-use)))
 
@@ -614,17 +653,6 @@
         ;; TODO: figure out why it doesn't work without `js/setTimeout`
         (js/setTimeout #(swap! !eval-counter inc) 10))
     (swap! !doc apply-patch patch)))
-
-(defn clerk-swap! [atom & swap-args]
-  (let [new-val (apply swap! atom swap-args)]
-    (when-let [var-name (-> atom meta :var-name)]
-      ;; TODO: for now sending whole state but could also diff
-      (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] (list 'quote new-val))]})))
-    new-val))
-
-(defn clerk-reset! [atom new-val]
-  (clerk-swap! atom (constantly new-val))
-  new-val)
 
 (defonce !pending-clerk-eval-replies
   (atom {}))

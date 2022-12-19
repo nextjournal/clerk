@@ -49,7 +49,6 @@
   (update-changelog)
   (update-readme)
   (shell "git add"
-         "resources/viewer-js-hash"
          "resources/META-INF"
          "README.md"
          "CHANGELOG.md")

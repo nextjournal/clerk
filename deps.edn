@@ -1,4 +1,4 @@
-{:paths ["src" "resources"]
+{:paths ["src" "resources" "bb"]
  :deps {org.clojure/clojure {:mvn/version "1.10.3"}
         org.clojure/java.classpath {:mvn/version "1.0.0"}
         org.clojure/tools.analyzer {:mvn/version "1.1.0"}
@@ -6,10 +6,10 @@
         babashka/fs {:mvn/version "0.1.11"}
         borkdude/edamame {:mvn/version "1.0.0"}
         weavejester/dependency {:mvn/version "0.2.1"}
-
         com.nextjournal/beholder {:mvn/version "1.0.0"}
 
-        io.github.nextjournal/markdown {:mvn/version "0.4.126"}
+        io.github.nextjournal/markdown {:mvn/version "0.4.132"}
+        io.github.nextjournal/dejavu {:git/sha "6c17a66c0aba7626439f56b39fa912a2e572472c"}
 
         com.taoensso/nippy {:mvn/version "3.2.0"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
@@ -38,10 +38,13 @@
                               arrowic/arrowic {:mvn/version "0.1.1"}
                               binaryage/devtools {:mvn/version "1.0.3"}
                               cider/cider-nrepl {:mvn/version "0.28.3"}
+                              com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.0.3"}
                               org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
                               org.babashka/cli {:mvn/version "0.5.40"}}
                  :extra-paths ["dev" "notebooks"]
-                 :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}" "-Dpolyglot.engine.WarnInterpreterOnly=false" "-XX:-OmitStackTraceInFastThrow"]
+                 :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}"
+                            "-Dpolyglot.engine.WarnInterpreterOnly=false" "-XX:-OmitStackTraceInFastThrow"
+                            "-Djdk.attach.allowAttachSelf"]
                  :main-opts ["-m" "shadow.cljs.devtools.cli"]
                  :exec-fn nextjournal.clerk.dev-launcher/start}
 
@@ -59,10 +62,10 @@
                                sicmutils/sicmutils {:mvn/version "0.20.0"}
                                io.github.nextjournal/clerk-slideshow {:git/sha "562f634494a1e1a9149ed78d5d39fd9486cc00ba"}}}
 
-           :build {:deps {io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}
+           :build {:deps {io.github.nextjournal/clerk {:local/root "."}
+                          io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}
                           io.github.slipset/deps-deploy {:git/sha "b4359c5d67ca002d9ed0c4b41b710d7e5a82e3bf"}
                           io.github.nextjournal/cas {:git/url "git@github.com:nextjournal/cas"
-                                                     :git/sha "5e8079b720e347b9466db9c2282ce79a125a011c"}
-                          babashka/fs {:mvn/version "0.1.2"}}
+                                                     :git/sha "5e8079b720e347b9466db9c2282ce79a125a011c"}}
                    :extra-paths ["bb" "src" "resources"] ;; for loading lookup-url in build
                    :ns-default build}}}
