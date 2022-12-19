@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.render
   (:require ["react" :as react]
             ["react-dom/client" :as react-client]
+            ["vh-sticky-table-header" :as sticky-table-header]
             [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.set :as set]
@@ -492,6 +493,18 @@
     [inspect {:head [:column-1 :column-2]
               :rows [[1 3] [2 4]]}]]])
 
+(defn render-table-with-sticky-header [& children]
+  (let [!table-ref (hooks/use-ref nil)
+        !table-clone-ref (hooks/use-ref nil)]
+    (hooks/use-layout-effect (fn []
+                               (when (and @!table-ref (.querySelector @!table-ref "thead") @!table-clone-ref)
+                                 (let [sticky (sticky-table-header/StickyTableHeader. @!table-ref @!table-clone-ref #js{:max 0})]
+                                   (fn [] (.destroy sticky))))))
+    [:div
+     [:div.overflow-x-auto.overflow-y-hidden.w-full
+      (into [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-ref}] children)]
+     [:div.overflow-x-auto.overflow-y-hidden.w-full.shadow
+      [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-clone-ref :style {:margin 0}}]]]))
 
 (defn throwable-view [{:keys [via trace]}]
   [:div.bg-white.max-w-6xl.mx-auto.text-xs.monospace.not-prose
