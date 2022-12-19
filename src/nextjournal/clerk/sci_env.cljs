@@ -82,18 +82,6 @@
           'set-viewers! render/set-viewers!
           'with-d3-require render/with-d3-require}))
 
-(def render-namespace
-  (sci/copy-ns nextjournal.clerk.render (sci/create-ns 'nextjournal.clerk.render)))
-
-(def parser-namespace
-  (sci/copy-ns nextjournal.clerk.parser (sci/create-ns 'nextjournal.clerk.parser)))
-
-(def hooks-namespace
-  (sci/copy-ns nextjournal.clerk.render.hooks (sci/create-ns 'nextjournal.clerk.render.hooks)))
-
-(def code-namespace
-  (sci/copy-ns nextjournal.clerk.render.code (sci/create-ns 'nextjournal.clerk.render.code)))
-
 ;; classes which cannot be resolved by symbol
 (def libname->class
   {"@codemirror/view" codemirror-view
@@ -125,16 +113,18 @@
              'reagent 'reagent.core
              'v 'nextjournal.clerk.viewer
              'p 'nextjournal.clerk.parser}
-   :namespaces (merge {'nextjournal.clerk.render render-namespace
-                       'nextjournal.clerk.render.hooks hooks-namespace
-                       'nextjournal.clerk.render.code code-namespace
-                       'nextjournal.clerk.viewer viewer-namespace
-                       'nextjournal.clerk.parser parser-namespace
+   :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
                        'clojure.core {'read-string read-string}}
 
-                      (sci-copy-nss 'nextjournal.clojure-mode.keymap
-                                    'nextjournal.clojure-mode.commands
-                                    'nextjournal.clojure-mode.extensions.eval-region)
+                      (sci-copy-nss
+                       'nextjournal.clerk.parser
+                       'nextjournal.clerk.render
+                       'nextjournal.clerk.render.code
+                       'nextjournal.clerk.render.hooks
+
+                       'nextjournal.clojure-mode.keymap
+                       'nextjournal.clojure-mode.commands
+                       'nextjournal.clojure-mode.extensions.eval-region)
 
                       sci.configs.js-interop/namespaces
                       sci.configs.reagent/namespaces)})
