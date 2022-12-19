@@ -6,6 +6,7 @@
             [clojure.string :as str]
             [edamame.core :as edamame]
             [goog.object]
+            [applied-science.js-interop :as j]
             [nextjournal.clerk.parser]
             [nextjournal.clerk.render :as render]
             [nextjournal.clerk.render.code]
@@ -87,22 +88,26 @@
 (def code-namespace
   (sci/copy-ns nextjournal.clerk.render.code (sci/create-ns 'nextjournal.clerk.render.code)))
 
-
-(def codemirror-libname->class
+;; classes which cannot be resolved by symbol
+(def libname->class
   {"@codemirror/view" codemirror-view
    "@codemirror/state" codemirror-state})
 
 (defn load-fn [{:keys [libname namespace ctx opts ns]}]
-  (when (contains? codemirror-libname->class libname)
+  (js/console.log :lib libname )
+  (when (contains? libname->class libname)
     (let [{:keys [as refer]} opts
-          munged-libname (symbol (munge libname))]
-      (sci/add-class! ctx munged-libname codemirror-view)
+          munged-libname (symbol (munge libname))
+          klass (libname->class libname)]
+      (sci/add-class! ctx munged-libname klass)
       (when as
         (sci/add-import! ctx ns munged-libname as))
       (doseq [r refer]
-        ;; TODO
-        ))
-    {:handled true}))
+        (when-some [prop (j/get klass (name r))]
+          (let [sub-libname (str munged-libname "$" r)]
+            (sci/add-class! ctx sub-libname prop)
+            (sci/add-import! ctx ns sub-libname r))))
+      {:handled true})))
 
 (def initial-sci-opts
   {:async? true
