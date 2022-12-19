@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.render
   (:require ["react" :as react]
             ["react-dom/client" :as react-client]
+            ["vh-sticky-table-header" :as sticky-table-header]
             [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.set :as set]
@@ -146,7 +147,7 @@
                                                      (try (some-> js/location .-hash not-empty js/decodeURI js/document.querySelector)
                                                           (catch js/Error _
                                                             (js/console.warn (str "Clerk render-notebook, invalid selector: "
-                                                                                   (.-hash js/location))))))]
+                                                                                  (.-hash js/location))))))]
                                  (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
     (let [{:keys [md-toc mobile? open?]} @!state
           doc-inset (cond
@@ -171,8 +172,8 @@
        [:div.flex-auto.w-screen.scroll-container
         [:> motion/div
          {:key "viewer-notebook"
-          :initial {:margin-left doc-inset}
-          :animate {:margin-left doc-inset}
+          :initial (when toc-visibility {:margin-left doc-inset})
+          :animate (when toc-visibility {:margin-left doc-inset})
           :transition navbar/spring
           :class (or css-class "flex flex-col items-center viewer-notebook flex-auto")}
          (doall
@@ -492,6 +493,18 @@
     [inspect {:head [:column-1 :column-2]
               :rows [[1 3] [2 4]]}]]])
 
+(defn render-table-with-sticky-header [& children]
+  (let [!table-ref (hooks/use-ref nil)
+        !table-clone-ref (hooks/use-ref nil)]
+    (hooks/use-layout-effect (fn []
+                               (when (and @!table-ref (.querySelector @!table-ref "thead") @!table-clone-ref)
+                                 (let [sticky (sticky-table-header/StickyTableHeader. @!table-ref @!table-clone-ref #js{:max 0})]
+                                   (fn [] (.destroy sticky))))))
+    [:div
+     [:div.overflow-x-auto.overflow-y-hidden.w-full
+      (into [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-ref}] children)]
+     [:div.overflow-x-auto.overflow-y-hidden.w-full.shadow
+      [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-clone-ref :style {:margin 0}}]]]))
 
 (defn throwable-view [{:keys [via trace]}]
   [:div.bg-white.max-w-6xl.mx-auto.text-xs.monospace.not-prose
@@ -575,13 +588,21 @@
 
 (declare mount)
 
+(defonce ^:private ^:dynamic *sync* true)
+
+(defn atom-changed [var-name _atom _old-state new-state]
+  (when *sync*
+    ;; TODO: for now sending whole state but could also diff
+    (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] (list 'quote new-state))]}))))
+
 (defn intern-atom! [var-name state]
   (assert (sci.ctx-store/get-ctx) "sci-ctx must be set")
   (sci/intern (sci.ctx-store/get-ctx)
               (sci/create-ns (symbol (namespace var-name)))
               (symbol (name var-name))
-              (with-meta (r/atom state)
-                {:var-name var-name})))
+              (doto (r/atom state)
+                (add-watch var-name atom-changed))))
+
 
 (defonce ^:private !synced-atom-vars
   (atom #{}))
@@ -601,7 +622,8 @@
     (doseq [[var-name value] atom-var-name->state]
       (if-let [existing-var (sci/resolve (sci.ctx-store/get-ctx) var-name)]
         (when *reset-sync-atoms?*
-          (reset! @existing-var value))
+          (binding [*sync* false]
+            (reset! @existing-var value)))
         (intern-atom! var-name value)))
     (reset! !synced-atom-vars vars-in-use)))
 
@@ -631,17 +653,6 @@
         ;; TODO: figure out why it doesn't work without `js/setTimeout`
         (js/setTimeout #(swap! !eval-counter inc) 10))
     (swap! !doc apply-patch patch)))
-
-(defn clerk-swap! [atom & swap-args]
-  (let [new-val (apply swap! atom swap-args)]
-    (when-let [var-name (-> atom meta :var-name)]
-      ;; TODO: for now sending whole state but could also diff
-      (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] (list 'quote new-val))]})))
-    new-val))
-
-(defn clerk-reset! [atom new-val]
-  (clerk-swap! atom (constantly new-val))
-  new-val)
 
 (defonce !pending-clerk-eval-replies
   (atom {}))

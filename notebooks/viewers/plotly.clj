@@ -35,3 +35,10 @@
            :data [{:x ["giraffes" "orangutans" "monkeys"]
                    :y [20 14 23]
                    :type "bar"}]})
+
+;; ## Nesting Plotly inside html
+
+(v/html
+ [:div.border.border-gray-200.p-4.m-4
+  [:h1.text-center "Graph"]
+  (v/plotly {:data [{:y [2 3 1]}]} )])

@@ -1,6 +1,6 @@
 {:min-bb-version "0.9.159"
  :paths ["bb"]
- :deps {io.github.nextjournal/dejavu {:git/sha "31bdc12d78d3a8f48cbd6c3df5b8c79ca88df4f1"}}
+ :deps {io.github.nextjournal/dejavu {:git/sha "6c17a66c0aba7626439f56b39fa912a2e572472c"}}
  :tasks
  {:requires
   ([tasks :as t]
@@ -18,7 +18,7 @@
                 :task (shell "yarn install")}
 
   watch:cljs {:doc "Starts shadow-cljs & clerk"
-              :task (apply clojure "-X:test:sci:demo:dev" *command-line-args*)
+              :task (apply clojure "-X:build:test:sci:demo:dev" *command-line-args*)
               :depends [yarn-install]}
 
   build:js {:doc "Builds JS"

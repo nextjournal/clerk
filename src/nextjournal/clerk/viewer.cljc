@@ -285,14 +285,9 @@
 
 (declare present present* !viewers apply-viewers apply-viewers* ensure-wrapped-with-viewers process-viewer process-wrapped-value default-viewers find-named-viewer)
 
-(defn inspect-fn []  #?(:clj (->viewer-eval 'nextjournal.clerk.render/inspect-presented) :cljs (eval 'nextjournal.clerk.render/inspect-presented)))
-
-(defn when-wrapped [f] #(cond-> % (wrapped-value? %) f))
-
-(defn inspect-wrapped-value [wrapped-value]
-  [(inspect-fn) (-> wrapped-value apply-viewers process-wrapped-value)])
-
-#_(w/postwalk (when-wrapped inspect-wrapped-value) [1 2 {:a [3 (with-viewer :latex "\\alpha")]} 4])
+(defn inspect-fn []
+  #?(:clj (->viewer-eval 'nextjournal.clerk.render/inspect-presented)
+     :cljs (eval 'nextjournal.clerk.render/inspect-presented)))
 
 (defn mark-presented [wrapped-value]
   (assoc wrapped-value :nextjournal/presented? true))
@@ -529,7 +524,9 @@
   {:name :table/markup
    :render-fn '(fn [head+body opts]
                  [:div
-                  (into [table-with-sticky-header] (nextjournal.clerk.render/inspect-children opts) head+body)])})
+                  (into [nextjournal.clerk.render/render-table-with-sticky-header]
+                        (nextjournal.clerk.render/inspect-children opts)
+                        head+body)])})
 
 (def table-head-viewer
   {:name :table/head
@@ -767,14 +764,26 @@
 (def mathjax-viewer
   {:name :mathjax :render-fn 'nextjournal.clerk.render/render-mathjax :transform-fn mark-presented})
 
+(defn transform-html [{:as wrapped-value :keys [path]}]
+  (let [!path (atom -1)]
+    (update wrapped-value
+            :nextjournal/value
+            (fn [hiccup]
+              (if (string? hiccup)
+                [:div {:dangerouslySetInnerHTML {:__html hiccup}}]
+                (w/postwalk (fn [x] (if (wrapped-value? x)
+                                      [(inspect-fn)
+                                       (present x (let [p (conj path (swap! !path inc))]
+                                                    {:current-path p :path p}))]
+                                      x))
+                            hiccup))))))
+
 (def html-viewer
   {:name :html
    :render-fn 'identity
-   :transform-fn (comp mark-presented
-                       (update-val (fn [data]
-                                     (if (string? data)
-                                       [:div {:dangerouslySetInnerHTML {:__html data}}]
-                                       (w/postwalk (when-wrapped inspect-wrapped-value) data)))))})
+   :transform-fn (comp mark-presented transform-html)})
+
+#_(present (with-viewer html-viewer [:div {:nextjournal/value (range 30)} {:nextjournal/value (range 30)}]))
 
 (def plotly-viewer
   {:name :plotly :render-fn 'nextjournal.clerk.render/render-plotly :transform-fn mark-presented})
