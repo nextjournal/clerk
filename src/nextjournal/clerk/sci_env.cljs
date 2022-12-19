@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.sci-env
   (:require ["@codemirror/view" :as codemirror-view]
+            ["@codemirror/state" :as codemirror-state]
             ["framer-motion" :as framer-motion]
             [cljs.reader]
             [clojure.string :as str]
@@ -86,8 +87,26 @@
 (def code-namespace
   (sci/copy-ns nextjournal.clerk.render.code (sci/create-ns 'nextjournal.clerk.render.code)))
 
+
+(def codemirror-libname->class
+  {"@codemirror/view" codemirror-view
+   "@codemirror/state" codemirror-state})
+
+(defn load-fn [{:keys [libname namespace ctx opts ns]}]
+  (when (contains? codemirror-libname->class libname)
+    (let [{:keys [as refer]} opts
+          munged-libname (symbol (munge libname))]
+      (sci/add-class! ctx munged-libname codemirror-view)
+      (when as
+        (sci/add-import! ctx ns munged-libname as))
+      (doseq [r refer]
+        ;; TODO
+        ))
+    {:handled true}))
+
 (def initial-sci-opts
   {:async? true
+   :load-fn load-fn
    :disable-arity-checks true
    :classes {'js goog/global
              'framer-motion framer-motion
@@ -116,8 +135,7 @@
 
 (def ^:export mount render/mount)
 
-(sci.ctx-store/reset-ctx! (doto (sci/init initial-sci-opts)
-                            (sci/add-class! 'codemirror.view codemirror-view)))
+(sci.ctx-store/reset-ctx! (sci/init initial-sci-opts))
 
 (sci/alter-var-root sci/print-fn (constantly *print-fn*))
 (sci/alter-var-root sci/print-err-fn (constantly *print-err-fn*))
