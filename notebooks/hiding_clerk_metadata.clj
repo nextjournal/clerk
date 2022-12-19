@@ -1,6 +1,8 @@
 ;; # 👻 Hiding Clerk Metadata
 (ns hiding-clerk-metadata
-  {:nextjournal.clerk/toc true}
+  {:nextjournal.clerk/toc true
+   ;; disable hiding metadata for the whole notebook
+   #_#_ :nextjournal.clerk/show-meta true}
   (:require [nextjournal.clerk :as clerk]))
 
 ;; All metadata on forms in the `nextjournal.clerk` namespace should be hidden from the user, while all other keys should be displayed.
@@ -39,6 +41,20 @@
      :kept
   123}
 'foo
+
+;; ## Locally overridden defaults
+;; with a map `{::clerk/show-meta true-or-false}` we can control metadata display:
+;; hidden
+^::clerk/no-cache 'one
+
+{::clerk/show-meta true}
+;; shown
+^::clerk/no-cache 'two
+
+{::clerk/show-meta false}
+
+;; hidden again
+^::clerk/no-cache 'three
 
 ;; ## Unreadable forms
 ;; meta with e.g. unbalanced maps should throw as expected

@@ -223,8 +223,13 @@
   (testing "splicing reader conditional prints normally (issue #338)"
     (is (= "?@" (pr-str (symbol "?@"))))))
 
-(deftest removed-metadata
+(deftest show-or-hide-metadata
   (is (= "(do 'this)"
          (-> (eval/eval-string "(ns test.removed-metadata\n(:require [nextjournal.clerk :as c]))\n\n^::c/no-cache (do 'this)")
+             view/doc->viewer
+             v/->value :blocks second v/->value)))
+
+  (is (= "^::c/no-cache (do 'this)"
+         (-> (eval/eval-string "(ns test.removed-metadata\n{:nextjournal.clerk/show-meta true}\n(:require [nextjournal.clerk :as c]))\n\n^::c/no-cache (do 'this)")
              view/doc->viewer
              v/->value :blocks second v/->value))))

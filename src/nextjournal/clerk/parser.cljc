@@ -45,6 +45,9 @@
 #_(legacy-form-visibility '^{:nextjournal.clerk/visibility :show :nextjournal.clerk/viewer :hide-result} (def my-range (range 600)) :show)
 #_(legacy-form-visibility '^{:nextjournal.clerk/visibility :show :nextjournal.clerk/viewer nextjournal.clerk/hide-result} (def my-range (range 500)) :show)
 
+(defn show-meta-marker? [form]
+  (and (map? form) (contains? form :nextjournal.clerk/show-meta)))
+
 (defn visibility-marker? [form]
   (and (map? form) (contains? form :nextjournal.clerk/visibility)))
 
@@ -62,7 +65,8 @@
 #_(parse-visibility nil {:code :fold :result :hide})
 
 (defn ->visibility [form]
-  (if (visibility-marker? form)
+  (if (or (visibility-marker? form)
+          (show-meta-marker? form))
     {:code :hide :result :hide}
     (cond-> (parse-visibility form (-> form meta :nextjournal.clerk/visibility))
       (ns? form) (merge {:result :hide}))))
@@ -222,6 +226,21 @@
 
 (defn text-with-clerk-metadata-removed [code ns-resolver]
   (-> code p/parse-string (node-with-clerk-metadata-removed ns-resolver) n/string))
+
+(defn hide-clerk-metadata [{:as doc :keys [blocks ns]} ns-resolver]
+  (reduce (fn [{:as doc :nextjournal.clerk/keys [show-meta]} {:as block :keys [form type text]}]
+            (-> doc
+                (update :blocks conj
+                        (cond-> block
+                          (and (= :code type) (not show-meta))
+                          (assoc :text-without-meta (text-with-clerk-metadata-removed text ns-resolver))))
+                (cond->
+                  (show-meta-marker? form)
+                  (merge (select-keys form [:nextjournal.clerk/show-meta])))))
+          (-> doc
+              (assoc :blocks [])
+              (merge (select-keys (meta ns) [:nextjournal.clerk/show-meta])))
+          blocks))
 
 #_(text-with-clerk-metadata-removed "^::clerk/bar ^{::clerk/foo 'what}\n^ keep \n^{::clerk/bar true :some-key false}  (view that)" {'clerk 'nextjournal.clerk})
 #_(text-with-clerk-metadata-removed "^foo    'form" {'clerk 'nextjournal.clerk})
