@@ -37,16 +37,16 @@
 #_(inst->local-time-str (Instant/now))
 
 (def tap-viewer
-{:name :tapped-value
- :render-fn '(fn [{:keys [val tapped-at key]} opts]
-               (with-meta
-                 [:div.border-t.relative.py-3
-                  [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
-                   {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
-                  [:div.overflow-x-auto [v/inspect-presented val]]]
-                 {:key (:nextjournal/value key)}))
- :transform-fn (comp clerk/mark-preserve-keys
-                     (clerk/update-val #(update % :tapped-at inst->local-time-str)))})
+  {:name :tapped-value
+   :render-fn '(fn [{:keys [val tapped-at key]} opts]
+                 (with-meta
+                   [:div.border-t.relative.py-3
+                    [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
+                     {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
+                    [:div.overflow-x-auto [v/inspect-presented val]]]
+                   {:key (:nextjournal/value key)}))
+   :transform-fn (comp clerk/mark-preserve-keys
+                       (clerk/update-val #(update % :tapped-at inst->local-time-str)))})
 
 (clerk/add-viewers! [tap-viewer])
 
@@ -95,4 +95,5 @@
 
   (tap> (clerk/html [:h1 "Fin. 👋"]))
 
+  (reset-taps!)
   )
