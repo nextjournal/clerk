@@ -93,8 +93,7 @@
   {"@codemirror/view" codemirror-view
    "@codemirror/state" codemirror-state})
 
-(defn load-fn [{:keys [libname namespace ctx opts ns]}]
-  (js/console.log :lib libname )
+(defn load-fn [{:keys [libname ctx opts ns]}]
   (when (contains? libname->class libname)
     (let [{:keys [as refer]} opts
           munged-libname (symbol (munge libname))
