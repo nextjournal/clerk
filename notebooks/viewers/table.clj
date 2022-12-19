@@ -84,3 +84,9 @@
                            comp (v/update-val (comp (fn [table] (update table :head (partial map (comp str/capitalize name))))
                                                     v/normalize-table-data)))
   {:a [1 2] :b [3 4]})
+
+
+;; ## Nesting tables inside html
+(clerk/html [:div.bg-amber-100
+             (clerk/table [["one" 2]
+                           ["three" 4]])])
