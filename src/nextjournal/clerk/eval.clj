@@ -90,9 +90,10 @@
 
 (defn ^:private cachable-value? [value]
   (and (some? value)
-       (not (analyzer/exceeds-bounded-count-limit? value))
        (try
-         (some? (nippy/freezable? value))
+         (and
+           (not (analyzer/exceeds-bounded-count-limit? value))
+           (some? (nippy/freezable? value)))
          ;; can error on e.g. lazy-cat fib
          ;; TODO: propagate error information here
          (catch Exception _
