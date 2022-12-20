@@ -1,10 +1,10 @@
 (ns nextjournal.clerk.render.navbar
-  (:require [nextjournal.ui.components.localstorage :as ls]
-            [nextjournal.ui.components.motion :as motion]
+  (:require ["emoji-regex" :as emoji-regex]
+            ["framer-motion" :as framer-motion :refer [motion AnimatePresence]]
+            [nextjournal.ui.components.localstorage :as ls]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
-            [reagent.core :as r]
-            ["emoji-regex" :as emoji-regex]))
+            [reagent.core :as r]))
 
 (def emoji-re (emoji-regex))
 
@@ -25,14 +25,14 @@
       (.stop scroll-animation))
     (when scroll-el
       (swap! !state assoc
-             :scroll-animation (motion/animate
-                                scroll-top
-                                (+ scroll-top (.. (js/document.getElementById (subs anchor 1)) getBoundingClientRect -top))
-                                {:onUpdate #(j/assoc! scroll-el :scrollTop (- % offset))
-                                 :onComplete #(when set-hash? (.pushState js/history #js {} "" anchor))
-                                 :type :spring
-                                 :duration 0.4
-                                 :bounce 0.15})
+             :scroll-animation (.animate framer-motion
+                                         scroll-top
+                                         (+ scroll-top (.. (js/document.getElementById (subs anchor 1)) getBoundingClientRect -top))
+                                         (j/lit {:onUpdate #(j/assoc! scroll-el :scrollTop (- % offset))
+                                                 :onComplete #(when set-hash? (.pushState js/history #js {} "" anchor))
+                                                 :type :spring
+                                                 :duration 0.4
+                                                 :bounce 0.15}))
              :visible? (if mobile? false visible?)))))
 
 (defn theme-class [theme key]
@@ -183,10 +183,10 @@
           w (if mobile? mobile-width width)]
       [:div.flex.h-screen
        {:ref ref-fn}
-       [:> motion/animate-presence
+       [:> AnimatePresence
         {:initial false}
         (when (and mobile? mobile-open?)
-          [:> motion/div
+          [:> (.-div motion)
            {:key (str component-key "-backdrop")
             :class "fixed z-10 bg-gray-500 bg-opacity-75 left-0 top-0 bottom-0 right-0"
             :initial {:opacity 0}
@@ -195,7 +195,7 @@
             :on-click #(swap! !state assoc :mobile-open? false)
             :transition spring}])
         (when (or mobile-open? (and (not mobile?) open?))
-          [:> motion/div
+          [:> (.-div motion)
            {:key (str component-key "-nav")
             :style {:width w}
             :class (str "h-screen z-10 flex-shrink-0 fixed "
