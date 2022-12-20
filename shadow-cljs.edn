@@ -7,7 +7,6 @@
                    :release {:output-dir "build/"}
                    :compiler-options {:source-map true}
                    :dev {:modules {:viewer {:entries [devtools]}}}
-                   :build-options {:ns-aliases {nextjournal.devcards nextjournal.devcards-noop}}
                    :modules {:viewer {:entries [nextjournal.clerk.sci-env
                                                 nextjournal.clerk.static-app
                                                 nextjournal.clerk.trim-image]}}
