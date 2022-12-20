@@ -16,7 +16,7 @@
     (if bundle?
       (str "#/" url)
       (let [url (cond-> url
-                  (and (exists? js/docume)
+                  (and (exists? js/document)
                        (= (.. js/document -location -protocol) "file:")
                        (or (nil? url)
                            (str/ends-with? url "/")))
