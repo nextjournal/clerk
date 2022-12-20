@@ -5,7 +5,6 @@
             [nextjournal.clerk.render :as render]
             [nextjournal.clerk.render.localstorage :as localstorage]
             [nextjournal.clerk.sci-env :as sci-env]
-            [nextjournal.devcards :as dc]
             [reagent.core :as r]
             [reagent.dom.server :as dom-server]
             [reitit.frontend :as rf]
@@ -51,24 +50,6 @@
                                (update-in [:nextjournal/value :blocks] (partial into [(hiccup header)])))})
     [render/root]))
 
-(dc/defcard show-card []
-  [show {:git/url "https://github.com/nextjournal/clerk"
-         :git/sha "1026e6199f723e0f6ea92301b9678c9cf7024ba0"
-         :path "notebooks/hello.clj"
-         :paths ["notebooks/hello.clj"],
-         :bundle? true,
-         :live-js? true,
-         :doc {:nextjournal/value {:blocks [#:nextjournal{:value " # Hello, Clerk 👋\n", :viewer :markdown}
-                                            #:nextjournal{:value "(+ 39 3)", :viewer :code}
-                                            {:nextjournal/viewer :clerk/result,
-                                             :nextjournal/value #:nextjournal{:edn "{:path [], :nextjournal/value 42, :nextjournal/viewer {:render-fn #viewer-fn (fn [x] (v/html [:span.cmt-number.inspected-value (if (js/Number.isNaN x) \"NaN\" (str x))]))}}"},
-                                             :path []}],
-                                   :title "Hello, Clerk 👋"},
-               :nextjournal/viewer :clerk/notebook,
-               :scope {:namespace :nextjournal.clerk}},
-         :path->url {"notebooks/hello.clj" "notebooks/hello.clj"}
-         :url->path {"notebooks/hello.clj" "notebooks/hello.clj"}}])
-
 (defn index [{:as view-data :keys [paths]}]
   (when (exists? js/document)
     (set! (.-title js/document) "Clerk"))
@@ -96,14 +77,7 @@
         {:href "https://github.com/nextjournal/clerk"}
         "Generated with Clerk."]]]]))
 
-(dc/defcard index-card []
-  [index {:git/url "https://github.com/nextjournal/clerk"
-          :git/sha "1026e6199f723e0f6ea92301b9678c9cf7024ba0"
-          :paths ["notebooks/hello.clj"],
-          :bundle? true,
-          :live-js? true,
-          :path->url {"notebooks/hello.clj" "notebooks/hello.clj"}
-          :url->path {"notebooks/hello.clj" "notebooks/hello.clj"}}])
+
 
 (defn get-routes [docs]
   (let [index? (contains? docs "")]
