@@ -4,14 +4,11 @@
            applied-science.js-interop/let clojure.core/let
            cljs.core/specify! cljs.core/reify
            reagent.core/with-let clojure.core/let
-           nextjournal.view/defview clojure.core/defn
-           nextjournal.devcards/defcard clj-kondo.lint-as/def-catch-all
            taoensso.encore/defonce clojure.core/defonce
            taoensso.encore/defalias clojure.core/def
            promesa.core/let clojure.core/let
            shadow.cljs.modern/defclass clojure.core/defprotocol}
  :linters {:consistent-alias {:aliases {datomic.api datomic
-                                        nextjournal.log log
                                         clojure.string str
                                         clojure.spec.alpha s}}
            :unresolved-symbol {:exclude [(cljs.core.match/match)
@@ -20,8 +17,7 @@
                                          (clojure.core.match/match)
                                          (taoensso.nippy/extend-freeze)
                                          (taoensso.nippy/extend-thaw)]}
-           :unused-namespace {:exclude [clojure.string
-                                        nextjournal.log]}}
+           :unused-namespace {:exclude [clojure.string]}}
  :hooks {:macroexpand {multihash.digest/defhash hooks/defhash}}
  :config-in-call {clojure.core/defn {:linters {:unused-binding {:level :off}}}
                   cljs.core/defn {:linters {:unused-binding {:level :off}}}

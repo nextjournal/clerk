@@ -202,3 +202,12 @@
 (deftest with-cache
   (is (= 42 (clerk/with-cache
               (do (Thread/sleep 1 #_10000) 42)))))
+
+(deftest cacheable-value?-test
+  (testing "finite sequence is cacheable"
+    (is (#'eval/cachable-value? (vec (range 100)))))
+  (testing "nippy doesn't know how to freeze instances of clojure.lang.Iterate"
+    (is (not (#'eval/cachable-value? (range 100)))))
+  (testing "infinite sequences can't be cached"
+    (is (not (#'eval/cachable-value? (range))))
+    (is (not (#'eval/cachable-value? (map inc (range)))))))
