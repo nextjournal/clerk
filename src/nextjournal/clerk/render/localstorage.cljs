@@ -1,5 +1,5 @@
 (ns nextjournal.clerk.render.localstorage
-  (:require [cljs.reader]))
+  (:require [clojure.edn :as edn]))
 
 (defn set-item! [key val]
   (when (exists? js/window)
@@ -7,7 +7,7 @@
 
 (defn get-item [key]
   (when (exists? js/window)
-    (cljs.reader/read-string (.getItem (.-localStorage js/window) key))))
+    (edn/read-string (.getItem (.-localStorage js/window) key))))
 
 (defn remove-item! [key]
   (when (exists? js/window)
