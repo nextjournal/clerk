@@ -941,14 +941,32 @@
                (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote))))
                (extract-sync-atom-vars doc)))))
 
+(defn remount-hash->viewer-eval [{:as doc :keys [blocks]}]
+  (into (array-map)
+        (keep (fn [block]
+                (let [{:as result :nextjournal/keys [value viewer]} (get-in block [:result :nextjournal/value])]
+                  (when-let [remount-hash (:nextjournal.clerk/remount viewer)]
+                    [remount-hash value]))))
+        blocks))
+
+#_(remount-hash->viewer-eval @nextjournal.clerk.webserver/!doc)
+
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc
       (assoc :atom-var-name->state (atom-var-name->state doc))
+      (assoc :remount-hash->viewer-eval (remount-hash->viewer-eval doc))
       (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
                                              (map (comp process-wrapped-value
                                                         apply-viewers*
                                                         (partial ensure-wrapped-with-viewers viewers))))))
-      (select-keys [:atom-var-name->state :auto-expand-results? :blocks :bundle? :css-class :open-graph :title :toc :toc-visibility])
+      (select-keys [:atom-var-name->state
+                    :auto-expand-results?
+                    :blocks :bundle?
+                    :css-class
+                    :open-graph
+                    :title
+                    :toc
+                    :toc-visibility])
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
 
 (def notebook-viewer
