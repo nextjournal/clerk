@@ -13,6 +13,7 @@
             [goog.string :as gstring]
             [nextjournal.clerk.render.code :as code]
             [nextjournal.clerk.render.hooks :as hooks]
+            [nextjournal.clerk.render.localstorage :as localstorage]
             [nextjournal.clerk.render.navbar :as navbar]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.markdown.transform :as md.transform]
@@ -92,16 +93,6 @@
           [:circle {:cx "20.9101" :cy "6.8555" :r "1.71143" :transform "rotate(-120 20.9101 6.8555)" :fill "currentColor"}]
           [:circle {:cx "12" :cy "1.71143" :r "1.71143" :fill "currentColor"}]]])]]))
 
-
-(defn localstorage-set! [key val]
-  (when (exists? js/window)
-    (.setItem (.-localStorage js/window) key val)))
-
-(defn localstorage-get [key]
-  (when (exists? js/window)
-    (cljs.reader/read-string (.getItem (.-localStorage js/window) key))))
-
-
 (def local-storage-dark-mode-key "clerk-darkmode")
 
 (defn set-dark-mode! [dark-mode?]
@@ -109,7 +100,7 @@
     (if dark-mode?
       (.add class-list "dark")
       (.remove class-list "dark")))
-  (localstorage-set! local-storage-dark-mode-key dark-mode?))
+  (localstorage/set-item! local-storage-dark-mode-key dark-mode?))
 
 (defn setup-dark-mode! [!state]
   (let [{:keys [dark-mode?]} @!state]
@@ -127,14 +118,14 @@
                navbar-width 220
                !state (r/atom {:toc (toc-items (:children toc))
                                :md-toc toc
-                               :dark-mode? (localstorage-get local-storage-dark-mode-key)
+                               :dark-mode? (localstorage/get-item local-storage-dark-mode-key)
                                :theme {:slide-over "bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900"}
                                :width navbar-width
                                :mobile-width 300
                                :local-storage-key local-storage-key
                                :set-hash? (not bundle?)
                                :scroll-el (js/document.querySelector "html")
-                               :open? (if-some [stored-open? (localstorage-get local-storage-key)]
+                               :open? (if-some [stored-open? (localstorage/get-item local-storage-key)]
                                         stored-open?
                                         (not= :collapsed toc-visibility))})
                root-ref-fn (fn [el]

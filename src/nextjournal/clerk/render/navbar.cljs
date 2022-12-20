@@ -1,7 +1,7 @@
 (ns nextjournal.clerk.render.navbar
   (:require ["emoji-regex" :as emoji-regex]
             ["framer-motion" :as framer-motion :refer [motion AnimatePresence]]
-            [nextjournal.ui.components.localstorage :as ls]
+            [nextjournal.clerk.render.localstorage :as localstorage]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
             [reagent.core :as r]))
@@ -175,7 +175,7 @@
                              (add-watch !state ::persist
                                         (fn [_ _ old {:keys [open?]}]
                                           (when (not= (:open? old) open?)
-                                            (ls/set-item! local-storage-key open?)))))
+                                            (localstorage/set-item! local-storage-key open?)))))
                            (js/addEventListener "resize" resize)
                            (resize))
                          (js/removeEventListener "resize" resize))]

@@ -3,6 +3,7 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [nextjournal.clerk.render :as render]
+            [nextjournal.clerk.render.localstorage :as localstorage]
             [nextjournal.clerk.sci-env :as sci-env]
             [nextjournal.devcards :as dc]
             [reagent.core :as r]
@@ -16,7 +17,7 @@
     (if bundle?
       (str "#/" url)
       (let [url (cond-> url
-                  (and (exists? js/document)
+                  (and (exists? js/docume)
                        (= (.. js/document -location -protocol) "file:")
                        (or (nil? url)
                            (str/ends-with? url "/")))
@@ -71,7 +72,7 @@
 (defn index [{:as view-data :keys [paths]}]
   (when (exists? js/document)
     (set! (.-title js/document) "Clerk"))
-  (r/with-let [!state (r/atom {:dark-mode? (render/localstorage-get render/local-storage-dark-mode-key)})
+  (r/with-let [!state (r/atom {:dark-mode? (localstorage/get-item render/local-storage-dark-mode-key)})
                ref-fn #(when % (render/setup-dark-mode! !state))]
     [:div.bg-gray-100.dark:bg-gray-900.flex.justify-center.overflow-y-auto.w-screen.h-screen.p-4.md:p-0
      {:ref ref-fn}
