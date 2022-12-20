@@ -1512,6 +1512,12 @@
     (->viewer-eval (list 'binding '[*ns* *ns*]
                          (list 'load-string code-string)))))
 
+(defn eval-cljs [& forms]
+  (with-viewer (assoc viewer-eval-viewer :nextjournal.clerk/remount (hash-sha1 forms))
+    (->viewer-eval
+     `(binding [*ns* *ns*]
+        ~@forms))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; examples
 (def example-viewer
