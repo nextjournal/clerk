@@ -9,6 +9,7 @@
 [🎪 View Demos](https://github.clerk.garden/nextjournal/clerk-demo/) •
 [👩‍🎨 Using Clerk](#-using-clerk) •
 [🪚 Development](#-developing-clerk)
+[:orange_book: Book of clerk](https://github.clerk.garden/nextjournal/book-of-clerk)
 
 Clerk takes a Clojure namespace and turns it into a notebook:
 
