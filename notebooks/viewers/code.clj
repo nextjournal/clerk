@@ -48,8 +48,8 @@ with     quite
   '(fn [code-str _] [nextjournal.clerk.render.code/editor (reagent/atom code-str)])
   "{:search :query}")
 
-(clerk/eval-cljs-str
- (pr-str '(require '["@codemirror/view" :as cm-view :refer [keymap lineNumbers highlightActiveLine]])))
+(clerk/eval-cljs
+ '(require '["@codemirror/view" :as cm-view :refer [keymap lineNumbers highlightActiveLine]]))
 
 ;; customize extensions
 (clerk/with-viewer
