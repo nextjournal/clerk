@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [clojure.tools.build.api :as b]
    [nextjournal.cas :as cas]
-   [nextjournal.clerk.render.hashing :refer [lookup-url]]
+   [nextjournal.clerk.render.hashing :refer [get-lookup-url]]
    [shared]))
 
 (def lib 'io.github.nextjournal/clerk)
@@ -17,7 +17,7 @@
 (def jar-file (format "target/%s-%s.jar" (name lib) version))
 
 (defn package-asset-map [_]
-  (let [asset-map (slurp lookup-url)]
+  (let [asset-map (slurp (get-lookup-url))]
     (spit "target/classes/clerk-asset-map.edn" asset-map)))
 
 (defn jar [_]
