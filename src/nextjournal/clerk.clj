@@ -319,10 +319,10 @@
   [code-string]
   (v/eval-cljs-str code-string))
 
-(defmacro eval-cljs
+(defn eval-cljs
   "Evaluates the given ClojureScript forms in the browser."
   [& forms]
-  `(v/eval-cljs ~@forms))
+  (apply v/eval-cljs forms))
 
 (def notebook
   "Experimental notebook viewer. You probably should not use this."

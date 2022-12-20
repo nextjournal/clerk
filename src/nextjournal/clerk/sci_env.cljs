@@ -119,7 +119,6 @@
              'p 'nextjournal.clerk.parser}
    :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
                        'clojure.core {'read-string read-string}}
-
                       (sci-copy-nss
                        'nextjournal.clerk.parser
                        'nextjournal.clerk.render
