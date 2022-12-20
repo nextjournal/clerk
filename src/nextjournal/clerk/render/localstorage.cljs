@@ -1,4 +1,5 @@
-(ns nextjournal.clerk.render.localstorage)
+(ns nextjournal.clerk.render.localstorage
+  (:require [cljs.reader]))
 
 (defn set-item! [key val]
   (when (exists? js/window)
