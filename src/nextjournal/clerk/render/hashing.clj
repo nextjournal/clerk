@@ -26,6 +26,8 @@
                                         "yarn.lock"])
            (djv/cljs-files (mapv #(fs/file base-dir %) ["src" "resources"]))]))
 
+
+#_(file-set (fs/file "."))
 #_(System/setProperty "nextjournal.dejavu.debug" "1")
 
 (defn front-end-hash []
@@ -47,7 +49,7 @@
 (defn get-lookup-url []
   (str storage-base-url "/lookup/" (front-end-hash)))
 
-#_(lookup-url)
+#_(get-lookup-url)
 
 (defn read-dynamic-asset-map!
   "Computes a hash for Clerk's cljs bundle and tries to load the asset manifest for it.
