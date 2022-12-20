@@ -924,19 +924,25 @@
                             {:var var :value @var}
                             ex))))))
 
-(defn extract-clerk-atom-vars [{:as _doc :keys [blocks]}]
-  (into {}
-        (comp (keep (fn [{:keys [result form]}]
-                      (when-let [var (-> result :nextjournal/value (get-safe :nextjournal.clerk/var-from-def))]
-                        (when (contains? (meta form) :nextjournal.clerk/sync)
-                          #?(:clj (throw-if-sync-var-is-invalid var))
-                          var))))
-              (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote)))))
+(defn extract-sync-atom-vars [{:as _doc :keys [blocks]}]
+  (into #{}
+        (keep (fn [{:keys [result form]}]
+                (when-let [var (-> result :nextjournal/value (get-safe :nextjournal.clerk/var-from-def))]
+                  (when (contains? (meta form) :nextjournal.clerk/sync)
+                    #?(:clj (throw-if-sync-var-is-invalid var))
+                    var))))
         blocks))
+
+(defn atom-var-name->state [doc]
+  (->viewer-eval
+   (list 'nextjournal.clerk.render/intern-atoms!
+         (into {}
+               (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote))))
+               (extract-sync-atom-vars doc)))))
 
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc
-      (assoc :atom-var-name->state (->viewer-eval (list 'nextjournal.clerk.render/intern-atoms! (extract-clerk-atom-vars doc))))
+      (assoc :atom-var-name->state (atom-var-name->state doc))
       (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
                                              (map (comp process-wrapped-value
                                                         apply-viewers*

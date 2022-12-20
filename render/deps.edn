@@ -5,6 +5,6 @@
         org.babashka/sci {:mvn/version "0.5.36"}
         reagent/reagent {:mvn/version "1.1.1"}
         io.github.babashka/sci.configs {:git/sha "b5335b79c237344d003f16358321197a0b0a2ac6"}
-        io.github.nextjournal/viewers {:git/sha "1aaedea7709611cbb393add4c85c7a2dd551260e"}
+        io.github.nextjournal/clojure-mode {:git/sha "ac038ebf6e5da09dd2b8a31609e9ff4a65e36852"}
         metosin/reitit-frontend {:mvn/version "0.5.15"}
         thheller/shadow-cljs {:mvn/version "2.20.11"}}}

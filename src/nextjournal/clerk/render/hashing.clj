@@ -16,10 +16,8 @@
 (def gs-bucket "gs://nextjournal-cas-eu")
 (def storage-base-url "https://storage.googleapis.com/nextjournal-cas-eu")
 
-(def base-dir
-  (-> (fs/file (io/resource "nextjournal/clerk.clj")) fs/parent fs/parent fs/parent))
 
-(defn file-set []
+(defn file-set [base-dir]
   (reduce into
           []
           [(mapv #(fs/file base-dir %) ["deps.edn"
@@ -28,21 +26,30 @@
                                         "yarn.lock"])
            (djv/cljs-files (mapv #(fs/file base-dir %) ["src" "resources"]))]))
 
+
+#_(file-set (fs/file "."))
 #_(System/setProperty "nextjournal.dejavu.debug" "1")
 
 (defn front-end-hash []
-  (str (djv/file-set-hash base-dir (file-set))))
+  (let [base-dir (let [resource (io/resource "nextjournal/clerk.clj")]
+                   (when (= "file" (.getProtocol resource))
+                     (-> (fs/file resource) fs/parent fs/parent fs/parent)))]
+    (when-not base-dir
+      (throw (ex-info "Clerk could note compute `font-end-hash` for cljs bundle." {:base-dir base-dir})))
+    (str (djv/file-set-hash base-dir (file-set base-dir)))))
 
 (defn bucket-lookup-url [lookup-hash]
   (str gs-bucket "/lookup/" lookup-hash))
-
-(def lookup-url
-  (str storage-base-url "/lookup/" (front-end-hash)))
 
 (defn asset-name [hash suffix]
   (str "/assets/" hash
        (when suffix
          (str "-" suffix))))
+
+(defn get-lookup-url []
+  (str storage-base-url "/lookup/" (front-end-hash)))
+
+#_(get-lookup-url)
 
 (defn read-dynamic-asset-map!
   "Computes a hash for Clerk's cljs bundle and tries to load the asset manifest for it.
@@ -50,9 +57,9 @@
   Used only when Clerk is used as a git dep, should never be called from the jar."
   []
   (edn/read-string (try
-                     (slurp lookup-url)
+                     (slurp (get-lookup-url))
                      (catch java.io.FileNotFoundException e
-                       (throw (ex-info (str "Clerk could not find dynamic asset map at " lookup-url) {:url lookup-url} e))))))
+                       (throw (ex-info (str "Clerk could not find dynamic asset map at " (get-lookup-url)) {:url (get-lookup-url)} e))))))
 
 #_(read-dynamic-asset-map!)
 
