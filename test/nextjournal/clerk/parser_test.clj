@@ -101,3 +101,38 @@ par two"))))
                 (-> ";; # Doc Title\n(ns my.ns2 {:nextjournal.clerk/open-graph {:url \"https://ogp.me\"}})\n;; ---\n;; first paragraph"
                     analyze-string
                     :open-graph)))))
+
+(def clerk-ns-alias {'clerk 'nextjournal.clerk
+                     'c 'nextjournal.clerk})
+
+(deftest remove-metadata-annotations
+
+  (is (= (parser/text-with-clerk-metadata-removed "^:nextjournal.clerk/no-cache\n(do effect)" clerk-ns-alias)
+         "(do effect)"))
+
+  (is (= (parser/text-with-clerk-metadata-removed "^{:nextjournal.clerk/visibility {:code :hide} :some-meta 123}\n^:keep-me\n(view this)" clerk-ns-alias)
+         "^{:some-meta 123}\n^:keep-me\n(view this)"))
+
+  (testing "with alias resolution"
+    (is (= (parser/text-with-clerk-metadata-removed "^:keep-me\n  ^{::clerk/visibility {:code :hide}}  \n(view that)" clerk-ns-alias)
+           "^:keep-me\n  (view that)"))
+
+    (is (= (parser/text-with-clerk-metadata-removed "^:keep-me\n  ^{::c/visibility {:code :hide}}  \n(view that)" clerk-ns-alias)
+           "^:keep-me\n  (view that)"))
+
+    (is (= (parser/text-with-clerk-metadata-removed "^::c/no-cache (do 'this)" clerk-ns-alias)
+           "(do 'this)")))
+
+  (testing "user metadata should be preserved"
+    (is (= (parser/text-with-clerk-metadata-removed "^:should\n  (do nothing)" clerk-ns-alias)
+           "^:should\n  (do nothing)"))
+
+    (is (= (parser/text-with-clerk-metadata-removed "^also (do nothing)" clerk-ns-alias)
+           "^also (do nothing)"))
+
+    (is (= (parser/text-with-clerk-metadata-removed "^{:this \"as well should\"}\n(do nothing)" clerk-ns-alias)
+           "^{:this \"as well should\"}\n(do nothing)")))
+
+  (testing "unreadable forms"
+    (is (= (parser/text-with-clerk-metadata-removed "^{:un :balanced :map} (do nothing)" clerk-ns-alias)
+           "^{:un :balanced :map} (do nothing)"))))

@@ -91,15 +91,17 @@
 (defn ^:private cachable-value? [value]
   (and (some? value)
        (try
-         (nippy/freezable? value)
+         (and (not (analyzer/exceeds-bounded-count-limit? value))
+              (some? (nippy/freezable? value)))
          ;; can error on e.g. lazy-cat fib
          ;; TODO: propagate error information here
          (catch Exception _
-           false))
-       (not (analyzer/exceeds-bounded-count-limit? value))))
+           false))))
 
 #_(cachable-value? (vec (range 100)))
 #_(cachable-value? (range))
+#_(cachable-value? (map inc (range)))
+#_(cachable-value? [{:hello (map inc (range))}])
 
 
 (defn ^:private cache! [digest-file var-value]

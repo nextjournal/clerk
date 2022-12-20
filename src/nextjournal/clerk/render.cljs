@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.render
-  (:require ["react" :as react]
+  (:require ["framer-motion" :refer [motion]]
+            ["react" :as react]
             ["react-dom/client" :as react-client]
             ["vh-sticky-table-header" :as sticky-table-header]
             [applied-science.js-interop :as j]
@@ -11,15 +12,12 @@
             [goog.object]
             [goog.string :as gstring]
             [nextjournal.clerk.render.code :as code]
+            [nextjournal.clerk.render.context :as view-context]
             [nextjournal.clerk.render.hooks :as hooks]
+            [nextjournal.clerk.render.localstorage :as localstorage]
             [nextjournal.clerk.render.navbar :as navbar]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.markdown.transform :as md.transform]
-            [nextjournal.ui.components.icon :as icon]
-            [nextjournal.ui.components.motion :as motion]
-            [nextjournal.view.context :as view-context]
-            [nextjournal.viewer.katex :as katex]
-            [nextjournal.viewer.mathjax :as mathjax]
             [reagent.core :as r]
             [reagent.ratom :as ratom]
             [sci.core :as sci]
@@ -56,25 +54,25 @@
      [:button.text-slate-400.hover:text-slate-600.dark:hover:text-white.cursor-pointer
       {:on-click #(swap! !state assoc :dark-mode? (not dark-mode?))}
       (if dark-mode?
-        [:> motion/svg
+        [:> (.-svg motion)
          {:xmlns "http://www.w3.org/2000/svg"
           :class "w-5 h-5 md:w-4 md:h-4"
           :viewBox "0 0 50 50"
           :key "moon"}
-         [:> motion/path
+         [:> (.-path motion)
           {:d "M 43.81 29.354 C 43.688 28.958 43.413 28.626 43.046 28.432 C 42.679 28.238 42.251 28.198 41.854 28.321 C 36.161 29.886 30.067 28.272 25.894 24.096 C 21.722 19.92 20.113 13.824 21.683 8.133 C 21.848 7.582 21.697 6.985 21.29 6.578 C 20.884 6.172 20.287 6.022 19.736 6.187 C 10.659 8.728 4.691 17.389 5.55 26.776 C 6.408 36.163 13.847 43.598 23.235 44.451 C 32.622 45.304 41.28 39.332 43.816 30.253 C 43.902 29.96 43.9 29.647 43.81 29.354 Z"
            :fill "currentColor"
            :initial "initial"
            :animate "animate"
            :variants {:initial {:scale 0.6 :rotate 90}
                       :animate {:scale 1 :rotate 0 :transition spring}}}]]
-        [:> motion/svg
+        [:> (.-svg motion)
          {:key "sun"
           :class "w-5 h-5 md:w-4 md:h-4"
           :viewBox "0 0 24 24"
           :fill "none"
           :xmlns "http://www.w3.org/2000/svg"}
-         [:> motion/circle
+         [:>(.-circle motion)
           {:cx "11.9998"
            :cy "11.9998"
            :r "5.75375"
@@ -83,7 +81,7 @@
            :animate "animate"
            :variants {:initial {:scale 1.5}
                       :animate {:scale 1 :transition spring}}}]
-         [:> motion/g
+         [:> (.-g motion)
           {:initial "initial"
            :animate "animate"
            :variants {:initial {:rotate 45}
@@ -95,16 +93,6 @@
           [:circle {:cx "20.9101" :cy "6.8555" :r "1.71143" :transform "rotate(-120 20.9101 6.8555)" :fill "currentColor"}]
           [:circle {:cx "12" :cy "1.71143" :r "1.71143" :fill "currentColor"}]]])]]))
 
-
-(defn localstorage-set! [key val]
-  (when (exists? js/window)
-    (.setItem (.-localStorage js/window) key val)))
-
-(defn localstorage-get [key]
-  (when (exists? js/window)
-    (cljs.reader/read-string (.getItem (.-localStorage js/window) key))))
-
-
 (def local-storage-dark-mode-key "clerk-darkmode")
 
 (defn set-dark-mode! [dark-mode?]
@@ -112,7 +100,7 @@
     (if dark-mode?
       (.add class-list "dark")
       (.remove class-list "dark")))
-  (localstorage-set! local-storage-dark-mode-key dark-mode?))
+  (localstorage/set-item! local-storage-dark-mode-key dark-mode?))
 
 (defn setup-dark-mode! [!state]
   (let [{:keys [dark-mode?]} @!state]
@@ -130,14 +118,14 @@
                navbar-width 220
                !state (r/atom {:toc (toc-items (:children toc))
                                :md-toc toc
-                               :dark-mode? (localstorage-get local-storage-dark-mode-key)
+                               :dark-mode? (localstorage/get-item local-storage-dark-mode-key)
                                :theme {:slide-over "bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900"}
                                :width navbar-width
                                :mobile-width 300
                                :local-storage-key local-storage-key
                                :set-hash? (not bundle?)
                                :scroll-el (js/document.querySelector "html")
-                               :open? (if-some [stored-open? (localstorage-get local-storage-key)]
+                               :open? (if-some [stored-open? (localstorage/get-item local-storage-key)]
                                         stored-open?
                                         (not= :collapsed toc-visibility))})
                root-ref-fn (fn [el]
@@ -164,13 +152,14 @@
          [:<>
           [navbar/toggle-button !state
            [:<>
-            [icon/menu {:size 20}]
+            [:svg {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke "currentColor" :width 20 :height 20}
+             [:path {:stroke-linecap "round" :stroke-linejoin "round" :stroke-width "2" :d "M4 6h16M4 12h16M4 18h16"}]]
             [:span.uppercase.tracking-wider.ml-1.font-bold
              {:class "text-[12px]"} "ToC"]]
            {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-[7px] text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
           [navbar/panel !state [navbar/navbar !state]]])
        [:div.flex-auto.w-screen.scroll-container
-        [:> motion/div
+        [:> (.-div motion)
          {:key "viewer-notebook"
           :initial (when toc-visibility {:margin-left doc-inset})
           :animate (when toc-visibility {:margin-left doc-inset})
@@ -690,9 +679,6 @@
   (when react-root
     (.render react-root (r/as-element [root]))))
 
-(defn render-katex [tex-string {:keys [inline?]}]
-  [:span {:dangerouslySetInnerHTML {:__html (katex/to-html-string tex-string (j/obj :displayMode (not inline?)))}}])
-
 (defn html-render [markup]
   (r/as-element
    (if (string? markup)
@@ -760,7 +746,25 @@
          [:div.plotly {:ref ref-fn}]]
         default-loading-view))))
 
-(def render-mathjax mathjax/viewer)
+(defn render-katex [tex-string {:keys [inline?]}]
+  (let [katex (hooks/use-d3-require "katex@0.16.4")]
+    (if katex
+      [:span {:dangerouslySetInnerHTML {:__html (.renderToString katex tex-string (j/obj :displayMode (not inline?)))}}]
+      default-loading-view)))
+
+(defn render-mathjax [value]
+  (let [mathjax (hooks/use-d3-require "https://run.nextjournalusercontent.com/data/QmQadTUYtF4JjbwhUFzQy9BQiK52ace3KqVHreUqL7ohoZ?filename=es5/tex-svg-full.js&content-type=application/javascript")
+        ref-fn (react/useCallback (fn [el]
+                                    (when el
+                                      (let [r (.tex2svg js/MathJax value)]
+                                        (if-let [c (.-firstChild el)]
+                                          (.replaceChild el r c)
+                                          (.appendChild el r)))))
+                                  #js[value mathjax])]
+    (if mathjax
+      [:div.overflow-x-auto
+       [:div {:ref ref-fn}]]
+      default-loading-view)))
 
 (def render-code code/render-code)
 

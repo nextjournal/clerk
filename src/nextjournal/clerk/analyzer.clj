@@ -276,13 +276,19 @@
 (defn filter-code-blocks-without-form [doc]
   (update doc :blocks #(filterv (some-fn :form (complement parser/code?)) %)))
 
+(defn ns-resolver [notebook-ns]
+  (if notebook-ns
+    (into {} (map (juxt key (comp ns-name val))) (ns-aliases notebook-ns))
+    identity))
+#_ (ns-resolver *ns*)
+
 (defn analyze-doc
   ([doc]
    (analyze-doc {:doc? true :graph (dep/graph)} doc))
   ([{:as state :keys [doc?]} doc]
    (binding [*ns* *ns*]
      (let [!id->count (atom {})]
-       (cond-> (reduce (fn [state i]
+       (cond-> (reduce (fn [{:as state notebook-ns :ns} i]
                          (let [{:as block :keys [type text loc]} (get-in state [:blocks i])]
                            (if (not= type :code)
                              state
@@ -308,6 +314,8 @@
                                                          (dissoc state :doc?)
                                                          (->ana-keys analyzed))
                                            doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
+                                           doc? (assoc-in [:blocks i :text-without-meta]
+                                                          (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))
                                            (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))]
                                (if (seq deps)
                                  (-> (reduce (partial analyze-deps analyzed) state deps)

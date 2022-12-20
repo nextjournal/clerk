@@ -238,6 +238,10 @@
            :embed/opts {:actions false}})
 
 ;; You can provide a map of [embed options](https://github.com/vega/vega-embed#embed) to the vega viewer via the `:embed/opts` key.
+;;
+;; Clerk handles conversion from EDN to JSON for you.
+;; The official Vega-Lite examples are in JSON, but a Clojure/EDN version available:
+;; [Carsten Behring's Vega gallery in EDN](https://github.clerk.garden/behrica/vl-galery/).
 
 ;; ### 🎼 Code
 
