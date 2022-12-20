@@ -205,9 +205,9 @@
                     (update :blocks conj {:type :code
                                           :text (n/string node)
                                           :loc (-> (meta node)
-                                                   (set/rename-keys {:row :line
-                                                                     :col :column})
-                                                   (select-keys [:line :column]))}))
+                                                   (set/rename-keys {:row :line :end-row :end-line
+                                                                     :col :column :end-col :end-column})
+                                                   (select-keys [:line :end-line :column :end-column]))}))
 
                 (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
                 (-> state
