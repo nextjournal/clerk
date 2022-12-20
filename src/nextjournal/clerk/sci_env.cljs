@@ -1,7 +1,10 @@
 (ns nextjournal.clerk.sci-env
   (:require-macros [nextjournal.clerk.sci-env :refer [sci-copy-nss]])
-  (:require ["@codemirror/view" :as codemirror-view]
+  (:require ["@codemirror/language" :as codemirror-language]
             ["@codemirror/state" :as codemirror-state]
+            ["@codemirror/view" :as codemirror-view]
+            ["@lezer/highlight" :as lezer-highlight]
+            ["@nextjournal/lang-clojure" :as lang-clojure]
             ["framer-motion" :as framer-motion]
             [applied-science.js-interop :as j]
             [cljs.reader]
@@ -82,8 +85,11 @@
 
 ;; classes which cannot be resolved by symbol
 (def libname->class
-  {"@codemirror/view" codemirror-view
-   "@codemirror/state" codemirror-state})
+  {"@codemirror/language" codemirror-language
+   "@codemirror/state" codemirror-state
+   "@codemirror/view" codemirror-view
+   "@lezer/highlight" lezer-highlight
+   "@nextjournal/lang-clojure" lang-clojure})
 
 (defn load-fn [{:keys [libname ctx opts ns]}]
   (when (contains? libname->class libname)
