@@ -639,7 +639,7 @@
     (reset! !doc (re-eval-viewer-fns doc)))
   (when (remount? doc)
     (swap! !eval-counter inc))
-  (reset! !error error)
+  (reset! !error (re-eval-viewer-fns error))
   (when-let [title (and (exists? js/document) (-> doc viewer/->value :title))]
     (set! (.-title js/document) title)))
 
