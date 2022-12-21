@@ -26,21 +26,6 @@
             [sci.core :as sci]
             [sci.ctx-store]))
 
-#_#_
-(defn ->viewer-fn-with-error [form]
-  (try (viewer/->viewer-fn form)
-       (catch js/Error e
-         (try (eval form)
-              (catch js/Error e
-                (fn [_]
-                  [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)]))))))
-
-(defn ->viewer-eval-with-error [form]
-  (try (viewer/->viewer-eval form)
-       (catch js/Error e
-         (js/console.error "error in viewer-eval" e)
-         (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))
-
 (defonce !edamame-opts
   (atom {:all true
          :row-key :line

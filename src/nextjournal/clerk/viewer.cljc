@@ -51,11 +51,23 @@
      ViewerFn
      (-eval [{:as x :keys [form]}]
        (js/console.log :eval/viewer-fn form)
-       (assoc x :f (*eval* form)))
+       (assoc x :f (try (*eval* form)
+                        (catch js/Error e
+                          (fn [_ _]
+                            [@(resolve 'nextjournal.clerk.render/error-view)
+                             (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)])))))
      ViewerEval
      (-eval [{:as x :keys [form]}]
        (js/console.log :eval/viewer-eval form)
        (assoc x :result (*eval* form)))))
+
+#_
+
+(defn ->viewer-eval-with-error [form]
+  (try (viewer/->viewer-eval form)
+       (catch js/Error e
+         (js/console.error "error in viewer-eval" e)
+         (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))
 
 (defn viewer-fn? [x]
   (instance? ViewerFn x))
@@ -76,8 +88,9 @@
               form))
 
 (defn ->viewer-fn [form]
-  (map->ViewerFn {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)}))
-
+  (map->ViewerFn {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)
+                  #?@(:cljs [:f (fn [& args]
+                                  (js/console.warn :->viewer-fn/FALLBACK args))])}))
 (defn ->viewer-eval [form]
   (map->ViewerEval {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)}))
 
