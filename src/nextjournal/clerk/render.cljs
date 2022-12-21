@@ -549,7 +549,8 @@
   ([opts x]
    (if (valid-react-element? x)
      x
-     (let [{:nextjournal/keys [value viewer]} x]
+     (let [{:nextjournal/keys [value viewer]} x
+           value (cond-> value (viewer/viewer-eval? value) :result)]
        #_(prn :inspect-presented value :valid-element? (react/isValidElement value) :viewer viewer)
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
        ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
@@ -592,6 +593,7 @@
     (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] (list 'quote new-state))]}))))
 
 (defn intern-atom! [var-name state]
+  (js/console.log :intern-atom! var-name state)
   (assert (sci.ctx-store/get-ctx) "sci-ctx must be set")
   (sci/intern (sci.ctx-store/get-ctx)
               (sci/create-ns (symbol (namespace var-name)))
@@ -611,6 +613,7 @@
 (defn set-reset-sync-atoms! [new-val] (set! *reset-sync-atoms?* new-val))
 
 (defn intern-atoms! [atom-var-name->state]
+  (js/console.log :intern-atoms! *reset-sync-atoms?* atom-var-name->state)
   (let [vars-in-use (into #{} (keys atom-var-name->state))
         vars-interned @!synced-atom-vars]
     (doseq [var-name-to-unmap (set/difference vars-interned vars-in-use)]

@@ -64,14 +64,16 @@
    (extend-protocol IEval
      ViewerFn
      (-eval [{:as x :keys [form]}]
-       (assoc x :f (try (*eval* form)
+       (assoc x :f (try (js/console.log :viewer-fn form)
+                        (*eval* form)
                         (catch js/Error e
                           (fn [_ _]
                             [@(resolve 'nextjournal.clerk.render/error-view)
                              (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)])))))
      ViewerEval
      (-eval [{:as x :keys [form]}]
-       (assoc x :result (try (*eval* form)
+       (assoc x :result (try (js/console.log :viewer-eval form)
+                             (*eval* form)
                              (catch js/Error e
                                (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e)))))))
 
@@ -494,7 +496,9 @@
         opts-from-form-meta (-> result
                                 (select-keys [:nextjournal/css-class :nextjournal/width :nextjournal/opts])
                                 (cond-> #_result
-                                  (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))]
+                                  (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))
+        #_#_viewer-eval-result? (-> presented-result :nextjournal/value viewer-eval?)]
+    #_(prn :presented-result viewer-eval? presented-result)
     (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result}
 
                                  (-> form meta :nextjournal.clerk/open-graph :image)
@@ -1025,22 +1029,12 @@
                                 (var? x) (->viewer-eval (list 'resolve (list 'quote (symbol x))))
                                 (var-from-def? x) (recur (-> x :nextjournal.clerk/var-from-def symbol))))))
    :render-fn '(fn [x opts]
-                 (js/console.log :viewer-eval-viewer/render
-                                 x
-                                 (nextjournal.clerk.viewer/viewer-eval? x)
-                                 (when (nextjournal.clerk.viewer/viewer-eval? x)
-                                   (:result x)))
                  (cond
-                   (nextjournal.clerk.viewer/viewer-eval? x)
-                   ;; TODO: figure out why this call to `nextjournal.clerk.render/inspect` calls the fallback
-                   [nextjournal.clerk.render/inspect (pr-str (:result x))]
+                   (nextjournal.clerk.viewer/viewer-eval? x) (recur (:result x))
                    (nextjournal.clerk.render/reagent-atom? x) ;; special atoms handling to support reactivity
                    [nextjournal.clerk.render/render-tagged-value {:space? false}
                     "#object"
-                    [nextjournal.clerk.render/inspect [(symbol (pr-str (type x))) @x]]]
-
-                   :else
-                   [nextjournal.clerk.render/inspect x]))})
+                    [nextjournal.clerk.render/inspect [(symbol (pr-str (type x))) @x]]]))})
 
 (def default-viewers
   ;; maybe make this a sorted-map
