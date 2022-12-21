@@ -558,10 +558,17 @@
 (defn in-process-fetch [value opts]
   (.resolve js/Promise (viewer/present value opts)))
 
+(declare re-eval-viewer-fns)
+
 (defn inspect [value]
   (r/with-let [!state (r/atom nil)]
     (when (not= (:value @!state ::not-found) value)
-      (swap! !state assoc :value value :desc (viewer/present value)))
+      (swap! !state assoc
+             :value value
+             ;; TODO: check that it's safe to -eval viewer fns here
+             ;; values presented in the client that are not going through `set-state!` and
+             ;; therefore don't have their render-fns evaluated.
+             :desc (re-eval-viewer-fns (viewer/present value))))
     [view-context/provide {:fetch-fn (fn [fetch-opts]
                                        (.then (in-process-fetch value fetch-opts)
                                               (fn [more]
