@@ -53,7 +53,6 @@
    (extend-protocol IEval
      ViewerFn
      (-eval [{:as x :keys [form]}]
-       (js/console.log :eval/viewer-fn form)
        (assoc x :f (try (*eval* form)
                         (catch js/Error e
                           (fn [_ _]
@@ -61,7 +60,6 @@
                              (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)])))))
      ViewerEval
      (-eval [{:as x :keys [form]}]
-       (js/console.log :eval/viewer-eval form)
        (assoc x :result (try (*eval* form)
                              (catch js/Error e
                                (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e)))))))
@@ -85,19 +83,10 @@
               form))
 
 (defn ->viewer-fn [form]
-  (map->ViewerFn {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)
-                  
-                  ;;#?@
-                  #_(:cljs [:f (fn [& args]
-                                 (js/console.warn :->viewer-fn/FALLBACK args)
-                                 [:h4
-                                  "->viewer-fn fallback"
-                                  [:pre
-                                   (pr-str (first args))]])])}))
+  (map->ViewerFn {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)}))
+
 (defn ->viewer-eval [form]
-  (map->ViewerEval {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)
-                    #?@(:cljs [:result (fn [& args]
-                                         (js/console.warn :->viewer-eval/FALLBACK args))])}))
+  (map->ViewerEval {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)}))
 
 (defn open-graph-metas [open-graph-properties]
   (into (list [:meta {:name "twitter:card" :content "summary_large_image"}])

@@ -626,20 +626,11 @@
 (defn remount? [doc-or-patch]
   (true? (some #(= % :nextjournal.clerk/remount) (tree-seq coll? seq doc-or-patch))))
 
-(defn find-viewer-fns-without-f [doc]
-  (js/console.log :find-viewer-fns-without-f doc)
-  (js/console.log :FILTERED (w/postwalk #(do (when (viewer/viewer-fn? %)
-                                               (js/console.log :fn % :f (:f %)))
-                                             %)
-                                        doc)))
-
 (defn re-eval-viewer-fns [doc]
-  (js/console.log :re-eval-viewer-fns doc)
-  (doto (w/postwalk #(cond-> %
-                       (or (viewer/viewer-fn? %)
-                           (viewer/viewer-eval? %)) viewer/-eval)
-                    doc)
-    find-viewer-fns-without-f))
+  (w/postwalk #(cond-> %
+                 (or (viewer/viewer-fn? %) (viewer/viewer-eval? %))
+                 viewer/-eval)
+              doc))
 
 (defn ^:export set-state! [{:as state :keys [doc error]}]
   (when (contains? state :doc)
