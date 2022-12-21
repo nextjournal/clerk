@@ -1,5 +1,5 @@
 (ns nextjournal.clerk.sci-env
-  (:require-macros [nextjournal.clerk.sci-env :refer [sci-copy-nss]])
+  (:require-macros [nextjournal.clerk.render.macros :refer [sci-copy-nss]])
   (:require ["@codemirror/language" :as codemirror-language]
             ["@codemirror/state" :as codemirror-state]
             ["@codemirror/view" :as codemirror-view]

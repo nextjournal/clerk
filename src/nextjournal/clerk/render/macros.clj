@@ -1,4 +1,4 @@
-(ns nextjournal.clerk.sci-env)
+(ns nextjournal.clerk.render.macros)
 
 (defmacro sci-copy-nss [& nss]
   (into {} (for [[_ ns] nss]
