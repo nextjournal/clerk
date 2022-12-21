@@ -32,7 +32,7 @@
   #?@(:cljs [IFn
              (-invoke [this x] ((:f this) x))
              (-invoke [this x y]
-                      (if-let [f (or (:f this) #_(*eval* f))]
+                      (if-let [f (:f this)]
                         (f x y)
                         (js/console.warn :ViewerFn/-invoke :form (:form this) :x x)))]))
 
