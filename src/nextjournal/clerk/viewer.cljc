@@ -26,7 +26,16 @@
                    (java.util Base64)
                    (java.nio.file Files StandardOpenOption))))
 
-(defrecord ViewerEval [form #?(:cljs result)])
+(defrecord ViewerEval [form #?(:cljs result)]
+  ;; TODO: this fixes markdown viewers, do we really need it?
+  #?@(:cljs [IFn
+             (-invoke [this x] ((:result this) x))
+             (-invoke [this x y]
+                      (if-let [f (:result this)]
+                        (f x y)
+                        (js/console.warn (str "A ViewerEval instance with form " (:form this)
+                                              " has been called with " x " and " y
+                                              " but has not been evaluated yet."))))]))
 
 (defrecord ViewerFn [form #?(:cljs f)]
   #?@(:cljs [IFn
