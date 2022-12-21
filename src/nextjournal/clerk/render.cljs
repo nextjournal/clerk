@@ -549,8 +549,7 @@
   ([opts x]
    (if (valid-react-element? x)
      x
-     (let [{:nextjournal/keys [value viewer]} x
-           value (cond-> value (viewer/viewer-eval? value) :result)]
+     (let [{:nextjournal/keys [value viewer]} x]
        #_(prn :inspect-presented value :valid-element? (react/isValidElement value) :viewer viewer)
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
        ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
@@ -559,17 +558,12 @@
 (defn in-process-fetch [value opts]
   (.resolve js/Promise (viewer/present value opts)))
 
-(declare re-eval-viewer-fns)
-
 (defn inspect [value]
   (r/with-let [!state (r/atom nil)]
     (when (not= (:value @!state ::not-found) value)
       (swap! !state assoc
              :value value
-             ;; TODO: check that it's safe to -eval viewer fns here
-             ;; values presented in the client that are not going through `set-state!` and
-             ;; therefore don't have their render-fns evaluated.
-             :desc (re-eval-viewer-fns (viewer/present value))))
+             :desc (viewer/present value)))
     [view-context/provide {:fetch-fn (fn [fetch-opts]
                                        (.then (in-process-fetch value fetch-opts)
                                               (fn [more]
@@ -631,16 +625,16 @@
 
 (defn re-eval-viewer-fns [doc]
   (w/postwalk #(cond-> %
-                 (or (viewer/viewer-fn? %) (viewer/viewer-eval? %))
-                 viewer/-eval)
+                 (viewer/viewer-fn? %) viewer/-eval)
               doc))
 
 (defn ^:export set-state! [{:as state :keys [doc error]}]
   (when (contains? state :doc)
-    (reset! !doc (re-eval-viewer-fns doc)))
+    (reset! !doc doc))
   (when (remount? doc)
+    ;; TODO: re-eval viewer evals
     (swap! !eval-counter inc))
-  (reset! !error (re-eval-viewer-fns error))
+  (reset! !error error)
   (when-let [title (and (exists? js/document) (-> doc viewer/->value :title))]
     (set! (.-title js/document) title)))
 
@@ -653,7 +647,7 @@
     (do (swap! !doc #(re-eval-viewer-fns (apply-patch % patch)))
         ;; TODO: figure out why it doesn't work without `js/setTimeout`
         (js/setTimeout #(swap! !eval-counter inc) 10))
-    (swap! !doc apply-patch (re-eval-viewer-fns patch))))
+    (swap! !doc apply-patch patch)))
 
 (defonce !pending-clerk-eval-replies
   (atom {}))
