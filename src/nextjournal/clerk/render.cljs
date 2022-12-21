@@ -210,8 +210,8 @@
   (let [!stack-expanded (hooks/use-state false)]
     [:div.bg-red-100.dark:bg-gray-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-300.not-prose
      [:p.font-mono.text-red-600.dark:text-red-300.font-bold (or (:message error) (.-message error))]
-     #_(when-let [data (or (:data error) (.-data error))]
-         [:div.mt-2.overflow-auto [inspect data]])
+     (when-let [data (or (:data error) (.-data error))]
+       [:div.mt-2.overflow-auto [inspect data]])
      (when-let [stack (try
                         (->> (or (:stack error) (.-stack error))
                              str/split-lines
