@@ -34,7 +34,9 @@
              (-invoke [this x y]
                       (if-let [f (:f this)]
                         (f x y)
-                        (js/console.warn :ViewerFn/-invoke :form (:form this) :x x)))]))
+                        (js/console.warn (str "A ViewerFn instance with form " (:form this)
+                                              " has been called with " x " and " y
+                                              " but has not been evaluated yet."))))]))
 
 ;; Make sure `ViewerFn` and `ViewerEval` is changed atomically
 #?(:clj
