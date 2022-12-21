@@ -620,12 +620,15 @@
   (true? (some #(= % :nextjournal.clerk/remount) (tree-seq coll? seq doc-or-patch))))
 
 (defn re-eval-viewer-fns [doc]
-  (let [re-eval #(viewer/->viewer-fn (:form %))]
-    (w/postwalk #(cond-> % (viewer/viewer-fn? %) re-eval) doc)))
+  (js/console.log :re-eval-viewer-fns doc)
+  (w/postwalk #(cond-> %
+                 (or (viewer/viewer-fn? %)
+                     (viewer/viewer-eval? %)) viewer/-eval)
+              doc))
 
 (defn ^:export set-state! [{:as state :keys [doc error]}]
   (when (contains? state :doc)
-    (reset! !doc doc))
+    (reset! !doc (re-eval-viewer-fns doc)))
   (when (remount? doc)
     (swap! !eval-counter inc))
   (reset! !error error)
@@ -641,7 +644,7 @@
     (do (swap! !doc #(re-eval-viewer-fns (apply-patch % patch)))
         ;; TODO: figure out why it doesn't work without `js/setTimeout`
         (js/setTimeout #(swap! !eval-counter inc) 10))
-    (swap! !doc apply-patch patch)))
+    (swap! !doc apply-patch (re-eval-viewer-fns patch))))
 
 (defonce !pending-clerk-eval-replies
   (atom {}))

@@ -26,7 +26,7 @@
                    (java.util Base64)
                    (java.nio.file Files StandardOpenOption))))
 
-(defrecord ViewerEval [form])
+(defrecord ViewerEval [form #?(:cljs result)])
 
 (defrecord ViewerFn [form #?(:cljs f)]
   #?@(:cljs [IFn
@@ -41,6 +41,21 @@
 
      ViewerEval
      (get-type [_] :val)))
+
+#?(:cljs
+   (defprotocol IEval
+     (-eval [x])))
+
+#?(:cljs
+   (extend-protocol IEval
+     ViewerFn
+     (-eval [{:as x :keys [form]}]
+       (js/console.log :eval/viewer-fn form)
+       (assoc x :f (*eval* form)))
+     ViewerEval
+     (-eval [{:as x :keys [form]}]
+       (js/console.log :eval/viewer-eval form)
+       (assoc x :result (*eval* form)))))
 
 (defn viewer-fn? [x]
   (instance? ViewerFn x))
@@ -61,8 +76,7 @@
               form))
 
 (defn ->viewer-fn [form]
-  (map->ViewerFn {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)
-                  #?@(:cljs [:f (eval form)])}))
+  (map->ViewerFn {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)}))
 
 (defn ->viewer-eval [form]
   (map->ViewerEval {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)}))
@@ -944,17 +958,21 @@
 (defn remount-hash->viewer-eval [{:as doc :keys [blocks]}]
   (into (array-map)
         (keep (fn [block]
-                (let [{:as result :nextjournal/keys [value viewer]} (get-in block [:result :nextjournal/value])]
+                (let [{:nextjournal/keys [value viewer]} (get-in block [:result :nextjournal/value])]
                   (when-let [remount-hash (:nextjournal.clerk/remount viewer)]
                     [remount-hash value]))))
         blocks))
+
+;; When changing one viewer eval:
+;; * all viewer-evals after it need to re-eval
+;; * re-evaluating downstream ones can be done in the custom type
 
 #_(remount-hash->viewer-eval @nextjournal.clerk.webserver/!doc)
 
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc
       (assoc :atom-var-name->state (atom-var-name->state doc))
-      (assoc :remount-hash->viewer-eval (remount-hash->viewer-eval doc))
+      #_(assoc :remount-hash->viewer-eval (remount-hash->viewer-eval doc))
       (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
                                              (map (comp process-wrapped-value
                                                         apply-viewers*
@@ -989,10 +1007,16 @@
                                 (var? x) (->viewer-eval (list 'resolve (list 'quote (symbol x))))
                                 (var-from-def? x) (recur (-> x :nextjournal.clerk/var-from-def symbol))))))
    :render-fn '(fn [x opts]
-                 (if (nextjournal.clerk.render/reagent-atom? x) ;; special atoms handling to support reactivity
+                 (cond
+                   (nextjournal.clerk.viewer/viewer-eval? x)
+                   [nextjournal.clerk.render/inspect (:result x)]
+
+                   (nextjournal.clerk.render/reagent-atom? x) ;; special atoms handling to support reactivity
                    [nextjournal.clerk.render/render-tagged-value {:space? false}
                     "#object"
                     [nextjournal.clerk.render/inspect [(symbol (pr-str (type x))) @x]]]
+
+                   :else
                    [nextjournal.clerk.render/inspect x]))})
 
 (def default-viewers
