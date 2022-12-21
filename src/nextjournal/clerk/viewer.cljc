@@ -82,7 +82,8 @@
               form))
 
 (defn ->viewer-fn [form]
-  (map->ViewerFn {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)}))
+  (map->ViewerFn {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)
+                  #?@(:cljs [:f (*eval* form)])}))
 
 (defn ->viewer-eval [form]
   (map->ViewerEval {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)}))
