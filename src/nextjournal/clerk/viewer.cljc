@@ -31,7 +31,10 @@
 (defrecord ViewerFn [form #?(:cljs f)]
   #?@(:cljs [IFn
              (-invoke [this x] ((:f this) x))
-             (-invoke [this x y] ((:f this) x y))]))
+             (-invoke [this x y]
+                      (if-let [f (or (:f this) #_(*eval* f))]
+                        (f x y)
+                        (js/console.warn :ViewerFn/-invoke :form (:form this) :x x)))]))
 
 ;; Make sure `ViewerFn` and `ViewerEval` is changed atomically
 #?(:clj
@@ -59,15 +62,9 @@
      ViewerEval
      (-eval [{:as x :keys [form]}]
        (js/console.log :eval/viewer-eval form)
-       (assoc x :result (*eval* form)))))
-
-#_
-
-(defn ->viewer-eval-with-error [form]
-  (try (viewer/->viewer-eval form)
-       (catch js/Error e
-         (js/console.error "error in viewer-eval" e)
-         (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))
+       (assoc x :result (try (*eval* form)
+                             (catch js/Error e
+                               (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e)))))))
 
 (defn viewer-fn? [x]
   (instance? ViewerFn x))
@@ -89,10 +86,18 @@
 
 (defn ->viewer-fn [form]
   (map->ViewerFn {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)
-                  #?@(:cljs [:f (fn [& args]
-                                  (js/console.warn :->viewer-fn/FALLBACK args))])}))
+                  
+                  ;;#?@
+                  #_(:cljs [:f (fn [& args]
+                                 (js/console.warn :->viewer-fn/FALLBACK args)
+                                 [:h4
+                                  "->viewer-fn fallback"
+                                  [:pre
+                                   (pr-str (first args))]])])}))
 (defn ->viewer-eval [form]
-  (map->ViewerEval {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)}))
+  (map->ViewerEval {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)
+                    #?@(:cljs [:result (fn [& args]
+                                         (js/console.warn :->viewer-eval/FALLBACK args))])}))
 
 (defn open-graph-metas [open-graph-properties]
   (into (list [:meta {:name "twitter:card" :content "summary_large_image"}])
@@ -1020,10 +1025,15 @@
                                 (var? x) (->viewer-eval (list 'resolve (list 'quote (symbol x))))
                                 (var-from-def? x) (recur (-> x :nextjournal.clerk/var-from-def symbol))))))
    :render-fn '(fn [x opts]
+                 (js/console.log :viewer-eval-viewer/render
+                                 x
+                                 (nextjournal.clerk.viewer/viewer-eval? x)
+                                 (when (nextjournal.clerk.viewer/viewer-eval? x)
+                                   (:result x)))
                  (cond
                    (nextjournal.clerk.viewer/viewer-eval? x)
-                   [nextjournal.clerk.render/inspect (:result x)]
-
+                   ;; TODO: figure out why this call to `nextjournal.clerk.render/inspect` calls the fallback
+                   [nextjournal.clerk.render/inspect (pr-str (:result x))]
                    (nextjournal.clerk.render/reagent-atom? x) ;; special atoms handling to support reactivity
                    [nextjournal.clerk.render/render-tagged-value {:space? false}
                     "#object"

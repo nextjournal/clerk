@@ -210,8 +210,8 @@
   (let [!stack-expanded (hooks/use-state false)]
     [:div.bg-red-100.dark:bg-gray-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-300.not-prose
      [:p.font-mono.text-red-600.dark:text-red-300.font-bold (or (:message error) (.-message error))]
-     (when-let [data (or (:data error) (.-data error))]
-       [:div.mt-2.overflow-auto [inspect data]])
+     #_(when-let [data (or (:data error) (.-data error))]
+         [:div.mt-2.overflow-auto [inspect data]])
      (when-let [stack (try
                         (->> (or (:stack error) (.-stack error))
                              str/split-lines
@@ -619,12 +619,20 @@
 (defn remount? [doc-or-patch]
   (true? (some #(= % :nextjournal.clerk/remount) (tree-seq coll? seq doc-or-patch))))
 
+(defn find-viewer-fns-without-f [doc]
+  (js/console.log :find-viewer-fns-without-f doc)
+  (js/console.log :FILTERED (w/postwalk #(do (when (viewer/viewer-fn? %)
+                                               (js/console.log :fn % :f (:f %)))
+                                             %)
+                                        doc)))
+
 (defn re-eval-viewer-fns [doc]
   (js/console.log :re-eval-viewer-fns doc)
-  (w/postwalk #(cond-> %
-                 (or (viewer/viewer-fn? %)
-                     (viewer/viewer-eval? %)) viewer/-eval)
-              doc))
+  (doto (w/postwalk #(cond-> %
+                       (or (viewer/viewer-fn? %)
+                           (viewer/viewer-eval? %)) viewer/-eval)
+                    doc)
+    find-viewer-fns-without-f))
 
 (defn ^:export set-state! [{:as state :keys [doc error]}]
   (when (contains? state :doc)
