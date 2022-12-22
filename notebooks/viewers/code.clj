@@ -48,15 +48,18 @@ with     quite
   '(fn [code-str _] [nextjournal.clerk.render.code/editor (reagent/atom code-str)])
   "{:search :query}")
 
+(clerk/eval-cljs
+ '(require '["@codemirror/view" :as cm-view :refer [keymap lineNumbers highlightActiveLine]]))
+
 ;; customize extensions
 (clerk/with-viewer
   '(fn [code-str _]
      [:div.bg-neutral-50
       [nextjournal.clerk.render.code/editor (reagent/atom code-str)
        {:extensions
-        (.concat (codemirror.view/lineNumbers)
-                 (codemirror.view/highlightActiveLine)
-                 nextjournal.clerk.render.code/paredit-keymap)}]])
+        (.concat (lineNumbers)
+                 (highlightActiveLine)
+                 (.of keymap nextjournal.clojure-mode.keymap/paredit))}]])
   "(def fib
   (lazy-cat [0 1]
             (map + fib (rest fib))))")

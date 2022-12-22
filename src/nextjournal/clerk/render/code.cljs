@@ -1,14 +1,13 @@
 (ns nextjournal.clerk.render.code
   (:require ["@codemirror/language" :refer [HighlightStyle syntaxHighlighting]]
             ["@codemirror/state" :refer [EditorState RangeSetBuilder Text]]
-            ["@codemirror/view" :refer [EditorView Decoration keymap]]
+            ["@codemirror/view" :refer [EditorView Decoration]]
             ["@lezer/highlight" :refer [tags highlightTree]]
             ["@nextjournal/lang-clojure" :refer [clojureLanguage]]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
             [nextjournal.clerk.render.hooks :as hooks]
-            [nextjournal.clojure-mode :as clojure-mode]
-            [nextjournal.clojure-mode.keymap :as clojure-mode.keymap]))
+            [nextjournal.clojure-mode :as clojure-mode]))
 
 (def highlight-style
   (.define HighlightStyle
@@ -123,10 +122,6 @@
                   ".cm-tooltip > ul > li" {:padding "3px 10px 3px 0 !important"}
                   ".cm-tooltip > ul > li:first-child" {:border-top-left-radius "3px"
                                                        :border-top-right-radius "3px"}})))
-
-(def ^js complete-keymap (.of keymap clojure-mode.keymap/complete))
-(def ^js builtin-keymap (.of keymap clojure-mode.keymap/builtin))
-(def ^js paredit-keymap (.of keymap clojure-mode.keymap/paredit))
 
 (def read-only (.. EditorView -editable (of false)))
 

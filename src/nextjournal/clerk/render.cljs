@@ -561,7 +561,9 @@
 (defn inspect [value]
   (r/with-let [!state (r/atom nil)]
     (when (not= (:value @!state ::not-found) value)
-      (swap! !state assoc :value value :desc (viewer/present value)))
+      (swap! !state assoc
+             :value value
+             :desc (viewer/present value)))
     [view-context/provide {:fetch-fn (fn [fetch-opts]
                                        (.then (in-process-fetch value fetch-opts)
                                               (fn [more]
@@ -620,8 +622,8 @@
   (true? (some #(= % :nextjournal.clerk/remount) (tree-seq coll? seq doc-or-patch))))
 
 (defn re-eval-viewer-fns [doc]
-  (let [re-eval #(viewer/->viewer-fn (:form %))]
-    (w/postwalk #(cond-> % (viewer/viewer-fn? %) re-eval) doc)))
+  (let [re-eval (fn [{:keys [form]}] (viewer/->viewer-fn form))]
+    (w/postwalk (fn [x] (cond-> x (viewer/viewer-fn? x) re-eval)) doc)))
 
 (defn ^:export set-state! [{:as state :keys [doc error]}]
   (when (contains? state :doc)

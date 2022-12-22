@@ -62,7 +62,7 @@
 
 (defn ->viewer-fn [form]
   (map->ViewerFn {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)
-                  #?@(:cljs [:f (eval form)])}))
+                  #?@(:cljs [:f (*eval* form)])}))
 
 (defn ->viewer-eval [form]
   (map->ViewerEval {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)}))
@@ -462,8 +462,12 @@
         opts-from-form-meta (-> result
                                 (select-keys [:nextjournal/css-class :nextjournal/width :nextjournal/opts])
                                 (cond-> #_result
-                                  (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))]
+                                  (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))
+        viewer-eval-result? (-> presented-result :nextjournal/value viewer-eval?)]
+    #_(prn :presented-result viewer-eval? presented-result)
     (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result}
+                                 viewer-eval-result?
+                                 (assoc ::viewer-eval-form (-> presented-result :nextjournal/value :form))
 
                                  (-> form meta :nextjournal.clerk/open-graph :image)
                                  (assoc :nextjournal/open-graph-image-capture true)
@@ -493,16 +497,21 @@
   (case type
     :markdown [(with-viewer :markdown (:doc cell))]
     :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
-                {:as display-opts :keys [code? result?]} (->display cell)]
+                {:as display-opts :keys [code? result?]} (->display cell)
+                eval? (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)]
             ;; TODO: use vars instead of names
             (cond-> []
               code?
               (conj (with-viewer :clerk/code-block {:nextjournal.clerk/opts (select-keys cell [:loc])}
                       ;; TODO: display analysis could be merged into cell earlier
                       (-> cell (merge display-opts) (dissoc :result))))
-              result?
-              (conj (with-viewer (:name result-viewer)
+              (or result? eval?)
+              (conj (with-viewer (if result?
+                                   (:name result-viewer)
+                                   (assoc result-viewer :render-fn '(fn [_] [:<>])))
                       (assoc cell :doc doc)))))))
+
+#_(nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)
 
 (defn update-viewers [viewers select-fn->update-fn]
   (reduce (fn [viewers [pred update-fn]]
@@ -948,7 +957,14 @@
                                              (map (comp process-wrapped-value
                                                         apply-viewers*
                                                         (partial ensure-wrapped-with-viewers viewers))))))
-      (select-keys [:atom-var-name->state :auto-expand-results? :blocks :bundle? :css-class :open-graph :title :toc :toc-visibility])
+      (select-keys [:atom-var-name->state
+                    :auto-expand-results?
+                    :blocks :bundle?
+                    :css-class
+                    :open-graph
+                    :title
+                    :toc
+                    :toc-visibility])
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
 
 (def notebook-viewer
@@ -971,7 +987,8 @@
                                 (var? x) (->viewer-eval (list 'resolve (list 'quote (symbol x))))
                                 (var-from-def? x) (recur (-> x :nextjournal.clerk/var-from-def symbol))))))
    :render-fn '(fn [x opts]
-                 (if (nextjournal.clerk.render/reagent-atom? x) ;; special atoms handling to support reactivity
+                 (if (nextjournal.clerk.render/reagent-atom? x)
+                   ;; special atoms handling to support reactivity
                    [nextjournal.clerk.render/render-tagged-value {:space? false}
                     "#object"
                     [nextjournal.clerk.render/inspect [(symbol (pr-str (type x))) @x]]]
@@ -1500,24 +1517,23 @@
   ([x] (print-hide-result-deprecation-warning) (with-viewer hide-result-viewer {} x))
   ([viewer-opts x] (print-hide-result-deprecation-warning) (with-viewer hide-result-viewer viewer-opts x)))
 
-(def eval-cljs-result-viewer
-  {:transform-fn mark-presented
-   :render-fn '(fn [x]
-                 [nextjournal.clerk.render/inspect x])})
 
-(defn eval-cljs-str [code-string]
-  ;; NOTE: this relies on implementation details on how SCI code is evaluated
-  ;; and will change in a future version of Clerk
-
+(defn eval-cljs [& forms]
   ;; because ViewerEval's are evaluated at read time we can no longer
   ;; check after read if there was any in the doc. Thus we set the
   ;; `:nextjournal.clerk/remount` attribute to a hash of the code (so
   ;; it changes when the code changes and shows up in the doc patch.
   ;; TODO: simplify, maybe by applying Clerk's analysis to the cljs
   ;; part as well
-  (with-viewer (assoc eval-cljs-result-viewer :nextjournal.clerk/remount (hash-sha1 code-string) )
-    (->viewer-eval (list 'binding '[*ns* *ns*]
-                         (list 'load-string code-string)))))
+  (with-viewer (assoc viewer-eval-viewer :nextjournal.clerk/remount (hash-sha1 forms))
+    (->viewer-eval
+     `(binding [*ns* *ns*]
+        ~@forms))))
+
+(defn eval-cljs-str [code-string]
+  ;; NOTE: this relies on implementation details on how SCI code is evaluated
+  ;; and will change in a future version of Clerk
+  (eval-cljs (list 'load-string code-string)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; examples
