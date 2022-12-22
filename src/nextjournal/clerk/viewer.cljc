@@ -498,14 +498,14 @@
     :markdown [(with-viewer :markdown (:doc cell))]
     :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
                 {:as display-opts :keys [code? result?]} (->display cell)
-                remount-hash (-> cell :result :nextjournal/value (get-safe :nextjournal/viewer) :nextjournal.clerk/remount)]
+                eval? (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)]
             ;; TODO: use vars instead of names
             (cond-> []
               code?
               (conj (with-viewer :clerk/code-block {:nextjournal.clerk/opts (select-keys cell [:loc])}
                       ;; TODO: display analysis could be merged into cell earlier
                       (-> cell (merge display-opts) (dissoc :result))))
-              (or result? remount-hash)
+              (or result? eval?)
               (conj (with-viewer (if result?
                                    (:name result-viewer)
                                    (assoc result-viewer :render-fn '(fn [_] [:<>])))
@@ -950,24 +950,9 @@
                (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote))))
                (extract-sync-atom-vars doc)))))
 
-(defn remount-hash->viewer-eval [{:as doc :keys [blocks]}]
-  (into (array-map)
-        (keep (fn [block]
-                (let [{:nextjournal/keys [value viewer]} (get-in block [:result :nextjournal/value])]
-                  (when-let [remount-hash (:nextjournal.clerk/remount viewer)]
-                    [remount-hash value]))))
-        blocks))
-
-;; When changing one viewer eval:
-;; * all viewer-evals after it need to re-eval
-;; * re-evaluating downstream ones can be done in the custom type
-
-#_(remount-hash->viewer-eval @nextjournal.clerk.webserver/!doc)
-
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc
       (assoc :atom-var-name->state (atom-var-name->state doc))
-      #_(assoc :remount-hash->viewer-eval (remount-hash->viewer-eval doc))
       (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
                                              (map (comp process-wrapped-value
                                                         apply-viewers*
