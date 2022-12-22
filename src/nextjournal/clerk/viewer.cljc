@@ -518,16 +518,21 @@
   (case type
     :markdown [(with-viewer :markdown (:doc cell))]
     :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
-                {:as display-opts :keys [code? result?]} (->display cell)]
+                {:as display-opts :keys [code? result?]} (->display cell)
+                remount-hash (-> cell :result :nextjournal/value :nextjournal/viewer :nextjournal.clerk/remount)]
             ;; TODO: use vars instead of names
             (cond-> []
               code?
               (conj (with-viewer :clerk/code-block {:nextjournal.clerk/opts (select-keys cell [:loc])}
                       ;; TODO: display analysis could be merged into cell earlier
                       (-> cell (merge display-opts) (dissoc :result))))
-              result?
-              (conj (with-viewer (:name result-viewer)
+              (or result? remount-hash)
+              (conj (with-viewer (if result?
+                                   (:name result-viewer)
+                                   (assoc result-viewer :render-fn '(fn [_] [:<>])))
                       (assoc cell :doc doc)))))))
+
+#_(nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)
 
 (defn update-viewers [viewers select-fn->update-fn]
   (reduce (fn [viewers [pred update-fn]]
