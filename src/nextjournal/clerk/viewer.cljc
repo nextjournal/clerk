@@ -519,7 +519,7 @@
     :markdown [(with-viewer :markdown (:doc cell))]
     :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
                 {:as display-opts :keys [code? result?]} (->display cell)
-                remount-hash (-> cell :result :nextjournal/value :nextjournal/viewer :nextjournal.clerk/remount)]
+                remount-hash (-> cell :result :nextjournal/value (get-safe :nextjournal/viewer) :nextjournal.clerk/remount)]
             ;; TODO: use vars instead of names
             (cond-> []
               code?
