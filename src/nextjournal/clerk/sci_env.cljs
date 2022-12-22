@@ -106,6 +106,16 @@
             (sci/add-import! ctx ns sub-libname r))))
       {:handled true})))
 
+(defn ^:macro implements?* [_ _ psym x]
+  ;; hardcoded implementation of implements? for js-interop destructure which
+  ;; uses implements?
+  (case psym
+    cljs.core/ISeq (implements? ISeq x)
+    cljs.core/INamed (implements? INamed x)
+    (list 'cljs.core/instance? psym x)))
+
+(def core-ns (sci/create-ns 'clojure.core nil))
+
 (def initial-sci-opts
   {:async? true
    :load-fn load-fn
@@ -118,7 +128,8 @@
              'v 'nextjournal.clerk.viewer
              'p 'nextjournal.clerk.parser}
    :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
-                       'clojure.core {'read-string read-string}}
+                       'clojure.core {'read-string read-string
+                                      'implements? (sci/copy-var implements?* core-ns)}}
                       (sci-copy-nss
                        'nextjournal.clerk.parser
                        'nextjournal.clerk.render
