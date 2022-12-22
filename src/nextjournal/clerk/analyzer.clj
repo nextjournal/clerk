@@ -273,17 +273,32 @@
             (throw (ex-info (str "The var `#'" missing-dep "` is being referenced, but Clerk can't find it in the namespace's source code. Did you remove it? This validation can fail when the namespace is mutated programmatically (e.g. using `clojure.core/intern` or side-effecting macros). You can turn off this check by adding `{:nextjournal.clerk/error-on-missing-vars :off}` to the namespace metadata.")
                             {:var-name missing-dep :form form :file file #_#_:defined defined }))))))))
 
+(defn filter-code-blocks-without-form [doc]
+  (update doc :blocks #(filterv (some-fn :form (complement parser/code?)) %)))
+
+(defn ns-resolver [notebook-ns]
+  (if notebook-ns
+    (into {} (map (juxt key (comp ns-name val))) (ns-aliases notebook-ns))
+    identity))
+#_ (ns-resolver *ns*)
+
 (defn analyze-doc
   ([doc]
    (analyze-doc {:doc? true :graph (dep/graph)} doc))
   ([{:as state :keys [doc?]} doc]
    (binding [*ns* *ns*]
      (let [!id->count (atom {})]
-       (cond-> (reduce (fn [state i]
+       (cond-> (reduce (fn [{:as state notebook-ns :ns} i]
                          (let [{:as block :keys [type text loc]} (get-in state [:blocks i])]
                            (if (not= type :code)
                              state
-                             (let [form (read-string text)
+                             (let [form (try (read-string text)
+                                             (catch Exception e
+                                               (throw (ex-info (str "Clerk analysis failed reading block: "
+                                                                    (ex-message e))
+                                                               {:block block
+                                                                :file (:file doc)}
+                                                               e))))
                                    form+loc (cond-> form
                                               (instance? clojure.lang.IObj form)
                                               (vary-meta merge (cond-> loc
@@ -299,6 +314,8 @@
                                                          (dissoc state :doc?)
                                                          (->ana-keys analyzed))
                                            doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
+                                           doc? (assoc-in [:blocks i :text-without-meta]
+                                                          (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))
                                            (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))]
                                (if (seq deps)
                                  (-> (reduce (partial analyze-deps analyzed) state deps)
@@ -310,7 +327,8 @@
          doc? (-> parser/add-block-visibility
                   parser/add-open-graph-metadata
                   parser/add-auto-expand-results
-                  parser/add-css-class))))))
+                  parser/add-css-class
+                  filter-code-blocks-without-form))))))
 
 #_(let [parsed (nextjournal.clerk.parser/parse-clojure-string "clojure.core/dec")]
     (build-graph (analyze-doc parsed)))
@@ -446,21 +464,22 @@
 #_(hash (build-graph (parser/parse-clojure-string "^{:nextjournal.clerk/hash-fn (fn [x] \"abc\")}(def contents (slurp \"notebooks/hello.clj\"))")))
 #_(hash (build-graph (parser/parse-clojure-string (slurp "notebooks/hello.clj"))))
 
-(defn exceeds-bounded-count-limit? [x]
-  (reduce (fn [_ xs]
-            (try
-              (let [limit config/*bounded-count-limit*]
-                (if (and (seqable? xs) (<= limit (bounded-count limit xs)))
-                  (reduced true)
-                  false))
-              (catch Exception _e
-                (reduced true))))
-          false
-          (tree-seq seqable? seq x)))
+(defprotocol BoundedCountCheck
+  (-exceeds-bounded-count-limit? [x limit]))
 
-#_(exceeds-bounded-count-limit? (range config/*bounded-count-limit*))
-#_(exceeds-bounded-count-limit? (range (dec config/*bounded-count-limit*)))
-#_(exceeds-bounded-count-limit? {:a-range (range)})
+(extend-protocol BoundedCountCheck
+  nil (-exceeds-bounded-count-limit? [_ _] false)
+  Object (-exceeds-bounded-count-limit? [_ _] false)
+  clojure.lang.IPersistentCollection (-exceeds-bounded-count-limit? [x limit]
+                                       (or (some #(-exceeds-bounded-count-limit? % limit) x) false))
+  clojure.lang.ISeq (-exceeds-bounded-count-limit? [xs limit]
+                      (or (<= limit (bounded-count limit xs))
+                          (some #(-exceeds-bounded-count-limit? % limit) xs))))
+
+(defn exceeds-bounded-count-limit? [x]
+  (-exceeds-bounded-count-limit? x config/*bounded-count-limit*))
+
+#_(time (exceeds-bounded-count-limit? viewers.table/letter->words))
 
 (defn valuehash
   ([value] (valuehash :sha512 value))

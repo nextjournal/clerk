@@ -1,5 +1,10 @@
 (ns nextjournal.clerk.sci-env
-  (:require ["@codemirror/view" :as codemirror-view]
+  (:require-macros [nextjournal.clerk.render.macros :refer [sci-copy-nss]])
+  (:require ["@codemirror/language" :as codemirror-language]
+            ["@codemirror/state" :as codemirror-state]
+            ["@codemirror/view" :as codemirror-view]
+            ["@lezer/highlight" :as lezer-highlight]
+            ["@nextjournal/lang-clojure" :as lang-clojure]
             ["framer-motion" :as framer-motion]
             [applied-science.js-interop :as j]
             [cljs.reader]
@@ -9,10 +14,13 @@
             [nextjournal.clerk.parser]
             [nextjournal.clerk.render :as render]
             [nextjournal.clerk.render.code]
+            [nextjournal.clerk.render.context :as view-context]
             [nextjournal.clerk.render.hooks]
             [nextjournal.clerk.trim-image]
             [nextjournal.clerk.viewer :as viewer]
-            [nextjournal.view.context :as view-context]
+            [nextjournal.clojure-mode.commands]
+            [nextjournal.clojure-mode.extensions.eval-region]
+            [nextjournal.clojure-mode.keymap]
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
@@ -22,10 +30,10 @@
 (defn ->viewer-fn-with-error [form]
   (try (viewer/->viewer-fn form)
        (catch js/Error e
-         (try (eval form)
-              (catch js/Error e
-                (fn [_]
-                  [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)]))))))
+         (viewer/map->ViewerFn
+          {:form form
+           :f (fn [_]
+                [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)])}))))
 
 (defn ->viewer-eval-with-error [form]
   (try (*eval* form)
@@ -76,20 +84,32 @@
           'set-viewers! render/set-viewers!
           'with-d3-require render/with-d3-require}))
 
-(def render-namespace
-  (sci/copy-ns nextjournal.clerk.render (sci/create-ns 'nextjournal.clerk.render)))
+;; classes which cannot be resolved by symbol
+(def libname->class
+  {"@codemirror/language" codemirror-language
+   "@codemirror/state" codemirror-state
+   "@codemirror/view" codemirror-view
+   "@lezer/highlight" lezer-highlight
+   "@nextjournal/lang-clojure" lang-clojure})
 
-(def parser-namespace
-  (sci/copy-ns nextjournal.clerk.parser (sci/create-ns 'nextjournal.clerk.parser)))
-
-(def hooks-namespace
-  (sci/copy-ns nextjournal.clerk.render.hooks (sci/create-ns 'nextjournal.clerk.render.hooks)))
-
-(def code-namespace
-  (sci/copy-ns nextjournal.clerk.render.code (sci/create-ns 'nextjournal.clerk.render.code)))
+(defn load-fn [{:keys [libname ctx opts ns]}]
+  (when (contains? libname->class libname)
+    (let [{:keys [as refer]} opts
+          munged-libname (symbol (munge libname))
+          klass (libname->class libname)]
+      (sci/add-class! ctx munged-libname klass)
+      (when as
+        (sci/add-import! ctx ns munged-libname as))
+      (doseq [r refer]
+        (when-some [prop (j/get klass (name r))]
+          (let [sub-libname (str munged-libname "$" r)]
+            (sci/add-class! ctx sub-libname prop)
+            (sci/add-import! ctx ns sub-libname r))))
+      {:handled true})))
 
 (def initial-sci-opts
   {:async? true
+   :load-fn load-fn
    :disable-arity-checks true
    :classes {'js (j/assoc! goog/global "import" shadow.esm/dynamic-import)
              'framer-motion framer-motion
@@ -99,14 +119,18 @@
              'reagent 'reagent.core
              'v 'nextjournal.clerk.viewer
              'p 'nextjournal.clerk.parser}
-   :namespaces (merge {'nextjournal.clerk.render render-namespace
-                       'nextjournal.clerk.render.hooks hooks-namespace
-                       'nextjournal.clerk.render.code code-namespace
-                       'nextjournal.clerk.viewer viewer-namespace
-                       'nextjournal.clerk.parser parser-namespace
-                       'clojure.core {'swap! nextjournal.clerk.render/clerk-swap!
-                                      'reset! nextjournal.clerk.render/clerk-reset!
-                                      'read-string read-string}}
+   :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
+                       'clojure.core {'read-string read-string}}
+                      (sci-copy-nss
+                       'nextjournal.clerk.parser
+                       'nextjournal.clerk.render
+                       'nextjournal.clerk.render.code
+                       'nextjournal.clerk.render.hooks
+
+                       'nextjournal.clojure-mode.keymap
+                       'nextjournal.clojure-mode.commands
+                       'nextjournal.clojure-mode.extensions.eval-region)
+
                       sci.configs.js-interop/namespaces
                       sci.configs.reagent/namespaces)})
 

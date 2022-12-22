@@ -167,7 +167,7 @@
 
   (testing "assigns folded visibility"
     (is (match? [{:nextjournal/viewer {:name :code-folded}
-                  :nextjournal/value "^{:nextjournal.clerk/visibility :fold}{:some :map}"}
+                  :nextjournal/value "{:some :map}"}
                  {:nextjournal/value {:nextjournal/fetch-opts {:blob-id string?}
                                       :nextjournal/hash string?}}]
                 (eval+extract-doc-blocks "^{:nextjournal.clerk/visibility :fold}{:some :map}"))))
@@ -193,11 +193,21 @@
     (intern (create-ns 'existing-var) 'foo :bar)
     (is (eval/eval-string "(in-ns 'existing-var) foo"))))
 
+(clerk/defcached my-expansive-thing
+  (do (Thread/sleep 1 #_10000) 42))
+
 (deftest defcached
-  (clerk/defcached my-expansive-thing
-    (do (Thread/sleep 1 #_10000) 42))
   (is (= 42 my-expansive-thing)))
 
 (deftest with-cache
   (is (= 42 (clerk/with-cache
               (do (Thread/sleep 1 #_10000) 42)))))
+
+(deftest cacheable-value?-test
+  (testing "finite sequence is cacheable"
+    (is (#'eval/cachable-value? (vec (range 100)))))
+  (testing "nippy doesn't know how to freeze instances of clojure.lang.Iterate"
+    (is (not (#'eval/cachable-value? (range 100)))))
+  (testing "infinite sequences can't be cached"
+    (is (not (#'eval/cachable-value? (range))))
+    (is (not (#'eval/cachable-value? (map inc (range)))))))

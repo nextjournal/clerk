@@ -24,11 +24,13 @@
     "https://gist.githubusercontent.com/wchargin/8927565/raw/d9783627c731268fb2935a731a618aa8e95cf465/words"))
 
 ;; ## Words
-(clerk/table {:nextjournal/width :full}
-             (->> (slurp (words-url))
-                  str/split-lines
-                  (group-by (comp keyword str/upper-case str first))
-                  (into (sorted-map))))
+(def letter->words
+  (->> (slurp (words-url))
+       str/split-lines
+       (group-by (comp keyword str/upper-case str first))
+       (into (sorted-map))))
+
+(clerk/table {:nextjournal/width :full} letter->words)
 
 ;; ## Table Errors
 ;; The table viewer will perform normalization and show an error in case of failure:
@@ -82,3 +84,8 @@
                            comp (v/update-val (comp (fn [table] (update table :head (partial map (comp str/capitalize name))))
                                                     v/normalize-table-data)))
   {:a [1 2] :b [3 4]})
+
+
+;; ## Nesting tables inside html
+(clerk/html [:div.bg-amber-100.p-2
+             (clerk/table [[1 2] [3 4] [5 6]])])

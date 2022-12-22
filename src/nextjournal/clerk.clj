@@ -295,13 +295,10 @@
   ([viewer-opts x] (with-viewer v/katex-viewer viewer-opts x)))
 
 (defn hide-result
-  "Deprecated, please put ^{:nextjournal.clerk/visibility {:result :hide}} metadata on the form instead."
+  "Deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead."
   {:deprecated "0.10"}
-  ([x] (hide-result {} x))
-  ([viewer-opts x]
-   (binding [*out* *err*]
-     (prn "`hide-result` has been deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead."))
-   (with-viewer v/hide-result-viewer viewer-opts x)))
+  ([x] (v/print-hide-result-deprecation-warning) (with-viewer v/hide-result-viewer {} x))
+  ([viewer-opts x] (v/print-hide-result-deprecation-warning) (with-viewer v/hide-result-viewer viewer-opts x)))
 
 
 (defn code
@@ -321,6 +318,11 @@
   "Evaluates the given ClojureScript `code-string` in the browser."
   [code-string]
   (v/eval-cljs-str code-string))
+
+(defn eval-cljs
+  "Evaluates the given ClojureScript forms in the browser."
+  [& forms]
+  (apply v/eval-cljs forms))
 
 (def notebook
   "Experimental notebook viewer. You probably should not use this."

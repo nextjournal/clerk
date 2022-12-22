@@ -3,8 +3,8 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [nextjournal.clerk.render :as render]
+            [nextjournal.clerk.render.localstorage :as localstorage]
             [nextjournal.clerk.sci-env :as sci-env]
-            [nextjournal.devcards :as dc]
             [reagent.core :as r]
             [reagent.dom.server :as dom-server]
             [reitit.frontend :as rf]
@@ -50,28 +50,10 @@
                                (update-in [:nextjournal/value :blocks] (partial into [(hiccup header)])))})
     [render/root]))
 
-(dc/defcard show-card []
-  [show {:git/url "https://github.com/nextjournal/clerk"
-         :git/sha "1026e6199f723e0f6ea92301b9678c9cf7024ba0"
-         :path "notebooks/hello.clj"
-         :paths ["notebooks/hello.clj"],
-         :bundle? true,
-         :live-js? true,
-         :doc {:nextjournal/value {:blocks [#:nextjournal{:value " # Hello, Clerk 👋\n", :viewer :markdown}
-                                            #:nextjournal{:value "(+ 39 3)", :viewer :code}
-                                            {:nextjournal/viewer :clerk/result,
-                                             :nextjournal/value #:nextjournal{:edn "{:path [], :nextjournal/value 42, :nextjournal/viewer {:render-fn #viewer-fn (fn [x] (v/html [:span.cmt-number.inspected-value (if (js/Number.isNaN x) \"NaN\" (str x))]))}}"},
-                                             :path []}],
-                                   :title "Hello, Clerk 👋"},
-               :nextjournal/viewer :clerk/notebook,
-               :scope {:namespace :nextjournal.clerk}},
-         :path->url {"notebooks/hello.clj" "notebooks/hello.clj"}
-         :url->path {"notebooks/hello.clj" "notebooks/hello.clj"}}])
-
 (defn index [{:as view-data :keys [paths]}]
   (when (exists? js/document)
     (set! (.-title js/document) "Clerk"))
-  (r/with-let [!state (r/atom {:dark-mode? (render/localstorage-get render/local-storage-dark-mode-key)})
+  (r/with-let [!state (r/atom {:dark-mode? (localstorage/get-item render/local-storage-dark-mode-key)})
                ref-fn #(when % (render/setup-dark-mode! !state))]
     [:div.bg-gray-100.dark:bg-gray-900.flex.justify-center.overflow-y-auto.w-screen.h-screen.p-4.md:p-0
      {:ref ref-fn}
@@ -95,14 +77,7 @@
         {:href "https://github.com/nextjournal/clerk"}
         "Generated with Clerk."]]]]))
 
-(dc/defcard index-card []
-  [index {:git/url "https://github.com/nextjournal/clerk"
-          :git/sha "1026e6199f723e0f6ea92301b9678c9cf7024ba0"
-          :paths ["notebooks/hello.clj"],
-          :bundle? true,
-          :live-js? true,
-          :path->url {"notebooks/hello.clj" "notebooks/hello.clj"}
-          :url->path {"notebooks/hello.clj" "notebooks/hello.clj"}}])
+
 
 (defn get-routes [docs]
   (let [index? (contains? docs "")]
@@ -117,8 +92,8 @@
   (let [{:keys [data path-params] :as match} @!match
         {:keys [view]} data
         view-data (merge @!state data path-params {:doc (get-in @!state [:path->doc (:path path-params "")])})]
-    [:div.flex.h-screen.bg-white.dark:bg-gray-900
-     [:div.h-screen.overflow-y-auto.flex-auto.scroll-container
+    [:div.flex.min-h-screen.bg-white.dark:bg-gray-900
+     [:div.flex-auto.w-screen.scroll-container
       (if view
         [view view-data]
         [:pre (pr-str match)])]]))

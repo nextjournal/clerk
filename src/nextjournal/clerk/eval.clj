@@ -91,15 +91,17 @@
 (defn ^:private cachable-value? [value]
   (and (some? value)
        (try
-         (nippy/freezable? value)
+         (and (not (analyzer/exceeds-bounded-count-limit? value))
+              (some? (nippy/freezable? value)))
          ;; can error on e.g. lazy-cat fib
          ;; TODO: propagate error information here
          (catch Exception _
-           false))
-       (not (analyzer/exceeds-bounded-count-limit? value))))
+           false))))
 
 #_(cachable-value? (vec (range 100)))
 #_(cachable-value? (range))
+#_(cachable-value? (map inc (range)))
+#_(cachable-value? [{:hello (map inc (range))}])
 
 
 (defn ^:private cache! [digest-file var-value]
@@ -197,9 +199,9 @@
 (defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks]}]
   (let [deref-forms (into #{} (filter analyzer/deref?) (keys ->hash))
         {:as evaluated-doc :keys [blob-ids]}
-        (reduce (fn [state {:as cell :keys [type]}]
+        (reduce (fn [state cell]
                   (let [state-with-deref-deps-evaluated (analyzer/hash-deref-deps state cell)
-                        {:as result :nextjournal/keys [blob-id]} (when (= :code type)
+                        {:as result :nextjournal/keys [blob-id]} (when (parser/code? cell)
                                                                    (read+eval-cached state-with-deref-deps-evaluated cell))]
                     (cond-> (update state-with-deref-deps-evaluated :blocks conj (cond-> cell result (assoc :result result)))
                       blob-id (update :blob-ids conj blob-id)

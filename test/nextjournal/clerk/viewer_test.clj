@@ -81,8 +81,9 @@
            (:nextjournal/width (v/apply-viewers (v/table {:nextjournal.clerk/width :full} {:a [1] :b [2] :c [3]})))))))
 
 
+(def my-test-var [:h1 "hi"])
+
 (deftest apply-viewer-unwrapping-var-from-def
-  (def my-test-var [:h1 "hi"])
   (let [apply+get-value #(-> % v/apply-viewer-unwrapping-var-from-def :nextjournal/value :nextjournal/value)]
     (testing "unwraps var when viewer doens't opt out"
       (is (= my-test-var
@@ -110,10 +111,10 @@
 (deftest present
   (testing "only transform-fn can select viewer"
     (is (match? {:nextjournal/value [:div.viewer-markdown
-                                     [:p [:span "Hello "] [:em [:span "markdown"]] [:span "!"]]]
+                                     ["h1" {:id "hello-markdown!"} [:span "👋 Hello "] [:em [:span "markdown"]] [:span "!"]]]
                  :nextjournal/viewer {:name :html-}}
                 (v/present (v/with-viewer {:transform-fn (comp v/md v/->value)}
-                             "Hello _markdown_!")))))
+                             "# 👋 Hello _markdown_!")))))
 
   (testing "works with sorted-map which can throw on get & contains?"
     (v/present (into (sorted-map) {'foo 'bar})))
@@ -121,6 +122,12 @@
   (testing "doesn't throw on bogus input"
     (is (match? {:nextjournal/value nil, :nextjournal/viewer {:name :html}}
                 (v/present (v/html nil)))))
+
+  (testing "big ints and ratios are represented as strings (issue #335)"
+    (is (match? {:nextjournal/value "1142497398145249635243N"}
+                (v/present 1142497398145249635243N)))
+    (is (match? {:nextjournal/value "10/33"}
+                (v/present 10/33))))
 
   (testing "opts are not propagated to children during presentation"
     (let [count-opts (fn [o]
@@ -211,4 +218,13 @@
     (is (= "#viewer-eval (symbol \"with spaces\")"
            (pr-str (symbol "with spaces"))))
     (is (= "#viewer-eval (symbol \"with ns\" \"and spaces\")"
-           (pr-str (symbol "with ns" "and spaces"))))))
+           (pr-str (symbol "with ns" "and spaces")))))
+
+  (testing "splicing reader conditional prints normally (issue #338)"
+    (is (= "?@" (pr-str (symbol "?@"))))))
+
+(deftest removed-metadata
+  (is (= "(do 'this)"
+         (-> (eval/eval-string "(ns test.removed-metadata\n(:require [nextjournal.clerk :as c]))\n\n^::c/no-cache (do 'this)")
+             view/doc->viewer
+             v/->value :blocks second v/->value))))

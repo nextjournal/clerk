@@ -2,6 +2,7 @@
   (:require [babashka.fs :as fs]
             [clojure.edn :as edn]
             [clojure.pprint :as pprint]
+            [clojure.set :as set]
             [clojure.string :as str]
             [editscript.core :as editscript]
             [nextjournal.clerk.view :as view]
@@ -30,11 +31,14 @@
 
 (def ^:dynamic *sender-ch* nil)
 
+(defn send! [ch msg]
+  (httpkit/send! ch (v/->edn msg)))
+
 (defn broadcast! [msg]
   (doseq [ch @!clients]
     (when (not= @!last-sender-ch *sender-ch*)
-      (httpkit/send! ch (v/->edn {:type :patch-state! :patch []
-                                  :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-ch* ch)))]})))
+      (send! ch {:type :patch-state! :patch []
+                 :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-ch* ch)))]}))
     (httpkit/send! ch (v/->edn msg)))
   (reset! !last-sender-ch *sender-ch*))
 
@@ -126,13 +130,15 @@
                                     (create-ns 'user))]
                    (let [{:as msg :keys [type]} (read-msg edn-string)]
                      (case type
-                       :eval (do (eval (:form msg))
+                       :eval (do (send! sender-ch (merge {:type :eval-reply :eval-id (:eval-id msg)}
+                                                         (try {:reply (eval (:form msg))}
+                                                              (catch Exception e
+                                                                {:error (Throwable->map e)}))))
                                  (eval '(nextjournal.clerk/recompute!)))
                        :swap! (when-let [var (resolve (:var-name msg))]
                                 (try
-                                  (apply swap! @var (eval (:args msg)))
                                   (binding [*sender-ch* sender-ch]
-                                    (eval '(nextjournal.clerk/recompute!)))
+                                    (apply swap! @var (eval (:args msg))))
                                   (catch Exception ex
                                     (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) show-error!)))))))))})
 
@@ -146,19 +152,28 @@
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
-        ("build" "js") (serve-file "public" req)
+        ("build" "js" "css") (serve-file "public" req)
         "_ws" {:status 200 :body "upgrading..."}
-        {:status  200
+        {:status 200
          :headers {"Content-Type" "text/html"}
-         :body    (view/doc->html (or @!doc (help-doc)) @!error)})
+         :body (view/doc->html {:doc (or @!doc (help-doc)) :error @!error})})
       (catch Throwable e
         {:status  500
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
 
 #_(nextjournal.clerk/serve! {})
 
+(defn sync-atom-changed [key atom old-state new-state]
+  (eval '(nextjournal.clerk/recompute!)))
+
 (defn present+reset! [doc]
-  (let [presented (view/doc->viewer doc)]
+  (let [presented (view/doc->viewer doc)
+        sync-vars-old (v/extract-sync-atom-vars @!doc)
+        sync-vars (v/extract-sync-atom-vars doc)]
+    (doseq [sync-var (set/difference sync-vars sync-vars-old)]
+      (add-watch @sync-var (symbol sync-var) sync-atom-changed))
+    (doseq [sync-var (set/difference sync-vars-old sync-vars)]
+      (remove-watch @sync-var (symbol sync-var)))
     (reset! !doc (with-meta doc presented))
     presented))
 

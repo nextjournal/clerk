@@ -2,11 +2,13 @@
   "Clerk's Parser turns Clojure & Markdown files and strings into Clerk documents."
   (:require [clojure.set :as set]
             [clojure.string :as str]
+            [clojure.zip]
             [nextjournal.markdown :as markdown]
             [nextjournal.markdown.parser :as markdown.parser]
             [nextjournal.markdown.transform :as markdown.transform]
             [rewrite-clj.node :as n]
-            [rewrite-clj.parser :as p]))
+            [rewrite-clj.parser :as p]
+            [rewrite-clj.zip :as z]))
 
 (defn ns? [form]
   (and (seq? form) (= 'ns (first form))))
@@ -142,13 +144,19 @@
 
 #_(->doc-settings '^{:nextjournal.clerk/toc :boom} (ns foo)) ;; TODO: error
 
+(defn markdown? [{:as block :keys [type]}]
+  (contains? #{:markdown} type))
+
+(defn code? [{:as block :keys [type]}]
+  (contains? #{:code} type))
+
 (defn add-block-visibility [{:as analyzed-doc :keys [blocks]}]
-  (-> (reduce (fn [{:as state :keys [visibility]} {:as block :keys [form type]}]
+  (-> (reduce (fn [{:as state :keys [visibility]} {:as block :keys [form]}]
                 (let [visibility' (merge visibility (->doc-visibility form))]
                   (cond-> (-> state
                               (update :blocks conj (cond-> block
-                                                     (= type :code) (assoc :visibility (merge visibility' (->visibility form))))))
-                    (= type :code) (assoc :visibility visibility'))))
+                                                     (code? block) (assoc :visibility (merge visibility' (->visibility form))))))
+                    (code? block) (assoc :visibility visibility'))))
               (assoc analyzed-doc :blocks [] :visibility {:code :show :result :show})
               blocks)
       (dissoc :visibility)))
@@ -159,11 +167,97 @@
 (def whitespace-on-line-tags
   #{:comment :whitespace :comma})
 
+(defn deflike-node? [node]
+  (and (= :list (n/tag node))
+       (when-some [first-child (some-> node n/children first)]
+         (and (n/sexpr-able? first-child)
+              (when-some [s (n/sexpr first-child)]
+                (and (symbol? s) (nil? (namespace s)) (str/starts-with? (name s) "def")))))))
+
+(def clerk-namespace? (comp #{"nextjournal.clerk"} namespace))
+
+(defn remove-clerk-keys
+  "Takes a map zipper location, returns a new location representing the input map node with all ::clerk namespaced keys removed.
+   Whitespace is preserved when possible."
+  [map-loc]
+  (let [zdepth (fn [zloc] (-> zloc second :pnodes count))
+        up-to-depth (fn [zloc depth] (if (= depth (zdepth zloc)) zloc (recur (z/up zloc) depth)))]
+    (loop [loc (z/down map-loc)
+           parent map-loc]
+      (if-not loc
+        parent
+        (let [s (-> loc z/sexpr)]
+          (if (and (keyword? s) (clerk-namespace? s))
+            (let [updated (-> loc z/right z/remove z/remove)]
+              ;; z/remove could land inside the value on the left of the removed key, therefore a single z/up may not be sufficient
+              (recur (z/next updated) (up-to-depth updated (zdepth map-loc))))
+            (recur (-> loc z/right z/right) parent)))))))
+
+(defn node-with-clerk-metadata-removed [node ns-resolver]
+  (cond
+    (= :meta (n/tag node))
+    (try
+      (let [meta-loc (z/down (z/of-node node {:auto-resolve ns-resolver}))
+            meta-sexpr (z/sexpr meta-loc)
+            map-meta-loc (when (z/map? meta-loc)
+                           (remove-clerk-keys meta-loc))]
+        (if (or (and map-meta-loc (seq (z/sexpr map-meta-loc)))
+                (and (not (keyword? meta-sexpr)) (not (map? meta-sexpr)))
+                (and (keyword? meta-sexpr) (not (clerk-namespace? meta-sexpr))))
+          ;; we keep the meta node, possibly a filtered map, move to right and repeat, move to root
+          (-> (or map-meta-loc meta-loc)
+              z/right (clojure.zip/edit node-with-clerk-metadata-removed ns-resolver)
+              z/root)
+          ;; or just skip meta node and move to right and repeat
+          (-> meta-loc z/right z/node (node-with-clerk-metadata-removed ns-resolver))))
+      (catch #?(:clj Exception :cljs js/Error) _ node))
+
+    (deflike-node? node)
+    (-> node (z/of-node {:auto-resolve ns-resolver})
+        z/down z/right
+        (clojure.zip/edit node-with-clerk-metadata-removed ns-resolver)
+        z/root)
+
+    :else node))
+
+(defn text-with-clerk-metadata-removed [code ns-resolver]
+  (-> code p/parse-string (node-with-clerk-metadata-removed ns-resolver) n/string))
+
+#_(text-with-clerk-metadata-removed "^::clerk/bar ^{::clerk/foo 'what}\n^ keep \n^{::clerk/bar true :some-key false}  (view that)" {'clerk 'nextjournal.clerk})
+#_(text-with-clerk-metadata-removed "^foo    'form" {'clerk 'nextjournal.clerk})
+#_(text-with-clerk-metadata-removed "(def ^::clerk/no-cache random-thing (rand-int 1000))" {'clerk 'nextjournal.clerk})
+
+(defn markdown-context []
+  (update markdown.parser/empty-doc
+          :text-tokenizers (partial map markdown.parser/normalize-tokenizer)))
+
+#_(markdown-context)
+
+(defn parse-markdown
+  "Like `n.markdown.parser/parse` but allows to reuse the same context in successive calls"
+  [ctx md]
+  (markdown.parser/apply-tokens ctx (markdown/tokenize md)))
+
+(defn update-markdown-blocks [{:as state :keys [md-context]} md]
+  (let [{::markdown.parser/keys [path]} md-context
+        doc (parse-markdown md-context md)
+        [_ index] path]
+    (-> state
+        (assoc :md-context doc)
+        (update :blocks conj {:type :markdown
+                              :doc (-> doc
+                                       (select-keys [:type :content])
+                                       ;; take only new nodes, keep context intact
+                                       (update :content subvec (inc index)))}))))
+
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
-  ([opts s] (parse-clojure-string opts {:blocks []} s))
+  ([{:as opts :keys [doc?]} s]
+   (let [doc (parse-clojure-string opts {:blocks [] :md-context (markdown-context)} s)]
+     (select-keys (cond-> doc doc? (merge (:md-context doc)))
+                  [:blocks :title :toc])))
   ([{:as _opts :keys [doc?]} initial-state s]
-   (loop [{:as state :keys [nodes blocks visibility add-comment-on-line?]} (assoc initial-state :nodes (:children (p/parse-string-all s)))]
+   (loop [{:as state :keys [nodes blocks add-comment-on-line?]} (assoc initial-state :nodes (:children (p/parse-string-all s)))]
      (if-let [node (first nodes)]
        (recur (cond
                 (code-tags (n/tag node))
@@ -173,9 +267,9 @@
                     (update :blocks conj {:type :code
                                           :text (n/string node)
                                           :loc (-> (meta node)
-                                                   (set/rename-keys {:row :line
-                                                                     :col :column})
-                                                   (select-keys [:line :column]))}))
+                                                   (set/rename-keys {:row :line :end-row :end-line
+                                                                     :col :column :end-col :end-column})
+                                                   (select-keys [:line :end-line :column :end-column]))}))
 
                 (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
                 (-> state
@@ -187,53 +281,42 @@
                 (-> state
                     (assoc :add-comment-on-line? false)
                     (assoc :nodes (drop-while (some-fn n/comment? n/linebreak?) nodes))
-                    (update :blocks conj {:type :markdown
-                                          :doc (-> (apply str (map (comp remove-leading-semicolons n/string)
-                                                                   (take-while (some-fn n/comment? n/linebreak?) nodes)))
-                                                   markdown/parse
-                                                   (select-keys [:type :content]))}))
+                    (update-markdown-blocks (apply str (map (comp remove-leading-semicolons n/string)
+                                                            (take-while (some-fn n/comment? n/linebreak?) nodes)))))
                 :else
                 (-> state
                     (assoc :add-comment-on-line? false)
                     (update :nodes rest))))
-       (merge (select-keys state [:blocks])
-              (when doc?
-                (-> {:content (into []
-                                    (comp (filter (comp #{:markdown} :type))
-                                          (mapcat (comp :content :doc)))
-                                    blocks)}
-                    markdown.parser/add-title+toc
-                    (select-keys [:title :toc]))))))))
+       state))))
 
 #_(parse-clojure-string {:doc? true} "'code ;; foo\n;; bar")
 #_(parse-clojure-string "'code , ;; foo\n;; bar")
 #_(parse-clojure-string "'code\n;; foo\n;; bar")
 #_(keys (parse-clojure-string {:doc? true} (slurp "notebooks/viewer_api.clj")))
+#_(parse-clojure-string {:doc? true} ";; # Hello\n;; ## 👋 Section\n(do 123)\n;; ## 🤚🏽 Section")
 
-(defn code-cell? [{:as node :keys [type]}]
-  (and (= :code type) (contains? node :info)))
-
-(defn parse-markdown-cell [{:as state :keys [nodes]}]
-  (assoc (parse-clojure-string {:doc? true} state (markdown.transform/->text (first nodes)))
+(defn parse-markdown-cell [{:as state :keys [nodes]} opts]
+  (assoc (parse-clojure-string opts state (markdown.transform/->text (first nodes)))
          :nodes (rest nodes)
          ::md-slice []))
 
-(defn parse-markdown-string [{:keys [doc?]} s]
-  (let [{:keys [content toc title]} (markdown/parse s)]
-    (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes content}]
+(defn parse-markdown-string [{:as opts :keys [doc?]} s]
+  (let [{:as ctx :keys [content toc title]} (parse-markdown (markdown-context) s)]
+    (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes content :md-context ctx}]
       (if-some [node (first nodes)]
         (recur
-         (if (code-cell? node)
+         (if (and (code? node) (contains? node :info))
            (-> state
                (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
-               parse-markdown-cell)
-
+               (parse-markdown-cell opts))
            (-> state (update :nodes rest) (cond-> doc? (update ::md-slice conj node)))))
 
         (-> state
             (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
             (select-keys [:blocks :visibility])
             (merge (when doc? {:title title :toc toc})))))))
+
+#_(parse-markdown-string {:doc? true} "# Hello\n```\n1\n;; # 1️⃣ Hello\n2\n\n```\nhey\n```\n3\n;; # 2️⃣ Hello\n4\n```\n")
 
 #?(:clj
    (defn parse-file

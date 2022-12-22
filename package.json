@@ -12,6 +12,7 @@
     "@lezer/generator": "^1.0.0",
     "@lezer/highlight": "^1.0.0",
     "@lezer/lr": "^1.0.0",
+    "@lezer/markdown": "^1.0.0",
     "@nextjournal/lang-clojure": "^1.0.0",
     "d3-require": "^1.2.4",
     "emoji-regex": "^10.0.0",
@@ -27,6 +28,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "use-sync-external-store": "^1.2.0",
+    "vh-sticky-table-header": "^1.2.1",
     "w3c-keyname": "2.2.4"
   },
   "devDependencies": {

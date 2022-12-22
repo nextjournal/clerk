@@ -1,7 +1,6 @@
 {:min-bb-version "0.9.159"
  :paths ["bb"]
- :deps {io.github.nextjournal/dejavu
-        {:git/sha "3c4cf5e4dda3648e0d4c575a3433d19c511dd3e5"}}
+ :deps {io.github.nextjournal/dejavu {:git/sha "6c17a66c0aba7626439f56b39fa912a2e572472c"}}
  :tasks
  {:requires
   ([tasks :as t]
@@ -10,27 +9,23 @@
    [babashka.fs :as fs]
    [babashka.cli :as cli])
 
-  copy-viewer-css {:doc "TODO: please complement this docstring"
-                   :task
-                   (fs/copy (t/viewer-css-path)
-                            "resources/stylesheets/viewer.css" #{:replace-existing})}
-
   yarn-install {:doc "Installs and updates npm dependencies"
                 :task (shell "yarn install")}
 
   watch:cljs {:doc "Starts shadow-cljs & clerk"
-              :task (apply clojure "-X:test:sci:demo:dev" *command-line-args*)
+              :task (apply clojure "-X:build:test:sci:demo:dev" *command-line-args*)
               :depends [yarn-install]}
 
   build:js {:doc "Builds JS"
             :depends [yarn-install]
             :task (clojure "-M:sci:demo:dev release viewer")}
 
-  write-hash {:doc "Write viewer resource hash to resources. Intended to be used in a pre-commit hook."
-              :task viewer-resources-hashing/write-viewer-resource-hash}
-
   build+upload-viewer-resources {:doc "Refreshes assets stored on CDN (google storage)"
-                                 :task viewer-resources-hashing/build+upload-viewer-resources}
+                                 :extra-paths ["src"]
+                                 :task nextjournal.clerk.render.hashing/build+upload-viewer-resources}
+
+  lint {:doc "Lints project using clj-kondo"
+        :task (apply shell "clj-kondo --lint src test" *command-line-args*)}
 
   release:js {:doc "Uploads the js release and updates the sha reference."
               :task (clojure "-T:build upload-to-cas :resource viewer.js")
@@ -38,6 +33,11 @@
 
   build:static-app {:doc "Builds a static app with default notebooks"
                     :task (apply clojure "-X:demo:nextjournal/clerk" *command-line-args*)}
+
+  -check {:depends [lint test:clj]}
+
+  check {:doc "Check to run before pushing"
+         :task (run '-check {:parallel true})}
 
   test:clj {:doc "Run clojure tests"
             :task (apply clojure "-X:test" *command-line-args*)}
@@ -101,9 +101,9 @@
                           (run 'update-meta)
                           (run 'jar))))}
 
-  install-git-hooks {:doc "Install git hooks"
-                     :task (fs/copy "dev/pre-commit" ".git/hooks" {:replace-existing true})}
+  uninstall-git-hooks {:doc "Uninstall git hooks we installed previously and no longer need"
+                       :task (fs/delete-if-exists ".git/hooks/pre-commit")}
 
-  -dev {:depends [install-git-hooks watch:cljs copy-viewer-css]}
+  -dev {:depends [uninstall-git-hooks watch:cljs]}
   dev {:doc "Start app in dev mode, compiles cljs and css"
        :task (run '-dev {:parallel true})}}}
