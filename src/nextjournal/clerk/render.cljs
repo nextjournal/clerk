@@ -587,7 +587,6 @@
     (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] (list 'quote new-state))]}))))
 
 (defn intern-atom! [var-name state]
-  (js/console.log :intern-atom! var-name state)
   (assert (sci.ctx-store/get-ctx) "sci-ctx must be set")
   (sci/intern (sci.ctx-store/get-ctx)
               (sci/create-ns (symbol (namespace var-name)))
@@ -607,7 +606,6 @@
 (defn set-reset-sync-atoms! [new-val] (set! *reset-sync-atoms?* new-val))
 
 (defn intern-atoms! [atom-var-name->state]
-  (js/console.log :intern-atoms! *reset-sync-atoms?* atom-var-name->state)
   (let [vars-in-use (into #{} (keys atom-var-name->state))
         vars-interned @!synced-atom-vars]
     (doseq [var-name-to-unmap (set/difference vars-interned vars-in-use)]
@@ -624,9 +622,8 @@
   (true? (some #(= % :nextjournal.clerk/remount) (tree-seq coll? seq doc-or-patch))))
 
 (defn re-eval-viewer-fns [doc]
-  (w/postwalk #(cond-> %
-                 (viewer/viewer-fn? %) viewer/-eval)
-              doc))
+  (let [re-eval (fn [{:keys [form]}] (viewer/->viewer-fn form))]
+    (w/postwalk (fn [x] (cond-> x (viewer/viewer-fn? x) re-eval)) doc)))
 
 (defn ^:export set-state! [{:as state :keys [doc error]}]
   (when (contains? state :doc)

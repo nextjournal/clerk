@@ -27,7 +27,6 @@
             [sci.ctx-store]))
 
 (defn ->viewer-fn-with-error [form]
-  (js/console.log :->viewer-fn-with-error form)
   (try (viewer/->viewer-fn form)
        (catch js/Error e
          (viewer/map->ViewerFn

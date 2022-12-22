@@ -31,12 +31,7 @@
 (defrecord ViewerFn [form #?(:cljs f)]
   #?@(:cljs [IFn
              (-invoke [this x] ((:f this) x))
-             (-invoke [this x y]
-                      (if-let [f (:f this)]
-                        (f x y)
-                        (js/console.warn (str "A ViewerFn instance with form " (:form this)
-                                              " has been called with " x " and " y
-                                              " but has not been evaluated yet."))))]))
+             (-invoke [this x y] ((:f this) x y))]))
 
 ;; Make sure `ViewerFn` and `ViewerEval` is changed atomically
 #?(:clj
@@ -46,22 +41,6 @@
 
      ViewerEval
      (get-type [_] :val)))
-
-#?(:cljs
-   (defprotocol IEval
-     (-eval [x])))
-
-#?(:cljs
-   (extend-protocol IEval
-     ViewerFn
-     (-eval [{:as x :keys [form]}]
-       (assoc x :f (*eval* form)))
-     ViewerEval
-     (-eval [{:keys [form]}]
-       (try (js/console.log :viewer-eval form)
-            (*eval* form)
-            (catch js/Error e
-              (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))))
 
 (defn viewer-fn? [x]
   (instance? ViewerFn x))
