@@ -632,7 +632,6 @@
   (when (contains? state :doc)
     (reset! !doc doc))
   (when (remount? doc)
-    ;; TODO: re-eval viewer evals
     (swap! !eval-counter inc))
   (reset! !error error)
   (when-let [title (and (exists? js/document) (-> doc viewer/->value :title))]
