@@ -113,7 +113,6 @@
    :disable-arity-checks true
    :classes {'js (j/assoc! goog/global "import" shadow.esm/dynamic-import)
              'framer-motion framer-motion
-             'codemirror.view codemirror-view
              :allow :all}
    :aliases {'j 'applied-science.js-interop
              'reagent 'reagent.core
