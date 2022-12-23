@@ -4,7 +4,7 @@
 
 [![Clojars Project](https://img.shields.io/clojars/v/io.github.nextjournal/clerk.svg)](https://clojars.org/io.github.nextjournal/clerk)
 
-## Local-First Notebooks for Clojure
+## Moldable Live Programming for Clojure
 
 [🎪 View Demos](https://github.clerk.garden/nextjournal/clerk-demo/) •
 [📖 Book of Clerk](https://book.clerk.vision)
