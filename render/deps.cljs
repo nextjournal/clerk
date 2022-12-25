@@ -14,6 +14,7 @@
             "@nextjournal/lang-clojure" "1.0.0"
             "@nextjournal/lezer-clojure" "1.0.0"
             "d3-require" "^1.2.4"
+            "emoji-regex" "10.2.1"
             "framer-motion" "7.6.19"
             "katex" "^0.12.0"
             "react" "18.2.0"
