@@ -332,7 +332,9 @@
 ;; https://clojurians.slack.com/archives/C03S1KBA2/p1667334982789659
 
 #?(:clj (defn roundtrippable? [x]
-          (= x (-> x str read-string))))
+          (try
+            (= x (-> x str read-string))
+            (catch Exception _e false))))
 
 #?(:clj
    (defmethod print-method clojure.lang.Keyword [o w]

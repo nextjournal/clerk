@@ -218,7 +218,9 @@
     (is (= "#viewer-eval (symbol \"with spaces\")"
            (pr-str (symbol "with spaces"))))
     (is (= "#viewer-eval (symbol \"with ns\" \"and spaces\")"
-           (pr-str (symbol "with ns" "and spaces")))))
+           (pr-str (symbol "with ns" "and spaces"))))
+    (is (= "#viewer-eval (symbol \"~\")"
+           (pr-str (symbol "~")))))
 
   (testing "splicing reader conditional prints normally (issue #338)"
     (is (= "?@" (pr-str (symbol "?@"))))))
