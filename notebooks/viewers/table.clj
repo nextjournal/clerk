@@ -89,3 +89,10 @@
 ;; ## Nesting tables inside html
 (clerk/html [:div.bg-amber-100.p-2
              (clerk/table [[1 2] [3 4] [5 6]])])
+
+;; ## ♾ Infinite Tables
+
+;; ### Map of Seqs
+
+(clerk/table {:a (range)
+              :b (range 1 100000)})

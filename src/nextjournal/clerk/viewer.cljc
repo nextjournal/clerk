@@ -248,15 +248,16 @@
     {:head ks
      :rows (mapv (fn [m] (mapv #(get m % missing-pred) ks)) s)}))
 
-
 (defn normalize-map-of-seq [m]
   (let [ks (-> m keys vec)
-        m* (if (seq? (get m (first ks)))
-             (reduce (fn [acc [k s]] (assoc acc k (vec s))) {} m)
-             m)]
+        count* (fn [xs] (bounded-count 100000 xs))]
     {:head ks
-     :rows (->> (range (count (val (apply max-key (comp count val) m*))))
-              (mapv (fn [i] (mapv #(get-in m* [% i] missing-pred) ks))))}))
+     :rows (->> (range (count* (val (apply max-key (comp count* val) m))))
+                (map (fn [i] (mapv (fn [k] (nth (get m k) i missing-pred)) ks))))}))
+
+(comment
+  (:head (normalize-map-of-seq {"a" (range)}))
+  (bounded-count 100 (:rows (normalize-map-of-seq {"a" (range)}))))
 
 (defn normalize-seq-to-vec [{:keys [head rows]}]
   (cond-> {:rows (vec rows)}
