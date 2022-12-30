@@ -4,4 +4,9 @@
 
 (deftest front-end-hash
   (testing "it computes a front-end-hash successfully"
-    (is (= "3mXdcLQSNAEFTLdDXoAw47rKytXS" (hashing/front-end-hash)))))
+    (let [debug-dejavu (System/getProperty "nextjournal.dejavu.debug")]
+      (when-not debug-dejavu
+        (System/setProperty "nextjournal.dejavu.debug" "1"))
+      (is (= "3mXdcLQSNAEFTLdDXoAw47rKytXS" (hashing/front-end-hash)))
+      (when-not debug-dejavu
+        (System/clearProperty "nextjournal.dejavu.debug")))))
