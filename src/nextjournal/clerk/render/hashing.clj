@@ -21,7 +21,7 @@
   (reduce into
           []
           [(mapv #(fs/file base-dir %) ["deps.edn"
-                                        (str "render" fs/file-separator "deps.edn")
+                                        "render/deps.edn"
                                         "shadow-cljs.edn"
                                         "yarn.lock"])
            (djv/cljs-files (mapv #(fs/file base-dir %) ["src" "resources"]))]))
