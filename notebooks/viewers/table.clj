@@ -94,5 +94,9 @@
 
 ;; ### Map of Seqs
 
-(clerk/table {:a (range)
-              :b (range 1 100000)})
+(clerk/table {:A (range)
+              :B (range 1 8000)})
+
+
+;; ### Seq of Maps
+(clerk/table (repeat {:a 1 :b 2}))

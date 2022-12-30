@@ -244,20 +244,21 @@
     {:rows (mapv #(rpad-vec (->value %) max-count missing-pred) s)}))
 
 (defn normalize-seq-of-map [s]
-  (let [ks (->> s (mapcat keys) distinct vec)]
+  (let [ks (->> s (take 1000) (mapcat keys) distinct vec)]
     {:head ks
-     :rows (mapv (fn [m] (mapv #(get m % missing-pred) ks)) s)}))
+     :rows (map (fn [m] (mapv #(get m % missing-pred) ks)) s)}))
+
+#_(:head (normalize-seq-of-map (repeat {:a 1 :b 2})))
 
 (defn normalize-map-of-seq [m]
   (let [ks (-> m keys vec)
         count* (fn [xs] (bounded-count 100000 xs))]
     {:head ks
-     :rows (->> (range (count* (val (apply max-key (comp count* val) m))))
-                (map (fn [i] (mapv (fn [k] (nth (get m k) i missing-pred)) ks))))}))
+     :rows (->> (val (apply max-key (comp count* val) m))
+                (map-indexed (fn [i _] (map (fn [k] (nth (get m k) i missing-pred)) ks))))}))
 
-(comment
-  (:head (normalize-map-of-seq {"a" (range)}))
-  (bounded-count 100 (:rows (normalize-map-of-seq {"a" (range)}))))
+#_(:head (normalize-map-of-seq {"a" (range)}))
+#_(bounded-count 100 (:rows (normalize-map-of-seq {"a" (range)})))
 
 (defn normalize-seq-to-vec [{:keys [head rows]}]
   (cond-> {:rows (vec rows)}
