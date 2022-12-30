@@ -4,4 +4,4 @@
 
 (deftest front-end-hash
   (testing "it computes a front-end-hash successfully"
-    (is (string? (hashing/front-end-hash)))))
+    (is (= "3mXdcLQSNAEFTLdDXoAw47rKytXS" (hashing/front-end-hash)))))
