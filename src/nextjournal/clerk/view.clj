@@ -41,7 +41,7 @@
 (defn include-css+js [state]
   (list
    (include-viewer-css state)
-   [:script {:type "module" :src (adjust-relative-path state (get-in state [:resource->url "/js/viewer.js"]))}]
+   (hiccup/include-js (adjust-relative-path state (get-in state [:resource->url "/js/viewer.js"])))
    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
    [:link {:rel "preconnect" :href "https://fonts.bunny.net"}]
    (hiccup/include-css "https://fonts.bunny.net/css?family=fira-code:400,700%7Cfira-mono:400,700%7Cfira-sans:400,400i,500,500i,700,700i%7Cfira-sans-condensed:700,700i%7Cpt-serif:400,400i,700,700i")))
@@ -54,7 +54,7 @@
     (include-css+js state)]
    [:body.dark:bg-gray-900
     [:div#clerk]
-    [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
+    [:script "let viewer = nextjournal.clerk.sci_env
 let state = " (-> state v/->edn pr-str) "
 viewer.set_state(viewer.read_string(state))
 viewer.mount(document.getElementById('clerk'))\n"
@@ -73,7 +73,7 @@ window.ws_send = msg => ws.send(msg)")]]))
     (include-css+js state)]
    [:body
     [:div#clerk-static-app html]
-    [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
+    [:script "let viewer = nextjournal.clerk.sci_env
 let app = nextjournal.clerk.static_app
 let opts = viewer.read_string(" (-> state v/->edn pr-str) ")
 app.init(opts)\n"]]))
