@@ -239,24 +239,26 @@
 (def missing-pred
   :nextjournal/missing)
 
+(defn count-bounded [xs]
+  (bounded-count #?(:clj config/*bounded-count-limit* :cljs 10000) xs))
+
 (defn normalize-seq-of-seq [s]
-  (let [max-count (count (apply max-key count s))]
-    {:rows (mapv #(rpad-vec (->value %) max-count missing-pred) s)}))
+  (let [max-count (count (apply max-key count (take 1000 s)))]
+    {:rows (map #(rpad-vec (->value %) max-count missing-pred) s)}))
 
 (defn normalize-seq-of-map [s]
-  (let [ks (->> s (mapcat keys) distinct vec)]
+  ;; currently considering the first 1000 rows for the columns
+  ;; we can't use every row as it would realize infinte sequences
+  ;; TODO: allow customisation
+  (let [ks (->> s (take 1000) (mapcat keys) distinct vec)]
     {:head ks
-     :rows (mapv (fn [m] (mapv #(get m % missing-pred) ks)) s)}))
-
+     :rows (map (fn [m] (mapv #(get m % missing-pred) ks)) s)}))
 
 (defn normalize-map-of-seq [m]
-  (let [ks (-> m keys vec)
-        m* (if (seq? (get m (first ks)))
-             (reduce (fn [acc [k s]] (assoc acc k (vec s))) {} m)
-             m)]
+  (let [ks (-> m keys vec)]
     {:head ks
-     :rows (->> (range (count (val (apply max-key (comp count val) m*))))
-              (mapv (fn [i] (mapv #(get-in m* [% i] missing-pred) ks))))}))
+     :rows (map-indexed (fn [i _] (map (fn [k] (nth (get m k) i missing-pred)) ks))
+                        (val (apply max-key (comp count-bounded val) m)))}))
 
 (defn normalize-seq-to-vec [{:keys [head rows]}]
   (cond-> {:rows (vec rows)}
