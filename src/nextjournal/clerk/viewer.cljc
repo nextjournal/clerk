@@ -239,9 +239,15 @@
 (def missing-pred
   :nextjournal/missing)
 
+(defn count-bounded [xs]
+  (bounded-count #?(:clj config/*bounded-count-limit* :cljs 10000) xs))
+
 (defn normalize-seq-of-seq [s]
-  (let [max-count (count (apply max-key count s))]
-    {:rows (mapv #(rpad-vec (->value %) max-count missing-pred) s)}))
+  (let [max-count (count (apply max-key count (take 1000 s)))]
+    {:rows (map #(rpad-vec (->value %) max-count missing-pred) s)}))
+
+#_(keys (normalize-seq-of-seq (concat [[1 2]] (repeat [1 2 3]))))
+#_(present (table (repeat [1 2 3])))
 
 (defn normalize-seq-of-map [s]
   (let [ks (->> s (take 1000) (mapcat keys) distinct vec)]
@@ -251,10 +257,9 @@
 #_(:head (normalize-seq-of-map (repeat {:a 1 :b 2})))
 
 (defn normalize-map-of-seq [m]
-  (let [ks (-> m keys vec)
-        count* (fn [xs] (bounded-count 100000 xs))]
+  (let [ks (-> m keys vec)]
     {:head ks
-     :rows (->> (val (apply max-key (comp count* val) m))
+     :rows (->> (val (apply max-key (comp count-bounded val) m))
                 (map-indexed (fn [i _] (map (fn [k] (nth (get m k) i missing-pred)) ks))))}))
 
 #_(:head (normalize-map-of-seq {"a" (range)}))

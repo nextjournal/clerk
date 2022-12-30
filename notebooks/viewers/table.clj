@@ -92,11 +92,13 @@
 
 ;; ## ♾ Infinite Tables
 
-;; ### Map of Seqs
+;; ### Seq of Seqs
+(clerk/table (repeat [1 2 3]))
 
+;; ### Map of Seqs
 (clerk/table {:A (range)
               :B (range 1 8000)})
 
-
 ;; ### Seq of Maps
 (clerk/table (repeat {:a 1 :b 2}))
+
