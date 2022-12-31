@@ -2,7 +2,7 @@
 
 (+ 1 2 3)
 
-js/window
+(.-location js/document)
 
 (js/console.log "Hello")
 

@@ -292,7 +292,7 @@
                          (let [{:as block :keys [type text loc]} (get-in state [:blocks i])]
                            (if (not= type :code)
                              state
-                             (let [form (try (read-string (pr-str (list 'nextjournal.clerk/eval-cljs-str text)))
+                             (let [form (try (read-string text)
                                              (catch Exception e
                                                (throw (ex-info (str "Clerk analysis failed reading block: "
                                                                     (ex-message e))
