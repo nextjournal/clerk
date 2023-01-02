@@ -8,7 +8,8 @@
            taoensso.encore/defalias clojure.core/def
            promesa.core/let clojure.core/let
            shadow.cljs.modern/defclass clojure.core/defprotocol}
- :linters {:consistent-alias {:aliases {datomic.api datomic
+ :linters {:clojure-lsp/unused-public-var {:level :off}
+           :consistent-alias {:aliases {datomic.api datomic
                                         clojure.string str
                                         clojure.spec.alpha s}}
            :unresolved-symbol {:exclude [(cljs.core.match/match)
