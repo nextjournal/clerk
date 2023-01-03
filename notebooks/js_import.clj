@@ -47,7 +47,7 @@
   '(fn [_]
      (let [cc (nextjournal.clerk.render.hooks/use-promise
                (js/import "https://cdn.skypack.dev/canvas-confetti"))
-           ref (nextjournal.clerk.render.hooks/use-ref nil)]
+           ref (nextjournal.clerk.render.hooks/use-ref)]
        (when cc
          [:div
           [:button.bg-teal-500.hover:bg-teal-700.text-white.font-bold.py-2.px-4.rounded.rounded-full.font-sans
