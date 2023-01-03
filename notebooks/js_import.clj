@@ -44,13 +44,15 @@ palmer-penguins
 ;; or use `js/import` directly:
 ^{::clerk/visibility {:result :show :code :show} ::clerk/no-cache true ::clerk/width :wide}
 (nextjournal.clerk/with-viewer
-  '(fn [n]
+  '(fn [_]
      (let [cc (nextjournal.clerk.render.hooks/use-promise
                (js/import "https://cdn.skypack.dev/canvas-confetti"))
-           ref (nextjournal.clerk.render.hooks/use-callback
-                (fn [el]
-                  (when (and cc el)
-                    ((.create cc el) (j/lit {:spread 80 :angle 45 :startVelocity 20
-                                             :origin {:x 0.25 :y 0.5}})))) [n])]
-       [:canvas.border
-        {:style {:width "100%" :height "500px"} :ref ref}])) (rand))
+           ref (nextjournal.clerk.render.hooks/use-ref nil)]
+       (when cc
+         [:div
+          [:button.bg-teal-500.hover:bg-teal-700.text-white.font-bold.py-2.px-4.rounded.rounded-full.font-sans
+           {:on-click #((.create cc @ref)
+                        (j/lit {:spread 80 :angle 45 :startVelocity 20 :origin {:x 0.25 :y 0.5}}))} "Peng 🎉!"]
+          [:canvas
+           {:ref ref
+            :style {:width "100%" :height "500px"}}]]))) nil)
