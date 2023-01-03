@@ -32,7 +32,6 @@
 
 (make-render-slider {:max 200 :step 0.1})
 
-
 (defn slider
   ([!state] (slider {} !state))
   ([opts !state]

@@ -152,7 +152,7 @@
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
-        ("build" "js") (serve-file "public" req)
+        ("build" "js" "css") (serve-file "public" req)
         "_ws" {:status 200 :body "upgrading..."}
         {:status 200
          :headers {"Content-Type" "text/html"}

@@ -1,6 +1,6 @@
 {:min-bb-version "0.9.159"
  :paths ["bb"]
- :deps {io.github.nextjournal/dejavu {:git/sha "6c17a66c0aba7626439f56b39fa912a2e572472c"}}
+ :deps {io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}}
  :tasks
  {:requires
   ([tasks :as t]
@@ -8,11 +8,6 @@
    [babashka.process :as p]
    [babashka.fs :as fs]
    [babashka.cli :as cli])
-
-  copy-viewer-css {:doc "TODO: please complement this docstring"
-                   :task
-                   (fs/copy (t/viewer-css-path)
-                            "resources/stylesheets/viewer.css" #{:replace-existing})}
 
   yarn-install {:doc "Installs and updates npm dependencies"
                 :task (shell "yarn install")}
@@ -109,6 +104,6 @@
   uninstall-git-hooks {:doc "Uninstall git hooks we installed previously and no longer need"
                        :task (fs/delete-if-exists ".git/hooks/pre-commit")}
 
-  -dev {:depends [uninstall-git-hooks watch:cljs copy-viewer-css]}
+  -dev {:depends [uninstall-git-hooks watch:cljs]}
   dev {:doc "Start app in dev mode, compiles cljs and css"
        :task (run '-dev {:parallel true})}}}

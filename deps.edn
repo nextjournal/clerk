@@ -9,7 +9,7 @@
         com.nextjournal/beholder {:mvn/version "1.0.0"}
 
         io.github.nextjournal/markdown {:mvn/version "0.4.132"}
-        io.github.nextjournal/dejavu {:git/sha "6c17a66c0aba7626439f56b39fa912a2e572472c"}
+        io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
 
         com.taoensso/nippy {:mvn/version "3.2.0"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
@@ -37,7 +37,7 @@
            :dev {:extra-deps {org.clojure/clojure {:mvn/version "1.11.1"} ;; for `:as-alias` support but only in dev
                               arrowic/arrowic {:mvn/version "0.1.1"}
                               binaryage/devtools {:mvn/version "1.0.3"}
-                              cider/cider-nrepl {:mvn/version "0.28.3"}
+                              cider/cider-nrepl {:mvn/version "0.29.0"}
                               com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.0.3"}
                               org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
                               org.babashka/cli {:mvn/version "0.5.40"}}

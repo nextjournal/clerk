@@ -25,6 +25,7 @@
          "how_clerk_works"
          "eval_cljs"
          "example"
+         "hiding_clerk_metadata"
          "multiviewer"
          "pagination"
          "paren_soup"
