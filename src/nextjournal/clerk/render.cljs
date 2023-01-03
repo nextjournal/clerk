@@ -1,4 +1,5 @@
 (ns nextjournal.clerk.render
+  (:require-macros [nextjournal.clerk.render.macros :as macros])
   (:require ["framer-motion" :refer [motion]]
             ["react" :as react]
             ["react-dom/client" :as react-client]
@@ -572,7 +573,9 @@
 
 (defn root []
   [:<>
-   [inspect-presented @!doc]
+   (if-let [active-cljs-doc (macros/render-cljs-when-set)]
+     [inspect active-cljs-doc]
+     [inspect-presented @!doc])
    (when @!error
      [:div.fixed.top-0.left-0.w-full.h-full
       [inspect-presented @!error]])])
