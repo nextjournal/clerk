@@ -9,7 +9,7 @@
 
 (defn parse-float [^String s] (Float/parseFloat s))
 
-^{::clerk/visibility {:code :show}}
+^{::clerk/visibility {:code :show :result :hide} ::clerk/viewer clerk/table}
 (def palmer-penguins
   (-> (slurp "https://nextjournal.com/data/Qmf6FJyJxBQnB6TUZ3J9pdzHSs8UoewoY6WfdZHu1XxkD8?filename=penguins.csv&content-type=text/csv")
       (csv/read-csv)
@@ -19,8 +19,6 @@
         (let [{:keys [head rows]} data]
           (map (fn [row] (zipmap head (reduce #(update %1 %2 parse-float) row [1 2 3 4])))
                rows)))))
-
-(clerk/table palmer-penguins)
 
 ^{::clerk/visibility {:code :show}}
 (def observable-plot-viewer
@@ -32,10 +30,12 @@
        (fn [Plot]
          [:div {:ref (fn [el]
                        (when el
-                         (.append el
-                                  (.. Plot
-                                      (dot (clj->js data) (j/obj :x "flipper_length_mm" :y "body_mass_g" :fill "species"))
-                                      (plot (j/obj :grid true))))))}])])})
+                         (let [dot-plot (.. Plot
+                                            (dot (clj->js data) (j/obj :x "flipper_length_mm" :y "body_mass_g" :fill "species"))
+                                            (plot (j/obj :grid true)))]
+                           (doto el
+                             (.append (.legend dot-plot "color"))
+                             (.append dot-plot)))))}])])})
 
 ^{::clerk/viewer observable-plot-viewer
   ::clerk/visibility {:result :show}}
