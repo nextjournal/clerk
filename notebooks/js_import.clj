@@ -28,7 +28,7 @@
    :render-fn
    '(fn [data _]
       [nextjournal.clerk.render/with-dynamic-import
-       {:module "https://cdn.skypack.dev/@observablehq/plot@0.6"}
+       {:module "https://cdn.skypack.dev/@observablehq/plot@0.5"}
        (fn [Plot]
          [:div {:ref (fn [el]
                        (when el
