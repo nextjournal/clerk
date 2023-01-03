@@ -41,6 +41,42 @@
   (b/jar {:class-dir class-dir
           :jar-file jar-file}))
 
+(defn uberjar [_]
+  (b/delete {:path "target"})
+  (let [basis (-> (b/create-basis {:project "deps.edn" :aliases [:cli]})
+                  (update :libs dissoc 'io.github.nextjournal/dejavu))]
+    (println "Producing uberjar:" jar-file)
+    (b/write-pom {:class-dir class-dir
+                  :lib lib
+                  :version version
+                  :basis basis
+                  :scm {:url "http://github.com/nextjournal/clerk"
+                        :connection "scm:git:git://github.com/nextjournal/clerk.git"
+                        :developerConnection "scm:git:ssh://git@github.com/nextjournal/clerk.git"
+                        :tag (str "v" version)}
+                  :src-dirs ["src"]})
+    (b/copy-dir {:src-dirs ["src" "resources"]
+                 :target-dir class-dir
+                 :replace {}})
+    (package-clerk-asset-map {:target-dir class-dir})
+    (println "Compiling sources...")
+    (b/compile-clj {:basis basis
+                    :src-dirs ["src"]
+                    :class-dir class-dir
+                    :ns-compile '[nextjournal.clerk
+                                  babashka.cli]}))
+  (println "Packaging uberjar...")
+  (b/uber {:class-dir class-dir
+           :basis basis
+           :uber-file jar-file
+           :main 'nextjournal.clerk}))
+
+(defn native-image [opts]
+  #_(uberjar opts)
+  (process/shell {:inherit true}
+                 "native-image --diagnostics-mode --initialize-at-build-time -H:Name=./target/clerk -H:+ReportExceptionStackTraces --language:js -jar"
+                 jar-file))
+
 (defn install [_]
   (jar {})
   (println "Installing jar:" jar-file)

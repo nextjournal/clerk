@@ -34,6 +34,8 @@
 
            :sci {:extra-deps {io.github.nextjournal/clerk.render {:local/root "render"}}}
 
+           :cli {:extra-deps {org.babashka/cli {:mvn/version "0.5.40"}}}
+
            :dev {:extra-deps {org.clojure/clojure {:mvn/version "1.11.1"} ;; for `:as-alias` support but only in dev
                               arrowic/arrowic {:mvn/version "0.1.1"}
                               binaryage/devtools {:mvn/version "1.0.3"}
@@ -63,6 +65,7 @@
                                io.github.nextjournal/clerk-slideshow {:git/sha "562f634494a1e1a9149ed78d5d39fd9486cc00ba"}}}
 
            :build {:deps {io.github.nextjournal/clerk {:local/root "."}
+                          babashka/process {:mvn/version "0.4.14"}
                           io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}
                           io.github.slipset/deps-deploy {:git/sha "b4359c5d67ca002d9ed0c4b41b710d7e5a82e3bf"}
                           io.github.nextjournal/cas {:git/url "git@github.com:nextjournal/cas"

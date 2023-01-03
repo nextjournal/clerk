@@ -13,7 +13,8 @@
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
-            [nextjournal.clerk.webserver :as webserver]))
+            [nextjournal.clerk.webserver :as webserver])
+  (:gen-class))
 
 (defonce ^:private !show-filter-fn (atom nil))
 (defonce ^:private !last-file (atom nil))
@@ -512,6 +513,13 @@
 
 #_(defcached my-expansive-thing
     (do (Thread/sleep 4200) 42))
+
+(defn -main [& args]
+  (if-let [parse-args (requiring-resolve 'babashka.cli/parse-args)]
+    (let [{:keys [opts]} (parse-args args (get-in (meta #'serve!) [:org.babashka/cli :spec]))]
+      (serve! opts))
+    (binding [*out* *err*]
+      (println "Clerk could not resolve `'babashka.cli/parse-args`, aborting."))))
 
 ;; And, as is the culture of our people, a commend block containing
 ;; pieces of code with which to pilot the system during development.
