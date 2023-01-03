@@ -9,17 +9,6 @@
 
 (defn parse-float [^String s] (Float/parseFloat s))
 
-^{::clerk/visibility {:code :show :result :hide} ::clerk/viewer clerk/table}
-(def palmer-penguins
-  (-> (slurp "https://nextjournal.com/data/Qmf6FJyJxBQnB6TUZ3J9pdzHSs8UoewoY6WfdZHu1XxkD8?filename=penguins.csv&content-type=text/csv")
-      (csv/read-csv)
-      clerk.viewer/use-headers
-      clerk.viewer/normalize-table-data
-      (as-> data
-        (let [{:keys [head rows]} data]
-          (map (fn [row] (zipmap head (reduce #(update %1 %2 parse-float) row [1 2 3 4])))
-               rows)))))
-
 ^{::clerk/visibility {:code :show}}
 (def observable-plot-viewer
   {:transform-fn clerk/mark-presented
@@ -31,15 +20,26 @@
          [:div {:ref (fn [el]
                        (when el
                          (let [dot-plot (.. Plot
-                                            (dot (clj->js data) (j/obj :x "flipper_length_mm" :y "body_mass_g" :fill "species"))
+                                            (dot (clj->js data)
+                                                 (j/obj :x "flipper_length_mm"
+                                                        :y "body_mass_g"
+                                                        :fill "species"))
                                             (plot (j/obj :grid true)))]
                            (doto el
                              (.append (.legend dot-plot "color"))
                              (.append dot-plot)))))}])])})
 
-^{::clerk/viewer observable-plot-viewer
-  ::clerk/visibility {:result :show}}
-palmer-penguins
+^{::clerk/visibility {:code :show :result :show}
+  ::clerk/viewer observable-plot-viewer}
+(def palmer-penguins
+  (-> (slurp "https://nextjournal.com/data/Qmf6FJyJxBQnB6TUZ3J9pdzHSs8UoewoY6WfdZHu1XxkD8?filename=penguins.csv&content-type=text/csv")
+      (csv/read-csv)
+      clerk.viewer/use-headers
+      clerk.viewer/normalize-table-data
+      (as-> data
+        (let [{:keys [head rows]} data]
+          (map (fn [row] (zipmap head (reduce #(update %1 %2 parse-float) row [1 2 3 4])))
+               rows)))))
 
 ;; or use `js/import` directly:
 ^{::clerk/visibility {:result :show :code :show} ::clerk/no-cache true ::clerk/width :wide}
