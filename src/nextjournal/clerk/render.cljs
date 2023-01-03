@@ -35,10 +35,11 @@
 
 (defn toc-items [items]
   (reduce
-   (fn [acc {:as item :keys [content children attrs]}]
+   (fn [acc {:as item :keys [content children attrs emoji]}]
      (if content
        (let [title (md.transform/->text item)]
          (->> {:title title
+               :emoji emoji
                :path (str "#" (:id attrs))
                :items (toc-items children)}
               (conj acc)

@@ -1,12 +1,9 @@
 (ns nextjournal.clerk.render.navbar
-  (:require ["emoji-regex" :as emoji-regex]
-            ["framer-motion" :as framer-motion :refer [motion AnimatePresence]]
+  (:require ["framer-motion" :as framer-motion :refer [motion AnimatePresence]]
             [nextjournal.clerk.render.localstorage :as localstorage]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
             [reagent.core :as r]))
-
-(def emoji-re (emoji-regex))
 
 (defn stop-event! [event]
   (.preventDefault event)
@@ -74,10 +71,8 @@
     (into
      [:div]
      (map-indexed
-      (fn [i {:keys [path title expanded? loading? items toc]}]
-        (let [label (or title (str/capitalize (last (str/split path #"/"))))
-              emoji (when (zero? (.search label emoji-re))
-                      (first (.match label emoji-re)))]
+      (fn [i {:keys [emoji path title expanded? loading? items toc]}]
+        (let [label (or title (str/capitalize (last (str/split path #"/"))))]
           [:<>
            (if (seq items)
              [:div.flex.cursor-pointer
