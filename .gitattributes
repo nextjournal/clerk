@@ -1,0 +1,2 @@
+;; always force unix line endings to make hashing consistent
+* text eol=lf

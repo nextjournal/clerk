@@ -4,6 +4,7 @@
             [clojure.walk :as w]
             [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk.builder :as builder]
+            [nextjournal.clerk.config :as config]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]))
@@ -21,7 +22,16 @@
     (is (= {:head ["A" "B"]
             :rows [["Aani" "Baal"] ["Aaron" "Baalath"]]}
            (v/normalize-table-data (into (sorted-map) {"B" ["Baal" "Baalath"]
-                                                       "A" ["Aani" "Aaron"]}))))))
+                                                       "A" ["Aani" "Aaron"]})))))
+  (testing "works with infinte lazy seqs"
+    (binding [config/*bounded-count-limit* 1000]
+      (is (v/present (v/normalize-table-data (repeat [1 2 3])))))
+
+    (binding [config/*bounded-count-limit* 1000]
+      (is (v/present (v/normalize-table-data (repeat {:a 1 :b 2})))))
+
+    (binding [config/*bounded-count-limit* 1000]
+      (is (v/present (v/normalize-table-data {:a (range) :b (range 80)}))))))
 
 (deftest resolve-elision
   (testing "range"
@@ -218,7 +228,9 @@
     (is (= "#viewer-eval (symbol \"with spaces\")"
            (pr-str (symbol "with spaces"))))
     (is (= "#viewer-eval (symbol \"with ns\" \"and spaces\")"
-           (pr-str (symbol "with ns" "and spaces")))))
+           (pr-str (symbol "with ns" "and spaces"))))
+    (is (= "#viewer-eval (symbol \"~\")"
+           (pr-str (symbol "~")))))
 
   (testing "splicing reader conditional prints normally (issue #338)"
     (is (= "?@" (pr-str (symbol "?@"))))))
