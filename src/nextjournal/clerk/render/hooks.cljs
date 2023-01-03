@@ -2,6 +2,7 @@
   (:require ["d3-require" :as d3-require]
             ["react" :as react]
             [reagent.ratom]
+            [shadow.esm :as esm]
             ["use-sync-external-store/shim" :refer [useSyncExternalStore]]))
 
 ;; a type for wrapping react/useState to support reset! and swap!
@@ -151,4 +152,8 @@
                                    (string? package)
                                    list))
                          #js[(str package)])]
+    (use-promise p)))
+
+(defn ^js use-dynamic-import [mod]
+  (let [p (use-memo #(esm/dynamic-import mod) [mod])]
     (use-promise p)))

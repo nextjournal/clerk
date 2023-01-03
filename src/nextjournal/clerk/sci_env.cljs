@@ -24,7 +24,8 @@
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
-            [sci.ctx-store]))
+            [sci.ctx-store]
+            [shadow.esm]))
 
 (defn ->viewer-fn-with-error [form]
   (try (viewer/->viewer-fn form)
@@ -120,7 +121,7 @@
   {:async? true
    :load-fn load-fn
    :disable-arity-checks true
-   :classes {'js goog/global
+   :classes {'js (j/assoc! goog/global "import" shadow.esm/dynamic-import)
              'framer-motion framer-motion
              :allow :all}
    :aliases {'j 'applied-science.js-interop

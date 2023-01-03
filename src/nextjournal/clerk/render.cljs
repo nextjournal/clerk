@@ -718,6 +718,12 @@
     (f package)
     loading-view))
 
+(defn with-dynamic-import [{:keys [module loading-view]
+                            :or {loading-view default-loading-view}} f]
+  (if-let [package (hooks/use-dynamic-import module)]
+    (f package)
+    loading-view))
+
 (defn render-vega-lite [value]
   (let [handle-error (hooks/use-error-handler)
         vega-embed (hooks/use-d3-require "vega-embed@6.11.1")
