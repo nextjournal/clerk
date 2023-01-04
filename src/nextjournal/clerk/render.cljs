@@ -747,7 +747,7 @@
 (defn render-plotly [value]
   (let [plotly (hooks/use-d3-require "plotly.js-dist@2.15.1")
         ref-fn (react/useCallback #(when %
-                                     (.newPlot plotly % (clj->js value)))
+                                     (.react plotly % (clj->js value)))
                                   #js[value plotly])]
     (when value
       (if plotly
