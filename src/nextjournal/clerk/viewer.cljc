@@ -737,19 +737,23 @@
    :pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
    :transform-fn (comp mark-presented (update-val (comp demunge-ex-data datafy/datafy)))})
 
-(def buffered-image-viewer #?(:clj {:pred #(instance? BufferedImage %)
-                                    :transform-fn (fn [{image :nextjournal/value}]
-                                                    (let [w (.getWidth image)
-                                                          h (.getHeight image)
-                                                          r (float (/ w h))]
-                                                      (-> {:nextjournal/value (.. (PngEncoder.)
-                                                                                  (withBufferedImage image)
-                                                                                  (withCompressionLevel 1)
-                                                                                  (toBytes))
-                                                           :nextjournal/content-type "image/png"
-                                                           :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)}
-                                                          mark-presented)))
-                                    :render-fn '(fn [blob] [:div.flex.flex-col.items-center.not-prose [:img {:src (nextjournal.clerk.render/url-for blob)}]])}))
+(def image-viewer
+  {#?@(:clj [:pred #(instance? BufferedImage %)])
+   #?@(:clj [:transform-fn (fn [{image-or-url :nextjournal/value}]
+                             (let [image (if (string? image-or-url) (ImageIO/read (URL. image-or-url)) image-or-url)
+                                   w (.getWidth image)
+                                   h (.getHeight image)
+                                   r (float (/ w h))]
+                               (-> {:nextjournal/value (.. (PngEncoder.)
+                                                           (withBufferedImage image)
+                                                           (withCompressionLevel 1)
+                                                           (toBytes))
+                                    :nextjournal/content-type "image/png"
+                                    :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)}
+                                   mark-presented)))])
+   :render-fn '(fn [blob-or-url] [:div.flex.flex-col.items-center.not-prose
+                                 [:img {:src #?(:clj (nextjournal.clerk.render/url-for blob-or-url)
+                                                :cljs blob-or-url)}]])})
 
 (def ideref-viewer
   {:pred #(#?(:clj instance? :cljs satisfies?) IDeref %)
@@ -1020,7 +1024,7 @@
    map-viewer
    var-viewer
    throwable-viewer
-   buffered-image-viewer
+   image-viewer
    ideref-viewer
    regex-viewer
    #?(:cljs js-promise-viewer)
@@ -1510,10 +1514,7 @@
 (def tex          (partial with-viewer katex-viewer))
 (def notebook     (partial with-viewer (:name notebook-viewer)))
 (def code         (partial with-viewer code-viewer))
-
-(def image
-  #?(:clj (partial with-viewer {:transform-fn (update-val (fn [url]
-                                                            (ImageIO/read (if (string? url) (URL. url) url))))})))
+(def image        (partial with-viewer image-viewer))
 
 (defn caption [text content]
   (col
