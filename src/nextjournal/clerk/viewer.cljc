@@ -1511,9 +1511,9 @@
 (def notebook     (partial with-viewer (:name notebook-viewer)))
 (def code         (partial with-viewer code-viewer))
 
-(defn image [url]
-  #?(:clj
-     (ImageIO/read (if (string? url) (URL. url) url))))
+(def image
+  #?(:clj (partial with-viewer {:transform-fn (update-val (fn [url]
+                                                            (ImageIO/read (if (string? url) (URL. url) url))))})))
 
 (defn caption [text content]
   (col

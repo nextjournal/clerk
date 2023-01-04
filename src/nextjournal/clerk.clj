@@ -303,8 +303,8 @@
 (defn image
   "Creates a `java.awt.image.BufferedImage` from `url`, which can be a `java.net.URL` or a string, and
   displays it using the `buffered-image-viewer`."
-  [url]
-  (v/image url))
+  ([url] (image {} url))
+  ([viewer-opts url] (v/image viewer-opts url)))
 
 (defn caption
   "Displays `content` with `text` as caption below it."
