@@ -192,7 +192,7 @@
 ;; public api
 
 (defn with-viewer
-"Wraps the given value `x` and associates it with the given `viewer`. Takes an optional second `viewer-opts` arg."
+  "Wraps the given value `x` and associates it with the given `viewer`. Takes an optional second `viewer-opts` arg."
   ([viewer x] (with-viewer viewer nil x))
   ([viewer viewer-opts x]
    (merge (when viewer-opts (normalize-viewer-opts viewer-opts))
@@ -739,12 +739,8 @@
 
 (def image-viewer
   {#?@(:clj [:pred #(instance? BufferedImage %)
-             :transform-fn (fn [{image-or-url :nextjournal/value}]
-                             (let [image (cond
-                                           (instance? BufferedImage image-or-url) image-or-url
-                                           (string? image-or-url) (ImageIO/read (URL. image-or-url))
-                                           :else (ImageIO/read image-or-url))
-                                   w (.getWidth image)
+             :transform-fn (fn [{image :nextjournal/value}]
+                             (let [w (.getWidth image)
                                    h (.getHeight image)
                                    r (float (/ w h))]
                                (-> {:nextjournal/value (.. (PngEncoder.)
@@ -1517,7 +1513,12 @@
 (def tex          (partial with-viewer katex-viewer))
 (def notebook     (partial with-viewer (:name notebook-viewer)))
 (def code         (partial with-viewer code-viewer))
-(def image        (partial with-viewer image-viewer))
+
+(defn image
+  ([image-or-url] (image {} image-or-url))
+  ([viewer-opts image-or-url]
+   (with-viewer image-viewer viewer-opts #?(:clj (ImageIO/read (if (string? image-or-url) (URL. image-or-url) image-or-url))
+                                            :cljs image-or-url))))
 
 (defn caption [text content]
   (col
