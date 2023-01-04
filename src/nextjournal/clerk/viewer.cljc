@@ -24,7 +24,9 @@
                    (java.lang Throwable)
                    (java.awt.image BufferedImage)
                    (java.util Base64)
-                   (java.nio.file Files StandardOpenOption))))
+                   (java.net URL)
+                   (java.nio.file Files StandardOpenOption)
+                   (javax.imageio ImageIO))))
 
 (defrecord ViewerEval [form])
 
@@ -190,7 +192,7 @@
 ;; public api
 
 (defn with-viewer
-"Wraps the given value `x` and associates it with the given `viewer`. Takes an optional second `viewer-opts` arg."
+  "Wraps the given value `x` and associates it with the given `viewer`. Takes an optional second `viewer-opts` arg."
   ([viewer x] (with-viewer viewer nil x))
   ([viewer viewer-opts x]
    (merge (when viewer-opts (normalize-viewer-opts viewer-opts))
@@ -735,19 +737,22 @@
    :pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
    :transform-fn (comp mark-presented (update-val (comp demunge-ex-data datafy/datafy)))})
 
-(def buffered-image-viewer #?(:clj {:pred #(instance? BufferedImage %)
-                                    :transform-fn (fn [{image :nextjournal/value}]
-                                                    (let [w (.getWidth image)
-                                                          h (.getHeight image)
-                                                          r (float (/ w h))]
-                                                      (-> {:nextjournal/value (.. (PngEncoder.)
-                                                                                  (withBufferedImage image)
-                                                                                  (withCompressionLevel 1)
-                                                                                  (toBytes))
-                                                           :nextjournal/content-type "image/png"
-                                                           :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)}
-                                                          mark-presented)))
-                                    :render-fn '(fn [blob] [:figure.flex.flex-col.items-center.not-prose [:img {:src (nextjournal.clerk.render/url-for blob)}]])}))
+(def image-viewer
+  {#?@(:clj [:pred #(instance? BufferedImage %)
+             :transform-fn (fn [{image :nextjournal/value}]
+                             (let [w (.getWidth image)
+                                   h (.getHeight image)
+                                   r (float (/ w h))]
+                               (-> {:nextjournal/value (.. (PngEncoder.)
+                                                           (withBufferedImage image)
+                                                           (withCompressionLevel 1)
+                                                           (toBytes))
+                                    :nextjournal/content-type "image/png"
+                                    :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)}
+                                   mark-presented)))])
+   :render-fn '(fn [blob-or-url] [:div.flex.flex-col.items-center.not-prose
+                                  [:img {:src #?(:clj (nextjournal.clerk.render/url-for blob-or-url)
+                                                 :cljs blob-or-url)}]])})
 
 (def ideref-viewer
   {:pred #(#?(:clj instance? :cljs satisfies?) IDeref %)
@@ -1018,7 +1023,7 @@
    map-viewer
    var-viewer
    throwable-viewer
-   buffered-image-viewer
+   image-viewer
    ideref-viewer
    regex-viewer
    #?(:cljs js-promise-viewer)
@@ -1508,6 +1513,17 @@
 (def tex          (partial with-viewer katex-viewer))
 (def notebook     (partial with-viewer (:name notebook-viewer)))
 (def code         (partial with-viewer code-viewer))
+
+(defn image
+  ([image-or-url] (image {} image-or-url))
+  ([viewer-opts image-or-url]
+   (with-viewer image-viewer viewer-opts #?(:clj (ImageIO/read (if (string? image-or-url) (URL. image-or-url) image-or-url))
+                                            :cljs image-or-url))))
+
+(defn caption [text content]
+  (col
+   content
+   (html [:figcaption.text-xs.text-slate-500.text-center.mt-1 text])))
 
 (defn ^:dynamic doc-url [path] (str "#/" path))
 

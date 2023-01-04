@@ -2,18 +2,16 @@
 ^{:nextjournal.clerk/visibility {:code :hide}}
 (ns grid
   (:require [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as v])
-  (:import (java.net URL)
-           (javax.imageio ImageIO)))
+            [nextjournal.clerk.viewer :as v]))
 
 ^{::clerk/visibility {:code :hide :result :hide}}
-(def image-1 (ImageIO/read (URL. "https://nextjournal.com/data/QmU9dbBd89MUK631CoCtTwBi5fX4Hgx2tTPpiL4VStg8J7?filename=a.gif&content-type=image/gif")))
+(def image-1 (clerk/image "https://nextjournal.com/data/QmU9dbBd89MUK631CoCtTwBi5fX4Hgx2tTPpiL4VStg8J7?filename=a.gif&content-type=image/gif"))
 
 ^{::clerk/visibility {:code :hide :result :hide}}
-(def image-2 (ImageIO/read (URL. "https://nextjournal.com/data/QmfKZzHCBQKU7KKXQqcje5cgR6zLge3CcxeuZe8moUkJxf?filename=b.gif&content-type=image/gif")))
+(def image-2 (clerk/image "https://nextjournal.com/data/QmfKZzHCBQKU7KKXQqcje5cgR6zLge3CcxeuZe8moUkJxf?filename=b.gif&content-type=image/gif"))
 
 ^{::clerk/visibility {:code :hide :result :hide}}
-(def image-3 (ImageIO/read (URL. "https://nextjournal.com/data/QmXALbNeDD6NSudgVfHE5SvY1Xjzbj7TSWnARqcZrvXsss?filename=c.gif&content-type=image/gif")))
+(def image-3 (clerk/image "https://nextjournal.com/data/QmXALbNeDD6NSudgVfHE5SvY1Xjzbj7TSWnARqcZrvXsss?filename=c.gif&content-type=image/gif"))
 
 ;; ## Layouts can be composed via `row`s and `col`s
 ;;
@@ -26,15 +24,12 @@
 (v/col {::clerk/opts {:width 150}} image-1 image-2 image-3)
 
 ;; Laying out stuff is not limited to images. You can use it to lay out any Clerk viewer. E.g. combine it
-;; with HTML viewers to render nice captions:
-
-(defn caption [text]
-  (v/html [:span.text-slate-500.text-xs.text-center.font-sans text]))
+;; with HTML viewers:
 
 (v/row
- (v/col image-1 (caption "Figure 1: Decorative A"))
- (v/col image-2 (caption "Figure 2: Decorative B"))
- (v/col image-3 (caption "Figure 3: Decorative C")))
+ (v/html [:svg {:width 100 :height 100} [:circle {:r 50 :cx 50 :cy 50 :fill "red"}]])
+ (v/html [:svg {:width 100 :height 100} [:circle {:r 50 :cx 50 :cy 50 :fill "green"}]])
+ (v/html [:svg {:width 100 :height 100} [:circle {:r 50 :cx 50 :cy 50 :fill "blue"}]]))
 
 ;; Or use it with Plotly or Vega Lite viewers to lay out a simple dashboard:
 

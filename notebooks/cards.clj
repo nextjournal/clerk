@@ -6,9 +6,13 @@
             [cards-macro :as c]
             [nextjournal.clerk.viewer :as v]))
 
+;; ## Images
+(c/card
+ (v/image "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg"))
+
 ;; ## $\LaTeX$
 (c/card
-  (v/tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}"))
+ (v/tex "G_{\\mu\\nu}\\equiv R_{\\mu\\nu} - {\\textstyle 1 \\over 2}R\\,g_{\\mu\\nu} = {8 \\pi G \\over c^4} T_{\\mu\\nu}"))
 
 ;; ## Vega Lite
 (c/card

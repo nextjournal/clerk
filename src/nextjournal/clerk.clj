@@ -300,6 +300,16 @@
   ([x] (v/print-hide-result-deprecation-warning) (with-viewer v/hide-result-viewer {} x))
   ([viewer-opts x] (v/print-hide-result-deprecation-warning) (with-viewer v/hide-result-viewer viewer-opts x)))
 
+(defn image
+  "Creates a `java.awt.image.BufferedImage` from `url`, which can be a `java.net.URL` or a string, and
+  displays it using the `buffered-image-viewer`."
+  ([url] (image {} url))
+  ([viewer-opts url] (v/image viewer-opts url)))
+
+(defn caption
+  "Displays `content` with `text` as caption below it."
+  [text content]
+  (v/caption text content))
 
 (defn code
   "Displays `x` as syntax highlighted Clojure code.
