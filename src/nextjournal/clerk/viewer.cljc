@@ -1515,10 +1515,10 @@
   #?(:clj
      (ImageIO/read (if (string? url) (URL. url) url))))
 
-(defn figure [{img :image :keys [caption]}]
+(defn caption [text content]
   (col
-   (image img)
-   (html [:figcaption.text-xs.text-slate-500.text-center.mt-1 caption])))
+   content
+   (html [:figcaption.text-xs.text-slate-500.text-center.mt-1 text])))
 
 (defn ^:dynamic doc-url [path] (str "#/" path))
 

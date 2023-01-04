@@ -306,10 +306,10 @@
   [url]
   (v/image url))
 
-(defn figure
-  "Displays `image` using `buffered-image-viewer` with `caption` as descriptive text below it."
-  [{:as x :keys [image caption]}]
-  (v/figure x))
+(defn caption
+  "Displays `content` with `text` as caption below it."
+  [text content]
+  (v/caption text content))
 
 (defn code
   "Displays `x` as syntax highlighted Clojure code.
