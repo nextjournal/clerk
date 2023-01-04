@@ -38,6 +38,7 @@
          "viewer_d3_require"
          "viewers_nested"
          "viewer_normalization"
+         "viewers/caption"
          "viewers/code"
          "viewers/control_lab"
          "viewers/custom_markdown"
