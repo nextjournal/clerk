@@ -110,19 +110,8 @@
 
   quickdoc {:doc "Invoke quickdoc"
             :requires ([quickdoc.api :as api])
-            :extra-deps {io.github.borkdude/quickdoc {:git/sha "66e4835e4b95d2dc2967aa5f984d11bedf4493fb"}}
+            :extra-deps {io.github.borkdude/quickdoc {:git/sha "1e810ddd08ee724ff5736530a35a989d0ecdc9de"}}
             :task (api/quickdoc '{:git/branch "main"
                                   :github/repo "https://github.com/nextjournal/clerk"
-                                  :toc true
-                                  :overrides {nextjournal.clerk.analyzer {:no-doc true}
-                                              nextjournal.clerk.builder  {:no-doc true}
-                                              nextjournal.clerk.classpath {:no-doc true}
-                                              nextjournal.clerk.config {:no-doc true}
-                                              nextjournal.clerk.eval  {:no-doc true}
-                                              nextjournal.clerk.graph-visualizer {:no-doc true}
-                                              nextjournal.clerk.parser  {:no-doc true}
-                                              nextjournal.clerk.view  {:no-doc true}
-                                              nextjournal.clerk.viewer  {:no-doc true}
-                                              nextjournal.clerk.webserver {:no-doc true}
-                                              nextjournal.clerk.sci-viewer {:no-doc true}
-                                              nextjournal.clerk.static-app {:no-doc true}}})}}}
+                                  :source-paths ["src/nextjournal/clerk.clj"]
+                                  :toc true})}}}
