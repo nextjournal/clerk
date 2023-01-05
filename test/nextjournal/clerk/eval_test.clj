@@ -1,7 +1,8 @@
 (ns nextjournal.clerk.eval-test
   (:require [clojure.string :as str]
-            [clojure.test :refer :all]
+            [clojure.test :refer [deftest is testing]]
             [matcher-combinators.test :refer [match?]]
+            [nextjournal.clerk :as clerk]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]
@@ -60,6 +61,12 @@
     (let [{:as result :keys [blob->result]} (eval/eval-string "(ns my-random-test-ns-2) {inc (java.util.UUID/randomUUID)}")]
       (is (= result
              (eval/eval-string blob->result "(ns my-random-test-ns-2) {inc (java.util.UUID/randomUUID)}")))))
+
+  (testing "var gets cached in cas"
+    (let [code-str (format "(ns nextjournal.clerk.eval-test-%s) (def my-uuid (java.util.UUID/randomUUID))" (rand-int 100000))
+          get-uuid #(-> % :blocks peek :result :nextjournal/value :nextjournal.clerk/var-from-def deref)]
+      (is (= (get-uuid (eval/eval-string code-str))
+             (get-uuid (eval/eval-string code-str))))))
 
   (testing "random expression doesn't get cached with no-cache"
     (is (not= (eval/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns-3) (java.util.UUID/randomUUID)")
@@ -154,27 +161,53 @@
   (testing "can handle uncounted sequences"
     (is (match? [{:nextjournal/viewer {:name :code}
                   :nextjournal/value "(range)"}
-                 {:nextjournal/viewer {:name :clerk/result}
-                  :nextjournal/value {:nextjournal/edn string?
-                                      :nextjournal/fetch-opts {:blob-id string?}
+                 {:nextjournal/value {:nextjournal/fetch-opts {:blob-id string?}
                                       :nextjournal/hash string?}}]
                 (eval+extract-doc-blocks "(range)"))))
 
   (testing "assigns folded visibility"
     (is (match? [{:nextjournal/viewer {:name :code-folded}
-                  :nextjournal/value "^{:nextjournal.clerk/visibility :fold}{:some :map}"}
-                 {:nextjournal/viewer {:name :clerk/result}
-                  :nextjournal/value {:nextjournal/edn string?
-                                      :nextjournal/fetch-opts {:blob-id string?}
+                  :nextjournal/value "{:some :map}"}
+                 {:nextjournal/value {:nextjournal/fetch-opts {:blob-id string?}
                                       :nextjournal/hash string?}}]
                 (eval+extract-doc-blocks "^{:nextjournal.clerk/visibility :fold}{:some :map}"))))
 
   (testing "handles sorted map"
-    (view/doc->viewer (eval/eval-string (pr-str '(into (sorted-map)
-                                                       {"A" ["A" "Aani" "Aaron"]
-                                                        "B" ["B" "Baal" "Baalath"]})))))
+    (view/doc->viewer (eval/eval-string (viewer/->edn '(into (sorted-map)
+                                                             {"A" ["A" "Aani" "Aaron"]
+                                                              "B" ["B" "Baal" "Baalath"]})))))
 
   (testing "hides the result"
     (is (= []
            (eval+extract-doc-blocks "^{:nextjournal.clerk/visibility {:code :hide :result :hide}}
  {:some :map}")))))
+
+(deftest eval-analyzed-doc
+  (testing "should fail when var is only present at runtime but not in file"
+    (intern (create-ns 'missing-var) 'foo :bar)
+    (is (thrown-with-msg? Exception
+                          #"is being referenced, but Clerk can't find it in the namespace's source code"
+                          (eval/eval-string "(ns missing-var) foo"))))
+
+  (testing "should not fail on var present at runtime if there's no ns form"
+    (intern (create-ns 'existing-var) 'foo :bar)
+    (is (eval/eval-string "(in-ns 'existing-var) foo"))))
+
+(clerk/defcached my-expansive-thing
+  (do (Thread/sleep 1 #_10000) 42))
+
+(deftest defcached
+  (is (= 42 my-expansive-thing)))
+
+(deftest with-cache
+  (is (= 42 (clerk/with-cache
+              (do (Thread/sleep 1 #_10000) 42)))))
+
+(deftest cacheable-value?-test
+  (testing "finite sequence is cacheable"
+    (is (#'eval/cachable-value? (vec (range 100)))))
+  (testing "nippy doesn't know how to freeze instances of clojure.lang.Iterate"
+    (is (not (#'eval/cachable-value? (range 100)))))
+  (testing "infinite sequences can't be cached"
+    (is (not (#'eval/cachable-value? (range))))
+    (is (not (#'eval/cachable-value? (map inc (range)))))))

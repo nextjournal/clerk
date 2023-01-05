@@ -75,29 +75,33 @@
     {:nextjournal.clerk/var-from-def resolved-var}))
 
 (defn ^:private lookup-cached-result [introduced-var hash cas-hash]
-  (try
-    (let [value (let [cached-value (thaw-from-cas cas-hash)]
-                  (when introduced-var
-                    (intern (-> introduced-var symbol namespace find-ns) (-> introduced-var symbol name symbol) cached-value))
-                  cached-value)]
-      (wrapped-with-metadata (if introduced-var (var-from-def introduced-var) value) hash))
-    (catch Exception _e
-      ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
-      #_(prn :thaw-error e)
-      nil)))
+  (when-let [cached-value (try (thaw-from-cas cas-hash)
+                               (catch Exception _e
+                                 ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
+                                 #_(prn :thaw-error e)
+                                 nil))]
+    (wrapped-with-metadata (if introduced-var
+                             (var-from-def (intern (-> introduced-var namespace symbol)
+                                                   (-> introduced-var name symbol)
+                                                   cached-value))
+                             cached-value)
+                           hash)))
+
 
 (defn ^:private cachable-value? [value]
   (and (some? value)
        (try
-         (nippy/freezable? value)
+         (and (not (analyzer/exceeds-bounded-count-limit? value))
+              (some? (nippy/freezable? value)))
          ;; can error on e.g. lazy-cat fib
          ;; TODO: propagate error information here
          (catch Exception _
-           false))
-       (not (analyzer/exceeds-bounded-count-limit? value))))
+           false))))
 
 #_(cachable-value? (vec (range 100)))
 #_(cachable-value? (range))
+#_(cachable-value? (map inc (range)))
+#_(cachable-value? [{:hello (map inc (range))}])
 
 
 (defn ^:private cache! [digest-file var-value]
@@ -107,16 +111,29 @@
       #_(prn :freeze-error e)
       nil)))
 
+(defn ^:private record-interned-symbol [store ns sym]
+  (swap! store conj (symbol (name (ns-name (the-ns ns))) (name sym))))
+
+(def ^:private core-intern intern)
+
+(defn ^:private intern+record
+  ([store ns name] (record-interned-symbol store ns name) (core-intern ns name))
+  ([store ns name val] (record-interned-symbol store ns name) (core-intern ns name val)))
+
 (defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
   (try
-    (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true]
-                                      (eval form)))
+    (let [!interned-vars (atom #{})
+          {:keys [result]} (time-ms (binding [config/*in-clerk* true]
+                                      (assert form "form must be set")
+                                      (with-redefs [clojure.core/intern (partial intern+record !interned-vars)]
+                                        (eval form))))
           result (if (and (nil? result) var (= 'defonce (first form)))
                    (find-var var)
                    result)
           var-value (cond-> result (and var (var? result)) deref)
           no-cache? (or ns-effect?
                         no-cache?
+                        (boolean (seq @!interned-vars))
                         config/cache-disabled?)]
       (when (and (not no-cache?) (not ns-effect?) freezable? (cachable-value? var-value))
         (cache! digest-file var-value))
@@ -126,7 +143,9 @@
             result (if var
                      (var-from-def var)
                      result)]
-        (wrapped-with-metadata result blob-id)))
+        (cond-> (wrapped-with-metadata result blob-id)
+          (seq @!interned-vars)
+          (assoc :nextjournal/interned @!interned-vars))))
     (catch Throwable t
       (let [triaged (main/ex-triage (Throwable->map t))]
         (throw (ex-info (main/ex-str triaged) triaged))))))
@@ -139,22 +158,25 @@
     (update :nextjournal/viewers eval)))
 
 (defn read+eval-cached [{:as _doc :keys [blob->result ->analysis-info ->hash]} codeblock]
-  (let [{:keys [form vars var deref-deps]} codeblock
-        {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info (if (seq vars) (first vars) form))
+  (let [{:keys [form vars var]} codeblock
+        {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info (if (seq vars) (first vars) (analyzer/->key codeblock)))
         no-cache?      (or ns-effect? no-cache?)
-        hash           (when-not no-cache? (or (get ->hash (if var var form))
+        hash           (when-not no-cache? (or (get ->hash (analyzer/->key codeblock))
                                                (analyzer/hash-codeblock ->hash codeblock)))
         digest-file    (when hash (->cache-file (str "@" hash)))
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
         cached-result? (and (not no-cache?)
                             cas-hash
-                            (-> cas-hash ->cache-file fs/exists?))
+                            (or (get-in blob->result [hash :nextjournal/value])
+                                (-> cas-hash ->cache-file fs/exists?)))
         opts-from-form-meta (-> (meta form)
-                                (select-keys [:nextjournal.clerk/viewer :nextjournal.clerk/viewers :nextjournal.clerk/width :nextjournal.clerk/opts])
+                                (select-keys (keys v/viewer-opts-normalization))
                                 v/normalize-viewer-opts
                                 maybe-eval-viewers)]
     #_(prn :cached? (cond no-cache? :no-cache
-                          cached-result? true
+                          cached-result? (if (get-in blob->result [hash :nextjournal/value])
+                                           :in-memory
+                                           :in-cas)
                           cas-hash :no-cas-file
                           :else :no-digest-file)
            :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
@@ -177,9 +199,9 @@
 (defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks]}]
   (let [deref-forms (into #{} (filter analyzer/deref?) (keys ->hash))
         {:as evaluated-doc :keys [blob-ids]}
-        (reduce (fn [{:as state :keys [blob->result]} {:as cell :keys [type]}]
+        (reduce (fn [state cell]
                   (let [state-with-deref-deps-evaluated (analyzer/hash-deref-deps state cell)
-                        {:as result :nextjournal/keys [blob-id]} (when (= :code type)
+                        {:as result :nextjournal/keys [blob-id]} (when (parser/code? cell)
                                                                    (read+eval-cached state-with-deref-deps-evaluated cell))]
                     (cond-> (update state-with-deref-deps-evaluated :blocks conj (cond-> cell result (assoc :result result)))
                       blob-id (update :blob-ids conj blob-id)
@@ -188,18 +210,18 @@
                     (assoc :blocks [] :blob-ids #{})
                     (update :->hash (fn [h] (apply dissoc h deref-forms))))
                 blocks)]
-    (-> evaluated-doc
-        (update :blob->result select-keys blob-ids)
-        (dissoc :blob-ids))))
+    (doto (-> evaluated-doc
+              (update :blob->result select-keys blob-ids)
+              (dissoc :blob-ids)) analyzer/throw-if-dep-is-missing)))
 
 (defn +eval-results
   "Evaluates the given `parsed-doc` using the `in-memory-cache` and augments it with the results."
   [in-memory-cache parsed-doc]
-  (let [{:as analyzed-doc :keys [ns]} (analyzer/build-graph parsed-doc)]
+  (let [{:as analyzed-doc :keys [ns]} (analyzer/build-graph
+                                       (assoc parsed-doc :blob->result in-memory-cache))]
     (binding [*ns* ns]
       (-> analyzed-doc
           analyzer/hash
-          (assoc :blob->result in-memory-cache)
           eval-analyzed-doc))))
 
 (defn eval-doc
@@ -226,4 +248,3 @@
    (eval-doc in-memory-cache (parser/parse-clojure-string {:doc? true} code-string))))
 
 #_(eval-string "(+ 39 3)")
-

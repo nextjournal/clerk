@@ -1,12 +1,7 @@
 (ns nextjournal.clerk.config
-  (:require
-   [clojure.edn :as edn]
-   [clojure.java.io :as io]
-   [clojure.string :as str]))
-
-(def gs-url-prefix "https://storage.googleapis.com/nextjournal-cas-eu")
-(def lookup-hash (str/trim (slurp (io/resource "viewer-js-hash"))))
-(def lookup-url (str gs-url-prefix "/lookup/" lookup-hash))
+  (:require [clojure.edn :as edn]
+            [clojure.java.io :as io]
+            [clojure.string :as str]))
 
 (def cache-dir
   (or (System/getProperty "clerk.cache_dir")
@@ -21,10 +16,16 @@
     (when-not (str/blank? prop)
       (read-string prop))))
 
+
+
 (def !asset-map
   ;; In mvn releases, the asset map is available in the artifact
   (delay (or (some-> (io/resource "clerk-asset-map.edn") slurp edn/read-string)
-             (-> lookup-url slurp edn/read-string))))
+             (try ((requiring-resolve 'nextjournal.clerk.render.hashing/read-dynamic-asset-map!))
+                  (catch Exception e
+                    (throw (ex-info "Error reading dynamic asset map"
+                                    (or (ex-data e)
+                                        {}) e)))))))
 
 (defonce !resource->url
   ;; contains asset manifest in the form:

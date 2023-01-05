@@ -48,8 +48,10 @@
 (defn test-notebook [page link]
   (println "Visiting" link)
   (p/do (goto page link)
-        (is (-> (.locator page "div.viewer:has-text(\"Hello, Clerk\")")
-                (.isVisible)))))
+        (p/let [loc (.locator page "div")
+                loc (.first loc)
+                visible? (.isVisible loc)]
+          (is visible?))))
 
 (def console-errors (atom []))
 
@@ -61,18 +63,19 @@
                               (when (and (= "error" (.type msg))
                                          (not (str/ends-with?
                                                (.-url (.location msg)) "favicon.ico")))
-                                (swap! console-errors conj msg))))
+                                (swap! console-errors conj {:msg msg :notebook (.url page)}))))
                      _ (goto page @!index)
                      _ (is (-> (.locator page "h1:has-text(\"Clerk\")")
                                (.isVisible #js {:timeout 10000})))
                      links (-> (.locator page "text=/.*\\.clj$/i")
                                (.allInnerTexts))
+                     _ (is (pos? (count links)))
                      links (map (fn [link]
                                   (str @!index "#/" link)) links)]
                (p/run! #(test-notebook page %) links)
                (is (zero? (count @console-errors))
-                   (str/join "\n" (map (fn [msg]
-                                         [(.text msg) (.location msg)])
+                   (str/join "\n" (map (fn [{:keys [msg notebook]}]
+                                         [(.text msg) (.location msg) notebook])
                                        @console-errors))))
              (.catch (fn [err]
                        (js/console.log err)

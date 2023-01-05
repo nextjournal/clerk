@@ -1,14 +1,13 @@
 {:deps {:aliases [:sci]}
  :dev-http {7778 {:roots ["public" "classpath:public"]}}
  :nrepl false
- :builds {:browser {:target :browser
-                    :output-to "public/js/viewer.js"
-                    :output-dir "public/js"
-                    :build-options {:ns-aliases {nextjournal.devcards nextjournal.devcards-noop}}
-                    :modules {:viewer {:entries [nextjournal.clerk.sci-viewer
-                                                 nextjournal.clerk.static-app]}}
-
-                    :dev {:modules {:viewer {:entries [devtools]}}}
-                    :release {:output-dir "build/"}
-
-                    :js-options {:output-feature-set :es8}}}}
+ :builds {:viewer {:target :esm
+                   :runtime :browser ;; `:custom` needed when developing ssr, will see WebSocket errors without it
+                   :output-dir "public/js"
+                   :release {:output-dir "build/"}
+                   :compiler-options {:source-map true}
+                   :dev {:modules {:viewer {:entries [devtools]}}}
+                   :modules {:viewer {:entries [nextjournal.clerk.sci-env
+                                                nextjournal.clerk.static-app
+                                                nextjournal.clerk.trim-image]}}
+                   :js-options {:output-feature-set :es8}}}}

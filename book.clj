@@ -1,7 +1,12 @@
-;; # 📓 Book of Clerk
+;; # 📖 Book of Clerk
 ^{:nextjournal.clerk/visibility {:code :hide}}
-(ns docs
-  {:nextjournal.clerk/toc true}
+(ns nextjournal.clerk.book
+  {:nextjournal.clerk/toc true
+   :nextjournal.clerk/open-graph
+   {:url "https://book.clerk.vision"
+    :title "The Book of Clerk"
+    :description "Clerk’s official documentation."
+    :image "https://cdn.nextjournal.com/data/QmbHy6nYRgveyxTvKDJvyy2VF9teeXYkAXXDbgbKZK6YRC?filename=book-of-clerk-og-image.png&content-type=image/png"}}
   (:require [clojure.string :as str]
             [next.jdbc :as jdbc]
             [nextjournal.clerk :as clerk]
@@ -28,7 +33,7 @@
 ;; Clerk is a notebook library for Clojure that aims to address these problems by doing less, namely:
 
 ;; * no editing environment, folks can keep using the editors they know and love
-;; * no new format: Clerk notebooks are regular Clojure namespaces (interspersed with markdown comments). This also means Clerk notebooks are meant to be stored in source control.
+;; * no new format: Clerk notebooks are either regular Clojure namespaces (interspersed with markdown comments) or regular markdown files (interspersed with Clojure code fences). This also means Clerk notebooks are meant to be stored in source control.
 ;; * no out-of-order execution: Clerk notebooks always evaluate from top to bottom. Clerk builds a dependency graph of Clojure vars and only recomputes the needed changes to keep the feedback loop fast.
 ;; * no external process: Clerk runs inside your Clojure process, giving Clerk access to all code on the classpath.
 
@@ -77,7 +82,7 @@
 ;; ```clojure
 ;; (clerk/serve! {:watch-paths ["notebooks" "src"]})
 ;; ```
-;; ... which will automatically reload and re-eval any clj or md files that change, displaying the most recently changed one in your browser.
+;; ... which will automatically reload and re-eval any clojure (clj) or markdown (md) files that change, displaying the most recently changed one in your browser.
 
 ;; To make this performant enough to feel good, Clerk caches the computations it performs while evaluating each file. Likewise, to make sure it doesn't send too much data to the browser at once, Clerk paginates data structures within an interactive viewer.
 
@@ -93,14 +98,13 @@
 ;; ```elisp
 ;; (defun clerk-show ()
 ;;   (interactive)
-;;   (save-buffer)
-;;   (let
+;;   (when-let
 ;;       ((filename
 ;;         (buffer-file-name)))
-;;     (when filename
-;;       (cider-interactive-eval
-;;        (concat "(nextjournal.clerk/show! \"" filename "\")")))))
-
+;;     (save-buffer)
+;;     (cider-interactive-eval
+;;      (concat "(nextjournal.clerk/show! \"" filename "\")"))))
+;;
 ;; (define-key clojure-mode-map (kbd "<M-return>") 'clerk-show)
 ;; ```
 
@@ -216,8 +220,12 @@
 
 ;; ### 📊 Plotly
 
-;; Clerk also has built-in support for Plotly's low-ceremony plotting:
-(clerk/plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]})
+;; Clerk also has built-in support for Plotly's low-ceremony plotting.
+;; See [Plotly's JavaScript docs](https://plotly.com/javascript/) for more examples and [options](https://plotly.com/javascript/configuration-options/).
+(clerk/plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]
+               :layout {:margin {:l 20 :r 0 :b 20 :t 20}}
+               :config {:displayModeBar false
+                        :displayLogo false}})
 
 ;; ### 🗺 Vega Lite
 
@@ -226,8 +234,14 @@
                                          :format {:type "topojson" :feature "counties"}}
            :transform [{:lookup "id" :from {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
                                             :key "id" :fields ["rate"]}}]
-           :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}})
+           :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}
+           :embed/opts {:actions false}})
 
+;; You can provide a map of [embed options](https://github.com/vega/vega-embed#embed) to the vega viewer via the `:embed/opts` key.
+;;
+;; Clerk handles conversion from EDN to JSON for you.
+;; The official Vega-Lite examples are in JSON, but a Clojure/EDN version available:
+;; [Carsten Behring's Vega gallery in EDN](https://github.clerk.garden/behrica/vl-galery/).
 
 ;; ### 🎼 Code
 
@@ -269,13 +283,17 @@
 
 ;; On the other hand, smaller images are centered and shown using their intrinsic dimensions:
 
-(ImageIO/read (URL. "https://etc.usf.edu/clipart/36600/36667/thermos_36667_sm.gif"))
+(ImageIO/read (URL. "https://nextjournal.com/data/QmSJ6eu6kUFeWrqXyYaiWRgJxAVQt2ivaoNWc1dtTEADCf?filename=thermo.png&content-type=image/png"))
 
 ;; ### 📒 Markdown
 
 ;; The same Markdown support Clerk uses for comment blocks is also
 ;; available programmatically:
 (clerk/md (clojure.string/join "\n" (map #(str "* Item " (inc %)) (range 3))))
+
+;; For a more advanced example of ingesting markdown files and transforming the
+;; content to HTML using Hiccup, see [notebooks/markdown.md](https://github.com/nextjournal/clerk-demo/blob/47e95fdc38dd5321632f73bb50a049da4055e041/notebooks/markdown.md)
+;; in the clerk-demo repo.
 
 ;; ### 🔠 Grid Layouts
 
@@ -286,13 +304,13 @@
 ;; your items. You can use this to size your containers accordingly.
 
 ^{::clerk/visibility {:code :hide :result :hide}}
-(def image-1 (ImageIO/read (URL. "https://etc.usf.edu/clipart/62300/62370/62370_letter-a_lg.gif")))
+(def image-1 (ImageIO/read (URL. "https://nextjournal.com/data/QmU9dbBd89MUK631CoCtTwBi5fX4Hgx2tTPpiL4VStg8J7?filename=a.gif&content-type=image/gif")))
 
 ^{::clerk/visibility {:code :hide :result :hide}}
-(def image-2 (ImageIO/read (URL. "https://etc.usf.edu/clipart/72700/72783/72783_floral_b_lg.gif")))
+(def image-2 (ImageIO/read (URL. "https://nextjournal.com/data/QmfKZzHCBQKU7KKXQqcje5cgR6zLge3CcxeuZe8moUkJxf?filename=b.gif&content-type=image/gif")))
 
 ^{::clerk/visibility {:code :hide :result :hide}}
-(def image-3 (ImageIO/read (URL. "https://etc.usf.edu/clipart/72700/72787/72787_floral_c_lg.gif")))
+(def image-3 (ImageIO/read (URL. "https://nextjournal.com/data/QmXALbNeDD6NSudgVfHE5SvY1Xjzbj7TSWnARqcZrvXsss?filename=c.gif&content-type=image/gif")))
 
 
 (clerk/row image-1 image-2 image-3)
@@ -337,6 +355,7 @@
                    :layout {:showlegend false
                             :width 200
                             :height 200
+                            :margin {:t 0 :b 0 :r 0 :l 0}
                             :annotations [{:font {:size 20} :showarrow false :x 0.5 :y 0.5 :text "CO2"}]}
                    :config {:responsive true}}))
 
@@ -346,7 +365,8 @@
                                [2.5 3.125 5.0 8.125 12.5]
                                [0.625 1.25 3.125 6.25 10.625]
                                [0 0.625 2.5 5.625 10]]
-                           :type "contour"}]})))
+                           :type "contour"}]
+                   :layout {:margin {:t 0 :b 0 :r 0 :l 0}}})))
 
 (clerk/col (clerk/row donut-chart donut-chart donut-chart)
            contour-plot)
@@ -370,6 +390,13 @@
    {:temperature 39.0 :date (java.time.LocalDate/parse "2022-08-01")}
    {:temperature 34.0 :date (java.time.LocalDate/parse "2022-08-01")}
    {:temperature 29.0 :date (java.time.LocalDate/parse "2022-08-01")}])
+
+;; As you can see above, the table viewer is being applied to the
+;; value of the `my-dataset` var, not the var itself. If you want your viewer to access the raw var, you can opt out of this with a truthy `:var-from-def?` key on the viewer.
+
+^{::clerk/viewer (assoc v/fallback-viewer :var-from-def? true)}
+(def raw-var :baz)
+
 
 ;; ### 👁 Writing Viewers
 
@@ -488,7 +515,7 @@ v/table-viewer
 (def custom-table-viewer
   (add-child-viewers v/table-viewer
                      [(assoc v/table-head-viewer :transform-fn (v/update-val (partial map (comp (partial str "Column: ") str/capitalize name))))
-                      (assoc v/table-missing-viewer :render-fn '(fn [x] (v/html [:span.red "N/A"])))]))
+                      (assoc v/table-missing-viewer :render-fn '(fn [x] [:span.red "N/A"]))]))
 
 (clerk/with-viewer custom-table-viewer
   {:col/a [1 2 3 4] :col/b [1 2 3] :col/c [1 2 3]})
@@ -509,7 +536,7 @@ v/table-viewer
 
 ^{::clerk/viewer show-raw-value}
 (v/present (clerk/with-viewer {:transform-fn clerk/mark-presented
-                               :render-fn '(fn [x] (v/html [:pre (pr-str x)]))}
+                               :render-fn '(fn [x] [:pre (pr-str x)])}
              [1 2 3]))
 
 ;; Clerk's presentation will also transform maps into sequences in
@@ -557,18 +584,17 @@ v/table-viewer
    :transform-fn (comp clerk/mark-preserve-keys
                        (clerk/update-val transform-literal))
    :render-fn '(fn [label->val]
-                 (v/html
-                  (reagent/with-let [!selected-label (reagent/atom (ffirst label->val))]
-                    [:<> (into
-                          [:div.flex.items-center.font-sans.text-xs.mb-3
-                           [:span.text-slate-500.mr-2 "View-as:"]]
-                          (map (fn [label]
-                                 [:button.px-3.py-1.font-medium.hover:bg-indigo-50.rounded-full.hover:text-indigo-600.transition
-                                  {:class (if (= @!selected-label label) "bg-indigo-100 text-indigo-600" "text-slate-500")
-                                   :on-click #(reset! !selected-label label)}
-                                  label]))
-                          (keys label->val))
-                     [v/inspect-presented (get label->val @!selected-label)]])))})
+                 (reagent/with-let [!selected-label (reagent/atom (ffirst label->val))]
+                   [:<> (into
+                         [:div.flex.items-center.font-sans.text-xs.mb-3
+                          [:span.text-slate-500.mr-2 "View-as:"]]
+                         (map (fn [label]
+                                [:button.px-3.py-1.font-medium.hover:bg-indigo-50.rounded-full.hover:text-indigo-600.transition
+                                 {:class (if (= @!selected-label label) "bg-indigo-100 text-indigo-600" "text-slate-500")
+                                  :on-click #(reset! !selected-label label)}
+                                 label]))
+                         (keys label->val))
+                    [v/inspect-presented (get label->val @!selected-label)]]))})
 
 ;; Now let's see if this works. Try switching to the original
 ;; representation!
@@ -768,9 +794,8 @@ v/table-viewer
 
 (ana/find-location 'java.util.UUID)
 
-
 (let [{:keys [graph]} analyzed]
-  (dep/transitive-dependencies graph 'how-clerk-works/analyzed))
+  (dep/transitive-dependencies graph 'nextjournal.clerk.book/analyzed))
 
 ;; ### 🪣 Hashing
 ;; Then we can use this information to hash each expression.
@@ -787,8 +812,7 @@ v/table-viewer
       (shuffle (range 15))))
 
 ;; We can look up the cache key using the var name in the hashes map.
-#_ FIXME-nil
-(when-let [form-hash (get hashes `rand-fifteen)]
+(when-let [form-hash (get hashes 'nextjournal.clerk.book/rand-fifteen)]
   (let [hash (slurp (eval/->cache-file (str "@" form-hash)))]
     (eval/thaw-from-cas hash)))
 

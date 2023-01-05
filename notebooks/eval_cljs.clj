@@ -1,6 +1,7 @@
 ;; # 📑 Eval CLJS
 (ns eval-cljs
-  (:require [nextjournal.clerk :as clerk]))
+  (:require [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.viewer :as viewer]))
 
 ;; Let's load some .cljs code from a file!
 ;; Because we want to re-render this notebook when the .cljs code changes, we use `::clerk/no-cache`
@@ -17,18 +18,12 @@
 (clerk/with-viewer {:render-fn 'render-fns/heading}
   "My awesome heading")
 
+
 (clerk/with-viewer {:render-fn 'render-fns/paragraph}
   "My awesome paragraph :)")
 
-
 ;; Now let's try to figure out a way so our slider can still be dragged:
-^{::clerk/viewers [{:pred ::clerk/var-from-def
-                    :transform-fn (comp clerk/mark-presented (clerk/update-val (fn [{::clerk/keys [var-from-def]}]
-                                                                                 {:var-name (symbol var-from-def) :value @@var-from-def})))
-                    :render-fn '(fn [{:keys [var-name value]}]
-                                  (v/html [:input {:type :range
-                                                   :value value
-                                                   :on-change #(v/clerk-eval `(reset! ~var-name (Integer/parseInt ~(.. % -target -value))))}]))}]}
+^{::clerk/sync true ::clerk/viewer (assoc viewer/viewer-eval-viewer :render-fn '(fn [x] ))}
 (defonce slider-state (atom 42))
 
 @slider-state

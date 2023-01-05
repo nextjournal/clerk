@@ -24,11 +24,13 @@
     "https://gist.githubusercontent.com/wchargin/8927565/raw/d9783627c731268fb2935a731a618aa8e95cf465/words"))
 
 ;; ## Words
-(clerk/table {:nextjournal/width :full}
-             (->> (slurp (words-url))
-                  str/split-lines
-                  (group-by (comp keyword str/upper-case str first))
-                  (into (sorted-map))))
+(def letter->words
+  (->> (slurp (words-url))
+       str/split-lines
+       (group-by (comp keyword str/upper-case str first))
+       (into (sorted-map))))
+
+(clerk/table {:nextjournal/width :full} letter->words)
 
 ;; ## Table Errors
 ;; The table viewer will perform normalization and show an error in case of failure:
@@ -44,7 +46,7 @@
                          (map char (range 97 127))))]})
 
 ;; ## Table with images
-(clerk/table [[1 2] [3 (javax.imageio.ImageIO/read (java.net.URL. "https://etc.usf.edu/clipart/36600/36667/thermos_36667_sm.gif"))]])
+(clerk/table [[1 2] [3 (javax.imageio.ImageIO/read (java.net.URL. "https://nextjournal.com/data/QmeyvaR3Q5XSwe14ZS6D5WBQGg1zaBaeG3SeyyuUURE2pq?filename=thermos.gif&content-type=image/gif"))]])
 
 ;; ## Table within tables
 (clerk/table [[1 2] [3 (clerk/table [[1 2] [3 4]])]])
@@ -56,7 +58,7 @@
    {:rows (map (juxt identity inc) (range 100))
     :head (map format-head head-data)}))
 
-(clerk/with-viewers (clerk/add-viewers [(assoc v/buffered-image-viewer :render-fn '(fn [blob] (v/html [:img {:width "30px" :height "30px" :src (v/url-for blob)}])))])
+(clerk/with-viewers (clerk/add-viewers [(assoc v/image-viewer :render-fn '(fn [blob] (v/html [:img {:width "30px" :height "30px" :src (v/url-for blob)}])))])
   (clerk/table
    {:rows (map (juxt identity dec) (range 1 100))
     :head [(javax.imageio.ImageIO/read (java.net.URL. "https://upload.wikimedia.org/wikipedia/commons/1/17/Plus_img_364976.png"))
@@ -82,3 +84,21 @@
                            comp (v/update-val (comp (fn [table] (update table :head (partial map (comp str/capitalize name))))
                                                     v/normalize-table-data)))
   {:a [1 2] :b [3 4]})
+
+
+;; ## Nesting tables inside html
+(clerk/html [:div.bg-amber-100.p-2
+             (clerk/table [[1 2] [3 4] [5 6]])])
+
+;; ## ♾ Infinite Tables
+
+;; ### Seq of Seqs
+(clerk/table (repeat [1 2 3]))
+
+;; ### Map of Seqs
+(clerk/table {:A (range)
+              :B (range 1 8000)})
+
+;; ### Seq of Maps
+(clerk/table (repeat {:a 1 :b 2}))
+

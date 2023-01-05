@@ -4,25 +4,23 @@
   (:require [clojure.core :as core]
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v])
-  (:import (java.time Instant LocalTime ZoneId)))
+  (:import (java.time LocalTime ZoneId)))
 
 (def switch-view
-  {:transform-fn (comp clerk/mark-presented
-                       (clerk/update-val (fn [{::clerk/keys [var-from-def]}]
-                                           {:var-name (symbol var-from-def) :value @@var-from-def})))
-   :render-fn '(fn [{:keys [var-name value]}]
-                 (v/html
-                  (let [choices [:stream :latest]]
-                    [:div.flex.justify-between.items-center
-                     (into [:div.flex.items-center.font-sans.text-xs.mb-3 [:span.text-slate-500.mr-2 "View-as:"]]
-                           (map (fn [choice]
-                                  [:button.px-3.py-1.font-medium.hover:bg-indigo-50.rounded-full.hover:text-indigo-600.transition
-                                   {:class (if (= value choice) "bg-indigo-100 text-indigo-600" "text-slate-500")
-                                    :on-click #(v/clerk-eval `(reset! ~var-name ~choice))}
-                                   choice]) choices))
-                     [:button.text-xs.rounded-full.px-3.py-1.border-2.font-sans.hover:bg-slate-100.cursor-pointer {:on-click #(v/clerk-eval `(reset-taps!))} "Clear"]])))})
+  (assoc v/viewer-eval-viewer
+         :render-fn
+         '(fn [!view]
+            (let [choices [:stream :latest]]
+              [:div.flex.justify-between.items-center
+               (into [:div.flex.items-center.font-sans.text-xs.mb-3 [:span.text-slate-500.mr-2 "View-as:"]]
+                     (map (fn [choice]
+                            [:button.px-3.py-1.font-medium.hover:bg-indigo-50.rounded-full.hover:text-indigo-600.transition
+                             {:class (if (= @!view choice) "bg-indigo-100 text-indigo-600" "text-slate-500")
+                              :on-click #(reset! !view choice)}
+                             choice]) choices))
+               [:button.text-xs.rounded-full.px-3.py-1.border-2.font-sans.hover:bg-slate-100.cursor-pointer {:on-click #(v/clerk-eval `(reset-taps!))} "Clear"]]))))
 
-^{::clerk/viewer switch-view ::clerk/visibility {:result :show}}
+^{::clerk/sync true ::clerk/viewer switch-view ::clerk/visibility {:result :show}}
 (defonce !view (atom :stream))
 
 (defonce !taps (atom []))
@@ -41,19 +39,19 @@
 (def tap-viewer
   {:name :tapped-value
    :render-fn '(fn [{:keys [val tapped-at key]} opts]
-                 (v/html (with-meta
-                           [:div.border-t.relative.py-3
-                            [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
-                             {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
-                            [:div.overflow-x-auto [v/inspect-presented val]]]
-                           {:key (:nextjournal/value key)})))
+                 (with-meta
+                   [:div.border-t.relative.py-3
+                    [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
+                     {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
+                    [:div.overflow-x-auto [v/inspect-presented val]]]
+                   {:key (:nextjournal/value key)}))
    :transform-fn (comp clerk/mark-preserve-keys
                        (clerk/update-val #(update % :tapped-at inst->local-time-str)))})
 
 (clerk/add-viewers! [tap-viewer])
 
 (def taps-viewer
-  {:render-fn '#(v/html (into [:div.flex.flex-col.pt-2] (v/inspect-children %2) %1))
+  {:render-fn '#(into [:div.flex.flex-col.pt-2] (v/inspect-children %2) %1)
    :transform-fn (clerk/update-val (fn [taps]
                                      (mapv (partial clerk/with-viewer :tapped-value) (reverse taps))))})
 
@@ -80,7 +78,7 @@
 (comment
   (last @!taps)
 
-  (dotimes [i 5]
+  (dotimes [_i 5]
     (tap> (rand-int 1000)))
 
   (tap> (shuffle (range (+ 20 (rand-int 200)))))
@@ -97,13 +95,5 @@
 
   (tap> (clerk/html [:h1 "Fin. 👋"]))
 
-  ;; ---
-  ;; ## TODO
-
-  ;; * [x] Avoid flickering when adding new tap
-  ;; * [x] Record & show time of tap
-  ;; * [x] Keep expanded state when adding tap
-  ;; * [x] Fix latest
-  ;; * [ ] Fix lazy loading
-  ;; * [ ] Improve performance when large image present in tap stream
+  (reset-taps!)
   )

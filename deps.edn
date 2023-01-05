@@ -1,63 +1,71 @@
-{:paths ["src" "resources"]
+{:paths ["src" "resources" "bb"]
  :deps {org.clojure/clojure {:mvn/version "1.10.3"}
         org.clojure/java.classpath {:mvn/version "1.0.0"}
+        org.clojure/tools.analyzer {:mvn/version "1.1.0"}
         org.clojure/tools.analyzer.jvm {:mvn/version "1.1.0"}
-        babashka/fs {:mvn/version "0.1.5"}
-        borkdude/edamame {:mvn/version "0.0.11"}
+        babashka/fs {:mvn/version "0.1.11"}
+        borkdude/edamame {:mvn/version "1.0.0"}
         weavejester/dependency {:mvn/version "0.2.1"}
-
         com.nextjournal/beholder {:mvn/version "1.0.0"}
 
-        io.github.nextjournal/markdown {:mvn/version "0.4.126"}
+        io.github.nextjournal/markdown {:mvn/version "0.4.132"}
+        io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
 
-        com.taoensso/nippy {:mvn/version "3.1.1"}
+        com.taoensso/nippy {:mvn/version "3.2.0"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
         javax.xml.bind/jaxb-api {:mvn/version "2.3.1"} ;; needed to make multihash work on JDK11+
         com.pngencoder/pngencoder {:mvn/version "0.13.1"}
 
-        http-kit/http-kit {:mvn/version "2.5.3"}
+        http-kit/http-kit {:mvn/version "2.6.0"}
         hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
-        lambdaisland/uri {:mvn/version "1.11.86"}
 
-        rewrite-clj/rewrite-clj {:mvn/version "1.0.699-alpha"}}
+        rewrite-clj/rewrite-clj {:mvn/version "1.1.45"}
 
- :aliases {:nextjournal/clerk {:extra-deps {org.slf4j/slf4j-nop {:mvn/version "1.7.36"}}
+        juji/editscript {:mvn/version "0.6.2"}}
+
+ :aliases {:nextjournal/clerk {:extra-deps {org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
+                                            org.babashka/cli {:mvn/version "0.5.40"}}
                                :extra-paths ["notebooks"]
-                               :exec-fn nextjournal.clerk/build-static-app!
-                               :exec-args {:paths nextjournal.clerk.builder/clerk-docs}}
-           :sci {:extra-deps {applied-science/js-interop {:mvn/version "0.3.3"}
-                              org.babashka/sci {:mvn/version "0.3.5"}
-                              reagent/reagent {:mvn/version "1.1.1"}
-                              io.github.babashka/sci.configs {:git/sha "fcd367c6a6115c5c4e41f3a08ee5a8d5b3387a18"}
-                              io.github.nextjournal/viewers {:git/sha "3284aae7379bde3fcf41d17c663bed421fb31d6d"}
-                              metosin/reitit-frontend {:mvn/version "0.5.15"}}}
+                               :exec-fn nextjournal.clerk/build!
+                               :exec-args {:paths-fn nextjournal.clerk.builder/clerk-docs}
+                               :main-opts ["-m" "babashka.cli.exec"]
+                               :jvm-opts ["-Dclojure.main.report=stdout"]
+                               :nextjournal.clerk/aliases [:demo]}
 
-           :dev {:extra-deps {arrowic/arrowic {:mvn/version "0.1.1"}
+           :sci {:extra-deps {io.github.nextjournal/clerk.render {:local/root "render"}}}
+
+           :dev {:extra-deps {org.clojure/clojure {:mvn/version "1.11.1"} ;; for `:as-alias` support but only in dev
+                              arrowic/arrowic {:mvn/version "0.1.1"}
                               binaryage/devtools {:mvn/version "1.0.3"}
-                              cider/cider-nrepl {:mvn/version "0.28.3"}
-                              thheller/shadow-cljs {:mvn/version "2.16.7"}
-                              org.slf4j/slf4j-nop {:mvn/version "1.7.36"}}
+                              cider/cider-nrepl {:mvn/version "0.29.0"}
+                              com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.0.3"}
+                              org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
+                              org.babashka/cli {:mvn/version "0.5.40"}}
                  :extra-paths ["dev" "notebooks"]
-                 :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}" "-Dpolyglot.engine.WarnInterpreterOnly=false" "-XX:-OmitStackTraceInFastThrow"]
+                 :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}"
+                            "-Dpolyglot.engine.WarnInterpreterOnly=false" "-XX:-OmitStackTraceInFastThrow"
+                            "-Djdk.attach.allowAttachSelf"]
                  :main-opts ["-m" "shadow.cljs.devtools.cli"]
                  :exec-fn nextjournal.clerk.dev-launcher/start}
 
-           :test {:extra-deps {nubank/matcher-combinators {:mvn/version "3.3.1"}
+           :test {:extra-deps {nubank/matcher-combinators {:mvn/version "3.5.1"}
+                               org.clojure/test.check {:mvn/version "1.1.1"}
                                lambdaisland/kaocha {:mvn/version "1.66.1034"}}
                   :extra-paths ["test"]
-                  :exec-fn kaocha.runner/exec-fn
-                  :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"http://localhost:7778/js/viewer.js\"}"]}
+                  :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}"]
+                  :exec-fn kaocha.runner/exec-fn}
 
            :demo {:extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
                                org.xerial/sqlite-jdbc {:mvn/version "3.34.0"}
                                org.clojure/data.csv {:mvn/version "1.0.0"}
                                hickory/hickory {:mvn/version "0.7.1"}
-                               sicmutils/sicmutils {:mvn/version "0.20.0"}}}
+                               sicmutils/sicmutils {:mvn/version "0.20.0"}
+                               io.github.nextjournal/clerk-slideshow {:git/sha "562f634494a1e1a9149ed78d5d39fd9486cc00ba"}}}
 
-           :build {:deps {io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}
+           :build {:deps {io.github.nextjournal/clerk {:local/root "."}
+                          io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}
                           io.github.slipset/deps-deploy {:git/sha "b4359c5d67ca002d9ed0c4b41b710d7e5a82e3bf"}
                           io.github.nextjournal/cas {:git/url "git@github.com:nextjournal/cas"
-                                                     :git/sha "5e8079b720e347b9466db9c2282ce79a125a011c"}
-                          babashka/fs {:mvn/version "0.1.2"}}
+                                                     :git/sha "5e8079b720e347b9466db9c2282ce79a125a011c"}}
                    :extra-paths ["bb" "src" "resources"] ;; for loading lookup-url in build
                    :ns-default build}}}

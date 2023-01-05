@@ -35,6 +35,13 @@
 ;; The TeX viewer is built on [KaTeX](https://katex.org/).
 (clerk/tex "f^{\\circ n} = \\underbrace{f \\circ f \\circ \\cdots \\circ f}_{n\\text{ times}}.\\,")
 
+(clerk/tex "
+\\begin{alignedat}{2}
+  \\nabla\\cdot\\vec{E} = \\frac{\\rho}{\\varepsilon_0} & \\qquad \\text{Gauss' Law} \\\\
+  \\nabla\\cdot\\vec{B} = 0 & \\qquad \\text{Gauss' Law ($\\vec{B}$ Fields)} \\\\
+  \\nabla\\times\\vec{E} = -\\frac{\\partial \\vec{B}}{\\partial t} & \\qquad \\text{Faraday's Law} \\\\
+  \\nabla\\times\\vec{B} = \\mu_0\\vec{J}+\\mu_0\\varepsilon_0\\frac{\\partial\\vec{E}}{\\partial t} & \\qquad \\text{Ampere's Law}
+\\end{alignedat}")
 
 ;; ### 📊 Plotly
 (clerk/plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]})
@@ -61,20 +68,20 @@
 (do "The\npurpose\nof\nvisualization\nis\ninsight,\nnot\npictures.")
 
 ;; ## 🚀 Extensibility
-(clerk/with-viewer '#(v/html [:div "Greetings to " [:strong %] "!"])
+(clerk/with-viewer '#(vector :div "Greetings to " [:strong %] "!")
   "James Clerk Maxwell")
 
-^{::clerk/viewer {:render-fn '#(v/html [:span "The answer is " % "."])
+^{::clerk/viewer {:render-fn '#(vector :span "The answer is " % ".")
                   :transform-fn (comp inc :nextjournal/value)}}
 (do 41)
 
 (clerk/with-viewers (clerk/add-viewers [{:pred number?
-                                         :render-fn '(fn [n] (v/html [:div.inline-block [(keyword (str "h" n)) (str "Heading " n)]]))}])
+                                         :render-fn '(fn [n] [:div.inline-block [(keyword (str "h" n)) (str "Heading " n)]])}])
   [1 2 3 4 5])
 
 ^::clerk/no-cache
-(clerk/with-viewers (clerk/add-viewers [{:pred number? :render-fn '#(v/html [:div.inline-block {:style {:width 16 :height 16}
-                                                                                                :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")}])}])
+(clerk/with-viewers (clerk/add-viewers [{:pred number? :render-fn '#(vector :div.inline-block {:style {:width 16 :height 16}
+                                                                                               :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")})}])
   (take 10 (repeatedly #(rand-int 2))))
 
 ^{::clerk/viewers
@@ -84,11 +91,11 @@
                                      (str "(?i)"
                                           "(#(?:[0-9a-f]{2}){2,4}|(#[0-9a-f]{3})|"
                                           "(rgb|hsl)a?\\((-?\\d+%?[,\\s]+){2,3}\\s*[\\d\\.]+%?\\))")) %))
-                       :render-fn '#(v/html [:div.inline-block.rounded-sm.shadow
-                                             {:style {:width 16
-                                                      :height 16
-                                                      :border "1px solid rgba(0,0,0,.2)"
-                                                      :background-color %}}])}])}
+                       :render-fn '#(vector :div.inline-block.rounded-sm.shadow
+                                            {:style {:width 16
+                                                     :height 16
+                                                     :border "1px solid rgba(0,0,0,.2)"
+                                                     :background-color %}})}])}
 ["#571845"
  "rgb(144,12,62)"
  "rgba(199,0,57,1.0)"
@@ -99,5 +106,5 @@
 ;; The clerk viewer api also includes `reagent` and `applied-science/js-interop`.
 (clerk/with-viewer '(fn [_]
                       (reagent/with-let [counter (reagent/atom 0)]
-                        (v/html [:h3.cursor-pointer {:on-click #(swap! counter inc)} "I was clicked " @counter " times."])))
+                        [:h3.cursor-pointer {:on-click #(swap! counter inc)} "I was clicked " @counter " times."]))
   nil)

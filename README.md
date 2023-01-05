@@ -4,9 +4,10 @@
 
 [![Clojars Project](https://img.shields.io/clojars/v/io.github.nextjournal/clerk.svg)](https://clojars.org/io.github.nextjournal/clerk)
 
-## Local-First Notebooks for Clojure
+## Moldable Live Programming for Clojure
 
-[🎪 View Demos](http://nextjournal.github.io/clerk-demo/) •
+[🎪 View Demos](https://github.clerk.garden/nextjournal/clerk-demo/) •
+[📖 Book of Clerk](https://book.clerk.vision)
 [👩‍🎨 Using Clerk](#-using-clerk) •
 [🪚 Development](#-developing-clerk)
 
@@ -14,7 +15,7 @@ Clerk takes a Clojure namespace and turns it into a notebook:
 
 ![Clerk Screenshot](https://cdn.nextjournal.com/data/QmeJvCtv5xqD8T7y2L3fwjnvWyCZM4DDk2iuspjqaC9QFc?filename=Screenshot+2022-09-18+at+20.09.14.png&content-type=image/png)
 
-## 🎪 [Demos](http://nextjournal.github.io/clerk-demo/)
+## 🎪 [Demos](https://github.clerk.garden/nextjournal/clerk-demo/)
 
 Clerk comes with a [demo repo](https://github.com/nextjournal/clerk-demo/) full of interesting use cases. Check them out and feel free to add your own via PRs.
 
@@ -32,7 +33,7 @@ Specifically Clerk wants to address the following problems:
 Clerk is a notebook library for Clojure that aims to address these problems by doing less, namely:
 
 * no editing environment, folks can keep using the editors they know and love
-* no new format: Clerk notebooks are regular Clojure namespaces (interspersed with markdown comments). This also means Clerk notebooks are meant to be stored in source control.
+* no new format: Clerk notebooks are either regular Clojure namespaces (interspersed with markdown comments) or regular markdown files (interspersed with Clojure code fences). This also means Clerk notebooks are meant to be stored in source control.
 * no out-of-order execution: Clerk notebooks always evaluate from top to bottom. Clerk builds a dependency graph of Clojure vars and only recomputes the needed changes to keep the feedback loop fast.
 * no external process: Clerk runs inside your Clojure process, giving Clerk access to all code on the classpath.
 
@@ -44,7 +45,7 @@ ALPHA, expect breaking changes.
 To use Clerk in your project, add the following dependency to your `deps.edn`:
 
 ```edn
-{:deps {io.github.nextjournal/clerk {:mvn/version "0.10.562"}}}
+{:deps {io.github.nextjournal/clerk {:mvn/version "0.12.707"}}}
 ```
 
 Require and start Clerk as part of your system start, e.g. in `user.clj`:
@@ -81,13 +82,12 @@ In Emacs, add the following to your config:
 ```elisp
 (defun clerk-show ()
   (interactive)
-  (save-buffer)
-  (let
+  (when-let
       ((filename
         (buffer-file-name)))
-    (when filename
-      (cider-interactive-eval
-       (concat "(nextjournal.clerk/show! \"" filename "\")")))))
+    (save-buffer)
+    (cider-interactive-eval
+     (concat "(nextjournal.clerk/show! \"" filename "\")"))))
 
 (define-key clojure-mode-map (kbd "<M-return>") 'clerk-show)
 ```

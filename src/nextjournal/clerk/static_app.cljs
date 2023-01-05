@@ -1,12 +1,11 @@
 (ns nextjournal.clerk.static-app
-  (:require [clojure.set :as set]
+  (:require ["react-dom/client" :as react-client]
+            [clojure.set :as set]
             [clojure.string :as str]
-            [nextjournal.clerk.sci-viewer :as sci-viewer]
-            [nextjournal.clerk.viewer :as v]
-            [nextjournal.devcards :as dc]
-            [nextjournal.ui.components.localstorage :as ls]
+            [nextjournal.clerk.render :as render]
+            [nextjournal.clerk.render.localstorage :as localstorage]
+            [nextjournal.clerk.sci-env :as sci-env]
             [reagent.core :as r]
-            [reagent.dom :as rdom]
             [reagent.dom.server :as dom-server]
             [reitit.frontend :as rf]
             [reitit.frontend.easy :as rfe]
@@ -27,10 +26,10 @@
         (str relative-root url)))))
 
 (defn hiccup [hiccup]
-  {:nextjournal/viewer sci-viewer/html-render
+  {:nextjournal/viewer render/html-viewer
    :nextjournal/value hiccup})
 
-(defn show [{:as view-data :git/keys [sha url] :keys [doc path url->path]}]
+(defn show [{:as view-data :git/keys [sha url] :keys [bundle? doc path url->path]}]
   (let [header [:div.mb-8.text-xs.sans-serif.text-gray-400.not-prose
                 (when (not= "" path)
                   [:<>
@@ -46,38 +45,20 @@
                     " from "
                     [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
                      {:href (str url "/blob/" sha "/" (url->path path))} (url->path path) "@" [:span.tabular-nums (subs sha 0 7)]]])]]]
-    (sci-viewer/set-state {:doc (cond-> doc
-                                  (vector? (get-in doc [:nextjournal/value :blocks]))
-                                  (update-in [:nextjournal/value :blocks] (partial into [(hiccup header)])))})
-    [sci-viewer/root]))
-
-(dc/defcard show []
-  [show {:git/url "https://github.com/nextjournal/clerk"
-         :git/sha "1026e6199f723e0f6ea92301b9678c9cf7024ba0"
-         :path "notebooks/hello.clj"
-         :paths ["notebooks/hello.clj"],
-         :bundle? true,
-         :live-js? true,
-         :doc {:nextjournal/value {:blocks [#:nextjournal{:value " # Hello, Clerk 👋\n", :viewer :markdown}
-                                            #:nextjournal{:value "(+ 39 3)", :viewer :code}
-                                            {:nextjournal/viewer :clerk/result,
-                                             :nextjournal/value #:nextjournal{:edn "{:path [], :nextjournal/value 42, :nextjournal/viewer {:render-fn #viewer-fn (fn [x] (v/html [:span.cmt-number.inspected-value (if (js/Number.isNaN x) \"NaN\" (str x))]))}}"},
-                                             :path []}],
-                                   :title "Hello, Clerk 👋"},
-               :nextjournal/viewer :clerk/notebook,
-               :scope {:namespace :nextjournal.clerk}},
-         :path->url {"notebooks/hello.clj" "notebooks/hello.clj"}
-         :url->path {"notebooks/hello.clj" "notebooks/hello.clj"}}])
+    (render/set-state! {:doc (cond-> (assoc doc :bundle? bundle?)
+                               (vector? (get-in doc [:nextjournal/value :blocks]))
+                               (update-in [:nextjournal/value :blocks] (partial into [(hiccup header)])))})
+    [render/root]))
 
 (defn index [{:as view-data :keys [paths]}]
   (when (exists? js/document)
     (set! (.-title js/document) "Clerk"))
-  (r/with-let [!state (r/atom {:dark-mode? (ls/get-item sci-viewer/local-storage-dark-mode-key)})
-               ref-fn #(when % (sci-viewer/setup-dark-mode! !state))]
+  (r/with-let [!state (r/atom {:dark-mode? (localstorage/get-item render/local-storage-dark-mode-key)})
+               ref-fn #(when % (render/setup-dark-mode! !state))]
     [:div.bg-gray-100.dark:bg-gray-900.flex.justify-center.overflow-y-auto.w-screen.h-screen.p-4.md:p-0
      {:ref ref-fn}
      [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
-      [sci-viewer/dark-mode-toggle !state]]
+      [render/dark-mode-toggle !state]]
      [:div.md:my-12.w-full.md:max-w-lg
       [:div.bg-white.dark:bg-gray-800.shadow-lg.rounded-lg.border.dark:border-gray-800.dark:text-white
        [:div.px-4.md:px-8.py-3
@@ -96,14 +77,7 @@
         {:href "https://github.com/nextjournal/clerk"}
         "Generated with Clerk."]]]]))
 
-(dc/defcard index []
-  [index {:git/url "https://github.com/nextjournal/clerk"
-          :git/sha "1026e6199f723e0f6ea92301b9678c9cf7024ba0"
-          :paths ["notebooks/hello.clj"],
-          :bundle? true,
-          :live-js? true,
-          :path->url {"notebooks/hello.clj" "notebooks/hello.clj"}
-          :url->path {"notebooks/hello.clj" "notebooks/hello.clj"}}])
+
 
 (defn get-routes [docs]
   (let [index? (contains? docs "")]
@@ -118,15 +92,28 @@
   (let [{:keys [data path-params] :as match} @!match
         {:keys [view]} data
         view-data (merge @!state data path-params {:doc (get-in @!state [:path->doc (:path path-params "")])})]
-    [:div.flex.h-screen.bg-white.dark:bg-gray-900
-     [:div.h-screen.overflow-y-auto.flex-auto
+    [:div.flex.min-h-screen.bg-white.dark:bg-gray-900
+     [:div.flex-auto.w-screen.scroll-container
       (if view
         [view view-data]
         [:pre (pr-str match)])]]))
 
+(defonce container
+  (and (exists? js/document) (js/document.getElementById "clerk-static-app")))
+
+(defonce hydrate?
+  (when container
+    (pos? (.-childElementCount container))))
+
+(defonce react-root
+  (when container
+    (if hydrate?
+      (react-client/hydrateRoot container (r/as-element [root]))
+      (react-client/createRoot container))))
+
 (defn ^:dev/after-load mount []
-  (when-let [el (and (exists? js/document) (js/document.getElementById "clerk-static-app"))]
-    (rdom/render [root] el)))
+  (when (and react-root (not hydrate?))
+    (.render react-root (r/as-element [root]))))
 
 ;; next up
 ;; - jit compiling css
@@ -137,8 +124,7 @@
     (reset! !state (assoc state
                           :path->doc url->doc
                           :url->path (set/map-invert path->url)))
-    (js/console.log :init state)
-    (sci/alter-var-root sci-viewer/doc-url (constantly (partial doc-url @!state)))
+    (sci/alter-var-root sci-env/doc-url (constantly (partial doc-url @!state)))
     (if bundle?
       (let [router (rf/router (get-routes url->doc))]
         (rfe/start! router #(reset! !match %1) {:use-fragment true}))
@@ -146,5 +132,5 @@
     (mount)))
 
 (defn ^:export ssr [state-str]
-  (init (sci-viewer/read-string state-str))
+  (init (sci-env/read-string state-str))
   (dom-server/render-to-string [root]))

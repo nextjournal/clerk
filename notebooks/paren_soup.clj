@@ -30,6 +30,15 @@
 
 {1 [2] 3 [4]}
 
+{:a "a\nb"}
+
+[1 "a\nb"]
+
+[[1 "a\nb"]]
+
+{:a 1 :b [[3 4 "aaaa\nbbb\nccc\ndd\ne"]]}
+
+{:a 1 :b [[3 4 (apply str (cons "a\n" (repeat 80 "b")))]]}
 
 #_(nextjournal.clerk/build-static-app! {:paths ["notebooks/paren_soup.clj"]})
 #_(nextjournal.clerk/show! "notebooks/paren_soup.clj")

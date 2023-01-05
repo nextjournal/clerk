@@ -1,10 +1,12 @@
 (ns nextjournal.clerk.ssr
   "Server-side-rendering using `reagent.dom.server` on GraalJS.
 
-  Currently wip, can load the js bundle but needs more conditional for
-  `js/document` or exclude libraries."
+  Status: working in GraalJS `org.graalvm.js/js {:mvn/version \"22.3.0\"}`
+
+  To try this ad the dep above to e.g. the `:sci` alias."
   (:require [clojure.java.io :as io]
             [clojure.edn :as edn]
+            [clojure.string :as str]
             [nextjournal.clerk.config :as config])
   (:import (org.graalvm.polyglot Context Source)))
 
@@ -25,15 +27,41 @@
     (assert (.canExecute fn-ref) (str "cannot execute " fn))
     (.execute fn-ref args)))
 
+(defn viewer-js-path []
+  (@config/!asset-map "/js/viewer.js")
+  ;; uncomment the following to test against a local js bundle
+  #_"build/viewer.js")
+
 (def viewer-js-source
   ;; run `bb build:js` on shell to generate
-  (.build (Source/newBuilder "js" (slurp "build/viewer.js" #_(@config/!asset-map "/js/viewer.js")) "viewer.js")))
+  (.build (Source/newBuilder "js" (str (slurp "https://gist.githubusercontent.com/Yaffle/5458286/raw/1aa5caa5cdd9938fe0fe202357db6c6b33af24f4/TextEncoderTextDecoder.js") ;; tiny utf8 only TextEncoder polyfill
+                                       "\n"
+                                       (slurp (viewer-js-path))) "viewer.mjs")))
 
-(def polyfill-js-source
-  (.build (Source/newBuilder "js" "function setTimeout(t) { };" "polyfills.js")))
+
+(def !eval-viewer-source
+  (delay (.eval context viewer-js-source)))
+
+(defn render [edn-string]
+  (force !eval-viewer-source)
+  (execute-fn context "nextjournal.clerk.static_app.ssr" edn-string))
+
 
 (comment
-  (.eval context polyfill-js-source)
-  (.eval context viewer-js-source)
-  
-  (execute-fn context "nextjournal.clerk.static_app.ssr" (slurp "build/static_app_state.edn")))
+  (do
+    (require '[nextjournal.clerk :as clerk]
+             '[nextjournal.clerk.eval :as eval]
+             '[nextjournal.clerk.builder :as builder]
+             '[nextjournal.clerk.view :as view])
+
+    (defn file->static-app-opts [file]
+      (-> (eval/eval-file file)
+          (as-> doc (assoc doc :viewer (view/doc->viewer {} doc)))
+          (as-> doc+viewer (builder/build-static-app-opts (builder/process-build-opts {:index file}) [doc+viewer]))))
+
+    (spit "build/static_app_state_hello.edn" (pr-str (file->static-app-opts "notebooks/hello.clj")))
+    (spit "build/static_app_state_rule_30.edn" (pr-str (file->static-app-opts "notebooks/rule_30.clj")))
+
+    (time (render (slurp "build/static_app_state_hello.edn")))))
+
+

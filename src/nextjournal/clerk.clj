@@ -2,12 +2,14 @@
   "Clerk's Public API."
   (:require [babashka.fs :as fs]
             [clojure.java.browse :as browse]
+            [clojure.java.io :as io]
+            [clojure.set :as set]
             [clojure.string :as str]
             [nextjournal.beholder :as beholder]
+            [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.builder :as builder]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.eval :as eval]
-            [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
@@ -17,25 +19,53 @@
 (defonce ^:private !last-file (atom nil))
 (defonce ^:private !watcher (atom nil))
 
+
 (defn show!
-  "Evaluates the Clojure source in `file` and makes Clerk show it in the browser."
-  [file]
+  "Evaluates the Clojure source in `file-or-ns` and makes Clerk show it in the browser.
+
+  Accepts ns using a quoted symbol or a `clojure.lang.Namespace`, calls `slurp` on all other arguments, e.g.:
+
+  (nextjournal.clerk/show! \"notebooks/vega.clj\")
+  (nextjournal.clerk/show! 'nextjournal.clerk.tap)
+  (nextjournal.clerk/show! (find-ns 'nextjournal.clerk.tap))
+  (nextjournal.clerk/show! \"https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj\")
+  (nextjournal.clerk/show! (java.io.StringReader. \";; # Notebook from String 👋\n(+ 41 1)\"))
+  "
+  [file-or-ns]
   (if config/*in-clerk*
     ::ignored
     (try
-      (reset! !last-file file)
-      (let [doc (parser/parse-file {:doc? true} file)
+      (let [file (cond
+                   (nil? file-or-ns)
+                   (throw (ex-info (str "`nextjournal.clerk/show!` cannot show `nil`.")
+                                   {:file-or-ns file-or-ns}))
+
+                   (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
+                   (or (some (fn [ext]
+                               (io/resource (str (str/replace (namespace-munge file-or-ns) "." "/") ext)))
+                             [".clj" ".cljc"])
+                       (throw (ex-info (str "`nextjournal.clerk/show!` could not find a resource on the classpath for: `" (pr-str file-or-ns) "`")
+                                       {:file-or-ns file-or-ns})))
+
+                   :else
+                   file-or-ns)
+            doc (try (parser/parse-file {:doc? true} file)
+                     (catch java.io.FileNotFoundException _e
+                       (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
+                                       {:file-or-ns file-or-ns}))))
+            _ (reset! !last-file file)
             {:keys [blob->result]} @webserver/!doc
             {:keys [result time-ms]} (eval/time-ms (eval/+eval-results blob->result doc))]
-        ;; TODO diff to avoid flickering
-        #_(webserver/update-doc! doc)
         (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
         (webserver/update-doc! result))
       (catch Exception e
         (webserver/show-error! e)
         (throw e)))))
 
-#_(show! @!last-file)
+#_(show! 'nextjournal.clerk.tap)
+#_(show! (do (require 'clojure.inspector) (find-ns 'clojure.inspector)))
+#_(show! "https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj")
+#_(show! (java.io.StringReader. ";; # In Memory Notebook 👋\n(+ 41 1)"))
 
 (defn recompute!
   "Recomputes the currently visible doc, without parsing it."
@@ -124,7 +154,7 @@
   "Deprecated, please use `add-viewers!` instead."
   [viewers]
   (binding [*out* *err*]
-    (prn "`set-viewers!` has been deprecated, please use `add-viewers!` or `reset-viewers!` instead."))
+    (println "`set-viewers!` has been deprecated, please use `add-viewers!` or `reset-viewers!` instead."))
   (add-viewers! viewers))
 
 
@@ -192,6 +222,10 @@
 (defn vl
   "Displays `x` with the vega embed viewer, supporting both vega-lite and vega.
 
+  `x` should be the standard vega view description map, accepting the following addtional keys:
+  * `:embed/callback` a function to be called on the vega-embed object after creation.
+  * `:embed/opts` a map of vega-embed options (see https://github.com/vega/vega-embed#options)
+
   Supports an optional first `viewer-opts` map arg with the following optional keys:
 
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
@@ -256,19 +290,26 @@
 
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
-  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn"
+  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
   ([x] (tex {} x))
   ([viewer-opts x] (with-viewer v/katex-viewer viewer-opts x)))
 
 (defn hide-result
-  "Deprecated, please put ^{:nextjournal.clerk/visibility {:result :hide}} metadata on the form instead."
+  "Deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead."
   {:deprecated "0.10"}
-  ([x] (hide-result {} x))
-  ([viewer-opts x]
-   (binding [*out* *err*]
-     (prn "`hide-result` has been deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead."))
-   (with-viewer v/hide-result-viewer viewer-opts x)))
+  ([x] (v/print-hide-result-deprecation-warning) (with-viewer v/hide-result-viewer {} x))
+  ([viewer-opts x] (v/print-hide-result-deprecation-warning) (with-viewer v/hide-result-viewer viewer-opts x)))
 
+(defn image
+  "Creates a `java.awt.image.BufferedImage` from `url`, which can be a `java.net.URL` or a string, and
+  displays it using the `buffered-image-viewer`."
+  ([url] (image {} url))
+  ([viewer-opts url] (v/image viewer-opts url)))
+
+(defn caption
+  "Displays `content` with `text` as caption below it."
+  [text content]
+  (v/caption text content))
 
 (defn code
   "Displays `x` as syntax highlighted Clojure code.
@@ -279,7 +320,7 @@
 
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
-  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn"
+  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
   ([code-string-or-form] (code {} code-string-or-form))
   ([viewer-opts code-string-or-form] (with-viewer v/code-viewer viewer-opts code-string-or-form)))
 
@@ -288,12 +329,16 @@
   [code-string]
   (v/eval-cljs-str code-string))
 
+(defn eval-cljs
+  "Evaluates the given ClojureScript forms in the browser."
+  [& forms]
+  (apply v/eval-cljs forms))
+
 (def notebook
   "Experimental notebook viewer. You probably should not use this."
   (partial with-viewer (:name v/notebook-viewer)))
 
-(defn doc-url [path]
-  (v/->viewer-eval (list 'v/doc-url path)))
+(defn doc-url [path] (v/doc-url path))
 
 (defmacro example
   "Evaluates the expressions in `body` showing code next to results in Clerk.
@@ -319,6 +364,13 @@
     (beholder/stop watcher)
     (reset! !watcher nil)))
 
+(defn ^:private normalize-opts [opts]
+  (set/rename-keys opts #_(into {} (map (juxt identity #(keyword (str (name %) "?")))) [:bundle :browse :dashboard])
+                   {:bundle :bundle?, :browse :browse?, :dashboard :dashboard? :compile-css :compile-css? :ssr :ssr?}))
+
+(defn ^:private started-via-bb-cli? [opts]
+  (contains? (meta opts) :org.babashka/cli))
+
 (defn serve!
   "Main entrypoint to Clerk taking an configurations map.
 
@@ -330,19 +382,36 @@
   * a `:show-filter-fn` to restrict when to re-evaluate or show a notebook as a result of file system event. Useful for e.g. pinning a notebook. Will be called with the string path of the changed file.
 
   Can be called multiple times and Clerk will happily serve you according to the latest config."
-  [{:as config
-    :keys [browse? watch-paths port show-filter-fn]
-    :or {port 7777}}]
-  (webserver/serve! {:port port})
-  (reset! !show-filter-fn show-filter-fn)
-  (halt-watcher!)
-  (when (seq watch-paths)
-    (println "Starting new watcher for paths" (pr-str watch-paths))
-    (reset! !watcher {:paths watch-paths
-                      :watcher (apply beholder/watch #(file-event %) watch-paths)}))
-  (when browse?
-    (browse/browse-url (str "http://localhost:" port)))
+  {:org.babashka/cli {:spec {:watch-paths {:desc "Paths on which to watch for changes and show a changed document."
+                                           :coerce []}
+                             :port {:desc "Port number for the webserver to listen on, defaults to 7777."
+                                    :coerce :number}
+                             :show-filter-fn {:desc "Symbol resolving to a fn to restrict when to show a notebook as a result of file system event."
+                                              :coerce :symbol}
+                             :browse {:desc "Opens the browser on boot when set."
+                                      :coerce :boolean}}
+                      :order [:watch-paths :port :show-filter-fn :browse]}}
+  [config]
+  (if (:help config)
+    (if-let [format-opts (and (started-via-bb-cli? config) (requiring-resolve 'babashka.cli/format-opts))]
+      (println "Start the Clerk webserver with an optional a file watcher.\n\nOptions:"
+               (str "\n" (format-opts (-> #'serve! meta :org.babashka/cli))))
+      (println (-> #'serve! meta :doc)))
+    (let [{:as _normalized-config
+           :keys [browse? watch-paths port show-filter-fn]
+           :or {port 7777}} (normalize-opts config)]
+      (webserver/serve! {:port port})
+      (reset! !show-filter-fn show-filter-fn)
+      (halt-watcher!)
+      (when (seq watch-paths)
+        (println "Starting new watcher for paths" (pr-str watch-paths))
+        (reset! !watcher {:paths watch-paths
+                          :watcher (apply beholder/watch #(file-event %) watch-paths)}))
+      (when browse?
+        (browse/browse-url (str "http://localhost:" port)))))
   config)
+
+#_(serve! (with-meta {:help true} {:org.babashka/cli {}}))
 
 (defn halt!
   "Stops the Clerk webserver and file watcher."
@@ -357,25 +426,90 @@
 
 (def valuehash analyzer/valuehash)
 
-(def build-static-app! builder/build-static-app!)
+(defn build!
+  "Creates a static html build from a collection of notebooks.
+
+  Options:
+  - `:paths`     - a vector of relative paths to notebooks to include in the build
+  - `:paths-fn`  - a symbol resolving to a 0-arity function returning computed paths
+  - `:index`     - a string allowing to override the name of the index file, will be added to `:paths`
+
+  Passing at least one of the above is required. When both `:paths`
+  and `:paths-fn` are given, `:paths` takes precendence.
+
+  - `:bundle`      - if true results in a single self-contained html file including inlined images
+  - `:compile-css` - if true compiles css file containing only the used classes
+  - `:ssr`         - if true runs react server-side-rendering and includes the generated markup in the html
+  - `:browse`      - if true will open browser with the built file on success
+  - `:dashboard`   - if true will start a server and show a rich build report in the browser (use with `:bundle` to open browser)
+  - `:out-path`  - a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
+  - `:git/sha`, `:git/url` - when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
+  "
+  {:org.babashka/cli {:spec {:paths {:desc "Paths to notebooks toc include in the build, supports glob patterns."
+                                     :coerce []}
+                             :paths-fn {:desc "Symbol resolving to a 0-arity function returning computed paths."
+                                        :coerce :symbol}
+                             :index {:desc "Override the name of the index file (default `index.clj|md`), will be added to paths."}
+                             :bundle {:desc "Flag to build a self-contained html file inlcuding inlined images"}
+                             :browse {:desc "Opens the browser on boot when set."}
+                             :dashboard {:desc "Flag to serve a dashboard with the build progress."}
+                             :out-path {:desc "Path to an build output folder, defaults to \"public/build\"."}
+                             :ssr {:desc "Flag to run server-side-rendering to include pre-rendered markup in html output."}
+                             :compile-css {:desc "Flag to run tailwindcss to compile a minimal stylesheet containing only the used classes."}
+                             :git/sha {:desc "Git sha to use for the backlink."}
+                             :git/url {:desc "Git url to use for the backlink."}}
+                      :order [:paths :paths-fn :index :browse :dashbaord :compile-css :ssr :bundle :out-path :git/sha :git/url]}}
+  [build-opts]
+  (if (:help build-opts)
+    (if-let [format-opts (and (started-via-bb-cli? build-opts) (requiring-resolve 'babashka.cli/format-opts))]
+      (println "Start the Clerk webserver with an optional a file watcher.\n\nOptions:"
+               (str "\n" (format-opts (-> #'build! meta :org.babashka/cli))))
+      (println (-> #'build! meta :doc)))
+    (let [{:as build-opts-normalized :keys [dashboard?]} (normalize-opts build-opts)]
+      (when (and dashboard? (not @webserver/!server))
+        (serve! build-opts-normalized))
+      (builder/build-static-app! build-opts-normalized))))
+
+#_(build! (with-meta {:help true} {:org.babashka/cli {}}))
+
+(defn build-static-app! {:deprecated "0.11"} [build-opts]
+  (binding [*out* *err*] (println "`build-static-app!` has been deprecated, please use `build!` instead."))
+  (build! build-opts))
 
 (defn clear-cache!
-  "Clears the in-memory and file-system caches."
-  []
-  (swap! webserver/!doc dissoc :blob->result)
-  (if (fs/exists? config/cache-dir)
-    (do
-      (fs/delete-tree config/cache-dir)
-      (prn :cache-dir/deleted config/cache-dir))
-    (prn :cache-dir/does-not-exist config/cache-dir)))
+  "Clears the in-memory and file-system caches when called with no arguments.
+
+  Clears the cache for a single result identitfied by `sym-or-form` argument which can be:
+  * a symbol representing the var name (qualified or not)
+  * the form of an anonymous expression"
+  ([]
+   (swap! webserver/!doc dissoc :blob->result)
+   (if (fs/exists? config/cache-dir)
+     (do (fs/delete-tree config/cache-dir)
+         (prn :cache-dir/deleted config/cache-dir))
+     (prn :cache-dir/does-not-exist config/cache-dir)))
+  ([sym-or-form]
+   (if-let [{:as block :keys [id result]} (first (analyzer/find-blocks @webserver/!doc sym-or-form))]
+     (let [{:nextjournal/keys [blob-id]} result
+           cache-file (fs/file config/cache-dir (str "@" blob-id))
+           cached-in-memory? (contains? (:blob->result @webserver/!doc) blob-id)
+           cached-on-fs? (fs/exists? cache-file)]
+       (if-not (or cached-in-memory? cached-on-fs?)
+         (prn :cache/not-cached {:id id})
+         (do (swap! webserver/!doc update :blob->result dissoc blob-id)
+             (fs/delete-if-exists cache-file)
+             (prn :cache/removed {:id id :cached-in-memory? cached-in-memory? :cached-on-fs? cached-on-fs?}))))
+     (prn :cache/no-block-found {:sym-or-form sym-or-form}))))
 
 #_(clear-cache!)
+#_(clear-cache! 'foo)
+#_(clear-cache! '(rand-int 1000))
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
 (defmacro with-cache
   "An expression evaluated with Clerk's caching."
   [form]
-  `(let [result# (-> ~(pr-str form) eval/eval-string :blob->result first val)]
+  `(let [result# (-> ~(v/->edn form) eval/eval-string :blob->result first val :nextjournal/value)]
      result#))
 
 #_(with-cache (do (Thread/sleep 4200) 42))
@@ -383,7 +517,7 @@
 (defmacro defcached
   "Like `clojure.core/def` but with Clerk's caching of the value."
   [name expr]
-  `(let [result# (-> ~(pr-str expr) eval/eval-string :blob->result first val)]
+  `(let [result# (-> ~(v/->edn expr) eval/eval-string :blob->result first val :nextjournal/value)]
      (def ~name result#)))
 
 #_(defcached my-expansive-thing
@@ -408,7 +542,8 @@
 
   (show! "notebooks/test.clj")
 
+  (serve! {:port 7777 :watch-paths ["notebooks"]})
+
   ;; Clear cache
   (clear-cache!)
-
   )

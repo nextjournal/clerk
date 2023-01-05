@@ -1,26 +1,46 @@
 (ns nextjournal.clerk.webserver
-  (:require [clojure.edn :as edn]
+  (:require [babashka.fs :as fs]
+            [clojure.edn :as edn]
             [clojure.pprint :as pprint]
+            [clojure.set :as set]
             [clojure.string :as str]
-            [lambdaisland.uri :as uri]
+            [editscript.core :as editscript]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
-            [nextjournal.markdown :as md]
             [org.httpkit.server :as httpkit]))
 
-(def help-doc
-  {:blocks [{:type :markdown :doc (md/parse "Use `nextjournal.clerk/show!` to make your notebook appear…")}]})
+(defn help-hiccup []
+  [:p "Call " [:span.code "nextjournal.clerk/show!"] " from your REPL"
+   (when-let [watch-paths (seq (:paths @@(resolve 'nextjournal.clerk/!watcher)))]
+     (into [:<> " or save a file in "]
+           (interpose " or " (map #(vector :span.code %) watch-paths))))
+   " to make your notebook appear…"])
+
+(defn help-doc []
+  {:blocks [{:type :code
+             :visibility {:code :hide, :result :show}
+             :result {:nextjournal/value (v/html (help-hiccup))}}]})
 
 (defonce !clients (atom #{}))
-(defonce !doc (atom help-doc))
+(defonce !doc (atom nil))
 (defonce !error (atom nil))
+(defonce !last-sender-ch (atom nil))
 
-#_(v/present (view/doc->viewer @!doc))
-#_(reset! !doc help-doc)
+#_(view/doc->viewer @!doc)
+#_(reset! !doc nil)
+
+(def ^:dynamic *sender-ch* nil)
+
+(defn send! [ch msg]
+  (httpkit/send! ch (v/->edn msg)))
 
 (defn broadcast! [msg]
   (doseq [ch @!clients]
-    (httpkit/send! ch (v/->edn msg))))
+    (when (not= @!last-sender-ch *sender-ch*)
+      (send! ch {:type :patch-state! :patch []
+                 :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-ch* ch)))]}))
+    (httpkit/send! ch (v/->edn msg)))
+  (reset! !last-sender-ch *sender-ch*))
 
 #_(broadcast! [{:random (rand-int 10000) :range (range 100)}])
 
@@ -31,15 +51,25 @@
 
 #_(update-if {:n "42"} :n #(Integer/parseInt %))
 
+(defn ^:private percent-decode [s]
+  (java.net.URLDecoder/decode s java.nio.charset.StandardCharsets/UTF_8))
+
+(defn ^:private decode-param-pair [param]
+  (let [[k v] (str/split param #"=")]
+    [(keyword (percent-decode k)) (if v (percent-decode (str/replace v #"\+" " ")) "")]))
+
+(defn ^:private query-string->map [s]
+  (if (str/blank? s) {} (into {} (map decode-param-pair) (str/split s #"&"))))
+
 (defn get-fetch-opts [query-string]
   (-> query-string
-      uri/query-string->map
+      query-string->map
       (update-if :n #(Integer/parseInt %))
       (update-if :offset #(Integer/parseInt %))
       (update-if :path #(edn/read-string %))))
 
-#_(get-pagination-opts "")
-#_(get-pagination-opts "foo=bar&n=42&start=20")
+#_(get-fetch-opts "")
+#_(get-fetch-opts "foo=bar&n=42&start=20")
 
 (defn serve-blob [{:as doc :keys [blob->result ns]} {:keys [blob-id fetch-opts]}]
   (when-not ns
@@ -60,48 +90,102 @@
   {:blob-id (str/replace uri "/_blob/" "")
    :fetch-opts (get-fetch-opts query-string)})
 
+(defn serve-file [path {:as req :keys [uri]}]
+  (let [file-or-dir (str path uri)
+        file (when (fs/exists? file-or-dir)
+               (cond-> file-or-dir
+                 (fs/directory? file-or-dir) (fs/file "index.html")))
+        extension (fs/extension file)]
+    (if (fs/exists? file)
+      {:status 200
+       :headers (cond-> {"Content-Type" ({"css" "text/css"
+                                          "html" "text/html"
+                                          "png" "image/png"
+                                          "jpg" "image/jpeg"
+                                          "js" "application/javascript"} extension "text/html")}
+                  (and (= "js" extension) (fs/exists? (str file ".map"))) (assoc "SourceMap" (str uri ".map")))
+       :body (fs/read-all-bytes file)}
+      {:status 404})))
+
+#_(serve-file "public" {:uri "/js/viewer.js"})
+
+(defn show-error! [e]
+  (broadcast! {:type :set-state! :error (reset! !error (v/present e))}))
+
+(defn read-msg [s]
+  (binding [*data-readers* v/data-readers]
+    (try (read-string s)
+         (catch Exception ex
+           (throw (doto (ex-info (str "Clerk encountered the following error attempting to read an incoming message: "
+                                      (ex-message ex))
+                                 {:message s} ex) show-error!))))))
+
+#_(pr-str (read-msg "#viewer-eval (resolve 'clojure.core/inc)"))
+
+(def ws-handlers
+  {:on-open (fn [ch] (swap! !clients conj ch))
+   :on-close (fn [ch _reason] (swap! !clients disj ch))
+   :on-receive (fn [sender-ch edn-string]
+                 (binding [*ns* (or (:ns @!doc)
+                                    (create-ns 'user))]
+                   (let [{:as msg :keys [type]} (read-msg edn-string)]
+                     (case type
+                       :eval (do (send! sender-ch (merge {:type :eval-reply :eval-id (:eval-id msg)}
+                                                         (try {:reply (eval (:form msg))}
+                                                              (catch Exception e
+                                                                {:error (Throwable->map e)}))))
+                                 (eval '(nextjournal.clerk/recompute!)))
+                       :swap! (when-let [var (resolve (:var-name msg))]
+                                (try
+                                  (binding [*sender-ch* sender-ch]
+                                    (apply swap! @var (eval (:args msg))))
+                                  (catch Exception ex
+                                    (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) show-error!)))))))))})
+
+#_(do
+    (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
+    (eval '(nextjournal.clerk/recompute!)))
+
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
-    (httpkit/as-channel req {:on-open (fn [ch] (swap! !clients conj ch))
-                             :on-close (fn [ch _reason] (swap! !clients disj ch))
-                             :on-receive (fn [_ch msg] (binding [*ns* (or (:ns @!doc)
-                                                                          (create-ns 'user))]
-                                                         (eval (read-string msg))
-                                                         (eval '(nextjournal.clerk/recompute!))))})
+    (httpkit/as-channel req ws-handlers)
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
+        ("build" "js" "css") (serve-file "public" req)
         "_ws" {:status 200 :body "upgrading..."}
-        "js" {:status 200 :body (slurp (str "public" uri))}
-        {:status  200
+        {:status 200
          :headers {"Content-Type" "text/html"}
-         :body    (view/doc->html @!doc @!error)})
+         :body (view/doc->html {:doc (or @!doc (help-doc)) :error @!error})})
       (catch Throwable e
         {:status  500
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
 
 #_(nextjournal.clerk/serve! {})
 
-(defn extract-viewer-evals [{:as _doc :keys [blocks]}]
-  (into #{}
-        (comp (map #(-> % :result :nextjournal/value (v/get-safe :nextjournal/value)))
-              (filter (every-pred v/viewer-eval? :remount?)))
-        blocks))
+(defn sync-atom-changed [key atom old-state new-state]
+  (eval '(nextjournal.clerk/recompute!)))
 
-#_(extract-viewer-evals @!doc)
+(defn present+reset! [doc]
+  (let [presented (view/doc->viewer doc)
+        sync-vars-old (v/extract-sync-atom-vars @!doc)
+        sync-vars (v/extract-sync-atom-vars doc)]
+    (doseq [sync-var (set/difference sync-vars sync-vars-old)]
+      (add-watch @sync-var (symbol sync-var) sync-atom-changed))
+    (doseq [sync-var (set/difference sync-vars-old sync-vars)]
+      (remove-watch @sync-var (symbol sync-var)))
+    (reset! !doc (with-meta doc presented))
+    presented))
 
 (defn update-doc! [doc]
   (reset! !error nil)
-  (broadcast! {:remount? (not= (extract-viewer-evals @!doc)
-                               (extract-viewer-evals doc))
-               :doc (view/doc->viewer (reset! !doc doc))}))
-
+  (broadcast! (if (= (:ns @!doc) (:ns doc))
+                (let [old-viewer (meta @!doc)
+                      patch (editscript/diff old-viewer (present+reset! doc))]
+                  {:type :patch-state! :patch (editscript/get-edits patch)})
+                {:type :set-state! :doc (present+reset! doc)})))
 
 #_(update-doc! help-doc)
-
-(defn show-error! [e]
-  (broadcast! {:error (reset! !error (v/present e))}))
-
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
 
@@ -117,12 +201,14 @@
     (println (str "Webserver running on " port ", stopped."))
     (reset! !server nil)))
 
+#_(halt!)
+
 (defn serve! [{:keys [port] :or {port 7777}}]
   (halt!)
   (try
     (reset! !server {:port port :stop-fn (httpkit/run-server #'app {:port port})})
-    (println (str "Clerk webserver started on " port "..."))
+    (println (str "Clerk webserver started on http://localhost:" port " ..."))
     (catch java.net.BindException _e
       (println "Port " port " not available, server not started!"))))
 
-#_(start! {:port 7777})
+#_(serve! {:port 7777})

@@ -4,20 +4,23 @@
    [clojure.string :as str]
    [clojure.tools.build.api :as b]
    [nextjournal.cas :as cas]
-   [nextjournal.clerk.config :refer [lookup-url]]
+   [nextjournal.clerk.render.hashing]
    [shared]))
 
 (def lib 'io.github.nextjournal/clerk)
 (def class-dir "target/classes")
-(def basis (b/create-basis {:project "deps.edn"}))
+
+(def basis (-> (b/create-basis {:project "deps.edn"})
+               (update :libs dissoc 'io.github.nextjournal/dejavu)))
+
 (def version (shared/version))
 (def jar-file (format "target/%s-%s.jar" (name lib) version))
 
-(prn version)
-
-(defn package-asset-map [_]
-  (let [asset-map (slurp lookup-url)]
-    (spit "target/classes/clerk-asset-map.edn" asset-map)))
+(defn package-clerk-asset-map [{:as opts :keys [target-dir]}]
+  (when-not target-dir
+    (throw (ex-info "target dir must be set" {:opts opts})))
+  (let [asset-map (slurp (nextjournal.clerk.render.hashing/get-lookup-url))]
+    (spit (str target-dir java.io.File/separator "clerk-asset-map.edn") asset-map)))
 
 (defn jar [_]
   (b/delete {:path "target"})
@@ -34,7 +37,7 @@
   (b/copy-dir {:src-dirs ["src" "resources"]
                :target-dir class-dir
                :replace {}})
-  (package-asset-map {})
+  (package-clerk-asset-map {:target-dir class-dir})
   (b/jar {:class-dir class-dir
           :jar-file jar-file}))
 
