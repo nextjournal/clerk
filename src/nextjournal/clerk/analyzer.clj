@@ -321,7 +321,7 @@
                                  (-> (reduce (partial analyze-deps analyzed) state deps)
                                      (make-deps-inherit-no-cache analyzed))
                                  state)))))
-                       (cond-> state
+                       (cond-> (update state :->hash (fnil identity {}))
                          doc? (merge doc))
                        (-> doc :blocks count range))
          doc? (-> parser/add-block-visibility
