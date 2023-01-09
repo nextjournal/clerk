@@ -289,7 +289,7 @@
    (binding [*ns* *ns*]
      (let [!id->count (atom {})]
        (cond-> (reduce (fn [{:as state notebook-ns :ns} i]
-                         (let [{:as block :keys [type text loc]} (get-in state [:blocks i])]
+                         (let [{:as block :keys [type text loc]} (get-in doc [:blocks i])]
                            (if (not= type :code)
                              state
                              (let [form (try (read-string text)
