@@ -48,13 +48,24 @@
 
 #_(sha1-base58 "hello")
 
+(defn ^:private ensure-symbol [class-or-sym]
+  (cond
+    (symbol? class-or-sym) class-or-sym
+    (class? class-or-sym) (symbol (pr-str class-or-sym))
+    :else (throw (ex-info "not a symbol or a class" {:class-or-sym class-or-sym} (IllegalArgumentException.)))))
+
 (defn class-deps [analyzed]
-  (set/union (into #{} (comp (keep :class)
-                             (filter class?)
-                             (map (comp symbol pr-str))) (ana-ast/nodes analyzed))
-             (into #{} (comp (filter (comp #{:const} :op))
-                             (filter (comp #{:class} :type))
-                             (keep :form)) (ana-ast/nodes analyzed))))
+  (set/union (into #{}
+                   (comp (keep :class)
+                         (filter class?)
+                         (map ensure-symbol))
+                   (ana-ast/nodes analyzed))
+             (into #{}
+                   (comp (filter (comp #{:const} :op))
+                         (filter (comp #{:class} :type))
+                         (keep :form)
+                         (map ensure-symbol))
+                   (ana-ast/nodes analyzed))))
 
 #_(map type (:deps (analyze '(+ 1 2))))
 
@@ -159,6 +170,10 @@
       (seq deref-deps) (assoc :deref-deps deref-deps)
       (seq vars) (assoc :vars vars)
       var (assoc :var var))))
+
+#_(into #{} (map type) (:deps (analyze
+                               '(defprotocol MyProtocol
+                                  (-check [_])))))
 
 #_(:vars (analyze '(do (def a 41) (def b (inc a)))))
 #_(:vars (analyze '(defrecord Node [v l r])))
@@ -335,7 +350,8 @@
 
 (defn analyze-file
   ([file] (analyze-file {:graph (dep/graph)} file))
-  ([state file] (analyze-doc state (parser/parse-file {} file))))
+  ([state file] (-> (analyze-doc state (parser/parse-file {} file))
+                    (update :analyzed-file-set (fnil conj #{}) file))))
 
 #_(:graph (analyze-file {:graph (dep/graph)} "notebooks/elements.clj"))
 #_(analyze-file {:graph (dep/graph)} "notebooks/rule_30.clj")
@@ -399,7 +415,7 @@
             (symbol->jar sym))))
 
 #_(find-location `inc)
-#_(find-location #'inc)
+#_(find-location '@nextjournal.clerk.webserver/!doc)
 #_(find-location `dep/depend)
 #_(find-location 'java.util.UUID)
 #_(find-location 'java.util.UUID/randomUUID)
@@ -419,15 +435,30 @@
   Recursively decends into dependency vars as well as given they can be found in the classpath.
   "
   [doc]
-  (let [{:as graph :keys [->analysis-info]} (analyze-doc doc)]
-    (reduce (fn [g [source symbols]]
-              (if (or (nil? source)
-                      (str/ends-with? source ".jar"))
-                (update g :->analysis-info merge (into {} (map (juxt identity (constantly (if source (hash-jar source) {})))) symbols))
-                (analyze-file g source)))
-            graph
-            (group-by find-location (unhashed-deps ->analysis-info)))))
+  (loop [{:as state :keys [->analysis-info analyzed-file-set counter jar-info]} (assoc (analyze-doc doc) :counter 0)]
+    (let [loc->syms (group-by find-location (unhashed-deps ->analysis-info))
+          to-visit (set/difference (set (keys (dissoc loc->syms nil)))
+                                   analyzed-file-set)]
+      #_(prn :build-graph counter :to-visit/jar (update-vals (group-by #(str/ends-with? % ".jar") to-visit) count) :to-visit to-visit)
+      (if (and (seq to-visit) (< counter 10))
+        (recur (-> (reduce (fn [g [source symbols]]
+                             #_(prn :build-graph {:source source :symbols symbols})
+                             (if (or (nil? source)
+                                     (str/ends-with? source ".jar"))
+                               (let [info (if source (hash-jar source) {})]
+                                 (update g :->analysis-info merge (into {} (map (juxt identity (constantly info))) symbols)))
+                               (do (prn :file source)
+                                   (time (analyze-file g source)))))
+                           state
+                           loc->syms)
+                   (update :counter inc)))
+        (dissoc state :counter)))))
 
+#_(do (time (build-graph (parser/parse-clojure-string (slurp "notebooks/how_clerk_works.clj")))) :done)
+#_(do (time (build-graph (parser/parse-clojure-string (slurp "notebooks/viewer_api.clj")))) :done)
+
+#_(analyze-file "notebooks/how_clerk_works.clj")
+#_(nextjournal.clerk/show! "notebooks/how_clerk_works.clj")
 
 #_(build-graph (parser/parse-clojure-string (slurp "notebooks/hello.clj")))
 #_(keys (:->analysis-info (build-graph "notebooks/elements.clj")))
@@ -440,12 +471,14 @@
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/analyzer.clj"))  #'nextjournal.clerk.analyzer/long-thing)
 
 (defn hash-codeblock [->hash {:as codeblock :keys [hash form id deps vars]}]
-  (let [->hash' (if (and (not (ifn? ->hash)) (seq deps))
-                  (binding [*out* *err*]
-                    (println "->hash must be `ifn?`" {:->hash ->hash :codeblock codeblock})
-                    identity)
-                  ->hash)
-        hashed-deps (into #{} (map ->hash') deps)]
+  (assert (or (empty? deps) (ifn? ->hash)) "hash must be `ifn?`")
+  (let [hashed-deps (into #{} (map ->hash) deps)]
+    (when (contains? hashed-deps nil)
+      (binding [*out* *err*]
+        (prn :hash-codeblock/unhashed-warning (remove ->hash deps)))
+      #_(throw (ex-info "hash-codeblock must have hash for every dep"
+                        {:unhashed-deps (remove ->hash deps) :deps deps :->hash ->hash :codeblock codeblock}
+                        #_(IllegalArgumentException.))))
     (sha1-base58 (binding [*print-length* nil]
                    (pr-str (set/union (conj hashed-deps (if form form hash))
                                       vars))))))
