@@ -461,14 +461,15 @@
   [doc]
   (loop [{:as state :keys [->analysis-info analyzed-file-set counter]} (-> (cond-> doc
                                                                              (not (:graph doc)) analyze-doc)
-                                                                           (assoc :analyzed-file-set #{(:file doc)})
+                                                                           (assoc :analyzed-file-set (cond-> #{} (:file doc) (conj (:file doc))))
                                                                            (assoc :counter 0))]
     (let [loc->syms (apply dissoc
                            (group-by find-location (unhashed-deps ->analysis-info))
-                           (conj analyzed-file-set nil))]
-      #_(prn :build-graph counter :analyzed-file-set analyzed-file-set :to-visit (remove #(str/ends-with? % ".jar") (keys loc->syms)))
+                           analyzed-file-set)]
+      #_(prn :build-graph counter :analyzed-file-set analyzed-file-set)
       (if (and (seq loc->syms) (< counter 10))
         (recur (-> (reduce (fn [g [source symbols]]
+                             (prn :source source :symbols symbols)
                              (if (or (nil? source)
                                      (str/ends-with? source ".jar"))
                                (update g :->analysis-info merge (into {} (map (juxt identity (constantly (if source (hash-jar source) {})))) symbols))
@@ -508,7 +509,9 @@
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/analyzer.clj"))  #'nextjournal.clerk.analyzer/long-thing)
 
 (defn hash-codeblock [->hash {:as codeblock :keys [hash form id deps vars]}]
-  (let [hashed-deps (into #{} (map (or ->hash)) deps)]
+  (when (and (seq deps) (not (ifn? ->hash)))
+    (throw (ex-info "`->hash` must be `ifn?`" {:->hash ->hash :codeblock codeblock})))
+  (let [hashed-deps (into #{} (map ->hash) deps)]
     (when (contains? hashed-deps nil)
       (binding [*out* *err*]
         (prn :hash-codeblock/unhashed-warning (remove ->hash deps)))
@@ -522,6 +525,7 @@
 (defn hash
   ([{:as analyzed-doc :keys [graph]}] (hash analyzed-doc (dep/topo-sort graph)))
   ([{:as analyzed-doc :keys [->analysis-info graph]} deps]
+   (prn :deps deps)
    (update analyzed-doc
            :->hash
            (partial reduce (fn [->hash k]

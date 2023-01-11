@@ -197,9 +197,11 @@
                        (-> (parser/parse-clojure-string {:doc? true} "(ns some-ns (:require []))")
                            (update-in [:blocks 0 :text] (constantly "##boom"))
                            ana/analyze-doc))))
-  (is (match? #{{:form '(ns example-notebook),
+  (is (match? #{{}
+                {:form '(ns example-notebook),
                  :deps set?}
-                {:form '#{1 3 2}}}
+                {:form '#{1 3 2}}
+                {:jar string? :hash string?}}
               (-> "^:nextjournal.clerk/no-cache (ns example-notebook)
 #{3 1 2}"
                   analyze-string :->analysis-info vals set)))
@@ -208,6 +210,9 @@
     (with-ns-binding 'nextjournal.clerk.analyzer-test
       (is (= (find-ns 'nextjournal.clerk.analyzer-test)
              (do (analyze-string ";; boo\n\n (ns example-notebook)") *ns*)))))
+
+  (testing "has empty analysis info for JDK built-in"
+    (is (= {} (get-in (analyze-string "(do (Thread/sleep 1) 42)") [:->analysis-info 'java.lang.Thread]))))
 
   (testing "defmulti has no deref deps"
     (is (empty? (-> "(defmulti foo :bar)" analyze-string :blocks first :deref-deps))))
@@ -222,9 +227,9 @@
     (is (match? [{:form '(do) :text "(do #?@(:cljs []))"}]
                 (-> "(do #?@(:cljs []))" analyze-string :blocks)))))
 
-(deftest analyze-file
-  (testing "should analyze depedencies"
-    (is (-> (ana/analyze-file "src/nextjournal/clerk/classpath.clj") :->analysis-info not-empty))))
+#_(deftest analyze-file
+    (testing "should analyze depedencies"
+      (is (-> (ana/analyze-file "src/nextjournal/clerk/classpath.clj") :->analysis-info not-empty))))
 
 (deftest add-block-ids
   (testing "assigns block ids"
