@@ -71,8 +71,8 @@
                   (:deps (ana/analyze '{:k-1 foo :k-2 #{bar}}))))))
 
   (testing "defprotocol :deps should all be symbols"
-    (every? symbol? (:deps (ana/analyze '(defprotocol MyProtocol
-                                           (-check [_])))))))
+    (is (every? symbol? (:deps (ana/analyze '(defprotocol MyProtocol
+                                               (-check [_]))))))))
 
 (deftest read-string-tests
   (testing "read-string should read regex's such that value equalility is preserved"
