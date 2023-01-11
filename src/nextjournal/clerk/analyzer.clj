@@ -245,6 +245,7 @@
            (analyze-circular-dependency state vars form dep (ex-data e))
            (throw e)))))
 
+
 (defn make-deps-inherit-no-cache [state {:as analyzed :keys [no-cache? vars deps ns-effect?]}]
   (if no-cache?
     state
@@ -332,11 +333,11 @@
                                            doc? (assoc-in [:blocks i :text-without-meta]
                                                           (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))
                                            (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))]
-                               (if (seq deps)
+                               (if (and (:graph state) (seq deps))
                                  (-> (reduce (partial analyze-deps analyzed) state deps)
                                      (make-deps-inherit-no-cache analyzed))
                                  state)))))
-                       (cond-> (update state :->hash (fnil identity {}))
+                       (cond-> state
                          doc? (merge doc))
                        (-> doc :blocks count range))
          doc? (-> parser/add-block-visibility
@@ -345,13 +346,25 @@
                   parser/add-css-class
                   filter-code-blocks-without-form))))))
 
+
 #_(let [parsed (nextjournal.clerk.parser/parse-clojure-string "clojure.core/dec")]
     (build-graph (analyze-doc parsed)))
 
+(defonce !file->analysis-cache
+  (atom {}))
+
+#_(reset! !file->analysis-cache {})
+
 (defn analyze-file
-  ([file] (analyze-file {:graph (dep/graph)} file))
-  ([state file] (-> (analyze-doc state (parser/parse-file {} file))
-                    (update :analyzed-file-set (fnil conj #{}) file))))
+  ([file]
+   (let [current-file-sha (sha1-base58 (fs/read-all-bytes file))]
+            (or (when-let [{:as cached-analysis :keys [file-sha]} (@!file->analysis-cache file)]
+                  (when (= file-sha current-file-sha)
+                    cached-analysis))
+                (swap! !file->analysis-cache assoc file (-> (analyze-doc {} (parser/parse-file {} file))
+                                                            (assoc :file-sha current-file-sha))))))
+  ([state file]
+   (analyze-doc state (parser/parse-file {} file))))
 
 #_(:graph (analyze-file {:graph (dep/graph)} "notebooks/elements.clj"))
 #_(analyze-file {:graph (dep/graph)} "notebooks/rule_30.clj")
@@ -359,10 +372,10 @@
 #_(analyze-file {:graph (dep/graph)} "notebooks/hello.clj")
 
 (defn unhashed-deps [->analysis-info]
-  (set/difference (into #{}
-                        (mapcat :deps)
-                        (vals ->analysis-info))
-                  (-> ->analysis-info keys set)))
+  (remove deref? (set/difference (into #{}
+                                       (mapcat :deps)
+                                       (vals ->analysis-info))
+                                 (-> ->analysis-info keys set))))
 
 #_(unhashed-deps {#'elements/fix-case {:deps #{#'rewrite-clj.node/tag}}})
 
@@ -427,6 +440,17 @@
   (memoize (fn [f]
              {:jar f :hash (sha1-base58 (io/input-stream f))})))
 
+(defn ^:private merge-analysis-info [state {:as analyzed-doc :keys [->analysis-info]}]
+  (reduce (fn [s {:as analyzed :keys [deps]}]
+            (if (seq deps)
+              (-> (reduce (partial analyze-deps analyzed) s deps)
+                  (make-deps-inherit-no-cache analyzed))
+              s))
+          (update state :->analysis-info merge ->analysis-info)
+          (vals ->analysis-info)))
+
+#_(merge-analysis-info {:->analysis-info {:a :b}} {:->analysis-info {:c :d}})
+
 #_(hash-jar (find-location `dep/depend))
 
 (defn build-graph
@@ -435,24 +459,37 @@
   Recursively decends into dependency vars as well as given they can be found in the classpath.
   "
   [doc]
-  (loop [{:as state :keys [->analysis-info analyzed-file-set counter jar-info]} (assoc (analyze-doc doc) :counter 0)]
-    (let [loc->syms (group-by find-location (unhashed-deps ->analysis-info))
-          to-visit (set/difference (set (keys (dissoc loc->syms nil)))
-                                   analyzed-file-set)]
-      #_(prn :build-graph counter :to-visit/jar (update-vals (group-by #(str/ends-with? % ".jar") to-visit) count) :to-visit to-visit)
-      (if (and (seq to-visit) (< counter 10))
+  (loop [{:as state :keys [->analysis-info analyzed-file-set counter]} (-> (cond-> doc
+                                                                             (not (:graph doc)) analyze-doc)
+                                                                           (assoc :analyzed-file-set #{(:file doc)})
+                                                                           (assoc :counter 0))]
+    (let [loc->syms (apply dissoc
+                           (group-by find-location (unhashed-deps ->analysis-info))
+                           (conj analyzed-file-set nil))]
+      #_(prn :build-graph counter :analyzed-file-set analyzed-file-set :to-visit (remove #(str/ends-with? % ".jar") (keys loc->syms)))
+      (if (and (seq loc->syms) (< counter 10))
         (recur (-> (reduce (fn [g [source symbols]]
-                             #_(prn :build-graph {:source source :symbols symbols})
                              (if (or (nil? source)
                                      (str/ends-with? source ".jar"))
-                               (let [info (if source (hash-jar source) {})]
-                                 (update g :->analysis-info merge (into {} (map (juxt identity (constantly info))) symbols)))
-                               (do (prn :file source)
-                                   (time (analyze-file g source)))))
+                               (update g :->analysis-info merge (into {} (map (juxt identity (constantly (if source (hash-jar source) {})))) symbols))
+                               (-> g
+                                   (update :analyzed-file-set conj source)
+                                   (merge-analysis-info (analyze-file source)))))
                            state
                            loc->syms)
                    (update :counter inc)))
-        (dissoc state :counter)))))
+        (dissoc state :analyzed-file-set :counter)))))
+
+(comment
+  (def parsed (parser/parse-file {:doc? true} "src/nextjournal/clerk/webserver.clj"))
+  (do (prn :====================)
+      (def analysis (time (-> parsed analyze-doc build-graph)))
+
+      (-> analysis :->analysis-info keys set)
+      (let [{:keys [->analysis-info]} analysis]
+        (dissoc (group-by find-location (unhashed-deps ->analysis-info)) nil)
+        #_(into (sorted-set) (keys ->analysis-info))))
+  (nextjournal.clerk/clear-cache!))
 
 #_(do (time (build-graph (parser/parse-clojure-string (slurp "notebooks/how_clerk_works.clj")))) :done)
 #_(do (time (build-graph (parser/parse-clojure-string (slurp "notebooks/viewer_api.clj")))) :done)
@@ -471,8 +508,7 @@
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/analyzer.clj"))  #'nextjournal.clerk.analyzer/long-thing)
 
 (defn hash-codeblock [->hash {:as codeblock :keys [hash form id deps vars]}]
-  (assert (or (empty? deps) (ifn? ->hash)) "hash must be `ifn?`")
-  (let [hashed-deps (into #{} (map ->hash) deps)]
+  (let [hashed-deps (into #{} (map (or ->hash)) deps)]
     (when (contains? hashed-deps nil)
       (binding [*out* *err*]
         (prn :hash-codeblock/unhashed-warning (remove ->hash deps)))

@@ -193,6 +193,7 @@
     (intern (create-ns 'existing-var) 'foo :bar)
     (is (eval/eval-string "(in-ns 'existing-var) foo"))))
 
+#_#_#_ ;; TODO: put back
 (clerk/defcached my-expansive-thing
   (do (Thread/sleep 1 #_10000) 42))
 

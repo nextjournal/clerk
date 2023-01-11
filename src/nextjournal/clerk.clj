@@ -484,6 +484,7 @@
   * the form of an anonymous expression"
   ([]
    (swap! webserver/!doc dissoc :blob->result)
+   (reset! analyzer/!file->analysis-cache {})
    (if (fs/exists? config/cache-dir)
      (do (fs/delete-tree config/cache-dir)
          (prn :cache-dir/deleted config/cache-dir))

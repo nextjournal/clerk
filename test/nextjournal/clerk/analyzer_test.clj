@@ -186,7 +186,8 @@
 
 (defn analyze-string [s]
   (-> (parser/parse-clojure-string {:doc? true} s)
-      ana/analyze-doc))
+      ana/analyze-doc
+      ana/build-graph))
 
 (deftest analyze-doc
   (testing "reading a bad block shows block and file info in raised exception"
@@ -223,7 +224,7 @@
 
 (deftest analyze-file
   (testing "should analyze depedencies"
-    (is (-> (ana/analyze-file "src/nextjournal/clerk/classpath.clj") :graph :dependencies not-empty))))
+    (is (-> (ana/analyze-file "src/nextjournal/clerk/classpath.clj") :->analysis-info not-empty))))
 
 (deftest add-block-ids
   (testing "assigns block ids"
@@ -237,14 +238,11 @@
 
 (deftest no-cache-dep
   (is (match? [{:no-cache? true} {:no-cache? true} {:no-cache? true}]
-              (->> "(def ^:nextjournal.clerk/no-cache my-uuid
+              (let [{:keys [blocks ->analysis-info]} (analyze-string "(def ^:nextjournal.clerk/no-cache my-uuid
   (java.util.UUID/randomUUID))
 (str my-uuid)
-my-uuid"
-                   analyze-string
-                   ana/analyze-doc
-                   :->analysis-info
-                   vals))))
+my-uuid")]
+                (mapv (comp ->analysis-info :id) blocks)))))
 
 (deftest can-analyze-proxy-macro
   (is (analyze-string "(ns proxy-example-notebook) (proxy [clojure.lang.ISeq][] (seq [] '(this is a test seq)))")))
