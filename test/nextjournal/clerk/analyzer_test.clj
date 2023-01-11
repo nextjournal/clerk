@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.analyzer-test
   (:require [babashka.fs :as fs]
+            [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [matcher-combinators.matchers :as m]
             [matcher-combinators.test :refer [match?]]
@@ -136,7 +137,7 @@
               (ana/analyze '(def my-inc inc))))
 
   (ana/analyze '(do (def my-inc inc) (def my-dec dec)))
-  
+
   (is (match? {:ns-effect? false
                :vars '#{nextjournal.clerk.analyzer-test/!state}
                :deps       #{'clojure.lang.Var
@@ -280,3 +281,16 @@ my-uuid")]
           runtime-hash (get-in runtime-doc [:->hash 'nextjournal.clerk.test.deref-dep/foo+2])]
       (is (match? {:deref-deps #{`(deref nextjournal.clerk.test.deref-dep/!state)}} block-with-deref-dep))
       (is (not= static-hash runtime-hash)))))
+
+(deftest ->hash
+  (testing "notices change in depedency namespace"
+    (let [test-var 'nextjournal.clerk.fixtures.my-test-ns/hello
+          test-string "(ns test (:require [nextjournal.clerk.fixtures.my-test-ns :as my-test-ns])) (str my-test-ns/hello)"
+          spit-with-value #(spit (format "test%s%s.clj" fs/file-separator (str/replace (namespace-munge (namespace test-var)) "." fs/file-separator ))
+                                 (format "(ns nextjournal.clerk.fixtures.my-test-ns) (def hello %s)" %))
+          _ (spit-with-value :hello)
+          analyzed-before (ana/hash (analyze-string test-string))
+          _ (spit-with-value :world)
+          analyzed-after (ana/hash (analyze-string test-string))]
+      (is (not= (get-in analyzed-before [:->hash test-var])
+                (get-in analyzed-after [:->hash test-var]))))))
