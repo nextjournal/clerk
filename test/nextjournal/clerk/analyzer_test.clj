@@ -227,9 +227,9 @@
     (is (match? [{:form '(do) :text "(do #?@(:cljs []))"}]
                 (-> "(do #?@(:cljs []))" analyze-string :blocks)))))
 
-#_(deftest analyze-file
-    (testing "should analyze depedencies"
-      (is (-> (ana/analyze-file "src/nextjournal/clerk/classpath.clj") :->analysis-info not-empty))))
+(deftest analyze-file
+  (testing "should analyze depedencies"
+    (is (-> (ana/analyze-file "src/nextjournal/clerk/classpath.clj") :->analysis-info not-empty))))
 
 (deftest add-block-ids
   (testing "assigns block ids"

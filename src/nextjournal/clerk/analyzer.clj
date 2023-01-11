@@ -361,8 +361,9 @@
             (or (when-let [{:as cached-analysis :keys [file-sha]} (@!file->analysis-cache file)]
                   (when (= file-sha current-file-sha)
                     cached-analysis))
-                (swap! !file->analysis-cache assoc file (-> (analyze-doc {} (parser/parse-file {} file))
-                                                            (assoc :file-sha current-file-sha))))))
+                (let [analysis (analyze-doc {:file-sha current-file-sha} (parser/parse-file {} file))]
+                  (swap! !file->analysis-cache assoc file analysis)
+                  analysis))))
   ([state file]
    (analyze-doc state (parser/parse-file {} file))))
 
@@ -469,7 +470,6 @@
       #_(prn :build-graph counter :analyzed-file-set analyzed-file-set)
       (if (and (seq loc->syms) (< counter 10))
         (recur (-> (reduce (fn [g [source symbols]]
-                             (prn :source source :symbols symbols)
                              (if (or (nil? source)
                                      (str/ends-with? source ".jar"))
                                (update g :->analysis-info merge (into {} (map (juxt identity (constantly (if source (hash-jar source) {})))) symbols))
