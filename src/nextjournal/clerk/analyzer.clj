@@ -380,8 +380,9 @@
 
 #_(unhashed-deps {#'elements/fix-case {:deps #{#'rewrite-clj.node/tag}}})
 
-(defn ns->path [ns]
-  (str/replace (namespace-munge ns) "." fs/file-separator))
+(defn ns->path
+  ([ns] (ns->path fs/file-separator ns))
+  ([separator ns] (str/replace (namespace-munge ns) "." separator)))
 
 (defn ns->file [ns]
   (some (fn [dir]
@@ -393,7 +394,7 @@
         (cp/classpath-directories)))
 
 (defn ns->jar [ns]
-  (let [path (ns->path ns)]
+  (let [path (ns->path "/" ns)]
     (some #(when (or (.getJarEntry % (str path ".clj"))
                      (.getJarEntry % (str path ".cljc")))
              (.getName %))

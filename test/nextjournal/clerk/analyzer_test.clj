@@ -187,10 +187,10 @@
 
 (deftest find-location
   (testing "clojure.core/inc"
-    (re-find #"clojure-1\..*\.jar" (ana/find-location 'clojure.core/inc)))
+    (is (re-find #"clojure-1\..*\.jar" (ana/find-location 'clojure.core/inc))))
 
   (testing "weavejester.dependency/graph"
-    (re-find #"dependency-.*\.jar" (ana/find-location 'weavejester.dependency/graph))))
+    (is (re-find #"dependency-.*\.jar" (ana/find-location 'weavejester.dependency/graph)))))
 
 (defn analyze-string [s]
   (-> (parser/parse-clojure-string {:doc? true} s)
