@@ -470,9 +470,10 @@
           loc->syms (apply dissoc
                            (group-by find-location unhashed)
                            analyzed-file-set)]
-      #_(prn :build-graph counter :analyzed-file-set analyzed-file-set)
+      (prn :build-graph counter :analyzed-file-set analyzed-file-set)
       (if (and (seq loc->syms) (< counter 10))
         (recur (-> (reduce (fn [g [source symbols]]
+                             (prn :source source)
                              (if (or (nil? source)
                                      (str/ends-with? source ".jar"))
                                (update g :->analysis-info merge (into {} (map (juxt identity (constantly (if source (hash-jar source) {})))) symbols))
