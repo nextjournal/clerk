@@ -271,6 +271,7 @@ my-uuid")]
     (is (empty? (-> "(ns foo (:require [clojure.set :as set])) (set/union #{1} #{2})" analyze-string :->analysis-info ana/unhashed-deps))))
 
   (testing "should have analysis info and no unhashed deps for `dep/graph`"
+    (prn :find-location (ana/find-location 'weavejester.dependency/graph))
     (let [{:keys [->analysis-info]} (analyze-string "(ns foo (:require [weavejester.dependency :as dep])) (dep/graph)")]
       (is (empty? (ana/unhashed-deps ->analysis-info)))
       (is (match? {:jar string?} (->analysis-info 'weavejester.dependency/graph))))))
