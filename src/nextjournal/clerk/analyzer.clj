@@ -519,7 +519,7 @@
 (defn hash-codeblock [->hash {:as codeblock :keys [hash form id deps vars]}]
   (when (and (seq deps) (not (ifn? ->hash)))
     (throw (ex-info "`->hash` must be `ifn?`" {:->hash ->hash :codeblock codeblock})))
-  (let [hashed-deps (into #{} (comp (remove deref?) (map ->hash)) deps)]
+  (let [hashed-deps (into #{} (map ->hash) deps)]
     (when (contains? hashed-deps nil)
       (binding [*out* *err*]
         (prn :hash-codeblock/unhashed-warning (remove ->hash deps)))
@@ -529,8 +529,6 @@
     (sha1-base58 (binding [*print-length* nil]
                    (pr-str (set/union (conj hashed-deps (if form form hash))
                                       vars))))))
-
-#_(nextjournal.clerk/show! "src/nextjournal/clerk.clj")
 
 (defn hash
   ([{:as analyzed-doc :keys [graph]}] (hash analyzed-doc (dep/topo-sort graph)))
