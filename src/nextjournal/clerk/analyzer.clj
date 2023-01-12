@@ -460,12 +460,15 @@
   Recursively decends into dependency vars as well as given they can be found in the classpath.
   "
   [doc]
-  (loop [{:as state :keys [->analysis-info analyzed-file-set counter]} (-> (cond-> doc
-                                                                             (not (:graph doc)) analyze-doc)
-                                                                           (assoc :analyzed-file-set (cond-> #{} (:file doc) (conj (:file doc))))
-                                                                           (assoc :counter 0))]
-    (let [loc->syms (apply dissoc
-                           (group-by find-location (unhashed-deps ->analysis-info))
+  (loop [{:as state :keys [->analysis-info analyzed-file-set counter]}
+
+         (-> (cond-> doc
+               (not (:graph doc)) analyze-doc)
+             (assoc :analyzed-file-set (cond-> #{} (:file doc) (conj (:file doc))))
+             (assoc :counter 0))]
+    (let [unhashed (unhashed-deps ->analysis-info)
+          loc->syms (apply dissoc
+                           (group-by find-location unhashed)
                            analyzed-file-set)]
       #_(prn :build-graph counter :analyzed-file-set analyzed-file-set)
       (if (and (seq loc->syms) (< counter 10))
@@ -479,7 +482,12 @@
                            state
                            loc->syms)
                    (update :counter inc)))
-        (dissoc state :analyzed-file-set :counter)))))
+        (do (when (seq unhashed)
+              (binding [*out* *err*]
+                (println "`build-graph` could not hash all deps:" {:unhashed-deps unhashed})))
+            (dissoc state :analyzed-file-set :counter))))))
+
+
 
 (comment
   (def parsed (parser/parse-file {:doc? true} "src/nextjournal/clerk/webserver.clj"))
@@ -511,7 +519,7 @@
 (defn hash-codeblock [->hash {:as codeblock :keys [hash form id deps vars]}]
   (when (and (seq deps) (not (ifn? ->hash)))
     (throw (ex-info "`->hash` must be `ifn?`" {:->hash ->hash :codeblock codeblock})))
-  (let [hashed-deps (into #{} (map ->hash) deps)]
+  (let [hashed-deps (into #{} (comp (remove deref?) (map ->hash)) deps)]
     (when (contains? hashed-deps nil)
       (binding [*out* *err*]
         (prn :hash-codeblock/unhashed-warning (remove ->hash deps)))
@@ -522,10 +530,11 @@
                    (pr-str (set/union (conj hashed-deps (if form form hash))
                                       vars))))))
 
+#_(nextjournal.clerk/show! "src/nextjournal/clerk.clj")
+
 (defn hash
   ([{:as analyzed-doc :keys [graph]}] (hash analyzed-doc (dep/topo-sort graph)))
   ([{:as analyzed-doc :keys [->analysis-info graph]} deps]
-   (prn :deps deps)
    (update analyzed-doc
            :->hash
            (partial reduce (fn [->hash k]

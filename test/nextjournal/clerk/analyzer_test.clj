@@ -265,6 +265,31 @@ my-uuid")]
 (def b (str a \" boom\"))
 (def a (str \"boom \" b))"))))
 
+
+(deftest build-graph
+  (testing "should have no unhashed deps for clojure.set"
+    (is (empty? (-> "(ns foo (:require [clojure.set :as set])) (set/union #{1} #{2})" analyze-string :->analysis-info ana/unhashed-deps))))
+
+  (testing "should have analysis info and no unhashed deps for `dep/graph`"
+    (let [{:keys [->analysis-info]} (analyze-string "(ns foo (:require [weavejester.dependency :as dep])) (dep/graph)")]
+      (is (empty? (ana/unhashed-deps ->analysis-info)))
+      (is (match? {:jar string?} (->analysis-info 'weavejester.dependency/graph))))))
+
+
+(deftest ->hash
+  (testing "notices change in depedency namespace"
+    (let [test-var 'nextjournal.clerk.fixtures.my-test-ns/hello
+          test-string "(ns test (:require [nextjournal.clerk.fixtures.my-test-ns :as my-test-ns])) (str my-test-ns/hello)"
+          spit-with-value #(spit (format "test%s%s.clj" fs/file-separator (str/replace (namespace-munge (namespace test-var)) "." fs/file-separator ))
+                                 (format "(ns nextjournal.clerk.fixtures.my-test-ns) (def hello %s)" %))
+          _ (spit-with-value :hello)
+          analyzed-before (ana/hash (analyze-string test-string))
+          _ (spit-with-value :world)
+          analyzed-after (ana/hash (analyze-string test-string))]
+      (is (not= (get-in analyzed-before [:->hash test-var])
+                (get-in analyzed-after [:->hash test-var]))))))
+
+
 (deftest hash-deref-deps
   (testing "transitive dep gets new hash"
     (let [analyzed-doc (-> (pr-str '(ns nextjournal.clerk.test.deref-dep)
@@ -281,16 +306,3 @@ my-uuid")]
           runtime-hash (get-in runtime-doc [:->hash 'nextjournal.clerk.test.deref-dep/foo+2])]
       (is (match? {:deref-deps #{`(deref nextjournal.clerk.test.deref-dep/!state)}} block-with-deref-dep))
       (is (not= static-hash runtime-hash)))))
-
-(deftest ->hash
-  (testing "notices change in depedency namespace"
-    (let [test-var 'nextjournal.clerk.fixtures.my-test-ns/hello
-          test-string "(ns test (:require [nextjournal.clerk.fixtures.my-test-ns :as my-test-ns])) (str my-test-ns/hello)"
-          spit-with-value #(spit (format "test%s%s.clj" fs/file-separator (str/replace (namespace-munge (namespace test-var)) "." fs/file-separator ))
-                                 (format "(ns nextjournal.clerk.fixtures.my-test-ns) (def hello %s)" %))
-          _ (spit-with-value :hello)
-          analyzed-before (ana/hash (analyze-string test-string))
-          _ (spit-with-value :world)
-          analyzed-after (ana/hash (analyze-string test-string))]
-      (is (not= (get-in analyzed-before [:->hash test-var])
-                (get-in analyzed-after [:->hash test-var]))))))
