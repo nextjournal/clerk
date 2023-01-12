@@ -10,8 +10,9 @@ notebooks/scratch*
 /target/
 .idea/
 clerk.iml
-public/girouette.css
-public/images/
+/public/girouette.css
+/public/images/
+/test/nextjournal/clerk/fixtures/
 *~
 .work
 /build
