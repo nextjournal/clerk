@@ -97,8 +97,8 @@ par two"))))
                     analyze-string
                     :open-graph)))
 
-    (is (match? {:title "Doc Title" :description "first paragraph" :url "https://ogp.me"}
-                (-> ";; # Doc Title\n(ns my.ns2 {:nextjournal.clerk/open-graph {:url \"https://ogp.me\"}})\n;; ---\n;; first paragraph"
+    (is (match? {:title "Doc Title" :description "First paragraph with soft breaks." :url "https://ogp.me"}
+                (-> ";; # Doc Title\n(ns my.ns2 {:nextjournal.clerk/open-graph {:url \"https://ogp.me\"}})\n;; ---\n;; First paragraph with soft\n;; breaks."
                     analyze-string
                     :open-graph)))))
 
