@@ -197,6 +197,14 @@
       ana/analyze-doc
       ana/build-graph))
 
+(deftest hash-test
+  (testing "The hash of weavejester/dependency is the same across OSes")
+  (is (match?
+       {:jar
+        #"repository/weavejester/dependency/0.2.1/dependency-0.2.1.jar",
+        :hash "5dsZiMRBpbMfWTafMoHEaNdGfEYxpx"}
+       (ana/hash-jar (ana/find-location 'weavejester.dependency/graph)))))
+
 (deftest analyze-doc
   (testing "reading a bad block shows block and file info in raised exception"
     (is (thrown-match? ExceptionInfo
