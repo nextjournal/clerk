@@ -8,7 +8,7 @@
         weavejester/dependency {:mvn/version "0.2.1"}
         com.nextjournal/beholder {:mvn/version "1.0.0"}
 
-        io.github.nextjournal/markdown {:mvn/version "0.4.132"}
+        io.github.nextjournal/markdown {:mvn/version "0.4.135"}
         io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
 
         com.taoensso/nippy {:mvn/version "3.2.0"}
