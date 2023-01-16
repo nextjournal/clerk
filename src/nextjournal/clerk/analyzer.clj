@@ -397,7 +397,7 @@
 
 (defn normalize-filename [f]
   (if (fs/windows?)
-    (-> f fs/normalize fs/path .toUri .getPath)
+    (-> f fs/normalize fs/unixify)
     f))
 
 (defn ns->jar [ns]
