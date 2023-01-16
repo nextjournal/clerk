@@ -20,6 +20,8 @@
             [taoensso.nippy :as nippy]
             [weavejester.dependency :as dep]))
 
+(set! *warn-on-reflection* true)
+
 (defn deref? [form]
   (and (seq? form)
        (= (first form) `deref)
@@ -393,11 +395,17 @@
                 [".clj" ".cljc"]))
         (cp/classpath-directories)))
 
+(defn normalize-filename [f]
+  (if (fs/windows?)
+    (-> f fs/normalize fs/path .toUri .getPath)
+    f))
+
 (defn ns->jar [ns]
   (let [path (ns->path "/" ns)]
-    (some #(when (or (.getJarEntry % (str path ".clj"))
-                     (.getJarEntry % (str path ".cljc")))
-             (.getName %))
+    (some (fn [^java.util.jar.JarFile jar-file]
+            (when (or (.getJarEntry jar-file (str path ".clj"))
+                      (.getJarEntry jar-file (str path ".cljc")))
+              (normalize-filename (.getName jar-file))))
           (cp/classpath-jarfiles))))
 
 #_(ns->jar (find-ns 'weavejester.dependency))
@@ -409,13 +417,14 @@
   (some-> (if (qualified-symbol? sym)
             (-> sym namespace symbol)
             sym)
-          resolve
+          ^Class resolve
           .getProtectionDomain
           .getCodeSource
           .getLocation
-          (guard #(= "file" (.getProtocol %)))
+          ^java.net.URL (guard #(= "file" (.getProtocol ^java.net.URL %)))
           .getFile
-          (guard #(str/ends-with? % ".jar"))))
+          (guard #(str/ends-with? % ".jar"))
+          normalize-filename))
 
 #_(symbol->jar 'io.methvin.watcher.PathUtils)
 #_(symbol->jar 'io.methvin.watcher.PathUtils/cast)
