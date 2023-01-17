@@ -45,7 +45,7 @@
      (get-type [_] :val)))
 
 (defn viewer-fn? [x]
-  (instance? ViewerFn x))
+  (instance? nextjournal.clerk.viewer.ViewerFn x))
 
 (defn viewer-eval? [x]
   (instance? nextjournal.clerk.viewer.ViewerEval x))
