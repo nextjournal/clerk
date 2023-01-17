@@ -11,7 +11,6 @@
 (clerk/with-viewer viewer/viewer-eval-viewer
   'viewers.control-lab/!num)
 
-
 (defn make-render-slider
   ([] (make-render-slider {}))
   ([opts] (list 'partial
@@ -41,6 +40,10 @@
 ;; Let's go through the ways we can use this.
 
 {:nextjournal.clerk/visibility {:code :show :result :show}}
+
+(viewer/viewer-eval? (viewer/->viewer-eval `!num))
+
+[:hash-code! (.hashCode nextjournal.clerk.viewer.ViewerEval)]
 
 ;; 1️⃣ On a var coming from a def
 ^{::clerk/sync true ::clerk/viewer slider}
