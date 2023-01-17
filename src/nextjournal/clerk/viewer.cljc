@@ -54,7 +54,7 @@
                    (some-> x class .getName))
             (prn :x (.hashCode (class x)))
             (prn :ViewerEval (.hashCode ViewerEval))
-            (prn :fq/ViewerEval (.hashCode nextjournal.clerk.viewer.ViewerEval))))
+            #_(prn :fq/ViewerEval (.hashCode nextjournal.clerk.viewer.ViewerEval))))
   (instance? ViewerEval x))
 
 (defn resolve-symbol-alias [aliases sym]
