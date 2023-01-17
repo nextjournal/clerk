@@ -119,8 +119,13 @@
   ([bindings form]
    (binding [config/*in-clerk* true]
      (try
-       (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings
-                                                  :passes-opts analyzer-passes-opts})
+       (let [old-deftype-hack ana-jvm/-deftype]
+         ;; NOTE: workaround for tools.analyzer `-deftype` + `eval` HACK, which redefines classes which doesn't work well with instance? checks
+         (with-redefs [ana-jvm/-deftype (fn [name class-name args interfaces]
+                                              (when-not (resolve class-name)
+                                                (old-deftype-hack name class-name args interfaces)))]
+           (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings
+                                                      :passes-opts analyzer-passes-opts})))
        (catch java.lang.AssertionError e
          (throw (ex-info "Failed to analyze form"
                          (-> (select-keys (meta form) [:line :col :clojure.core/eval-file])

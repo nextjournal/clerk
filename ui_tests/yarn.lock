@@ -7,10 +7,10 @@ import-meta-resolve@^2.1.0:
   resolved "https://registry.yarnpkg.com/import-meta-resolve/-/import-meta-resolve-2.1.0.tgz#c8952d331ed6e9bb6ad524a7549deb3d34af41ce"
   integrity sha512-yG9pxkWJVTy4cmRsNWE3ztFdtFuYIV8G4N+cbCkO8b+qngkLyIUhxQFuZ0qJm67+0nUOxjMPT7nfksPKza1v2g==
 
-nbb@^1.0.138:
-  version "1.0.138"
-  resolved "https://registry.yarnpkg.com/nbb/-/nbb-1.0.138.tgz#e2e817bd05096e87b8f777975d0efd6c1852802a"
-  integrity sha512-c1MXkmz0j37rxgdD7Dgbmwx9dmSncfgjHbsYWijwRELTjLocVhWLRv1taiXV4XkjmpFUrm5uMeMGC44JRLzS1A==
+nbb@^1.1.147:
+  version "1.2.160"
+  resolved "https://registry.yarnpkg.com/nbb/-/nbb-1.2.160.tgz#608513b72aa407b496b940212ddfce904d983d7b"
+  integrity sha512-lguORvvjWtCM4c29a4gV6gUZdICfB9PIhjLv23FxZt0aKn3M/teV2oaKZDuAQceQl+kg98D2V3de8dttt7abBw==
   dependencies:
     import-meta-resolve "^2.1.0"
 
