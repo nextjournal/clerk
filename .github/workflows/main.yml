@@ -151,7 +151,7 @@ jobs:
         run: clojure -J-Dclojure.main.report=stderr -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :paths '["book.clj" "CHANGELOG.md"]'
 
       - name: 🏗 Build Clerk Static App with default Notebooks
-        run: clojure -J-Dclojure.main.report=stderr -J-Dclerk.disable_cache=1 -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :bundle true
+        run: clojure -J-Dclojure.main.report=stderr -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :bundle true
 
       - name: 📠 Copy book & static build to bucket under SHA
         run: |
