@@ -45,10 +45,10 @@
      (get-type [_] :val)))
 
 (defn viewer-fn? [x]
-  (instance? ViewerFn x))
+  (instance? nextjournal.clerk.viewer.ViewerFn x))
 
 (defn viewer-eval? [x]
-  (instance? ViewerEval x))
+  (instance? nextjournal.clerk.viewer.ViewerEval x))
 
 (defn resolve-symbol-alias [aliases sym]
   (if-let [full-ns (some->> sym namespace symbol (get aliases) str)]
