@@ -30,6 +30,8 @@
 
 (defrecord ViewerEval [form])
 
+#?(:clj (prn :viewer-eval-class-hash (.hashCode ViewerEval)))
+
 (defrecord ViewerFn [form #?(:cljs f)]
   #?@(:cljs [IFn
              (-invoke [this x] ((:f this) x))
@@ -48,6 +50,9 @@
   (instance? ViewerFn x))
 
 (defn viewer-eval? [x]
+  #?(:clj (when (= "nextjournal.clerk.viewer.ViewerEval"
+                   (some-> x class .getName))
+            (prn (.hashCode (class x)))))
   (instance? ViewerEval x))
 
 (defn resolve-symbol-alias [aliases sym]
