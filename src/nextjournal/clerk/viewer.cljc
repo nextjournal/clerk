@@ -52,7 +52,9 @@
 (defn viewer-eval? [x]
   #?(:clj (when (= "nextjournal.clerk.viewer.ViewerEval"
                    (some-> x class .getName))
-            (prn (.hashCode (class x)))))
+            (prn :x (.hashCode (class x)))
+            (prn :ViewerEval (.hashCode ViewerEval))
+            (prn :fq/ViewerEval (.hashCode nextjournal.clerk.viewer.ViewerEval))))
   (instance? ViewerEval x))
 
 (defn resolve-symbol-alias [aliases sym]
