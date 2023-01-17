@@ -50,12 +50,7 @@
   (instance? ViewerFn x))
 
 (defn viewer-eval? [x]
-  ;; #?(:clj (when (= "nextjournal.clerk.viewer.ViewerEval"
-  ;;                  (some-> x class .getName))
-  ;;           (prn :x (.hashCode (class x)))
-  ;;           (prn :ViewerEval (.hashCode ViewerEval))
-  ;;           #_(prn :fq/ViewerEval (.hashCode nextjournal.clerk.viewer.ViewerEval))))
-  (instance? nextjournal.clerk.viewer.ViewerEval x))
+  (instance? ViewerEval x))
 
 (defn resolve-symbol-alias [aliases sym]
   (if-let [full-ns (some->> sym namespace symbol (get aliases) str)]
