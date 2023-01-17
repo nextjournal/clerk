@@ -50,11 +50,11 @@
   (instance? ViewerFn x))
 
 (defn viewer-eval? [x]
-  #?(:clj (when (= "nextjournal.clerk.viewer.ViewerEval"
-                   (some-> x class .getName))
-            (prn :x (.hashCode (class x)))
-            (prn :ViewerEval (.hashCode ViewerEval))
-            #_(prn :fq/ViewerEval (.hashCode nextjournal.clerk.viewer.ViewerEval))))
+  ;; #?(:clj (when (= "nextjournal.clerk.viewer.ViewerEval"
+  ;;                  (some-> x class .getName))
+  ;;           (prn :x (.hashCode (class x)))
+  ;;           (prn :ViewerEval (.hashCode ViewerEval))
+  ;;           #_(prn :fq/ViewerEval (.hashCode nextjournal.clerk.viewer.ViewerEval))))
   (instance? ViewerEval x))
 
 (defn resolve-symbol-alias [aliases sym]
@@ -1585,3 +1585,5 @@
                  (into [:div.border-l-2.border-slate-300.pl-4
                         [:div.uppercase.tracking-wider.text-xs.font-sans.text-slate-500.mt-4.mb-2 "Examples"]]
                        (nextjournal.clerk.render/inspect-children opts) examples))})
+
+#?(:clj (prn :viewer-eval-class-hash2 (.hashCode ViewerEval)))
