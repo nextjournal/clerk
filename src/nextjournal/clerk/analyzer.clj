@@ -485,12 +485,8 @@
           loc->syms (apply dissoc
                            (group-by find-location unhashed)
                            analyzed-file-set)]
-      (prn :build-graph counter :analyzed-file-set analyzed-file-set)
       (if (and (seq loc->syms) (< counter 10))
         (recur (-> (reduce (fn [g [source symbols]]
-                             (prn :source source :symbols symbols :ana (when (or (nil? source)
-                                                                                 (str/ends-with? source ".jar"))
-                                                                         (if source (hash-jar source) {})))
                              (if (or (nil? source)
                                      (str/ends-with? source ".jar"))
                                (update g :->analysis-info merge (into {} (map (juxt identity (constantly (if source (hash-jar source) {})))) symbols))
@@ -509,13 +505,10 @@
 
 (comment
   (def parsed (parser/parse-file {:doc? true} "src/nextjournal/clerk/webserver.clj"))
-  (do (prn :====================)
-      (def analysis (time (-> parsed analyze-doc build-graph)))
-
-      (-> analysis :->analysis-info keys set)
-      (let [{:keys [->analysis-info]} analysis]
-        (dissoc (group-by find-location (unhashed-deps ->analysis-info)) nil)
-        #_(into (sorted-set) (keys ->analysis-info))))
+  (def analysis (time (-> parsed analyze-doc build-graph)))
+  (-> analysis :->analysis-info keys set)
+  (let [{:keys [->analysis-info]} analysis]
+    (dissoc (group-by find-location (unhashed-deps ->analysis-info)) nil))
   (nextjournal.clerk/clear-cache!))
 
 #_(do (time (build-graph (parser/parse-clojure-string (slurp "notebooks/how_clerk_works.clj")))) :done)
@@ -539,11 +532,7 @@
     (throw (ex-info "`->hash` must be `ifn?`" {:->hash ->hash :codeblock codeblock})))
   (let [hashed-deps (into #{} (map ->hash) deps)]
     (when (contains? hashed-deps nil)
-      (binding [*out* *err*]
-        (prn :hash-codeblock/unhashed-warning (remove ->hash deps)))
-      #_(throw (ex-info "hash-codeblock must have hash for every dep"
-                        {:unhashed-deps (remove ->hash deps) :deps deps :->hash ->hash :codeblock codeblock}
-                        #_(IllegalArgumentException.))))
+      (binding [*out* *err*] (prn :hash-codeblock/unhashed-warning (remove ->hash deps))))
     (sha1-base58 (binding [*print-length* nil]
                    (pr-str (set/union (conj hashed-deps (if form form hash))
                                       vars))))))
