@@ -1,7 +1,6 @@
 (ns playwright-tests
   {:clj-kondo/config '{:skip-comments false}}
-  (:require ["child_process" :as cp]
-            ["playwright$default" :refer [chromium]]
+  (:require ["playwright$default" :refer [chromium]]
             [clojure.edn :as edn]
             [clojure.string :as str]
             [clojure.test :as t :refer [deftest is async use-fixtures]]
@@ -48,6 +47,7 @@
 (defn test-notebook [page link]
   (println "Visiting" link)
   (p/do (goto page link)
+        (p/delay 500)
         (p/let [loc (.locator page "div")
                 loc (.first loc)
                 visible? (.isVisible loc)]
