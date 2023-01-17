@@ -43,7 +43,7 @@
 
 (viewer/viewer-eval? (viewer/->viewer-eval `!num))
 
-[:hash-code! (.hashCode nextjournal.clerk.viewer.ViewerEval)]
+[:hash-code! (.hashCode (Class/forName "nextjournal.clerk.viewer.ViewerEval"))]
 
 ;; 1️⃣ On a var coming from a def
 ^{::clerk/sync true ::clerk/viewer slider}
