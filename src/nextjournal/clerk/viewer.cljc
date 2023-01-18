@@ -606,7 +606,9 @@
 #_(datafy-scope #'datafy-scope)
 
 (def markdown-viewers
-  [{:name :nextjournal.markdown/doc :transform-fn (into-markup [:div.viewer-markdown])}
+  [{:name :nextjournal.markdown/doc
+    :transform-fn (into-markup (fn [{:keys [sidenotes?]}]
+                                 [(keyword (str "div.viewer-markdown" (when sidenotes? ".contains-sidenotes")))]))}
 
    ;; blocks
    {:name :nextjournal.markdown/heading
@@ -970,6 +972,7 @@
                     :blocks :bundle?
                     :css-class
                     :open-graph
+                    :sidenotes?
                     :title
                     :toc
                     :toc-visibility])

@@ -114,7 +114,7 @@
 
 (defonce !eval-counter (r/atom 0))
 
-(defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class toc toc-visibility]}]
+(defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility]}]
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
                !state (r/atom {:toc (toc-items (:children toc))
@@ -165,7 +165,8 @@
           :initial (when toc-visibility {:margin-left doc-inset})
           :animate (when toc-visibility {:margin-left doc-inset})
           :transition navbar/spring
-          :class (or css-class "flex flex-col items-center viewer-notebook flex-auto")}
+          :class (str (or css-class "flex flex-col items-center viewer-notebook flex-auto ")
+                      (when sidenotes? "sidenotes-layout"))}
          (doall
           (map-indexed (fn [idx x]
                          (let [{viewer-name :name} (viewer/->viewer x)
