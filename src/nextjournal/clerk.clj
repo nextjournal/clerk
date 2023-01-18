@@ -523,7 +523,7 @@
 #_(defcached my-expansive-thing
     (do (Thread/sleep 4200) 42))
 
-;; And, as is the culture of our people, a commend block containing
+;; And, as is the culture of our people, a comment block containing
 ;; pieces of code with which to pilot the system during development.
 (comment
   (def watcher
