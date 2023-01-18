@@ -56,10 +56,7 @@
 
   Used only when Clerk is used as a git dep, should never be called from the jar."
   []
-  (edn/read-string (try
-                     (slurp (get-lookup-url))
-                     (catch java.io.FileNotFoundException e
-                       (throw (ex-info (str "Clerk could not find dynamic asset map at " (get-lookup-url)) {:url (get-lookup-url)} e))))))
+  {"/js/viewer.js" (str "https://cas.staging.clerk.garden/tag/" (front-end-hash) "/viewer.js")})
 
 #_(read-dynamic-asset-map!)
 
