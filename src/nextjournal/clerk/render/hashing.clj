@@ -5,7 +5,9 @@
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [nextjournal.dejavu :as djv]))
+            [nextjournal.dejavu :as djv]
+            [nextjournal.cas-proxy.tags.http :as cas-tags]
+            [nextjournal.cas-proxy.cas.http :as cas]))
 
 (def output-dirs ["resources/public/ui"
                   "resources/public/build"])
@@ -16,7 +18,6 @@
 (def gs-bucket "gs://nextjournal-cas-eu")
 (def storage-base-url "https://storage.googleapis.com/nextjournal-cas-eu")
 
-
 (defn file-set [base-dir]
   (reduce into
           []
@@ -25,7 +26,6 @@
                                         "shadow-cljs.edn"
                                         "yarn.lock"])
            (djv/cljs-files (mapv #(fs/file base-dir %) ["src" "resources"]))]))
-
 
 #_(file-set (fs/file "."))
 #_(System/setProperty "nextjournal.dejavu.debug" "1")
@@ -65,14 +65,15 @@
 
 (defn build+upload-viewer-resources []
   (let [front-end-hash (front-end-hash)
-        manifest (str (fs/create-temp-file))
-        res (djv/gs-copy (str (bucket-lookup-url front-end-hash)) manifest false)]
-    (when (= res ::djv/not-found)
+        auth-token (System/getenv "CLERK_CAS_AUTH_TOKEN")]
+    (assert (some? auth-token) "Please set CLERK_CAS_AUTH_TOKEN")
+    (when (= 404 (:status (cas-tags/tag-get {:namespace "staging.clerk.garden" :tag front-end-hash})))
+      (println "Did not find viewer in CAS. Compiling…")
       ((requiring-resolve 'babashka.tasks/run) 'build:js)
-      (let [content-hash (djv/sha512 (slurp "build/viewer.js"))
-            viewer-js-http-link (str storage-base-url (asset-name content-hash "viewer.js"))]
-        (spit manifest {"/js/viewer.js" viewer-js-http-link})
-        (println "Manifest:" (slurp manifest))
-        (println "Coping manifest to" (bucket-lookup-url front-end-hash))
-        (djv/gs-copy manifest (bucket-lookup-url front-end-hash))
-        (djv/gs-copy "build/viewer.js" (str gs-bucket (asset-name content-hash "viewer.js")))))))
+      (println "Uploading…")
+      (let [manifest-path (get (cas/cas-put "build") "manifest-path")]
+        (println "Manifest path:" manifest-path)
+        (println "Updating tag.")
+        (println (if (= 200 (:status (cas-tags/tag-put {:auth-token auth-token :namespace "staging.clerk.garden" :tag front-end-hash :target manifest-path})))
+                   "Success"
+                   "Failed"))))))
