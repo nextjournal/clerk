@@ -246,7 +246,7 @@
         (assoc :md-context doc)
         (update :blocks conj {:type :markdown
                               :doc (-> doc
-                                       (select-keys [:type :content])
+                                       (select-keys [:type :content :sidenotes?])
                                        ;; take only new nodes, keep context intact
                                        (update :content subvec (inc index)))}))))
 
@@ -301,7 +301,7 @@
          ::md-slice []))
 
 (defn parse-markdown-string [{:as opts :keys [doc?]} s]
-  (let [{:as ctx :keys [content toc title]} (parse-markdown (markdown-context) s)]
+  (let [{:as ctx :keys [content]} (parse-markdown (markdown-context) s)]
     (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes content :md-context ctx}]
       (if-some [node (first nodes)]
         (recur
@@ -314,7 +314,8 @@
         (-> state
             (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
             (select-keys [:blocks :visibility])
-            (merge (when doc? {:title title :toc toc})))))))
+            (merge (when doc?
+                     (select-keys ctx [:sidenotes? :title :toc]))))))))
 
 #_(parse-markdown-string {:doc? true} "# Hello\n```\n1\n;; # 1️⃣ Hello\n2\n\n```\nhey\n```\n3\n;; # 2️⃣ Hello\n4\n```\n")
 

@@ -310,7 +310,7 @@
     @apply top-[-0.5em] w-auto h-auto inline border-0 bg-transparent m-0 pointer-events-none;
   }
   .sidenote sup { @apply inline; }
-  .viewer-markdown .contains-sidenotes p { @apply max-w-[65%]; }
+  .viewer-markdown.contains-sidenotes p { @apply max-w-[65%]; }
   .viewer-markdown p .sidenote {
     @apply mr-[-54%] mt-[0.2rem] w-1/2 float-right clear-right relative block;
   }
