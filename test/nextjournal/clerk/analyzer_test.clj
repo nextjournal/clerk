@@ -71,7 +71,9 @@
                   (intern *ns* 'bar :bar)
                   (:deps (ana/analyze '{:k-1 foo :k-2 #{bar}}))))))
 
-  (testing "defprotocol :deps should all be symbols"
+  (testing "deps should all be symbols"
+    (is (every? symbol? (:deps (ana/analyze '(.hashCode clojure.lang.Compiler)))))
+
     (is (every? symbol? (:deps (ana/analyze '(defprotocol MyProtocol
                                                (-check [_]))))))))
 
@@ -101,9 +103,6 @@
   (testing "namespaced symbol referring to a java thing"
     (is (match? {:deps       #{'io.methvin.watcher.hashing.FileHasher}}
                 (ana/analyze 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER))))
-
-  (testing "all deps are symbols"
-    (is (every? symbol? (:deps (ana/analyze '(.hashCode clojure.lang.Compiler))))))
 
   (is (match? {:ns-effect? false
                :vars '#{nextjournal.clerk.analyzer/foo}
