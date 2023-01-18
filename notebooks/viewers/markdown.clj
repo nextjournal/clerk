@@ -43,7 +43,6 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
 ;; [^sidenote]: This is a sidenote. The purpose of this text is to
 ;; merely demonstrate the use of sidenotes. All text was originally published
 ;; on the [Tufte CSS website](https://edwardtufte.github.io/tufte-css/).
-
 ;;
 ;; Sidenotes are a great example of the web not being like print. On sufficiently
 ;; large viewports, Tufte CSS uses the margin for sidenotes, margin notes, and
@@ -53,6 +52,25 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
 ;; to the text that references them. At the same time, this secondary information
 ;; should stay out of the way of the eye, not interfering with the progression of
 ;; ideas in the main text.
+;;
+;; We also have to consider however that sidenotes can be part of a blockquote,
+;; like so:
+;; > “The purpose of computation is insight, not numbers.” [^hamming]
+;; >
+;; > ― Richard Hamming
+;;
+;; [^hamming]: From _"The Art of Doing Science and Engineering: Learning to Learn"_
+;; by Richard Hamming
+;;
+;; And it can be followed by lists so the list layout also has to adapt to the
+;; new content width once a sidenote is present in the document:
+;;
+;; Things to do:
+;; * Hire two private investigators. Get them to follow each other.
+;; * Wear t-shirt that says "Life". Hand out lemons on street corner.
+;; * Change name to Simon. Speak in thirs person.
+;; * Major in philosophy. Ask people WHY they would like fries with that.
+
 
 
 
