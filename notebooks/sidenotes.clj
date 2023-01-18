@@ -10,7 +10,12 @@
 
 123
 
+;; block with no sidenotes block with no sidenotes block with no sidenotes  block with no sidenotes block with no sidenotes
+;; lock with no sidenotes block with no sidenotes block with no sidenotes  block with no sidenotes block with no sidenotes
+;; block with no sidenotes block with no sidenotes block with no sidenotes  block with no sidenotes block with no sidenotes block with no sidenotes block with no sidenotes block with no sidenotes  block with no sidenotes block with no sidenotes
+
 (comment
-  (parser/parse-file {:doc? true} "notebooks/sidenotes.clj")
+  (-> (parser/parse-file {:doc? true} "notebooks/sidenotes.clj")
+      :sidenotes? )
 
   )

@@ -972,6 +972,7 @@
                     :blocks :bundle?
                     :css-class
                     :open-graph
+                    :sidenotes?
                     :title
                     :toc
                     :toc-visibility])

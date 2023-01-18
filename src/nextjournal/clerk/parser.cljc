@@ -255,7 +255,7 @@
   ([{:as opts :keys [doc?]} s]
    (let [doc (parse-clojure-string opts {:blocks [] :md-context (markdown-context)} s)]
      (select-keys (cond-> doc doc? (merge (:md-context doc)))
-                  [:blocks :title :toc])))
+                  [:blocks :title :toc :sidenotes?])))
   ([{:as _opts :keys [doc?]} initial-state s]
    (loop [{:as state :keys [nodes blocks add-comment-on-line?]} (assoc initial-state :nodes (:children (p/parse-string-all s)))]
      (if-let [node (first nodes)]
