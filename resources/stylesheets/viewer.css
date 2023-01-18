@@ -295,24 +295,18 @@
 /* --------------------------------------------------------------- */
 
 .sidenote-ref {
-  @apply top-[-3px] inline-flex justify-center items-center w-[18px] h-[18px]
-    rounded-full bg-slate-100 border border-slate-300 hover:bg-slate-200 hover:border-slate-300
-    m-0 ml-[4px] cursor-pointer;
+  @apply top-[-0.5em] w-auto h-auto inline border-0 bg-transparent m-0 pointer-events-none;
 }
 .sidenote {
-  @apply hidden float-left clear-both mx-[2.5%] my-4 text-xs relative w-[95%];
-}
-.sidenote-ref.expanded + .sidenote {
-  @apply block;
+    @apply block w-full float-left clear-both relative font-sans text-xs my-4 bg-slate-100 p-4;
 }
 @media (min-width: 860px) {
-  .sidenote-ref {
-    @apply top-[-0.5em] w-auto h-auto inline border-0 bg-transparent m-0 pointer-events-none;
-  }
   .sidenote sup { @apply inline; }
-  .viewer-markdown.contains-sidenotes p { @apply max-w-[65%]; }
-  .viewer-markdown p .sidenote {
-    @apply mr-[-54%] mt-[0.2rem] w-1/2 float-right clear-right relative block;
+  .sidenote {
+    @apply -mt-[20px] w-[165px] float-right clear-right absolute right-0 p-0 bg-transparent;
+  }
+  .sidenotes-layout .viewer-markdown p {
+      @apply relative pr-[205px];
   }
 }
 .viewer-code + .viewer:not(.viewer-markdown):not(.viewer-code):not(.viewer-code-folded),
