@@ -102,6 +102,9 @@
     (is (match? {:deps       #{'io.methvin.watcher.hashing.FileHasher}}
                 (ana/analyze 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER))))
 
+  (testing "all deps are symbols"
+    (is (every? symbol? (:deps (ana/analyze '(.hashCode clojure.lang.Compiler))))))
+
   (is (match? {:ns-effect? false
                :vars '#{nextjournal.clerk.analyzer/foo}
                :deps       #{'rewrite-clj.parser/parse-string-all

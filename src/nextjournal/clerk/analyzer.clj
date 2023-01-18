@@ -178,10 +178,6 @@
       (seq vars) (assoc :vars vars)
       var (assoc :var var))))
 
-#_(into #{} (map type) (:deps (analyze
-                               '(defprotocol MyProtocol
-                                  (-check [_])))))
-
 #_(:vars (analyze '(do (def a 41) (def b (inc a)))))
 #_(:vars (analyze '(defrecord Node [v l r])))
 #_(analyze '(defn foo [s] (str/includes? (p/parse-string-all s) "hi")))
