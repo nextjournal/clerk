@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.analyzer-test
   (:require [babashka.fs :as fs]
+            [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [matcher-combinators.matchers :as m]
             [matcher-combinators.test :refer [match?]]
@@ -68,7 +69,13 @@
                 (with-ns-binding 'nextjournal.clerk.analyzer-test
                   (intern *ns* 'foo :foo)
                   (intern *ns* 'bar :bar)
-                  (:deps (ana/analyze '{:k-1 foo :k-2 #{bar}})))))))
+                  (:deps (ana/analyze '{:k-1 foo :k-2 #{bar}}))))))
+
+  (testing "deps should all be symbols"
+    (is (every? symbol? (:deps (ana/analyze '(.hashCode clojure.lang.Compiler)))))
+
+    (is (every? symbol? (:deps (ana/analyze '(defprotocol MyProtocol
+                                               (-check [_]))))))))
 
 (deftest read-string-tests
   (testing "read-string should read regex's such that value equalility is preserved"
@@ -132,7 +139,7 @@
               (ana/analyze '(def my-inc inc))))
 
   (ana/analyze '(do (def my-inc inc) (def my-dec dec)))
-  
+
   (is (match? {:ns-effect? false
                :vars '#{nextjournal.clerk.analyzer-test/!state}
                :deps       #{'clojure.lang.Var
@@ -180,9 +187,25 @@
   (testing "does not resolve jdk builtins"
     (is (not (ana/symbol->jar 'java.net.http.HttpClient/newHttpClient)))))
 
+(deftest find-location
+  (testing "clojure.core/inc"
+    (is (re-find #"clojure-1\..*\.jar" (ana/find-location 'clojure.core/inc))))
+
+  (testing "weavejester.dependency/graph"
+    (is (re-find #"dependency-.*\.jar" (ana/find-location 'weavejester.dependency/graph)))))
+
 (defn analyze-string [s]
   (-> (parser/parse-clojure-string {:doc? true} s)
-      ana/analyze-doc))
+      ana/analyze-doc
+      ana/build-graph))
+
+(deftest hash-test
+  (testing "The hash of weavejester/dependency is the same across OSes"
+    (is (match?
+         {:jar
+          #"repository/weavejester/dependency/0.2.1/dependency-0.2.1.jar",
+          :hash "5dsZiMRBpbMfWTafMoHEaNdGfEYxpx"}
+         (ana/hash-jar (ana/find-location 'weavejester.dependency/graph))))))
 
 (deftest analyze-doc
   (testing "reading a bad block shows block and file info in raised exception"
@@ -192,9 +215,11 @@
                        (-> (parser/parse-clojure-string {:doc? true} "(ns some-ns (:require []))")
                            (update-in [:blocks 0 :text] (constantly "##boom"))
                            ana/analyze-doc))))
-  (is (match? #{{:form '(ns example-notebook),
+  (is (match? #{{}
+                {:form '(ns example-notebook),
                  :deps set?}
-                {:form '#{1 3 2}}}
+                {:form '#{1 3 2}}
+                {:jar string? :hash string?}}
               (-> "^:nextjournal.clerk/no-cache (ns example-notebook)
 #{3 1 2}"
                   analyze-string :->analysis-info vals set)))
@@ -203,6 +228,9 @@
     (with-ns-binding 'nextjournal.clerk.analyzer-test
       (is (= (find-ns 'nextjournal.clerk.analyzer-test)
              (do (analyze-string ";; boo\n\n (ns example-notebook)") *ns*)))))
+
+  (testing "has empty analysis info for JDK built-in"
+    (is (= {} (get-in (analyze-string "(do (Thread/sleep 1) 42)") [:->analysis-info 'java.lang.Thread]))))
 
   (testing "defmulti has no deref deps"
     (is (empty? (-> "(defmulti foo :bar)" analyze-string :blocks first :deref-deps))))
@@ -219,7 +247,7 @@
 
 (deftest analyze-file
   (testing "should analyze depedencies"
-    (is (-> (ana/analyze-file "src/nextjournal/clerk/classpath.clj") :graph :dependencies not-empty))))
+    (is (-> (ana/analyze-file "src/nextjournal/clerk/classpath.clj") :->analysis-info not-empty))))
 
 (deftest add-block-ids
   (testing "assigns block ids"
@@ -233,14 +261,11 @@
 
 (deftest no-cache-dep
   (is (match? [{:no-cache? true} {:no-cache? true} {:no-cache? true}]
-              (->> "(def ^:nextjournal.clerk/no-cache my-uuid
+              (let [{:keys [blocks ->analysis-info]} (analyze-string "(def ^:nextjournal.clerk/no-cache my-uuid
   (java.util.UUID/randomUUID))
 (str my-uuid)
-my-uuid"
-                   analyze-string
-                   ana/analyze-doc
-                   :->analysis-info
-                   vals))))
+my-uuid")]
+                (mapv (comp ->analysis-info :id) blocks)))))
 
 (deftest can-analyze-proxy-macro
   (is (analyze-string "(ns proxy-example-notebook) (proxy [clojure.lang.ISeq][] (seq [] '(this is a test seq)))")))
@@ -256,6 +281,32 @@ my-uuid"
 (declare a)
 (def b (str a \" boom\"))
 (def a (str \"boom \" b))"))))
+
+
+(deftest build-graph
+  (testing "should have no unhashed deps for clojure.set"
+    (is (empty? (-> "(ns foo (:require [clojure.set :as set])) (set/union #{1} #{2})" analyze-string :->analysis-info ana/unhashed-deps))))
+
+  (testing "should have analysis info and no unhashed deps for `dep/graph`"
+    (prn :find-location (ana/find-location 'weavejester.dependency/graph))
+    (let [{:keys [->analysis-info]} (analyze-string "(ns foo (:require [weavejester.dependency :as dep])) (dep/graph)")]
+      (is (empty? (ana/unhashed-deps ->analysis-info)))
+      (is (match? {:jar string?} (->analysis-info 'weavejester.dependency/graph))))))
+
+
+(deftest ->hash
+  (testing "notices change in depedency namespace"
+    (let [test-var 'nextjournal.clerk.fixtures.my-test-ns/hello
+          test-string "(ns test (:require [nextjournal.clerk.fixtures.my-test-ns :as my-test-ns])) (str my-test-ns/hello)"
+          spit-with-value #(spit (format "test%s%s.clj" fs/file-separator (str/replace (namespace-munge (namespace test-var)) "." fs/file-separator ))
+                                 (format "(ns nextjournal.clerk.fixtures.my-test-ns) (def hello %s)" %))
+          _ (spit-with-value :hello)
+          analyzed-before (ana/hash (analyze-string test-string))
+          _ (spit-with-value :world)
+          analyzed-after (ana/hash (analyze-string test-string))]
+      (is (not= (get-in analyzed-before [:->hash test-var])
+                (get-in analyzed-after [:->hash test-var]))))))
+
 
 (deftest hash-deref-deps
   (testing "transitive dep gets new hash"

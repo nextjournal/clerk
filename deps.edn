@@ -3,7 +3,7 @@
         org.clojure/java.classpath {:mvn/version "1.0.0"}
         org.clojure/tools.analyzer {:mvn/version "1.1.0"}
         org.clojure/tools.analyzer.jvm {:mvn/version "1.1.0"}
-        babashka/fs {:mvn/version "0.1.11"}
+        babashka/fs {:mvn/version "0.2.14"}
         borkdude/edamame {:mvn/version "1.0.0"}
         weavejester/dependency {:mvn/version "0.2.1"}
         com.nextjournal/beholder {:mvn/version "1.0.0"}
@@ -50,10 +50,15 @@
 
            :test {:extra-deps {nubank/matcher-combinators {:mvn/version "3.5.1"}
                                org.clojure/test.check {:mvn/version "1.1.1"}
-                               lambdaisland/kaocha {:mvn/version "1.66.1034"}}
+                               lambdaisland/kaocha {:mvn/version "1.66.1034"}
+                               io.github.cognitect-labs/test-runner
+                               {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
                   :extra-paths ["test"]
                   :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}"]
-                  :exec-fn kaocha.runner/exec-fn}
+                  :exec-fn kaocha.runner/exec-fn
+                  ;; Run a single test:
+                  ;; clj -M:test -v nextjournal.clerk.analyzer-test/analyze-doc
+                  :main-opts ["-m" "cognitect.test-runner"]}
 
            :demo {:extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
                                org.xerial/sqlite-jdbc {:mvn/version "3.34.0"}

@@ -20,6 +20,8 @@
             [taoensso.nippy :as nippy]
             [weavejester.dependency :as dep]))
 
+(set! *warn-on-reflection* true)
+
 (defn deref? [form]
   (and (seq? form)
        (= (first form) `deref)
@@ -48,13 +50,24 @@
 
 #_(sha1-base58 "hello")
 
+(defn ^:private ensure-symbol [class-or-sym]
+  (cond
+    (symbol? class-or-sym) class-or-sym
+    (class? class-or-sym) (symbol (pr-str class-or-sym))
+    :else (throw (ex-info "not a symbol or a class" {:class-or-sym class-or-sym} (IllegalArgumentException.)))))
+
 (defn class-deps [analyzed]
-  (set/union (into #{} (comp (keep :class)
-                             (filter class?)
-                             (map (comp symbol pr-str))) (ana-ast/nodes analyzed))
-             (into #{} (comp (filter (comp #{:const} :op))
-                             (filter (comp #{:class} :type))
-                             (keep :form)) (ana-ast/nodes analyzed))))
+  (set/union (into #{}
+                   (comp (keep :class)
+                         (filter class?)
+                         (map ensure-symbol))
+                   (ana-ast/nodes analyzed))
+             (into #{}
+                   (comp (filter (comp #{:const} :op))
+                         (filter (comp #{:class} :type))
+                         (keep :form)
+                         (map ensure-symbol))
+                   (ana-ast/nodes analyzed))))
 
 #_(map type (:deps (analyze '(+ 1 2))))
 
@@ -235,6 +248,7 @@
            (analyze-circular-dependency state vars form dep (ex-data e))
            (throw e)))))
 
+
 (defn make-deps-inherit-no-cache [state {:as analyzed :keys [no-cache? vars deps ns-effect?]}]
   (if no-cache?
     state
@@ -322,7 +336,7 @@
                                            doc? (assoc-in [:blocks i :text-without-meta]
                                                           (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))
                                            (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))]
-                               (if (seq deps)
+                               (if (and (:graph state) (seq deps))
                                  (-> (reduce (partial analyze-deps analyzed) state deps)
                                      (make-deps-inherit-no-cache analyzed))
                                  state)))))
@@ -335,12 +349,26 @@
                   parser/add-css-class
                   filter-code-blocks-without-form))))))
 
+
 #_(let [parsed (nextjournal.clerk.parser/parse-clojure-string "clojure.core/dec")]
     (build-graph (analyze-doc parsed)))
 
+(defonce !file->analysis-cache
+  (atom {}))
+
+#_(reset! !file->analysis-cache {})
+
 (defn analyze-file
-  ([file] (analyze-file {:graph (dep/graph)} file))
-  ([state file] (analyze-doc state (parser/parse-file {} file))))
+  ([file]
+   (let [current-file-sha (sha1-base58 (fs/read-all-bytes file))]
+            (or (when-let [{:as cached-analysis :keys [file-sha]} (@!file->analysis-cache file)]
+                  (when (= file-sha current-file-sha)
+                    cached-analysis))
+                (let [analysis (analyze-doc {:file-sha current-file-sha} (parser/parse-file {} file))]
+                  (swap! !file->analysis-cache assoc file analysis)
+                  analysis))))
+  ([state file]
+   (analyze-doc state (parser/parse-file {} file))))
 
 #_(:graph (analyze-file {:graph (dep/graph)} "notebooks/elements.clj"))
 #_(analyze-file {:graph (dep/graph)} "notebooks/rule_30.clj")
@@ -348,15 +376,16 @@
 #_(analyze-file {:graph (dep/graph)} "notebooks/hello.clj")
 
 (defn unhashed-deps [->analysis-info]
-  (set/difference (into #{}
-                        (mapcat :deps)
-                        (vals ->analysis-info))
-                  (-> ->analysis-info keys set)))
+  (remove deref? (set/difference (into #{}
+                                       (mapcat :deps)
+                                       (vals ->analysis-info))
+                                 (-> ->analysis-info keys set))))
 
 #_(unhashed-deps {#'elements/fix-case {:deps #{#'rewrite-clj.node/tag}}})
 
-(defn ns->path [ns]
-  (str/replace (namespace-munge ns) "." fs/file-separator))
+(defn ns->path
+  ([ns] (ns->path fs/file-separator ns))
+  ([separator ns] (str/replace (namespace-munge ns) "." separator)))
 
 (defn ns->file [ns]
   (some (fn [dir]
@@ -367,11 +396,17 @@
                 [".clj" ".cljc"]))
         (cp/classpath-directories)))
 
+(defn normalize-filename [f]
+  (if (fs/windows?)
+    (-> f fs/normalize fs/unixify)
+    f))
+
 (defn ns->jar [ns]
-  (let [path (ns->path ns)]
-    (some #(when (or (.getJarEntry % (str path ".clj"))
-                     (.getJarEntry % (str path ".cljc")))
-             (.getName %))
+  (let [path (ns->path "/" ns)]
+    (some (fn [^java.util.jar.JarFile jar-file]
+            (when (or (.getJarEntry jar-file (str path ".clj"))
+                      (.getJarEntry jar-file (str path ".cljc")))
+              (normalize-filename (.getName jar-file))))
           (cp/classpath-jarfiles))))
 
 #_(ns->jar (find-ns 'weavejester.dependency))
@@ -383,13 +418,14 @@
   (some-> (if (qualified-symbol? sym)
             (-> sym namespace symbol)
             sym)
-          resolve
+          ^Class resolve
           .getProtectionDomain
           .getCodeSource
           .getLocation
-          (guard #(= "file" (.getProtocol %)))
+          ^java.net.URL (guard #(= "file" (.getProtocol ^java.net.URL %)))
           .getFile
-          (guard #(str/ends-with? % ".jar"))))
+          (guard #(str/ends-with? % ".jar"))
+          normalize-filename))
 
 #_(symbol->jar 'io.methvin.watcher.PathUtils)
 #_(symbol->jar 'io.methvin.watcher.PathUtils/cast)
@@ -404,7 +440,7 @@
             (symbol->jar sym))))
 
 #_(find-location `inc)
-#_(find-location #'inc)
+#_(find-location '@nextjournal.clerk.webserver/!doc)
 #_(find-location `dep/depend)
 #_(find-location 'java.util.UUID)
 #_(find-location 'java.util.UUID/randomUUID)
@@ -416,6 +452,17 @@
   (memoize (fn [f]
              {:jar f :hash (sha1-base58 (io/input-stream f))})))
 
+(defn ^:private merge-analysis-info [state {:as analyzed-doc :keys [->analysis-info]}]
+  (reduce (fn [s {:as analyzed :keys [deps]}]
+            (if (seq deps)
+              (-> (reduce (partial analyze-deps analyzed) s deps)
+                  (make-deps-inherit-no-cache analyzed))
+              s))
+          (update state :->analysis-info merge ->analysis-info)
+          (vals ->analysis-info)))
+
+#_(merge-analysis-info {:->analysis-info {:a :b}} {:->analysis-info {:c :d}})
+
 #_(hash-jar (find-location `dep/depend))
 
 (defn build-graph
@@ -424,15 +471,47 @@
   Recursively decends into dependency vars as well as given they can be found in the classpath.
   "
   [doc]
-  (let [{:as graph :keys [->analysis-info]} (analyze-doc doc)]
-    (reduce (fn [g [source symbols]]
-              (if (or (nil? source)
-                      (str/ends-with? source ".jar"))
-                (update g :->analysis-info merge (into {} (map (juxt identity (constantly (if source (hash-jar source) {})))) symbols))
-                (analyze-file g source)))
-            graph
-            (group-by find-location (unhashed-deps ->analysis-info)))))
+  (loop [{:as state :keys [->analysis-info analyzed-file-set counter]}
 
+         (-> (cond-> doc
+               (not (:graph doc)) analyze-doc)
+             (assoc :analyzed-file-set (cond-> #{} (:file doc) (conj (:file doc))))
+             (assoc :counter 0))]
+    (let [unhashed (unhashed-deps ->analysis-info)
+          loc->syms (apply dissoc
+                           (group-by find-location unhashed)
+                           analyzed-file-set)]
+      (if (and (seq loc->syms) (< counter 10))
+        (recur (-> (reduce (fn [g [source symbols]]
+                             (if (or (nil? source)
+                                     (str/ends-with? source ".jar"))
+                               (update g :->analysis-info merge (into {} (map (juxt identity (constantly (if source (hash-jar source) {})))) symbols))
+                               (-> g
+                                   (update :analyzed-file-set conj source)
+                                   (merge-analysis-info (analyze-file source)))))
+                           state
+                           loc->syms)
+                   (update :counter inc)))
+        (do (when (seq unhashed)
+              (binding [*out* *err*]
+                (println "`build-graph` could not hash all deps:" {:unhashed-deps unhashed})))
+            (dissoc state :analyzed-file-set :counter))))))
+
+
+
+(comment
+  (def parsed (parser/parse-file {:doc? true} "src/nextjournal/clerk/webserver.clj"))
+  (def analysis (time (-> parsed analyze-doc build-graph)))
+  (-> analysis :->analysis-info keys set)
+  (let [{:keys [->analysis-info]} analysis]
+    (dissoc (group-by find-location (unhashed-deps ->analysis-info)) nil))
+  (nextjournal.clerk/clear-cache!))
+
+#_(do (time (build-graph (parser/parse-clojure-string (slurp "notebooks/how_clerk_works.clj")))) :done)
+#_(do (time (build-graph (parser/parse-clojure-string (slurp "notebooks/viewer_api.clj")))) :done)
+
+#_(analyze-file "notebooks/how_clerk_works.clj")
+#_(nextjournal.clerk/show! "notebooks/how_clerk_works.clj")
 
 #_(build-graph (parser/parse-clojure-string (slurp "notebooks/hello.clj")))
 #_(keys (:->analysis-info (build-graph "notebooks/elements.clj")))
@@ -445,12 +524,11 @@
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/analyzer.clj"))  #'nextjournal.clerk.analyzer/long-thing)
 
 (defn hash-codeblock [->hash {:as codeblock :keys [hash form id deps vars]}]
-  (let [->hash' (if (and (not (ifn? ->hash)) (seq deps))
-                  (binding [*out* *err*]
-                    (println "->hash must be `ifn?`" {:->hash ->hash :codeblock codeblock})
-                    identity)
-                  ->hash)
-        hashed-deps (into #{} (map ->hash') deps)]
+  (when (and (seq deps) (not (ifn? ->hash)))
+    (throw (ex-info "`->hash` must be `ifn?`" {:->hash ->hash :codeblock codeblock})))
+  (let [hashed-deps (into #{} (map ->hash) deps)]
+    (when (contains? hashed-deps nil)
+      (binding [*out* *err*] (prn :hash-codeblock/unhashed-warning (remove ->hash deps))))
     (sha1-base58 (binding [*print-length* nil]
                    (pr-str (set/union (conj hashed-deps (if form form hash))
                                       vars))))))

@@ -20,7 +20,7 @@
    {:name :nextjournal.markdown/ruler
     :transform-fn (constantly
                    (v/html [:div {:style {:width "100%" :height "80px" :background-position "center" :background-size "cover"
-                                          :background-image "url(https://www.maxpixel.net/static/photo/1x/Ornamental-Separator-Decorative-Line-Art-Divider-4715969.png)"}}]))}])
+                                          :background-image "url(https://cdn.pixabay.com/photo/2019/12/24/04/49/divider-4715969_960_720.png)"}}]))}])
 
 (def viewers-with-pretty-markdown
   (v/update-viewers (v/get-default-viewers) {(comp #{:markdown} :name)
