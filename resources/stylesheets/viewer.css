@@ -309,7 +309,10 @@
   }
   .sidenotes-layout .viewer-markdown p,
   .sidenotes-layout .viewer-markdown ul,
-  .sidenotes-layout .viewer-markdown ol {
+  .sidenotes-layout .viewer-markdown ol,
+  .sidenotes-layout .viewer-markdown h2,
+  .sidenotes-layout .viewer-markdown h3,
+  .sidenotes-layout .viewer-markdown h4 {
       @apply relative pr-[205px];
   }
 }
