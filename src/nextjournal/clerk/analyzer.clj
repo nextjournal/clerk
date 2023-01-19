@@ -527,8 +527,6 @@
   (when (and (seq deps) (not (ifn? ->hash)))
     (throw (ex-info "`->hash` must be `ifn?`" {:->hash ->hash :codeblock codeblock})))
   (let [hashed-deps (into #{} (map ->hash) deps)]
-    (when (contains? hashed-deps nil)
-      (binding [*out* *err*] (prn :hash-codeblock/unhashed-warning (remove ->hash deps))))
     (sha1-base58 (binding [*print-length* nil]
                    (pr-str (set/union (conj hashed-deps (if form form hash))
                                       vars))))))
