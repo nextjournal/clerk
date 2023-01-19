@@ -298,14 +298,14 @@
   @apply top-[-0.5em] w-auto h-auto inline border-0 bg-transparent m-0 pointer-events-none;
 }
 .sidenote {
-    @apply block w-full float-left clear-both relative font-sans text-xs my-4 bg-slate-100 p-4;
+    @apply block w-full float-left clear-both relative font-sans text-xs my-4 bg-slate-100 dark:bg-slate-800 p-4;
     font-style: normal;
     font-weight: normal;
 }
 @media (min-width: 860px) {
   .sidenote sup { @apply inline; }
   .sidenote {
-    @apply -mt-[20px] w-[165px] float-right clear-right absolute right-0 p-0 bg-transparent;
+    @apply -mt-[20px] w-[165px] float-right clear-right absolute right-0 p-0 bg-transparent dark:bg-transparent;
   }
   .sidenotes-layout .viewer-markdown p,
   .sidenotes-layout .viewer-markdown ul,
