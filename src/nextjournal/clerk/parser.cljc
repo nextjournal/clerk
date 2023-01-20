@@ -236,12 +236,12 @@
 (defn parse-markdown
   "Like `n.markdown.parser/parse` but allows to reuse the same context in successive calls"
   [ctx md]
-  (markdown.parser/apply-tokens ctx (markdown/tokenize md)))
+  (-> (markdown.parser/apply-tokens ctx (markdown/tokenize md))
+      markdown.parser/insert-sidenotes))
 
 (defn update-markdown-blocks [{:as state :keys [md-context]} md]
   (let [{::markdown.parser/keys [path]} md-context
-        doc (-> (parse-markdown md-context md)
-                markdown.parser/insert-sidenotes)
+        doc (parse-markdown md-context md)
         [_ index] path]
     (-> state
         (assoc :md-context doc)
