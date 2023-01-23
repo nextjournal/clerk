@@ -66,8 +66,10 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
 ;; new content width once a sidenote is present in the document:
 ;;
 ;; Things to do:
+
 ;; * Hire two private investigators. Get them to follow each other.
 ;; * Wear t-shirt that says "Life". Hand out lemons^[not oranges] on street corner.
+;;   * Wear t-shirt that says "Life". Hand out lemons^[not oranges] on street corner.
 ;; * Change name to Simon. Speak in thirs person.
 ;; * Major in philosophy. Ask people WHY they would like fries with that.
 

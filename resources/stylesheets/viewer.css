@@ -314,6 +314,7 @@
     @apply mt-1;
   }
   .sidenotes-layout .viewer-markdown p,
+  .sidenotes-layout .viewer-markdown li:not(:has(p)),
   .sidenotes-layout .viewer-markdown h2,
   .sidenotes-layout .viewer-markdown h3,
   .sidenotes-layout .viewer-markdown h4 {
