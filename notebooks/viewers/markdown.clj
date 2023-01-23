@@ -74,7 +74,7 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
 ;;
 ;; * Major in philosophy. Ask people WHY they would like fries with that.
 
-123
+(clerk/md "---")
 
 ;; Sidenote references should not be resetted[^crossnote] across code blocks.
 ;; [^crossnote]: as in: _1-based_ again.
