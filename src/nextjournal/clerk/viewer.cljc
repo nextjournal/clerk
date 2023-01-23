@@ -669,9 +669,9 @@
 
    ;; sidenotes
    {:name :nextjournal.markdown/sidenote
-    :transform-fn (into-markup (fn [{:keys [attrs]}] [:span.sidenote [:sup {:style {:margin-right "3px"}} (-> attrs :ref inc)]]))}
+    :transform-fn (into-markup (fn [{:as node :keys [ref]}] [:span.sidenote [:sup {:style {:margin-right "3px"}} (inc ref)]]))}
    {:name :nextjournal.markdown/sidenote-ref
-    :transform-fn (into-markup [:sup.sidenote-ref])}])
+    :transform-fn (fn [wrapped-value] (with-viewer :html [:sup.sidenote-ref (-> wrapped-value ->value :ref inc)]))}])
 
 (def char-viewer
   {:pred char? :render-fn '(fn [c] [:span.cmt-string.inspected-value "\\" c])})
