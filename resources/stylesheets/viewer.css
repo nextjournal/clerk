@@ -285,7 +285,7 @@
 
 .viewer-notebook { @apply py-16; }
 #clerk-static-app .viewer-notebook { @apply pt-[0.8rem] pb-16; }
-.viewer-markdown *:first-child:not(.viewer-code):not(li):not(h2) { @apply mt-0; }
+.viewer-markdown *:first-child:not(.viewer-code):not(li):not(h2):not(.sidenote) { @apply mt-0; }
 /*.viewer + .viewer { @apply mt-6; }*/
 .viewer + .viewer-result { @apply mt-0; }
 .viewer-code + .viewer-result { @apply mt-3; }
@@ -298,18 +298,22 @@
   @apply top-[-0.5em] w-auto h-auto inline border-0 bg-transparent m-0 pointer-events-none;
 }
 .sidenote {
-    @apply block w-full float-left clear-both relative font-sans text-xs my-4 bg-slate-100 dark:bg-slate-800 p-4;
-    font-style: normal;
-    font-weight: normal;
+  @apply block font-sans text-xs mt-4 bg-slate-100 dark:bg-slate-800 p-4;
+  font-style: normal;
+  font-weight: normal;
 }
 @media (min-width: 860px) {
   .sidenote sup { @apply inline; }
+  .sidenote-column {
+    @apply w-[165px] absolute right-0 top-0;
+  }
   .sidenote {
-    @apply -mt-[20px] w-[165px] float-right clear-right absolute right-0 p-0 bg-transparent dark:bg-transparent;
+    @apply bg-transparent dark:bg-transparent p-0;
+  }
+  .sidenote:first-child {
+    @apply mt-1;
   }
   .sidenotes-layout .viewer-markdown p,
-  .sidenotes-layout .viewer-markdown ul,
-  .sidenotes-layout .viewer-markdown ol,
   .sidenotes-layout .viewer-markdown h2,
   .sidenotes-layout .viewer-markdown h3,
   .sidenotes-layout .viewer-markdown h4 {
