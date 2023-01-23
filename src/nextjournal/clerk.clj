@@ -15,11 +15,6 @@
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]))
 
-(when-not (resolve 'parse-long)
-  (defn parse-long [x]
-    (try (Long/parseLong x)
-         (catch Exception _ nil))))
-
 ;; TODO:
 
 ;; - [ ] This should be loaded before babashka.fs (or any other library that it
@@ -29,7 +24,6 @@
 ;; - [ ] Better version checks (alpha, etc.) Include another library for this?
 ;; - version-clj... hmm, I'm not so keen on adding more dependencies.
 
-
 (let [cp (System/getProperty "java.class.path")
       paths (str/split cp (re-pattern fs/path-separator))
       fs-path (some #(when (str/includes? % "babashka/fs") %) paths)
@@ -38,7 +32,7 @@
       version (-> (str/split fs-last #"-") second)
       ;; exclude git version
       [_ & parts] (re-matches #"(\d+)\.(\d+)\.(\d+)" version)
-      [major minor patch] (map parse-long parts)]
+      [major minor patch] (map #(Long/parseLong %) parts)]
   (when version
     (when-not (or (> major 0)
                   (and (= major 0)
