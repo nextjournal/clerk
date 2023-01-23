@@ -15,6 +15,24 @@
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]))
 
+(let [cp (System/getProperty "java.class.path")
+      paths (str/split cp (re-pattern fs/path-separator))
+      fs-path (some #(when (str/includes? % "babashka/fs") %) paths)
+      fs-last (-> (fs/file-name fs-path)
+                  fs/strip-ext)
+      version (-> (str/split fs-last #"-") second)
+      ;; exclude git version
+      [_ & parts] (re-matches #"(\d+)\.(\d+)\.(\d+)" version)
+      [major minor patch] (map parse-long parts)]
+  (when version
+    (when-not (or (> major 0)
+                  (and (= major 0)
+                       (or (> minor 2)
+                           (and (= minor 2)
+                                (>= patch 14)))))
+      (binding [*out* *err*]
+        (println "[clerk] WARNING: clerk requires babashka/fs >= 0.2.14")))))
+
 (defonce ^:private !show-filter-fn (atom nil))
 (defonce ^:private !last-file (atom nil))
 (defonce ^:private !watcher (atom nil))
