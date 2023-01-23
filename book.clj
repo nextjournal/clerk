@@ -130,7 +130,25 @@
 ;; nmap <silent> <localleader>cs :execute ClerkShow()<CR>
 ;; ```
 
+;; **VS Code/Calva**
 
+;; In VS Code/Calva, see [Custom REPL Commands](https://calva.io/custom-commands/).
+;; Here are the snippets you'll need (for both serving and showing):
+
+;; ```json
+;;     "calva.customREPLCommandSnippets": [
+;;        {
+;;            "name": "Clerk Serve",
+;;            "key": "v",
+;;            "snippet": "(nextjournal.clerk/serve! {:browse? true})"
+;;        },
+;;        {
+;;            "name": "Clerk Show",
+;;            "key": "h",
+;;            "snippet": "(nextjournal.clerk/show! \"$file\")"
+;;        }
+;;    ]
+;; ```
 
 ;; ## 🔍 Viewers
 
