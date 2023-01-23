@@ -26,7 +26,10 @@
 
 (let [cp (System/getProperty "java.class.path")
       paths (str/split cp (re-pattern fs/path-separator))
-      fs-path (some #(when (str/includes? % "babashka/fs") %) paths)
+      fs-path (some #(when (str/includes? % (if (fs/windows?)
+                                              "babashka\\fs"
+                                              "babashka/fs")) %)
+                    paths)
       fs-last (-> (fs/file-name fs-path)
                   fs/strip-ext)
       version (-> (str/split fs-last #"-") second)
