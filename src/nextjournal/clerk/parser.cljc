@@ -237,7 +237,7 @@
   "Like `n.markdown.parser/parse` but allows to reuse the same context in successive calls"
   [ctx md]
   (-> (markdown.parser/apply-tokens ctx (markdown/tokenize md))
-      markdown.parser/insert-sidenotes))
+      markdown.parser/insert-sidenote-columns))
 
 (defn update-markdown-blocks [{:as state :keys [md-context]} md]
   (let [{::markdown.parser/keys [path]} md-context

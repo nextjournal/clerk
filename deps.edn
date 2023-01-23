@@ -10,7 +10,7 @@
 
         io.github.nextjournal/markdown {#_#_
                                         :local/root "../markdown"
-                                        :git/sha "b34c889f8a66824abb74143c012612746324b650"}
+                                        :git/sha "ae8f9f5d10f8d47cd58e13cfbdbbb6fb7da78bff"}
         io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
 
         com.taoensso/nippy {:mvn/version "3.2.0"}
