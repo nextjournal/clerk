@@ -75,5 +75,13 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
 
 (clerk/md "---")
 
+;; ### Conclusion^[what usually average folks actually read.]
 ;; Sidenote references should not be resetted[^crossnote] across code blocks.
+;;
+;; | Tables   |     Are  |  Cool |
+;; |----------|:---------|------:|
+;; | col 2 is | left[^*] |  1600 |
+;; | col 3 is |  right   |    12 |
+;;
 ;; [^crossnote]: as in: _1-based_ again.
+;; [^*]: as in not right.
