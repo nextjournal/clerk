@@ -84,4 +84,4 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
 ;; | col 3 is |  right   |    12 |
 ;;
 ;; [^crossnote]: as in: _1-based_ again.
-;; [^*]: as in not right.
+;; [^*]: as in _not right_.

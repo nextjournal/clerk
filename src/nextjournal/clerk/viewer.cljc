@@ -607,8 +607,7 @@
 
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc
-    :transform-fn (into-markup (fn [{:keys [sidenotes?]}]
-                                 [(keyword (str "div.viewer-markdown" (when sidenotes? ".contains-sidenotes")))]))}
+    :transform-fn (into-markup [:div.viewer-markdown])}
 
    ;; blocks
    {:name :nextjournal.markdown/heading
