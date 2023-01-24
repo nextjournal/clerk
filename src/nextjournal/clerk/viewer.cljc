@@ -668,13 +668,11 @@
    {:name :nextjournal.markdown/toc :transform-fn (into-markup [:div.toc])}
 
    ;; sidenotes
-   {:name :nextjournal.markdown/sidenote-column
-    :transform-fn (into-markup [:aside.sidenote-column])}
-
+   {:name :nextjournal.markdown/sidenote-container :transform-fn (into-markup [:div.sidenote-container])}
+   {:name :nextjournal.markdown/sidenote-column :transform-fn (into-markup [:div.sidenote-column])}
    {:name :nextjournal.markdown/sidenote
     :transform-fn (into-markup (fn [{:keys [ref]}]
                                  [:span.sidenote [:sup {:style {:margin-right "3px"}} (str (inc ref))]]))}
-
    {:name :nextjournal.markdown/sidenote-ref
     :transform-fn (fn [wrapped-value] (with-viewer :html [:sup.sidenote-ref (-> wrapped-value ->value :ref inc)]))}])
 
