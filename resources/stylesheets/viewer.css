@@ -302,10 +302,13 @@
   font-style: normal;
   font-weight: normal;
 }
+.sidenote-container {
+  @apply mb-4;
+}
 @media (min-width: 860px) {
   .sidenote sup { @apply inline; }
   .sidenote-column {
-    @apply w-[165px] absolute right-0 top-0;
+    @apply w-[165px] absolute right-0 top-0 -mr-[205px];
   }
   .sidenote {
     @apply bg-transparent dark:bg-transparent p-0;
@@ -313,12 +316,14 @@
   .sidenote:first-child {
     @apply mt-1;
   }
-  .sidenotes-layout .viewer-markdown p,
-  .sidenotes-layout .viewer-markdown li:not(:has(p)),
-  .sidenotes-layout .viewer-markdown h2,
-  .sidenotes-layout .viewer-markdown h3,
-  .sidenotes-layout .viewer-markdown h4 {
-      @apply relative pr-[205px];
+  .sidenotes-layout .viewer-markdown {
+    @apply pr-[205px];
+  }
+  .sidenote-container {
+    @apply relative mb-0;
+  }
+  .sidenotes-layout h1 {
+    @apply w-[756px] !important;
   }
 }
 .viewer-code + .viewer:not(.viewer-markdown):not(.viewer-code):not(.viewer-code-folded),
