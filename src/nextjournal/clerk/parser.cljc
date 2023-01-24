@@ -236,8 +236,7 @@
 (defn parse-markdown
   "Like `n.markdown.parser/parse` but allows to reuse the same context in successive calls"
   [ctx md]
-  (-> (markdown.parser/apply-tokens ctx (markdown/tokenize md))
-      markdown.parser/insert-sidenote-containers))
+  (markdown.parser/apply-tokens ctx (markdown/tokenize md)))
 
 (defn update-markdown-blocks [{:as state :keys [md-context]} md]
   (let [{::markdown.parser/keys [path]} md-context
@@ -247,7 +246,7 @@
         (assoc :md-context doc)
         (update :blocks conj {:type :markdown
                               :doc (-> doc
-                                       (select-keys [:type :content :sidenotes?])
+                                       (select-keys [:type :content :footnotes])
                                        ;; take only new nodes, keep context intact
                                        (update :content subvec (inc index)))}))))
 
@@ -256,7 +255,7 @@
   ([{:as opts :keys [doc?]} s]
    (let [doc (parse-clojure-string opts {:blocks [] :md-context (markdown-context)} s)]
      (select-keys (cond-> doc doc? (merge (:md-context doc)))
-                  [:blocks :title :toc :sidenotes?])))
+                  [:blocks :title :toc :footnotes])))
   ([{:as _opts :keys [doc?]} initial-state s]
    (loop [{:as state :keys [nodes blocks add-comment-on-line?]} (assoc initial-state :nodes (:children (p/parse-string-all s)))]
      (if-let [node (first nodes)]
@@ -316,7 +315,7 @@
             (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
             (select-keys [:blocks :visibility])
             (merge (when doc?
-                     (select-keys ctx [:sidenotes? :title :toc]))))))))
+                     (select-keys ctx [:footnotes :title :toc]))))))))
 
 #_(parse-markdown-string {:doc? true} "# Hello\n```\n1\n;; # 1️⃣ Hello\n2\n\n```\nhey\n```\n3\n;; # 2️⃣ Hello\n4\n```\n")
 

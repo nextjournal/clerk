@@ -18,6 +18,7 @@
                        [sci.lang]
                        [applied-science.js-interop :as j]])
             [nextjournal.markdown :as md]
+            [nextjournal.markdown.parser :as md.parser]
             [nextjournal.markdown.transform :as md.transform])
   #?(:clj (:import (com.pngencoder PngEncoder)
                    (clojure.lang IDeref IAtom)
@@ -499,9 +500,14 @@
 #_(->display {:result {:nextjournal.clerk/visibility {:code :fold :result :show}}})
 #_(->display {:result {:nextjournal.clerk/visibility {:code :fold :result :hide}}})
 
+(defn process-sidenotes [{:as doc :keys [footnotes]} cell-doc]
+  (if (seq footnotes)
+    (md.parser/insert-sidenote-containers (assoc cell-doc :footnotes footnotes))
+    cell-doc))
+
 (defn with-block-viewer [doc {:as cell :keys [type]}]
   (case type
-    :markdown [(with-viewer :markdown (:doc cell))]
+    :markdown [(with-viewer :markdown (process-sidenotes doc (:doc cell)))]
     :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
                 {:as display-opts :keys [code? result?]} (->display cell)
                 eval? (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)]
@@ -974,10 +980,10 @@
                     :blocks :bundle?
                     :css-class
                     :open-graph
-                    :sidenotes?
                     :title
                     :toc
                     :toc-visibility])
+      (assoc :sidenotes? (boolean (seq (:footnotes doc))))
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
 
 (def notebook-viewer
