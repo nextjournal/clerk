@@ -1,6 +1,6 @@
 # $\mathfrak{M}\!⬇$ Markdown Ingestion
 
-This notebook demoes feeding Clerk with markdown files. We currently make no assumption on the kind of source code passed in fenced blocks, we handle code as if it were clojure. Indented code blocks are treated as inert code blocks.  
+This notebook demoes feeding Clerk with markdown files. We currently make no assumption on the kind of source code passed in fenced blocks[^fenced], we handle code as if it were clojure. Indented code blocks are treated as inert code blocks.  
 
 ```clj
 ^:nextjournal.clerk/no-cache
@@ -22,9 +22,9 @@ Nextjournal Markdown library is able to ingest a markdown string
 (def parsed (md/parse markdown-input))
 ```
 
-At present, Clerk will split top level forms which are grouped together under the same cell, this is to guarantee that Clerk's dependency analysys among forms will still effectively avoid needless recomputations when code changes.
+At present, Clerk will split top level forms which are grouped together under the same cell, this is to guarantee that Clerk's dependency analysys among forms will still effectively avoid needless recomputations^[when code changes].
 
-which you can manipulate with your favourite clojure functions
+Parsed markdown is a tree of regular Cloure data structures[^data] which you can manipulate with your favourite clojure functions
 
 ```clojure
 (def sliced (update parsed :content #(take 8 %))) ;; take just a slice 
@@ -52,3 +52,6 @@ and finally render via Clerk's `html` helper.
 ## Appendix
 
 Don't forget the closing slice 🍕 of markdown!
+
+[^fenced]: E.g. blocks delimited by 3 consecutive backticks.
+[^data]: maps and vectors.
