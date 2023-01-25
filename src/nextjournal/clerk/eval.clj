@@ -149,9 +149,7 @@
     (catch Throwable t
       (let [triaged (main/ex-triage (Throwable->map t))]
         (throw (ex-info (main/ex-str triaged)
-                        (assoc triaged
-                               :form form
-                               :clojure.core/eval-file file)))))))
+                        (merge triaged {:form form} (meta form))))))))
 
 (defn maybe-eval-viewers [{:as opts :nextjournal/keys [viewer viewers]}]
   (cond-> opts
