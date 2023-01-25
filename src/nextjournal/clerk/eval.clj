@@ -150,8 +150,8 @@
       (let [triaged (main/ex-triage (Throwable->map t))]
         (throw (ex-info (main/ex-str triaged)
                         (assoc triaged
-                               :clerk/form form
-                               :clerk/file file)))))))
+                               :form form
+                               :clojure.core/eval-file file)))))))
 
 (defn maybe-eval-viewers [{:as opts :nextjournal/keys [viewer viewers]}]
   (cond-> opts
