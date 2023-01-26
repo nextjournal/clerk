@@ -181,7 +181,7 @@
   (reset! !error nil)
   (broadcast! (if (= (:ns @!doc) (:ns doc))
                 (let [old-viewer (meta @!doc)
-                      patch (editscript/diff old-viewer (present+reset! doc))]
+                      patch (editscript/diff old-viewer (present+reset! doc) {:algo :quick})]
                   {:type :patch-state! :patch (editscript/get-edits patch)})
                 {:type :set-state! :doc (present+reset! doc)})))
 
