@@ -56,7 +56,9 @@
 
   Used only when Clerk is used as a git dep, should never be called from the jar."
   []
-  {"/js/viewer.js" (str "https://cas.staging.clerk.garden/tag/" (front-end-hash) "/viewer.js")})
+  {"/js/viewer.js" (cas-tags/tag-url {:namespace "staging.clerk.garden"
+                                      :tag (front-end-hash)
+                                      :path "viewer.js"})})
 
 #_(read-dynamic-asset-map!)
 
