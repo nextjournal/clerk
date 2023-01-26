@@ -3,6 +3,7 @@
   "dependencies": {
     "@codemirror/autocomplete": "^6.0.2",
     "@codemirror/commands": "^6.0.0",
+    "@codemirror/lang-markdown": "6.0.0",
     "@codemirror/language": "^6.1.0",
     "@codemirror/lint": "^6.0.0",
     "@codemirror/search": "^6.0.0",
@@ -14,6 +15,7 @@
     "@lezer/lr": "^1.0.0",
     "@lezer/markdown": "^1.0.0",
     "@nextjournal/lang-clojure": "^1.0.0",
+    "@nextjournal/lezer-clojure": "1.0.0",
     "d3-require": "^1.2.4",
     "emoji-regex": "^10.0.0",
     "framer-motion": "^6.2.8",

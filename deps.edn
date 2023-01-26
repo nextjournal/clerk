@@ -10,7 +10,7 @@
 
         io.github.nextjournal/markdown {:mvn/version "0.4.135"}
         io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
-        io.github.nextjournal/cas-proxy {:git/sha "af68919682bdb0c9a239de6e3ee442d1e801840c"}
+        io.github.nextjournal/cas-proxy {:git/sha "ea9b89eace02911c037ffdd9e4d3c9e8e14c537a"}
 
         com.taoensso/nippy {:mvn/version "3.2.0"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
