@@ -62,17 +62,18 @@
 
 #_(read-dynamic-asset-map!)
 
-(defn build+upload-viewer-resources []
+(defn build+upload-viewer-resources [& args]
   (let [front-end-hash (front-end-hash)
         auth-token (System/getenv "CLERK_CAS_AUTH_TOKEN")]
     (assert (some? auth-token) "Please set CLERK_CAS_AUTH_TOKEN")
-    (when (= 404 (:status (cas-tags/tag-get {:namespace "staging.clerk.garden" :tag front-end-hash})))
-      (println "Did not find viewer in CAS. Compiling…")
-      ((requiring-resolve 'babashka.tasks/run) 'build:js)
-      (println "Uploading…")
-      (let [manifest-path (get (cas/cas-put "build") "manifest-path")]
-        (println "Manifest path:" manifest-path)
-        (println "Updating tag.")
-        (println (if (= 200 (:status (cas-tags/tag-put {:auth-token auth-token :namespace "staging.clerk.garden" :tag front-end-hash :target manifest-path})))
-                   "Success"
-                   "Failed"))))))
+    (let [{:keys [status]} (cas-tags/tag-get {:namespace "staging.clerk.garden" :tag front-end-hash})]
+      (if (or (= 404 status) (some #{"-f" "--force"} args))
+        (do (println "Did not find viewer in CAS. Compiling…")
+            ((requiring-resolve 'babashka.tasks/run) 'build:js)
+            (println "Uploading…")
+            (let [manifest-path (get (cas/cas-put "build") "manifest-path")]
+              (println "Manifest path:" manifest-path)
+              (println (if (= 200 (:status (cas-tags/tag-put {:auth-token auth-token :namespace "staging.clerk.garden" :tag front-end-hash :target manifest-path})))
+                         "Updated tag successfully."
+                         "Failed to update tag."))))
+        (println "Current version already uploaded. Use -f to force rebuild and reupload.")))))
