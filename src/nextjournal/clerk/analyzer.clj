@@ -492,11 +492,7 @@
                            state
                            loc->syms)
                    (update :counter inc)))
-        (do (when (seq unhashed)
-              (binding [*out* *err*]
-                (println "`build-graph` could not hash all deps:" {:unhashed-deps unhashed})))
-            (dissoc state :analyzed-file-set :counter))))))
-
+        (dissoc state :analyzed-file-set :counter)))))
 
 
 (comment
