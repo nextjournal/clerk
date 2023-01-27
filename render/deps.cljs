@@ -14,7 +14,7 @@
             "@nextjournal/lang-clojure" "1.0.0"
             "@nextjournal/lezer-clojure" "1.0.0"
             "d3-require" "^1.2.4"
-            "framer-motion" "7.6.19"
+            "framer-motion" "^6.2.8"
             "katex" "^0.12.0"
             "react" "18.2.0"
             "react-dom" "18.2.0"
