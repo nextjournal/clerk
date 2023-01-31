@@ -196,7 +196,9 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: 🎨 Setup Tailwindcss
-        run: npm install -g tailwindcss @tailwindcss/typography
+        run: |
+          npm install -g tailwindcss
+          npm install -g @tailwindcss/typography
 
       - name: 🧪 Build Rule 30 Notebook with SSR
         run: clojure -J-Dclojure.main.report=stdout -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :index '"notebooks/rule_30.clj"' :paths [] :ssr true :compile-css true
