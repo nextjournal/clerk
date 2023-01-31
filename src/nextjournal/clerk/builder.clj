@@ -1,10 +1,10 @@
 (ns nextjournal.clerk.builder
   "Clerk's Static App Builder."
   (:require [babashka.fs :as fs]
+            [babashka.process :refer [sh]]
             [clojure.java.browse :as browse]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [clojure.java.shell :refer [sh]]
             [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.builder-ui :as builder-ui]
             [nextjournal.clerk.eval :as eval]
