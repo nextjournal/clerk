@@ -208,14 +208,13 @@
   [{:as static-app-opts :keys [report-fn resource->url]}]
   (report-fn {:stage :ssr})
   (let [{duration :time-ms :keys [result]}
-        (eval/time-ms (sh "node"
+        (eval/time-ms (sh {:in (str "import '" (resource->url "/js/viewer.js") "';"
+                                    "console.log(nextjournal.clerk.static_app.ssr(" (pr-str (pr-str static-app-opts)) "))")}
+                          "node"
                           "--abort-on-uncaught-exception"
                           "--experimental-network-imports"
                           "--input-type=module"
-                          "--trace-warnings"
-                          "--eval"
-                          (str "import '" (resource->url "/js/viewer.js") "';"
-                               "console.log(nextjournal.clerk.static_app.ssr(" (pr-str (pr-str static-app-opts)) "))")))
+                          "--trace-warnings"))
         {:keys [out err exit]} result]
     (if (= 0 exit)
       (do
