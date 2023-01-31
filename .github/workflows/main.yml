@@ -195,11 +195,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      - name: 🔧 Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+
       - name: 🎨 Setup Tailwindcss
-        run: |
-          npm install -g tailwindcss
-          npm add --dev @tailwindcss/typography
-          npm install
+        run: npm install -g tailwindcss @tailwindcss/typography
 
       - name: 🧪 Build Rule 30 Notebook with SSR
         run: clojure -J-Dclojure.main.report=stdout -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :index '"notebooks/rule_30.clj"' :paths [] :ssr true :compile-css true
