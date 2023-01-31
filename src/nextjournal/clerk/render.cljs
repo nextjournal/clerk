@@ -125,7 +125,7 @@
                                :mobile-width 300
                                :local-storage-key local-storage-key
                                :set-hash? (not bundle?)
-                               :scroll-el (js/document.querySelector "html")
+                               :scroll-el (when (exists? js/document) (js/document.querySelector "html"))
                                :open? (if-some [stored-open? (localstorage/get-item local-storage-key)]
                                         stored-open?
                                         (not= :collapsed toc-visibility))})
