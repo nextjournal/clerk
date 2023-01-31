@@ -272,6 +272,8 @@
               ;;"--content" (str tw-folder "/**/*.edn")
               "--output" tw-output
               "--minify")]
+      (println err)
+      (println out)
       (when-not (= 0 exit)
         (throw (ex-info (str "Clerk build! failed\n" out "\n" err) ret))))
     (let [url (viewer/store+get-cas-url! (assoc opts :ext "css") (fs/read-all-bytes tw-output))]
