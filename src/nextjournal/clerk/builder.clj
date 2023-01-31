@@ -212,6 +212,7 @@
                           "--abort-on-uncaught-exception"
                           "--experimental-network-imports"
                           "--input-type=module"
+                          "--trace-warnings"
                           "--eval"
                           (str "import '" (resource->url "/js/viewer.js") "';"
                                "console.log(nextjournal.clerk.static_app.ssr(" (pr-str (pr-str static-app-opts)) "))")))

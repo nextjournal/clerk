@@ -195,11 +195,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: 🔧 Setup Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-          cache: 'npm'
+      - name: 🔧 Setup NPM
+        run: npm config set prefix /usr/local/lib
 
       - name: 🎨 Setup Tailwindcss
         run: npm install -g tailwindcss @tailwindcss/typography
