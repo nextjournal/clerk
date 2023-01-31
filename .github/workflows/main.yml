@@ -195,14 +195,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: 🔧 Setup NPM
-        run: npm config set prefix /tmp/usr/local/opt
-
       - name: 🎨 Setup Tailwindcss
-        run: npm install -g tailwindcss @tailwindcss/typography
+        run: yarn global add tailwindcss @tailwindcss/typography
+
+      - name: 🧶 Yarn Global
+        run: echo $(yarn global dir)/node_modules
 
       - name: 🧪 Build Rule 30 Notebook with SSR
-        run: clojure -J-Dclojure.main.report=stdout -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :index '"notebooks/rule_30.clj"' :paths [] :ssr true :compile-css true
+        run: NODE_PATH=$(yarn global dir)/node_modules clojure -J-Dclojure.main.report=stdout -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :index '"notebooks/rule_30.clj"' :paths [] :ssr true :compile-css true
 
       - name: 🔐 Google Auth
         uses: google-github-actions/auth@v0
