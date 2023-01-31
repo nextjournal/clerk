@@ -1,10 +1,10 @@
 (ns nextjournal.clerk.builder
   "Clerk's Static App Builder."
   (:require [babashka.fs :as fs]
+            [babashka.process :refer [sh]]
             [clojure.java.browse :as browse]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [clojure.java.shell :refer [sh]]
             [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.builder-ui :as builder-ui]
             [nextjournal.clerk.eval :as eval]
@@ -88,6 +88,7 @@
                                  (str "Done in " duration ". ✅\n"))
       :building (str "🔨 Building \"" (:file doc) "\"… ")
       :compiling-css "🎨 Compiling CSS… "
+      :ssr "🧱 Server Side Rendering… "
       :downloading-cache (str "⏬ Downloading distributed cache… ")
       :uploading-cache (str "⏫ Uploading distributed cache… ")
       :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n"))))
@@ -204,18 +205,22 @@
 
 (defn ssr!
   "Shells out to node to generate server-side-rendered html."
-  [{:as static-app-opts :keys [resource->url]}]
-  (let [{:as ret :keys [out err exit]}
-        (sh "node"
-            "--abort-on-uncaught-exception"
-            "--experimental-network-imports"
-            "--input-type=module"
-            "--eval"
-            (str "import '" (resource->url "/js/viewer.js") "';"
-                 "console.log(nextjournal.clerk.static_app.ssr(" (pr-str (pr-str static-app-opts)) "))"))]
+  [{:as static-app-opts :keys [report-fn resource->url]}]
+  (report-fn {:stage :ssr})
+  (let [{duration :time-ms :keys [result]}
+        (eval/time-ms (sh {:in (str "import '" (resource->url "/js/viewer.js") "';"
+                                    "console.log(nextjournal.clerk.static_app.ssr(" (pr-str (pr-str static-app-opts)) "))")}
+                          "node"
+                          "--abort-on-uncaught-exception"
+                          "--experimental-network-imports"
+                          "--input-type=module"
+                          "--trace-warnings"))
+        {:keys [out err exit]} result]
     (if (= 0 exit)
-      (assoc static-app-opts :html out)
-      (throw (ex-info (str "Clerk ssr! failed\n" out "\n" err) ret)))))
+      (do
+        (report-fn {:stage :done :duration duration})
+        (assoc static-app-opts :html out))
+      (throw (ex-info (str "Clerk ssr! failed\n" out "\n" err) result)))))
 
 (defn write-static-app!
   [opts docs]
@@ -267,6 +272,8 @@
               ;;"--content" (str tw-folder "/**/*.edn")
               "--output" tw-output
               "--minify")]
+      (println err)
+      (println out)
       (when-not (= 0 exit)
         (throw (ex-info (str "Clerk build! failed\n" out "\n" err) ret))))
     (let [url (viewer/store+get-cas-url! (assoc opts :ext "css") (fs/read-all-bytes tw-output))]
@@ -334,15 +341,18 @@
         (report-fn {:stage :done :duration duration})))
     (report-fn {:stage :finished :state state :duration duration :total-duration (eval/elapsed-ms start)})))
 
-#_(build-static-app! {:ssr? true :index "notebooks/rule_30.clj" :browse? true})
 #_(build-static-app! {:paths clerk-docs :bundle? true})
 #_(build-static-app! {:paths ["notebooks/index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :index "notebooks/index.clj"})
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
 #_(build-static-app! {:paths ["notebooks/viewers/**"]})
 #_(build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
-#_(swap! config/!resource->url assoc
-         "/js/viewer.js" (-> config/lookup-url slurp clojure.edn/read-string (get "/js/viewer.js")))
+#_ (reset! config/!resource->url @config/!asset-map)
 #_(swap! config/!resource->url dissoc "/css/viewer.css")
+#_(build-static-app! {:ssr? true
+                      :compile-css? true
+                      ;; test against cljs release `bb build:js`
+                      :resource->url {"/js/viewer.js" "./build/viewer.js"}
+                      :index "notebooks/rule_30.clj"})
 #_(fs/delete-tree "public/build")
 #_(build-static-app! {:compile-css? true
                       :index "notebooks/rule_30.clj"
