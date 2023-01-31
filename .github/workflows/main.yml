@@ -167,7 +167,7 @@ jobs:
           target_url: https://snapshots.nextjournal.com/clerk/build/${{ github.sha }}
 
   ssr:
-    name: SSR Smoketest
+    name: SSR smoke test build
     runs-on: ubuntu-latest
     needs: [build-and-upload-viewer-resources]
     steps:
@@ -220,7 +220,7 @@ jobs:
         uses: Sibz/github-status-action@v1
         with:
           authToken: ${{secrets.GITHUB_TOKEN}}
-          context: 'Continuous Delivery / SSR'
+          context: 'Continuous Delivery / SSR Static App'
           description: 'Ready'
           state: 'success'
           sha: ${{github.event.pull_request.head.sha || github.sha}}
