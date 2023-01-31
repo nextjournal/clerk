@@ -196,7 +196,7 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: 🔧 Setup NPM
-        run: npm config set prefix /usr/local/lib
+        run: npm config set prefix /tmp/usr/local/opt
 
       - name: 🎨 Setup Tailwindcss
         run: npm install -g tailwindcss @tailwindcss/typography
