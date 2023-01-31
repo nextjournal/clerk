@@ -88,6 +88,7 @@
                                  (str "Done in " duration ". ✅\n"))
       :building (str "🔨 Building \"" (:file doc) "\"… ")
       :compiling-css "🎨 Compiling CSS… "
+      :ssr "🧱 Server Side Rendering… "
       :downloading-cache (str "⏬ Downloading distributed cache… ")
       :uploading-cache (str "⏫ Uploading distributed cache… ")
       :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n"))))
@@ -204,18 +205,22 @@
 
 (defn ssr!
   "Shells out to node to generate server-side-rendered html."
-  [{:as static-app-opts :keys [resource->url]}]
-  (let [{:as ret :keys [out err exit]}
-        (sh "node"
-            "--abort-on-uncaught-exception"
-            "--experimental-network-imports"
-            "--input-type=module"
-            "--eval"
-            (str "import '" (resource->url "/js/viewer.js") "';"
-                 "console.log(nextjournal.clerk.static_app.ssr(" (pr-str (pr-str static-app-opts)) "))"))]
+  [{:as static-app-opts :keys [report-fn resource->url]}]
+  (report-fn {:stage :ssr})
+  (let [{duration :time-ms :keys [result]}
+        (eval/time-ms (sh "node"
+                          "--abort-on-uncaught-exception"
+                          "--experimental-network-imports"
+                          "--input-type=module"
+                          "--eval"
+                          (str "import '" (resource->url "/js/viewer.js") "';"
+                               "console.log(nextjournal.clerk.static_app.ssr(" (pr-str (pr-str static-app-opts)) "))")))
+        {:keys [out err exit]} result]
     (if (= 0 exit)
-      (assoc static-app-opts :html out)
-      (throw (ex-info (str "Clerk ssr! failed\n" out "\n" err) ret)))))
+      (do
+        (report-fn {:stage :done :duration duration})
+        (assoc static-app-opts :html out))
+      (throw (ex-info (str "Clerk ssr! failed\n" out "\n" err) result)))))
 
 (defn write-static-app!
   [opts docs]
