@@ -113,6 +113,13 @@ endfunction
 
 nmap <silent> <localleader>cs :execute ClerkShow()<CR>
 ```
+##### Issues with neovim and watch-paths
+
+If using neovim and watch-paths, ensure that you:
+```
+:set backupcopy=yes
+```
+If you do not, then the watcher will not work. For more info, see https://github.com/gmethvin/directory-watcher/issues/88
 
 ## 🪚 Developing Clerk
 Make sure you have [Babashka installed](https://github.com/babashka/babashka#installation), and run:
