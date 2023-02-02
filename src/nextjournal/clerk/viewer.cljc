@@ -968,13 +968,27 @@
                (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote))))
                (extract-sync-atom-vars doc)))))
 
+(defn ^:private safely
+  [func error-message args->error-data & args]
+  (try (apply func args)
+    (catch #?(:clj Exception :cljs js/Error) e
+      (throw #?(:clj (ex-info error-message
+                              (apply args->error-data args)
+                              e)
+                :cljs e)))))
+
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc
       (assoc :atom-var-name->state (atom-var-name->state doc))
-      (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
-                                             (map (comp process-wrapped-value
-                                                        apply-viewers*
-                                                        (partial ensure-wrapped-with-viewers viewers))))))
+      (update :blocks (partial into []
+                               (comp (mapcat (partial with-block-viewer doc))
+                                     (map (fn [block]
+                                            (->> block
+                                                 (ensure-wrapped-with-viewers viewers)
+                                                 (safely apply-viewers*
+                                                         "error evaluating viewer transform function for form"
+                                                         #(hash-map :form (-> % ->value :form)))
+                                                 process-wrapped-value))))))
       (select-keys [:atom-var-name->state
                     :auto-expand-results?
                     :blocks :bundle?
