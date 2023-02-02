@@ -19,7 +19,6 @@
 (defonce ^:private !last-file (atom nil))
 (defonce ^:private !watcher (atom nil))
 
-
 (defn show!
   "Evaluates the Clojure source in `file-or-ns` and makes Clerk show it in the browser.
 
@@ -35,6 +34,7 @@
   (if config/*in-clerk*
     ::ignored
     (try
+      (webserver/send-status! {:progress 0 :status "Parsing…"})
       (let [file (cond
                    (nil? file-or-ns)
                    (throw (ex-info (str "`nextjournal.clerk/show!` cannot show `nil`.")

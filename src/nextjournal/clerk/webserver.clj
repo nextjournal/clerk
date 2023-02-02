@@ -45,6 +45,10 @@
 
 #_(broadcast! [{:random (rand-int 10000) :range (range 100)}])
 
+(defn send-status! [status]
+  (doseq [ch @!clients]
+    (httpkit/send! ch (v/->edn {:type :set-status! :status status}))))
+
 (defn update-if [m k f]
   (if (k m)
     (update m k f)

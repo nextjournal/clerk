@@ -9,6 +9,7 @@
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.viewer :as v]
+            [nextjournal.clerk.webserver :as webserver]
             [taoensso.nippy :as nippy])
   (:import (java.awt.image BufferedImage)
            (javax.imageio ImageIO)))
@@ -197,6 +198,7 @@
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
 (defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks]}]
+  (webserver/send-status! {:progress 0.35 :status "Evaluating…"})
   (let [deref-forms (into #{} (filter analyzer/deref?) (keys ->hash))
         {:as evaluated-doc :keys [blob-ids]}
         (reduce (fn [state cell]
@@ -217,6 +219,7 @@
 (defn +eval-results
   "Evaluates the given `parsed-doc` using the `in-memory-cache` and augments it with the results."
   [in-memory-cache parsed-doc]
+  (webserver/send-status! {:progress 0.10 :status "Analyzing…"})
   (let [{:as analyzed-doc :keys [ns]} (analyzer/build-graph
                                        (assoc parsed-doc :blob->result in-memory-cache))]
     (binding [*ns* ns]
