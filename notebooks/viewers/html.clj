@@ -22,7 +22,6 @@
              " notebook."]) nil)
 
 (clerk/html
- [:h1 "Title"
-  (list [:div "one"]
-        [:div "two"]
-        [:div "three"])])
+ [:ol (list [:li "One"]
+            [:li "Two"]
+            [:li "Three"])])

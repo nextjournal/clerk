@@ -1226,7 +1226,7 @@
 #_(process-viewer {:render-fn '#(vector :h1) :transform-fn mark-presented})
 
 (def processed-keys
-  (into [:path :offset :n :nextjournal/content-type :nextjournal/value :nextjournal/presented?]
+  (into [:path :offset :n :nextjournal/content-type :nextjournal/value]
         (-> viewer-opts-normalization vals set (disj :nextjournal/viewers))))
 
 (defn process-wrapped-value [wrapped-value]
@@ -1386,11 +1386,13 @@
       (reduce compute-expanded-at state' value)
       state')))
 
-(defn collect-expandable-paths [state {:nextjournal/keys [value presented?] :keys [path]}]
-  (let [state' (assoc-in state [:expanded-at path] false)]
-    (if (and (vector? value) (not presented?))
-      (reduce collect-expandable-paths state' value)
-      state')))
+(defn collect-expandable-paths [state wrapped-value]
+  (if-let [{:nextjournal/keys [value] :keys [path]} (when (wrapped-value? wrapped-value)
+                                                      wrapped-value)]
+    (reduce collect-expandable-paths
+            (cond-> state path (assoc-in [:expanded-at path] false))
+            (when (vector? value) value))
+    state))
 
 (defn assign-expanded-at [{:as wrapped-value :keys [content-length]}]
   (assoc wrapped-value :nextjournal/expanded-at (:expanded-at (if content-length
