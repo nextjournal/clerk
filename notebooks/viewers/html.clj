@@ -20,3 +20,8 @@
              "Go to "
              [:a.text-lg {:href (v/doc-url "notebooks/viewers/image.clj")} "images"]
              " notebook."]) nil)
+
+(clerk/html
+ [:ol (list [:li "One"]
+            [:li "Two"]
+            [:li "Three"])])
