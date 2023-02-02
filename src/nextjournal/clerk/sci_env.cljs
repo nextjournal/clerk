@@ -155,6 +155,41 @@
 
 (def ^:export mount render/mount)
 
+(defn register-js!
+  "Given some string `libname` and a JS namespace object (and an optional symbolic
+  `alias`), makes the JS namespace available to SCI.
+
+  For example, given a namespace with `(:require [\"react\" :as re])`:
+
+  ```clj
+  (register-js! \"react\" re)
+  ```
+
+  Makes it possible to call
+
+  ```clj
+  (clerk/eval-cljs '(require '[\"react\" :as react]))
+  ```
+
+  in a notebook.
+
+  Calling
+
+  ```clj
+  (register-js! \"react\" re 'react)
+  ```
+
+  makes the `react` alias available to every consumer of the SCI environment.
+  "
+  ([libname js-namespace]
+   (set! libname->class
+         (assoc libname->class libname js-namespace)))
+  ([libname js-namespace alias]
+   (register-js! libname js-namespace)
+   (when alias
+     (eval-form
+      `(~'require '[~libname :as ~alias])))))
+
 (sci.ctx-store/reset-ctx! (sci/init initial-sci-opts))
 
 (sci/alter-var-root sci/print-fn (constantly *print-fn*))
