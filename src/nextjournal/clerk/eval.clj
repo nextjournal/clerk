@@ -120,7 +120,7 @@
   ([store ns name] (record-interned-symbol store ns name) (core-intern ns name))
   ([store ns name val] (record-interned-symbol store ns name) (core-intern ns name val)))
 
-(defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable? file] :as _form-info} hash digest-file]
+(defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
   (try
     (let [!interned-vars (atom #{})
           {:keys [result]} (time-ms (binding [config/*in-clerk* true]
@@ -149,7 +149,7 @@
     (catch Throwable t
       (let [triaged (main/ex-triage (Throwable->map t))]
         (throw (ex-info (main/ex-str triaged)
-                        (merge triaged {:form form} (meta form))))))))
+                        (merge triaged (analyzer/form->ex-data form))))))))
 
 (defn maybe-eval-viewers [{:as opts :nextjournal/keys [viewer viewers]}]
   (cond-> opts
