@@ -6,6 +6,7 @@
             ["@lezer/highlight" :as lezer-highlight]
             ["@nextjournal/lang-clojure" :as lang-clojure]
             ["framer-motion" :as framer-motion]
+            ["react" :as react]
             [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.string :as str]
@@ -90,7 +91,8 @@
    "@codemirror/state" codemirror-state
    "@codemirror/view" codemirror-view
    "@lezer/highlight" lezer-highlight
-   "@nextjournal/lang-clojure" lang-clojure})
+   "@nextjournal/lang-clojure" lang-clojure
+   "react" react})
 
 (defn load-fn [{:keys [libname ctx opts ns]}]
   (when (contains? libname->class libname)
