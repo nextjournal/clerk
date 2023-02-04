@@ -38,7 +38,7 @@
     (is (= ["book.clj"] (builder/expand-paths {:paths ["book.clj"]}))))
 
   (testing "deduplicates index + paths"
-    (is (= ["notebooks/rule_30.clj"]
+    (is (= [(str (fs/file "notebooks" "rule_30.clj"))]
            (builder/expand-paths {:paths ["notebooks/rule_**.clj"] :index "notebooks/rule_30.clj"}))))
 
   (testing "invalid args"
