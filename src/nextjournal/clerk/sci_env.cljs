@@ -86,14 +86,14 @@
           'with-d3-require render/with-d3-require}))
 
 (defn load-fn [{:keys [libname ctx opts ns]}]
-  (when-let [klass (get-in @(:env ctx) [:raw-classes (symbol (munge libname))])]
-    (let [{:keys [as refer]} opts
-          munged-libname (symbol (munge libname))]
-      (when as
-        (sci/add-import! ctx ns munged-libname as))
+  (when-let [klass (and (string? libname)
+                        (get-in @(:env ctx) [:raw-classes libname]))]
+    (let [{:keys [as refer]} opts]
+      (when as        
+        (sci/add-import! ctx ns libname as))
       (doseq [r refer]
-        (when-some [prop (j/get klass (name r))]
-          (let [sub-libname (str munged-libname "$" r)]
+        (when-some [prop (goog.object/get klass (name r))]
+          (let [sub-libname (str libname "$" r)]
             (sci/add-class! ctx sub-libname prop)
             (sci/add-import! ctx ns sub-libname r))))
       {:handled true})))
@@ -114,15 +114,13 @@
    :disable-arity-checks true
    :classes (into {'js (j/assoc! goog/global "import" shadow.esm/dynamic-import)
                    'framer-motion framer-motion
-                   :allow :all}
-                  (map (fn [[libname klass]]
-                         [(symbol (munge libname)) klass]))
-                  {"@codemirror/language" codemirror-language
+                   "@codemirror/language" codemirror-language
                    "@codemirror/state" codemirror-state
                    "@codemirror/view" codemirror-view
                    "@lezer/highlight" lezer-highlight
                    "@nextjournal/lang-clojure" lang-clojure
-                   "react" react})
+                   "react" react
+                   :allow :all})
    :aliases {'j 'applied-science.js-interop
              'reagent 'reagent.core
              'v 'nextjournal.clerk.viewer
