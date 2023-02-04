@@ -112,15 +112,15 @@
   {:async? true
    :load-fn load-fn
    :disable-arity-checks true
-   :classes (into {'js (j/assoc! goog/global "import" shadow.esm/dynamic-import)
-                   'framer-motion framer-motion
-                   "@codemirror/language" codemirror-language
-                   "@codemirror/state" codemirror-state
-                   "@codemirror/view" codemirror-view
-                   "@lezer/highlight" lezer-highlight
-                   "@nextjournal/lang-clojure" lang-clojure
-                   "react" react
-                   :allow :all})
+   :classes {'js (j/assoc! goog/global "import" shadow.esm/dynamic-import)
+             'framer-motion framer-motion
+             "@codemirror/language" codemirror-language
+             "@codemirror/state" codemirror-state
+             "@codemirror/view" codemirror-view
+             "@lezer/highlight" lezer-highlight
+             "@nextjournal/lang-clojure" lang-clojure
+             "react" react
+             :allow :all}
    :aliases {'j 'applied-science.js-interop
              'reagent 'reagent.core
              'v 'nextjournal.clerk.viewer
