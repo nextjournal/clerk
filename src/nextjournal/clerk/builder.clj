@@ -153,10 +153,10 @@
                               (throw (ex-info (str "`:paths-fn` must compute sequential value.") {:paths-fn paths-fn :resolved-paths resolved-paths})))
                             resolved-paths)
                           (throw (ex-info ex-msg {:paths-fn paths-fn})))))
-       (maybe-add-index build-opts)
        (mapcat (partial fs/glob "."))
        (filter (complement fs/directory?))
        (mapv (comp str fs/file))
+       (maybe-add-index build-opts)
        (throw-when-empty build-opts)))
 
 #_(expand-paths {:paths ["notebooks/di*.clj"]})
