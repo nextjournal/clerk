@@ -203,12 +203,13 @@
 
 #_(halt!)
 
-(defn serve! [{:keys [port] :or {port 7777}}]
+(defn serve! [{:keys [host port] :or {host "localhost" port 7777}}]
   (halt!)
   (try
-    (reset! !server {:port port :stop-fn (httpkit/run-server #'app {:port port})})
-    (println (str "Clerk webserver started on http://localhost:" port " ..."))
+    (reset! !server {:host host :port port :stop-fn (httpkit/run-server #'app {:ip host :port port})})
+    (println (format "Clerk webserver started on http://%s:%s ..." host port ))
     (catch java.net.BindException _e
       (println "Port " port " not available, server not started!"))))
 
 #_(serve! {:port 7777})
+#_(serve! {:port 7777 :host "0.0.0.0"})

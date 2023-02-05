@@ -376,6 +376,7 @@
 
   Will obey the following optional configuration entries:
 
+  * a `:host` for the webserver to listen on, defaulting to `\"localhost\"`
   * a `:port` for the webserver to listen on, defaulting to `7777`
   * `:browse?` will open Clerk in a browser after it's been started
   * a sequence of `:watch-paths` that Clerk will watch for file system events and show any changed file
@@ -384,6 +385,8 @@
   Can be called multiple times and Clerk will happily serve you according to the latest config."
   {:org.babashka/cli {:spec {:watch-paths {:desc "Paths on which to watch for changes and show a changed document."
                                            :coerce []}
+                             :host {:desc "Host or ip for the webserver to listen on, defaults to \"locahost\"."
+                                    :coerce :string}
                              :port {:desc "Port number for the webserver to listen on, defaults to 7777."
                                     :coerce :number}
                              :show-filter-fn {:desc "Symbol resolving to a fn to restrict when to show a notebook as a result of file system event."
@@ -397,10 +400,9 @@
       (println "Start the Clerk webserver with an optional a file watcher.\n\nOptions:"
                (str "\n" (format-opts (-> #'serve! meta :org.babashka/cli))))
       (println (-> #'serve! meta :doc)))
-    (let [{:as _normalized-config
-           :keys [browse? watch-paths port show-filter-fn]
-           :or {port 7777}} (normalize-opts config)]
-      (webserver/serve! {:port port})
+    (let [{:as normalized-config
+           :keys [browse? watch-paths show-filter-fn]} (normalize-opts config)]
+      (webserver/serve! normalized-config)
       (reset! !show-filter-fn show-filter-fn)
       (halt-watcher!)
       (when (seq watch-paths)
@@ -408,7 +410,8 @@
         (reset! !watcher {:paths watch-paths
                           :watcher (apply beholder/watch #(file-event %) watch-paths)}))
       (when browse?
-        (browse/browse-url (str "http://localhost:" port)))))
+        (let [{:keys [host port]} @webserver/!server]
+          (browse/browse-url (format "http://%s:%s" host port))))))
   config)
 
 #_(serve! (with-meta {:help true} {:org.babashka/cli {}}))
