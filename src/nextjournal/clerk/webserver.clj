@@ -196,8 +196,8 @@
 (defonce !server (atom nil))
 
 (defn halt! []
-  (when-let [{:keys [port stop-fn]} @!server]
-    (stop-fn)
+  (when-let [{:keys [port instance]} @!server]
+    @(httpkit/server-stop! instance)
     (println (str "Webserver running on " port ", stopped."))
     (reset! !server nil)))
 
@@ -206,10 +206,13 @@
 (defn serve! [{:keys [host port] :or {host "localhost" port 7777}}]
   (halt!)
   (try
-    (reset! !server {:host host :port port :stop-fn (httpkit/run-server #'app {:ip host :port port})})
+    (reset! !server {:host host :port port :instance (httpkit/run-server #'app {:ip host :port port :legacy-return-value? false})})
     (println (format "Clerk webserver started on http://%s:%s ..." host port ))
-    (catch java.net.BindException _e
-      (println "Port " port " not available, server not started!"))))
+    (catch java.net.BindException e
+      (let [msg (format "Clerk webserver could not be started because port %d is not available. Stop what's running on port %d or specify a different port." port port)]
+        (binding [*out* *err*]
+          (println msg))
+        (throw (ex-info msg {:port port} e))))))
 
 #_(serve! {:port 7777})
 #_(serve! {:port 7777 :host "0.0.0.0"})
