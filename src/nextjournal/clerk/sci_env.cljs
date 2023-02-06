@@ -17,6 +17,7 @@
             [nextjournal.clerk.render.code]
             [nextjournal.clerk.render.context :as view-context]
             [nextjournal.clerk.render.hooks]
+            [nextjournal.clerk.render.navbar]
             [nextjournal.clerk.trim-image]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.clojure-mode.commands]
@@ -138,6 +139,7 @@
                        'nextjournal.clerk.render
                        'nextjournal.clerk.render.code
                        'nextjournal.clerk.render.hooks
+                       'nextjournal.clerk.render.navbar
 
                        'nextjournal.clojure-mode.keymap
                        'nextjournal.clojure-mode.commands
