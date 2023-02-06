@@ -346,7 +346,7 @@
   Does nothing outside of Clerk, like `clojure.core/comment`."
   [& body]
   (when nextjournal.clerk.config/*in-clerk*
-    `(clerk/with-viewer v/examples-viewer
+    `(nextjournal.clerk/with-viewer v/examples-viewer
        (mapv (fn [form# val#] {:form form# :val val#}) ~(mapv (fn [x#] `'~x#) body) ~(vec body)))))
 
 (defn file->viewer
