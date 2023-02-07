@@ -33,6 +33,8 @@
     (binding [config/*bounded-count-limit* 1000]
       (is (v/present (v/normalize-table-data {:a (range) :b (range 80)}))))))
 
+(present+fetch (range 30))
+
 (deftest resolve-elision
   (testing "range"
     (let [value (range 30)]
@@ -122,7 +124,7 @@
   (testing "only transform-fn can select viewer"
     (is (match? {:nextjournal/value [:div.viewer-markdown
                                      ["h1" {:id "hello-markdown!"} [:<> "👋 Hello "] [:em [:<> "markdown"]] [:<> "!"]]]
-                 :nextjournal/viewer {:name :html-}}
+                 :nextjournal/viewer {:name `v/html-}}
                 (v/present (v/with-viewer {:transform-fn (comp v/md v/->value)}
                              "# 👋 Hello _markdown_!")))))
 
@@ -130,7 +132,7 @@
     (v/present (into (sorted-map) {'foo 'bar})))
 
   (testing "doesn't throw on bogus input"
-    (is (match? {:nextjournal/value nil, :nextjournal/viewer {:name :html}}
+    (is (match? {:nextjournal/value nil, :nextjournal/viewer {:name `v/html-viewer}}
                 (v/present (v/html nil)))))
 
   (testing "big ints and ratios are represented as strings (issue #335)"
