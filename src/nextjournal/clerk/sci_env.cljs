@@ -85,19 +85,6 @@
           'set-viewers! render/set-viewers!
           'with-d3-require render/with-d3-require}))
 
-(defn load-fn [{:keys [libname ctx opts ns]}]
-  (when-let [klass (and (string? libname)
-                        (get-in @(:env ctx) [:raw-classes libname]))]
-    (let [{:keys [as refer]} opts]
-      (when as        
-        (sci/add-import! ctx ns libname as))
-      (doseq [r refer]
-        (when-some [prop (goog.object/get klass (name r))]
-          (let [sub-libname (str libname "$" r)]
-            (sci/add-class! ctx sub-libname prop)
-            (sci/add-import! ctx ns sub-libname r))))
-      {:handled true})))
-
 (defn ^:macro implements?* [_ _ psym x]
   ;; hardcoded implementation of implements? for js-interop destructure which
   ;; uses implements?
@@ -110,16 +97,10 @@
 
 (def initial-sci-opts
   {:async? true
-   :load-fn load-fn
+   #_#_:load-fn load-fn
    :disable-arity-checks true
    :classes {'js (j/assoc! goog/global "import" shadow.esm/dynamic-import)
              'framer-motion framer-motion
-             "@codemirror/language" codemirror-language
-             "@codemirror/state" codemirror-state
-             "@codemirror/view" codemirror-view
-             "@lezer/highlight" lezer-highlight
-             "@nextjournal/lang-clojure" lang-clojure
-             "react" react
              :allow :all}
    :aliases {'j 'applied-science.js-interop
              'reagent 'reagent.core
@@ -153,6 +134,15 @@
 (def ^:export mount render/mount)
 
 (sci.ctx-store/reset-ctx! (sci/init initial-sci-opts))
+
+(run! (fn [[libname lib]] (sci/add-js-lib! (sci.ctx-store/get-ctx) libname lib))
+      {"@codemirror/language" codemirror-language
+       "@codemirror/state" codemirror-state
+       "@codemirror/view" codemirror-view
+       "@lezer/highlight" lezer-highlight
+       "@nextjournal/lang-clojure" lang-clojure
+       "framer-motion" framer-motion
+       "react" react})
 
 (sci/alter-var-root sci/print-fn (constantly *print-fn*))
 (sci/alter-var-root sci/print-err-fn (constantly *print-err-fn*))
