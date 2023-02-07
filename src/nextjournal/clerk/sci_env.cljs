@@ -97,11 +97,17 @@
 
 (def initial-sci-opts
   {:async? true
-   #_#_:load-fn load-fn
    :disable-arity-checks true
    :classes {'js (j/assoc! goog/global "import" shadow.esm/dynamic-import)
              'framer-motion framer-motion
              :allow :all}
+   :js-libs {"@codemirror/language" codemirror-language
+             "@codemirror/state" codemirror-state
+             "@codemirror/view" codemirror-view
+             "@lezer/highlight" lezer-highlight
+             "@nextjournal/lang-clojure" lang-clojure
+             "framer-motion" framer-motion
+             "react" react}
    :aliases {'j 'applied-science.js-interop
              'reagent 'reagent.core
              'v 'nextjournal.clerk.viewer
@@ -134,15 +140,6 @@
 (def ^:export mount render/mount)
 
 (sci.ctx-store/reset-ctx! (sci/init initial-sci-opts))
-
-(run! (fn [[libname lib]] (sci/add-js-lib! (sci.ctx-store/get-ctx) libname lib))
-      {"@codemirror/language" codemirror-language
-       "@codemirror/state" codemirror-state
-       "@codemirror/view" codemirror-view
-       "@lezer/highlight" lezer-highlight
-       "@nextjournal/lang-clojure" lang-clojure
-       "framer-motion" framer-motion
-       "react" react})
 
 (sci/alter-var-root sci/print-fn (constantly *print-fn*))
 (sci/alter-var-root sci/print-err-fn (constantly *print-err-fn*))
