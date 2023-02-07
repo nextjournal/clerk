@@ -18,7 +18,7 @@
 (defmethod print-method clojure.lang.Atom [o w]
   (#'clojure.core/print-tagged-object o (#'clojure.core/deref-as-map o) w))
 
-(with-viewer :read+inspect
+(with-viewer `v/read+inspect-viewer
   (pr-str (atom {})))
 
 ;; This is [cider-nrepl's implementation](https://github.com/clojure-emacs/cider-nrepl/blob/5c0f21197fcccb1b2ca67054cab1dcc8a6af2c7f/src/cider/nrepl/print_method.clj#L37-L40).
@@ -27,18 +27,18 @@
   (.write w (pr-str @o))
   (.write w (format " 0x%x]" (System/identityHashCode o))))
 
-(with-viewer :read+inspect
+(with-viewer `v/read+inspect-viewer
   (pr-str (atom {})))
 
 ;; ### Viewer Implementations
 
 ;; Like Clojure's default:
 (with-viewer {:pred #(instance? clojure.lang.IDeref %)
-              :transform-fn (fn [wrapped-value] (with-viewer :tagged-value
+              :transform-fn (fn [wrapped-value] (with-viewer `v/tagged-value-viewer
                                                   {:tag "object"
                                                    :value (let [r (v/->value wrapped-value)]
                                                             (vector (type r)
-                                                                    #?(:clj (with-viewer :number-hex (System/identityHashCode r)))
+                                                                    (with-viewer `v/number-hex-viewer (System/identityHashCode r))
                                                                     (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
                                                                       (deref-as-map r)
                                                                       r)))}))}
@@ -46,10 +46,10 @@
 
 ;; Like Cider
 (with-viewer {:pred (partial instance? clojure.lang.IRef)
-              :transform-fn (fn [wrapped-value] (with-viewer :tagged-value
+              :transform-fn (fn [wrapped-value] (with-viewer `v/tagged-value-viewer
                                                   {:tag "atom"
                                                    :value [(deref (v/->value wrapped-value))
-                                                           (with-viewer :number-hex (System/identityHashCode (v/->value wrapped-value)))]}))}
+                                                           (with-viewer `v/number-hex-viewer (System/identityHashCode (v/->value wrapped-value)))]}))}
   (atom {:range (range 100)}))
 
 
@@ -107,7 +107,7 @@ inc
 
 (java.time.LocalDateTime/now)
 
-(with-viewer :read+inspect
+(with-viewer `v/read+inspect-viewer
   (pr-str {:range (range 100 200)}))
 
 (comp inc dec)

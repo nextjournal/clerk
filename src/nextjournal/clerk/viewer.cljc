@@ -136,7 +136,7 @@
     (:nextjournal/viewer x)))
 
 
-#_(->viewer (with-viewer :code '(+ 1 2 3)))
+#_(->viewer (with-viewer `code-viewer '(+ 1 2 3)))
 #_(->viewer "123")
 
 (defn ->viewers
@@ -643,7 +643,7 @@
 
    ;; inlines
    {:name :nextjournal.markdown/text :transform-fn (into-markup [:<>])}
-   {:name :nextjournal.markdown/softbreak :transform-fn (fn [_] (with-viewer :html [:<> " "]))}
+   {:name :nextjournal.markdown/softbreak :transform-fn (fn [_] (with-viewer `html-viewer [:<> " "]))}
 
    ;; formulas
    {:name :nextjournal.markdown/formula
@@ -681,7 +681,7 @@
     :transform-fn (into-markup (fn [{:keys [ref]}]
                                  [:span.sidenote [:sup {:style {:margin-right "3px"}} (str (inc ref))]]))}
    {:name :nextjournal.markdown/sidenote-ref
-    :transform-fn (fn [wrapped-value] (with-viewer :html [:sup.sidenote-ref (-> wrapped-value ->value :ref inc)]))}])
+    :transform-fn (fn [wrapped-value] (with-viewer `html-viewer [:sup.sidenote-ref (-> wrapped-value ->value :ref inc)]))}])
 
 (def char-viewer
   {:pred char? :render-fn '(fn [c] [:span.cmt-string.inspected-value "\\" c])})

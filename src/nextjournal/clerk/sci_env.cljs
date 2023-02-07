@@ -55,13 +55,13 @@
            (or (get {'viewer-fn   ->viewer-fn-with-error
                      'viewer-eval ->viewer-eval-with-error} tag)
                (fn [value]
-                 (viewer/with-viewer :tagged-value
+                 (viewer/with-viewer `viewer/tagged-value-viewer
                    {:tag tag
                     :space? (not (vector? value))
                     :value (cond-> value
                              (and (vector? value) (number? (second value)))
                              (update 1 (fn [memory-address]
-                                         (viewer/with-viewer :number-hex memory-address))))}))))
+                                         (viewer/with-viewer `viewer/number-hex-viewer memory-address))))}))))
          :features #{:clj}}))
 
 (defn ^:export read-string [s]

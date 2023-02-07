@@ -124,13 +124,13 @@
  (reagent/as-element [:h1 "♻️"]))
 
 (c/card
-  (v/with-viewer :reagent
-                 (fn []
-                   (reagent/with-let [c (reagent/atom 0)]
-                                     [:<>
-                                      [:h2 "Count: " @c]
-                                      [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold.mr-2 {:on-click #(swap! c inc)} "increment"]
-                                      [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold {:on-click #(swap! c dec)} "decrement"]]))))
+ (v/with-viewer `v/reagent-viewer
+   (fn []
+     (reagent/with-let [c (reagent/atom 0)]
+       [:<>
+        [:h2 "Count: " @c]
+        [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold.mr-2 {:on-click #(swap! c inc)} "increment"]
+        [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold {:on-click #(swap! c dec)} "decrement"]]))))
 
 ;; ## Using `v/with-viewer`
 (c/card
@@ -153,9 +153,9 @@
  (v/with-viewer {:render-fn 'nextjournal.clerk.render/render-notebook
                  :transform-fn v/mark-presented}
    {:blocks (map v/present
-                 [(v/with-viewer :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
+                 [(v/with-viewer `v/markdown-viewer "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
                   (v/code "(shuffle (range 10))")
-                  (v/with-viewer :clerk/code-block {:text "(+ 1 2 3)"})
+                  (v/with-viewer `v/code-block-viewer {:text "(+ 1 2 3)"})
                   (v/md "# And some more\n And some more [markdown](https://daringfireball.net/projects/markdown/).")
                   (v/code "(shuffle (range 10))")
                   (v/md "## Some math \n This is a formula.")
@@ -177,9 +177,9 @@
 
 ;; in order for it to work, one needs the verbose syntax
 (c/card
-  (v/col
-   (v/row (v/with-viewer :html [:h1 "🎲"]) (v/with-viewer :html [:h1 "🎲"]))
-   (v/row (v/with-viewer :html [:h1 "🎲"]) (v/with-viewer :html [:h1 "🎲"]))))
+ (v/col
+  (v/row (v/with-viewer `v/html-viewer [:h1 "🎲"]) (v/with-viewer `v/html-viewer [:h1 "🎲"]))
+  (v/row (v/with-viewer `v/html-viewer [:h1 "🎲"]) (v/with-viewer `v/html-viewer [:h1 "🎲"]))))
 
 ;; ## In-process Pagination
 

@@ -15,7 +15,7 @@
   [{:name :nextjournal.markdown/monospace
     :transform-fn (comp eval read-string markdown.transform/->text v/->value)}
    {:name :nextjournal.markdown/ruler
-    :transform-fn (constantly (v/with-viewer :html [:div.text-center (repeat @num★ "★")]))}])
+    :transform-fn (constantly (v/with-viewer `v/html-viewer [:div.text-center (repeat @num★ "★")]))}])
 
 ^{::clerk/visibility {:result :hide}}
 (def viewers-with-md-eval
