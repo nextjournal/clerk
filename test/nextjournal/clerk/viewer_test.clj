@@ -33,8 +33,6 @@
     (binding [config/*bounded-count-limit* 1000]
       (is (v/present (v/normalize-table-data {:a (range) :b (range 80)}))))))
 
-(present+fetch (range 30))
-
 (deftest resolve-elision
   (testing "range"
     (let [value (range 30)]
