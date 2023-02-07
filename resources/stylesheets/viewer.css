@@ -106,12 +106,12 @@
 /* --------------------------------------------------------------- */
 
 .task-list-item + .task-list-item,
-.viewer-markdown ul ul {
+.markdown-viewer ul ul {
   @apply mt-1 mb-0;
 }
 
 /* compact TOC */
-.viewer-markdown .toc ul {
+.markdown-viewer .toc ul {
   list-style: none;
   @apply my-1;
 }
@@ -119,14 +119,14 @@
 /* Code Viewer */
 /* --------------------------------------------------------------- */
 
-.viewer-code {
+.code-viewer {
   @apply font-mono bg-slate-100 rounded-sm text-sm overflow-x-auto dark:bg-gray-800;
 }
-.viewer-code .cm-content {
+.code-viewer .cm-content {
   @apply py-4 px-8;
 }
 @media (min-width: 960px){
-  .viewer-notebook .viewer-code .cm-content {
+  .notebook-viewer .code-viewer .cm-content {
     @apply py-4 pl-12;
   }
 }
@@ -143,7 +143,7 @@
 .cmt-link { @apply underline; }
 .untyped-value { @apply whitespace-nowrap; }
 
-.cm-editor, .cmt-default, .viewer-result {
+.cm-editor, .cmt-default, .result-viewer {
   @apply text-slate-800 dark:text-slate-300;
 }
 .cmt-keyword {
@@ -217,8 +217,8 @@
 /* Prose */
 /* --------------------------------------------------------------- */
 
-.viewer-notebook,
-.viewer-markdown {
+.notebook-viewer,
+.markdown-viewer {
   @apply prose
     dark:prose-invert
     prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
@@ -237,8 +237,8 @@
     prose-code:font-medium prose-code:bg-slate-100
     max-w-none;
 }
-.viewer-markdown blockquote p:first-of-type:before,
-.viewer-markdown blockquote p:last-of-type:after {
+.markdown-viewer blockquote p:first-of-type:before,
+.markdown-viewer blockquote p:last-of-type:after {
   @apply content-none;
 }
 
@@ -263,33 +263,33 @@
 /* Markdown TOC */
 /* --------------------------------------------------------------- */
 
-.viewer-markdown .toc      { @apply mt-4; }
-.viewer-markdown h1 + .toc { @apply mt-8; }
+.markdown-viewer .toc      { @apply mt-4; }
+.markdown-viewer h1 + .toc { @apply mt-8; }
 
-.viewer-markdown .toc h1,
-.viewer-markdown .toc h2,
-.viewer-markdown .toc h3,
-.viewer-markdown .toc h4,
-.viewer-markdown .toc h5,
-.viewer-markdown .toc h6 {
+.markdown-viewer .toc h1,
+.markdown-viewer .toc h2,
+.markdown-viewer .toc h3,
+.markdown-viewer .toc h4,
+.markdown-viewer .toc h5,
+.markdown-viewer .toc h6 {
   @apply text-base text-indigo-600 font-sans my-0;
 }
-.viewer-markdown .toc a {
+.markdown-viewer .toc a {
   @apply text-indigo-600 font-normal no-underline hover:underline;
 }
-.viewer-markdown .toc li    { @apply m-0; }
-.viewer-markdown .toc ul ul { @apply pl-4; }
+.markdown-viewer .toc li    { @apply m-0; }
+.markdown-viewer .toc ul ul { @apply pl-4; }
 
 /* Notebook Spacing */
 /* --------------------------------------------------------------- */
 
-.viewer-notebook { @apply py-16; }
-#clerk-static-app .viewer-notebook { @apply pt-[0.8rem] pb-16; }
-.viewer-markdown *:first-child:not(.viewer-code):not(li):not(h2):not(.sidenote) { @apply mt-0; }
+.notebook-viewer { @apply py-16; }
+#clerk-static-app .notebook-viewer { @apply pt-[0.8rem] pb-16; }
+.markdown-viewer *:first-child:not(.code-viewer):not(li):not(h2):not(.sidenote) { @apply mt-0; }
 /*.viewer + .viewer { @apply mt-6; }*/
-.viewer + .viewer-result { @apply mt-0; }
-.viewer-code + .viewer-result { @apply mt-3; }
-.viewer-markdown + .viewer-markdown { @apply mt-0; }
+.viewer + .result-viewer { @apply mt-0; }
+.code-viewer + .result-viewer { @apply mt-3; }
+.markdown-viewer + .markdown-viewer { @apply mt-0; }
 
 /* Sidenotes */
 /* --------------------------------------------------------------- */
@@ -316,7 +316,7 @@
   .sidenote:first-child {
     @apply mt-1;
   }
-  .sidenotes-layout .viewer-markdown {
+  .sidenotes-layout .markdown-viewer {
     @apply pr-[205px];
   }
   .sidenote-container {
@@ -326,18 +326,18 @@
     @apply w-[756px] !important;
   }
 }
-.viewer-code + .viewer:not(.viewer-markdown):not(.viewer-code):not(.viewer-code-folded),
-.viewer-code-folded + .viewer:not(.viewer-markdown):not(.viewer-code):not(.viewer-code-folded),
-.viewer-result + .viewer-result {
+.code-viewer + .viewer:not(.markdown-viewer):not(.code-viewer):not(.code-viewer-folded),
+.code-viewer-folded + .viewer:not(.markdown-viewer):not(.code-viewer):not(.code-viewer-folded),
+.result-viewer + .result-viewer {
   @apply mt-2;
 }
-.viewer-code + .viewer-code-folded {
+.code-viewer + .code-viewer-folded {
   @apply mt-4;
 }
-.viewer-result {
+.result-viewer {
   @apply leading-tight mb-6;
 }
-.viewer-result figure {
+.result-viewer figure {
   @apply mt-0 !important;
 }
 @media (min-width: 768px) {
