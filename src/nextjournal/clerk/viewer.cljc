@@ -179,14 +179,8 @@
   (throw-when-viewer-opts-invalid (set/rename-keys opts viewer-opts-normalization)))
 
 (defn normalize-viewer [viewer]
-  (cond (keyword? viewer) (let [sym (symbol "nextjournal.clerk.viewer" (str (name viewer) "-viewer"))
-                                msg "using keywords for viewer names has been deprecated, please use fully-qualified symbols instead e.g. `%s` => `%s`" viewer sym]
-                            #?(:clj (binding [*out* *err*]
-                                      (println msg)))
-                            sym)
-        (symbol? viewer) (if-not (qualified-symbol? viewer)
-                           (symbol "nextjournal.clerk.viewer" (name viewer))
-                           viewer)
+  (cond (keyword? viewer) viewer
+        (symbol? viewer) viewer
         (map? viewer) viewer
         #?@(:clj [(fn? viewer) {:transform-fn viewer}])
         :else (throw (ex-info "cannot normalize viewer" {:viewer viewer}))))
@@ -774,18 +768,18 @@
 (def ideref-viewer
   {:pred #(#?(:clj instance? :cljs satisfies?) IDeref %)
    :transform-fn (update-val (fn [ideref]
-                               (with-viewer :tagged-value
+                               (with-viewer `tagged-value-viewer
                                  {:tag "object"
                                   :value (vector (symbol (pr-str (type ideref)))
-                                                 #?(:clj (with-viewer :number-hex (System/identityHashCode ideref)))
+                                                 #?(:clj (with-viewer `number-hex-viewer (System/identityHashCode ideref)))
                                                  (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
                                                    (deref-as-map ideref)
                                                    (deref ideref)))})))})
 
 (def regex-viewer
   {:pred #?(:clj (partial instance? java.util.regex.Pattern) :cljs regexp?)
-   :transform-fn (fn [wrapped-value] (with-viewer :tagged-value {:tag "" :value (let [regex (->value wrapped-value)]
-                                                                                  #?(:clj (.pattern regex) :cljs (.-source regex)))}))})
+   :transform-fn (fn [wrapped-value] (with-viewer `tagged-value-viewer {:tag "" :value (let [regex (->value wrapped-value)]
+                                                                                         #?(:clj (.pattern regex) :cljs (.-source regex)))}))})
 
 (def fallback-viewer
   {:pred (constantly :true) :transform-fn (update-val #(with-viewer `read+inspect-viewer (pr-str %)))})
@@ -874,7 +868,7 @@
                                                                             (keep #(when (number? (second %)) (first %))))
                                                                       (not-empty (first rows)))})
                          (assoc :nextjournal/value (cond->> []
-                                                     (seq rows) (cons (with-viewer `table-body-viewer (map (partial with-viewer :table/row) rows)))
+                                                     (seq rows) (cons (with-viewer `table-body-viewer (map (partial with-viewer `table-row-viewer) rows)))
                                                      head (cons (with-viewer (:name table-head-viewer table-head-viewer) head)))))
                      (-> wrapped-value
                          mark-presented
