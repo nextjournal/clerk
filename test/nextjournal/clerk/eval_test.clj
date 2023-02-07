@@ -148,25 +148,25 @@
                  {:nextjournal/width :wide}]
                 (->> "(ns clerk-test-width {:nextjournal.clerk/visibility {:code :hide}})
 
-^{:nextjournal.clerk/viewer :table :nextjournal.clerk/width :full}
+^{:nextjournal.clerk/viewer 'nextjournal.clerk.viewer/table-viewer :nextjournal.clerk/width :full}
 (def dataset
   [[1 2] [3 4]])
 
-^{:nextjournal.clerk/viewer :html :nextjournal.clerk/width :wide}
+^{:nextjournal.clerk/viewer 'nextjournal.clerk.viewer/html-viewer :nextjournal.clerk/width :wide}
 [:div.bg-red-200 [:h1 \"Wide Hiccup\"]]
 "
                      eval+extract-doc-blocks
                      (mapv #(select-keys % [:nextjournal/width]))))))
 
   (testing "can handle uncounted sequences"
-    (is (match? [{:nextjournal/viewer {:name :code}
+    (is (match? [{:nextjournal/viewer {:name `viewer/code-viewer}
                   :nextjournal/value "(range)"}
                  {:nextjournal/value {:nextjournal/fetch-opts {:blob-id string?}
                                       :nextjournal/hash string?}}]
                 (eval+extract-doc-blocks "(range)"))))
 
   (testing "assigns folded visibility"
-    (is (match? [{:nextjournal/viewer {:name :code-folded}
+    (is (match? [{:nextjournal/viewer {:name `viewer/code-folded-viewer}
                   :nextjournal/value "{:some :map}"}
                  {:nextjournal/value {:nextjournal/fetch-opts {:blob-id string?}
                                       :nextjournal/hash string?}}]

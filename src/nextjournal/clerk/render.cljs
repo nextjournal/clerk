@@ -161,11 +161,11 @@
           [navbar/panel !state [navbar/navbar !state]]])
        [:div.flex-auto.w-screen.scroll-container
         [:> (.-div motion)
-         {:key "viewer-notebook"
+         {:key "notebook-viewer"
           :initial (when toc-visibility {:margin-left doc-inset})
           :animate (when toc-visibility {:margin-left doc-inset})
           :transition navbar/spring
-          :class (str (or css-class "flex flex-col items-center viewer-notebook flex-auto ")
+          :class (str (or css-class "flex flex-col items-center notebook-viewer flex-auto ")
                       (when sidenotes? "sidenotes-layout"))}
          (doall
           (map-indexed (fn [idx x]
@@ -179,9 +179,9 @@
                                             (cond-> viewer-css-class
                                               (string? viewer-css-class) vector)
                                             ["viewer"
-                                             (when viewer-name (str "viewer-" (name viewer-name)))
-                                             (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
-                                             (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
+                                             (when viewer-name (name viewer-name))
+                                             (when inner-viewer-name (name inner-viewer-name))
+                                             (case (or (viewer/width x) (case viewer-name (`viewer/code-viewer `viewer/code-folded-viewer) :wide :prose))
                                                :wide "w-full max-w-wide"
                                                :full "w-full"
                                                "w-full max-w-prose px-8")]))}
@@ -814,7 +814,7 @@
         [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-150.hover:text-slate-500
          {:class "text-[10px]"}
          "evaluated in 0.2s"]]
-       [:div.viewer-code.mb-2.relative {:style {:margin-top 0}}
+       [:div.code-viewer.mb-2.relative {:style {:margin-top 0}}
         [render-code code-string]]])))
 
 

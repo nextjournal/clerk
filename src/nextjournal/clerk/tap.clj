@@ -37,7 +37,7 @@
 #_(inst->local-time-str (Instant/now))
 
 (def tap-viewer
-  {:name :tapped-value
+  {:name `tap-viewer
    :render-fn '(fn [{:keys [val tapped-at key]} opts]
                  (with-meta
                    [:div.border-t.relative.py-3
@@ -53,7 +53,7 @@
 (def taps-viewer
   {:render-fn '#(into [:div.flex.flex-col.pt-2] (v/inspect-children %2) %1)
    :transform-fn (clerk/update-val (fn [taps]
-                                     (mapv (partial clerk/with-viewer :tapped-value) (reverse taps))))})
+                                     (mapv (partial clerk/with-viewer `tap-viewer) (reverse taps))))})
 
 ^{::clerk/visibility {:result :show}
   ::clerk/viewer (cond-> taps-viewer
