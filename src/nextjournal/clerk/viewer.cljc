@@ -184,7 +184,7 @@
         (map? viewer) viewer
         (seq? viewer) {:render-fn viewer}
         #?@(:clj [(fn? viewer) {:transform-fn viewer}])
-        :else (throw (ex-info (format "cannot normalize viewer `%s`" viewer) {:viewer viewer}))))
+        :else (throw (ex-info (str "cannot normalize viewer `" viewer "`" ) {:viewer viewer}))))
 
 #_(normalize-viewer '#(vector :h3 "Hello " % "!"))
 #_(normalize-viewer :latex)
