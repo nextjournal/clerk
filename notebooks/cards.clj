@@ -134,17 +134,15 @@
 
 ;; ## Using `v/with-viewer`
 (c/card
- (v/with-viewer
-   #(v/html
-     [:div.relative
-      [:div.h-2.mb-4.flex.rounded.bg-blue-200.overflow-hidden
-       [:div.shadow-none.flex.flex-col.text-center.bg-blue-500
-        {:style {:width (-> %
-                            (* 100)
-                            int
-                            (max 0)
-                            (min 100)
-                            (str "%"))}}]]])
+ (v/with-viewer {:render-fn #(vector :div.relative
+                                     [:div.h-2.mb-4.flex.rounded.bg-blue-200.overflow-hidden
+                                      [:div.shadow-none.flex.flex-col.text-center.bg-blue-500
+                                       {:style {:width (-> %
+                                                           (* 100)
+                                                           int
+                                                           (max 0)
+                                                           (min 100)
+                                                           (str "%"))}}]])}
    0.33))
 
 ;; ## Notebook Viewer
