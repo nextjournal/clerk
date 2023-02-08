@@ -152,7 +152,7 @@
 
 (defn toggle-button [!state content & [opts]]
   (let [{:keys [mobile? mobile-open? open?]} @!state]
-    [:div
+    [:div.toc-toggle
      (merge {:on-click #(swap! !state assoc
                                (if mobile? :mobile-open? :open?) (if mobile? (not mobile-open?) (not open?))
                                :animation-mode (if mobile? :slide-over :push-in))} opts)
@@ -176,7 +176,7 @@
                          (js/removeEventListener "resize" resize))]
     (let [{:keys [animation-mode hide-toggle? open? mobile-open? mobile? mobile-width theme width]} @!state
           w (if mobile? mobile-width width)]
-      [:div.flex.h-screen
+      [:div.flex.h-screen.toc-panel
        {:ref ref-fn}
        [:> AnimatePresence
         {:initial false}
