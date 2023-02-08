@@ -2,9 +2,11 @@
 ^{:nextjournal.clerk/toc true :nextjournal.clerk/visibility {:code :hide}}
 (ns cards
   {:nextjournal.clerk/no-cache true}
-  (:require [nextjournal.clerk :as clerk]
+  (:require [applied-science.js-interop :as-alias j]
             [cards-macro :as c]
-            [nextjournal.clerk.viewer :as v]))
+            [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.viewer :as v]
+            [reagent.core :as-alias reagent]))
 
 ;; ## Images
 (c/card
@@ -195,7 +197,7 @@
 ;; ## Parser API
 
 ^{::clerk/width :wide}
-(c/card 
+(c/card
  (as-> ";; # 👋 Hello CLJS
 ;; This is `fold`
 ;;
@@ -209,12 +211,12 @@
 (fold str \"\" (range 10))
 
 ;; ## And the usual Clerk's perks
-(v/plotly {:data [{:y (shuffle (range 10)) :name \"The Federation\"}
+(nextjournal.clerk.viewer/plotly {:data [{:y (shuffle (range 10)) :name \"The Federation\"}
                   {:y (shuffle (range 10)) :name \"The Empire\"}]})
 ;; tables
-(v/table {:a [1 2 3] :b [4 5 6]})
+(nextjournal.clerk.viewer/table {:a [1 2 3] :b [4 5 6]})
 ;; html
-(v/html [:h1 \"🧨\"])
+(nextjournal.clerk.viewer/html [:h1 \"🧨\"])
 "
      doc
    (nextjournal.clerk.parser/parse-clojure-string {:doc? true} doc)
