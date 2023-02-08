@@ -1,7 +1,8 @@
 (ns nextjournal.clerk.config
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [nextjournal.clerk.render.hashing]))
 
 (def cache-dir
   (or (System/getProperty "clerk.cache_dir")
@@ -31,7 +32,7 @@
   ;; contains asset manifest in the form:
   ;; {"/js/viewer.js" "https://..."}
   (atom (or resource-manifest-from-props
-            @!asset-map)))
+            {"/js/viewer.js" (str "https://storage.clerk.garden/nextjournal/" (nextjournal.clerk.render.hashing/front-end-hash) "/viewer.js")})))
 
 #_(swap! !resource->url assoc "/css/viewer.css" "https://storage.googleapis.com/nextjournal-cas-eu/data/8VvAV62HzsvhcsXEkHP33uj4cV9UvdDz7DU9qLeVRCfEP9kWLFAzaMKL77trdx898DzcVyDVejdfxvxj5XB84UpWvQ")
 #_(swap! !resource->url dissoc "/css/viewer.css")
