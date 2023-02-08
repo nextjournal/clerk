@@ -825,3 +825,11 @@
                              (str "?" (opts->query opts))))))
 
 (def consume-view-context view-context/consume)
+
+(defn hash-changed [e]
+  (when-let [clerk-show-arg (second (re-find #"^#/show=(.*)$" (.-hash js/location)))]
+    (js/console.log (clerk-eval (list 'nextjournal.clerk/show! clerk-show-arg)))))
+
+(when (exists? js/window)
+  (.addEventListener js/window "hashchange" hash-changed))
+
