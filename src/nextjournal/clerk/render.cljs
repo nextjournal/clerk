@@ -122,6 +122,7 @@
                                :dark-mode? (localstorage/get-item local-storage-dark-mode-key)
                                :theme {:slide-over "bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900"}
                                :width navbar-width
+                               :mobile? (< js/innerWidth 640)
                                :mobile-width 300
                                :local-storage-key local-storage-key
                                :set-hash? (not bundle?)
