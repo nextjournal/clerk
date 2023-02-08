@@ -38,14 +38,14 @@ with     quite
 
 ;; Editable code viewer
 (clerk/with-viewer
-  '(fn [code-str _] [:div.viewer-code [nextjournal.clerk.render.code/editor (reagent/atom code-str)]])
+  '(fn [code-str _] [:div.viewer-code [nextjournal.clerk.render.code/editor (reagent.core/atom code-str)]])
   "(def fib
   (lazy-cat [0 1]
             (map + fib (rest fib))))")
 
 ;; Tiny code viewer
 (clerk/with-viewer
-  '(fn [code-str _] [nextjournal.clerk.render.code/editor (reagent/atom code-str)])
+  '(fn [code-str _] [nextjournal.clerk.render.code/editor (reagent.core/atom code-str)])
   "{:search :query}")
 
 (clerk/eval-cljs
@@ -55,7 +55,7 @@ with     quite
 (clerk/with-viewer
   '(fn [code-str _]
      [:div.bg-neutral-50
-      [nextjournal.clerk.render.code/editor (reagent/atom code-str)
+      [nextjournal.clerk.render.code/editor (reagent.core/atom code-str)
        {:extensions
         (.concat (lineNumbers)
                  (highlightActiveLine)
