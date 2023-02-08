@@ -128,13 +128,20 @@
 .code-viewer {
   @apply font-mono bg-slate-100 rounded-sm text-sm overflow-x-auto dark:bg-gray-800;
 }
+.code-listing  {
+    @apply -ml-8 -mr-8 relative !important;
+}
 .code-viewer .cm-content {
   @apply py-4 px-8;
 }
 @media (min-width: 960px){
-  .notebook-viewer .code-viewer .cm-content {
-    @apply py-4 pl-12;
-  }
+    .notebook-viewer .code-viewer .cm-content {
+        @apply py-4 pl-12;
+    }
+    .notebook-viewer .code-listing {
+        width: 48rem !important;
+        @apply -ml-12 mr-0 !important;
+    }
 }
 /* Don’t show focus outline when double-clicking cell in Safari */
 .cm-scroller { @apply focus:outline-none; }

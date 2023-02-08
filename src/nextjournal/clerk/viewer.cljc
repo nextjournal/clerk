@@ -628,9 +628,11 @@
    {:name :nextjournal.markdown/plain :transform-fn (into-markup [:<>])}
    {:name :nextjournal.markdown/ruler :transform-fn (into-markup [:hr])}
    {:name :nextjournal.markdown/code
-    :transform-fn (fn [wrapped-value] (with-viewer `html-viewer
-                                        [:div.viewer-code (with-viewer `code-viewer
-                                                            (md.transform/->text (->value wrapped-value)))]))}
+    :transform-fn (fn [wrapped-value]
+                    (with-viewer `html-viewer
+                      [:div.code-viewer.code-listing
+                       (with-viewer `code-viewer
+                         (str/trim-newline (md.transform/->text (->value wrapped-value))))]))}
 
    ;; marks
    {:name :nextjournal.markdown/em :transform-fn (into-markup [:em])}
