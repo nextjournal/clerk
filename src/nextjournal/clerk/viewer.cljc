@@ -1049,6 +1049,7 @@
                        (update :nextjournal/value (partial process-blocks viewers))
                        mark-presented))})
 
+
 (def viewer-eval-viewer
   {:pred viewer-eval?
    :var-from-def? true
