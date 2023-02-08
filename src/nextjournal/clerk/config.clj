@@ -16,17 +16,6 @@
     (when-not (str/blank? prop)
       (read-string prop))))
 
-
-
-(def !asset-map
-  ;; In mvn releases, the asset map is available in the artifact
-  (delay (or (some-> (io/resource "clerk-asset-map.edn") slurp edn/read-string)
-             (try ((requiring-resolve 'nextjournal.clerk.render.hashing/read-dynamic-asset-map!))
-                  (catch Exception e
-                    (throw (ex-info "Error reading dynamic asset map"
-                                    (or (ex-data e)
-                                        {}) e)))))))
-
 (defonce !resource->url
   ;; contains asset manifest in the form:
   ;; {"/js/viewer.js" "https://..."}
@@ -38,7 +27,6 @@
 #_(reset! !resource->url identity)
 #_(reset! !resource->url default-resource-manifest)
 #_(reset! !resource->url (-> (slurp lookup-url) edn/read-string))
-
 
 (def ^:dynamic *in-clerk* false)
 

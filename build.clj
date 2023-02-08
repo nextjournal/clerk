@@ -16,12 +16,6 @@
 (def version (shared/version))
 (def jar-file (format "target/%s-%s.jar" (name lib) version))
 
-(defn package-clerk-asset-map [{:as opts :keys [target-dir]}]
-  (when-not target-dir
-    (throw (ex-info "target dir must be set" {:opts opts})))
-  (let [asset-map (slurp (nextjournal.clerk.render.hashing/get-lookup-url))]
-    (spit (str target-dir java.io.File/separator "clerk-asset-map.edn") asset-map)))
-
 (defn jar [_]
   (b/delete {:path "target"})
   (println "Producing jar:" jar-file)
@@ -37,7 +31,6 @@
   (b/copy-dir {:src-dirs ["src" "resources"]
                :target-dir class-dir
                :replace {}})
-  (package-clerk-asset-map {:target-dir class-dir})
   (b/jar {:class-dir class-dir
           :jar-file jar-file}))
 
@@ -62,21 +55,3 @@
            (throw e)
            (println "This release was already deployed."))))
   opts)
-
-(defn asserting [val msg] (assert (seq val) msg) val)
-
-(defn upload! [opts file] (:url (cas/upload! opts file)))
-
-(defn update-resource! [opts _resource _ file]
-  (upload! opts file))
-
-(defn get-gsutil [] (str/trim (:out (process/sh ["which" "gsutil"]))))
-
-(def resource->path
-  '{viewer.js "/js/viewer.js"})
-
-(defn upload-to-cas [{:keys [resource]}]
-  (if-let [target (resource->path resource)]
-    (update-resource! {:exec-path (str/trim (asserting (get-gsutil) "Can't find gsutil executable."))
-                       :target-path "gs://nextjournal-cas-eu/data/"} target :uploading (str "build/" resource))
-    (throw (ex-info (str "unsupported resource " resource) {:supported-resources (keys resource->path)}))))
