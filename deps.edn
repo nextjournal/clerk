@@ -24,7 +24,8 @@
 
         juji/editscript {:mvn/version "0.6.2"}}
 
- :aliases {:nextjournal/clerk {:extra-deps {org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
+ :aliases {:nextjournal/clerk {:extra-deps {org.clojure/clojure {:mvn/version "1.11.1"} ;; for `:as-alias` support in static build
+                                            org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
                                             org.babashka/cli {:mvn/version "0.5.40"}}
                                :extra-paths ["notebooks"]
                                :exec-fn nextjournal.clerk/build!

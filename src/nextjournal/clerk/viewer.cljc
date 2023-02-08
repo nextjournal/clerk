@@ -58,8 +58,9 @@
 
 #_(resolve-symbol-alias {'v (find-ns 'nextjournal.clerk.viewer)} 'nextjournal.clerk.render/render-code)
 
-(defn resolve-aliases [aliases form]
-  (w/postwalk #(cond->> % (qualified-symbol? %) (resolve-symbol-alias aliases)) form))
+(defn resolve-aliases
+  #?(:clj ([form] (resolve-aliases (ns-aliases *ns*) form)))
+  ([aliases form] (w/postwalk #(cond->> % (qualified-symbol? %) (resolve-symbol-alias aliases)) form)))
 
 (defn ->viewer-fn [form]
   (map->ViewerFn {:form form
