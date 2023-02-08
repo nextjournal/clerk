@@ -145,6 +145,8 @@
 
 (sci.ctx-store/reset-ctx! (sci/init initial-sci-opts))
 
+(sci/enable-unrestricted-access!)
+
 (sci/alter-var-root sci/print-fn (constantly *print-fn*))
 (sci/alter-var-root sci/print-err-fn (constantly *print-err-fn*))
 
