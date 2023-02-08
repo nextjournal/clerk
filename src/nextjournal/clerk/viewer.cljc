@@ -58,17 +58,16 @@
 
 #_(resolve-symbol-alias {'v (find-ns 'nextjournal.clerk.viewer)} 'nextjournal.clerk.render/render-code)
 
-(defn resolve-aliases [aliases form]
-  (w/postwalk #(cond->> %
-                 (symbol? %) (resolve-symbol-alias aliases))
-              form))
+(defn resolve-aliases
+  #?(:clj ([form] (resolve-aliases (ns-aliases *ns*) form)))
+  ([aliases form] (w/postwalk #(cond->> % (qualified-symbol? %) (resolve-symbol-alias aliases)) form)))
 
 (defn ->viewer-fn [form]
-  (map->ViewerFn {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)
+  (map->ViewerFn {:form form
                   #?@(:cljs [:f (*eval* form)])}))
 
 (defn ->viewer-eval [form]
-  (map->ViewerEval {:form #?(:clj (cond->> form *ns* (resolve-aliases (ns-aliases *ns*))) :cljs form)}))
+  (map->ViewerEval {:form form}))
 
 (defn open-graph-metas [open-graph-properties]
   (into (list [:meta {:name "twitter:card" :content "summary_large_image"}])

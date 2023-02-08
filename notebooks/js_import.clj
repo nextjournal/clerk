@@ -2,7 +2,6 @@
 (ns js-import
   (:require [clojure.data.csv :as csv]
             [nextjournal.clerk :as clerk]
-            [nextjournal.clerk]
             [nextjournal.clerk.viewer :as viewer]))
 
 ;; This example uses [Observable Plots](https://observablehq.com/plot) with data from https://allisonhorst.github.io/palmerpenguins/
@@ -17,10 +16,10 @@
        (fn [Plot]
          (let [dot-plot (.. Plot
                             (dot (clj->js data)
-                                 (j/obj :x "flipper_length_mm"
-                                        :y "body_mass_g"
-                                        :fill "species"))
-                            (plot (j/obj :grid true)))
+                                 (applied-science.js-interop/obj :x "flipper_length_mm"
+                                                                 :y "body_mass_g"
+                                                                 :fill "species"))
+                            (plot (applied-science.js-interop/obj :grid true)))
                legend (.legend dot-plot "color")]
            [:div {:ref (fn [el]
                          (if el

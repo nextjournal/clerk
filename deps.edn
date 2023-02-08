@@ -24,7 +24,8 @@
 
         juji/editscript {:mvn/version "0.6.2"}}
 
- :aliases {:nextjournal/clerk {:extra-deps {org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
+ :aliases {:nextjournal/clerk {:extra-deps {org.clojure/clojure {:mvn/version "1.11.1"} ;; for `:as-alias` support in static build
+                                            org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
                                             org.babashka/cli {:mvn/version "0.5.40"}}
                                :extra-paths ["notebooks"]
                                :exec-fn nextjournal.clerk/build!
@@ -66,7 +67,7 @@
                                org.clojure/data.csv {:mvn/version "1.0.0"}
                                hickory/hickory {:mvn/version "0.7.1"}
                                sicmutils/sicmutils {:mvn/version "0.20.0"}
-                               io.github.nextjournal/clerk-slideshow {:git/sha "7963159d4e530e7981f7168702225906f55bfc01"}}}
+                               io.github.nextjournal/clerk-slideshow {:git/sha "5fe197ca0c8f28128379849dc677cd718be71524"}}}
 
            :build {:deps {io.github.nextjournal/clerk {:local/root "."}
                           io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}

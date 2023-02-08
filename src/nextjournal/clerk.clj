@@ -181,6 +181,10 @@
   [wrapped-value]
   (v/mark-preserve-keys wrapped-value))
 
+(defn resolve-aliases
+  "Resolves aliases in `form` using the aliases from `*ns*`. Meant to be used on `:render-fn`s."
+  [form]
+  (v/resolve-aliases form))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convenience api

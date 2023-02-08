@@ -1,8 +1,7 @@
 ;; # 🎛 Control Lab 🧑🏼‍🔬
 (ns viewers.control-lab
   {:nextjournal.clerk/visibility {:code :hide :result :hide}}
-  (:require [clojure.string :as str]
-            [nextjournal.clerk :as clerk]
+  (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as viewer]))
 
 ;; Experimenting with ways of making controls. We start with two

@@ -584,7 +584,7 @@ v/table-viewer
    :transform-fn (comp clerk/mark-preserve-keys
                        (clerk/update-val transform-literal))
    :render-fn '(fn [label->val]
-                 (reagent/with-let [!selected-label (reagent/atom (ffirst label->val))]
+                 (reagent.core/with-let [!selected-label (reagent.core/atom (ffirst label->val))]
                    [:<> (into
                          [:div.flex.items-center.font-sans.text-xs.mb-3
                           [:span.text-slate-500.mr-2 "View-as:"]]
@@ -594,7 +594,7 @@ v/table-viewer
                                   :on-click #(reset! !selected-label label)}
                                  label]))
                          (keys label->val))
-                    [v/inspect-presented (get label->val @!selected-label)]]))})
+                    [nextjournal.clerk.render/inspect-presented (get label->val @!selected-label)]]))})
 
 ;; Now let's see if this works. Try switching to the original
 ;; representation!
@@ -685,12 +685,11 @@ v/table-viewer
 (def mermaid-viewer
   {:transform-fn clerk/mark-presented
    :render-fn '(fn [value]
-                 (v/html
-                  (when value
-                    [v/with-d3-require {:package ["mermaid@8.14/dist/mermaid.js"]}
-                     (fn [mermaid]
-                       [:div {:ref (fn [el] (when el
-                                              (.render mermaid (str (gensym)) value #(set! (.-innerHTML el) %))))}])])))})
+                 (when value
+                   [nextjournal.clerk.render/with-d3-require {:package ["mermaid@8.14/dist/mermaid.js"]}
+                    (fn [mermaid]
+                      [:div {:ref (fn [el] (when el
+                                             (.render mermaid (str (gensym)) value #(set! (.-innerHTML el) %))))}])]))})
 
 ;; We can then use  the above viewer using `with-viewer`.
 (clerk/with-viewer mermaid-viewer
@@ -758,9 +757,9 @@ v/table-viewer
 ;;
 ;;    (+ 39 3) ;; code will be hidden
 ;;    (range 25) ;; code will be hidden
-;;    
+;;
 ;;    {:nextjournal.clerk/visibility {:code :show}}
-;;    
+;;
 ;;    (range 500) ;; code will be visible
 ;;    (rand-int 42) ;; code will be visible
 ;;

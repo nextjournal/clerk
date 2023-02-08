@@ -109,6 +109,8 @@
              "@nextjournal/lang-clojure" lang-clojure
              "framer-motion" framer-motion
              "react" react}
+   ;; TODO: bring back aliases before the release and show a warning instead
+   #_#_
    :aliases {'j 'applied-science.js-interop
              'reagent 'reagent.core
              'v 'nextjournal.clerk.viewer
