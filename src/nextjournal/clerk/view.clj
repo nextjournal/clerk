@@ -44,7 +44,7 @@
    [:script {:type "module" :src (adjust-relative-path state (get-in state [:resource->url "/js/viewer.js"]))}]
    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
    [:link {:rel "preconnect" :href "https://fonts.bunny.net"}]
-   (hiccup/include-css "https://fonts.bunny.net/css?family=fira-code:400,700%7Cfira-mono:400,700%7Cfira-sans:400,400i,500,500i,700,700i%7Cfira-sans-condensed:700,700i%7Cpt-serif:400,400i,700,700i")))
+   (hiccup/include-css "https://fonts.bunny.net/css?family=fira-mono:400,700%7Cfira-sans:400,400i,500,500i,700,700i%7Cfira-sans-condensed:700,700i%7Cpt-serif:400,400i,700,700i")))
 
 (defn ->html [{:as state :keys [conn-ws?] :or {conn-ws? true}}]
   (hiccup/html5
