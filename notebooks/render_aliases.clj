@@ -30,14 +30,14 @@
 
 (def plotly-viewer
   {:transform-fn clerk/mark-presented
-   :render-fn (clerk/resolve-aliases
-               '(fn [spec]
-                  (let [plotly (hooks/use-d3-require "plotly.js-dist@2.15.1")
-                        ref-fn (hooks/use-callback #(when % (.newPlot plotly % (clj->js spec))) [spec plotly])]
-                    (when spec
-                      (if plotly
-                        [:div.overflow-x-auto [:div.plotly {:ref ref-fn}]]
-                        render/default-loading-view)))))})
+   :render-fn #_clerk/resolve-aliases
+   '(fn [spec]
+      (let [plotly (hooks/use-d3-require "plotly.js-dist@2.15.1")
+            ref-fn (hooks/use-callback #(when % (.newPlot plotly % (clj->js spec))) [spec plotly])]
+        (when spec
+          (if plotly
+            [:div.overflow-x-auto [:div.plotly {:ref ref-fn}]]
+            render/default-loading-view))))})
 
 (clerk/with-viewer plotly-viewer
   {:layout {:title "A surface plot"}

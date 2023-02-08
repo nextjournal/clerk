@@ -109,10 +109,6 @@
              "@nextjournal/lang-clojure" lang-clojure
              "framer-motion" framer-motion
              "react" react}
-   :aliases {'j 'applied-science.js-interop
-             'reagent 'reagent.core
-             'v 'nextjournal.clerk.viewer
-             'p 'nextjournal.clerk.parser}
    :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
                        'clojure.core {'read-string read-string
                                       'implements? (sci/copy-var implements?* core-ns)}}

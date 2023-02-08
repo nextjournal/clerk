@@ -11,13 +11,13 @@
 (clerk/with-viewer {:render-fn '(fn [x] (throw (ex-info "I blow up when called" {:some "data"})))}
   :boom)
 
-(clerk/with-viewer {:render-fn '(fn [_] (v/inspect-presented :crash))}
+(clerk/with-viewer {:render-fn '(fn [_] (nextjournal.clerk.render/inspect-presented :crash))}
   42)
 
-(clerk/with-viewer {:render-fn '(fn [_] (v/html (v/inspect-presented :crash)))}
+(clerk/with-viewer {:render-fn '(fn [_] (nextjournal.clerk.viewer/html (nextjournal.clerk.render/inspect-presented :crash)))}
   42)
 
-(clerk/with-viewer {:render-fn '(fn [_] (v/html [1 2 3]))}
+(clerk/with-viewer {:render-fn '(fn [_] (nextjournal.clerk.viewer/html [1 2 3]))}
   42)
 
 
