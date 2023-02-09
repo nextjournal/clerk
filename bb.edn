@@ -1,6 +1,7 @@
 {:min-bb-version "0.9.159"
  :paths ["bb"]
- :deps {io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}}
+ :deps {io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
+        io.github.nextjournal/cas-client {:git/sha "17fb719f01d9da941ef3975aa0867e7329291c59"}}
  :tasks
  {:requires
   ([tasks :as t]

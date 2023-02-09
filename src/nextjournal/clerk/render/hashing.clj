@@ -1,12 +1,12 @@
 (ns nextjournal.clerk.render.hashing
   "Computes a hash based for Clerk's render cljs bundle."
   {:no-doc true}
-  (:require [nextjournal.clerk.render.cas :as cas]
-            [babashka.fs :as fs]
+  (:require [babashka.fs :as fs]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [nextjournal.dejavu :as djv]))
+            [nextjournal.dejavu :as djv]
+            [nextjournal.cas-client.api :as cas]))
 
 (def output-dirs ["resources/public/ui"
                   "resources/public/build"])
@@ -34,9 +34,12 @@
 (defn build+upload-viewer-resources []
   (let [front-end-hash (front-end-hash)]
     (when-not (cas/tag-exists? {:tag front-end-hash})
+      (println (format "Could not find entry at %s. Building..." front-end-hash))
       ((requiring-resolve 'babashka.tasks/run) 'build:js)
-      (let [{:keys [manifest-path]} (cas/cas-put {:path "build"})]
-        (cas/tag-put {:auth-token (System/getenv "GITHUB_TOKEN")
-                      :namespace "nextjournal"
-                      :tag front-end-hash
-                      :target (str "/tree/" manifest-path)})))))
+      (println "Uploading...")
+      (let [res (cas/cas-put {:path "build"
+                              :auth-token (System/getenv "GITHUB_TOKEN")
+                              :namespace "nextjournal"
+                              :tag front-end-hash})]
+        (println res))
+      (println "Done"))))

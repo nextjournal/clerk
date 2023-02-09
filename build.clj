@@ -11,7 +11,8 @@
 (def class-dir "target/classes")
 
 (def basis (-> (b/create-basis {:project "deps.edn"})
-               (update :libs dissoc 'io.github.nextjournal/dejavu)))
+               (update :libs dissoc 'io.github.nextjournal/dejavu)
+               (update :libs dissoc 'io.github.nextjournal/cas-client)))
 
 (def version (shared/version))
 (def jar-file (format "target/%s-%s.jar" (name lib) version))

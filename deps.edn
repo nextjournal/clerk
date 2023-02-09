@@ -11,6 +11,7 @@
         io.github.nextjournal/markdown {:mvn/version "0.4.138"}
         babashka/process {:mvn/version "0.4.16"}
         io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
+        io.github.nextjournal/cas-client {:git/sha "17fb719f01d9da941ef3975aa0867e7329291c59"}
 
         com.taoensso/nippy {:mvn/version "3.2.0"}
         mvxcvi/multihash {:mvn/version "2.0.3"}
