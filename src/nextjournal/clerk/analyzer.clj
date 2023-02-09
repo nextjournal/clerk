@@ -436,13 +436,14 @@
 #_(symbol->jar 'io.methvin.watcher.PathUtils/cast)
 #_(symbol->jar 'java.net.http.HttpClient/newHttpClient)
 
+
 (defn find-location [sym]
-  (cond
-    (deref? sym) (find-location (second sym))
-    :else (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
-            (or (ns->file ns)
-                (ns->jar ns))
-            (symbol->jar sym))))
+  (if (deref? sym)
+    (find-location (second sym))
+    (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
+      (or (ns->file ns)
+          (ns->jar ns))
+      (symbol->jar sym))))
 
 #_(find-location `inc)
 #_(find-location '@nextjournal.clerk.webserver/!doc)
@@ -452,6 +453,25 @@
 #_(find-location 'io.methvin.watcher.PathUtils)
 #_(find-location 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER)
 #_(find-location 'String)
+
+(defn find-location+cache [!ns->loc sym]
+  (if (deref? sym)
+    (find-location+cache !ns->loc (second sym))
+    (if-let [ns-sym (and (qualified-symbol? sym) (-> sym namespace symbol))]
+      (or (@!ns->loc ns-sym)
+          (when-let [loc (find-location sym)]
+            (swap! !ns->loc assoc ns-sym loc)
+            loc))
+      (find-location sym))))
+
+(def !ns->loc-cache (atom {}))
+
+#_(reset! !ns->loc-cache {})
+
+(defn find-location-cached [sym]
+  (find-location+cache !ns->loc-cache sym))
+
+#_(find-location-cached `inc)
 
 (def hash-jar
   (memoize (fn [f]
@@ -484,7 +504,7 @@
              (assoc :counter 0))]
     (let [unhashed (unhashed-deps ->analysis-info)
           loc->syms (apply dissoc
-                           (group-by find-location unhashed)
+                           (group-by find-location-cached unhashed)
                            analyzed-file-set)]
       (if (and (seq loc->syms) (< counter 10))
         (recur (-> (reduce (fn [g [source symbols]]
