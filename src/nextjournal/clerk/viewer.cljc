@@ -446,11 +446,19 @@
 (defn get-default-viewers []
   (:default @!viewers default-viewers))
 
+(defn datafy-scope [scope]
+  (cond
+    #?@(:clj [(instance? clojure.lang.Namespace scope) (ns-name scope)])
+    (symbol? scope) scope
+    (#{:default} scope) scope
+    :else (throw (ex-info (str "Unsupported scope `" scope "`. Valid scopes are namespaces, symbol namespace names or `:default`.")
+                          {:scope scope}))))
+
 (defn get-viewers
   ([scope] (get-viewers scope nil))
   ([scope value]
    (or (when value (->viewers value))
-       (when scope (@!viewers scope))
+       (when scope (@!viewers (datafy-scope scope)))
        (get-default-viewers))))
 
 #_(get-viewers nil nil)
@@ -602,16 +610,6 @@
 #?(:clj (def utc-date-format ;; from `clojure.instant/thread-local-utc-date-format`
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
             (.setTimeZone (java.util.TimeZone/getTimeZone "GMT")))))
-
-#?(:clj
-   (defn datafy-scope [scope]
-     (cond
-       (instance? clojure.lang.Namespace scope) {:namespace (-> scope str keyword)}
-       (keyword? scope) scope
-       :else (throw (ex-info (str "Unsupported scope " scope) {:scope scope})))))
-
-#_(datafy-scope *ns*)
-#_(datafy-scope #'datafy-scope)
 
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc
@@ -1506,19 +1504,14 @@
                                                                        x)))
                                  xs)))))))
 
-
 (defn reset-viewers!
   ([viewers] (reset-viewers! *ns* viewers))
-  ([scope viewers] #_:clj-kondo/ignore ;; remove when clj-kondo is released
-   (assert (or (#{:default} scope)
-               #?(:clj (instance? clojure.lang.Namespace scope))))
-   (swap! !viewers assoc scope viewers)))
+  ([scope viewers]
+   (swap! !viewers assoc (datafy-scope scope) viewers)
+   viewers))
 
 (defn add-viewers! [viewers]
-  (reset-viewers! *ns* (add-viewers (get-default-viewers) viewers))
-  viewers)
-
-
+  (reset-viewers! *ns* (add-viewers (get-default-viewers) viewers)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convenience api

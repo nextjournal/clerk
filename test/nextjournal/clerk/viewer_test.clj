@@ -90,6 +90,24 @@
     (is (= :full
            (:nextjournal/width (v/apply-viewers (v/table {:nextjournal.clerk/width :full} {:a [1] :b [2] :c [3]})))))))
 
+(deftest datafy-scope
+  (is (= (ns-name *ns*)
+         (v/datafy-scope *ns*)
+         (v/datafy-scope (ns-name *ns*))))
+
+  (is (= :default (v/datafy-scope :default)))
+
+  (is (thrown? clojure.lang.ExceptionInfo (v/datafy-scope :default-2)))
+  (is (thrown? clojure.lang.ExceptionInfo (v/datafy-scope :foo))) )
+
+(deftest reset-viewers!
+  (testing "namespace scope"
+    (v/reset-viewers! (find-ns 'nextjournal.clerk.viewer-test) [])
+    (is (= [] (v/get-viewers (find-ns 'nextjournal.clerk.viewer-test)))))
+
+  (testing "symbol scope"
+    (v/reset-viewers! 'nextjournal.clerk.viewer-test [{:render-fn 'foo}])
+    (is (= [{:render-fn 'foo}] (v/get-viewers 'nextjournal.clerk.viewer-test)))))
 
 (def my-test-var [:h1 "hi"])
 

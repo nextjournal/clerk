@@ -123,8 +123,14 @@
   [viewers x]
   (v/with-viewers viewers x))
 
+(def default-viewers
+  "Clerk's default viewers."
+  v/default-viewers)
+
 (defn get-default-viewers
-  "Gets Clerk's default viewers."
+  "Gets Clerk's current set of default viewers.
+
+  Use `(reset-viewers! :default ,,,)` to change them."
   []
   (v/get-default-viewers))
 
@@ -139,14 +145,17 @@
   [viewers select-fn->update-fn]
   (v/update-viewers viewers select-fn->update-fn))
 
-
 (defn reset-viewers!
-  "Resets the viewers associated with the current `*ns*` to `viewers`."
-  [viewers] (v/reset-viewers! *ns* viewers))
+  "Resets the viewers associated with the given `scope` to `viewers`.
+
+  When no `scope` is given, resets the viewers for the current namespace.
+  Passsing `:default` resets the global default viewers in Clerk."
+  ([viewers] (v/reset-viewers! viewers))
+  ([scope viewers] (v/reset-viewers! scope viewers)))
 
 
 (defn add-viewers!
-  "Adds `viewers` to the viewers associated with the current `*ns*`."
+  "Adds `viewers` to the viewers associated with the current namespace."
   [viewers] (v/add-viewers! viewers))
 
 
