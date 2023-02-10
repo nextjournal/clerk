@@ -584,10 +584,15 @@
 
 (defonce ^:private ^:dynamic *sync* true)
 
+(defn ws-send! [msg]
+  (if (exists? js/ws_send)
+    (js/ws_send (pr-str msg))
+    (js/console.warn "Clerk can't send websocket message in static build, skipping...")))
+
 (defn atom-changed [var-name _atom _old-state new-state]
   (when *sync*
     ;; TODO: for now sending whole state but could also diff
-    (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] (list 'quote new-state))]}))))
+    (ws-send! {:type :swap! :var-name var-name :args [(list 'fn ['_] (list 'quote new-state))]})))
 
 (defn intern-atom! [var-name state]
   (assert (sci.ctx-store/get-ctx) "sci-ctx must be set")
@@ -655,7 +660,7 @@
   (let [eval-id (gensym)
         promise (js/Promise. (fn [resolve reject]
                                (swap! !pending-clerk-eval-replies assoc eval-id {:resolve resolve :reject reject})))]
-    (.ws_send ^js goog/global (pr-str {:type :eval :form form :eval-id eval-id}))
+    (ws-send! {:type :eval :form form :eval-id eval-id})
     promise))
 
 (defn process-eval-reply! [{:keys [eval-id reply error]}]
