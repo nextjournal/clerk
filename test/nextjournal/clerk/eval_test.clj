@@ -210,4 +210,7 @@
     (is (not (#'eval/cachable-value? (range 100)))))
   (testing "infinite sequences can't be cached"
     (is (not (#'eval/cachable-value? (range))))
-    (is (not (#'eval/cachable-value? (map inc (range)))))))
+    (is (not (#'eval/cachable-value? (map inc (range))))))
+  (testing "class is not cachable"
+    (is (not (#'eval/cachable-value? java.lang.String)))
+    (is (not (#'eval/cachable-value? {:foo java.lang.String})))))
