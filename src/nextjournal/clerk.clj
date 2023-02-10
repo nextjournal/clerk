@@ -347,6 +347,17 @@
   [& forms]
   (apply v/eval-cljs forms))
 
+(defn read-js-literal
+  "Data reader for the `#js` literal.
+
+  Use it with the following if you want to use `#js` in `:render-fn`s.
+
+  (set! *data-readers* (assoc *data-readers* 'js read-js-literal))"
+  [data]
+  (cond
+    (vector? data) (list* 'cljs.core/array data)
+    (map? data) (list* 'cljs.core/js-obj (interleave (map name (keys data)) (vals data)))))
+
 (def notebook
   "Experimental notebook viewer. You probably should not use this."
   (partial with-viewer (:name v/notebook-viewer)))
