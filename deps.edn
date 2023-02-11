@@ -63,6 +63,7 @@
                   :main-opts ["-m" "cognitect.test-runner"]}
 
            :demo {:extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
+                               io.github.applied-science/shapes {:git/sha "da44031cf79a649932cb502f17388db23f2b8ace"}
                                org.xerial/sqlite-jdbc {:mvn/version "3.34.0"}
                                org.clojure/data.csv {:mvn/version "1.0.0"}
                                hickory/hickory {:mvn/version "0.7.1"}
