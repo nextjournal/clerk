@@ -4,7 +4,8 @@
             [hiccup.page :as hiccup]
             [clojure.string :as str]
             [clojure.java.io :as io])
-  (:import (java.net URI)))
+  (:import (java.net URI)
+           (java.util Base64)))
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
@@ -46,6 +47,9 @@
    [:link {:rel "preconnect" :href "https://fonts.bunny.net"}]
    (hiccup/include-css "https://fonts.bunny.net/css?family=fira-mono:400,700%7Cfira-sans:400,400i,500,500i,700,700i%7Cfira-sans-condensed:700,700i%7Cpt-serif:400,400i,700,700i")))
 
+(defn base64-encode [s]
+  (.encodeToString (Base64/getEncoder) (.getBytes s java.nio.charset.StandardCharsets/UTF_8)))
+
 (defn ->html [{:as state :keys [conn-ws?] :or {conn-ws? true}}]
   (hiccup/html5
    [:head
@@ -55,8 +59,8 @@
    [:body.dark:bg-gray-900
     [:div#clerk]
     [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
-let state = " (-> state v/->edn pr-str) "
-viewer.set_state(viewer.read_string(state))
+let state = '" (-> state v/->edn base64-encode) "'
+viewer.set_state(viewer.read_string(viewer.base64_decode(state)))
 viewer.mount(document.getElementById('clerk'))\n"
      (when conn-ws?
        "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
@@ -75,7 +79,7 @@ window.ws_send = msg => ws.send(msg)")]]))
     [:div#clerk-static-app html]
     [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
 let app = nextjournal.clerk.static_app
-let opts = viewer.read_string(" (-> state v/->edn pr-str) ")
+let opts = viewer.read_string(viewer.base64_decode('" (-> state v/->edn base64-encode) "'))
 app.init(opts)\n"]]))
 
 (defn doc->html [opts]

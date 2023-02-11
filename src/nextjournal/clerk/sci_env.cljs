@@ -11,6 +11,8 @@
             [cljs.reader]
             [clojure.string :as str]
             [edamame.core :as edamame]
+            [goog.crypt]
+            [goog.crypt.base64 :as base64]
             [goog.object]
             [nextjournal.clerk.parser]
             [nextjournal.clerk.render :as render]
@@ -140,6 +142,9 @@
 
 (defn ^:export set-state [state]
   (render/set-state! state))
+
+(defn ^:export base64-decode [s]
+  (-> s base64/decodeStringToByteArray goog.crypt/utf8ByteArrayToString))
 
 (def ^:export mount render/mount)
 
