@@ -512,7 +512,6 @@
   ([]
    (swap! webserver/!doc dissoc :blob->result)
    (reset! analyzer/!file->analysis-cache {})
-   (reset! analyzer/!ns->loc-cache {})
    (if (fs/exists? config/cache-dir)
      (do (fs/delete-tree config/cache-dir)
          (prn :cache-dir/deleted config/cache-dir))

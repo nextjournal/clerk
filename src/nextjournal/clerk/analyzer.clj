@@ -437,13 +437,18 @@
 #_(symbol->jar 'java.net.http.HttpClient/newHttpClient)
 
 
-(defn find-location [sym]
-  (if (deref? sym)
-    (find-location (second sym))
-    (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
-      (or (ns->file ns)
-          (ns->jar ns))
-      (symbol->jar sym))))
+(defn find-location
+  ([sym] (find-location (atom {}) sym))
+  ([!ns->loc sym]
+   (if (deref? sym)
+     (find-location !ns->loc (second sym))
+     (if-let [ns-sym (and (qualified-symbol? sym) (-> sym namespace symbol))]
+       (or (@!ns->loc ns-sym)
+           (when-let [loc (or (ns->file (find-ns ns-sym))
+                              (ns->jar (find-ns ns-sym)))]
+             (swap! !ns->loc assoc ns-sym loc)
+             loc))
+       (symbol->jar sym)))))
 
 #_(find-location `inc)
 #_(find-location '@nextjournal.clerk.webserver/!doc)
@@ -453,25 +458,6 @@
 #_(find-location 'io.methvin.watcher.PathUtils)
 #_(find-location 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER)
 #_(find-location 'String)
-
-(defn find-location+cache [!ns->loc sym]
-  (if (deref? sym)
-    (find-location+cache !ns->loc (second sym))
-    (if-let [ns-sym (and (qualified-symbol? sym) (-> sym namespace symbol))]
-      (or (@!ns->loc ns-sym)
-          (when-let [loc (find-location sym)]
-            (swap! !ns->loc assoc ns-sym loc)
-            loc))
-      (find-location sym))))
-
-(def !ns->loc-cache (atom {}))
-
-#_(reset! !ns->loc-cache {})
-
-(defn find-location-cached [sym]
-  (find-location+cache !ns->loc-cache sym))
-
-#_(find-location-cached `inc)
 
 (def hash-jar
   (memoize (fn [f]
@@ -496,15 +482,16 @@
   Recursively decends into dependency vars as well as given they can be found in the classpath.
   "
   [doc]
-  (loop [{:as state :keys [->analysis-info analyzed-file-set counter]}
+  (loop [{:as state :keys [->analysis-info analyzed-file-set counter find-location+cache]}
 
          (-> (cond-> doc
                (not (:graph doc)) analyze-doc)
              (assoc :analyzed-file-set (cond-> #{} (:file doc) (conj (:file doc))))
-             (assoc :counter 0))]
+             (assoc :counter 0)
+             (assoc :find-location+cache (partial find-location (atom {}))))]
     (let [unhashed (unhashed-deps ->analysis-info)
           loc->syms (apply dissoc
-                           (group-by find-location-cached unhashed)
+                           (group-by find-location+cache unhashed)
                            analyzed-file-set)]
       (if (and (seq loc->syms) (< counter 10))
         (recur (-> (reduce (fn [g [source symbols]]
@@ -517,7 +504,7 @@
                            state
                            loc->syms)
                    (update :counter inc)))
-        (dissoc state :analyzed-file-set :counter)))))
+        (dissoc state :analyzed-file-set :counter :find-location+cache)))))
 
 
 (comment
