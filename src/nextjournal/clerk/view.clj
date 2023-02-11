@@ -46,6 +46,11 @@
    [:link {:rel "preconnect" :href "https://fonts.bunny.net"}]
    (hiccup/include-css "https://fonts.bunny.net/css?family=fira-mono:400,700%7Cfira-sans:400,400i,500,500i,700,700i%7Cfira-sans-condensed:700,700i%7Cpt-serif:400,400i,700,700i")))
 
+(defn escape-closing-script-tag [s]
+  ;; we must escape closing `</script>` tags, see
+  ;; https://html.spec.whatwg.org/multipage/syntax.html#cdata-rcdata-restrictions
+  (str/replace s "</script>" "</nextjournal.clerk.view/escape-closing-script-tag>"))
+
 (defn ->html [{:as state :keys [conn-ws?] :or {conn-ws? true}}]
   (hiccup/html5
    [:head
@@ -55,13 +60,14 @@
    [:body.dark:bg-gray-900
     [:div#clerk]
     [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
-let state = " (-> state v/->edn pr-str) "
-viewer.set_state(viewer.read_string(state))
+let state = " (-> state v/->edn escape-closing-script-tag pr-str) ".replaceAll('nextjournal.clerk.view/escape-closing-script-tag', 'script')
+viewer.set_state(viewer.read_string(state));
 viewer.mount(document.getElementById('clerk'))\n"
      (when conn-ws?
        "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
 ws.onmessage = viewer.onmessage;
-window.ws_send = msg => ws.send(msg)")]]))
+window.ws_send = msg => ws.send(msg)
+")]]))
 
 (defn ->static-app [{:as state :keys [current-path html]}]
   (hiccup/html5
@@ -73,10 +79,9 @@ window.ws_send = msg => ws.send(msg)")]]))
     (include-css+js state)]
    [:body
     [:div#clerk-static-app html]
-    [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
-let app = nextjournal.clerk.static_app
-let opts = viewer.read_string(" (-> state v/->edn pr-str) ")
-app.init(opts)\n"]]))
+    [:script {:type "module"} "let state = " (-> state v/->edn escape-closing-script-tag pr-str) ".replaceAll('nextjournal.clerk.view/escape-closing-script-tag', 'script')
+let opts = nextjournal.clerk.sci_env.read_string(state)
+nextjournal.clerk.static_app.init(opts)\n"]]))
 
 (defn doc->html [opts]
   (->html (-> opts
