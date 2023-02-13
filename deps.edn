@@ -11,10 +11,9 @@
         io.github.nextjournal/markdown {:mvn/version "0.4.138"}
         babashka/process {:mvn/version "0.4.16"}
         io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
+        mvxcvi/multihash {:mvn/version "2.0.3"}
 
         com.taoensso/nippy {:mvn/version "3.2.0"}
-        mvxcvi/multihash {:git/url "https://github.com/borkdude/clj-multihash"
-                          :git/sha "df9a134b17a3f53efb34265098ee0ac1f2f01626"}
         com.pngencoder/pngencoder {:mvn/version "0.13.1"}
 
         http-kit/http-kit {:mvn/version "2.6.0"}
