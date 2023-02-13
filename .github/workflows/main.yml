@@ -37,7 +37,7 @@ jobs:
 
       - name: Build and upload viewer resources
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.CAS_AUTH_TOKEN }}
         run: bb build+upload-viewer-resources
 
   clj-kondo:
