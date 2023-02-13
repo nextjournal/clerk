@@ -47,5 +47,6 @@
                               :auth-token (System/getenv "GITHUB_TOKEN")
                               :namespace "nextjournal"
                               :tag tag})]
-        (println res))
+        (doseq [[k v] res]
+          (println (str k ": " v))))
       (println "Done"))))
