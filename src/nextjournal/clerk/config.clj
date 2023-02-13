@@ -1,8 +1,7 @@
 (ns nextjournal.clerk.config
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [clojure.string :as str]
-            [nextjournal.clerk.render.hashing]))
+            [clojure.string :as str]))
 
 (def cache-dir
   (or (System/getProperty "clerk.cache_dir")
