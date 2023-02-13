@@ -28,7 +28,10 @@
             [sci.core :as sci]
             [sci.ctx-store]
             [shadow.esm]
-            [cherry.compiler :refer [compile-string]]))
+            [cherry.compiler :as cherry]))
+
+(set! js/globalThis.vector vector) ;; hack for cherry
+(set! js/globalThis.keyword keyword) ;; hack for cherry
 
 (defn ->viewer-fn-with-error [form]
   (try (viewer/->viewer-fn form)
@@ -39,7 +42,6 @@
                 [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)])}))))
 
 (defn ->viewer-eval-with-error [form]
-  (prn :fooooof form #_(compile-string (str form)))
   (try (*eval* form)
        (catch js/Error e
          (js/console.error "error in viewer-eval" e)
@@ -138,8 +140,22 @@
   (render/dispatch (read-string (.-data ws-msg))))
 
 (defn ^:export eval-form [f]
-  (prn :eval-form f (compile-string (str f)))
-  (sci/eval-form (sci.ctx-store/get-ctx) f))
+  (let [cherry-evaled (let [{:keys [body]} (cherry/compile-string*
+                                            ;; function expression without name
+                                            ;; isn't valid as top level JS form,
+                                            ;; so we wrap it in a let
+                                            (str/replace "(let [x %s] x)"
+                                                         "%s"
+                                                         (str f)))]
+                        (try (js/eval body)
+                             (catch :default e
+                               [:error body e])))]
+    (if (and (vector? cherry-evaled)
+             (= :error (first cherry-evaled)))
+      (sci/eval-form (sci.ctx-store/get-ctx) f)
+      (do
+        (js/console.log (pr-str f) "=>" cherry-evaled)
+        cherry-evaled))))
 
 (defn ^:export set-state [state]
   (render/set-state! state))
