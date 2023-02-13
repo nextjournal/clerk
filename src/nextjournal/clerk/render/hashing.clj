@@ -33,4 +33,4 @@
   (str "clerk-assets@" (front-end-hash)))
 
 (defn dynamic-asset-map []
-  {"/js/viewer.js" (str "https://storage.clerk.garden/nextjournal/" (assets-tag) "/viewer.js")})
+  {"/js/viewer.js" (str "https://storage.clerk.garden/nextjournal/" (assets-tag) "/viewer.js?immutable=true")})
