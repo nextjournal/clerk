@@ -35,14 +35,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: 🔐 Google Auth
-        uses: google-github-actions/auth@v0
-        with:
-          credentials_json: ${{ secrets.GCLOUD_SERVICE_KEY }}
-
-      - name: 🔧 Setup Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v0.3.0
-
       - name: Build and upload viewer resources
         run: bb build+upload-viewer-resources
 
