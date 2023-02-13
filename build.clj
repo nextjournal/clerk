@@ -3,7 +3,6 @@
    [babashka.process :as process]
    [clojure.string :as str]
    [clojure.tools.build.api :as b]
-   [nextjournal.cas :as cas]
    [nextjournal.clerk.render.hashing]
    [shared]))
 
@@ -11,8 +10,7 @@
 (def class-dir "target/classes")
 
 (def basis (-> (b/create-basis {:project "deps.edn"})
-               (update :libs dissoc 'io.github.nextjournal/dejavu)
-               (update :libs dissoc 'io.github.nextjournal/cas-client)))
+               (update :libs dissoc 'io.github.nextjournal/dejavu)))
 
 (def version (shared/version))
 (def jar-file (format "target/%s-%s.jar" (name lib) version))

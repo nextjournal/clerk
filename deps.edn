@@ -14,8 +14,8 @@
         io.github.nextjournal/cas-client {:git/sha "17fb719f01d9da941ef3975aa0867e7329291c59"}
 
         com.taoensso/nippy {:mvn/version "3.2.0"}
-        mvxcvi/multihash {:mvn/version "2.0.3"}
-        javax.xml.bind/jaxb-api {:mvn/version "2.3.1"} ;; needed to make multihash work on JDK11+
+        mvxcvi/multihash {:git/url "https://github.com/borkdude/clj-multihash"
+                          :git/sha "df9a134b17a3f53efb34265098ee0ac1f2f01626"}
         com.pngencoder/pngencoder {:mvn/version "0.13.1"}
 
         http-kit/http-kit {:mvn/version "2.6.0"}
@@ -72,8 +72,6 @@
 
            :build {:deps {io.github.nextjournal/clerk {:local/root "."}
                           io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}
-                          io.github.slipset/deps-deploy {:git/sha "b4359c5d67ca002d9ed0c4b41b710d7e5a82e3bf"}
-                          io.github.nextjournal/cas {:git/url "git@github.com:nextjournal/cas"
-                                                     :git/sha "5e8079b720e347b9466db9c2282ce79a125a011c"}}
+                          io.github.slipset/deps-deploy {:git/sha "b4359c5d67ca002d9ed0c4b41b710d7e5a82e3bf"}}
                    :extra-paths ["bb" "src" "resources"] ;; for loading lookup-url in build
                    :ns-default build}}}
