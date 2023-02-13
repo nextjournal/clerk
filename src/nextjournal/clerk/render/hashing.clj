@@ -2,7 +2,6 @@
   "Computes a hash based for Clerk's render cljs bundle."
   {:no-doc true}
   (:require [babashka.fs :as fs]
-            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [nextjournal.dejavu :as djv]
