@@ -148,7 +148,8 @@
           (assoc :nextjournal/interned @!interned-vars))))
     (catch Throwable t
       (let [triaged (main/ex-triage (Throwable->map t))]
-        (throw (ex-info (main/ex-str triaged) triaged))))))
+        (throw (ex-info (main/ex-str triaged)
+                        (merge triaged (analyzer/form->ex-data form))))))))
 
 (defn maybe-eval-viewers [{:as opts :nextjournal/keys [viewer viewers]}]
   (cond-> opts

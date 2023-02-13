@@ -90,6 +90,24 @@
     (is (= :full
            (:nextjournal/width (v/apply-viewers (v/table {:nextjournal.clerk/width :full} {:a [1] :b [2] :c [3]})))))))
 
+(deftest datafy-scope
+  (is (= (ns-name *ns*)
+         (v/datafy-scope *ns*)
+         (v/datafy-scope (ns-name *ns*))))
+
+  (is (= :default (v/datafy-scope :default)))
+
+  (is (thrown? clojure.lang.ExceptionInfo (v/datafy-scope :default-2)))
+  (is (thrown? clojure.lang.ExceptionInfo (v/datafy-scope :foo))) )
+
+(deftest reset-viewers!
+  (testing "namespace scope"
+    (v/reset-viewers! (find-ns 'nextjournal.clerk.viewer-test) [])
+    (is (= [] (v/get-viewers (find-ns 'nextjournal.clerk.viewer-test)))))
+
+  (testing "symbol scope"
+    (v/reset-viewers! 'nextjournal.clerk.viewer-test [{:render-fn 'foo}])
+    (is (= [{:render-fn 'foo}] (v/get-viewers 'nextjournal.clerk.viewer-test)))))
 
 (def my-test-var [:h1 "hi"])
 
@@ -122,7 +140,7 @@
   (testing "only transform-fn can select viewer"
     (is (match? {:nextjournal/value [:div.viewer-markdown
                                      ["h1" {:id "hello-markdown!"} [:<> "👋 Hello "] [:em [:<> "markdown"]] [:<> "!"]]]
-                 :nextjournal/viewer {:name :html-}}
+                 :nextjournal/viewer {:name `v/html-viewer-}}
                 (v/present (v/with-viewer {:transform-fn (comp v/md v/->value)}
                              "# 👋 Hello _markdown_!")))))
 
@@ -130,7 +148,7 @@
     (v/present (into (sorted-map) {'foo 'bar})))
 
   (testing "doesn't throw on bogus input"
-    (is (match? {:nextjournal/value nil, :nextjournal/viewer {:name :html}}
+    (is (match? {:nextjournal/value nil, :nextjournal/viewer {:name `v/html-viewer}}
                 (v/present (v/html nil)))))
 
   (testing "big ints and ratios are represented as strings (issue #335)"

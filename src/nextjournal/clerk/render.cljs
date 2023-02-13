@@ -122,10 +122,11 @@
                                :dark-mode? (localstorage/get-item local-storage-dark-mode-key)
                                :theme {:slide-over "bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900"}
                                :width navbar-width
+                               :mobile? (and (exists? js/innerWidth) (< js/innerWidth 640))
                                :mobile-width 300
                                :local-storage-key local-storage-key
                                :set-hash? (not bundle?)
-                               :scroll-el (js/document.querySelector "html")
+                               :scroll-el (when (exists? js/document) (js/document.querySelector "html"))
                                :open? (if-some [stored-open? (localstorage/get-item local-storage-key)]
                                         stored-open?
                                         (not= :collapsed toc-visibility))})
@@ -161,11 +162,11 @@
           [navbar/panel !state [navbar/navbar !state]]])
        [:div.flex-auto.w-screen.scroll-container
         [:> (.-div motion)
-         {:key "viewer-notebook"
+         {:key "notebook-viewer"
           :initial (when toc-visibility {:margin-left doc-inset})
           :animate (when toc-visibility {:margin-left doc-inset})
           :transition navbar/spring
-          :class (str (or css-class "flex flex-col items-center viewer-notebook flex-auto ")
+          :class (str (or css-class "flex flex-col items-center notebook-viewer flex-auto ")
                       (when sidenotes? "sidenotes-layout"))}
          (doall
           (map-indexed (fn [idx x]
@@ -179,9 +180,9 @@
                                             (cond-> viewer-css-class
                                               (string? viewer-css-class) vector)
                                             ["viewer"
-                                             (when viewer-name (str "viewer-" (name viewer-name)))
-                                             (when inner-viewer-name (str "viewer-" (name inner-viewer-name)))
-                                             (case (or (viewer/width x) (case viewer-name (:code :code-folded) :wide :prose))
+                                             (when viewer-name (name viewer-name))
+                                             (when inner-viewer-name (name inner-viewer-name))
+                                             (case (or (viewer/width x) (case viewer-name (`viewer/code-viewer `viewer/code-folded-viewer) :wide :prose))
                                                :wide "w-full max-w-wide"
                                                :full "w-full"
                                                "w-full max-w-prose px-8")]))}
@@ -583,10 +584,15 @@
 
 (defonce ^:private ^:dynamic *sync* true)
 
+(defn ws-send! [msg]
+  (if (exists? js/ws_send)
+    (js/ws_send (pr-str msg))
+    (js/console.warn "Clerk can't send websocket message in static build, skipping...")))
+
 (defn atom-changed [var-name _atom _old-state new-state]
   (when *sync*
     ;; TODO: for now sending whole state but could also diff
-    (js/ws_send (pr-str {:type :swap! :var-name var-name :args [(list 'fn ['_] (list 'quote new-state))]}))))
+    (ws-send! {:type :swap! :var-name var-name :args [(list 'fn ['_] (list 'quote new-state))]})))
 
 (defn intern-atom! [var-name state]
   (assert (sci.ctx-store/get-ctx) "sci-ctx must be set")
@@ -654,7 +660,7 @@
   (let [eval-id (gensym)
         promise (js/Promise. (fn [resolve reject]
                                (swap! !pending-clerk-eval-replies assoc eval-id {:resolve resolve :reject reject})))]
-    (.ws_send ^js goog/global (pr-str {:type :eval :form form :eval-id eval-id}))
+    (ws-send! {:type :eval :form form :eval-id eval-id})
     promise))
 
 (defn process-eval-reply! [{:keys [eval-id reply error]}]
@@ -814,7 +820,7 @@
         [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-150.hover:text-slate-500
          {:class "text-[10px]"}
          "evaluated in 0.2s"]]
-       [:div.viewer-code.mb-2.relative {:style {:margin-top 0}}
+       [:div.code-viewer.mb-2.relative {:style {:margin-top 0}}
         [render-code code-string]]])))
 
 

@@ -33,6 +33,7 @@
                                     {:type :markdown, :doc {:type :doc :content [{:type :heading}]}}
                                     {:type :code, :text "{2 \"bar\" 1 \"foo\"}"},]
                            :title "📶 Sorting",
+                           :footnotes []
                            :toc {:type :toc,
                                  :children [{:type :toc :children [{:type :toc}
                                                                    {:type :toc}]}]}})

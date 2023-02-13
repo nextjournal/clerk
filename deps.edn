@@ -6,9 +6,10 @@
         babashka/fs {:mvn/version "0.2.14"}
         borkdude/edamame {:mvn/version "1.0.16"}
         weavejester/dependency {:mvn/version "0.2.1"}
-        com.nextjournal/beholder {:mvn/version "1.0.0"}
+        com.nextjournal/beholder {:mvn/version "1.0.2"}
 
-        io.github.nextjournal/markdown {:mvn/version "0.4.135"}
+        io.github.nextjournal/markdown {:mvn/version "0.4.138"}
+        babashka/process {:mvn/version "0.4.16"}
         io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
 
         com.taoensso/nippy {:mvn/version "3.2.0"}
@@ -23,7 +24,8 @@
 
         juji/editscript {:mvn/version "0.6.2"}}
 
- :aliases {:nextjournal/clerk {:extra-deps {org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
+ :aliases {:nextjournal/clerk {:extra-deps {org.clojure/clojure {:mvn/version "1.11.1"} ;; for `:as-alias` support in static build
+                                            org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
                                             org.babashka/cli {:mvn/version "0.5.40"}}
                                :extra-paths ["notebooks"]
                                :exec-fn nextjournal.clerk/build!
@@ -65,7 +67,7 @@
                                org.clojure/data.csv {:mvn/version "1.0.0"}
                                hickory/hickory {:mvn/version "0.7.1"}
                                sicmutils/sicmutils {:mvn/version "0.20.0"}
-                               io.github.nextjournal/clerk-slideshow {:git/sha "562f634494a1e1a9149ed78d5d39fd9486cc00ba"}}}
+                               io.github.nextjournal/clerk-slideshow {:git/sha "5fe197ca0c8f28128379849dc677cd718be71524"}}}
 
            :build {:deps {io.github.nextjournal/clerk {:local/root "."}
                           io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}

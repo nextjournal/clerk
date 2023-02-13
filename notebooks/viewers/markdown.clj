@@ -33,13 +33,13 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
 ;; > — Special Forms
 
 ;; ## Sidenotes
-
-;; One of the most distinctive features of Tufte’s style is his extensive use
-;; of sidenotes [^sidenote]. This is a sidenote. Sidenotes are like footnotes,
+;;
+;; One of the most distinctive features of Tufte’s style is his _extensive use
+;; of sidenotes_[^sidenote]. Sidenotes are like footnotes,
 ;; except they don’t force the reader to jump their eye to the bottom of the
 ;; page, but instead display off to the side in the margin. Perhaps you have
-;; noticed their use in this document already. You are very astute.
-;; 
+;; noticed their use in this document already^[If you are _astute_ enough!]. You are very astute.
+;;
 ;; [^sidenote]: This is a sidenote. The purpose of this text is to
 ;; merely demonstrate the use of sidenotes. All text was originally published
 ;; on the [Tufte CSS website](https://edwardtufte.github.io/tufte-css/).
@@ -66,17 +66,22 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
 ;; new content width once a sidenote is present in the document:
 ;;
 ;; Things to do:
+
 ;; * Hire two private investigators. Get them to follow each other.
-;; * Wear t-shirt that says "Life". Hand out lemons on street corner.
+;; * Wear t-shirt that says "Life". Hand out lemons^[not oranges] on street corner.
+;;   * Wear t-shirt that says "Life". Hand out lemons^[not oranges] on street corner.
 ;; * Change name to Simon. Speak in thirs person.
 ;; * Major in philosophy. Ask people WHY they would like fries with that.
 
+(clerk/md "---")
 
-
-
-
-
-
-
-
-
+;; ### Conclusion^[what usually average folks actually read.]
+;; Sidenote references should not be resetted[^crossnote] across code blocks.
+;;
+;; | Tables   |     Are  |  Cool |
+;; |----------|:---------|------:|
+;; | col 2 is | left[^*] |  1600 |
+;; | col 3 is |  right   |    12 |
+;;
+;; [^crossnote]: as in: _1-based_ again.
+;; [^*]: as in _not right_.

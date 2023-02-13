@@ -68,7 +68,7 @@
 ;; But the viewers are smart enough to accept any sequential list of items so you can
 ;; assign the viewers via metadata on your data structures too.
 
-^{::clerk/viewer :row}
+^{::clerk/viewer v/row}
 [image-1 image-2 image-3]
 
 ^{::clerk/viewer v/row}

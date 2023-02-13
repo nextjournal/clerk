@@ -2,9 +2,11 @@
 ^{:nextjournal.clerk/toc true :nextjournal.clerk/visibility {:code :hide}}
 (ns cards
   {:nextjournal.clerk/no-cache true}
-  (:require [nextjournal.clerk :as clerk]
+  (:require [applied-science.js-interop :as-alias j]
             [cards-macro :as c]
-            [nextjournal.clerk.viewer :as v]))
+            [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.viewer :as v]
+            [reagent.core :as-alias reagent]))
 
 ;; ## Images
 (c/card
@@ -124,27 +126,25 @@
  (reagent/as-element [:h1 "♻️"]))
 
 (c/card
-  (v/with-viewer :reagent
-                 (fn []
-                   (reagent/with-let [c (reagent/atom 0)]
-                                     [:<>
-                                      [:h2 "Count: " @c]
-                                      [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold.mr-2 {:on-click #(swap! c inc)} "increment"]
-                                      [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold {:on-click #(swap! c dec)} "decrement"]]))))
+ (v/with-viewer `v/reagent-viewer
+   (fn []
+     (reagent/with-let [c (reagent/atom 0)]
+       [:<>
+        [:h2 "Count: " @c]
+        [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold.mr-2 {:on-click #(swap! c inc)} "increment"]
+        [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold {:on-click #(swap! c dec)} "decrement"]]))))
 
 ;; ## Using `v/with-viewer`
 (c/card
- (v/with-viewer
-   #(v/html
-     [:div.relative
-      [:div.h-2.mb-4.flex.rounded.bg-blue-200.overflow-hidden
-       [:div.shadow-none.flex.flex-col.text-center.bg-blue-500
-        {:style {:width (-> %
-                            (* 100)
-                            int
-                            (max 0)
-                            (min 100)
-                            (str "%"))}}]]])
+ (v/with-viewer {:render-fn #(vector :div.relative
+                                     [:div.h-2.mb-4.flex.rounded.bg-blue-200.overflow-hidden
+                                      [:div.shadow-none.flex.flex-col.text-center.bg-blue-500
+                                       {:style {:width (-> %
+                                                           (* 100)
+                                                           int
+                                                           (max 0)
+                                                           (min 100)
+                                                           (str "%"))}}]])}
    0.33))
 
 ;; ## Notebook Viewer
@@ -153,9 +153,9 @@
  (v/with-viewer {:render-fn 'nextjournal.clerk.render/render-notebook
                  :transform-fn v/mark-presented}
    {:blocks (map v/present
-                 [(v/with-viewer :markdown "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
+                 [(v/with-viewer `v/markdown-viewer "# Hello Markdown\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum velit nulla, sodales eu lorem ut, tincidunt consectetur diam. Donec in scelerisque risus. Suspendisse potenti. Nunc non hendrerit odio, at malesuada erat. Aenean rutrum quam sed velit mollis imperdiet. Sed lacinia quam eget tempor tempus. Mauris et leo ac odio condimentum facilisis eu sed nibh. Morbi sed est sit amet risus blandit ullam corper. Pellentesque nisi metus, feugiat sed velit ut, dignissim finibus urna.")
                   (v/code "(shuffle (range 10))")
-                  (v/with-viewer :clerk/code-block {:text "(+ 1 2 3)"})
+                  (v/with-viewer `v/code-block-viewer {:text "(+ 1 2 3)"})
                   (v/md "# And some more\n And some more [markdown](https://daringfireball.net/projects/markdown/).")
                   (v/code "(shuffle (range 10))")
                   (v/md "## Some math \n This is a formula.")
@@ -177,9 +177,9 @@
 
 ;; in order for it to work, one needs the verbose syntax
 (c/card
-  (v/col
-   (v/row (v/with-viewer :html [:h1 "🎲"]) (v/with-viewer :html [:h1 "🎲"]))
-   (v/row (v/with-viewer :html [:h1 "🎲"]) (v/with-viewer :html [:h1 "🎲"]))))
+ (v/col
+  (v/row (v/with-viewer `v/html-viewer [:h1 "🎲"]) (v/with-viewer `v/html-viewer [:h1 "🎲"]))
+  (v/row (v/with-viewer `v/html-viewer [:h1 "🎲"]) (v/with-viewer `v/html-viewer [:h1 "🎲"]))))
 
 ;; ## In-process Pagination
 
@@ -197,7 +197,7 @@
 ;; ## Parser API
 
 ^{::clerk/width :wide}
-(c/card 
+(c/card
  (as-> ";; # 👋 Hello CLJS
 ;; This is `fold`
 ;;
@@ -211,12 +211,12 @@
 (fold str \"\" (range 10))
 
 ;; ## And the usual Clerk's perks
-(v/plotly {:data [{:y (shuffle (range 10)) :name \"The Federation\"}
+(nextjournal.clerk.viewer/plotly {:data [{:y (shuffle (range 10)) :name \"The Federation\"}
                   {:y (shuffle (range 10)) :name \"The Empire\"}]})
 ;; tables
-(v/table {:a [1 2 3] :b [4 5 6]})
+(nextjournal.clerk.viewer/table {:a [1 2 3] :b [4 5 6]})
 ;; html
-(v/html [:h1 \"🧨\"])
+(nextjournal.clerk.viewer/html [:h1 \"🧨\"])
 "
      doc
    (nextjournal.clerk.parser/parse-clojure-string {:doc? true} doc)

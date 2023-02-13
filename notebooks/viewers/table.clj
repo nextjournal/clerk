@@ -58,7 +58,7 @@
    {:rows (map (juxt identity inc) (range 100))
     :head (map format-head head-data)}))
 
-(clerk/with-viewers (clerk/add-viewers [(assoc v/image-viewer :render-fn '(fn [blob] (v/html [:img {:width "30px" :height "30px" :src (v/url-for blob)}])))])
+(clerk/with-viewers (clerk/add-viewers [(assoc v/image-viewer :render-fn '(fn [blob] [:img {:width "30px" :height "30px" :src (nextjournal.clerk.viewer/url-for blob)}]))])
   (clerk/table
    {:rows (map (juxt identity dec) (range 1 100))
     :head [(javax.imageio.ImageIO/read (java.net.URL. "https://upload.wikimedia.org/wikipedia/commons/1/17/Plus_img_364976.png"))
@@ -73,7 +73,7 @@
 (def custom-table-viewer
   (add-child-viewers v/table-viewer
                      [(assoc v/table-head-viewer :transform-fn (v/update-val (partial map (comp (partial str "Column: ") str/capitalize name))))
-                      (assoc v/table-missing-viewer :render-fn '(fn [x] (v/html [:span.red "N/A"])))]))
+                      (assoc v/table-missing-viewer :render-fn '(fn [x] [:span.red "N/A"]))]))
 
 (clerk/with-viewer custom-table-viewer
   {:col/a [1 2 3 4] :col/b [1 2 3] :col/c [1 2 3]})

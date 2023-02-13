@@ -6,6 +6,7 @@
             ["@lezer/highlight" :as lezer-highlight]
             ["@nextjournal/lang-clojure" :as lang-clojure]
             ["framer-motion" :as framer-motion]
+            ["react" :as react]
             [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.string :as str]
@@ -16,6 +17,7 @@
             [nextjournal.clerk.render.code]
             [nextjournal.clerk.render.context :as view-context]
             [nextjournal.clerk.render.hooks]
+            [nextjournal.clerk.render.navbar]
             [nextjournal.clerk.trim-image]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.clojure-mode.commands]
@@ -53,13 +55,13 @@
            (or (get {'viewer-fn   ->viewer-fn-with-error
                      'viewer-eval ->viewer-eval-with-error} tag)
                (fn [value]
-                 (viewer/with-viewer :tagged-value
+                 (viewer/with-viewer `viewer/tagged-value-viewer
                    {:tag tag
                     :space? (not (vector? value))
                     :value (cond-> value
                              (and (vector? value) (number? (second value)))
                              (update 1 (fn [memory-address]
-                                         (viewer/with-viewer :number-hex memory-address))))}))))
+                                         (viewer/with-viewer `viewer/number-hex-viewer memory-address))))}))))
          :features #{:clj}}))
 
 (defn ^:export read-string [s]
@@ -84,29 +86,6 @@
           'set-viewers! render/set-viewers!
           'with-d3-require render/with-d3-require}))
 
-;; classes which cannot be resolved by symbol
-(def libname->class
-  {"@codemirror/language" codemirror-language
-   "@codemirror/state" codemirror-state
-   "@codemirror/view" codemirror-view
-   "@lezer/highlight" lezer-highlight
-   "@nextjournal/lang-clojure" lang-clojure})
-
-(defn load-fn [{:keys [libname ctx opts ns]}]
-  (when (contains? libname->class libname)
-    (let [{:keys [as refer]} opts
-          munged-libname (symbol (munge libname))
-          klass (libname->class libname)]
-      (sci/add-class! ctx munged-libname klass)
-      (when as
-        (sci/add-import! ctx ns munged-libname as))
-      (doseq [r refer]
-        (when-some [prop (j/get klass (name r))]
-          (let [sub-libname (str munged-libname "$" r)]
-            (sci/add-class! ctx sub-libname prop)
-            (sci/add-import! ctx ns sub-libname r))))
-      {:handled true})))
-
 (defn ^:macro implements?* [_ _ psym x]
   ;; hardcoded implementation of implements? for js-interop destructure which
   ;; uses implements?
@@ -119,11 +98,19 @@
 
 (def initial-sci-opts
   {:async? true
-   :load-fn load-fn
    :disable-arity-checks true
    :classes {'js (j/assoc! goog/global "import" shadow.esm/dynamic-import)
              'framer-motion framer-motion
              :allow :all}
+   :js-libs {"@codemirror/language" codemirror-language
+             "@codemirror/state" codemirror-state
+             "@codemirror/view" codemirror-view
+             "@lezer/highlight" lezer-highlight
+             "@nextjournal/lang-clojure" lang-clojure
+             "framer-motion" framer-motion
+             "react" react}
+   ;; TODO: bring back aliases before the release and show a warning instead
+   #_#_
    :aliases {'j 'applied-science.js-interop
              'reagent 'reagent.core
              'v 'nextjournal.clerk.viewer
@@ -136,6 +123,7 @@
                        'nextjournal.clerk.render
                        'nextjournal.clerk.render.code
                        'nextjournal.clerk.render.hooks
+                       'nextjournal.clerk.render.navbar
 
                        'nextjournal.clojure-mode.keymap
                        'nextjournal.clojure-mode.commands
@@ -156,6 +144,8 @@
 (def ^:export mount render/mount)
 
 (sci.ctx-store/reset-ctx! (sci/init initial-sci-opts))
+
+(sci/enable-unrestricted-access!)
 
 (sci/alter-var-root sci/print-fn (constantly *print-fn*))
 (sci/alter-var-root sci/print-err-fn (constantly *print-err-fn*))

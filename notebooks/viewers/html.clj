@@ -16,7 +16,12 @@
   " notebook."])
 
 (clerk/with-viewer
- '(fn [_ _] [:div
-             "Go to "
-             [:a.text-lg {:href (v/doc-url "notebooks/viewers/image.clj")} "images"]
-             " notebook."]) nil)
+  '(fn [_ _] [:div
+              "Go to "
+              [:a.text-lg {:href (nextjournal.clerk.viewer/doc-url "notebooks/viewers/image.clj")} "images"]
+              " notebook."]) nil)
+
+(clerk/html
+ [:ol (list [:li "One"]
+            [:li "Two"]
+            [:li "Three"])])

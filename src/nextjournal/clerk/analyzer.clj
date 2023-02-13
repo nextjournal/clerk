@@ -114,6 +114,12 @@
   (assoc ana-jvm/default-passes-opts
          :validate/unresolvable-symbol-handler unresolvable-symbol-handler))
 
+(defn form->ex-data
+  "Returns ex-data map with the form and its location info from metadata."
+  [form]
+  (merge (select-keys (meta form) [:line :col :clojure.core/eval-file])
+         {:form form}))
+
 (defn- analyze-form
   ([form] (analyze-form {} form))
   ([bindings form]
@@ -122,14 +128,13 @@
        (let [old-deftype-hack ana-jvm/-deftype]
          ;; NOTE: workaround for tools.analyzer `-deftype` + `eval` HACK, which redefines classes which doesn't work well with instance? checks
          (with-redefs [ana-jvm/-deftype (fn [name class-name args interfaces]
-                                              (when-not (resolve class-name)
-                                                (old-deftype-hack name class-name args interfaces)))]
+                                          (when-not (resolve class-name)
+                                            (old-deftype-hack name class-name args interfaces)))]
            (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings
                                                       :passes-opts analyzer-passes-opts})))
        (catch java.lang.AssertionError e
          (throw (ex-info "Failed to analyze form"
-                         (-> (select-keys (meta form) [:line :col :clojure.core/eval-file])
-                             (assoc  :form form))
+                         (form->ex-data form)
                          e)))))))
 
 (defn analyze [form]
@@ -431,13 +436,14 @@
 #_(symbol->jar 'io.methvin.watcher.PathUtils/cast)
 #_(symbol->jar 'java.net.http.HttpClient/newHttpClient)
 
+
 (defn find-location [sym]
-  (cond
-    (deref? sym) (find-location (second sym))
-    :else (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
-            (or (ns->file ns)
-                (ns->jar ns))
-            (symbol->jar sym))))
+  (if (deref? sym)
+    (find-location (second sym))
+    (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
+      (or (ns->file ns)
+          (ns->jar ns))
+      (symbol->jar sym))))
 
 #_(find-location `inc)
 #_(find-location '@nextjournal.clerk.webserver/!doc)
@@ -447,6 +453,25 @@
 #_(find-location 'io.methvin.watcher.PathUtils)
 #_(find-location 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER)
 #_(find-location 'String)
+
+(defn find-location+cache [!ns->loc sym]
+  (if (deref? sym)
+    (find-location+cache !ns->loc (second sym))
+    (if-let [ns-sym (and (qualified-symbol? sym) (-> sym namespace symbol))]
+      (or (@!ns->loc ns-sym)
+          (when-let [loc (find-location sym)]
+            (swap! !ns->loc assoc ns-sym loc)
+            loc))
+      (find-location sym))))
+
+(def !ns->loc-cache (atom {}))
+
+#_(reset! !ns->loc-cache {})
+
+(defn find-location-cached [sym]
+  (find-location+cache !ns->loc-cache sym))
+
+#_(find-location-cached `inc)
 
 (def hash-jar
   (memoize (fn [f]
@@ -479,7 +504,7 @@
              (assoc :counter 0))]
     (let [unhashed (unhashed-deps ->analysis-info)
           loc->syms (apply dissoc
-                           (group-by find-location unhashed)
+                           (group-by find-location-cached unhashed)
                            analyzed-file-set)]
       (if (and (seq loc->syms) (< counter 10))
         (recur (-> (reduce (fn [g [source symbols]]
@@ -492,11 +517,7 @@
                            state
                            loc->syms)
                    (update :counter inc)))
-        (do (when (seq unhashed)
-              (binding [*out* *err*]
-                (println "`build-graph` could not hash all deps:" {:unhashed-deps unhashed})))
-            (dissoc state :analyzed-file-set :counter))))))
-
+        (dissoc state :analyzed-file-set :counter)))))
 
 
 (comment

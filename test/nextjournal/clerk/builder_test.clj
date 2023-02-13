@@ -34,8 +34,13 @@
   (testing "supports index"
     (is (= ["book.clj"] (builder/expand-paths {:index "book.clj"}))))
 
-  (testing "supports index"
+  (testing "supports paths"
     (is (= ["book.clj"] (builder/expand-paths {:paths ["book.clj"]}))))
+
+  (testing "deduplicates index + paths"
+    (is (= [(str (fs/file "notebooks" "rule_30.clj"))]
+           (builder/expand-paths {:paths ["notebooks/rule_**.clj"]
+                                  :index (str (fs/file "notebooks" "rule_30.clj"))}))))
 
   (testing "invalid args"
     (is (thrown-with-msg? ExceptionInfo #"must set either"
