@@ -584,7 +584,9 @@
 
 (defn update-table-viewers [viewers]
   (-> viewers
-      (update-viewers {(comp #{string?} :pred) #(assoc % :render-fn 'nextjournal.clerk.render/render-string)
+      (update-viewers {(comp #{string?} :pred) #(-> %
+                                                    (dissoc :closing-paren :opening-paren)
+                                                    (assoc :render-fn 'nextjournal.clerk.render/render-string))
                        (comp #{number?} :pred) #(assoc % :render-fn '(fn [x] [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))
                        (comp #{`elision-viewer} :name) #(assoc % :render-fn '(fn [{:as fetch-opts :keys [total offset unbounded?]} {:keys [num-cols]}]
                                                                                [nextjournal.clerk.render/consume-view-context
