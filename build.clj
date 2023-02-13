@@ -3,7 +3,7 @@
    [babashka.process :as process]
    [clojure.string :as str]
    [clojure.tools.build.api :as b]
-   [nextjournal.clerk.render.hashing]
+   [nextjournal.clerk.config :as config]
    [shared]))
 
 (def lib 'io.github.nextjournal/clerk)
@@ -18,7 +18,7 @@
 (defn package-clerk-asset-map [{:as opts :keys [target-dir]}]
   (when-not target-dir
     (throw (ex-info "target dir must be set" {:opts opts})))
-  (let [asset-map (slurp (nextjournal.clerk.render.hashing/get-lookup-url))]
+  (let [asset-map @config/!asset-map]
     (spit (str target-dir java.io.File/separator "clerk-asset-map.edn") asset-map)))
 
 (defn jar [_]
