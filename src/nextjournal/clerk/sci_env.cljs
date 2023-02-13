@@ -27,7 +27,8 @@
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
             [sci.ctx-store]
-            [shadow.esm]))
+            [shadow.esm]
+            [cherry.compiler :refer [compile-string]]))
 
 (defn ->viewer-fn-with-error [form]
   (try (viewer/->viewer-fn form)
@@ -38,6 +39,7 @@
                 [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)])}))))
 
 (defn ->viewer-eval-with-error [form]
+  (prn :fooooof form #_(compile-string (str form)))
   (try (*eval* form)
        (catch js/Error e
          (js/console.error "error in viewer-eval" e)
@@ -136,6 +138,7 @@
   (render/dispatch (read-string (.-data ws-msg))))
 
 (defn ^:export eval-form [f]
+  (prn :eval-form f (compile-string (str f)))
   (sci/eval-form (sci.ctx-store/get-ctx) f))
 
 (defn ^:export set-state [state]

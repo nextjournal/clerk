@@ -8,4 +8,4 @@
 
 (clerk/with-viewer {:render-fn '(fn [value]
                                   [:pre value])}
-  (+ 1 2 3))
+  (+ 1 2 3 5))
