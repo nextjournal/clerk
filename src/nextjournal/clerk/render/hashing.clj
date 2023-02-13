@@ -30,6 +30,11 @@
       (throw (ex-info "Clerk could note compute `font-end-hash` for cljs bundle." {:base-dir base-dir})))
     (str (djv/file-set-hash base-dir (file-set base-dir)))))
 
+(def ^:private prefix "clerk-assets")
+
+(defn dynamic-asset-map []
+  {"/js/viewer.js" (str "https://storage.clerk.garden/nextjournal/" prefix "@" (front-end-hash) "/viewer.js")})
+
 (defn build+upload-viewer-resources []
   (let [front-end-hash (front-end-hash)]
     (when-not (cas/tag-exists? {:tag front-end-hash})
@@ -39,6 +44,6 @@
       (let [res (cas/cas-put {:path "build"
                               :auth-token (System/getenv "GITHUB_TOKEN")
                               :namespace "nextjournal"
-                              :tag front-end-hash})]
+                              :tag (str prefix "@" front-end-hash)})]
         (println res))
       (println "Done"))))

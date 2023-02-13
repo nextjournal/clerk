@@ -20,7 +20,7 @@
 (def !asset-map
   ;; In mvn releases, the asset map is available in the artifact
   (delay (or (some-> (io/resource "clerk-asset-map.edn") slurp edn/read-string)
-             (try {"/js/viewer.js" (str "https://storage.clerk.garden/nextjournal/" ((requiring-resolve 'nextjournal.clerk.render.hashing/front-end-hash)) "/viewer.js")}
+             (try ((requiring-resolve 'nextjournal.clerk.render.hashing/dynamic-asset-map))
                   (catch Exception e
                     (throw (ex-info "Error reading dynamic asset map"
                                     (or (ex-data e)
