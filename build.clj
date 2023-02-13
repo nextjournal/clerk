@@ -16,6 +16,12 @@
 (def version (shared/version))
 (def jar-file (format "target/%s-%s.jar" (name lib) version))
 
+(defn package-clerk-asset-map [{:as opts :keys [target-dir]}]
+  (when-not target-dir
+    (throw (ex-info "target dir must be set" {:opts opts})))
+  (let [asset-map (slurp (nextjournal.clerk.render.hashing/get-lookup-url))]
+    (spit (str target-dir java.io.File/separator "clerk-asset-map.edn") asset-map)))
+
 (defn jar [_]
   (b/delete {:path "target"})
   (println "Producing jar:" jar-file)
@@ -31,6 +37,7 @@
   (b/copy-dir {:src-dirs ["src" "resources"]
                :target-dir class-dir
                :replace {}})
+  (package-clerk-asset-map {:target-dir class-dir})
   (b/jar {:class-dir class-dir
           :jar-file jar-file}))
 
