@@ -1,7 +1,9 @@
 {:min-bb-version "0.9.159"
  :paths ["bb"]
  :deps {io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
-        io.github.nextjournal/cas-client {:git/sha "17fb719f01d9da941ef3975aa0867e7329291c59"}}
+        io.github.nextjournal/cas-client {:git/sha "17fb719f01d9da941ef3975aa0867e7329291c59"}
+        mvxcvi/multihash {:git/url "https://github.com/borkdude/clj-multihash"
+                          :git/sha "7cd4d1fc1301aeea36d5ba80e65ebe2fdbaaa392"}}
  :tasks
  {:requires
   ([tasks :as t]
