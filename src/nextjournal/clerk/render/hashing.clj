@@ -38,7 +38,8 @@
 
 (defn build+upload-viewer-resources []
   (let [tag (assets-tag)]
-    (when-not (cas/tag-exists? {:tag tag})
+    (when-not (cas/tag-exists? {:namespace "nextjournal"
+                                :tag tag})
       (println (format "Could not find entry at %s. Building..." tag))
       ((requiring-resolve 'babashka.tasks/run) 'build:js)
       (println "Uploading...")
