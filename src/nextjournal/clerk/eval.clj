@@ -15,7 +15,7 @@
 
 (comment
   (alter-var-root #'nippy/*freeze-serializable-allowlist* (fn [_] "allow-and-record"))
-  (alter-var-root #'nippy/*thaw-serializable-allowlist* (fn [_] "allow-and-record"))
+  (alter-var-root   #'nippy/*thaw-serializable-allowlist* (fn [_] "allow-and-record"))
   (nippy/get-recorded-serializable-classes))
 
 ;; nippy tweaks
@@ -24,6 +24,7 @@
 (nippy/extend-thaw :java.awt.image.BufferedImage [in] (ImageIO/read in))
 
 #_(-> [(clojure.java.io/file "notebooks") (find-ns 'user)] nippy/freeze nippy/thaw)
+
 
 (defn ->cache-file [hash]
   (str config/cache-dir fs/file-separator hash))
@@ -85,6 +86,7 @@
                              cached-value)
                            hash)))
 
+
 (defn ^:private cachable-value? [value]
   (and (some? value)
        (try
@@ -99,6 +101,7 @@
 #_(cachable-value? (range))
 #_(cachable-value? (map inc (range)))
 #_(cachable-value? [{:hello (map inc (range))}])
+
 
 (defn ^:private cache! [digest-file var-value]
   (try
@@ -157,11 +160,11 @@
 (defn read+eval-cached [{:as _doc :keys [blob->result ->analysis-info ->hash]} codeblock]
   (let [{:keys [form vars var]} codeblock
         {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info (if (seq vars) (first vars) (analyzer/->key codeblock)))
-        no-cache? (or ns-effect? no-cache?)
-        hash (when-not no-cache? (or (get ->hash (analyzer/->key codeblock))
-                                     (analyzer/hash-codeblock ->hash codeblock)))
-        digest-file (when hash (->cache-file (str "@" hash)))
-        cas-hash (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
+        no-cache?      (or ns-effect? no-cache?)
+        hash           (when-not no-cache? (or (get ->hash (analyzer/->key codeblock))
+                                               (analyzer/hash-codeblock ->hash codeblock)))
+        digest-file    (when hash (->cache-file (str "@" hash)))
+        cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
         cached-result? (and (not no-cache?)
                             cas-hash
                             (or (get-in blob->result [hash :nextjournal/value])
