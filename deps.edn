@@ -70,7 +70,9 @@
                                io.github.nextjournal/clerk-slideshow {:git/sha "5fe197ca0c8f28128379849dc677cd718be71524"}}}
 
            :build {:deps {io.github.nextjournal/clerk {:local/root "."}
-                          io.github.nextjournal/cas-client {:git/sha "4eefd77dd981b908591d91d518ba3f43bd8c361e"}
+                          ;; :exclusions needed until https://github.com/greglook/clj-multiformats/pull/2 is merged
+                          io.github.nextjournal/cas-client {:git/sha "4eefd77dd981b908591d91d518ba3f43bd8c361e"
+                                                            :exclusions [mvxcvi/multiformats]}
                           io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}
                           io.github.slipset/deps-deploy {:git/sha "b4359c5d67ca002d9ed0c4b41b710d7e5a82e3bf"}}
                    :extra-paths ["bb" "src" "resources"] ;; for loading lookup-url in build
