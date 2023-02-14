@@ -4,8 +4,7 @@
             [clojure.java.io :as io]
             [clojure.main :as main]
             [clojure.string :as str]
-            [multihash.core :as multihash]
-            [multihash.digest :as digest]
+            [multiformats.base.b58 :as b58]
             [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.parser :as parser]
@@ -16,7 +15,7 @@
 
 (comment
   (alter-var-root #'nippy/*freeze-serializable-allowlist* (fn [_] "allow-and-record"))
-  (alter-var-root   #'nippy/*thaw-serializable-allowlist* (fn [_] "allow-and-record"))
+  (alter-var-root #'nippy/*thaw-serializable-allowlist* (fn [_] "allow-and-record"))
   (nippy/get-recorded-serializable-classes))
 
 ;; nippy tweaks
@@ -26,19 +25,18 @@
 
 #_(-> [(clojure.java.io/file "notebooks") (find-ns 'user)] nippy/freeze nippy/thaw)
 
-
 (defn ->cache-file [hash]
   (str config/cache-dir fs/file-separator hash))
 
 (defn wrapped-with-metadata [value hash]
   (cond-> {:nextjournal/value value}
-    hash (assoc :nextjournal/blob-id (cond-> hash (not (string? hash)) multihash/base58))))
+    hash (assoc :nextjournal/blob-id (cond-> hash (not (string? hash)) b58/format-btc))))
 
 #_(wrap-with-blob-id :test "foo")
 
 (defn hash+store-in-cas! [x]
   (let [^bytes ba (nippy/freeze x)
-        multihash (multihash/base58 (digest/sha2-512 ba))
+        multihash (analyzer/sha2-base58 ba)
         file (->cache-file multihash)]
     (when-not (fs/exists? file)
       (with-open [out (io/output-stream (io/file file))]
@@ -87,7 +85,6 @@
                              cached-value)
                            hash)))
 
-
 (defn ^:private cachable-value? [value]
   (and (some? value)
        (try
@@ -102,7 +99,6 @@
 #_(cachable-value? (range))
 #_(cachable-value? (map inc (range)))
 #_(cachable-value? [{:hello (map inc (range))}])
-
 
 (defn ^:private cache! [digest-file var-value]
   (try
@@ -161,11 +157,11 @@
 (defn read+eval-cached [{:as _doc :keys [blob->result ->analysis-info ->hash]} codeblock]
   (let [{:keys [form vars var]} codeblock
         {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info (if (seq vars) (first vars) (analyzer/->key codeblock)))
-        no-cache?      (or ns-effect? no-cache?)
-        hash           (when-not no-cache? (or (get ->hash (analyzer/->key codeblock))
-                                               (analyzer/hash-codeblock ->hash codeblock)))
-        digest-file    (when hash (->cache-file (str "@" hash)))
-        cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
+        no-cache? (or ns-effect? no-cache?)
+        hash (when-not no-cache? (or (get ->hash (analyzer/->key codeblock))
+                                     (analyzer/hash-codeblock ->hash codeblock)))
+        digest-file (when hash (->cache-file (str "@" hash)))
+        cas-hash (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
         cached-result? (and (not no-cache?)
                             cas-hash
                             (or (get-in blob->result [hash :nextjournal/value])
