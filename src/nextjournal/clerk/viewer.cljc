@@ -622,7 +622,11 @@
     :transform-fn (into-markup
                    (fn [{:keys [attrs heading-level]}]
                      [(str "h" heading-level) attrs]))}
-   {:name :nextjournal.markdown/image :transform-fn #(with-viewer `html-viewer [:img.inline (-> % ->value :attrs)])}
+   {:name :nextjournal.markdown/image
+    :transform-fn (fn [{node :nextjournal/value}]
+                    (let [{:keys [attrs]} node]
+                      (with-viewer `html-viewer
+                        [:img.inline (-> attrs #?(:clj (cond-> (fs/exists? (:src attrs)) (update :src #(str "_blob/" %)))))])))}
    {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
    {:name :nextjournal.markdown/plain :transform-fn (into-markup [:<>])}
@@ -1529,8 +1533,15 @@
 (defn image
   ([image-or-url] (image {} image-or-url))
   ([viewer-opts image-or-url]
-   (with-viewer image-viewer viewer-opts #?(:clj (ImageIO/read (if (string? image-or-url) (URL. image-or-url) image-or-url))
-                                            :cljs image-or-url))))
+   (with-viewer image-viewer viewer-opts #?(:cljs image-or-url
+                                            :clj (ImageIO/read (cond
+                                                                 (not (string? image-or-url))
+                                                                 image-or-url
+                                                                 (fs/exists? image-or-url)
+                                                                 (fs/file image-or-url)
+                                                                 :else
+                                                                 (URL. image-or-url)))))))
+#_ (image "images/trees.png")
 
 (defn caption [text content]
   (col

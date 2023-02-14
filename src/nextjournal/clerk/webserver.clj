@@ -7,7 +7,17 @@
             [editscript.core :as editscript]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
-            [org.httpkit.server :as httpkit]))
+            [org.httpkit.server :as httpkit])
+  (:import (javax.imageio ImageIO ImageReader)))
+
+(defn image-content-type [path]
+  (let [readers (ImageIO/getImageReaders (ImageIO/createImageInputStream (fs/file path)))]
+    (when-some [^ImageReader r (when (.hasNext readers) (.next readers))]
+      (str/lower-case (str "image/" (.getFormatName r))))))
+
+#_(image-content-type "images/trees.png")
+#_(image-content-type "images/a.gif")
+#_(image-content-type "images/vera.jpg")
 
 (defn help-hiccup []
   [:p "Call " [:span.code "nextjournal.clerk/show!"] " from your REPL"
@@ -71,10 +81,15 @@
 #_(get-fetch-opts "")
 #_(get-fetch-opts "foo=bar&n=42&start=20")
 
-(defn serve-blob [{:as doc :keys [blob->result ns]} {:keys [blob-id fetch-opts]}]
+(defn serve-blob [{:as doc :keys [blob->result ns]} {:keys [blob-id fetch-opts fetch-dest]}]
   (when-not ns
     (throw (ex-info "namespace must be set" {:doc doc})))
-  (if (contains? blob->result blob-id)
+  (cond
+    (and (fs/exists? blob-id) (= "image" fetch-dest))
+    {:body (fs/read-all-bytes blob-id)
+     :content-type (image-content-type blob-id)}
+
+    (contains? blob->result blob-id)
     (let [result (v/apply-viewer-unwrapping-var-from-def (blob->result blob-id))
           desc (v/present (v/ensure-wrapped-with-viewers
                            (v/get-viewers ns result)
@@ -84,11 +99,14 @@
         {:body (v/->value desc)
          :content-type (:nextjournal/content-type desc)}
         {:body (v/->edn desc)}))
+
+    :else
     {:status 404}))
 
-(defn extract-blob-opts [{:as _req :keys [uri query-string]}]
+(defn extract-blob-opts [{:as _req :keys [headers uri query-string]}]
   {:blob-id (str/replace uri "/_blob/" "")
-   :fetch-opts (get-fetch-opts query-string)})
+   :fetch-opts (get-fetch-opts query-string)
+   :fetch-dest (get headers "sec-fetch-dest")})
 
 (defn serve-file [path {:as req :keys [uri]}]
   (let [file-or-dir (str path uri)
