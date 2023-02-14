@@ -35,7 +35,7 @@ and render back to hiccup with customisable elements.
 ```clojure
 (def renderers 
   (assoc md.transform/default-hiccup-renderers 
-        :doc (partial md.transform/into-markup [:div.viewer-markdown])
+        :doc (partial md.transform/into-markup [:div.markdown-viewer])
         :ruler (constantly [:hr.mt-1.mb-10.border-0.w-full.h-5.bg-fuchsia-900.rounded-full])))
 
 (def hiccup 
