@@ -23,17 +23,16 @@
 (clerk/image {::clerk/width :full} "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")
 
 ;; ## Local Files
-;; We can refer to local files in the source of markdown images: provided we have
+;; We can refer to local files in the source of markdown images. Provided we have
 
 ^{::clerk/visibility {:code :hide :result :hide}}
 (fs/create-dirs "images")
 (ImageIO/write (BufferedImage. 20 20 BufferedImage/TYPE_BYTE_GRAY) "jpg"
                (fs/file "images/random.jpg"))
-;; a syntax like
+;; then, a syntax like
 ;;
 ;;     ![alt](images/random.jpg)
 ;;
-;; should ![alt](images/random.jpg) do the job.
-;; That is also the case for `clerk/image`
+;; should do the job (see here: ![alt](images/random.jpg)). This is also the case when using `clerk/image`
 
 (clerk/image "images/random.jpg")

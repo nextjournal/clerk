@@ -7,7 +7,8 @@
             [editscript.core :as editscript]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
-            [org.httpkit.server :as httpkit]))
+            [org.httpkit.server :as httpkit])
+  (:import (java.nio.file Files)))
 
 (defn help-hiccup []
   [:p "Call " [:span.code "nextjournal.clerk/show!"] " from your REPL"
@@ -75,10 +76,6 @@
   (when-not ns
     (throw (ex-info "namespace must be set" {:doc doc})))
   (cond
-    (and (fs/exists? blob-id) (= "image" fetch-dest))
-    {:body (fs/read-all-bytes blob-id)
-     :content-type (str "image/" (v/image-format-name blob-id))}
-
     (contains? blob->result blob-id)
     (let [result (v/apply-viewer-unwrapping-var-from-def (blob->result blob-id))
           desc (v/present (v/ensure-wrapped-with-viewers
@@ -89,6 +86,10 @@
         {:body (v/->value desc)
          :content-type (:nextjournal/content-type desc)}
         {:body (v/->edn desc)}))
+
+    (and (= "image" fetch-dest) (fs/exists? blob-id))
+    {:body (fs/read-all-bytes blob-id)
+     :content-type (Files/probeContentType (fs/path blob-id))}
 
     :else
     {:status 404}))

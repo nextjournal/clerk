@@ -406,8 +406,8 @@
 
 #?(:clj
    (defn store+get-cas-url! [{:keys [out-path ext]} content]
-     (assert out-path) (assert ext)
-     (let [cas-url (str "_data/" (multihash/base58 (digest/sha2-512 content)) "." ext)
+     (assert out-path)
+     (let [cas-url (str "_data/" (multihash/base58 (digest/sha2-512 content)) (when ext ".") ext)
            cas-path (fs/path out-path cas-url)]
        (fs/create-dirs (fs/parent cas-path))
        (when-not (fs/exists? cas-path)
@@ -616,16 +616,6 @@
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
             (.setTimeZone (java.util.TimeZone/getTimeZone "GMT")))))
 
-#?(:clj
-   (defn image-format-name [path]
-     (let [readers (ImageIO/getImageReaders (ImageIO/createImageInputStream (fs/file path)))]
-       (when-some [^ImageReader r (when (.hasNext readers) (.next readers))]
-         (str/lower-case (.getFormatName r))))))
-
-#_(image-format-name "images/trees.png")
-#_(image-format-name "images/a.gif")
-#_(image-format-name "images/vera.jpg")
-
 (defn process-image-source [src {:as doc :keys [file bundle?]}]
   #?(:cljs src
      :clj  (cond
@@ -633,10 +623,10 @@
              src
              (false? bundle?)
              (str (relative-root-prefix-from (map-index doc file))
-                  (store+get-cas-url! (assoc doc :ext (image-format-name src))
+                  (store+get-cas-url! (assoc doc :ext (fs/extension src))
                                       (fs/read-all-bytes src)))
              bundle?
-             (base64-encode-value (fs/read-all-bytes src) (str "image/" (image-format-name src)))
+             (base64-encode-value (fs/read-all-bytes src) (Files/probeContentType (fs/path src)))
              :else ;; show mode
              (str "_blob/" src))))
 
@@ -1565,7 +1555,7 @@
                                                                  (fs/file image-or-url)
                                                                  :else
                                                                  (URL. image-or-url)))))))
-#_ (image "images/trees.png")
+#_(image "test/images/trees.png")
 
 (defn caption [text content]
   (col
