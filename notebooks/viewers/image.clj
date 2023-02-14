@@ -22,9 +22,12 @@
 
 (clerk/image {::clerk/width :full} "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")
 
-;; ## Markdown Images with local Files
-;; Mardown images can refer to local files in their source. Therefore, provided we have
+;; ## Local Files
+;; We can refer to local files in the source of markdown images: provided we have
 
 (ImageIO/write (BufferedImage. 20 20 BufferedImage/TYPE_BYTE_GRAY) "jpg"
                (fs/file "images/random.jpg"))
-;; this ![alt](images/random.jpg) should to the job.
+;; this ![alt](images/random.jpg) should do the job.
+
+;; That is also the case for `clerk/image`
+(clerk/image "images/random.jpg")
