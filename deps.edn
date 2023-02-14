@@ -13,7 +13,6 @@
         io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
 
         com.taoensso/nippy {:mvn/version "3.2.0"}
-        org.clj-commons/digest {:mvn/version "1.4.100"}
         mvxcvi/multiformats {:mvn/version "0.2.1"}
 
         com.pngencoder/pngencoder {:mvn/version "0.13.1"}
