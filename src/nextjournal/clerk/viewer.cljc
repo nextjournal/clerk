@@ -626,22 +626,19 @@
 #_(image-format-name "images/a.gif")
 #_(image-format-name "images/vera.jpg")
 
-#?(:clj
-   (defn process-image-source [src {:as doc :keys [file bundle?]}]
-     (cond
-       (not (fs/exists? src))
-       src
-
-       (false? bundle?)
-       (str (relative-root-prefix-from (map-index doc file))
-            (store+get-cas-url! (assoc doc :ext (image-format-name src))
-                                (fs/read-all-bytes src)))
-
-       bundle?
-       (base64-encode-value (fs/read-all-bytes src) (str "image/" (image-format-name src)))
-
-       :else ;; show mode
-       (str "_blob/" src))))
+(defn process-image-source [src {:as doc :keys [file bundle?]}]
+  #?(:cljs src
+     :clj  (cond
+             (not (fs/exists? src))
+             src
+             (false? bundle?)
+             (str (relative-root-prefix-from (map-index doc file))
+                  (store+get-cas-url! (assoc doc :ext (image-format-name src))
+                                      (fs/read-all-bytes src)))
+             bundle?
+             (base64-encode-value (fs/read-all-bytes src) (str "image/" (image-format-name src)))
+             :else ;; show mode
+             (str "_blob/" src))))
 
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc
@@ -653,7 +650,7 @@
    {:name :nextjournal.markdown/image
     :transform-fn (fn [{node :nextjournal/value doc :nextjournal/opts}]
                     (with-viewer `html-viewer
-                      [:img.inline (-> node :attrs #?(:clj (update :src process-image-source doc)))]))}
+                      [:img.inline (-> node :attrs (update :src process-image-source doc))]))}
    {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
    {:name :nextjournal.markdown/plain :transform-fn (into-markup [:<>])}
