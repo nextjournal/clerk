@@ -1,8 +1,9 @@
 {:min-bb-version "0.9.159"
  :paths ["bb"]
  :deps {io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
-        mvxcvi/multiformats {:git/url "https://github.com/borkdude/greglook-clj-multiformats"
-                             :git/sha "9c516d5039052f1e12f875cc29e40f6638e521e4"}}
+        ;; we don't need this yet, but it contains a bb-compatible change for multiformats
+        #_#_mvxcvi/multiformats {:git/url "https://github.com/borkdude/greglook-clj-multiformats"
+                                 :git/sha "9c516d5039052f1e12f875cc29e40f6638e521e4"}}
  :tasks
  {:requires
   ([tasks :as t]
