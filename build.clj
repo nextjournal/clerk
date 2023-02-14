@@ -3,8 +3,7 @@
    [babashka.process :as process]
    [clojure.string :as str]
    [clojure.tools.build.api :as b]
-   [nextjournal.cas :as cas]
-   [nextjournal.clerk.render.hashing]
+   [nextjournal.clerk.config :as config]
    [shared]))
 
 (def lib 'io.github.nextjournal/clerk)
@@ -19,7 +18,7 @@
 (defn package-clerk-asset-map [{:as opts :keys [target-dir]}]
   (when-not target-dir
     (throw (ex-info "target dir must be set" {:opts opts})))
-  (let [asset-map (slurp (nextjournal.clerk.render.hashing/get-lookup-url))]
+  (let [asset-map @config/!asset-map]
     (spit (str target-dir java.io.File/separator "clerk-asset-map.edn") asset-map)))
 
 (defn jar [_]
@@ -62,21 +61,3 @@
            (throw e)
            (println "This release was already deployed."))))
   opts)
-
-(defn asserting [val msg] (assert (seq val) msg) val)
-
-(defn upload! [opts file] (:url (cas/upload! opts file)))
-
-(defn update-resource! [opts _resource _ file]
-  (upload! opts file))
-
-(defn get-gsutil [] (str/trim (:out (process/sh ["which" "gsutil"]))))
-
-(def resource->path
-  '{viewer.js "/js/viewer.js"})
-
-(defn upload-to-cas [{:keys [resource]}]
-  (if-let [target (resource->path resource)]
-    (update-resource! {:exec-path (str/trim (asserting (get-gsutil) "Can't find gsutil executable."))
-                       :target-path "gs://nextjournal-cas-eu/data/"} target :uploading (str "build/" resource))
-    (throw (ex-info (str "unsupported resource " resource) {:supported-resources (keys resource->path)}))))

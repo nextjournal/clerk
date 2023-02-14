@@ -1,6 +1,9 @@
 {:min-bb-version "0.9.159"
  :paths ["bb"]
- :deps {io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}}
+ :deps {io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
+        io.github.nextjournal/cas-client {:git/sha "534d8c6679cc005fd9ad99cfe3d5aeaa6411aee8"}
+        mvxcvi/multihash {:git/url "https://github.com/borkdude/clj-multihash"
+                          :git/sha "7cd4d1fc1301aeea36d5ba80e65ebe2fdbaaa392"}}
  :tasks
  {:requires
   ([tasks :as t]
@@ -26,10 +29,6 @@
 
   lint {:doc "Lints project using clj-kondo"
         :task (apply shell "clj-kondo --lint src test" *command-line-args*)}
-
-  release:js {:doc "Uploads the js release and updates the sha reference."
-              :task (clojure "-T:build upload-to-cas :resource viewer.js")
-              :depends [build:js]}
 
   build:static-app {:doc "Builds a static app with default notebooks"
                     :task (apply clojure "-X:demo:nextjournal/clerk" *command-line-args*)}
