@@ -73,6 +73,6 @@
                           io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}
                           io.github.slipset/deps-deploy {:git/sha "b4359c5d67ca002d9ed0c4b41b710d7e5a82e3bf"}
                           io.github.nextjournal/cas {:git/url "git@github.com:nextjournal/cas"
-                                                     :git/sha "5e8079b720e347b9466db9c2282ce79a125a011c"}}
+                                                     :git/sha "5132b9b29418575cffd467288e9bda74eb2a10c9"}}
                    :extra-paths ["bb" "src" "resources"] ;; for loading lookup-url in build
                    :ns-default build}}}
