@@ -640,8 +640,6 @@
    {:name :nextjournal.markdown/monospace :transform-fn (into-markup [:code])}
    {:name :nextjournal.markdown/strikethrough :transform-fn (into-markup [:s])}
    {:name :nextjournal.markdown/link :transform-fn (into-markup #(vector :a (:attrs %)))}
-   {:name :nextjournal.markdown/internal-link :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))}
-   {:name :nextjournal.markdown/hashtag :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))}
 
    ;; inlines
    {:name :nextjournal.markdown/text :transform-fn (into-markup [:<>])}
