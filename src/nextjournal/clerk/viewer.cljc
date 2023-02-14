@@ -613,7 +613,7 @@
 
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc
-    :transform-fn (into-markup [:div.viewer-markdown])}
+    :transform-fn (into-markup [:div.markdown-viewer])}
 
    ;; blocks
    {:name :nextjournal.markdown/heading
@@ -638,8 +638,6 @@
    {:name :nextjournal.markdown/monospace :transform-fn (into-markup [:code])}
    {:name :nextjournal.markdown/strikethrough :transform-fn (into-markup [:s])}
    {:name :nextjournal.markdown/link :transform-fn (into-markup #(vector :a (:attrs %)))}
-   {:name :nextjournal.markdown/internal-link :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))}
-   {:name :nextjournal.markdown/hashtag :transform-fn (into-markup #(vector :a {:href (str "#" (:text %))}))}
 
    ;; inlines
    {:name :nextjournal.markdown/text :transform-fn (into-markup [:<>])}

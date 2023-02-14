@@ -1,9 +1,7 @@
 {:min-bb-version "0.9.159"
  :paths ["bb"]
  :deps {io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
-        ;; we don't need this yet, but it contains a bb-compatible change for multiformats
-        #_#_mvxcvi/multiformats {:git/url "https://github.com/borkdude/greglook-clj-multiformats"
-                                 :git/sha "9c516d5039052f1e12f875cc29e40f6638e521e4"}}
+        io.github.nextjournal/cas-client {:git/sha "4eefd77dd981b908591d91d518ba3f43bd8c361e"}}
  :tasks
  {:requires
   ([tasks :as t]
@@ -29,10 +27,6 @@
 
   lint {:doc "Lints project using clj-kondo"
         :task (apply shell "clj-kondo --lint src test" *command-line-args*)}
-
-  release:js {:doc "Uploads the js release and updates the sha reference."
-              :task (clojure "-T:build upload-to-cas :resource viewer.js")
-              :depends [build:js]}
 
   build:static-app {:doc "Builds a static app with default notebooks"
                     :task (apply clojure "-X:demo:nextjournal/clerk" *command-line-args*)}
