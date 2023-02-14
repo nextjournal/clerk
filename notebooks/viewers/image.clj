@@ -25,6 +25,8 @@
 ;; ## Local Files
 ;; We can refer to local files in the source of markdown images: provided we have
 
+^{::clerk/visibility {:code :hide :result :hide}}
+(fs/create-dirs "images")
 (ImageIO/write (BufferedImage. 20 20 BufferedImage/TYPE_BYTE_GRAY) "jpg"
                (fs/file "images/random.jpg"))
 ;; this ![alt](images/random.jpg) should do the job.
