@@ -518,7 +518,7 @@
 (defn with-block-viewer [doc {:as cell :keys [type]}]
   (case type
     :markdown [(with-viewer `markdown-viewer
-                 {:nextjournal.clerk/opts (select-keys doc [:index :file :bundle? :out-path])} ;; FIXME: pass whole doc, dissoc nj/opts when presentation is done
+                 {:nextjournal.clerk/opts (select-keys doc [:index :file :bundle? :out-path])}
                  (process-sidenotes doc (:doc cell)))]
     :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
                 {:as display-opts :keys [code? result?]} (->display cell)
