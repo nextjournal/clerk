@@ -71,6 +71,7 @@
            :build {:deps {io.github.nextjournal/clerk {:local/root "."}
                           io.github.nextjournal/cas-client {:git/sha "17fb719f01d9da941ef3975aa0867e7329291c59"}
                           io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}
-                          io.github.slipset/deps-deploy {:git/sha "b4359c5d67ca002d9ed0c4b41b710d7e5a82e3bf"}}
+                          io.github.slipset/deps-deploy {:git/sha "b4359c5d67ca002d9ed0c4b41b710d7e5a82e3bf"}
+                          mvxcvi/multihash {:mvn/version "2.0.3"}}
                    :extra-paths ["bb" "src" "resources"] ;; for loading lookup-url in build
                    :ns-default build}}}
