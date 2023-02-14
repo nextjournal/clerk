@@ -401,9 +401,8 @@
     result))
 
 #?(:clj
-   (defn base64-encode-value [{:as result :nextjournal/keys [content-type]}]
-     (update result :nextjournal/value (fn [data] (str "data:" content-type ";base64,"
-                                                       (.encodeToString (Base64/getEncoder) data))))))
+   (defn base64-encode-value [data content-type]
+     (str "data:" content-type ";base64," (.encodeToString (Base64/getEncoder) data))))
 
 #?(:clj
    (defn store+get-cas-url! [{:keys [out-path ext]} content]
@@ -437,10 +436,10 @@
 
 #?(:clj
    (defn process-blobs [{:as doc+blob-opts :keys [blob-mode blob-id]} presented-result]
-     (w/postwalk #(if (get % :nextjournal/content-type)
+     (w/postwalk #(if-some [content-type (get % :nextjournal/content-type)]
                     (case blob-mode
                       :lazy-load (assoc % :nextjournal/value {:blob-id blob-id :path (:path %)})
-                      :inline (base64-encode-value %)
+                      :inline (update % :nextjournal/value base64-encode-value content-type)
                       :file (maybe-store-result-as-file doc+blob-opts %))
                     %)
                  presented-result)))
@@ -638,8 +637,10 @@
             (store+get-cas-url! (assoc doc :ext (image-format-name src))
                                 (fs/read-all-bytes src)))
 
-       ;; TODO: inline for bundle?
-       :else
+       bundle?
+       (base64-encode-value (fs/read-all-bytes src) (str "image/" (image-format-name src)))
+
+       :else ;; show mode
        (str "_blob/" src))))
 
 (def markdown-viewers
