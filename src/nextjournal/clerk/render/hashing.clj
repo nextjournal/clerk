@@ -34,3 +34,17 @@
 
 (defn dynamic-asset-map []
   {"/js/viewer.js" (str "https://storage.clerk.garden/nextjournal/" (assets-tag) "/viewer.js?immutable=true")})
+
+(defn build+upload-viewer-resources []
+  (let [tag (assets-tag)]
+    (when-not ((requiring-resolve 'nextjournal.cas-client.api/tag-exists?) {:namespace "nextjournal" :tag tag})
+      (println (format "Could not find entry at %s. Building..." tag))
+      ((requiring-resolve 'babashka.tasks/run) 'build:js)
+      (println "Uploading...")
+      (let [res ((requiring-resolve 'nextjournal.cas-client.api/cas-put) {:path "build"
+                                                                          :auth-token (System/getenv "GITHUB_TOKEN")
+                                                                          :namespace "nextjournal"
+                                                                          :tag tag})]
+        (doseq [[k v] res]
+          (println (str k ": " v))))
+      (println "Done"))))
