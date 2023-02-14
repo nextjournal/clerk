@@ -27,7 +27,7 @@
                    (java.util Base64)
                    (java.net URL)
                    (java.nio.file Files StandardOpenOption)
-                   (javax.imageio ImageIO ImageReader))))
+                   (javax.imageio ImageIO))))
 
 (defrecord ViewerEval [form])
 
