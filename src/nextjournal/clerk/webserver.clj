@@ -7,17 +7,7 @@
             [editscript.core :as editscript]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
-            [org.httpkit.server :as httpkit])
-  (:import (javax.imageio ImageIO ImageReader)))
-
-(defn image-content-type [path]
-  (let [readers (ImageIO/getImageReaders (ImageIO/createImageInputStream (fs/file path)))]
-    (when-some [^ImageReader r (when (.hasNext readers) (.next readers))]
-      (str/lower-case (str "image/" (.getFormatName r))))))
-
-#_(image-content-type "images/trees.png")
-#_(image-content-type "images/a.gif")
-#_(image-content-type "images/vera.jpg")
+            [org.httpkit.server :as httpkit]))
 
 (defn help-hiccup []
   [:p "Call " [:span.code "nextjournal.clerk/show!"] " from your REPL"
@@ -87,7 +77,7 @@
   (cond
     (and (fs/exists? blob-id) (= "image" fetch-dest))
     {:body (fs/read-all-bytes blob-id)
-     :content-type (image-content-type blob-id)}
+     :content-type (str "image/" (v/image-format-name blob-id))}
 
     (contains? blob->result blob-id)
     (let [result (v/apply-viewer-unwrapping-var-from-def (blob->result blob-id))

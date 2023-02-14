@@ -29,7 +29,11 @@
 (fs/create-dirs "images")
 (ImageIO/write (BufferedImage. 20 20 BufferedImage/TYPE_BYTE_GRAY) "jpg"
                (fs/file "images/random.jpg"))
-;; this ![alt](images/random.jpg) should do the job.
-
+;; a syntax like
+;;
+;;     ![alt](images/random.jpg)
+;;
+;; should ![alt](images/random.jpg) do the job.
 ;; That is also the case for `clerk/image`
+
 (clerk/image "images/random.jpg")

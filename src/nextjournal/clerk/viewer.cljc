@@ -27,7 +27,7 @@
                    (java.util Base64)
                    (java.net URL)
                    (java.nio.file Files StandardOpenOption)
-                   (javax.imageio ImageIO))))
+                   (javax.imageio ImageIO ImageReader))))
 
 (defrecord ViewerEval [form])
 
@@ -314,15 +314,17 @@
     (with-viewer (keyword "nextjournal.markdown" (name type)) wrapped-value)))
 
 (defn into-markup [markup]
-  (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
+  (fn [{:as wrapped-value :nextjournal/keys [viewers opts]}]
     (-> (with-viewer {:name `html-viewer- :render-fn 'identity} wrapped-value)
         mark-presented
         (update :nextjournal/value
                 (fn [{:as node :keys [text content]}]
                   (into (cond-> markup (fn? markup) (apply [node]))
                         (cond text [text]
-                              content (mapv #(-> (with-md-viewer %)
-                                                 (assoc :nextjournal/viewers viewers)
+                              content (mapv #(-> (ensure-wrapped %)
+                                                 (assoc :nextjournal/viewers viewers
+                                                        :nextjournal/opts opts)
+                                                 (with-md-viewer)
                                                  (apply-viewers)
                                                  (as-> w
                                                      (if (= `html-viewer- (:name (->viewer w)))
@@ -516,7 +518,9 @@
 
 (defn with-block-viewer [doc {:as cell :keys [type]}]
   (case type
-    :markdown [(with-viewer `markdown-viewer (process-sidenotes doc (:doc cell)))]
+    :markdown [(with-viewer `markdown-viewer
+                 {:nextjournal.clerk/opts (select-keys doc [:index :file :bundle? :out-path])} ;; FIXME: pass whole doc, dissoc nj/opts when presentation is done
+                 (process-sidenotes doc (:doc cell)))]
     :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
                 {:as display-opts :keys [code? result?]} (->display cell)
                 eval? (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)]
@@ -613,20 +617,42 @@
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
             (.setTimeZone (java.util.TimeZone/getTimeZone "GMT")))))
 
+#?(:clj
+   (defn image-format-name [path]
+     (let [readers (ImageIO/getImageReaders (ImageIO/createImageInputStream (fs/file path)))]
+       (when-some [^ImageReader r (when (.hasNext readers) (.next readers))]
+         (str/lower-case (.getFormatName r))))))
+
+#_(image-format-name "images/trees.png")
+#_(image-format-name "images/a.gif")
+#_(image-format-name "images/vera.jpg")
+
+#?(:clj
+   (defn process-image-source [src {:as doc :keys [file bundle?]}]
+     (cond
+       (not (fs/exists? src))
+       src
+
+       (false? bundle?)
+       (str (relative-root-prefix-from (map-index doc file))
+            (store+get-cas-url! (assoc doc :ext (image-format-name src))
+                                (fs/read-all-bytes src)))
+
+       ;; TODO: inline for bundle?
+       :else
+       (str "_blob/" src))))
+
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc
     :transform-fn (into-markup [:div.viewer-markdown])}
-
-   ;; blocks
    {:name :nextjournal.markdown/heading
     :transform-fn (into-markup
                    (fn [{:keys [attrs heading-level]}]
                      [(str "h" heading-level) attrs]))}
    {:name :nextjournal.markdown/image
-    :transform-fn (fn [{node :nextjournal/value}]
-                    (let [{:keys [attrs]} node]
-                      (with-viewer `html-viewer
-                        [:img.inline (-> attrs #?(:clj (cond-> (fs/exists? (:src attrs)) (update :src #(str "_blob/" %)))))])))}
+    :transform-fn (fn [{node :nextjournal/value doc :nextjournal/opts}]
+                    (with-viewer `html-viewer
+                      [:img.inline (-> node :attrs #?(:clj (update :src process-image-source doc)))]))}
    {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
    {:name :nextjournal.markdown/plain :transform-fn (into-markup [:<>])}
