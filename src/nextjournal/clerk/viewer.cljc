@@ -645,7 +645,7 @@
 
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc
-    :transform-fn (into-markup [:div.viewer-markdown])}
+    :transform-fn (into-markup [:div.markdown-viewer])}
    {:name :nextjournal.markdown/heading
     :transform-fn (into-markup
                    (fn [{:keys [attrs heading-level]}]
