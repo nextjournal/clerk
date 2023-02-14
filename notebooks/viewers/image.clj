@@ -27,12 +27,20 @@
 
 ^{::clerk/visibility {:code :hide :result :hide}}
 (fs/create-dirs "images")
-(ImageIO/write (BufferedImage. 20 20 BufferedImage/TYPE_BYTE_GRAY) "jpg"
-               (fs/file "images/random.jpg"))
+
+^::clerk/no-cache
+(let [img (BufferedImage. 60 30 BufferedImage/TYPE_BYTE_GRAY)]
+  (doto (.createGraphics img)
+    (.setFont (java.awt.Font. "Futura", 1, 20))
+    (.setColor java.awt.Color/WHITE)
+    (.drawString "Hey" 10 20))
+  (ImageIO/write img "jpg" (fs/file "images/random.jpg")))
+
 ;; then, a syntax like
 ;;
 ;;     ![alt](images/random.jpg)
 ;;
 ;; should do the job (see here: ![alt](images/random.jpg)). This is also the case when using `clerk/image`
 
+^::clerk/no-cache
 (clerk/image "images/random.jpg")

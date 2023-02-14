@@ -401,8 +401,8 @@
     result))
 
 #?(:clj
-   (defn base64-encode-value [data content-type]
-     (str "data:" content-type ";base64," (.encodeToString (Base64/getEncoder) data))))
+   (defn base64-encode [x content-type]
+     (str "data:" content-type ";base64," (.encodeToString (Base64/getEncoder) x))))
 
 #?(:clj
    (defn store+get-cas-url! [{:keys [out-path ext]} content]
@@ -439,7 +439,7 @@
      (w/postwalk #(if-some [content-type (get % :nextjournal/content-type)]
                     (case blob-mode
                       :lazy-load (assoc % :nextjournal/value {:blob-id blob-id :path (:path %)})
-                      :inline (update % :nextjournal/value base64-encode-value content-type)
+                      :inline (update % :nextjournal/value base64-encode content-type)
                       :file (maybe-store-result-as-file doc+blob-opts %))
                     %)
                  presented-result)))
@@ -626,7 +626,7 @@
                   (store+get-cas-url! (assoc doc :ext (fs/extension src))
                                       (fs/read-all-bytes src)))
              bundle?
-             (base64-encode-value (fs/read-all-bytes src) (Files/probeContentType (fs/path src)))
+             (base64-encode (fs/read-all-bytes src) (Files/probeContentType (fs/path src)))
              :else ;; show mode
              (str "_blob/" src))))
 
