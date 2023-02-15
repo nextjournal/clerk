@@ -23,7 +23,7 @@
                    (java.lang Throwable)
                    (java.awt.image BufferedImage)
                    (java.util Base64)
-                   (java.net URL)
+                   (java.net URI URL)
                    (java.nio.file Files StandardOpenOption)
                    (javax.imageio ImageIO))))
 
@@ -1539,10 +1539,9 @@
   ([image-or-url] (image {} image-or-url))
   ([viewer-opts image-or-url]
    (with-viewer image-viewer viewer-opts #?(:cljs image-or-url
-                                            :clj (ImageIO/read (cond
-                                                                 (not (string? image-or-url)) image-or-url
-                                                                 (fs/exists? image-or-url) (fs/file image-or-url)
-                                                                 :else (URL. image-or-url)))))))
+                                            :clj (ImageIO/read (if (string? image-or-url)
+                                                                 (URL. (cond->> image-or-url (not (.getScheme (URI. image-or-url))) (str "file:")))
+                                                                 image-or-url))))))
 
 (defn caption [text content]
   (col
