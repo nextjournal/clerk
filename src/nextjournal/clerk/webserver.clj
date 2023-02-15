@@ -7,7 +7,8 @@
             [editscript.core :as editscript]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
-            [org.httpkit.server :as httpkit]))
+            [org.httpkit.server :as httpkit])
+  (:import (java.nio.file Files)))
 
 (defn help-hiccup []
   [:p "Call " [:span.code "nextjournal.clerk/show!"] " from your REPL"
@@ -90,20 +91,14 @@
   {:blob-id (str/replace uri "/_blob/" "")
    :fetch-opts (get-fetch-opts query-string)})
 
-(defn serve-file [path {:as req :keys [uri]}]
-  (let [file-or-dir (str path uri)
-        file (when (fs/exists? file-or-dir)
-               (cond-> file-or-dir
-                 (fs/directory? file-or-dir) (fs/file "index.html")))
-        extension (fs/extension file)]
+(defn serve-file [uri path]
+  (let [file (when (fs/exists? path)
+               (cond-> path
+                 (fs/directory? path) (fs/file "index.html")))]
     (if (fs/exists? file)
       {:status 200
-       :headers (cond-> {"Content-Type" ({"css" "text/css"
-                                          "html" "text/html"
-                                          "png" "image/png"
-                                          "jpg" "image/jpeg"
-                                          "js" "application/javascript"} extension "text/html")}
-                  (and (= "js" extension) (fs/exists? (str file ".map"))) (assoc "SourceMap" (str uri ".map")))
+       :headers (cond-> {"Content-Type" (Files/probeContentType (fs/path file))}
+                  (and (= "js" (fs/extension file)) (fs/exists? (str file ".map"))) (assoc "SourceMap" (str uri ".map")))
        :body (fs/read-all-bytes file)}
       {:status 404})))
 
@@ -152,7 +147,8 @@
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
-        ("build" "js" "css") (serve-file "public" req)
+        ("build" "js" "css") (serve-file uri (str "public" uri))
+        ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
         "_ws" {:status 200 :body "upgrading..."}
         {:status 200
          :headers {"Content-Type" "text/html"}

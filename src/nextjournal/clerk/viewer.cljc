@@ -23,7 +23,7 @@
                    (java.lang Throwable)
                    (java.awt.image BufferedImage)
                    (java.util Base64)
-                   (java.net URL)
+                   (java.net URI URL)
                    (java.nio.file Files StandardOpenOption)
                    (javax.imageio ImageIO))))
 
@@ -316,11 +316,11 @@
     (-> (with-viewer {:name `html-viewer- :render-fn 'identity} wrapped-value)
         mark-presented
         (update :nextjournal/value
-                (fn [{:as node :keys [text content]}]
+                (fn [{:as node :keys [text content] ::keys [doc]}]
                   (into (cond-> markup (fn? markup) (apply [node]))
                         (cond text [text]
-                              content (mapv #(-> (with-md-viewer %)
-                                                 (assoc :nextjournal/viewers viewers)
+                              content (mapv #(-> (ensure-wrapped-with-viewers viewers (assoc % ::doc doc))
+                                                 (with-md-viewer)
                                                  (apply-viewers)
                                                  (as-> w
                                                      (if (= `html-viewer- (:name (->viewer w)))
@@ -397,14 +397,13 @@
     result))
 
 #?(:clj
-   (defn base64-encode-value [{:as result :nextjournal/keys [content-type]}]
-     (update result :nextjournal/value (fn [data] (str "data:" content-type ";base64,"
-                                                       (.encodeToString (Base64/getEncoder) data))))))
+   (defn data-uri-base64-encode [x content-type]
+     (str "data:" content-type ";base64," (.encodeToString (Base64/getEncoder) x))))
 
 #?(:clj
    (defn store+get-cas-url! [{:keys [out-path ext]} content]
-     (assert out-path) (assert ext)
-     (let [cas-url (str "_data/" (analyzer/sha2-base58 content) "." ext)
+     (assert out-path)
+     (let [cas-url (str "_data/" (analyzer/sha2-base58 content) (when ext ".") ext)
            cas-path (fs/path out-path cas-url)]
        (fs/create-dirs (fs/parent cas-path))
        (when-not (fs/exists? cas-path)
@@ -433,10 +432,10 @@
 
 #?(:clj
    (defn process-blobs [{:as doc+blob-opts :keys [blob-mode blob-id]} presented-result]
-     (w/postwalk #(if (get % :nextjournal/content-type)
+     (w/postwalk #(if-some [content-type (get % :nextjournal/content-type)]
                     (case blob-mode
                       :lazy-load (assoc % :nextjournal/value {:blob-id blob-id :path (:path %)})
-                      :inline (base64-encode-value %)
+                      :inline (update % :nextjournal/value data-uri-base64-encode content-type)
                       :file (maybe-store-result-as-file doc+blob-opts %))
                     %)
                  presented-result)))
@@ -463,7 +462,7 @@
 
 (declare result-viewer)
 
-(defn transform-result [{:as _cell :keys [doc result form]}]
+(defn transform-result [{:as _cell :keys [result form] ::keys [doc]}]
   (let [{:keys [auto-expand-results? inline-results? bundle?]} doc
         {:nextjournal/keys [value blob-id viewers]} result
         blob-mode (cond
@@ -507,18 +506,54 @@
 #_(->display {:result {:nextjournal.clerk/visibility {:code :fold :result :show}}})
 #_(->display {:result {:nextjournal.clerk/visibility {:code :fold :result :hide}}})
 
-(defn process-sidenotes [{:as doc :keys [footnotes]} cell-doc]
+(defn process-sidenotes [cell-doc {:keys [footnotes]}]
   (if (seq footnotes)
     (md.parser/insert-sidenote-containers (assoc cell-doc :footnotes footnotes))
     cell-doc))
 
+(defn process-image-source [src {:as doc :keys [file bundle?]}]
+  #?(:cljs src
+     :clj  (cond
+             (not (fs/exists? src)) src
+             (false? bundle?) (str (relative-root-prefix-from (map-index doc file))
+                                   (store+get-cas-url! (assoc doc :ext (fs/extension src))
+                                                       (fs/read-all-bytes src)))
+             bundle? (data-uri-base64-encode (fs/read-all-bytes src) (Files/probeContentType (fs/path src)))
+             :else (str "_fs/" src))))
+
+#?(:clj
+   (defn read-image [image-or-url]
+     (ImageIO/read
+      (if (string? image-or-url)
+        (URL. (cond->> image-or-url (not (.getScheme (URI. image-or-url))) (str "file:")))
+        image-or-url))))
+
+#?(:clj
+   (defn image-width [image]
+     (let [w (.getWidth image) h (.getHeight image) r (float (/ w h))]
+       (if (and (< 2 r) (< 900 w)) :full :wide))))
+
+(defn md-image->viewer [doc {:keys [attrs]}]
+  (with-viewer `html-viewer
+    #?(:clj {:nextjournal.clerk/width (try (image-width (read-image (:src attrs)))
+                                           (catch Throwable _ :prose))})
+    [:div.flex.flex-col.items-center.not-prose.mb-4
+     [:img (update attrs :src process-image-source doc)]]))
+
 (defn with-block-viewer [doc {:as cell :keys [type]}]
   (case type
-    :markdown [(with-viewer `markdown-viewer (process-sidenotes doc (:doc cell)))]
+    :markdown (let [{:keys [content]} (:doc cell)]
+                (mapcat (fn [fragment]
+                          (if (= :image (:type (first fragment)))
+                            (map (partial md-image->viewer doc) fragment)
+                            [(with-viewer `markdown-viewer (process-sidenotes {:type :doc
+                                                                               :content (vec fragment)
+                                                                               ::doc doc} doc))]))
+                        (partition-by (comp #{:image} :type) content)))
+
     :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
                 {:as display-opts :keys [code? result?]} (->display cell)
                 eval? (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)]
-            ;; TODO: use vars instead of names
             (cond-> []
               code?
               (conj (with-viewer `code-block-viewer {:nextjournal.clerk/opts (select-keys cell [:loc])}
@@ -528,7 +563,7 @@
               (conj (with-viewer (if result?
                                    (:name result-viewer)
                                    (assoc result-viewer :render-fn '(fn [_] [:<>])))
-                      (assoc cell :doc doc)))))))
+                      (assoc cell ::doc doc)))))))
 
 #_(nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)
 
@@ -614,13 +649,14 @@
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc
     :transform-fn (into-markup [:div.markdown-viewer])}
-
-   ;; blocks
    {:name :nextjournal.markdown/heading
     :transform-fn (into-markup
                    (fn [{:keys [attrs heading-level]}]
                      [(str "h" heading-level) attrs]))}
-   {:name :nextjournal.markdown/image :transform-fn #(with-viewer `html-viewer [:img.inline (-> % ->value :attrs)])}
+   {:name :nextjournal.markdown/image
+    :transform-fn (fn [{node :nextjournal/value}]
+                    (with-viewer `html-viewer
+                      [:img.inline (-> node :attrs (update :src process-image-source (::doc node)))]))}
    {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
    {:name :nextjournal.markdown/plain :transform-fn (into-markup [:<>])}
@@ -749,18 +785,15 @@
 (def image-viewer
   {#?@(:clj [:pred #(instance? BufferedImage %)
              :transform-fn (fn [{image :nextjournal/value}]
-                             (let [w (.getWidth image)
-                                   h (.getHeight image)
-                                   r (float (/ w h))]
-                               (-> {:nextjournal/value (.. (PngEncoder.)
-                                                           (withBufferedImage image)
-                                                           (withCompressionLevel 1)
-                                                           (toBytes))
-                                    :nextjournal/content-type "image/png"
-                                    :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)}
-                                   mark-presented)))])
+                             (-> {:nextjournal/value (.. (PngEncoder.)
+                                                         (withBufferedImage image)
+                                                         (withCompressionLevel 1)
+                                                         (toBytes))
+                                  :nextjournal/content-type "image/png"
+                                  :nextjournal/width (image-width image)}
+                                 mark-presented))])
    :render-fn '(fn [blob-or-url] [:div.flex.flex-col.items-center.not-prose
-                                  [:img {:src #?(:clj (nextjournal.clerk.render/url-for blob-or-url)
+                                  [:img {:src #?(:clj  (nextjournal.clerk.render/url-for blob-or-url)
                                                  :cljs blob-or-url)}]])})
 
 (def ideref-viewer
@@ -1527,8 +1560,8 @@
 (defn image
   ([image-or-url] (image {} image-or-url))
   ([viewer-opts image-or-url]
-   (with-viewer image-viewer viewer-opts #?(:clj (ImageIO/read (if (string? image-or-url) (URL. image-or-url) image-or-url))
-                                            :cljs image-or-url))))
+   (with-viewer image-viewer viewer-opts
+     #?(:cljs image-or-url :clj (read-image image-or-url)))))
 
 (defn caption [text content]
   (col

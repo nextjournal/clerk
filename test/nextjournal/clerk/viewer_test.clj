@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.viewer-test
-  (:require [clojure.string :as str]
+  (:require [babashka.fs :as fs]
+            [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [clojure.walk :as w]
             [matcher-combinators.test :refer [match?]]
@@ -202,6 +203,12 @@
                  v/->viewer
                  :closing-paren))))))
 
+(defn tree-re-find [data re]
+  (->> data
+       (tree-seq coll? seq)
+       (filter string?)
+       (filter (partial re-find re))))
+
 (deftest doc->viewer
   (testing "extraction of synced vars"
     (is (not-empty (-> (view/doc->viewer (eval/eval-string "(ns nextjournal.clerk.test.sync-vars (:require [nextjournal.clerk :as clerk]))
@@ -217,12 +224,20 @@
          (view/doc->viewer (eval/eval-string "(ns nextjournal.clerk.test.sync-vars (:require [nextjournal.clerk :as clerk]))
                                      ^::clerk/sync (def sync-me (atom {:a (fn [x] x)}))")))))
 
+  (testing "Local images are served as blobs in show mode"
+    (let [test-doc (eval/eval-string ";; Some inline image ![alt](trees.png) here.")]
+      (is (not-empty (tree-re-find (view/doc->viewer test-doc) #"_fs/trees.png")))))
+
+  (testing "Local images are inlined in bundled static builds"
+    (let [test-doc (eval/eval-string ";; Some inline image ![alt](trees.png) here.")]
+      (is (not-empty (tree-re-find (view/doc->viewer {:bundle? true} test-doc) #"data:image/png;base64")))))
+
+  (testing "Local images are content addressed for unbundled static builds"
+    (let [test-doc (eval/eval-string ";; Some inline image ![alt](trees.png) here.")]
+      (is (not-empty (tree-re-find (view/doc->viewer {:bundle? false :out-path (str (fs/temp-dir))} test-doc) #"_data/.+\.png")))))
+
   (testing "Doc options are propagated to blob processing"
-    (let [test-doc (eval/eval-string "(java.awt.image.BufferedImage. 20 20 1)")
-          tree-re-find (fn [data re] (->> data
-                                          (tree-seq coll? seq)
-                                          (filter string?)
-                                          (filter (partial re-find re))))]
+    (let [test-doc (eval/eval-string "(java.awt.image.BufferedImage. 20 20 1)")]
       (is (not-empty (tree-re-find (view/doc->viewer {:inline-results? true
                                                       :bundle? true
                                                       :out-path builder/default-out-path} test-doc)
