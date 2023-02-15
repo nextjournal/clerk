@@ -20,22 +20,15 @@
 ;; Layout options are also available. For example, `{::clerk/width :full}` renders the image in full width.
 (clerk/image {::clerk/width :full} "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")
 
-;; ## Markdown Images
+;; We also support local files for `clerk/image`:
+(clerk/image "trees.png")
 
-;; Markdown images which occur as blocks in the document, that is, when they're separated by empty lines from the rest
-;; are handled like images described above. Take this as an example:
-;;
-;; ![Desert with humans and off-road trucks](https://images.unsplash.com/photo-1532879311112-62b7188d28ce?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8)
-;;
-;; or
-;;
-;; ![A Thermometer](https://nextjournal.com/data/QmeyvaR3Q5XSwe14ZS6D5WBQGg1zaBaeG3SeyyuUURE2pq?filename=thermos.gif&content-type=image/gif)
-;;
-;; Images occuring in the middle of a paragraph instead, are placed inline (like this badge for instance: ![Clerk CI Status](https://github.com/nextjournal/clerk/actions/workflows/main.yml/badge.svg)) along with the surrounding the text.
-;;
-;; Image sources can also point to the local file system. Given a file named `trees.png` we can use the markdown image syntax `![alt text](trees.png)` to get:
+;; ## Markdown Notation
+
+;; Given a local file named `trees.png` we can use the markdown image syntax `![alt text](trees.png)` to get:
 ;;
 ;; ![Drawing of trees in black and white](trees.png)
 ;;
-;; We also support local files for `clerk/image`:
-(clerk/image "trees.png")
+;; This also works for https urls, of course.
+;;
+;; Images occuring inside a paragraph are placed inline like this ![Clerk CI Status](https://github.com/nextjournal/clerk/actions/workflows/main.yml/badge.svg) badge.
