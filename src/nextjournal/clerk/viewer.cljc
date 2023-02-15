@@ -626,7 +626,7 @@
              bundle?
              (base64-encode (fs/read-all-bytes src) (Files/probeContentType (fs/path src)))
              :else ;; show mode
-             (str "_blob/" src))))
+             (str "_fs/" src))))
 
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc
