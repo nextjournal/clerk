@@ -533,21 +533,23 @@
      (let [w (.getWidth image) h (.getHeight image) r (float (/ w h))]
        (if (and (< 2 r) (< 900 w)) :full :wide))))
 
+(defn md-image->viewer [doc {:keys [attrs]}]
+  (with-viewer `html-viewer
+    #?(:clj {:nextjournal.clerk/width (try (image-width (read-image (:src attrs)))
+                                           (catch Throwable _ :prose))})
+    [:div.flex.flex-col.items-center.not-prose.mb-4
+     [:img (update attrs :src process-image-source doc)]]))
+
 (defn with-block-viewer [doc {:as cell :keys [type]}]
   (case type
     :markdown (let [{:keys [content]} (:doc cell)]
-                (map (fn [[first-node :as fragment]]
-                       (if (= :image (:type first-node))
-                         (let [{:keys [attrs]} first-node]
-                           (with-viewer `html-viewer
-                             #?(:clj {:nextjournal.clerk/width (try (image-width (read-image (:src attrs)))
-                                                                    (catch Throwable _ :prose))})
-                             [:div.flex.flex-col.items-center.not-prose
-                              [:img (update attrs :src process-image-source doc)]]))
-                         (with-viewer `markdown-viewer (process-sidenotes {:type :doc
-                                                                           :content (vec fragment)
-                                                                           ::doc doc} doc))))
-                     (partition-by (comp #{:image} :type) content)))
+                (mapcat (fn [fragment]
+                          (if (= :image (:type (first fragment)))
+                            (map (partial md-image->viewer doc) fragment)
+                            [(with-viewer `markdown-viewer (process-sidenotes {:type :doc
+                                                                               :content (vec fragment)
+                                                                               ::doc doc} doc))]))
+                        (partition-by (comp #{:image} :type) content)))
 
     :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
                 {:as display-opts :keys [code? result?]} (->display cell)
