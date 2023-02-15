@@ -225,15 +225,15 @@
                                      ^::clerk/sync (def sync-me (atom {:a (fn [x] x)}))")))))
 
   (testing "Local images are served as blobs in show mode"
-    (let [test-doc (eval/eval-string ";; Some inline image ![alt](test/images/trees.png) here.")]
-      (is (not-empty (tree-re-find (view/doc->viewer test-doc) #"_fs/test/images/trees.png")))))
+    (let [test-doc (eval/eval-string ";; Some inline image ![alt](trees.png) here.")]
+      (is (not-empty (tree-re-find (view/doc->viewer test-doc) #"_fs/trees.png")))))
 
   (testing "Local images are inlined in bundled static builds"
-    (let [test-doc (eval/eval-string ";; Some inline image ![alt](test/images/trees.png) here.")]
+    (let [test-doc (eval/eval-string ";; Some inline image ![alt](trees.png) here.")]
       (is (not-empty (tree-re-find (view/doc->viewer {:bundle? true} test-doc) #"data:image/png;base64")))))
 
   (testing "Local images are content addressed for unbundled static builds"
-    (let [test-doc (eval/eval-string ";; Some inline image ![alt](test/images/trees.png) here.")]
+    (let [test-doc (eval/eval-string ";; Some inline image ![alt](trees.png) here.")]
       (is (not-empty (tree-re-find (view/doc->viewer {:bundle? false :out-path (str (fs/temp-dir))} test-doc) #"_data/.+\.png")))))
 
   (testing "Doc options are propagated to blob processing"

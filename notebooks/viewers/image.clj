@@ -22,25 +22,13 @@
 
 (clerk/image {::clerk/width :full} "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")
 
-;; ## Local Files
-;; We can refer to local files in the source of markdown images. Provided we have
+;; ## Markdown Images
 
-^{::clerk/visibility {:code :hide :result :hide}}
-(fs/create-dirs "images")
-
-^::clerk/no-cache
-(let [img (BufferedImage. 60 30 BufferedImage/TYPE_BYTE_GRAY)]
-  (doto (.createGraphics img)
-    (.setFont (java.awt.Font. "Futura", 1, 20))
-    (.setColor java.awt.Color/WHITE)
-    (.drawString "Hey" 10 20))
-  (ImageIO/write img "jpg" (fs/file "images/random.jpg")))
-
-;; then, a syntax like
+;; We can refer to local files in the source of markdown images. Given
+;; a local image at `trees.png` we can use the markdown
+;; image syntax `![alt text](path/to-image.jpg)`:
 ;;
-;;     ![alt](images/random.jpg)
-;;
-;; should do the job (see here: ![alt](images/random.jpg)). This is also the case when using `clerk/image`
+;; ![Drawing of trees in black and white](trees.png)
 
-^::clerk/no-cache
-(clerk/image "images/random.jpg")
+;; We also support local files for `clerk/image`:
+(clerk/image "trees.png")

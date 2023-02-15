@@ -397,7 +397,7 @@
     result))
 
 #?(:clj
-   (defn base64-encode [x content-type]
+   (defn data-uri-base64-encode [x content-type]
      (str "data:" content-type ";base64," (.encodeToString (Base64/getEncoder) x))))
 
 #?(:clj
@@ -435,7 +435,7 @@
      (w/postwalk #(if-some [content-type (get % :nextjournal/content-type)]
                     (case blob-mode
                       :lazy-load (assoc % :nextjournal/value {:blob-id blob-id :path (:path %)})
-                      :inline (update % :nextjournal/value base64-encode content-type)
+                      :inline (update % :nextjournal/value data-uri-base64-encode content-type)
                       :file (maybe-store-result-as-file doc+blob-opts %))
                     %)
                  presented-result)))
@@ -613,16 +613,13 @@
 (defn process-image-source [src {:as doc :keys [file bundle?]}]
   #?(:cljs src
      :clj  (cond
-             (not (fs/exists? src))
-             src
-             (false? bundle?)
-             (str (relative-root-prefix-from (map-index doc file))
-                  (store+get-cas-url! (assoc doc :ext (fs/extension src))
-                                      (fs/read-all-bytes src)))
-             bundle?
-             (base64-encode (fs/read-all-bytes src) (Files/probeContentType (fs/path src)))
-             :else ;; show mode
-             (str "_fs/" src))))
+             (not (fs/exists? src)) src
+             (false? bundle?) (str (relative-root-prefix-from (map-index doc file))
+                                   (store+get-cas-url! (assoc doc :ext (fs/extension src))
+                                                       (fs/read-all-bytes src)))
+             bundle? (data-uri-base64-encode (fs/read-all-bytes src)
+                                             (Files/probeContentType (fs/path src)))
+             :else (str "_fs/" src))))
 
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc
