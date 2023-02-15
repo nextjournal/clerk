@@ -41,7 +41,8 @@
                               binaryage/devtools {:mvn/version "1.0.3"}
                               cider/cider-nrepl {:mvn/version "0.29.0"}
                               com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.0.3"}
-                              io.github.nextjournal/cas-client {:git/sha "4eefd77dd981b908591d91d518ba3f43bd8c361e"}
+                              io.github.nextjournal/cas-client {:git/sha "4eefd77dd981b908591d91d518ba3f43bd8c361e"
+                                                                :exclusions [mvxcvi/multiformats]}
                               org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
                               org.babashka/cli {:mvn/version "0.5.40"}}
                  :extra-paths ["dev" "notebooks"]
