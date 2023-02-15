@@ -15,8 +15,10 @@
 (clerk/image "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")
 
 ;; Smaller images are centered and shown using their intrinsic dimensions. Here, we're using `clerk/figure`:
-
 (clerk/image "https://nextjournal.com/data/QmeyvaR3Q5XSwe14ZS6D5WBQGg1zaBaeG3SeyyuUURE2pq?filename=thermos.gif&content-type=image/gif")
+
+;; Layout options are also available. For example, `{::clerk/width :full}` renders the image in full width.
+(clerk/image {::clerk/width :full} "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")
 
 ;; ## Markdown Images
 
