@@ -226,7 +226,7 @@
 
   (testing "Local images are served as blobs in show mode"
     (let [test-doc (eval/eval-string ";; Some inline image ![alt](test/images/trees.png) here.")]
-      (is (not-empty (tree-re-find (view/doc->viewer test-doc) #"_blob/test/images/trees.png")))))
+      (is (not-empty (tree-re-find (view/doc->viewer test-doc) #"_fs/test/images/trees.png")))))
 
   (testing "Local images are inlined in bundled static builds"
     (let [test-doc (eval/eval-string ";; Some inline image ![alt](test/images/trees.png) here.")]

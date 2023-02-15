@@ -312,16 +312,15 @@
     (with-viewer (keyword "nextjournal.markdown" (name type)) wrapped-value)))
 
 (defn into-markup [markup]
-  (fn [{:as wrapped-value :nextjournal/keys [viewers opts]}]
+  (fn [{:as wrapped-value :nextjournal/keys [viewers] ::keys [doc]}]
     (-> (with-viewer {:name `html-viewer- :render-fn 'identity} wrapped-value)
         mark-presented
         (update :nextjournal/value
                 (fn [{:as node :keys [text content]}]
                   (into (cond-> markup (fn? markup) (apply [node]))
                         (cond text [text]
-                              content (mapv #(-> (ensure-wrapped %)
-                                                 (assoc :nextjournal/viewers viewers
-                                                        :nextjournal/opts opts)
+                              content (mapv #(-> (ensure-wrapped-with-viewers viewers %)
+                                                 (assoc ::doc doc)
                                                  (with-md-viewer)
                                                  (apply-viewers)
                                                  (as-> w
@@ -464,7 +463,7 @@
 
 (declare result-viewer)
 
-(defn transform-result [{:as _cell :keys [doc result form]}]
+(defn transform-result [{:as _cell :keys [result form] ::keys [doc]}]
   (let [{:keys [auto-expand-results? inline-results? bundle?]} doc
         {:nextjournal/keys [value blob-id viewers]} result
         blob-mode (cond
@@ -516,8 +515,7 @@
 (defn with-block-viewer [doc {:as cell :keys [type]}]
   (case type
     :markdown [(with-viewer `markdown-viewer
-                 {:nextjournal.clerk/opts (select-keys doc [:index :file :bundle? :out-path])}
-                 (process-sidenotes doc (:doc cell)))]
+                 {::doc doc} (process-sidenotes doc (:doc cell)))]
     :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
                 {:as display-opts :keys [code? result?]} (->display cell)
                 eval? (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)]
@@ -531,7 +529,7 @@
               (conj (with-viewer (if result?
                                    (:name result-viewer)
                                    (assoc result-viewer :render-fn '(fn [_] [:<>])))
-                      (assoc cell :doc doc)))))))
+                      (assoc cell ::doc doc)))))))
 
 #_(nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)
 
@@ -636,7 +634,7 @@
                    (fn [{:keys [attrs heading-level]}]
                      [(str "h" heading-level) attrs]))}
    {:name :nextjournal.markdown/image
-    :transform-fn (fn [{node :nextjournal/value doc :nextjournal/opts}]
+    :transform-fn (fn [{node :nextjournal/value doc ::doc}]
                     (with-viewer `html-viewer
                       [:img.inline (-> node :attrs (update :src process-image-source doc))]))}
    {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
@@ -1547,13 +1545,9 @@
   ([viewer-opts image-or-url]
    (with-viewer image-viewer viewer-opts #?(:cljs image-or-url
                                             :clj (ImageIO/read (cond
-                                                                 (not (string? image-or-url))
-                                                                 image-or-url
-                                                                 (fs/exists? image-or-url)
-                                                                 (fs/file image-or-url)
-                                                                 :else
-                                                                 (URL. image-or-url)))))))
-#_(image "test/images/trees.png")
+                                                                 (not (string? image-or-url)) image-or-url
+                                                                 (fs/exists? image-or-url) (fs/file image-or-url)
+                                                                 :else (URL. image-or-url)))))))
 
 (defn caption [text content]
   (col
