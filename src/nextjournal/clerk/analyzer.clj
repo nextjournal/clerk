@@ -12,8 +12,8 @@
             [clojure.tools.analyzer.ast :as ana-ast]
             [clojure.tools.analyzer.jvm :as ana-jvm]
             [clojure.tools.analyzer.utils :as ana-utils]
-            [multihash.core :as multihash]
-            [multihash.digest :as digest]
+            [multiformats.base.b58 :as b58]
+            [multiformats.hash :as hash]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.classpath :as cp]
             [nextjournal.clerk.config :as config]
@@ -46,7 +46,10 @@
 #_(no-cache? '^{:nextjournal.clerk/no-cache false} (def ^:nextjournal.clerk/no-cache my-rand (rand-int 10)))
 
 (defn sha1-base58 [s]
-  (-> s digest/sha1 multihash/base58))
+  (->> s hash/sha1 hash/encode b58/format-btc))
+
+(defn sha2-base58 [s]
+  (->> s hash/sha2-512 hash/encode b58/format-btc))
 
 #_(sha1-base58 "hello")
 
@@ -265,7 +268,7 @@
   (let [id->count @!id->count
         id (if var
              var
-             (let [hash-fn #(-> % nippy/fast-freeze digest/sha1 multihash/base58)]
+             (let [hash-fn #(-> % nippy/fast-freeze sha1-base58)]
                (symbol (str *ns*)
                        (case type
                          :code (str "anon-expr-" (hash-fn (cond-> form (instance? clojure.lang.IObj form) (with-meta {}))))
@@ -587,12 +590,11 @@
   ([value] (valuehash :sha512 value))
   ([hash-type value]
    (let [digest-fn (case hash-type
-                     :sha1 digest/sha1
-                     :sha512 digest/sha2-512)]
+                     :sha1 sha1-base58
+                     :sha512 sha2-base58)]
      (-> value
          nippy/fast-freeze
-         digest-fn
-         multihash/base58))))
+         digest-fn))))
 
 #_(valuehash (range 100))
 #_(valuehash :sha1 (range 100))

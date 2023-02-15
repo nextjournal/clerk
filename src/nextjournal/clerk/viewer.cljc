@@ -7,8 +7,6 @@
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
                       [editscript.edit]
-                      [multihash.core :as multihash]
-                      [multihash.digest :as digest]
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.analyzer :as analyzer]]
                 :cljs [[goog.crypt]
@@ -407,7 +405,7 @@
 #?(:clj
    (defn store+get-cas-url! [{:keys [out-path ext]} content]
      (assert out-path)
-     (let [cas-url (str "_data/" (multihash/base58 (digest/sha2-512 content)) (when ext ".") ext)
+     (let [cas-url (str "_data/" (analyzer/sha2-base58 content) (when ext ".") ext)
            cas-path (fs/path out-path cas-url)]
        (fs/create-dirs (fs/parent cas-path))
        (when-not (fs/exists? cas-path)

@@ -4,8 +4,7 @@
             [clojure.java.io :as io]
             [clojure.main :as main]
             [clojure.string :as str]
-            [multihash.core :as multihash]
-            [multihash.digest :as digest]
+            [multiformats.base.b58 :as b58]
             [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.parser :as parser]
@@ -32,13 +31,13 @@
 
 (defn wrapped-with-metadata [value hash]
   (cond-> {:nextjournal/value value}
-    hash (assoc :nextjournal/blob-id (cond-> hash (not (string? hash)) multihash/base58))))
+    hash (assoc :nextjournal/blob-id (cond-> hash (not (string? hash)) b58/format-btc))))
 
 #_(wrap-with-blob-id :test "foo")
 
 (defn hash+store-in-cas! [x]
   (let [^bytes ba (nippy/freeze x)
-        multihash (multihash/base58 (digest/sha2-512 ba))
+        multihash (analyzer/sha2-base58 ba)
         file (->cache-file multihash)]
     (when-not (fs/exists? file)
       (with-open [out (io/output-stream (io/file file))]
