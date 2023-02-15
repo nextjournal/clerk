@@ -72,7 +72,7 @@
 #_(get-fetch-opts "")
 #_(get-fetch-opts "foo=bar&n=42&start=20")
 
-(defn serve-blob [{:as doc :keys [blob->result ns]} {:keys [blob-id fetch-opts fetch-dest]}]
+(defn serve-blob [{:as doc :keys [blob->result ns]} {:keys [blob-id fetch-opts]}]
   (when-not ns
     (throw (ex-info "namespace must be set" {:doc doc})))
   (if (contains? blob->result blob-id)
@@ -87,7 +87,7 @@
         {:body (v/->edn desc)}))
     {:status 404}))
 
-(defn extract-blob-opts [{:as _req :keys [headers uri query-string]}]
+(defn extract-blob-opts [{:as _req :keys [uri query-string]}]
   {:blob-id (str/replace uri "/_blob/" "")
    :fetch-opts (get-fetch-opts query-string)})
 
