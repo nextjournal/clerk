@@ -272,6 +272,10 @@
                                                       :out-path builder/default-out-path} test-doc)
                                    #"_data/.+\.png"))))))
 
+(deftest fragments
+  (testing "fragment results are spliced into document blocks"
+    (is (= 8 (count (:blocks (v/->value (view/doc->viewer (eval/eval-string "1\n(nextjournal.clerk/fragment 2 3 4)\n5")))))))))
+
 (deftest ->edn
   (testing "normal symbols and keywords"
     (is (= "normal-symbol" (pr-str 'normal-symbol)))

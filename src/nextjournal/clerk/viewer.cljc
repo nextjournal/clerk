@@ -568,12 +568,16 @@
                                                                               (select-keys cell [:loc]))}
                       ;; TODO: display analysis could be merged into cell earlier
                       (-> cell (merge display-opts) (dissoc :result))))
+
               (or result? eval?)
-              (conj (with-viewer (if result?
-                                   (:name result-viewer)
-                                   (assoc result-viewer :render-fn '(fn [_] [:<>])))
-                      {:nextjournal/opts {:id (processed-block-id (str id "-result"))}}
-                      (assoc cell ::doc doc)))))))
+              (into (map-indexed (fn [i x]
+                                   (with-viewer (if result? (:name result-viewer) (assoc result-viewer :render-fn '(fn [_] [:<>])))
+                                     {:nextjournal/opts {:id (processed-block-id (str id "-" i "-result"))}}
+                                     (-> cell (assoc ::doc doc) (assoc :result x)))))
+                    (or (when-some [fgm (-> cell :result :nextjournal/value (get-safe :nextjournal.clerk/fragment))]
+                          (map #(hash-map :nextjournal/value %
+                                          :nextjournal/blob-id (-> cell :result :nextjournal/blob-id)) fgm))
+                        [(:result cell)]))))))
 
 #_(:blocks (:nextjournal/value (nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)))
 
@@ -1576,6 +1580,7 @@
 (def tex          (partial with-viewer katex-viewer))
 (def notebook     (partial with-viewer (:name notebook-viewer)))
 (def code         (partial with-viewer code-viewer))
+(defn fragment [& xs] {:nextjournal.clerk/fragment xs})
 
 (defn image
   ([image-or-url] (image {} image-or-url))

@@ -324,6 +324,13 @@
   [text content]
   (v/caption text content))
 
+(defn fragment
+  "A utility function to splice the given `xs` into individual results.
+
+  Useful when prgrammatically generating content."
+  [& xs]
+  (apply v/fragment xs))
+
 (defn code
   "Displays `x` as syntax highlighted Clojure code.
 
