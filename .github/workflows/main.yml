@@ -227,6 +227,16 @@ jobs:
         with:
           bb: latest
 
+      - name: 🗝 maven cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.m2
+            ~/.gitlibs
+            ~/.deps.clj
+          key: ${{ runner.os }}-maven-ui-tests-${{ hashFiles('deps.edn') }}
+
+
       - name: Run Playwright tests against static assets
         run: |
           bb test:static-app ${{ github.sha }}
