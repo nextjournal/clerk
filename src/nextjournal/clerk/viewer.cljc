@@ -312,15 +312,14 @@
     (with-viewer (keyword "nextjournal.markdown" (name type)) wrapped-value)))
 
 (defn into-markup [markup]
-  (fn [{:as wrapped-value :nextjournal/keys [viewers] ::keys [doc]}]
+  (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
     (-> (with-viewer {:name `html-viewer- :render-fn 'identity} wrapped-value)
         mark-presented
         (update :nextjournal/value
-                (fn [{:as node :keys [text content]}]
+                (fn [{:as node :keys [text content] ::keys [doc]}]
                   (into (cond-> markup (fn? markup) (apply [node]))
                         (cond text [text]
-                              content (mapv #(-> (ensure-wrapped-with-viewers viewers %)
-                                                 (assoc ::doc doc)
+                              content (mapv #(-> (ensure-wrapped-with-viewers viewers (assoc % ::doc doc))
                                                  (with-md-viewer)
                                                  (apply-viewers)
                                                  (as-> w
@@ -507,7 +506,7 @@
 #_(->display {:result {:nextjournal.clerk/visibility {:code :fold :result :show}}})
 #_(->display {:result {:nextjournal.clerk/visibility {:code :fold :result :hide}}})
 
-(defn process-sidenotes [{:as doc :keys [footnotes]} cell-doc]
+(defn process-sidenotes [cell-doc {:keys [footnotes]}]
   (if (seq footnotes)
     (md.parser/insert-sidenote-containers (assoc cell-doc :footnotes footnotes))
     cell-doc))
@@ -515,11 +514,10 @@
 (defn with-block-viewer [doc {:as cell :keys [type]}]
   (case type
     :markdown [(with-viewer `markdown-viewer
-                 {::doc doc} (process-sidenotes doc (:doc cell)))]
+                 (-> (:doc cell) (process-sidenotes doc) (assoc ::doc doc)))]
     :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
                 {:as display-opts :keys [code? result?]} (->display cell)
                 eval? (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)]
-            ;; TODO: use vars instead of names
             (cond-> []
               code?
               (conj (with-viewer `code-block-viewer {:nextjournal.clerk/opts (select-keys cell [:loc])}
@@ -634,9 +632,9 @@
                    (fn [{:keys [attrs heading-level]}]
                      [(str "h" heading-level) attrs]))}
    {:name :nextjournal.markdown/image
-    :transform-fn (fn [{node :nextjournal/value doc ::doc}]
+    :transform-fn (fn [{node :nextjournal/value}]
                     (with-viewer `html-viewer
-                      [:img.inline (-> node :attrs (update :src process-image-source doc))]))}
+                      [:img.inline (-> node :attrs (update :src process-image-source (::doc node)))]))}
    {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
    {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
    {:name :nextjournal.markdown/plain :transform-fn (into-markup [:<>])}
