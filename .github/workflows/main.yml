@@ -51,9 +51,17 @@ jobs:
           bb: latest
           clj-kondo: latest
 
+      - name: 🗝 maven cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.m2
+            ~/.gitlibs
+            ~/.deps.clj
+          key: ${{ runner.os }}-maven-lint-${{ hashFiles('bb.edn') }}
+
       - name: Run clj-kondo linter
-        run: |
-          bb lint
+        run: bb lint
 
 
   test:
