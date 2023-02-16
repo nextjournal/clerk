@@ -79,10 +79,9 @@
     (let [result (v/apply-viewer-unwrapping-var-from-def (blob->result blob-id))
           root-desc (v/present (v/ensure-wrapped-with-viewers
                                 (v/get-viewers ns result)
-                                (v/->value result)) ;; TODO understand why this unwrapping fixes lazy loaded table viewers
-                               )
+                                (v/->value result))) ;; TODO understand why this unwrapping fixes lazy loaded table viewers
           present-fn (get-in (meta root-desc) [:path->present-fn (:path fetch-opts)])
-          desc (present-fn fetch-opts)]
+          desc (present-fn (assoc fetch-opts :!budget (atom 200)))] ;; TODO: parametrize budget
       (if (contains? desc :nextjournal/content-type)
         {:body (v/->value desc)
          :content-type (:nextjournal/content-type desc)}
