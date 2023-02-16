@@ -22,10 +22,6 @@ jobs:
           bb: latest
           clj-kondo: latest
 
-      - name: Show branch name
-        run: |
-          bb run --prn -current-branch
-
       - name: 🗝 maven cache
         uses: actions/cache@v3
         with:
