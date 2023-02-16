@@ -1346,9 +1346,9 @@
                            :nextjournal/keys [viewers]}]
   (when (empty? viewers)
     (throw (ex-info "cannot present* with empty viewers" {:wrapped-value wrapped-value})))
-  (when (and !path->present-fn)
+  (when !path->present-fn
     (swap! !path->present-fn assoc path (fn [fetch-opts] (present* (merge wrapped-value fetch-opts)))))
-  (let [{:as wrapped-value :nextjournal/keys [viewers presented?]} (apply-viewers* wrapped-value)
+  (let [{:as wrapped-value :nextjournal/keys [presented?]} (apply-viewers* wrapped-value)
         xs (->value wrapped-value)]
     #_(prn :xs xs :type (type xs) :path path)
     (when (and !budget (not presented?))
