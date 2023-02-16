@@ -13,10 +13,11 @@
 (defn present+fetch
   ([value] (present+fetch {} value))
   ([opts value]
-   (let [desc (v/present value opts)
-         elision (v/find-elision desc)
-         more (v/present value elision)]
-     (v/desc->values (v/merge-presentations desc more elision)))))
+   (let [root-desc (v/present value opts)
+         elision (v/find-elision root-desc)
+         present-at (get-in (meta root-desc) [:path->present-fn (:path elision)])
+         more (present-at (assoc elision :!budget (atom (:budget opts 200))))]
+     (v/desc->values (v/merge-presentations root-desc more elision)))))
 
 (deftest normalize-table-data
   (testing "works with sorted-map"
@@ -39,8 +40,10 @@
     (let [value (range 30)]
       (is (= value (present+fetch value)))))
 
-  (testing "nested range"
+  (testing "nested ranges"
     (let [value [(range 30)]]
+      (is (= value (present+fetch value))))
+    (let [value {:hello (range 30)}]
       (is (= value (present+fetch value)))))
 
   (testing "string"
@@ -103,12 +106,13 @@
 
 (deftest reset-viewers!
   (testing "namespace scope"
-    (v/reset-viewers! (find-ns 'nextjournal.clerk.viewer-test) [])
-    (is (= [] (v/get-viewers (find-ns 'nextjournal.clerk.viewer-test)))))
+    (let [ns (create-ns 'nextjournal.clerk.viewer-test.random-ns-name)]
+      (v/reset-viewers! ns [])
+      (is (= [] (v/get-viewers ns)))))
 
   (testing "symbol scope"
-    (v/reset-viewers! 'nextjournal.clerk.viewer-test [{:render-fn 'foo}])
-    (is (= [{:render-fn 'foo}] (v/get-viewers 'nextjournal.clerk.viewer-test)))))
+    (v/reset-viewers! 'nextjournal.clerk.viewer-test.random-ns-name [{:render-fn 'foo}])
+    (is (= [{:render-fn 'foo}] (v/get-viewers 'nextjournal.clerk.viewer-test.random-ns-name)))))
 
 (def my-test-var [:h1 "hi"])
 
