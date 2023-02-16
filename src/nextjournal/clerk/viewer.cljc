@@ -1453,14 +1453,16 @@
   "Returns a subset of a given `value`."
   ([x] (present x {}))
   ([x opts]
-   (-> (ensure-wrapped-with-viewers x)
-       (merge {:budget (->budget opts)
-               :!path->present-fn (atom {})
-               :path (:path opts [])}
-              (make-!budget-opts opts)
-              opts)
-       present*
-       assign-closing-parens)))
+   (let [opts' (cond-> opts
+                 (wrapped-value? x) (merge (->opts x)))]
+     (-> (ensure-wrapped-with-viewers x)
+         (merge {:budget (->budget opts')
+                 :!path->present-fn (atom {})
+                 :path (:path opts' [])}
+                (make-!budget-opts opts')
+                opts)
+         present*
+         assign-closing-parens))))
 
 (comment
   (present [\a \b])
@@ -1473,7 +1475,6 @@
   (present {:viewers [{:pred sequential? :render-fn pr-str}]} (range 100))
   (present (map vector (range)))
   (present (subs (slurp "/usr/share/dict/words") 0 1000))
-  #_:clj-kondo/ignore ;; remove when clj-kondo is released
   (present (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
   (present [(with-viewer `html-viewer [:h1 "hi"])])
   (present (with-viewer `html-viewer [:ul (for [x (range 3)] [:li x])]))
