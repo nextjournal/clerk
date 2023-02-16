@@ -1307,6 +1307,17 @@
       (merge (select-keys (->opts wrapped-value) [:!budget :!path->present-fn :budget :path]))
       (update :path (fnil conj []) path-segment)))
 
+(defn ->budget [opts]
+  (:budget opts 200))
+
+(defn make-!budget-opts [opts]
+  (when-let [budget (->budget opts)]
+    {:!budget (atom budget)}))
+
+#_(make-!budget-opts {})
+#_(make-!budget-opts {:budget 42})
+#_(make-!budget-opts {:budget nil})
+
 (defn present+paginate-children [{:as wrapped-value :nextjournal/keys [viewers preserve-keys?] :keys [!budget budget]}]
   (let [{:as fetch-opts :keys [offset n]} (->fetch-opts wrapped-value)
         xs (->value wrapped-value)
@@ -1347,7 +1358,8 @@
   (when (empty? viewers)
     (throw (ex-info "cannot present* with empty viewers" {:wrapped-value wrapped-value})))
   (when !path->present-fn
-    (swap! !path->present-fn assoc path (fn [fetch-opts] (present* (merge wrapped-value fetch-opts)))))
+    (swap! !path->present-fn assoc path (fn [fetch-opts]
+                                          (present* (merge wrapped-value (make-!budget-opts wrapped-value) fetch-opts)))))
   (let [{:as wrapped-value :nextjournal/keys [presented?]} (apply-viewers* wrapped-value)
         xs (->value wrapped-value)]
     #_(prn :xs xs :type (type xs) :path path)
@@ -1436,14 +1448,16 @@
   ;; Check for elisions as well
   (assign-content-lengths (present {:foo (vec (repeat 2 {:baz (range 30) :fooze (range 40)})) :bar (range 20)})))
 
+
 (defn present
   "Returns a subset of a given `value`."
   ([x] (present x {}))
   ([x opts]
    (-> (ensure-wrapped-with-viewers x)
-       (merge {:!budget (atom (:budget opts 200))
+       (merge {:budget (->budget opts)
                :!path->present-fn (atom {})
                :path (:path opts [])}
+              (make-!budget-opts opts)
               opts)
        present*
        assign-closing-parens)))

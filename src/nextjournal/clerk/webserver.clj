@@ -81,7 +81,7 @@
                                 (v/get-viewers ns result)
                                 (v/->value result))) ;; TODO understand why this unwrapping fixes lazy loaded table viewers
           present-fn (get-in (meta root-desc) [:path->present-fn (:path fetch-opts)])
-          desc (present-fn (assoc fetch-opts :!budget (atom 200)))] ;; TODO: parametrize budget
+          desc (present-fn fetch-opts)]
       (if (contains? desc :nextjournal/content-type)
         {:body (v/->value desc)
          :content-type (:nextjournal/content-type desc)}

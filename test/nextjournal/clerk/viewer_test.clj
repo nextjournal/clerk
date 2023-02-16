@@ -16,7 +16,7 @@
    (let [root-desc (v/present value opts)
          elision (v/find-elision root-desc)
          present-at (get-in (meta root-desc) [:path->present-fn (:path elision)])
-         more (present-at (assoc elision :!budget (atom (:budget opts 200))))]
+         more (present-at elision)]
      (v/desc->values (v/merge-presentations root-desc more elision)))))
 
 (deftest normalize-table-data
