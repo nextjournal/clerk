@@ -10,14 +10,17 @@
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]))
 
+(defn resolve-elision [desc]
+  (let [elision (v/find-elision desc)
+        _ (when-not elision
+            (throw (ex-info "no elision found" {:decs desc})))
+        {:keys [present-elision-fn]} (meta desc)
+        more (present-elision-fn elision)]
+    (v/merge-presentations desc more elision)))
+
 (defn present+fetch
   ([value] (present+fetch {} value))
-  ([opts value]
-   (let [root-desc (v/present value opts)
-         elision (v/find-elision root-desc)
-         present-at (get-in (meta root-desc) [:path->present-fn (:path elision)])
-         more (present-at elision)]
-     (v/desc->values (v/merge-presentations root-desc more elision)))))
+  ([opts value] (v/desc->values (resolve-elision (v/present value opts)))))
 
 (deftest normalize-table-data
   (testing "works with sorted-map"
@@ -35,7 +38,7 @@
     (binding [config/*bounded-count-limit* 1000]
       (is (v/present (v/normalize-table-data {:a (range) :b (range 80)}))))))
 
-(deftest resolve-elision
+(deftest merge-presentations
   (testing "range"
     (let [value (range 30)]
       (is (= value (present+fetch value)))))
@@ -71,7 +74,9 @@
   (testing "table"
     (let [value {:a (range 30) :b (range 30)}]
       (is (= (vec (vals (v/normalize-table-data value)))
-             (present+fetch (v/table value)))))))
+             (present+fetch (v/table value))))))
+
+  (testing "resolving multiple elisions"))
 
 (deftest apply-viewers
   (testing "selects number viewer"

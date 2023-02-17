@@ -80,8 +80,8 @@
           root-desc (v/present (v/ensure-wrapped-with-viewers
                                 (v/get-viewers ns result)
                                 (v/->value result))) ;; TODO understand why this unwrapping fixes lazy loaded table viewers
-          present-fn (get-in (meta root-desc) [:path->present-fn (:path fetch-opts)])
-          desc (present-fn fetch-opts)]
+          {:keys [present-elision-fn]} (meta root-desc)
+          desc (present-elision-fn fetch-opts)]
       (if (contains? desc :nextjournal/content-type)
         {:body (v/->value desc)
          :content-type (:nextjournal/content-type desc)}
