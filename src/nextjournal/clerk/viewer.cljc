@@ -1491,73 +1491,73 @@
   (present {:foo (vec (repeat 2 {:baz (range 30) :fooze (range 40)})) :bar (range 20)}))
 
 (defn desc->values
-"Takes a `description` and returns its value. Inverse of `present`. Mostly useful for debugging."
-[desc]
-(let [x (->value desc)
-      viewer-name (-> desc ->viewer :name)]
-  (cond (= viewer-name `elision-viewer) (with-meta '... x)
-        (coll? x) (into (case viewer-name
-                          (nextjournal.clerk.viewer/map-viewer
-                           nextjournal.clerk.viewer/table-viewer) {}
-                          (or (empty x) []))
-                        (map desc->values)
-                        x)
-        :else x)))
+  "Takes a `description` and returns its value. Inverse of `present`. Mostly useful for debugging."
+  [desc]
+  (let [x (->value desc)
+        viewer-name (-> desc ->viewer :name)]
+    (cond (= viewer-name `elision-viewer) (with-meta '... x)
+          (coll? x) (into (case viewer-name
+                            (nextjournal.clerk.viewer/map-viewer
+                             nextjournal.clerk.viewer/table-viewer) {}
+                            (or (empty x) []))
+                          (map desc->values)
+                          x)
+          :else x)))
 
 #_(desc->values (present [1 [2 {:a :b} 2] 3 (range 100)]))
 #_(desc->values (present (table (mapv vector (range 30)))))
 #_(desc->values (present (with-viewer `table-viewer (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))))
 
 (defn path-to-value [path]
-(conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
+  (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
 
 (defn merge-presentations [root more elision]
-(update-in root
-           (path-to-value (:path elision))
-           (fn [value]
-             (let [{:keys [offset path]} (-> value peek :nextjournal/value)
-                   path-from-value (conj path offset)
-                   path-from-more (or (:replace-path elision) ;; string case, TODO find a better way to unify
-                                      (-> more :nextjournal/value first :path))]
-               (when (not= path-from-value path-from-more)
-                 (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more :root root :more more :path-to-value (path-to-value (:path more)) :value value})))
-               (into (pop value) (:nextjournal/value more))))))
+  (update-in root
+             (path-to-value (:path elision))
+             (fn [value]
+               (let [{:keys [offset path]} (-> value peek :nextjournal/value)
+                     path-from-value (conj path offset)
+                     path-from-more (or (:replace-path elision) ;; string case, TODO find a better way to unify
+                                        (-> more :nextjournal/value first :path))]
+                 (when (not= path-from-value path-from-more)
+                   (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more :root root :more more :path-to-value (path-to-value (:path more)) :value value})))
+                 (into (pop value) (:nextjournal/value more))))))
 
 
 
 (defn assign-closing-parens
-([node] (assign-closing-parens '() node))
-([closing-parens node]
- (let [value (->value node)
-       viewer (->viewer node)
-       closing (:closing-paren viewer)
-       non-leaf? (and (vector? value) (wrapped-value? (first value)))
-       defer-closing? (and non-leaf?
-                           (or (-> value last :nextjournal/viewer :closing-paren) ;; the last element can carry parens
-                               (and (= `map-entry-viewer (-> value last :nextjournal/viewer :name)) ;; the last element is a map entry whose value can carry parens
-                                    (-> value last :nextjournal/value last :nextjournal/viewer :closing-paren))))]
-   (cond-> (cond
-             (not closing) node
-             defer-closing? (update node :nextjournal/viewer dissoc :closing-paren)
-             :else (update-in node [:nextjournal/viewer :closing-paren] cons closing-parens))
-     non-leaf? (update :nextjournal/value
-                       (fn [xs]
-                         (into []
-                               (map-indexed (fn [i x]
-                                              (assign-closing-parens (if (and defer-closing? (= (dec (count xs)) i))
-                                                                       (cond->> closing-parens closing (cons closing))
-                                                                       '())
-                                                                     x)))
-                               xs)))))))
+  ([node] (assign-closing-parens '() node))
+  ([closing-parens node]
+   (let [value (->value node)
+         viewer (->viewer node)
+         closing (:closing-paren viewer)
+         non-leaf? (and (vector? value) (wrapped-value? (first value)))
+         defer-closing? (and non-leaf?
+                             (or (-> value last :nextjournal/viewer :closing-paren) ;; the last element can carry parens
+                                 (and (= `map-entry-viewer (-> value last :nextjournal/viewer :name)) ;; the last element is a map entry whose value can carry parens
+                                      (-> value last :nextjournal/value last :nextjournal/viewer :closing-paren))))]
+     (cond-> (cond
+               (not closing) node
+               defer-closing? (update node :nextjournal/viewer dissoc :closing-paren)
+               :else (update-in node [:nextjournal/viewer :closing-paren] cons closing-parens))
+       non-leaf? (update :nextjournal/value
+                         (fn [xs]
+                           (into []
+                                 (map-indexed (fn [i x]
+                                                (assign-closing-parens (if (and defer-closing? (= (dec (count xs)) i))
+                                                                         (cond->> closing-parens closing (cons closing))
+                                                                         '())
+                                                                       x)))
+                                 xs)))))))
 
 (defn reset-viewers!
-([viewers] (reset-viewers! *ns* viewers))
-([scope viewers]
- (swap! !viewers assoc (datafy-scope scope) viewers)
- viewers))
+  ([viewers] (reset-viewers! *ns* viewers))
+  ([scope viewers]
+   (swap! !viewers assoc (datafy-scope scope) viewers)
+   viewers))
 
 (defn add-viewers! [viewers]
-(reset-viewers! *ns* (add-viewers (get-default-viewers) viewers)))
+  (reset-viewers! *ns* (add-viewers (get-default-viewers) viewers)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convenience api
@@ -1573,10 +1573,10 @@
 (def code         (partial with-viewer code-viewer))
 
 (defn image
-([image-or-url] (image {} image-or-url))
-([viewer-opts image-or-url]
- (with-viewer image-viewer viewer-opts
-   #?(:cljs image-or-url :clj (read-image image-or-url)))))
+  ([image-or-url] (image {} image-or-url))
+  ([viewer-opts image-or-url]
+   (with-viewer image-viewer viewer-opts
+     #?(:cljs image-or-url :clj (read-image image-or-url)))))
 
 (defn caption [text content]
   (col
