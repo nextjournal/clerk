@@ -75,8 +75,10 @@
     (let [value {:a (range 30) :b (range 30)}]
       (is (= (vec (vals (v/normalize-table-data value)))
              (present+fetch (v/table value))))))
-  
-  (testing "resolving multiple elisions"))
+
+  (testing "resolving multiple elisions"
+    (let [value (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))]
+      (is (= value (v/desc->values (-> (v/present value {:nextjournal/budget 11}) resolve-elision resolve-elision)))))))
 
 (deftest apply-viewers
   (testing "selects number viewer"
