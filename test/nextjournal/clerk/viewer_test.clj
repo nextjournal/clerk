@@ -56,26 +56,26 @@
 
   (testing "deep vector"
     (let [value (reduce (fn [acc _i] (vector acc)) :fin (range 30 0 -1))]
-      (is (= value (present+fetch {:budget 21} value)))))
+      (is (= value (present+fetch {:nextjournal/budget 21} value)))))
 
   (testing "deep vector with element before"
     (let [value (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))]
-      (is (= value (present+fetch {:budget 21} value)))))
+      (is (= value (present+fetch {:nextjournal/budget 21} value)))))
 
   (testing "deep vector with element after"
     (let [value (reduce (fn [acc i] (vector acc i)) :fin (range 20 0 -1))]
-      (is (= value (present+fetch {:budget 21} value)))))
+      (is (= value (present+fetch {:nextjournal/budget 21} value)))))
 
   (testing "deep vector with elements around"
     (let [value (reduce (fn [acc i] (vector i acc (inc i))) :fin (range 10 0 -1))]
-      (is (= value (present+fetch {:budget 21} value)))))
+      (is (= value (present+fetch {:nextjournal/budget 21} value)))))
 
   ;; TODO: fit table viewer into v/desc->values
   (testing "table"
     (let [value {:a (range 30) :b (range 30)}]
       (is (= (vec (vals (v/normalize-table-data value)))
              (present+fetch (v/table value))))))
-
+  
   (testing "resolving multiple elisions"))
 
 (deftest apply-viewers
@@ -178,7 +178,16 @@
 
       (let [presented (v/present (v/table {:col1 [1 2] :col2 '[a b]}))]
         (is (= {:num-cols 2 :number-col? #{0}} (:nextjournal/opts presented)))
-        (is (= 1 (count-opts presented)))))))
+        (is (= 1 (count-opts presented))))))
+
+  (testing "viewer opts are normalized"
+    (is (= (v/desc->values (v/present (range 10) {:nextjournal/budget 3}))
+           (v/desc->values (v/present (range 10) {:nextjournal.clerk/budget 3}))
+           (v/desc->values (v/present {:nextjournal/value (range 10) :nextjournal/budget 3}))
+           (v/desc->values (v/present {:nextjournal/value (range 10) :nextjournal.clerk/budget 3}))
+           (v/desc->values (v/present (v/with-viewer {} {:nextjournal.clerk/budget 3} (range 10))))
+           (v/desc->values (v/present {:nextjournal/budget 3, :nextjournal/value (range 10)}))
+           (v/desc->values (v/present {:nextjournal/budget 3, :nextjournal/value (range 10)}))))))
 
 (deftest assign-closing-parens
   (testing "closing parenthesis are moved to right-most children in the tree"
