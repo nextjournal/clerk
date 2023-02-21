@@ -478,7 +478,7 @@
                                   (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))
         viewer-eval-result? (-> presented-result :nextjournal/value viewer-eval?)]
     #_(prn :presented-result viewer-eval? presented-result)
-    (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result}
+    (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result :nextjournal/blob-id blob-id}
                                  viewer-eval-result?
                                  (assoc ::viewer-eval-form (-> presented-result :nextjournal/value :form))
 
@@ -1269,6 +1269,7 @@
 (defn process-wrapped-value [{:as wrapped-value :keys [present-elision-fn path]}]
   (cond-> (-> wrapped-value
               (select-keys processed-keys)
+              (dissoc :nextjournal/budget)
               (update :nextjournal/viewer process-viewer))
     present-elision-fn (vary-meta assoc :present-elision-fn present-elision-fn)))
 
@@ -1350,10 +1351,11 @@
 #_(make-!budget-opts {:nextjournal/budget 42})
 #_(make-!budget-opts {:nextjournal/budget nil})
 
-(defn present-elision* [!path->wrapped-value {:as fetch-opts :keys [path]}]
+(defn ^:private present-elision* [!path->wrapped-value {:as fetch-opts :keys [path]}]
   (if-let [wrapped-value (@!path->wrapped-value path)]
     (present* (merge wrapped-value (make-!budget-opts wrapped-value) fetch-opts))
     (throw (ex-info "could not find wrapped-value at path" {:!path->wrapped-value !path->wrapped-value :fetch-otps fetch-opts}))))
+
 
 (defn ^:private present* [{:as wrapped-value
                            :keys [path !budget store!-wrapped-value]
@@ -1362,22 +1364,22 @@
     (throw (ex-info "cannot present* with empty viewers" {:wrapped-value wrapped-value})))
   (when store!-wrapped-value
     (store!-wrapped-value wrapped-value))
-  (let [{:as wrapped-value :nextjournal/keys [presented?]} (apply-viewers* wrapped-value)
-        xs (->value wrapped-value)]
+  (let [{:as wrapped-value-applied :nextjournal/keys [presented?]} (apply-viewers* wrapped-value)
+        xs (->value wrapped-value-applied)]
     #_(prn :xs xs :type (type xs) :path path)
     (when (and !budget (not presented?))
       (swap! !budget #(max (dec %) 0)))
     (-> (merge (->opts wrapped-value)
                (when (empty? path) (select-keys wrapped-value [:present-elision-fn]))
-               (with-viewer (->viewer wrapped-value)
+               (with-viewer (->viewer wrapped-value-applied)
                  (cond presented?
-                       wrapped-value
+                       wrapped-value-applied
 
                        (string? xs)
-                       (present+paginate-string wrapped-value)
+                       (present+paginate-string wrapped-value-applied)
 
                        (and xs (seqable? xs))
-                       (present+paginate-children wrapped-value)
+                       (present+paginate-children wrapped-value-applied)
 
                        :else ;; leaf value
                        xs)))
@@ -1458,8 +1460,6 @@
    (let [opts' (cond-> (->opts (normalize-viewer-opts opts))
                  (wrapped-value? x) (merge (->opts (normalize-viewer-opts x))))
          !path->wrapped-value (atom {})]
-     (when (wrapped-value? x)
-       (prn :opts (->opts (normalize-viewer-opts x))))
      (-> (ensure-wrapped-with-viewers x)
          (merge {:nextjournal/budget (->budget opts')
                  :store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]

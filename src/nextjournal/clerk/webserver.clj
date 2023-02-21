@@ -72,14 +72,19 @@
 #_(get-fetch-opts "")
 #_(get-fetch-opts "foo=bar&n=42&start=20")
 
+(defn blob->presented [presented-doc]
+  ;; TODO: store on doc?
+  (into {}
+        (comp (map :nextjournal/value)
+              (filter map?)
+              (map (juxt :nextjournal/blob-id :nextjournal/presented)))
+        (:blocks (:nextjournal/value presented-doc))))
+
 (defn serve-blob [{:as doc :keys [blob->result ns]} {:keys [blob-id fetch-opts]}]
   (when-not ns
     (throw (ex-info "namespace must be set" {:doc doc})))
   (if (contains? blob->result blob-id)
-    (let [result (v/apply-viewer-unwrapping-var-from-def (blob->result blob-id))
-          root-desc (v/present (v/ensure-wrapped-with-viewers
-                                (v/get-viewers ns result)
-                                (v/->value result))) ;; TODO understand why this unwrapping fixes lazy loaded table viewers
+    (let [root-desc (get (blob->presented (meta doc)) blob-id)
           {:keys [present-elision-fn]} (meta root-desc)
           desc (present-elision-fn fetch-opts)]
       (if (contains? desc :nextjournal/content-type)
