@@ -1369,7 +1369,7 @@
     #_(prn :xs xs :type (type xs) :path path)
     (when (and !budget (not presented?))
       (swap! !budget #(max (dec %) 0)))
-    (-> (merge (->opts wrapped-value)
+    (-> (merge (->opts wrapped-value-applied)
                (when (empty? path) (select-keys wrapped-value [:present-elision-fn]))
                (with-viewer (->viewer wrapped-value-applied)
                  (cond presented?
