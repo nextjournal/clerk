@@ -18,9 +18,8 @@
         more (present-elision-fn elision)]
     (v/merge-presentations desc more elision)))
 
-(defn present+fetch
-  ([value] (present+fetch {} value))
-  ([opts value] (v/desc->values (resolve-elision (v/present value opts)))))
+(defn present+fetch [value]
+  (v/desc->values (resolve-elision (v/present value))))
 
 (deftest normalize-table-data
   (testing "works with sorted-map"
@@ -56,19 +55,19 @@
 
   (testing "deep vector"
     (let [value (reduce (fn [acc _i] (vector acc)) :fin (range 30 0 -1))]
-      (is (= value (present+fetch {:nextjournal/budget 21} value)))))
+      (is (= value (present+fetch {:nextjournal/budget 21 :nextjournal/value value})))))
 
   (testing "deep vector with element before"
     (let [value (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))]
-      (is (= value (present+fetch {:nextjournal/budget 21} value)))))
+      (is (= value (present+fetch {:nextjournal/budget 21 :nextjournal/value value})))))
 
   (testing "deep vector with element after"
     (let [value (reduce (fn [acc i] (vector acc i)) :fin (range 20 0 -1))]
-      (is (= value (present+fetch {:nextjournal/budget 21} value)))))
+      (is (= value (present+fetch {:nextjournal/budget 21 :nextjournal/value value})))))
 
   (testing "deep vector with elements around"
     (let [value (reduce (fn [acc i] (vector i acc (inc i))) :fin (range 10 0 -1))]
-      (is (= value (present+fetch {:nextjournal/budget 21} value)))))
+      (is (= value (present+fetch {:nextjournal/budget 21 :nextjournal/value value})))))
 
   ;; TODO: fit table viewer into v/desc->values
   (testing "table"
@@ -78,7 +77,7 @@
 
   (testing "resolving multiple elisions"
     (let [value (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))]
-      (is (= value (v/desc->values (-> (v/present value {:nextjournal/budget 11}) resolve-elision resolve-elision)))))))
+      (is (= value (v/desc->values (-> (v/present {:nextjournal/budget 11 :nextjournal/value value}) resolve-elision resolve-elision)))))))
 
 (deftest apply-viewers
   (testing "selects number viewer"
@@ -183,9 +182,7 @@
         (is (= 1 (count-opts presented))))))
 
   (testing "viewer opts are normalized"
-    (is (= (v/desc->values (v/present (range 10) {:nextjournal/budget 3}))
-           (v/desc->values (v/present (range 10) {:nextjournal.clerk/budget 3}))
-           (v/desc->values (v/present {:nextjournal/value (range 10) :nextjournal/budget 3}))
+    (is (= (v/desc->values (v/present {:nextjournal/value (range 10) :nextjournal/budget 3}))
            (v/desc->values (v/present {:nextjournal/value (range 10) :nextjournal.clerk/budget 3}))
            (v/desc->values (v/present (v/with-viewer {} {:nextjournal.clerk/budget 3} (range 10))))
            (v/desc->values (v/present {:nextjournal/budget 3, :nextjournal/value (range 10)}))

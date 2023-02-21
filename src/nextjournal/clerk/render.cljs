@@ -558,9 +558,6 @@
        ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
        [(:render-fn viewer) value (merge opts (:nextjournal/opts x) {:viewer viewer})]))))
 
-(defn in-process-fetch [value opts]
-  (.resolve js/Promise (viewer/present value opts)))
-
 (defn inspect [value]
   (r/with-let [!state (r/atom nil)]
     (when (not= (:value @!state ::not-found) value)
@@ -568,7 +565,8 @@
              :value value
              :desc (viewer/present value)))
     [view-context/provide {:fetch-fn (fn [fetch-opts]
-                                       (.then (in-process-fetch value fetch-opts)
+                                       (.then (let [{:keys [present-elision-fn]} (-> !state deref :desc meta)]
+                                                (.resolve js/Promise (present-elision-fn fetch-opts)))
                                               (fn [more]
                                                 (swap! !state update :desc viewer/merge-presentations more fetch-opts))))}
      [inspect-presented (:desc @!state)]]))

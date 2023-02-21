@@ -833,8 +833,8 @@
                 [:div {:dangerouslySetInnerHTML {:__html hiccup}}]
                 (w/postwalk (fn [x] (if (wrapped-value? x)
                                       [(inspect-fn)
-                                       (present x (let [p (conj path (swap! !path inc))]
-                                                    {:path p}))]
+                                       (present (let [p (conj path (swap! !path inc))]
+                                                  (assoc x :path p)))]
                                       x))
                             hiccup))))))
 
@@ -1454,22 +1454,23 @@
 
 
 (defn present
-  "Returns a subset of a given `value`."
-  ([x] (present x {}))
-  ([x opts]
-   (let [opts' (cond-> (->opts (normalize-viewer-opts opts))
-                 (wrapped-value? x) (merge (->opts (normalize-viewer-opts x))))
-         !path->wrapped-value (atom {})]
-     (-> (ensure-wrapped-with-viewers x)
-         (merge {:nextjournal/budget (->budget opts')
-                 :store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
-                                         (swap! !path->wrapped-value assoc path wrapped-value))
-                 :present-elision-fn (partial present-elision* !path->wrapped-value)
-                 :path (:path opts' [])}
-                (make-!budget-opts opts')
-                opts)
-         present*
-         assign-closing-parens))))
+  "Presents the given value `x`.
+
+  Transparently handles wrapped values and supports customization this way."
+  [x]
+  (let [opts (when (wrapped-value? x)
+               (->opts (normalize-viewer-opts x)))
+        !path->wrapped-value (atom {})]
+    (-> (ensure-wrapped-with-viewers x)
+        (merge {:nextjournal/budget (->budget opts)
+                :store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
+                                        (swap! !path->wrapped-value assoc path wrapped-value))
+                :present-elision-fn (partial present-elision* !path->wrapped-value)
+                :path (:path opts [])}
+               (make-!budget-opts opts)
+               opts)
+        present*
+        assign-closing-parens)))
 
 (comment
   (present [\a \b])
@@ -1479,7 +1480,7 @@
   (present {:one [1 2 3] 1 2 3 4})
   (present [1 2 [1 [2] 3] 4 5])
   (present (clojure.java.io/file "notebooks"))
-  (present {:viewers [{:pred sequential? :render-fn pr-str}]} (range 100))
+  (present {:nextjournal/viewers [{:pred sequential? :render-fn pr-str}] :nextjournal/value (range 100)})
   (present (map vector (range)))
   (present (subs (slurp "/usr/share/dict/words") 0 1000))
   (present (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
