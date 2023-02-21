@@ -45,11 +45,11 @@
 
 (group-by first [[:A :B :B] [:B :C :C] [:C :A :A]])
 
-(take 5
+(take 100
       (repeatedly (fn []
                     {:name (str
-                             (rand-nth ["Oscar" "Karen" "Vlad" "Rebecca" "Conrad"]) " "
-                             (rand-nth ["Miller" "Stasčnyk" "Ronin" "Meyer" "Black"]))
+                            (rand-nth ["Oscar" "Karen" "Vlad" "Rebecca" "Conrad"]) " "
+                            (rand-nth ["Miller" "Stasčnyk" "Ronin" "Meyer" "Black"]))
                      :role (rand-nth [:admin :operator :manager :programmer :designer])
                      :id (java.util.UUID/randomUUID)
                      :created-at #inst "2021"})))
@@ -66,8 +66,8 @@
   (flat->nested (-> (filter #(= (:parent %) nil) items) first) items))
 
 
-(clerk/with-viewer {} {::clerk/budget 5}
-  (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1)))
+^{::clerk/budget 5}
+(reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))
 
 
 (clerk/html [:div
