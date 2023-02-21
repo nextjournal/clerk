@@ -10,13 +10,16 @@
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]))
 
-(defn present+fetch
-  ([value] (present+fetch {} value))
-  ([opts value]
-   (let [desc (v/present value opts)
-         elision (v/find-elision desc)
-         more (v/present value elision)]
-     (v/desc->values (v/merge-presentations desc more elision)))))
+(defn resolve-elision [desc]
+  (let [elision (v/find-elision desc)
+        _ (when-not elision
+            (throw (ex-info "no elision found" {:decs desc})))
+        {:keys [present-elision-fn]} (meta desc)
+        more (present-elision-fn elision)]
+    (v/merge-presentations desc more elision)))
+
+(defn present+fetch [value]
+  (v/desc->values (resolve-elision (v/present value))))
 
 (deftest normalize-table-data
   (testing "works with sorted-map"
@@ -34,13 +37,15 @@
     (binding [config/*bounded-count-limit* 1000]
       (is (v/present (v/normalize-table-data {:a (range) :b (range 80)}))))))
 
-(deftest resolve-elision
+(deftest merge-presentations
   (testing "range"
     (let [value (range 30)]
       (is (= value (present+fetch value)))))
 
-  (testing "nested range"
+  (testing "nested ranges"
     (let [value [(range 30)]]
+      (is (= value (present+fetch value))))
+    (let [value {:hello (range 30)}]
       (is (= value (present+fetch value)))))
 
   (testing "string"
@@ -50,25 +55,29 @@
 
   (testing "deep vector"
     (let [value (reduce (fn [acc _i] (vector acc)) :fin (range 30 0 -1))]
-      (is (= value (present+fetch {:budget 21} value)))))
+      (is (= value (present+fetch {:nextjournal/budget 21 :nextjournal/value value})))))
 
   (testing "deep vector with element before"
     (let [value (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))]
-      (is (= value (present+fetch {:budget 21} value)))))
+      (is (= value (present+fetch {:nextjournal/budget 21 :nextjournal/value value})))))
 
   (testing "deep vector with element after"
     (let [value (reduce (fn [acc i] (vector acc i)) :fin (range 20 0 -1))]
-      (is (= value (present+fetch {:budget 21} value)))))
+      (is (= value (present+fetch {:nextjournal/budget 21 :nextjournal/value value})))))
 
   (testing "deep vector with elements around"
     (let [value (reduce (fn [acc i] (vector i acc (inc i))) :fin (range 10 0 -1))]
-      (is (= value (present+fetch {:budget 21} value)))))
+      (is (= value (present+fetch {:nextjournal/budget 21 :nextjournal/value value})))))
 
   ;; TODO: fit table viewer into v/desc->values
   (testing "table"
     (let [value {:a (range 30) :b (range 30)}]
       (is (= (vec (vals (v/normalize-table-data value)))
-             (present+fetch (v/table value)))))))
+             (present+fetch (v/table value))))))
+
+  (testing "resolving multiple elisions"
+    (let [value (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))]
+      (is (= value (v/desc->values (-> (v/present {:nextjournal/budget 11 :nextjournal/value value}) resolve-elision resolve-elision)))))))
 
 (deftest apply-viewers
   (testing "selects number viewer"
@@ -103,12 +112,13 @@
 
 (deftest reset-viewers!
   (testing "namespace scope"
-    (v/reset-viewers! (find-ns 'nextjournal.clerk.viewer-test) [])
-    (is (= [] (v/get-viewers (find-ns 'nextjournal.clerk.viewer-test)))))
+    (let [ns (create-ns 'nextjournal.clerk.viewer-test.random-ns-name)]
+      (v/reset-viewers! ns [])
+      (is (= [] (v/get-viewers ns)))))
 
   (testing "symbol scope"
-    (v/reset-viewers! 'nextjournal.clerk.viewer-test [{:render-fn 'foo}])
-    (is (= [{:render-fn 'foo}] (v/get-viewers 'nextjournal.clerk.viewer-test)))))
+    (v/reset-viewers! 'nextjournal.clerk.viewer-test.random-ns-name [{:render-fn 'foo}])
+    (is (= [{:render-fn 'foo}] (v/get-viewers 'nextjournal.clerk.viewer-test.random-ns-name)))))
 
 (def my-test-var [:h1 "hi"])
 
@@ -169,7 +179,14 @@
 
       (let [presented (v/present (v/table {:col1 [1 2] :col2 '[a b]}))]
         (is (= {:num-cols 2 :number-col? #{0}} (:nextjournal/opts presented)))
-        (is (= 1 (count-opts presented)))))))
+        (is (= 1 (count-opts presented))))))
+
+  (testing "viewer opts are normalized"
+    (is (= (v/desc->values (v/present {:nextjournal/value (range 10) :nextjournal/budget 3}))
+           (v/desc->values (v/present {:nextjournal/value (range 10) :nextjournal.clerk/budget 3}))
+           (v/desc->values (v/present (v/with-viewer {} {:nextjournal.clerk/budget 3} (range 10))))
+           (v/desc->values (v/present {:nextjournal/budget 3, :nextjournal/value (range 10)}))
+           (v/desc->values (v/present {:nextjournal/budget 3, :nextjournal/value (range 10)}))))))
 
 (deftest assign-closing-parens
   (testing "closing parenthesis are moved to right-most children in the tree"

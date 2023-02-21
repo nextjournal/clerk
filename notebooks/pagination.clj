@@ -1,6 +1,7 @@
 ;; # Pagination
 (ns notebooks.pagination
-  (:require [babashka.fs :as fs]))
+  (:require [babashka.fs :as fs]
+            [nextjournal.clerk :as clerk]))
 
 #_(nextjournal.clerk/show! "notebooks/pagination.clj")
 
@@ -63,3 +64,12 @@
                     (for [x (range 1 5)]
                       {:id x :parent (dec x) :name (format "item-%d" x)}))]
   (flat->nested (-> (filter #(= (:parent %) nil) items) first) items))
+
+
+(clerk/with-viewer {} {::clerk/budget 5}
+  (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1)))
+
+
+(clerk/html [:div
+             [:h3 "Nesting Images inside " [:span.font-mono "clerk/html"]]
+             (clerk/image "trees.png")])

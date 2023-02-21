@@ -159,7 +159,7 @@
   (into {}
         (map #(vector (keyword "nextjournal.clerk" (name %))
                       (keyword "nextjournal"       (name %))))
-        [:viewer :viewers :opts :width :css-class]))
+        [:budget :viewer :viewers :opts :width :css-class]))
 
 (defn throw-when-viewer-opts-invalid [opts]
   (when-not (map? opts)
@@ -196,9 +196,9 @@
   ([viewer x] (with-viewer viewer nil x))
   ([viewer viewer-opts x]
    (merge (when viewer-opts (normalize-viewer-opts viewer-opts))
-          (-> x
-              ensure-wrapped
-              (assoc :nextjournal/viewer (normalize-viewer viewer))))))
+          (cond-> (ensure-wrapped x)
+            (not (and (map? viewer) (empty? viewer)))
+            (assoc :nextjournal/viewer (normalize-viewer viewer))))))
 
 ;; TODO: Think of a better name
 (defn with-viewer-extracting-opts [viewer & opts+items]
@@ -478,7 +478,7 @@
                                   (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))
         viewer-eval-result? (-> presented-result :nextjournal/value viewer-eval?)]
     #_(prn :presented-result viewer-eval? presented-result)
-    (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result}
+    (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result :nextjournal/blob-id blob-id}
                                  viewer-eval-result?
                                  (assoc ::viewer-eval-form (-> presented-result :nextjournal/value :form))
 
@@ -824,8 +824,17 @@
 (def mathjax-viewer
   {:name `mathjax-viewer :render-fn 'nextjournal.clerk.render/render-mathjax :transform-fn mark-presented})
 
+(defn ->opts [wrapped-value]
+  (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/opts
+                              :!budget :store!-wrapped-value :path :offset]))
+
+(defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
+  (-> (ensure-wrapped-with-viewers viewers value)
+      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :nextjournal/budget :path]))
+      (update :path (fnil conj []) path-segment)))
+
 (defn transform-html [{:as wrapped-value :keys [path]}]
-  (let [!path (atom -1)]
+  (let [!path-idx (atom -1)]
     (update wrapped-value
             :nextjournal/value
             (fn [hiccup]
@@ -833,8 +842,7 @@
                 [:div {:dangerouslySetInnerHTML {:__html hiccup}}]
                 (w/postwalk (fn [x] (if (wrapped-value? x)
                                       [(inspect-fn)
-                                       (present x (let [p (conj path (swap! !path inc))]
-                                                    {:current-path p :path p}))]
+                                       (present (inherit-opts wrapped-value x (swap! !path-idx inc)))]
                                       x))
                             hiccup))))))
 
@@ -1166,9 +1174,6 @@
 #_(ensure-wrapped-with-viewers 42)
 #_(ensure-wrapped-with-viewers {:nextjournal/value 42 :nextjournal/viewers [:boo]})
 
-(defn ->opts [wrapped-value]
-  (select-keys wrapped-value [:nextjournal/css-class :nextjournal/width :nextjournal/opts :!budget :budget :path :current-path :offset]))
-
 (defn apply-viewers* [wrapped-value]
   (when (empty? (->viewers wrapped-value))
     (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
@@ -1265,10 +1270,12 @@
   (into [:path :offset :n :nextjournal/content-type :nextjournal/value]
         (-> viewer-opts-normalization vals set (disj :nextjournal/viewers))))
 
-(defn process-wrapped-value [wrapped-value]
-  (-> wrapped-value
-      (select-keys processed-keys)
-      (update :nextjournal/viewer process-viewer)))
+(defn process-wrapped-value [{:as wrapped-value :keys [present-elision-fn path]}]
+  (cond-> (-> wrapped-value
+              (select-keys processed-keys)
+              (dissoc :nextjournal/budget)
+              (update :nextjournal/viewer process-viewer))
+    present-elision-fn (vary-meta assoc :present-elision-fn present-elision-fn)))
 
 #_(process-wrapped-value (apply-viewers 42))
 
@@ -1299,13 +1306,7 @@
 (defn get-fetch-opts-n [wrapped-value]
   (-> wrapped-value ->fetch-opts :n))
 
-(defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
-  (-> (ensure-wrapped-with-viewers viewers value)
-      (merge (select-keys (->opts wrapped-value) [:!budget :budget :path :current-path]))
-      (update :path (fnil conj []) path-segment)
-      (update :current-path (fnil conj []) path-segment)))
-
-(defn present+paginate-children [{:as wrapped-value :nextjournal/keys [viewers preserve-keys?] :keys [!budget budget]}]
+(defn present+paginate-children [{:as wrapped-value :nextjournal/keys [budget viewers preserve-keys?] :keys [!budget]}]
   (let [{:as fetch-opts :keys [offset n]} (->fetch-opts wrapped-value)
         xs (->value wrapped-value)
         paginate? (and (number? n) (not preserve-keys?))
@@ -1338,40 +1339,46 @@
           true ensure-wrapped))
       value)))
 
+(defn ->budget [opts]
+  (:nextjournal/budget opts 200))
+
+(defn make-!budget-opts [opts]
+  (when-let [budget (->budget opts)]
+    {:!budget (atom budget)}))
+
+#_(make-!budget-opts {})
+#_(make-!budget-opts {:nextjournal/budget 42})
+#_(make-!budget-opts {:nextjournal/budget nil})
+
+(defn ^:private present-elision* [!path->wrapped-value {:as fetch-opts :keys [path]}]
+  (if-let [wrapped-value (@!path->wrapped-value path)]
+    (present* (merge wrapped-value (make-!budget-opts wrapped-value) fetch-opts))
+    (throw (ex-info "could not find wrapped-value at path" {:!path->wrapped-value !path->wrapped-value :fetch-otps fetch-opts}))))
+
 
 (defn ^:private present* [{:as wrapped-value
-                           :keys [path current-path !budget]
+                           :keys [path !budget store!-wrapped-value]
                            :nextjournal/keys [viewers]}]
   (when (empty? viewers)
     (throw (ex-info "cannot present* with empty viewers" {:wrapped-value wrapped-value})))
-  (let [{:as wrapped-value :nextjournal/keys [viewers presented?]} (apply-viewers* wrapped-value)
-        descend? (< (count current-path)
-                    (count path))
-        xs (->value wrapped-value)]
-    #_(prn :xs xs :type (type xs) :path path :current-path current-path :descend? descend?)
-    (when (and !budget (not descend?) (not presented?))
+  (when store!-wrapped-value
+    (store!-wrapped-value wrapped-value))
+  (let [{:as wrapped-value-applied :nextjournal/keys [presented?]} (apply-viewers* wrapped-value)
+        xs (->value wrapped-value-applied)]
+    #_(prn :xs xs :type (type xs) :path path)
+    (when (and !budget (not presented?))
       (swap! !budget #(max (dec %) 0)))
-    (-> (merge (->opts wrapped-value)
-               (with-viewer (->viewer wrapped-value)
+    (-> (merge (->opts wrapped-value-applied)
+               (when (empty? path) (select-keys wrapped-value [:present-elision-fn]))
+               (with-viewer (->viewer wrapped-value-applied)
                  (cond presented?
-                       wrapped-value
-
-                       descend? ;; TODO: can this be unified, simplified, or even dropped in favor of continuation?
-                       (let [idx (first (drop (count current-path) path))]
-                         (present* (-> (ensure-wrapped-with-viewers
-                                        viewers
-                                        (cond (and (map? xs) (keyword? idx)) (get xs idx)
-                                              (or (map? xs) (set? xs)) (nth (seq (ensure-sorted xs)) idx)
-                                              (associative? xs) (get xs idx)
-                                              (sequential? xs) (nth xs idx)))
-                                       (merge (->opts wrapped-value))
-                                       (update :current-path (fnil conj []) idx))))
+                       wrapped-value-applied
 
                        (string? xs)
-                       (present+paginate-string wrapped-value)
+                       (present+paginate-string wrapped-value-applied)
 
                        (and xs (seqable? xs))
-                       (present+paginate-children wrapped-value)
+                       (present+paginate-children wrapped-value-applied)
 
                        :else ;; leaf value
                        xs)))
@@ -1444,17 +1451,25 @@
   ;; Check for elisions as well
   (assign-content-lengths (present {:foo (vec (repeat 2 {:baz (range 30) :fooze (range 40)})) :bar (range 20)})))
 
+
 (defn present
-  "Returns a subset of a given `value`."
-  ([x] (present x {}))
-  ([x opts]
-   (-> (ensure-wrapped-with-viewers x)
-       (merge {:!budget (atom (:budget opts 200))
-               :path (:path opts [])
-               :current-path (:current-path opts [])}
-              opts)
-       present*
-       assign-closing-parens)))
+  "Presents the given value `x`.
+
+  Transparently handles wrapped values and supports customization this way."
+  [x]
+  (let [opts (when (wrapped-value? x)
+               (->opts (normalize-viewer-opts x)))
+        !path->wrapped-value (atom {})]
+    (-> (ensure-wrapped-with-viewers x)
+        (merge {:nextjournal/budget (->budget opts)
+                :store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
+                                        (swap! !path->wrapped-value assoc path wrapped-value))
+                :present-elision-fn (partial present-elision* !path->wrapped-value)
+                :path (:path opts [])}
+               (make-!budget-opts opts)
+               opts)
+        present*
+        assign-closing-parens)))
 
 (comment
   (present [\a \b])
@@ -1464,10 +1479,9 @@
   (present {:one [1 2 3] 1 2 3 4})
   (present [1 2 [1 [2] 3] 4 5])
   (present (clojure.java.io/file "notebooks"))
-  (present {:viewers [{:pred sequential? :render-fn pr-str}]} (range 100))
+  (present {:nextjournal/viewers [{:pred sequential? :render-fn pr-str}] :nextjournal/value (range 100)})
   (present (map vector (range)))
   (present (subs (slurp "/usr/share/dict/words") 0 1000))
-  #_:clj-kondo/ignore ;; remove when clj-kondo is released
   (present (plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
   (present [(with-viewer `html-viewer [:h1 "hi"])])
   (present (with-viewer `html-viewer [:ul (for [x (range 3)] [:li x])]))
@@ -1483,8 +1497,8 @@
         viewer-name (-> desc ->viewer :name)]
     (cond (= viewer-name `elision-viewer) (with-meta '... x)
           (coll? x) (into (case viewer-name
-                            ;; TODO: fix table viewer
-                            (:map :table) {}
+                            (nextjournal.clerk.viewer/map-viewer
+                             nextjournal.clerk.viewer/table-viewer) {}
                             (or (empty x) []))
                           (map desc->values)
                           x)
@@ -1508,6 +1522,7 @@
                  (when (not= path-from-value path-from-more)
                    (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more :root root :more more :path-to-value (path-to-value (:path more)) :value value})))
                  (into (pop value) (:nextjournal/value more))))))
+
 
 
 (defn assign-closing-parens
