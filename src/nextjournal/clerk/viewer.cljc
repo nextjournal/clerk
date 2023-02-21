@@ -824,8 +824,17 @@
 (def mathjax-viewer
   {:name `mathjax-viewer :render-fn 'nextjournal.clerk.render/render-mathjax :transform-fn mark-presented})
 
+(defn ->opts [wrapped-value]
+  (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/opts
+                              :!budget :store!-wrapped-value :path :offset]))
+
+(defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
+  (-> (ensure-wrapped-with-viewers viewers value)
+      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :nextjournal/budget :path]))
+      (update :path (fnil conj []) path-segment)))
+
 (defn transform-html [{:as wrapped-value :keys [path]}]
-  (let [!path (atom -1)]
+  (let [!path-idx (atom -1)]
     (update wrapped-value
             :nextjournal/value
             (fn [hiccup]
@@ -833,8 +842,7 @@
                 [:div {:dangerouslySetInnerHTML {:__html hiccup}}]
                 (w/postwalk (fn [x] (if (wrapped-value? x)
                                       [(inspect-fn)
-                                       (present (let [p (conj path (swap! !path inc))]
-                                                  (assoc x :path p)))]
+                                       (present (inherit-opts wrapped-value x (swap! !path-idx inc)))]
                                       x))
                             hiccup))))))
 
@@ -1166,10 +1174,6 @@
 #_(ensure-wrapped-with-viewers 42)
 #_(ensure-wrapped-with-viewers {:nextjournal/value 42 :nextjournal/viewers [:boo]})
 
-(defn ->opts [wrapped-value]
-  (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/opts
-                              :!budget :store!-wrapped-value :path :offset]))
-
 (defn apply-viewers* [wrapped-value]
   (when (empty? (->viewers wrapped-value))
     (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
@@ -1301,11 +1305,6 @@
 
 (defn get-fetch-opts-n [wrapped-value]
   (-> wrapped-value ->fetch-opts :n))
-
-(defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
-  (-> (ensure-wrapped-with-viewers viewers value)
-      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :nextjournal/budget :path]))
-      (update :path (fnil conj []) path-segment)))
 
 (defn present+paginate-children [{:as wrapped-value :nextjournal/keys [budget viewers preserve-keys?] :keys [!budget]}]
   (let [{:as fetch-opts :keys [offset n]} (->fetch-opts wrapped-value)
