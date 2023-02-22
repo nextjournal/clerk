@@ -541,7 +541,7 @@
     [:div.flex.flex-col.items-center.not-prose.mb-4
      [:img (update attrs :src process-image-source doc)]]))
 
-(defn with-block-viewer [doc {:as cell :keys [type]}]
+(defn with-block-viewer [doc {:as cell :keys [id loc type]}]
   (case type
     :markdown (let [{:keys [content]} (:doc cell)]
                 (mapcat (fn [fragment]
@@ -557,13 +557,14 @@
                 eval? (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)]
             (cond-> []
               code?
-              (conj (with-viewer `code-block-viewer {:nextjournal.clerk/opts (select-keys cell [:loc])}
+              (conj (with-viewer `code-block-viewer {:nextjournal.clerk/opts {:block-id (name id) :loc loc}}
                       ;; TODO: display analysis could be merged into cell earlier
                       (-> cell (merge display-opts) (dissoc :result))))
               (or result? eval?)
               (conj (with-viewer (if result?
                                    (:name result-viewer)
                                    (assoc result-viewer :render-fn '(fn [_] [:<>])))
+                      {:nextjournal/opts {:block-id (str "result-" (name id))}}
                       (assoc cell ::doc doc)))))))
 
 #_(nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)

@@ -169,12 +169,13 @@
           :class (str (or css-class "flex flex-col items-center notebook-viewer flex-auto ")
                       (when sidenotes? "sidenotes-layout"))}
          (doall
-          (map-indexed (fn [idx x]
+          (map-indexed (fn [idx {:as x :nextjournal/keys [opts]}]
                          (let [{viewer-name :name} (viewer/->viewer x)
                                viewer-css-class (viewer/css-class x)
                                inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
                            ^{:key (str idx "-" @!eval-counter)}
-                           [:div {:class (concat
+                           [:div {:data-block-id (:block-id opts)
+                                  :class (concat
                                           [(when (:nextjournal/open-graph-image-capture (viewer/->value x)) "open-graph-image-capture")]
                                           (if viewer-css-class
                                             (cond-> viewer-css-class
