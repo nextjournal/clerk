@@ -11,6 +11,7 @@
 
   {:clj-kondo/config '{:lint-as {promesa.core/let clojure.core/let}}}
   (:require ["playwright$default" :as pw :refer [chromium]]
+            [clojure.edn :as edn]
             [promesa.core :as p]
             [nbb.core :refer [await]]
             [babashka.cli :as cli]))
@@ -31,7 +32,8 @@
 (def page-height 720)
 
 (defn new-page []
-  (.newPage browser #js {:viewport #js {:width page-width :height page-height}}))
+  (p/let [ctx (.newContext browser #js {:deviceScaleFactor 2})]
+    (.newPage ctx #js {:viewport #js {:width page-width :height page-height}})))
 
 (defn ->path [out-dir filename]
   (cond->> filename
@@ -45,21 +47,22 @@
            og-captures-count (.count og-captures)
            results (if (< 0 og-captures-count)
                      og-captures
-                     (.locator page ".viewer-result"))
+                     (.locator page ".result-viewer"))
            results-count (.count results)]
-     (println+flush "📸 Screenshotting page with bounds" (str page-width "×" page-height))
+     (println+flush "📸 Screenshotting page with bounds" (str page-width "×" page-height) "results: " results-count)
      (.screenshot page #js {:path (->path out-dir "page.png")})
      (p/loop [i 0]
        (if (< i results-count)
          (p/let [res (.nth results i)
                  bounds (.boundingBox res)]
-           (if (<= 250 (.-height bounds))
-             (p/let [imgs (.locator res "img")
+           (if true #_ (<= 250 (.-height bounds))
+             (p/let [id (.getAttribute res "data-block-id")
+                     imgs (.locator res "img")
                      imgs-count (.count imgs)
                      single-image? (= imgs-count 1)
                      _ (println+flush (str "🔍 Result #" (inc i) " contains " imgs-count " " (if single-image? "image" "images") "."))
                      subject (if single-image? (.first imgs) res)
-                     _ (println+flush (str "📸 Screenshotting result #" (inc i)
+                     _ (println+flush (str "📸 Screenshotting result #" (inc i) " - ID: " id
                                            " (" (if single-image? "single image" "entire result") ")"
                                            " with bounds " (.-width bounds) "×" (.-height bounds)))
                      buffer (.screenshot subject)
@@ -70,7 +73,7 @@
                      trimmed-res (.locator page (str "#res-" i))
                      trimmed-bounds (.boundingBox trimmed-res)]
                (println+flush (str "🔪 Trimming result #" (inc i) " to bounds " (.-width trimmed-bounds) "×" (.-height trimmed-bounds)))
-               (.screenshot trimmed-res #js {:path (->path out-dir (str "result-" (inc i) ".png"))}))
+               (.screenshot trimmed-res #js {:path (->path out-dir (str (if id (name (edn/read-string id)) (str "result-" (inc i))) ".png"))}))
              (println+flush "🦘 Skipping result with bounds" (str (.-width bounds) "×" (.-height bounds))))
            (p/recur (inc i)))
          (println+flush "✅ Done."))))))
