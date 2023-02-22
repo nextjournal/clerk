@@ -114,6 +114,27 @@
 
 (defonce !eval-counter (r/atom 0))
 
+(defn render-processed-block [x]
+  (let [{viewer-name :name} (viewer/->viewer x)
+        viewer-css-class (viewer/css-class x)
+        inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)
+        processed-block-id (get-in x [:nextjournal/opts :id])]
+    ^{:key (str processed-block-id "@" @!eval-counter)}
+    [:div {:data-block-id processed-block-id
+           :class (concat
+                   [(when (:nextjournal/open-graph-image-capture (viewer/->value x)) "open-graph-image-capture")]
+                   (if viewer-css-class
+                     (cond-> viewer-css-class
+                       (string? viewer-css-class) vector)
+                     ["viewer"
+                      (when viewer-name (name viewer-name))
+                      (when inner-viewer-name (name inner-viewer-name))
+                      (case (or (viewer/width x) (case viewer-name (`viewer/code-viewer `viewer/code-folded-viewer) :wide :prose))
+                        :wide "w-full max-w-wide"
+                        :full "w-full"
+                        "w-full max-w-prose px-8")]))}
+     [inspect-presented x]]))
+
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility]}]
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
@@ -168,26 +189,7 @@
           :transition navbar/spring
           :class (str (or css-class "flex flex-col items-center notebook-viewer flex-auto ")
                       (when sidenotes? "sidenotes-layout"))}
-         (doall
-          (map-indexed (fn [idx x]
-                         (let [{viewer-name :name} (viewer/->viewer x)
-                               viewer-css-class (viewer/css-class x)
-                               inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
-                           ^{:key (str idx "-" @!eval-counter)}
-                           [:div {:class (concat
-                                          [(when (:nextjournal/open-graph-image-capture (viewer/->value x)) "open-graph-image-capture")]
-                                          (if viewer-css-class
-                                            (cond-> viewer-css-class
-                                              (string? viewer-css-class) vector)
-                                            ["viewer"
-                                             (when viewer-name (name viewer-name))
-                                             (when inner-viewer-name (name inner-viewer-name))
-                                             (case (or (viewer/width x) (case viewer-name (`viewer/code-viewer `viewer/code-folded-viewer) :wide :prose))
-                                               :wide "w-full max-w-wide"
-                                               :full "w-full"
-                                               "w-full max-w-prose px-8")]))}
-                            [inspect-presented x]]))
-                       xs))]]])))
+         (doall (map render-processed-block xs))]]])))
 
 (defn opts->query [opts]
   (->> opts

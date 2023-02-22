@@ -318,7 +318,7 @@
        (cond-> (reduce (fn [{:as state notebook-ns :ns} i]
                          (let [{:as block :keys [type text loc]} (get-in doc [:blocks i])]
                            (if (not= type :code)
-                             state
+                             (assoc-in state [:blocks i :id] (get-block-id !id->count block))
                              (let [form (try (read-string text)
                                              (catch Exception e
                                                (throw (ex-info (str "Clerk analysis failed reading block: "

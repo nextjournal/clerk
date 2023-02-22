@@ -534,22 +534,29 @@
      (let [w (.getWidth image) h (.getHeight image) r (float (/ w h))]
        (if (and (< 2 r) (< 900 w)) :full :wide))))
 
-(defn md-image->viewer [doc {:keys [attrs]}]
+(defn ^:private processed-block-id
+  ([block-id] (processed-block-id block-id 0))
+  ([block-id idx] (str block-id (when (pos? idx) (str "-" idx)))))
+
+(defn md-image->viewer [doc block-id idx {:keys [attrs]}]
   (with-viewer `html-viewer
-    #?(:clj {:nextjournal.clerk/width (try (image-width (read-image (:src attrs)))
-                                           (catch Throwable _ :prose))})
+    #?(:clj {:nextjournal/opts {:id (processed-block-id block-id idx)}
+             :nextjournal/width (try (image-width (read-image (:src attrs)))
+                                     (catch Throwable _ :prose))})
     [:div.flex.flex-col.items-center.not-prose.mb-4
      [:img (update attrs :src process-image-source doc)]]))
 
-(defn with-block-viewer [doc {:as cell :keys [type]}]
+(defn with-block-viewer [doc {:as cell :keys [type id]}]
   (case type
-    :markdown (let [{:keys [content]} (:doc cell)]
+    :markdown (let [{:keys [content]} (:doc cell)
+                    !idx (atom -1)]
                 (mapcat (fn [fragment]
                           (if (= :image (:type (first fragment)))
-                            (map (partial md-image->viewer doc) fragment)
-                            [(with-viewer `markdown-viewer (process-sidenotes {:type :doc
-                                                                               :content (vec fragment)
-                                                                               ::doc doc} doc))]))
+                            (map #(md-image->viewer doc id (swap! !idx inc) %) fragment)
+                            [(with-viewer `markdown-viewer {:nextjournal/opts {:id (processed-block-id id (swap! !idx inc))}}
+                               (process-sidenotes {:type :doc
+                                                   :content (vec fragment)
+                                                   ::doc doc} doc))]))
                         (partition-by (comp #{:image} :type) content)))
 
     :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
@@ -557,14 +564,18 @@
                 eval? (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)]
             (cond-> []
               code?
-              (conj (with-viewer `code-block-viewer {:nextjournal.clerk/opts (select-keys cell [:loc])}
+              (conj (with-viewer `code-block-viewer {:nextjournal/opts (merge {:id (processed-block-id (str id "-code"))}
+                                                                              (select-keys cell [:loc]))}
                       ;; TODO: display analysis could be merged into cell earlier
                       (-> cell (merge display-opts) (dissoc :result))))
               (or result? eval?)
               (conj (with-viewer (if result?
                                    (:name result-viewer)
                                    (assoc result-viewer :render-fn '(fn [_] [:<>])))
+                      {:nextjournal/opts {:id (processed-block-id (str id "-result"))}}
                       (assoc cell ::doc doc)))))))
+
+#_(:blocks (:nextjournal/value (nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)))
 
 #_(nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)
 
