@@ -79,6 +79,18 @@
     (let [value (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))]
       (is (= value (v/desc->values (-> (v/present {:nextjournal/budget 11 :nextjournal/value value}) resolve-elision resolve-elision)))))))
 
+(deftest elisions
+  (testing "should contain no more than two elisions"
+    (is (<= (count (v/filter-elisions (v/present (take 100
+                                                       (repeatedly (fn []
+                                                                     {:name (str
+                                                                             (rand-nth ["Oscar" "Karen" "Vlad" "Rebecca" "Conrad"]) " "
+                                                                             (rand-nth ["Miller" "Stasčnyk" "Ronin" "Meyer" "Black"]))
+                                                                      :role (rand-nth [:admin :operator :manager :programmer :designer])
+                                                                      :id (java.util.UUID/randomUUID)
+                                                                      :created-at #inst "2021"}))))))
+            2))))
+
 (deftest apply-viewers
   (testing "selects number viewer"
     (is (match? {:nextjournal/value 42

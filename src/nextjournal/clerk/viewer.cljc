@@ -1300,9 +1300,12 @@
 
 #_(present (make-elision default-viewers {:n 20}))
 
+(defn filter-elisions [desc]
+  (filter (comp #{`elision-viewer} :name :nextjournal/viewer)
+          (tree-seq (some-fn map? vector?) #(cond-> % (map? %) vals) desc)))
+
 (defn find-elision [desc]
-  (->value (first (filter (comp #{`elision-viewer} :name :nextjournal/viewer)
-                          (tree-seq (some-fn map? vector?) #(cond-> % (map? %) vals) desc)))))
+  (->value (first (filter-elisions desc))))
 
 (defn ->fetch-opts [wrapped-value]
   (merge {:n (-> wrapped-value ->viewer :page-size)}
@@ -1381,7 +1384,8 @@
     #_(prn :xs xs :type (type xs) :path path)
     (when (and !budget (not presented?))
       (swap! !budget dec))
-    (when-not (neg? (or (some-> !budget deref) 0))
+    (when (or (not (neg? (or (some-> !budget deref) 0)))
+              (not= (count path) 1))
       (-> (merge (->opts wrapped-value-applied)
                  (when (empty? path) (select-keys wrapped-value [:present-elision-fn]))
                  (with-viewer (->viewer wrapped-value-applied)
