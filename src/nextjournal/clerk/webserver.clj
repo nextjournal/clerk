@@ -32,15 +32,24 @@
 
 (def ^:dynamic *sender-ch* nil)
 
-(defn send! [ch msg]
-  (httpkit/send! ch (v/->edn msg)))
+(defn ->channel
+  ([ch-uid] (->channel ch-uid (fn [msg] (httpkit/send! ch-uid (v/->edn msg)))))
+  ([ch-uid send-fn] (with-meta [ch-uid] {::send send-fn})))
+
+(defn send!
+  ([client-set ch-uid msg]
+   (send! (get client-set (->channel ch-uid nil)) msg))
+  ([ch msg]
+   (let [send-fn (::send (meta ch))]
+     (send-fn ch msg))))
 
 (defn broadcast! [msg]
   (doseq [ch @!clients]
     (when (not= @!last-sender-ch *sender-ch*)
-      (send! ch {:type :patch-state! :patch []
+      (send! ch {:type :patch-state!
+                 :patch []
                  :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-ch* ch)))]}))
-    (httpkit/send! ch (v/->edn msg)))
+    (send! ch msg))
   (reset! !last-sender-ch *sender-ch*))
 
 #_(broadcast! [{:random (rand-int 10000) :range (range 100)}])
@@ -123,25 +132,48 @@
 
 #_(pr-str (read-msg "#viewer-eval (resolve 'clojure.core/inc)"))
 
+(defn watch-websocket-clients
+  ([watched-atom send-fn] (watch-websocket-clients watched-atom send-fn identity))
+  ([watched-atom send-fn new-state-transform]
+   (add-watch watched-atom :connected-uids
+              (fn [_var-name _atom _old-state new-state]
+                (reset! !clients
+                        (map (fn [uid] (->channel uid (partial send-fn uid)))
+                             (new-state-transform new-state)))))))
+
+(defn unwatch-websocket-clients [watched-atom]
+  (remove-watch watched-atom :connected-uids))
+
+(defn handle-eval [sender-ch msg]
+  (binding [*ns* (or (:ns @!doc)
+                     (create-ns 'user))]
+    (send! @!clients
+           sender-ch
+           (merge {:type :eval-reply :eval-id (:eval-id msg)}
+                  (try {:reply (eval (:form msg))}
+                       (catch Exception e
+                         {:error (Throwable->map e)}))))
+    (eval '(nextjournal.clerk/recompute!))))
+
+(defn handle-swap! [sender-ch msg]
+  (binding [*ns* (or (:ns @!doc)
+                     (create-ns 'user))]
+    (when-let [var (resolve (:var-name msg))]
+      (try
+        (binding [*sender-ch* sender-ch]
+          (apply swap! @var (eval (:args msg))))
+        (catch Exception ex
+          (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) show-error!)))))))
+
+
 (def ws-handlers
-  {:on-open (fn [ch] (swap! !clients conj ch))
-   :on-close (fn [ch _reason] (swap! !clients disj ch))
+  {:on-open (fn [ch] (swap! !clients conj (->channel ch)))
+   :on-close (fn [ch _reason] (swap! !clients disj (->channel ch)))
    :on-receive (fn [sender-ch edn-string]
-                 (binding [*ns* (or (:ns @!doc)
-                                    (create-ns 'user))]
-                   (let [{:as msg :keys [type]} (read-msg edn-string)]
-                     (case type
-                       :eval (do (send! sender-ch (merge {:type :eval-reply :eval-id (:eval-id msg)}
-                                                         (try {:reply (eval (:form msg))}
-                                                              (catch Exception e
-                                                                {:error (Throwable->map e)}))))
-                                 (eval '(nextjournal.clerk/recompute!)))
-                       :swap! (when-let [var (resolve (:var-name msg))]
-                                (try
-                                  (binding [*sender-ch* sender-ch]
-                                    (apply swap! @var (eval (:args msg))))
-                                  (catch Exception ex
-                                    (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) show-error!)))))))))})
+                 (let [{:as msg :keys [type]} (read-msg edn-string)]
+                   (case type
+                     :eval (handle-eval sender-ch msg)
+                     :swap! (handle-swap! sender-ch msg))))})
 
 #_(do
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
