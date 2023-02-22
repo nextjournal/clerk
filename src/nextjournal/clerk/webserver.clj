@@ -22,7 +22,7 @@
              :visibility {:code :hide, :result :show}
              :result {:nextjournal/value (v/html (help-hiccup))}}]})
 
-(defonce !clients (atom #{}))
+(defonce !clients (atom {}))
 (defonce !doc (atom nil))
 (defonce !error (atom nil))
 (defonce !last-sender-ch (atom nil))
@@ -30,27 +30,23 @@
 #_(view/doc->viewer @!doc)
 #_(reset! !doc nil)
 
-(def ^:dynamic *sender-ch* nil)
-
-(defn ->channel
-  ([ch-uid] (->channel ch-uid (fn [msg] (httpkit/send! ch-uid (v/->edn msg)))))
-  ([ch-uid send-fn] (with-meta [ch-uid] {::send send-fn})))
+(def ^:dynamic *sender-channel-uid* nil)
 
 (defn send!
   ([client-set ch-uid msg]
-   (send! (get client-set (->channel ch-uid nil)) msg))
-  ([ch msg]
-   (let [send-fn (::send (meta ch))]
-     (send-fn ch msg))))
+   (send! (get client-set ch-uid) msg))
+  ([channel msg]
+   (let [send-fn (::send channel)]
+     (send-fn channel msg))))
 
 (defn broadcast! [msg]
-  (doseq [ch @!clients]
-    (when (not= @!last-sender-ch *sender-ch*)
-      (send! ch {:type :patch-state!
-                 :patch []
-                 :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-ch* ch)))]}))
-    (send! ch msg))
-  (reset! !last-sender-ch *sender-ch*))
+  (doseq [[ch send-fn] @!clients]
+    (when (not= @!last-sender-ch *sender-channel-uid*)
+      (send-fn ch {:type :patch-state!
+                   :patch []
+                   :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-channel-uid* ch)))]}))
+    (send-fn ch msg))
+  (reset! !last-sender-ch *sender-channel-uid*))
 
 #_(broadcast! [{:random (rand-int 10000) :range (range 100)}])
 
@@ -134,46 +130,55 @@
 
 (defn watch-websocket-clients
   ([watched-atom send-fn] (watch-websocket-clients watched-atom send-fn identity))
-  ([watched-atom send-fn new-state-transform]
+  ([watched-atom send-fn state-transform]
    (add-watch watched-atom :connected-uids
-              (fn [_var-name _atom _old-state new-state]
-                (reset! !clients
-                        (map (fn [uid] (->channel uid (partial send-fn uid)))
-                             (new-state-transform new-state)))))))
+              (fn [_var-name _atom old-state new-state]
+                (let [new-state (state-transform new-state)
+                      old-state (state-transform old-state)]
+                (swap! !clients
+                       (fn [clients] (merge
+                                       (apply dissoc
+                                              clients
+                                              (set/difference old-state new-state))
+                                       (into {}
+                                             (map (fn [uid] [uid send-fn]))
+                                             (set/difference new-state old-state))))))))))
 
 (defn unwatch-websocket-clients [watched-atom]
   (remove-watch watched-atom :connected-uids))
 
-(defn handle-eval [sender-ch msg]
+(defn handle-eval [sender-ch-uid msg]
   (binding [*ns* (or (:ns @!doc)
                      (create-ns 'user))]
-    (send! @!clients
-           sender-ch
-           (merge {:type :eval-reply :eval-id (:eval-id msg)}
-                  (try {:reply (eval (:form msg))}
-                       (catch Exception e
-                         {:error (Throwable->map e)}))))
+    (let [send-fn (get @!clients sender-ch-uid)]
+      (send-fn sender-ch-uid
+               (merge {:type :eval-reply :eval-id (:eval-id msg)}
+                      (try {:reply (eval (:form msg))}
+                           (catch Exception e
+                             {:error (Throwable->map e)})))))
     (eval '(nextjournal.clerk/recompute!))))
 
-(defn handle-swap! [sender-ch msg]
+(defn handle-swap! [sender-ch-uid msg]
   (binding [*ns* (or (:ns @!doc)
                      (create-ns 'user))]
     (when-let [var (resolve (:var-name msg))]
       (try
-        (binding [*sender-ch* sender-ch]
+        (binding [*sender-channel-uid* sender-ch-uid]
           (apply swap! @var (eval (:args msg))))
         (catch Exception ex
           (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) show-error!)))))))
 
+(defn clerk-ws-send-fn [ch-uid msg]
+  (httpkit/send! ch-uid (v/->edn msg)))
 
 (def ws-handlers
-  {:on-open (fn [ch] (swap! !clients conj (->channel ch)))
-   :on-close (fn [ch _reason] (swap! !clients disj (->channel ch)))
-   :on-receive (fn [sender-ch edn-string]
+  {:on-open (fn [ch] (swap! !clients assoc ch clerk-ws-send-fn))
+   :on-close (fn [ch _reason] (swap! !clients dissoc ch))
+   :on-receive (fn [sender-ch-uid edn-string]
                  (let [{:as msg :keys [type]} (read-msg edn-string)]
                    (case type
-                     :eval (handle-eval sender-ch msg)
-                     :swap! (handle-swap! sender-ch msg))))})
+                     :eval (handle-eval sender-ch-uid msg)
+                     :swap! (handle-swap! sender-ch-uid msg))))})
 
 #_(do
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
