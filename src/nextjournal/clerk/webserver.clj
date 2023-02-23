@@ -146,10 +146,10 @@
 (defn handle-eval [sender-ch-uid msg]
   (binding [*ns* (or (:ns @!doc)
                      (create-ns 'user))]
-    (let [send-fn (get @!client-uid->send-fn
-                       sender-ch-uid
-                       (constantly (throw (ex-info "Websocket channel not registered as a client"
-                                                   {:websocket-channel-uid sender-ch-uid :message msg}))))]
+    (let [send-fn (get @!client-uid->send-fn sender-ch-uid
+                       (fn [& _] (throw (ex-info "Channel not registered as websocket client"
+                                                 {:channel-uid sender-ch-uid
+                                                  :message msg}))))]
       (send-fn sender-ch-uid
                (merge {:type :eval-reply :eval-id (:eval-id msg)}
                       (try {:reply (eval (:form msg))}
