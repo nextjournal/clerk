@@ -22,7 +22,7 @@
              :visibility {:code :hide, :result :show}
              :result {:nextjournal/value (v/html (help-hiccup))}}]})
 
-(defonce !clients (atom {}))
+(defonce !client-uid->send-fn (atom {}))
 (defonce !doc (atom nil))
 (defonce !error (atom nil))
 (defonce !last-sender-ch (atom nil))
@@ -32,15 +32,8 @@
 
 (def ^:dynamic *sender-channel-uid* nil)
 
-(defn send!
-  ([client-set ch-uid msg]
-   (send! (get client-set ch-uid) msg))
-  ([channel msg]
-   (let [send-fn (::send channel)]
-     (send-fn channel msg))))
-
 (defn broadcast! [msg]
-  (doseq [[ch send-fn] @!clients]
+  (doseq [[ch send-fn] @!client-uid->send-fn]
     (when (not= @!last-sender-ch *sender-channel-uid*)
       (send-fn ch {:type :patch-state!
                    :patch []
@@ -129,13 +122,16 @@
 #_(pr-str (read-msg "#viewer-eval (resolve 'clojure.core/inc)"))
 
 (defn watch-websocket-clients
+  "Sync external websocket client state into the clients that clerk tracks.
+
+  Allows these external clients to get clerk related websocket messages and broadcasts"
   ([watched-atom send-fn] (watch-websocket-clients watched-atom send-fn identity))
   ([watched-atom send-fn state-transform]
    (add-watch watched-atom :connected-uids
               (fn [_var-name _atom old-state new-state]
                 (let [new-state (state-transform new-state)
                       old-state (state-transform old-state)]
-                (swap! !clients
+                (swap! !client-uid->send-fn
                        (fn [clients] (merge
                                        (apply dissoc
                                               clients
@@ -150,7 +146,10 @@
 (defn handle-eval [sender-ch-uid msg]
   (binding [*ns* (or (:ns @!doc)
                      (create-ns 'user))]
-    (let [send-fn (get @!clients sender-ch-uid)]
+    (let [send-fn (get @!client-uid->send-fn
+                       sender-ch-uid
+                       (constantly (throw (ex-info "Websocket channel not registered as a client"
+                                                   {:websocket-channel-uid sender-ch-uid :message msg}))))]
       (send-fn sender-ch-uid
                (merge {:type :eval-reply :eval-id (:eval-id msg)}
                       (try {:reply (eval (:form msg))}
@@ -172,8 +171,8 @@
   (httpkit/send! ch-uid (v/->edn msg)))
 
 (def ws-handlers
-  {:on-open (fn [ch] (swap! !clients assoc ch clerk-ws-send-fn))
-   :on-close (fn [ch _reason] (swap! !clients dissoc ch))
+  {:on-open (fn [ch] (swap! !client-uid->send-fn assoc ch clerk-ws-send-fn))
+   :on-close (fn [ch _reason] (swap! !client-uid->send-fn dissoc ch))
    :on-receive (fn [sender-ch-uid edn-string]
                  (let [{:as msg :keys [type]} (read-msg edn-string)]
                    (case type
