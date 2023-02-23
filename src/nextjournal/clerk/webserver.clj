@@ -143,9 +143,21 @@
 (defn unwatch-websocket-clients [watched-atom]
   (remove-watch watched-atom :connected-uids))
 
+(defn msg->ns [{:keys [scope] :as _message}]
+  (cond
+    (= scope (some-> @!doc :ns v/datafy-scope))
+    (:ns @!doc)
+
+    scope
+    (create-ns scope)
+
+    :else
+    (do
+      (println (str "No namespace scope found, falling back to `'user` ns"))
+      (create-ns 'user))))
+
 (defn handle-eval [sender-ch-uid msg]
-  (binding [*ns* (or (:ns @!doc)
-                     (create-ns 'user))]
+  (binding [*ns* (msg->ns msg)]
     (let [send-fn (get @!client-uid->send-fn sender-ch-uid
                        (fn [& _] (throw (ex-info "Channel not registered as websocket client"
                                                  {:channel-uid sender-ch-uid
@@ -158,14 +170,16 @@
     (eval '(nextjournal.clerk/recompute!))))
 
 (defn handle-swap! [sender-ch-uid msg]
-  (binding [*ns* (or (:ns @!doc)
-                     (create-ns 'user))]
+  (binding [*ns* (msg->ns msg)]
     (when-let [var (resolve (:var-name msg))]
       (try
         (binding [*sender-channel-uid* sender-ch-uid]
           (apply swap! @var (eval (:args msg))))
         (catch Exception ex
-          (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) show-error!)))))))
+          (let [e (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex)]
+            (show-error! e)
+            (throw e)))))))
+
 
 (defn clerk-ws-send-fn [ch-uid msg]
   (httpkit/send! ch-uid (v/->edn msg)))
