@@ -70,10 +70,11 @@
 (defn recompute!
   "Recomputes the currently visible doc, without parsing it."
   []
-  (binding [*ns* (:ns @webserver/!doc)]
-    (let [{:keys [result time-ms]} (eval/time-ms (eval/eval-analyzed-doc @webserver/!doc))]
-      (println (str "Clerk recomputed '" @!last-file "' in " time-ms "ms."))
-      (webserver/update-doc! result))))
+  (when-let [doc @webserver/!doc]
+    (binding [*ns* (:ns doc)]
+      (let [{:keys [result time-ms]} (eval/time-ms (eval/eval-analyzed-doc doc))]
+        (println (str "Clerk recomputed '" @!last-file "' in " time-ms "ms."))
+        (webserver/update-doc! result)))))
 
 #_(recompute!)
 
