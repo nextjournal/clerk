@@ -131,3 +131,20 @@ out the `:browse\? true` arguments.
 ## 🐞 Known Issues
 
 See [notebooks/onwards.md](https://github.com/nextjournal/clerk/blob/main/notebooks/onwards.md).
+
+## Citing Clerk
+
+If you are a researcher and use Clerk in your work, we encourage you to cite our work.
+You can use the following BibTeX citation:
+
+```
+@misc{clerk-github,
+  author =  {Martin Kavalar and
+             Jack Rusher},
+  title = {{Clerk Source Code}},
+  howpublished = {\url{https://github.com/nextjournal/clerk}},
+  month        = feb,
+  year         = 2023
+}
+```
+
