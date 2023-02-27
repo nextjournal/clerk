@@ -22,7 +22,7 @@
              :visibility {:code :hide, :result :show}
              :result {:nextjournal/value (v/html (help-hiccup))}}]})
 
-(defonce !client-uid->send-fn (atom {}))
+(defonce !client-channel->send-fn (atom {}))
 (defonce !doc (atom nil))
 (defonce !error (atom nil))
 (defonce !last-sender-ch (atom nil))
@@ -30,16 +30,16 @@
 #_(view/doc->viewer @!doc)
 #_(reset! !doc nil)
 
-(def ^:dynamic *sender-channel-uid* nil)
+(def ^:dynamic *sender-channel* nil)
 
 (defn broadcast! [msg]
-  (doseq [[ch send-fn] @!client-uid->send-fn]
-    (when (not= @!last-sender-ch *sender-channel-uid*)
+  (doseq [[ch send-fn] @!client-channel->send-fn]
+    (when (not= @!last-sender-ch *sender-channel*)
       (send-fn ch {:type :patch-state!
                    :patch []
-                   :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-channel-uid* ch)))]}))
+                   :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-channel* ch)))]}))
     (send-fn ch msg))
-  (reset! !last-sender-ch *sender-channel-uid*))
+  (reset! !last-sender-ch *sender-channel*))
 
 #_(broadcast! [{:random (rand-int 10000) :range (range 100)}])
 
@@ -134,42 +134,41 @@
       (println (str "No namespace scope found, falling back to `'user` ns: " message))
       (create-ns 'user))))
 
-(defn handle-eval [sender-ch-uid msg]
+(defn handle-eval [sender-ch msg]
   (binding [*ns* (msg->ns msg)]
-    (let [send-fn (get @!client-uid->send-fn sender-ch-uid
+    (let [send-fn (get @!client-channel->send-fn sender-ch
                        (fn [& _] (throw (ex-info "Channel not registered as websocket client"
-                                                 {:channel-uid sender-ch-uid
+                                                 {:channel sender-ch
                                                   :message msg}))))]
-      (send-fn sender-ch-uid
+      (send-fn sender-ch
                (merge {:type :eval-reply :eval-id (:eval-id msg)}
                       (try {:reply (eval (:form msg))}
                            (catch Exception e
                              {:error (Throwable->map e)})))))
     (eval '(nextjournal.clerk/recompute!))))
 
-(defn handle-swap! [sender-ch-uid msg]
+(defn handle-swap! [sender-ch msg]
   (binding [*ns* (msg->ns msg)]
     (when-let [var (resolve (:var-name msg))]
       (try
-        (binding [*sender-channel-uid* sender-ch-uid]
+        (binding [*sender-channel* sender-ch]
           (apply swap! @var (eval (:args msg))))
         (catch Exception ex
           (let [e (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex)]
             (show-error! e)
             (throw e)))))))
 
-
-(defn clerk-ws-send-fn [ch-uid msg]
-  (httpkit/send! ch-uid (v/->edn msg)))
+(defn clerk-ws-send-fn [ch msg]
+  (httpkit/send! ch (v/->edn msg)))
 
 (def ws-handlers
-  {:on-open (fn [ch] (swap! !client-uid->send-fn assoc ch clerk-ws-send-fn))
-   :on-close (fn [ch _reason] (swap! !client-uid->send-fn dissoc ch))
-   :on-receive (fn [sender-ch-uid edn-string]
+  {:on-open (fn [ch] (swap! !client-channel->send-fn assoc ch clerk-ws-send-fn))
+   :on-close (fn [ch _reason] (swap! !client-channel->send-fn dissoc ch))
+   :on-receive (fn [sender-ch edn-string]
                  (let [{:as msg :keys [type]} (read-msg edn-string)]
                    (case type
-                     :eval (handle-eval sender-ch-uid msg)
-                     :swap! (handle-swap! sender-ch-uid msg))))})
+                     :eval (handle-eval sender-ch msg)
+                     :swap! (handle-swap! sender-ch msg))))})
 
 #_(do
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
