@@ -143,17 +143,17 @@
 (defn unwatch-websocket-clients [watched-atom]
   (remove-watch watched-atom :connected-uids))
 
-(defn msg->ns [{:keys [scope] :as _message}]
+(defn msg->ns [{:keys [scope] :as message}]
   (cond
-    (= scope (some-> @!doc :ns v/datafy-scope))
-    (:ns @!doc)
-
     scope
     (create-ns scope)
 
+    (:ns @!doc)
+    (:ns @!doc)
+
     :else
     (do
-      (println (str "No namespace scope found, falling back to `'user` ns"))
+      (println (str "No namespace scope found, falling back to `'user` ns: " message))
       (create-ns 'user))))
 
 (defn handle-eval [sender-ch-uid msg]
