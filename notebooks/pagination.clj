@@ -73,3 +73,11 @@
 (clerk/html [:div
              [:h3 "Nesting Images inside " [:span.font-mono "clerk/html"]]
              (clerk/image "trees.png")])
+
+(clerk/html [:div
+             [:h3 "Nesting paginated collections inside " [:span.font-mono "clerk/html"]]
+             [:ul
+              [:li "A strong range: "
+               [:p [:strong {:nextjournal/value (range 30)}]]]
+              [:li "A slanted range:"
+               [:p [:em {:nextjournal/value (range 100)}]]]]])

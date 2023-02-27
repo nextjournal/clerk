@@ -4,6 +4,7 @@
             [clojure.datafy :as datafy]
             [clojure.set :as set]
             [clojure.walk :as w]
+            [clojure.zip :as z]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
                       [editscript.edit]
@@ -845,18 +846,37 @@
       (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :nextjournal/budget :path]))
       (update :path (fnil conj []) path-segment)))
 
-(defn transform-html [{:as wrapped-value :keys [path]}]
-  (let [!path-idx (atom -1)]
-    (update wrapped-value
-            :nextjournal/value
-            (fn [hiccup]
-              (if (string? hiccup)
-                [:div {:dangerouslySetInnerHTML {:__html hiccup}}]
-                (w/postwalk (fn [x] (if (wrapped-value? x)
-                                      [(inspect-fn)
-                                       (present (inherit-opts wrapped-value x (swap! !path-idx inc)))]
-                                      x))
-                            hiccup))))))
+;; TODO: fit into the above
+(defn inherit-opts-2 [{:as wrapped-value :nextjournal/keys [viewers]} value path-prefix]
+  (-> (ensure-wrapped-with-viewers viewers value)
+      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :nextjournal/budget :path]))
+      (update :path #(vec (concat path-prefix %)))))
+
+(defn vec-loc->path [loc]
+  (loop [z loc path ()]
+    (if (= (z/root z) (z/node z))
+      (vec path)
+      (recur (z/up z) (conj path (count (z/lefts z)))))))
+
+(defn find-and-replace-nested-wrapped-values [hiccup-vec wrapped-value]
+  (loop [z (z/vector-zip hiccup-vec)]
+    (cond
+      (z/end? z) (z/root z)
+      (wrapped-value? (z/node z))
+      (recur (z/next
+              (z/next
+               (z/next
+                (z/edit z (fn [x] [(inspect-fn) (present (inherit-opts-2 wrapped-value x
+                                                                         (conj (vec-loc->path z) 1)))]))))))
+      :else (recur (z/next z)))))
+
+(defn transform-html [wrapped-value]
+  (update wrapped-value
+          :nextjournal/value
+          (fn [hiccup]
+            (if (string? hiccup)
+              [:div {:dangerouslySetInnerHTML {:__html hiccup}}]
+              (find-and-replace-nested-wrapped-values hiccup wrapped-value)))))
 
 (def html-viewer
   {:name `html-viewer
@@ -1279,7 +1299,7 @@
 #_(process-viewer {:render-fn '#(vector :h1) :transform-fn mark-presented})
 
 (def processed-keys
-  (into [:path :offset :n :nextjournal/content-type :nextjournal/value]
+  (into [:path :offset :n :nextjournal/content-type :nextjournal/value :nextjournal/presented?]
         (-> viewer-opts-normalization vals set (disj :nextjournal/viewers))))
 
 (defn process-wrapped-value [{:as wrapped-value :keys [present-elision-fn path]}]
@@ -1523,9 +1543,12 @@
 (defn path-to-value [path]
   (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
 
-(defn merge-presentations [root more elision]
+(defn merge-presentations [{:as root :nextjournal/keys [presented?]} more elision]
   (update-in root
-             (path-to-value (:path elision))
+             ;; TODO: clarify: when presented? we assume the elision has a 'raw path' (maybe restrict to html-viewer case only)
+             (if (and (seq (:path elision)) presented?)
+               (cons :nextjournal/value (conj (:path elision) :nextjournal/value))
+               (path-to-value (:path elision)))
              (fn [value]
                (let [{:keys [offset path]} (-> value peek :nextjournal/value)
                      path-from-value (conj path offset)
