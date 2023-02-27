@@ -46,6 +46,11 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
 ;;      (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))}
 ;; ```
 
+;; ## Soft vs. Hard Line Breaks
+;; This one ⇥
+;; ⇤ is a [soft break](https://spec.commonmark.org/0.30/#soft-line-breaks) and is rendered as a space, while this one ⇥\
+;; ⇤ is a [hard break](https://spec.commonmark.org/0.30/#hard-line-breaks) and is rendered as a newline.
+
 ;; ## Sidenotes
 ;;
 ;; One of the most distinctive features of Tufte’s style is his _extensive use

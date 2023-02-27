@@ -690,6 +690,7 @@
    ;; inlines
    {:name :nextjournal.markdown/text :transform-fn (into-markup [:<>])}
    {:name :nextjournal.markdown/softbreak :transform-fn (fn [_] (with-viewer `html-viewer [:<> " "]))}
+   {:name :nextjournal.markdown/hardbreak :transform-fn (fn [_] (with-viewer `html-viewer [:br]))}
 
    ;; formulas
    {:name :nextjournal.markdown/formula
