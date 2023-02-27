@@ -121,28 +121,6 @@
 
 #_(pr-str (read-msg "#viewer-eval (resolve 'clojure.core/inc)"))
 
-(defn watch-websocket-clients
-  "Sync external websocket client state into the clients that clerk tracks.
-
-  Allows these external clients to get clerk related websocket messages and broadcasts"
-  ([watched-atom send-fn] (watch-websocket-clients watched-atom send-fn identity))
-  ([watched-atom send-fn state-transform]
-   (add-watch watched-atom :connected-uids
-              (fn [_var-name _atom old-state new-state]
-                (let [new-state (state-transform new-state)
-                      old-state (state-transform old-state)]
-                (swap! !client-uid->send-fn
-                       (fn [clients] (merge
-                                       (apply dissoc
-                                              clients
-                                              (set/difference old-state new-state))
-                                       (into {}
-                                             (map (fn [uid] [uid send-fn]))
-                                             (set/difference new-state old-state))))))))))
-
-(defn unwatch-websocket-clients [watched-atom]
-  (remove-watch watched-atom :connected-uids))
-
 (defn msg->ns [{:keys [scope] :as message}]
   (cond
     scope
