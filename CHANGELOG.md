@@ -7,7 +7,189 @@ Changes can be:
 
 ## Unreleased
 
-...
+* 🌟 Make `build-graph` recur until all transitive deps are analyzed (#381)
+
+    Until now Clerk did not analyze the full transitive dependency graph which could lead to Clerk not detecting a change properly. Analysis is now recursive which means it's taking a bit longer initially. We cache analysis results per file in memory so subsequent analysis should be fast. We will follow up with visualizing the progress of analysis & execution.
+
+    Also discovered cases where classes instead of symbols could end up in the dependency graph and introduced normalization to symbols.
+
+    This also gets rid of the `->hash must be ifn?` warning which fixes #375.
+
+* 🔌 Offline suport: Serve viewer.js from storage.clerk.garden (#415)
+
+    Serve viewer.js from clerk CAS on storage.clerk.garden instead of google bucket.
+
+    * Fixes #377: adds support for serving the source map for Clerk's
+      cljs bundle
+    * Fixes #387: avoids a http request on boot which would lead to a
+failure when offline
+    * Fixes #408: Serve js from CDN
+
+
+* 💫 Add `clerk/resolve-aliases` and make alias resolution explicit (#410)
+
+    This makes the alias resolution explicit via a new `clerk/resolve-aliases` function. The recommendation is now to use the full namespace in `:render-fn`s
+or make the conversion explicit using `clerk/resolve-aliases`. **This is a breaking change.**
+
+    I've also removed the automatic resolution from `->viewer-fn/eval` because it would depend on the evaluation context (a notebook that defines a viewer using aliases would render correctly but things could break if that viewer is being reused from another namespace that doesn't define the same aliases).
+
+    Lastly we've dropped the previously defined aliases:
+    ```clojure
+    {'j 'applied-science.js-interop
+     'reagent 'reagent.core
+     'v 'nextjournal.clerk.viewer
+     'p 'nextjournal.clerk.parser}
+    ```
+
+* 💫 Simplify modifying viewers (#412)
+
+    By exposing the two-arity version of `reset-viewers!` in the clerk
+namespace. Also support symbols representing namespaces as the scope.
+
+* ✍️ Support Sidenotes (#392)
+
+    Using the [pandoc footnotes extension](https://pandoc.org/MANUAL.html#footnotes)
+
+    Makes Clerk leverage the improved Sidenotes/Footnotes support from nextjournal/markdown#11.
+
+* 💫 Refactor viewer names to symbols matching vars (#409)
+
+    This changes the viewer names to be namespaced symbols matching the var names instead of plain keywords. This still allows to use them plainly without a dependency on Clerk using the metadata notation but enables jump to definition from your editor.
+
+* 🌄 `image` and `caption` helpers (#337)
+
+    * `clerk/image` as convenience function to create a buffered image from a string or anything `javax.imageio.ImageIO/read` takes (URL, File, InputStream).
+    * `clerk/caption` to render `text` as caption below any arbitrary `content`
+
+
+* 🪡 Sticky Table Headers (#305)
+
+    * Keep table headers in view when scrolling
+    * Keep elision buttons in view when scrolling
+    * Add `vh-sticky-table-header` to deps.cljs
+
+* 🛠 Simplify elision handling with continuation (#421)
+
+    Until now `present*` took a `:path` and `:current-path` argument
+    would have a code path to descend into the nested data structure
+    when resolving an elision. This drops this code path and uses a
+    continuation function for a path instead.
+
+
+* 🔪 Hide Clerk-specific metadata from code blocks (#324)
+
+    This removes the Clerk-specific metadata annotation like
+    `^{:nextjournal.clerk/viewer ,,,}` from the code displayed in code
+    cells in order to not distract from the essence. Metadata not
+    coming from Clerk is left intact.
+
+* 💫 Add dynamic `js/import` for JavaScript Modules (#304)
+
+    * Extend js global namespace with dynamic `js/import`
+    * Add convenience react hook wrappers
+
+
+* ⭐️ Countless improvements and bug fixes
+
+    * 💫 Support markdown hard line breaks
+    * 💫 Use block ids as filenames in snapshots script
+    * 💫 Use ids to assign react keys and factor out `nextjournal.clerk.render/render-processed-block`
+    * 💫 Add clerk experimental ns with slider & text input
+    * 💫 Add `read-js-literal`, closes #249
+    * 💫 Speed up analysis using `loc->sym` cache
+    * 💫 Set sci ns to mirror JVM ns (#401), closes #362
+    * 💫 Expose navbar to sci env, closes #312
+    * 💫 Remove keyword from viewer meta api, use symbol instead
+    * 💫 Augment `eval+cache!` exception with form + location info (#394)
+    * 💫 Switch to :quick algorithm for editscript diff
+    * 💫 Tools analyzer workaround, fixes issue with class redefinition + instance? checks (#386)
+    * 💫 Switch to [plotly.react](https://plotly.com/javascript/plotlyjs-function-reference/#plotlyreact) for better update performance
+    * 💫 Expose end-line / end-column of code cells when parsing
+    * 💫 Watch sync atoms and `recompute!` when they're changed (#354)
+    * 💫 Make clerk sync work with plain cljs using `add-watch`, fixes nextjournal/clerk-cljs-demo#1
+    * 💫 Improve performance of `analyzer/exceeds-bounded-count-limit?`
+    * 💫 Don't mutate global `resource->url` atom in `build!` (#333)
+    * 💫 Add deps.cljs to ease custom cljs builds (#326)
+    * 💫 Respond to `v/clerk-eval` with promise (#322)
+    * 💫 Support infinite sequences in table viewer (#378)
+    * 🐜 Adjust `/js/viewer.js` url for relative urls fixing issues with custom `viewer.js` in non-index notebooks. (#346)
+    * 🐜 Fix `cacheable-value?` check for lazy infinite sequences (#356), fixes #325
+    * 🐞 Fix code listings in result viewer and add example, fixes #366
+    * 🐞 fixes `"` around blockquotes.
+    * 🐞 Drop default parsing of hashtags and internal links, fixes #383
+    * 🐞 Fix closing parens inside table cells, fixes #390
+    * 🐞 Escape closing script tag in markup, fixes #391
+    * 🐞 Don't send websocket message in static build, fixes #340 & fixes #363
+    * 🐞 Unify code and code listing appearance, closes #366, closes #376
+    * 🐞 Fix `example` macro (#407)
+    * 🐞 Make webserver host configurable and default to localhost, fixes #369
+    * 🐞 Deduplicate index in `build!` when using glob paths, fixes #405
+    * 🐞 Fix html with odd length lists (#398), fixes #395
+    * 🐞 Server-Side-Rendering Improvements (#396)
+    * 🐞 Downgrade framer-motion version used in deps.cljs, fixes #374
+    * 🐞 Fix viewer nesting (e.g. table inside html) (#352)
+    * 🐞 Fix hashing when used as a git dep (#350), Closes #349.
+    * 🐞 Fix NPE in `builder/build-static-app!` when there's nothing to build, closes #339
+    * 🐞 Prevent initial flashing of "Projects" when ToC is present, closes #269
+    * 🐞 Fix number viewer for big ints and ratios, fixes #335
+    * 🐞 Swap out unicode ellipsis for ... (#327)
+    * 🐞 Drop code blocks with reader conditionals without clj branch, fixes #332
+    * 🐞 Fix deprecation warning for hide-result
+    * 🐞 Fix js-interop destructuring in SCI context (#368)
+    * 🛠 Augment exception when read fails (#334)
+    * 🛠 Enable working with local css files in dev
+    * 🛠 Don't litter log with unactionable unhashed deps warning
+    * 🛠 Throw when webserver can't be started
+
+
+* 🛠 Drop viewers dependency, inlining used code (#348)
+
+    This drops the dependency on https://github.com/nextjournal/viewers and inlines the relevant code in Clerk.
+
+* 🐜 Fix uberjar usage (#358), closes #351.
+
+    Fixes an error when Clerk is part of an uberjar because the `render.hashing` assumed it was being consumed as a git dep.
+
+    When packaging Clerk as an uberjar, you need the following `build.clj` task as part of your build:
+
+    ```clojure
+    (defn package-clerk-asset-map [{:as opts :keys [target-dir]}]
+      (when-not target-dir
+        (throw (ex-info "target dir must be set" {:opts opts})))
+      (let [asset-map (slurp (nextjournal.clerk.render.hashing/get-lookup-url))]
+        (spit (str target-dir java.io.File/separator "clerk-asset-map.edn") asset-map)))
+    ```
+
+* 💫 Deduplicate heading ids to improve linking (#336)
+
+    * Fixes #330: Markdown headings don't have unique IDs
+    * Fixes #343: Does not scroll to relevant section when using anchor link
+
+    Also extract emojis into separate attribute during markdown parsing.
+
+
+* 🛠 Enable linting with clj-kondo in CI
+
+* 🛠 Drop viewer-js-hash from repo, compute it at runtime (#347)
+
+    This drops the viewer-hash-js from the git repo, it was annoying
+    as it always lead to conflicts. Instead we calculate the hash on
+    startup in Clerk dev and when Clerk is used as a git dep. This
+    step is skipped in the jar.
+
+    When building a jar we now expect to see a `Skipping coordinate` warning.
+
+    Also note that you might need to run `bb
+    build+upload-viewer-resources` before the jar build.
+    
+* 🛠 Upgrade dependencies
+
+    * Bump edamame dep
+    * Bump sci to v0.6.37
+    * Bump beholder dep, closes #397
+
+
+
 
 ## 0.12.707 (2022-12-06)
 
@@ -147,11 +329,11 @@ Changes can be:
     * Namespaces: `(nextjournal.clerk/show! (find-ns 'nextjournal.clerk.tap))`
     * URLs as strings or `java.net.URLs`: `(show! "https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj")`
     * In memory string readers: `(show! (java.io.StringReader. ";; # String Notebook 👋\n(+ 41 1)"))`, fixes #168
-    * Everything that `clojure.core/slurp` supports
+* Everything that `clojure.core/slurp` supports
 
 * ⭐️ Support `babashka.cli` for `nextjournal.clerk/serve!` and
-  `nextjournal.clerk/build!` via metadata annoatations. To use it add
-  `org.babashka/cli {:mvn/version "0.5.40"}` or newer to your `:deps`
+`nextjournal.clerk/build!` via metadata annoatations. To use it add
+`org.babashka/cli {:mvn/version "0.5.40"}` or newer to your `:deps`
   and set `:main-opts ["-m" "babashka.cli.exec"]`.
   
 * 💫 Support providing embed options to vega `vl` viewer, can be passed via
