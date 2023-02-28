@@ -12,7 +12,8 @@
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.clerk.webserver :as webserver]
-            [nextjournal.clerk.config :as config]))
+            [nextjournal.clerk.config :as config])
+  (:import (java.net URI)))
 
 (def clerk-docs
   (into ["CHANGELOG.md"
@@ -244,10 +245,9 @@
      :index-html index-html
      :build-href (if (and @webserver/!server (= out-path default-out-path)) "/build" index-html)}))
 
-
 (defn compile-css!
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
-  [{:as opts :keys [resource->url]} docs]
+  [{:as opts :keys [out-path resource->url]} docs]
   (let [tw-folder (fs/create-dirs "tw")
         tw-input (str tw-folder "/input.css")
         tw-config (str tw-folder "/tailwind.config.cjs")
@@ -257,7 +257,10 @@
     ;; NOTE: a .cjs extension is safer in case the current npm project is of type module (like Clerk's): in this case all .js files
     ;; are treated as ES modules and this is not the case of our tw config.
     (spit tw-input (slurp (io/resource "stylesheets/viewer.css")))
-    (spit tw-viewer (slurp (get resource->url "/js/viewer.js")))
+    (spit tw-viewer (slurp (let [uri (get resource->url "/js/viewer.js")]
+                             (if (.getScheme (URI. uri))
+                               uri
+                               (fs/file out-path (cond-> uri (str/starts-with? uri "/") (subs 1)))))))
     (doseq [{:keys [file viewer]} docs]
       (spit (let [path (fs/path tw-folder (str/replace file #"\.(cljc?|md)$" ".edn"))]
               (fs/create-dirs (fs/parent path))
@@ -348,11 +351,12 @@
 #_(build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
 #_ (reset! config/!resource->url @config/!asset-map)
 #_(swap! config/!resource->url dissoc "/css/viewer.css")
-#_(build-static-app! {:ssr? true
-                      :compile-css? true
-                      ;; test against cljs release `bb build:js`
-                      :resource->url {"/js/viewer.js" "./build/viewer.js"}
+
+#_(sh "clojure -M:sci:demo:dev release viewer --config-merge '{:output-dir \"public/build\"}'")
+#_(build-static-app! {:compile-css? true
+                      :resource->url {"/js/viewer.js" "/viewer.js"}
                       :index "notebooks/rule_30.clj"})
+
 #_(fs/delete-tree "public/build")
 #_(build-static-app! {:compile-css? true
                       :index "notebooks/rule_30.clj"
