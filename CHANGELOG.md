@@ -156,7 +156,7 @@ namespace. Also support symbols representing namespaces as the scope.
     (defn package-clerk-asset-map [{:as opts :keys [target-dir]}]
       (when-not target-dir
         (throw (ex-info "target dir must be set" {:opts opts})))
-      (let [asset-map (slurp (nextjournal.clerk.render.hashing/get-lookup-url))]
+      (let [asset-map @nextjournal.clerk.config/!asset-map]
         (spit (str target-dir java.io.File/separator "clerk-asset-map.edn") asset-map)))
     ```
 
