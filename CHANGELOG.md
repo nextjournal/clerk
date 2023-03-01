@@ -31,14 +31,14 @@ failure when offline
     This makes the alias resolution explicit via a new `clerk/resolve-aliases` function. The recommendation is now to use the full namespace in `:render-fn`s
 or make the conversion explicit using `clerk/resolve-aliases`. **This is a breaking change.**
 
-    I've also removed the automatic resolution from `->viewer-fn/eval` because it would depend on the evaluation context (a notebook that defines a viewer using aliases would render correctly but things could break if that viewer is being reused from another namespace that doesn't define the same aliases).
+    We've also removed the automatic resolution from `->viewer-fn/eval` because it would depend on the evaluation context (a notebook that defines a viewer using aliases would render correctly but things could break if that viewer is being reused from another namespace that doesn't define the same aliases).
 
-    Lastly we've dropped the previously defined aliases:
+    These were the previously defined aliases which you must now change to these fully qualified symbols:
     ```clojure
     {'j 'applied-science.js-interop
      'reagent 'reagent.core
      'v 'nextjournal.clerk.viewer
-     'r 'nextjournal.clerk.render}
+     'p 'nextjournal.clerk.parser}
     ```
 
 * 💫 Simplify modifying viewers ([#412](https://github.com/nextjournal/clerk/issues/412))
