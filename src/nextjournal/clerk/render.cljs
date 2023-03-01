@@ -139,6 +139,7 @@
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
                !state (r/atom {:toc (toc-items (:children toc))
+                               :visibility toc-visibility
                                :md-toc toc
                                :dark-mode? (localstorage/get-item local-storage-dark-mode-key)
                                :theme {:slide-over "bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900"}
@@ -160,13 +161,15 @@
                                                             (js/console.warn (str "Clerk render-notebook, invalid selector: "
                                                                                   (.-hash js/location))))))]
                                  (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
-    (let [{:keys [md-toc mobile? open?]} @!state
+    (let [{:keys [md-toc mobile? open? visibility]} @!state
           doc-inset (cond
                       mobile? 0
                       open? navbar-width
                       :else 0)]
       (when-not (= md-toc toc)
-        (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc :open? (not= :collapsed toc-visibility)))
+        (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc :open? open?))
+      (when-not (= visibility toc-visibility)
+        (swap! !state assoc :visibility toc-visibility :open? (not= :collapsed toc-visibility)))
       [:div.flex
        {:ref root-ref-fn}
        [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
