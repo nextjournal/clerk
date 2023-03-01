@@ -91,7 +91,7 @@ namespace. Also support symbols representing namespaces as the scope.
 
 * ⭐️ Countless improvements and bug fixes
 
-    * 💫 Expose `cljs.math` to sci env
+    * 💫 Expose `clojure.math` to sci env
     * 💫 Support markdown hard line breaks
     * 💫 Use block ids as filenames in snapshots script
     * 💫 Use ids to assign react keys and factor out `nextjournal.clerk.render/render-processed-block`

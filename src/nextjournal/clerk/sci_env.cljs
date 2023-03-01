@@ -116,6 +116,7 @@
              'reagent 'reagent.core
              'v 'nextjournal.clerk.viewer
              'p 'nextjournal.clerk.parser}
+   :ns-aliases '{clojure.math cljs.math}
    :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
                        'clojure.core {'read-string read-string
                                       'implements? (sci/copy-var implements?* core-ns)}}
