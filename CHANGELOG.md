@@ -137,6 +137,7 @@ namespace. Also support symbols representing namespaces as the scope.
     * 🐞 Drop code blocks with reader conditionals without clj branch, fixes [#332](https://github.com/nextjournal/clerk/issues/332)
     * 🐞 Fix deprecation warning for hide-result
     * 🐞 Fix js-interop destructuring in SCI context ([#368](https://github.com/nextjournal/clerk/issues/368))
+    * 🐞 Fix TOC expanding when changing a heading, fixes [#422](https://github.com/nextjournal/clerk/issues/422)
     * 🛠 Augment exception when read fails ([#334](https://github.com/nextjournal/clerk/issues/334))
     * 🛠 Enable working with local css files in dev
     * 🛠 Don't litter log with unactionable unhashed deps warning
