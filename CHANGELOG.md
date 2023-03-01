@@ -7,26 +7,26 @@ Changes can be:
 
 ## Unreleased
 
-* 🌟 Make `build-graph` recur until all transitive deps are analyzed (#381)
+* 🌟 Make `build-graph` recur until all transitive deps are analyzed ([#381](https://github.com/nextjournal/clerk/issues/381))
 
     Until now Clerk did not analyze the full transitive dependency graph which could lead to Clerk not detecting a change properly. Analysis is now recursive which means it's taking a bit longer initially. We cache analysis results per file in memory so subsequent analysis should be fast. We will follow up with visualizing the progress of analysis & execution.
 
     Also discovered cases where classes instead of symbols could end up in the dependency graph and introduced normalization to symbols.
 
-    This also gets rid of the `->hash must be ifn?` warning which fixes #375.
+    This also gets rid of the `->hash must be ifn?` warning which fixes [#375](https://github.com/nextjournal/clerk/issues/375).
 
-* 🔌 Offline suport: Serve viewer.js from storage.clerk.garden (#415)
+* 🔌 Offline suport: Serve viewer.js from storage.clerk.garden ([#415](https://github.com/nextjournal/clerk/issues/415))
 
     Serve viewer.js from clerk CAS on storage.clerk.garden instead of google bucket.
 
-    * Fixes #377: adds support for serving the source map for Clerk's
+    * Fixes [#377](https://github.com/nextjournal/clerk/issues/377): adds support for serving the source map for Clerk's
       cljs bundle
-    * Fixes #387: avoids a http request on boot which would lead to a
+    * Fixes [#387](https://github.com/nextjournal/clerk/issues/387): avoids a http request on boot which would lead to a
 failure when offline
-    * Fixes #408: Serve js from CDN
+    * Fixes [#408](https://github.com/nextjournal/clerk/issues/408): Serve js from CDN
 
 
-* 💫 Add `clerk/resolve-aliases` and make alias resolution explicit (#410)
+* 💫 Add `clerk/resolve-aliases` and make alias resolution explicit ([#410](https://github.com/nextjournal/clerk/issues/410))
 
     This makes the alias resolution explicit via a new `clerk/resolve-aliases` function. The recommendation is now to use the full namespace in `:render-fn`s
 or make the conversion explicit using `clerk/resolve-aliases`. **This is a breaking change.**
@@ -41,34 +41,34 @@ or make the conversion explicit using `clerk/resolve-aliases`. **This is a break
      'p 'nextjournal.clerk.parser}
     ```
 
-* 💫 Simplify modifying viewers (#412)
+* 💫 Simplify modifying viewers ([#412](https://github.com/nextjournal/clerk/issues/412))
 
     By exposing the two-arity version of `reset-viewers!` in the clerk
 namespace. Also support symbols representing namespaces as the scope.
 
-* ✍️ Support Sidenotes (#392)
+* ✍️ Support Sidenotes ([#392](https://github.com/nextjournal/clerk/issues/392))
 
     Using the [pandoc footnotes extension](https://pandoc.org/MANUAL.html#footnotes)
 
-    Makes Clerk leverage the improved Sidenotes/Footnotes support from nextjournal/markdown#11.
+    Makes Clerk leverage the improved Sidenotes/Footnotes support from nextjournal/markdown[#11](https://github.com/nextjournal/clerk/issues/11).
 
-* 💫 Refactor viewer names to symbols matching vars (#409)
+* 💫 Refactor viewer names to symbols matching vars ([#409](https://github.com/nextjournal/clerk/issues/409))
 
     This changes the viewer names to be namespaced symbols matching the var names instead of plain keywords. This still allows to use them plainly without a dependency on Clerk using the metadata notation but enables jump to definition from your editor.
 
-* 🌄 `image` and `caption` helpers (#337)
+* 🌄 `image` and `caption` helpers ([#337](https://github.com/nextjournal/clerk/issues/337))
 
     * `clerk/image` as convenience function to create a buffered image from a string or anything `javax.imageio.ImageIO/read` takes (URL, File, InputStream).
     * `clerk/caption` to render `text` as caption below any arbitrary `content`
 
 
-* 🪡 Sticky Table Headers (#305)
+* 🪡 Sticky Table Headers ([#305](https://github.com/nextjournal/clerk/issues/305))
 
     * Keep table headers in view when scrolling
     * Keep elision buttons in view when scrolling
     * Add `vh-sticky-table-header` to deps.cljs
 
-* 🛠 Simplify elision handling with continuation (#421)
+* 🛠 Simplify elision handling with continuation ([#421](https://github.com/nextjournal/clerk/issues/421))
 
     Until now `present*` took a `:path` and `:current-path` argument
     would have a code path to descend into the nested data structure
@@ -76,14 +76,14 @@ namespace. Also support symbols representing namespaces as the scope.
     continuation function for a path instead.
 
 
-* 🔪 Hide Clerk-specific metadata from code blocks (#324)
+* 🔪 Hide Clerk-specific metadata from code blocks ([#324](https://github.com/nextjournal/clerk/issues/324))
 
     This removes the Clerk-specific metadata annotation like
     `^{:nextjournal.clerk/viewer ,,,}` from the code displayed in code
     cells in order to not distract from the essence. Metadata not
     coming from Clerk is left intact.
 
-* 💫 Add dynamic `js/import` for JavaScript Modules (#304)
+* 💫 Add dynamic `js/import` for JavaScript Modules ([#304](https://github.com/nextjournal/clerk/issues/304))
 
     * Extend js global namespace with dynamic `js/import`
     * Add convenience react hook wrappers
@@ -95,58 +95,58 @@ namespace. Also support symbols representing namespaces as the scope.
     * 💫 Use block ids as filenames in snapshots script
     * 💫 Use ids to assign react keys and factor out `nextjournal.clerk.render/render-processed-block`
     * 💫 Add clerk experimental ns with slider & text input
-    * 💫 Add `read-js-literal`, closes #249
+    * 💫 Add `read-js-literal`, closes [#249](https://github.com/nextjournal/clerk/issues/249)
     * 💫 Speed up analysis using `loc->sym` cache
-    * 💫 Set sci ns to mirror JVM ns (#401), closes #362
-    * 💫 Expose navbar to sci env, closes #312
+    * 💫 Set sci ns to mirror JVM ns ([#401](https://github.com/nextjournal/clerk/issues/401)), closes [#362](https://github.com/nextjournal/clerk/issues/362)
+    * 💫 Expose navbar to sci env, closes [#312](https://github.com/nextjournal/clerk/issues/312)
     * 💫 Remove keyword from viewer meta api, use symbol instead
-    * 💫 Augment `eval+cache!` exception with form + location info (#394)
+    * 💫 Augment `eval+cache!` exception with form + location info ([#394](https://github.com/nextjournal/clerk/issues/394))
     * 💫 Switch to :quick algorithm for editscript diff
-    * 💫 Tools analyzer workaround, fixes issue with class redefinition + instance? checks (#386)
+    * 💫 Tools analyzer workaround, fixes issue with class redefinition + instance? checks ([#386](https://github.com/nextjournal/clerk/issues/386))
     * 💫 Switch to [plotly.react](https://plotly.com/javascript/plotlyjs-function-reference/#plotlyreact) for better update performance
     * 💫 Expose end-line / end-column of code cells when parsing
-    * 💫 Watch sync atoms and `recompute!` when they're changed (#354)
-    * 💫 Make clerk sync work with plain cljs using `add-watch`, fixes nextjournal/clerk-cljs-demo#1
+    * 💫 Watch sync atoms and `recompute!` when they're changed ([#354](https://github.com/nextjournal/clerk/issues/354))
+    * 💫 Make clerk sync work with plain cljs using `add-watch`, fixes nextjournal/clerk-cljs-demo[#1](https://github.com/nextjournal/clerk/issues/1)
     * 💫 Improve performance of `analyzer/exceeds-bounded-count-limit?`
-    * 💫 Don't mutate global `resource->url` atom in `build!` (#333)
-    * 💫 Add deps.cljs to ease custom cljs builds (#326)
-    * 💫 Respond to `v/clerk-eval` with promise (#322)
-    * 💫 Support infinite sequences in table viewer (#378)
-    * 🐜 Adjust `/js/viewer.js` url for relative urls fixing issues with custom `viewer.js` in non-index notebooks. (#346)
-    * 🐜 Fix `cacheable-value?` check for lazy infinite sequences (#356), fixes #325
-    * 🐞 Fix code listings in result viewer and add example, fixes #366
+    * 💫 Don't mutate global `resource->url` atom in `build!` ([#333](https://github.com/nextjournal/clerk/issues/333))
+    * 💫 Add deps.cljs to ease custom cljs builds ([#326](https://github.com/nextjournal/clerk/issues/326))
+    * 💫 Respond to `v/clerk-eval` with promise ([#322](https://github.com/nextjournal/clerk/issues/322))
+    * 💫 Support infinite sequences in table viewer ([#378](https://github.com/nextjournal/clerk/issues/378))
+    * 🐜 Adjust `/js/viewer.js` url for relative urls fixing issues with custom `viewer.js` in non-index notebooks. ([#346](https://github.com/nextjournal/clerk/issues/346))
+    * 🐜 Fix `cacheable-value?` check for lazy infinite sequences ([#356](https://github.com/nextjournal/clerk/issues/356)), fixes [#325](https://github.com/nextjournal/clerk/issues/325)
+    * 🐞 Fix code listings in result viewer and add example, fixes [#366](https://github.com/nextjournal/clerk/issues/366)
     * 🐞 fixes `"` around blockquotes.
-    * 🐞 Drop default parsing of hashtags and internal links, fixes #383
-    * 🐞 Fix closing parens inside table cells, fixes #390
-    * 🐞 Escape closing script tag in markup, fixes #391
-    * 🐞 Don't send websocket message in static build, fixes #340 & fixes #363
-    * 🐞 Unify code and code listing appearance, closes #366, closes #376
-    * 🐞 Fix `example` macro (#407)
-    * 🐞 Make webserver host configurable and default to localhost, fixes #369
-    * 🐞 Deduplicate index in `build!` when using glob paths, fixes #405
-    * 🐞 Fix html with odd length lists (#398), fixes #395
-    * 🐞 Server-Side-Rendering Improvements (#396)
-    * 🐞 Downgrade framer-motion version used in deps.cljs, fixes #374
-    * 🐞 Fix viewer nesting (e.g. table inside html) (#352)
-    * 🐞 Fix hashing when used as a git dep (#350), Closes #349.
-    * 🐞 Fix NPE in `builder/build-static-app!` when there's nothing to build, closes #339
-    * 🐞 Prevent initial flashing of "Projects" when ToC is present, closes #269
-    * 🐞 Fix number viewer for big ints and ratios, fixes #335
-    * 🐞 Swap out unicode ellipsis for ... (#327)
-    * 🐞 Drop code blocks with reader conditionals without clj branch, fixes #332
+    * 🐞 Drop default parsing of hashtags and internal links, fixes [#383](https://github.com/nextjournal/clerk/issues/383)
+    * 🐞 Fix closing parens inside table cells, fixes [#390](https://github.com/nextjournal/clerk/issues/390)
+    * 🐞 Escape closing script tag in markup, fixes [#391](https://github.com/nextjournal/clerk/issues/391)
+    * 🐞 Don't send websocket message in static build, fixes [#340](https://github.com/nextjournal/clerk/issues/340) & fixes [#363](https://github.com/nextjournal/clerk/issues/363)
+    * 🐞 Unify code and code listing appearance, closes [#366](https://github.com/nextjournal/clerk/issues/366), closes [#376](https://github.com/nextjournal/clerk/issues/376)
+    * 🐞 Fix `example` macro ([#407](https://github.com/nextjournal/clerk/issues/407))
+    * 🐞 Make webserver host configurable and default to localhost, fixes [#369](https://github.com/nextjournal/clerk/issues/369)
+    * 🐞 Deduplicate index in `build!` when using glob paths, fixes [#405](https://github.com/nextjournal/clerk/issues/405)
+    * 🐞 Fix html with odd length lists ([#398](https://github.com/nextjournal/clerk/issues/398)), fixes [#395](https://github.com/nextjournal/clerk/issues/395)
+    * 🐞 Server-Side-Rendering Improvements ([#396](https://github.com/nextjournal/clerk/issues/396))
+    * 🐞 Downgrade framer-motion version used in deps.cljs, fixes [#374](https://github.com/nextjournal/clerk/issues/374)
+    * 🐞 Fix viewer nesting (e.g. table inside html) ([#352](https://github.com/nextjournal/clerk/issues/352))
+    * 🐞 Fix hashing when used as a git dep ([#350](https://github.com/nextjournal/clerk/issues/350)), Closes [#349](https://github.com/nextjournal/clerk/issues/349).
+    * 🐞 Fix NPE in `builder/build-static-app!` when there's nothing to build, closes [#339](https://github.com/nextjournal/clerk/issues/339)
+    * 🐞 Prevent initial flashing of "Projects" when ToC is present, closes [#269](https://github.com/nextjournal/clerk/issues/269)
+    * 🐞 Fix number viewer for big ints and ratios, fixes [#335](https://github.com/nextjournal/clerk/issues/335)
+    * 🐞 Swap out unicode ellipsis for ... ([#327](https://github.com/nextjournal/clerk/issues/327))
+    * 🐞 Drop code blocks with reader conditionals without clj branch, fixes [#332](https://github.com/nextjournal/clerk/issues/332)
     * 🐞 Fix deprecation warning for hide-result
-    * 🐞 Fix js-interop destructuring in SCI context (#368)
-    * 🛠 Augment exception when read fails (#334)
+    * 🐞 Fix js-interop destructuring in SCI context ([#368](https://github.com/nextjournal/clerk/issues/368))
+    * 🛠 Augment exception when read fails ([#334](https://github.com/nextjournal/clerk/issues/334))
     * 🛠 Enable working with local css files in dev
     * 🛠 Don't litter log with unactionable unhashed deps warning
     * 🛠 Throw when webserver can't be started
 
 
-* 🛠 Drop viewers dependency, inlining used code (#348)
+* 🛠 Drop viewers dependency, inlining used code ([#348](https://github.com/nextjournal/clerk/issues/348))
 
     This drops the dependency on https://github.com/nextjournal/viewers and inlines the relevant code in Clerk.
 
-* 🐜 Fix uberjar usage (#358), closes #351.
+* 🐜 Fix uberjar usage ([#358](https://github.com/nextjournal/clerk/issues/358)), closes [#351](https://github.com/nextjournal/clerk/issues/351).
 
     Fixes an error when Clerk is part of an uberjar because the `render.hashing` assumed it was being consumed as a git dep.
 
@@ -160,17 +160,17 @@ namespace. Also support symbols representing namespaces as the scope.
         (spit (str target-dir java.io.File/separator "clerk-asset-map.edn") asset-map)))
     ```
 
-* 💫 Deduplicate heading ids to improve linking (#336)
+* 💫 Deduplicate heading ids to improve linking ([#336](https://github.com/nextjournal/clerk/issues/336))
 
-    * Fixes #330: Markdown headings don't have unique IDs
-    * Fixes #343: Does not scroll to relevant section when using anchor link
+    * Fixes [#330](https://github.com/nextjournal/clerk/issues/330): Markdown headings don't have unique IDs
+    * Fixes [#343](https://github.com/nextjournal/clerk/issues/343): Does not scroll to relevant section when using anchor link
 
     Also extract emojis into separate attribute during markdown parsing.
 
 
 * 🛠 Enable linting with clj-kondo in CI
 
-* 🛠 Drop viewer-js-hash from repo, compute it at runtime (#347)
+* 🛠 Drop viewer-js-hash from repo, compute it at runtime ([#347](https://github.com/nextjournal/clerk/issues/347))
 
     This drops the viewer-hash-js from the git repo, it was annoying
     as it always lead to conflicts. Instead we calculate the hash on
@@ -186,7 +186,7 @@ namespace. Also support symbols representing namespaces as the scope.
 
     * Bump edamame dep
     * Bump sci to v0.6.37
-    * Bump beholder dep, closes #397
+    * Bump beholder dep, closes [#397](https://github.com/nextjournal/clerk/issues/397)
 
 
 
@@ -194,16 +194,16 @@ namespace. Also support symbols representing namespaces as the scope.
 ## 0.12.707 (2022-12-06)
 
 * 🐜 Make edn transmission not fail on bad keywords and symbols, fixes
-  #116
-* 🐜 Fix silent failure when analyzing invalid def, fixes #307
+  [#116](https://github.com/nextjournal/clerk/issues/116)
+* 🐜 Fix silent failure when analyzing invalid def, fixes [#307](https://github.com/nextjournal/clerk/issues/307)
 * 🐞 Fixes an issue with codemirror syntax highlighting which
   prevented multi-line strings to be displayed correctly
 * 🐞 Preserve whitespace in string viewer
-* 🐞 Fix parens placement when expanded string viewer is embedded in coll (#320)
+* 🐞 Fix parens placement when expanded string viewer is embedded in coll ([#320](https://github.com/nextjournal/clerk/issues/320))
 
 ## 0.12.699 (2022-12-02)
 
-* 🌟 Clerk sync for vars holding atoms (#253, #268)
+* 🌟 Clerk sync for vars holding atoms ([#253](https://github.com/nextjournal/clerk/issues/253), [#268](https://github.com/nextjournal/clerk/issues/268))
 
     Introduce `^:nextjournal.clerk/sync` metadata annotation for vars
     holding atoms to enable automatically syncing state between JVM
@@ -223,25 +223,25 @@ namespace. Also support symbols representing namespaces as the scope.
      `nextjournal.clerk.viewer` to make it obvious where they are
      coming from. Also refactor `nextjournal.clerk.sci-viewer` to
      `nextjournal.clerk.sci-env`.
-    * Support alias resolution for `:render-fn`s (#276)
+    * Support alias resolution for `:render-fn`s ([#276](https://github.com/nextjournal/clerk/issues/276))
     * Upgrade to React 18.2 and introduce
       `nextjournal.clerk.render.hooks` as a thin cljs wrapper around
       [React hooks](https://reactjs.org/docs/hooks-intro.html) also
-      useable from the sci env. (#237, #242)
+      useable from the sci env. ([#237](https://github.com/nextjournal/clerk/issues/237), [#242](https://github.com/nextjournal/clerk/issues/242))
     * Introduce `nextjournal.clerk.render.code` ns with support for
-      read-only and editable code cells (#285)
+      read-only and editable code cells ([#285](https://github.com/nextjournal/clerk/issues/285))
     * Improve error handling with `ErrorBoundary` rewrite using
-      `shadow.cljs.modern/defclass` (#255)
+      `shadow.cljs.modern/defclass` ([#255](https://github.com/nextjournal/clerk/issues/255))
     * Fix page jump between updates for Vega and Plotly viewer and
       improve error display. This is implemented using React
-      Hooks. (#231)
+      Hooks. ([#231](https://github.com/nextjournal/clerk/issues/231))
     * Support callback for vega viewer to access the vega-embed object
-      (#279)
-    * Move sci env `deps.edn` to separate deps root (#278). This allows
+      ([#279](https://github.com/nextjournal/clerk/issues/279))
+    * Move sci env `deps.edn` to separate deps root ([#278](https://github.com/nextjournal/clerk/issues/278)). This allows
       folks to take over the cljs build of clerk in order to support
       additional namespaces.
 
-* 💫 Show shape of data using auto-expansion of results (opt-in for now) (#258)
+* 💫 Show shape of data using auto-expansion of results (opt-in for now) ([#258](https://github.com/nextjournal/clerk/issues/258))
 
     This allows letting Clerk auto expand data results via the
     `:nextjournal.clerk/auto-expand-results? true` setting in the
@@ -252,11 +252,11 @@ namespace. Also support symbols representing namespaces as the scope.
 
     * Allow to set Open Graph Metadata for notebooks using
       `:nextjournal.clerk/open-graph` map in ns metadata with `:url`,
-      `:title`, `:description` and `:image` keys (#243)
-    * Support `:ssr` setting for server-side rendering in static builds (#254, #275)
-    * Support `:compile-css` attribute to compile step with Tailwind (#246)
+      `:title`, `:description` and `:image` keys ([#243](https://github.com/nextjournal/clerk/issues/243))
+    * Support `:ssr` setting for server-side rendering in static builds ([#254](https://github.com/nextjournal/clerk/issues/254), [#275](https://github.com/nextjournal/clerk/issues/275))
+    * Support `:compile-css` attribute to compile step with Tailwind ([#246](https://github.com/nextjournal/clerk/issues/246))
 
-* 🌟 Support Viewer CSS class customizations (#294)
+* 🌟 Support Viewer CSS class customizations ([#294](https://github.com/nextjournal/clerk/issues/294))
 
     This supports providing custom classes to viewers and the notebook
     viewer which should allow for most use cases and does not require
@@ -281,26 +281,26 @@ namespace. Also support symbols representing namespaces as the scope.
 * 💫 Set #-fragment when clicking on TOC items (works in unbundled
   case)
   
-* 🛠 Use `sci.ctx-store` and bump sci (#282)
+* 🛠 Use `sci.ctx-store` and bump sci ([#282](https://github.com/nextjournal/clerk/issues/282))
 
 * 🐜 Detect interned vars to not consider them as missing, introduce
   setting to opt-out of throwing when missing vars are detected
-  (#301). Fixing #247. 
+  ([#301](https://github.com/nextjournal/clerk/issues/301)). Fixing [#247](https://github.com/nextjournal/clerk/issues/247). 
 
-* 🐜 Fix circular dep error referencing fully-qualified var (#289)
+* 🐜 Fix circular dep error referencing fully-qualified var ([#289](https://github.com/nextjournal/clerk/issues/289))
 
-* 🐞 Fixes behaviour of `clerk/doc-url` in static app (#284)
+* 🐞 Fixes behaviour of `clerk/doc-url` in static app ([#284](https://github.com/nextjournal/clerk/issues/284))
 
-* 🐞 Fix links to clerk-demo build (#252)
+* 🐞 Fix links to clerk-demo build ([#252](https://github.com/nextjournal/clerk/issues/252))
 
-* 🐞 Bump sci with cljs.core/array (#250)
+* 🐞 Bump sci with cljs.core/array ([#250](https://github.com/nextjournal/clerk/issues/250))
 
 * 🐞 Fix content-addressing of image-blobs and compiled CSS during
-  static build (#259)
+  static build ([#259](https://github.com/nextjournal/clerk/issues/259))
   
-* 🐞 Add validation for `:nextjournal.clerk/width` fixing #217.
+* 🐞 Add validation for `:nextjournal.clerk/width` fixing [#217](https://github.com/nextjournal/clerk/issues/217).
 
-* 🐞 Fix inspect with `nil` values (#263)
+* 🐞 Fix inspect with `nil` values ([#263](https://github.com/nextjournal/clerk/issues/263))
 
 ## 0.11.603 (2022-10-17)
 
@@ -328,7 +328,7 @@ namespace. Also support symbols representing namespaces as the scope.
       `(nextjournal.clerk/show! 'nextjournal.clerk.tap)`
     * Namespaces: `(nextjournal.clerk/show! (find-ns 'nextjournal.clerk.tap))`
     * URLs as strings or `java.net.URLs`: `(show! "https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj")`
-    * In memory string readers: `(show! (java.io.StringReader. ";; # String Notebook 👋\n(+ 41 1)"))`, fixes #168
+    * In memory string readers: `(show! (java.io.StringReader. ";; # String Notebook 👋\n(+ 41 1)"))`, fixes [#168](https://github.com/nextjournal/clerk/issues/168)
 * Everything that `clojure.core/slurp` supports
 
 * ⭐️ Support `babashka.cli` for `nextjournal.clerk/serve!` and
@@ -345,16 +345,16 @@ namespace. Also support symbols representing namespaces as the scope.
 * 💫 Handle cljc files in analyzer/ns->file
 
 * 🐜 Fix results with `*print-length/depth*` being set (thanks
-  @russmatney, #224)
+  @russmatney, [#224](https://github.com/nextjournal/clerk/issues/224))
 
 * 🐜 Fix display of nested `clojure.lang.IDeref`s (e.g. atoms).
 
-* 🐜 Fix analyzer issues with clojure proxy (🙏 @zampino, fixes #222)
+* 🐜 Fix analyzer issues with clojure proxy (🙏 @zampino, fixes [#222](https://github.com/nextjournal/clerk/issues/222))
 
 * 🐞 Fix extra wrapping in `clerk/defcached` and `clerk/with-cache`
 
 * 🛠 Improve clerk-show emacs command (🙏 @benjamin-asdf, fixes
-  #170)
+  [#170](https://github.com/nextjournal/clerk/issues/170))
 
 * 🛠 Upgrade depdendencies, fixing warnings under Clojure 1.11.
     * `babashka/fs`: `0.1.5` → `0.1.11`
@@ -426,7 +426,7 @@ namespace. Also support symbols representing namespaces as the scope.
   order to simplify consumption as a library and slim down bundle by
   290kb (73kb gzip)
 
-* 💫 Unbundle images when `:bundle?` is `false` (#208)
+* 💫 Unbundle images when `:bundle?` is `false` ([#208](https://github.com/nextjournal/clerk/issues/208))
 
     As a quick fix to make the Clerk Book viewable we're now writing
     images for the static build to files when `:bundle?` is set to
@@ -434,11 +434,11 @@ namespace. Also support symbols representing namespaces as the scope.
     and introduce a separate flag for this.
 
 * 🐜 Don't attempt to check bounded count limit for non-freezable
-  things, fixes #199 (#201)
+  things, fixes [#199](https://github.com/nextjournal/clerk/issues/199) ([#201](https://github.com/nextjournal/clerk/issues/201))
 * 🐜 Fix regression in showing sorted-map results
 * 🐜 Fix table viewer normalization error when given sorted map
-* 🐞 Use PngEncoder lib for 10x improvement in encoding performance (#197)
-* 🐞 Overflow per single result not by result container (#198)
+* 🐞 Use PngEncoder lib for 10x improvement in encoding performance ([#197](https://github.com/nextjournal/clerk/issues/197))
+* 🐞 Overflow per single result not by result container ([#198](https://github.com/nextjournal/clerk/issues/198))
     
     When result contains multiple tables, allow scrolling each table
     individually instead of the entire result container. Also works
@@ -454,7 +454,7 @@ namespace. Also support symbols representing namespaces as the scope.
     Treat `clojure.core/deref` expressions separately in the dependency graph
     and attempt to compute a hash at runtime based on the value of the
     expression. This lets Clerk see an updated value for these expressions
-    without needing to opt out of Clerk's caching using `^:nextjournal.clerk/no-cache` (#187).
+    without needing to opt out of Clerk's caching using `^:nextjournal.clerk/no-cache` ([#187](https://github.com/nextjournal/clerk/issues/187)).
 
 * ⭐️ Expand indicators & allow option-click to expand all siblings
 
@@ -482,9 +482,9 @@ namespace. Also support symbols representing namespaces as the scope.
 * 🛠 Lean more heavily on `tools.analyzer` for depedency analysis
 
 ## 0.8.470 (2022-06-20)
-* 🐞 Markdown library now uses a GraalJS version compatible with Java 8. Fixes #178
-* 🐞 Bundle asset map during Maven release to allow clerk to function behind a proxy. Fixes #147
-* 🛠 Preserve asset name in content-addressed asset URL (#181)
+* 🐞 Markdown library now uses a GraalJS version compatible with Java 8. Fixes [#178](https://github.com/nextjournal/clerk/issues/178)
+* 🐞 Bundle asset map during Maven release to allow clerk to function behind a proxy. Fixes [#147](https://github.com/nextjournal/clerk/issues/147)
+* 🛠 Preserve asset name in content-addressed asset URL ([#181](https://github.com/nextjournal/clerk/issues/181))
 
 ## 0.8.463 (2022-06-16)
 * 💫 Support `:nextjournal.clerk/no-cache` meta on form also for vars.
@@ -496,7 +496,7 @@ namespace. Also support symbols representing namespaces as the scope.
     setting it on the form is recommend from now on.
 
 * 💫 Support rich values (with viewers) in table headers
-* 🐜 Preserve `*ns*` during analysis and eval (#173)
+* 🐜 Preserve `*ns*` during analysis and eval ([#173](https://github.com/nextjournal/clerk/issues/173))
 * 🐜 Upgrade markdown library with
     * support for loose lists
     * fix for rendering of inline images
@@ -508,10 +508,10 @@ namespace. Also support symbols representing namespaces as the scope.
 
 
 ## 0.8.451 (2022-06-09)
-* ⭐ Move default viewers to vars to make inspecting & building on them easier (#167)
-* 💫 Introduce flexible grid layout viewers `row` and `col` (#162)
-* 🐜 Introduce checks for forms which cannot be cached to disk (#166)
-* 🐞 Display inline comments in code cell rather than in prose, fixes #71.
+* ⭐ Move default viewers to vars to make inspecting & building on them easier ([#167](https://github.com/nextjournal/clerk/issues/167))
+* 💫 Introduce flexible grid layout viewers `row` and `col` ([#162](https://github.com/nextjournal/clerk/issues/162))
+* 🐜 Introduce checks for forms which cannot be cached to disk ([#166](https://github.com/nextjournal/clerk/issues/166))
+* 🐞 Display inline comments in code cell rather than in prose, fixes [#71](https://github.com/nextjournal/clerk/issues/71).
 
 ## 0.8.445 (2022-06-01)
 * 💫 First cut of Clerk Examples
@@ -524,7 +524,7 @@ namespace. Also support symbols representing namespaces as the scope.
 * 🐞 Fix reported duration for static bundle build step
 
 ## 0.8.442 (2022-06-01)
-* 🌟 Simplify viewer api by letting `:transform-fn` act on wrapped-value (#152)
+* 🌟 Simplify viewer api by letting `:transform-fn` act on wrapped-value ([#152](https://github.com/nextjournal/clerk/issues/152))
     
     This simplifies the viewer api by letting `:transform-fn` act on
     the wrapped-value. This way the `:transform-fn` can now serve as the
@@ -556,49 +556,49 @@ namespace. Also support symbols representing namespaces as the scope.
 
     More rationale and live examples in the [Better Printing ADR](https://snapshots.nextjournal.com/clerk/build/7f510cde367ee9de6765c3f3dd7013e8bf19c64b/index.html#/notebooks/viewers/printing.clj) notebook.
 
-* 💫 Refactor analysis to support multiple defs per top-level form (#159)
-* 🐜 Make no-cache on side-effecting var invalidate dependents (#158), fixes #157
+* 💫 Refactor analysis to support multiple defs per top-level form ([#159](https://github.com/nextjournal/clerk/issues/159))
+* 🐜 Make no-cache on side-effecting var invalidate dependents ([#158](https://github.com/nextjournal/clerk/issues/158)), fixes [#157](https://github.com/nextjournal/clerk/issues/157)
 * 🐞 Fix lazy loading when viewer is selected via metadata.
-* 🐞 Perform bounded count limit check on tree (#154)
+* 🐞 Perform bounded count limit check on tree ([#154](https://github.com/nextjournal/clerk/issues/154))
 
     Previously this would only be performed on the root node so we'd go out of
     memory attempting to cache a value like `{:a (range)}`.
     
-* 🛠 Update SCI & SCI configs (#151)
+* 🛠 Update SCI & SCI configs ([#151](https://github.com/nextjournal/clerk/issues/151))
 * 🛠 Start Clerk on `bb dev` after first cljs compile and forward serve opts.
 
 ## 0.7.418 (2022-04-20)
-* 🐜 Fix regression in heading sizes & margins (#135)
+* 🐜 Fix regression in heading sizes & margins ([#135](https://github.com/nextjournal/clerk/issues/135))
 
 ## 0.7.416 (2022-04-19)
-* 🌟 Support Table of Contents & dark mode toggle, #109. ToC is opt-in via `^:nextjournal.clerk/toc` metadata on ns form.
-* 🌟 Use viewer api to to enable full customization of markdown nodes (#122)
-* 💫 Expand glob paths and support symbols pointing to vars for `build-static-app!` (#130)
-* 💫 Use relative links inside the static-app (#132)
-* 🐞 Always open static build index via file: protocol, closes #96
-* 🐞 Remove column truncation in table viewer (#124)
+* 🌟 Support Table of Contents & dark mode toggle, [#109](https://github.com/nextjournal/clerk/issues/109). ToC is opt-in via `^:nextjournal.clerk/toc` metadata on ns form.
+* 🌟 Use viewer api to to enable full customization of markdown nodes ([#122](https://github.com/nextjournal/clerk/issues/122))
+* 💫 Expand glob paths and support symbols pointing to vars for `build-static-app!` ([#130](https://github.com/nextjournal/clerk/issues/130))
+* 💫 Use relative links inside the static-app ([#132](https://github.com/nextjournal/clerk/issues/132))
+* 🐞 Always open static build index via file: protocol, closes [#96](https://github.com/nextjournal/clerk/issues/96)
+* 🐞 Remove column truncation in table viewer ([#124](https://github.com/nextjournal/clerk/issues/124))
 * 🐞 Make lazy loading respect viewers on form
-* 🐞 Fix .cljc file renaming in unbundled static app (#123)
+* 🐞 Fix .cljc file renaming in unbundled static app ([#123](https://github.com/nextjournal/clerk/issues/123))
 * 🐞 Leave it to viewers to opt into tailwind's `not-prose` class
-* 🛠 First cut of browser tests using nbb & playwright (#97)
-* 🛠 Write hash in pre-commit hook for predicable viewer.js location, build JS in CI (#107)
+* 🛠 First cut of browser tests using nbb & playwright ([#97](https://github.com/nextjournal/clerk/issues/97))
+* 🛠 Write hash in pre-commit hook for predicable viewer.js location, build JS in CI ([#107](https://github.com/nextjournal/clerk/issues/107))
   
 ## 0.6.387 (2022-03-03)
 * 🌟 Add `clerk/recompute!` for fast recomputation of doc without re-parsing & analysis
-* 🌟 Normalize viewers to support full map form (#77)
+* 🌟 Normalize viewers to support full map form ([#77](https://github.com/nextjournal/clerk/issues/77))
 * 🌟 Less whitespace and better alignment when expanding nested maps
-* ⭐️ Add reagent and js-interop to viewer api (#105)
-* ⭐️ Add `with-d3-require` to viewer api, tweak sci read opts (#86)
-* 💫 Make string viewer show newlines and allow to toggle breaking (#104)
+* ⭐️ Add reagent and js-interop to viewer api ([#105](https://github.com/nextjournal/clerk/issues/105))
+* ⭐️ Add `with-d3-require` to viewer api, tweak sci read opts ([#86](https://github.com/nextjournal/clerk/issues/86))
+* 💫 Make string viewer show newlines and allow to toggle breaking ([#104](https://github.com/nextjournal/clerk/issues/104))
 * 💫 Tweaked the theme and make data & code viewers use consistent color scheme. Prepare dark mode support.
 * 💫 Add experimental `defcached` and `with-cache` macros to enable access to Clerk's view of a var or expression respectively.
 * 💫 Let code viewers use horizontal scrolling instead of line  wrapping to improve readability, especially on mobile.
-* 🐞 Make `clear-cache!` also clear in memory cache (#100)
-* 🐞 Protect var-from-def? against types that throw on get, closes #64
+* 🐞 Make `clear-cache!` also clear in memory cache ([#100](https://github.com/nextjournal/clerk/issues/100))
+* 🐞 Protect var-from-def? against types that throw on get, closes [#64](https://github.com/nextjournal/clerk/issues/64)
 * 🐞 Drop unused tools.deps.alpha dep
-* 🐜 Fix inconsistent hashing when form contains a regex (#85)
+* 🐜 Fix inconsistent hashing when form contains a regex ([#85](https://github.com/nextjournal/clerk/issues/85))
 * 🐜 Fix find-location for namespaces with dashes in them
-* 🐜 Fix in memory cache not being used for unfreezable results (#82)
+* 🐜 Fix in memory cache not being used for unfreezable results ([#82](https://github.com/nextjournal/clerk/issues/82))
 * 🐜 Don't catch errors occurring on JVM-side of the viewer api (`:pred` & `:transform-fn`)
 * 🐜 Opt out of caching deref forms
 * 🐜 Protect cache from caching nil from repeated defonce eval
@@ -609,22 +609,22 @@ This release focuses on improving the viewer api:
 
 * 🌟 new built-in image viewer component  for `java.awt.image.BufferedImage` with automatic layouting. These can be easily created constructed from `javax.imageio.ImageIO/read` from `File`, `URL` or `InputStream`.
 * 🌟 Enable nested viewers inside e.g. `html` or `table` viewers.
-* 🌟 Allow to convey viewers out-of-band using metadata. Clerk's viewer api has been based on functions. This can be undesired if you want to depend on the unmodified value downstream. You can now alternatively use metadata using the `:nextjournal.clerk/viewer` to convey the viewer. Valid values are viewer functions or keywords. The latter is useful when you don't want a runtime dependency on Clerk. (#58)
-* 💫 `:render-fn` must now be quoted to make it clearer it doesn't run on the JVM but in the browser (#53)
-* 💫 Make all viewer functions take an optional map to specify the with using the `:nextjournal.clerk/width` with valid values `:full`, `:wide` or `:prose`. (#53)
-* 💫 Enable access to vars resulting from eval in viewers @philomates (#47)
-* 💫 Expose title, table of contents as the result of parse. Set title in browser. @zampino (#56)
-* 💫 Add halt! to allow stopping Clerk @SneakyPeet (#43)*
-* 💫 Upgrade to tailwindcss 3 and use via play cdn. This enables using any tailwind properties. (#36)
-* 💫 Allow to bring your own css and js (#55)
-* 🐜 Introduce print budget to elide deeply nested structures. This should fix overflowing the browser with too much data for certain shapes of data (#48)
+* 🌟 Allow to convey viewers out-of-band using metadata. Clerk's viewer api has been based on functions. This can be undesired if you want to depend on the unmodified value downstream. You can now alternatively use metadata using the `:nextjournal.clerk/viewer` to convey the viewer. Valid values are viewer functions or keywords. The latter is useful when you don't want a runtime dependency on Clerk. ([#58](https://github.com/nextjournal/clerk/issues/58))
+* 💫 `:render-fn` must now be quoted to make it clearer it doesn't run on the JVM but in the browser ([#53](https://github.com/nextjournal/clerk/issues/53))
+* 💫 Make all viewer functions take an optional map to specify the with using the `:nextjournal.clerk/width` with valid values `:full`, `:wide` or `:prose`. ([#53](https://github.com/nextjournal/clerk/issues/53))
+* 💫 Enable access to vars resulting from eval in viewers @philomates ([#47](https://github.com/nextjournal/clerk/issues/47))
+* 💫 Expose title, table of contents as the result of parse. Set title in browser. @zampino ([#56](https://github.com/nextjournal/clerk/issues/56))
+* 💫 Add halt! to allow stopping Clerk @SneakyPeet ([#43](https://github.com/nextjournal/clerk/issues/43))*
+* 💫 Upgrade to tailwindcss 3 and use via play cdn. This enables using any tailwind properties. ([#36](https://github.com/nextjournal/clerk/issues/36))
+* 💫 Allow to bring your own css and js ([#55](https://github.com/nextjournal/clerk/issues/55))
+* 🐜 Introduce print budget to elide deeply nested structures. This should fix overflowing the browser with too much data for certain shapes of data ([#48](https://github.com/nextjournal/clerk/issues/48))
 * 🐞 Recover from a viewer rendering error without requiring a browser reload and improve error display.
 * 🛠 Refactor & tests various parts
 
 ## 0.4.316 (2021-12-21)
-* 💫 Add option to control opening of built static app (@filipesilva, #31)
-* 🐜 Fix path error on windows by bumping markdown dep (#34)
-* 🐞 Fix browse in `build-static-app!` on windows (#39)
+* 💫 Add option to control opening of built static app (@filipesilva, [#31](https://github.com/nextjournal/clerk/issues/31))
+* 🐜 Fix path error on windows by bumping markdown dep ([#34](https://github.com/nextjournal/clerk/issues/34))
+* 🐞 Fix browse in `build-static-app!` on windows ([#39](https://github.com/nextjournal/clerk/issues/39))
 
 ## 0.4.305 (2021-12-13)
 * 🌟 Support markdown as an alternative to Clojure source code for prose-heavy documents.
@@ -636,9 +636,9 @@ This release focuses on improving the viewer api:
 * 💫 Persist viewer expansion state across document reloads and make document updates minimize repaints and flickering.
 * 💫 Keep document scroll position when an error is shown by moving error into overlay.
 * 💫 Wrap sci context in an atom to let consumers change it.
-* 💫 Exclude Emacs lock files from being shown via file watcher #22 (@ikappaki)
+* 💫 Exclude Emacs lock files from being shown via file watcher [#22](https://github.com/nextjournal/clerk/issues/22) (@ikappaki)
 * 💫 Add viewers for Clojure vars and a catch all `pr-str` viewer
-* 🐜 Don't cache uncountable values within `*bounded-count-limit*` #15.
+* 🐜 Don't cache uncountable values within `*bounded-count-limit*` [#15](https://github.com/nextjournal/clerk/issues/15).
 * 🐞 Prevent infinite loop when calling `show!` in a notebook using `config/*in-clerk*`.
 
 ## 0.3.233 (2021-11-10)
@@ -694,7 +694,7 @@ This release focuses on improving the viewer api:
 💫 Clerk now runs on Windows.
 
 * 🐜 Fix error showing a notebook on Windows by switching from datoteka.fs to babashka.fs
-* 🐞 Fix parsing issue on Windows by bumping `rewrite-clj`, see clj-commons/rewrite-clj#93
+* 🐞 Fix parsing issue on Windows by bumping `rewrite-clj`, see clj-commons/rewrite-clj[#93](https://github.com/nextjournal/clerk/issues/93)
 
 ## 0.1.174 (2021-10-10)
 

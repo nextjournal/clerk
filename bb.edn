@@ -58,6 +58,12 @@
    :task
    (t/update-changelog)}
 
+  link-changelog {:doc "Turns the issue references in the changelog into links"
+                  :task (do (defn tag->issue-link [s]
+                              (clojure.string/replace s (re-pattern "(?<!\\[)#([0-9]+)") "[#$1](https://github.com/nextjournal/clerk/issues/$1)"))
+                            (let [f "CHANGELOG.md"]
+                              (spit f (tag->issue-link (slurp f)))))}
+
   jar {:doc "Build jar"
        :task (do
                (println "Building jar")
