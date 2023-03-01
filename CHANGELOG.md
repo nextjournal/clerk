@@ -38,7 +38,7 @@ or make the conversion explicit using `clerk/resolve-aliases`. **This is a break
     {'j 'applied-science.js-interop
      'reagent 'reagent.core
      'v 'nextjournal.clerk.viewer
-     'p 'nextjournal.clerk.parser}
+     'r 'nextjournal.clerk.render}
     ```
 
 * 💫 Simplify modifying viewers ([#412](https://github.com/nextjournal/clerk/issues/412))
@@ -91,6 +91,7 @@ namespace. Also support symbols representing namespaces as the scope.
 
 * ⭐️ Countless improvements and bug fixes
 
+    * 💫 Expose `cljs.math` to sci env
     * 💫 Support markdown hard line breaks
     * 💫 Use block ids as filenames in snapshots script
     * 💫 Use ids to assign react keys and factor out `nextjournal.clerk.render/render-processed-block`

@@ -9,6 +9,7 @@
             ["react" :as react]
             [applied-science.js-interop :as j]
             [cljs.reader]
+            [cljs.math]
             [clojure.string :as str]
             [edamame.core :as edamame]
             [goog.object]
@@ -119,6 +120,7 @@
                        'clojure.core {'read-string read-string
                                       'implements? (sci/copy-var implements?* core-ns)}}
                       (sci-copy-nss
+                       'cljs.math
                        'nextjournal.clerk.parser
                        'nextjournal.clerk.render
                        'nextjournal.clerk.render.code
