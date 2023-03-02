@@ -1543,7 +1543,7 @@
 (defn path-to-value [path]
   (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
 
-(defn merge-presentations [{:as root :nextjournal/keys [presented?]} more elision]
+(defn merge-presentations-old [{:as root :nextjournal/keys [presented?]} more elision]
   (update-in root
              ;; TODO: clarify: when presented? we assume the elision has a 'raw path' (maybe restrict to html-viewer case only)
              (if (and (seq (:path elision)) presented?)
@@ -1563,12 +1563,12 @@
   (first (filter (fn [x] (some #(= elision (:nextjournal/value %)) (when (coll? x) x)))
                  (tree-seq coll? seq desc))))
 
-(defn merge-presentations-simple [root more elision]
+(defn merge-presentations [root more elision]
   (clojure.walk/postwalk (fn [x] (if (some #(= elision (:nextjournal/value %)) (when (coll? x) x))
                                    (into (pop x) (:nextjournal/value more))
                                    x))
                          root))
-
+#_
 (let [x (range 30)
       desc (present x)
       elision (find-elision desc)
