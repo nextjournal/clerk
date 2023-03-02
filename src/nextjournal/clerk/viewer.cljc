@@ -846,8 +846,8 @@
       (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :nextjournal/budget :path]))
       (update :path (fnil conj []) path-segment)))
 
-;; TODO: fit into the above
-(defn inherit-opts-2 [{:as wrapped-value :nextjournal/keys [viewers]} value path-prefix]
+;; TODO: unify
+(defn inherit-opts+prepend-path [{:as wrapped-value :nextjournal/keys [viewers]} value path-prefix]
   (-> (ensure-wrapped-with-viewers viewers value)
       (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :nextjournal/budget :path]))
       (update :path #(vec (concat path-prefix %)))))
@@ -866,7 +866,7 @@
       (recur (z/next
               (z/next
                (z/next
-                (z/edit z (fn [x] [(inspect-fn) (present (inherit-opts-2 wrapped-value x (vec-loc->path z)))]))))))
+                (z/edit z (fn [x] [(inspect-fn) (present (inherit-opts+prepend-path wrapped-value x (vec-loc->path z)))]))))))
       :else (recur (z/next z)))))
 
 (defn transform-html [wrapped-value]
