@@ -852,7 +852,7 @@
       (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :nextjournal/budget :path]))
       (update :path #(vec (concat path-prefix %)))))
 
-(defn vec-loc->path [loc]
+(defn vec-loc->path-from-root [loc]
   (loop [z loc path ()]
     (if (= (z/root z) (z/node z))
       (vec path)
@@ -866,7 +866,7 @@
       (recur (z/next
               (z/next
                (z/next
-                (z/edit z (fn [x] [(inspect-fn) (present (inherit-opts+prepend-path wrapped-value x (vec-loc->path z)))]))))))
+                (z/edit z (fn [x] [(inspect-fn) (present (inherit-opts+prepend-path wrapped-value x (vec-loc->path-from-root z)))]))))))
       :else (recur (z/next z)))))
 
 (defn transform-html [wrapped-value]
