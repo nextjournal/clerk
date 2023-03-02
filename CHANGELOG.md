@@ -7,6 +7,10 @@ Changes can be:
 
 ## Unreleased
 
+...
+
+## 0.13.838 (2023-03-02)
+
 * 🌟 Make `build-graph` recur until all transitive deps are analyzed ([#381](https://github.com/nextjournal/clerk/issues/381))
 
     Until now Clerk did not analyze the full transitive dependency graph which could lead to Clerk not detecting a change properly. Analysis is now recursive which means it's taking a bit longer initially. We cache analysis results per file in memory so subsequent analysis should be fast. We will follow up with visualizing the progress of analysis & execution.
