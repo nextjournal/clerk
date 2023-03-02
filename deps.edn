@@ -69,7 +69,7 @@
                                org.clojure/data.csv {:mvn/version "1.0.0"}
                                hickory/hickory {:mvn/version "0.7.1"}
                                sicmutils/sicmutils {:mvn/version "0.20.0"}
-                               io.github.nextjournal/clerk-slideshow {:git/sha "5fe197ca0c8f28128379849dc677cd718be71524"}}}
+                               io.github.nextjournal/clerk-slideshow {:git/sha "f9fb86430ebf533bfc9d5cec5bf0a94ed07146f3"}}}
 
            :build {:deps {io.github.nextjournal/clerk {:local/root "."}
                           ;; :exclusions needed until https://github.com/greglook/clj-multiformats/pull/2 is merged
