@@ -1559,6 +1559,23 @@
                  (into (pop value) (:nextjournal/value more))))))
 
 
+(defn elision-container [desc elision]
+  (first (filter (fn [x] (some #(= elision (:nextjournal/value %)) (when (coll? x) x)))
+                 (tree-seq coll? seq desc))))
+
+(defn merge-presentations-simple [root more elision]
+  (clojure.walk/postwalk (fn [x] (if (some #(= elision (:nextjournal/value %)) (when (coll? x) x))
+                                   (into (pop x) (:nextjournal/value more))
+                                   x))
+                         root))
+
+(let [x (range 30)
+      desc (present x)
+      elision (find-elision desc)
+      {:keys [present-elision-fn]} (meta desc)
+      more (present-elision-fn elision)]
+  (desc->values (merge-presentations-simple desc more elision)))
+
 
 (defn assign-closing-parens
   ([node] (assign-closing-parens '() node))
