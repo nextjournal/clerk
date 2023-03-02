@@ -1542,26 +1542,6 @@
 (defn path-to-value [path]
   (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
 
-(defn merge-presentations-old [{:as root :nextjournal/keys [presented?]} more elision]
-  (update-in root
-             ;; TODO: clarify: when presented? we assume the elision has a 'raw path' (maybe restrict to html-viewer case only)
-             (if (and (seq (:path elision)) presented?)
-               (cons :nextjournal/value (conj (:path elision) :nextjournal/value))
-               (path-to-value (:path elision)))
-             (fn [value]
-               (let [{:keys [offset path]} (-> value peek :nextjournal/value)
-                     path-from-value (conj path offset)
-                     path-from-more (or (:replace-path elision) ;; string case, TODO find a better way to unify
-                                        (-> more :nextjournal/value first :path))]
-                 (when (not= path-from-value path-from-more)
-                   (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more :root root :more more :path-to-value (path-to-value (:path more)) :value value})))
-                 (into (pop value) (:nextjournal/value more))))))
-
-
-(defn elision-container [desc elision]
-  (first (filter (fn [x] (some #(= elision (:nextjournal/value %)) (when (coll? x) x)))
-                 (tree-seq coll? seq desc))))
-
 (defn merge-presentations [root more elision]
   (clojure.walk/postwalk (fn [x] (if (some #(= elision (:nextjournal/value %)) (when (coll? x) x))
                                    (into (pop x) (:nextjournal/value more))
