@@ -866,8 +866,7 @@
       (recur (z/next
               (z/next
                (z/next
-                (z/edit z (fn [x] [(inspect-fn) (present (inherit-opts-2 wrapped-value x
-                                                                         (conj (vec-loc->path z) 1)))]))))))
+                (z/edit z (fn [x] [(inspect-fn) (present (inherit-opts-2 wrapped-value x (vec-loc->path z)))]))))))
       :else (recur (z/next z)))))
 
 (defn transform-html [wrapped-value]
@@ -1568,14 +1567,6 @@
                                    (into (pop x) (:nextjournal/value more))
                                    x))
                          root))
-#_
-(let [x (range 30)
-      desc (present x)
-      elision (find-elision desc)
-      {:keys [present-elision-fn]} (meta desc)
-      more (present-elision-fn elision)]
-  (desc->values (merge-presentations-simple desc more elision)))
-
 
 (defn assign-closing-parens
   ([node] (assign-closing-parens '() node))

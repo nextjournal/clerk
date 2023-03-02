@@ -77,7 +77,20 @@
 
   (testing "resolving multiple elisions"
     (let [value (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))]
-      (is (= value (v/desc->values (-> (v/present {:nextjournal/budget 11 :nextjournal/value value}) resolve-elision resolve-elision)))))))
+      (is (= value (v/desc->values (-> (v/present {:nextjournal/budget 11 :nextjournal/value value}) resolve-elision resolve-elision))))))
+
+  (testing "wrapped values with elided collections nested inside html"
+    (let [value [:div
+                 [:ul
+                  [:li "one"]
+                  [:li {:nextjournal/value (range 30)}]]]
+          presented (v/present (v/html value))
+          {:keys [path]} (v/find-elision presented)
+          path-into-presented (cons :nextjournal/value (conj path 1))
+          path-into-raw (conj path :nextjournal/value)]
+
+      (is (= (get-in value path-into-raw)
+             (v/desc->values (get-in (resolve-elision presented) path-into-presented)))))))
 
 (deftest apply-viewers
   (testing "selects number viewer"
