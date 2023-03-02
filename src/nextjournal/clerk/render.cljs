@@ -313,7 +313,7 @@
       [view-context/provide {:fetch-fn fetch-fn}
        [:> ErrorBoundary {:hash hash}
         [:div.relative
-         [:div
+         [:div.overflow-x-auto
           {:ref ref-fn}
           [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]])))
 
