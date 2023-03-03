@@ -846,6 +846,7 @@
       (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :nextjournal/budget :path]))
       (update :path (fnil conj []) path-segment)))
 
+
 (defn transform-html [{:as wrapped-value :keys [path]}]
   (let [!path-idx (atom -1)]
     (update wrapped-value
@@ -1509,6 +1510,8 @@
   (let [x (->value desc)
         viewer-name (-> desc ->viewer :name)]
     (cond (= viewer-name `elision-viewer) (with-meta '... x)
+          (= viewer-name `html-viewer) (update desc :nextjournal/value desc->values)
+          (and (vector? x) (= (first x) (inspect-fn))) {:nextjournal/value (desc->values (second x))}
           (coll? x) (into (case viewer-name
                             (nextjournal.clerk.viewer/map-viewer
                              nextjournal.clerk.viewer/table-viewer) {}
@@ -1521,22 +1524,11 @@
 #_(desc->values (present (table (mapv vector (range 30)))))
 #_(desc->values (present (with-viewer `table-viewer (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))))
 
-(defn path-to-value [path]
-  (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
-
 (defn merge-presentations [root more elision]
-  (update-in root
-             (path-to-value (:path elision))
-             (fn [value]
-               (let [{:keys [offset path]} (-> value peek :nextjournal/value)
-                     path-from-value (conj path offset)
-                     path-from-more (or (:replace-path elision) ;; string case, TODO find a better way to unify
-                                        (-> more :nextjournal/value first :path))]
-                 (when (not= path-from-value path-from-more)
-                   (throw (ex-info "paths mismatch" {:path-from-value path-from-value :path-from-more path-from-more :root root :more more :path-to-value (path-to-value (:path more)) :value value})))
-                 (into (pop value) (:nextjournal/value more))))))
-
-
+  (clojure.walk/postwalk (fn [x] (if (some #(= elision (:nextjournal/value %)) (when (coll? x) x))
+                                   (into (pop x) (:nextjournal/value more))
+                                   x))
+                         root))
 
 (defn assign-closing-parens
   ([node] (assign-closing-parens '() node))

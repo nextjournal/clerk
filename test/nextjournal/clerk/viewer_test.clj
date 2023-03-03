@@ -77,7 +77,11 @@
 
   (testing "resolving multiple elisions"
     (let [value (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))]
-      (is (= value (v/desc->values (-> (v/present {:nextjournal/budget 11 :nextjournal/value value}) resolve-elision resolve-elision)))))))
+      (is (= value (v/desc->values (-> (v/present {:nextjournal/budget 11 :nextjournal/value value}) resolve-elision resolve-elision))))))
+
+  (testing "elision inside html"
+    (let [value (v/html [:div [:ul [:li {:nextjournal/value (range 30)}]]])]
+      (is (= (v/->value value) (v/->value (v/desc->values (resolve-elision (v/present value)))))))))
 
 (deftest apply-viewers
   (testing "selects number viewer"
@@ -188,6 +192,9 @@
            (v/desc->values (v/present {:nextjournal/budget 3, :nextjournal/value (range 10)}))
            (v/desc->values (v/present {:nextjournal/budget 3, :nextjournal/value (range 10)}))))))
 
+(defn path-to-value [path]
+  (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
+
 (deftest assign-closing-parens
   (testing "closing parenthesis are moved to right-most children in the tree"
     (let [before (#'v/present* (assoc (v/ensure-wrapped-with-viewers {:a [1 '(2 3 #{4})]
@@ -196,26 +203,26 @@
 
       (is (= "}"
              (-> before
-                 (get-in (v/path-to-value [0 1 1]))
+                 (get-in (path-to-value [0 1 1]))
                  (get 2)
                  v/->viewer
                  :closing-paren)))
       (is (= ")"
              (-> before
-                 (get-in (v/path-to-value [1]))
+                 (get-in (path-to-value [1]))
                  (get 1)
                  v/->viewer
                  :closing-paren)))
 
       (is (= '( "}" ")" "]")
              (-> after
-                 (get-in (v/path-to-value [0 1 1]))
+                 (get-in (path-to-value [0 1 1]))
                  (get 2)
                  v/->viewer
                  :closing-paren)))
       (is (= '(")" "}")
              (-> after
-                 (get-in (v/path-to-value [1]))
+                 (get-in (path-to-value [1]))
                  (get 1)
                  v/->viewer
                  :closing-paren))))))
