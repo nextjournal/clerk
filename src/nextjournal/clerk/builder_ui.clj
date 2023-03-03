@@ -224,7 +224,7 @@
 
 (def docs-viewer
   {:render-fn '(fn [state opts]
-                 (into [:div.flex.flex-col.border-greenish-50.mt-8 {:class (when (seq state) "border-t-[3px]")}] (v/inspect-children opts) state))
+                 (into [:div.flex.flex-col.border-greenish-50.mt-8 {:class (when (seq state) "border-t-[3px]")}] (nextjournal.clerk.render/inspect-children opts) state))
    :transform-fn (viewer/update-val (fn [docs]
                                       (mapv #(viewer/with-viewer doc-build-badge-viewer %) docs)))})
 
