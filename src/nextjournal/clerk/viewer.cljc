@@ -4,7 +4,6 @@
             [clojure.datafy :as datafy]
             [clojure.set :as set]
             [clojure.walk :as w]
-            [clojure.zip :as z]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
                       [editscript.edit]
@@ -846,36 +845,19 @@
       (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :nextjournal/budget :path]))
       (update :path (fnil conj []) path-segment)))
 
-;; TODO: unify
-(defn inherit-opts+prepend-path [{:as wrapped-value :nextjournal/keys [viewers]} value path-prefix]
-  (-> (ensure-wrapped-with-viewers viewers value)
-      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :nextjournal/budget :path]))
-      (update :path #(vec (concat path-prefix %)))))
 
-(defn vec-loc->path-from-root [loc]
-  (loop [z loc path ()]
-    (if (= (z/root z) (z/node z))
-      (vec path)
-      (recur (z/up z) (conj path (count (z/lefts z)))))))
-
-(defn find-and-replace-nested-wrapped-values [hiccup-vec wrapped-value]
-  (loop [z (z/vector-zip hiccup-vec)]
-    (cond
-      (z/end? z) (z/root z)
-      (wrapped-value? (z/node z))
-      (recur (z/next
-              (z/next
-               (z/next
-                (z/edit z (fn [x] [(inspect-fn) (present (inherit-opts+prepend-path wrapped-value x (vec-loc->path-from-root z)))]))))))
-      :else (recur (z/next z)))))
-
-(defn transform-html [wrapped-value]
-  (update wrapped-value
-          :nextjournal/value
-          (fn [hiccup]
-            (if (string? hiccup)
-              [:div {:dangerouslySetInnerHTML {:__html hiccup}}]
-              (find-and-replace-nested-wrapped-values hiccup wrapped-value)))))
+(defn transform-html [{:as wrapped-value :keys [path]}]
+  (let [!path-idx (atom -1)]
+    (update wrapped-value
+            :nextjournal/value
+            (fn [hiccup]
+              (if (string? hiccup)
+                [:div {:dangerouslySetInnerHTML {:__html hiccup}}]
+                (w/postwalk (fn [x] (if (wrapped-value? x)
+                                      [(inspect-fn)
+                                       (present (inherit-opts wrapped-value x (swap! !path-idx inc)))]
+                                      x))
+                            hiccup))))))
 
 (def html-viewer
   {:name `html-viewer
@@ -1527,6 +1509,8 @@
   (let [x (->value desc)
         viewer-name (-> desc ->viewer :name)]
     (cond (= viewer-name `elision-viewer) (with-meta '... x)
+          (= viewer-name `html-viewer) (update desc :nextjournal/value desc->values)
+          (viewer-eval? x) x
           (coll? x) (into (case viewer-name
                             (nextjournal.clerk.viewer/map-viewer
                              nextjournal.clerk.viewer/table-viewer) {}
