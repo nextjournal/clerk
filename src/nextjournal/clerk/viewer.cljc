@@ -1280,7 +1280,7 @@
 #_(process-viewer {:render-fn '#(vector :h1) :transform-fn mark-presented})
 
 (def processed-keys
-  (into [:path :offset :n :nextjournal/content-type :nextjournal/value :nextjournal/presented?]
+  (into [:path :offset :n :nextjournal/content-type :nextjournal/value]
         (-> viewer-opts-normalization vals set (disj :nextjournal/viewers))))
 
 (defn process-wrapped-value [{:as wrapped-value :keys [present-elision-fn path]}]
@@ -1522,9 +1522,6 @@
 #_(desc->values (present [1 [2 {:a :b} 2] 3 (range 100)]))
 #_(desc->values (present (table (mapv vector (range 30)))))
 #_(desc->values (present (with-viewer `table-viewer (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))))
-
-(defn path-to-value [path]
-  (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
 
 (defn merge-presentations [root more elision]
   (clojure.walk/postwalk (fn [x] (if (some #(= elision (:nextjournal/value %)) (when (coll? x) x))

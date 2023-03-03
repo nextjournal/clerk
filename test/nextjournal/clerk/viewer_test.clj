@@ -192,6 +192,9 @@
            (v/desc->values (v/present {:nextjournal/budget 3, :nextjournal/value (range 10)}))
            (v/desc->values (v/present {:nextjournal/budget 3, :nextjournal/value (range 10)}))))))
 
+(defn path-to-value [path]
+  (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
+
 (deftest assign-closing-parens
   (testing "closing parenthesis are moved to right-most children in the tree"
     (let [before (#'v/present* (assoc (v/ensure-wrapped-with-viewers {:a [1 '(2 3 #{4})]
@@ -200,26 +203,26 @@
 
       (is (= "}"
              (-> before
-                 (get-in (v/path-to-value [0 1 1]))
+                 (get-in (path-to-value [0 1 1]))
                  (get 2)
                  v/->viewer
                  :closing-paren)))
       (is (= ")"
              (-> before
-                 (get-in (v/path-to-value [1]))
+                 (get-in (path-to-value [1]))
                  (get 1)
                  v/->viewer
                  :closing-paren)))
 
       (is (= '( "}" ")" "]")
              (-> after
-                 (get-in (v/path-to-value [0 1 1]))
+                 (get-in (path-to-value [0 1 1]))
                  (get 2)
                  v/->viewer
                  :closing-paren)))
       (is (= '(")" "}")
              (-> after
-                 (get-in (v/path-to-value [1]))
+                 (get-in (path-to-value [1]))
                  (get 1)
                  v/->viewer
                  :closing-paren))))))
