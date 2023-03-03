@@ -1510,7 +1510,7 @@
         viewer-name (-> desc ->viewer :name)]
     (cond (= viewer-name `elision-viewer) (with-meta '... x)
           (= viewer-name `html-viewer) (update desc :nextjournal/value desc->values)
-          (viewer-eval? x) x
+          (and (vector? x) (= (first x) (inspect-fn))) {:nextjournal/value (desc->values (second x))}
           (coll? x) (into (case viewer-name
                             (nextjournal.clerk.viewer/map-viewer
                              nextjournal.clerk.viewer/table-viewer) {}

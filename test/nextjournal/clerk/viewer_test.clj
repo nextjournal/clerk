@@ -81,8 +81,7 @@
 
   (testing "elision inside html"
     (let [value (v/html [:div [:ul [:li {:nextjournal/value (range 30)}]]])]
-      (v/desc->values (resolve-elision (v/present value))))))
-
+      (is (= (v/->value value) (v/->value (v/desc->values (resolve-elision (v/present value)))))))))
 
 (deftest apply-viewers
   (testing "selects number viewer"
