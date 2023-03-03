@@ -7,7 +7,7 @@ Changes can be:
 
 ## Unreleased
 
-...
+* 💫 Support pagination for values nested inside `clerk/html`
 
 ## 0.12.707 (2022-12-06)
 
