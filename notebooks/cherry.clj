@@ -8,5 +8,5 @@
 ;;   - [ ] TODO: vector is not defined: we need cherry function to live as global functions or prefix them using cherry?
 
 (clerk/with-viewer {:render-fn '(fn [value]
-                                  [:pre value])}
+                                  [:pre (apply inc [value])])}
   (+ 1 2 3 5))

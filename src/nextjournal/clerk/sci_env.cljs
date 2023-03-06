@@ -30,8 +30,13 @@
             [shadow.esm]
             [cherry.compiler :as cherry]))
 
-(set! js/globalThis.vector vector) ;; hack for cherry
-(set! js/globalThis.keyword keyword) ;; hack for cherry
+(set! js/globalThis.clerk #js {})
+(set! js/globalThis.clerk.cljs_core #js {})
+(set! js/globalThis.clerk.cljs_core.vector vector) ;; hack for cherry
+(set! js/globalThis.clerk.cljs_core.keyword keyword) ;; hack for cherry
+(set! js/globalThis.clerk.cljs_core.apply apply) ;; hack for cherry
+(set! js/globalThis.clerk.cljs_core.inc inc) ;; hack for cherry
+(set! js/globalThis.clerk.cljs_core.identity identity) ;; hack for cherry
 
 (defn ->viewer-fn-with-error [form]
   (try (viewer/->viewer-fn form)
@@ -140,13 +145,15 @@
   (render/dispatch (read-string (.-data ws-msg))))
 
 (defn ^:export eval-form [f]
-  (let [cherry-evaled (let [{:keys [body]} (cherry/compile-string*
-                                            ;; function expression without name
-                                            ;; isn't valid as top level JS form,
-                                            ;; so we wrap it in a let
-                                            (str/replace "(let [x %s] x)"
-                                                         "%s"
-                                                         (str f)))]
+  (let [cherry-evaled (let [{:keys [body imports]}
+                            (cherry/compile-string*
+                             ;; function expression without name
+                             ;; isn't valid as top level JS form,
+                             ;; so we wrap it in a let
+                             (str/replace "(let [x %s] x)"
+                                          "%s"
+                                          (str f)))]
+                        (js/console.log imports)
                         (try (js/eval body)
                              (catch :default e
                                [:error body e])))]
