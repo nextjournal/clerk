@@ -7,6 +7,10 @@ Changes can be:
 
 ## Unreleased
 
+...
+
+## 0.13.842 (2023-03-07)
+
 * 💫 Support pagination for values nested inside `clerk/html`
 * 🐞 Fix builder ui by using fully-qualifed symbol
 
