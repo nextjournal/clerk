@@ -9,7 +9,6 @@
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.viewer :as v]
-            [nextjournal.clerk.webserver :as webserver]
             [taoensso.nippy :as nippy])
   (:import (java.awt.image BufferedImage)
            (javax.imageio ImageIO)))
@@ -197,11 +196,33 @@
 
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
-(defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks]}]
-  (webserver/send-status! {:progress 0.35 :status "Evaluating…"})
+
+
+(defn ->eval-status [{:as analyzed-doc :keys [blocks]} num-done {:as block-to-eval :keys [var form]}]
+  (let [total (count (filter parser/code? blocks))
+        offset 0.35]
+    {:progress (+ offset (* 0.6 (/ num-done total)))
+     :status (format "Evaluating cell %d of %d: `%s`…"
+                     (inc num-done) total (if var
+                                            (str "#'" (name var))
+                                            (let [code (pr-str form)
+                                                  max-length 50]
+                                              (if (< max-length (count code))
+                                                (str (subs code 0 max-length) ",,,")
+                                                code))))}))
+
+#_(->eval-status @webserver/!doc 0 (nth (filter parser/code? (:blocks @webserver/!doc)) 0))
+#_(->eval-status @webserver/!doc 1 (nth (filter parser/code? (:blocks @webserver/!doc)) 2))
+#_(->eval-status @webserver/!doc 2 (nth (filter parser/code? (:blocks @webserver/!doc)) 3))
+
+#_(nextjournal.clerk/show! "notebooks/exec_status.clj")
+
+(defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks send-status-fn]}]
   (let [deref-forms (into #{} (filter analyzer/deref?) (keys ->hash))
         {:as evaluated-doc :keys [blob-ids]}
         (reduce (fn [state cell]
+                  (when (and (parser/code? cell) send-status-fn)
+                    (send-status-fn (->eval-status analyzed-doc (inc (count (filter parser/code? (:blocks state)))) cell)))
                   (let [state-with-deref-deps-evaluated (analyzer/hash-deref-deps state cell)
                         {:as result :nextjournal/keys [blob-id]} (when (parser/code? cell)
                                                                    (read+eval-cached state-with-deref-deps-evaluated cell))]
@@ -218,8 +239,8 @@
 
 (defn +eval-results
   "Evaluates the given `parsed-doc` using the `in-memory-cache` and augments it with the results."
-  [in-memory-cache parsed-doc]
-  (webserver/send-status! {:progress 0.10 :status "Analyzing…"})
+  [in-memory-cache {:as parsed-doc :keys [send-status-fn]}]
+  (send-status-fn {:progress 0.10 :status "Analyzing…"})
   (let [{:as analyzed-doc :keys [ns]} (analyzer/build-graph
                                        (assoc parsed-doc :blob->result in-memory-cache))]
     (binding [*ns* ns]

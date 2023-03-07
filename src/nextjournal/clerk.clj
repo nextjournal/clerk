@@ -55,12 +55,14 @@
                                        {:file-or-ns file-or-ns}))))
             _ (reset! !last-file file)
             {:keys [blob->result]} @webserver/!doc
-            {:keys [result time-ms]} (eval/time-ms (eval/+eval-results blob->result doc))]
+            {:keys [result time-ms]} (eval/time-ms (eval/+eval-results blob->result (assoc doc :send-status-fn webserver/send-status!)))]
         (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
         (webserver/update-doc! result))
       (catch Exception e
         (webserver/show-error! e)
         (throw e)))))
+
+#_(show! "notebooks/exec_status.clj")
 
 #_(show! 'nextjournal.clerk.tap)
 #_(show! (do (require 'clojure.inspector) (find-ns 'clojure.inspector)))
