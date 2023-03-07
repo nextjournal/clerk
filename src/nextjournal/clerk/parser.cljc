@@ -221,11 +221,16 @@
     :else node))
 
 (defn text-with-clerk-metadata-removed [code ns-resolver]
-  (-> code p/parse-string (node-with-clerk-metadata-removed ns-resolver) n/string))
+  (-> code p/parse-string-all
+      n/children
+      (->> (map (fn [n] (node-with-clerk-metadata-removed n ns-resolver))))
+      n/forms-node
+      n/string))
 
 #_(text-with-clerk-metadata-removed "^::clerk/bar ^{::clerk/foo 'what}\n^ keep \n^{::clerk/bar true :some-key false}  (view that)" {'clerk 'nextjournal.clerk})
 #_(text-with-clerk-metadata-removed "^foo    'form" {'clerk 'nextjournal.clerk})
 #_(text-with-clerk-metadata-removed "(def ^::clerk/no-cache random-thing (rand-int 1000))" {'clerk 'nextjournal.clerk})
+#_(text-with-clerk-metadata-removed "^::clerk/bar [] ;; keep me" {'clerk 'nextjournal.clerk})
 
 (defn markdown-context []
   (update markdown.parser/empty-doc

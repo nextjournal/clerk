@@ -134,6 +134,12 @@ par two"))))
     (is (= (parser/text-with-clerk-metadata-removed "^{:this \"as well should\"}\n(do nothing)" clerk-ns-alias)
            "^{:this \"as well should\"}\n(do nothing)")))
 
+  (testing "should preserve comments"
+    (is (= (parser/text-with-clerk-metadata-removed "^:nextjournal.clerk/no-cache [] ;; keep me" clerk-ns-alias)
+           "[] ;; keep me"))
+    (is (= (parser/text-with-clerk-metadata-removed "^:private [] ;; keep me" clerk-ns-alias)
+           "^:private [] ;; keep me")))
+
   (testing "unreadable forms"
     (is (= (parser/text-with-clerk-metadata-removed "^{:un :balanced :map} (do nothing)" clerk-ns-alias)
            "^{:un :balanced :map} (do nothing)"))))

@@ -7,8 +7,10 @@
 
 ^clojure.lang.PersistentHashMap
 ^{::clerk/visibility {:result :hide} :please   "keep me"}
-{:a 'nice-map}
+{:a 'nice-map} ;; should keep comments here
+
 ;; map metadata with all-clerk keys should just not be displayed
+
 ^{::clerk/visibility {:result :show} ::clerk/width :wide ::clerk/no-cache true}
 (clerk/html
  [:h4
@@ -18,12 +20,12 @@
 
 ;; simple truthy meta like `^::clerk/no-cache` should be removed
 ^::clerk/no-cache
-(rand-int 100)
+(rand-int 100) ;; should keep comments here
 
 ;; ## Clerk metadata on Vars
 ;; Should also be hidden
 
-(def ^::clerk/no-cache ^:private random-thing (rand-int 1000))
+(def ^::clerk/no-cache ^:private random-thing (rand-int 1000))  ;; should keep comments here
 (defonce ^{::clerk/no-cache true :doc "this should stay"}  once-random-thing (rand-int 1000))
 
 ;; ## Whitespace
@@ -37,7 +39,7 @@
   ::clerk/visibility {:result :hide}
   :is  :all
      :kept
-  123}
+  123}  ;; should keep comments here
 'foo
 
 ;; ## Unreadable forms
