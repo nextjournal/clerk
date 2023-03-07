@@ -688,6 +688,7 @@
     (js/console.warn :process-eval-reply!/not-found :eval-id eval-id :keys (keys @!pending-clerk-eval-replies))))
 
 (defn set-status! [{:keys [status]}]
+  (reset! !error nil)
   (reset! !status status))
 
 (defn ^:export dispatch [{:as msg :keys [type]}]
