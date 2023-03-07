@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.sci-env
-  (:require-macros [nextjournal.clerk.render.macros :refer [sci-copy-nss]])
+  (:require-macros [nextjournal.clerk.render.macros :refer [sci-copy-nss]]
+                   [nextjournal.clerk.sci-env :refer [def-cljs-core]])
   (:require ["@codemirror/language" :as codemirror-language]
             ["@codemirror/state" :as codemirror-state]
             ["@codemirror/view" :as codemirror-view]
@@ -32,11 +33,12 @@
 
 (set! js/globalThis.clerk #js {})
 (set! js/globalThis.clerk.cljs_core #js {})
-(set! js/globalThis.clerk.cljs_core.vector vector) ;; hack for cherry
-(set! js/globalThis.clerk.cljs_core.keyword keyword) ;; hack for cherry
-(set! js/globalThis.clerk.cljs_core.apply apply) ;; hack for cherry
-(set! js/globalThis.clerk.cljs_core.inc inc) ;; hack for cherry
-(set! js/globalThis.clerk.cljs_core.identity identity) ;; hack for cherry
+(def-cljs-core)
+;; (set! js/globalThis.clerk.cljs_core.vector vector) ;; hack for cherry
+;; (set! js/globalThis.clerk.cljs_core.keyword keyword) ;; hack for cherry
+;; (set! js/globalThis.clerk.cljs_core.apply apply) ;; hack for cherry
+;; (set! js/globalThis.clerk.cljs_core.inc inc) ;; hack for cherry
+;; (set! js/globalThis.clerk.cljs_core.identity identity) ;; hack for cherry
 
 (defn ->viewer-fn-with-error [form]
   (try (viewer/->viewer-fn form)
@@ -152,7 +154,8 @@
                              ;; so we wrap it in a let
                              (str/replace "(let [x %s] x)"
                                           "%s"
-                                          (str f)))]
+                                          (str f))
+                             {:core-alias 'clerk.cljs_core})]
                         (js/console.log imports)
                         (try (js/eval body)
                              (catch :default e
