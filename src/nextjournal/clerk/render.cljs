@@ -136,9 +136,9 @@
      [inspect-presented x]]))
 
 (defn exec-status [{:keys [progress status]}]
-  [:div.w-full.bg-purple-200 {:class "h-0.5"}
-   [:div.bg-purple-600 {:class "h-0.5" :style {:width (str (* progress 100) "%")}}]
-   [:div.absolute.text-purple-600.text-xs.font-sans {:style {:font-size "0.5rem"}} status]])
+  [:div.w-full.bg-purple-200.dark:bg-purple-900 {:class "h-0.5"}
+   [:div.bg-purple-600.dark:bg-purple-400 {:class "h-0.5" :style {:width (str (* progress 100) "%")}}]
+   [:div.absolute.text-purple-600.dark:text-purple-400.text-xs.font-sans.ml-2 {:style {:font-size "0.5rem"}} status]])
 
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility]}]
   (r/with-let [local-storage-key "clerk-navbar"

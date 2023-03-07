@@ -63,6 +63,7 @@
         (throw e)))))
 
 #_(show! "notebooks/exec_status.clj")
+#_(clear-cache!)
 
 #_(show! 'nextjournal.clerk.tap)
 #_(show! (do (require 'clojure.inspector) (find-ns 'clojure.inspector)))
