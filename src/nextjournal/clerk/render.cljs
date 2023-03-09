@@ -546,7 +546,6 @@
     [:span.cmt-meta tag] (when space? nbsp) value]))
 
 (defonce !doc (ratom/atom nil))
-(defonce !status (ratom/atom nil))
 (defonce !error (ratom/atom nil))
 (defonce !viewers viewer/!viewers)
 
@@ -588,8 +587,8 @@
 (defn root []
   [:<>
    [:div.fixed.w-full
-    (when @!status
-      [exec-status @!status])]
+    (when-let [status (:status @!doc)]
+      [exec-status status])]
    [inspect-presented @!doc]
    (when @!error
      [:div.fixed.top-0.left-0.w-full.h-full
@@ -654,7 +653,6 @@
   (when (remount? doc)
     (swap! !eval-counter inc))
   (reset! !error error)
-  (reset! !status nil)
   (when-let [title (and (exists? js/document) (-> doc viewer/->value :title))]
     (set! (.-title js/document) title)))
 
@@ -663,7 +661,6 @@
 
 (defn patch-state! [{:keys [patch]}]
   (reset! !error nil)
-  (reset! !status nil)
   (if (remount? patch)
     (do (swap! !doc #(re-eval-viewer-fns (apply-patch % patch)))
         ;; TODO: figure out why it doesn't work without `js/setTimeout`
@@ -687,15 +684,10 @@
               error (reject error)))
     (js/console.warn :process-eval-reply!/not-found :eval-id eval-id :keys (keys @!pending-clerk-eval-replies))))
 
-(defn set-status! [{:keys [status]}]
-  (reset! !error nil)
-  (reset! !status status))
-
 (defn ^:export dispatch [{:as msg :keys [type]}]
   (let [dispatch-fn (get {:patch-state! patch-state!
                           :set-state! set-state!
-                          :eval-reply process-eval-reply!
-                          :set-status! set-status!}
+                          :eval-reply process-eval-reply!}
                          type
                          (fn [_]
                            (js/console.warn (str "no on-message dispatch for type `" type "`"))))]

@@ -45,10 +45,6 @@
 
 #_(broadcast! [{:random (rand-int 10000) :range (range 100)}])
 
-(defn send-status! [status]
-  (doseq [ch @!clients]
-    (httpkit/send! ch (v/->edn {:type :set-status! :status status}))))
-
 (defn update-if [m k f]
   (if (k m)
     (update m k f)
@@ -183,15 +179,19 @@
     (reset! !doc (with-meta doc presented))
     presented))
 
+
 (defn update-doc! [doc]
   (reset! !error nil)
   (broadcast! (if (= (:ns @!doc) (:ns doc))
-                (let [old-viewer (meta @!doc)
-                      patch (editscript/diff old-viewer (present+reset! doc) {:algo :quick})]
-                  {:type :patch-state! :patch (editscript/get-edits patch)})
+                {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
                 {:type :set-state! :doc (present+reset! doc)})))
 
-#_(update-doc! help-doc)
+#_(update-doc! (help-doc))
+
+(defn set-status! [status]
+  (swap! !doc vary-meta assoc :status status)
+  ;; avoid editscript diff but use manual patch to just replace `:status` in doc
+  (broadcast! {:type :patch-state! :patch [[[:status] :r status]]}))
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
 

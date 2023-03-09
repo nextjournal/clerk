@@ -34,7 +34,7 @@
   (if config/*in-clerk*
     ::ignored
     (try
-      (webserver/send-status! {:progress 0 :status "Parsing…"})
+      (webserver/set-status! {:progress 0 :status "Parsing…"})
       (let [file (cond
                    (nil? file-or-ns)
                    (throw (ex-info (str "`nextjournal.clerk/show!` cannot show `nil`.")
@@ -55,7 +55,7 @@
                                        {:file-or-ns file-or-ns}))))
             _ (reset! !last-file file)
             {:keys [blob->result]} @webserver/!doc
-            {:keys [result time-ms]} (eval/time-ms (eval/+eval-results blob->result (assoc doc :send-status-fn webserver/send-status!)))]
+            {:keys [result time-ms]} (eval/time-ms (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!)))]
         (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
         (webserver/update-doc! result))
       (catch Exception e
