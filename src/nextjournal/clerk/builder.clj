@@ -25,6 +25,7 @@
          "how_clerk_works"
          "eval_cljs"
          "example"
+         "fragments"
          "hiding_clerk_metadata"
          "js_import"
          "multiviewer"
