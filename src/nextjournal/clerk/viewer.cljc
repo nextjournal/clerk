@@ -1580,7 +1580,9 @@
 (def tex          (partial with-viewer katex-viewer))
 (def notebook     (partial with-viewer (:name notebook-viewer)))
 (def code         (partial with-viewer code-viewer))
-(defn fragment [& xs] {:nextjournal.clerk/fragment xs})
+
+(defn fragment [& xs]
+  {:nextjournal.clerk/fragment (if (and (sequential? (first xs)) (= 1 (count xs))) (first xs) xs)})
 
 (defn image
   ([image-or-url] (image {} image-or-url))
