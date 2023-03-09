@@ -403,7 +403,6 @@
                 "cursor-pointer bg-indigo-200 hover:bg-indigo-300 dark:bg-gray-700 dark:hover:bg-slate-600 text-gray-900 dark:text-white"
                 "text-gray-400 dark:text-slate-300")
        :on-click #(when (fn? fetch-fn)
-                    (js/console.log :fetch fetch-opts)
                     (fetch-fn fetch-opts))} (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")])])
 
 (defn render-map [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]

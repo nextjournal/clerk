@@ -80,7 +80,7 @@
               (map (juxt :nextjournal/blob-id :nextjournal/presented)))
         (:blocks (:nextjournal/value presented-doc))))
 
-(defn serve-blob [{:as doc :keys [blob->result ns]} {:keys [blob-id fetch-opts]}]
+(defn serve-blob [{:as doc :keys [ns]} {:keys [blob-id fetch-opts]}]
   (when-not ns
     (throw (ex-info "namespace must be set" {:doc doc})))
   (if-some [root-desc (get (blob->presented (meta doc)) blob-id)]
