@@ -240,7 +240,7 @@
 (defn +eval-results
   "Evaluates the given `parsed-doc` using the `in-memory-cache` and augments it with the results."
   [in-memory-cache {:as parsed-doc :keys [set-status-fn]}]
-  (some-> set-status-fn {:progress 0.10 :status "Analyzing…"})
+  (when set-status-fn (set-status-fn {:progress 0.10 :status "Analyzing…"}))
   (let [{:as analyzed-doc :keys [ns]} (analyzer/build-graph
                                        (assoc parsed-doc :blob->result in-memory-cache))]
     (binding [*ns* ns]
