@@ -189,7 +189,7 @@
 #_(update-doc! (help-doc))
 
 (defn set-status! [status]
-  (swap! !doc vary-meta assoc :status status)
+  (swap! !doc (fn [doc] (vary-meta (or doc (help-doc)) assoc :status status)))
   ;; avoid editscript diff but use manual patch to just replace `:status` in doc
   (broadcast! {:type :patch-state! :patch [[[:status] :r status]]}))
 

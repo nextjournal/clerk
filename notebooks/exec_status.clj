@@ -2,6 +2,11 @@
 (ns exec-status
   (:require [nextjournal.clerk :as clerk]))
 
+;; To see what's going on while waiting for a long-running
+;; computation, Clerk will now show an execution status bar on the
+;; top. For named cells (defining a var) it will show the name of the
+;; var, for anonymous expressions, a preview of the form.
+
 (def progress-viewer
   {:pred (every-pred map? #(contains? % :progress))
    :render-fn 'nextjournal.clerk.render/exec-status
