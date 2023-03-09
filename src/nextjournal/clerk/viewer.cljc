@@ -572,7 +572,7 @@
               (or result? eval?)
               (into (map-indexed (fn [i x]
                                    (with-viewer (if result? (:name result-viewer) (assoc result-viewer :render-fn '(fn [_] [:<>])))
-                                     {:nextjournal/opts {:id (processed-block-id (str id "-" i "-result"))}}
+                                     {:nextjournal/opts {:id (processed-block-id (str id (when (pos? i) (str "-" i)) "-result"))}}
                                      (-> cell (assoc ::doc doc) (assoc :result x)))))
                     (or (when-some [fgm (-> cell :result :nextjournal/value (get-safe :nextjournal.clerk/fragment))]
                           (map-indexed #(hash-map :nextjournal/value %2
