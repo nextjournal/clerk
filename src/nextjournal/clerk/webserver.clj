@@ -83,9 +83,8 @@
 (defn serve-blob [{:as doc :keys [blob->result ns]} {:keys [blob-id fetch-opts]}]
   (when-not ns
     (throw (ex-info "namespace must be set" {:doc doc})))
-  (if (contains? blob->result blob-id)
-    (let [root-desc (get (blob->presented (meta doc)) blob-id)
-          {:keys [present-elision-fn]} (meta root-desc)
+  (if-some [root-desc (get (blob->presented (meta doc)) blob-id)]
+    (let [{:keys [present-elision-fn]} (meta root-desc)
           desc (present-elision-fn fetch-opts)]
       (if (contains? desc :nextjournal/content-type)
         {:body (v/->value desc)

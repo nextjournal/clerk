@@ -575,8 +575,8 @@
                                      {:nextjournal/opts {:id (processed-block-id (str id "-" i "-result"))}}
                                      (-> cell (assoc ::doc doc) (assoc :result x)))))
                     (or (when-some [fgm (-> cell :result :nextjournal/value (get-safe :nextjournal.clerk/fragment))]
-                          (map #(hash-map :nextjournal/value %
-                                          :nextjournal/blob-id (-> cell :result :nextjournal/blob-id)) fgm))
+                          (map-indexed #(hash-map :nextjournal/value %2
+                                                  :nextjournal/blob-id (str (-> cell :result :nextjournal/blob-id) %1)) fgm))
                         [(:result cell)]))))))
 
 #_(:blocks (:nextjournal/value (nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)))
