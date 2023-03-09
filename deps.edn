@@ -14,7 +14,7 @@
 
         com.taoensso/nippy {:mvn/version "3.2.0"}
 
-        mvxcvi/multiformats {:mvn/version "0.2.1"}
+        mvxcvi/multiformats {:mvn/version "0.3.107"}
         com.pngencoder/pngencoder {:mvn/version "0.13.1"}
 
         http-kit/http-kit {:mvn/version "2.6.0"}
@@ -41,8 +41,7 @@
                               binaryage/devtools {:mvn/version "1.0.3"}
                               cider/cider-nrepl {:mvn/version "0.29.0"}
                               com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.0.3"}
-                              io.github.nextjournal/cas-client {:git/sha "4eefd77dd981b908591d91d518ba3f43bd8c361e"
-                                                                :exclusions [mvxcvi/multiformats]}
+                              io.github.nextjournal/cas-client {:git/sha "84ab35c3321c1e51a589fddbeee058aecd055bf8"}
                               org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
                               org.babashka/cli {:mvn/version "0.5.40"}}
                  :extra-paths ["dev" "notebooks"]
@@ -72,9 +71,7 @@
                                io.github.nextjournal/clerk-slideshow {:git/sha "f9fb86430ebf533bfc9d5cec5bf0a94ed07146f3"}}}
 
            :build {:deps {io.github.nextjournal/clerk {:local/root "."}
-                          ;; :exclusions needed until https://github.com/greglook/clj-multiformats/pull/2 is merged
-                          io.github.nextjournal/cas-client {:git/sha "4eefd77dd981b908591d91d518ba3f43bd8c361e"
-                                                            :exclusions [mvxcvi/multiformats]}
+                          io.github.nextjournal/cas-client {:git/sha "84ab35c3321c1e51a589fddbeee058aecd055bf8"}
                           io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}
                           io.github.slipset/deps-deploy {:git/sha "b4359c5d67ca002d9ed0c4b41b710d7e5a82e3bf"}}
                    :extra-paths ["bb" "src" "resources"] ;; for loading lookup-url in build
