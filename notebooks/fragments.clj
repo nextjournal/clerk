@@ -42,20 +42,16 @@
 (defonce tap-setup (add-tap (fn [x] ((resolve `tapped) x))))
 
 (def tap-viewer
-  {:transform-fn
-   (comp v/mark-presented
-         #(merge % (-> % :nextjournal/value :val v/->opts))
-         (clerk/update-val update :val v/present)
-         (clerk/update-val update :tapped-at inst->local-time-str)
-         #(assoc % :nextjournal/viewer
-                 {:render-fn '(fn [{:keys [val key tapped-at]} opts]
-                                (js/console.log :key key)
-                                (with-meta
-                                  [:div.border-t.relative.py-3.mt-5
-                                   [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
-                                    {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} tapped-at]
-                                   [:div.overflow-x-auto [nextjournal.clerk.render/inspect-presented val]]]
-                                  {:key key}))}))})
+  {:render-fn '(fn [{:keys [val tapped-at key]} opts]
+                 (with-meta
+                   [:div.border-t.relative.py-3.mt-2
+                    [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
+                     {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
+                    [:div.overflow-x-auto [nextjournal.clerk.render/inspect-presented val]]]
+                   {:key (:nextjournal/value key)}))
+   :transform-fn (comp clerk/mark-preserve-keys
+                       #(merge % (-> % :nextjournal/value :val v/ensure-wrapped v/->opts))
+                       (clerk/update-val update :tapped-at inst->local-time-str))})
 
 ^{::clerk/visibility {:result :show}}
 (clerk/fragment (map (partial clerk/with-viewer tap-viewer)
