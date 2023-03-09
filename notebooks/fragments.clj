@@ -9,6 +9,7 @@
   (:import (java.time Instant LocalTime ZoneId)))
 
 (defn inst->local-time-str [inst] (str (LocalTime/ofInstant inst (ZoneId/systemDefault))))
+(defn timestamped [x] {:val x :tapped-at (Instant/now) :key (str (gensym))})
 
 (def switch-view
   (assoc v/viewer-eval-viewer
@@ -28,15 +29,17 @@
 ^{::clerk/sync true ::clerk/viewer switch-view ::clerk/visibility {:result :show}}
 (defonce !view (atom :stream))
 
-(defonce !taps (atom [(clerk/html {::clerk/width :wide} [:div.w-full.border-2.border-amber-500])
-                      (clerk/plotly {::clerk/width :full} {:data [{:y [3 1 2]}]})]))
+
+(defonce !taps (atom (mapv timestamped
+                           [(clerk/html {::clerk/width :wide} [:h1.w-full.border-2.border-amber-500.bg-amber-500.h-10])
+                            (clerk/plotly {::clerk/width :full} {:data [{:y [3 1 2]}]})])))
 
 (defn reset-taps! []
   (reset! !taps [])
   (clerk/recompute!))
 
 (defn tapped [x]
-  (swap! !taps conj {:val x :tapped-at (Instant/now) :key (str (gensym))})
+  (swap! !taps conj (timestamped x))
   (clerk/recompute!))
 
 (defonce tap-setup (add-tap (fn [x] ((resolve `tapped) x))))
