@@ -28,11 +28,18 @@
 (def ^::clerk/no-cache ^:private random-thing (rand-int 1000))  ;; should keep comments here
 (defonce ^{::clerk/no-cache true :doc "this should stay"}  once-random-thing (rand-int 1000))
 
+^::clerk/sync
+(defonce ^::clerk/no-cache sync-me (atom nil))
+
 ;; ## Whitespace
 ;; All whitespace and comments in-between annotations should be preserved:
 ^{:some/key 123 :and 'this ::clerk/no-cache true}
 ;; this should be kept
 'some-symbol
+
+^::clerk/no-cache
+;; this form is not cached
+{}
 
 ^   :foo
 ^ {:this   :weird    :map 'is
@@ -41,6 +48,11 @@
      :kept
   123}  ;; should keep comments here
 'foo
+
+;; ## Unevals
+;; Unevals in between meta expressions should also be kept
+^:private #_ keep-me {}
+^::clerk/no-cache #_ keep-me {}
 
 ;; ## Unreadable forms
 ;; meta with e.g. unbalanced maps should throw as expected
