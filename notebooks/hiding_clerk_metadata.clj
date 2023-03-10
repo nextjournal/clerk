@@ -34,6 +34,10 @@
 ;; this should be kept
 'some-symbol
 
+^::clerk/no-cache
+;; this form is not cached
+{}
+
 ^   :foo
 ^ {:this   :weird    :map 'is
   ::clerk/visibility {:result :hide}
@@ -41,6 +45,11 @@
      :kept
   123}  ;; should keep comments here
 'foo
+
+;; ## Unevals
+;; Unevals in between meta expressions should also be kept
+^:private #_ keep-me {}
+^::clerk/no-cache #_ keep-me {}
 
 ;; ## Unreadable forms
 ;; meta with e.g. unbalanced maps should throw as expected
