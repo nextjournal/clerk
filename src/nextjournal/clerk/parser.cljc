@@ -176,8 +176,9 @@
 
 (def clerk-namespace? (comp #{"nextjournal.clerk"} namespace))
 
-(defn pop-children [zloc]
-  "Removes first child (and all whitespace following it) at location without moving"
+(defn pop-children
+  "Returns a new localtion with the first child (and all whitespace following it) removed without moving"
+  [zloc]
   (z/replace zloc (n/forms-node (drop-while n/whitespace? (clojure.zip/rights (z/down zloc))))))
 (defn root-location [zloc] (last (take-while some? (iterate z/up zloc))))
 (defn remove-clerk-keys
