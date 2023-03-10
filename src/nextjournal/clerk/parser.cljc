@@ -177,10 +177,13 @@
 (def clerk-namespace? (comp #{"nextjournal.clerk"} namespace))
 
 (defn pop-children
-  "Returns a new localtion with the first child (and all whitespace following it) removed without moving"
+  "Returns a new location with the first child (and all whitespace following it) removed, without moving. Child nodes are wrapped in a `:forms` node."
   [zloc]
+  ;; rewreite-clj doesn't allow to z/remove the left component of a meta node
   (z/replace zloc (n/forms-node (drop-while n/whitespace? (clojure.zip/rights (z/down zloc))))))
+
 (defn root-location [zloc] (last (take-while some? (iterate z/up zloc))))
+
 (defn remove-clerk-keys
   "Takes a map zipper location, returns a new location representing the input map node with all ::clerk namespaced keys removed.
    Whitespace is preserved when possible."
@@ -197,8 +200,6 @@
 (defn zip->node-with-clerk-metadata-removed [zloc]
   (loop [z zloc]
     (cond
-      (z/end? z) (z/root z)
-
       (= :meta (z/tag z))
       (let [meta-loc (z/down z)
             meta-sexpr (z/sexpr meta-loc)
@@ -207,16 +208,18 @@
         (if (or (and map-meta-loc (seq (z/sexpr map-meta-loc)))
                 (and (not (keyword? meta-sexpr)) (not (map? meta-sexpr)))
                 (and (keyword? meta-sexpr) (not (clerk-namespace? meta-sexpr))))
-          ;; we keep the meta node, possibly a filtered map, move to right and repeat, move to root
+          ;; keep the meta node, possibly a filtered map, move to the right and repeat
           (recur (z/right (or map-meta-loc meta-loc)))
-          ;; or just skip meta node and move to right and repeat
-          (recur (pop-children z))))
+          ;; remove the meta node, move to the first of the remaining children on the right, repeat
+          (recur (z/down (pop-children z)))))
 
       (deflike-node? (z/node z))
       (recur (-> z z/down z/right))
 
       :else
-      (recur (z/next z)))))
+      (if-some [sibling (z/right z)]
+        (recur sibling)
+        (z/root z)))))
 
 (defn text-with-clerk-metadata-removed [code ns-resolver]
   (try

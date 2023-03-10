@@ -147,6 +147,10 @@ par two"))))
     (is (= "#_ keep-me []"
            (parser/text-with-clerk-metadata-removed "^::clerk/no-cache #_ keep-me []" clerk-ns-alias))))
 
+  (testing "meta on vars"
+    (is (= "(defonce ^:private my-var (atom nil))"
+           (parser/text-with-clerk-metadata-removed "^::clerk/sync (defonce ^:private ^::clerk/no-cache my-var (atom nil))" clerk-ns-alias))))
+
   (testing "unreadable forms"
     (is (= (parser/text-with-clerk-metadata-removed "^{:un :balanced :map} (do nothing)" clerk-ns-alias)
            "^{:un :balanced :map} (do nothing)"))))
