@@ -371,7 +371,11 @@
   [& body]
   (when nextjournal.clerk.config/*in-clerk*
     `(nextjournal.clerk/with-viewer v/examples-viewer
-       (mapv (fn [form# val#] {:form form# :val val#}) ~(mapv (fn [x#] `'~x#) body) ~(vec body)))))
+       ~(mapv (fn [form] {:form `'~form :val form})
+              body))))
+
+#_(binding [nextjournal.clerk.config/*in-clerk* true]
+    (macroexpand '(example 1 (inc 1))))
 
 (defn file->viewer
   "Evaluates the given `file` and returns it's viewer representation."
