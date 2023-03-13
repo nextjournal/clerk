@@ -1,5 +1,4 @@
 ;; # 🚰 Tap Inspector via Fragments
-;; Using fragments to implement a tap viewer
 ^{:nextjournal.clerk/visibility {:code :hide}}
 (ns fragments
   {:nextjournal.clerk/visibility {:code :hide :result :hide}
@@ -44,26 +43,27 @@
 
 (defonce tap-setup (add-tap (fn [x] ((resolve `tapped) x))))
 
-(def tap-viewer
-  {:render-fn '(fn [{:keys [val tapped-at key]} opts]
+(def tap-separator
+  {:render-fn '(fn [{:keys [tapped-at key]} opts]
                  (with-meta
                    [:div.border-t.relative.py-3.mt-2
                     [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
-                     {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
-                    [:div.overflow-x-auto [nextjournal.clerk.render/inspect-presented val]]]
-                   {:key (:nextjournal/value key)}))
-   :transform-fn (comp clerk/mark-preserve-keys
-                       #(merge % (-> % :nextjournal/value :val v/ensure-wrapped v/->opts))
-                       (clerk/update-val update :tapped-at inst->local-time-str))})
+                     {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} tapped-at]]
+                   {:key key}))
+   :transform-fn (comp clerk/mark-presented (clerk/update-val update :tapped-at inst->local-time-str))})
 
 ^{::clerk/visibility {:result :show}}
-(clerk/fragment (map (partial clerk/with-viewer tap-viewer)
-                     (cond->> (reverse @!taps) (= :latest @!view) (take 1))))
+(clerk/fragment (mapcat (fn [{:as x :keys [val]}]
+                          [(clerk/with-viewer tap-separator
+                             {::clerk/css-class [:w-full :max-w-prose]}
+                             (dissoc x :val))
+                           val])
+                        (cond->> (reverse @!taps) (= :latest @!view) (take 1))))
 
 (comment
   (doseq [t @@#'clojure.core/tapset] (remove-tap t))
   (tap> 1)
-  (tap> (clerk/html  {::clerk/width :full} [:h1.w-full.border-2.border-amber-500.bg-amber-500.h-10]))
+  (tap> (clerk/html  {::clerk/width :wide} [:h1.w-full.border-2.border-amber-500.bg-amber-500.h-10]))
   (tap> (clerk/table {::clerk/width :full} [[1 2] [3 4]]))
   (tap> (clerk/plotly {::clerk/width :full} {:data [{:y [3 1 2]}]}))
   (tap> (clerk/html {::clerk/width :full} [:h1 "Fin. 👋"]))
