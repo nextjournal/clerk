@@ -107,6 +107,15 @@
 
 (def core-ns (sci/create-ns 'clojure.core nil))
 
+
+(defn ^:sci/macro time' [_ _ expr]
+  `(let [start# (system-time)
+         ret# ~expr]
+     (prn (cljs.core/str "Elapsed time: "
+                         (.toFixed (- (system-time) start#) 6)
+                         " msecs"))
+     ret#))
+
 (def initial-sci-opts
   {:async? true
    :disable-arity-checks true
@@ -128,7 +137,8 @@
              'p 'nextjournal.clerk.parser}
    :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
                        'clojure.core {'read-string read-string
-                                      'implements? (sci/copy-var implements?* core-ns)}}
+                                      'implements? (sci/copy-var implements?* core-ns)
+                                      'time (sci/copy-var time' core-ns)}}
                       (sci-copy-nss
                        'nextjournal.clerk.parser
                        'nextjournal.clerk.render
@@ -160,11 +170,11 @@
                         (try (js/eval body)
                              (catch :default e
                                [:error body e])))]
-    (if (and (vector? cherry-evaled)
+    (if true #_(and (vector? cherry-evaled)
              (= :error (first cherry-evaled)))
       (sci/eval-form (sci.ctx-store/get-ctx) f)
       (do
-        (js/console.log (pr-str f) "=>" cherry-evaled)
+        #_(js/console.log (pr-str f) "=>" cherry-evaled)
         cherry-evaled))))
 
 (defn ^:export set-state [state]
