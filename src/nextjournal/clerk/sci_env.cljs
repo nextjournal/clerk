@@ -10,6 +10,7 @@
             ["framer-motion" :as framer-motion]
             ["react" :as react]
             [applied-science.js-interop :as j]
+            [cherry.compiler :as cherry]
             [cljs.reader]
             [clojure.string :as str]
             [edamame.core :as edamame]
@@ -29,8 +30,7 @@
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
             [sci.ctx-store]
-            [shadow.esm]
-            [cherry.compiler :as cherry]))
+            [shadow.esm]))
 
 (set! js/globalThis.clerk #js {})
 (set! js/globalThis.clerk.cljs_core #js {})
@@ -64,7 +64,7 @@
          :read-cond :allow
          :readers
          (fn [tag]
-           (or (get {'viewer-fn   ->viewer-fn-with-error
+           (or (get {'viewer-fn ->viewer-fn-with-error
                      'viewer-eval ->viewer-eval-with-error} tag)
                (fn [value]
                  (viewer/with-viewer `viewer/tagged-value-viewer
@@ -117,9 +117,7 @@
      ret#))
 
 (def initial-sci-opts
-  {:async? true
-   :disable-arity-checks true
-   :classes {'js (j/assoc! goog/global "import" shadow.esm/dynamic-import)
+  {:classes {'js (j/assoc! goog/global "import" shadow.esm/dynamic-import)
              'framer-motion framer-motion
              :allow :all}
    :js-libs {"@codemirror/language" codemirror-language
@@ -130,11 +128,10 @@
              "framer-motion" framer-motion
              "react" react}
    ;; TODO: bring back aliases before the release and show a warning instead
-   #_#_
-   :aliases {'j 'applied-science.js-interop
-             'reagent 'reagent.core
-             'v 'nextjournal.clerk.viewer
-             'p 'nextjournal.clerk.parser}
+   #_#_:aliases {'j 'applied-science.js-interop
+                 'reagent 'reagent.core
+                 'v 'nextjournal.clerk.viewer
+                 'p 'nextjournal.clerk.parser}
    :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
                        'clojure.core {'read-string read-string
                                       'implements? (sci/copy-var implements?* core-ns)
@@ -158,25 +155,32 @@
   (render/dispatch (read-string (.-data ws-msg))))
 
 (defn ^:export eval-form [f]
-  (let [cherry-evaled (let [{:keys [body imports]}
-                            (cherry/compile-string*
-                             ;; function expression without name
-                             ;; isn't valid as top level JS form,
-                             ;; so we wrap it in a let
-                             (str/replace "(let [x %s] x)"
-                                          "%s"
-                                          (str f))
-                             {:core-alias 'clerk.cljs_core})]
-                        (js/console.log imports)
-                        (try (js/eval body)
-                             (catch :default e
-                               [:error body e])))]
-    (if true #_(and (vector? cherry-evaled)
-             (= :error (first cherry-evaled)))
-      (sci/eval-form (sci.ctx-store/get-ctx) f)
+  (let [m (meta f)
+        cherry? (:nextjournal.clerk/cherry m)
+        cherry-evaled (when cherry?
+                        (let [{:keys [body imports]}
+                              (cherry/compile-string*
+                                         ;; function expression without name
+                                         ;; isn't valid as top level JS form,
+                                         ;; so we wrap it in a let
+                               (str/replace "(let [x %s] x)"
+                                            "%s"
+                                            (str f))
+                               {:core-alias 'clerk.cljs_core})]
+                          (js/console.log imports)
+                          (try (js/eval body)
+                               (catch :default e
+                                 [:error body e]))))]
+    (when (and cherry? (not cherry-evaled))
+      (js/console.warn "form was requested to be evaluated with cherry, but error happened, falling back on SCI"))
+    (if (and
+         cherry?
+         (not (and (vector? cherry-evaled)
+                   (= :error (first cherry-evaled)))))
       (do
-        #_(js/console.log (pr-str f) "=>" cherry-evaled)
-        cherry-evaled))))
+        (js/console.log "cherry!")
+        cherry-evaled)
+      (sci/eval-form (sci.ctx-store/get-ctx) f))))
 
 (defn ^:export set-state [state]
   (render/set-state! state))

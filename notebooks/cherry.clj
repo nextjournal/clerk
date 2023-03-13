@@ -10,5 +10,17 @@
 (clerk/with-viewer
   {:render-fn
    '(fn [value]
-      [:pre (time (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3]))))])}
+      [:pre (time (do #_(dotimes [_ 100000]
+                        (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3]))))
+                      (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3])))))])}
+  (+ 1 2 3 5))
+
+(clerk/with-viewer
+  {:render-fn
+   ^::clerk/cherry
+   '(fn [value]
+      [:pre
+       (time (do #_(dotimes [_ 100000]
+                   (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3]))))
+                 (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3])))))])}
   (+ 1 2 3 5))
