@@ -42,6 +42,7 @@
 ;; (set! js/globalThis.clerk.cljs_core.identity identity) ;; hack for cherry
 
 (defn ->viewer-fn-with-error [form]
+  (prn :fooooorrmmmido form) ;; apparently the interesting viewer fns go through here
   (try (viewer/->viewer-fn form)
        (catch js/Error e
          (viewer/map->ViewerFn
@@ -50,6 +51,7 @@
                 [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)])}))))
 
 (defn ->viewer-eval-with-error [form]
+  (prn :formmmm form)
   (try (*eval* form)
        (catch js/Error e
          (js/console.error "error in viewer-eval" e)
@@ -64,6 +66,7 @@
          :read-cond :allow
          :readers
          (fn [tag]
+           (prn :tag tag)
            (or (get {'viewer-fn ->viewer-fn-with-error
                      'viewer-eval ->viewer-eval-with-error} tag)
                (fn [value]
@@ -78,7 +81,6 @@
 
 (defn ^:export read-string [s]
   (edamame/parse-string s @!edamame-opts))
-
 
 (def ^{:doc "Stub implementation to be replaced during static site generation. Clerk is only serving one page currently."}
   doc-url
@@ -156,6 +158,7 @@
 
 (defn ^:export eval-form [f]
   (let [m (meta f)
+        _ (prn :m m)
         cherry? (:nextjournal.clerk/cherry m)
         cherry-evaled (when cherry?
                         (let [{:keys [body imports]}

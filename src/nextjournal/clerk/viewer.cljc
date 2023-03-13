@@ -67,6 +67,7 @@
                   #?@(:cljs [:f (*eval* form)])}))
 
 (defn ->viewer-eval [form]
+  (prn :metnal (meta form))
   (map->ViewerEval {:form form}))
 
 (defn open-graph-metas [open-graph-properties]
