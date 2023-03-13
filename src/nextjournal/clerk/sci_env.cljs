@@ -1,4 +1,5 @@
 (ns nextjournal.clerk.sci-env
+  (:refer-clojure :exclude [time])
   (:require-macros [nextjournal.clerk.render.macros :refer [sci-copy-nss]]
                    [nextjournal.clerk.sci-env :refer [def-cljs-core]])
   (:require ["@codemirror/language" :as codemirror-language]
@@ -107,8 +108,7 @@
 
 (def core-ns (sci/create-ns 'clojure.core nil))
 
-
-(defn ^:sci/macro time' [_ _ expr]
+(defn ^:sci/macro time [_ _ expr]
   `(let [start# (system-time)
          ret# ~expr]
      (prn (cljs.core/str "Elapsed time: "
@@ -138,7 +138,8 @@
    :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
                        'clojure.core {'read-string read-string
                                       'implements? (sci/copy-var implements?* core-ns)
-                                      'time (sci/copy-var time' core-ns)}}
+                                      'time (sci/copy-var time core-ns)
+                                      'system-time (sci/copy-var system-time core-ns)}}
                       (sci-copy-nss
                        'nextjournal.clerk.parser
                        'nextjournal.clerk.render
