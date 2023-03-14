@@ -1041,7 +1041,7 @@
                     :title
                     :toc
                     :toc-visibility])
-      #?(:clj (update :file #(if (fs/absolute? %) (str (fs/relativize (fs/cwd) %)) %)))
+      #?(:clj (update :file #(if (and % (fs/absolute? %)) (str (fs/relativize (fs/cwd) %)) %)))
       (assoc :sidenotes? (boolean (seq (:footnotes doc))))
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
 
