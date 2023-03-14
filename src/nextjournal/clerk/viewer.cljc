@@ -1035,11 +1035,13 @@
                     :auto-expand-results?
                     :blocks :bundle?
                     :css-class
+                    :file
                     :open-graph
                     :ns
                     :title
                     :toc
                     :toc-visibility])
+      #?(:clj (update :file #(if (fs/absolute? %) (str (fs/relativize (fs/cwd) %)) %)))
       (assoc :sidenotes? (boolean (seq (:footnotes doc))))
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
 

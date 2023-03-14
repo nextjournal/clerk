@@ -540,7 +540,10 @@
    [:span.inspected-value.whitespace-nowrap
     [:span.cmt-meta tag] (when space? nbsp) value]))
 
-(defonce !doc (ratom/atom nil))
+(defonce !doc (doto (ratom/atom nil)
+                (add-watch 'url-history
+                           (fn [_ _ _ doc]
+                             (js/history.pushState #js {} "" (str "/" (-> doc viewer/->value :file)))))))
 (defonce !error (ratom/atom nil))
 (defonce !viewers viewer/!viewers)
 
