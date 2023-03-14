@@ -78,7 +78,7 @@
 #?(:clj
    (defmethod print-method ViewerFn [v ^java.io.Writer w]
      (.write w (str "#viewer-fn"
-                    (when (:cherry v)
+                    (when (= :cherry (:evaluator v))
                       "/cherry")
                     " " (:form v)))))
 
@@ -1216,12 +1216,12 @@
 
 (declare assign-closing-parens)
 
-(defn process-render-fn [{:as viewer :keys [render-fn cherry]}]
+(defn process-render-fn [{:as viewer :keys [render-fn evaluator]}]
   (cond-> viewer
     (and render-fn (not (viewer-fn? render-fn)))
     (update :render-fn (fn [rf]
-                         (cond-> (->viewer-fn rf)
-                           cherry (assoc :cherry cherry))))))
+                         (assoc (->viewer-fn rf)
+                                :evaluator (or evaluator :sci))))))
 
 (defn hash-sha1 [x]
   #?(:clj (analyzer/valuehash :sha1 x)
