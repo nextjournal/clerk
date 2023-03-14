@@ -1588,7 +1588,7 @@
    content
    (html [:figcaption.text-xs.text-slate-500.text-center.mt-1 text])))
 
-(defn ^:dynamic doc-url [path] (str "#/" path))
+(defn ^:dynamic doc-url [path] (str "/" path))
 
 (defn print-hide-result-deprecation-warning []
   #?(:clj (binding [*out* *err*]

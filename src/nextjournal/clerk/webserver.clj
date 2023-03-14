@@ -7,6 +7,7 @@
             [editscript.core :as editscript]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
+            [nextjournal.clerk.eval :as eval]
             [org.httpkit.server :as httpkit])
   (:import (java.nio.file Files)))
 
@@ -146,7 +147,7 @@
 #_(do
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
     (eval '(nextjournal.clerk/recompute!)))
-
+(declare present+reset!)
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
     (httpkit/as-channel req ws-handlers)
@@ -158,7 +159,12 @@
         "_ws" {:status 200 :body "upgrading..."}
         {:status 200
          :headers {"Content-Type" "text/html"}
-         :body (view/doc->html {:doc (or @!doc (help-doc)) :error @!error})})
+         :body (view/doc->html {:error @!error
+                                :doc (or (let [path (subs uri 1)]
+                                           (when (and (fs/exists? path) (fs/regular-file? path) )
+                                             (doto (eval/eval-file path) present+reset!)))
+                                         @!doc
+                                         (help-doc))})})
       (catch Throwable e
         {:status  500
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
