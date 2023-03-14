@@ -22,6 +22,6 @@
               " notebook."]) nil)
 
 (clerk/html
- [:ol (list [:li "One"]
-            [:li "Two"]
-            [:li "Three"])])
+ [:ol (list [:li [:a {:href (clerk/doc-url "notebooks/viewers/image.clj")} "Images"]]
+            [:li [:a {:href (clerk/doc-url "notebooks/markdown.md")} "Markdown"]]
+            [:li [:a {:href (clerk/doc-url "notebooks/rule_30.clj")} "Rule 30"]])])
