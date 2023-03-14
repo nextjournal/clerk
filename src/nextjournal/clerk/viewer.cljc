@@ -62,12 +62,12 @@
   #?(:clj ([form] (resolve-aliases (ns-aliases *ns*) form)))
   ([aliases form] (w/postwalk #(cond->> % (qualified-symbol? %) (resolve-symbol-alias aliases)) form)))
 
-(defn ->viewer-fn [form]
+(defn ->viewer-fn
+  [form]
   (map->ViewerFn {:form form
                   #?@(:cljs [:f (*eval* form)])}))
 
 (defn ->viewer-eval [form]
-  (prn :metnal (meta form))
   (map->ViewerEval {:form form}))
 
 (defn open-graph-metas [open-graph-properties]
@@ -77,11 +77,15 @@
 
 #?(:clj
    (defmethod print-method ViewerFn [v ^java.io.Writer w]
-     (.write w (str "#viewer-fn " (pr-str `~(:form v))))))
+     (.write w (str "#viewer-fn"
+                    (when (:cherry v)
+                      "/cherry")
+                    " " (:form v)))))
 
 #?(:clj
    (defmethod print-method ViewerEval [v ^java.io.Writer w]
-     (.write w (str "#viewer-eval " (pr-str `~(:form v)))))
+     (.write w (str "#viewer-eval " (binding [*print-meta* true]
+                                      (pr-str (:form v))))))
    :cljs
    (extend-type ViewerEval
      IPrintWithWriter
@@ -1212,10 +1216,12 @@
 
 (declare assign-closing-parens)
 
-(defn process-render-fn [{:as viewer :keys [render-fn]}]
+(defn process-render-fn [{:as viewer :keys [render-fn cherry]}]
   (cond-> viewer
     (and render-fn (not (viewer-fn? render-fn)))
-    (update :render-fn ->viewer-fn)))
+    (update :render-fn (fn [rf]
+                         (cond-> (->viewer-fn rf)
+                           cherry (assoc :cherry cherry))))))
 
 (defn hash-sha1 [x]
   #?(:clj (analyzer/valuehash :sha1 x)

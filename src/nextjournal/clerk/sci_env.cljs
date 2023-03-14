@@ -41,8 +41,9 @@
 ;; (set! js/globalThis.clerk.cljs_core.inc inc) ;; hack for cherry
 ;; (set! js/globalThis.clerk.cljs_core.identity identity) ;; hack for cherry
 
+(declare eval-form-cherry)
+
 (defn ->viewer-fn-with-error [form]
-  (prn :fooooorrmmmido form) ;; apparently the interesting viewer fns go through here
   (try (viewer/->viewer-fn form)
        (catch js/Error e
          (viewer/map->ViewerFn
@@ -50,8 +51,16 @@
            :f (fn [_]
                 [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)])}))))
 
+(defn ->viewer-fn-with-error-cherry [form]
+  (try (binding [*eval* eval-form-cherry]
+         (viewer/->viewer-fn form))
+       (catch js/Error e
+         (viewer/map->ViewerFn
+          {:form form
+           :f (fn [_]
+                [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)])}))))
+
 (defn ->viewer-eval-with-error [form]
-  (prn :formmmm form)
   (try (*eval* form)
        (catch js/Error e
          (js/console.error "error in viewer-eval" e)
@@ -66,9 +75,9 @@
          :read-cond :allow
          :readers
          (fn [tag]
-           (prn :tag tag)
            (or (get {'viewer-fn ->viewer-fn-with-error
-                     'viewer-eval ->viewer-eval-with-error} tag)
+                     'viewer-eval ->viewer-eval-with-error
+                     'viewer-fn/cherry ->viewer-fn-with-error-cherry} tag)
                (fn [value]
                  (viewer/with-viewer `viewer/tagged-value-viewer
                    {:tag tag
@@ -156,34 +165,27 @@
 (defn ^:export onmessage [ws-msg]
   (render/dispatch (read-string (.-data ws-msg))))
 
+(defn ^:export eval-form-cherry [f]
+  (js/console.warn "compiling with cherry" (pr-str f))
+  (let [{:keys [body _imports]}
+        (cherry/compile-string*
+         ;; function expression without name
+         ;; isn't valid as top level JS form,
+         ;; so we wrap it in a let
+         (str/replace "(let [x %s] x)"
+                      "%s"
+                      (str f))
+         {:core-alias 'clerk.cljs_core})
+        ;; TODO: fix bug in compiler
+        body (str/replace body "long$" "long")
+        body (str/replace body "truth_" "clerk.cljs_core.truth_")
+        _ (js/console.log "compiled body" body)
+        evaled (js/eval body)
+        _ (js/console.log "evaled" evaled)]
+    evaled))
+
 (defn ^:export eval-form [f]
-  (let [m (meta f)
-        _ (prn :m m)
-        cherry? (:nextjournal.clerk/cherry m)
-        cherry-evaled (when cherry?
-                        (let [{:keys [body imports]}
-                              (cherry/compile-string*
-                                         ;; function expression without name
-                                         ;; isn't valid as top level JS form,
-                                         ;; so we wrap it in a let
-                               (str/replace "(let [x %s] x)"
-                                            "%s"
-                                            (str f))
-                               {:core-alias 'clerk.cljs_core})]
-                          (js/console.log imports)
-                          (try (js/eval body)
-                               (catch :default e
-                                 [:error body e]))))]
-    (when (and cherry? (not cherry-evaled))
-      (js/console.warn "form was requested to be evaluated with cherry, but error happened, falling back on SCI"))
-    (if (and
-         cherry?
-         (not (and (vector? cherry-evaled)
-                   (= :error (first cherry-evaled)))))
-      (do
-        (js/console.log "cherry!")
-        cherry-evaled)
-      (sci/eval-form (sci.ctx-store/get-ctx) f))))
+  (sci/eval-form (sci.ctx-store/get-ctx) f))
 
 (defn ^:export set-state [state]
   (render/set-state! state))
