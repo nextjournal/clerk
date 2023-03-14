@@ -1,5 +1,6 @@
 ;; # 💈 Execution Status
 (ns exec-status
+  {:nextjournal.clerk/toc true}
   (:require [nextjournal.clerk :as clerk]))
 
 ;; To see what's going on while waiting for a long-running
