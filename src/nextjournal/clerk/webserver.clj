@@ -179,15 +179,19 @@
     (reset! !doc (with-meta doc presented))
     presented))
 
+
 (defn update-doc! [doc]
   (reset! !error nil)
   (broadcast! (if (= (:ns @!doc) (:ns doc))
-                (let [old-viewer (meta @!doc)
-                      patch (editscript/diff old-viewer (present+reset! doc) {:algo :quick})]
-                  {:type :patch-state! :patch (editscript/get-edits patch)})
+                {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
                 {:type :set-state! :doc (present+reset! doc)})))
 
-#_(update-doc! help-doc)
+#_(update-doc! (help-doc))
+
+(defn set-status! [status]
+  (swap! !doc (fn [doc] (vary-meta (or doc (help-doc)) assoc :status status)))
+  ;; avoid editscript diff but use manual patch to just replace `:status` in doc
+  (broadcast! {:type :patch-state! :patch [[[:status] :r status]]}))
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
 
