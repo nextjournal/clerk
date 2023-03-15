@@ -136,7 +136,7 @@
      [inspect-presented x]]))
 
 (defn exec-status [{:keys [progress status]}]
-  [:div.fixed.w-full.bg-purple-200.dark:bg-purple-900.rounded.z-20 {:class "h-0.5"}
+  [:div.w-full.bg-purple-200.dark:bg-purple-900.rounded.z-20 {:class "h-0.5"}
    [:div.bg-purple-600.dark:bg-purple-400 {:class "h-0.5" :style {:width (str (* progress 100) "%")}}]
    [:div.absolute.text-purple-600.dark:text-white.text-xs.font-sans.ml-1.bg-white.dark:bg-purple-900.rounded-full.shadow.z-20.font-bold.px-2.border.border-slate-300.dark:border-purple-400
     {:style {:font-size "0.5rem"} :class "left-[35px] md:left-0 mt-[7px] md:mt-1"}
