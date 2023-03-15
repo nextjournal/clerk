@@ -176,56 +176,58 @@
 
 (def clerk-namespace? (comp #{"nextjournal.clerk"} namespace))
 
+(defn pop-children
+  "Returns a new location with the first child (and all whitespace following it) removed, without moving. Child nodes are wrapped in a `:forms` node."
+  [zloc]
+  ;; rewreite-clj doesn't allow to z/remove the left component of a meta node
+  (z/replace zloc (n/forms-node (drop-while n/whitespace? (clojure.zip/rights (z/down zloc))))))
+
+(defn root-location [zloc] (last (take-while some? (iterate z/up zloc))))
+
 (defn remove-clerk-keys
   "Takes a map zipper location, returns a new location representing the input map node with all ::clerk namespaced keys removed.
    Whitespace is preserved when possible."
   [map-loc]
-  (let [zdepth (fn [zloc] (-> zloc second :pnodes count))
-        up-to-depth (fn [zloc depth] (if (= depth (zdepth zloc)) zloc (recur (z/up zloc) depth)))]
-    (loop [loc (z/down map-loc)
-           parent map-loc]
-      (if-not loc
-        parent
-        (let [s (-> loc z/sexpr)]
-          (if (and (keyword? s) (clerk-namespace? s))
-            (let [updated (-> loc z/right z/remove z/remove)]
-              ;; z/remove could land inside the value on the left of the removed key, therefore a single z/up may not be sufficient
-              (recur (z/next updated) (up-to-depth updated (zdepth map-loc))))
-            (recur (-> loc z/right z/right) parent)))))))
+  (loop [loc (z/down map-loc) parent map-loc]
+    (if-not loc
+      parent
+      (let [s (-> loc z/sexpr)]
+        (if (and (keyword? s) (clerk-namespace? s))
+          (let [updated (-> loc z/right z/remove z/remove)]
+            (recur (z/next updated) (root-location updated)))
+          (recur (-> loc z/right z/right) parent))))))
 
-(defn node-with-clerk-metadata-removed [node ns-resolver]
-  (cond
-    (= :meta (n/tag node))
-    (try
-      (let [meta-loc (z/down (z/of-node node {:auto-resolve ns-resolver}))
+(defn zip->node-with-clerk-metadata-removed [zloc]
+  (loop [z zloc]
+    (cond
+      (= :meta (z/tag z))
+      (let [meta-loc (z/down z)
             meta-sexpr (z/sexpr meta-loc)
             map-meta-loc (when (z/map? meta-loc)
-                           (remove-clerk-keys meta-loc))]
+                           (z/subedit-node meta-loc remove-clerk-keys))]
         (if (or (and map-meta-loc (seq (z/sexpr map-meta-loc)))
                 (and (not (keyword? meta-sexpr)) (not (map? meta-sexpr)))
                 (and (keyword? meta-sexpr) (not (clerk-namespace? meta-sexpr))))
-          ;; we keep the meta node, possibly a filtered map, move to right and repeat, move to root
-          (-> (or map-meta-loc meta-loc)
-              z/right (clojure.zip/edit node-with-clerk-metadata-removed ns-resolver)
-              z/root)
-          ;; or just skip meta node and move to right and repeat
-          (-> meta-loc z/right z/node (node-with-clerk-metadata-removed ns-resolver))))
-      (catch #?(:clj Exception :cljs js/Error) _ node))
+          ;; keep the meta node, possibly a filtered map, move to the right and repeat
+          (recur (z/right (or map-meta-loc meta-loc)))
+          ;; remove the meta node, move to the first of the remaining children on the right, repeat
+          (recur (z/down (pop-children z)))))
 
-    (deflike-node? node)
-    (-> node (z/of-node {:auto-resolve ns-resolver})
-        z/down z/right
-        (clojure.zip/edit node-with-clerk-metadata-removed ns-resolver)
-        z/root)
+      (deflike-node? (z/node z))
+      (recur (-> z z/down z/right))
 
-    :else node))
+      :else
+      (if-some [sibling (z/right z)]
+        (recur sibling)
+        (z/root z)))))
 
 (defn text-with-clerk-metadata-removed [code ns-resolver]
-  (-> code p/parse-string-all
-      n/children
-      (->> (map (fn [n] (node-with-clerk-metadata-removed n ns-resolver))))
-      n/forms-node
-      n/string))
+  (try
+    (-> code p/parse-string-all
+        (z/of-node {:auto-resolve ns-resolver})
+        zip->node-with-clerk-metadata-removed
+        n/string)
+    (catch #?(:clj Exception :cljs :default) _ code)))
 
 #_(text-with-clerk-metadata-removed "^::clerk/bar ^{::clerk/foo 'what}\n^ keep \n^{::clerk/bar true :some-key false}  (view that)" {'clerk 'nextjournal.clerk})
 #_(text-with-clerk-metadata-removed "^foo    'form" {'clerk 'nextjournal.clerk})

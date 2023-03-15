@@ -23,6 +23,7 @@
          "docs"
          "hello"
          "how_clerk_works"
+         "exec_status"
          "eval_cljs"
          "example"
          "fragments"
