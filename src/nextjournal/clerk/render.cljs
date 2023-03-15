@@ -544,7 +544,8 @@
                 (exists? js/history)
                 (doto (add-watch 'url-history
                                  (fn [_ _ _ doc]
-                                   (js/history.pushState #js {} "" (str "/" (-> doc viewer/->value :file))))))))
+                                   (let [{:keys [file title]} (viewer/->value doc)]
+                                     (js/history.pushState #js {} title (viewer/doc-url file))))))))
 (defonce !error (ratom/atom nil))
 (defonce !viewers viewer/!viewers)
 
