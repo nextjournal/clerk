@@ -540,12 +540,7 @@
    [:span.inspected-value.whitespace-nowrap
     [:span.cmt-meta tag] (when space? nbsp) value]))
 
-(defonce !doc (cond-> (ratom/atom nil)
-                (exists? js/history)
-                (doto (add-watch 'url-history
-                                 (fn [_ _ _ doc]
-                                   (let [{:keys [file title]} (viewer/->value doc)]
-                                     (js/history.pushState #js {} title (viewer/doc-url file))))))))
+(defonce !doc (ratom/atom nil))
 (defonce !error (ratom/atom nil))
 (defonce !viewers viewer/!viewers)
 
@@ -644,9 +639,14 @@
   (let [re-eval (fn [{:keys [form]}] (viewer/->viewer-fn form))]
     (w/postwalk (fn [x] (cond-> x (viewer/viewer-fn? x) re-eval)) doc)))
 
+(defn push-history! [doc]
+  (let [{:keys [title file]} (viewer/->value doc)]
+    (js/history.pushState #js {} title (viewer/doc-url file))))
+
 (defn ^:export set-state! [{:as state :keys [doc error]}]
   (when (contains? state :doc)
-    (reset! !doc doc))
+    (reset! !doc doc)
+    (push-history! doc))
   (when (remount? doc)
     (swap! !eval-counter inc))
   (reset! !error error)
