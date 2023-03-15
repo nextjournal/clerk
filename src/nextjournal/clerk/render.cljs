@@ -646,7 +646,7 @@
 (defn ^:export set-state! [{:as state :keys [doc error]}]
   (when (contains? state :doc)
     (reset! !doc doc)
-    (push-history! doc))
+    (when (exists? js/history) (push-history! doc)))
   (when (remount? doc)
     (swap! !eval-counter inc))
   (reset! !error error)
