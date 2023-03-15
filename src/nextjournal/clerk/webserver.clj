@@ -176,6 +176,8 @@
       (add-watch @sync-var (symbol sync-var) sync-atom-changed))
     (doseq [sync-var (set/difference sync-vars-old sync-vars)]
       (remove-watch @sync-var (symbol sync-var)))
+    (when-let [scheduled-send-status-future (-> !doc deref meta ::!send-status-future)]
+      (future-cancel scheduled-send-status-future))
     (reset! !doc (with-meta doc presented))
     presented))
 
@@ -188,10 +190,27 @@
 
 #_(update-doc! (help-doc))
 
-(defn set-status! [status]
-  (swap! !doc (fn [doc] (vary-meta (or doc (help-doc)) assoc :status status)))
+
+
+(defn broadcast-status! [status]
   ;; avoid editscript diff but use manual patch to just replace `:status` in doc
   (broadcast! {:type :patch-state! :patch [[[:status] :r status]]}))
+
+(defn broadcast-status-debounced!
+  "Schedules broadcasting a status update after 50 ms.
+
+  Cancels previously scheduled broadcast, if it exists."
+  [old-future status]
+  (when old-future
+    (future-cancel old-future))
+  (future
+    (Thread/sleep 50)
+    (broadcast-status! status)))
+
+(defn set-status! [status]
+  (swap! !doc (fn [doc] (-> (or doc (help-doc))
+                           (vary-meta assoc :status status)
+                           (vary-meta update ::!send-status-future broadcast-status-debounced! status)))))
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
 
