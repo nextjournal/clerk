@@ -523,10 +523,20 @@
              :else (str "_fs/" src))))
 
 #?(:clj
+   (defn http-url->stream [url]
+     (when (#{"http" "https"} (.getScheme (URI. url)))
+       (.. (.build (.followRedirects (java.net.http.HttpClient/newBuilder) java.net.http.HttpClient$Redirect/NORMAL))
+           (send (.build (java.net.http.HttpRequest/newBuilder (URI. url)))
+                 (java.net.http.HttpResponse$BodyHandlers/ofInputStream)) body))))
+
+#?(:clj
    (defn read-image [image-or-url]
      (ImageIO/read
       (if (string? image-or-url)
-        (URL. (cond->> image-or-url (not (.getScheme (URI. image-or-url))) (str "file:")))
+        (or (http-url->stream image-or-url)
+            (URL. (cond->> image-or-url
+                    (not (.getScheme (URI. image-or-url)))
+                    (str "file:"))))
         image-or-url))))
 
 #?(:clj

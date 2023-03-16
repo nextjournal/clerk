@@ -23,6 +23,9 @@
 ;; We also support local files for `clerk/image`:
 (clerk/image "trees.png")
 
+;; We support following redirects (http -> https) as well:
+(clerk/image "http://commons.wikimedia.org/wiki/Special:FilePath/Gorgeted%20Sunangel%20%28m%29%20JCB.jpg")
+
 ;; ## Markdown Notation
 
 ;; Given a local file named `trees.png` we can use the markdown image syntax `![alt text](trees.png)` to get:
@@ -32,3 +35,4 @@
 ;; This also works for https urls, of course.
 ;;
 ;; Images occuring inside a paragraph are placed inline like this ![Clerk CI Status](https://github.com/nextjournal/clerk/actions/workflows/main.yml/badge.svg) badge.
+
