@@ -64,7 +64,7 @@
 
   (testing "side-effecting expression returning nil gets cached in memory"
     (let [code "(ns my-random-test-ns-2) (do (clojure.lang.Var/intern (the-ns 'my-random-test-ns-2) 'ruuid (java.util.UUID/randomUUID)) nil)"
-          {:as result :keys [blob->result]} (eval/eval-string code)]
+          {:keys [blob->result]} (eval/eval-string code)]
       (is (= @(resolve 'my-random-test-ns-2/ruuid)
              (do (eval/eval-string blob->result code)
                  @(resolve 'my-random-test-ns-2/ruuid))))))
