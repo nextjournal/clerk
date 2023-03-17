@@ -7,7 +7,11 @@ Changes can be:
 
 ## Unreleased
 
-...
+* 💈 Show execution progress
+
+    To see what's going on while waiting for a long-running computation, Clerk will now show an execution status bar on the top. For named cells (defining a var) it will show the name of the var, for anonymous expressions, a preview of the form.
+
+* 💫 Cache expressions that return `nil` in memory
 
 ## 0.13.842 (2023-03-07)
 

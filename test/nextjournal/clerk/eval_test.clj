@@ -62,6 +62,13 @@
       (is (= result
              (eval/eval-string blob->result "(ns my-random-test-ns-2) {inc (java.util.UUID/randomUUID)}")))))
 
+  (testing "side-effecting expression returning nil gets cached in memory"
+    (let [code "(ns my-random-test-ns-2) (do (clojure.lang.Var/intern (the-ns 'my-random-test-ns-2) 'ruuid (java.util.UUID/randomUUID)) nil)"
+          {:as result :keys [blob->result]} (eval/eval-string code)]
+      (is (= @(resolve 'my-random-test-ns-2/ruuid)
+             (do (eval/eval-string blob->result code)
+                 @(resolve 'my-random-test-ns-2/ruuid))))))
+
   (testing "var gets cached in cas"
     (let [code-str (format "(ns nextjournal.clerk.eval-test-%s) (def my-uuid (java.util.UUID/randomUUID))" (rand-int 100000))
           get-uuid #(-> % :blocks peek :result :nextjournal/value :nextjournal.clerk/var-from-def deref)]
