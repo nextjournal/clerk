@@ -168,10 +168,16 @@
 ;; You can style elements, using [Tailwind CSS](https://tailwindcss.com/docs/utility-first).
 (clerk/html [:button.bg-sky-500.hover:bg-sky-700.text-white.rounded-xl.px-2.py-1 "✨ Tailwind CSS"])
 
-;; The `html` viewer is also able to display SVG, taking either a hiccup vector or a SVG string.
+;; The `html` viewer is able to display SVG, taking either a hiccup vector or a SVG string.
 (clerk/html [:svg {:width 500 :height 100}
              [:circle {:cx  25 :cy 50 :r 25 :fill "blue"}]
              [:circle {:cx 100 :cy 75 :r 25 :fill "red"}]])
+
+;; You can also embed other viewers inside of hiccup.
+
+(clerk/html [:div.flex.justify-center.space-x-6
+             [:p "a table is next to me"]
+             (clerk/table [[1 2] [3 4]])])
 
 ;; ### 🔢 Tables
 
@@ -371,6 +377,10 @@
 (clerk/col (clerk/row donut-chart donut-chart donut-chart)
            contour-plot)
 
+;; You can even embed viewers directly inside of hiccup.
+
+(clerk/html [:div.flex.justify-around donut-chart donut-chart donut-chart])
+
 ;; ### 🤹🏻 Applying Viewers
 
 ;; **Metadata Notation**
@@ -475,7 +485,7 @@ v/default-viewers
 
 ;; #### ⚙️ Transform
 
-;; When writing your own viewer, the first extention point you should reach for is `:tranform-fn`. 
+;; When writing your own viewer, the first extention point you should reach for is `:tranform-fn`.
 
 #_ "exercise: wrap this in `v/present` and call it at the REPL"
 (v/with-viewer {:transform-fn #(clerk/html [:pre (pr-str %)])}
@@ -502,7 +512,7 @@ v/default-viewers
              "James Clerk Maxwell"))
 
 
-;; **Passing modified viewers down the tree** 
+;; **Passing modified viewers down the tree**
 
 #_ "TODO: move this into clerk?"
 (defn add-child-viewers [viewer viewers]
@@ -705,7 +715,7 @@ v/table-viewer
 ;; ## 🙈 Controlling Visibility
 
 ;; Visibility for code and results can be controlled document-wide and
-;; per top-level form. By default, Clerk will always show code and 
+;; per top-level form. By default, Clerk will always show code and
 ;; results for a notebook.
 
 ;; You can use a map of the following shape to set the visibility of
@@ -736,7 +746,7 @@ v/table-viewer
 ;;
 ;;    ^{::clerk/visibility {:code :hide}} (shuffle (range 25))
 ;;
-;; This will hide the code but only show the result: 
+;; This will hide the code but only show the result:
 
 ^{::clerk/visibility {:code :hide}} (shuffle (range 25))
 
