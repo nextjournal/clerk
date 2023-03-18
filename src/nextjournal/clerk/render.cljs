@@ -142,6 +142,11 @@
     {:style {:font-size "0.5rem"} :class "left-[35px] md:left-0 mt-[7px] md:mt-1"}
     status]])
 
+(defn connection-status [status]
+  [:div.absolute.text-red-600.dark:text-white.text-xs.font-sans.ml-1.bg-white.dark:bg-red-800.rounded-full.shadow.z-20.font-bold.px-2.border.border-red-400
+   {:style {:font-size "0.5rem"} :class "left-[35px] md:left-0 mt-[7px] md:mt-1"}
+   status])
+
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility]}]
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
@@ -590,6 +595,8 @@
   [:<>
    [inspect-presented @!doc]
    [:div.fixed.w-full.z-20.top-0.left-0.w-full
+    (when-let [status (:nextjournal.clerk.sci-env/connection-status @!doc)]
+      [connection-status status])
     (when-let [status (:status @!doc)]
       [exec-status status])]
    (when @!error

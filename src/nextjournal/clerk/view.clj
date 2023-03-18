@@ -64,10 +64,7 @@ let state = " (-> state v/->edn escape-closing-script-tag pr-str) ".replaceAll('
 viewer.set_state(viewer.read_string(state));
 viewer.mount(document.getElementById('clerk'))\n"
      (when conn-ws?
-       "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
-ws.onmessage = viewer.onmessage;
-window.ws_send = msg => ws.send(msg)
-")]]))
+       "viewer.connect(document.location.origin.replace(/^http/, 'ws') + '/_ws')")]]))
 
 (defn ->static-app [{:as state :keys [current-path html]}]
   (hiccup/html5

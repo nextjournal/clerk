@@ -151,9 +151,6 @@
                       sci.configs.js-interop/namespaces
                       sci.configs.reagent/namespaces)})
 
-(defn ^:export onmessage [ws-msg]
-  (render/dispatch (read-string (.-data ws-msg))))
-
 (defn ^:export eval-form [f]
   (sci/eval-form (sci.ctx-store/get-ctx) f))
 
@@ -161,6 +158,31 @@
   (render/set-state! state))
 
 (def ^:export mount render/mount)
+
+(defn ^:export onmessage [ws-msg]
+  (render/dispatch (read-string (.-data ws-msg))))
+
+(defn reconnect-timeout [failed-connection-attempts]
+  (get [0 0 100 500 5000] failed-connection-attempts 10000))
+
+(defn ^:export connect [ws-url]
+  (when (::failed-attempts @render/!doc)
+    (swap! render/!doc assoc ::connection-status "Reconnecting…"))
+  (let [ws (js/WebSocket. ws-url)]
+    (set! (.-onmessage ws) onmessage)
+    (set! (.-onopen ws) (fn [e] (swap! render/!doc dissoc ::connection-status ::failed-attempts)))
+    (set! (.-onclose ws) (fn [e]
+                           (let [timeout (reconnect-timeout (::failed-attempts @render/!doc 0))]
+                             (swap! render/!doc
+                                    (fn [doc]
+                                      (-> doc
+                                          (assoc ::connection-status (if (pos? timeout)
+                                                                       (str "Disconnected, reconnecting in " timeout "ms…")
+                                                                       "Reconnecting…"))
+                                          (update ::failed-attempts (fnil inc 0)))))
+                             (js/setTimeout #(connect ws-url) timeout))))
+    (set! (.-clerk_ws ^js goog/global) ws)
+    (set! (.-ws_send ^js goog/global) (fn [msg] (.send ws msg)))))
 
 (sci.ctx-store/reset-ctx! (sci/init initial-sci-opts))
 
