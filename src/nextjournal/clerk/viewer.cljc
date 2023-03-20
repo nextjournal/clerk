@@ -552,19 +552,15 @@
 (def fragment-viewer
   {:name `fragment-viewer
    :render-fn '(fn [xs opts] (into [:<>] (nextjournal.clerk.render/inspect-children opts) xs))
-   :transform-fn (update-val (partial map (fn [x] (with-viewer `fragment-splicing-viewer {:nextjournal/value x}))))})
+   :transform-fn (update-val (partial map (fn [x] (with-viewer `fragment-splicing-viewer
+                                                    {:nextjournal/value {:result {:nextjournal/value x}}}))))})
 
 (def fragment-splicing-viewer
   {:name `fragment-splicing-viewer
    :transform-fn (fn [x]
                    (if-some [fragment (-> x ->value :result ->value (get-safe :nextjournal.clerk/fragment))]
                      (with-viewer `fragment-viewer fragment)
-                     (with-viewer `result-viewer
-                       ;; ensure is of cell type
-                       (if (let [v (->value x)] (and (map? v) (some? (:type v)) (some? (:result v))))
-                         x
-                         {::doc {}
-                          :result x}))))})
+                     (with-viewer `result-viewer x)))})
 
 (defn with-block-viewer [doc {:as cell :keys [type id]}]
   (case type
