@@ -165,41 +165,65 @@
                                                (analyzer/hash-codeblock ->hash codeblock)))
         digest-file    (when hash (->cache-file (str "@" hash)))
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
+        cached-result-in-memory (get blob->result hash)
         cached-result? (and (not no-cache?)
-                            cas-hash
-                            (or (get-in blob->result [hash :nextjournal/value])
-                                (-> cas-hash ->cache-file fs/exists?)))
+                            (or (some? cached-result-in-memory)
+                                (and cas-hash
+                                     (-> cas-hash ->cache-file fs/exists?))))
         opts-from-form-meta (-> (meta form)
                                 (select-keys (keys v/viewer-opts-normalization))
                                 v/normalize-viewer-opts
                                 maybe-eval-viewers)]
     #_(prn :cached? (cond no-cache? :no-cache
-                          cached-result? (if (get-in blob->result [hash :nextjournal/value])
+                          cached-result? (if cached-result-in-memory
                                            :in-memory
                                            :in-cas)
                           cas-hash :no-cas-file
                           :else :no-digest-file)
            :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
     (fs/create-dirs config/cache-dir)
-    (cond-> (or (when-let [blob->result (and (not no-cache?) (get-in blob->result [hash :nextjournal/value]))]
-                  (wrapped-with-metadata blob->result hash))
+    (cond-> (or (when (and cached-result? cached-result-in-memory)
+                  (wrapped-with-metadata (:nextjournal/value cached-result-in-memory) hash))
                 (when (and cached-result? freezable?)
                   (lookup-cached-result var hash cas-hash))
                 (eval+cache! form-info hash digest-file))
       (seq opts-from-form-meta)
       (merge opts-from-form-meta))))
 
-#_(show! "notebooks/scratch_cache.clj")
+#_(nextjournal.clerk/show! "notebooks/exec_status.clj")
 
 #_(eval-file "notebooks/test123.clj")
 #_(eval-file "notebooks/how_clerk_works.clj")
 
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
-(defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks]}]
+
+
+(defn ->eval-status [{:as analyzed-doc :keys [blocks]} num-done {:as block-to-eval :keys [var form]}]
+  (let [total (count (filter parser/code? blocks))
+        offset 0.35]
+    {:progress (+ offset (* 0.6 (/ num-done total)))
+     :status (format "Evaluating cell %d of %d: `%s`…"
+                     (inc num-done) total (if var
+                                            (str "#'" (name var))
+                                            (let [code (pr-str form)
+                                                  max-length 50]
+                                              (if (< max-length (count code))
+                                                (str (subs code 0 max-length) ",,,")
+                                                code))))}))
+
+#_(->eval-status @webserver/!doc 0 (nth (filter parser/code? (:blocks @webserver/!doc)) 0))
+#_(->eval-status @webserver/!doc 1 (nth (filter parser/code? (:blocks @webserver/!doc)) 2))
+#_(->eval-status @webserver/!doc 2 (nth (filter parser/code? (:blocks @webserver/!doc)) 3))
+
+#_(nextjournal.clerk/show! "notebooks/exec_status.clj")
+
+(defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks set-status-fn]}]
   (let [deref-forms (into #{} (filter analyzer/deref?) (keys ->hash))
         {:as evaluated-doc :keys [blob-ids]}
         (reduce (fn [state cell]
+                  (when (and (parser/code? cell) set-status-fn)
+                    (set-status-fn (->eval-status analyzed-doc (inc (count (filter parser/code? (:blocks state)))) cell)))
                   (let [state-with-deref-deps-evaluated (analyzer/hash-deref-deps state cell)
                         {:as result :nextjournal/keys [blob-id]} (when (parser/code? cell)
                                                                    (read+eval-cached state-with-deref-deps-evaluated cell))]
@@ -216,7 +240,8 @@
 
 (defn +eval-results
   "Evaluates the given `parsed-doc` using the `in-memory-cache` and augments it with the results."
-  [in-memory-cache parsed-doc]
+  [in-memory-cache {:as parsed-doc :keys [set-status-fn]}]
+  (when set-status-fn (set-status-fn {:progress 0.10 :status "Analyzing…"}))
   (let [{:as analyzed-doc :keys [ns]} (analyzer/build-graph
                                        (assoc parsed-doc :blob->result in-memory-cache))]
     (binding [*ns* ns]

@@ -135,6 +135,18 @@
                         "w-full max-w-prose px-8")]))}
      [inspect-presented x]]))
 
+(defn exec-status [{:keys [progress status]}]
+  [:div.w-full.bg-purple-200.dark:bg-purple-900.rounded.z-20 {:class "h-0.5"}
+   [:div.bg-purple-600.dark:bg-purple-400 {:class "h-0.5" :style {:width (str (* progress 100) "%")}}]
+   [:div.absolute.text-purple-600.dark:text-white.text-xs.font-sans.ml-1.bg-white.dark:bg-purple-900.rounded-full.shadow.z-20.font-bold.px-2.border.border-slate-300.dark:border-purple-400
+    {:style {:font-size "0.5rem"} :class "left-[35px] md:left-0 mt-[7px] md:mt-1"}
+    status]])
+
+(defn connection-status [status]
+  [:div.absolute.text-red-600.dark:text-white.text-xs.font-sans.ml-1.bg-white.dark:bg-red-800.rounded-full.shadow.z-20.font-bold.px-2.border.border-red-400
+   {:style {:font-size "0.5rem"} :class "left-[35px] md:left-0 mt-[7px] md:mt-1"}
+   status])
+
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility]}]
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
@@ -582,6 +594,11 @@
 (defn root []
   [:<>
    [inspect-presented @!doc]
+   [:div.fixed.w-full.z-20.top-0.left-0.w-full
+    (when-let [status (:nextjournal.clerk.sci-env/connection-status @!doc)]
+      [connection-status status])
+    (when-let [status (:status @!doc)]
+      [exec-status status])]
    (when @!error
      [:div.fixed.top-0.left-0.w-full.h-full
       [inspect-presented @!error]])])
@@ -680,7 +697,6 @@
         (cond reply (resolve reply)
               error (reject error)))
     (js/console.warn :process-eval-reply!/not-found :eval-id eval-id :keys (keys @!pending-clerk-eval-replies))))
-
 
 (defn ^:export dispatch [{:as msg :keys [type]}]
   (let [dispatch-fn (get {:patch-state! patch-state!
