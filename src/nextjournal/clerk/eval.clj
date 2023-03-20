@@ -165,31 +165,32 @@
                                                (analyzer/hash-codeblock ->hash codeblock)))
         digest-file    (when hash (->cache-file (str "@" hash)))
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
+        cached-result-in-memory (get blob->result hash)
         cached-result? (and (not no-cache?)
-                            cas-hash
-                            (or (get-in blob->result [hash :nextjournal/value])
-                                (-> cas-hash ->cache-file fs/exists?)))
+                            (or (some? cached-result-in-memory)
+                                (and cas-hash
+                                     (-> cas-hash ->cache-file fs/exists?))))
         opts-from-form-meta (-> (meta form)
                                 (select-keys (keys v/viewer-opts-normalization))
                                 v/normalize-viewer-opts
                                 maybe-eval-viewers)]
     #_(prn :cached? (cond no-cache? :no-cache
-                          cached-result? (if (get-in blob->result [hash :nextjournal/value])
+                          cached-result? (if cached-result-in-memory
                                            :in-memory
                                            :in-cas)
                           cas-hash :no-cas-file
                           :else :no-digest-file)
            :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
     (fs/create-dirs config/cache-dir)
-    (cond-> (or (when-let [blob->result (and (not no-cache?) (get-in blob->result [hash :nextjournal/value]))]
-                  (wrapped-with-metadata blob->result hash))
+    (cond-> (or (when (and cached-result? cached-result-in-memory)
+                  (wrapped-with-metadata (:nextjournal/value cached-result-in-memory) hash))
                 (when (and cached-result? freezable?)
                   (lookup-cached-result var hash cas-hash))
                 (eval+cache! form-info hash digest-file))
       (seq opts-from-form-meta)
       (merge opts-from-form-meta))))
 
-#_(show! "notebooks/scratch_cache.clj")
+#_(nextjournal.clerk/show! "notebooks/exec_status.clj")
 
 #_(eval-file "notebooks/test123.clj")
 #_(eval-file "notebooks/how_clerk_works.clj")
