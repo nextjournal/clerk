@@ -94,7 +94,7 @@
                            (.add builder from to (.mark Decoration (j/obj :class style)))))
         decorations-rangeset (.finish builder)
         text (.of Text (.split code "\n"))]
-    [:div.cm-editor
+    [:div.cm-editor.code-viewer.w-full.max-w-wide
      [:cm-scroller
       (into [:div.cm-content.whitespace-pre]
             (map (partial style-line decorations-rangeset text))

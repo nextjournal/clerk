@@ -460,6 +460,9 @@
 
 #_(get-viewers nil nil)
 
+(defn fragment [& xs]
+  {:nextjournal.clerk/fragment (if (and (sequential? (first xs)) (= 1 (count xs))) (first xs) xs)})
+
 (declare result-viewer)
 
 (defn transform-result [{:as _cell :keys [result form] ::keys [doc]}]
@@ -546,6 +549,24 @@
     [:div.flex.flex-col.items-center.not-prose.mb-4
      [:img (update attrs :src process-image-source doc)]]))
 
+(def fragment-viewer
+  {:name `fragment-viewer
+   :render-fn '(fn [xs opts] (into [:<>] (nextjournal.clerk.render/inspect-children opts) xs))
+   :transform-fn (update-val (fn [xs]
+                               (mapv (fn [x] (with-viewer `fragment-splicing-viewer x)) xs)))})
+
+(def fragment-splicing-viewer
+  {:name `fragment-splicing-viewer
+   :transform-fn (fn [x]
+                   (if-some [fragment (-> x ->value :result ->value (get-safe :nextjournal.clerk/fragment))]
+                     (with-viewer `fragment-viewer fragment)
+                     (with-viewer `result-viewer
+                       ;; ensure is of cell type
+                       (if (let [v (->value x)] (and (map? v) (some? (:type v)) (some? (:result v))))
+                         x
+                         {::doc {}
+                          :result x}))))})
+
 (defn with-block-viewer [doc {:as cell :keys [type id]}]
   (case type
     :markdown (let [{:keys [content]} (:doc cell)
@@ -570,7 +591,7 @@
                       (-> cell (merge display-opts) (dissoc :result))))
               (or result? eval?)
               (conj (with-viewer (if result?
-                                   (:name result-viewer)
+                                   `fragment-splicing-viewer
                                    (assoc result-viewer :render-fn '(fn [_] [:<>])))
                       {:nextjournal/opts {:id (processed-block-id (str id "-result"))}}
                       (assoc cell ::doc doc)))))))
@@ -660,7 +681,7 @@
 
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc
-    :transform-fn (into-markup [:div.markdown-viewer])}
+    :transform-fn (into-markup [:div.markdown-viewer.w-full.max-w-prose.px-8])}
    {:name :nextjournal.markdown/heading
     :transform-fn (into-markup
                    (fn [{:keys [attrs heading-level]}]
@@ -1028,9 +1049,7 @@
       (assoc :atom-var-name->state (atom-var-name->state doc))
       (assoc :ns (->viewer-eval (list 'ns (if ns (ns-name ns) 'user))))
       (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
-                                             (map (comp process-wrapped-value
-                                                        apply-viewers*
-                                                        (partial ensure-wrapped-with-viewers viewers))))))
+                                             (map (partial ensure-wrapped-with-viewers viewers)))))
       (select-keys [:atom-var-name->state
                     :auto-expand-results?
                     :blocks :bundle?
@@ -1049,7 +1068,7 @@
    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
                    (-> wrapped-value
                        (update :nextjournal/value (partial process-blocks viewers))
-                       mark-presented))})
+                       mark-preserve-keys))})
 
 (def viewer-eval-viewer
   {:pred viewer-eval?
@@ -1113,6 +1132,8 @@
    table-error-viewer
    code-block-viewer
    result-viewer
+   fragment-splicing-viewer
+   fragment-viewer
    tagged-value-viewer
    notebook-viewer
    hide-result-viewer])
