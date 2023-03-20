@@ -552,8 +552,7 @@
 (def fragment-viewer
   {:name `fragment-viewer
    :render-fn '(fn [xs opts] (into [:<>] (nextjournal.clerk.render/inspect-children opts) xs))
-   :transform-fn (update-val (fn [xs]
-                               (mapv (fn [x] (with-viewer `fragment-splicing-viewer x)) xs)))})
+   :transform-fn (update-val (partial map (fn [x] (with-viewer `fragment-splicing-viewer {:nextjournal/value x}))))})
 
 (def fragment-splicing-viewer
   {:name `fragment-splicing-viewer
