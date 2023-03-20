@@ -161,7 +161,7 @@
          :headers {"Content-Type" "text/html"}
          :body (view/doc->html {:error @!error
                                 :doc (or (let [path (subs uri 1)]
-                                           (when (and (fs/exists? path) (fs/regular-file? path) )
+                                           (when (and (fs/exists? path) (fs/regular-file? path))
                                              (doto (eval/eval-file path) present+reset!)))
                                          @!doc
                                          (help-doc))})})
