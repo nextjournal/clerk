@@ -172,10 +172,11 @@
          ;; function expression without name
          ;; isn't valid as top level JS form,
          ;; so we wrap it in a let
-         (str/replace "(let [x %s] x)"
+         (str f) #_(str/replace "(let [x %s] x)"
                       "%s"
                       (str f))
-         {:core-alias 'clerk.cljs_core})
+         {:core-alias 'clerk.cljs_core
+          :context :expression})
         _ (js/console.log "compiled body" body)
         evaled (js/eval body)
         _ (js/console.log "evaled" evaled)]
