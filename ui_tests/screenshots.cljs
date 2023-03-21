@@ -32,8 +32,9 @@
 (def page-height 720)
 
 (defn new-page []
-  (p/let [ctx (.newContext browser #js {:deviceScaleFactor 2})]
-    (.newPage ctx #js {:viewport #js {:width page-width :height page-height}})))
+  (p/let [ctx (.newContext browser #js {:deviceScaleFactor 2})
+          page (.newPage ctx #js {:viewport #js {:width page-width :height page-height}})]
+    (.addStyleTag page #js {:content ".sticky-table-header { display: none !important; box-shadow: none !important;}"})))
 
 (defn ->path [out-dir filename]
   (cond->> filename
