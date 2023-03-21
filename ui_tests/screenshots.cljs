@@ -32,9 +32,8 @@
 (def page-height 720)
 
 (defn new-page []
-  (p/let [ctx (.newContext browser #js {:deviceScaleFactor 2})
-          page (.newPage ctx #js {:viewport #js {:width page-width :height page-height}})]
-    (.addStyleTag page #js {:content ".sticky-table-header { display: none !important; box-shadow: none !important;}"})))
+  (p/let [ctx (.newContext browser #js {:deviceScaleFactor 2})]
+    (.newPage ctx #js {:viewport #js {:width page-width :height page-height}})))
 
 (defn ->path [out-dir filename]
   (cond->> filename
@@ -45,6 +44,7 @@
   ([{:keys [out-dir]} page]
    (println+flush "📷 Starting screenshotting…")
    (p/let [og-captures (.locator page ".open-graph-image-capture")
+           page (.addStyleTag page #js {:content ".sticky-table-header { display: none !important; box-shadow: none !important;}"})
            og-captures-count (.count og-captures)
            results (if (< 0 og-captures-count)
                      og-captures
@@ -57,25 +57,25 @@
          (p/let [res (.nth results i)
                  bounds (.boundingBox res)]
            (if true #_ (<= 250 (.-height bounds))
-             (p/let [id (.getAttribute res "data-block-id")
-                     imgs (.locator res "img")
-                     imgs-count (.count imgs)
-                     single-image? (= imgs-count 1)
-                     _ (println+flush (str "🔍 Result #" (inc i) " contains " imgs-count " " (if single-image? "image" "images") "."))
-                     subject (if single-image? (.first imgs) res)
-                     _ (println+flush (str "📸 Screenshotting result #" (inc i) " - ID: " id
-                                           " (" (if single-image? "single image" "entire result") ")"
-                                           " with bounds " (.-width bounds) "×" (.-height bounds)))
-                     buffer (.screenshot subject)
-                     base64 (.toString buffer "base64")
-                     image-uri (str "data:image/png;base64," base64)
-                     _ (.evaluate res (str "nextjournal.clerk.trim_image.append_trimmed_image("
-                                           (pr-str image-uri) "," (pr-str (str "res-" i)) ")"))
-                     trimmed-res (.locator page (str "#res-" i))
-                     trimmed-bounds (.boundingBox trimmed-res)]
-               (println+flush (str "🔪 Trimming result #" (inc i) " to bounds " (.-width trimmed-bounds) "×" (.-height trimmed-bounds)))
-               (.screenshot trimmed-res #js {:path (->path out-dir (str (if id (name (edn/read-string id)) (str "result-" (inc i))) ".png"))}))
-             (println+flush "🦘 Skipping result with bounds" (str (.-width bounds) "×" (.-height bounds))))
+               (p/let [id (.getAttribute res "data-block-id")
+                       imgs (.locator res "img")
+                       imgs-count (.count imgs)
+                       single-image? (= imgs-count 1)
+                       _ (println+flush (str "🔍 Result #" (inc i) " contains " imgs-count " " (if single-image? "image" "images") "."))
+                       subject (if single-image? (.first imgs) res)
+                       _ (println+flush (str "📸 Screenshotting result #" (inc i) " - ID: " id
+                                             " (" (if single-image? "single image" "entire result") ")"
+                                             " with bounds " (.-width bounds) "×" (.-height bounds)))
+                       buffer (.screenshot subject)
+                       base64 (.toString buffer "base64")
+                       image-uri (str "data:image/png;base64," base64)
+                       _ (.evaluate res (str "nextjournal.clerk.trim_image.append_trimmed_image("
+                                             (pr-str image-uri) "," (pr-str (str "res-" i)) ")"))
+                       trimmed-res (.locator page (str "#res-" i))
+                       trimmed-bounds (.boundingBox trimmed-res)]
+                 (println+flush (str "🔪 Trimming result #" (inc i) " to bounds " (.-width trimmed-bounds) "×" (.-height trimmed-bounds)))
+                 (.screenshot trimmed-res #js {:path (->path out-dir (str (if id (name (edn/read-string id)) (str "result-" (inc i))) ".png"))}))
+               (println+flush "🦘 Skipping result with bounds" (str (.-width bounds) "×" (.-height bounds))))
            (p/recur (inc i)))
          (println+flush "✅ Done."))))))
 
