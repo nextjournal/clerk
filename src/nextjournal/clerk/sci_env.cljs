@@ -176,9 +176,6 @@
                       "%s"
                       (str f))
          {:core-alias 'clerk.cljs_core})
-        ;; TODO: fix bug in compiler
-        body (str/replace body "long$" "long")
-        body (str/replace body "truth_" "clerk.cljs_core.truth_")
         _ (js/console.log "compiled body" body)
         evaled (js/eval body)
         _ (js/console.log "evaled" evaled)]
