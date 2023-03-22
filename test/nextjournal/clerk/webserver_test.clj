@@ -6,7 +6,8 @@
 
 (deftest serve-blob
   (testing "lazy loading of simple range"
-    (let [doc (eval/eval-string "(range 100)")
+    (let [doc (let [doc (eval/eval-string "(range 100)")]
+                (with-meta doc (view/doc->viewer doc)))
           {:nextjournal/keys [presented fetch-opts]} (-> doc view/doc->viewer :nextjournal/value :blocks second :nextjournal/value)
           {:nextjournal/keys [value]} presented
           {elision-viewer :nextjournal/viewer elision-fetch-opts :nextjournal/value} (peek value)

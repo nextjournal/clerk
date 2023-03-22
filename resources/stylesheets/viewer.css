@@ -32,6 +32,12 @@
   h2 { @apply text-3xl; }
   h3 { @apply text-2xl; }
 
+  @media print {
+      h1 { @apply text-2xl !important; }
+      h2 { @apply text-xl !important; }
+      h3 { @apply text-lg !important; }
+  }
+  
   button { @apply focus:outline-none; }
   strong { @apply font-bold; }
   em     { @apply italic; }
@@ -122,13 +128,20 @@
 .code-viewer {
   @apply font-mono bg-slate-100 rounded-sm text-sm overflow-x-auto dark:bg-gray-800;
 }
+.code-listing  {
+    @apply -ml-8 -mr-8 relative !important;
+}
 .code-viewer .cm-content {
   @apply py-4 px-8;
 }
 @media (min-width: 960px){
-  .notebook-viewer .code-viewer .cm-content {
-    @apply py-4 pl-12;
-  }
+    .notebook-viewer .code-viewer .cm-content {
+        @apply py-4 pl-12;
+    }
+    .notebook-viewer .code-listing {
+        width: 48rem !important;
+        @apply -ml-12 mr-0 !important;
+    }
 }
 /* Don’t show focus outline when double-clicking cell in Safari */
 .cm-scroller { @apply focus:outline-none; }
@@ -375,3 +388,14 @@
 .vega-embed .chart-wrapper { @apply h-auto !important; }
 /* fixes fraction separators being overridden by tw’s border-color */
 .katex * { @apply border-black; }
+
+@media print {
+    .dark-mode-toggle,
+    .toc-toggle { @apply hidden; }
+    .notebook-viewer { @apply pt-0; font-size: 12pt !important; margin-left: 0 !important; }
+    .code-viewer .cm-content,
+    .viewer-code .cm-content { @apply whitespace-pre-wrap !important; overflow: none; }
+    .code-viewer .cm-line { font-size: 12pt !important; }
+    html * { page-break-inside: avoid !important; }
+    .toc-panel { @apply hidden; }
+}

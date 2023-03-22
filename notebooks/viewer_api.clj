@@ -105,6 +105,6 @@
 
 ;; The clerk viewer api also includes `reagent` and `applied-science/js-interop`.
 (clerk/with-viewer '(fn [_]
-                      (reagent/with-let [counter (reagent/atom 0)]
+                      (reagent.core/with-let [counter (reagent.core/atom 0)]
                         [:h3.cursor-pointer {:on-click #(swap! counter inc)} "I was clicked " @counter " times."]))
   nil)

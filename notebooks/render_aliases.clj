@@ -5,28 +5,39 @@
 ;; had no connection to the namespace they were defined in and
 ;; naturally folks where confused what things like `v/html` meant.
 
+;; We've since migrated all `:render-fn`s in Clerk to fully qualified
+;; symbols to unambigously identity a function & support jump to definition.
+
+
+;; Clojure 1.11 introduced `:as-alias` to support defining an alias
+;; without loading the corresponding namespace. Here we use it to
+;; define an alias for Clerk's rendering namespaces (which are written
+;; in ClojureScript).
+
 (ns render-aliases
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.render :as-alias render]
             [nextjournal.clerk.render.hooks :as-alias hooks]))
 
-;; Clerk now uses the `ns-aliases` defined in the JVM to resolve
-;; namespaced symbols, making this conection clear and even enabling
-;; jump to definition. In Clojure 1.11 this works nicely with
-;; `:as-alias` support allowing us to define aliases for namespaces
-;; that are ClojureScript only.
+;; Note how we have an alias defined for `render` and `hooks`.
+
 (ns-aliases *ns*)
 
-;; Using this, we can define fairly complex viewers like plotly
-;; completely in userspace while keeping things understandable.
+;; When you don't want to type out the full aliases, you can use
+;; `clerk/resolve-aliases` on a `render-fn` and it will perform the
+;; alias resolution for you. Note how `hooks/` in the code has been
+;; resolved into `nextjournal.clerk.render.hooks/`.
+
 (def plotly-viewer
   {:transform-fn clerk/mark-presented
-   :render-fn '(fn [spec] (let [plotly (hooks/use-d3-require "plotly.js-dist@2.15.1")
-                                ref-fn (hooks/use-callback #(when % (.newPlot plotly % (clj->js spec))) [spec plotly])]
-                            (when spec
-                              (if plotly
-                                [:div.overflow-x-auto [:div.plotly {:ref ref-fn}]]
-                                render/default-loading-view))))})
+   :render-fn (clerk/resolve-aliases
+               '(fn [spec]
+                  (let [plotly (hooks/use-d3-require "plotly.js-dist@2.15.1")
+                        ref-fn (hooks/use-callback #(when % (.newPlot plotly % (clj->js spec))) [spec plotly])]
+                    (when spec
+                      (if plotly
+                        [:div.overflow-x-auto [:div.plotly {:ref ref-fn}]]
+                        render/default-loading-view)))))})
 
 (clerk/with-viewer plotly-viewer
   {:layout {:title "A surface plot"}

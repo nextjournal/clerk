@@ -21,7 +21,7 @@
    :transform-fn (comp clerk/mark-preserve-keys
                        (clerk/update-val transform-literal))
    :render-fn '(fn [label->val]
-                 (reagent/with-let [!selected-label (reagent/atom (ffirst label->val))]
+                 (reagent.core/with-let [!selected-label (reagent.core/atom (ffirst label->val))]
                    [:<> (into
                          [:div.flex.items-center.font-sans.text-xs.mb-3
                           [:span.text-slate-500.mr-2 "View-as:"]]

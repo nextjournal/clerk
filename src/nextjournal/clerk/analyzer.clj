@@ -12,8 +12,8 @@
             [clojure.tools.analyzer.ast :as ana-ast]
             [clojure.tools.analyzer.jvm :as ana-jvm]
             [clojure.tools.analyzer.utils :as ana-utils]
-            [multihash.core :as multihash]
-            [multihash.digest :as digest]
+            [multiformats.base.b58 :as b58]
+            [multiformats.hash :as hash]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.classpath :as cp]
             [nextjournal.clerk.config :as config]
@@ -46,7 +46,10 @@
 #_(no-cache? '^{:nextjournal.clerk/no-cache false} (def ^:nextjournal.clerk/no-cache my-rand (rand-int 10)))
 
 (defn sha1-base58 [s]
-  (-> s digest/sha1 multihash/base58))
+  (->> s hash/sha1 hash/encode b58/format-btc))
+
+(defn sha2-base58 [s]
+  (->> s hash/sha2-512 hash/encode b58/format-btc))
 
 #_(sha1-base58 "hello")
 
@@ -265,7 +268,7 @@
   (let [id->count @!id->count
         id (if var
              var
-             (let [hash-fn #(-> % nippy/fast-freeze digest/sha1 multihash/base58)]
+             (let [hash-fn #(-> % nippy/fast-freeze sha1-base58)]
                (symbol (str *ns*)
                        (case type
                          :code (str "anon-expr-" (hash-fn (cond-> form (instance? clojure.lang.IObj form) (with-meta {}))))
@@ -315,7 +318,7 @@
        (cond-> (reduce (fn [{:as state notebook-ns :ns} i]
                          (let [{:as block :keys [type text loc]} (get-in doc [:blocks i])]
                            (if (not= type :code)
-                             state
+                             (assoc-in state [:blocks i :id] (get-block-id !id->count block))
                              (let [form (try (read-string text)
                                              (catch Exception e
                                                (throw (ex-info (str "Clerk analysis failed reading block: "
@@ -436,13 +439,14 @@
 #_(symbol->jar 'io.methvin.watcher.PathUtils/cast)
 #_(symbol->jar 'java.net.http.HttpClient/newHttpClient)
 
+
 (defn find-location [sym]
-  (cond
-    (deref? sym) (find-location (second sym))
-    :else (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
-            (or (ns->file ns)
-                (ns->jar ns))
-            (symbol->jar sym))))
+  (if (deref? sym)
+    (find-location (second sym))
+    (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
+      (or (ns->file ns)
+          (ns->jar ns))
+      (symbol->jar sym))))
 
 #_(find-location `inc)
 #_(find-location '@nextjournal.clerk.webserver/!doc)
@@ -452,6 +456,25 @@
 #_(find-location 'io.methvin.watcher.PathUtils)
 #_(find-location 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER)
 #_(find-location 'String)
+
+(defn find-location+cache [!ns->loc sym]
+  (if (deref? sym)
+    (find-location+cache !ns->loc (second sym))
+    (if-let [ns-sym (and (qualified-symbol? sym) (-> sym namespace symbol))]
+      (or (@!ns->loc ns-sym)
+          (when-let [loc (find-location sym)]
+            (swap! !ns->loc assoc ns-sym loc)
+            loc))
+      (find-location sym))))
+
+(def !ns->loc-cache (atom {}))
+
+#_(reset! !ns->loc-cache {})
+
+(defn find-location-cached [sym]
+  (find-location+cache !ns->loc-cache sym))
+
+#_(find-location-cached `inc)
 
 (def hash-jar
   (memoize (fn [f]
@@ -484,7 +507,7 @@
              (assoc :counter 0))]
     (let [unhashed (unhashed-deps ->analysis-info)
           loc->syms (apply dissoc
-                           (group-by find-location unhashed)
+                           (group-by find-location-cached unhashed)
                            analyzed-file-set)]
       (if (and (seq loc->syms) (< counter 10))
         (recur (-> (reduce (fn [g [source symbols]]
@@ -567,12 +590,11 @@
   ([value] (valuehash :sha512 value))
   ([hash-type value]
    (let [digest-fn (case hash-type
-                     :sha1 digest/sha1
-                     :sha512 digest/sha2-512)]
+                     :sha1 sha1-base58
+                     :sha512 sha2-base58)]
      (-> value
          nippy/fast-freeze
-         digest-fn
-         multihash/base58))))
+         digest-fn))))
 
 #_(valuehash (range 100))
 #_(valuehash :sha1 (range 100))

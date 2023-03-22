@@ -19,7 +19,6 @@
 (defonce ^:private !last-file (atom nil))
 (defonce ^:private !watcher (atom nil))
 
-
 (defn show!
   "Evaluates the Clojure source in `file-or-ns` and makes Clerk show it in the browser.
 
@@ -35,6 +34,7 @@
   (if config/*in-clerk*
     ::ignored
     (try
+      (webserver/set-status! {:progress 0 :status "Parsing…"})
       (let [file (cond
                    (nil? file-or-ns)
                    (throw (ex-info (str "`nextjournal.clerk/show!` cannot show `nil`.")
@@ -55,12 +55,15 @@
                                        {:file-or-ns file-or-ns}))))
             _ (reset! !last-file file)
             {:keys [blob->result]} @webserver/!doc
-            {:keys [result time-ms]} (eval/time-ms (eval/+eval-results blob->result doc))]
+            {:keys [result time-ms]} (eval/time-ms (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!)))]
         (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
         (webserver/update-doc! result))
       (catch Exception e
         (webserver/show-error! e)
         (throw e)))))
+
+#_(show! "notebooks/exec_status.clj")
+#_(clear-cache!)
 
 #_(show! 'nextjournal.clerk.tap)
 #_(show! (do (require 'clojure.inspector) (find-ns 'clojure.inspector)))
@@ -123,8 +126,14 @@
   [viewers x]
   (v/with-viewers viewers x))
 
+(def default-viewers
+  "Clerk's default viewers."
+  v/default-viewers)
+
 (defn get-default-viewers
-  "Gets Clerk's default viewers."
+  "Gets Clerk's current set of default viewers.
+
+  Use `(reset-viewers! :default ,,,)` to change them."
   []
   (v/get-default-viewers))
 
@@ -139,14 +148,17 @@
   [viewers select-fn->update-fn]
   (v/update-viewers viewers select-fn->update-fn))
 
-
 (defn reset-viewers!
-  "Resets the viewers associated with the current `*ns*` to `viewers`."
-  [viewers] (v/reset-viewers! *ns* viewers))
+  "Resets the viewers associated with the given `scope` to `viewers`.
+
+  When no `scope` is given, resets the viewers for the current namespace.
+  Passsing `:default` resets the global default viewers in Clerk."
+  ([viewers] (v/reset-viewers! viewers))
+  ([scope viewers] (v/reset-viewers! scope viewers)))
 
 
 (defn add-viewers!
-  "Adds `viewers` to the viewers associated with the current `*ns*`."
+  "Adds `viewers` to the viewers associated with the current namespace."
   [viewers] (v/add-viewers! viewers))
 
 
@@ -181,6 +193,10 @@
   [wrapped-value]
   (v/mark-preserve-keys wrapped-value))
 
+(defn resolve-aliases
+  "Resolves aliases in `form` using the aliases from `*ns*`. Meant to be used on `:render-fn`s."
+  [form]
+  (v/resolve-aliases form))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convenience api
@@ -333,6 +349,17 @@
   "Evaluates the given ClojureScript forms in the browser."
   [& forms]
   (apply v/eval-cljs forms))
+
+(defn read-js-literal
+  "Data reader for the `#js` literal.
+
+  Use it with the following if you want to use `#js` in `:render-fn`s.
+
+  (set! *data-readers* (assoc *data-readers* 'js read-js-literal))"
+  [data]
+  (cond
+    (vector? data) (list* 'cljs.core/array data)
+    (map? data) (list* 'cljs.core/js-obj (interleave (map name (keys data)) (vals data)))))
 
 (def notebook
   "Experimental notebook viewer. You probably should not use this."
@@ -488,6 +515,7 @@
   ([]
    (swap! webserver/!doc dissoc :blob->result)
    (reset! analyzer/!file->analysis-cache {})
+   (reset! analyzer/!ns->loc-cache {})
    (if (fs/exists? config/cache-dir)
      (do (fs/delete-tree config/cache-dir)
          (prn :cache-dir/deleted config/cache-dir))

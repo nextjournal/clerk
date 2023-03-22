@@ -1,6 +1,7 @@
 ;; # Pagination
 (ns notebooks.pagination
-  (:require [babashka.fs :as fs]))
+  (:require [babashka.fs :as fs]
+            [nextjournal.clerk :as clerk]))
 
 #_(nextjournal.clerk/show! "notebooks/pagination.clj")
 
@@ -44,11 +45,11 @@
 
 (group-by first [[:A :B :B] [:B :C :C] [:C :A :A]])
 
-(take 5
+(take 100
       (repeatedly (fn []
                     {:name (str
-                             (rand-nth ["Oscar" "Karen" "Vlad" "Rebecca" "Conrad"]) " "
-                             (rand-nth ["Miller" "Stasčnyk" "Ronin" "Meyer" "Black"]))
+                            (rand-nth ["Oscar" "Karen" "Vlad" "Rebecca" "Conrad"]) " "
+                            (rand-nth ["Miller" "Stasčnyk" "Ronin" "Meyer" "Black"]))
                      :role (rand-nth [:admin :operator :manager :programmer :designer])
                      :id (java.util.UUID/randomUUID)
                      :created-at #inst "2021"})))
@@ -63,3 +64,20 @@
                     (for [x (range 1 5)]
                       {:id x :parent (dec x) :name (format "item-%d" x)}))]
   (flat->nested (-> (filter #(= (:parent %) nil) items) first) items))
+
+
+^{::clerk/budget 5}
+(reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))
+
+
+(clerk/html [:div
+             [:h3 "Nesting Images inside " [:span.font-mono "clerk/html"]]
+             (clerk/image "trees.png")])
+
+(clerk/html [:div
+             [:h3 "Nesting paginated collections inside " [:span.font-mono "clerk/html"]]
+             [:ul
+              [:li "A strong range: "
+               [:p [:strong {:nextjournal/value (range 30)}]]]
+              [:li "A slanted range:"
+               [:p [:em {:nextjournal/value (range 100)}]]]]])

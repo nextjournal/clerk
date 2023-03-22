@@ -9,6 +9,7 @@
             ["react" :as react]
             [applied-science.js-interop :as j]
             [cljs.reader]
+            [cljs.math]
             [clojure.string :as str]
             [edamame.core :as edamame]
             [goog.object]
@@ -29,13 +30,35 @@
             [sci.ctx-store]
             [shadow.esm]))
 
+(def legacy-ns-aliases
+  {"j" "applied-science.js-interop"
+   "reagent" "reagent.core"
+   "render" "nextjournal.clerk.render"
+   "v" "nextjournal.clerk.viewer"
+   "p" "nextjournal.clerk.parser"})
+
+(defn resolve-legacy-alias [sym]
+  (symbol (get legacy-ns-aliases (namespace sym) (namespace sym))
+          (name sym)))
+
+(defn maybe-handle-legacy-alias-error [form e]
+  (when-let [unresolved-sym (some-> (re-find #"^Could not resolve symbol: (.*)$" (ex-message e)) second symbol)]
+    (when (and (contains? legacy-ns-aliases (namespace unresolved-sym))
+               (sci/resolve (sci.ctx-store/get-ctx) (resolve-legacy-alias unresolved-sym)))
+      (viewer/map->ViewerFn
+       {:form form
+        :f (fn [] [render/error-view (ex-info (str "We now require `:render-fn`s to use fully-qualified symbols, and we have removed the old aliases from Clerk. "
+                                                   "Please change `" unresolved-sym "` to `" (resolve-legacy-alias unresolved-sym) "` in your `:render-fn` to resolve this issue.")
+                                              {:render-fn form} e)])}))))
+
 (defn ->viewer-fn-with-error [form]
   (try (viewer/->viewer-fn form)
        (catch js/Error e
-         (viewer/map->ViewerFn
-          {:form form
-           :f (fn [_]
-                [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)])}))))
+         (or (maybe-handle-legacy-alias-error form e)
+             (viewer/map->ViewerFn
+              {:form form
+               :f (fn [_]
+                    [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)])})))))
 
 (defn ->viewer-eval-with-error [form]
   (try (*eval* form)
@@ -109,14 +132,12 @@
              "@nextjournal/lang-clojure" lang-clojure
              "framer-motion" framer-motion
              "react" react}
-   :aliases {'j 'applied-science.js-interop
-             'reagent 'reagent.core
-             'v 'nextjournal.clerk.viewer
-             'p 'nextjournal.clerk.parser}
+   :ns-aliases '{clojure.math cljs.math}
    :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
                        'clojure.core {'read-string read-string
                                       'implements? (sci/copy-var implements?* core-ns)}}
                       (sci-copy-nss
+                       'cljs.math
                        'nextjournal.clerk.parser
                        'nextjournal.clerk.render
                        'nextjournal.clerk.render.code
@@ -130,9 +151,6 @@
                       sci.configs.js-interop/namespaces
                       sci.configs.reagent/namespaces)})
 
-(defn ^:export onmessage [ws-msg]
-  (render/dispatch (read-string (.-data ws-msg))))
-
 (defn ^:export eval-form [f]
   (sci/eval-form (sci.ctx-store/get-ctx) f))
 
@@ -141,7 +159,34 @@
 
 (def ^:export mount render/mount)
 
+(defn ^:export onmessage [ws-msg]
+  (render/dispatch (read-string (.-data ws-msg))))
+
+(defn reconnect-timeout [failed-connection-attempts]
+  (get [0 0 100 500 5000] failed-connection-attempts 10000))
+
+(defn ^:export connect [ws-url]
+  (when (::failed-attempts @render/!doc)
+    (swap! render/!doc assoc ::connection-status "Reconnecting…"))
+  (let [ws (js/WebSocket. ws-url)]
+    (set! (.-onmessage ws) onmessage)
+    (set! (.-onopen ws) (fn [e] (swap! render/!doc dissoc ::connection-status ::failed-attempts)))
+    (set! (.-onclose ws) (fn [e]
+                           (let [timeout (reconnect-timeout (::failed-attempts @render/!doc 0))]
+                             (swap! render/!doc
+                                    (fn [doc]
+                                      (-> doc
+                                          (assoc ::connection-status (if (pos? timeout)
+                                                                       (str "Disconnected, reconnecting in " timeout "ms…")
+                                                                       "Reconnecting…"))
+                                          (update ::failed-attempts (fnil inc 0)))))
+                             (js/setTimeout #(connect ws-url) timeout))))
+    (set! (.-clerk_ws ^js goog/global) ws)
+    (set! (.-ws_send ^js goog/global) (fn [msg] (.send ws msg)))))
+
 (sci.ctx-store/reset-ctx! (sci/init initial-sci-opts))
+
+(sci/enable-unrestricted-access!)
 
 (sci/alter-var-root sci/print-fn (constantly *print-fn*))
 (sci/alter-var-root sci/print-err-fn (constantly *print-err-fn*))

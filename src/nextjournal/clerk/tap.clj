@@ -18,7 +18,8 @@
                              {:class (if (= @!view choice) "bg-indigo-100 text-indigo-600" "text-slate-500")
                               :on-click #(reset! !view choice)}
                              choice]) choices))
-               [:button.text-xs.rounded-full.px-3.py-1.border-2.font-sans.hover:bg-slate-100.cursor-pointer {:on-click #(v/clerk-eval `(reset-taps!))} "Clear"]]))))
+               [:button.text-xs.rounded-full.px-3.py-1.border-2.font-sans.hover:bg-slate-100.cursor-pointer
+                {:on-click #(nextjournal.clerk.render/clerk-eval `(reset-taps!))} "Clear"]]))))
 
 ^{::clerk/sync true ::clerk/viewer switch-view ::clerk/visibility {:result :show}}
 (defonce !view (atom :stream))
@@ -43,7 +44,7 @@
                    [:div.border-t.relative.py-3
                     [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
                      {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
-                    [:div.overflow-x-auto [v/inspect-presented val]]]
+                    [:div.overflow-x-auto [nextjournal.clerk.render/inspect-presented val]]]
                    {:key (:nextjournal/value key)}))
    :transform-fn (comp clerk/mark-preserve-keys
                        (clerk/update-val #(update % :tapped-at inst->local-time-str)))})
@@ -51,7 +52,7 @@
 (clerk/add-viewers! [tap-viewer])
 
 (def taps-viewer
-  {:render-fn '#(into [:div.flex.flex-col.pt-2] (v/inspect-children %2) %1)
+  {:render-fn '#(into [:div.flex.flex-col.pt-2] (nextjournal.clerk.render/inspect-children %2) %1)
    :transform-fn (clerk/update-val (fn [taps]
                                      (mapv (partial clerk/with-viewer `tap-viewer) (reverse taps))))})
 
