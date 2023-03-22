@@ -285,7 +285,6 @@
     auto-expand? (-> viewer/assign-content-lengths)
     true (-> viewer/assign-expanded-at (get :nextjournal/expanded-at {}))))
 
-;; TODO: simplify this
 (defn css-class [x]
   (let [{viewer-name :name} (viewer/->viewer x)
         viewer-css-class (viewer/css-class x)
@@ -325,8 +324,7 @@
                                       (when (exists? js/document)
                                         (js/document.removeEventListener "keydown" on-key-down)
                                         (js/document.removeEventListener "up" on-key-up))))]
-
-    [:div.relative.overflow-x-auto {:class (css-class result) :ref ref-fn}
+    [:div.relative.overflow-x-auto {:class (css-class @!desc) :ref ref-fn}
      (when @!desc
        [view-context/provide {:fetch-fn fetch-fn}
         [:> ErrorBoundary {:hash hash}
