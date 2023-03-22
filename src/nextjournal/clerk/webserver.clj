@@ -193,7 +193,7 @@
                 {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
                 {:type :set-state!
                  :doc (present+reset! doc)
-                 :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/push-history!
+                 :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-browser-url!
                                                  {:title title
                                                   :path (str "/" (cond->> file
                                                                    (fs/absolute? file)
