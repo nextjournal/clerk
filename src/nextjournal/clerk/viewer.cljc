@@ -552,8 +552,9 @@
 (def fragment-viewer
   {:name `fragment-viewer
    :render-fn '(fn [xs opts] (into [:<>] (nextjournal.clerk.render/inspect-children opts) xs))
-   :transform-fn (update-val (partial map (fn [x] (with-viewer `fragment-splicing-viewer
-                                                    {:nextjournal/value {:result {:nextjournal/value x}}}))))})
+   :transform-fn (update-val (partial map (fn [x]
+                                            (with-viewer `fragment-splicing-viewer
+                                              {:nextjournal/value {:result {:nextjournal/value x}}}))))})
 
 (def fragment-splicing-viewer
   {:name `fragment-splicing-viewer
@@ -1044,7 +1045,8 @@
       (assoc :atom-var-name->state (atom-var-name->state doc))
       (assoc :ns (->viewer-eval (list 'ns (if ns (ns-name ns) 'user))))
       (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
-                                             (map (partial ensure-wrapped-with-viewers viewers)))))
+                                             (map (comp present
+                                                        (partial ensure-wrapped-with-viewers viewers))))))
       (select-keys [:atom-var-name->state
                     :auto-expand-results?
                     :blocks :bundle?
@@ -1063,7 +1065,7 @@
    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
                    (-> wrapped-value
                        (update :nextjournal/value (partial process-blocks viewers))
-                       mark-preserve-keys))})
+                       mark-presented))})
 
 (def viewer-eval-viewer
   {:pred viewer-eval?
