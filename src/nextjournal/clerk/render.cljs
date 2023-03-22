@@ -190,8 +190,7 @@
          ;; TODO: restore react keys via block-id
          ;; ^{:key (str processed-block-id "@" @!eval-counter)}
 
-         (inspect-children opts)
-         (viewer/->value xs))]])))
+         (inspect-children opts) xs)]])))
 
 (defn opts->query [opts]
   (->> opts
