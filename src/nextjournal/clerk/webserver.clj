@@ -189,7 +189,7 @@
                 {:type :set-state!
                  :doc (present+reset! doc)
                  :effects [(v/->ViewerEval (list 'js/history.pushState nil title
-                                                 (str "#/show=" (cond->> file
+                                                 (str "#show=" (cond->> file
                                                                   (fs/absolute? file)
                                                                   (fs/relativize (fs/cwd))))))]})))
 
