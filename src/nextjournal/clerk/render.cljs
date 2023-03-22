@@ -656,15 +656,13 @@
   (let [re-eval (fn [{:keys [form]}] (viewer/->viewer-fn form))]
     (w/postwalk (fn [x] (cond-> x (viewer/viewer-fn? x) re-eval)) doc)))
 
-(defn push-history! [doc]
-  (let [{:keys [title file]} (viewer/->value doc)]
-    (js/history.pushState #js {} title (viewer/doc-url file))))
+(defn push-history! [{:keys [title path]}]
+  (when (exists? js/history)
+    (js/history.pushState #js {} title path)))
 
 (defn ^:export set-state! [{:as state :keys [doc error]}]
   (when (contains? state :doc)
-    (reset! !doc doc)
-    (when (and (exists? js/history) (not (contains? doc :bundle?)))
-      (push-history! doc)))
+    (reset! !doc doc))
   (when (remount? doc)
     (swap! !eval-counter inc))
   (reset! !error error)
