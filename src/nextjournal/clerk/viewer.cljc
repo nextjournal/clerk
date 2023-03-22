@@ -43,11 +43,18 @@
      ViewerEval
      (get-type [_] :val)))
 
+(defn get-safe
+  ([key] #(get-safe % key))
+  ([map key]
+   (when (map? map)
+     (try (get map key) ;; can throw for e.g. sorted-map
+          (catch #?(:clj Exception :cljs js/Error) _e nil)))))
+
 (defn viewer-fn? [x]
   (instance? ViewerFn x))
 
 (defn viewer-eval? [x]
-  (instance? ViewerEval x))
+  (some? (::viewer-eval x)))
 
 (defn resolve-symbol-alias [aliases sym]
   (if-let [full-ns (some->> sym namespace symbol (get aliases) str)]
@@ -65,7 +72,7 @@
                   #?@(:cljs [:f (*eval* form)])}))
 
 (defn ->viewer-eval [form]
-  (map->ViewerEval {:form form}))
+  {::viewer-eval form})
 
 (defn open-graph-metas [open-graph-properties]
   (into (list [:meta {:name "twitter:card" :content "summary_large_image"}])
@@ -225,13 +232,6 @@
 
 #_(->> "x^2" (with-viewer `latex-viewer) (with-viewers [{:name `latex-viewer :render-fn `mathjax-viewer}]))
 
-(defn get-safe
-  ([key] #(get-safe % key))
-  ([map key]
-   (when (map? map)
-     (try (get map key) ;; can throw for e.g. sorted-map
-          (catch #?(:clj Exception :cljs js/Error) _e nil)))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; table viewer normalization
 
@@ -344,18 +344,18 @@
    (defmethod print-method clojure.lang.Keyword [o w]
      (if (roundtrippable? o)
        (.write w (str o))
-       (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
-                                          (list 'keyword ns (name o))
-                                          (list 'keyword (name o)))))))))
+       (.write w (str "#viewer-eval " (if-let [ns (namespace o)]
+                                        (list 'keyword ns (name o))
+                                        (list 'keyword (name o))))))))
 
 #?(:clj
    (defmethod print-method clojure.lang.Symbol [o w]
      (if (or (roundtrippable? o)
              (= (name o) "?@")) ;; splicing reader conditional, see issue #338
        (.write w (str o))
-       (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
-                                          (list 'symbol ns (name o))
-                                          (list 'symbol (name o)))))))))
+       (.write w (str "#viewer-eval " (if-let [ns (namespace o)]
+                                        (list 'symbol ns (name o))
+                                        (list 'symbol (name o))))))))
 
 #?(:clj
    (defn ->edn [x]
@@ -1062,7 +1062,7 @@
                                 (symbol? x) (->viewer-eval x)
                                 (var? x) (->viewer-eval (list 'resolve (list 'quote (symbol x))))
                                 (var-from-def? x) (recur (-> x :nextjournal.clerk/var-from-def symbol))))))
-   :render-fn '(fn [x opts]
+   :render-fn '(fn [{x ::viewer-eval} opts]
                  (if (nextjournal.clerk.render/reagent-atom? x)
                    ;; special atoms handling to support reactivity
                    [nextjournal.clerk.render/render-tagged-value {:space? false}

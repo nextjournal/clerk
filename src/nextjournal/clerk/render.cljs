@@ -656,9 +656,15 @@
   (let [re-eval (fn [{:keys [form]}] (viewer/->viewer-fn form))]
     (w/postwalk (fn [x] (cond-> x (viewer/viewer-fn? x) re-eval)) doc)))
 
+(defn eval-viewer-evals [doc]
+  (w/postwalk (fn [x] (cond-> x (viewer/viewer-eval? x) *eval*)) doc))
+
+(defn eval-doc [doc]
+  (-> doc eval-viewer-evals))
+
 (defn ^:export set-state! [{:as state :keys [doc error]}]
   (when (contains? state :doc)
-    (reset! !doc doc))
+    (reset! !doc (eval-doc doc)))
   (when (remount? doc)
     (swap! !eval-counter inc))
   (reset! !error error)
@@ -671,7 +677,7 @@
 (defn patch-state! [{:keys [patch]}]
   (reset! !error nil)
   (if (remount? patch)
-    (do (swap! !doc #(re-eval-viewer-fns (apply-patch % patch)))
+    (do (swap! !doc #(eval-doc (apply-patch % patch)))
         ;; TODO: figure out why it doesn't work without `js/setTimeout`
         (js/setTimeout #(swap! !eval-counter inc) 10))
     (swap! !doc apply-patch patch)))
