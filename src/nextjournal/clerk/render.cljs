@@ -514,7 +514,7 @@
     [:div
      [:div.overflow-x-auto.overflow-y-hidden.w-full
       (into [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-ref}] children)]
-     [:div.overflow-x-auto.overflow-y-hidden.w-full.shadow
+     [:div.overflow-x-auto.overflow-y-hidden.w-full.shadow.sticky-table-header
       [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-clone-ref :style {:margin 0}}]]]))
 
 (defn throwable-view [{:keys [via trace]}]
