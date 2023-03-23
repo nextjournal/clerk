@@ -345,41 +345,60 @@
 
 ;; ### 🍱 Composing Viewers
 
-;; Viewers compose, so you can for example use the plotly viewer inside the grid viewers.
+;; Viewers compose, so, for example, you can lay out multiple independent Vega charts using Clerk’s grid viewers:
 
 ^{::clerk/visibility {:code :fold}}
 (do
-  (def donut-chart
-    (clerk/plotly {:data [{:values [27 11 25 8 1 3 25]
-                           :labels ["US" "China" "European Union" "Russian Federation" "Brazil" "India" "Rest of World"]
-                           :text "CO2"
-                           :textposition "inside"
-                           :domain {:column 1}
-                           :hoverinfo "label+percent+name"
-                           :hole 0.4
-                           :type "pie"}]
-                   :layout {:showlegend false
-                            :width 200
-                            :height 200
-                            :margin {:t 0 :b 0 :r 0 :l 0}
-                            :annotations [{:font {:size 20} :showarrow false :x 0.5 :y 0.5 :text "CO2"}]}
-                   :config {:responsive true}}))
+  (def stock-colors
+    {"AAPL" "#4c78a8" "AMZN" "#f58518" "GOOG" "#e45756" "IBM" "#72b7b2" "MSFT" "#54a24b"})
+  (def combined-stocks-chart
+    (clerk/vl {:width 600
+               :height 200
+               :data {:url "https://vega.github.io/vega-lite/examples/data/stocks.csv"}
+               :mark "area"
+               :encoding {:x {:timeUnit "yearmonth" :field "date" :axis {:format "%Y"}}
+                          :y {:aggregate "sum" :field "price"}
+                          :color {:field "symbol"
+                                  :scale {:domain (keys stock-colors) :range (vals stock-colors)}}}
+               :embed/opts {:actions false}}))
+  (defn stock-chart [symbol]
+    (clerk/vl {:title symbol
+               :width 100
+               :height 40
+               :mark "area"
+               :data {:url "https://vega.github.io/vega-lite/examples/data/stocks.csv"}
+               :transform [{:filter (str "datum.symbol == '" symbol "'")}]
+               :encoding {:x {:field "date" :type "temporal" :title nil :axis {:grid false}}
+                          :y {:field "price" :type "quantitative" :title nil :axis {:grid false} :scale {:domain [0 700]}}
+                          :color {:field "symbol" :type "nominal" :legend nil :scale {:domain [symbol]
+                                                                                      :range [(get stock-colors symbol)]}}}
+               :embed/opts {:actions false}})))
 
-  (def contour-plot
-    (clerk/plotly {:data [{:z [[10 10.625 12.5 15.625 20]
-                               [5.625 6.25 8.125 11.25 15.625]
-                               [2.5 3.125 5.0 8.125 12.5]
-                               [0.625 1.25 3.125 6.25 10.625]
-                               [0 0.625 2.5 5.625 10]]
-                           :type "contour"}]
-                   :layout {:margin {:t 0 :b 0 :r 0 :l 0}}})))
+(clerk/col
+ (clerk/row (stock-chart "AAPL")
+            (stock-chart "AMZN")
+            (stock-chart "GOOG")
+            (stock-chart "IBM")
+            (stock-chart "MSFT"))
+ combined-stocks-chart)
 
-(clerk/col (clerk/row donut-chart donut-chart donut-chart)
-           contour-plot)
+;; Viewers can also be embedded in Hiccup. The following example shows
+;; how this is used to provide a custom callout for a `clerk/image`.
 
-;; You can even embed viewers directly inside of hiccup.
+(clerk/html
+ [:div.relative
+  (clerk/image "https://images.unsplash.com/photo-1608993659399-6508f918dfde?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2070&q=80")
+  [:div.absolute
+   {:class "left-[25%] top-[21%]"}
+   [:div.border-4.border-emerald-400.rounded-full.shadow
+    {:class "w-8 h-8"}]
+   [:div.border-t-4.border-emerald-400.absolute
+    {:class "w-[80px] rotate-[30deg] left-4 translate-x-[10px] translate-y-[10px]"}]
+   [:div.border-4.border-emerald-400.absolute.text-white.font-sans.p-3.rounded-md
+    {:class "bg-black bg-opacity-60 text-[13px] w-[280px] top-[66px]"}
+    "Cat's paws are adapted to climbing and jumping, walking and running, and have protractible claws for self-defense and hunting."]]])
 
-(clerk/html [:div.flex.justify-around donut-chart donut-chart donut-chart])
+#_(clerk/html [:div.flex.justify-around donut-chart donut-chart donut-chart])
 
 ;; ### 🤹🏻 Applying Viewers
 
