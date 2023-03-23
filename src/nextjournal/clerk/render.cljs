@@ -322,6 +322,8 @@
                                       (when (exists? js/document)
                                         (js/document.removeEventListener "keydown" on-key-down)
                                         (js/document.removeEventListener "up" on-key-up))))]
+
+    ^{:key (str id "@" @!eval-counter)}
     [:div.relative.overflow-x-auto.result-viewer {:class (css-class @!desc) :ref ref-fn :data-block-id id}
      (when @!desc
        [view-context/provide {:fetch-fn fetch-fn}
@@ -709,6 +711,9 @@
 (defn ^:export ^:dev/after-load mount []
   (when react-root
     (.render react-root (r/as-element [root]))))
+
+(defn render-with-react-key [x {:as _opts :keys [id]}]
+  (with-meta x {:key (str id "@" @!eval-counter)}))
 
 (defn html-render [markup]
   (r/as-element
