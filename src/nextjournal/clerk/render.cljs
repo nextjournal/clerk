@@ -322,7 +322,7 @@
                                       (when (exists? js/document)
                                         (js/document.removeEventListener "keydown" on-key-down)
                                         (js/document.removeEventListener "up" on-key-up))))]
-    [:div.relative.overflow-x-auto {:class (css-class @!desc) :ref ref-fn :data-block-id id}
+    [:div.relative.overflow-x-auto.result-viewer {:class (css-class @!desc) :ref ref-fn :data-block-id id}
      (when @!desc
        [view-context/provide {:fetch-fn fetch-fn}
         [:> ErrorBoundary {:hash hash}
