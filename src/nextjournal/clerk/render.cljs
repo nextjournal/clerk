@@ -287,8 +287,7 @@
 (defn css-class [x]
   (let [{viewer-name :name} (viewer/->viewer x)
         viewer-css-class (viewer/css-class x)
-        inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)
-        processed-block-id (get-in x [:nextjournal/opts :id])]
+        inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
     (if viewer-css-class
       (cond-> viewer-css-class
         (string? viewer-css-class) vector)
