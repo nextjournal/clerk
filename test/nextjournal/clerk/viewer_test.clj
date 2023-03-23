@@ -270,7 +270,17 @@
       (is (not-empty (tree-re-find (view/doc->viewer {:inline-results? true
                                                       :bundle? false
                                                       :out-path builder/default-out-path} test-doc)
-                                   #"_data/.+\.png"))))))
+                                   #"_data/.+\.png")))))
+
+  (testing "Fragments emit distinct results for all of their (nested) children"
+    (is (= 6
+           (count
+            (->> (eval/eval-string "1\n(nextjournal.clerk/fragment 2 3 (nextjournal.clerk/fragment 4 5))\n6")
+                 view/doc->viewer v/->value :blocks
+                 (tree-seq coll? seq)
+                 (filter (every-pred map?
+                                     #(contains? % :nextjournal/presented)
+                                     #(contains? % :nextjournal/blob-id)))))))))
 
 (deftest ->edn
   (testing "normal symbols and keywords"
