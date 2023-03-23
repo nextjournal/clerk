@@ -284,7 +284,7 @@
     auto-expand? (-> viewer/assign-content-lengths)
     true (-> viewer/assign-expanded-at (get :nextjournal/expanded-at {}))))
 
-(defn css-class [x]
+(defn result-css-class [x]
   (let [{viewer-name :name} (viewer/->viewer x)
         viewer-css-class (viewer/css-class x)
         inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
@@ -297,7 +297,7 @@
        (case (or (viewer/width x) (case viewer-name (`viewer/code-viewer `viewer/code-folded-viewer) :wide :prose))
          :wide "w-full max-w-wide"
          :full "w-full"
-         "w-full max-w-prose px-8")])))
+         "w-full max-w-prose")])))
 
 (defn render-result [{:as result :nextjournal/keys [fetch-opts hash presented]} {:as _opts :keys [id auto-expand-results?]}]
   (let [!desc (hooks/use-state-with-deps presented [hash])
@@ -324,7 +324,7 @@
                                         (js/document.removeEventListener "up" on-key-up))))]
 
     ^{:key (str id "@" @!eval-counter)}
-    [:div.relative.overflow-x-auto.result-viewer {:class (css-class @!desc) :ref ref-fn :data-block-id id}
+    [:div.relative.overflow-x-auto.result-viewer {:class (result-css-class @!desc) :ref ref-fn :data-block-id id}
      (when @!desc
        [view-context/provide {:fetch-fn fetch-fn}
         [:> ErrorBoundary {:hash hash}
