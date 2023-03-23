@@ -26,6 +26,7 @@
          "exec_status"
          "eval_cljs"
          "example"
+         "fragments"
          "hiding_clerk_metadata"
          "js_import"
          "multiviewer"
