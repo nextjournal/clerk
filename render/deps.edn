@@ -3,8 +3,8 @@
         binaryage/devtools {:mvn/version "1.0.3"}
         cider/cider-nrepl {:mvn/version "0.28.3"}
         org.babashka/sci {:git/sha "4ab93c2530f174491a03083b0f15b76f8a176178" :git/url "https://github.com/babashka/sci"}
-        reagent/reagent {:mvn/version "1.1.1"}
+        reagent/reagent {:mvn/version "1.2.0"}
         io.github.babashka/sci.configs {:git/sha "0702ea5a21ad92e6d7cca6d36de84271083ea68f"}
         io.github.nextjournal/clojure-mode {:git/sha "ac038ebf6e5da09dd2b8a31609e9ff4a65e36852"}
         metosin/reitit-frontend {:mvn/version "0.5.15"}
-        thheller/shadow-cljs {:mvn/version "2.20.11"}}}
+        thheller/shadow-cljs {:mvn/version "2.22.7"}}}
