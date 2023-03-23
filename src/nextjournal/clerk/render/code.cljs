@@ -94,7 +94,7 @@
                            (.add builder from to (.mark Decoration (j/obj :class style)))))
         decorations-rangeset (.finish builder)
         text (.of Text (.split code "\n"))]
-    ^{:key (str id "@" 0)} ;; TODO: eval counter
+    ^{:key id}
     [:div.cm-editor.viewer.code-viewer.w-full.max-w-wide {:data-block-id id}
      [:cm-scroller
       (into [:div.cm-content.whitespace-pre]

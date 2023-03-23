@@ -559,10 +559,10 @@
                            (partial map-indexed
                                     (fn [idx x]
                                       (with-viewer `fragment-splicing-viewer
-                                        (-> (->opts wv) (update-in [:nextjournal/opts :id] str (when (pos? idx) (str "-" idx))))
+                                        (update-in (->opts wv) [:nextjournal/opts :id] processed-block-id idx)
                                         {:nextjournal/value
                                          {:result
-                                          {:nextjournal/blob-id (str blob-id (when (pos? idx) (str "-" idx)))
+                                          {:nextjournal/blob-id (processed-block-id blob-id idx)
                                            :nextjournal/value x}}})))))})
 
 (def fragment-splicing-viewer

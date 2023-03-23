@@ -717,7 +717,7 @@
     (.render react-root (r/as-element [root]))))
 
 (defn render-with-react-key [x {:as _opts :keys [id]}]
-  (with-meta x {:key (str id "@" @!eval-counter)}))
+  (with-meta x {:key id}))
 
 (defn html-render [markup]
   (r/as-element
