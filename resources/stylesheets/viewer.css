@@ -37,7 +37,7 @@
       h2 { @apply text-xl !important; }
       h3 { @apply text-lg !important; }
   }
-  
+
   button { @apply focus:outline-none; }
   strong { @apply font-bold; }
   em     { @apply italic; }
@@ -339,8 +339,8 @@
     @apply w-[756px] !important;
   }
 }
-.code-viewer + .viewer:not(.markdown-viewer):not(.code-viewer):not(.code-viewer-folded),
-.code-viewer-folded + .viewer:not(.markdown-viewer):not(.code-viewer):not(.code-viewer-folded),
+.code-viewer + .viewer:not(.code-viewer):not(.code-viewer-folded),
+.code-viewer-folded + .viewer:not(.code-viewer):not(.code-viewer-folded),
 .result-viewer + .result-viewer {
   @apply mt-2;
 }

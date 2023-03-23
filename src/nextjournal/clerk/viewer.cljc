@@ -688,7 +688,7 @@
 
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc
-    :transform-fn (into-markup (fn [{:keys [id]}] [:div.markdown-viewer.w-full.max-w-prose.px-8 {:data-block-id id}]))}
+    :transform-fn (into-markup (fn [{:keys [id]}] [:div.viewer.markdown-viewer.w-full.max-w-prose.px-8 {:data-block-id id}]))}
    {:name :nextjournal.markdown/heading
     :transform-fn (into-markup
                    (fn [{:keys [attrs heading-level]}]
