@@ -294,10 +294,15 @@
       ["viewer"
        (when viewer-name (name viewer-name))
        (when inner-viewer-name (name inner-viewer-name))
-       (case (or (viewer/width x) (case viewer-name (`viewer/code-viewer `viewer/code-folded-viewer) :wide :prose))
+       (case (or (viewer/width x)
+                 (case viewer-name
+                   (`viewer/code-viewer `viewer/code-folded-viewer) :wide
+                   `viewer/markdown-node-viewer :nested-prose
+                   :prose))
          :wide "w-full max-w-wide"
          :full "w-full"
-         "w-full max-w-prose")])))
+         :nested-prose "w-full max-w-prose"
+         "w-full max-w-prose px-8")])))
 
 (defn render-result [{:as result :nextjournal/keys [fetch-opts hash presented]} {:as _opts :keys [id auto-expand-results?]}]
   (let [!desc (hooks/use-state-with-deps presented [hash])
@@ -322,7 +327,6 @@
                                       (when (exists? js/document)
                                         (js/document.removeEventListener "keydown" on-key-down)
                                         (js/document.removeEventListener "up" on-key-up))))]
-
     ^{:key (str id "@" @!eval-counter)}
     [:div.relative.overflow-x-auto.result-viewer {:class (result-css-class @!desc) :ref ref-fn :data-block-id id}
      (when @!desc

@@ -313,7 +313,7 @@
 
 (defn into-markup [markup]
   (fn [{:as wrapped-value :nextjournal/keys [viewers opts]}]
-    (-> (with-viewer {:name `html-viewer- :render-fn 'nextjournal.clerk.render/render-with-react-key} wrapped-value)
+    (-> (with-viewer {:name `markdown-node-viewer :render-fn 'nextjournal.clerk.render/render-with-react-key} wrapped-value)
         mark-presented
         (update :nextjournal/value
                 (fn [{:as node :keys [text content] ::keys [doc]}]
@@ -323,7 +323,7 @@
                                                  (with-md-viewer)
                                                  (apply-viewers)
                                                  (as-> w
-                                                     (if (= `html-viewer- (:name (->viewer w)))
+                                                     (if (= `markdown-node-viewer (:name (->viewer w)))
                                                        (->value w)
                                                        [(inspect-fn) (process-wrapped-value w)])))
                                             content))))))))
