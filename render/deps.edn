@@ -11,5 +11,5 @@
         io.github.squint-cljs/cherry {:git/sha "f6f0aec6fbe9012dbad19f073a7a35f953d704ad"
                                       #_#_:local/root "/Users/borkdude/dev/cherry"
                                       :exclusions [io.github.squint-cljs/squint]} #_{:git/sha "8e01c2c38eea3aba37431da54184dbfd2a3b3951"}
-        io.github.squint-cljs/squint {:git/sha "4de41dad948daf31ca9d288662b017cc286f246a"
+        io.github.squint-cljs/squint {:git/sha "de698509bbf23d0e716a8baeda50204190da7cb2"
                                       #_#_:local/root "/Users/borkdude/dev/squint"}}}
