@@ -26,6 +26,7 @@
             [nextjournal.clojure-mode.commands]
             [nextjournal.clojure-mode.extensions.eval-region]
             [nextjournal.clojure-mode.keymap]
+            [reagent.core :as reagent]
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
@@ -35,7 +36,7 @@
 (set! js/globalThis.clerk #js {})
 (set! js/globalThis.clerk.cljs_core #js {})
 (def-cljs-core)
-;; (j/assoc-in! js/globalThis [:nextjournal :clerk :render :inspect] render/inspect)
+(j/assoc-in! js/globalThis [:reagent :core :atom] reagent/atom)
 ;; (set! js/globalThis.clerk.cljs_core.keyword keyword) ;; hack for cherry
 ;; (set! js/globalThis.clerk.cljs_core.apply apply) ;; hack for cherry
 ;; (set! js/globalThis.clerk.cljs_core.inc inc) ;; hack for cherry
@@ -164,6 +165,14 @@
 
 (defn ^:export onmessage [ws-msg]
   (render/dispatch (read-string (.-data ws-msg))))
+
+(defn ^:export cherry-compile-string [s]
+  (let [{:keys [body _imports]}
+        (cherry/compile-string*
+         s
+         {:core-alias 'clerk.cljs_core
+          :context :expression})]
+    body))
 
 (defn ^:export eval-form-cherry [f]
   (js/console.warn "compiling with cherry" (pr-str f))
