@@ -327,7 +327,6 @@
                                       (when (exists? js/document)
                                         (js/document.removeEventListener "keydown" on-key-down)
                                         (js/document.removeEventListener "up" on-key-up))))]
-    ^{:key (str id "@" @!eval-counter)}
     [:div.relative.overflow-x-auto.result-viewer {:class (result-css-class @!desc) :ref ref-fn :data-block-id id}
      (when @!desc
        [view-context/provide {:fetch-fn fetch-fn}
@@ -359,7 +358,8 @@
 (defn inspect-children [opts]
   ;; TODO: move update function onto viewer
   (map-indexed (fn [idx x]
-                 (inspect-presented (update opts :path (fnil conj []) idx) x))))
+                 (with-meta (inspect-presented (update opts :path (fnil conj []) idx) x)
+                            {:key (str (-> x viewer/->opts :nextjournal/opts :id) "@" @!eval-counter)}))))
 
 (def expand-style
   ["cursor-pointer"
