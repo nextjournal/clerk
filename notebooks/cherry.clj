@@ -74,12 +74,11 @@
         (fn [value]
           [:div
            [:div.flex
-            [:div.viewer-code.border-2.flex-auto.w-80.border-b-0 [nextjournal.clerk.render.code/editor !input]]
-            [:button.rounded-full.bg-cyan-500.text-white.font-semibold.px-4.py-2.flex-none
+            [:div.viewer-code.flex-auto.w-80.mb-2 [nextjournal.clerk.render.code/editor !input]]
+            [:button.flex-none.bg-slate-100.mb-2.pl-2.pr-2
              {:on-click click-handler}
              "Compile!"]]
-           [:div#cherry-output.border-2.min-h-24
+           [:div.bg-slate-50
             [nextjournal.clerk.render/render-code @!compiled]]
-           [:div#cherry-eval-output.border-2.min-h-24
-            (js/eval @!compiled)]])))}
+           [nextjournal.clerk.render/inspect (js/eval @!compiled)]])))}
   nil)
