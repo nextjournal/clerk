@@ -85,4 +85,8 @@
                  (catch :default e e))]])))}
   nil)
 
-(clerk/eval-cljs-str "(prn :hello)" {:evaluator :cherry})
+(clerk/eval-cljs-str {:evaluator :cherry}
+                     "(defn foo [x] x)")
+
+(clerk/eval-cljs-str {:evaluator :cherry}
+                     "(foo 1)")

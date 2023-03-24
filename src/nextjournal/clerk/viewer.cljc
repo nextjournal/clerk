@@ -1624,14 +1624,16 @@
      `(binding [*ns* *ns*]
         ~@forms))))
 
-(defn eval-cljs-str [code-string opts]
-  ;; NOTE: this relies on implementation details on how SCI code is evaluated
-  ;; and will change in a future version of Clerk
-  (if (= :cherry (:evaluator opts))
-    (merge (->viewer-eval
-            (list 'js/eval (list 'nextjournal.clerk.sci-env/cherry-compile-string code-string)))
-           opts)
-    (eval-cljs (list 'load-string code-string))))
+(defn eval-cljs-str
+  ([code-string] (eval-cljs-str nil code-string))
+  ([opts code-string]
+   ;; NOTE: this relies on implementation details on how SCI code is evaluated
+   ;; and will change in a future version of Clerk
+   (if (= :cherry (:evaluator opts))
+     (assoc (->viewer-eval
+             (list 'js/eval (list 'nextjournal.clerk.sci-env/cherry-compile-string code-string)))
+            :evaluator :cherry)
+     (eval-cljs (list 'load-string code-string)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; examples
