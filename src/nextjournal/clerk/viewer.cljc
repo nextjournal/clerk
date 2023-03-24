@@ -465,7 +465,8 @@
 
 (declare result-viewer)
 
-(defn transform-result [{:as _cell :keys [result form] ::keys [doc]}]
+(defn transform-result [{:as cell :keys [form] ::keys [result doc]}]
+  #_(prn :transform-result (::result cell))
   (let [{:keys [auto-expand-results? inline-results? bundle?]} doc
         {:nextjournal/keys [value blob-id budget viewers]} result
         blob-mode (cond
@@ -553,26 +554,23 @@
 
 (def fragment-viewer
   {:name `fragment-viewer
+   :pred #(some-> % (get-safe ::result) (get-safe :nextjournal/value) (get-safe :nextjournal.clerk/fragment))
    :render-fn '(fn [xs opts] (into [:<>] (nextjournal.clerk.render/inspect-children opts) xs))
-   :transform-fn (fn [{:as wv :nextjournal/keys [blob-id]}]
-                   (update wv :nextjournal/value
-                           (partial map-indexed
-                                    (fn [idx x]
-                                      (with-viewer `fragment-splicing-viewer
-                                        (update-in (->opts wv) [:nextjournal/opts :id] processed-block-id idx)
-                                        {:nextjournal/value
-                                         {:result
-                                          {:nextjournal/blob-id (processed-block-id blob-id idx)
-                                           :nextjournal/value x}}})))))})
+   :transform-fn (update-val (fn [x]
+                               (mapv #(assoc-in x [::result :nextjournal/value] %)
+                                     (get-in x [::result :nextjournal/value :nextjournal.clerk/fragment]))))})
 
-(def fragment-splicing-viewer
-  {:name `fragment-splicing-viewer
-   :transform-fn (fn [x]
-                   (if-some [fragment (-> x ->value :result ->value (get-safe :nextjournal.clerk/fragment))]
-                     (with-viewer `fragment-viewer
-                       (assoc (->opts x) :nextjournal/blob-id (-> x ->value :result :nextjournal/blob-id))
-                       fragment)
-                     (with-viewer `result-viewer x)))})
+
+#_(present @nextjournal.clerk.webserver/!doc)
+
+#_(def fragment-splicing-viewer
+    {:name `fragment-splicing-viewer
+     :transform-fn (fn [x]
+                     (if-some [fragment (-> x ->value :result ->value (get-safe :nextjournal.clerk/fragment))]
+                       (with-viewer `fragment-viewer
+                         (assoc (->opts x) :nextjournal/blob-id (-> x ->value :result :nextjournal/blob-id))
+                         fragment)
+                       (with-viewer `result-viewer x)))})
 
 (defn with-block-viewer [doc {:as cell :keys [type id]}]
   (case type
@@ -597,11 +595,14 @@
                       ;; TODO: display analysis could be merged into cell earlier
                       (-> cell (merge display-opts) (dissoc :result))))
               (or result? eval?)
+              (conj (merge {:nextjournal/opts {:id (processed-block-id (str id "-result"))}}
+                           (ensure-wrapped (-> cell (assoc ::doc doc) (assoc ::result (:result cell))))))
+              #_
               (conj (with-viewer (if result?
                                    `fragment-splicing-viewer
                                    (assoc result-viewer :render-fn '(fn [_] [:<>])))
                       {:nextjournal/opts {:id (processed-block-id (str id "-result"))}}
-                      (assoc cell ::doc doc)))))))
+                      (-> cell (assoc ::doc doc) (assoc ::result (:result cell)))))))))
 
 #_(:blocks (:nextjournal/value (nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)))
 
@@ -1015,6 +1016,7 @@
 
 (def result-viewer
   {:name `result-viewer
+   :pred #(some? (get-safe % ::result))
    :render-fn 'nextjournal.clerk.render/render-result
    :transform-fn (comp mark-presented (update-val transform-result))})
 
@@ -1114,6 +1116,8 @@
    set-viewer
    sequential-viewer
    viewer-eval-viewer
+   fragment-viewer
+   result-viewer
    map-viewer
    var-viewer
    throwable-viewer
@@ -1139,9 +1143,6 @@
    table-viewer
    table-error-viewer
    code-block-viewer
-   result-viewer
-   fragment-splicing-viewer
-   fragment-viewer
    tagged-value-viewer
    notebook-viewer
    hide-result-viewer])

@@ -6,6 +6,7 @@
 
 (clerk/fragment
  (clerk/table [[1 2] [3 4]])
+ (clerk/image "trees.png")
  (clerk/plotly {::clerk/width :full} {:data [{:y [1 3 2]}]})
  (clerk/html {::clerk/width :full} [:div.h-20.bg-amber-200])
  (clerk/fragment (clerk/html {::clerk/width :full} [:div.h-20.bg-amber-300])
