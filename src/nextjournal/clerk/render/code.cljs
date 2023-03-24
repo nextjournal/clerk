@@ -142,7 +142,7 @@
 (defn make-view [state parent]
   (EditorView. (j/obj :state state :parent parent)))
 
-(defn editor
+(defn ^:export editor
   ([!code-str] (editor !code-str {}))
   ([!code-str {:keys [extensions on-change]
                :or {on-change #(reset! !code-str %)}}]
