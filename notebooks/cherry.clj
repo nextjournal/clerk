@@ -68,7 +68,7 @@
       (let [default-value "(defn foo [x] (+ x 10))
 (foo 10)"
             !input (reagent.core/atom default-value)
-            !compiled (reagent.core/atom "")
+            !compiled (reagent.core/atom (nextjournal.clerk.sci-env/cherry-compile-string @!input))
             click-handler (fn []
                             (reset! !compiled (nextjournal.clerk.sci-env/cherry-compile-string @!input)))]
         (fn [value]
@@ -82,7 +82,7 @@
              {:on-click click-handler}
              "Click me"]]
            [:div#cherry-output.border-2.min-h-24.mr-2
-            @!compiled]
+            [nextjournal.clerk.render/render-code @!compiled]]
            [:div#cherry-eval-output.border-2.min-h-24
             (js/eval @!compiled)]])))}
   nil)
