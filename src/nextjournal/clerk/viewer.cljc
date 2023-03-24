@@ -1573,7 +1573,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convenience api
-(def html         (partial with-viewer html-viewer))
+(def ^:export html (partial with-viewer html-viewer))
 (def md           (partial with-viewer markdown-viewer))
 (def plotly       (partial with-viewer plotly-viewer))
 (def vl           (partial with-viewer vega-lite-viewer))
