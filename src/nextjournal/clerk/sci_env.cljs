@@ -219,9 +219,6 @@
 
 (def ^:export mount render/mount)
 
-(defn ^:export onmessage [ws-msg]
-  (render/dispatch (read-string (.-data ws-msg))))
-
 (defn reconnect-timeout [failed-connection-attempts]
   (get [0 0 100 500 5000] failed-connection-attempts 10000))
 

@@ -578,9 +578,6 @@
        ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
        [(:render-fn viewer) value (merge opts (:nextjournal/opts x) {:viewer viewer})]))))
 
-(defn in-process-fetch [value opts]
-  (.resolve js/Promise (viewer/present value opts)))
-
 (defn ^:export inspect [value]
   (r/with-let [!state (r/atom nil)]
     (when (not= (:value @!state ::not-found) value)
