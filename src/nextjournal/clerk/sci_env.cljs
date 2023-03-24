@@ -35,7 +35,7 @@
 (set! js/globalThis.clerk #js {})
 (set! js/globalThis.clerk.cljs_core #js {})
 (def-cljs-core)
-;; (set! js/globalThis.clerk.cljs_core.vector vector) ;; hack for cherry
+;; (j/assoc-in! js/globalThis [:nextjournal :clerk :render :inspect] render/inspect)
 ;; (set! js/globalThis.clerk.cljs_core.keyword keyword) ;; hack for cherry
 ;; (set! js/globalThis.clerk.cljs_core.apply apply) ;; hack for cherry
 ;; (set! js/globalThis.clerk.cljs_core.inc inc) ;; hack for cherry
