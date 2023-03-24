@@ -561,7 +561,7 @@
 (defn in-process-fetch [value opts]
   (.resolve js/Promise (viewer/present value opts)))
 
-(defn inspect [value]
+(defn ^:export inspect [value]
   (r/with-let [!state (r/atom nil)]
     (when (not= (:value @!state ::not-found) value)
       (swap! !state assoc
@@ -731,7 +731,7 @@
     (f package)
     loading-view))
 
-(defn render-vega-lite [value]
+(defn ^:export render-vega-lite [value]
   (let [handle-error (hooks/use-error-handler)
         vega-embed (hooks/use-d3-require "vega-embed@6.11.1")
         opts (get value :embed/opts {})
@@ -782,7 +782,7 @@
        [:div {:ref ref-fn}]]
       default-loading-view)))
 
-(def render-code code/render-code)
+(def ^:export render-code code/render-code)
 
 (def expand-icon
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
