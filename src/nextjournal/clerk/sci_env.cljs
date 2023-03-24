@@ -38,6 +38,9 @@
 (set! js/globalThis.clerk.cljs_core #js {})
 (def-cljs-core)
 (j/assoc-in! js/globalThis [:reagent :core :atom] reagent/atom)
+(j/assoc! js/globalThis :global_eval (fn [x]
+                                       (js/eval.apply js/globalThis #js [x])))
+
 ;; (set! js/globalThis.clerk.cljs_core.keyword keyword) ;; hack for cherry
 ;; (set! js/globalThis.clerk.cljs_core.apply apply) ;; hack for cherry
 ;; (set! js/globalThis.clerk.cljs_core.inc inc) ;; hack for cherry
@@ -214,7 +217,7 @@
          {:core-alias 'clerk.cljs_core
           :context :expression})
         _ (prn "compiled body" body)
-        evaled (js/eval body)
+        evaled (js/global_eval body)
         _ (prn "evaled" evaled)]
     evaled))
 

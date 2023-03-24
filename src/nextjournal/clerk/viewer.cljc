@@ -1631,7 +1631,9 @@
    ;; and will change in a future version of Clerk
    (if (= :cherry (:evaluator opts))
      (assoc (->viewer-eval
-             (list 'js/eval (list 'nextjournal.clerk.sci-env/cherry-compile-string code-string)))
+             `(let [prog#  (nextjournal.clerk.sci-env/cherry-compile-string ~code-string)]
+                (prn :prog prog#)
+                (js/global_eval prog#)))
             :evaluator :cherry)
      (eval-cljs (list 'load-string code-string)))))
 
