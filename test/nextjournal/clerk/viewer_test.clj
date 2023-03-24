@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.viewer-test
-  (:require [clojure.string :as str]
+  (:require [babashka.fs :as fs]
+            [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [clojure.walk :as w]
             [matcher-combinators.test :refer [match?]]
@@ -9,13 +10,16 @@
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]))
 
-(defn present+fetch
-  ([value] (present+fetch {} value))
-  ([opts value]
-   (let [desc (v/present value opts)
-         elision (v/find-elision desc)
-         more (v/present value elision)]
-     (v/desc->values (v/merge-presentations desc more elision)))))
+(defn resolve-elision [desc]
+  (let [elision (v/find-elision desc)
+        _ (when-not elision
+            (throw (ex-info "no elision found" {:decs desc})))
+        {:keys [present-elision-fn]} (meta desc)
+        more (present-elision-fn elision)]
+    (v/merge-presentations desc more elision)))
+
+(defn present+fetch [value]
+  (v/desc->values (resolve-elision (v/present value))))
 
 (deftest normalize-table-data
   (testing "works with sorted-map"
@@ -33,13 +37,15 @@
     (binding [config/*bounded-count-limit* 1000]
       (is (v/present (v/normalize-table-data {:a (range) :b (range 80)}))))))
 
-(deftest resolve-elision
+(deftest merge-presentations
   (testing "range"
     (let [value (range 30)]
       (is (= value (present+fetch value)))))
 
-  (testing "nested range"
+  (testing "nested ranges"
     (let [value [(range 30)]]
+      (is (= value (present+fetch value))))
+    (let [value {:hello (range 30)}]
       (is (= value (present+fetch value)))))
 
   (testing "string"
@@ -49,25 +55,33 @@
 
   (testing "deep vector"
     (let [value (reduce (fn [acc _i] (vector acc)) :fin (range 30 0 -1))]
-      (is (= value (present+fetch {:budget 21} value)))))
+      (is (= value (present+fetch {:nextjournal/budget 21 :nextjournal/value value})))))
 
   (testing "deep vector with element before"
     (let [value (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))]
-      (is (= value (present+fetch {:budget 21} value)))))
+      (is (= value (present+fetch {:nextjournal/budget 21 :nextjournal/value value})))))
 
   (testing "deep vector with element after"
     (let [value (reduce (fn [acc i] (vector acc i)) :fin (range 20 0 -1))]
-      (is (= value (present+fetch {:budget 21} value)))))
+      (is (= value (present+fetch {:nextjournal/budget 21 :nextjournal/value value})))))
 
   (testing "deep vector with elements around"
     (let [value (reduce (fn [acc i] (vector i acc (inc i))) :fin (range 10 0 -1))]
-      (is (= value (present+fetch {:budget 21} value)))))
+      (is (= value (present+fetch {:nextjournal/budget 21 :nextjournal/value value})))))
 
   ;; TODO: fit table viewer into v/desc->values
   (testing "table"
     (let [value {:a (range 30) :b (range 30)}]
       (is (= (vec (vals (v/normalize-table-data value)))
-             (present+fetch (v/table value)))))))
+             (present+fetch (v/table value))))))
+
+  (testing "resolving multiple elisions"
+    (let [value (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))]
+      (is (= value (v/desc->values (-> (v/present {:nextjournal/budget 11 :nextjournal/value value}) resolve-elision resolve-elision))))))
+
+  (testing "elision inside html"
+    (let [value (v/html [:div [:ul [:li {:nextjournal/value (range 30)}]]])]
+      (is (= (v/->value value) (v/->value (v/desc->values (resolve-elision (v/present value)))))))))
 
 (deftest apply-viewers
   (testing "selects number viewer"
@@ -102,12 +116,13 @@
 
 (deftest reset-viewers!
   (testing "namespace scope"
-    (v/reset-viewers! (find-ns 'nextjournal.clerk.viewer-test) [])
-    (is (= [] (v/get-viewers (find-ns 'nextjournal.clerk.viewer-test)))))
+    (let [ns (create-ns 'nextjournal.clerk.viewer-test.random-ns-name)]
+      (v/reset-viewers! ns [])
+      (is (= [] (v/get-viewers ns)))))
 
   (testing "symbol scope"
-    (v/reset-viewers! 'nextjournal.clerk.viewer-test [{:render-fn 'foo}])
-    (is (= [{:render-fn 'foo}] (v/get-viewers 'nextjournal.clerk.viewer-test)))))
+    (v/reset-viewers! 'nextjournal.clerk.viewer-test.random-ns-name [{:render-fn 'foo}])
+    (is (= [{:render-fn 'foo}] (v/get-viewers 'nextjournal.clerk.viewer-test.random-ns-name)))))
 
 (def my-test-var [:h1 "hi"])
 
@@ -138,7 +153,7 @@
 
 (deftest present
   (testing "only transform-fn can select viewer"
-    (is (match? {:nextjournal/value [:div.viewer-markdown
+    (is (match? {:nextjournal/value [:div.markdown-viewer
                                      ["h1" {:id "hello-markdown!"} [:<> "👋 Hello "] [:em [:<> "markdown"]] [:<> "!"]]]
                  :nextjournal/viewer {:name `v/html-viewer-}}
                 (v/present (v/with-viewer {:transform-fn (comp v/md v/->value)}
@@ -168,7 +183,17 @@
 
       (let [presented (v/present (v/table {:col1 [1 2] :col2 '[a b]}))]
         (is (= {:num-cols 2 :number-col? #{0}} (:nextjournal/opts presented)))
-        (is (= 1 (count-opts presented)))))))
+        (is (= 1 (count-opts presented))))))
+
+  (testing "viewer opts are normalized"
+    (is (= (v/desc->values (v/present {:nextjournal/value (range 10) :nextjournal/budget 3}))
+           (v/desc->values (v/present {:nextjournal/value (range 10) :nextjournal.clerk/budget 3}))
+           (v/desc->values (v/present (v/with-viewer {} {:nextjournal.clerk/budget 3} (range 10))))
+           (v/desc->values (v/present {:nextjournal/budget 3, :nextjournal/value (range 10)}))
+           (v/desc->values (v/present {:nextjournal/budget 3, :nextjournal/value (range 10)}))))))
+
+(defn path-to-value [path]
+  (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
 
 (deftest assign-closing-parens
   (testing "closing parenthesis are moved to right-most children in the tree"
@@ -178,29 +203,35 @@
 
       (is (= "}"
              (-> before
-                 (get-in (v/path-to-value [0 1 1]))
+                 (get-in (path-to-value [0 1 1]))
                  (get 2)
                  v/->viewer
                  :closing-paren)))
       (is (= ")"
              (-> before
-                 (get-in (v/path-to-value [1]))
+                 (get-in (path-to-value [1]))
                  (get 1)
                  v/->viewer
                  :closing-paren)))
 
       (is (= '( "}" ")" "]")
              (-> after
-                 (get-in (v/path-to-value [0 1 1]))
+                 (get-in (path-to-value [0 1 1]))
                  (get 2)
                  v/->viewer
                  :closing-paren)))
       (is (= '(")" "}")
              (-> after
-                 (get-in (v/path-to-value [1]))
+                 (get-in (path-to-value [1]))
                  (get 1)
                  v/->viewer
                  :closing-paren))))))
+
+(defn tree-re-find [data re]
+  (->> data
+       (tree-seq coll? seq)
+       (filter string?)
+       (filter (partial re-find re))))
 
 (deftest doc->viewer
   (testing "extraction of synced vars"
@@ -217,12 +248,20 @@
          (view/doc->viewer (eval/eval-string "(ns nextjournal.clerk.test.sync-vars (:require [nextjournal.clerk :as clerk]))
                                      ^::clerk/sync (def sync-me (atom {:a (fn [x] x)}))")))))
 
+  (testing "Local images are served as blobs in show mode"
+    (let [test-doc (eval/eval-string ";; Some inline image ![alt](trees.png) here.")]
+      (is (not-empty (tree-re-find (view/doc->viewer test-doc) #"_fs/trees.png")))))
+
+  (testing "Local images are inlined in bundled static builds"
+    (let [test-doc (eval/eval-string ";; Some inline image ![alt](trees.png) here.")]
+      (is (not-empty (tree-re-find (view/doc->viewer {:bundle? true} test-doc) #"data:image/png;base64")))))
+
+  (testing "Local images are content addressed for unbundled static builds"
+    (let [test-doc (eval/eval-string ";; Some inline image ![alt](trees.png) here.")]
+      (is (not-empty (tree-re-find (view/doc->viewer {:bundle? false :out-path (str (fs/temp-dir))} test-doc) #"_data/.+\.png")))))
+
   (testing "Doc options are propagated to blob processing"
-    (let [test-doc (eval/eval-string "(java.awt.image.BufferedImage. 20 20 1)")
-          tree-re-find (fn [data re] (->> data
-                                          (tree-seq coll? seq)
-                                          (filter string?)
-                                          (filter (partial re-find re))))]
+    (let [test-doc (eval/eval-string "(java.awt.image.BufferedImage. 20 20 1)")]
       (is (not-empty (tree-re-find (view/doc->viewer {:inline-results? true
                                                       :bundle? true
                                                       :out-path builder/default-out-path} test-doc)

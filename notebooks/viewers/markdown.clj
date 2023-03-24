@@ -32,6 +32,25 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
 ;; >
 ;; > — Special Forms
 
+;; ## Code Listings
+
+;; ```
+;; {:name :code,
+;;  :render-fn 'nextjournal.clerk.render/render-code,
+;;  :transform-fn
+;;  (comp
+;;   mark-presented
+;;   (update-val
+;;    (fn
+;;      [v]
+;;      (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))}
+;; ```
+
+;; ## Soft vs. Hard Line Breaks
+;; This one ⇥
+;; ⇤ is a [soft break](https://spec.commonmark.org/0.30/#soft-line-breaks) and is rendered as a space, while this one ⇥\
+;; ⇤ is a [hard break](https://spec.commonmark.org/0.30/#hard-line-breaks) and is rendered as a newline.
+
 ;; ## Sidenotes
 ;;
 ;; One of the most distinctive features of Tufte’s style is his _extensive use
@@ -72,6 +91,13 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
 ;;   * Wear t-shirt that says "Life". Hand out lemons^[not oranges] on street corner.
 ;; * Change name to Simon. Speak in thirs person.
 ;; * Major in philosophy. Ask people WHY they would like fries with that.
+
+;; ## Code Listings As Markdown Result
+
+^{::clerk/visibility {:code :hide}}
+(clerk/md "```sh
+clj -M:nextjournal/clerk nextjournal.clerk/serve! --watch-paths notebooks --browse
+```")
 
 (clerk/md "---")
 

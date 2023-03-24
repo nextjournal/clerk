@@ -45,7 +45,7 @@ ALPHA, expect breaking changes.
 To use Clerk in your project, add the following dependency to your `deps.edn`:
 
 ```edn
-{:deps {io.github.nextjournal/clerk {:mvn/version "0.12.707"}}}
+{:deps {io.github.nextjournal/clerk {:mvn/version "0.13.842"}}}
 ```
 
 Require and start Clerk as part of your system start, e.g. in `user.clj`:
@@ -131,3 +131,20 @@ out the `:browse\? true` arguments.
 ## 🐞 Known Issues
 
 See [notebooks/onwards.md](https://github.com/nextjournal/clerk/blob/main/notebooks/onwards.md).
+
+## Citing Clerk
+
+If you are a researcher and use Clerk in your work, we encourage you to cite our work.
+You can use the following BibTeX citation:
+
+```
+@misc{clerk-github,
+  author =  {Martin Kavalar and
+             Jack Rusher},
+  title = {{Clerk Source Code}},
+  howpublished = {\url{https://github.com/nextjournal/clerk}},
+  month        = feb,
+  year         = 2023
+}
+```
+

@@ -76,18 +76,18 @@ Notes about what currently breaks 💥 and what could be better tomorrow.
 - [x] Let `:transform-fn` act on wrapped-value and use it to also replace `:fetch-fn`
 - [ ] Reset ns viewers to defaults on eval
 - [x] Try using `:update-viewers-fn` for markdown node
-- [ ] Minimize re-rendering when updating notebook
+- [x] Minimize re-rendering when updating notebook
 - [ ] Throw on re-definitions
-- [ ] Throw when referencing no longer available / deleted var
+- [x] Throw when referencing no longer available / deleted var
 - [x] Allow multiple defs per top-level forms
 - [x] Restore `*ns*` after hashing / eval
 - [x] Support setting `:nextjournal.clerk/cache` forms to control caching behaviour
 - [ ] Deprecate `:nextjournal/no-cache`
-- [ ] Add `clerk/image` (name tbd) viewer supporting links and embedded images
+- [x] Add `clerk/image` (name tbd) viewer supporting links and embedded images
 - [x] Derefenced Clojure atoms should get value semantics in dependency graph
 - [x] Support evaluating `(quote 'code 'in 'backticks)` in markdown
 - [x] Make it more obvious that results can be expanded
-- [ ] Set expanded state depending on shape (width) of the data
+- [x] Set expanded state depending on shape (width) of the data
 - [ ] Allow to control viewer expansion state programmatically
 - [ ] Make `doc-url` work in live app using `v/clerk-eval`
 - [ ] Add multiviewer to default viewers

@@ -7,7 +7,8 @@
             [editscript.core :as editscript]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
-            [org.httpkit.server :as httpkit]))
+            [org.httpkit.server :as httpkit])
+  (:import (java.nio.file Files)))
 
 (defn help-hiccup []
   [:p "Call " [:span.code "nextjournal.clerk/show!"] " from your REPL"
@@ -71,15 +72,21 @@
 #_(get-fetch-opts "")
 #_(get-fetch-opts "foo=bar&n=42&start=20")
 
+(defn blob->presented [presented-doc]
+  ;; TODO: store on doc?
+  (into {}
+        (comp (map :nextjournal/value)
+              (filter map?)
+              (map (juxt :nextjournal/blob-id :nextjournal/presented)))
+        (:blocks (:nextjournal/value presented-doc))))
+
 (defn serve-blob [{:as doc :keys [blob->result ns]} {:keys [blob-id fetch-opts]}]
   (when-not ns
     (throw (ex-info "namespace must be set" {:doc doc})))
   (if (contains? blob->result blob-id)
-    (let [result (v/apply-viewer-unwrapping-var-from-def (blob->result blob-id))
-          desc (v/present (v/ensure-wrapped-with-viewers
-                           (v/get-viewers ns result)
-                           (v/->value result)) ;; TODO understand why this unwrapping fixes lazy loaded table viewers
-                          fetch-opts)]
+    (let [root-desc (get (blob->presented (meta doc)) blob-id)
+          {:keys [present-elision-fn]} (meta root-desc)
+          desc (present-elision-fn fetch-opts)]
       (if (contains? desc :nextjournal/content-type)
         {:body (v/->value desc)
          :content-type (:nextjournal/content-type desc)}
@@ -90,20 +97,14 @@
   {:blob-id (str/replace uri "/_blob/" "")
    :fetch-opts (get-fetch-opts query-string)})
 
-(defn serve-file [path {:as req :keys [uri]}]
-  (let [file-or-dir (str path uri)
-        file (when (fs/exists? file-or-dir)
-               (cond-> file-or-dir
-                 (fs/directory? file-or-dir) (fs/file "index.html")))
-        extension (fs/extension file)]
+(defn serve-file [uri path]
+  (let [file (when (fs/exists? path)
+               (cond-> path
+                 (fs/directory? path) (fs/file "index.html")))]
     (if (fs/exists? file)
       {:status 200
-       :headers (cond-> {"Content-Type" ({"css" "text/css"
-                                          "html" "text/html"
-                                          "png" "image/png"
-                                          "jpg" "image/jpeg"
-                                          "js" "application/javascript"} extension "text/html")}
-                  (and (= "js" extension) (fs/exists? (str file ".map"))) (assoc "SourceMap" (str uri ".map")))
+       :headers (cond-> {"Content-Type" (Files/probeContentType (fs/path file))}
+                  (and (= "js" (fs/extension file)) (fs/exists? (str file ".map"))) (assoc "SourceMap" (str uri ".map")))
        :body (fs/read-all-bytes file)}
       {:status 404})))
 
@@ -152,7 +153,8 @@
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
-        ("build" "js" "css") (serve-file "public" req)
+        ("build" "js" "css") (serve-file uri (str "public" uri))
+        ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
         "_ws" {:status 200 :body "upgrading..."}
         {:status 200
          :headers {"Content-Type" "text/html"}
@@ -174,18 +176,41 @@
       (add-watch @sync-var (symbol sync-var) sync-atom-changed))
     (doseq [sync-var (set/difference sync-vars-old sync-vars)]
       (remove-watch @sync-var (symbol sync-var)))
+    (when-let [scheduled-send-status-future (-> !doc deref meta ::!send-status-future)]
+      (future-cancel scheduled-send-status-future))
     (reset! !doc (with-meta doc presented))
     presented))
+
 
 (defn update-doc! [doc]
   (reset! !error nil)
   (broadcast! (if (= (:ns @!doc) (:ns doc))
-                (let [old-viewer (meta @!doc)
-                      patch (editscript/diff old-viewer (present+reset! doc) {:algo :quick})]
-                  {:type :patch-state! :patch (editscript/get-edits patch)})
+                {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
                 {:type :set-state! :doc (present+reset! doc)})))
 
-#_(update-doc! help-doc)
+#_(update-doc! (help-doc))
+
+
+
+(defn broadcast-status! [status]
+  ;; avoid editscript diff but use manual patch to just replace `:status` in doc
+  (broadcast! {:type :patch-state! :patch [[[:status] :r status]]}))
+
+(defn broadcast-status-debounced!
+  "Schedules broadcasting a status update after 50 ms.
+
+  Cancels previously scheduled broadcast, if it exists."
+  [old-future status]
+  (when old-future
+    (future-cancel old-future))
+  (future
+    (Thread/sleep 50)
+    (broadcast-status! status)))
+
+(defn set-status! [status]
+  (swap! !doc (fn [doc] (-> (or doc (help-doc))
+                           (vary-meta assoc :status status)
+                           (vary-meta update ::!send-status-future broadcast-status-debounced! status)))))
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
 

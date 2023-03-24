@@ -114,10 +114,44 @@
 
 (defonce !eval-counter (r/atom 0))
 
+(defn render-processed-block [x]
+  (let [{viewer-name :name} (viewer/->viewer x)
+        viewer-css-class (viewer/css-class x)
+        inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)
+        processed-block-id (get-in x [:nextjournal/opts :id])]
+    ^{:key (str processed-block-id "@" @!eval-counter)}
+    [:div {:data-block-id processed-block-id
+           :class (concat
+                   [(when (:nextjournal/open-graph-image-capture (viewer/->value x)) "open-graph-image-capture")]
+                   (if viewer-css-class
+                     (cond-> viewer-css-class
+                       (string? viewer-css-class) vector)
+                     ["viewer"
+                      (when viewer-name (name viewer-name))
+                      (when inner-viewer-name (name inner-viewer-name))
+                      (case (or (viewer/width x) (case viewer-name (`viewer/code-viewer `viewer/code-folded-viewer) :wide :prose))
+                        :wide "w-full max-w-wide"
+                        :full "w-full"
+                        "w-full max-w-prose px-8")]))}
+     [inspect-presented x]]))
+
+(defn exec-status [{:keys [progress status]}]
+  [:div.w-full.bg-purple-200.dark:bg-purple-900.rounded.z-20 {:class "h-0.5"}
+   [:div.bg-purple-600.dark:bg-purple-400 {:class "h-0.5" :style {:width (str (* progress 100) "%")}}]
+   [:div.absolute.text-purple-600.dark:text-white.text-xs.font-sans.ml-1.bg-white.dark:bg-purple-900.rounded-full.shadow.z-20.font-bold.px-2.border.border-slate-300.dark:border-purple-400
+    {:style {:font-size "0.5rem"} :class "left-[35px] md:left-0 mt-[7px] md:mt-1"}
+    status]])
+
+(defn connection-status [status]
+  [:div.absolute.text-red-600.dark:text-white.text-xs.font-sans.ml-1.bg-white.dark:bg-red-800.rounded-full.shadow.z-20.font-bold.px-2.border.border-red-400
+   {:style {:font-size "0.5rem"} :class "left-[35px] md:left-0 mt-[7px] md:mt-1"}
+   status])
+
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility]}]
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
                !state (r/atom {:toc (toc-items (:children toc))
+                               :visibility toc-visibility
                                :md-toc toc
                                :dark-mode? (localstorage/get-item local-storage-dark-mode-key)
                                :theme {:slide-over "bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900"}
@@ -139,13 +173,15 @@
                                                             (js/console.warn (str "Clerk render-notebook, invalid selector: "
                                                                                   (.-hash js/location))))))]
                                  (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
-    (let [{:keys [md-toc mobile? open?]} @!state
+    (let [{:keys [md-toc mobile? open? visibility]} @!state
           doc-inset (cond
                       mobile? 0
                       open? navbar-width
                       :else 0)]
       (when-not (= md-toc toc)
-        (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc :open? (not= :collapsed toc-visibility)))
+        (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc :open? open?))
+      (when-not (= visibility toc-visibility)
+        (swap! !state assoc :visibility toc-visibility :open? (not= :collapsed toc-visibility)))
       [:div.flex
        {:ref root-ref-fn}
        [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
@@ -168,26 +204,7 @@
           :transition navbar/spring
           :class (str (or css-class "flex flex-col items-center notebook-viewer flex-auto ")
                       (when sidenotes? "sidenotes-layout"))}
-         (doall
-          (map-indexed (fn [idx x]
-                         (let [{viewer-name :name} (viewer/->viewer x)
-                               viewer-css-class (viewer/css-class x)
-                               inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
-                           ^{:key (str idx "-" @!eval-counter)}
-                           [:div {:class (concat
-                                          [(when (:nextjournal/open-graph-image-capture (viewer/->value x)) "open-graph-image-capture")]
-                                          (if viewer-css-class
-                                            (cond-> viewer-css-class
-                                              (string? viewer-css-class) vector)
-                                            ["viewer"
-                                             (when viewer-name (name viewer-name))
-                                             (when inner-viewer-name (name inner-viewer-name))
-                                             (case (or (viewer/width x) (case viewer-name (`viewer/code-viewer `viewer/code-folded-viewer) :wide :prose))
-                                               :wide "w-full max-w-wide"
-                                               :full "w-full"
-                                               "w-full max-w-prose px-8")]))}
-                            [inspect-presented x]]))
-                       xs))]]])))
+         (doall (map render-processed-block xs))]]])))
 
 (defn opts->query [opts]
   (->> opts
@@ -214,7 +231,10 @@
     [:div.bg-red-100.dark:bg-gray-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-300.not-prose
      [:p.font-mono.text-red-600.dark:text-red-300.font-bold (or (:message error) (.-message error))]
      (when-let [data (or (:data error) (.-data error))]
-       [:div.mt-2.overflow-auto [inspect data]])
+       [:<>
+        (when-let [extra-view (::extra-view data)]
+          [:div.mt-2.overflow-auto [inspect extra-view]])
+        [:div.mt-2.overflow-auto [inspect (dissoc data ::extra-view)]]])
      (when-let [stack (try
                         (->> (or (:stack error) (.-stack error))
                              str/split-lines
@@ -305,7 +325,7 @@
       [view-context/provide {:fetch-fn fetch-fn}
        [:> ErrorBoundary {:hash hash}
         [:div.relative
-         [:div.overflow-y-hidden
+         [:div.overflow-x-auto
           {:ref ref-fn}
           [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]])))
 
@@ -495,7 +515,7 @@
     [:div
      [:div.overflow-x-auto.overflow-y-hidden.w-full
       (into [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-ref}] children)]
-     [:div.overflow-x-auto.overflow-y-hidden.w-full.shadow
+     [:div.overflow-x-auto.overflow-y-hidden.w-full.shadow.sticky-table-header
       [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-clone-ref :style {:margin 0}}]]]))
 
 (defn throwable-view [{:keys [via trace]}]
@@ -568,7 +588,8 @@
              :value value
              :desc (viewer/present value)))
     [view-context/provide {:fetch-fn (fn [fetch-opts]
-                                       (.then (in-process-fetch value fetch-opts)
+                                       (.then (let [{:keys [present-elision-fn]} (-> !state deref :desc meta)]
+                                                (.resolve js/Promise (present-elision-fn fetch-opts)))
                                               (fn [more]
                                                 (swap! !state update :desc viewer/merge-presentations more fetch-opts))))}
      [inspect-presented (:desc @!state)]]))
@@ -576,6 +597,11 @@
 (defn root []
   [:<>
    [inspect-presented @!doc]
+   [:div.fixed.w-full.z-20.top-0.left-0.w-full
+    (when-let [status (:nextjournal.clerk.sci-env/connection-status @!doc)]
+      [connection-status status])
+    (when-let [status (:status @!doc)]
+      [exec-status status])]
    (when @!error
      [:div.fixed.top-0.left-0.w-full.h-full
       [inspect-presented @!error]])])
@@ -669,7 +695,6 @@
         (cond reply (resolve reply)
               error (reject error)))
     (js/console.warn :process-eval-reply!/not-found :eval-id eval-id :keys (keys @!pending-clerk-eval-replies))))
-
 
 (defn ^:export dispatch [{:as msg :keys [type]}]
   (let [dispatch-fn (get {:patch-state! patch-state!

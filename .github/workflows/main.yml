@@ -13,6 +13,7 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: '11.0.7'
+          cache: 'maven'
 
       - name: 🔧 Install clojure
         uses: DeLaGuardo/setup-clojure@master
@@ -21,29 +22,18 @@ jobs:
           bb: latest
           clj-kondo: latest
 
-      - name: Show branch name
-        run: |
-          bb run --prn -current-branch
-
       - name: 🗝 maven cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.m2
             ~/.gitlibs
-          key: ${{ runner.os }}-maven-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
-      - name: 🔐 Google Auth
-        uses: google-github-actions/auth@v0
-        with:
-          credentials_json: ${{ secrets.GCLOUD_SERVICE_KEY }}
-
-      - name: 🔧 Setup Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v0.3.0
+            ~/.deps.clj
+          key: ${{ runner.os }}-maven-build-viewer-${{ hashFiles('deps.edn') }}
 
       - name: Build and upload viewer resources
+        env:
+          GITHUB_TOKEN: ${{ secrets.CAS_AUTH_TOKEN }}
         run: bb build+upload-viewer-resources
 
   clj-kondo:
@@ -57,9 +47,17 @@ jobs:
           bb: latest
           clj-kondo: latest
 
+      - name: 🗝 maven cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.m2
+            ~/.gitlibs
+            ~/.deps.clj
+          key: ${{ runner.os }}-maven-lint-${{ hashFiles('bb.edn') }}
+
       - name: Run clj-kondo linter
-        run: |
-          bb lint
+        run: bb lint
 
 
   test:
@@ -91,15 +89,13 @@ jobs:
           bb: latest
 
       - name: 🗝 maven cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.m2
             ~/.gitlibs
             ~/.deps.clj
-          key: ${{ runner.os }}-maven-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+          key: ${{ runner.os }}-maven-test-${{ hashFiles('deps.edn') }}
 
       - name: 🧪 Run tests
         run: bb test:clj :kaocha/reporter '[kaocha.report/documentation]'
@@ -124,14 +120,13 @@ jobs:
           bb: latest
 
       - name: 🗝 maven cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.m2
             ~/.gitlibs
-          key: ${{ runner.os }}-maven-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+            ~/.deps.clj
+          key: ${{ runner.os }}-maven-build-${{ hashFiles('deps.edn') }}
 
       - name: 🗝 Clerk Cache
         uses: actions/cache@v2
@@ -186,14 +181,13 @@ jobs:
           cli: '1.10.3.943'
 
       - name: 🗝 maven cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.m2
             ~/.gitlibs
-          key: ${{ runner.os }}-maven-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+            ~/.deps.clj
+          key: ${{ runner.os }}-maven-ssr-${{ hashFiles('deps.edn') }}
 
       - name: 🎨 Setup Tailwindcss
         run: yarn global add tailwindcss @tailwindcss/typography
@@ -237,6 +231,16 @@ jobs:
         with:
           bb: latest
 
+      - name: 🗝 maven cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.m2
+            ~/.gitlibs
+            ~/.deps.clj
+          key: ${{ runner.os }}-maven-ui-tests-${{ hashFiles('deps.edn') }}
+
+
       - name: Run Playwright tests against static assets
         run: |
           bb test:static-app ${{ github.sha }}
@@ -256,14 +260,13 @@ jobs:
           bb: latest
 
       - name: 🗝 maven cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.m2
             ~/.gitlibs
-          key: ${{ runner.os }}-maven-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+            ~/.deps.clj
+          key: ${{ runner.os }}-maven-deploy-${{ hashFiles('deps.edn') }}
 
       - name: Install SSH key and start ssh-agent
         uses: webfactory/ssh-agent@v0.5.3

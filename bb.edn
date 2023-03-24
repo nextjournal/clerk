@@ -1,6 +1,7 @@
 {:min-bb-version "0.9.159"
  :paths ["bb"]
- :deps {io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}}
+ :deps {io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
+        io.github.nextjournal/cas-client {:git/sha "84ab35c3321c1e51a589fddbeee058aecd055bf8"}}
  :tasks
  {:requires
   ([tasks :as t]
@@ -26,10 +27,6 @@
 
   lint {:doc "Lints project using clj-kondo"
         :task (apply shell "clj-kondo --lint src test" *command-line-args*)}
-
-  release:js {:doc "Uploads the js release and updates the sha reference."
-              :task (clojure "-T:build upload-to-cas :resource viewer.js")
-              :depends [build:js]}
 
   build:static-app {:doc "Builds a static app with default notebooks"
                     :task (apply clojure "-X:demo:nextjournal/clerk" *command-line-args*)}
@@ -60,6 +57,12 @@
   {:doc "Updates CHANGELOG.md with "
    :task
    (t/update-changelog)}
+
+  link-changelog {:doc "Turns the issue references in the changelog into links"
+                  :task (do (defn tag->issue-link [s]
+                              (clojure.string/replace s (re-pattern "(?<!\\[)#([0-9]+)") "[#$1](https://github.com/nextjournal/clerk/issues/$1)"))
+                            (let [f "CHANGELOG.md"]
+                              (spit f (tag->issue-link (slurp f)))))}
 
   jar {:doc "Build jar"
        :task (do
