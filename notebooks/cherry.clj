@@ -80,5 +80,7 @@
              "Compile!"]]
            [:div.bg-slate-50
             [nextjournal.clerk.render/render-code @!compiled]]
-           [nextjournal.clerk.render/inspect (js/eval @!compiled)]])))}
+           [nextjournal.clerk.render/inspect
+            (try (js/eval @!compiled)
+                 (catch :default e e))]])))}
   nil)
