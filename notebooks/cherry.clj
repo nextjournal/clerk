@@ -74,14 +74,11 @@
         (fn [value]
           [:div
            [:div.flex
-            [:textarea#cherry-input.border-2.mr-2 {:on-change
-                                                   (fn [evt]
-                                                     (reset! !input (.. evt -target -value)))
-                                                   :default-value default-value}]
-            [:button.rounded-full.bg-cyan-500.text-white.font-semibold.px-4.py-2
+            [:div.viewer-code.border-2.flex-auto.w-80.border-b-0 [nextjournal.clerk.render.code/editor !input]]
+            [:button.rounded-full.bg-cyan-500.text-white.font-semibold.px-4.py-2.flex-none
              {:on-click click-handler}
-             "Click me"]]
-           [:div#cherry-output.border-2.min-h-24.mr-2
+             "Compile!"]]
+           [:div#cherry-output.border-2.min-h-24
             [nextjournal.clerk.render/render-code @!compiled]]
            [:div#cherry-eval-output.border-2.min-h-24
             (js/eval @!compiled)]])))}
