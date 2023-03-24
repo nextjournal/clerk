@@ -84,3 +84,5 @@
             (try (js/eval @!compiled)
                  (catch :default e e))]])))}
   nil)
+
+(clerk/eval-cljs-str "(prn :hello)" {:evaluator :cherry})

@@ -370,8 +370,9 @@
 
 (defn eval-cljs-str
   "Evaluates the given ClojureScript `code-string` in the browser."
-  [code-string]
-  (v/eval-cljs-str code-string))
+  ([code-string] (eval-cljs-str code-string nil))
+  ([code-string opts]
+   (v/eval-cljs-str code-string opts)))
 
 (defn eval-cljs
   "Evaluates the given ClojureScript forms in the browser."

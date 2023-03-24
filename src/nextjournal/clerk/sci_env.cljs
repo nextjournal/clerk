@@ -90,6 +90,12 @@
          (js/console.error "error in viewer-eval" e)
          (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))
 
+(defn ->viewer-eval-with-error-cherry [form]
+  (try (eval-form-cherry form)
+       (catch js/Error e
+         (js/console.error "error in viewer-eval" e)
+         (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))
+
 (defonce !edamame-opts
   (atom {:all true
          :row-key :line
@@ -100,8 +106,9 @@
          :readers
          (fn [tag]
            (or (get {'viewer-fn ->viewer-fn-with-error
+                     'viewer-fn/cherry ->viewer-fn-with-error-cherry
                      'viewer-eval ->viewer-eval-with-error
-                     'viewer-fn/cherry ->viewer-fn-with-error-cherry} tag)
+                     'viewer-eval/cherry ->viewer-eval-with-error-cherry} tag)
                (fn [value]
                  (viewer/with-viewer `viewer/tagged-value-viewer
                    {:tag tag
@@ -206,9 +213,9 @@
                       (str f))
          {:core-alias 'clerk.cljs_core
           :context :expression})
-        _ (js/console.log "compiled body" body)
+        _ (prn "compiled body" body)
         evaled (js/eval body)
-        _ (js/console.log "evaled" evaled)]
+        _ (prn "evaled" evaled)]
     evaled))
 
 (defn ^:export eval-form [f]
