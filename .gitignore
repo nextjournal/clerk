@@ -20,3 +20,4 @@ clerk.iml
 .nrepl-port
 .clj-kondo/marick
 .clj-kondo/nextjournal/clerk
+report.html
