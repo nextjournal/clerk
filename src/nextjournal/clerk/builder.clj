@@ -55,7 +55,8 @@
          "viewers/plotly"
          "viewers/table"
          "viewers/tex"
-         "viewers/vega"]))
+         "viewers/vega"
+         "cherry"]))
 
 
 (defn strip-index [path]
