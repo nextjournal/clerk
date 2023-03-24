@@ -95,7 +95,7 @@
         decorations-rangeset (.finish builder)
         text (.of Text (.split code "\n"))]
     ^{:key id}
-    [:div.cm-editor.viewer.code-viewer.w-full.max-w-wide {:data-block-id id}
+    [:div.cm-editor
      [:cm-scroller
       (into [:div.cm-content.whitespace-pre]
             (map (partial style-line decorations-rangeset text))

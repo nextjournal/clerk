@@ -296,8 +296,8 @@
        (when inner-viewer-name (name inner-viewer-name))
        (case (or (viewer/width x)
                  (case viewer-name
-                   (`viewer/code-viewer `viewer/code-folded-viewer) :wide
-                   `viewer/markdown-node-viewer :nested-prose
+                   (`viewer/code-viewer) :wide
+                   (`viewer/markdown-node-viewer) :nested-prose
                    :prose))
          :wide "w-full max-w-wide"
          :full "w-full"
@@ -818,7 +818,12 @@
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
    [:path {:fill-rule "evenodd" :d "M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" :clip-rule "evenodd"}]])
 
-(defn render-folded-code [code-string]
+(defn render-code-block [code-string {:keys [id]}]
+  ^{:key id}
+  [:div.viewer.code-viewer.w-full.max-w-wide {:data-block-id id}
+   [code/render-code code-string]])
+
+(defn render-folded-code-block [code-string {:keys [id]}]
   (let [!hidden? (hooks/use-state true)]
     (if @!hidden?
       [:div.relative.pl-12.font-sans.text-slate-400.cursor-pointer.flex.overflow-y-hidden.group
@@ -850,7 +855,8 @@
         [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-150.hover:text-slate-500
          {:class "text-[10px]"}
          "evaluated in 0.2s"]]
-       [:div.code-viewer.mb-2.relative {:style {:margin-top 0}}
+       ^{:key id}
+       [:div.code-viewer.mb-2.relative.code-viewer.w-full.max-w-wide {:data-block-id id :style {:margin-top 0}}
         [render-code code-string]]])))
 
 

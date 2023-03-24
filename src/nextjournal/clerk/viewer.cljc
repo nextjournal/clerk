@@ -588,14 +588,13 @@
                         (partition-by (comp #{:image} :type) content)))
 
     :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
-                {:as display-opts :keys [code? result?]} (->display cell)
+                {:keys [code? result? fold?]} (->display cell)
                 eval? (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)]
             (cond-> []
               code?
-              (conj (with-viewer `code-block-viewer {:nextjournal/opts (merge {:id (processed-block-id (str id "-code"))}
-                                                                              (select-keys cell [:loc]))}
-                      ;; TODO: display analysis could be merged into cell earlier
-                      (-> cell (merge display-opts) (dissoc :result))))
+              (conj (with-viewer (if fold? `folded-code-block-viewer `code-block-viewer)
+                      {:nextjournal/opts (merge {:id (processed-block-id (str id "-code"))} (select-keys cell [:loc]))}
+                      (dissoc cell :result)))
               (or result? eval?)
               (conj (with-viewer (if result?
                                    `fragment-splicing-viewer
@@ -912,9 +911,6 @@
 (def code-viewer
   {:name `code-viewer :render-fn 'nextjournal.clerk.render/render-code :transform-fn (comp mark-presented (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))})
 
-(def code-folded-viewer
-  {:name `code-folded-viewer :render-fn 'nextjournal.clerk.render/render-folded-code :transform-fn (comp mark-presented (update-val (fn [v] (if (string? v) v (with-out-str (pprint/pprint v))))))})
-
 (def reagent-viewer
   {:name `reagent-viewer :render-fn 'nextjournal.clerk.render/render-reagent :transform-fn mark-presented})
 
@@ -961,11 +957,14 @@
   {:name `table-error-viewer :render-fn 'nextjournal.clerk.render/render-table-error :page-size 1})
 
 (def code-block-viewer
-  {:name `code-block-viewer :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
-                                            (-> wrapped-value
-                                                (assoc :nextjournal/viewer (if (:fold? value) `code-folded-viewer `code-viewer))
-                                                (update :nextjournal/value
-                                                        (some-fn :text-without-meta :text))))})
+  {:name `code-block-viewer
+   :transform-fn (update-val (some-fn :text-without-meta :text))
+   :render-fn 'nextjournal.clerk.render/render-code-block})
+
+(def folded-code-block-viewer
+  {:name `folded-code-block-viewer
+   :transform-fn (update-val (some-fn :text-without-meta :text))
+   :render-fn 'nextjournal.clerk.render/render-folded-code-block})
 
 (def tagged-value-viewer
   {:name `tagged-value-viewer
@@ -1131,14 +1130,14 @@
    plotly-viewer
    vega-lite-viewer
    markdown-viewer
-   code-viewer
-   code-folded-viewer
    reagent-viewer
    row-viewer
    col-viewer
    table-viewer
    table-error-viewer
+   code-viewer
    code-block-viewer
+   folded-code-block-viewer
    result-viewer
    fragment-splicing-viewer
    fragment-viewer
