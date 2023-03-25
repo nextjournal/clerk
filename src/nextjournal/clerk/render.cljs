@@ -729,7 +729,7 @@
 ;; TODO: remove
 (def reagent-viewer render-reagent)
 
-(defn render-promise [p opts]
+(defn ^:export render-promise [p opts]
   (let [!state (hooks/use-state {:pending true})]
     (hooks/use-effect (fn []
                         (-> p
