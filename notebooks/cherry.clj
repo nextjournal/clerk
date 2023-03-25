@@ -59,7 +59,7 @@
                                     :key "id" :fields ["rate"]}}]
    :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}})
 
-;; Input text and compile on the fly with cherry
+;; ## Input text and compile on the fly with cherry
 
 (clerk/with-viewer
   {:evaluator :cherry
@@ -85,8 +85,41 @@
                  (catch :default e e))]])))}
   nil)
 
+;; ## Functions defined with `defn` are part of the global context
+
+;; (for now) and can be called in successive expressions
+
 (clerk/eval-cljs-str {:evaluator :cherry}
                      "(defn foo [x] x)")
 
 (clerk/eval-cljs-str {:evaluator :cherry}
                      "(foo 1)")
+
+;; ## Async/await works cherry
+
+;; Here we dynamically import a module, await its value and then pull out the
+;; default function, which we expose as a global function. Because s-expressions
+;; serialized to the client currently don't preserve metadata in clerk, and
+;; async functions need `^:async`, we use a plain string.
+
+^::clerk/no-cache
+(clerk/eval-cljs-str
+ {:evaluator :cherry}
+ "(defn ^:async emoji-picker []
+   (let [_module (js/await (js/import \"https://cdn.skypack.dev/emoji-picker-element\"))]
+     [:div
+       [:p \"My cool emoji picker:\"]
+       [:emoji-picker]]))")
+
+;; In the next block we call it:
+
+^::clerk/no-cache
+(clerk/with-viewer
+  {:evaluator :cherry
+   :render-fn '(fn [_]
+                 [nextjournal.clerk.render/render-promise
+                  (emoji-picker)
+                  {:html true}]
+                 )
+   }
+  nil)

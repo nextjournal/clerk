@@ -738,8 +738,9 @@
     (let [{:keys [pending value error]} @!state]
       (if pending
         default-loading-view
-        [inspect (or pending value error)]))))
-
+        (if (and (:html opts) value)
+          [r/as-element value]
+          [inspect (or pending value error)])))))
 
 (defn with-d3-require [{:keys [package loading-view]
                         :or {loading-view default-loading-view}} f]
