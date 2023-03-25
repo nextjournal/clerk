@@ -106,10 +106,10 @@
 (clerk/eval-cljs-str
  {:evaluator :cherry}
  "(defn ^:async emoji-picker []
-   (let [_module (js/await (js/import \"https://cdn.skypack.dev/emoji-picker-element\"))]
-     [:div
-       [:p \"My cool emoji picker:\"]
-       [:emoji-picker]]))")
+   (js/await (js/import \"https://cdn.skypack.dev/emoji-picker-element\"))
+   [:div
+     [:p \"My cool emoji picker:\"]
+     [:emoji-picker]])")
 
 ;; In the next block we call it:
 
