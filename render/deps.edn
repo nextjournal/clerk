@@ -8,8 +8,4 @@
         io.github.nextjournal/clojure-mode {:git/sha "ac038ebf6e5da09dd2b8a31609e9ff4a65e36852"}
         metosin/reitit-frontend {:mvn/version "0.5.15"}
         thheller/shadow-cljs {:mvn/version "2.22.7"}
-        io.github.squint-cljs/cherry {:git/sha "822426f198cf83ddcb4a2ccbe4d7e595768c5006"
-                                      #_#_:local/root "/Users/borkdude/dev/cherry"
-                                      :exclusions [io.github.squint-cljs/squint]} #_{:git/sha "8e01c2c38eea3aba37431da54184dbfd2a3b3951"}
-        io.github.squint-cljs/squint {:git/sha "2a8601896cf08a487d19a8d6b2718c5523cb1ab9"
-                                      #_#_:local/root "/Users/borkdude/dev/squint"}}}
+        io.github.squint-cljs/cherry {:git/sha "bee25987042c8bd05907347d01298e225bb4d3a0"} }}
