@@ -8,4 +8,4 @@
         io.github.nextjournal/clojure-mode {:git/sha "ac038ebf6e5da09dd2b8a31609e9ff4a65e36852"}
         metosin/reitit-frontend {:mvn/version "0.5.15"}
         thheller/shadow-cljs {:mvn/version "2.22.7"}
-        io.github.squint-cljs/cherry {:git/sha "bee25987042c8bd05907347d01298e225bb4d3a0"} }}
+        io.github.squint-cljs/cherry {:git/sha "17a56694b75fc31a1156252e18b61dd3b8ba3aa8"} }}
