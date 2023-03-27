@@ -32,7 +32,10 @@
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
             [sci.ctx-store]
-            [shadow.esm]))
+            [shadow.esm]
+            [reagent.debug :as d]
+            [reagent.interop :as interop]
+            [reagent.ratom]))
 
 (set! js/globalThis.clerk #js {})
 (set! js/globalThis.clerk.cljs_core #js {})
@@ -40,6 +43,86 @@
 (j/assoc-in! js/globalThis [:reagent :core :atom] reagent/atom)
 (j/assoc! js/globalThis :global_eval (fn [x]
                                        (js/eval.apply js/globalThis #js [x])))
+
+
+(defn with-let-macro [_ _ bindings & body]
+  (assert (vector? bindings)
+          (str "with-let bindings must be a vector, not "
+               (pr-str bindings)))
+  (let [v (with-meta (gensym "with-let") {:tag 'clj})
+        k (keyword v)
+        init (gensym "init")
+        ;; V is a reaction, which holds a JS array.
+        ;; If the array is empty, initialize values and store to the
+        ;; array, using binding index % 2 to access the array.
+        ;; After init, the bindings are just bound to the values in the array.
+        bs (into [init `(zero? (alength ~v))]
+                 (map-indexed (fn [i x]
+                                (if (even? i)
+                                  x
+                                  (let [j (quot i 2)]
+                                    ;; Issue 525
+                                    ;; If binding value is not yet set,
+                                    ;; try setting it again. This should
+                                    ;; also throw errors for each render
+                                    ;; and prevent the body being called
+                                    ;; if bindings throw errors.
+                                    `(if (or ~init
+                                             (not (.hasOwnProperty ~v ~j)))
+                                       (interop/unchecked-aset ~v ~j ~x)
+                                       (interop/unchecked-aget ~v ~j)))))
+                              bindings))
+        [forms destroy] (let [fin (last body)]
+                          (if (and (list? fin)
+                                   (= 'finally (first fin)))
+                            [(butlast body) `(fn [] ~@(rest fin))]
+                            [body nil]))
+        add-destroy (when destroy
+                      (list
+                        `(let [destroy# ~destroy]
+                           (if (reagent.ratom/reactive?)
+                             (when (nil? (.-destroy ~v))
+                               (set! (.-destroy ~v) destroy#))
+                             (destroy#)))))
+        asserting (if *assert* true false)
+        res (gensym "res")]
+    `(let [~v (reagent.ratom/with-let-values ~k)]
+       ~(when asserting
+          `(when-some [^clj c# reagent.ratom/*ratom-context*]
+             (when (== (.-generation ~v) (.-ratomGeneration c#))
+               (d/error "Warning: The same with-let is being used more "
+                        "than once in the same reactive context."))
+             (set! (.-generation ~v) (.-ratomGeneration c#))))
+       (let ~(into bs [res `(do ~@forms)])
+         ~@add-destroy
+         ~res))))
+
+(defn unchecked-aget-macro
+  ([_ _ array idx]
+   (list 'js* "(~{}[~{}])" array idx))
+  ([_ _ array idx & idxs]
+   (let [astr (apply str (repeat (count idxs) "[~{}]"))]
+     `(~'js* ~(str "(~{}[~{}]" astr ")") ~array ~idx ~@idxs))))
+
+(defn unchecked-aset-macro
+  ([_ _ array idx val]
+   (list 'js* "(~{}[~{}] = ~{})" array idx val))
+  ([_ _ array idx idx2 & idxv]
+   (let [n (dec (count idxv))
+         astr (apply str (repeat n "[~{}]"))]
+     `(~'js* ~(str "(~{}[~{}][~{}]" astr " = ~{})") ~array ~idx ~idx2 ~@idxv))))
+
+(set! cherry/built-in-macros
+      (assoc cherry/built-in-macros
+             'reagent.core/with-let
+             with-let-macro))
+
+(set! cherry/built-in-macros
+      (assoc cherry/built-in-macros
+             'reagent.interop/unchecked-aget
+             unchecked-aget-macro
+             'reagent.interop/unchecked-aset
+             unchecked-aset-macro))
 
 ;; (set! js/globalThis.clerk.cljs_core.keyword keyword) ;; hack for cherry
 ;; (set! js/globalThis.clerk.cljs_core.apply apply) ;; hack for cherry

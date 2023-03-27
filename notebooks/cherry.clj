@@ -123,3 +123,23 @@
                  )
    }
   nil)
+
+;; ## Macros
+
+^::clerk/no-cache
+(clerk/eval-cljs
+ {:evaluator :cherry}
+ '(defn clicks []
+    (reagent.core/with-let [!s (reagent.core/atom 0)]
+      [:button {:on-click (fn []
+                            (swap! !s inc))}
+       "Clicks: " @!s])))
+
+^::clerk/no-cache
+(clerk/with-viewer
+  {:evaluator :cherry
+   :render-fn '(fn [_]
+                 [clicks])
+   }
+  nil)
+
