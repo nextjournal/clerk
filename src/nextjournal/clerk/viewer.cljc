@@ -567,15 +567,6 @@
 
 #_(present @nextjournal.clerk.webserver/!doc)
 
-#_(def fragment-splicing-viewer
-    {:name `fragment-splicing-viewer
-     :transform-fn (fn [x]
-                     (if-some [fragment (-> x ->value :result ->value (get-safe :nextjournal.clerk/fragment))]
-                       (with-viewer `fragment-viewer
-                         (assoc (->opts x) :nextjournal/blob-id (-> x ->value :result :nextjournal/blob-id))
-                         fragment)
-                       (with-viewer `result-viewer x)))})
-
 (defn with-block-viewer [doc {:as cell :keys [type id]}]
   (case type
     :markdown (let [{:keys [content]} (:doc cell)
