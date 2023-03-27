@@ -28,8 +28,6 @@
             [nextjournal.clojure-mode.extensions.eval-region]
             [nextjournal.clojure-mode.keymap]
             [reagent.core :as reagent]
-            [reagent.debug :as d]
-            [reagent.interop :as interop]
             [reagent.ratom :as ratom]
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
