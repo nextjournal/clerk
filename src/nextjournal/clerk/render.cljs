@@ -304,7 +304,7 @@
          :nested-prose "w-full max-w-prose"
          "w-full max-w-prose px-8")])))
 
-(defn render-result [{:as result :nextjournal/keys [fetch-opts hash presented]} {:as _opts :keys [id auto-expand-results?]}]
+(defn render-result [{:as result :nextjournal/keys [fetch-opts hash presented]} {:as _opts :keys [id auto-expand-results? path]}]
   (let [!desc (hooks/use-state-with-deps presented [hash])
         !expanded-at (hooks/use-state (when (map? @!desc)
                                         (->expanded-at auto-expand-results? @!desc)))
@@ -327,7 +327,10 @@
                                       (when (exists? js/document)
                                         (js/document.removeEventListener "keydown" on-key-down)
                                         (js/document.removeEventListener "up" on-key-up))))]
-    [:div.relative.overflow-x-auto.result-viewer {:class (result-css-class @!desc) :ref ref-fn :data-block-id id}
+    [:div.relative.overflow-x-auto.result-viewer {:class (result-css-class @!desc)
+                                                  :ref ref-fn
+                                                  :data-block-id (cond-> id
+                                                                   (seq path) (str "@" (str/join "-" path)))}
      (when @!desc
        [view-context/provide {:fetch-fn fetch-fn}
         [:> ErrorBoundary {:hash hash}
