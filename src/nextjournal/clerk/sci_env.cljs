@@ -35,12 +35,15 @@
             [shadow.esm]
             [reagent.debug :as d]
             [reagent.interop :as interop]
-            [reagent.ratom]))
+            [reagent.ratom :as ratom]))
 
 (set! js/globalThis.clerk #js {})
 (set! js/globalThis.clerk.cljs_core #js {})
 (def-cljs-core)
 (j/assoc-in! js/globalThis [:reagent :core :atom] reagent/atom)
+(j/assoc-in! js/globalThis [:reagent :ratom (munge 'with-let-values)] ratom/with-let-values)
+(j/assoc-in! js/globalThis [:reagent :ratom (munge 'reactive?)] ratom/reactive?)
+(j/assoc-in! js/globalThis [:reagent :ratom (munge '*ratom-context*)] ratom/reactive?)
 (j/assoc! js/globalThis :global_eval (fn [x]
                                        (js/eval.apply js/globalThis #js [x])))
 
