@@ -13,17 +13,33 @@
                  (clerk/html {::clerk/width :full} [:div.h-20.bg-amber-400])))
 
 ;; ## Collapsible Sections
-;; Fragments allow to hide (and in future versions of Clerk, probably fold) chunks of prose interspersed with results. By using the usual visibility annotation
+;; Fragments allow to hide (and in future versions of Clerk, probably fold) chunks of prose interspersed with results. That is, by using the usual visibility annotation
 ;;
 ;;     ^{::clerk/visibility {:code :hide :result :hide}}
 ;;
-;; all of the following section can be hidden.
+;; all the following section can be hidden.
+
+^{::clerk/visibility {:code :hide}}
 (clerk/fragment
- (clerk/md "## A Random Graph")
- (clerk/code '(clerk/plotly {:data [{:y (shuffle (range 20))}]}))
- (clerk/plotly {:data [{:y (shuffle (range 20))}]})
- (clerk/html {::clerk/width :wide} [:div.h-20.bg-amber-100])
- (clerk/md "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus condimentum accumsan lacus id laoreet. Maecenas scelerisque rutrum nunc, eu rutrum libero tincidunt eu. Etiam neque mi, sollicitudin in sodales nec, ornare nec dolor. Vivamus non vestibulum erat. Etiam sodales justo lacus, ac ullamcorper sem dignissim eu. Nunc a vehicula elit. Donec orci odio, bibendum ut imperdiet id, fermentum nec ex. Nunc venenatis est quis arcu elementum, non accumsan erat dictum. Donec vitae felis felis.")
- (clerk/code '(clerk/plotly {:data [{:y (shuffle (range 20))}]}))
- (clerk/plotly {:data [{:y (shuffle (range 20))}]})
- (clerk/md "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus condimentum accumsan lacus id laoreet. Maecenas scelerisque rutrum nunc, eu rutrum libero tincidunt eu. Etiam neque mi, sollicitudin in sodales nec, ornare nec dolor. Vivamus non vestibulum erat. Etiam sodales justo lacus, ac ullamcorper sem dignissim eu. Nunc a vehicula elit. Donec orci odio, bibendum ut imperdiet id, fermentum nec ex. Nunc venenatis est quis arcu elementum, non accumsan erat dictum. Donec vitae felis felis."))
+ (clerk/md "# Title")
+ (clerk/code 123)
+ 123
+ (clerk/md "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus condimentum accumsan lacus id laoreet. Maecenas scelerisque rutrum nunc, eu rutrum libero tincidunt eu. Etiam neque mi, sollicitudin in sodales nec, ornare nec dolor. Vivamus non vestibulum erat. Etiam sodales justo lacus, ac ullamcorper sem dignissim eu. Nunc a vehicula elit. Donec orci odio, bibendum ut imperdiet id, fermentum nec ex. Nunc venenatis est quis arcu elementum, non accumsan erat dictum. Donec vitae felis felis.
+## Some Section
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus condimentum accumsan lacus id laoreet. Maecenas scelerisque rutrum nunc, eu rutrum libero tincidunt eu. Etiam neque mi, sollicitudin in sodales nec, ornare nec dolor. Vivamus non vestibulum erat. Etiam sodales justo lacus, ac ullamcorper sem dignissim eu. Nunc a vehicula elit. Donec orci odio, bibendum ut imperdiet id, fermentum nec ex. Nunc venenatis est quis arcu elementum, non accumsan erat dictum. Donec vitae felis felis.")
+ (clerk/code '(clerk/plotly {:data [{:y [1 2 3]}]}))
+ (clerk/plotly {:data [{:y [1 2 3]}]})
+ (clerk/md "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus condimentum accumsan lacus id laoreet. Maecenas scelerisque rutrum nunc, eu rutrum libero tincidunt eu. Etiam neque mi, sollicitudin in sodales nec, ornare nec dolor. Vivamus non vestibulum erat. Etiam sodales justo lacus, ac ullamcorper sem dignissim eu. Nunc a vehicula elit. Donec orci odio, bibendum ut imperdiet id, fermentum nec ex. Nunc venenatis est quis arcu elementum, non accumsan erat dictum. Donec vitae felis felis.
+
+---"))
+
+;; And the above will look like as if produced by:
+;; # Title
+123
+;; Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus condimentum accumsan lacus id laoreet. Maecenas scelerisque rutrum nunc, eu rutrum libero tincidunt eu. Etiam neque mi, sollicitudin in sodales nec, ornare nec dolor. Vivamus non vestibulum erat. Etiam sodales justo lacus, ac ullamcorper sem dignissim eu. Nunc a vehicula elit. Donec orci odio, bibendum ut imperdiet id, fermentum nec ex. Nunc venenatis est quis arcu elementum, non accumsan erat dictum. Donec vitae felis felis.
+;; ## Some Section
+;; Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus condimentum accumsan lacus id laoreet. Maecenas scelerisque rutrum nunc, eu rutrum libero tincidunt eu. Etiam neque mi, sollicitudin in sodales nec, ornare nec dolor. Vivamus non vestibulum erat. Etiam sodales justo lacus, ac ullamcorper sem dignissim eu. Nunc a vehicula elit. Donec orci odio, bibendum ut imperdiet id, fermentum nec ex. Nunc venenatis est quis arcu elementum, non accumsan erat dictum. Donec vitae felis felis.
+(clerk/plotly {:data [{:y [1 2 3]}]})
+;; Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus condimentum accumsan lacus id laoreet. Maecenas scelerisque rutrum nunc, eu rutrum libero tincidunt eu. Etiam neque mi, sollicitudin in sodales nec, ornare nec dolor. Vivamus non vestibulum erat. Etiam sodales justo lacus, ac ullamcorper sem dignissim eu. Nunc a vehicula elit. Donec orci odio, bibendum ut imperdiet id, fermentum nec ex. Nunc venenatis est quis arcu elementum, non accumsan erat dictum. Donec vitae felis felis.
+;;
+;; ---
