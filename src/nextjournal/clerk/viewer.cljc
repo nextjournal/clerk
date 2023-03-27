@@ -465,8 +465,14 @@
 
 (declare result-viewer ->opts)
 
+(defn ^:private processed-block-id
+  ([block-id] (processed-block-id block-id []))
+  ([block-id path] (str block-id (when (and (seq path)
+                                            (not= [0] path))
+                                   (str "-" (str/join "-" path))))))
+
 (defn transform-result [{:as wrapped-value :keys [path]}]
-  (let [{:as _cell :keys [form] ::keys [result doc]} (:nextjournal/value wrapped-value)
+  (let [{:as _cell :keys [form id] ::keys [result doc]} (:nextjournal/value wrapped-value)
         {:keys [auto-expand-results? inline-results? bundle?]} doc
         {:nextjournal/keys [value blob-id budget viewers]} result
         blob-mode (cond
@@ -476,6 +482,7 @@
         #?(:clj blob-opts :cljs _) (assoc doc :blob-mode blob-mode :blob-id blob-id)
         presented-result (->> (present (cond-> (merge (->opts wrapped-value)
                                                       (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value))
+                                         true (assoc-in [:nextjournal/opts :id] (processed-block-id (str id "-result") path))
                                          (contains? result :nextjournal/budget) (assoc :nextjournal/budget budget)))
                               #?(:clj (process-blobs blob-opts)))
         opts-from-form-meta (-> result
@@ -542,13 +549,9 @@
      (let [w (.getWidth image) h (.getHeight image) r (float (/ w h))]
        (if (and (< 2 r) (< 900 w)) :full :wide))))
 
-(defn ^:private processed-block-id
-  ([block-id] (processed-block-id block-id 0))
-  ([block-id idx] (str block-id (when (pos? idx) (str "-" idx)))))
-
 (defn md-image->viewer [doc block-id idx {:keys [attrs]}]
   (with-viewer `html-viewer
-    #?(:clj {:nextjournal/opts {:id (processed-block-id block-id idx)}
+    #?(:clj {:nextjournal/opts {:id (processed-block-id block-id [idx])}
              :nextjournal/width (try (image-width (read-image (:src attrs)))
                                      (catch Throwable _ :prose))})
     [:div.flex.flex-col.items-center.not-prose.mb-4
@@ -574,7 +577,7 @@
                 (mapcat (fn [fragment]
                           (if (= :image (:type (first fragment)))
                             (map #(md-image->viewer doc id (swap! !idx inc) %) fragment)
-                            [(with-viewer `markdown-viewer {:nextjournal/opts {:id (processed-block-id id (swap! !idx inc))}}
+                            [(with-viewer `markdown-viewer {:nextjournal/opts {:id (processed-block-id id [(swap! !idx inc)])}}
                                (process-sidenotes {:type :doc
                                                    :content (vec fragment)
                                                    ::doc doc} doc))]))
@@ -588,15 +591,8 @@
               (conj (with-viewer (if fold? `folded-code-block-viewer `code-block-viewer)
                       {:nextjournal/opts (merge {:id (processed-block-id (str id "-code"))} (select-keys cell [:loc]))}
                       (dissoc cell :result)))
-              (or result? eval?)
-              (conj (merge {:nextjournal/opts {:id (processed-block-id (str id "-result"))}}
-                           (ensure-wrapped (-> cell (assoc ::doc doc) (assoc ::result (:result cell))))))
-              #_
-              (conj (with-viewer (if result?
-                                   `fragment-splicing-viewer
-                                   (assoc result-viewer :render-fn '(fn [_] [:<>])))
-                      {:nextjournal/opts {:id (processed-block-id (str id "-result"))}}
-                      (-> cell (assoc ::doc doc) (assoc ::result (:result cell)))))))))
+              (or result? eval?) ;; TODO: restore `(assoc result-viewer :render-fn '(fn [_] [:<>]))` for eval? without result?
+              (conj (ensure-wrapped (-> cell (assoc ::doc doc) (assoc ::result (:result cell)))))))))
 
 #_(:blocks (:nextjournal/value (nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)))
 

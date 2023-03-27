@@ -304,7 +304,7 @@
          :nested-prose "w-full max-w-prose"
          "w-full max-w-prose px-8")])))
 
-(defn render-result [{:as result :nextjournal/keys [fetch-opts hash presented]} {:as _opts :keys [id auto-expand-results? path]}]
+(defn render-result [{:as result :nextjournal/keys [fetch-opts hash presented]} {:as opts :keys [id auto-expand-results? path]}]
   (let [!desc (hooks/use-state-with-deps presented [hash])
         !expanded-at (hooks/use-state (when (map? @!desc)
                                         (->expanded-at auto-expand-results? @!desc)))
@@ -327,10 +327,7 @@
                                       (when (exists? js/document)
                                         (js/document.removeEventListener "keydown" on-key-down)
                                         (js/document.removeEventListener "up" on-key-up))))]
-    [:div.relative.overflow-x-auto.result-viewer {:class (result-css-class @!desc)
-                                                  :ref ref-fn
-                                                  :data-block-id (cond-> id
-                                                                   (seq path) (str "@" (str/join "-" path)))}
+    [:div.relative.overflow-x-auto.result-viewer {:class (result-css-class @!desc) :ref ref-fn :data-block-id id}
      (when @!desc
        [view-context/provide {:fetch-fn fetch-fn}
         [:> ErrorBoundary {:hash hash}
@@ -357,12 +354,11 @@
 (defn expandable? [xs]
   (< 1 (count xs)))
 
-
 (defn inspect-children [opts]
   ;; TODO: move update function onto viewer
   (map-indexed (fn [idx x]
-                 (with-meta (inspect-presented (update opts :path (fnil conj []) idx) x)
-                            {:key (str (-> x viewer/->opts :nextjournal/opts :id) "@" @!eval-counter)}))))
+                 (cond-> [inspect-presented (update opts :path (fnil conj []) idx) x]
+                   (get-in x [:nextjournal/opts :id]) (with-meta {:key (str (get-in x [:nextjournal/opts :id]) "@" @!eval-counter)})))))
 
 (def expand-style
   ["cursor-pointer"
