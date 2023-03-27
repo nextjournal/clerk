@@ -4,7 +4,10 @@
   (:require [clojure.core :as core]
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v])
-  (:import (java.time LocalTime ZoneId)))
+  (:import (java.time Instant LocalTime ZoneId)))
+
+(defn inst->local-time-str [inst] (str (LocalTime/ofInstant inst (ZoneId/systemDefault))))
+(defn timestamped [x] {:val x :tapped-at (Instant/now) :key (str (gensym))})
 
 (def switch-view
   (assoc v/viewer-eval-viewer
@@ -24,69 +27,46 @@
 ^{::clerk/sync true ::clerk/viewer switch-view ::clerk/visibility {:result :show}}
 (defonce !view (atom :stream))
 
-(defonce !taps (atom []))
+
+(defonce !taps (atom (mapv timestamped
+                           [(clerk/html {::clerk/width :wide} [:h1.w-full.border-2.border-amber-500.bg-amber-500.h-10])
+                            (clerk/plotly {::clerk/width :full} {:data [{:y [3 1 2]}]})])))
 
 (defn reset-taps! []
   (reset! !taps [])
   (clerk/recompute!))
 
-#_(reset-taps!)
-
-(defn inst->local-time-str [inst]
-  (str (LocalTime/ofInstant inst (ZoneId/systemDefault))))
-
-#_(inst->local-time-str (Instant/now))
-
-(def tap-viewer
-  {:name `tap-viewer
-   :render-fn '(fn [{:keys [val tapped-at key]} opts]
-                 (with-meta
-                   [:div.border-t.relative.py-3
-                    [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
-                     {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
-                    [:div.overflow-x-auto [nextjournal.clerk.render/inspect-presented val]]]
-                   {:key (:nextjournal/value key)}))
-   :transform-fn (comp clerk/mark-preserve-keys
-                       (clerk/update-val #(update % :tapped-at inst->local-time-str)))})
-
-(clerk/add-viewers! [tap-viewer])
-
-(def taps-viewer
-  {:render-fn '#(into [:div.flex.flex-col.pt-2] (nextjournal.clerk.render/inspect-children %2) %1)
-   :transform-fn (clerk/update-val (fn [taps]
-                                     (mapv (partial clerk/with-viewer `tap-viewer) (reverse taps))))})
-
-^{::clerk/visibility {:result :show}
-  ::clerk/viewer (cond-> taps-viewer
-                   (= :latest @!view)
-                   (update :transform-fn (fn [orig] (comp orig (clerk/update-val (partial take-last 1))))))}
-@!taps
-
 (defn tapped [x]
-  (swap! !taps conj {:val x :tapped-at (java.time.Instant/now) :key (str (gensym))})
+  (swap! !taps conj (timestamped x))
   (clerk/recompute!))
 
-#_(tapped (rand-int 1000))
+(defonce tap-setup (add-tap (fn [x] ((resolve `tapped) x))))
 
-#_(reset! @(find-var 'clojure.core/tapset) #{})
+(def tap-viewer
+  {:render-fn '(fn [{:keys [val tapped-at key]} opts]
+                 ^{:key (:nextjournal/value key)}
+                 [:div.border-t.relative.py-3.mt-2
+                  [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
+                   {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
+                  [:div.overflow-x-auto [nextjournal.clerk.render/inspect-presented val]]])
+   :transform-fn (comp clerk/mark-preserve-keys
+                       (clerk/update-val update :tapped-at inst->local-time-str))})
 
-(defonce setup
-  (add-tap tapped))
-
-#_ (remove-tap tapped)
-
+^{::clerk/visibility {:result :show}}
+(clerk/fragment (mapv (fn [x] (clerk/with-viewer tap-viewer
+                                (v/->opts (v/ensure-wrapped (:val x))) x))
+                      (cond->> (reverse @!taps) (= :latest @!view) (take 1))))
 
 (comment
   (last @!taps)
-
   (dotimes [_i 5]
     (tap> (rand-int 1000)))
-
   (tap> (shuffle (range (+ 20 (rand-int 200)))))
   (tap> (clerk/md "> The purpose of visualization is **insight**, not pictures."))
-  (tap> (v/plotly {:data [{:z [[1 2 3]
-                               [3 2 1]]
-                           :type "surface"}]}))
+  (tap> (v/plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
+  (tap> (clerk/html  {::clerk/width :full} [:h1.w-full.border-2.border-amber-500.bg-amber-500.h-10]))
+  (tap> (clerk/table {::clerk/width :full} [[1 2] [3 4]]))
+  (tap> (clerk/plotly {::clerk/width :full} {:data [{:y [3 1 2]}]}))
   (tap> (javax.imageio.ImageIO/read (java.net.URL. "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")))
 
   (do (require 'rule-30)
@@ -95,6 +75,4 @@
   (tap> (clerk/with-viewers (clerk/add-viewers rule-30/viewers) rule-30/board))
 
   (tap> (clerk/html [:h1 "Fin. 👋"]))
-
-  (reset-taps!)
-  )
+  (reset-taps!))
