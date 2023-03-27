@@ -463,18 +463,19 @@
 (defn fragment [& xs]
   {:nextjournal.clerk/fragment (if (and (sequential? (first xs)) (= 1 (count xs))) (first xs) xs)})
 
-(declare result-viewer)
+(declare result-viewer ->opts)
 
-(defn transform-result [{:as cell :keys [form] ::keys [result doc]}]
-  #_(prn :transform-result (::result cell))
-  (let [{:keys [auto-expand-results? inline-results? bundle?]} doc
+(defn transform-result [{:as wrapped-value :keys [path]}]
+  (let [{:as _cell :keys [form] ::keys [result doc]} (:nextjournal/value wrapped-value)
+        {:keys [auto-expand-results? inline-results? bundle?]} doc
         {:nextjournal/keys [value blob-id budget viewers]} result
         blob-mode (cond
                     (and (not inline-results?) blob-id) :lazy-load
                     bundle? :inline ;; TODO: provide a separte setting for this
                     :else :file)
         #?(:clj blob-opts :cljs _) (assoc doc :blob-mode blob-mode :blob-id blob-id)
-        presented-result (->> (present (cond-> (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)
+        presented-result (->> (present (cond-> (merge (->opts wrapped-value)
+                                                      (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value))
                                          (contains? result :nextjournal/budget) (assoc :nextjournal/budget budget)))
                               #?(:clj (process-blobs blob-opts)))
         opts-from-form-meta (-> result
@@ -483,18 +484,21 @@
                                   (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))
         viewer-eval-result? (-> presented-result :nextjournal/value viewer-eval?)]
     #_(prn :presented-result viewer-eval? presented-result)
-    (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result :nextjournal/blob-id blob-id}
-                                 viewer-eval-result?
-                                 (assoc ::viewer-eval-form (-> presented-result :nextjournal/value :form))
+    (-> wrapped-value
+        mark-presented
+        (assoc :nextjournal/value
+               (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result :nextjournal/blob-id blob-id}
+                                            viewer-eval-result?
+                                            (assoc ::viewer-eval-form (-> presented-result :nextjournal/value :form))
 
-                                 (-> form meta :nextjournal.clerk/open-graph :image)
-                                 (assoc :nextjournal/open-graph-image-capture true)
+                                            (-> form meta :nextjournal.clerk/open-graph :image)
+                                            (assoc :nextjournal/open-graph-image-capture true)
 
-                                 #?@(:clj [(= blob-mode :lazy-load)
-                                           (assoc :nextjournal/fetch-opts {:blob-id blob-id}
-                                                  :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta]))]))}
-           (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
-           opts-from-form-meta)))
+                                            #?@(:clj [(= blob-mode :lazy-load)
+                                                      (assoc :nextjournal/fetch-opts {:blob-id blob-id}
+                                                             :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta]))]))}
+                      (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)
+                      opts-from-form-meta)))))
 
 #_(nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)
 
@@ -868,7 +872,7 @@
 
 (defn ->opts [wrapped-value]
   (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/opts
-                              :!budget :store!-wrapped-value :path :offset]))
+                              :!budget :store!-wrapped-value :present-elision-fn :path :offset]))
 
 (defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
   (-> (ensure-wrapped-with-viewers viewers value)
@@ -1018,7 +1022,7 @@
   {:name `result-viewer
    :pred #(some? (get-safe % ::result))
    :render-fn 'nextjournal.clerk.render/render-result
-   :transform-fn (comp mark-presented (update-val transform-result))})
+   :transform-fn transform-result})
 
 #?(:clj
    (defn edn-roundtrippable? [x]
