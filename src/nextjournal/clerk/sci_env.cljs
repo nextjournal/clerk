@@ -11,8 +11,8 @@
             ["react" :as react]
             [applied-science.js-interop :as j]
             [cherry.compiler :as cherry]
-            [cljs.reader]
             [cljs.math]
+            [cljs.reader]
             [clojure.string :as str]
             [edamame.core :as edamame]
             [goog.object]
@@ -28,14 +28,14 @@
             [nextjournal.clojure-mode.extensions.eval-region]
             [nextjournal.clojure-mode.keymap]
             [reagent.core :as reagent]
+            [reagent.debug :as d]
+            [reagent.interop :as interop]
+            [reagent.ratom :as ratom]
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
             [sci.ctx-store]
-            [shadow.esm]
-            [reagent.debug :as d]
-            [reagent.interop :as interop]
-            [reagent.ratom :as ratom]))
+            [shadow.esm]))
 
 (set! js/globalThis.clerk #js {})
 (set! js/globalThis.clerk.cljs_core #js {})
@@ -43,89 +43,31 @@
 (j/assoc-in! js/globalThis [:reagent :core :atom] reagent/atom)
 (j/assoc-in! js/globalThis [:reagent :ratom (munge 'with-let-values)] ratom/with-let-values)
 (j/assoc-in! js/globalThis [:reagent :ratom (munge 'reactive?)] ratom/reactive?)
-(j/assoc-in! js/globalThis [:reagent :ratom (munge '*ratom-context*)] ratom/reactive?)
+
+(def reagent-ratom-namespace
+  #js {:with-let-values ratom/with-let-values
+       :reactive? ratom/reactive?
+       :-ratom-context sci.configs.reagent/-ratom-context
+       :atom reagent.ratom/atom
+       :make-reaction reagent.ratom/make-reaction
+       :make-track reagent.ratom/make-track
+       :track! reagent.ratom/track!})
+
+(defn munge-ns-obj [m]
+  (.forEach (js/Object.keys m)
+            (fn [k i]
+              (unchecked-set m (munge k) (unchecked-get m k))
+              (js-delete m k)))
+  m)
+
+(j/update-in! js/globalThis [:reagent :ratom] j/extend! (munge-ns-obj reagent-ratom-namespace))
 (j/assoc! js/globalThis :global_eval (fn [x]
                                        (js/eval.apply js/globalThis #js [x])))
-
-
-(defn with-let-macro [_ _ bindings & body]
-  (assert (vector? bindings)
-          (str "with-let bindings must be a vector, not "
-               (pr-str bindings)))
-  (let [v (with-meta (gensym "with-let") {:tag 'clj})
-        k (keyword v)
-        init (gensym "init")
-        ;; V is a reaction, which holds a JS array.
-        ;; If the array is empty, initialize values and store to the
-        ;; array, using binding index % 2 to access the array.
-        ;; After init, the bindings are just bound to the values in the array.
-        bs (into [init `(zero? (alength ~v))]
-                 (map-indexed (fn [i x]
-                                (if (even? i)
-                                  x
-                                  (let [j (quot i 2)]
-                                    ;; Issue 525
-                                    ;; If binding value is not yet set,
-                                    ;; try setting it again. This should
-                                    ;; also throw errors for each render
-                                    ;; and prevent the body being called
-                                    ;; if bindings throw errors.
-                                    `(if (or ~init
-                                             (not (.hasOwnProperty ~v ~j)))
-                                       (interop/unchecked-aset ~v ~j ~x)
-                                       (interop/unchecked-aget ~v ~j)))))
-                              bindings))
-        [forms destroy] (let [fin (last body)]
-                          (if (and (list? fin)
-                                   (= 'finally (first fin)))
-                            [(butlast body) `(fn [] ~@(rest fin))]
-                            [body nil]))
-        add-destroy (when destroy
-                      (list
-                        `(let [destroy# ~destroy]
-                           (if (reagent.ratom/reactive?)
-                             (when (nil? (.-destroy ~v))
-                               (set! (.-destroy ~v) destroy#))
-                             (destroy#)))))
-        asserting (if *assert* true false)
-        res (gensym "res")]
-    `(let [~v (reagent.ratom/with-let-values ~k)]
-       ~(when asserting
-          `(when-some [^clj c# reagent.ratom/*ratom-context*]
-             (when (== (.-generation ~v) (.-ratomGeneration c#))
-               (d/error "Warning: The same with-let is being used more "
-                        "than once in the same reactive context."))
-             (set! (.-generation ~v) (.-ratomGeneration c#))))
-       (let ~(into bs [res `(do ~@forms)])
-         ~@add-destroy
-         ~res))))
-
-(defn unchecked-aget-macro
-  ([_ _ array idx]
-   (list 'js* "(~{}[~{}])" array idx))
-  ([_ _ array idx & idxs]
-   (let [astr (apply str (repeat (count idxs) "[~{}]"))]
-     `(~'js* ~(str "(~{}[~{}]" astr ")") ~array ~idx ~@idxs))))
-
-(defn unchecked-aset-macro
-  ([_ _ array idx val]
-   (list 'js* "(~{}[~{}] = ~{})" array idx val))
-  ([_ _ array idx idx2 & idxv]
-   (let [n (dec (count idxv))
-         astr (apply str (repeat n "[~{}]"))]
-     `(~'js* ~(str "(~{}[~{}][~{}]" astr " = ~{})") ~array ~idx ~idx2 ~@idxv))))
 
 (set! cherry/built-in-macros
       (assoc cherry/built-in-macros
              'reagent.core/with-let
-             with-let-macro))
-
-(set! cherry/built-in-macros
-      (assoc cherry/built-in-macros
-             'reagent.interop/unchecked-aget
-             unchecked-aget-macro
-             'reagent.interop/unchecked-aset
-             unchecked-aset-macro))
+             sci.configs.reagent/with-let))
 
 ;; (set! js/globalThis.clerk.cljs_core.keyword keyword) ;; hack for cherry
 ;; (set! js/globalThis.clerk.cljs_core.apply apply) ;; hack for cherry
@@ -298,8 +240,8 @@
          ;; isn't valid as top level JS form,
          ;; so we wrap it in a let
          (str f) #_(str/replace "(let [x %s] x)"
-                      "%s"
-                      (str f))
+                                "%s"
+                                (str f))
          {:core-alias 'clerk.cljs_core
           :context :expression})
         _ (prn "compiled body" body)

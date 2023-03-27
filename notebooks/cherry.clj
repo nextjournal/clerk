@@ -3,8 +3,7 @@
   #_{:nextjournal.clerk/visibility {:code :hide}
      :nextjournal.clerk/auto-expand-results? true}
   (:require [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as viewer]
-            [applied-science.js-interop :as j]))
+            [nextjournal.clerk.viewer :as viewer]))
 
 (comment
   (clerk/clear-cache!))
