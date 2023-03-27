@@ -62,7 +62,10 @@
 (j/assoc! js/globalThis :global_eval (fn [x]
                                        (js/eval.apply js/globalThis #js [x])))
 
-(set! cherry/built-in-macros
+;; TODO: should this be a map of `{'namespace {'macro macro}}`? Probably?
+;; Or should this just live in the global object maybe?
+(def cherry-macros {'reagent.core {'with-let sci.configs.reagent/with-let}})
+#_(set! cherry/built-in-macros
       (assoc cherry/built-in-macros
              'reagent.core/with-let
              sci.configs.reagent/with-let))
@@ -227,7 +230,8 @@
         (cherry/compile-string*
          s
          {:core-alias 'clerk.cljs_core
-          :context :expression})]
+          :context :expression
+          :macros cherry-macros})]
     body))
 
 (defn ^:export eval-form-cherry [f]
@@ -241,7 +245,8 @@
                                 "%s"
                                 (str f))
          {:core-alias 'clerk.cljs_core
-          :context :expression})
+          :context :expression
+          :macros cherry-macros})
         _ (prn "compiled body" body)
         evaled (js/global_eval body)
         _ (prn "evaled" evaled)]
