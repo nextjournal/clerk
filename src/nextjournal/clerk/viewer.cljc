@@ -591,8 +591,11 @@
               (conj (with-viewer (if fold? `folded-code-block-viewer `code-block-viewer)
                       {:nextjournal/opts (merge {:id (processed-block-id (str id "-code"))} (select-keys cell [:loc]))}
                       (dissoc cell :result)))
-              (or result? eval?) ;; TODO: restore `(assoc result-viewer :render-fn '(fn [_] [:<>]))` for eval? without result?
-              (conj (ensure-wrapped (-> cell (assoc ::doc doc) (assoc ::result (:result cell)))))))))
+              
+              (or result? eval?)
+              (conj (cond-> (ensure-wrapped (-> cell (assoc ::doc doc) (assoc ::result (:result cell))))
+                      (and eval? (not result?))
+                      (assoc :nextjournal/viewer (assoc result-viewer :render-fn '(fn [_] [:<>])))))))))
 
 #_(:blocks (:nextjournal/value (nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)))
 
