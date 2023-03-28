@@ -1,4 +1,4 @@
-(ns nextjournal.clerk.sci-env
+(ns nextjournal.clerk.cherry-env
   (:require [cljs.analyzer.api :as ana]))
 
 (defmacro def-cljs-core []

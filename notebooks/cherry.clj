@@ -67,9 +67,9 @@
       (let [default-value "(defn foo [x] (+ x 10))
 (foo 10)"
             !input (reagent.core/atom default-value)
-            !compiled (reagent.core/atom (nextjournal.clerk.sci-env/cherry-compile-string @!input))
+            !compiled (reagent.core/atom (nextjournal.clerk.cherry-env/cherry-compile-string @!input))
             click-handler (fn []
-                            (reset! !compiled (nextjournal.clerk.sci-env/cherry-compile-string @!input)))]
+                            (reset! !compiled (nextjournal.clerk.cherry-env/cherry-compile-string @!input)))]
         (fn [value]
           [:div
            [:div.flex
@@ -106,9 +106,10 @@
  {:evaluator :cherry}
  "(defn ^:async emoji-picker []
    (js/await (js/import \"https://cdn.skypack.dev/emoji-picker-element\"))
-   [:div
-     [:p \"My cool emoji picker:\"]
-     [:emoji-picker]])")
+   (nextjournal.clerk.viewer/html
+     [:div
+      [:p \"My cool emoji picker:\"]
+      [:emoji-picker]]))")
 
 ;; In the next block we call it:
 
@@ -117,10 +118,7 @@
   {:evaluator :cherry
    :render-fn '(fn [_]
                  [nextjournal.clerk.render/render-promise
-                  (emoji-picker)
-                  {:html true}]
-                 )
-   }
+                  (emoji-picker)])}
   nil)
 
 ;; ## Macros

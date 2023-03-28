@@ -27,44 +27,12 @@
             [nextjournal.clojure-mode.commands]
             [nextjournal.clojure-mode.extensions.eval-region]
             [nextjournal.clojure-mode.keymap]
-            [reagent.core :as reagent]
-            [reagent.ratom :as ratom]
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
             [sci.ctx-store]
-            [shadow.esm]))
-
-(set! js/globalThis.clerk #js {})
-(set! js/globalThis.clerk.cljs_core #js {})
-(def-cljs-core)
-(j/assoc-in! js/globalThis [:reagent :core :atom] reagent/atom)
-(j/assoc-in! js/globalThis [:reagent :ratom (munge 'with-let-values)] ratom/with-let-values)
-(j/assoc-in! js/globalThis [:reagent :ratom (munge 'reactive?)] ratom/reactive?)
-
-(def reagent-ratom-namespace
-  #js {:with-let-values ratom/with-let-values
-       :reactive? ratom/reactive?
-       :-ratom-context sci.configs.reagent/-ratom-context
-       :atom reagent.ratom/atom
-       :make-reaction reagent.ratom/make-reaction
-       :make-track reagent.ratom/make-track
-       :track! reagent.ratom/track!})
-
-(defn munge-ns-obj [m]
-  (.forEach (js/Object.keys m)
-            (fn [k i]
-              (unchecked-set m (munge k) (unchecked-get m k))
-              (js-delete m k)))
-  m)
-
-(j/update-in! js/globalThis [:reagent :ratom] j/extend! (munge-ns-obj reagent-ratom-namespace))
-(j/assoc! js/globalThis :global_eval (fn [x]
-                                       (js/eval.apply js/globalThis #js [x])))
-
-(def cherry-macros {'reagent.core {'with-let sci.configs.reagent/with-let}})
-
-(declare eval-form-cherry)
+            [shadow.esm]
+            [nextjournal.clerk.cherry-env :as cherry-env]))
 
 (def legacy-ns-aliases
   {"j" "applied-science.js-interop"
@@ -96,23 +64,8 @@
                :f (fn [_]
                     [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)])})))))
 
-(defn ->viewer-fn-with-error-cherry [form]
-  (try (binding [*eval* eval-form-cherry]
-         (viewer/->viewer-fn form))
-       (catch js/Error e
-         (viewer/map->ViewerFn
-          {:form form
-           :f (fn [_]
-                [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)])}))))
-
 (defn ->viewer-eval-with-error [form]
   (try (*eval* form)
-       (catch js/Error e
-         (js/console.error "error in viewer-eval" e)
-         (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))
-
-(defn ->viewer-eval-with-error-cherry [form]
-  (try (eval-form-cherry form)
        (catch js/Error e
          (js/console.error "error in viewer-eval" e)
          (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))
@@ -127,9 +80,9 @@
          :readers
          (fn [tag]
            (or (get {'viewer-fn ->viewer-fn-with-error
-                     'viewer-fn/cherry ->viewer-fn-with-error-cherry
+                     'viewer-fn/cherry cherry-env/->viewer-fn-with-error-cherry
                      'viewer-eval ->viewer-eval-with-error
-                     'viewer-eval/cherry ->viewer-eval-with-error-cherry} tag)
+                     'viewer-eval/cherry cherry-env/->viewer-eval-with-error-cherry} tag)
                (fn [value]
                  (viewer/with-viewer `viewer/tagged-value-viewer
                    {:tag tag
@@ -213,33 +166,6 @@
 
 (defn ^:export onmessage [ws-msg]
   (render/dispatch (read-string (.-data ws-msg))))
-
-(defn ^:export cherry-compile-string [s]
-  (let [{:keys [body _imports]}
-        (cherry/compile-string*
-         s
-         {:core-alias 'clerk.cljs_core
-          :context :expression
-          :macros cherry-macros})]
-    body))
-
-(defn ^:export eval-form-cherry [f]
-  (js/console.warn "compiling with cherry" (pr-str f))
-  (let [{:keys [body _imports]}
-        (cherry/compile-string*
-         ;; function expression without name
-         ;; isn't valid as top level JS form,
-         ;; so we wrap it in a let
-         (str f) #_(str/replace "(let [x %s] x)"
-                                "%s"
-                                (str f))
-         {:core-alias 'clerk.cljs_core
-          :context :expression
-          :macros cherry-macros})
-        _ (prn "compiled body" body)
-        evaled (js/global_eval body)
-        _ (prn "evaled" evaled)]
-    evaled))
 
 (defn ^:export eval-form [f]
   (sci/eval-form (sci.ctx-store/get-ctx) f))
