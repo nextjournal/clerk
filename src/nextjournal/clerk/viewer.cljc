@@ -933,11 +933,11 @@
                          (assoc :nextjournal/viewer `table-markup-viewer)
                          (update :nextjournal/width #(or % :wide))
                          (update :nextjournal/viewers update-table-viewers)
-                         (assoc :nextjournal/opts {:num-cols (count (or head (first rows)))
-                                                   :number-col? (into #{}
-                                                                      (comp (map-indexed vector)
-                                                                            (keep #(when (number? (second %)) (first %))))
-                                                                      (not-empty (first rows)))})
+                         (update :nextjournal/opts merge {:num-cols (count (or head (first rows)))
+                                                          :number-col? (into #{}
+                                                                             (comp (map-indexed vector)
+                                                                                   (keep #(when (number? (second %)) (first %))))
+                                                                             (not-empty (first rows)))})
                          (assoc :nextjournal/value (cond->> []
                                                      (seq rows) (cons (with-viewer `table-body-viewer (map (partial with-viewer `table-row-viewer) rows)))
                                                      head (cons (with-viewer (:name table-head-viewer table-head-viewer) head)))))
