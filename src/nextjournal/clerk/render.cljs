@@ -327,11 +327,14 @@
                                       (when (exists? js/document)
                                         (js/document.removeEventListener "keydown" on-key-down)
                                         (js/document.removeEventListener "up" on-key-up))))]
-    [:div.relative.overflow-x-auto.result-viewer {:class (result-css-class @!desc) :ref ref-fn :data-block-id id}
-     (when @!desc
-       [view-context/provide {:fetch-fn fetch-fn}
-        [:> ErrorBoundary {:hash hash}
-         [inspect-presented {:!expanded-at !expanded-at} @!desc]]])]))
+    (when @!desc
+      [view-context/provide {:fetch-fn fetch-fn}
+       [:> ErrorBoundary {:hash hash}
+        [:div.result-viewer {:class (result-css-class @!desc) :data-block-id id :ref ref-fn}
+         [:div.relative
+          [:div.overflow-x-auto
+           {:ref ref-fn}
+           [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]]])))
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
