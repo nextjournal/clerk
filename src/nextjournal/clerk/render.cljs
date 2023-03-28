@@ -292,6 +292,7 @@
       (cond-> viewer-css-class
         (string? viewer-css-class) vector)
       ["viewer"
+       (when (get-in x [:nextjournal/opts :fragment-item?]) "fragment-item")
        (when viewer-name (name viewer-name))
        (when inner-viewer-name (name inner-viewer-name))
        (case (or (viewer/width x)

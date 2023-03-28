@@ -483,6 +483,7 @@
         presented-result (->> (present (cond-> (merge (->opts wrapped-value)
                                                       (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value))
                                          true (assoc-in [:nextjournal/opts :id] (processed-block-id (str id "-result") path))
+                                         (seq path) (assoc-in [:nextjournal/opts :fragment-item?] true)
                                          (contains? result :nextjournal/budget) (assoc :nextjournal/budget budget)))
                               #?(:clj (process-blobs blob-opts)))
         opts-from-form-meta (-> result
