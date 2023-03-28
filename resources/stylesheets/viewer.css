@@ -333,7 +333,7 @@
     @apply mt-1;
   }
   .sidenotes-layout .markdown-viewer {
-    @apply pr-[205px];
+    @apply pr-[241px];
   }
   .sidenote-container {
     @apply relative mb-0;
