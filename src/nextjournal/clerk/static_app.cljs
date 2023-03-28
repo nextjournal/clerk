@@ -30,7 +30,7 @@
    :nextjournal/value hiccup})
 
 (defn show [{:as view-data :git/keys [sha url] :keys [bundle? doc path url->path]}]
-  (let [header [:div.viewer.markdown-viewer.w-full.max-w-prose.px-8
+  (let [header [:div.viewer.w-full.max-w-prose.px-8
                 [:div.mb-8.text-xs.sans-serif.text-gray-400.not-prose
                  (when (not= "" path)
                    [:<>
