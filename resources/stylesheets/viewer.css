@@ -254,6 +254,9 @@
 .markdown-viewer blockquote p:last-of-type:after {
   @apply content-none;
 }
+.markdown-node-viewer.result-viewer {
+    @apply mb-0 !important;
+}
 
 /* Images */
 /* --------------------------------------------------------------- */
