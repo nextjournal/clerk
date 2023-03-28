@@ -1,7 +1,6 @@
 (ns nextjournal.clerk.sci-env
   (:refer-clojure :exclude [time])
-  (:require-macros [nextjournal.clerk.render.macros :refer [sci-copy-nss]]
-                   [nextjournal.clerk.sci-env :refer [def-cljs-core]])
+  (:require-macros [nextjournal.clerk.render.macros :refer [sci-copy-nss]])
   (:require ["@codemirror/language" :as codemirror-language]
             ["@codemirror/state" :as codemirror-state]
             ["@codemirror/view" :as codemirror-view]
@@ -10,12 +9,12 @@
             ["framer-motion" :as framer-motion]
             ["react" :as react]
             [applied-science.js-interop :as j]
-            [cherry.compiler :as cherry]
             [cljs.math]
             [cljs.reader]
             [clojure.string :as str]
             [edamame.core :as edamame]
             [goog.object]
+            [nextjournal.clerk.cherry-env :as cherry-env]
             [nextjournal.clerk.parser]
             [nextjournal.clerk.render :as render]
             [nextjournal.clerk.render.code]
@@ -31,8 +30,7 @@
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
             [sci.ctx-store]
-            [shadow.esm]
-            [nextjournal.clerk.cherry-env :as cherry-env]))
+            [shadow.esm]))
 
 (def legacy-ns-aliases
   {"j" "applied-science.js-interop"
