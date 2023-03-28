@@ -1,6 +1,6 @@
 (ns nextjournal.clerk.cherry-env
   (:refer-clojure :exclude [time])
-  (:require-macros [nextjournal.clerk.sci-env :refer [def-cljs-core]])
+  (:require-macros [nextjournal.clerk.cherry-env :refer [def-cljs-core]])
   (:require [applied-science.js-interop :as j]
             [cherry.compiler :as cherry]
             [cljs.math]
