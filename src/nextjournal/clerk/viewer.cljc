@@ -558,8 +558,6 @@
     [:div.flex.flex-col.items-center.not-prose.mb-4
      [:img (update attrs :src process-image-source doc)]]))
 
-(declare ->opts)
-
 (def fragment-viewer
   {:name `fragment-viewer
    :pred #(some-> % (get-safe ::result) (get-safe :nextjournal/value) (get-safe :nextjournal.clerk/fragment))
@@ -592,7 +590,7 @@
               (conj (with-viewer (if fold? `folded-code-block-viewer `code-block-viewer)
                       {:nextjournal/opts (merge {:id (processed-block-id (str id "-code"))} (select-keys cell [:loc]))}
                       (dissoc cell :result)))
-              
+
               (or result? eval?)
               (conj (cond-> (ensure-wrapped (-> cell (assoc ::doc doc) (assoc ::result (:result cell))))
                       (and eval? (not result?))
