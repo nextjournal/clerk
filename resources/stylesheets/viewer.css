@@ -254,7 +254,7 @@
 .markdown-viewer blockquote p:last-of-type:after {
   @apply content-none;
 }
-.markdown-node-viewer.result-viewer {
+.markdown-node-viewer.result-viewer.fragment-item {
     @apply mb-0 !important;
 }
 
@@ -344,7 +344,7 @@
 }
 .code-viewer + .viewer:not(.code-viewer):not(.code-viewer-folded),
 .code-viewer-folded + .viewer:not(.code-viewer):not(.code-viewer-folded),
-.result-viewer + .result-viewer {
+.result-viewer:not(.markdown-node-viewer) + .result-viewer {
   @apply mt-2;
 }
 .code-viewer + .code-viewer-folded {
@@ -352,6 +352,9 @@
 }
 .result-viewer {
   @apply leading-tight mb-6;
+}
+.code-viewer.fragment-item.result-viewer {
+  @apply mb-0 !important;
 }
 .result-viewer figure {
   @apply mt-0 !important;
