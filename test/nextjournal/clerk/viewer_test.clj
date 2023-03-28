@@ -153,9 +153,9 @@
 
 (deftest present
   (testing "only transform-fn can select viewer"
-    (is (match? {:nextjournal/value [:div.markdown-viewer
+    (is (match? {:nextjournal/value [:div.viewer.markdown-viewer.w-full.max-w-prose.px-8 {}
                                      ["h1" {:id "hello-markdown!"} [:<> "👋 Hello "] [:em [:<> "markdown"]] [:<> "!"]]]
-                 :nextjournal/viewer {:name `v/html-viewer-}}
+                 :nextjournal/viewer {:name `v/markdown-node-viewer}}
                 (v/present (v/with-viewer {:transform-fn (comp v/md v/->value)}
                              "# 👋 Hello _markdown_!")))))
 
@@ -270,7 +270,49 @@
       (is (not-empty (tree-re-find (view/doc->viewer {:inline-results? true
                                                       :bundle? false
                                                       :out-path builder/default-out-path} test-doc)
-                                   #"_data/.+\.png"))))))
+                                   #"_data/.+\.png")))))
+
+  (testing "Setting custom options on results via metadata"
+    (is (= :full
+           (-> (eval/eval-string "^{:nextjournal.clerk/width :full} (nextjournal.clerk/html [:div])")
+               view/doc->viewer v/->value :blocks second
+               v/->value :nextjournal/presented :nextjournal/width)))
+    (is (= [:rounded :bg-indigo-600 :font-bold]
+           (-> (eval/eval-string "^{:nextjournal.clerk/css-class [:rounded :bg-indigo-600 :font-bold]} (nextjournal.clerk/table [[1 2][3 4]])")
+               view/doc->viewer v/->value :blocks second
+               v/->value :nextjournal/presented :nextjournal/css-class))))
+
+  (testing "Setting custom options on results via viewer API"
+    (is (= :full
+           (-> (eval/eval-string "(nextjournal.clerk/html {:nextjournal.clerk/width :full} [:div])")
+               view/doc->viewer v/->value :blocks second
+               v/->value :nextjournal/presented :nextjournal/width)))
+    (is (= [:rounded :bg-indigo-600 :font-bold]
+           (-> (eval/eval-string "(nextjournal.clerk/table {:nextjournal.clerk/css-class [:rounded :bg-indigo-600 :font-bold]} [[1 2][3 4]])")
+               view/doc->viewer v/->value :blocks second
+               v/->value :nextjournal/presented :nextjournal/css-class))))
+
+  (testing "Presented doc (with fragments) has unambiguous ids assigned to results"
+    (let [ids (->> (eval/eval-string "(nextjournal.clerk/table [[1 2][3 4]])
+(nextjournal.clerk/fragment
+ 5
+ (nextjournal.clerk/html [:div 6])
+ (nextjournal.clerk/fragment 7 8))")
+                   view/doc->viewer v/->value :blocks
+                   (tree-seq coll? seq)
+                   (filter (every-pred map? :nextjournal/presented))
+                   (map (comp :id :nextjournal/opts :nextjournal/presented)))]
+      (is (= 5 (count ids)))
+      (is (every? (every-pred not-empty string?) ids))
+      (is (distinct? ids))))
+
+  (testing "Fragments emit distinct results for all of their (nested) children"
+    (is (= 6
+           (count
+            (->> (eval/eval-string "1\n(nextjournal.clerk/fragment 2 3 (nextjournal.clerk/fragment 4 5))\n6")
+                 view/doc->viewer v/->value :blocks
+                 (tree-seq coll? seq)
+                 (filter (every-pred map? :nextjournal/presented :nextjournal/blob-id))))))))
 
 (deftest ->edn
   (testing "normal symbols and keywords"

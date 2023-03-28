@@ -20,12 +20,14 @@
          "notebooks/onwards.md"]
         (map #(str "notebooks/" % ".clj"))
         ["cards"
+         "controlling_width"
          "docs"
          "hello"
          "how_clerk_works"
          "exec_status"
          "eval_cljs"
          "example"
+         "fragments"
          "hiding_clerk_metadata"
          "js_import"
          "multiviewer"

@@ -11,6 +11,8 @@ Changes can be:
 
     To see what's going on while waiting for a long-running computation, Clerk will now show an execution status bar on the top. For named cells (defining a var) it will show the name of the var, for anonymous expressions, a preview of the form.
 
+* 🍕 `clerk/fragment` for splicing a seq of values into the document as if it were produced by results of individual cells. Useful when programmatically generating content.
+
 * 🔌 Make websocket reconnect automatically on close to avoid having to reload the page
 * 💫 Cache expressions that return `nil` in memory
 
