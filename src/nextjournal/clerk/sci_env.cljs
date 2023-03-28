@@ -80,9 +80,9 @@
          :readers
          (fn [tag]
            (or (get {'viewer-fn ->viewer-fn-with-error
-                     'viewer-fn/cherry cherry-env/->viewer-fn-with-error-cherry
+                     'viewer-fn/cherry cherry-env/->viewer-fn-with-error
                      'viewer-eval ->viewer-eval-with-error
-                     'viewer-eval/cherry cherry-env/->viewer-eval-with-error-cherry} tag)
+                     'viewer-eval/cherry cherry-env/->viewer-eval-with-error} tag)
                (fn [value]
                  (viewer/with-viewer `viewer/tagged-value-viewer
                    {:tag tag

@@ -19,9 +19,7 @@
             [nextjournal.clojure-mode.keymap]
             [reagent.core :as reagent]
             [reagent.ratom :as ratom]
-            [sci.configs.reagent.reagent :as sci.configs.reagent]
-            [sci.ctx-store]
-            [shadow.esm]))
+            [sci.configs.reagent.reagent :as sci.configs.reagent]))
 
 (set! js/globalThis.clerk #js {})
 (set! js/globalThis.clerk.cljs_core #js {})
@@ -50,10 +48,10 @@
 
 (def cherry-macros {'reagent.core {'with-let sci.configs.reagent/with-let}})
 
-(declare eval-form-cherry)
+(declare eval-form)
 
-(defn ->viewer-fn-with-error-cherry [form]
-  (try (binding [*eval* eval-form-cherry]
+(defn ->viewer-fn-with-error [form]
+  (try (binding [*eval* eval-form]
          (viewer/->viewer-fn form))
        (catch js/Error e
          (viewer/map->ViewerFn
@@ -61,8 +59,8 @@
            :f (fn [_]
                 [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)])}))))
 
-(defn ->viewer-eval-with-error-cherry [form]
-  (try (eval-form-cherry form)
+(defn ->viewer-eval-with-error [form]
+  (try (eval-form form)
        (catch js/Error e
          (js/console.error "error in viewer-eval" e)
          (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))
@@ -76,7 +74,7 @@
           :macros cherry-macros})]
     body))
 
-(defn ^:export eval-form-cherry [f]
+(defn ^:export eval-form [f]
   (js/console.warn "compiling with cherry" (pr-str f))
   (let [{:keys [body _imports]}
         (cherry/compile-string*
