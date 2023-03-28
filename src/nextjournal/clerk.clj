@@ -15,34 +15,6 @@
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]))
 
-;; TODO:
-
-;; - [ ] This should be loaded before babashka.fs (or any other library that it
-;; checks), since missing vars in that library might trigger the error message
-;; that we're trying to avoid
-
-;; - [ ] Better version checks (alpha, etc.) Include another library for this?
-;; - version-clj... hmm, I'm not so keen on adding more dependencies.
-
-(let [cp (System/getProperty "java.class.path")
-      paths (str/split cp (re-pattern fs/path-separator))
-      fs-path (some #(when (str/includes? (str/replace % "\\" "/")  "babashka/fs") %)
-                    paths)
-      fs-last (-> (fs/file-name fs-path)
-                  fs/strip-ext)
-      version (-> (str/split fs-last #"-") second)
-      ;; exclude git version
-      [_ & parts] (re-matches #"(\d+)\.(\d+)\.(\d+)" version)
-      [major minor patch] (map #(Long/parseLong %) parts)]
-  (when version
-    (when-not (or (> major 0)
-                  (and (= major 0)
-                       (or (> minor 2)
-                           (and (= minor 2)
-                                (>= patch 14)))))
-      (binding [*out* *err*]
-        (println "[clerk] WARNING: clerk requires babashka/fs >= 0.2.14")))))
-
 (defonce ^:private !show-filter-fn (atom nil))
 (defonce ^:private !last-file (atom nil))
 (defonce ^:private !watcher (atom nil))
