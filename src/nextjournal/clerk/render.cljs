@@ -664,10 +664,6 @@
   (let [re-eval (fn [{:keys [form]}] (viewer/->viewer-fn form))]
     (w/postwalk (fn [x] (cond-> x (viewer/viewer-fn? x) re-eval)) doc)))
 
-(defn set-browser-url! [{:keys [title path]}]
-  (when (exists? js/history)
-    (js/history.replaceState #js {} title path)))
-
 (defn ^:export set-state! [{:as state :keys [doc error]}]
   (when (contains? state :doc)
     (reset! !doc doc))
