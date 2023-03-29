@@ -359,11 +359,9 @@
   (< 1 (count xs)))
 
 (defn inspect-children [opts]
-  ;; TODO: move update function onto viewer
-  (map-indexed (fn [idx x]
-                 (cond-> [inspect-presented (update opts :path (fnil conj []) idx) x]
-                   (get-in x [:nextjournal/opts :id])
-                   (with-meta {:key (str (get-in x [:nextjournal/opts :id]) "@" @!eval-counter)})))))
+  (map (fn [x] (cond-> [inspect-presented opts x]
+                 (get-in x [:nextjournal/opts :id])
+                 (with-meta {:key (str (get-in x [:nextjournal/opts :id]) "@" @!eval-counter)})))))
 
 (def expand-style
   ["cursor-pointer"
