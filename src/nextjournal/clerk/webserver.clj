@@ -76,17 +76,18 @@
 (defn blob->presented [presented-doc]
   ;; TODO: store on doc?
   (into {}
-        (comp (map :nextjournal/value)
-              (filter map?)
+        (comp (filter #(and (map? %) (contains? % :nextjournal/presented)))
               (map (juxt :nextjournal/blob-id :nextjournal/presented)))
-        (:blocks (:nextjournal/value presented-doc))))
+        (tree-seq coll? seq
+                  (-> presented-doc v/->value :blocks))))
 
-(defn serve-blob [{:as doc :keys [blob->result ns]} {:keys [blob-id fetch-opts]}]
+#_(blob->presented (meta @!doc))
+
+(defn serve-blob [{:as doc :keys [ns]} {:keys [blob-id fetch-opts]}]
   (when-not ns
     (throw (ex-info "namespace must be set" {:doc doc})))
-  (if (contains? blob->result blob-id)
-    (let [root-desc (get (blob->presented (meta doc)) blob-id)
-          {:keys [present-elision-fn]} (meta root-desc)
+  (if-some [root-desc (get (blob->presented (meta doc)) blob-id)]
+    (let [{:keys [present-elision-fn]} (meta root-desc)
           desc (present-elision-fn fetch-opts)]
       (if (contains? desc :nextjournal/content-type)
         {:body (v/->value desc)
