@@ -68,7 +68,7 @@
                                org.clojure/data.csv {:mvn/version "1.0.0"}
                                hickory/hickory {:mvn/version "0.7.1"}
                                sicmutils/sicmutils {:mvn/version "0.20.0"}
-                               io.github.nextjournal/clerk-slideshow {:git/sha "f9fb86430ebf533bfc9d5cec5bf0a94ed07146f3"}}}
+                               io.github.nextjournal/clerk-slideshow {:git/sha "0e6e890fd4f862fa3535290cb7e29591c6e0ec85"}}}
 
            :build {:deps {io.github.nextjournal/clerk {:local/root "."}
                           io.github.nextjournal/cas-client {:git/sha "84ab35c3321c1e51a589fddbeee058aecd055bf8"}

@@ -48,7 +48,9 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
 
 ;; ## Soft vs. Hard Line Breaks
 ;; This one ⇥
-;; ⇤ is a [soft break](https://spec.commonmark.org/0.30/#soft-line-breaks) and is rendered as a space, while this one ⇥\
+;; ⇤ is a [soft break](https://spec.commonmark.org/0.30/#soft-line-breaks) and is rendered as a space.
+;;
+;; This one instead ⇥\
 ;; ⇤ is a [hard break](https://spec.commonmark.org/0.30/#hard-line-breaks) and is rendered as a newline.
 
 ;; ## Sidenotes
