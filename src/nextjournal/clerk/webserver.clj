@@ -189,7 +189,7 @@
                 {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
                 {:type :set-state!
                  :doc (present+reset! doc)
-                 :effects [(v/->ViewerEval (list 'js/history.pushState nil title
+                 :effects [(v/->ViewerEval (list 'js/history.replaceState nil title
                                                  (str "#show=" (cond->> file
                                                                   (fs/absolute? file)
                                                                   (fs/relativize (fs/cwd))))))]})))
