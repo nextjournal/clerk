@@ -87,14 +87,13 @@
                   (< pos to)
                   (concat [(.sliceString text pos to)]))))))))
 
-(defn render-code [^String code {:as _opts :keys [id]}]
+(defn render-code [^String code _]
   (let [builder (RangeSetBuilder.)
         _ (highlightTree (.. clojureLanguage -parser (parse code)) highlight-style
                          (fn [from to style]
                            (.add builder from to (.mark Decoration (j/obj :class style)))))
         decorations-rangeset (.finish builder)
         text (.of Text (.split code "\n"))]
-    ^{:key id}
     [:div.cm-editor
      [:cm-scroller
       (into [:div.cm-content.whitespace-pre]

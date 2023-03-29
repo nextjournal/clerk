@@ -362,7 +362,8 @@
   ;; TODO: move update function onto viewer
   (map-indexed (fn [idx x]
                  (cond-> [inspect-presented (update opts :path (fnil conj []) idx) x]
-                   (get-in x [:nextjournal/opts :id]) (with-meta {:key (str (get-in x [:nextjournal/opts :id]) "@" @!eval-counter)})))))
+                   (get-in x [:nextjournal/opts :id])
+                   (with-meta {:key (str (get-in x [:nextjournal/opts :id]) "@" @!eval-counter)})))))
 
 (def expand-style
   ["cursor-pointer"
@@ -719,9 +720,6 @@
   (when react-root
     (.render react-root (r/as-element [root]))))
 
-(defn render-with-react-key [x {:as _opts :keys [id]}]
-  (with-meta x {:key id}))
-
 (defn html-render [markup]
   (r/as-element
    (if (string? markup)
@@ -822,7 +820,6 @@
    [:path {:fill-rule "evenodd" :d "M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" :clip-rule "evenodd"}]])
 
 (defn render-code-block [code-string {:keys [id]}]
-  ^{:key id}
   [:div.viewer.code-viewer.w-full.max-w-wide {:data-block-id id}
    [code/render-code code-string]])
 
@@ -858,7 +855,6 @@
         [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-150.hover:text-slate-500
          {:class "text-[10px]"}
          "evaluated in 0.2s"]]
-       ^{:key id}
        [:div.code-viewer.mb-2.relative.code-viewer.w-full.max-w-wide {:data-block-id id :style {:margin-top 0}}
         [render-code code-string]]])))
 
