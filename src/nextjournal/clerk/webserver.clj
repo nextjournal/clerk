@@ -159,7 +159,7 @@
         ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
         "_ws" {:status 200 :body "upgrading..."}
         {:status 200
-         :headers {"Content-Type" "text/html"}
+         :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
          :body (view/doc->html {:error @!error
                                 :doc (or (let [path (subs uri 1)]
                                            (when (and (fs/exists? path) (fs/regular-file? path))
