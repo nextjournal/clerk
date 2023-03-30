@@ -43,19 +43,19 @@
 (defonce tap-setup (add-tap (fn [x] ((resolve `tapped) x))))
 
 (def tap-viewer
-  {:render-fn '(fn [{:keys [val tapped-at key]} opts]
+  {:render-fn '(fn [{:keys [val tapped-at]} opts]
                  [:div.border-t.relative.py-3.mt-2
                   [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
                    {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
                   [:div.overflow-x-auto [nextjournal.clerk.render/inspect-presented val]]])
-   :transform-fn (comp clerk/mark-preserve-keys
-                       (clerk/update-val update :tapped-at inst->local-time-str))})
+   :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
+                   (-> wrapped-value clerk/mark-preserve-keys
+                       (merge (v/->opts (v/ensure-wrapped (:val value)))) ;; preserve opts like widht and css-class
+                       (assoc-in [:nextjournal/opts :id] (:key value)) ;; assign custom react key
+                       (update-in [:nextjournal/value :tapped-at] inst->local-time-str)))})
 
 ^{::clerk/visibility {:result :show}}
-(clerk/fragment (mapv (fn [x] (clerk/with-viewer tap-viewer
-                                (assoc-in (v/->opts (v/ensure-wrapped (:val x)))
-                                          [:nextjournal/opts :id] (:key x))
-                                x))
+(clerk/fragment (mapv (partial clerk/with-viewer tap-viewer)
                       (cond->> (reverse @!taps) (= :latest @!view) (take 1))))
 
 (comment
