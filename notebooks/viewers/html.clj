@@ -24,10 +24,10 @@
 (clerk/html
  [:ol (list [:li [:a {:href (clerk/doc-url "notebooks/viewers/image.clj")} "Images"]]
             [:li [:a {:href (clerk/doc-url "notebooks/markdown.md")} "Markdown"]]
-            [:li [:a {:href (clerk/doc-url "notebooks/rule_30.clj")} "Rule 30"]])])
+            [:li [:a {:href (clerk/doc-url "notebooks/viewer_api.clj#tables")} "Viewer API / Tables"]])])
 
 (clerk/with-viewer
   '(fn [_ _]
      [:ol (list [:li [:a {:href (nextjournal.clerk.viewer/doc-url "notebooks/viewers/image.clj")} "Images"]]
                 [:li [:a {:href (nextjournal.clerk.viewer/doc-url "notebooks/markdown.md")} "Markdown"]]
-                [:li [:a {:href (nextjournal.clerk.viewer/doc-url "notebooks/rule_30.clj")} "Rule 30"]])]) nil)
+                [:li [:a {:href (nextjournal.clerk.viewer/doc-url "notebooks/viewer_api.clj#tables")} "Viewer API / Tables"]])]) nil)
