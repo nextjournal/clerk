@@ -694,6 +694,20 @@
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
             (.setTimeZone (java.util.TimeZone/getTimeZone "GMT")))))
 
+#?(:clj (defn process-internal-link [href]
+          (let [sym (symbol href)]
+            (or (when (fs/exists? href) href)
+                (analyzer/ns->file sym)
+                (when (resolve sym)
+                  (str (analyzer/ns->file (namespace sym))
+                       ;; TODO: lookup block-id in analyzer state
+                       "#" (name sym)))))))
+
+#_ (process-internal-link "viewers.html")
+#_ (process-internal-link "how-clerk-works/hashes")
+#_ (process-internal-link "how-clerk-worksx/hashes")
+
+
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc
     :transform-fn (into-markup (fn [{:keys [id]}] [:div.viewer.markdown-viewer.w-full.max-w-prose.px-8 {:data-block-id id}]))}
@@ -723,7 +737,10 @@
    {:name :nextjournal.markdown/strikethrough :transform-fn (into-markup [:s])}
    {:name :nextjournal.markdown/link :transform-fn (into-markup #(vector :a (:attrs %)))}
    {:name :nextjournal.markdown/internal-link
-    :transform-fn (into-markup #(vector :a.internal-link {:href (doc-url (:text %))}))}
+    :transform-fn (into-markup (fn [{:keys [text]}]
+                                 [:a.internal-link
+                                  {:href (doc-url #?(:cljs text
+                                                     :clj  (process-internal-link text)))}]))}
 
    ;; inlines
    {:name :nextjournal.markdown/text :transform-fn (into-markup [:<>])}
