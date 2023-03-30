@@ -865,7 +865,7 @@
    [:path {:fill-rule "evenodd" :d "M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" :clip-rule "evenodd"}]])
 
 (defn render-code-block [code-string {:as opts :keys [id]}]
-  [:div.viewer.code-viewer.w-full.max-w-wide {:data-block-id id}
+  [:div.viewer.code-viewer.w-full.max-w-wide {:id id}
    [code/render-code code-string (assoc opts :language "clojure")]])
 
 (defn render-folded-code-block [code-string {:as opts :keys [id]}]

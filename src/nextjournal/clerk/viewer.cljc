@@ -31,6 +31,8 @@
                    (java.nio.file Files StandardOpenOption)
                    (javax.imageio ImageIO))))
 
+(declare doc-url)
+
 (defrecord ViewerEval [form])
 
 (defrecord ViewerFn [form #?(:cljs f)]
@@ -714,6 +716,43 @@
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
             (.setTimeZone (java.util.TimeZone/getTimeZone "GMT")))))
 
+#?(:clj (defn resolve-internal-link [link]
+          (if (fs/exists? link)
+            {:path link}
+            (let [sym (symbol link)]
+              (if (qualified-symbol? sym)
+                (when-some [var (try (requiring-resolve sym)
+                                     (catch Exception _ nil))]
+                  (merge {:var var} (resolve-internal-link (-> var symbol namespace))))
+                (when-some [ns (try (require sym)
+                                    (find-ns sym)
+                                    (catch Exception _ nil))]
+                  (cond-> {:ns ns}
+                    (fs/exists? (analyzer/ns->file sym))
+                    (assoc :path (analyzer/ns->file sym)))))))))
+
+#_(resolve-internal-link "notebooks/hello.clj")
+#_(resolve-internal-link "nextjournal.clerk.tap")
+#_(resolve-internal-link "rule-30/board")
+
+(defn process-internal-link [link]
+  #?(:clj
+     (let [{:keys [path var]} (resolve-internal-link link)]
+       {:path path
+        :fragment (when var (str (-> var symbol str) "-code"))
+        :title (or (when var (-> var symbol str))
+                   (when path (:title (parser/parse-file {:doc? true} path)))
+                   link)})
+     :cljs
+     {:path link :title link}))
+
+#_(process-internal-link "notebooks/rule_30.clj")
+#_(process-internal-link "viewers.html")
+#_(process-internal-link "how-clerk-works/hashes")
+#_(process-internal-link "rule-30/first-generation")
+
+(declare html)
+
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc
     :transform-fn (into-markup (fn [{:keys [id]}] [:div.viewer.markdown-viewer.w-full.max-w-prose.px-8 {:data-block-id id}]))}
@@ -742,6 +781,11 @@
    {:name :nextjournal.markdown/monospace :transform-fn (into-markup [:code])}
    {:name :nextjournal.markdown/strikethrough :transform-fn (into-markup [:s])}
    {:name :nextjournal.markdown/link :transform-fn (into-markup #(vector :a (:attrs %)))}
+   {:name :nextjournal.markdown/internal-link
+    :transform-fn (update-val
+                   (fn [{:keys [text]}]
+                     (let [{:keys [path fragment title]} (process-internal-link text)]
+                       (html [:a.internal-link {:href (doc-url path fragment)} title]))))}
 
    ;; inlines
    {:name :nextjournal.markdown/text :transform-fn (into-markup [:<>])}
@@ -1129,7 +1173,7 @@
 
 #_(update-if {:n "42"} :n #(Integer/parseInt %))
 
-(declare html doc-url)
+(declare html)
 
 (defn home? [{:keys [nav-path]}]
   (contains? #{"src/nextjournal/home.clj" "'nextjournal.clerk.home"} nav-path))
