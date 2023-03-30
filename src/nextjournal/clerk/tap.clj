@@ -28,12 +28,10 @@
 (defonce !view (atom :stream))
 
 
-(defonce !taps (atom (mapv timestamped
-                           [(clerk/html {::clerk/width :wide} [:h1.w-full.border-2.border-amber-500.bg-amber-500.h-10])
-                            (clerk/plotly {::clerk/width :full} {:data [{:y [3 1 2]}]})])))
+(defonce !taps (atom ()))
 
 (defn reset-taps! []
-  (reset! !taps [])
+  (reset! !taps ())
   (clerk/recompute!))
 
 (defn tapped [x]
@@ -56,7 +54,7 @@
 
 ^{::clerk/visibility {:result :show}}
 (clerk/fragment (mapv (partial clerk/with-viewer tap-viewer)
-                      (cond->> (reverse @!taps) (= :latest @!view) (take 1))))
+                      (cond->> @!taps (= :latest @!view) (take 1))))
 
 (comment
   (last @!taps)
