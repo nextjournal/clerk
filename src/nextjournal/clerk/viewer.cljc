@@ -311,15 +311,22 @@
       (throw (ex-info "no type given for with-md-viewer" {:wrapped-value wrapped-value})))
     (with-viewer (keyword "nextjournal.markdown" (name type)) wrapped-value)))
 
+(defn assign-class [markup {:as node ::keys [parent]}]
+  (cond-> markup
+    (= :doc (:type parent))
+    (update 1 assoc :class "viewer markdown-viewer w-full max-w-prose px-8 ")))
+
 (defn into-markup [markup]
   (fn [{:as wrapped-value :nextjournal/keys [viewers opts]}]
     (-> (with-viewer {:name `markdown-node-viewer :render-fn 'nextjournal.clerk.render/render-with-react-key} wrapped-value)
         mark-presented
         (update :nextjournal/value
                 (fn [{:as node :keys [text content] ::keys [doc]}]
-                  (into (cond-> markup (fn? markup) (apply [(merge opts node)]))
+                  (into (-> markup
+                            (cond-> #_markup (fn? markup) (apply [(merge opts node)]))
+                            (assign-class node))
                         (cond text [text]
-                              content (mapv #(-> (ensure-wrapped-with-viewers viewers (assoc % ::doc doc))
+                              content (mapv #(-> (ensure-wrapped-with-viewers viewers (assoc % ::doc doc ::parent node))
                                                  (with-md-viewer)
                                                  (apply-viewers)
                                                  (as-> w
@@ -681,7 +688,7 @@
 
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc
-    :transform-fn (into-markup (fn [{:keys [id]}] [:div.viewer.markdown-viewer.w-full.max-w-prose.px-8 {:data-block-id id}]))}
+    :transform-fn (into-markup [:<>])}
    {:name :nextjournal.markdown/heading
     :transform-fn (into-markup
                    (fn [{:keys [attrs heading-level]}]
