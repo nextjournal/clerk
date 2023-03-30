@@ -8,6 +8,7 @@
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.eval :as eval]
+            [nextjournal.clerk.parser :as parser]
             [org.httpkit.server :as httpkit])
   (:import (java.nio.file Files)))
 
@@ -161,9 +162,12 @@
         {:status 200
          :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
          :body (view/doc->html {:error @!error
-                                :doc (or (let [path (subs uri 1)]
-                                           (when (and (fs/exists? path) (fs/regular-file? path))
-                                             (doto (eval/eval-file path) present+reset!)))
+                                :doc (or (let [file (subs uri 1)]
+                                           (when (and (fs/exists? file) (fs/regular-file? file))
+                                             (let [doc (parser/parse-file {:doc? true} file)
+                                                   {:keys [result time-ms]} (eval/time-ms (eval/eval-doc (:blob->result @!doc) (assoc doc :set-status-fn set-status!)))]
+                                               (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
+                                               (doto result present+reset!))))
                                          @!doc
                                          (help-doc))})})
       (catch Throwable e
