@@ -113,3 +113,10 @@ clj -M:nextjournal/clerk nextjournal.clerk/serve! --watch-paths notebooks --brow
 ;;
 ;; [^crossnote]: as in: _1-based_ again.
 ;; [^*]: as in _not right_.
+;;
+;; ## Internal Links
+;; Clerk extends markdown parsing with a wikipedia-style `[[internal-link]]`. The text between the double brackets can be
+;; * a path to a notebook on the classpath ([[notebooks/markdown.md]])
+;; * a namespace on the classpath ([[viewers.html]])
+;; * a fully qualified symbol resolving to a var ([[how-clerk-works/hashes]])
+;; in all cases the rendered link points to the associated notebook. In the third case an hash fragment is appended pointing to the block which defines the var in question.

@@ -700,13 +700,11 @@
                 (analyzer/ns->file sym)
                 (when (resolve sym)
                   (str (analyzer/ns->file (namespace sym))
-                       ;; TODO: lookup block-id in analyzer state
-                       "#" (name sym)))))))
+                       "#" sym "-code"))))))
 
 #_ (process-internal-link "viewers.html")
 #_ (process-internal-link "how-clerk-works/hashes")
 #_ (process-internal-link "how-clerk-worksx/hashes")
-
 
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc
