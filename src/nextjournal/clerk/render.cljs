@@ -305,7 +305,7 @@
          :nested-prose "w-full max-w-prose"
          "w-full max-w-prose px-8")])))
 
-(defn render-result [{:as result :nextjournal/keys [fetch-opts hash presented]} {:as opts :keys [id auto-expand-results? path]}]
+(defn render-result [{:nextjournal/keys [fetch-opts hash presented]} {:keys [id auto-expand-results?]}]
   (let [!desc (hooks/use-state-with-deps presented [hash])
         !expanded-at (hooks/use-state (when (map? @!desc)
                                         (->expanded-at auto-expand-results? @!desc)))

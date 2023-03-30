@@ -50,7 +50,7 @@
                   [:div.overflow-x-auto [nextjournal.clerk.render/inspect-presented val]]])
    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
                    (-> wrapped-value clerk/mark-preserve-keys
-                       (merge (v/->opts (v/ensure-wrapped (:val value)))) ;; preserve opts like widht and css-class
+                       (merge (v/->opts (v/ensure-wrapped (:val value)))) ;; preserve opts like ::clerk/width and ::clerk/css-class
                        (assoc-in [:nextjournal/opts :id] (:key value)) ;; assign custom react key
                        (update-in [:nextjournal/value :tapped-at] inst->local-time-str)))})
 
