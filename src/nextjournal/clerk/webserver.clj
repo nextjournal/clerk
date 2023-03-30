@@ -203,6 +203,10 @@
                                                             (fs/absolute? file)
                                                             (fs/relativize (fs/cwd))))))]})))
 
+(defn goto! [file] (broadcast! {:effects [(v/->ViewerEval (list '.assign 'js/location
+                                                                (str "/" (cond->> file
+                                                                           (fs/absolute? file)
+                                                                           (fs/relativize (fs/cwd))))))]}))
 #_(update-doc! (help-doc))
 
 

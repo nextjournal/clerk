@@ -48,16 +48,13 @@
                                        {:file-or-ns file-or-ns})))
 
                    :else
-                   file-or-ns)
-            doc (try (parser/parse-file {:doc? true} file)
-                     (catch java.io.FileNotFoundException _e
-                       (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
-                                       {:file-or-ns file-or-ns}))))
-            _ (reset! !last-file file)
-            {:keys [blob->result]} @webserver/!doc
-            {:keys [result time-ms]} (eval/time-ms (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!)))]
-        (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
-        (webserver/update-doc! result))
+                   file-or-ns)]
+        (try (parser/parse-file {:doc? true} file)
+                       (catch java.io.FileNotFoundException _e
+                         (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
+                                         {:file-or-ns file-or-ns}))))
+        (reset! !last-file file)
+        (webserver/goto! file))
       (catch Exception e
         (webserver/show-error! e)
         (throw e)))))
