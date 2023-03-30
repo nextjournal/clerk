@@ -112,7 +112,7 @@
 /* --------------------------------------------------------------- */
 
 .task-list-item + .task-list-item,
-.markdown-viewer ul ul {
+ul.markdown-viewer ul {
   @apply mt-1 mb-0;
 }
 
@@ -230,8 +230,7 @@
 /* Prose */
 /* --------------------------------------------------------------- */
 
-.notebook-viewer,
-.markdown-viewer {
+.notebook-viewer {
   @apply prose
     dark:prose-invert
     prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
@@ -250,8 +249,9 @@
     prose-code:font-medium prose-code:bg-slate-100
     max-w-none;
 }
-.markdown-viewer blockquote p:first-of-type:before,
-.markdown-viewer blockquote p:last-of-type:after {
+
+blockquote.markdown-viewer p:first-of-type:before,
+blockquote.markdown-viewer p:last-of-type:after {
   @apply content-none;
 }
 .markdown-node-viewer.result-viewer.fragment-item {

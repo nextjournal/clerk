@@ -314,7 +314,7 @@
 (defn assign-class [markup {:as node ::keys [parent]}]
   (cond-> markup
     (= :doc (:type parent))
-    (update 1 assoc :class "viewer markdown-viewer w-full max-w-prose px-8 ")))
+    (update 1 assoc :class "viewer markdown-viewer w-full max-w-prose px-8")))
 
 (defn into-markup [markup]
   (fn [{:as wrapped-value :nextjournal/keys [viewers opts]}]
