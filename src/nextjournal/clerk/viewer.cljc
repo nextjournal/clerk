@@ -695,19 +695,37 @@
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
             (.setTimeZone (java.util.TimeZone/getTimeZone "GMT")))))
 
+#?(:clj (defn resolve-href [link]
+          (if (fs/exists? link)
+            {:file link}
+            (let [sym (symbol link)]
+              (cond (fs/exists? link)
+                    {:file link}
+
+                    (qualified-symbol? sym)
+                    (when-let [var (try (requiring-resolve sym)
+                                        (catch Exception _ nil))]
+                      (merge {:var var} (resolve-href (-> var symbol namespace))))
+
+                    :else
+                    (when-let [ns (try (require sym)
+                                       (find-ns sym)
+                                       (catch Exception _ nil))]
+                      (cond-> {:ns ns}
+                        (fs/exists? (analyzer/ns->file sym))
+                        (assoc :file (analyzer/ns->file sym)))))))))
+
+#_(resolve-href "notebooks/hello.clj")
+#_(resolve-href "nextjournal.clerk.tap")
+#_(resolve-href "rule-30/board")
+
 (defn process-internal-link [href]
   #?(:clj
-     (let [fs? (fs/exists? href)
-           sym (when-not fs? (symbol href))
-           ns? (when sym (find-ns sym))
-           var? (when sym (resolve sym))
-           path (or (when fs? href)
-                    (when ns? (analyzer/ns->file sym))
-                    (when var?
-                      (analyzer/ns->file (namespace sym))))]
-       {:href (cond-> path var? (str "#" sym "-code"))
-        :title (or (when var? (str sym))
-                   (when (or fs? ns?) (:title (parser/parse-file {:doc? true} path)))
+     (let [{:keys [file var ns]} (resolve-href href)]
+       {:href (cond-> file
+                var (str "#" (-> var symbol name) "-code"))
+        :title (or (when var (str var))
+                   (when (or file ns) (:title (parser/parse-file {:doc? true} file)))
                    href)})
      :cljs
      {:path href :title href}))
