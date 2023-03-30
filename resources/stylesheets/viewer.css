@@ -250,6 +250,8 @@ ul.markdown-viewer ul {
     max-w-none;
 }
 
+.markdown-viewer blockquote p:first-of-type:before,
+.markdown-viewer blockquote p:last-of-type:after,
 blockquote.markdown-viewer p:first-of-type:before,
 blockquote.markdown-viewer p:last-of-type:after {
   @apply content-none;
