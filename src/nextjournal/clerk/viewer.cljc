@@ -8,14 +8,14 @@
                       [clojure.repl :refer [demunge]]
                       [editscript.edit]
                       [nextjournal.clerk.config :as config]
-                      [nextjournal.clerk.analyzer :as analyzer]]
+                      [nextjournal.clerk.analyzer :as analyzer]
+                      [nextjournal.clerk.parser :as parser]]
                 :cljs [[goog.crypt]
                        [goog.crypt.Sha1]
                        [reagent.ratom :as ratom]
                        [sci.impl.vars]
                        [sci.lang]
                        [applied-science.js-interop :as j]])
-            [nextjournal.clerk.parser :as parser]
             [nextjournal.markdown :as md]
             [nextjournal.markdown.parser :as md.parser]
             [nextjournal.markdown.transform :as md.transform])
