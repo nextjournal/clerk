@@ -149,9 +149,9 @@
                              (when el
                                (setup-dark-mode! !state)
                                (when-some [heading (when (and (exists? js/location) (not bundle?))
-                                                     (try (some-> js/location .-hash not-empty js/decodeURI js/document.querySelector)
+                                                     (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
                                                           (catch js/Error _
-                                                            (js/console.warn (str "Clerk render-notebook, invalid selector: "
+                                                            (js/console.warn (str "Clerk render-notebook, invalid hash: "
                                                                                   (.-hash js/location))))))]
                                  (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
     (let [{:keys [md-toc mobile? open? visibility]} @!state

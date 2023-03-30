@@ -24,7 +24,9 @@
 (clerk/html
  [:ol (list [:li [:a {:href (clerk/doc-url "notebooks/viewers/image.clj")} "Images"]]
             [:li [:a {:href (clerk/doc-url "notebooks/markdown.md")} "Markdown"]]
-            [:li [:a {:href (clerk/doc-url "notebooks/viewer_api.clj#tables")} "Viewer API / Tables"]])])
+            [:li [:a {:href (clerk/doc-url "notebooks/markdown.md#appendix")} "Appendix"]]
+            [:li [:a {:href (clerk/doc-url "notebooks/viewer_api.clj#tables")} "Viewer API / Tables"]]
+            [:li [:a {:href (clerk/doc-url "notebooks/how_clerk_works.clj#step-4:-evaluation")} "Clerk Evaluation"]])])
 
 (clerk/with-viewer
   '(fn [_ _]
