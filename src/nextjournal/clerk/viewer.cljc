@@ -27,6 +27,14 @@
                    (java.nio.file Files StandardOpenOption)
                    (javax.imageio ImageIO))))
 
+(defn ^:dynamic doc-url
+  ([path] (doc-url path nil))
+  ([path fragment]
+   (str "/" path "?clerk/show!" (when fragment (str "#" fragment)))))
+
+#_(doc-url "notebooks/rule_30.clj#board")
+#_(doc-url "notebooks/rule_30.clj")
+
 (defrecord ViewerEval [form])
 
 (defrecord ViewerFn [form #?(:cljs f)]
@@ -714,6 +722,8 @@
    {:name :nextjournal.markdown/monospace :transform-fn (into-markup [:code])}
    {:name :nextjournal.markdown/strikethrough :transform-fn (into-markup [:s])}
    {:name :nextjournal.markdown/link :transform-fn (into-markup #(vector :a (:attrs %)))}
+   {:name :nextjournal.markdown/internal-link
+    :transform-fn (into-markup #(vector :a.internal-link {:href (doc-url (:text %))}))}
 
    ;; inlines
    {:name :nextjournal.markdown/text :transform-fn (into-markup [:<>])}
@@ -1628,14 +1638,6 @@
   (col
    content
    (html [:figcaption.text-xs.text-slate-500.text-center.mt-1 text])))
-
-(defn ^:dynamic doc-url
-  ([path] (doc-url path nil))
-  ([path fragment]
-   (str "/" path "?clerk/show!" (when fragment (str "#" fragment)))))
-
-#_(doc-url "notebooks/rule_30.clj#board")
-#_(doc-url "notebooks/rule_30.clj")
 
 (defn print-hide-result-deprecation-warning []
   #?(:clj (binding [*out* *err*]
