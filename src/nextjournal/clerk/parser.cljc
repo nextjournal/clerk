@@ -236,14 +236,16 @@
 
 (defn markdown-context []
   (update markdown.parser/empty-doc
-          :text-tokenizers (partial map markdown.parser/normalize-tokenizer)))
-
-#_(markdown-context)
+          :text-tokenizers
+          (comp (partial mapv markdown.parser/normalize-tokenizer)
+                (partial cons markdown.parser/internal-link-tokenizer))))
 
 (defn parse-markdown
   "Like `n.markdown.parser/parse` but allows to reuse the same context in successive calls"
   [ctx md]
   (markdown.parser/apply-tokens ctx (markdown/tokenize md)))
+
+#_(parse-markdown-string {:doc? true} "# Title\nSome [[internal-link]] to be followed.")
 
 (defn update-markdown-blocks [{:as state :keys [md-context]} md]
   (let [{::markdown.parser/keys [path]} md-context
@@ -297,9 +299,7 @@
        state))))
 
 #_(parse-clojure-string {:doc? true} "'code ;; foo\n;; bar")
-#_(parse-clojure-string "'code , ;; foo\n;; bar")
 #_(parse-clojure-string "'code\n;; foo\n;; bar")
-#_(keys (parse-clojure-string {:doc? true} (slurp "notebooks/viewer_api.clj")))
 #_(parse-clojure-string {:doc? true} ";; # Hello\n;; ## 👋 Section\n(do 123)\n;; ## 🤚🏽 Section")
 
 (defn parse-markdown-cell [{:as state :keys [nodes]} opts]
