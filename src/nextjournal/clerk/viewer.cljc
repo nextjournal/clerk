@@ -15,6 +15,7 @@
                        [sci.impl.vars]
                        [sci.lang]
                        [applied-science.js-interop :as j]])
+            [nextjournal.clerk.parser :as parser]
             [nextjournal.markdown :as md]
             [nextjournal.markdown.parser :as md.parser]
             [nextjournal.markdown.transform :as md.transform])
@@ -694,17 +695,27 @@
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
             (.setTimeZone (java.util.TimeZone/getTimeZone "GMT")))))
 
-#?(:clj (defn process-internal-link [href]
-          (let [sym (symbol href)]
-            (or (when (fs/exists? href) href)
-                (analyzer/ns->file sym)
-                (when (resolve sym)
-                  (str (analyzer/ns->file (namespace sym))
-                       "#" sym "-code"))))))
+(defn process-internal-link [href]
+  #?(:clj
+     (let [fs? (fs/exists? href)
+           sym (when-not fs? (symbol href))
+           ns? (when sym (find-ns sym))
+           var? (when sym (resolve sym))
+           path (or (when fs? href)
+                    (when ns? (analyzer/ns->file sym))
+                    (when var?
+                      (analyzer/ns->file (namespace sym))))]
+       {:href (cond-> path var? (str "#" sym "-code"))
+        :title (or (when var? (str sym))
+                   (when (or fs? ns?) (:title (parser/parse-file {:doc? true} path)))
+                   href)})
+     :cljs
+     {:path href :title href}))
 
 #_ (process-internal-link "viewers.html")
 #_ (process-internal-link "how-clerk-works/hashes")
 #_ (process-internal-link "how-clerk-worksx/hashes")
+(declare html)
 
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc
@@ -735,10 +746,10 @@
    {:name :nextjournal.markdown/strikethrough :transform-fn (into-markup [:s])}
    {:name :nextjournal.markdown/link :transform-fn (into-markup #(vector :a (:attrs %)))}
    {:name :nextjournal.markdown/internal-link
-    :transform-fn (into-markup (fn [{:keys [text]}]
-                                 [:a.internal-link
-                                  {:href (doc-url #?(:cljs text
-                                                     :clj  (process-internal-link text)))}]))}
+    :transform-fn (update-val
+                   (fn [{:keys [text]}]
+                     (let [{:keys [title href]} (process-internal-link text)]
+                       (html [:a.internal-link {:href (doc-url href)} title]))))}
 
    ;; inlines
    {:name :nextjournal.markdown/text :transform-fn (into-markup [:<>])}
