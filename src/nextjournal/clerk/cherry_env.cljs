@@ -1,8 +1,7 @@
 (ns nextjournal.clerk.cherry-env
   (:refer-clojure :exclude [time])
-  (:require-macros [nextjournal.clerk.cherry-env :refer [def-cljs-core]])
   (:require [applied-science.js-interop :as j]
-            [cherry.compiler :as cherry]
+            [cherry.embed :as cherry]
             [cljs.math]
             [cljs.reader]
             [clojure.string :as str]
@@ -21,9 +20,7 @@
             [reagent.ratom :as ratom]
             [sci.configs.reagent.reagent :as sci.configs.reagent]))
 
-(set! js/globalThis.clerk #js {})
-(set! js/globalThis.clerk.cljs_core #js {})
-(def-cljs-core)
+(cherry/preserve-ns 'cljs.core)
 (j/assoc-in! js/globalThis [:reagent :core :atom] reagent/atom)
 
 (def reagent-ratom-namespace
@@ -66,21 +63,11 @@
          (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))
 
 (defn ^:export cherry-compile-string [s]
-  (let [{:keys [body _imports]}
-        (cherry/compile-string*
-         s
-         {:core-alias 'clerk.cljs_core
-          :context :expression
-          :macros cherry-macros})]
-    body))
+  (cherry/compile-string
+   s
+   {:macros cherry-macros}))
 
 (defn ^:export eval-form [f]
-  (js/console.warn "compiling with cherry" (pr-str f))
-  (let [{:keys [body _imports]}
-        (cherry/compile-string*
-         (str f)
-         {:core-alias 'clerk.cljs_core
-          :context :expression
-          :macros cherry-macros})
-        evaled (js/global_eval body)]
-    evaled))
+  (js/global-eval (cherry/compile-string
+                   (str f)
+                   {:macros cherry-macros})))
