@@ -49,6 +49,7 @@
    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
                    (-> wrapped-value clerk/mark-preserve-keys
                        (merge (v/->opts (v/ensure-wrapped (:val value)))) ;; preserve opts like ::clerk/width and ::clerk/css-class
+                       (update :!budget #(doto % (reset! 200))) ;; reset budget inherited by preceeding fragment items
                        (assoc-in [:nextjournal/opts :id] (:key value)) ;; assign custom react key
                        (update-in [:nextjournal/value :tapped-at] inst->local-time-str)))})
 
@@ -67,11 +68,9 @@
   (tap> (clerk/table {::clerk/width :full} [[1 2] [3 4]]))
   (tap> (clerk/plotly {::clerk/width :full} {:data [{:y [3 1 2]}]}))
   (tap> (javax.imageio.ImageIO/read (java.net.URL. "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")))
-
   (do (require 'rule-30)
       (tap> (clerk/with-viewers (clerk/add-viewers rule-30/viewers) rule-30/rule-30)))
-
   (tap> (clerk/with-viewers (clerk/add-viewers rule-30/viewers) rule-30/board))
-
   (tap> (clerk/html [:h1 "Fin. 👋"]))
+  (tap> (reduce (fn [acc _] (vector acc)) :fin (range 200)))
   (reset-taps!))
