@@ -404,6 +404,14 @@
                 [".clj" ".cljc"]))
         (cp/classpath-directories)))
 
+(defn var->file [var]
+  (when-let [file-from-var (-> var meta :file)]
+    (some (fn [classpath-dir]
+            (let [path (str classpath-dir fs/file-separator file-from-var)]
+              (when (fs/exists? path)
+                path)))
+          (cp/classpath-directories))))
+
 (defn normalize-filename [f]
   (if (fs/windows?)
     (-> f fs/normalize fs/unixify)
@@ -444,7 +452,8 @@
   (if (deref? sym)
     (find-location (second sym))
     (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
-      (or (ns->file ns)
+      (or (some-> sym resolve var->file)
+          (ns->file ns)
           (ns->jar ns))
       (symbol->jar sym))))
 
