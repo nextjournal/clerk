@@ -1382,7 +1382,8 @@
 
 (defn make-!budget-opts [opts]
   (when-let [budget (->budget opts)]
-    {:!budget (atom budget)}))
+    {:!budget (atom budget)
+     :nextjournal/budget budget}))
 
 #_(make-!budget-opts {})
 #_(make-!budget-opts {:nextjournal/budget 42})
@@ -1499,8 +1500,7 @@
                (->opts (normalize-viewer-opts x)))
         !path->wrapped-value (atom {})]
     (-> (ensure-wrapped-with-viewers x)
-        (merge {:nextjournal/budget (->budget opts)
-                :store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
+        (merge {:store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
                                         (swap! !path->wrapped-value assoc path wrapped-value))
                 :present-elision-fn (partial present-elision* !path->wrapped-value)
                 :path (:path opts [])}
