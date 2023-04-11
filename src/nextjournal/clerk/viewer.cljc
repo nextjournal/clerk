@@ -481,11 +481,11 @@
                     :else :file)
         #?(:clj blob-opts :cljs _) (assoc doc :blob-mode blob-mode :blob-id blob-id)
         opts-from-form-meta (-> result
-                                (select-keys [:nextjournal/css-class :nextjournal/width :nextjournal/opts])
+                                (select-keys [:nextjournal/css-class :nextjournal/width :nextjournal/opts :nextjournal/budget])
                                 (cond-> #_result
                                   (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))
         presented-result (-> (present (merge (dissoc (->opts wrapped-value) :!budget)
-                                             (make-!budget-opts (when (wrapped-value? result) result))
+                                             ;; reset budget from top level form for fragment items to have their own
                                              (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)
                                              opts-from-form-meta))
                              (update :nextjournal/opts
