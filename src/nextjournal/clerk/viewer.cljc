@@ -463,7 +463,7 @@
 (defn fragment [& xs]
   {:nextjournal.clerk/fragment (if (and (sequential? (first xs)) (= 1 (count xs))) (first xs) xs)})
 
-(declare result-viewer ->opts make-!budget-opts)
+(declare result-viewer ->opts)
 
 (defn ^:private processed-block-id
   ([block-id] (processed-block-id block-id []))
