@@ -484,10 +484,10 @@
                                 (select-keys [:nextjournal/css-class :nextjournal/width :nextjournal/opts])
                                 (cond-> #_result
                                   (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))
-        presented-result (-> (present (merge (->opts wrapped-value)
+        presented-result (-> (present (merge (dissoc (->opts wrapped-value) :!budget)
                                              (make-!budget-opts (when (wrapped-value? result) result))
                                              (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)
-                                             (merge opts-from-form-meta)))
+                                             opts-from-form-meta))
                              (update :nextjournal/opts
                                      (fn [{:as opts existing-id :id}]
                                        (cond-> opts
@@ -1381,13 +1381,14 @@
   (:nextjournal/budget opts 200))
 
 (defn make-!budget-opts [opts]
-  (when-let [budget (->budget opts)]
-    {:!budget (atom budget)
-     :nextjournal/budget budget}))
+  (let [budget (->budget opts)]
+    (cond-> {:nextjournal/budget budget}
+      budget (assoc :!budget (atom budget)))))
 
 #_(make-!budget-opts {})
 #_(make-!budget-opts {:nextjournal/budget 42})
 #_(make-!budget-opts {:nextjournal/budget nil})
+#_(make-!budget-opts (make-!budget-opts {:nextjournal/budget nil}))
 
 (defn ^:private present-elision* [!path->wrapped-value {:as fetch-opts :keys [path]}]
   (if-let [wrapped-value (@!path->wrapped-value path)]
