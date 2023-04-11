@@ -474,7 +474,7 @@
 (defn transform-result [{:as wrapped-value :keys [path]}]
   (let [{:as _cell :keys [form id] ::keys [result doc]} (:nextjournal/value wrapped-value)
         {:keys [auto-expand-results? inline-results? bundle?]} doc
-        {:nextjournal/keys [value blob-id budget viewers]} result
+        {:nextjournal/keys [value blob-id viewers]} result
         blob-mode (cond
                     (and (not inline-results?) blob-id) :lazy-load
                     bundle? :inline ;; TODO: provide a separte setting for this
@@ -484,11 +484,10 @@
                                 (select-keys [:nextjournal/css-class :nextjournal/width :nextjournal/opts])
                                 (cond-> #_result
                                   (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))
-        presented-result (-> (present (cond-> (merge (->opts wrapped-value)
-                                                     (make-!budget-opts {})
-                                                     (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value))
-                                        true (merge opts-from-form-meta)
-                                        (contains? result :nextjournal/budget) (assoc :nextjournal/budget budget)))
+        presented-result (-> (present (merge (->opts wrapped-value)
+                                             (make-!budget-opts (when (wrapped-value? result) result))
+                                             (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)
+                                             (merge opts-from-form-meta)))
                              (update :nextjournal/opts
                                      (fn [{:as opts existing-id :id}]
                                        (cond-> opts
