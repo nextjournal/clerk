@@ -463,7 +463,7 @@
 (defn fragment [& xs]
   {:nextjournal.clerk/fragment (if (and (sequential? (first xs)) (= 1 (count xs))) (first xs) xs)})
 
-(declare result-viewer ->opts)
+(declare result-viewer ->opts make-!budget-opts)
 
 (defn ^:private processed-block-id
   ([block-id] (processed-block-id block-id []))
@@ -485,6 +485,7 @@
                                 (cond-> #_result
                                   (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))
         presented-result (-> (present (cond-> (merge (->opts wrapped-value)
+                                                     (make-!budget-opts {})
                                                      (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value))
                                         true (merge opts-from-form-meta)
                                         (contains? result :nextjournal/budget) (assoc :nextjournal/budget budget)))
