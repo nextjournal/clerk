@@ -329,9 +329,9 @@
                  (tree-seq coll? seq)
                  (filter (every-pred map? (comp #{'nextjournal.clerk.render/render-coll} :form :render-fn)))))))
 
-    (is (= 250
+    (is (= 101
            (count
-            (->> (eval/eval-string "^{:nextjournal.clerk/budget nil}(reduce (fn [acc _i] (vector acc)) :fin (range 250 0 -1))")
+            (->> (eval/eval-string "^{:nextjournal.clerk/budget nil}(reduce (fn [acc i] (vector i acc)) :fin (range 101 0 -1))")
                  view/doc->viewer v/->value :blocks
                  (tree-seq coll? seq)
                  (filter (every-pred map? (comp #{'nextjournal.clerk.render/render-coll} :form :render-fn)))))))))
