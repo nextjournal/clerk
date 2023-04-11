@@ -2,9 +2,7 @@
 ;; ---
 (ns slideshow
   (:require [nextjournal.clerk :as clerk]
-            [nextjournal.clerk-slideshow :as clerk-slideshow])
-  (:import (javax.imageio ImageIO)
-           (java.net URL)))
+            [nextjournal.clerk-slideshow :as clerk-slideshow]))
 
 ;; This notebook uses a [slideshow viewer](https://github.com/nextjournal/clerk-slideshow) to override its built-in default notebook viewer.
 ^{::clerk/visibility {:result :hide}}
@@ -31,7 +29,7 @@
 ;; ---
 ;; ## 🖼️ An Image
 ^{::clerk/visibility {:code :hide}}
-(ImageIO/read (URL. "https://images.unsplash.com/photo-1532879311112-62b7188d28ce?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8"))
+(clerk/image "trees.png")
 
 ;; ---
 ;; # 👋🏻 Fin.
