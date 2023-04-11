@@ -75,7 +75,7 @@
 (defn blob->presented [presented-doc]
   ;; TODO: store on doc?
   (into {}
-        (comp (filter #(and (map? %) (v/get-safe :nextjournal/blob-id) (v/get-safe :nextjournal/presented)))
+        (comp (filter #(and (map? %) (v/get-safe % :nextjournal/blob-id) (v/get-safe % :nextjournal/presented)))
               (map (juxt :nextjournal/blob-id :nextjournal/presented)))
         (tree-seq coll? seq
                   (:nextjournal/value presented-doc))))
