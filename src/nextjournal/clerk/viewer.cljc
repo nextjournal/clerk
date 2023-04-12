@@ -313,7 +313,7 @@
 
 (defn into-markup [markup]
   (fn [{:as wrapped-value :nextjournal/keys [viewers opts]}]
-    (-> (with-viewer {:name `markdown-node-viewer :render-fn 'nextjournal.clerk.render/render-with-react-key} wrapped-value)
+    (-> (with-viewer {:name `markdown-node-viewer :render-fn 'identity} wrapped-value)
         mark-presented
         (update :nextjournal/value
                 (fn [{:as node :keys [text content] ::keys [doc]}]
@@ -474,24 +474,26 @@
 (defn transform-result [{:as wrapped-value :keys [path]}]
   (let [{:as _cell :keys [form id] ::keys [result doc]} (:nextjournal/value wrapped-value)
         {:keys [auto-expand-results? inline-results? bundle?]} doc
-        {:nextjournal/keys [value blob-id budget viewers]} result
+        {:nextjournal/keys [value blob-id viewers]} result
         blob-mode (cond
                     (and (not inline-results?) blob-id) :lazy-load
                     bundle? :inline ;; TODO: provide a separte setting for this
                     :else :file)
         #?(:clj blob-opts :cljs _) (assoc doc :blob-mode blob-mode :blob-id blob-id)
         opts-from-form-meta (-> result
-                                (select-keys [:nextjournal/css-class :nextjournal/width :nextjournal/opts])
+                                (select-keys [:nextjournal/css-class :nextjournal/width :nextjournal/opts :nextjournal/budget])
                                 (cond-> #_result
                                   (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))
-        presented-result (->> (present (cond-> (merge (->opts wrapped-value)
-                                                      (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value))
-                                         true (merge opts-from-form-meta)
-                                         true (assoc-in [:nextjournal/opts :id] (processed-block-id (str id "-result") path))
-                                         (seq path) (assoc-in [:nextjournal/opts :fragment-item?] true)
-                                         (contains? result :nextjournal/budget) (assoc :nextjournal/budget budget)))
-                              #?(:clj (process-blobs blob-opts)))
-
+        presented-result (-> (present (merge (dissoc (->opts wrapped-value) :!budget)
+                                             ;; reset budget from top level form for fragment items to have their own
+                                             (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)
+                                             opts-from-form-meta))
+                             (update :nextjournal/opts
+                                     (fn [{:as opts existing-id :id}]
+                                       (cond-> opts
+                                         (seq path) (assoc :fragment-item? true)
+                                         (not existing-id) (assoc :id (processed-block-id (str id "-result") path)))))
+                             #?(:clj (->> (process-blobs blob-opts))))
         viewer-eval-result? (-> presented-result :nextjournal/value viewer-eval?)]
     #_(prn :presented-result viewer-eval? presented-result)
     (-> wrapped-value
@@ -1379,12 +1381,14 @@
   (:nextjournal/budget opts 200))
 
 (defn make-!budget-opts [opts]
-  (when-let [budget (->budget opts)]
-    {:!budget (atom budget)}))
+  (let [budget (->budget opts)]
+    (cond-> {:nextjournal/budget budget}
+      budget (assoc :!budget (atom budget)))))
 
 #_(make-!budget-opts {})
 #_(make-!budget-opts {:nextjournal/budget 42})
 #_(make-!budget-opts {:nextjournal/budget nil})
+#_(make-!budget-opts (make-!budget-opts {:nextjournal/budget nil}))
 
 (defn ^:private present-elision* [!path->wrapped-value {:as fetch-opts :keys [path]}]
   (if-let [wrapped-value (@!path->wrapped-value path)]
@@ -1497,8 +1501,7 @@
                (->opts (normalize-viewer-opts x)))
         !path->wrapped-value (atom {})]
     (-> (ensure-wrapped-with-viewers x)
-        (merge {:nextjournal/budget (->budget opts)
-                :store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
+        (merge {:store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
                                         (swap! !path->wrapped-value assoc path wrapped-value))
                 :present-elision-fn (partial present-elision* !path->wrapped-value)
                 :path (:path opts [])}

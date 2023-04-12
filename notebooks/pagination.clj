@@ -69,6 +69,9 @@
 ^{::clerk/budget 5}
 (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))
 
+(clerk/with-viewer {}
+  {::clerk/budget 5}
+  (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1)))
 
 (clerk/html [:div
              [:h3 "Nesting Images inside " [:span.font-mono "clerk/html"]]
@@ -81,3 +84,9 @@
                [:p [:strong {:nextjournal/value (range 30)}]]]
               [:li "A slanted range:"
                [:p [:em {:nextjournal/value (range 100)}]]]]])
+
+(clerk/html
+ {::clerk/budget 5}
+ [:div
+  [:h3 "Configuring budget inside " [:span.font-mono "clerk/html"]]
+  {:nextjournal/value (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))}])
