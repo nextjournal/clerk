@@ -10,7 +10,11 @@
  (clerk/plotly {::clerk/width :full} {:data [{:y [1 3 2]}]})
  (clerk/html {::clerk/width :full} [:div.h-20.bg-amber-200])
  (clerk/fragment (clerk/html {::clerk/width :full} [:div.h-20.bg-amber-300])
-                 (clerk/html {::clerk/width :full} [:div.h-20.bg-amber-400])))
+                 (clerk/html {::clerk/width :full} [:div.h-20.bg-amber-400])
+                 (reduce (fn [acc i] (vector i acc)) :fin (range 200 0 -1))
+                 (reduce (fn [acc i] (vector i acc)) :fin (range 200 0 -1))
+                 (clerk/with-viewer {} {::clerk/budget 5}
+                   (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1)))))
 
 ;; ## Collapsible Sections
 ;; Fragments allow to hide (and in future versions of Clerk, probably fold) chunks of prose interspersed with results. That is, by using the usual visibility annotation

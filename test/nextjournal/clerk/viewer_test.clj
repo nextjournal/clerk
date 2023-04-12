@@ -312,7 +312,29 @@
             (->> (eval/eval-string "1\n(nextjournal.clerk/fragment 2 3 (nextjournal.clerk/fragment 4 5))\n6")
                  view/doc->viewer v/->value :blocks
                  (tree-seq coll? seq)
-                 (filter (every-pred map? :nextjournal/presented :nextjournal/blob-id))))))))
+                 (filter (every-pred map? :nextjournal/presented :nextjournal/blob-id)))))))
+
+  (testing "customizing budget, user-facing"
+    (is (= 5
+           (count
+            (->> (eval/eval-string "^{:nextjournal.clerk/budget 5}(reduce (fn [acc _i] (vector acc)) :fin (range 100 0 -1))")
+                 view/doc->viewer v/->value :blocks
+                 (tree-seq coll? seq)
+                 (filter (every-pred map? (comp #{'nextjournal.clerk.render/render-coll} :form :render-fn)))))))
+
+    (is (= 5
+           (count
+            (->> (eval/eval-string "(nextjournal.clerk/with-viewer {} {:nextjournal.clerk/budget 5} (reduce (fn [acc i] (vector acc)) :fin (range 15 0 -1)))")
+                 view/doc->viewer v/->value :blocks
+                 (tree-seq coll? seq)
+                 (filter (every-pred map? (comp #{'nextjournal.clerk.render/render-coll} :form :render-fn)))))))
+
+    (is (= 101
+           (count
+            (->> (eval/eval-string "^{:nextjournal.clerk/budget nil}(reduce (fn [acc i] (vector i acc)) :fin (range 101 0 -1))")
+                 view/doc->viewer v/->value :blocks
+                 (tree-seq coll? seq)
+                 (filter (every-pred map? (comp #{'nextjournal.clerk.render/render-coll} :form :render-fn)))))))))
 
 (deftest ->edn
   (testing "normal symbols and keywords"
