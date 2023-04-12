@@ -65,6 +65,10 @@ Require and start Clerk as part of your system start, e.g. in `user.clj`:
 ;; start with watcher and show filter function to enable notebook pinning
 (clerk/serve! {:watch-paths ["notebooks" "src"] :show-filter-fn #(clojure.string/starts-with? % "notebooks")})
 
+;; Build a html file from the given notebook notebooks.
+;; See the docstring for more options.
+(clerk/build! {:paths ["notebooks/rule_30.clj"]})
+
 ```
 
 You can then access Clerk at <http://localhost:7777>.
