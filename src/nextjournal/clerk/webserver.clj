@@ -152,6 +152,14 @@
 
 (declare present+reset! set-status!)
 
+(defn eval-file [file]
+  (let [doc (parser/parse-file {:doc? true} file)
+        {:keys [result time-ms]} (eval/time-ms
+                                  (eval/eval-doc (:blob->result @!doc)
+                                                 (assoc doc :set-status-fn set-status!)))]
+    (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
+    result))
+
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
     (httpkit/as-channel req ws-handlers)
@@ -166,12 +174,7 @@
          :body (view/doc->html {:error @!error
                                 :doc (or (let [file (subs uri 1)]
                                            (when (and (fs/exists? file) (fs/regular-file? file))
-                                             (let [doc (parser/parse-file {:doc? true} file)
-                                                   {:keys [result time-ms]} (eval/time-ms
-                                                                             (eval/eval-doc (:blob->result @!doc)
-                                                                                            (assoc doc :set-status-fn set-status!)))]
-                                               (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
-                                               (doto result present+reset!))))
+                                             (doto (eval-file file) present+reset!)))
                                          @!doc
                                          (help-doc))})})
       (catch Throwable e
