@@ -87,8 +87,8 @@
 (defn show [& content]
   (let [!panel-ref (hooks/use-ref nil)
         !dragging? (hooks/use-state nil)]
-    [:div.fixed.bg-white.dark:bg-slate-900.shadow-xl.ring-1.text-slate-800.dark:text-slate-100.hover:ring-2.rounded-lg.flex.flex-col
-     {:class (str "z-[1000] " (if @!dragging? "ring-indigo-600 select-none " "ring-slate-300 dark:ring-slate-700 "))
+    [:div.fixed.bg-white.dark:bg-slate-900.shadow-xl.text-slate-800.dark:text-slate-100.rounded-lg.flex.flex-col.hover:ring-2
+     {:class (str "z-[1000] " (if @!dragging? "ring-indigo-600 select-none ring-2 " "ring-slate-300 dark:ring-slate-700 ring-1 "))
       :ref !panel-ref
       :style {:top 30 :right 30 :width 400 :height 400}}
      [resizer {:on-resize (fn [dir dx dy]
@@ -111,9 +111,17 @@
                :on-resize-end #(reset! !dragging? false)}]
      [header {:on-drag (fn [dx dy]
                          (when-let [panel @!panel-ref]
-                           (let [{:keys [left top]} (j/lookup (.getBoundingClientRect panel))]
-                             (j/assoc-in! panel [:style :left] (str (+ left dx) "px"))
-                             (j/assoc-in! panel [:style :top] (str (+ top dy) "px")))))
+                           (let [{:keys [left top width]} (j/lookup (.getBoundingClientRect panel))
+                                 x-edge-offset 20
+                                 y-edge-offset 10]
+                             (j/assoc-in! panel [:style :left] (str (min (- js/innerWidth x-edge-offset)
+                                                                         (max (+ x-edge-offset (- width))
+                                                                              (+ left dx)))
+                                                                    "px"))
+                             (j/assoc-in! panel [:style :top] (str (min (- js/innerHeight y-edge-offset)
+                                                                        (max y-edge-offset
+                                                                             (+ top dy)))
+                                                                   "px")))))
               :on-drag-start #(reset! !dragging? true)
               :on-drag-end #(reset! !dragging? false)}]
      (into [:div.p-3.flex-auto.overflow-auto] content)]))
