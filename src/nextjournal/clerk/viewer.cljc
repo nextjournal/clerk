@@ -536,7 +536,7 @@
                                    (store+get-cas-url! (assoc doc :ext (fs/extension src))
                                                        (fs/read-all-bytes src)))
              bundle? (data-uri-base64-encode (fs/read-all-bytes src) (Files/probeContentType (fs/path src)))
-             :else (str "_fs/" src))))
+             :else (str "/_fs/" src))))
 
 #?(:clj
    (defn read-image [image-or-url]
