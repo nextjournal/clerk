@@ -203,9 +203,11 @@
                 {:type :set-state!
                  :doc (present+reset! doc)
                  :effects [(v/->ViewerEval (list 'js/history.replaceState nil title
-                                                 (str "/" (cond->> file
-                                                            (fs/absolute? file)
-                                                            (fs/relativize (fs/cwd))))))]})))
+                                                 (str "/" (try
+                                                            (when (fs/exists? file)
+                                                              (cond->> file
+                                                                (fs/absolute? file)
+                                                                (fs/relativize (fs/cwd)))) (catch Exception _)))))]})))
 
 #_(update-doc! (help-doc))
 
