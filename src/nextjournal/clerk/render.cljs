@@ -16,6 +16,7 @@
             [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clerk.render.localstorage :as localstorage]
             [nextjournal.clerk.render.navbar :as navbar]
+            [nextjournal.clerk.render.window :as window]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.markdown.transform :as md.transform]
             [reagent.core :as r]
@@ -178,6 +179,7 @@
            {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-[7px] text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
           [navbar/panel !state [navbar/navbar !state]]])
        [:div.flex-auto.w-screen.scroll-container
+        [window/show [inspect (map (comp #(map (constantly '🤌) %) range) (range 1 100))]]
         (into
          [:> (.-div motion)
           {:key "notebook-viewer"
