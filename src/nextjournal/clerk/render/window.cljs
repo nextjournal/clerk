@@ -1,6 +1,5 @@
 (ns nextjournal.clerk.render.window
-  (:require ["react" :as react]
-            [applied-science.js-interop :as j]
+  (:require [applied-science.js-interop :as j]
             [nextjournal.clerk.render.hooks :as hooks]))
 
 (defn resizer [{:keys [on-resize on-resize-start on-resize-end] :or {on-resize-start #() on-resize-end #()}}]

@@ -16,7 +16,6 @@
             [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clerk.render.localstorage :as localstorage]
             [nextjournal.clerk.render.navbar :as navbar]
-            [nextjournal.clerk.render.window :as window]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.markdown.transform :as md.transform]
             [reagent.core :as r]
