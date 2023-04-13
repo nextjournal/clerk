@@ -699,18 +699,16 @@
           (if (fs/exists? link)
             {:file link}
             (let [sym (symbol link)]
-              (cond (qualified-symbol? sym)
-                    (when-let [var (try (requiring-resolve sym)
-                                        (catch Exception _ nil))]
-                      (merge {:var var} (resolve-href (-> var symbol namespace))))
-
-                    :else
-                    (when-let [ns (try (require sym)
-                                       (find-ns sym)
-                                       (catch Exception _ nil))]
-                      (cond-> {:ns ns}
-                        (fs/exists? (analyzer/ns->file sym))
-                        (assoc :file (analyzer/ns->file sym)))))))))
+              (if (qualified-symbol? sym)
+                (when-some [var (try (requiring-resolve sym)
+                                     (catch Exception _ nil))]
+                  (merge {:var var} (resolve-href (-> var symbol namespace))))
+                (when-some [ns (try (require sym)
+                                    (find-ns sym)
+                                    (catch Exception _ nil))]
+                  (cond-> {:ns ns}
+                    (fs/exists? (analyzer/ns->file sym))
+                    (assoc :file (analyzer/ns->file sym)))))))))
 
 #_(resolve-href "notebooks/hello.clj")
 #_(resolve-href "nextjournal.clerk.tap")
