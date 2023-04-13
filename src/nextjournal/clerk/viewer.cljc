@@ -699,10 +699,7 @@
           (if (fs/exists? link)
             {:file link}
             (let [sym (symbol link)]
-              (cond (fs/exists? link)
-                    {:file link}
-
-                    (qualified-symbol? sym)
+              (cond (qualified-symbol? sym)
                     (when-let [var (try (requiring-resolve sym)
                                         (catch Exception _ nil))]
                       (merge {:var var} (resolve-href (-> var symbol namespace))))
@@ -723,7 +720,7 @@
   #?(:clj
      (let [{:keys [file var ns]} (resolve-href href)]
        {:href (cond-> file
-                var (str "#" (-> var symbol name) "-code"))
+                var (str "#" (-> var symbol str) "-code"))
         :title (or (when var (str var))
                    (when (or file ns) (:title (parser/parse-file {:doc? true} file)))
                    href)})
