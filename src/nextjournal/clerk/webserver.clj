@@ -157,6 +157,11 @@
       (assoc :set-status-fn set-status!)
       eval/eval-doc))
 
+(defn guard [p x] (when (p x) x))
+(defn existing-notebook-path [uri]
+  (when-some [ex (or (guard fs/exists? uri) (guard fs/exists? (subs uri 1)))]
+    (guard fs/regular-file? ex)))
+
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
     (httpkit/as-channel req ws-handlers)
@@ -169,9 +174,8 @@
         {:status 200
          :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
          :body (view/doc->html {:error @!error
-                                :doc (or (let [file (subs uri 1)]
-                                           (when (and (fs/exists? file) (fs/regular-file? file))
-                                             (doto (eval-file file) present+reset!)))
+                                :doc (or (when-some [file (existing-notebook-path uri)]
+                                           (doto (eval-file file) present+reset!))
                                          @!doc
                                          (help-doc))})})
       (catch Throwable e

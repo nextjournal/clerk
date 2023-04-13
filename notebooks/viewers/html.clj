@@ -1,5 +1,7 @@
 ;; # HTML & Hiccup 🧙‍♀️
-(ns viewers.html (:require [nextjournal.clerk :as clerk]))
+(ns viewers.html
+  (:require [babashka.fs :as fs]
+            [nextjournal.clerk :as clerk]))
 
 (clerk/html "<h3>Ohai, HTML! 👋</h3>")
 
@@ -23,7 +25,7 @@
 
 (clerk/html
  [:ol (list [:li [:a {:href (clerk/doc-url "notebooks/viewers/image.clj")} "Images"]]
-            [:li [:a {:href (clerk/doc-url "notebooks/markdown.md")} "Markdown"]]
+            [:li [:a {:href (clerk/doc-url (fs/absolutize "notebooks/rule_30.clj"))} "Rule 30"]]
             [:li [:a {:href (clerk/doc-url "notebooks/markdown.md#appendix")} "Appendix"]]
             [:li [:a {:href (clerk/doc-url "notebooks/viewer_api.clj#tables")} "Viewer API / Tables"]]
             [:li [:a {:href (clerk/doc-url "notebooks/how_clerk_works.clj#step-4:-evaluation")} "Clerk Evaluation"]])])
