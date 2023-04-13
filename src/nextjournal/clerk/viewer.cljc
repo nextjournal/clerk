@@ -719,10 +719,9 @@
 (defn process-internal-link [href]
   #?(:clj
      (let [{:keys [file var ns]} (resolve-href href)]
-       {:href (cond-> file
-                var (str "#" (-> var symbol str) "-code"))
-        :title (or (when var (str var))
-                   (when (or file ns) (:title (parser/parse-file {:doc? true} file)))
+       {:href (cond-> file var (str "#" (-> var symbol str) "-code"))
+        :title (or (when var (-> var symbol str))
+                   (when file (:title (parser/parse-file {:doc? true} file)))
                    href)})
      :cljs
      {:path href :title href}))
