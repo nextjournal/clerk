@@ -722,7 +722,7 @@
                    (when file (:title (parser/parse-file {:doc? true} file)))
                    href)})
      :cljs
-     {:path href :title href}))
+     {:href href :title href}))
 
 #_ (process-internal-link "viewers.html")
 #_ (process-internal-link "how-clerk-works/hashes")
