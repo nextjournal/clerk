@@ -324,9 +324,9 @@
                       (report-fn {:stage :building :doc doc :idx idx})
                       (let [{result :result duration :time-ms} (eval/time-ms
                                                                 (try
-                                                                  (let [doc (binding [viewer/doc-url (partial doc-url opts state file)]
-                                                                              (eval/eval-analyzed-doc doc))]
-                                                                    (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc)))
+                                                                  (binding [viewer/doc-url (partial doc-url opts state file)]
+                                                                    (let [doc (eval/eval-analyzed-doc doc)]
+                                                                      (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc))))
                                                                   (catch Exception e
                                                                     {:error e})))]
                         (report-fn (merge {:stage :built :duration duration :idx idx}
@@ -353,7 +353,6 @@
 #_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
 #_(build-static-app! {:paths ["notebooks/viewers/**"]})
 #_(build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
-#_ (reset! config/!resource->url @config/!asset-map)
 #_(swap! config/!resource->url dissoc "/css/viewer.css")
 #_(build-static-app! {:ssr? true
                       :compile-css? true
@@ -361,6 +360,14 @@
                       :resource->url {"/js/viewer.js" "./build/viewer.js"}
                       :index "notebooks/rule_30.clj"})
 #_(fs/delete-tree "public/build")
+#_(build-static-app! {:resource->url @config/!asset-map
+                      :paths ["notebooks/viewers/image.clj"
+                              "notebooks/viewers/html.clj"
+                              "notebooks/rule_30.clj"
+                              "notebooks/viewers/markdown.clj"
+                              "notebooks/markdown.md"
+                              "notebooks/viewer_api.clj"
+                              "notebooks/how_clerk_works.clj"]})
 #_(build-static-app! {:compile-css? true
                       :index "notebooks/rule_30.clj"
                       :paths ["notebooks/hello.clj"
