@@ -173,13 +173,17 @@
         ("build" "js" "css") (serve-file uri (str "public" uri))
         ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
         "_ws" {:status 200 :body "upgrading..."}
-        {:status 200
-         :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
-         :body (view/doc->html {:error @!error
-                                :doc (or (when-some [file (existing-notebook-path uri)]
-                                           (doto (eval-file file) present+reset!))
-                                         @!doc
-                                         (help-doc))})})
+        (httpkit/as-channel
+         req {:on-open (fn [ch]
+                         (future
+                          (let [doc (or (when-some [file (existing-notebook-path uri)] (eval-file file))
+                                        @!doc (help-doc))]
+                            (broadcast! {:type :set-state! :doc (present+reset! doc)})))
+                         (httpkit/send! ch
+                                        {:status 200
+                                         :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
+                                         :body (view/doc->html {:error @!error
+                                                                :doc {}})}))}))
       (catch Throwable e
         {:status  500
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
