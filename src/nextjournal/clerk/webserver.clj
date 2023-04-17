@@ -183,7 +183,7 @@
     (reset! !doc (with-meta doc presented))
     presented))
 
-(defn update-doc! [{:as doc :keys [file title]}]
+(defn update-doc! [doc]
   (reset! !error nil)
   (broadcast! (if (= (:ns @!doc) (:ns doc))
                 {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
