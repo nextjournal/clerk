@@ -129,6 +129,21 @@
 
 (declare inspect-children)
 
+(defn closest-anchor-parent [el]
+  (loop [el el]
+    (when el
+      (if (= "A" (.-nodeName el))
+        el
+        (recur (.-parentNode el))))))
+
+(declare clerk-eval)
+(defn ->URL [s] (new js/URL s))
+(defn handle-anchor-click [e]
+  (when-some [notebook-path (some-> e .-target closest-anchor-parent .-href ->URL .-searchParams (.get "clerk-show"))]
+    (js/console.log :clerk/show notebook-path )
+    (.preventDefault e)
+    (clerk-eval (list 'nextjournal.clerk/show! notebook-path))))
+
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility]} opts]
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
@@ -147,14 +162,18 @@
                                         stored-open?
                                         (not= :collapsed toc-visibility))})
                root-ref-fn (fn [el]
-                             (when el
-                               (setup-dark-mode! !state)
-                               (when-some [heading (when (and (exists? js/location) (not bundle?))
-                                                     (try (some-> js/location .-hash not-empty js/decodeURI js/document.querySelector)
-                                                          (catch js/Error _
-                                                            (js/console.warn (str "Clerk render-notebook, invalid selector: "
-                                                                                  (.-hash js/location))))))]
-                                 (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
+                             (if el
+                               (when (exists? js/document)
+                                 (js/document.addEventListener "click" handle-anchor-click)
+                                 (setup-dark-mode! !state)
+                                 (when-some [heading (when (and (exists? js/location) (not bundle?))
+                                                       (try (some-> js/location .-hash not-empty js/decodeURI js/document.querySelector)
+                                                            (catch js/Error _
+                                                              (js/console.warn (str "Clerk render-notebook, invalid selector: "
+                                                                                    (.-hash js/location))))))]
+                                   (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading))))
+                               (when (exists? js/document)
+                                 (js/document.removeEventListener "click" handle-anchor-click))))]
     (let [{:keys [md-toc mobile? open? visibility]} @!state
           doc-inset (cond
                       mobile? 0

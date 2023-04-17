@@ -1,5 +1,7 @@
 ;; # HTML & Hiccup 🧙‍♀️
-(ns viewers.html (:require [nextjournal.clerk :as clerk]))
+(ns viewers.html
+  (:require [babashka.fs :as fs]
+            [nextjournal.clerk :as clerk]))
 
 (clerk/html "<h3>Ohai, HTML! 👋</h3>")
 
@@ -22,6 +24,14 @@
               " notebook."]) nil)
 
 (clerk/html
- [:ol (list [:li "One"]
-            [:li "Two"]
-            [:li "Three"])])
+ [:ol (list [:li [:a {:href (clerk/doc-url "notebooks/viewers/image.clj")} "Images"]]
+            [:li [:a {:href (clerk/doc-url (str (fs/absolutize "notebooks/rule_30.clj")))} "Rule 30"]]
+            [:li [:a {:href (clerk/doc-url "notebooks/markdown.md#appendix")} "Appendix"]]
+            [:li [:a {:href (clerk/doc-url "notebooks/viewer_api.clj#tables")} "Viewer API / Tables"]]
+            [:li [:a {:href (clerk/doc-url "notebooks/how_clerk_works.clj#step-4:-evaluation")} "Clerk Evaluation"]])])
+
+(clerk/with-viewer
+  '(fn [_ _]
+     [:ol (list [:li [:a {:href (nextjournal.clerk.viewer/doc-url "notebooks/viewers/image.clj")} "Images"]]
+                [:li [:a {:href (nextjournal.clerk.viewer/doc-url "notebooks/markdown.md")} "Markdown"]]
+                [:li [:a {:href (nextjournal.clerk.viewer/doc-url "notebooks/viewer_api.clj#tables")} "Viewer API / Tables"]])]) nil)
