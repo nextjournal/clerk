@@ -101,15 +101,17 @@
 ;; serialized to the client currently don't preserve metadata in clerk, and
 ;; async functions need `^:async`, we use a plain string.
 
+
 ^::clerk/no-cache
-(clerk/eval-cljs-str
+(clerk/eval-cljs
  {:evaluator :cherry}
- "(defn ^:async emoji-picker []
-   (js/await (js/import \"https://cdn.skypack.dev/emoji-picker-element\"))
-   (nextjournal.clerk.viewer/html
-     [:div
-      [:p \"My cool emoji picker:\"]
-      [:emoji-picker]]))")
+ '(defn emoji-picker
+    {:async true}
+    []
+    (js/await (js/import "https://cdn.skypack.dev/emoji-picker-element"))
+    (nextjournal.clerk.viewer/html [:div
+                                    [:p "My cool emoji picker:"]
+                                    [:emoji-picker]])))
 
 ;; In the next block we call it:
 

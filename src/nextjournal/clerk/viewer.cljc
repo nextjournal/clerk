@@ -75,19 +75,15 @@
 
 #?(:clj
    (defmethod print-method ViewerFn [v ^java.io.Writer w]
-     (.write w (str "#viewer-fn"
-                    (when (= :cherry (:evaluator v))
-                      "/cherry")
-                    " " (:form v)))))
+     (.write w (str "#viewer-fn" (when (= :cherry (:evaluator v))
+                                   "/cherry")
+                    " " (pr-str (:form v))))))
 
 #?(:clj
    (defmethod print-method ViewerEval [v ^java.io.Writer w]
-     (.write w (str "#viewer-eval"
-                    (when (= :cherry (:evaluator v))
-                      "/cherry")
-                    " "
-                    (binding [*print-meta* true]
-                      (pr-str (:form v))))))
+     (.write w (str "#viewer-eval" (when (= :cherry (:evaluator v))
+                                     "/cherry")
+                    " " (pr-str (:form v)))))
    :cljs
    (extend-type ViewerEval
      IPrintWithWriter
@@ -352,7 +348,7 @@
 #?(:clj
    (defmethod print-method clojure.lang.Keyword [o w]
      (if (roundtrippable? o)
-       (.write w (str o))
+       (print-simple o w)
        (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
                                           (list 'keyword ns (name o))
                                           (list 'keyword (name o)))))))))
@@ -361,7 +357,7 @@
    (defmethod print-method clojure.lang.Symbol [o w]
      (if (or (roundtrippable? o)
              (= (name o) "?@")) ;; splicing reader conditional, see issue #338
-       (.write w (str o))
+       (print-simple o w)
        (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
                                           (list 'symbol ns (name o))
                                           (list 'symbol (name o)))))))))
