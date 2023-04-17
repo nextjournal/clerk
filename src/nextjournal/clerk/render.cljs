@@ -561,7 +561,7 @@
     [:span.cmt-meta tag] (when space? nbsp) value]))
 
 (defonce !doc (ratom/atom nil))
-(defonce !windows (r/atom {}))
+(defonce !windows (ratom/atom {}))
 (defonce !error (ratom/atom nil))
 (defonce !viewers viewer/!viewers)
 
