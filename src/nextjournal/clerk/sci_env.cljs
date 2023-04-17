@@ -63,7 +63,7 @@
 (defn ->viewer-eval-with-error [form]
   (try (*eval* form)
        (catch js/Error e
-         (js/console.error "error in viewer-eval" e)
+         (js/console.error "error in viewer-eval" e form)
          (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))
 
 (defonce !edamame-opts
@@ -93,7 +93,7 @@
 
 (def ^{:doc "Stub implementation to be replaced during static site generation. Clerk is only serving one page currently."}
   doc-url
-  (sci/new-var 'doc-url (fn [x] (str "#" x))))
+  (sci/new-var 'doc-url (fn [path] (str "?show=" path))))
 
 (def viewer-namespace
   (merge (sci/copy-ns nextjournal.clerk.viewer (sci/create-ns 'nextjournal.clerk.viewer))

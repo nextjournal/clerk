@@ -138,9 +138,16 @@
 
 (declare clerk-eval)
 (defn ->URL [s] (new js/URL s))
-(defn handle-anchor-click [e]
+(defn handle-anchor-click [^js e]
   (when-some [notebook-path (some-> e .-target closest-anchor-parent .-href ->URL .-searchParams (.get "clerk-show"))]
-    (js/console.log :clerk/show notebook-path )
+    (.preventDefault e)
+    (clerk-eval (list 'nextjournal.clerk/show! notebook-path))))
+
+(defn history-push-state [path]
+  (js/history.pushState #js {:clerk_show path} nil ""))
+
+(defn handle-history-popstate [^js e]
+  (when-some [notebook-path (.. e -state -clerk_show)]
     (.preventDefault e)
     (clerk-eval (list 'nextjournal.clerk/show! notebook-path))))
 
@@ -165,6 +172,7 @@
                              (if el
                                (when (exists? js/document)
                                  (js/document.addEventListener "click" handle-anchor-click)
+                                 (js/window.addEventListener "popstate" handle-history-popstate true)
                                  (setup-dark-mode! !state)
                                  (when-some [heading (when (and (exists? js/location) (not bundle?))
                                                        (try (some-> js/location .-hash not-empty js/decodeURI js/document.querySelector)
@@ -173,7 +181,8 @@
                                                                                     (.-hash js/location))))))]
                                    (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading))))
                                (when (exists? js/document)
-                                 (js/document.removeEventListener "click" handle-anchor-click))))]
+                                 (js/document.removeEventListener "click" handle-anchor-click)
+                                 (js/window.removeEventListener "popstate" handle-history-popstate))))]
     (let [{:keys [md-toc mobile? open? visibility]} @!state
           doc-inset (cond
                       mobile? 0

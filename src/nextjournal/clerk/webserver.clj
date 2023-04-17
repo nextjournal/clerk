@@ -182,12 +182,18 @@
     (reset! !doc (with-meta doc presented))
     presented))
 
-
-(defn update-doc! [doc]
+(defn update-doc! [{:as doc :keys [file title]}]
   (reset! !error nil)
   (broadcast! (if (= (:ns @!doc) (:ns doc))
                 {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
-                {:type :set-state! :doc (present+reset! doc)})))
+                {:type :set-state! :doc (present+reset! doc)
+                 :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/history-push-state
+                                                 (try
+                                                   (when (fs/exists? file)
+                                                     (str
+                                                      (cond->> file
+                                                        (fs/absolute? file)
+                                                        (fs/relativize (fs/cwd))))) (catch Exception _))))]})))
 
 #_(update-doc! (help-doc))
 
