@@ -612,8 +612,8 @@
      [:div.fixed.top-0.left-0.w-full.h-full
       [inspect-presented @!error]])
    (into [:<>]
-         (map (fn [[_id {:keys [title presented-value]}]]
-                [window/show [inspect-presented presented-value]]))
+         (map (fn [[id {:as opts :keys [presented-value]}]]
+                [window/show [inspect-presented presented-value] (dissoc opts :presented-value)]))
          @!windows)])
 
 (declare mount)

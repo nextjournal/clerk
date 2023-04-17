@@ -81,8 +81,10 @@
 #_(recompute!)
 
 (defn window!
-  ([id] (case id ::taps (webserver/update-window! id (col @!taps))))
-  ([id content] (webserver/update-window! id content)))
+  ([id] (case id ::taps (webserver/update-window! id {:title "🚰Taps"} (col @!taps))))
+  ([id content] (window! id {} content))
+  ([id opts content]
+   (webserver/update-window! id (merge opts {:presented-value (v/present content)}))))
 
 (defn destroy-window! [id] (webserver/destroy-window! id))
 
@@ -99,7 +101,7 @@
 #_(destroy-window! ::taps)
 #_ (tap> (html [:h1 "Ahoi"]))
 #_ (tap> (table [[1 2] [3 4]]))
-#_(window! ::my-window-2 (table [[1 2] [3 4]]))
+#_(window! ::my-window-3 {:title "Ahoi"} (table [[1 2] [3 4]]))
 #_(destroy-window! ::my-window-2)
 
 (defn ^:private supported-file?

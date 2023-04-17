@@ -49,7 +49,7 @@
       {:on-mouse-down #(handle-mouse-down :left)
        :class "w-[4px]"}]]))
 
-(defn header [{:keys [on-drag on-drag-start on-drag-end] :or {on-drag-start #() on-drag-end #()}}]
+(defn header [{:keys [title on-drag on-drag-start on-drag-end] :or {on-drag-start #() on-drag-end #()}}]
   (let [!mouse-down (hooks/use-state false)]
     (hooks/use-effect (fn []
                         (let [handle-mouse-up (fn []
@@ -67,7 +67,7 @@
      {:class "h-[14px]"
       :on-mouse-down (fn [event]
                        (on-drag-start)
-                       (reset! !mouse-down {:start-x (.-screenX event) :start-y (.-screenY event)}))}]))
+                       (reset! !mouse-down {:start-x (.-screenX event) :start-y (.-screenY event)}))} title]))
 
 (defn resize-top [panel {:keys [top height]} dy]
   (j/assoc-in! panel [:style :height] (str (- height dy) "px"))
@@ -111,67 +111,69 @@
       (j/assoc-in! [:style :top] "5px")
       (j/assoc-in! [:style :left] "5px")))
 
-(defn show [& content]
-  (let [!panel-ref (hooks/use-ref nil)
-        !dragging? (hooks/use-state nil)
-        !dockable-at (hooks/use-state nil)
-        !docking-ref (hooks/use-ref nil)]
-    [:<>
-     [:div.fixed.border-2.border-dashed.border-indigo-600.border-opacity-70.bg-indigo-600.bg-opacity-30.pointer-events-none.transition-all.rounded-lg
-      {:class (str "z-[999] " (if-let [side @!dockable-at]
-                                (str "opacity-100 " (case side
-                                                      :top "left-[5px] top-[5px] right-[5px] h-[33vh]"
-                                                      :left "left-[5px] top-[5px] bottom-[5px] w-[33vw]"
-                                                      :bottom "left-[5px] bottom-[5px] right-[5px] h-[33vh]"
-                                                      :right "right-[5px] top-[5px] bottom-[5px] w-[33vw]"))
-                                "opacity-0 "))}]
-     [:div.fixed.bg-white.dark:bg-slate-900.shadow-xl.text-slate-800.dark:text-slate-100.rounded-lg.flex.flex-col.hover:ring-2
-      {:class (str "z-[1000] " (if @!dragging? "ring-indigo-600 select-none ring-2 " "ring-slate-300 dark:ring-slate-700 ring-1 "))
-       :ref !panel-ref
-       :style {:top 30 :right 30 :width 400 :height 400}}
-      [resizer {:on-resize (fn [dir dx dy]
-                             (when-let [panel @!panel-ref]
-                               (let [rect (j/lookup (.getBoundingClientRect panel))]
-                                 (case dir
-                                   :top-left (do (resize-top panel rect dy)
-                                                 (resize-left panel rect dx))
-                                   :top (resize-top panel rect dy)
-                                   :top-right (do (resize-top panel rect dy)
-                                                  (resize-right panel rect dx))
-                                   :right (resize-right panel rect dx)
-                                   :bottom-right (do (resize-bottom panel rect dy)
-                                                     (resize-right panel rect dx))
-                                   :bottom (resize-bottom panel rect dy)
-                                   :bottom-left (do (resize-bottom panel rect dy)
-                                                    (resize-left panel rect dx))
-                                   :left (resize-left panel rect dx)))))
-                :on-resize-start #(reset! !dragging? true)
-                :on-resize-end #(reset! !dragging? false)}]
-      [header {:on-drag (fn [{:keys [x y dx dy]}]
-                          (when-let [panel @!panel-ref]
-                            (let [{:keys [left top width]} (j/lookup (.getBoundingClientRect panel))
-                                  x-edge-offset 20
-                                  y-edge-offset 10
-                                  vw js/innerWidth
-                                  vh js/innerHeight]
-                              (reset! !dockable-at (cond
-                                                     (zero? x) :left
-                                                     (>= x (- vw 2)) :right
-                                                     (<= y 0) :top
-                                                     (>= y (- vh 2)) :bottom
-                                                     :else nil))
-                              (reset! !docking-ref @!dockable-at)
-                              (j/assoc-in! panel [:style :left] (str (min (- vw x-edge-offset) (max (+ x-edge-offset (- width)) (+ left dx))) "px"))
-                              (j/assoc-in! panel [:style :top] (str (min (- vh y-edge-offset) (max y-edge-offset (+ top dy))) "px")))))
-               :on-drag-start #(reset! !dragging? true)
-               :on-drag-end (fn []
-                              (when-let [side @!docking-ref]
-                                (let [panel @!panel-ref]
-                                  (case side
-                                    :top (dock-at-top panel)
-                                    :right (dock-at-right panel)
-                                    :bottom (dock-at-bottom panel)
-                                    :left (dock-at-left panel))))
-                              (reset! !dockable-at nil)
-                              (reset! !docking-ref nil))}]
-      (into [:div.p-3.flex-auto.overflow-auto] content)]]))
+(defn show
+  ([content] (show content {}))
+  ([content opts]
+   (let [!panel-ref (hooks/use-ref nil)
+         !dragging? (hooks/use-state nil)
+         !dockable-at (hooks/use-state nil)
+         !docking-ref (hooks/use-ref nil)]
+     [:<>
+      [:div.fixed.border-2.border-dashed.border-indigo-600.border-opacity-70.bg-indigo-600.bg-opacity-30.pointer-events-none.transition-all.rounded-lg
+       {:class (str "z-[999] " (if-let [side @!dockable-at]
+                                 (str "opacity-100 " (case side
+                                                       :top "left-[5px] top-[5px] right-[5px] h-[33vh]"
+                                                       :left "left-[5px] top-[5px] bottom-[5px] w-[33vw]"
+                                                       :bottom "left-[5px] bottom-[5px] right-[5px] h-[33vh]"
+                                                       :right "right-[5px] top-[5px] bottom-[5px] w-[33vw]"))
+                                 "opacity-0 "))}]
+      [:div.fixed.bg-white.dark:bg-slate-900.shadow-xl.text-slate-800.dark:text-slate-100.rounded-lg.flex.flex-col.hover:ring-2
+       {:class (str "z-[1000] " (if @!dragging? "ring-indigo-600 select-none ring-2 " "ring-slate-300 dark:ring-slate-700 ring-1 "))
+        :ref !panel-ref
+        :style {:top 30 :right 30 :width 400 :height 400}}
+       [resizer {:on-resize (fn [dir dx dy]
+                              (when-let [panel @!panel-ref]
+                                (let [rect (j/lookup (.getBoundingClientRect panel))]
+                                  (case dir
+                                    :top-left (do (resize-top panel rect dy)
+                                                  (resize-left panel rect dx))
+                                    :top (resize-top panel rect dy)
+                                    :top-right (do (resize-top panel rect dy)
+                                                   (resize-right panel rect dx))
+                                    :right (resize-right panel rect dx)
+                                    :bottom-right (do (resize-bottom panel rect dy)
+                                                      (resize-right panel rect dx))
+                                    :bottom (resize-bottom panel rect dy)
+                                    :bottom-left (do (resize-bottom panel rect dy)
+                                                     (resize-left panel rect dx))
+                                    :left (resize-left panel rect dx)))))
+                 :on-resize-start #(reset! !dragging? true)
+                 :on-resize-end #(reset! !dragging? false)}]
+       [header (merge {:on-drag (fn [{:keys [x y dx dy]}]
+                                  (when-let [panel @!panel-ref]
+                                    (let [{:keys [left top width]} (j/lookup (.getBoundingClientRect panel))
+                                          x-edge-offset 20
+                                          y-edge-offset 10
+                                          vw js/innerWidth
+                                          vh js/innerHeight]
+                                      (reset! !dockable-at (cond
+                                                             (zero? x) :left
+                                                             (>= x (- vw 2)) :right
+                                                             (<= y 0) :top
+                                                             (>= y (- vh 2)) :bottom
+                                                             :else nil))
+                                      (reset! !docking-ref @!dockable-at)
+                                      (j/assoc-in! panel [:style :left] (str (min (- vw x-edge-offset) (max (+ x-edge-offset (- width)) (+ left dx))) "px"))
+                                      (j/assoc-in! panel [:style :top] (str (min (- vh y-edge-offset) (max y-edge-offset (+ top dy))) "px")))))
+                       :on-drag-start #(reset! !dragging? true)
+                       :on-drag-end (fn []
+                                      (when-let [side @!docking-ref]
+                                        (let [panel @!panel-ref]
+                                          (case side
+                                            :top (dock-at-top panel)
+                                            :right (dock-at-right panel)
+                                            :bottom (dock-at-bottom panel)
+                                            :left (dock-at-left panel))))
+                                      (reset! !dockable-at nil)
+                                      (reset! !docking-ref nil))} opts)]
+       [:div.p-3.flex-auto.overflow-auto content]]])))
