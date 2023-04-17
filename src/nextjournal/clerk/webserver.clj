@@ -191,6 +191,9 @@
 
 #_(update-doc! (help-doc))
 
+(defn update-window! [id content]
+  (broadcast! {:type :set-window-state! :id id :state {:presented-value (v/present content)}}))
+(defn destroy-window! [id] (broadcast! {:type :destroy-window! :id id}))
 
 
 (defn broadcast-status! [status]

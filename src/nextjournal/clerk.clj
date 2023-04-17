@@ -80,6 +80,12 @@
 
 #_(recompute!)
 
+(defn window! [id content] (webserver/update-window! id content))
+(defn destroy-window! [id content] (webserver/destroy-window! id))
+
+#_(window! ::my-window-2 (table [[1 2] [3 4]]))
+#_(destroy-window! ::my-window-2 (table [[1 2] [3 4]]))
+
 (defn ^:private supported-file?
   "Returns whether `path` points to a file that should be shown."
   [path]

@@ -16,6 +16,7 @@
             [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clerk.render.localstorage :as localstorage]
             [nextjournal.clerk.render.navbar :as navbar]
+            [nextjournal.clerk.render.window :as window]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.markdown.transform :as md.transform]
             [reagent.core :as r]
@@ -560,6 +561,7 @@
     [:span.cmt-meta tag] (when space? nbsp) value]))
 
 (defonce !doc (ratom/atom nil))
+(defonce !windows (r/atom {}))
 (defonce !error (ratom/atom nil))
 (defonce !viewers viewer/!viewers)
 
@@ -608,7 +610,11 @@
       [exec-status status])]
    (when @!error
      [:div.fixed.top-0.left-0.w-full.h-full
-      [inspect-presented @!error]])])
+      [inspect-presented @!error]])
+   (into [:<>]
+         (map (fn [[_id {:keys [title presented-value]}]]
+                [window/show [inspect-presented presented-value]]))
+         @!windows)])
 
 (declare mount)
 
@@ -700,9 +706,14 @@
               error (reject error)))
     (js/console.warn :process-eval-reply!/not-found :eval-id eval-id :keys (keys @!pending-clerk-eval-replies))))
 
+(defn set-window-state! [{:keys [id state]}] (swap! !windows assoc id state))
+(defn destroy-window! [{:keys [id]}] (swap! !windows dissoc id))
+
 (defn ^:export dispatch [{:as msg :keys [type]}]
   (let [dispatch-fn (get {:patch-state! patch-state!
                           :set-state! set-state!
+                          :set-window-state! set-window-state!
+                          :destroy-window! destroy-window!
                           :eval-reply process-eval-reply!}
                          type
                          (fn [_]
