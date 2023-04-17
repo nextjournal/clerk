@@ -130,13 +130,14 @@
    :on-receive (fn [sender-ch edn-string]
                  (binding [*ns* (or (:ns @!doc)
                                     (create-ns 'user))]
-                   (let [{:as msg :keys [type]} (read-msg edn-string)]
+                   (let [{:as msg :keys [type recompute?]} (read-msg edn-string)]
                      (case type
                        :eval (do (send! sender-ch (merge {:type :eval-reply :eval-id (:eval-id msg)}
                                                          (try {:reply (eval (:form msg))}
                                                               (catch Exception e
                                                                 {:error (Throwable->map e)}))))
-                                 (eval '(nextjournal.clerk/recompute!)))
+                                 (when recompute?
+                                   (eval '(nextjournal.clerk/recompute!))))
                        :swap! (when-let [var (resolve (:var-name msg))]
                                 (try
                                   (binding [*sender-ch* sender-ch]
