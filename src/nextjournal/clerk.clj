@@ -80,6 +80,10 @@
 
 #_(recompute!)
 
+(defonce !taps (atom ()))
+
+(declare col)
+;; TODO: drop `col` in favour of a suitable viewer
 (defn window!
   ([id] (case id ::taps (webserver/update-window! id {:title "🚰Taps"} (col @!taps))))
   ([id content] (window! id {} content))
@@ -88,7 +92,6 @@
 
 (defn destroy-window! [id] (webserver/destroy-window! id))
 
-(defonce !taps (atom ()))
 (defn tapped [x]
   (do (swap! !taps conj x)
       (window! ::taps)))
@@ -101,7 +104,8 @@
 #_(destroy-window! ::taps)
 #_ (tap> (html [:h1 "Ahoi"]))
 #_ (tap> (table [[1 2] [3 4]]))
-#_(window! ::my-window-3 {:title "Ahoi"} (table [[1 2] [3 4]]))
+#_(window! ::my-window {:title "Ahoi"} (table [[1 2] [3 4]]))
+#_(window! ::my-window {:title "Ahoi"} (plotly {:data [{:y [1 2 3]}]}))
 #_(destroy-window! ::my-window-2)
 
 (defn ^:private supported-file?
