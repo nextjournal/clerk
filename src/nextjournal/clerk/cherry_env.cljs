@@ -21,6 +21,11 @@
             [sci.configs.reagent.reagent :as sci.configs.reagent]))
 
 (cherry/preserve-ns 'cljs.core)
+(cherry/preserve-ns 'nextjournal.clerk.render)
+(cherry/preserve-ns 'nextjournal.clerk.render.code)
+(cherry/preserve-ns 'nextjournal.clerk.render.hooks)
+(cherry/preserve-ns 'nextjournal.clerk.render.navbar)
+
 (j/assoc-in! js/globalThis [:reagent :core :atom] reagent/atom)
 
 (def reagent-ratom-namespace

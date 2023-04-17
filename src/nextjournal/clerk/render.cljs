@@ -586,7 +586,7 @@
        ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
        [(:render-fn viewer) value (merge opts (:nextjournal/opts x) {:viewer viewer})]))))
 
-(defn ^:export inspect [value]
+(defn inspect [value]
   (r/with-let [!state (r/atom nil)]
     (when (not= (:value @!state ::not-found) value)
       (swap! !state assoc
@@ -740,7 +740,7 @@
 ;; TODO: remove
 (def reagent-viewer render-reagent)
 
-(defn ^:export render-promise [p opts]
+(defn render-promise [p opts]
   (let [!state (hooks/use-state {:pending true})]
     (hooks/use-effect (fn []
                         (-> p
@@ -763,7 +763,7 @@
     (f package)
     loading-view))
 
-(defn ^:export render-vega-lite [value]
+(defn render-vega-lite [value]
   (let [handle-error (hooks/use-error-handler)
         vega-embed (hooks/use-d3-require "vega-embed@6.11.1")
         opts (get value :embed/opts {})
@@ -814,7 +814,7 @@
        [:div {:ref ref-fn}]]
       default-loading-view)))
 
-(def ^:export render-code code/render-code)
+(def render-code code/render-code)
 
 (def expand-icon
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
