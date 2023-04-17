@@ -80,11 +80,27 @@
 
 #_(recompute!)
 
-(defn window! [id content] (webserver/update-window! id content))
-(defn destroy-window! [id content] (webserver/destroy-window! id))
+(defn window!
+  ([id] (case id ::taps (webserver/update-window! id (col @!taps))))
+  ([id content] (webserver/update-window! id content)))
 
+(defn destroy-window! [id] (webserver/destroy-window! id))
+
+(defonce !taps (atom ()))
+(defn tapped [x]
+  (do (swap! !taps conj x)
+      (window! ::taps)))
+(defonce taps-setup (add-tap tapped))
+
+#_ (doseq [f @@(resolve 'clojure.core/tapset)] (remove-tap f))
+#_ (reset! !taps ())
+#_ (tap> 1)
+#_ (window! ::taps)
+#_(destroy-window! ::taps)
+#_ (tap> (html [:h1 "Ahoi"]))
+#_ (tap> (table [[1 2] [3 4]]))
 #_(window! ::my-window-2 (table [[1 2] [3 4]]))
-#_(destroy-window! ::my-window-2 (table [[1 2] [3 4]]))
+#_(destroy-window! ::my-window-2)
 
 (defn ^:private supported-file?
   "Returns whether `path` points to a file that should be shown."
