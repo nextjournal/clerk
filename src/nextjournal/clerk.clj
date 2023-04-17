@@ -85,7 +85,7 @@
 (declare col)
 ;; TODO: drop `col` in favour of a suitable viewer
 (defn window!
-  ([id] (case id ::taps (webserver/update-window! id {:title "🚰Taps"} (col @!taps))))
+  ([id] (case id ::taps (window! id {:title "🚰Taps"} (col @!taps))))
   ([id content] (window! id {} content))
   ([id opts content]
    (webserver/update-window! id (merge opts {:presented-value (v/present content)}))))
