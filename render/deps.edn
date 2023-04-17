@@ -9,4 +9,4 @@
         metosin/reitit-frontend {:mvn/version "0.5.15"}
         thheller/shadow-cljs {:mvn/version "2.22.7"}
         io.github.squint-cljs/cherry {;; :local/root "/Users/borkdude/dev/cherry"
-                                      :git/sha "de53b5d4ab65118b67c501bbd7475c8a17997187"}}}
+                                      :git/sha "0dc734a2a45a821316d175335445b5e61ca5f9ad"}}}
