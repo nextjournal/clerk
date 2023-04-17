@@ -143,14 +143,6 @@
     (.preventDefault e)
     (clerk-eval (list 'nextjournal.clerk/show! notebook-path))))
 
-(defn history-push-state [path]
-  (js/history.pushState #js {:clerk_show path} nil (viewer/doc-url path)))
-
-(defn handle-history-popstate [^js e]
-  (when-some [notebook-path (.. e -state -clerk_show)]
-    (.preventDefault e)
-    (clerk-eval (list 'nextjournal.clerk/show! notebook-path))))
-
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility]} opts]
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
@@ -172,7 +164,6 @@
                              (if el
                                (when (exists? js/document)
                                  (js/document.addEventListener "click" handle-anchor-click)
-                                 (js/window.addEventListener "popstate" handle-history-popstate true)
                                  (setup-dark-mode! !state)
                                  (when-some [heading (when (and (exists? js/location) (not bundle?))
                                                        (try (some-> js/location .-hash not-empty js/decodeURI js/document.querySelector)
@@ -181,8 +172,7 @@
                                                                                     (.-hash js/location))))))]
                                    (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading))))
                                (when (exists? js/document)
-                                 (js/document.removeEventListener "click" handle-anchor-click)
-                                 (js/window.removeEventListener "popstate" handle-history-popstate))))]
+                                 (js/document.removeEventListener "click" handle-anchor-click))))]
     (let [{:keys [md-toc mobile? open? visibility]} @!state
           doc-inset (cond
                       mobile? 0
