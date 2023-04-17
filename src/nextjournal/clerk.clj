@@ -92,9 +92,7 @@
 
 (defn destroy-window! [id] (webserver/destroy-window! id))
 
-(defn tapped [x]
-  (do (swap! !taps conj x)
-      (window! ::taps)))
+(defn tapped [x] (swap! !taps conj x) (window! ::taps))
 (defonce taps-setup (add-tap tapped))
 
 #_ (doseq [f @@(resolve 'clojure.core/tapset)] (remove-tap f))
