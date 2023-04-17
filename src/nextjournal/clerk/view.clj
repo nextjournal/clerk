@@ -32,7 +32,7 @@
 (defn include-viewer-css [state]
   (if-let [css-url (get-in state [:resource->url "/css/viewer.css"])]
     (hiccup/include-css (adjust-relative-path state css-url))
-    (list (hiccup/include-js "https://cdn.tailwindcss.com/3.2.7?plugins=typography")
+    (list (hiccup/include-js "https://cdn.tailwindcss.com?plugins=typography")
           [:script (-> (slurp (io/resource "stylesheets/tailwind.config.js"))
                        (str/replace #"^module.exports" "tailwind.config")
                        (str/replace #"require\(.*\)" ""))]
