@@ -16,6 +16,7 @@
             [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clerk.render.localstorage :as localstorage]
             [nextjournal.clerk.render.navbar :as navbar]
+            [nextjournal.clerk.render.window :as window]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.markdown.transform :as md.transform]
             [reagent.core :as r]
@@ -114,27 +115,6 @@
 
 (defonce !eval-counter (r/atom 0))
 
-(defn render-processed-block [x]
-  (let [{viewer-name :name} (viewer/->viewer x)
-        viewer-css-class (viewer/css-class x)
-        inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)
-        processed-block-id (get-in x [:nextjournal/opts :id])]
-    ^{:key (str processed-block-id "@" @!eval-counter)}
-    [:div {:data-block-id processed-block-id
-           :class (concat
-                   [(when (:nextjournal/open-graph-image-capture (viewer/->value x)) "open-graph-image-capture")]
-                   (if viewer-css-class
-                     (cond-> viewer-css-class
-                       (string? viewer-css-class) vector)
-                     ["viewer"
-                      (when viewer-name (name viewer-name))
-                      (when inner-viewer-name (name inner-viewer-name))
-                      (case (or (viewer/width x) (case viewer-name (`viewer/code-viewer `viewer/code-folded-viewer) :wide :prose))
-                        :wide "w-full max-w-wide"
-                        :full "w-full"
-                        "w-full max-w-prose px-8")]))}
-     [inspect-presented x]]))
-
 (defn exec-status [{:keys [progress status]}]
   [:div.w-full.bg-purple-200.dark:bg-purple-900.rounded.z-20 {:class "h-0.5"}
    [:div.bg-purple-600.dark:bg-purple-400 {:class "h-0.5" :style {:width (str (* progress 100) "%")}}]
@@ -147,7 +127,9 @@
    {:style {:font-size "0.5rem"} :class "left-[35px] md:left-0 mt-[7px] md:mt-1"}
    status])
 
-(defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility]}]
+(declare inspect-children)
+
+(defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility]} opts]
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
                !state (r/atom {:toc (toc-items (:children toc))
@@ -197,14 +179,19 @@
            {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-[7px] text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
           [navbar/panel !state [navbar/navbar !state]]])
        [:div.flex-auto.w-screen.scroll-container
-        [:> (.-div motion)
-         {:key "notebook-viewer"
-          :initial (when toc-visibility {:margin-left doc-inset})
-          :animate (when toc-visibility {:margin-left doc-inset})
-          :transition navbar/spring
-          :class (str (or css-class "flex flex-col items-center notebook-viewer flex-auto ")
-                      (when sidenotes? "sidenotes-layout"))}
-         (doall (map render-processed-block xs))]]])))
+        (into
+         [:> (.-div motion)
+          {:key "notebook-viewer"
+           :initial (when toc-visibility {:margin-left doc-inset})
+           :animate (when toc-visibility {:margin-left doc-inset})
+           :transition navbar/spring
+           :class (str (or css-class "flex flex-col items-center notebook-viewer flex-auto ")
+                       (when sidenotes? "sidenotes-layout"))}]
+
+         ;; TODO: restore react keys via block-id
+         ;; ^{:key (str processed-block-id "@" @!eval-counter)}
+
+         (inspect-children opts) xs)]])))
 
 (defn opts->query [opts]
   (->> opts
@@ -298,7 +285,28 @@
     auto-expand? (-> viewer/assign-content-lengths)
     true (-> viewer/assign-expanded-at (get :nextjournal/expanded-at {}))))
 
-(defn render-result [{:as result :nextjournal/keys [fetch-opts hash presented]} {:as opts :keys [auto-expand-results?]}]
+(defn result-css-class [x]
+  (let [{viewer-name :name} (viewer/->viewer x)
+        viewer-css-class (viewer/css-class x)
+        inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
+    (if viewer-css-class
+      (cond-> viewer-css-class
+        (string? viewer-css-class) vector)
+      ["viewer"
+       (when (get-in x [:nextjournal/opts :fragment-item?]) "fragment-item")
+       (when viewer-name (name viewer-name))
+       (when inner-viewer-name (name inner-viewer-name))
+       (case (or (viewer/width x)
+                 (case viewer-name
+                   (`viewer/code-viewer) :wide
+                   (`viewer/markdown-node-viewer) :nested-prose
+                   :prose))
+         :wide "w-full max-w-wide"
+         :full "w-full"
+         :nested-prose "w-full max-w-prose"
+         "w-full max-w-prose px-8")])))
+
+(defn render-result [{:nextjournal/keys [fetch-opts hash presented]} {:keys [id auto-expand-results?]}]
   (let [!desc (hooks/use-state-with-deps presented [hash])
         !expanded-at (hooks/use-state (when (map? @!desc)
                                         (->expanded-at auto-expand-results? @!desc)))
@@ -324,10 +332,11 @@
     (when @!desc
       [view-context/provide {:fetch-fn fetch-fn}
        [:> ErrorBoundary {:hash hash}
-        [:div.relative
-         [:div.overflow-x-auto
-          {:ref ref-fn}
-          [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]])))
+        [:div.result-viewer {:class (result-css-class @!desc) :data-block-id id :ref ref-fn}
+         [:div.relative
+          [:div.overflow-x-auto
+           {:ref ref-fn}
+           [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]]])))
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
@@ -350,11 +359,10 @@
 (defn expandable? [xs]
   (< 1 (count xs)))
 
-
 (defn inspect-children [opts]
-  ;; TODO: move update function onto viewer
-  (map-indexed (fn [idx x]
-                 (inspect-presented (update opts :path (fnil conj []) idx) x))))
+  (map (fn [x] (cond-> [inspect-presented opts x]
+                 (get-in x [:nextjournal/opts :id])
+                 (with-meta {:key (str (get-in x [:nextjournal/opts :id]) "@" @!eval-counter)})))))
 
 (def expand-style
   ["cursor-pointer"
@@ -591,6 +599,9 @@
                                                 (swap! !state update :desc viewer/merge-presentations more fetch-opts))))}
      [inspect-presented (:desc @!state)]]))
 
+(defn show-window [& content]
+  [window/show content])
+
 (defn root []
   [:<>
    [inspect-presented @!doc]
@@ -809,7 +820,11 @@
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
    [:path {:fill-rule "evenodd" :d "M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" :clip-rule "evenodd"}]])
 
-(defn render-folded-code [code-string]
+(defn render-code-block [code-string {:keys [id]}]
+  [:div.viewer.code-viewer.w-full.max-w-wide {:data-block-id id}
+   [code/render-code code-string]])
+
+(defn render-folded-code-block [code-string {:keys [id]}]
   (let [!hidden? (hooks/use-state true)]
     (if @!hidden?
       [:div.relative.pl-12.font-sans.text-slate-400.cursor-pointer.flex.overflow-y-hidden.group
@@ -841,7 +856,7 @@
         [:span.ml-4.opacity-0.translate-y-full.group-hover:opacity-100.group-hover:translate-y-0.transition-all.delay-150.hover:text-slate-500
          {:class "text-[10px]"}
          "evaluated in 0.2s"]]
-       [:div.code-viewer.mb-2.relative {:style {:margin-top 0}}
+       [:div.code-viewer.mb-2.relative.code-viewer.w-full.max-w-wide {:data-block-id id :style {:margin-top 0}}
         [render-code code-string]]])))
 
 

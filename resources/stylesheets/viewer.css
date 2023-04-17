@@ -37,7 +37,7 @@
       h2 { @apply text-xl !important; }
       h3 { @apply text-lg !important; }
   }
-  
+
   button { @apply focus:outline-none; }
   strong { @apply font-bold; }
   em     { @apply italic; }
@@ -254,6 +254,9 @@
 .markdown-viewer blockquote p:last-of-type:after {
   @apply content-none;
 }
+.markdown-node-viewer.result-viewer.fragment-item {
+    @apply mb-0 !important;
+}
 
 /* Images */
 /* --------------------------------------------------------------- */
@@ -330,7 +333,7 @@
     @apply mt-1;
   }
   .sidenotes-layout .markdown-viewer {
-    @apply pr-[205px];
+    @apply pr-[241px];
   }
   .sidenote-container {
     @apply relative mb-0;
@@ -339,9 +342,9 @@
     @apply w-[756px] !important;
   }
 }
-.code-viewer + .viewer:not(.markdown-viewer):not(.code-viewer):not(.code-viewer-folded),
-.code-viewer-folded + .viewer:not(.markdown-viewer):not(.code-viewer):not(.code-viewer-folded),
-.result-viewer + .result-viewer {
+.code-viewer + .viewer:not(.code-viewer):not(.code-viewer-folded),
+.code-viewer-folded + .viewer:not(.code-viewer):not(.code-viewer-folded),
+.result-viewer:not(.markdown-node-viewer) + .result-viewer {
   @apply mt-2;
 }
 .code-viewer + .code-viewer-folded {
@@ -349,6 +352,9 @@
 }
 .result-viewer {
   @apply leading-tight mb-6;
+}
+.code-viewer.fragment-item.result-viewer {
+  @apply mb-0 !important;
 }
 .result-viewer figure {
   @apply mt-0 !important;

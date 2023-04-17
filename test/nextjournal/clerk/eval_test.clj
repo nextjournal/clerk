@@ -166,14 +166,14 @@
                      (mapv #(select-keys % [:nextjournal/width]))))))
 
   (testing "can handle uncounted sequences"
-    (is (match? [{:nextjournal/viewer {:name `viewer/code-viewer}
+    (is (match? [{:nextjournal/viewer {:name `viewer/code-block-viewer}
                   :nextjournal/value "(range)"}
                  {:nextjournal/value {:nextjournal/fetch-opts {:blob-id string?}
                                       :nextjournal/hash string?}}]
                 (eval+extract-doc-blocks "(range)"))))
 
   (testing "assigns folded visibility"
-    (is (match? [{:nextjournal/viewer {:name `viewer/code-folded-viewer}
+    (is (match? [{:nextjournal/viewer {:name `viewer/folded-code-block-viewer}
                   :nextjournal/value "{:some :map}"}
                  {:nextjournal/value {:nextjournal/fetch-opts {:blob-id string?}
                                       :nextjournal/hash string?}}]
