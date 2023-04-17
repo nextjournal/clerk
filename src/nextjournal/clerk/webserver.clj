@@ -194,8 +194,7 @@
                                                 (cond->> file
                                                   (fs/absolute? file)
                                                   (fs/relativize (fs/cwd))))) (catch Exception _))]
-                            [(v/->ViewerEval (list 'nextjournal.clerk.render/history-push-state
-                                                   path (v/doc-url path)))])})))
+                            [(v/->ViewerEval (list 'nextjournal.clerk.render/history-push-state path))])})))
 
 #_(update-doc! (help-doc))
 

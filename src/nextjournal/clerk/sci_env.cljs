@@ -92,8 +92,7 @@
 
 
 (def ^{:doc "Stub implementation to be replaced during static site generation. Clerk is only serving one page currently."}
-  doc-url
-  (sci/new-var 'doc-url (fn [path] (str "?show=" path))))
+  doc-url (sci/new-var 'doc-url viewer/doc-url))
 
 (def viewer-namespace
   (merge (sci/copy-ns nextjournal.clerk.viewer (sci/create-ns 'nextjournal.clerk.viewer))

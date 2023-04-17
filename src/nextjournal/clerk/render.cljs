@@ -143,8 +143,8 @@
     (.preventDefault e)
     (clerk-eval (list 'nextjournal.clerk/show! notebook-path))))
 
-(defn history-push-state [path url]
-  (js/history.pushState #js {:clerk_show path} nil url))
+(defn history-push-state [path]
+  (js/history.pushState #js {:clerk_show path} nil (viewer/doc-url path)))
 
 (defn handle-history-popstate [^js e]
   (when-some [notebook-path (.. e -state -clerk_show)]
