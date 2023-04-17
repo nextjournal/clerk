@@ -63,7 +63,7 @@
                             (js/addEventListener "mousemove" handle-mouse-move))
                           #(js/removeEventListener "mousemove" handle-mouse-move)))
                       [!mouse-down on-drag])
-    [:div.bg-slate-100.hover:bg-slate-200.dark:bg-slate-800.dark:hover:bg-slate-700.cursor-move.w-full.rounded-t-lg
+    [:div.bg-slate-100.hover:bg-slate-200.dark:bg-slate-800.dark:hover:bg-slate-700.cursor-move.w-full.rounded-t-lg.flex-shrink-0
      {:class "h-[14px]"
       :on-mouse-down (fn [event]
                        (on-drag-start)
