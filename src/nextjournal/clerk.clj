@@ -88,7 +88,7 @@
   ([id] (case id ::taps (window! id {:title "🚰 Taps"} (col @!taps))))
   ([id content] (window! id {} content))
   ([id opts content]
-   (webserver/update-window! id (merge opts {:nextjournal/presented (assoc (v/present content) :nextjournal/css-class ["px-0"])
+   (webserver/update-window! id (merge opts {:nextjournal/presented (update (v/present content) :nextjournal/css-class #(or % ["px-0"]))
                                              :nextjournal/hash (gensym)
                                              :nextjournal/fetch-opts {:blob-id (str id)}
                                              :nextjournal/blob-id (str id)}))))
