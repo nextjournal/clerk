@@ -17,10 +17,13 @@
                        (v/with-viewer taps-viewer @tap/!taps)))))
   ([id content] (open! id {} content))
   ([id opts content]
+   ;; TODO: consider calling v/transform-result
    (webserver/update-window! id (merge opts {:nextjournal/presented (update (v/present content) :nextjournal/css-class #(or % ["px-0"]))
                                              :nextjournal/hash (gensym)
                                              :nextjournal/fetch-opts {:blob-id (str id)}
                                              :nextjournal/blob-id (str id)}))))
+
+(add-watch tap/!taps ::tap-watcher (fn [_ _ _ _] (open! ::taps)))
 
 (defn destroy! [id] (webserver/destroy-window! id))
 
@@ -29,14 +32,9 @@
     (destroy! w)))
 
 #_(open! ::taps)
-
-#_(defn tapped [x] (swap! !taps conj x) (open! ::taps))
-#_(defonce taps-setup (add-tap tapped))
-
 #_(doseq [f @@(resolve 'clojure.core/tapset)] (remove-tap f))
 #_(reset! !taps ())
 #_(tap> (range 30))
-#_(open! ::taps)
 #_(destroy! ::taps)
 #_(tap> (v/html [:h1 "Ahoi"]))
 #_(tap> (v/table [[1 2] [3 4]]))
