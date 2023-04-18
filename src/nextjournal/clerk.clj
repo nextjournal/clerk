@@ -89,8 +89,9 @@
   ([id content] (window! id {} content))
   ([id opts content]
    (webserver/update-window! id (merge opts {:nextjournal/presented (v/present content)
-                                             :nextjournal/fetch-opts {:blob-id id}
-                                             :nextjournal/blob-id id}))))
+                                             :nextjournal/hash (gensym)
+                                             :nextjournal/fetch-opts {:blob-id (gensym)}
+                                             :nextjournal/blob-id (gensym)}))))
 
 (defn destroy-window! [id] (webserver/destroy-window! id))
 
@@ -100,13 +101,14 @@
 #_ (doseq [f @@(resolve 'clojure.core/tapset)] (remove-tap f))
 #_ (reset! !taps ())
 #_(tap> (range 30))
-#_ (window! ::taps)
+#_(window! ::taps)
 #_(destroy-window! ::taps)
 #_ (tap> (html [:h1 "Ahoi"]))
 #_ (tap> (table [[1 2] [3 4]]))
 #_(window! ::my-window {:title "Ahoi"} (table [[1 2] [3 4]]))
+#_(window! ::my-window {:title "Ahoi"} (range 40))
 #_(window! ::my-window {:title "Ahoi"} (plotly {:data [{:y [1 2 3]}]}))
-#_(destroy-window! ::my-window-2)
+#_(destroy-window! ::my-window)
 
 (defn ^:private supported-file?
   "Returns whether `path` points to a file that should be shown."
