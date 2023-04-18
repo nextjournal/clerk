@@ -60,7 +60,8 @@
   #?(:clj ([form] (resolve-aliases (ns-aliases *ns*) form)))
   ([aliases form] (w/postwalk #(cond->> % (qualified-symbol? %) (resolve-symbol-alias aliases)) form)))
 
-(defn ->viewer-fn [form]
+(defn ->viewer-fn
+  [form]
   (map->ViewerFn {:form form
                   #?@(:cljs [:f (*eval* form)])}))
 
@@ -74,11 +75,15 @@
 
 #?(:clj
    (defmethod print-method ViewerFn [v ^java.io.Writer w]
-     (.write w (str "#viewer-fn " (pr-str `~(:form v))))))
+     (.write w (str "#viewer-fn" (when (= :cherry (:evaluator v))
+                                   "/cherry")
+                    " " (pr-str (:form v))))))
 
 #?(:clj
    (defmethod print-method ViewerEval [v ^java.io.Writer w]
-     (.write w (str "#viewer-eval " (pr-str `~(:form v)))))
+     (.write w (str "#viewer-eval" (when (= :cherry (:evaluator v))
+                                     "/cherry")
+                    " " (pr-str (:form v)))))
    :cljs
    (extend-type ViewerEval
      IPrintWithWriter
@@ -1283,10 +1288,12 @@
 
 (declare assign-closing-parens)
 
-(defn process-render-fn [{:as viewer :keys [render-fn]}]
+(defn process-render-fn [{:as viewer :keys [render-fn evaluator]}]
   (cond-> viewer
     (and render-fn (not (viewer-fn? render-fn)))
-    (update :render-fn ->viewer-fn)))
+    (update :render-fn (fn [rf]
+                         (assoc (->viewer-fn rf)
+                                :evaluator (or evaluator :sci))))))
 
 (defn hash-sha1 [x]
   #?(:clj (analyzer/valuehash :sha1 x)
@@ -1626,22 +1633,36 @@
   ([viewer-opts x] (print-hide-result-deprecation-warning) (with-viewer hide-result-viewer viewer-opts x)))
 
 
-(defn eval-cljs [& forms]
+(defn eval-cljs [opts & forms]
   ;; because ViewerEval's are evaluated at read time we can no longer
   ;; check after read if there was any in the doc. Thus we set the
   ;; `:nextjournal.clerk/remount` attribute to a hash of the code (so
   ;; it changes when the code changes and shows up in the doc patch.
   ;; TODO: simplify, maybe by applying Clerk's analysis to the cljs
   ;; part as well
-  (with-viewer (assoc viewer-eval-viewer :nextjournal.clerk/remount (hash-sha1 forms))
-    (->viewer-eval
-     `(binding [*ns* *ns*]
-        ~@forms))))
+  (let [[opts forms] (if (map? opts)
+                       [opts forms]
+                       [nil (cons opts forms)])]
+    (with-viewer (assoc viewer-eval-viewer :nextjournal.clerk/remount (hash-sha1 forms))
+      (if (= :cherry (:evaluator opts))
+        (assoc (->viewer-eval
+                `(do ~@forms))
+               :evaluator (:evaluator opts))
+        (->viewer-eval
+         `(binding [*ns* *ns*]
+            ~@forms))))))
 
-(defn eval-cljs-str [code-string]
-  ;; NOTE: this relies on implementation details on how SCI code is evaluated
-  ;; and will change in a future version of Clerk
-  (eval-cljs (list 'load-string code-string)))
+(defn eval-cljs-str
+  ([code-string] (eval-cljs-str nil code-string))
+  ([opts code-string]
+   ;; NOTE: this relies on implementation details on how SCI code is evaluated
+   ;; and will change in a future version of Clerk
+   (if (= :cherry (:evaluator opts))
+     (assoc (->viewer-eval
+             `(let [prog#  (nextjournal.clerk.cherry-env/cherry-compile-string ~code-string)]
+                (js/global_eval prog#)))
+            :evaluator :cherry)
+     (eval-cljs (list 'load-string code-string)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; examples

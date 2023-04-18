@@ -21,3 +21,4 @@ clerk.iml
 .clj-kondo/marick
 .clj-kondo/nextjournal/clerk
 .secrets.env
+report.html
