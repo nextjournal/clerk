@@ -13,7 +13,6 @@
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
-            [nextjournal.clerk.window :as window]
             [nextjournal.clerk.webserver :as webserver]))
 
 (defonce ^:private !show-filter-fn (atom nil))
@@ -71,9 +70,9 @@
 #_(show! "https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj")
 #_(show! (java.io.StringReader. ";; # In Memory Notebook 👋\n(+ 41 1)"))
 
-(defn window! "todo" [& args] (apply window/open! args))
-(def destroy-window! "todo" window/destroy!)
-(def destroy-all-windows! "todo" window/destroy-all!)
+(defn window! "todo" [& args] (apply (requiring-resolve 'nextjournal.clerk.window/open!) args))
+(defn destroy-window! "todo" [id] ((requiring-resolve 'nextjournal.clerk.window/destroy!) id))
+(defn destroy-all-windows! "todo" [] ((requiring-resolve 'nextjournal.clerk.window/destroy-all!)))
 
 (defn recompute!
   "Recomputes the currently visible doc, without parsing it."
