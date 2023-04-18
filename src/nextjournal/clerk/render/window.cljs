@@ -49,8 +49,9 @@
       {:on-mouse-down #(handle-mouse-down :left)
        :class "w-[4px]"}]]))
 
-(defn header [{:keys [title on-drag on-drag-start on-drag-end] :or {on-drag-start #() on-drag-end #()}}]
-  (let [!mouse-down (hooks/use-state false)]
+(defn header [{:keys [id title on-drag on-drag-start on-drag-end on-close] :or {on-drag-start #() on-drag-end #()}}]
+  (let [!mouse-down (hooks/use-state false)
+        name (or title id)]
     (hooks/use-effect (fn []
                         (let [handle-mouse-up (fn []
                                                 (on-drag-end)
@@ -63,11 +64,21 @@
                             (js/addEventListener "mousemove" handle-mouse-move))
                           #(js/removeEventListener "mousemove" handle-mouse-move)))
                       [!mouse-down on-drag])
-    [:div.bg-slate-100.hover:bg-slate-200.dark:bg-slate-800.dark:hover:bg-slate-700.cursor-move.w-full.rounded-t-lg.flex-shrink-0
-     {:class "h-[14px]"
+    [:div.bg-slate-100.hover:bg-slate-200.dark:bg-slate-800.dark:hover:bg-slate-700.cursor-move.w-full.rounded-t-lg.flex-shrink-0.leading-none.flex.items-center.justify-between
+     {:class (if name "h-[20px] " "h-[14px] ")
       :on-mouse-down (fn [event]
                        (on-drag-start)
-                       (reset! !mouse-down {:start-x (.-screenX event) :start-y (.-screenY event)}))} title]))
+                       (reset! !mouse-down {:start-x (.-screenX event) :start-y (.-screenY event)}))}
+     (when name
+       [:span.font-sans.font-medium.text-slate-700
+        {:class "text-[11px] ml-[8px] "}
+        (or title id)])
+     (when on-close
+       [:button.text-slate-600.hover:text-slate-900.hover:bg-slate-300.rounded-tr-lg.flex.items-center.justify-center
+        {:on-click on-close
+         :class "w-[20px] h-[20px]"}
+        [:svg {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke-width "1.5" :stroke "currentColor" :class "w-3 h-3"}
+         [:path {:stroke-linecap "round" :stroke-linejoin "round" :d "M6 18L18 6M6 6l12 12"}]]])]))
 
 (defn resize-top [panel {:keys [top height]} dy]
   (j/assoc-in! panel [:style :height] (str (- height dy) "px"))
@@ -175,5 +186,6 @@
                                             :bottom (dock-at-bottom panel)
                                             :left (dock-at-left panel))))
                                       (reset! !dockable-at nil)
-                                      (reset! !docking-ref nil))} opts)]
+                                      (reset! !docking-ref nil))}
+                      opts)]
        [:div.p-3.flex-auto.overflow-auto content]]])))

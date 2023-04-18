@@ -613,7 +613,11 @@
       [inspect-presented @!error]])
    (into [:<>]
          (map (fn [[id state]]
-                [window/show [render-result state {}] (dissoc state :nextjournal/presented)]))
+                [window/show
+                 [render-result state {}]
+                 (-> state
+                     (assoc :id id :on-close #(swap! !windows dissoc id))
+                     (dissoc :nextjournal/presented))]))
          @!windows)])
 
 (declare mount)
