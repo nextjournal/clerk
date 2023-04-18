@@ -28,7 +28,6 @@
 ^{::clerk/sync true ::clerk/viewer switch-view ::clerk/visibility {:result :show}}
 (defonce !view (atom :stream))
 
-
 (defonce !taps (atom ()))
 
 (defn reset-taps! []
@@ -45,9 +44,9 @@
 (def tap-viewer
   {:pred (v/get-safe ::val)
    :render-fn '(fn [{::keys [val tapped-at]} opts]
-                 [:div.border-t.relative.py-3.mt-2
-                  [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
-                   {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
+                 [:div.w-full
+                  [:div.font-sans.bg-slate-50.px-2
+                   {:class "py-[2px] text-[9px]"} (:nextjournal/value tapped-at)]
                   [:div.overflow-x-auto [nextjournal.clerk.render/inspect-presented val]]])
    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
                    (-> wrapped-value

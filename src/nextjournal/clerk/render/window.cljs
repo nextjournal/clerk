@@ -124,7 +124,7 @@
 
 (defn show
   ([content] (show content {}))
-  ([content opts]
+  ([content {:as opts :keys [css-class]}]
    (let [!panel-ref (hooks/use-ref nil)
          !dragging? (hooks/use-state nil)
          !dockable-at (hooks/use-state nil)
@@ -188,4 +188,4 @@
                                       (reset! !dockable-at nil)
                                       (reset! !docking-ref nil))}
                       opts)]
-       [:div.p-3.flex-auto.overflow-auto content]]])))
+       [:div {:class (str "flex-auto " (or css-class "p-3 overflow-auto"))} content]]])))

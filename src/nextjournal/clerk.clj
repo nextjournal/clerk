@@ -80,37 +80,6 @@
 
 #_(recompute!)
 
-(defonce !taps (atom ()))
-
-(declare col)
-;; TODO: drop `col` in favour of a suitable viewer
-(defn window!
-  ([id] (case id ::taps (window! id {:title "🚰 Taps"} (col @!taps))))
-  ([id content] (window! id {} content))
-  ([id opts content]
-   (webserver/update-window! id (merge opts {:nextjournal/presented (update (v/present content) :nextjournal/css-class #(or % ["px-0"]))
-                                             :nextjournal/hash (gensym)
-                                             :nextjournal/fetch-opts {:blob-id (str id)}
-                                             :nextjournal/blob-id (str id)}))))
-
-(defn destroy-window! [id] (webserver/destroy-window! id))
-
-(defn tapped [x] (swap! !taps conj x) (window! ::taps))
-(defonce taps-setup (add-tap tapped))
-
-#_(doseq [f @@(resolve 'clojure.core/tapset)] (remove-tap f))
-#_(reset! !taps ())
-#_(tap> (range 30))
-#_(window! ::taps)
-#_(destroy-window! ::taps)
-#_(tap> (html [:h1 "Ahoi"]))
-#_(tap> (table [[1 2] [3 4]]))
-#_(window! ::my-window {:title "🔭 Rear Window"} (table [[1 2] [3 4]]))
-#_(window! ::my-window {:title "🔭 Rear Window"} (range 30))
-#_(window! ::my-window {:title "🔭 Rear Window"} (plotly {:data [{:y [1 2 3]}]}))
-#_(window! ::my-window-2 {:title "🪟"} (range 100))
-#_(destroy-window! ::my-window)
-
 (defn ^:private supported-file?
   "Returns whether `path` points to a file that should be shown."
   [path]

@@ -5,7 +5,8 @@
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]))
 
-(clerk/window! ::clerk/taps)
+#_(clerk/window! ::clerk/taps)
+(clerk/window! :my-window (clerk/html [:div.w-8.h-8.bg-green-500]))
 
 (comment
   (tap> (clerk/html [:div.w-8.h-8.bg-green-500]))
