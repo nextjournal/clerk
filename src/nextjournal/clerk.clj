@@ -72,7 +72,8 @@
 #_(show! (java.io.StringReader. ";; # In Memory Notebook 👋\n(+ 41 1)"))
 
 (defn window! "todo" [& args] (apply window/open! args))
-(defn destroy-window! "todo" [id] (window/destroy! id))
+(def destroy-window! "todo" window/destroy!)
+(def destroy-all-windows! "todo" window/destroy-all!)
 
 (defn recompute!
   "Recomputes the currently visible doc, without parsing it."
