@@ -15,7 +15,7 @@
                                     :on-click #(reset! !view choice)}
                                    choice]) [:stream :latest]))
                      [:button.text-xs.rounded-full.px-3.py-1.border-2.font-sans.hover:bg-slate-100.cursor-pointer
-                      {:on-click #(nextjournal.clerk.render/clerk-eval `(reset-taps!))} "Clear"]]
+                      {:on-click #(nextjournal.clerk.render/clerk-eval `(tap/reset-taps!))} "Clear"]]
                     (into [:div]
                           (nextjournal.clerk.viewer/inspect-children opts)
                           (cond->> taps (= :latest @!view) (take 1)))]))})
