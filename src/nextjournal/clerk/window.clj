@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.window
-  (:require [nextjournal.clerk.tap :as tap]
+  (:require [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.tap :as tap]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]))
 
@@ -33,7 +34,7 @@
 (defn open!
   ([id]
    (case id
-     ::taps (open! id {:title "🚰 Taps" :css-class "p-0 relative overflow-auto"}
+     ::clerk/taps (open! id {:title "🚰 Taps" :css-class "p-0 relative overflow-auto"}
                    (v/with-viewers (v/add-viewers [tap/tap-viewer])
                      (v/with-viewer taps-viewer {:nextjournal/opts {:taps-view @!taps-view}}
                        @tap/!taps)))))
@@ -45,23 +46,23 @@
                                              :nextjournal/fetch-opts {:blob-id (str id)}
                                              :nextjournal/blob-id (str id)}))))
 
-(add-watch tap/!taps ::tap-watcher (fn [_ _ _ _] (open! ::taps)))
+(add-watch tap/!taps ::tap-watcher (fn [_ _ _ _] (open! ::clerk/taps)))
 
-(defn destroy! [id] (webserver/destroy-window! id))
+(defn close! [id] (webserver/close-window! id))
 
-(defn destroy-all! []
+(defn close-all! []
   (doseq [w (keys @webserver/!windows)]
-    (destroy! w)))
+    (close! w)))
 
-#_(open! ::taps)
+#_(open! ::clerk/taps)
 #_(doseq [f @@(resolve 'clojure.core/tapset)] (remove-tap f))
 #_(tap> (range 30))
-#_(destroy! ::taps)
+#_(close! ::clerk/taps)
 #_(tap> (v/plotly {:data [{:y [1 2 3]}]}))
 #_(tap> (v/table [[1 2] [3 4]]))
 #_(open! ::my-window {:title "🔭 Rear Window"} (v/table [[1 2] [3 4]]))
 #_(open! ::my-window {:title "🔭 Rear Window"} (range 30))
 #_(open! ::my-window {:title "🔭 Rear Window"} (v/plotly {:data [{:y [1 2 3]}]}))
 #_(open! ::my-window-2 {:title "🪟"} (range 100))
-#_(destroy! ::my-window)
-#_(destroy-all!)
+#_(close! ::my-window)
+#_(close-all!)

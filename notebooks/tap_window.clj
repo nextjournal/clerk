@@ -9,9 +9,9 @@
 #_(clerk/window! :my-window (clerk/html [:div.w-8.h-8.bg-green-500]))
 
 #_(comment
-    (clerk/destroy-window! :my-window)
-    (clerk/destroy-all-windows!)
-    (clerk/window! ::window/taps)
+    (clerk/close-window! :my-window)
+    (clerk/close-all-windows!)
+    (clerk/window! ::clerk/taps)
     (tap> (clerk/html [:div.w-8.h-8.bg-green-500]))
     (tap> (clerk/plotly {:data [{:x [1 2 3 4]}]}))
     (tap/reset-taps!))

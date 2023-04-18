@@ -600,6 +600,8 @@
                                                 (swap! !state update :desc viewer/merge-presentations more fetch-opts))))}
      [inspect-presented (:desc @!state)]]))
 
+(declare clerk-eval)
+
 (defn root []
   [:<>
    [inspect-presented @!doc]
@@ -616,7 +618,7 @@
                 [window/show
                  [render-result state {}]
                  (-> state
-                     (assoc :id id :on-close #(swap! !windows dissoc id))
+                     (assoc :id id :on-close #(clerk-eval `(nextjournal.clerk.window/close! ~id)))
                      (dissoc :nextjournal/presented))]))
          @!windows)])
 
@@ -711,13 +713,13 @@
     (js/console.warn :process-eval-reply!/not-found :eval-id eval-id :keys (keys @!pending-clerk-eval-replies))))
 
 (defn set-window-state! [{:keys [id state]}] (swap! !windows assoc id state))
-(defn destroy-window! [{:keys [id]}] (swap! !windows dissoc id))
+(defn close-window! [{:keys [id]}] (swap! !windows dissoc id))
 
 (defn ^:export dispatch [{:as msg :keys [type]}]
   (let [dispatch-fn (get {:patch-state! patch-state!
                           :set-state! set-state!
                           :set-window-state! set-window-state!
-                          :destroy-window! destroy-window!
+                          :close-window! close-window!
                           :eval-reply process-eval-reply!}
                          type
                          (fn [_]

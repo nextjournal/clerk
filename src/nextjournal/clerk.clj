@@ -71,8 +71,8 @@
 #_(show! (java.io.StringReader. ";; # In Memory Notebook 👋\n(+ 41 1)"))
 
 (defn window! "todo" [& args] (apply (requiring-resolve 'nextjournal.clerk.window/open!) args))
-(defn destroy-window! "todo" [id] ((requiring-resolve 'nextjournal.clerk.window/destroy!) id))
-(defn destroy-all-windows! "todo" [] ((requiring-resolve 'nextjournal.clerk.window/destroy-all!)))
+(defn close-window! "todo" [id] ((requiring-resolve 'nextjournal.clerk.window/close!) id))
+(defn close-all-windows! "todo" [] ((requiring-resolve 'nextjournal.clerk.window/close-all!)))
 
 (defn recompute!
   "Recomputes the currently visible doc, without parsing it."
