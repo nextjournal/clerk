@@ -197,7 +197,9 @@
   (swap! !windows assoc id state)
   (broadcast! {:type :set-window-state! :id id :state state}))
 
-(defn destroy-window! [id] (broadcast! {:type :destroy-window! :id id}))
+(defn destroy-window! [id]
+  (swap! !windows dissoc id)
+  (broadcast! {:type :destroy-window! :id id}))
 
 
 (defn broadcast-status! [status]
