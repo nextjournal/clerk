@@ -45,9 +45,11 @@
   {:pred (v/get-safe ::val)
    :render-fn '(fn [{::keys [val tapped-at]} opts]
                  [:div.w-full
-                  [:div.font-sans.bg-slate-50.px-2
-                   {:class "py-[2px] text-[9px]"} (:nextjournal/value tapped-at)]
-                  [:div.overflow-x-auto [nextjournal.clerk.render/inspect-presented val]]])
+                  [:div.font-sans.bg-slate-100.py-1
+                   {:class "px-[8px] text-[11px]"} (:nextjournal/value tapped-at)]
+                  [:div.overflow-x-auto.py-2
+                   {:class "px-[8px]"}
+                   [nextjournal.clerk.render/inspect-presented val]]])
    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
                    (-> wrapped-value
                        v/mark-preserve-keys
