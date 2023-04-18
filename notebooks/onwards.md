@@ -74,7 +74,6 @@ Notes about what currently breaks 💥 and what could be better tomorrow.
 - [x] Extend reach of viewer api to whole notebook (including the root node)
 - [x] Make viewer api more functional
 - [x] Let `:transform-fn` act on wrapped-value and use it to also replace `:fetch-fn`
-- [ ] Reset ns viewers to defaults on eval
 - [x] Try using `:update-viewers-fn` for markdown node
 - [x] Minimize re-rendering when updating notebook
 - [ ] Throw on re-definitions
@@ -82,20 +81,22 @@ Notes about what currently breaks 💥 and what could be better tomorrow.
 - [x] Allow multiple defs per top-level forms
 - [x] Restore `*ns*` after hashing / eval
 - [x] Support setting `:nextjournal.clerk/cache` forms to control caching behaviour
-- [ ] Deprecate `:nextjournal/no-cache`
 - [x] Add `clerk/image` (name tbd) viewer supporting links and embedded images
 - [x] Derefenced Clojure atoms should get value semantics in dependency graph
 - [x] Support evaluating `(quote 'code 'in 'backticks)` in markdown
 - [x] Make it more obvious that results can be expanded
 - [x] Set expanded state depending on shape (width) of the data
-- [ ] Allow to control viewer expansion state programmatically
-- [ ] Make `doc-url` work in live app using `v/clerk-eval`
+- [x] Allow to control viewer expansion state programmatically
+- [x] Support cherry as alternative js evaluator
+- [ ] Make `doc-url` work in live app using `v/clerk-eval` with homepage, 404 and symbol links
+- [ ] Global config with consistent inheritance to ns, expression
+- [ ] Tap & eval viewer window
 - [ ] Add multiviewer to default viewers
 - [ ] Make stacktraces clickable
 - [ ] Mark uncacheable results in browser window including explanation
 - [x] Build static build on CI
 - [x] Hook up new table viewer
 - [ ] Add CAS storage option for static builds
+- [x] Status log
 ## 💡 Ideas
 - [ ] Hook up distributed caching using CAS + cloud bucket
-- [ ] Status log
