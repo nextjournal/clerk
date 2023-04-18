@@ -751,6 +751,7 @@
         default-loading-view
         [inspect (or pending value error)]))))
 
+
 (defn with-d3-require [{:keys [package loading-view]
                         :or {loading-view default-loading-view}} f]
   (if-let [package (hooks/use-d3-require package)]
