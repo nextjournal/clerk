@@ -615,6 +615,7 @@
       [inspect-presented @!error]])
    (into [:<>]
          (map (fn [[id state]]
+                ^{:key id}
                 [window/show
                  [render-result state {}]
                  (-> state
