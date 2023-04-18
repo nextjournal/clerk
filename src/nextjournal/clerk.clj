@@ -88,7 +88,9 @@
   ([id] (case id ::taps (window! id {:title "🚰Taps"} (col @!taps))))
   ([id content] (window! id {} content))
   ([id opts content]
-   (webserver/update-window! id (merge opts {:presented-value (v/present content)}))))
+   (webserver/update-window! id (merge opts {:nextjournal/presented (v/present content)
+                                             :nextjournal/fetch-opts {:blob-id id}
+                                             :nextjournal/blob-id id}))))
 
 (defn destroy-window! [id] (webserver/destroy-window! id))
 
@@ -97,7 +99,7 @@
 
 #_ (doseq [f @@(resolve 'clojure.core/tapset)] (remove-tap f))
 #_ (reset! !taps ())
-#_ (tap> 1)
+#_(tap> (range 30))
 #_ (window! ::taps)
 #_(destroy-window! ::taps)
 #_ (tap> (html [:h1 "Ahoi"]))
