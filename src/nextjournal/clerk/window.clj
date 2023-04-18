@@ -15,12 +15,12 @@
                    (into [:div.flex.items-center]
                          (map (fn [choice]
                                 [:button.transition-all.mr-2.relative
-                                 {:class (str "h-[24px] border-b-2 "
+                                 {:class (str "h-[24px] "
                                               (if (= taps-view choice)
-                                                "text-indigo-600 border-indigo-600 font-bold "
-                                                "text-slate-500 border-transparent hover:text-indigo-600 "))
+                                                "text-indigo-600 font-bold "
+                                                "text-slate-500 hover:text-indigo-600 "))
                                   :on-click #(nextjournal.clerk.render/clerk-eval `(set-view! ~choice))}
-                                 [:span.relative {:class "-bottom-[2px]"} (clojure.string/capitalize (name choice))]])
+                                 (clojure.string/capitalize (name choice))])
                               [:stream :latest]))
                    [:button.text-slate-500.hover:text-indigo-600
                     {:on-click #(nextjournal.clerk.render/clerk-eval `(tap/reset-taps!))}
