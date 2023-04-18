@@ -1,7 +1,6 @@
 (ns nextjournal.clerk.webserver
   (:require [babashka.fs :as fs]
             [clojure.edn :as edn]
-            [clojure.main :as main]
             [clojure.pprint :as pprint]
             [clojure.set :as set]
             [clojure.string :as str]
@@ -154,10 +153,9 @@
 (declare present+reset! set-status!)
 
 (defn eval-file [file]
-  (main/with-bindings
-    (-> (parser/parse-file {:doc? true} file)
-        (assoc :set-status-fn set-status!)
-        eval/eval-doc)))
+  (-> (parser/parse-file {:doc? true} file)
+      (assoc :set-status-fn set-status!)
+      eval/eval-doc))
 
 (defn guard [p x] (when (p x) x))
 (defn existing-notebook-path [uri]
