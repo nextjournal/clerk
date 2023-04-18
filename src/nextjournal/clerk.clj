@@ -105,9 +105,10 @@
 #_(destroy-window! ::taps)
 #_(tap> (html [:h1 "Ahoi"]))
 #_(tap> (table [[1 2] [3 4]]))
-#_(window! ::my-window {:title "Ahoi"} (table [[1 2] [3 4]]))
-#_(window! ::my-window {:title "Ahoi"} (range 40))
-#_(window! ::my-window {:title "Ahoi"} (plotly {:data [{:y [1 2 3]}]}))
+#_(window! ::my-window {:title "🔭 Rear Window"} (table [[1 2] [3 4]]))
+#_(window! ::my-window {:title "🔭 Rear Window"} (range 30))
+#_(window! ::my-window {:title "🔭 Rear Window"} (plotly {:data [{:y [1 2 3]}]}))
+#_(window! ::my-window-2 {:title "🪟"} (range 100))
 #_(destroy-window! ::my-window)
 
 (defn ^:private supported-file?
