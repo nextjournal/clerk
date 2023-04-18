@@ -162,6 +162,20 @@
   (when-some [ex (or (guard fs/exists? uri) (guard fs/exists? (subs uri 1)))]
     (guard fs/regular-file? ex)))
 
+(defn serve-notebook [uri]
+  (let [path (subs uri 1)]
+    (when-not (= "" path)
+      (future (@(resolve 'nextjournal.clerk/show!) (if (str/starts-with? path "'")
+                                                     (read-string (subs path 1))
+                                                     path))))
+    {:status 200
+     :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
+     :body (view/doc->html {:error @!error
+                            :doc (if (= "" path)
+                                   (help-doc)
+                                   @!doc)})}))
+
+
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
     (httpkit/as-channel req ws-handlers)
@@ -171,13 +185,7 @@
         ("build" "js" "css") (serve-file uri (str "public" uri))
         ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
         "_ws" {:status 200 :body "upgrading..."}
-        {:status 200
-         :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
-         :body (view/doc->html {:error @!error
-                                :doc (or (when-some [file (existing-notebook-path uri)]
-                                           (doto (eval-file file) present+reset!))
-                                         @!doc
-                                         (help-doc))})})
+        (serve-notebook uri))
       (catch Throwable e
         {:status  500
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))

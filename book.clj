@@ -457,9 +457,8 @@ v/default-viewers
 
 
 ^{::clerk/visibility {:code :fold :result :hide}}
-(do
-  (set! *print-namespace-maps* false)
-  (defn show-raw-value [x]
+(defn show-raw-value [x]
+  (binding [*print-namespace-maps* false]
     (clerk/code (with-out-str (clojure.pprint/pprint x)))))
 
 ;; Let's start with one of the simplest examples. You can see that
