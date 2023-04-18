@@ -5,9 +5,20 @@
 
 (def taps-viewer
   {:render-fn '(fn [taps opts]
-                 (into [:div]
-                       (nextjournal.clerk.viewer/inspect-children opts)
-                       taps))})
+                 (let [!view (nextjournal.clerk.render.hooks/use-state :stream)]
+                   [:div
+                    [:div.flex.justify-between.items-center
+                     (into [:div.flex.items-center.font-sans.text-xs.mb-3 [:span.text-slate-500.mr-2 "View-as:"]]
+                           (map (fn [choice]
+                                  [:button.px-3.py-1.font-medium.hover:bg-indigo-50.rounded-full.hover:text-indigo-600.transition
+                                   {:class (if (= @!view choice) "bg-indigo-100 text-indigo-600" "text-slate-500")
+                                    :on-click #(reset! !view choice)}
+                                   choice]) [:stream :latest]))
+                     [:button.text-xs.rounded-full.px-3.py-1.border-2.font-sans.hover:bg-slate-100.cursor-pointer
+                      {:on-click #(nextjournal.clerk.render/clerk-eval `(reset-taps!))} "Clear"]]
+                    (into [:div]
+                          (nextjournal.clerk.viewer/inspect-children opts)
+                          (cond->> taps (= :latest @!view) (take 1)))]))})
 
 (defn open!
   ([id]
