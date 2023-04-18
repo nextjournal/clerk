@@ -126,8 +126,22 @@
 
 #_(pr-str (read-msg "#viewer-eval (resolve 'clojure.core/inc)"))
 
+(defn update-window! [id state]
+  (swap! !windows assoc id state)
+  (broadcast! {:type :set-window-state! :id id :state state}))
+
+(defn update-windows! []
+  (doseq [[id state] @!windows]
+    (update-window! id state)))
+
+(defn close-window! [id]
+  (swap! !windows dissoc id)
+  (broadcast! {:type :close-window! :id id}))
+
 (def ws-handlers
-  {:on-open (fn [ch] (swap! !clients conj ch))
+  {:on-open (fn [ch]
+              (swap! !clients conj ch)
+              (update-windows!))
    :on-close (fn [ch _reason] (swap! !clients disj ch))
    :on-receive (fn [sender-ch edn-string]
                  (binding [*ns* (or (:ns @!doc)
@@ -192,15 +206,6 @@
                 {:type :set-state! :doc (present+reset! doc)})))
 
 #_(update-doc! (help-doc))
-
-(defn update-window! [id state]
-  (swap! !windows assoc id state)
-  (broadcast! {:type :set-window-state! :id id :state state}))
-
-(defn close-window! [id]
-  (swap! !windows dissoc id)
-  (broadcast! {:type :close-window! :id id}))
-
 
 (defn broadcast-status! [status]
   ;; avoid editscript diff but use manual patch to just replace `:status` in doc
