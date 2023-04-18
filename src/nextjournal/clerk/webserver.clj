@@ -7,8 +7,6 @@
             [editscript.core :as editscript]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
-            [nextjournal.clerk.eval :as eval]
-            [nextjournal.clerk.parser :as parser]
             [org.httpkit.server :as httpkit])
   (:import (java.nio.file Files)))
 
@@ -151,18 +149,6 @@
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
     (eval '(nextjournal.clerk/recompute!)))
 
-(declare present+reset! set-status!)
-
-(defn eval-file [file]
-  (-> (parser/parse-file {:doc? true} file)
-      (assoc :set-status-fn set-status!)
-      eval/eval-doc))
-
-(defn guard [p x] (when (p x) x))
-(defn existing-notebook-path [uri]
-  (when-some [ex (or (guard fs/exists? uri) (guard fs/exists? (subs uri 1)))]
-    (guard fs/regular-file? ex)))
-
 (defn serve-notebook [uri]
   (let [path (subs uri 1)]
     (when-not (= "" path)
@@ -175,7 +161,6 @@
                             :doc (if (= "" path)
                                    (help-doc)
                                    @!doc)})}))
-
 
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)

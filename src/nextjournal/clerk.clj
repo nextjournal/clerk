@@ -54,9 +54,10 @@
                        (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
                                        {:file-or-ns file-or-ns}))))
             _ (reset! !last-file file)
-            {:keys [blob->result]} @webserver/!doc]
-        (webserver/update-doc!
-         (eval/eval-doc blob->result (assoc doc :set-status-fn webserver/set-status!))))
+            {:keys [blob->result]} @webserver/!doc
+            {:keys [result time-ms]} (eval/time-ms (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!)))]
+        (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
+        (webserver/update-doc! result))
       (catch Exception e
         (webserver/show-error! e)
         (throw e)))))
@@ -348,8 +349,9 @@
 
 (defn eval-cljs-str
   "Evaluates the given ClojureScript `code-string` in the browser."
-  [code-string]
-  (v/eval-cljs-str code-string))
+  ([code-string] (eval-cljs-str code-string nil))
+  ([opts code-string]
+   (v/eval-cljs-str opts code-string)))
 
 (defn eval-cljs
   "Evaluates the given ClojureScript forms in the browser."

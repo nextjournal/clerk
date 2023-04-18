@@ -252,10 +252,7 @@
 (defn eval-doc
   "Evaluates the given `doc`."
   ([doc] (eval-doc {} doc))
-  ([in-memory-cache {:as doc :keys [file]}]
-   (let [{:keys [result time-ms]} (time-ms (+eval-results in-memory-cache doc))]
-     (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
-     result)))
+  ([in-memory-cache doc] (+eval-results in-memory-cache doc)))
 
 (defn eval-file
   "Reads given `file` (using `slurp`) and evaluates it."
