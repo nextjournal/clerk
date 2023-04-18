@@ -223,7 +223,7 @@
         {:as evaluated-doc :keys [blob-ids]}
         (reduce (fn [state cell]
                   (when (and (parser/code? cell) set-status-fn)
-                    (set-status-fn (->eval-status analyzed-doc (inc (count (filter parser/code? (:blocks state)))) cell)))
+                    (set-status-fn (->eval-status analyzed-doc (count (filter parser/code? (:blocks state))) cell)))
                   (let [state-with-deref-deps-evaluated (analyzer/hash-deref-deps state cell)
                         {:as result :nextjournal/keys [blob-id]} (when (parser/code? cell)
                                                                    (read+eval-cached state-with-deref-deps-evaluated cell))]

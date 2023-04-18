@@ -16,6 +16,7 @@
             [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clerk.render.localstorage :as localstorage]
             [nextjournal.clerk.render.navbar :as navbar]
+            [nextjournal.clerk.render.window :as window]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.markdown.transform :as md.transform]
             [reagent.core :as r]
@@ -128,6 +129,20 @@
 
 (declare inspect-children)
 
+(defn closest-anchor-parent [el]
+  (loop [el el]
+    (when el
+      (if (= "A" (.-nodeName el))
+        el
+        (recur (.-parentNode el))))))
+
+(declare clerk-eval)
+(defn ->URL [s] (new js/URL s))
+(defn handle-anchor-click [^js e]
+  (when-some [notebook-path (some-> e .-target closest-anchor-parent .-href ->URL .-searchParams (.get "clerk-show"))]
+    (.preventDefault e)
+    (clerk-eval (list 'nextjournal.clerk/show! notebook-path))))
+
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility]} opts]
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
@@ -146,14 +161,18 @@
                                         stored-open?
                                         (not= :collapsed toc-visibility))})
                root-ref-fn (fn [el]
-                             (when el
-                               (setup-dark-mode! !state)
-                               (when-some [heading (when (and (exists? js/location) (not bundle?))
-                                                     (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
-                                                          (catch js/Error _
-                                                            (js/console.warn (str "Clerk render-notebook, invalid hash: "
-                                                                                  (.-hash js/location))))))]
-                                 (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
+                             (if el
+                               (when (exists? js/document)
+                                 (js/document.addEventListener "click" handle-anchor-click)
+                                 (setup-dark-mode! !state)
+                                 (when-some [heading (when (and (exists? js/location) (not bundle?))
+                                                       (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
+                                                            (catch js/Error _
+                                                              (js/console.warn (str "Clerk render-notebook, invalid hash: "
+                                                                                    (.-hash js/location))))))]
+                                   (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading))))
+                               (when (exists? js/document)
+                                 (js/document.removeEventListener "click" handle-anchor-click))))]
     (let [{:keys [md-toc mobile? open? visibility]} @!state
           doc-inset (cond
                       mobile? 0
@@ -598,6 +617,9 @@
                                                 (swap! !state update :desc viewer/merge-presentations more fetch-opts))))}
      [inspect-presented (:desc @!state)]]))
 
+(defn show-window [& content]
+  [window/show content])
+
 (defn root []
   [:<>
    [inspect-presented @!doc]
@@ -686,12 +708,14 @@
 (defonce !pending-clerk-eval-replies
   (atom {}))
 
-(defn clerk-eval [form]
-  (let [eval-id (gensym)
-        promise (js/Promise. (fn [resolve reject]
-                               (swap! !pending-clerk-eval-replies assoc eval-id {:resolve resolve :reject reject})))]
-    (ws-send! {:type :eval :form form :eval-id eval-id})
-    promise))
+(defn clerk-eval
+  ([form] (clerk-eval form {}))
+  ([form {:as opts :keys [recompute?] :or {recompute? false}}]
+   (let [eval-id (gensym)
+         promise (js/Promise. (fn [resolve reject]
+                                (swap! !pending-clerk-eval-replies assoc eval-id {:resolve resolve :reject reject})))]
+     (ws-send! {:type :eval :form form :eval-id eval-id :recompute? recompute?})
+     promise)))
 
 (defn process-eval-reply! [{:keys [eval-id reply error]}]
   (if-let [{:keys [resolve reject]} (get @!pending-clerk-eval-replies eval-id)]
