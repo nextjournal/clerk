@@ -59,7 +59,8 @@
          "viewers/plotly"
          "viewers/table"
          "viewers/tex"
-         "viewers/vega"]))
+         "viewers/vega"
+         "cherry"]))
 
 
 (defn strip-index [path]
@@ -368,3 +369,7 @@
                       :index "notebooks/rule_30.clj"
                       :paths ["notebooks/hello.clj"
                               "notebooks/markdown.md"]})
+#_(build-static-app! {;; test against cljs release `bb build:js`
+                      :resource->url {"/js/viewer.js" "/viewer.js"}
+                      :paths ["notebooks/cherry.clj"]
+                      :out-path "build"})

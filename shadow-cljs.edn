@@ -10,4 +10,6 @@
                    :modules {:viewer {:entries [nextjournal.clerk.sci-env
                                                 nextjournal.clerk.static-app
                                                 nextjournal.clerk.trim-image]}}
-                   :js-options {:output-feature-set :es8}}}}
+                   :js-options {:output-feature-set :es8}
+                   :build-hooks [(shadow.cljs.build-report/hook
+                                  {:output-to "report.html"})]}}}

@@ -354,7 +354,11 @@
            (pr-str (symbol "~")))))
 
   (testing "splicing reader conditional prints normally (issue #338)"
-    (is (= "?@" (pr-str (symbol "?@"))))))
+    (is (= "?@" (pr-str (symbol "?@")))))
+
+  (testing "custom print-method for symbol preserves metadata"
+    (is (-> (binding [*print-meta* true]
+              (pr-str '[^:foo bar])) read-string first meta :foo))))
 
 (deftest removed-metadata
   (is (= "(do 'this)"

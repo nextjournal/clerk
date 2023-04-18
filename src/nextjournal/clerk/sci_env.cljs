@@ -1,4 +1,5 @@
 (ns nextjournal.clerk.sci-env
+  (:refer-clojure :exclude [time])
   (:require-macros [nextjournal.clerk.render.macros :refer [sci-copy-nss]])
   (:require ["@codemirror/language" :as codemirror-language]
             ["@codemirror/state" :as codemirror-state]
@@ -8,11 +9,12 @@
             ["framer-motion" :as framer-motion]
             ["react" :as react]
             [applied-science.js-interop :as j]
-            [cljs.reader]
             [cljs.math]
+            [cljs.reader]
             [clojure.string :as str]
             [edamame.core :as edamame]
             [goog.object]
+            [nextjournal.clerk.cherry-env :as cherry-env]
             [nextjournal.clerk.parser]
             [nextjournal.clerk.render :as render]
             [nextjournal.clerk.render.code]
@@ -75,8 +77,10 @@
          :read-cond :allow
          :readers
          (fn [tag]
-           (or (get {'viewer-fn   ->viewer-fn-with-error
-                     'viewer-eval ->viewer-eval-with-error} tag)
+           (or (get {'viewer-fn ->viewer-fn-with-error
+                     'viewer-fn/cherry cherry-env/->viewer-fn-with-error
+                     'viewer-eval ->viewer-eval-with-error
+                     'viewer-eval/cherry cherry-env/->viewer-eval-with-error} tag)
                (fn [value]
                  (viewer/with-viewer `viewer/tagged-value-viewer
                    {:tag tag
@@ -89,7 +93,6 @@
 
 (defn ^:export read-string [s]
   (edamame/parse-string s @!edamame-opts))
-
 
 (def ^{:doc "Stub implementation to be replaced during static site generation. Clerk is only serving one page currently."}
   doc-url (sci/new-var 'doc-url viewer/doc-url))
@@ -118,10 +121,16 @@
 
 (def core-ns (sci/create-ns 'clojure.core nil))
 
+(defn ^:sci/macro time [_ _ expr]
+  `(let [start# (system-time)
+         ret# ~expr]
+     (prn (cljs.core/str "Elapsed time: "
+                         (.toFixed (- (system-time) start#) 6)
+                         " msecs"))
+     ret#))
+
 (def initial-sci-opts
-  {:async? true
-   :disable-arity-checks true
-   :classes {'js (j/assoc! goog/global "import" shadow.esm/dynamic-import)
+  {:classes {'js (j/assoc! goog/global "import" shadow.esm/dynamic-import)
              'framer-motion framer-motion
              :allow :all}
    :js-libs {"@codemirror/language" codemirror-language
@@ -134,7 +143,9 @@
    :ns-aliases '{clojure.math cljs.math}
    :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
                        'clojure.core {'read-string read-string
-                                      'implements? (sci/copy-var implements?* core-ns)}}
+                                      'implements? (sci/copy-var implements?* core-ns)
+                                      'time (sci/copy-var time core-ns)
+                                      'system-time (sci/copy-var system-time core-ns)}}
                       (sci-copy-nss
                        'cljs.math
                        'nextjournal.clerk.parser
@@ -150,6 +161,9 @@
                       sci.configs.js-interop/namespaces
                       sci.configs.reagent/namespaces)})
 
+(defn ^:export onmessage [ws-msg]
+  (render/dispatch (read-string (.-data ws-msg))))
+
 (defn ^:export eval-form [f]
   (sci/eval-form (sci.ctx-store/get-ctx) f))
 
@@ -157,9 +171,6 @@
   (render/set-state! state))
 
 (def ^:export mount render/mount)
-
-(defn ^:export onmessage [ws-msg]
-  (render/dispatch (read-string (.-data ws-msg))))
 
 (defn reconnect-timeout [failed-connection-attempts]
   (get [0 0 100 500 5000] failed-connection-attempts 10000))
