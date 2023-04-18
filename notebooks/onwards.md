@@ -90,6 +90,9 @@ Notes about what currently breaks 💥 and what could be better tomorrow.
 - [x] Support cherry as alternative js evaluator
 - [ ] Make `doc-url` work in live app using `v/clerk-eval` with homepage, 404 and symbol links
 - [ ] Global config with consistent inheritance to ns, expression
+- [ ] Add sync atoms to book
+- [ ] Add tap inspector to book
+- [ ] Add customizing clerk: markdown backtick eval example to book
 - [ ] Tap & eval viewer window
 - [ ] Add multiviewer to default viewers
 - [ ] Make stacktraces clickable
