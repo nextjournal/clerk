@@ -15,6 +15,7 @@ Changes can be:
 
 * 🔌 Make websocket reconnect automatically on close to avoid having to reload the page
 * 💫 Cache expressions that return `nil` in memory
+* 🐜 Ensure custom `print-method` supporting unreadable symbols preserves metadata
 
 ## 0.13.842 (2023-03-07)
 
