@@ -6,7 +6,7 @@
 
 (declare open!)
 (defonce !taps-view (atom :stream))
-(defn set-view! [x] (reset! !taps-view x) (open! ::taps))
+(defn set-view! [x] (reset! !taps-view x) (open! ::clerk/taps))
 
 (def taps-viewer
   {:render-fn '(fn [taps {:as opts :keys [taps-view]}]
