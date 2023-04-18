@@ -24,6 +24,7 @@
 
 (defonce !clients (atom #{}))
 (defonce !doc (atom nil))
+(defonce !window (atom nil))
 (defonce !error (atom nil))
 (defonce !last-sender-ch (atom nil))
 
@@ -77,8 +78,9 @@
   (into {}
         (comp (filter #(and (map? %) (v/get-safe % :nextjournal/blob-id) (v/get-safe % :nextjournal/presented)))
               (map (juxt :nextjournal/blob-id :nextjournal/presented)))
-        (tree-seq coll? seq
-                  (:nextjournal/value presented-doc))))
+        (cons @!window
+              (tree-seq coll? seq
+                        (:nextjournal/value presented-doc)))))
 
 #_(blob->presented (meta @!doc))
 
@@ -191,7 +193,10 @@
 
 #_(update-doc! (help-doc))
 
-(defn update-window! [id state] (broadcast! {:type :set-window-state! :id id :state state}))
+(defn update-window! [id state]
+  (reset! !window state)
+  (broadcast! {:type :set-window-state! :id id :state state}))
+
 (defn destroy-window! [id] (broadcast! {:type :destroy-window! :id id}))
 
 
