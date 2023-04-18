@@ -186,6 +186,7 @@
         ("build" "js" "css") (serve-file uri (str "public" uri))
         ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
         "_ws" {:status 200 :body "upgrading..."}
+        "favicon.ico" {:status 404}
         (serve-notebook uri))
       (catch Throwable e
         {:status  500
