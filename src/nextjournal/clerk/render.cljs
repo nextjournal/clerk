@@ -142,7 +142,8 @@
   (js/URL. href))
 
 (defn handle-anchor-click [^js e]
-  (let [url (some-> e .-target closest-anchor-parent .-href ->URL)]
+  (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
+    (js/console.log :url url  )
     (when-let [show-path (and (= (.-search url) "?clerk/show!")
                               (subs (.-pathname url) 1))]
       (.preventDefault e)
