@@ -129,7 +129,7 @@
 
 (declare inspect-children)
 
-(defn closest-anchor-parent [el]
+(defn closest-anchor-parent [^js el]
   (loop [el el]
     (when el
       (if (= "A" (.-nodeName el))
@@ -140,6 +140,14 @@
 (defn ->URL [s] (new js/URL s))
 (defn handle-anchor-click [^js e]
   (when-some [notebook-path (some-> e .-target closest-anchor-parent .-href ->URL .-searchParams (.get "clerk-show"))]
+    (.preventDefault e)
+    (clerk-eval (list 'nextjournal.clerk/show! notebook-path))))
+
+(defn history-push-state [path]
+  (js/history.pushState #js {:clerk_show path} nil (str "/" path)))
+
+(defn handle-history-popstate [^js e]
+  (when-some [notebook-path (.. e -state -clerk_show)]
     (.preventDefault e)
     (clerk-eval (list 'nextjournal.clerk/show! notebook-path))))
 
@@ -164,6 +172,7 @@
                              (if el
                                (when (exists? js/document)
                                  (js/document.addEventListener "click" handle-anchor-click)
+                                 (js/window.addEventListener "popstate" handle-history-popstate true)
                                  (setup-dark-mode! !state)
                                  (when-some [heading (when (and (exists? js/location) (not bundle?))
                                                        (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
@@ -172,7 +181,8 @@
                                                                                     (.-hash js/location))))))]
                                    (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading))))
                                (when (exists? js/document)
-                                 (js/document.removeEventListener "click" handle-anchor-click))))]
+                                 (js/document.removeEventListener "click" handle-anchor-click)
+                                 (js/window.removeEventListener "popstate" handle-history-popstate))))]
     (let [{:keys [md-toc mobile? open? visibility]} @!state
           doc-inset (cond
                       mobile? 0
@@ -710,7 +720,7 @@
 
 (defn clerk-eval
   ([form] (clerk-eval form {}))
-  ([form {:as opts :keys [recompute?] :or {recompute? false}}]
+  ([form {:keys [recompute?] :or {recompute? false}}]
    (let [eval-id (gensym)
          promise (js/Promise. (fn [resolve reject]
                                 (swap! !pending-clerk-eval-replies assoc eval-id {:resolve resolve :reject reject})))]
@@ -720,8 +730,7 @@
 (defn process-eval-reply! [{:keys [eval-id reply error]}]
   (if-let [{:keys [resolve reject]} (get @!pending-clerk-eval-replies eval-id)]
     (do (swap! !pending-clerk-eval-replies dissoc eval-id)
-        (cond reply (resolve reply)
-              error (reject error)))
+        (if error (reject error) (resolve reply)))
     (js/console.warn :process-eval-reply!/not-found :eval-id eval-id :keys (keys @!pending-clerk-eval-replies))))
 
 (defn ^:export dispatch [{:as msg :keys [type]}]
