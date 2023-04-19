@@ -145,11 +145,15 @@
   (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
     (when (= (.-search url) "?clerk/show!")
       (.preventDefault e)
-      (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:path (subs (.-pathname url) 1)})))))
+      (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
+                        (cond-> {:path (subs (.-pathname url) 1)}
+                          (seq (.-hash url))
+                          (assoc :fragment (subs (.-hash url) 1))))))))
 
-(defn history-push-state [path]
+(defn history-push-state [{:keys [path fragment]}]
   (when (not= path (some-> js/history .-state .-clerk_show))
-    (js/history.pushState #js {:clerk_show path} nil (str "/" path))))
+    (js/history.pushState #js {:clerk_show path} nil
+                          (str "/" path (when fragment (str "#" fragment))))))
 
 (defn handle-history-popstate [^js e]
   (when-some [notebook-path (some-> e .-state .-clerk_show)]
@@ -158,7 +162,7 @@
                                                               :skip-history? true}))))
 
 (defn handle-initial-load [_]
-  (history-push-state (subs js/location.pathname 1)))
+  (history-push-state {:path (subs js/location.pathname 1)}))
 
 (when (exists? js/addEventListener)
   ;; We need to push an initial history state when the document is first loaded via a hard request

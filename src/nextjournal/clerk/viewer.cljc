@@ -1620,7 +1620,12 @@
    content
    (html [:figcaption.text-xs.text-slate-500.text-center.mt-1 text])))
 
-(defn ^:dynamic doc-url [path] (str "/" path "?clerk/show!"))
+(defn ^:dynamic doc-url [path]
+  (let [[path fragment] (str/split path #"#")]
+    (str "/" path "?clerk/show!" (when fragment (str "#" fragment)))))
+
+#_(doc-url "notebooks/rule_30.clj#board")
+#_(doc-url "notebooks/rule_30.clj")
 
 (defn print-hide-result-deprecation-warning []
   #?(:clj (binding [*out* *err*]

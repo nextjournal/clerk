@@ -196,7 +196,7 @@
     (reset! !doc (with-meta doc presented))
     presented))
 
-(defn update-doc! [{:as doc :keys [file skip-history?]}]
+(defn update-doc! [{:as doc :keys [file fragment skip-history?]}]
   (reset! !error nil)
   (broadcast! (if (= (:ns @!doc) (:ns doc))
                 {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
@@ -209,7 +209,8 @@
                                                   (cond->> file
                                                     (fs/absolute? file)
                                                     (fs/relativize (fs/cwd))))) (catch Exception _))]
-                              [(v/->ViewerEval (list 'nextjournal.clerk.render/history-push-state path))]))})))
+                              [(v/->ViewerEval (list 'nextjournal.clerk.render/history-push-state
+                                                     (cond-> {:path path} fragment (assoc :fragment fragment))))]))})))
 
 #_(update-doc! (help-doc))
 
