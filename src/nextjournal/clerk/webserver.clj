@@ -211,7 +211,8 @@
                               [(v/->ViewerEval (list 'nextjournal.clerk.render/history-push-state path))]))})))
 
 (defn navigate! [{:as opts :keys [path]}]
-  (update-doc! (merge (eval/eval-file (:blob->result @!doc) path) opts)))
+  (update-doc! (merge (or (when (seq path) (eval/eval-file (:blob->result @!doc) path))
+                          (help-doc)) opts)))
 
 #_(update-doc! (help-doc))
 

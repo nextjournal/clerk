@@ -9,7 +9,7 @@
   [:li [:a {:href (clerk/doc-url "notebooks/viewers/image.clj")} "Images"]]
   [:li [:a {:href (clerk/doc-url "notebooks/markdown.md")} "Markdown"]]
   [:li [:a {:href (clerk/doc-url "notebooks/viewer_api.clj")} "Viewer API"]]
-  [:li [:a {:href (clerk/doc-url "notebooks/how_clerk_works.clj")} "How Clerk Works"]]])
+  [:li [:a {:href (clerk/doc-url "")} "Homepage"]]])
 
 ;; The same functionality is available in the SCI context when building render functions.
 (clerk/with-viewer

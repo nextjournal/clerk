@@ -143,11 +143,9 @@
 
 (defn handle-anchor-click [^js e]
   (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
-    (js/console.log :url url  )
-    (when-some [show-path (when (= (.-search url) "?clerk/show!")
-                            (not-empty (subs (.-pathname url) 1)))]
+    (when (= (.-search url) "?clerk/show!")
       (.preventDefault e)
-      (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:path show-path})))))
+      (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:path (subs (.-pathname url) 1)})))))
 
 (defn history-push-state [path]
   (js/history.pushState #js {:clerk_show path} nil (str "/" path)))
