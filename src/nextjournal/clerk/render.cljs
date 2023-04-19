@@ -148,8 +148,7 @@
 
 (defn handle-history-popstate [^js e]
   (when-some [notebook-path (.. e -state -clerk_show)]
-    (.preventDefault e)
-    (clerk-eval (list 'nextjournal.clerk/show! notebook-path))))
+    (clerk-eval (list 'nextjournal.clerk/show! notebook-path {:skip-history? true}))))
 
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility]} opts]
   (r/with-let [local-storage-key "clerk-navbar"
