@@ -113,8 +113,9 @@
 
 #_(serve-file "public" {:uri "/js/viewer.js"})
 
-(defn show-error! [e]
-  (broadcast! {:type :set-state! :error (reset! !error (v/present e))}))
+(defn reset+broadcast-error! [e]
+  (broadcast! {:type :set-state! :error (reset! !error (v/present e))})
+  @!error)
 
 (defn read-msg [s]
   (binding [*data-readers* v/data-readers]
@@ -122,7 +123,7 @@
          (catch Exception ex
            (throw (doto (ex-info (str "Clerk encountered the following error attempting to read an incoming message: "
                                       (ex-message ex))
-                                 {:message s} ex) show-error!))))))
+                                 {:message s} ex) reset+broadcast-error!))))))
 
 #_(pr-str (read-msg "#viewer-eval (resolve 'clojure.core/inc)"))
 
@@ -145,7 +146,7 @@
                                   (binding [*sender-ch* sender-ch]
                                     (apply swap! @var (eval (:args msg))))
                                   (catch Exception ex
-                                    (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) show-error!)))))))))})
+                                    (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) reset+broadcast-error!)))))))))})
 
 #_(do
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
@@ -156,12 +157,13 @@
   (let [path (subs uri 1)]
     {:status 200
      :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
-     :body (view/doc->html {:error @!error
-                            :doc (or (and (= "" path) (doto (help-doc) present+reset!))
-                                     (when (and (fs/exists? path) (fs/regular-file? path))
-                                       (doto (eval/eval-file (:blob->result @!doc) path)
-                                         present+reset!))
-                                     @!doc)})}))
+     :body (view/doc->html (try {:doc (or (and (= "" path) (doto (help-doc) present+reset!))
+                                          (when (and (fs/exists? path) (fs/regular-file? path))
+                                            (doto (eval/eval-file (:blob->result @!doc) path)
+                                              present+reset!))
+                                          @!doc)}
+                                (catch Exception e
+                                  {:error (reset+broadcast-error! e)})))}))
 
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)

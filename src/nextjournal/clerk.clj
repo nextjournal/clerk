@@ -59,7 +59,7 @@
         (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
         (webserver/update-doc! result))
       (catch Exception e
-        (webserver/show-error! e)
+        (webserver/reset+broadcast-error! e)
         (throw e)))))
 
 #_(show! "notebooks/exec_status.clj")
