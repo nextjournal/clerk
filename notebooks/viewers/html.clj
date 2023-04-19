@@ -24,4 +24,4 @@
 (clerk/html
  [:ol (list [:li [:a {:href (clerk/doc-url "notebooks/document_linking.clj")} "Cross Document Linking"]]
             [:li [:a {:href (clerk/doc-url "notebooks/rule_30.clj")} "Rule 30"]]
-            [:li [:a {:href (clerk/doc-url "notebooks/markdown.md#appendix")} "Appendix"]])])
+            [:li [:a {:href (clerk/doc-url "notebooks/markdown.md")} "Appendix"]])])

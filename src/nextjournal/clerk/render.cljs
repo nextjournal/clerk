@@ -157,6 +157,13 @@
     (.preventDefault e)
     (clerk-eval (list 'nextjournal.clerk/show! notebook-path {:skip-history? true}))))
 
+(defn handle-initial-load [_]
+  (history-push-state (subs js/location.pathname 1)))
+
+(when (exists? js/addEventListener)
+  ;; We need to push an initial history state when the document is first loaded via a hard request
+  (js/addEventListener "load" handle-initial-load))
+
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility]} opts]
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
@@ -178,7 +185,7 @@
                              (if el
                                (when (exists? js/document)
                                  (js/document.addEventListener "click" handle-anchor-click)
-                                 (js/window.addEventListener "popstate" handle-history-popstate true)
+                                 (js/addEventListener "popstate" handle-history-popstate)
                                  (setup-dark-mode! !state)
                                  (when-some [heading (when (and (exists? js/location) (not bundle?))
                                                        (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
@@ -188,7 +195,7 @@
                                    (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading))))
                                (when (exists? js/document)
                                  (js/document.removeEventListener "click" handle-anchor-click)
-                                 (js/window.removeEventListener "popstate" handle-history-popstate))))]
+                                 (js/removeEventListener "popstate" handle-history-popstate))))]
     (let [{:keys [md-toc mobile? open? visibility]} @!state
           doc-inset (cond
                       mobile? 0
