@@ -203,12 +203,12 @@
                 {:type :set-state!
                  :doc (present+reset! doc)
                  :effects (when-not skip-history?
-                            (when-some [path (try
-                                               (when (fs/exists? file)
-                                                 (str
-                                                  (cond->> file
-                                                    (fs/absolute? file)
-                                                    (fs/relativize (fs/cwd))))) (catch Exception _))]
+                            (when-some [path (or (when (nil? file) "")
+                                                 (try
+                                                   (when (fs/exists? file)
+                                                     (str (cond->> file
+                                                            (fs/absolute? file)
+                                                            (fs/relativize (fs/cwd))))) (catch Exception _)))]
                               [(v/->ViewerEval (list 'nextjournal.clerk.render/history-push-state
                                                      (cond-> {:path path} fragment (assoc :fragment fragment))))]))})))
 
