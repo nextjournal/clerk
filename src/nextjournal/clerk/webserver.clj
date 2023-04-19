@@ -156,7 +156,7 @@
     {:status 200
      :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
      :body (view/doc->html {:error @!error
-                            :doc (or (and (= "" path) (help-doc))
+                            :doc (or (and (= "" path) (doto (help-doc) present+reset!))
                                      (when (and (fs/exists? path) (fs/regular-file? path))
                                        (doto (eval/eval-file (:blob->result @!doc) path)
                                          present+reset!))
