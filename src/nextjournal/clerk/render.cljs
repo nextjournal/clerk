@@ -715,6 +715,9 @@
 
 (defn ^:export set-state! [{:as state :keys [doc error]}]
   (when (contains? state :doc)
+    (when (exists? js/window)
+      ;; TODO: can we restore the scroll position when navigating back?
+      (.scrollTo js/window #js {:top 0}))
     (reset! !doc doc))
   (when (remount? doc)
     (swap! !eval-counter inc))
