@@ -11,7 +11,7 @@
 (def taps-viewer
   {:render-fn '(fn [taps {:as opts :keys [taps-view]}]
                  [:div.flex.flex-col
-                  [:div.flex.justify-between.items-center.font-sans.border-b.border-t.shadow.z-1
+                  [:div.flex.justify-between.items-center.font-sans.border-t.shadow.z-1
                    {:class "text-[11px] height-[24px] px-[8px]"}
                    (into [:div.flex.items-center]
                          (map (fn [choice]

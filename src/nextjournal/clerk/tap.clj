@@ -45,7 +45,7 @@
   {:pred (v/get-safe ::val)
    :render-fn '(fn [{::keys [val tapped-at]} opts]
                  [:div.w-full
-                  [:div.font-sans.bg-slate-100.py-1
+                  [:div.font-sans.bg-slate-50.py-1.text-slate-600.tracking-wide.border-t.border-b
                    {:class "px-[8px] text-[11px]"} (:nextjournal/value tapped-at)]
                   [:div.overflow-x-auto.py-2
                    {:class "px-[8px]"}

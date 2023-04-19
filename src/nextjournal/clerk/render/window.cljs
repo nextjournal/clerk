@@ -65,18 +65,18 @@
                           #(js/removeEventListener "mousemove" handle-mouse-move)))
                       [!mouse-down on-drag])
     [:div.bg-slate-100.hover:bg-slate-200.dark:bg-slate-800.dark:hover:bg-slate-700.cursor-move.w-full.rounded-t-lg.flex-shrink-0.leading-none.flex.items-center.justify-between
-     {:class (if name "h-[20px] " "h-[14px] ")
+     {:class (if name "h-[24px] " "h-[14px] ")
       :on-mouse-down (fn [event]
                        (on-drag-start)
                        (reset! !mouse-down {:start-x (.-screenX event) :start-y (.-screenY event)}))}
      (when name
        [:span.font-sans.font-medium.text-slate-700
-        {:class "text-[11px] ml-[8px] "}
+        {:class "text-[12px] ml-[8px] "}
         (or title id)])
      (when on-close
        [:button.text-slate-600.hover:text-slate-900.hover:bg-slate-300.rounded-tr-lg.flex.items-center.justify-center
         {:on-click on-close
-         :class "w-[20px] h-[20px]"}
+         :class "w-[24px] h-[24px]"}
         [:svg {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke-width "1.5" :stroke "currentColor" :class "w-3 h-3"}
          [:path {:stroke-linecap "round" :stroke-linejoin "round" :d "M6 18L18 6M6 6l12 12"}]]])]))
 
