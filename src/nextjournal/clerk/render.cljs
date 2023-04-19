@@ -147,7 +147,8 @@
   (js/history.pushState #js {:clerk_show path} nil (str "/" path)))
 
 (defn handle-history-popstate [^js e]
-  (when-some [notebook-path (.. e -state -clerk_show)]
+  (when-some [notebook-path (some-> e .-state .-clerk_show)]
+    (.preventDefault e)
     (clerk-eval (list 'nextjournal.clerk/show! notebook-path {:skip-history? true}))))
 
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility]} opts]

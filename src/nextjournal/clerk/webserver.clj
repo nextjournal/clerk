@@ -5,6 +5,7 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [editscript.core :as editscript]
+            [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [org.httpkit.server :as httpkit])
@@ -149,18 +150,17 @@
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
     (eval '(nextjournal.clerk/recompute!)))
 
+(declare present+reset!)
 (defn serve-notebook [uri]
   (let [path (subs uri 1)]
-    (when-not (= "" path)
-      (future (@(resolve 'nextjournal.clerk/show!) (if (str/starts-with? path "'")
-                                                     (read-string (subs path 1))
-                                                     path))))
     {:status 200
      :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
      :body (view/doc->html {:error @!error
-                            :doc (if (= "" path)
-                                   (help-doc)
-                                   @!doc)})}))
+                            :doc (or (and (= "" path) (help-doc))
+                                     (when (and (fs/exists? path) (fs/regular-file? path))
+                                       (doto (eval/eval-file (:blob->result @!doc) path)
+                                         present+reset!))
+                                     @!doc)})}))
 
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
