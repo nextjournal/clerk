@@ -30,38 +30,37 @@
   (nextjournal.clerk/show! \"https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj\")
   (nextjournal.clerk/show! (java.io.StringReader. \";; # Notebook from String 👋\n(+ 41 1)\"))
   "
-  ([file-or-ns] (show! file-or-ns {}))
-  ([file-or-ns opts]
-   (if config/*in-clerk*
-     ::ignored
-     (try
-       (webserver/set-status! {:progress 0 :status "Parsing…"})
-       (let [file (cond
-                    (nil? file-or-ns)
-                    (throw (ex-info (str "`nextjournal.clerk/show!` cannot show `nil`.")
-                                    {:file-or-ns file-or-ns}))
+  [file-or-ns]
+  (if config/*in-clerk*
+    ::ignored
+    (try
+      (webserver/set-status! {:progress 0 :status "Parsing…"})
+      (let [file (cond
+                   (nil? file-or-ns)
+                   (throw (ex-info (str "`nextjournal.clerk/show!` cannot show `nil`.")
+                                   {:file-or-ns file-or-ns}))
 
-                    (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
-                    (or (some (fn [ext]
-                                (io/resource (str (str/replace (namespace-munge file-or-ns) "." "/") ext)))
-                              [".clj" ".cljc"])
-                        (throw (ex-info (str "`nextjournal.clerk/show!` could not find a resource on the classpath for: `" (pr-str file-or-ns) "`")
-                                        {:file-or-ns file-or-ns})))
+                   (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
+                   (or (some (fn [ext]
+                               (io/resource (str (str/replace (namespace-munge file-or-ns) "." "/") ext)))
+                             [".clj" ".cljc"])
+                       (throw (ex-info (str "`nextjournal.clerk/show!` could not find a resource on the classpath for: `" (pr-str file-or-ns) "`")
+                                       {:file-or-ns file-or-ns})))
 
-                    :else
-                    file-or-ns)
-             doc (try (parser/parse-file {:doc? true} file)
-                      (catch java.io.FileNotFoundException _e
-                        (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
-                                        {:file-or-ns file-or-ns}))))
-             _ (reset! !last-file file)
-             {:keys [blob->result]} @webserver/!doc
-             {:keys [result time-ms]} (eval/time-ms (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!)))]
-         (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
-         (webserver/update-doc! (merge result (select-keys opts [:skip-history?]))))
-       (catch Exception e
-         (webserver/show-error! e)
-         (throw e))))))
+                   :else
+                   file-or-ns)
+            doc (try (parser/parse-file {:doc? true} file)
+                     (catch java.io.FileNotFoundException _e
+                       (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
+                                       {:file-or-ns file-or-ns}))))
+            _ (reset! !last-file file)
+            {:keys [blob->result]} @webserver/!doc
+            {:keys [result time-ms]} (eval/time-ms (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!)))]
+        (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
+        (webserver/update-doc! result))
+      (catch Exception e
+        (webserver/show-error! e)
+        (throw e)))))
 
 #_(show! "notebooks/exec_status.clj")
 #_(clear-cache!)

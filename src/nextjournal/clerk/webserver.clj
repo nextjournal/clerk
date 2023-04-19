@@ -210,6 +210,9 @@
                                                     (fs/relativize (fs/cwd))))) (catch Exception _))]
                               [(v/->ViewerEval (list 'nextjournal.clerk.render/history-push-state path))]))})))
 
+(defn navigate! [{:as opts :keys [path]}]
+  (update-doc! (merge (eval/eval-file (:blob->result @!doc) path) opts)))
+
 #_(update-doc! (help-doc))
 
 (defn broadcast-status! [status]

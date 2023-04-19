@@ -144,10 +144,10 @@
 (defn handle-anchor-click [^js e]
   (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
     (js/console.log :url url  )
-    (when-let [show-path (and (= (.-search url) "?clerk/show!")
-                              (subs (.-pathname url) 1))]
+    (when-some [show-path (when (= (.-search url) "?clerk/show!")
+                            (not-empty (subs (.-pathname url) 1)))]
       (.preventDefault e)
-      (clerk-eval (list 'nextjournal.clerk/show! show-path)))))
+      (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:path show-path})))))
 
 (defn history-push-state [path]
   (js/history.pushState #js {:clerk_show path} nil (str "/" path)))
@@ -155,7 +155,8 @@
 (defn handle-history-popstate [^js e]
   (when-some [notebook-path (some-> e .-state .-clerk_show)]
     (.preventDefault e)
-    (clerk-eval (list 'nextjournal.clerk/show! notebook-path {:skip-history? true}))))
+    (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:path notebook-path
+                                                              :skip-history? true}))))
 
 (defn handle-initial-load [_]
   (history-push-state (subs js/location.pathname 1)))
