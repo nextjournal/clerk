@@ -6,6 +6,7 @@
             [clojure.string :as str]
             [editscript.core :as editscript]
             [nextjournal.clerk.eval :as eval]
+            [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [org.httpkit.server :as httpkit])
@@ -210,10 +211,6 @@
                                                     (fs/relativize (fs/cwd))))) (catch Exception _))]
                               [(v/->ViewerEval (list 'nextjournal.clerk.render/history-push-state path))]))})))
 
-(defn navigate! [{:as opts :keys [path]}]
-  (update-doc! (merge (or (when (seq path) (eval/eval-file (:blob->result @!doc) path))
-                          (help-doc)) opts)))
-
 #_(update-doc! (help-doc))
 
 (defn broadcast-status! [status]
@@ -235,6 +232,12 @@
   (swap! !doc (fn [doc] (-> (or doc (help-doc))
                            (vary-meta assoc :status status)
                            (vary-meta update ::!send-status-future broadcast-status-debounced! status)))))
+
+(defn navigate! [{:as opts :keys [path]}]
+  (update-doc! (merge (or (when (seq path)
+                            (eval/eval-doc (:blob->result @!doc)
+                                           (assoc (parser/parse-file {:doc? true} path) :set-status-fn set-status!)))
+                          (help-doc)) opts)))
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
 
