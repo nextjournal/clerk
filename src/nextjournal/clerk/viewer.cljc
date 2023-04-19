@@ -1620,7 +1620,7 @@
    content
    (html [:figcaption.text-xs.text-slate-500.text-center.mt-1 text])))
 
-(defn ^:dynamic doc-url [path] (str "/?clerk-show=" path))
+(defn ^:dynamic doc-url [path] (str "/" path "?clerk/show!"))
 
 (defn print-hide-result-deprecation-warning []
   #?(:clj (binding [*out* *err*]

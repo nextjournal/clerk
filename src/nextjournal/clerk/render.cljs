@@ -137,11 +137,16 @@
         (recur (.-parentNode el))))))
 
 (declare clerk-eval)
-(defn ->URL [s] (new js/URL s))
+
+(defn ->URL [href]
+  (js/URL. href))
+
 (defn handle-anchor-click [^js e]
-  (when-some [notebook-path (some-> e .-target closest-anchor-parent .-href ->URL .-searchParams (.get "clerk-show"))]
-    (.preventDefault e)
-    (clerk-eval (list 'nextjournal.clerk/show! notebook-path))))
+  (let [url (some-> e .-target closest-anchor-parent .-href ->URL)]
+    (when-let [show-path (and (= (.-search url) "?clerk/show!")
+                              (subs (.-pathname url) 1))]
+      (.preventDefault e)
+      (clerk-eval (list 'nextjournal.clerk/show! show-path)))))
 
 (defn history-push-state [path]
   (js/history.pushState #js {:clerk_show path} nil (str "/" path)))
