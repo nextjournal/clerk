@@ -148,7 +148,7 @@
       (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:path (subs (.-pathname url) 1)})))))
 
 (defn history-push-state [path]
-  (when-not (not= path (some-> js/history .-state .-clerk_show))
+  (when (not= path (some-> js/history .-state .-clerk_show))
     (js/history.pushState #js {:clerk_show path} nil (str "/" path))))
 
 (defn handle-history-popstate [^js e]
