@@ -150,10 +150,11 @@
                           (seq (.-hash url))
                           (assoc :fragment (subs (.-hash url) 1))))))))
 
-(defn history-push-state [{:keys [path fragment]}]
+(defn history-push-state [{:keys [path fragment replace?]}]
   (when (not= path (some-> js/history .-state .-clerk_show))
-    (js/history.pushState #js {:clerk_show path} nil
-                          (str "/" path (when fragment (str "#" fragment))))))
+    (j/call js/history
+            (if replace? :replaceState :pushState)
+            #js {:clerk_show path} nil (str "/" path (when fragment (str "#" fragment))))))
 
 (defn handle-history-popstate [^js e]
   (when-some [notebook-path (some-> e .-state .-clerk_show)]
@@ -162,7 +163,7 @@
                                                               :skip-history? true}))))
 
 (defn handle-initial-load [_]
-  (history-push-state {:path (subs js/location.pathname 1)}))
+  (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
 
 (when (exists? js/addEventListener)
   ;; We need to push an initial history state when the document is first loaded via a hard request
