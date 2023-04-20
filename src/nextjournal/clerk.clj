@@ -63,7 +63,7 @@
                                           (catch Exception e
                                             (throw (ex-info (str "`nextjournal.clerk/show!` encountered an eval error with: `" (pr-str file-or-ns) "`") {::doc doc} e))))]
         (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
-        (webserver/update-doc! result))
+        (webserver/update-doc! (assoc result :nav-path (webserver/->nav-path file-or-ns))))
       (catch Exception e
         (webserver/update-doc! (assoc (-> e ex-data ::doc) :error e))
         (throw e)))))

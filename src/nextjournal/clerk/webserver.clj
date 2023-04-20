@@ -124,20 +124,23 @@
     (reset! !doc (with-meta doc presented))
     presented))
 
-(defn update-doc! [{:as doc :keys [file fragment skip-history?]}]
+(defn ->nav-path [file-or-ns]
+  (cond (symbol? file-or-ns) (str "'" file-or-ns)
+        (string? file-or-ns) (when (fs/exists? file-or-ns)
+                               (fs/unixify (cond->> file-or-ns
+                                             (fs/absolute? file-or-ns)
+                                             (fs/relativize (fs/cwd)))))))
+
+#_(->nav-path 'nextjournal.clerk.tap)
+
+(defn update-doc! [{:as doc :keys [nav-path fragment skip-history?]}]
   (broadcast! (if (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
                 {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
-                {:type :set-state!
-                 :doc (present+reset! doc)
-                 :effects (when-not skip-history?
-                            (when-some [path (or (when (nil? file) "")
-                                                 (try
-                                                   (when (fs/exists? file)
-                                                     (str (cond->> file
-                                                            (fs/absolute? file)
-                                                            (fs/relativize (fs/cwd))))) (catch Exception _)))]
-                              [(v/->ViewerEval (list 'nextjournal.clerk.render/history-push-state
-                                                     (cond-> {:path path} fragment (assoc :fragment fragment))))]))})))
+                (cond-> {:type :set-state!
+                         :doc (present+reset! doc)}
+                  (and nav-path (not skip-history?))
+                  (assoc :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/history-push-state
+                                                         (cond-> {:path nav-path} fragment (assoc :fragment fragment))))])))))
 
 #_(update-doc! (help-doc))
 
