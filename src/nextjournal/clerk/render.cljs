@@ -318,12 +318,12 @@
 
 (defn fetch! [{:keys [blob-id]} opts]
   #_(js/console.log :fetch! blob-id opts)
-  (-> (js/fetch (str "_blob/" blob-id (when (seq opts)
-                                        (str "?" (opts->query opts)))))
+  (-> (js/fetch (str "/_blob/" blob-id (when (seq opts)
+                                         (str "?" (opts->query opts)))))
       (.then #(.text %))
       (.then #(try (read-string %)
                    (catch js/Error e
-                     (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
+                     (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e})
                      (render-unreadable-edn %))))))
 
 (defn ->expanded-at [auto-expand? presented]
