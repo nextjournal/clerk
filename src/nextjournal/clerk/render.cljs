@@ -607,7 +607,6 @@
     [:span.cmt-meta tag] (when space? nbsp) value]))
 
 (defonce !doc (ratom/atom nil))
-(defonce !error (ratom/atom nil))
 (defonce !viewers viewer/!viewers)
 
 (defn set-viewers! [scope viewers]
@@ -656,9 +655,9 @@
       [connection-status status])
     (when-let [status (:status @!doc)]
       [exec-status status])]
-   (when @!error
+   (when-let [error (get-in @!doc [:nextjournal/value :error])]
      [:div.fixed.top-0.left-0.w-full.h-full
-      [inspect-presented @!error]])])
+      [inspect-presented error]])])
 
 (declare mount)
 
@@ -713,17 +712,16 @@
   (let [re-eval (fn [{:keys [form]}] (viewer/->viewer-fn form))]
     (w/postwalk (fn [x] (cond-> x (viewer/viewer-fn? x) re-eval)) doc)))
 
-(defn ^:export set-state! [{:as state :keys [doc error]}]
+(defn ^:export set-state! [{:as state :keys [doc]}]
   (when (contains? state :doc)
     (when (exists? js/window)
       ;; TODO: can we restore the scroll position when navigating back?
       (.scrollTo js/window #js {:top 0}))
     (reset! !doc doc))
-  (when (and error (contains? @!doc :status))
-    (swap! !doc dissoc :status))
+  ;; (when (and error (contains? @!doc :status))
+  ;;   (swap! !doc dissoc :status))
   (when (remount? doc)
     (swap! !eval-counter inc))
-  (reset! !error error)
   (when-let [title (and (exists? js/document) (-> doc viewer/->value :title))]
     (set! (.-title js/document) title)))
 
@@ -731,7 +729,6 @@
   (editscript/patch x (editscript/edits->script patch)))
 
 (defn patch-state! [{:keys [patch]}]
-  (reset! !error nil)
   (if (remount? patch)
     (do (swap! !doc #(re-eval-viewer-fns (apply-patch % patch)))
         ;; TODO: figure out why it doesn't work without `js/setTimeout`

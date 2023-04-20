@@ -55,11 +55,13 @@
                                        {:file-or-ns file-or-ns}))))
             _ (reset! !last-file file)
             {:keys [blob->result]} @webserver/!doc
-            {:keys [result time-ms]} (eval/time-ms (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!)))]
+            {:keys [result time-ms]} (try (eval/time-ms (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!)))
+                                          (catch Exception e
+                                            (throw (ex-info (str "`nextjournal.clerk/show!` encountered an eval error with: `" (pr-str file-or-ns) "`") {::doc doc} e))))]
         (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
         (webserver/update-doc! result))
       (catch Exception e
-        (webserver/update-error! e)
+        (webserver/update-doc! (assoc (-> e ex-data ::doc) :error e))
         (throw e)))))
 
 #_(show! "notebooks/exec_status.clj")

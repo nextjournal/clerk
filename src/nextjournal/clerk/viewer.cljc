@@ -1052,22 +1052,31 @@
                (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote))))
                (extract-sync-atom-vars doc)))))
 
+(defn update-if [m k f]
+  (if (k m)
+    (update m k f)
+    m))
+
+#_(update-if {:n "42"} :n #(Integer/parseInt %))
+
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc
       (assoc :atom-var-name->state (atom-var-name->state doc))
       (assoc :ns (->viewer-eval (list 'ns (if ns (ns-name ns) 'user))))
-      (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer doc))
+      (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer (dissoc doc :error)))
                                              (map (comp present
                                                         (partial ensure-wrapped-with-viewers viewers))))))
       (select-keys [:atom-var-name->state
                     :auto-expand-results?
                     :blocks :bundle?
                     :css-class
+                    :error
                     :open-graph
                     :ns
                     :title
                     :toc
                     :toc-visibility])
+      (update-if :error present)
       (assoc :sidenotes? (boolean (seq (:footnotes doc))))
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
 

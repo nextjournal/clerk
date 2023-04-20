@@ -26,7 +26,6 @@
 
 (defonce !clients (atom #{}))
 (defonce !doc (atom nil))
-(defonce !error (atom nil))
 (defonce !last-sender-ch (atom nil))
 
 #_(view/doc->viewer @!doc)
@@ -47,13 +46,6 @@
 
 #_(broadcast! [{:random (rand-int 10000) :range (range 100)}])
 
-(defn update-if [m k f]
-  (if (k m)
-    (update m k f)
-    m))
-
-#_(update-if {:n "42"} :n #(Integer/parseInt %))
-
 (defn ^:private percent-decode [s]
   (java.net.URLDecoder/decode s java.nio.charset.StandardCharsets/UTF_8))
 
@@ -67,9 +59,9 @@
 (defn get-fetch-opts [query-string]
   (-> query-string
       query-string->map
-      (update-if :n #(Integer/parseInt %))
-      (update-if :offset #(Integer/parseInt %))
-      (update-if :path #(edn/read-string %))))
+      (v/update-if :n #(Integer/parseInt %))
+      (v/update-if :offset #(Integer/parseInt %))
+      (v/update-if :path #(edn/read-string %))))
 
 #_(get-fetch-opts "")
 #_(get-fetch-opts "foo=bar&n=42&start=20")
@@ -113,21 +105,14 @@
 
 #_(serve-file "public" {:uri "/js/viewer.js"})
 
-(defn broadcast-error! [presented-error]
-  (broadcast! {:type :set-state! :error presented-error}))
-
-(defn update-error! [e]
-  (maybe-cancel-send-status-future @!doc)
-  (doto (reset! !error (v/present e))
-    broadcast-error!))
-
 (defn read-msg [s]
   (binding [*data-readers* v/data-readers]
     (try (read-string s)
          (catch Exception ex
            (throw (doto (ex-info (str "Clerk encountered the following error attempting to read an incoming message: "
                                       (ex-message ex))
-                                 {:message s} ex) update-error!))))))
+                                 {:message s} ex)
+                    ((fn [ex] (update-doc! (assoc @!doc :error ex))))))))))
 
 #_(pr-str (read-msg "#viewer-eval (resolve 'clojure.core/inc)"))
 
@@ -159,15 +144,11 @@
 (declare present+reset!)
 (defn serve-notebook [uri]
   (let [path (subs uri 1)]
+    (try ((resolve 'nextjournal.clerk/show!) path)
+         (catch Exception _))
     {:status 200
      :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
-     :body (view/doc->html (try {:doc (or (and (= "" path) (doto (help-doc) present+reset!))
-                                          (when (and (fs/exists? path) (fs/regular-file? path))
-                                            (doto (eval/eval-file (:blob->result @!doc) path)
-                                              present+reset!))
-                                          @!doc)}
-                                (catch Exception e
-                                  {:error (update-error! e)})))}))
+     :body (view/doc->html {:doc @!doc})}))
 
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
@@ -206,7 +187,6 @@
     presented))
 
 (defn update-doc! [{:as doc :keys [file fragment skip-history?]}]
-  (reset! !error nil)
   (broadcast! (if (= (:ns @!doc) (:ns doc))
                 {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
                 {:type :set-state!
@@ -222,8 +202,6 @@
                                                      (cond-> {:path path} fragment (assoc :fragment fragment))))]))})))
 
 #_(update-doc! (help-doc))
-
-#_(nextjournal.clerk/show! "notebooks/viewers/html.clj")
 
 (defn broadcast-status! [status]
   ;; avoid editscript diff but use manual patch to just replace `:status` in doc
