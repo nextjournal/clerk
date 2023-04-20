@@ -52,7 +52,11 @@
             doc (try (parser/parse-file {:doc? true} file)
                      (catch java.io.FileNotFoundException _e
                        (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
-                                       {:file-or-ns file-or-ns}))))
+                                       {:file-or-ns file-or-ns})))
+                     (catch Exception e
+                       (throw (ex-info (str "`nextjournal.clerk/show!` could not not parse the file: `" (pr-str file-or-ns) "`")
+                                       {::doc {:file file-or-ns}}
+                                       e))))
             _ (reset! !last-file file)
             {:keys [blob->result]} @webserver/!doc
             {:keys [result time-ms]} (try (eval/time-ms (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!)))

@@ -125,7 +125,7 @@
     presented))
 
 (defn update-doc! [{:as doc :keys [file fragment skip-history?]}]
-  (broadcast! (if (= (:ns @!doc) (:ns doc))
+  (broadcast! (if (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
                 {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
                 {:type :set-state!
                  :doc (present+reset! doc)
