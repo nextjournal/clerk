@@ -740,12 +740,12 @@
   (atom {}))
 
 (defn clerk-eval
-  ([form] (clerk-eval form {}))
-  ([form {:keys [recompute?] :or {recompute? false}}]
+  ([form] (clerk-eval {} form))
+  ([{:keys [recompute?]} form]
    (let [eval-id (gensym)
          promise (js/Promise. (fn [resolve reject]
                                 (swap! !pending-clerk-eval-replies assoc eval-id {:resolve resolve :reject reject})))]
-     (ws-send! {:type :eval :form form :eval-id eval-id :recompute? recompute?})
+     (ws-send! {:type :eval :form form :eval-id eval-id :recompute? (boolean recompute?)})
      promise)))
 
 (defn process-eval-reply! [{:keys [eval-id reply error]}]
