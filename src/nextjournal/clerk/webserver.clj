@@ -192,15 +192,15 @@
   (cond (str/starts-with? nav-path "'") (symbol (subs nav-path 1))
         :else nav-path))
 
-(defn show! [file-or-ns]
-  ((resolve 'nextjournal.clerk/show!) file-or-ns))
+(defn show! [opts file-or-ns]
+  ((resolve 'nextjournal.clerk/show!) opts file-or-ns))
 
 (defn navigate! [{:as opts :keys [nav-path]}]
-  (show! (router nav-path nav-path)))
+  (show! opts (router nav-path nav-path)))
 
 (defn serve-notebook [uri]
-  (try (show! (->file-or-ns (let [nav-path (subs uri 1)]
-                              (router nav-path nav-path))))
+  (try (show! {} (->file-or-ns (let [nav-path (subs uri 1)]
+                                 (router nav-path nav-path))))
        (catch Exception _))
   {:status 200
    :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
