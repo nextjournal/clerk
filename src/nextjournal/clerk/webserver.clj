@@ -105,6 +105,45 @@
 
 #_(serve-file "public" {:uri "/js/viewer.js"})
 
+(defn sync-atom-changed [key atom old-state new-state]
+  (eval '(nextjournal.clerk/recompute!)))
+
+(defn maybe-cancel-send-status-future [doc]
+  (when-let [scheduled-send-status-future (-> doc meta ::!send-status-future)]
+    (future-cancel scheduled-send-status-future)))
+
+(defn present+reset! [doc]
+  (let [presented (view/doc->viewer doc)
+        sync-vars-old (v/extract-sync-atom-vars @!doc)
+        sync-vars (v/extract-sync-atom-vars doc)]
+    (doseq [sync-var (set/difference sync-vars sync-vars-old)]
+      (add-watch @sync-var (symbol sync-var) sync-atom-changed))
+    (doseq [sync-var (set/difference sync-vars-old sync-vars)]
+      (remove-watch @sync-var (symbol sync-var)))
+    (maybe-cancel-send-status-future @!doc)
+    (reset! !doc (with-meta doc presented))
+    presented))
+
+(defn update-doc! [{:as doc :keys [file fragment skip-history?]}]
+  (broadcast! (if (= (:ns @!doc) (:ns doc))
+                {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
+                {:type :set-state!
+                 :doc (present+reset! doc)
+                 :effects (when-not skip-history?
+                            (when-some [path (or (when (nil? file) "")
+                                                 (try
+                                                   (when (fs/exists? file)
+                                                     (str (cond->> file
+                                                            (fs/absolute? file)
+                                                            (fs/relativize (fs/cwd))))) (catch Exception _)))]
+                              [(v/->ViewerEval (list 'nextjournal.clerk.render/history-push-state
+                                                     (cond-> {:path path} fragment (assoc :fragment fragment))))]))})))
+
+#_(update-doc! (help-doc))
+
+(defn update-error! [ex]
+  (update-doc! (assoc @!doc :error ex)))
+
 (defn read-msg [s]
   (binding [*data-readers* v/data-readers]
     (try (read-string s)
@@ -112,7 +151,7 @@
            (throw (doto (ex-info (str "Clerk encountered the following error attempting to read an incoming message: "
                                       (ex-message ex))
                                  {:message s} ex)
-                    ((fn [ex] (update-doc! (assoc @!doc :error ex))))))))))
+                    update-error!))))))
 
 #_(pr-str (read-msg "#viewer-eval (resolve 'clojure.core/inc)"))
 
@@ -166,42 +205,6 @@
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
 
 #_(nextjournal.clerk/serve! {})
-
-(defn sync-atom-changed [key atom old-state new-state]
-  (eval '(nextjournal.clerk/recompute!)))
-
-(defn maybe-cancel-send-status-future [doc]
-  (when-let [scheduled-send-status-future (-> doc meta ::!send-status-future)]
-    (future-cancel scheduled-send-status-future)))
-
-(defn present+reset! [doc]
-  (let [presented (view/doc->viewer doc)
-        sync-vars-old (v/extract-sync-atom-vars @!doc)
-        sync-vars (v/extract-sync-atom-vars doc)]
-    (doseq [sync-var (set/difference sync-vars sync-vars-old)]
-      (add-watch @sync-var (symbol sync-var) sync-atom-changed))
-    (doseq [sync-var (set/difference sync-vars-old sync-vars)]
-      (remove-watch @sync-var (symbol sync-var)))
-    (maybe-cancel-send-status-future @!doc)
-    (reset! !doc (with-meta doc presented))
-    presented))
-
-(defn update-doc! [{:as doc :keys [file fragment skip-history?]}]
-  (broadcast! (if (= (:ns @!doc) (:ns doc))
-                {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
-                {:type :set-state!
-                 :doc (present+reset! doc)
-                 :effects (when-not skip-history?
-                            (when-some [path (or (when (nil? file) "")
-                                                 (try
-                                                   (when (fs/exists? file)
-                                                     (str (cond->> file
-                                                            (fs/absolute? file)
-                                                            (fs/relativize (fs/cwd))))) (catch Exception _)))]
-                              [(v/->ViewerEval (list 'nextjournal.clerk.render/history-push-state
-                                                     (cond-> {:path path} fragment (assoc :fragment fragment))))]))})))
-
-#_(update-doc! (help-doc))
 
 (defn broadcast-status! [status]
   ;; avoid editscript diff but use manual patch to just replace `:status` in doc
