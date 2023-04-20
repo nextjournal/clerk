@@ -719,6 +719,8 @@
       ;; TODO: can we restore the scroll position when navigating back?
       (.scrollTo js/window #js {:top 0}))
     (reset! !doc doc))
+  (when (and error (contains? @!doc :status))
+    (swap! !doc dissoc :status))
   (when (remount? doc)
     (swap! !eval-counter inc))
   (reset! !error error)

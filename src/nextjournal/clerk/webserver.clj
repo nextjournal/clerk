@@ -113,9 +113,13 @@
 
 #_(serve-file "public" {:uri "/js/viewer.js"})
 
-(defn reset+broadcast-error! [e]
-  (broadcast! {:type :set-state! :error (reset! !error (v/present e))})
-  @!error)
+(defn broadcast-error! [presented-error]
+  (broadcast! {:type :set-state! :error presented-error}))
+
+(defn update-error! [e]
+  (maybe-cancel-send-status-future @!doc)
+  (doto (reset! !error (v/present e))
+    broadcast-error!))
 
 (defn read-msg [s]
   (binding [*data-readers* v/data-readers]
@@ -123,7 +127,7 @@
          (catch Exception ex
            (throw (doto (ex-info (str "Clerk encountered the following error attempting to read an incoming message: "
                                       (ex-message ex))
-                                 {:message s} ex) reset+broadcast-error!))))))
+                                 {:message s} ex) update-error!))))))
 
 #_(pr-str (read-msg "#viewer-eval (resolve 'clojure.core/inc)"))
 
@@ -146,7 +150,7 @@
                                   (binding [*sender-ch* sender-ch]
                                     (apply swap! @var (eval (:args msg))))
                                   (catch Exception ex
-                                    (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) reset+broadcast-error!)))))))))})
+                                    (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) update-error!)))))))))})
 
 #_(do
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
@@ -163,7 +167,7 @@
                                               present+reset!))
                                           @!doc)}
                                 (catch Exception e
-                                  {:error (reset+broadcast-error! e)})))}))
+                                  {:error (update-error! e)})))}))
 
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
@@ -185,6 +189,10 @@
 (defn sync-atom-changed [key atom old-state new-state]
   (eval '(nextjournal.clerk/recompute!)))
 
+(defn maybe-cancel-send-status-future [doc]
+  (when-let [scheduled-send-status-future (-> doc meta ::!send-status-future)]
+    (future-cancel scheduled-send-status-future)))
+
 (defn present+reset! [doc]
   (let [presented (view/doc->viewer doc)
         sync-vars-old (v/extract-sync-atom-vars @!doc)
@@ -193,8 +201,7 @@
       (add-watch @sync-var (symbol sync-var) sync-atom-changed))
     (doseq [sync-var (set/difference sync-vars-old sync-vars)]
       (remove-watch @sync-var (symbol sync-var)))
-    (when-let [scheduled-send-status-future (-> !doc deref meta ::!send-status-future)]
-      (future-cancel scheduled-send-status-future))
+    (maybe-cancel-send-status-future @!doc)
     (reset! !doc (with-meta doc presented))
     presented))
 
@@ -216,6 +223,8 @@
 
 #_(update-doc! (help-doc))
 
+#_(nextjournal.clerk/show! "notebooks/viewers/html.clj")
+
 (defn broadcast-status! [status]
   ;; avoid editscript diff but use manual patch to just replace `:status` in doc
   (broadcast! {:type :patch-state! :patch [[[:status] :r status]]}))
@@ -233,8 +242,8 @@
 
 (defn set-status! [status]
   (swap! !doc (fn [doc] (-> (or doc (help-doc))
-                           (vary-meta assoc :status status)
-                           (vary-meta update ::!send-status-future broadcast-status-debounced! status)))))
+                            (vary-meta assoc :status status)
+                            (vary-meta update ::!send-status-future broadcast-status-debounced! status)))))
 
 (defn navigate! [{:as opts :keys [path]}]
   (update-doc! (merge (or (when (seq path)
