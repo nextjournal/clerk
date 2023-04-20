@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.webserver
   (:require [babashka.fs :as fs]
             [clojure.edn :as edn]
+            [clojure.java.io :as io]
             [clojure.pprint :as pprint]
             [clojure.set :as set]
             [clojure.string :as str]
@@ -234,12 +235,47 @@
                             (vary-meta assoc :status status)
                             (vary-meta update ::!send-status-future broadcast-status-debounced! status)))))
 
+(defn ->doc [file-or-ns]
+  (set-status! {:progress 0 :status "Parsing…"})
+  (let [file (cond
+               (nil? file-or-ns)
+               {:error (ex-info (str "`nextjournal.clerk/show!` cannot show `nil`.")
+                                {:file-or-ns file-or-ns})}
+
+               (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
+               (or (some (fn [ext]
+                           (io/resource (str (str/replace (namespace-munge file-or-ns) "." "/") ext)))
+                         [".clj" ".cljc"])
+                   {:error (ex-info (str "`nextjournal.clerk/show!` could not find a resource on the classpath for: `" (pr-str file-or-ns) "`")
+                                    {:file-or-ns file-or-ns})})
+
+               :else
+               file-or-ns)
+        doc (try (parser/parse-file {:doc? true} file)
+                 (catch java.io.FileNotFoundException _e
+                   {:error (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
+                                    {:file-or-ns file-or-ns})})
+                 (catch Exception e
+                   {:error (ex-info (str "`nextjournal.clerk/show!` could not not parse the file: `" (pr-str file-or-ns) "`")
+                                    {:file-or-ns file-or-ns} e)}))
+        ;; TODO: restore
+        ;;_ (reset! !last-file file)
+        {:keys [blob->result]} @!doc
+        {:keys [result time-ms]}
+        (eval/time-ms
+         (try
+           (eval/+eval-results blob->result (assoc doc :set-status-fn set-status!))
+           (catch Exception e
+             (assoc doc :error (ex-info (str "`nextjournal.clerk/show!` encountered an eval error with: `" (pr-str file-or-ns) "`")
+                                        {:file-or-ns file-or-ns} e)))))]
+    (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
+    (assoc result :nav-path (->nav-path file-or-ns))))
+
+#_(->doc "notebooks/pagination.clj")
+
 (defn navigate! [{:as opts :keys [nav-path]}]
-  ;; TODO: unify with clerk/show!
-  (update-doc! (merge (eval/eval-doc (:blob->result @!doc)
-                                     (assoc (parser/parse-file {:doc? true}
-                                                               (or (not-empty nav-path) "src/nextjournal/clerk/home.clj"))
-                                            :set-status-fn set-status!)) opts)))
+  (update-doc! (merge (->doc (or (not-empty nav-path) 'nextjournal.clerk.home))
+                      opts)))
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
 
