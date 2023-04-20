@@ -31,7 +31,8 @@
     " from your REPL to make a notebook appear!"]
    [:div.mt-2.text-sm "⚡️ This works best when you " [:a {:href "#"} "set up your editor to use a key binding for this!"]]]
   [:div.rounded-lg.border-2.border-indigo-100.bg-indigo-50.px-8.pt-3.pb-4.mt-6.text-center.font-sans
-   [:div.font-medium "📖 New with Clerk? Learn all about it in " [:a {:href "#"} "The Book of Clerk"] "."]
+   [:div.font-medium "📖 New to Clerk? Learn all about it in " [:a {:href "https://book.clerk.vision"} "The Book of Clerk"] "."]
+   #_
    [:div.mt-2.text-sm
     "Here are some handy links:"
     [:a.ml-3 {:href "#"} "🚀 Getting Started"]
