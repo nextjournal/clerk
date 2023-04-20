@@ -49,7 +49,7 @@
 
                    :else
                    file-or-ns)
-            doc (try (parser/parse-file {:doc? true} file)
+            doc (try (assoc (parser/parse-file {:doc? true} file) :nav-path (webserver/->nav-path file-or-ns))
                      (catch java.io.FileNotFoundException _e
                        (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
                                        {:file-or-ns file-or-ns})))
@@ -63,7 +63,7 @@
                                           (catch Exception e
                                             (throw (ex-info (str "`nextjournal.clerk/show!` encountered an eval error with: `" (pr-str file-or-ns) "`") {::doc doc} e))))]
         (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
-        (webserver/update-doc! (assoc result :nav-path (webserver/->nav-path file-or-ns))))
+        (webserver/update-doc! result))
       (catch Exception e
         (webserver/update-doc! (assoc (-> e ex-data ::doc) :error e))
         (throw e)))))
