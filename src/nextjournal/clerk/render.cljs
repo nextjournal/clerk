@@ -146,7 +146,7 @@
     (when (= (.-search url) "?clerk/show!")
       (.preventDefault e)
       (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
-                        (cond-> {:path (subs (.-pathname url) 1)}
+                        (cond-> {:nav-path (subs (.-pathname url) 1)}
                           (seq (.-hash url))
                           (assoc :fragment (subs (.-hash url) 1))))))))
 
@@ -159,7 +159,7 @@
 (defn handle-history-popstate [^js e]
   (when-some [notebook-path (some-> e .-state .-clerk_show)]
     (.preventDefault e)
-    (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:path notebook-path
+    (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path notebook-path
                                                               :skip-history? true}))))
 
 (defn handle-initial-load [_]

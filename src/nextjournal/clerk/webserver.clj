@@ -187,7 +187,7 @@
 
 (defn ->file-or-ns [path]
   (cond (= path "") 'nextjournal.clerk.home
-        (str/starts-with? path "'") (symbol (subs path 1)) 
+        (str/starts-with? path "'") (symbol (subs path 1))
         :else path))
 
 (defn serve-notebook [uri]
@@ -234,10 +234,10 @@
                             (vary-meta assoc :status status)
                             (vary-meta update ::!send-status-future broadcast-status-debounced! status)))))
 
-(defn navigate! [{:as opts :keys [path]}]
-  (update-doc! (merge (or (when (seq path)
+(defn navigate! [{:as opts :keys [nav-path]}]
+  (update-doc! (merge (or (when (seq nav-path)
                             (eval/eval-doc (:blob->result @!doc)
-                                           (assoc (parser/parse-file {:doc? true} path) :set-status-fn set-status!)))
+                                           (assoc (parser/parse-file {:doc? true} nav-path) :set-status-fn set-status!)))
                           (help-doc)) opts)))
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
