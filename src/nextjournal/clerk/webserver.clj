@@ -5,8 +5,6 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [editscript.core :as editscript]
-            [nextjournal.clerk.eval :as eval]
-            [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [org.httpkit.server :as httpkit])
@@ -124,15 +122,6 @@
     (reset! !doc (with-meta doc presented))
     presented))
 
-(defn ->nav-path [file-or-ns]
-  (cond (symbol? file-or-ns) (str "'" file-or-ns)
-        (string? file-or-ns) (when (fs/exists? file-or-ns)
-                               (fs/unixify (cond->> file-or-ns
-                                             (fs/absolute? file-or-ns)
-                                             (fs/relativize (fs/cwd)))))))
-
-#_(->nav-path 'nextjournal.clerk.tap)
-
 (defn update-doc! [{:as doc :keys [nav-path fragment skip-history?]}]
   (broadcast! (if (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
                 {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
@@ -185,13 +174,33 @@
 
 (declare present+reset!)
 
-(defn ->file-or-ns [path]
-  (cond (= path "") 'nextjournal.clerk.home
-        (str/starts-with? path "'") (symbol (subs path 1))
-        :else path))
+(def router
+  {"" 'nextjournal.clerk.home})
+
+(defn ->nav-path [file-or-ns]
+  (or (get (set/map-invert router) file-or-ns)
+      (cond (symbol? file-or-ns) (str "'" file-or-ns)
+            (string? file-or-ns) (when (fs/exists? file-or-ns)
+                                   (fs/unixify (cond->> file-or-ns
+                                                 (fs/absolute? file-or-ns)
+                                                 (fs/relativize (fs/cwd))))))))
+
+#_(->nav-path 'nextjournal.clerk.home)
+#_(->nav-path 'nextjournal.clerk.tap)
+
+(defn ->file-or-ns [nav-path]
+  (cond (str/starts-with? nav-path "'") (symbol (subs nav-path 1))
+        :else nav-path))
+
+(defn show! [file-or-ns]
+  ((resolve 'nextjournal.clerk/show!) file-or-ns))
+
+(defn navigate! [{:as opts :keys [nav-path]}]
+  (show! (router nav-path nav-path)))
 
 (defn serve-notebook [uri]
-  (try ((resolve 'nextjournal.clerk/show!) (->file-or-ns (subs uri 1)))
+  (try (show! (->file-or-ns (let [nav-path (subs uri 1)]
+                              (router nav-path nav-path))))
        (catch Exception _))
   {:status 200
    :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
@@ -231,15 +240,8 @@
 
 (defn set-status! [status]
   (swap! !doc (fn [doc] (-> (or doc (help-doc))
-                            (vary-meta assoc :status status)
-                            (vary-meta update ::!send-status-future broadcast-status-debounced! status)))))
-
-(defn navigate! [{:as opts :keys [nav-path]}]
-  ;; TODO: unify with clerk/show!
-  (update-doc! (merge (eval/eval-doc (:blob->result @!doc)
-                                     (assoc (parser/parse-file {:doc? true}
-                                                               (or (not-empty nav-path) "src/nextjournal/clerk/home.clj"))
-                                            :set-status-fn set-status!)) opts)))
+                           (vary-meta assoc :status status)
+                           (vary-meta update ::!send-status-future broadcast-status-debounced! status)))))
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
 

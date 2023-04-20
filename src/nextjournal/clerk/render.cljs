@@ -151,6 +151,7 @@
                           (assoc :fragment (subs (.-hash url) 1))))))))
 
 (defn history-push-state [{:keys [path fragment replace?]}]
+  (prn :history-push-state path :replace? replace?)
   (when (not= path (some-> js/history .-state .-clerk_show))
     (j/call js/history
             (if replace? :replaceState :pushState)

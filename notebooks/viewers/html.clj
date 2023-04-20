@@ -17,9 +17,9 @@
 
 (clerk/with-viewer
   '(fn [_ _] [:div
-              "Go to "
-              [:a.text-lg {:href (nextjournal.clerk.viewer/doc-url "notebooks/viewers/image.clj")} "images"]
-              " notebook."]) nil)
+             "Go to "
+             [:a.text-lg {:href (nextjournal.clerk.viewer/doc-url "notebooks/viewers/image.clj")} "images"]
+             " notebook."]) nil)
 
 (clerk/html
  [:ol (list [:li [:a {:href (clerk/doc-url "notebooks/document_linking.clj")} "Cross Document Linking"]]
