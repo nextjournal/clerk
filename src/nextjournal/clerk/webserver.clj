@@ -181,13 +181,18 @@
     (eval '(nextjournal.clerk/recompute!)))
 
 (declare present+reset!)
+
+(defn ->file-or-ns [path]
+  (cond (= path "") 'nextjournal.clerk.home
+        (str/starts-with? path "'") (symbol (subs path 1)) 
+        :else path))
+
 (defn serve-notebook [uri]
-  (let [path (subs uri 1)]
-    (try ((resolve 'nextjournal.clerk/show!) (if (= path "") 'nextjournal.clerk.home path))
-         (catch Exception _))
-    {:status 200
-     :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
-     :body (view/doc->html {:doc @!doc})}))
+  (try ((resolve 'nextjournal.clerk/show!) (->file-or-ns (subs uri 1)))
+       (catch Exception _))
+  {:status 200
+   :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
+   :body (view/doc->html {:doc @!doc})})
 
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
