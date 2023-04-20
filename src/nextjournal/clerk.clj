@@ -373,7 +373,7 @@
   "Experimental notebook viewer. You probably should not use this."
   (partial with-viewer (:name v/notebook-viewer)))
 
-(defn doc-url [path] (v/doc-url path))
+(defn doc-url [& args] (apply v/doc-url args))
 
 (defmacro example
   "Evaluates the expressions in `body` showing code next to results in Clerk.

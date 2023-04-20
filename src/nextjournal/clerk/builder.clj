@@ -12,8 +12,7 @@
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.clerk.webserver :as webserver]
-            [nextjournal.clerk.config :as config])
-  (:import (java.net URI)))
+            [nextjournal.clerk.config :as config]))
 
 (def clerk-docs
   (into ["CHANGELOG.md"
@@ -285,17 +284,14 @@
       (fs/delete-tree tw-folder)
       (update opts :resource->url assoc "/css/viewer.css" url))))
 
-(defn path+fragment [path]
-  (let [uri (URI. path)] {:path (.getPath uri) :fragment (.getFragment uri)}))
-
-(defn doc-url [{:as opts :keys [bundle?]} docs file path]
-  (assert (string? path))
-  (let [{:keys [path fragment]} (path+fragment path)
-        url (get (build-path->url opts docs) path)]
-    (if bundle?
-      (str "#/" url)
-      (str (viewer/relative-root-prefix-from (viewer/map-index opts file))
-           url (when fragment (str "#" fragment))))))
+(defn doc-url
+  ([opts doc file path] (doc-url opts doc file path nil))
+  ([{:as opts :keys [bundle?]} docs file path fragment]
+   (let [url (get (build-path->url opts docs) path)]
+     (if bundle?
+       (str "#/" url)
+       (str (viewer/relative-root-prefix-from (viewer/map-index opts file))
+            url (when fragment (str "#" fragment)))))))
 
 (defn build-static-app! [{:as opts :keys [bundle?]}]
   (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css? expanded-paths error]}

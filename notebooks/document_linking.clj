@@ -7,8 +7,8 @@
  [:ol
   [:li [:a {:href (clerk/doc-url "notebooks/viewers/html.clj")} "HTML"]]
   [:li [:a {:href (clerk/doc-url "notebooks/viewers/image.clj")} "Images"]]
-  [:li [:a {:href (clerk/doc-url "notebooks/markdown.md#appendix")} "Markdown / Appendix"]]
-  [:li [:a {:href (clerk/doc-url "notebooks/how_clerk_works.clj#step-3:-analyzer")} "Clerk Analyzer"]]
+  [:li [:a {:href (clerk/doc-url "notebooks/markdown.md" "appendix")} "Markdown / Appendix"]]
+  [:li [:a {:href (clerk/doc-url "notebooks/how_clerk_works.clj" "step-3:-analyzer")} "Clerk Analyzer"]]
   [:li [:a {:href (clerk/doc-url "book.clj")} "The 📕Book"]]
   [:li [:a {:href (clerk/doc-url "")} "Homepage"]]])
 

@@ -1620,9 +1620,10 @@
    content
    (html [:figcaption.text-xs.text-slate-500.text-center.mt-1 text])))
 
-(defn ^:dynamic doc-url [path]
-  (let [[path fragment] (str/split path #"#")]
-    (str "/" path "?clerk/show!" (when fragment (str "#" fragment)))))
+(defn ^:dynamic doc-url
+  ([path] (doc-url path nil))
+  ([path fragment]
+   (str "/" path "?clerk/show!" (when fragment (str "#" fragment)))))
 
 #_(doc-url "notebooks/rule_30.clj#board")
 #_(doc-url "notebooks/rule_30.clj")
