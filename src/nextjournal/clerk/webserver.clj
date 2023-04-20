@@ -183,7 +183,7 @@
 (declare present+reset!)
 (defn serve-notebook [uri]
   (let [path (subs uri 1)]
-    (try ((resolve 'nextjournal.clerk/show!) path)
+    (try ((resolve 'nextjournal.clerk/show!) (if (= path "") 'nextjournal.clerk.home path))
          (catch Exception _))
     {:status 200
      :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
