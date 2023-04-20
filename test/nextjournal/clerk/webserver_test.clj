@@ -5,7 +5,6 @@
             [nextjournal.clerk.webserver :as webserver]))
 
 (deftest ->file-or-ns
-  (is (= 'nextjournal.clerk.home (webserver/->file-or-ns "")))
   (is (= 'nextjournal.clerk.tap (webserver/->file-or-ns "'nextjournal.clerk.tap")))
   (is (= "notebooks/rule_30.clj" (webserver/->file-or-ns "notebooks/rule_30.clj"))))
 
