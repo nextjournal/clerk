@@ -2,7 +2,6 @@
   {:nextjournal.clerk/visibility {:code :hide :result :hide}}
   (:require [clojure.string :as str]
             [babashka.fs :as fs]
-            [clojure.java.io :as io]
             [nextjournal.clerk :as clerk]))
 
 (defn glob-notebooks []
