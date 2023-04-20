@@ -235,10 +235,11 @@
                             (vary-meta update ::!send-status-future broadcast-status-debounced! status)))))
 
 (defn navigate! [{:as opts :keys [nav-path]}]
-  (update-doc! (merge (or (when (seq nav-path)
-                            (eval/eval-doc (:blob->result @!doc)
-                                           (assoc (parser/parse-file {:doc? true} nav-path) :set-status-fn set-status!)))
-                          (help-doc)) opts)))
+  ;; TODO: unify with clerk/show!
+  (update-doc! (merge (eval/eval-doc (:blob->result @!doc)
+                                     (assoc (parser/parse-file {:doc? true}
+                                                               (or (not-empty nav-path) "src/nextjournal/clerk/home.clj"))
+                                            :set-status-fn set-status!)) opts)))
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
 
