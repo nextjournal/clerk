@@ -27,9 +27,9 @@
       [:span "The newest version is " [:a {:href "#"} "v0.12.707"] ". " [:a {:href "#"} "What’s changed?"]]]]
   [:div.rounded-lg.border-2.border-amber-100.bg-amber-50.px-8.pt-3.pb-4.mx-auto.text-center.font-sans.mt-6.md:mt-4
    [:div.font-medium
-    "Call " [:span.font-mono.text-sm.bg-white.bg-opacity-80.mx-1.font-bold "nextjournal.clerk/show"]
+    "Call " [:span.font-mono.text-sm.bg-white.bg-opacity-80.mx-1.font-bold "nextjournal.clerk/show!"]
     " from your REPL to make a notebook appear!"]
-   [:div.mt-2.text-sm "⚡️ This works best when you " [:a {:href "#"} "set up your editor to use a key binding for this!"]]]
+   [:div.mt-2.text-sm "⚡️ This works best when you " [:a {:href "https://book.clerk.vision/#editor-integration"} "set up your editor to use a key binding for this!"]]]
   [:div.rounded-lg.border-2.border-indigo-100.bg-indigo-50.px-8.pt-3.pb-4.mt-6.text-center.font-sans
    [:div.font-medium "📖 New to Clerk? Learn all about it in " [:a {:href "https://book.clerk.vision"} "The Book of Clerk"] "."]
    #_
