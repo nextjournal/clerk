@@ -25,13 +25,18 @@
       [:span.font-bold.block
        "You’re running Clerk " [:a {:href "#"} "v0.12.707"] "."]
       [:span "The newest version is " [:a {:href "#"} "v0.12.707"] ". " [:a {:href "#"} "What’s changed?"]]]]
-  [:div.rounded-lg.border-2.border-amber-100.bg-amber-50.px-8.pt-3.pb-4.mx-auto.text-center.font-sans.mt-6.md:mt-4
+  [:div.rounded-lg.border-2.border-amber-100.bg-amber-50.dark:border-slate-600.dark:bg-slate-800.dark:text-slate-100.px-8.py-4.mx-auto.text-center.font-sans.mt-6.md:mt-4
    [:div.font-medium
-    "Call " [:span.font-mono.text-sm.bg-white.bg-opacity-80.mx-1.font-bold "nextjournal.clerk/show!"]
+    "Call "
+    [:span.font-mono.text-sm.bg-white.bg-amber-100.border.border-amber-300.relative.dark:bg-slate-900.dark:border-slate-600.rounded.font-bold
+     {:class "px-[4px] py-[1px] -top-[1px] mx-[2px]"}
+     "nextjournal.clerk/show!"]
     " from your REPL to make a notebook appear!"]
    [:div.mt-2.text-sm "⚡️ This works best when you " [:a {:href "https://book.clerk.vision/#editor-integration"} "set up your editor to use a key binding for this!"]]]
-  [:div.rounded-lg.border-2.border-indigo-100.bg-indigo-50.px-8.pt-3.pb-4.mt-6.text-center.font-sans
-   [:div.font-medium "📖 New to Clerk? Learn all about it in " [:a {:href "https://book.clerk.vision"} "The Book of Clerk"] "."]
+  [:div.rounded-lg.border-2.border-indigo-100.bg-indigo-50.dark:border-slate-600.dark:bg-slate-800.dark:text-slate-100.px-8.py-4.mt-6.text-center.font-sans
+   [:div.font-medium.md:flex.items-center.justify-center
+    [:span.text-xl.relative {:class "top-[2px] mr-2"} "📖"]
+    [:span "New to Clerk? Learn all about it in " [:a {:href "https://book.clerk.vision"} [:span.block.md:inline "The Book of Clerk."]]]]
    #_
    [:div.mt-2.text-sm
     "Here are some handy links:"
