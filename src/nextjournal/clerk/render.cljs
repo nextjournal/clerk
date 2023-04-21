@@ -129,6 +129,46 @@
 
 (declare inspect-children)
 
+(defn closest-anchor-parent [^js el]
+  (loop [el el]
+    (when el
+      (if (= "A" (.-nodeName el))
+        el
+        (recur (.-parentNode el))))))
+
+(declare clerk-eval)
+
+(defn ->URL [href]
+  (js/URL. href))
+
+(defn handle-anchor-click [^js e]
+  (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
+    (when (= (.-search url) "?clerk/show!")
+      (.preventDefault e)
+      (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
+                        (cond-> {:nav-path (subs (.-pathname url) 1)}
+                          (seq (.-hash url))
+                          (assoc :fragment (subs (.-hash url) 1))))))))
+
+(defn history-push-state [{:keys [path fragment replace?]}]
+  (when (not= path (some-> js/history .-state .-clerk_show))
+    (j/call js/history
+            (if replace? :replaceState :pushState)
+            #js {:clerk_show path} nil (str "/" path (when fragment (str "#" fragment))))))
+
+(defn handle-history-popstate [^js e]
+  (when-some [notebook-path (some-> e .-state .-clerk_show)]
+    (.preventDefault e)
+    (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path notebook-path
+                                                              :skip-history? true}))))
+
+(defn handle-initial-load [_]
+  (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
+
+(when (exists? js/addEventListener)
+  ;; We need to push an initial history state when the document is first loaded via a hard request
+  (js/addEventListener "load" handle-initial-load))
+
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility]} opts]
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
@@ -147,14 +187,20 @@
                                         stored-open?
                                         (not= :collapsed toc-visibility))})
                root-ref-fn (fn [el]
-                             (when el
-                               (setup-dark-mode! !state)
-                               (when-some [heading (when (and (exists? js/location) (not bundle?))
-                                                     (try (some-> js/location .-hash not-empty js/decodeURI js/document.querySelector)
-                                                          (catch js/Error _
-                                                            (js/console.warn (str "Clerk render-notebook, invalid selector: "
-                                                                                  (.-hash js/location))))))]
-                                 (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
+                             (if el
+                               (when (exists? js/document)
+                                 (js/document.addEventListener "click" handle-anchor-click)
+                                 (js/addEventListener "popstate" handle-history-popstate)
+                                 (setup-dark-mode! !state)
+                                 (when-some [heading (when (and (exists? js/location) (not bundle?))
+                                                       (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
+                                                            (catch js/Error _
+                                                              (js/console.warn (str "Clerk render-notebook, invalid hash: "
+                                                                                    (.-hash js/location))))))]
+                                   (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading))))
+                               (when (exists? js/document)
+                                 (js/document.removeEventListener "click" handle-anchor-click)
+                                 (js/removeEventListener "popstate" handle-history-popstate))))]
     (let [{:keys [md-toc mobile? open? visibility]} @!state
           doc-inset (cond
                       mobile? 0
@@ -272,12 +318,12 @@
 
 (defn fetch! [{:keys [blob-id]} opts]
   #_(js/console.log :fetch! blob-id opts)
-  (-> (js/fetch (str "_blob/" blob-id (when (seq opts)
-                                        (str "?" (opts->query opts)))))
+  (-> (js/fetch (str "/_blob/" blob-id (when (seq opts)
+                                         (str "?" (opts->query opts)))))
       (.then #(.text %))
       (.then #(try (read-string %)
                    (catch js/Error e
-                     (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e })
+                     (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e})
                      (render-unreadable-edn %))))))
 
 (defn ->expanded-at [auto-expand? presented]
@@ -561,7 +607,6 @@
     [:span.cmt-meta tag] (when space? nbsp) value]))
 
 (defonce !doc (ratom/atom nil))
-(defonce !error (ratom/atom nil))
 (defonce !viewers viewer/!viewers)
 
 (defn set-viewers! [scope viewers]
@@ -610,9 +655,9 @@
       [connection-status status])
     (when-let [status (:status @!doc)]
       [exec-status status])]
-   (when @!error
+   (when-let [error (get-in @!doc [:nextjournal/value :error])]
      [:div.fixed.top-0.left-0.w-full.h-full
-      [inspect-presented @!error]])])
+      [inspect-presented error]])])
 
 (declare mount)
 
@@ -667,12 +712,16 @@
   (let [re-eval (fn [{:keys [form]}] (viewer/->viewer-fn form))]
     (w/postwalk (fn [x] (cond-> x (viewer/viewer-fn? x) re-eval)) doc)))
 
-(defn ^:export set-state! [{:as state :keys [doc error]}]
+(defn ^:export set-state! [{:as state :keys [doc]}]
   (when (contains? state :doc)
+    (when (exists? js/window)
+      ;; TODO: can we restore the scroll position when navigating back?
+      (.scrollTo js/window #js {:top 0}))
     (reset! !doc doc))
+  ;; (when (and error (contains? @!doc :status))
+  ;;   (swap! !doc dissoc :status))
   (when (remount? doc)
     (swap! !eval-counter inc))
-  (reset! !error error)
   (when-let [title (and (exists? js/document) (-> doc viewer/->value :title))]
     (set! (.-title js/document) title)))
 
@@ -680,7 +729,6 @@
   (editscript/patch x (editscript/edits->script patch)))
 
 (defn patch-state! [{:keys [patch]}]
-  (reset! !error nil)
   (if (remount? patch)
     (do (swap! !doc #(re-eval-viewer-fns (apply-patch % patch)))
         ;; TODO: figure out why it doesn't work without `js/setTimeout`
@@ -690,18 +738,19 @@
 (defonce !pending-clerk-eval-replies
   (atom {}))
 
-(defn clerk-eval [form]
-  (let [eval-id (gensym)
-        promise (js/Promise. (fn [resolve reject]
-                               (swap! !pending-clerk-eval-replies assoc eval-id {:resolve resolve :reject reject})))]
-    (ws-send! {:type :eval :form form :eval-id eval-id})
-    promise))
+(defn clerk-eval
+  ([form] (clerk-eval {} form))
+  ([{:keys [recompute?]} form]
+   (let [eval-id (gensym)
+         promise (js/Promise. (fn [resolve reject]
+                                (swap! !pending-clerk-eval-replies assoc eval-id {:resolve resolve :reject reject})))]
+     (ws-send! {:type :eval :form form :eval-id eval-id :recompute? (boolean recompute?)})
+     promise)))
 
 (defn process-eval-reply! [{:keys [eval-id reply error]}]
   (if-let [{:keys [resolve reject]} (get @!pending-clerk-eval-replies eval-id)]
     (do (swap! !pending-clerk-eval-replies dissoc eval-id)
-        (cond reply (resolve reply)
-              error (reject error)))
+        (if error (reject error) (resolve reply)))
     (js/console.warn :process-eval-reply!/not-found :eval-id eval-id :keys (keys @!pending-clerk-eval-replies))))
 
 (defn ^:export dispatch [{:as msg :keys [type]}]

@@ -30,37 +30,46 @@
   (nextjournal.clerk/show! \"https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj\")
   (nextjournal.clerk/show! (java.io.StringReader. \";; # Notebook from String 👋\n(+ 41 1)\"))
   "
-  [file-or-ns]
-  (if config/*in-clerk*
-    ::ignored
-    (try
-      (webserver/set-status! {:progress 0 :status "Parsing…"})
-      (let [file (cond
-                   (nil? file-or-ns)
-                   (throw (ex-info (str "`nextjournal.clerk/show!` cannot show `nil`.")
-                                   {:file-or-ns file-or-ns}))
+  ([file-or-ns] (show! {} file-or-ns))
+  ([opts file-or-ns]
+   (if config/*in-clerk*
+     ::ignored
+     (try
+       (webserver/set-status! {:progress 0 :status "Parsing…"})
+       (let [file (cond
+                    (nil? file-or-ns)
+                    (throw (ex-info (str "`nextjournal.clerk/show!` cannot show `nil`.")
+                                    {:file-or-ns file-or-ns}))
 
-                   (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
-                   (or (some (fn [ext]
-                               (io/resource (str (str/replace (namespace-munge file-or-ns) "." "/") ext)))
-                             [".clj" ".cljc"])
-                       (throw (ex-info (str "`nextjournal.clerk/show!` could not find a resource on the classpath for: `" (pr-str file-or-ns) "`")
-                                       {:file-or-ns file-or-ns})))
+                    (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
+                    (or (some (fn [ext]
+                                (io/resource (str (str/replace (namespace-munge file-or-ns) "." "/") ext)))
+                              [".clj" ".cljc"])
+                        (throw (ex-info (str "`nextjournal.clerk/show!` could not find a resource on the classpath for: `" (pr-str file-or-ns) "`")
+                                        {:file-or-ns file-or-ns})))
 
-                   :else
-                   file-or-ns)
-            doc (try (parser/parse-file {:doc? true} file)
-                     (catch java.io.FileNotFoundException _e
-                       (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
-                                       {:file-or-ns file-or-ns}))))
-            _ (reset! !last-file file)
-            {:keys [blob->result]} @webserver/!doc
-            {:keys [result time-ms]} (eval/time-ms (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!)))]
-        (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
-        (webserver/update-doc! result))
-      (catch Exception e
-        (webserver/show-error! e)
-        (throw e)))))
+                    :else
+                    file-or-ns)
+             doc (try (merge opts
+                             {:nav-path (webserver/->nav-path file-or-ns)}
+                             (parser/parse-file {:doc? true} file))
+                      (catch java.io.FileNotFoundException _e
+                        (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
+                                        {:file-or-ns file-or-ns})))
+                      (catch Exception e
+                        (throw (ex-info (str "`nextjournal.clerk/show!` could not not parse the file: `" (pr-str file-or-ns) "`")
+                                        {::doc {:file file-or-ns}}
+                                        e))))
+             _ (reset! !last-file file)
+             {:keys [blob->result]} @webserver/!doc
+             {:keys [result time-ms]} (try (eval/time-ms (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!)))
+                                           (catch Exception e
+                                             (throw (ex-info (str "`nextjournal.clerk/show!` encountered an eval error with: `" (pr-str file-or-ns) "`") {::doc doc} e))))]
+         (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
+         (webserver/update-doc! result))
+       (catch Exception e
+         (webserver/update-doc! (assoc (-> e ex-data ::doc) :error e))
+         (throw e))))))
 
 #_(show! "notebooks/exec_status.clj")
 #_(clear-cache!)
@@ -373,7 +382,7 @@
   "Experimental notebook viewer. You probably should not use this."
   (partial with-viewer (:name v/notebook-viewer)))
 
-(defn doc-url [path] (v/doc-url path))
+(defn doc-url [& args] (apply v/doc-url args))
 
 (defmacro example
   "Evaluates the expressions in `body` showing code next to results in Clerk.

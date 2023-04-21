@@ -2,6 +2,7 @@
 
 Changes can be:
 * 🌟⭐️💫 features
+* 🚨 possibly breaking
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
@@ -13,8 +14,14 @@ Changes can be:
 
 * 🍕 `clerk/fragment` for splicing a seq of values into the document as if it were produced by results of individual cells. Useful when programmatically generating content.
 
+* 🔗 Support following `clerk/doc-url` links in interactive mode. Previously these links would only be functional in the static build. Update the browser url accordingly and support evaluating a given doc by entering it in the browser's address bar.
+
+* 🚨 Change `nextjournal.clerk.render/clerk-eval` to not recompute the currently shown document when using the 1-arity version. Added a second arity that takes an opts map with a `:recompute?` key.
+
 * 🔌 Make websocket reconnect automatically on close to avoid having to reload the page
+
 * 💫 Cache expressions that return `nil` in memory
+
 * 🐜 Ensure custom `print-method` supporting unreadable symbols preserves metadata
 
 ## 0.13.842 (2023-03-07)

@@ -284,11 +284,14 @@
       (fs/delete-tree tw-folder)
       (update opts :resource->url assoc "/css/viewer.css" url))))
 
-(defn doc-url [{:as opts :keys [bundle?]} docs file path]
-  (let [url (get (build-path->url opts docs) path)]
-    (if bundle?
-      (str "#/" url)
-      (str (viewer/relative-root-prefix-from (viewer/map-index opts file)) url))))
+(defn doc-url
+  ([opts doc file path] (doc-url opts doc file path nil))
+  ([{:as opts :keys [bundle?]} docs file path fragment]
+   (let [url (get (build-path->url opts docs) path)]
+     (if bundle?
+       (str "#/" url)
+       (str (viewer/relative-root-prefix-from (viewer/map-index opts file))
+            url (when fragment (str "#" fragment)))))))
 
 (defn build-static-app! [{:as opts :keys [bundle?]}]
   (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css? expanded-paths error]}
