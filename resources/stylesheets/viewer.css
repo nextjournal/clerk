@@ -42,6 +42,7 @@
   strong { @apply font-bold; }
   em     { @apply italic; }
   pre    { @apply m-0 font-mono; }
+  table img { @apply inline-block; }
 }
 
 /* Compatibility */

@@ -641,7 +641,7 @@
                                                      value)]
                                          [:th.pl-6.pr-2.py-1.align-bottom.font-medium.top-0.z-10.bg-white.dark:bg-slate-900.border-b.border-gray-300.dark:border-slate-700
                                           (cond-> {:class (when (and (ifn? number-col?) (number-col? i)) "text-right")} title (assoc :title title))
-                                          [:div.flex.items-center (nextjournal.clerk.render/inspect-presented opts header-cell)]]))) header-row)])})
+                                          (nextjournal.clerk.render/inspect-presented opts header-cell)]))) header-row)])})
 
 (def table-body-viewer
   {:name `table-body-viewer
