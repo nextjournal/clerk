@@ -717,16 +717,18 @@
 (defn process-internal-link [href]
   #?(:clj
      (let [{:keys [file var]} (resolve-href href)]
-       {:href (cond-> file var (str "#" (-> var symbol str) "-code"))
+       {:href file
+        :fragment (when var (str (-> var symbol str) "-code"))
         :title (or (when var (-> var symbol str))
                    (when file (:title (parser/parse-file {:doc? true} file)))
                    href)})
      :cljs
      {:href href :title href}))
 
-#_ (process-internal-link "viewers.html")
-#_ (process-internal-link "how-clerk-works/hashes")
-#_ (process-internal-link "how-clerk-worksx/hashes")
+#_(process-internal-link "notebooks/rule_30.clj")
+#_(process-internal-link "viewers.html")
+#_(process-internal-link "how-clerk-works/hashes")
+
 (declare html)
 
 (def markdown-viewers
@@ -760,8 +762,8 @@
    {:name :nextjournal.markdown/internal-link
     :transform-fn (update-val
                    (fn [{:keys [text]}]
-                     (let [{:keys [title href]} (process-internal-link text)]
-                       (html [:a.internal-link {:href (doc-url href)} title]))))}
+                     (let [{:keys [title href fragment]} (process-internal-link text)]
+                       (html [:a.internal-link {:href (doc-url href fragment)} title]))))}
 
    ;; inlines
    {:name :nextjournal.markdown/text :transform-fn (into-markup [:<>])}
