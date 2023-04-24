@@ -174,16 +174,12 @@
 
 (declare present+reset!)
 
-(def router
-  {"" 'nextjournal.clerk.home})
-
 (defn ->nav-path [file-or-ns]
-  (or (get (set/map-invert router) file-or-ns)
-      (cond (symbol? file-or-ns) (str "'" file-or-ns)
-            (string? file-or-ns) (when (fs/exists? file-or-ns)
-                                   (fs/unixify (cond->> file-or-ns
-                                                 (fs/absolute? file-or-ns)
-                                                 (fs/relativize (fs/cwd))))))))
+  (cond (symbol? file-or-ns) (str "'" file-or-ns)
+        (string? file-or-ns) (when (fs/exists? file-or-ns)
+                               (fs/unixify (cond->> file-or-ns
+                                             (fs/absolute? file-or-ns)
+                                             (fs/relativize (fs/cwd)))))))
 
 #_(->nav-path 'nextjournal.clerk.home)
 #_(->nav-path 'nextjournal.clerk.tap)
@@ -196,15 +192,20 @@
   ((resolve 'nextjournal.clerk/show!) opts file-or-ns))
 
 (defn navigate! [{:as opts :keys [nav-path]}]
-  (show! opts (router nav-path nav-path)))
+  (show! opts (->file-or-ns nav-path)))
 
-(defn serve-notebook [uri]
-  (try (show! {} (->file-or-ns (let [nav-path (subs uri 1)]
-                                 (router nav-path nav-path))))
-       (catch Exception _))
-  {:status 200
-   :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
-   :body (view/doc->html {:doc @!doc})})
+(defn serve-notebook [{:as req :keys [uri]}]
+  (let [nav-path (subs uri 1)]
+    (if (str/blank? nav-path)
+      {:status 302
+       :headers {"Location" (or (:nav-path @!doc)
+                                (->nav-path 'nextjournal.clerk.home))}}
+      (do
+        (try (show! {} (->file-or-ns nav-path))
+             (catch Exception _))
+        {:status 200
+         :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
+         :body (view/doc->html {:doc @!doc})}))))
 
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
@@ -216,7 +217,7 @@
         ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
         "_ws" {:status 200 :body "upgrading..."}
         "favicon.ico" {:status 404}
-        (serve-notebook uri))
+        (serve-notebook req))
       (catch Throwable e
         {:status  500
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
