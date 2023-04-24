@@ -1059,13 +1059,44 @@
 
 #_(update-if {:n "42"} :n #(Integer/parseInt %))
 
+(declare html doc-url)
+
+(defn header [{:keys [url sha path url->path view-data]}]
+  (html [:div.viewer.w-full.max-w-prose.px-8.not-prose.mt-3
+         [:div.mb-8.text-xs.sans-serif.text-gray-400
+          (when (not= "" path)
+            [:<>
+             [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
+              {:href (doc-url "'nextjournal.clerk.home")} "Home"]
+             [:span.mx-2 "•"]
+             #?(:clj
+                [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
+                 {:href (doc-url (if (fs/exists? "index.clj")
+                                   "index.clj"
+                                   "'nextjournal.clerk.index"))} "Index"])
+             [:span.mx-2 "•"]])
+          [:span
+           "Generated with "
+           [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
+            {:href "https://github.com/nextjournal/clerk"} "Clerk"]
+           (when (and url sha (contains? url->path path))
+             [:<>
+              " from "
+              [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
+               {:href (str url "/blob/" sha "/" (url->path path))} (url->path path) "@" [:span.tabular-nums (subs sha 0 7)]]])]]]))
+
+#?(:clj (nextjournal.clerk/recompute!))
+
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc
       (assoc :atom-var-name->state (atom-var-name->state doc))
       (assoc :ns (->viewer-eval (list 'ns (if ns (ns-name ns) 'user))))
-      (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer (dissoc doc :error)))
-                                             (map (comp present
-                                                        (partial ensure-wrapped-with-viewers viewers))))))
+      (update :blocks (partial into []
+                               (comp (mapcat (partial with-block-viewer (dissoc doc :error)))
+                                     (map (comp present
+                                                (partial ensure-wrapped-with-viewers viewers))))))
+      (assoc :header (present (header doc)))
+      #_(assoc :footer (present (footer doc)))
       (select-keys [:atom-var-name->state
                     :auto-expand-results?
                     :blocks :bundle?
@@ -1075,7 +1106,9 @@
                     :ns
                     :title
                     :toc
-                    :toc-visibility])
+                    :toc-visibility
+                    :header
+                    :footer])
       (update-if :error present)
       (assoc :sidenotes? (boolean (seq (:footnotes doc))))
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))

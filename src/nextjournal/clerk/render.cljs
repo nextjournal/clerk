@@ -169,7 +169,7 @@
   ;; We need to push an initial history state when the document is first loaded via a hard request
   (js/addEventListener "load" handle-initial-load))
 
-(defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility]} opts]
+(defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility header footer]} opts]
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
                !state (r/atom {:toc (toc-items (:children toc))
@@ -224,6 +224,7 @@
              {:class "text-[12px]"} "ToC"]]
            {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-[7px] text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
           [navbar/panel !state [navbar/navbar !state]]])
+       (prn :header header)
        [:div.flex-auto.w-screen.scroll-container
         (into
          [:> (.-div motion)
@@ -233,11 +234,10 @@
            :transition navbar/spring
            :class (str (or css-class "flex flex-col items-center notebook-viewer flex-auto ")
                        (when sidenotes? "sidenotes-layout"))}]
-
          ;; TODO: restore react keys via block-id
          ;; ^{:key (str processed-block-id "@" @!eval-counter)}
 
-         (inspect-children opts) xs)]])))
+         (inspect-children opts) (concat (when header [header]) xs (when footer [footer])))]])))
 
 (defn opts->query [opts]
   (->> opts
