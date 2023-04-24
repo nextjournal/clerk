@@ -194,14 +194,21 @@
 (defn navigate! [{:as opts :keys [nav-path]}]
   (show! opts (->file-or-ns nav-path)))
 
+(defn prefetch-request? [req] (= "prefetch" (-> req :headers (get "purpose"))))
+
 (defn serve-notebook [{:as req :keys [uri]}]
   (let [nav-path (subs uri 1)]
-    (if (str/blank? nav-path)
+    (cond
+      (prefetch-request? req)
+      {:status 404}
+
+      (str/blank? nav-path)
       {:status 302
        :headers {"Location" (or (:nav-path @!doc)
                                 (->nav-path 'nextjournal.clerk.home))}}
+      :else
       (do
-        (try (show! {} (->file-or-ns nav-path))
+        (try (show! {:skip-history? true} (->file-or-ns nav-path))
              (catch Exception _))
         {:status 200
          :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
