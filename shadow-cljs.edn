@@ -12,4 +12,4 @@
                                                 nextjournal.clerk.trim-image]}}
                    :js-options {:output-feature-set :es8}
                    :build-hooks [(shadow.cljs.build-report/hook
-                                  {:output-to "report.html"})]}}}
+                                  {:output-to "report.html" :print-table true})]}}}
