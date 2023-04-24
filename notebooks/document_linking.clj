@@ -24,5 +24,5 @@
 ;; Clerk extends markdown parsing with a wikipedia-style `[[internal-link]]`. The text between double-brackets can be
 ;; * a path to a notebook `[[notebooks/rule_30.clj]]` ([[notebooks/rule_30.clj]])
 ;; * a requirable namespace `[[viewers.html]]` ([[viewers.html]])
-;; * a fully qualified symbol resolving to a var `[[how-clerk-works/query-results]]` ([[how-clerk-works/query-results]])
+;; * a fully qualified symbol resolving to a var `[[how-clerk-works/query-results]]` ([[rule-30/board]])
 ;; in all cases the rendered link points to the associated notebook. In the third case an hash fragment is appended pointing to the block which defines the var in question.

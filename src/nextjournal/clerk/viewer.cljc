@@ -695,39 +695,40 @@
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
             (.setTimeZone (java.util.TimeZone/getTimeZone "GMT")))))
 
-#?(:clj (defn resolve-href [link]
+#?(:clj (defn resolve-internal-link [link]
           (if (fs/exists? link)
-            {:file link}
+            {:path link}
             (let [sym (symbol link)]
               (if (qualified-symbol? sym)
                 (when-some [var (try (requiring-resolve sym)
                                      (catch Exception _ nil))]
-                  (merge {:var var} (resolve-href (-> var symbol namespace))))
+                  (merge {:var var} (resolve-internal-link (-> var symbol namespace))))
                 (when-some [ns (try (require sym)
                                     (find-ns sym)
                                     (catch Exception _ nil))]
                   (cond-> {:ns ns}
                     (fs/exists? (analyzer/ns->file sym))
-                    (assoc :file (analyzer/ns->file sym)))))))))
+                    (assoc :path (analyzer/ns->file sym)))))))))
 
-#_(resolve-href "notebooks/hello.clj")
-#_(resolve-href "nextjournal.clerk.tap")
-#_(resolve-href "rule-30/board")
+#_(resolve-internal-link "notebooks/hello.clj")
+#_(resolve-internal-link "nextjournal.clerk.tap")
+#_(resolve-internal-link "rule-30/board")
 
-(defn process-internal-link [href]
+(defn process-internal-link [link]
   #?(:clj
-     (let [{:keys [file var]} (resolve-href href)]
-       {:href file
+     (let [{:keys [path var]} (resolve-internal-link link)]
+       {:path path
         :fragment (when var (str (-> var symbol str) "-code"))
         :title (or (when var (-> var symbol str))
-                   (when file (:title (parser/parse-file {:doc? true} file)))
-                   href)})
+                   (when path (:title (parser/parse-file {:doc? true} path)))
+                   link)})
      :cljs
-     {:href href :title href}))
+     {:path link :title link}))
 
 #_(process-internal-link "notebooks/rule_30.clj")
 #_(process-internal-link "viewers.html")
 #_(process-internal-link "how-clerk-works/hashes")
+#_(process-internal-link "rule-30/first-generation")
 
 (declare html)
 
@@ -762,8 +763,8 @@
    {:name :nextjournal.markdown/internal-link
     :transform-fn (update-val
                    (fn [{:keys [text]}]
-                     (let [{:keys [title href fragment]} (process-internal-link text)]
-                       (html [:a.internal-link {:href (doc-url href fragment)} title]))))}
+                     (let [{:keys [path fragment title]} (process-internal-link text)]
+                       (html [:a.internal-link {:href (doc-url path fragment)} title]))))}
 
    ;; inlines
    {:name :nextjournal.markdown/text :transform-fn (into-markup [:<>])}
