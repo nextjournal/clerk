@@ -22,6 +22,7 @@
         ["cards"
          "controlling_width"
          "docs"
+         "document_linking"
          "hello"
          "how_clerk_works"
          "exec_status"
