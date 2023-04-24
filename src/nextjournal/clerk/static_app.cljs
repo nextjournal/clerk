@@ -29,27 +29,9 @@
   {:nextjournal/viewer render/html-viewer
    :nextjournal/value hiccup})
 
-(defn show [{:as view-data :git/keys [sha url] :keys [bundle? doc path url->path]}]
-  (let [header [:div.viewer.w-full.max-w-prose.px-8
-                [:div.mb-8.text-xs.sans-serif.text-gray-400.not-prose
-                 (when (not= "" path)
-                   [:<>
-                    [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
-                     {:href (doc-url view-data "")} "Back to index"]
-                    [:span.mx-1 "/"]])
-                 [:span
-                  "Generated with "
-                  [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
-                   {:href "https://github.com/nextjournal/clerk"} "Clerk"]
-                  (when (and url sha (contains? url->path path))
-                    [:<>
-                     " from "
-                     [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
-                      {:href (str url "/blob/" sha "/" (url->path path))} (url->path path) "@" [:span.tabular-nums (subs sha 0 7)]]])]]]]
-    (render/set-state! {:doc (cond-> (assoc doc :bundle? bundle?)
-                               (vector? (get-in doc [:nextjournal/value :blocks]))
-                               (update-in [:nextjournal/value :blocks] (partial into [(hiccup header)])))})
-    [render/root]))
+(defn show [{:keys [doc bundle?]}]
+  (render/set-state! {:doc (assoc doc :bundle? bundle?)})
+  [render/root])
 
 (defn index [{:as view-data :keys [paths]}]
   (when (exists? js/document)
