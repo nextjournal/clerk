@@ -1061,7 +1061,7 @@
 
 (declare html doc-url)
 
-(defn header [{:keys [url sha path url->path view-data nav-path file]}]
+(defn header [{:keys [url sha path url->path view-data nav-path file static-build?]}]
   (html [:div.viewer.w-full.max-w-prose.px-8.not-prose.mt-3
          [:div.mb-8.text-xs.sans-serif.text-gray-400
           (when (not= "" path)
@@ -1076,7 +1076,7 @@
                                    "'nextjournal.clerk.index"))} "Index"])
              [:span.mx-2 "•"]])
           [:span
-           "Generated with "
+           (if static-build? "Generated with " "Served from ")
            [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
             {:href "https://clerk.vision"} "Clerk"]
            [:<>
@@ -1086,7 +1086,7 @@
                {:href (str url "/blob/" sha "/" (url->path path))} (url->path path) "@" [:span.tabular-nums (subs sha 0 7)]]
               (let [sha "6c335f97020a8c9aa74e9c694ee068b6b76755ee"] ;; TODO: get sha
                 [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
-                 {:href nav-path} file "@" [:span.tabular-nums (subs sha 0 7)]]))]]]]))
+                 {:href nav-path} nav-path "@" [:span.tabular-nums (subs sha 0 7)]]))]]]]))
 
 (comment #?(:clj (nextjournal.clerk/recompute!)))
 
