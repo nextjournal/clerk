@@ -4,7 +4,6 @@
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.builder :as builder]
             [babashka.fs :as fs]
-            [clojure.java.io :as io]
             [clojure.edn :as edn]))
 
 (defn paths-from-deps [deps-edn]
