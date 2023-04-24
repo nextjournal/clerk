@@ -2,11 +2,22 @@
   {:nextjournal.clerk/visibility {:code :hide :result :hide}}
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]
+            [nextjournal.clerk.builder :as builder]
+            [babashka.fs :as fs]
+            [clojure.java.io :as io]
             [clojure.edn :as edn]))
 
-(defonce !paths (atom []))
+(defn paths-from-deps [deps-edn]
+  (or (when-let [clerk-exec-args (get-in deps-edn [:aliases :nextjournal/clerk :exec-args])]
+        (builder/expand-paths clerk-exec-args))
+      {:error {:message "Please add a `:nextjournal/clerk` alias to your `deps.edn`."}}))
 
-#_(reset! !paths nextjournal.clerk.builder/clerk-docs)
+
+(def !paths
+  (delay
+    (if (fs/exists? "deps.edn")
+      (paths-from-deps (edn/read-string (slurp "deps.edn")))
+      {:error {:message "Could not find a `deps.edn`."}})))
 
 (def index-item-viewer
   {:pred string?
