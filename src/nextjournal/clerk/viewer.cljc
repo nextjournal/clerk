@@ -1069,6 +1069,13 @@
       #?(:clj (boolean (when-some [path (or nav-path file)]
                          (re-matches #"index\.(clj|cljc|md)" (str (last (fs/components path)))))))))
 
+(defn index-path [{:keys [static-build? index]}]
+  (prn :index (str index))
+  #?(:cljs ""
+     :clj (if static-build?
+            (if index (str index) "")
+            (if (fs/exists? "index.clj") "index.clj" "'nextjournal.clerk.index"))))
+
 (defn header [{:as opts :keys [file nav-path static-build?] :git/keys [url sha]}]
   (html [:div.viewer.w-full.max-w-prose.px-8.not-prose.mt-3
          [:div.mb-8.text-xs.sans-serif.text-slate-400
@@ -1080,7 +1087,7 @@
           (when (not (index? opts))
             [:<>
              [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
-              {:href (doc-url #?(:clj (if (fs/exists? "index.clj") "index.clj" "'nextjournal.clerk.index") :cljs ""))} "Index"]
+              {:href (doc-url (index-path opts))} "Index"]
              [:span.mx-2 "•"]])
           [:span
            (if static-build? "Generated with " "Served from ")

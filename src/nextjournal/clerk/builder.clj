@@ -295,7 +295,7 @@
 (defn doc-url
   ([opts doc file path] (doc-url opts doc file path nil))
   ([{:as opts :keys [bundle?]} docs file path fragment]
-   (let [url (get (build-path->url opts docs) path)]
+   (let [url (get (build-path->url (viewer/update-if opts :index str) docs) path)]
      (if bundle?
        (str "#/" url)
        (str (viewer/relative-root-prefix-from (viewer/map-index opts file))
