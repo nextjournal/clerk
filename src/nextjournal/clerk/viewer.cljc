@@ -1064,8 +1064,10 @@
 (defn home? [{:keys [nav-path]}]
   (contains? #{"src/nextjournal/home.clj" "'nextjournal.clerk.home"} nav-path))
 
-(defn index? [{:keys [nav-path]}]
-  (contains? #{"index.clj" "src/nextjournal/index.clj" "'nextjournal.clerk.index"} nav-path))
+(defn index? [{:keys [nav-path file]}]
+  (or (and nav-path (= "'nextjournal.clerk.index" nav-path))
+      #?(:clj (boolean (when-some [path (or nav-path file)]
+                         (re-matches #"index\.(clj|cljc|md)" (str (last (fs/components path)))))))))
 
 (defn header [{:as opts :keys [url sha path url->path nav-path static-build?]}]
   (prn :header static-build? url sha path nav-path )
