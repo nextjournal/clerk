@@ -19,7 +19,7 @@
 ^{::clerk/css-class ["w-full" "m-0"]}
 (clerk/html
  [:div.max-w-prose.px-8.mx-auto
-  [:div.md:flex.md:justify-between.px-8.text-center.md:text-left
+  [:div.md:flex.md:justify-between.text-center.md:text-left
    [:h1 "👋 Welcome to Clerk!"]
    #_[:div.text-sm.md:text-xs.font-sans.md:text-right.mt-1
       [:span.font-bold.block
