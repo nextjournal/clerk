@@ -185,22 +185,30 @@
            (-> opts'
                (update :resource->url #(merge {} %2 %1) @config/!resource->url)
                (cond-> #_opts'
-                 expand-paths? (dissoc :expand-paths?)
-                 (and (not index) (= 1 (count expanded-paths))) (assoc :index (first expanded-paths)))))))
+                 expand-paths?
+                 (dissoc :expand-paths?)
+                 (and (not index) (= 1 (count expanded-paths)))
+                 (assoc :index (first expanded-paths))
+                 (and (not index) (< 1 (count expanded-paths)) (every? (complement #{"index.clj"}) expanded-paths))
+                 (as-> opts
+                   (let [index (io/resource "nextjournal/clerk/index.clj")]
+                     (-> opts (assoc :index index) (update :expanded-paths conj index)))))))))
 
 #_(process-build-opts {:index 'book.clj :expand-paths? true})
 #_(process-build-opts {:paths ["notebooks/rule_30.clj"] :expand-paths? true})
+#_(process-build-opts {:paths ["notebooks/rule_30.clj"
+                               "notebooks/markdown.md"] :expand-paths? true})
 
 (defn build-path->url [{:as opts :keys [bundle?]} docs]
   (into {}
         (map (comp (juxt identity #(cond-> (->> % (viewer/map-index opts) strip-index) (not bundle?) ->html-extension))
-                   :file))
+                   str :file))
         docs))
 #_(build-path->url {:bundle? false} [{:file "notebooks/foo.clj"} {:file "index.clj"}])
 #_(build-path->url {:bundle? true}  [{:file "notebooks/foo.clj"} {:file "index.clj"}])
 
 (defn build-static-app-opts [{:as opts :keys [bundle? out-path browse? index]} docs]
-  (let [path->doc (into {} (map (juxt :file :viewer)) docs)]
+  (let [path->doc (into {} (map (juxt (comp str :file) :viewer)) docs)]
     (assoc opts
            :bundle? bundle?
            :path->doc path->doc
@@ -228,20 +236,22 @@
 
 (defn write-static-app!
   [opts docs]
+  (when-not (contains? opts :index)
+    (throw (ex-info "Build options should contain an index at this point" {:opts opts :docs docs})))
   (let [{:as opts :keys [bundle? out-path browse? ssr?]} (process-build-opts opts)
         index-html (str out-path fs/file-separator "index.html")
-        {:as static-app-opts :keys [path->url path->doc]} (build-static-app-opts opts docs)]
+        {:as static-app-opts :keys [path->url path->doc]} (build-static-app-opts (update opts :index str) docs)]
+    (when-not (contains? (-> path->url vals set) "")
+      (throw (ex-info "Index must have been processed at this point" {:opts opts :docs docs})))
     (when-not (fs/exists? (fs/parent index-html))
       (fs/create-dirs (fs/parent index-html)))
     (if bundle?
       (spit index-html (view/->static-app static-app-opts))
-      (do (when-not (contains? (-> path->url vals set) "") ;; no user-defined index page
-            (spit index-html (view/->static-app (dissoc static-app-opts :path->doc))))
-          (doseq [[path doc] path->doc]
-            (let [out-html (str out-path fs/file-separator (->> path (viewer/map-index opts) ->html-extension))]
-              (fs/create-dirs (fs/parent out-html))
-              (spit out-html (view/->static-app (cond-> (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)
-                                                  ssr? ssr!)))))))
+      (doseq [[path doc] path->doc]
+        (let [out-html (str out-path fs/file-separator (->> path (viewer/map-index opts) ->html-extension))]
+          (fs/create-dirs (fs/parent out-html))
+          (spit out-html (view/->static-app (cond-> (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)
+                                              ssr? ssr!))))))
     (when browse?
       (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize)))
     {:docs docs
@@ -369,3 +379,6 @@
                       :resource->url {"/js/viewer.js" "/viewer.js"}
                       :paths ["notebooks/cherry.clj"]
                       :out-path "build"})
+#_(build-static-app! {:resource->url @config/!asset-map
+                      :paths ["notebooks/rule_30.clj"
+                              "notebooks/markdown.md"]})
