@@ -141,26 +141,29 @@
 (defn ->URL [href]
   (js/URL. href))
 
-(defn handle-anchor-click [^js e]
-  (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
-    (when (= (.-search url) "?clerk/show!")
+(defonce handle-anchor-click
+  (fn [^js e]
+    (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
+      (when (= (.-search url) "?clerk/show!")
+        (.preventDefault e)
+        (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
+                          (cond-> {:nav-path (subs (.-pathname url) 1)}
+                            (seq (.-hash url))
+                            (assoc :fragment (subs (.-hash url) 1)))))))))
+
+(defonce history-push-state
+  (fn [{:keys [path fragment replace?]}]
+    (when (not= path (some-> js/history .-state .-clerk_show))
+      (j/call js/history
+              (if replace? :replaceState :pushState)
+              #js {:clerk_show path} nil (str "/" path (when fragment (str "#" fragment)))))))
+
+(defonce handle-history-popstate
+  (fn [^js e]
+    (when-some [notebook-path (some-> e .-state .-clerk_show)]
       (.preventDefault e)
-      (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
-                        (cond-> {:nav-path (subs (.-pathname url) 1)}
-                          (seq (.-hash url))
-                          (assoc :fragment (subs (.-hash url) 1))))))))
-
-(defn history-push-state [{:keys [path fragment replace?]}]
-  (when (not= path (some-> js/history .-state .-clerk_show))
-    (j/call js/history
-            (if replace? :replaceState :pushState)
-            #js {:clerk_show path} nil (str "/" path (when fragment (str "#" fragment))))))
-
-(defn handle-history-popstate [^js e]
-  (when-some [notebook-path (some-> e .-state .-clerk_show)]
-    (.preventDefault e)
-    (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path notebook-path
-                                                              :skip-history? true}))))
+      (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path notebook-path
+                                                                :skip-history? true})))))
 
 (defn handle-initial-load [_]
   (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
