@@ -236,11 +236,9 @@
 
 (defn write-static-app!
   [opts docs]
-  (when-not (contains? opts :index)
-    (throw (ex-info "Build options should contain an index at this point" {:opts opts :docs docs})))
   (let [{:as opts :keys [bundle? out-path browse? ssr?]} (process-build-opts opts)
         index-html (str out-path fs/file-separator "index.html")
-        {:as static-app-opts :keys [path->url path->doc]} (build-static-app-opts (update opts :index str) docs)]
+        {:as static-app-opts :keys [path->url path->doc]} (build-static-app-opts (viewer/update-if opts :index str) docs)]
     (when-not (contains? (-> path->url vals set) "")
       (throw (ex-info "Index must have been processed at this point" {:opts opts :docs docs})))
     (when-not (fs/exists? (fs/parent index-html))
