@@ -976,6 +976,15 @@
                   [nextjournal.clerk.render/inspect-presented value]))
    :transform-fn mark-preserve-keys})
 
+#?(:clj
+   (def file-viewer
+     {:name `file-viewer
+      :render-fn '(fn [{:keys [code]}]
+                    [:div
+                     [:h1 "Looking at you, File!"]
+                     [nextjournal.clerk.render/render-code code]])
+      :transform-fn (comp mark-presented (update-val (fn [{:keys [file]}]
+                                                       {:code (slurp file)})))}))
 
 #?(:cljs
    (def js-promise-viewer
@@ -1086,7 +1095,7 @@
                {:href (str url "/blob/" sha "/" (url->path path))} (url->path path) "@" [:span.tabular-nums (subs sha 0 7)]]
               (let [sha "6c335f97020a8c9aa74e9c694ee068b6b76755ee"] ;; TODO: get sha
                 [:a.hover:text-indigo-500.dark:hover:text-white.font-medium.border-b.border-dotted.border-gray-300
-                 {:href nav-path} nav-path "@" [:span.tabular-nums (subs sha 0 7)]]))]]]]))
+                 {:href (str nav-path "?clerk/show!=file")} nav-path "@" [:span.tabular-nums (subs sha 0 7)]]))]]]]))
 
 (comment #?(:clj (nextjournal.clerk/recompute!)))
 

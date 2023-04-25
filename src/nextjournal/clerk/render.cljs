@@ -144,12 +144,14 @@
 (defonce handle-anchor-click
   (fn [^js e]
     (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
-      (when (= (.-search url) "?clerk/show!")
+      (when-some [mode (.. url -searchParams (get "clerk/show!"))]
         (.preventDefault e)
         (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
                           (cond-> {:nav-path (subs (.-pathname url) 1)}
                             (seq (.-hash url))
-                            (assoc :fragment (subs (.-hash url) 1)))))))))
+                            (assoc :fragment (subs (.-hash url) 1))
+                            (= mode "file")
+                            (assoc :mode :file))))))))
 
 (defonce history-push-state
   (fn [{:keys [path fragment replace?]}]
@@ -227,7 +229,6 @@
              {:class "text-[12px]"} "ToC"]]
            {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-[7px] text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
           [navbar/panel !state [navbar/navbar !state]]])
-       (prn :header header)
        [:div.flex-auto.w-screen.scroll-container
         (into
          [:> (.-div motion)

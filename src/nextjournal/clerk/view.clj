@@ -8,9 +8,10 @@
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
-  ([opts {:as doc :keys [ns file]}]
+  ([opts {:as doc :keys [ns file mode]}]
    (binding [*ns* ns]
-     (-> (merge doc opts) v/notebook v/present))))
+     (let [mode-viewer (if (= mode :file) (partial v/with-viewer v/file-viewer) v/notebook)]
+       (-> (merge doc opts) mode-viewer v/present)))))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
