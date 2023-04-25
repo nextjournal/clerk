@@ -979,12 +979,10 @@
 #?(:clj
    (def file-viewer
      {:name `file-viewer
-      :render-fn '(fn [{:keys [code]}]
-                    [:div
-                     [:h1 "Looking at you, File!"]
-                     [nextjournal.clerk.render/render-code code]])
+      :render-fn 'nextjournal.clerk.render/render-file
       :transform-fn (comp mark-presented (update-val (fn [{:keys [file]}]
-                                                       {:code (slurp file)})))}))
+                                                       {:code (slurp file)
+                                                        :file (str file)})))}))
 
 #?(:cljs
    (def js-promise-viewer

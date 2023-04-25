@@ -174,7 +174,16 @@
   ;; We need to push an initial history state when the document is first loaded via a hard request
   (js/addEventListener "load" handle-initial-load))
 
+(defn use-navigate []
+  (when (exists? js/document)
+    (hooks/use-effect (fn []
+                        (js/document.addEventListener "click" handle-anchor-click)
+                        (js/addEventListener "popstate" handle-history-popstate)
+                        #(do (js/document.removeEventListener "click" handle-anchor-click)
+                             (js/removeEventListener "popstate" handle-history-popstate))))))
+
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility header footer]} opts]
+  (use-navigate)
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
                !state (r/atom {:toc (toc-items (:children toc))
@@ -192,20 +201,14 @@
                                         stored-open?
                                         (not= :collapsed toc-visibility))})
                root-ref-fn (fn [el]
-                             (if el
-                               (when (exists? js/document)
-                                 (js/document.addEventListener "click" handle-anchor-click)
-                                 (js/addEventListener "popstate" handle-history-popstate)
-                                 (setup-dark-mode! !state)
-                                 (when-some [heading (when (and (exists? js/location) (not bundle?))
-                                                       (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
-                                                            (catch js/Error _
-                                                              (js/console.warn (str "Clerk render-notebook, invalid hash: "
-                                                                                    (.-hash js/location))))))]
-                                   (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading))))
-                               (when (exists? js/document)
-                                 (js/document.removeEventListener "click" handle-anchor-click)
-                                 (js/removeEventListener "popstate" handle-history-popstate))))]
+                             (when (and el (exists? js/document))
+                               (setup-dark-mode! !state)
+                               (when-some [heading (when (and (exists? js/location) (not bundle?))
+                                                     (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
+                                                          (catch js/Error _
+                                                            (js/console.warn (str "Clerk render-notebook, invalid hash: "
+                                                                                  (.-hash js/location))))))]
+                                 (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
     (let [{:keys [md-toc mobile? open? visibility]} @!state
           doc-inset (cond
                       mobile? 0
@@ -827,8 +830,8 @@
                                                  (clj->js (dissoc value :embed/opts :embed/callback))
                                                  (clj->js opts))
                                          (.then (fn [result] (if-let [callback (:embed/callback value)]
-                                                               (callback result)
-                                                               result)))
+                                                              (callback result)
+                                                              result)))
                                          (.catch handle-error)))
                                   #js[value vega-embed])]
     (when value
@@ -869,6 +872,13 @@
       default-loading-view)))
 
 (def render-code code/render-code)
+
+(defn render-file [{:keys [code file]}]
+  (use-navigate)
+  [:div.max-w-prose.w-full.mx-auto
+   [:div.rounded-t-lg.px-4.py-2.text-smm.font-bold.font-mono.border.bg-slate-100 file]
+   [:div.rounded-b-lg.border.bg-slate-50.p-4
+    [render-code code]]])
 
 (def expand-icon
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
