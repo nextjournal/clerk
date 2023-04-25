@@ -11,7 +11,6 @@
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
-            [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]))
 
