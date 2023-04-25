@@ -1061,19 +1061,25 @@
 
 (declare html doc-url)
 
-(defn header [{:keys [url sha path url->path view-data nav-path file static-build?]}]
+(defn home? [{:keys [nav-path]}]
+  (contains? #{"src/nextjournal/home.clj" "'nextjournal.clerk.home"} nav-path))
+
+(defn index? [{:keys [nav-path]}]
+  (contains? #{"index.clj" "src/nextjournal/index.clj" "'nextjournal.clerk.index"} nav-path))
+
+(defn header [{:as opts :keys [url sha path url->path nav-path static-build?]}]
+  (prn :header static-build? url sha path nav-path )
   (html [:div.viewer.w-full.max-w-prose.px-8.not-prose.mt-3
          [:div.mb-8.text-xs.sans-serif.text-slate-400
-          (when (not= "" path)
+          (when (and (not static-build?) (not (home? opts)))
             [:<>
              [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
               {:href (doc-url "'nextjournal.clerk.home")} "Home"]
-             [:span.mx-2 "•"]
-             #?(:clj
-                [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
-                 {:href (doc-url (if (fs/exists? "index.clj")
-                                   "index.clj"
-                                   "'nextjournal.clerk.index"))} "Index"])
+             [:span.mx-2 "•"]])
+          (when (not (index? opts))
+            [:<>
+             [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
+              {:href (doc-url #?(:clj (if (fs/exists? "index.clj") "index.clj" "'nextjournal.clerk.index") :cljs ""))} "Index"]
              [:span.mx-2 "•"]])
           [:span
            (if static-build? "Generated with " "Served from ")
