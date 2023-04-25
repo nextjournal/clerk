@@ -478,10 +478,10 @@
 
 (defn transform-result [{:as wrapped-value :keys [path]}]
   (let [{:as _cell :keys [form id] ::keys [result doc]} (:nextjournal/value wrapped-value)
-        {:keys [auto-expand-results? inline-results? bundle?]} doc
+        {:keys [auto-expand-results? static-build? bundle?]} doc
         {:nextjournal/keys [value blob-id viewers]} result
         blob-mode (cond
-                    (and (not inline-results?) blob-id) :lazy-load
+                    (and (not static-build?) blob-id) :lazy-load
                     bundle? :inline ;; TODO: provide a separte setting for this
                     :else :file)
         #?(:clj blob-opts :cljs _) (assoc doc :blob-mode blob-mode :blob-id blob-id)
