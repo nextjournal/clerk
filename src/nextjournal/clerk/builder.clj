@@ -324,9 +324,9 @@
                       (report-fn {:stage :building :doc doc :idx idx})
                       (let [{result :result duration :time-ms} (eval/time-ms
                                                                 (try
-                                                                  (let [doc (binding [viewer/doc-url (partial doc-url opts state file)]
-                                                                              (eval/eval-analyzed-doc doc))]
-                                                                    (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc)))
+                                                                  (binding [viewer/doc-url (partial doc-url opts state file)]
+                                                                    (let [doc (eval/eval-analyzed-doc doc)]
+                                                                      (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc))))
                                                                   (catch Exception e
                                                                     {:error e})))]
                         (report-fn (merge {:stage :built :duration duration :idx idx}
