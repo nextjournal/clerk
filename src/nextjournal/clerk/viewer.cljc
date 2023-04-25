@@ -1099,10 +1099,9 @@
   (-> doc
       (assoc :atom-var-name->state (atom-var-name->state doc))
       (assoc :ns (->viewer-eval (list 'ns (if ns (ns-name ns) 'user))))
-      (update :blocks (partial into []
-                               (comp (mapcat (partial with-block-viewer (dissoc doc :error)))
-                                     (map (comp present
-                                                (partial ensure-wrapped-with-viewers viewers))))))
+      (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer (dissoc doc :error)))
+                                             (map (comp present
+                                                        (partial ensure-wrapped-with-viewers viewers))))))
       (assoc :header (present (header doc)))
       #_(assoc :footer (present (footer doc)))
       (select-keys [:atom-var-name->state
