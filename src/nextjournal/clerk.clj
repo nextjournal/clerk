@@ -393,13 +393,6 @@
     `(nextjournal.clerk/with-viewer v/examples-viewer
        (mapv (fn [form# val#] {:form form# :val val#}) ~(mapv (fn [x#] `'~x#) body) ~(vec body)))))
 
-(defn file->viewer
-  "Evaluates the given `file` and returns it's viewer representation."
-  ([file] (file->viewer {:inline-results? true} file))
-  ([opts file] (view/doc->viewer opts (eval/eval-file file))))
-
-#_(file->viewer "notebooks/rule_30.clj")
-
 (defn halt-watcher!
   "Halts the filesystem watcher when active."
   []
