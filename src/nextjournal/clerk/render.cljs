@@ -155,6 +155,7 @@
 
 (defonce history-push-state
   (fn [{:keys [path fragment replace?]}]
+    (js/console.log "push state" path fragment replace?)
     (when (not= path (some-> js/history .-state .-clerk_show))
       (j/call js/history
               (if replace? :replaceState :pushState)

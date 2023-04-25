@@ -122,8 +122,8 @@
     (reset! !doc (with-meta doc presented))
     presented))
 
-(defn update-doc! [{:as doc :keys [nav-path fragment skip-history?]}]
-  (broadcast! (if (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
+(defn update-doc! [{:as doc :keys [mode nav-path fragment skip-history?]}]
+  (broadcast! (if (and (:ns @!doc) (= (:ns @!doc) (:ns doc)) (not (= mode :file)))
                 {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
                 (cond-> {:type :set-state!
                          :doc (present+reset! doc)}
@@ -174,12 +174,16 @@
 
 (declare present+reset!)
 
-(defn ->nav-path [file-or-ns]
-  (cond (symbol? file-or-ns) (str "'" file-or-ns)
-        (string? file-or-ns) (when (fs/exists? file-or-ns)
-                               (fs/unixify (cond->> file-or-ns
-                                             (fs/absolute? file-or-ns)
-                                             (fs/relativize (fs/cwd)))))))
+(defn ->nav-path
+  ([file-or-ns]
+   (->nav-path {} file-or-ns))
+  ([{:keys [mode]} file-or-ns]
+   (cond-> (cond (symbol? file-or-ns) (str "'" file-or-ns)
+                 (string? file-or-ns) (when (fs/exists? file-or-ns)
+                                        (fs/unixify (cond->> file-or-ns
+                                                      (fs/absolute? file-or-ns)
+                                                      (fs/relativize (fs/cwd))))))
+     (= mode :file) (str "?clerk/show!=file"))))
 
 #_(->nav-path 'nextjournal.clerk.home)
 #_(->nav-path 'nextjournal.clerk.tap)
