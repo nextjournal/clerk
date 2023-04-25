@@ -1069,8 +1069,7 @@
       #?(:clj (boolean (when-some [path (or nav-path file)]
                          (re-matches #"index\.(clj|cljc|md)" (str (last (fs/components path)))))))))
 
-(defn header [{:as opts :keys [url sha path url->path nav-path static-build?]}]
-  (prn :header static-build? url sha path nav-path )
+(defn header [{:as opts :keys [file nav-path static-build?] :git/keys [url sha]}]
   (html [:div.viewer.w-full.max-w-prose.px-8.not-prose.mt-3
          [:div.mb-8.text-xs.sans-serif.text-slate-400
           (when (and (not static-build?) (not (home? opts)))
@@ -1087,14 +1086,12 @@
            (if static-build? "Generated with " "Served from ")
            [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
             {:href "https://clerk.vision"} "Clerk"]
-           [:<>
-            " from "
-            (if (and url sha (contains? url->path path))
-              [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
-               {:href (str url "/blob/" sha "/" (url->path path))} (url->path path) "@" [:span.tabular-nums (subs sha 0 7)]]
-              (let [sha "6c335f97020a8c9aa74e9c694ee068b6b76755ee"] ;; TODO: get sha
-                [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
-                 {:href nav-path} nav-path "@" [:span.tabular-nums (subs sha 0 7)]]))]]]]))
+           " from "
+           (let [default-index? (and static-build? (index? opts) (not (string? file)))]
+             [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
+              {:href (when (and url sha) (if default-index? (str url "/tree/" sha) (str url "/blob/" sha "/" file)))}
+              (if default-index? #?(:clj (subs (.getPath (URL. url)) 1) :cljs url) (str (or nav-path file)))
+              (when sha [:<> "@" [:span.tabular-nums (subs sha 0 7)]])])]]]))
 
 (comment #?(:clj (nextjournal.clerk/recompute!)))
 
