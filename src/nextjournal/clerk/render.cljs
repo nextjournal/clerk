@@ -9,6 +9,7 @@
             [clojure.string :as str]
             [clojure.walk :as w]
             [editscript.core :as editscript]
+            [goog.events :as gevents]
             [goog.object]
             [goog.string :as gstring]
             [nextjournal.clerk.render.code :as code]
@@ -24,6 +25,7 @@
             [sci.core :as sci]
             [sci.ctx-store]
             [shadow.cljs.modern :refer [defclass]]))
+
 
 (r/set-default-compiler! (r/create-compiler {:function-components true}))
 
@@ -142,6 +144,7 @@
   (js/URL. href))
 
 (defn handle-anchor-click [^js e]
+  (prn :handle-anchor-click e)
   (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
     (when (= (.-search url) "?clerk/show!")
       (.preventDefault e)
@@ -157,17 +160,11 @@
             #js {:clerk_show path} nil (str "/" path (when fragment (str "#" fragment))))))
 
 (defn handle-history-popstate [^js e]
+  (prn :handle-history-popstate e)
   (when-some [notebook-path (some-> e .-state .-clerk_show)]
     (.preventDefault e)
     (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path notebook-path
                                                               :skip-history? true}))))
-
-(defn handle-initial-load [_]
-  (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
-
-(when (exists? js/addEventListener)
-  ;; We need to push an initial history state when the document is first loaded via a hard request
-  (js/addEventListener "load" handle-initial-load))
 
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility header footer]} opts]
   (r/with-let [local-storage-key "clerk-navbar"
@@ -187,20 +184,14 @@
                                         stored-open?
                                         (not= :collapsed toc-visibility))})
                root-ref-fn (fn [el]
-                             (if el
-                               (when (exists? js/document)
-                                 (js/document.addEventListener "click" handle-anchor-click)
-                                 (js/addEventListener "popstate" handle-history-popstate)
-                                 (setup-dark-mode! !state)
-                                 (when-some [heading (when (and (exists? js/location) (not bundle?))
-                                                       (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
-                                                            (catch js/Error _
-                                                              (js/console.warn (str "Clerk render-notebook, invalid hash: "
-                                                                                    (.-hash js/location))))))]
-                                   (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading))))
-                               (when (exists? js/document)
-                                 (js/document.removeEventListener "click" handle-anchor-click)
-                                 (js/removeEventListener "popstate" handle-history-popstate))))]
+                             (when (and el (exists? js/document))
+                               (setup-dark-mode! !state)
+                               (when-some [heading (when (and (exists? js/location) (not bundle?))
+                                                     (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
+                                                          (catch js/Error _
+                                                            (js/console.warn (str "Clerk render-notebook, invalid hash: "
+                                                                                  (.-hash js/location))))))]
+                                 (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
     (let [{:keys [md-toc mobile? open? visibility]} @!state
           doc-inset (cond
                       mobile? 0
@@ -224,7 +215,6 @@
              {:class "text-[12px]"} "ToC"]]
            {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-[7px] text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
           [navbar/panel !state [navbar/navbar !state]]])
-       (prn :header header)
        [:div.flex-auto.w-screen.scroll-container
         (into
          [:> (.-div motion)
@@ -767,9 +757,25 @@
   (when-let [el (and (exists? js/document) (js/document.getElementById "clerk"))]
     (react-client/createRoot el)))
 
+
+(defonce !listeners (atom #{}))
+
+(defn handle-initial-load [_]
+  (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
+
+(defn setup-router! []
+  ;; TODO: unify with static app
+  (when (and (exists? js/document) (exists? js/window))
+    (doseq [listener @!listeners]
+      (gevents/unlistenByKey listener))
+    (reset! !listeners #{(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
+                         (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
+                         (gevents/listen js/window gevents/EventType.LOAD handle-initial-load false)})))
+
 (defn ^:export ^:dev/after-load mount []
   (when react-root
-    (.render react-root (r/as-element [root]))))
+    (.render react-root (r/as-element [root]))
+    (setup-router!)))
 
 (defn html-render [markup]
   (r/as-element
