@@ -355,7 +355,8 @@
                                                                   (binding [*build-opts* opts
                                                                             viewer/doc-url (partial doc-url opts state file)]
                                                                     (let [doc (eval/eval-analyzed-doc doc)]
-                                                                      (assoc doc :viewer (view/doc->viewer (assoc opts :static-build? true) doc))))
+                                                                      (assoc doc :viewer (view/doc->viewer (assoc opts :static-build? true
+                                                                                                                  :nav-path (str file)) doc))))
                                                                   (catch Exception e
                                                                     {:error e})))]
                         (report-fn (merge {:stage :built :duration duration :idx idx}

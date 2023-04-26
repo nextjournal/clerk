@@ -179,7 +179,8 @@
         (string? file-or-ns) (when (fs/exists? file-or-ns)
                                (fs/unixify (cond->> file-or-ns
                                              (fs/absolute? file-or-ns)
-                                             (fs/relativize (fs/cwd)))))))
+                                             (fs/relativize (fs/cwd)))))
+        :else (str file-or-ns)))
 
 #_(->nav-path 'nextjournal.clerk.home)
 #_(->nav-path 'nextjournal.clerk.tap)
