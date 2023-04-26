@@ -1100,6 +1100,10 @@
               (if (and url default-index?) #?(:clj (subs (.getPath (URL. url)) 1) :cljs url) nav-path)
               (when sha [:<> "@" [:span.tabular-nums (subs sha 0 7)]])])]]]))
 
+(def header-viewer
+  {:name `header-viewer
+   :transform-fn (comp mark-presented (update-val header))})
+
 (comment #?(:clj (nextjournal.clerk/recompute!)))
 
 (defn process-blocks [viewers {:as doc :keys [ns]}]
@@ -1107,9 +1111,8 @@
       (assoc :atom-var-name->state (atom-var-name->state doc))
       (assoc :ns (->viewer-eval (list 'ns (if ns (ns-name ns) 'user))))
       (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer (dissoc doc :error)))
-                                             (map (comp present
-                                                        (partial ensure-wrapped-with-viewers viewers))))))
-      (assoc :header (present (header doc)))
+                                             (map (comp present (partial ensure-wrapped-with-viewers viewers))))))
+      (assoc :header (present (with-viewers viewers (with-viewer `header-viewer doc))))
       #_(assoc :footer (present (footer doc)))
       (select-keys [:atom-var-name->state
                     :auto-expand-results?
@@ -1156,7 +1159,8 @@
 
 (def default-viewers
   ;; maybe make this a sorted-map
-  [char-viewer
+  [header-viewer
+   char-viewer
    string-viewer
    number-viewer
    number-hex-viewer
