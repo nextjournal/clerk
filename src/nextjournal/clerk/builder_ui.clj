@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.builder-ui
-  {:nextjournal.clerk/visibility {:code :hide :result :hide}}
+  {:nextjournal.clerk/visibility {:code :hide :result :hide}
+   :nextjournal.clerk/css-class [:pt-0]}
   (:require [nextjournal.clerk.viewer :as viewer]
             [clojure.string :as str]))
 
@@ -176,7 +177,9 @@
              (str (int duration) "ms")
              "•")]]])]]
     (when error
-      [:div.mt-2.rounded-md.shadow-lg.border.border-gray-300.overflow-hidden (viewer/present error)])]
+      [:div.overflow-x-auto.rounded-lg
+       [:div.relative
+        {:nextjournal/value error}]])]
    #_(when (= :executing state)
        (blocks-view doc))
    #_[:div.mx-auto.w-8.border.border-t-0.border-slate-300.bg-slate-50.rounded-b.text-slate-500.flex.justify-center.shadow.hover:bg-slate-100.cursor-pointer
@@ -189,7 +192,7 @@
   {:transform-fn (viewer/update-val (comp viewer/html doc-build-badge))})
 
 (defn phase-view [{:keys [phase-name docs error state duration]}]
-  [:div
+  [:div.max-w-4xl.mx-auto.px-4.lg:px-0
    [:div.border-t.border-greenish-50.px-1.py-2.font-iosevka.text-greenish
     #_{:class (bg-class state)}
     [:div.flex.justify-between.items-center
@@ -216,7 +219,9 @@
          {:class "w-[40px] text-[10px]"}
          (int duration) "ms"])]]]
    (when error
-     [:div.mt-2.rounded-md.shadow-lg.border.border-gray-300.overflow-hidden (viewer/present error)])])
+     [:div.overflow-x-auto.rounded-lg
+      [:div.relative
+       {:nextjournal/value error}]])])
 
 
 (def phase-viewer
@@ -224,7 +229,8 @@
 
 (def docs-viewer
   {:render-fn '(fn [state opts]
-                 (into [:div.flex.flex-col.border-greenish-50.mt-8 {:class (when (seq state) "border-t-[3px]")}] (nextjournal.clerk.render/inspect-children opts) state))
+                 (into [:div.flex.flex-col.border-greenish-50.mt-8.max-w-4xl.mx-auto.px-4.lg:px-0
+                        {:class (when (seq state) "border-t-[3px]")}] (nextjournal.clerk.render/inspect-children opts) state))
    :transform-fn (viewer/update-val (fn [docs]
                                       (mapv #(viewer/with-viewer doc-build-badge-viewer %) docs)))})
 
@@ -291,18 +297,17 @@
 
 ^{:nextjournal.clerk/width :full}
 (viewer/html
- [:div.border-greenish-50.font-iosevka.text-greenish.flex.items-center.justify-between.pl-1.pb-2.not-prose.mt-8
-  {:class "border-b-[3px]"}
+ [:div.border-greenish-50.font-iosevka.text-greenish.flex.items-center.justify-between.pl-1.not-prose.mt-8.max-w-4xl.mx-auto
   (if-let [link (:build-href @!build-state)]
     [:<>
-     [:div.flex.items-center
+     [:div.flex.items-center.px-4.lg:px-0
       (checkmark-svg)
       [:div.text-lg.ml-2.mb-0.font-medium "Your notebooks have been built."]]
      [:a.font-medium.rounded-full.text-sm.px-3.py-1.bg-greenish-20.flex.items-center.border-2.border-greenish.animate-border-pulse.hover:border-white.hover:animate-none
       {:href link}
       [:div publish-icon-svg]
       [:span.ml-2 "Open"]]]
-    [:div.flex.items-center
+    [:div.flex.items-center.px-4.lg:px-0
      (spinner-svg)
      [:div.text-lg.ml-2.mb-0 "Building notebooks…"]])])
 
