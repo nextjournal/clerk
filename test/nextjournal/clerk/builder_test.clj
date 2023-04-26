@@ -78,11 +78,11 @@
 
 (deftest doc-url
   (testing "link to same dir unbundled"
-    (is (= "../notebooks/rule_30.html" ;; NOTE: could also be just "rule_30.html"
+    (is (= "./../notebooks/rule_30.html" ;; NOTE: could also be just "rule_30.html"
            (builder/doc-url {:bundle? false} [{:file "notebooks/viewer_api.clj"} {:file "notebooks/rule_30.clj"}] "notebooks/viewer_api.clj" "notebooks/rule_30.clj"))))
 
   (testing "respects the mapped index"
-    (is (= "notebooks/rule_30.html"
+    (is (= "./notebooks/rule_30.html"
            (builder/doc-url {:bundle? false} [{:file "index.clj"} {:file "notebooks/rule_30.clj"}] "index.clj" "notebooks/rule_30.clj"))))
 
   (testing "bundle case"
