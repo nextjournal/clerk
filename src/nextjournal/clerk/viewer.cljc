@@ -417,7 +417,7 @@
 
 #?(:clj
    (defn relative-root-prefix-from [path]
-     (str/join (repeat (get (frequencies (str path)) \/ 0) "../"))))
+     (str "./" (str/join (repeat (get (frequencies (str path)) \/ 0) "../")))))
 
 #?(:clj
    (defn map-index [{:as _opts :keys [index]} path]
@@ -1070,7 +1070,6 @@
                          (re-matches #"index\.(clj|cljc|md)" (str (last (fs/components path)))))))))
 
 (defn index-path [{:keys [static-build? index]}]
-  (prn :index (str index))
   #?(:cljs ""
      :clj (if static-build?
             (if index (str index) "")
@@ -1097,7 +1096,7 @@
            (let [default-index? (and static-build? (index? opts) (not (string? file)))]
              [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
               {:href (when (and url sha) (if default-index? (str url "/tree/" sha) (str url "/blob/" sha "/" file)))}
-              (if default-index? #?(:clj (subs (.getPath (URL. url)) 1) :cljs url) (str (or nav-path file)))
+              (if (and url default-index?) #?(:clj (subs (.getPath (URL. url)) 1) :cljs url) (str (or nav-path file)))
               (when sha [:<> "@" [:span.tabular-nums (subs sha 0 7)]])])]]]))
 
 (comment #?(:clj (nextjournal.clerk/recompute!)))
