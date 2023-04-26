@@ -30,9 +30,9 @@
                    (update wrapped-value :nextjournal/viewers v/add-viewers [index-item-viewer]))})
 
 {::clerk/visibility {:result :show}}
-(let [{paths :ok :keys [error]} @!paths]
+(let [{:keys [paths error]} @!paths]
   (cond
-    error (clerk/html error)
+    error (clerk/md error)
     paths (clerk/with-viewer index-viewer paths)))
 
 #_[:div.bg-gray-100.dark:bg-gray-900.flex.justify-center.overflow-y-auto.w-screen.h-screen.p-4.md:p-0
