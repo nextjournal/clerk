@@ -793,6 +793,40 @@ v/table-viewer
 ;;
 ;; This comes in quite handy for debugging too!
 
+;; ## 🧱 Static Building
+
+;; Clerk can make a static HTML build from a collection of notebooks.
+;; The entry point for this is the `nextjournal.clerk/build!`
+;; function.  You can pass it a set of notebooks via the `:paths`
+;; option (also supporting glob patterns).
+
+;; When Clerk is building multuple notebooks, it will automatically
+;; generate an index page that will be the first to show up when
+;; opening the build. You can override this index page via the
+;; `:index` option.
+
+;; Also notably, there is a `:compile-css` option which compiles a css
+;; file containing only the used CSS classes from the generated
+;; markup. (Otherwise, Clerk is using Tailwind's Play CDN script which
+;; can the page flicker, initially.)
+
+;; If set, the `:ssr` option will use React's server-side-rendering to
+;; include the generated markup in the build HTML.
+
+;; For a full list of options see the docstring in
+;; `nextjournal.clerk/build!`.
+
+;; **Here are some examples:**
+
+;; ```clj
+;; ;; Building a single notebook
+;; (clerk/build! {:paths ["notebooks/rule_30.clj"]})
+;;
+;; ;; Building all notebooks in `notebook/` with a custom index page.
+;; (clerk/build! {:paths ["notebooks/*"]
+;;                :index "notebooks/welcome.clj"})
+;; ```
+
 ;; ## ⚡️ Incremental Computation
 
 ;; ### 🔖 Parsing
