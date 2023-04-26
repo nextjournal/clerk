@@ -24,10 +24,6 @@
             relative-root (str/join (repeat dir-depth "../"))]
         (str relative-root url)))))
 
-(defn hiccup [hiccup]
-  {:nextjournal/viewer render/html-viewer
-   :nextjournal/value hiccup})
-
 (defn show [{:keys [doc bundle?]}]
   (render/set-state! {:doc (assoc doc :bundle? bundle?)})
   [render/root])

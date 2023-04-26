@@ -1,22 +1,11 @@
 (ns nextjournal.clerk.index
-  {:nextjournal.clerk/visibility {:code :hide :result :hide}}
+  {:nextjournal.clerk/visibility {:code :hide :result :hide}
+   :nextjournal.clerk/no-cache true}
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]
-            [nextjournal.clerk.builder :as builder]
-            [babashka.fs :as fs]
-            [clojure.edn :as edn]))
+            [nextjournal.clerk.builder :as builder]))
 
-(defn paths-from-deps [deps-edn]
-  (or (when-let [clerk-exec-args (get-in deps-edn [:aliases :nextjournal/clerk :exec-args])]
-        (builder/expand-paths clerk-exec-args))
-      {:error {:message "Please add a `:nextjournal/clerk` alias to your `deps.edn`."}}))
-
-
-(def !paths
-  (delay
-    (if (fs/exists? "deps.edn")
-      (paths-from-deps (edn/read-string (slurp "deps.edn")))
-      {:error {:message "Could not find a `deps.edn`."}})))
+(def !paths (delay (builder/index-paths)))
 
 (def index-item-viewer
   {:pred string?
@@ -41,8 +30,10 @@
                    (update wrapped-value :nextjournal/viewers v/add-viewers [index-item-viewer]))})
 
 {::clerk/visibility {:result :show}}
-
-(clerk/with-viewer index-viewer @!paths)
+(let [{paths :ok :keys [error]} @!paths]
+  (cond
+    error (clerk/html error)
+    paths (clerk/with-viewer index-viewer paths)))
 
 #_[:div.bg-gray-100.dark:bg-gray-900.flex.justify-center.overflow-y-auto.w-screen.h-screen.p-4.md:p-0
    {:ref ref-fn}

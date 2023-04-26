@@ -2,6 +2,7 @@
   "Clerk's Static App Builder."
   (:require [babashka.fs :as fs]
             [babashka.process :refer [sh]]
+            [clojure.edn :as edn]
             [clojure.java.browse :as browse]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -12,7 +13,8 @@
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.clerk.webserver :as webserver]
-            [nextjournal.clerk.config :as config]))
+            [nextjournal.clerk.config :as config])
+  (:import (java.net URL)))
 
 (def clerk-docs
   (into ["CHANGELOG.md"
@@ -124,9 +126,11 @@
     (throw (ex-info "nothing to build" (merge {:expanded-paths expanded-paths} (select-keys build-opts [:paths :paths-fn :index]))))
     expanded-paths))
 
-(defn ^:private maybe-add-index [{:as build-opts :keys [paths paths-fn index]} resolved-paths]
-  (when (and index (or (not (string? index)) (not (fs/exists? index))))
-    (throw (ex-info "`:index` must be string and point to existing file" {:index index})))
+(defn ^:private maybe-add-index [{:as opts :keys [index]} resolved-paths]
+  (when (contains? opts :index)
+    (or (instance? URL index)
+        (and (string? index) (fs/exists? index))
+        (throw (ex-info "`:index` must be either an instance of java.net.URL or a string and point to an existing file" {:index index}))))
   (cond-> resolved-paths
     (and index (not (contains? (set resolved-paths) index)))
     (conj index)))
@@ -301,6 +305,22 @@
        (str (viewer/relative-root-prefix-from (viewer/map-index opts file))
             url (when fragment (str "#" fragment)))))))
 
+(defn opts-from-deps []
+  (if (fs/exists? "deps.edn")
+    (let [deps-edn (edn/read-string (slurp "deps.edn"))]
+      (if-some [clerk-alias (get-in deps-edn [:aliases :nextjournal/clerk])]
+        (get clerk-alias :exec-args {:error [:em.text-red-500 "No " [:span.font-mono ":exec-args"] " found in " [:span.font-mono ":nextjournal/clerk"] " alias."]})
+        {:error [:em.text-red-500 "No " [:span.font-mono ":nextjournal/clerk"] " alias found in deps.edn"]}))
+    {:error [:em.text-red-500 "No deps.edn in project…"]}))
+
+(def ^:dynamic^:private *build-opts* nil)
+(defn index-paths []
+  (let [{:as opts :keys [index error]} (or *build-opts* (opts-from-deps))]
+    (if error opts {:ok (sequence (remove #{index "index.clj"}) (expand-paths opts))})))
+
+#_(index-paths)
+#_(nextjournal.clerk/show! 'nextjournal.clerk.index)
+
 (defn build-static-app! [{:as opts :keys [bundle?]}]
   (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css? expanded-paths error]}
         (try (process-build-opts (assoc opts :expand-paths? true))
@@ -332,7 +352,8 @@
                       (report-fn {:stage :building :doc doc :idx idx})
                       (let [{result :result duration :time-ms} (eval/time-ms
                                                                 (try
-                                                                  (binding [viewer/doc-url (partial doc-url opts state file)]
+                                                                  (binding [*build-opts* opts
+                                                                            viewer/doc-url (partial doc-url opts state file)]
                                                                     (let [doc (eval/eval-analyzed-doc doc)]
                                                                       (assoc doc :viewer (view/doc->viewer (assoc opts :static-build? true) doc))))
                                                                   (catch Exception e

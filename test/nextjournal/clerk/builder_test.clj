@@ -65,7 +65,11 @@
 
 (deftest build-static-app!
   (testing "error when paths are empty (issue #339)"
-    (is (thrown-with-msg? ExceptionInfo #"nothing to build" (builder/build-static-app! {:paths []})))))
+    (is (thrown-with-msg? ExceptionInfo #"nothing to build" (builder/build-static-app! {:paths []}))))
+
+  (testing "error when index is of the wrong type"
+    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index 0})))
+    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index "not/existing/notebook.clj"})))))
 
 (deftest process-build-opts
   (testing "assigns index when only one path is given"
