@@ -240,7 +240,7 @@
 
 (defn cleanup [build-opts]
   (select-keys build-opts
-               [:bundle? :path->doc :path->url :current-path :resource->url :exclude-js? :index]))
+               [:bundle? :path->doc :path->url :current-path :resource->url :exclude-js? :index :html]))
 
 (defn write-static-app!
   [opts docs]
@@ -258,8 +258,8 @@
           (fs/create-dirs (fs/parent out-html))
           (spit out-html (view/->html (-> static-app-opts
                                           (assoc :path->doc (hash-map path doc) :current-path path)
-                                          cleanup
-                                          (cond-> ssr? ssr!)))))))
+                                          (cond-> ssr? ssr!)
+                                          cleanup))))))
     (when browse?
       (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize)))
     {:docs docs
