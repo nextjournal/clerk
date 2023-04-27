@@ -168,8 +168,6 @@
 (defn ^:export eval-form [f]
   (sci/eval-form (sci.ctx-store/get-ctx) f))
 
-(def ^:export set-state render/set-state!)
-(def ^:export mount render/mount)
 (def ^:export init render/init)
 
 (defn ^:export ssr [state-str]
