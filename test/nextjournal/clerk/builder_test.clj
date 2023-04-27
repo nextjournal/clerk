@@ -65,7 +65,11 @@
 
 (deftest build-static-app!
   (testing "error when paths are empty (issue #339)"
-    (is (thrown-with-msg? ExceptionInfo #"nothing to build" (builder/build-static-app! {:paths []})))))
+    (is (thrown-with-msg? ExceptionInfo #"nothing to build" (builder/build-static-app! {:paths []}))))
+
+  (testing "error when index is of the wrong type"
+    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index 0})))
+    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index "not/existing/notebook.clj"})))))
 
 (deftest process-build-opts
   (testing "assigns index when only one path is given"
@@ -78,11 +82,11 @@
 
 (deftest doc-url
   (testing "link to same dir unbundled"
-    (is (= "../notebooks/rule_30.html" ;; NOTE: could also be just "rule_30.html"
+    (is (= "./../notebooks/rule_30.html" ;; NOTE: could also be just "rule_30.html"
            (builder/doc-url {:bundle? false} [{:file "notebooks/viewer_api.clj"} {:file "notebooks/rule_30.clj"}] "notebooks/viewer_api.clj" "notebooks/rule_30.clj"))))
 
   (testing "respects the mapped index"
-    (is (= "notebooks/rule_30.html"
+    (is (= "./notebooks/rule_30.html"
            (builder/doc-url {:bundle? false} [{:file "index.clj"} {:file "notebooks/rule_30.clj"}] "index.clj" "notebooks/rule_30.clj"))))
 
   (testing "bundle case"

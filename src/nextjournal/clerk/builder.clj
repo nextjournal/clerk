@@ -2,6 +2,7 @@
   "Clerk's Static App Builder."
   (:require [babashka.fs :as fs]
             [babashka.process :refer [sh]]
+            [clojure.edn :as edn]
             [clojure.java.browse :as browse]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -12,7 +13,8 @@
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.clerk.webserver :as webserver]
-            [nextjournal.clerk.config :as config]))
+            [nextjournal.clerk.config :as config])
+  (:import (java.net URL)))
 
 (def clerk-docs
   (into ["CHANGELOG.md"
@@ -124,9 +126,11 @@
     (throw (ex-info "nothing to build" (merge {:expanded-paths expanded-paths} (select-keys build-opts [:paths :paths-fn :index]))))
     expanded-paths))
 
-(defn ^:private maybe-add-index [{:as build-opts :keys [paths paths-fn index]} resolved-paths]
-  (when (and index (or (not (string? index)) (not (fs/exists? index))))
-    (throw (ex-info "`:index` must be string and point to existing file" {:index index})))
+(defn ^:private maybe-add-index [{:as opts :keys [index]} resolved-paths]
+  (when (contains? opts :index)
+    (or (instance? URL index)
+        (and (string? index) (fs/exists? index))
+        (throw (ex-info "`:index` must be either an instance of java.net.URL or a string and point to an existing file" {:index index}))))
   (cond-> resolved-paths
     (and index (not (contains? (set resolved-paths) index)))
     (conj index)))
@@ -185,22 +189,30 @@
            (-> opts'
                (update :resource->url #(merge {} %2 %1) @config/!resource->url)
                (cond-> #_opts'
-                 expand-paths? (dissoc :expand-paths?)
-                 (and (not index) (= 1 (count expanded-paths))) (assoc :index (first expanded-paths)))))))
+                 expand-paths?
+                 (dissoc :expand-paths?)
+                 (and (not index) (= 1 (count expanded-paths)))
+                 (assoc :index (first expanded-paths))
+                 (and (not index) (< 1 (count expanded-paths)) (every? (complement #{"index.clj"}) expanded-paths))
+                 (as-> opts
+                   (let [index (io/resource "nextjournal/clerk/index.clj")]
+                     (-> opts (assoc :index index) (update :expanded-paths conj index)))))))))
 
 #_(process-build-opts {:index 'book.clj :expand-paths? true})
 #_(process-build-opts {:paths ["notebooks/rule_30.clj"] :expand-paths? true})
+#_(process-build-opts {:paths ["notebooks/rule_30.clj"
+                               "notebooks/markdown.md"] :expand-paths? true})
 
 (defn build-path->url [{:as opts :keys [bundle?]} docs]
   (into {}
         (map (comp (juxt identity #(cond-> (->> % (viewer/map-index opts) strip-index) (not bundle?) ->html-extension))
-                   :file))
+                   str :file))
         docs))
 #_(build-path->url {:bundle? false} [{:file "notebooks/foo.clj"} {:file "index.clj"}])
 #_(build-path->url {:bundle? true}  [{:file "notebooks/foo.clj"} {:file "index.clj"}])
 
 (defn build-static-app-opts [{:as opts :keys [bundle? out-path browse? index]} docs]
-  (let [path->doc (into {} (map (juxt :file :viewer)) docs)]
+  (let [path->doc (into {} (map (juxt (comp str :file) :viewer)) docs)]
     (assoc opts
            :bundle? bundle?
            :path->doc path->doc
@@ -230,23 +242,23 @@
   [opts docs]
   (let [{:as opts :keys [bundle? out-path browse? ssr?]} (process-build-opts opts)
         index-html (str out-path fs/file-separator "index.html")
-        {:as static-app-opts :keys [path->url path->doc]} (build-static-app-opts opts docs)]
+        {:as static-app-opts :keys [path->url path->doc]} (build-static-app-opts (viewer/update-if opts :index str) docs)]
+    (when-not (contains? (-> path->url vals set) "")
+      (throw (ex-info "Index must have been processed at this point" {:opts opts :docs docs})))
     (when-not (fs/exists? (fs/parent index-html))
       (fs/create-dirs (fs/parent index-html)))
     (if bundle?
       (spit index-html (view/->static-app static-app-opts))
-      (do (when-not (contains? (-> path->url vals set) "") ;; no user-defined index page
-            (spit index-html (view/->static-app (dissoc static-app-opts :path->doc))))
-          (doseq [[path doc] path->doc]
-            (let [out-html (str out-path fs/file-separator (->> path (viewer/map-index opts) ->html-extension))]
-              (fs/create-dirs (fs/parent out-html))
-              (spit out-html (view/->static-app (cond-> (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)
-                                                  ssr? ssr!)))))))
+      (doseq [[path doc] path->doc]
+        (let [out-html (str out-path fs/file-separator (->> path (viewer/map-index opts) ->html-extension))]
+          (fs/create-dirs (fs/parent out-html))
+          (spit out-html (view/->static-app (cond-> (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)
+                                              ssr? ssr!))))))
     (when browse?
       (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize)))
     {:docs docs
      :index-html index-html
-     :build-href (if (and @webserver/!server (= out-path default-out-path)) "/build" index-html)}))
+     :build-href (if (and @webserver/!server (= out-path default-out-path)) "/build/" index-html)}))
 
 
 (defn compile-css!
@@ -287,11 +299,28 @@
 (defn doc-url
   ([opts doc file path] (doc-url opts doc file path nil))
   ([{:as opts :keys [bundle?]} docs file path fragment]
-   (let [url (get (build-path->url opts docs) path)]
+   (let [url (get (build-path->url (viewer/update-if opts :index str) docs) path)]
      (if bundle?
        (str "#/" url)
        (str (viewer/relative-root-prefix-from (viewer/map-index opts file))
             url (when fragment (str "#" fragment)))))))
+
+(defn read-opts-from-deps-edn! []
+  (if (fs/exists? "deps.edn")
+    (let [deps-edn (edn/read-string (slurp "deps.edn"))]
+      (if-some [clerk-alias (get-in deps-edn [:aliases :nextjournal/clerk])]
+        (get clerk-alias :exec-args
+             {:error "No `:exec-args` found in `:nextjournal/clerk` alias."})
+        {:error "No `:nextjournal/clerk` alias found in `deps.edn`."}))
+    {:error "No `deps.edn` found in project."}))
+
+(def ^:dynamic ^:private *build-opts* nil)
+(defn index-paths []
+  (let [{:as opts :keys [index error]} (or *build-opts* (read-opts-from-deps-edn!))]
+    (if error opts {:paths (remove #{index "index.clj"} (expand-paths opts))})))
+
+#_(index-paths)
+#_(nextjournal.clerk/show! 'nextjournal.clerk.index)
 
 (defn build-static-app! [{:as opts :keys [bundle?]}]
   (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css? expanded-paths error]}
@@ -324,9 +353,11 @@
                       (report-fn {:stage :building :doc doc :idx idx})
                       (let [{result :result duration :time-ms} (eval/time-ms
                                                                 (try
-                                                                  (let [doc (binding [viewer/doc-url (partial doc-url opts state file)]
-                                                                              (eval/eval-analyzed-doc doc))]
-                                                                    (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc)))
+                                                                  (binding [*build-opts* opts
+                                                                            viewer/doc-url (partial doc-url opts state file)]
+                                                                    (let [doc (eval/eval-analyzed-doc doc)]
+                                                                      (assoc doc :viewer (view/doc->viewer (assoc opts :static-build? true
+                                                                                                                  :nav-path (str file)) doc))))
                                                                   (catch Exception e
                                                                     {:error e})))]
                         (report-fn (merge {:stage :built :duration duration :idx idx}
@@ -369,3 +400,9 @@
                       :resource->url {"/js/viewer.js" "/viewer.js"}
                       :paths ["notebooks/cherry.clj"]
                       :out-path "build"})
+#_(build-static-app! {:paths ["CHANGELOG.md"
+                              "notebooks/markdown.md"
+                              "notebooks/viewers/image.clj"
+                              "notebooks/viewers/html.cj"]
+                      :git/sha "d60f5417"
+                      :git/url "https://github.com/nextjournal/clerk"})

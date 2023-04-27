@@ -417,7 +417,7 @@
 
 #?(:clj
    (defn relative-root-prefix-from [path]
-     (str/join (repeat (get (frequencies (str path)) \/ 0) "../"))))
+     (str "./" (str/join (repeat (get (frequencies (str path)) \/ 0) "../")))))
 
 #?(:clj
    (defn map-index [{:as _opts :keys [index]} path]
@@ -478,10 +478,10 @@
 
 (defn transform-result [{:as wrapped-value :keys [path]}]
   (let [{:as _cell :keys [form id] ::keys [result doc]} (:nextjournal/value wrapped-value)
-        {:keys [auto-expand-results? inline-results? bundle?]} doc
+        {:keys [auto-expand-results? static-build? bundle?]} doc
         {:nextjournal/keys [value blob-id viewers]} result
         blob-mode (cond
-                    (and (not inline-results?) blob-id) :lazy-load
+                    (and (not static-build?) blob-id) :lazy-load
                     bundle? :inline ;; TODO: provide a separte setting for this
                     :else :file)
         #?(:clj blob-opts :cljs _) (assoc doc :blob-mode blob-mode :blob-id blob-id)
@@ -1059,13 +1059,61 @@
 
 #_(update-if {:n "42"} :n #(Integer/parseInt %))
 
+(declare html doc-url)
+
+(defn home? [{:keys [nav-path]}]
+  (contains? #{"src/nextjournal/home.clj" "'nextjournal.clerk.home"} nav-path))
+
+(defn index? [{:as opts :keys [nav-path index]}]
+  (when nav-path
+    (or (= "'nextjournal.clerk.index" nav-path)
+        (= (str index) nav-path)
+        (re-matches #"(^|.*/)(index\.(clj|cljc|md))$" nav-path))))
+
+(defn index-path [{:keys [static-build? index]}]
+  #?(:cljs ""
+     :clj (if static-build?
+            (if index (str index) "")
+            (if (fs/exists? "index.clj") "index.clj" "'nextjournal.clerk.index"))))
+
+(defn header [{:as opts :keys [nav-path static-build?] :git/keys [url sha]}]
+  (html [:div.viewer.w-full.max-w-prose.px-8.not-prose.mt-3
+         [:div.mb-8.text-xs.sans-serif.text-slate-400
+          (when (and (not static-build?) (not (home? opts)))
+            [:<>
+             [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
+              {:href (doc-url "'nextjournal.clerk.home")} "Home"]
+             [:span.mx-2 "•"]])
+          (when (not (index? opts))
+            [:<>
+             [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
+              {:href (doc-url (index-path opts))} "Index"]
+             [:span.mx-2 "•"]])
+          [:span
+           (if static-build? "Generated with " "Served from ")
+           [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
+            {:href "https://clerk.vision"} "Clerk"]
+           " from "
+           (let [default-index? (str/ends-with? (str nav-path) "src/nextjournal/clerk/index.clj")]
+             [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
+              {:href (when (and url sha) (if default-index? (str url "/tree/" sha) (str url "/blob/" sha "/" nav-path)))}
+              (if (and url default-index?) #?(:clj (subs (.getPath (URL. url)) 1) :cljs url) nav-path)
+              (when sha [:<> "@" [:span.tabular-nums (subs sha 0 7)]])])]]]))
+
+(def header-viewer
+  {:name `header-viewer
+   :transform-fn (comp mark-presented (update-val header))})
+
+(comment #?(:clj (nextjournal.clerk/recompute!)))
+
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc
       (assoc :atom-var-name->state (atom-var-name->state doc))
       (assoc :ns (->viewer-eval (list 'ns (if ns (ns-name ns) 'user))))
       (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer (dissoc doc :error)))
-                                             (map (comp present
-                                                        (partial ensure-wrapped-with-viewers viewers))))))
+                                             (map (comp present (partial ensure-wrapped-with-viewers viewers))))))
+      (assoc :header (present (with-viewers viewers (with-viewer `header-viewer doc))))
+      #_(assoc :footer (present (footer doc)))
       (select-keys [:atom-var-name->state
                     :auto-expand-results?
                     :blocks :bundle?
@@ -1075,7 +1123,9 @@
                     :ns
                     :title
                     :toc
-                    :toc-visibility])
+                    :toc-visibility
+                    :header
+                    :footer])
       (update-if :error present)
       (assoc :sidenotes? (boolean (seq (:footnotes doc))))
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
@@ -1109,7 +1159,8 @@
 
 (def default-viewers
   ;; maybe make this a sorted-map
-  [char-viewer
+  [header-viewer
+   char-viewer
    string-viewer
    number-viewer
    number-hex-viewer
