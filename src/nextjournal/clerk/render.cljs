@@ -768,7 +768,6 @@
 
 (defn handle-hashchange [{:keys [url->path path->doc]} ^js e]
   (let [url (some-> e .-event_ .-newURL ->URL .-hash (subs 2))]
-    (js/console.log :hashchange {:path url :doc (get path->doc (get url->path url))})
     (when-some [doc (get path->doc (get url->path url))]
       (set-state! {:doc doc}))))
 
@@ -783,7 +782,6 @@
     #{(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)}))
 
 (defn setup-router! [{:as state :keys [mode]}]
-  (js/console.log :setup-router! mode )
   (when (and (exists? js/document) (exists? js/window))
     (doseq [listener (:listeners @!router)]
       (gevents/unlistenByKey listener))
@@ -796,19 +794,14 @@
 
 (defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path]}]
   (let [static-app? (contains? state :path->doc)] ;; TODO: better check
-    (prn :init {:static-app? static-app?})
     (if static-app?
       (let [url->path (set/map-invert path->url)]
-        (js/console.log :init/static-app {:current-path current-path
-                                          :keys (keys path->doc)
-                                          :invert (keys url->path)})
         (when bundle? (setup-router! (assoc state :mode :fragment :url->path url->path)))
         ;; TODO: is url->path really needed?
         (set-state! {:doc (get path->doc (or current-path (url->path "")))})
         (mount))
       (do
         (set-state! state)
-        (prn :init/serve)
         (mount)
         (setup-router! {:mode :path})))))
 

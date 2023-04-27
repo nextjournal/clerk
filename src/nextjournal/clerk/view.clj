@@ -50,17 +50,20 @@
   ;; https://html.spec.whatwg.org/multipage/syntax.html#cdata-rcdata-restrictions
   (str/replace s "</script>" "</nextjournal.clerk.view/escape-closing-script-tag>"))
 
-(defn ->html [{:as state :keys [conn-ws? current-path]}]
+(defn ->html [{:as state :keys [conn-ws? current-path ssr? html exclude-js?]}]
   (hiccup/html5
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
     (when current-path (v/open-graph-metas (-> state :path->doc (get current-path) v/->value :open-graph)))
-    (include-css+js state)]
+    (if exclude-js?
+      (include-viewer-css state)
+      (include-css+js state))]
    [:body.dark:bg-gray-900
-    [:div#clerk]
-    [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
+    [:div#clerk html]
+    (when-not exclude-js?
+      [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
 let state = " (-> state v/->edn escape-closing-script-tag pr-str) ".replaceAll('nextjournal.clerk.view/escape-closing-script-tag', 'script')
 viewer.init(viewer.read_string(state))\n"
-     (when conn-ws?
-       "viewer.connect(document.location.origin.replace(/^http/, 'ws') + '/_ws')")]]))
+       (when conn-ws?
+         "viewer.connect(document.location.origin.replace(/^http/, 'ws') + '/_ws')")])]))
