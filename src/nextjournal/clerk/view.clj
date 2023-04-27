@@ -50,7 +50,7 @@
   ;; https://html.spec.whatwg.org/multipage/syntax.html#cdata-rcdata-restrictions
   (str/replace s "</script>" "</nextjournal.clerk.view/escape-closing-script-tag>"))
 
-(defn ->html [{:as state :keys [conn-ws? current-path ssr? html exclude-js?]}]
+(defn ->html [{:as state :keys [conn-ws? current-path html exclude-js?]}]
   (hiccup/html5
    [:head
     [:meta {:charset "UTF-8"}]

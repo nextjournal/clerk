@@ -797,13 +797,12 @@
     (if static-app?
       (let [url->path (set/map-invert path->url)]
         (when bundle? (setup-router! (assoc state :mode :fragment :url->path url->path)))
-        ;; TODO: is url->path really needed?
         (set-state! {:doc (get path->doc (or current-path (url->path "")))})
         (mount))
       (do
+        (setup-router! {:mode :path})
         (set-state! state)
-        (mount)
-        (setup-router! {:mode :path})))))
+        (mount)))))
 
 
 (defn html-render [markup]

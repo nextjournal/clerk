@@ -238,6 +238,10 @@
         (assoc static-app-opts :html out))
       (throw (ex-info (str "Clerk ssr! failed\n" out "\n" err) result)))))
 
+(defn cleanup [build-opts]
+  (select-keys build-opts
+               [:bundle? :path->doc :path->url :current-path :resource->url :exclude-js? :index]))
+
 (defn write-static-app!
   [opts docs]
   (let [{:as opts :keys [bundle? out-path browse? ssr?]} (process-build-opts opts)
@@ -248,12 +252,14 @@
     (when-not (fs/exists? (fs/parent index-html))
       (fs/create-dirs (fs/parent index-html)))
     (if bundle?
-      (spit index-html (view/->html static-app-opts))
+      (spit index-html (view/->html (cleanup static-app-opts)))
       (doseq [[path doc] path->doc]
         (let [out-html (str out-path fs/file-separator (->> path (viewer/map-index opts) ->html-extension))]
           (fs/create-dirs (fs/parent out-html))
-          (spit out-html (view/->html (cond-> (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)
-                                        ssr? ssr!))))))
+          (spit out-html (view/->html (-> static-app-opts
+                                          (assoc :path->doc (hash-map path doc) :current-path path)
+                                          cleanup
+                                          (cond-> ssr? ssr!)))))))
     (when browse?
       (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize)))
     {:docs docs
