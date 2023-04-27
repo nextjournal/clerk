@@ -771,15 +771,29 @@
 (defn handle-initial-load [_]
   (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
 
-(defn setup-router! [state]
-  ;; TODO: unify with static app
+
+(defn handle-static-app-anchor-click [path->doc ^js e]
+  ;; TODO: unify with interactive mode (?)
+  (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
+    (when (= (.-search url) "?clerk/show!")
+      (.preventDefault e)
+      (let [path (subs (.-pathname url) 1)]
+        ;; TODO: handle fragment
+        (set-state! {:doc (get path->doc path)})))))
+
+(defn setup-router! [{:as state :keys [path->doc]}]
+  (js/console.log :setup-router! path->doc )
   (when (and (exists? js/document) (exists? js/window))
     (doseq [listener (:listeners @!router)]
       (gevents/unlistenByKey listener))
-    (reset! !router (assoc state :listeners #{(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
+    (reset! !router (assoc state :listeners #{
+                                              ;; TODO nicer type dispatch
+                                              (gevents/listen js/document gevents/EventType.CLICK
+                                                              (if path->doc
+                                                                (partial handle-static-app-anchor-click path->doc)
+                                                                handle-anchor-click) false)
                                               (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
                                               (gevents/listen js/window gevents/EventType.LOAD handle-initial-load false)}))))
-
 
 (defn ^:export ^:dev/after-load mount []
   (when (and react-root (not hydrate?))
@@ -789,16 +803,13 @@
   (let [static-app? (contains? state :path->doc)] ;; TODO: better check
     (prn :init {:static-app? static-app?})
     (if static-app?
-      (let [url->doc (set/rename-keys path->doc path->url)
-            {:as state' :keys [url->path]} (assoc state
-                                                  :mode :fragment
-                                                  :path->doc url->doc
-                                                  :url->path (set/map-invert path->url))]
-        (prn :init/static-app {:current-path current-path :doc (get path->doc (str current-path)) :keys (keys path->doc)} :invert (keys url->path))
-        (when bundle?
-          (setup-router! state'))
-        (set-state! {:doc (get path->doc (url->path (str current-path)))})
-        #_(sci/alter-var-root sci-env/doc-url (constantly (partial doc-url @!state)))
+      (let [url->path (set/map-invert path->url)]
+        (js/console.log :init/static-app {:current-path current-path
+                                          :keys (keys path->doc)
+                                          :invert (keys url->path)})
+        (when bundle? (setup-router! state))
+        ;; TODO: is url->path really needed?
+        (set-state! {:doc (get path->doc (or current-path (url->path "")))})
         (mount))
       (do
         (set-state! state)
