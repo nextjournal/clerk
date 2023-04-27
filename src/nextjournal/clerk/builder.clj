@@ -225,7 +225,7 @@
   (report-fn {:stage :ssr})
   (let [{duration :time-ms :keys [result]}
         (eval/time-ms (sh {:in (str "import '" (resource->url "/js/viewer.js") "';"
-                                    "console.log(nextjournal.clerk.static_app.ssr(" (pr-str (pr-str static-app-opts)) "))")}
+                                    "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str static-app-opts)) "))")}
                           "node"
                           "--abort-on-uncaught-exception"
                           "--experimental-network-imports"
