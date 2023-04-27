@@ -176,11 +176,15 @@
 (declare present+reset!)
 
 (defn ->nav-path [file-or-ns]
-  (cond (symbol? file-or-ns) (str "'" file-or-ns)
-        (string? file-or-ns) (when (fs/exists? file-or-ns)
-                               (fs/unixify (cond->> file-or-ns
-                                             (fs/absolute? file-or-ns)
-                                             (fs/relativize (fs/cwd)))))
+  (cond (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
+        (str "'" file-or-ns)
+
+        (string? file-or-ns)
+        (when (fs/exists? file-or-ns)
+          (fs/unixify (cond->> file-or-ns
+                        (fs/absolute? file-or-ns)
+                        (fs/relativize (fs/cwd)))))
+
         :else (str file-or-ns)))
 
 #_(->nav-path 'nextjournal.clerk.home)

@@ -110,7 +110,7 @@
 (defn build-ui-reporter [{:as build-event :keys [stage]}]
   (when (= stage :init)
     (builder-ui/reset-build-state!)
-    ((resolve 'nextjournal.clerk/show!) (clojure.java.io/resource "nextjournal/clerk/builder_ui.clj"))
+    ((resolve 'nextjournal.clerk/show!) (find-ns 'nextjournal.clerk.builder-ui))
     (when-let [{:keys [port]} (and (get-in build-event [:build-opts :browse]) @webserver/!server)]
       (browse/browse-url (str "http://localhost:" port))))
   (stdout-reporter build-event)
