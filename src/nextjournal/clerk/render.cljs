@@ -766,29 +766,29 @@
 (defn handle-initial-load [_]
   (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
 
+(defn handle-hashchange [{:keys [url->path path->doc]} ^js e]
+  (let [url (some-> e .-event_ .-newURL ->URL .-hash (subs 2))]
+    (js/console.log :hashchange {:path url :doc (get path->doc (get url->path url))})
+    (when-some [doc (get path->doc (get url->path url))]
+      (set-state! {:doc doc}))))
 
-(defn handle-static-app-anchor-click [path->doc ^js e]
-  ;; TODO: unify with interactive mode (?)
-  (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
-    (when (= (.-search url) "?clerk/show!")
-      (.preventDefault e)
-      (let [path (subs (.-pathname url) 1)]
-        ;; TODO: handle fragment
-        (set-state! {:doc (get path->doc path)})))))
+(defn listeners [{:as state :keys [mode]}]
+  (case mode
+    :path
+    #{(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
+      (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
+      (gevents/listen js/window gevents/EventType.LOAD handle-initial-load false)}
 
-(defn setup-router! [{:as state :keys [path->doc]}]
-  (js/console.log :setup-router! path->doc )
+    :fragment
+    #{(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)}))
+
+(defn setup-router! [{:as state :keys [mode]}]
+  (js/console.log :setup-router! mode )
   (when (and (exists? js/document) (exists? js/window))
     (doseq [listener (:listeners @!router)]
       (gevents/unlistenByKey listener))
-    (reset! !router (assoc state :listeners #{
-                                              ;; TODO nicer type dispatch
-                                              (gevents/listen js/document gevents/EventType.CLICK
-                                                              (if path->doc
-                                                                (partial handle-static-app-anchor-click path->doc)
-                                                                handle-anchor-click) false)
-                                              (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
-                                              (gevents/listen js/window gevents/EventType.LOAD handle-initial-load false)}))))
+    (reset! !router (assoc state :listeners (listeners state)))))
+
 
 (defn ^:export ^:dev/after-load mount []
   (when (and react-root (not hydrate?))
@@ -802,7 +802,7 @@
         (js/console.log :init/static-app {:current-path current-path
                                           :keys (keys path->doc)
                                           :invert (keys url->path)})
-        (when bundle? (setup-router! state))
+        (when bundle? (setup-router! (assoc state :mode :fragment :url->path url->path)))
         ;; TODO: is url->path really needed?
         (set-state! {:doc (get path->doc (or current-path (url->path "")))})
         (mount))
@@ -810,7 +810,7 @@
         (set-state! state)
         (prn :init/serve)
         (mount)
-        (setup-router! {})))))
+        (setup-router! {:mode :path})))))
 
 
 (defn html-render [markup]

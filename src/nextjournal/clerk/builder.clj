@@ -300,8 +300,10 @@
   ([opts doc file path] (doc-url opts doc file path nil))
   ([{:as opts :keys [bundle?]} docs file path fragment]
    (let [url (get (build-path->url (viewer/update-if opts :index str) docs) path)]
-     (str (viewer/relative-root-prefix-from (viewer/map-index opts file))
-          url (when fragment (str "#" fragment))))))
+     (if bundle?
+       (str "#/" url)
+       (str (viewer/relative-root-prefix-from (viewer/map-index opts file))
+            url (when fragment (str "#" fragment)))))))
 
 (defn read-opts-from-deps-edn! []
   (if (fs/exists? "deps.edn")
@@ -352,9 +354,7 @@
                       (let [{result :result duration :time-ms} (eval/time-ms
                                                                 (try
                                                                   (binding [*build-opts* opts
-                                                                            viewer/doc-url (if (not bundle?)
-                                                                                             (partial doc-url opts state file)
-                                                                                             viewer/doc-url)]
+                                                                            viewer/doc-url (partial doc-url opts state file)]
                                                                     (let [doc (eval/eval-analyzed-doc doc)]
                                                                       (assoc doc :viewer (view/doc->viewer (assoc opts :static-build? true
                                                                                                                   :nav-path (str file)) doc))))
