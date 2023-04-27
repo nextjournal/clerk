@@ -353,8 +353,6 @@
                        (-> doc :blocks count range))
          doc? (-> parser/add-block-visibility
                   parser/add-open-graph-metadata
-                  parser/add-auto-expand-results
-                  parser/add-css-class
                   filter-code-blocks-without-form))))))
 
 

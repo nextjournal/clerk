@@ -106,14 +106,21 @@
     (if (ns? first-form) :on :off)))
 
 (defn ->doc-settings [first-form]
-  {:ns? (ns? first-form)
-   :error-on-missing-vars (parse-error-on-missing-vars first-form)
-   :toc-visibility (or (#{true :collapsed} (:nextjournal.clerk/toc
-                                            (merge (-> first-form meta) ;; TODO: deprecate
-                                                   (when (ns? first-form)
-                                                     (merge (-> first-form second meta)
-                                                            (first (filter map? first-form)))))))
-                       false)})
+  (cond-> {:ns? (ns? first-form)
+           :error-on-missing-vars (parse-error-on-missing-vars first-form)
+           :toc-visibility (or (#{true :collapsed} (:nextjournal.clerk/toc
+                                                    (merge (-> first-form meta) ;; TODO: deprecate
+                                                           (when (ns? first-form)
+                                                             (merge (-> first-form second meta)
+                                                                    (first (filter map? first-form)))))))
+                               false)}
+    (ns? first-form)
+    (merge (select-keys (first (filter map? first-form))
+                        ;; TODO: unify with viewer
+                        [:nextjournal.clerk/auto-expand-results?
+                         :nextjournal.clerk/budget
+                         :nextjournal.clerk/css-class
+                         :nextjournal.clerk/width]))))
 
 (defn ->open-graph [{:keys [title blocks]}]
   (merge {:type "article:clerk"
@@ -130,17 +137,6 @@
     (parse-file {:doc? true} "notebooks/open_graph.clj")))
 
 (defn add-open-graph-metadata [doc] (assoc doc :open-graph (->open-graph doc)))
-
-;; TODO: Unify with get-doc-settings
-(defn add-auto-expand-results [{:as doc :keys [blocks]}]
-  (assoc doc :auto-expand-results? (some (fn [{:keys [form]}]
-                                           (when (ns? form) (some :nextjournal.clerk/auto-expand-results? form)))
-                                         blocks)))
-
-(defn add-css-class [{:as doc :keys [blocks]}]
-  (assoc doc :css-class (some (fn [{:keys [form]}]
-                                (when (ns? form) (some :nextjournal.clerk/css-class form)))
-                              blocks)))
 
 #_(->doc-settings '^{:nextjournal.clerk/toc :boom} (ns foo)) ;; TODO: error
 

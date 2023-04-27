@@ -164,7 +164,7 @@
   (into {}
         (map #(vector (keyword "nextjournal.clerk" (name %))
                       (keyword "nextjournal"       (name %))))
-        [:budget :viewer :viewers :opts :width :css-class]))
+        [:auto-expand-results? :budget :viewer :viewers :opts :width :css-class]))
 
 (defn throw-when-viewer-opts-invalid [opts]
   (when-not (map? opts)
@@ -478,19 +478,29 @@
 
 (defn transform-result [{:as wrapped-value :keys [path]}]
   (let [{:as _cell :keys [form id] ::keys [result doc]} (:nextjournal/value wrapped-value)
-        {:keys [auto-expand-results? static-build? bundle?]} doc
+        {:keys [static-build? bundle?]} doc
         {:nextjournal/keys [value blob-id viewers]} result
         blob-mode (cond
                     (and (not static-build?) blob-id) :lazy-load
                     bundle? :inline ;; TODO: provide a separte setting for this
                     :else :file)
         #?(:clj blob-opts :cljs _) (assoc doc :blob-mode blob-mode :blob-id blob-id)
+        auto-expand-results? (get result :nextjournal/auto-expand-results?
+                                  (get (when (wrapped-value? value) value) :nextjournal/auto-expand-results?
+                                       (:auto-expand-results? doc)))
+        opts-from-doc (-> doc
+                          (select-keys (keys viewer-opts-normalization))
+                          (set/rename-keys viewer-opts-normalization))
         opts-from-form-meta (-> result
-                                (select-keys [:nextjournal/css-class :nextjournal/width :nextjournal/opts :nextjournal/budget])
+                                (select-keys (disj (set (vals viewer-opts-normalization))
+                                                   :nextjournal/viewer
+                                                   :nextjournal/viewers))
                                 (cond-> #_result
                                   (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))
-        presented-result (-> (present (merge (dissoc (->opts wrapped-value) :!budget)
+        presented-result (-> (present (merge opts-from-doc
+                                             (dissoc (->opts wrapped-value) :!budget :nextjournal/budget)
                                              ;; reset budget from top level form for fragment items to have their own
+                                             ;; consider being more explicit about what we want to inherit from the root `wrapped-value` here
                                              (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)
                                              opts-from-form-meta))
                              (update :nextjournal/opts
@@ -1115,9 +1125,8 @@
       (assoc :header (present (with-viewers viewers (with-viewer `header-viewer doc))))
       #_(assoc :footer (present (footer doc)))
       (select-keys [:atom-var-name->state
-                    :auto-expand-results?
                     :blocks :bundle?
-                    :css-class
+                    :nextjournal.clerk/css-class
                     :error
                     :open-graph
                     :ns
