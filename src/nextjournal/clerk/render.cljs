@@ -766,24 +766,46 @@
       (react-client/hydrateRoot container-el (r/as-element [root]))
       (react-client/createRoot container-el))))
 
-(defonce !listeners (atom #{}))
+(defonce !router (atom nil))
 
 (defn handle-initial-load [_]
   (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
 
-(defn setup-router! []
+(defn setup-router! [state]
   ;; TODO: unify with static app
   (when (and (exists? js/document) (exists? js/window))
-    (doseq [listener @!listeners]
+    (doseq [listener (:listeners @!router)]
       (gevents/unlistenByKey listener))
-    (reset! !listeners #{(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
-                         (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
-                         (gevents/listen js/window gevents/EventType.LOAD handle-initial-load false)})))
+    (reset! !router (assoc state :listeners #{(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
+                                              (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
+                                              (gevents/listen js/window gevents/EventType.LOAD handle-initial-load false)}))))
+
 
 (defn ^:export ^:dev/after-load mount []
-  (when react-root
-    (.render react-root (r/as-element [root]))
-    (setup-router!)))
+  (when (and react-root (not hydrate?))
+    (.render react-root (r/as-element [root]))))
+
+(defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path]}]
+  (let [static-app? (contains? state :path->doc)] ;; TODO: better check
+    (prn :init {:static-app? static-app?})
+    (if static-app?
+      (let [url->doc (set/rename-keys path->doc path->url)
+            {:as state' :keys [url->path]} (assoc state
+                                                  :mode :fragment
+                                                  :path->doc url->doc
+                                                  :url->path (set/map-invert path->url))]
+        (prn :init/static-app {:current-path current-path :doc (get path->doc (str current-path)) :keys (keys path->doc)} :invert (keys url->path))
+        (when bundle?
+          (setup-router! state'))
+        (set-state! {:doc (get path->doc (url->path (str current-path)))})
+        #_(sci/alter-var-root sci-env/doc-url (constantly (partial doc-url @!state)))
+        (mount))
+      (do
+        (set-state! state)
+        (prn :init/serve)
+        (mount)
+        (setup-router! {})))))
+
 
 (defn html-render [markup]
   (r/as-element

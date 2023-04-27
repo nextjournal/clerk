@@ -26,6 +26,7 @@
             [nextjournal.clojure-mode.commands]
             [nextjournal.clojure-mode.extensions.eval-region]
             [nextjournal.clojure-mode.keymap]
+            [reagent.dom.server :as dom-server]
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
@@ -167,10 +168,13 @@
 (defn ^:export eval-form [f]
   (sci/eval-form (sci.ctx-store/get-ctx) f))
 
-(defn ^:export set-state [state]
-  (render/set-state! state))
-
+(def ^:export set-state render/set-state!)
 (def ^:export mount render/mount)
+(def ^:export init render/init)
+
+(defn ^:export ssr [state-str]
+  (init (read-string state-str))
+  (dom-server/render-to-string [render/root]))
 
 (defn reconnect-timeout [failed-connection-attempts]
   (get [0 0 100 500 5000] failed-connection-attempts 10000))

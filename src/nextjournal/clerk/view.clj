@@ -51,34 +51,23 @@
   ;; https://html.spec.whatwg.org/multipage/syntax.html#cdata-rcdata-restrictions
   (str/replace s "</script>" "</nextjournal.clerk.view/escape-closing-script-tag>"))
 
-(defn ->html [{:as state :keys [conn-ws?] :or {conn-ws? true}}]
+(defn ->html [{:as state :keys [conn-ws? current-path] :or {conn-ws? true}}]
   (hiccup/html5
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
+    (when current-path (v/open-graph-metas (-> state :path->doc (get current-path) v/->value :open-graph)))
     (include-css+js state)]
    [:body.dark:bg-gray-900
     [:div#clerk]
     [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
 let state = " (-> state v/->edn escape-closing-script-tag pr-str) ".replaceAll('nextjournal.clerk.view/escape-closing-script-tag', 'script')
-viewer.set_state(viewer.read_string(state));
-viewer.mount()\n"
+viewer.init(viewer.read_string(state))\n"
      (when conn-ws?
        "viewer.connect(document.location.origin.replace(/^http/, 'ws') + '/_ws')")]]))
 
-(defn ->static-app [{:as state :keys [current-path html]}]
-  (hiccup/html5
-   [:head
-    [:title (or (and current-path (-> state :path->doc (get current-path) v/->value :title)) "Clerk")]
-    [:meta {:charset "UTF-8"}]
-    [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-    (when current-path (v/open-graph-metas (-> state :path->doc (get current-path) v/->value :open-graph)))
-    (include-css+js state)]
-   [:body
-    [:div#clerk html]
-    [:script {:type "module"} "let state = " (-> state v/->edn escape-closing-script-tag pr-str) ".replaceAll('nextjournal.clerk.view/escape-closing-script-tag', 'script')
-let opts = nextjournal.clerk.sci_env.read_string(state)
-nextjournal.clerk.static_app.init(opts)\n"]]))
+(defn ->static-app [state]
+  (->html (assoc state :conn-ws? false)))
 
 (defn doc->html [opts]
   (->html (-> opts
