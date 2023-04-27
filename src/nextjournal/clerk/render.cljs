@@ -154,14 +154,17 @@
                           (assoc :fragment (subs (.-hash url) 1))))))))
 
 (defn history-push-state [{:keys [path fragment replace?]}]
+  (prn :history-push-state path)
   (when (not= path (some-> js/history .-state .-clerk_show))
+    (prn :history-push-state/not=)
     (j/call js/history
             (if replace? :replaceState :pushState)
-            #js {:clerk_show path} nil (str "/" path (when fragment (str "#" fragment))))))
+            #js {:clerk_show path} "" (str "/" path (when fragment (str "#" fragment))))))
 
 (defn handle-history-popstate [^js e]
   (prn :handle-history-popstate e)
   (when-some [notebook-path (some-> e .-state .-clerk_show)]
+    (prn :clerk-show notebook-path)
     (.preventDefault e)
     (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path notebook-path
                                                               :skip-history? true}))))
