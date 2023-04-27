@@ -15,7 +15,7 @@
           edn-string (cond file (slurp file)
                            edn edn)]
     (if edn-string
-      (println (js/nextjournal.clerk.static_app.ssr edn-string))
+      (println (js/nextjournal.clerk.sci_env.ssr edn-string))
       (binding [*out* *err*]
         (println "must provide --file or --edn arg")))))
 

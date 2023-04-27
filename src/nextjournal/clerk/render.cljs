@@ -748,29 +748,62 @@
     #_(js/console.log :<= type := msg)
     (dispatch-fn msg)))
 
+(defonce container-el
+  (and (exists? js/document) (js/document.getElementById "clerk")))
+
+(defonce hydrate?
+  (and container-el
+       (pos? (.-childElementCount container-el))))
+
 (defonce react-root
-  (when-let [el (and (exists? js/document) (js/document.getElementById "clerk"))]
-    (react-client/createRoot el)))
+  (when container-el
+    (if hydrate?
+      (react-client/hydrateRoot container-el (r/as-element [root]))
+      (react-client/createRoot container-el))))
 
-
-(defonce !listeners (atom #{}))
+(defonce !router (atom nil))
 
 (defn handle-initial-load [_]
   (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
 
-(defn setup-router! []
-  ;; TODO: unify with static app
+(defn handle-hashchange [{:keys [url->path path->doc]} ^js e]
+  (let [url (some-> e .-event_ .-newURL ->URL .-hash (subs 2))]
+    (when-some [doc (get path->doc (get url->path url))]
+      (set-state! {:doc doc}))))
+
+(defn listeners [{:as state :keys [mode]}]
+  (case mode
+    :path
+    #{(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
+      (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
+      (gevents/listen js/window gevents/EventType.LOAD handle-initial-load false)}
+
+    :fragment
+    #{(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)}))
+
+(defn setup-router! [{:as state :keys [mode]}]
   (when (and (exists? js/document) (exists? js/window))
-    (doseq [listener @!listeners]
+    (doseq [listener (:listeners @!router)]
       (gevents/unlistenByKey listener))
-    (reset! !listeners #{(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
-                         (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
-                         (gevents/listen js/window gevents/EventType.LOAD handle-initial-load false)})))
+    (reset! !router (assoc state :listeners (listeners state)))))
+
 
 (defn ^:export ^:dev/after-load mount []
-  (when react-root
-    (.render react-root (r/as-element [root]))
-    (setup-router!)))
+  (when (and react-root (not hydrate?))
+    (.render react-root (r/as-element [root]))))
+
+(defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path]}]
+  (let [static-app? (contains? state :path->doc)] ;; TODO: better check
+    (if static-app?
+      (let [url->path (set/map-invert path->url)]
+        (when bundle? (setup-router! (assoc state :mode :fragment :url->path url->path)))
+        (set-state! {:doc (get path->doc (or current-path (url->path "")))})
+        (mount))
+      (do
+        (setup-router! {:mode :path})
+        (set-state! state)
+        (mount)))))
+
 
 (defn html-render [markup]
   (r/as-element

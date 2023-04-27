@@ -110,7 +110,7 @@
 (defn build-ui-reporter [{:as build-event :keys [stage]}]
   (when (= stage :init)
     (builder-ui/reset-build-state!)
-    ((resolve 'nextjournal.clerk/show!) (clojure.java.io/resource "nextjournal/clerk/builder_ui.clj"))
+    ((resolve 'nextjournal.clerk/show!) (find-ns 'nextjournal.clerk.builder-ui))
     (when-let [{:keys [port]} (and (get-in build-event [:build-opts :browse]) @webserver/!server)]
       (browse/browse-url (str "http://localhost:" port))))
   (stdout-reporter build-event)
@@ -225,7 +225,7 @@
   (report-fn {:stage :ssr})
   (let [{duration :time-ms :keys [result]}
         (eval/time-ms (sh {:in (str "import '" (resource->url "/js/viewer.js") "';"
-                                    "console.log(nextjournal.clerk.static_app.ssr(" (pr-str (pr-str static-app-opts)) "))")}
+                                    "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str static-app-opts)) "))")}
                           "node"
                           "--abort-on-uncaught-exception"
                           "--experimental-network-imports"
@@ -238,6 +238,10 @@
         (assoc static-app-opts :html out))
       (throw (ex-info (str "Clerk ssr! failed\n" out "\n" err) result)))))
 
+(defn cleanup [build-opts]
+  (select-keys build-opts
+               [:bundle? :path->doc :path->url :current-path :resource->url :exclude-js? :index :html]))
+
 (defn write-static-app!
   [opts docs]
   (let [{:as opts :keys [bundle? out-path browse? ssr?]} (process-build-opts opts)
@@ -248,12 +252,14 @@
     (when-not (fs/exists? (fs/parent index-html))
       (fs/create-dirs (fs/parent index-html)))
     (if bundle?
-      (spit index-html (view/->static-app static-app-opts))
+      (spit index-html (view/->html (cleanup static-app-opts)))
       (doseq [[path doc] path->doc]
         (let [out-html (str out-path fs/file-separator (->> path (viewer/map-index opts) ->html-extension))]
           (fs/create-dirs (fs/parent out-html))
-          (spit out-html (view/->static-app (cond-> (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)
-                                              ssr? ssr!))))))
+          (spit out-html (view/->html (-> static-app-opts
+                                          (assoc :path->doc (hash-map path doc) :current-path path)
+                                          (cond-> ssr? ssr!)
+                                          cleanup))))))
     (when browse?
       (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize)))
     {:docs docs
@@ -379,30 +385,38 @@
         (report-fn {:stage :done :duration duration})))
     (report-fn {:stage :finished :state state :duration duration :total-duration (eval/elapsed-ms start)})))
 
-#_(build-static-app! {:paths clerk-docs :bundle? true})
-#_(build-static-app! {:paths ["notebooks/index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :index "notebooks/index.clj"})
-#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
-#_(build-static-app! {:paths ["notebooks/viewers/**"]})
-#_(build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
-#_ (reset! config/!resource->url @config/!asset-map)
-#_(swap! config/!resource->url dissoc "/css/viewer.css")
-#_(build-static-app! {:ssr? true
+(comment
+  (build-static-app! {:paths clerk-docs :bundle? true})
+  (build-static-app! {:paths ["notebooks/index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :index "notebooks/index.clj"})
+  (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
+  (build-static-app! {:paths ["notebooks/viewers/**"]})
+  (build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
+  (reset! config/!resource->url @config/!asset-map)
+  (swap! config/!resource->url dissoc "/css/viewer.css")
+
+  (build-static-app! {:ssr? true
+                      :exclude-js? true
+                      ;; test against cljs release `bb build:js`
+                      :resource->url {"/js/viewer.js" "./build/viewer.js"}
+                      :index "notebooks/rule_30.clj"})
+
+  (build-static-app! {:ssr? true
                       :compile-css? true
                       ;; test against cljs release `bb build:js`
                       :resource->url {"/js/viewer.js" "./build/viewer.js"}
                       :index "notebooks/rule_30.clj"})
-#_(fs/delete-tree "public/build")
-#_(build-static-app! {:compile-css? true
+  (fs/delete-tree "public/build")
+  (build-static-app! {:compile-css? true
                       :index "notebooks/rule_30.clj"
                       :paths ["notebooks/hello.clj"
                               "notebooks/markdown.md"]})
-#_(build-static-app! {;; test against cljs release `bb build:js`
+  (build-static-app! {;; test against cljs release `bb build:js`
                       :resource->url {"/js/viewer.js" "/viewer.js"}
                       :paths ["notebooks/cherry.clj"]
                       :out-path "build"})
-#_(build-static-app! {:paths ["CHANGELOG.md"
+  (build-static-app! {:paths ["CHANGELOG.md"
                               "notebooks/markdown.md"
-                              "notebooks/viewers/image.clj"
-                              "notebooks/viewers/html.cj"]
+                              "notebooks/viewers/html.clj"]
+                      :bundle? true
                       :git/sha "d60f5417"
-                      :git/url "https://github.com/nextjournal/clerk"})
+                      :git/url "https://github.com/nextjournal/clerk"}))
