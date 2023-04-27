@@ -43,22 +43,9 @@
         [view view-data]
         [:pre (pr-str match)])]]))
 
-(defonce container
-  (and (exists? js/document) (js/document.getElementById "clerk-static-app")))
-
-(defonce hydrate?
-  (when container
-    (pos? (.-childElementCount container))))
-
-(defonce react-root
-  (when container
-    (if hydrate?
-      (react-client/hydrateRoot container (r/as-element [root]))
-      (react-client/createRoot container))))
-
 (defn ^:dev/after-load mount []
-  (when (and react-root (not hydrate?))
-    (.render react-root (r/as-element [root]))))
+  (when (and render/react-root (not render/hydrate?))
+    (.render render/react-root (r/as-element [root]))))
 
 (defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path]}]
   (let [url->doc (set/rename-keys path->doc path->url)]

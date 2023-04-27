@@ -62,7 +62,7 @@
     [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
 let state = " (-> state v/->edn escape-closing-script-tag pr-str) ".replaceAll('nextjournal.clerk.view/escape-closing-script-tag', 'script')
 viewer.set_state(viewer.read_string(state));
-viewer.mount(document.getElementById('clerk'))\n"
+viewer.mount()\n"
      (when conn-ws?
        "viewer.connect(document.location.origin.replace(/^http/, 'ws') + '/_ws')")]]))
 
@@ -75,7 +75,7 @@ viewer.mount(document.getElementById('clerk'))\n"
     (when current-path (v/open-graph-metas (-> state :path->doc (get current-path) v/->value :open-graph)))
     (include-css+js state)]
    [:body
-    [:div#clerk-static-app html]
+    [:div#clerk html]
     [:script {:type "module"} "let state = " (-> state v/->edn escape-closing-script-tag pr-str) ".replaceAll('nextjournal.clerk.view/escape-closing-script-tag', 'script')
 let opts = nextjournal.clerk.sci_env.read_string(state)
 nextjournal.clerk.static_app.init(opts)\n"]]))

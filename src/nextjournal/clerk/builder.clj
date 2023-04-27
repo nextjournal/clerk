@@ -402,7 +402,7 @@
                       :out-path "build"})
 #_(build-static-app! {:paths ["CHANGELOG.md"
                               "notebooks/markdown.md"
-                              "notebooks/viewers/image.clj"
-                              "notebooks/viewers/html.cj"]
+                              "notebooks/viewers/html.clj"]
+                      :bundle? true
                       :git/sha "d60f5417"
                       :git/url "https://github.com/nextjournal/clerk"})

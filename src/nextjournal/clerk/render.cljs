@@ -753,10 +753,18 @@
     #_(js/console.log :<= type := msg)
     (dispatch-fn msg)))
 
-(defonce react-root
-  (when-let [el (and (exists? js/document) (js/document.getElementById "clerk"))]
-    (react-client/createRoot el)))
+(defonce container-el
+  (and (exists? js/document) (js/document.getElementById "clerk")))
 
+(defonce hydrate?
+  (and container-el
+       (pos? (.-childElementCount container-el))))
+
+(defonce react-root
+  (when container-el
+    (if hydrate?
+      (react-client/hydrateRoot container-el (r/as-element [root]))
+      (react-client/createRoot container-el))))
 
 (defonce !listeners (atom #{}))
 
