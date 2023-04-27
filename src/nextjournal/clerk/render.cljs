@@ -140,11 +140,10 @@
 
 (declare clerk-eval)
 
-(defn ->URL [href]
+(defn ->URL [^js href]
   (js/URL. href))
 
 (defn handle-anchor-click [^js e]
-  (prn :handle-anchor-click e)
   (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
     (when (= (.-search url) "?clerk/show!")
       (.preventDefault e)
@@ -153,18 +152,14 @@
                           (seq (.-hash url))
                           (assoc :fragment (subs (.-hash url) 1))))))))
 
-(defn history-push-state [{:keys [path fragment replace?]}]
-  (when (not= path (some-> js/history .-state .-clerk_show))
-    (j/call js/history
-            (if replace? :replaceState :pushState)
-            #js {:clerk_show path} nil (str "/" path (when fragment (str "#" fragment))))))
+(defn history-push-state [{:as opts :keys [path fragment replace?]}]
+  (when (not= path (some-> js/history .-state .-path))
+    (j/call js/history (if replace? :replaceState :pushState) (clj->js opts) "" (str "/" path (when fragment (str "#" fragment))))  ))
 
 (defn handle-history-popstate [^js e]
-  (prn :handle-history-popstate e)
-  (when-some [notebook-path (some-> e .-state .-clerk_show)]
+  (when-let [{:as opts :keys [path]} (js->clj (.-state e) :keywordize-keys true)]
     (.preventDefault e)
-    (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path notebook-path
-                                                              :skip-history? true}))))
+    (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path path :skip-history? true}))))
 
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility header footer]} opts]
   (r/with-let [local-storage-key "clerk-navbar"
