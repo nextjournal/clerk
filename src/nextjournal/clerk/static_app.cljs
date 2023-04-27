@@ -1,6 +1,5 @@
 (ns nextjournal.clerk.static-app
-  (:require ["react-dom/client" :as react-client]
-            [clojure.set :as set]
+  (:require [clojure.set :as set]
             [clojure.string :as str]
             [nextjournal.clerk.render :as render]
             [nextjournal.clerk.sci-env :as sci-env]
