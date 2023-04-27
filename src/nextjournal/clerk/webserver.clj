@@ -5,6 +5,7 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [editscript.core :as editscript]
+            [nextjournal.clerk.config :as config]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [org.httpkit.server :as httpkit])
@@ -213,7 +214,9 @@
              (catch Exception _))
         {:status 200
          :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
-         :body (view/doc->html {:doc @!doc})}))))
+         :body (view/->html {:doc (view/doc->viewer @!doc)
+                             :resource->url @config/!resource->url
+                             :conn-ws? true})}))))
 
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)

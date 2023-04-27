@@ -1,6 +1,5 @@
 (ns nextjournal.clerk.view
-  (:require [nextjournal.clerk.config :as config]
-            [nextjournal.clerk.viewer :as v]
+  (:require [nextjournal.clerk.viewer :as v]
             [hiccup.page :as hiccup]
             [clojure.string :as str]
             [clojure.java.io :as io])
@@ -51,7 +50,7 @@
   ;; https://html.spec.whatwg.org/multipage/syntax.html#cdata-rcdata-restrictions
   (str/replace s "</script>" "</nextjournal.clerk.view/escape-closing-script-tag>"))
 
-(defn ->html [{:as state :keys [conn-ws? current-path] :or {conn-ws? true}}]
+(defn ->html [{:as state :keys [conn-ws? current-path]}]
   (hiccup/html5
    [:head
     [:meta {:charset "UTF-8"}]
@@ -65,11 +64,3 @@ let state = " (-> state v/->edn escape-closing-script-tag pr-str) ".replaceAll('
 viewer.init(viewer.read_string(state))\n"
      (when conn-ws?
        "viewer.connect(document.location.origin.replace(/^http/, 'ws') + '/_ws')")]]))
-
-(defn ->static-app [state]
-  (->html (assoc state :conn-ws? false)))
-
-(defn doc->html [opts]
-  (->html (-> opts
-              (update :doc doc->viewer)
-              (assoc :resource->url @config/!resource->url))))

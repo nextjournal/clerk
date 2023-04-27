@@ -248,12 +248,12 @@
     (when-not (fs/exists? (fs/parent index-html))
       (fs/create-dirs (fs/parent index-html)))
     (if bundle?
-      (spit index-html (view/->static-app static-app-opts))
+      (spit index-html (view/->html static-app-opts))
       (doseq [[path doc] path->doc]
         (let [out-html (str out-path fs/file-separator (->> path (viewer/map-index opts) ->html-extension))]
           (fs/create-dirs (fs/parent out-html))
-          (spit out-html (view/->static-app (cond-> (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)
-                                              ssr? ssr!))))))
+          (spit out-html (view/->html (cond-> (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)
+                                        ssr? ssr!))))))
     (when browse?
       (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize)))
     {:docs docs
