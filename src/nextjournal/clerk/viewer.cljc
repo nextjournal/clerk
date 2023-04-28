@@ -476,8 +476,9 @@
                                             (not= [0] path))
                                    (str "-" (str/join "-" path))))))
 
+
 (defn transform-result [{:as wrapped-value :keys [path]}]
-  (let [{:as _cell :keys [form id] ::keys [result doc]} (:nextjournal/value wrapped-value)
+  (let [{:as _cell :keys [form id settings] ::keys [result doc]} (:nextjournal/value wrapped-value)
         {:keys [static-build? bundle?]} doc
         {:nextjournal/keys [value blob-id viewers]} result
         blob-mode (cond
@@ -485,27 +486,23 @@
                     bundle? :inline ;; TODO: provide a separte setting for this
                     :else :file)
         #?(:clj blob-opts :cljs _) (assoc doc :blob-mode blob-mode :blob-id blob-id)
-        auto-expand-results? (get result :nextjournal/auto-expand-results?
-                                  (get (when (wrapped-value? value) value) :nextjournal/auto-expand-results?
-                                       (:auto-expand-results? doc)))
-        opts-from-doc (-> doc
-                          (select-keys (keys viewer-opts-normalization))
-                          (set/rename-keys viewer-opts-normalization))
+        opts-from-block (-> settings
+                            (select-keys (keys viewer-opts-normalization))
+                            (set/rename-keys viewer-opts-normalization))
         opts-from-form-meta (-> result
                                 (select-keys (disj (set (vals viewer-opts-normalization))
                                                    :nextjournal/viewer
-                                                   :nextjournal/viewers))
-                                (cond-> #_result
-                                  (some? auto-expand-results?) (update :nextjournal/opts #(merge {:auto-expand-results? auto-expand-results?} %))))
-        presented-result (-> (present (merge opts-from-doc
-                                             (dissoc (->opts wrapped-value) :!budget :nextjournal/budget)
-                                             ;; reset budget from top level form for fragment items to have their own
-                                             ;; consider being more explicit about what we want to inherit from the root `wrapped-value` here
-                                             (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)
-                                             opts-from-form-meta))
+                                                   :nextjournal/viewers)))
+        _ (prn :opts-from-form-meta opts-from-form-meta)
+        {:as to-present :nextjournal/keys [auto-expand-results?]} (merge (dissoc (->opts wrapped-value) :!budget :nextjournal/budget)
+                                                                         opts-from-block
+                                                                         (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)
+                                                                         opts-from-form-meta)
+        presented-result (-> (present to-present)
                              (update :nextjournal/opts
                                      (fn [{:as opts existing-id :id}]
                                        (cond-> opts
+                                         auto-expand-results? (assoc :auto-expand-results? auto-expand-results?)
                                          (seq path) (assoc :fragment-item? true)
                                          (not existing-id) (assoc :id (processed-block-id (str id "-result") path)))))
                              #?(:clj (->> (process-blobs blob-opts))))
@@ -530,15 +527,17 @@
 (def hide-result-viewer
   {:name `hide-result-viewer :transform-fn (fn [_] nil)})
 
-(defn ->display [{:as code-cell :keys [result visibility]}]
-  (let [{:keys [code result]} visibility]
+(defn ->display [{:as code-cell :keys [result settings]}]
+  (let [{:as visibility :keys [code result]} (:nextjournal.clerk/visibility settings)]
+    (when-not visibility
+      (throw (ex-info "missing visibility" {:code-cell code-cell})))
     {:result? (not= :hide result)
      :fold? (= code :fold)
      :code? (not= :hide code)}))
 
-#_(->display {:result {:nextjournal.clerk/visibility {:code :show :result :show}}})
-#_(->display {:result {:nextjournal.clerk/visibility {:code :fold :result :show}}})
-#_(->display {:result {:nextjournal.clerk/visibility {:code :fold :result :hide}}})
+#_(->display {:settings {:nextjournal.clerk/visibility {:code :show :result :show}}})
+#_(->display {:settings {:nextjournal.clerk/visibility {:code :fold :result :show}}})
+#_(->display {:settings {:nextjournal.clerk/visibility {:code :fold :result :hide}}})
 
 (defn process-sidenotes [cell-doc {:keys [footnotes]}]
   (if (seq footnotes)
@@ -609,7 +608,7 @@
                       (dissoc cell :result)))
 
               (or result? eval?)
-              (conj (cond-> (ensure-wrapped (-> cell (assoc ::doc doc) (assoc ::result (:result cell))))
+              (conj (cond-> (ensure-wrapped (-> cell (assoc ::doc doc) (set/rename-keys {:result ::result})))
                       (and eval? (not result?))
                       (assoc :nextjournal/viewer (assoc result-viewer :render-fn '(fn [_] [:<>])))))))))
 
