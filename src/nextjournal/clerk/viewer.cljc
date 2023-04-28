@@ -527,9 +527,7 @@
   {:name `hide-result-viewer :transform-fn (fn [_] nil)})
 
 (defn ->display [{:as code-cell :keys [result settings]}]
-  (let [{:as visibility :keys [code result]} (:nextjournal.clerk/visibility settings)]
-    (when-not visibility
-      (throw (ex-info "missing visibility" {:code-cell code-cell})))
+  (let [{:keys [code result]} (:nextjournal.clerk/visibility settings)]
     {:result? (not= :hide result)
      :fold? (= code :fold)
      :code? (not= :hide code)}))
