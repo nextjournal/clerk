@@ -77,19 +77,21 @@ par two"))))
   (testing "sets toc visibility on doc"
     (is (:toc-visibility (analyze-string "(ns foo {:nextjournal.clerk/toc true})")))))
 
+(defn map-blocks-setting [setting {:keys [blocks]}]
+  (mapv #(get-in % [:settings :nextjournal.clerk/visibility]) blocks))
 
 (deftest add-block-visbility
   (testing "assigns doc visibility from ns metadata"
     (is (= [{:code :fold, :result :hide} {:code :fold, :result :show}]
-           (->> "(ns foo {:nextjournal.clerk/visibility {:code :fold}}) (rand-int 42)" analyze-string :blocks (mapv :visibility)))))
+           (->> "(ns foo {:nextjournal.clerk/visibility {:code :fold}}) (rand-int 42)" analyze-string (map-blocks-setting :nextjournal.clerk/visibility)))))
 
   (testing "assigns doc visibility from top-level visbility map marker"
     (is (= [{:code :hide, :result :hide} {:code :fold, :result :show}]
-           (->> "{:nextjournal.clerk/visibility {:code :fold}} (rand-int 42)" analyze-string :blocks (mapv :visibility)))))
+           (->> "{:nextjournal.clerk/visibility {:code :fold}} (rand-int 42)" analyze-string (map-blocks-setting :nextjournal.clerk/visibility)))))
 
   (testing "can change visibility halfway"
     (is (= [{:code :show, :result :show} {:code :hide, :result :hide} {:code :fold, :result :hide}]
-           (->> "(rand-int 42) {:nextjournal.clerk/visibility {:code :fold :result :hide}} (rand-int 42)" analyze-string :blocks (mapv :visibility))))))
+           (->> "(rand-int 42) {:nextjournal.clerk/visibility {:code :fold :result :hide}} (rand-int 42)" analyze-string (map-blocks-setting :nextjournal.clerk/visibility))))))
 
 (deftest add-open-graph-metadata
   (testing "OG metadata should be inferred, but customizable via ns map"

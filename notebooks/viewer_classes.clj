@@ -5,8 +5,7 @@
             [clojure.string :as str]))
 
 (clerk/html
- {::clerk/css-class [:border :rounded-lg :shadow-lg :bg-white :p-4 :max-w-2xl :mx-auto]
-  ::clerk/width :wide}
+ {::clerk/css-class [:border :rounded-lg :shadow-lg :bg-white :p-4 :max-w-2xl :mx-auto]}
  [:div
   (clerk/vl {:width 700 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
                                            :format {:type "topojson" :feature "counties"}}
@@ -21,3 +20,4 @@
        str/split-lines
        (group-by (comp keyword str/upper-case str first))
        (into (sorted-map))))
+

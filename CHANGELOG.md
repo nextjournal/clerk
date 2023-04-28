@@ -15,7 +15,7 @@ Changes can be:
 * 🔗 Interactive Links, Index and Homepage
 
     Links can now be followed in interactive mode and the index can be viewed. Previously this could only be seen after a `build!`.
-    
+
     Use these features to build a new welcome page that gives more useful information, including links to potential notebooks in the project.
 
 * 🍕 `clerk/fragment` for splicing a seq of values into the document as if it were produced by results of individual cells. Useful when programmatically generating content.
@@ -23,7 +23,18 @@ Changes can be:
 * 🔗 Support following `clerk/doc-url` links in interactive mode. Previously these links would only be functional in the static build. Update the browser url accordingly and support evaluating a given doc by entering it in the browser's address bar.
 
 * 🚨 Change `nextjournal.clerk.render/clerk-eval` to not recompute the currently shown document when using the 1-arity version. Added a second arity that takes an opts map with a `:recompute?` key.
-1
+
+* ⭐️ Adds support for customization of viewer options 
+
+  Support both globally (via ns metadata or a settings marker) or locally (via form metadata or the viewer options map).
+  
+  Supported options are:
+   * `:nextjournal.clerk/auto-expand-results?`
+   * `:nextjournal.clerk/budget`
+   * `:nextjournal.clerk/css-class`
+   * `:nextjournal.clerk/visibility`
+   * `:nextjournal.clerk/width`
+
 * 🔌 Make websocket reconnect automatically on close to avoid having to reload the page
 
 * 💫 Cache expressions that return `nil` in memory
