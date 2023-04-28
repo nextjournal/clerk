@@ -132,8 +132,8 @@
    (nextjournal.clerk.analyzer/analyze-doc
     (parse-file {:doc? true} "notebooks/open_graph.clj")))
 
-(defn add-open-graph-metadata [doc] (assoc doc :open-graph (->open-graph doc)))
-
+(defn add-open-graph-metadata [doc]
+  (assoc doc :open-graph (->open-graph doc)))
 
 (defn parse-global-block-settings
   "Parses the global (doc-wide) settings the given `form` if this node

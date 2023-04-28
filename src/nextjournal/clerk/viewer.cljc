@@ -493,7 +493,6 @@
                                 (select-keys (disj (set (vals viewer-opts-normalization))
                                                    :nextjournal/viewer
                                                    :nextjournal/viewers)))
-        _ (prn :opts-from-form-meta opts-from-form-meta)
         {:as to-present :nextjournal/keys [auto-expand-results?]} (merge (dissoc (->opts wrapped-value) :!budget :nextjournal/budget)
                                                                          opts-from-block
                                                                          (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)

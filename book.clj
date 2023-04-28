@@ -730,10 +730,16 @@ v/table-viewer
     Moving --> Crash
     Crash --> [*]")
 
-;; ## 🙈 Controlling Visibility
+;; ## ⚙️ Customizations
 
-;; Visibility for code and results can be controlled document-wide and
-;; per top-level form. By default, Clerk will always show code and
+;; Clerk allows easy customization of visibility, result width and
+;; budget. All settings can be applied document-wide using `ns`
+;; metadata or a top-level settings marker and per form using
+;; metadata.
+
+;; ### 🙈 Visibility
+
+;; By default, Clerk will always show code and
 ;; results for a notebook.
 
 ;; You can use a map of the following shape to set the visibility of
@@ -792,6 +798,46 @@ v/table-viewer
 ;;    (rand-int 42) ;; code will be visible
 ;;
 ;; This comes in quite handy for debugging too!
+
+;; ### 🍽 Table of Contents
+
+;; If you want a table of contents like the one in this document, set the `:nextjournal.clerk/toc` option.
+;;
+;;    (ns doc-with-table-of-contents
+;;      {:nextjournal.clerk/toc true})
+;;
+;; If you want it to be collapsed initially, use `:collapsed` as a value.
+
+;; ### 🔮 Result Expansion
+
+;; If you want to better see the shape of your data without needing to
+;; click and expand it first, set the
+;; `:nextjournal.clerk/auto-expand-results?` option.
+
+^{::clerk/visibility {:code :hide :result :hide}}
+(defn make-rows [n]
+  (take n (repeatedly (fn []
+                        {:id (gensym)
+                         :name (str
+                                (rand-nth ["Oscar" "Karen" "Vlad" "Rebecca" "Conrad"]) " "
+                                (rand-nth ["Miller" "Stasčnyk" "Ronin" "Meyer" "Black"]))
+                         :role (rand-nth [:admin :operator :manager :programmer :designer])}))))
+
+
+
+
+^{::clerk/visibility {:code :hide}
+  ::clerk/auto-expand-results? true}
+(make-rows 5)
+
+;; This option might become the default in the future.
+
+
+;; ### 🙅🏼‍♂️ Viewer Budget
+
+;; In order to not send too much data to the browser, Clerk uses a per-result budget to limit. You can adjust it's default value of `200` using the `:nextjournal.clerk/budget` key.
+
+#_"TODO: add good example"
 
 ;; ## 🧱 Static Building
 
