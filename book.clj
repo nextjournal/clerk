@@ -737,6 +737,8 @@ v/table-viewer
 ;; metadata or a top-level settings marker and per form using
 ;; metadata.
 
+;; Let's start with a concrete example to understand how this works.
+
 ;; ### 🙈 Visibility
 
 ;; By default, Clerk will always show code and
@@ -814,30 +816,28 @@ v/table-viewer
 ;; click and expand it first, set the
 ;; `:nextjournal.clerk/auto-expand-results?` option.
 
-^{::clerk/visibility {:code :hide :result :hide}}
-(defn make-rows [n]
-  (take n (repeatedly (fn []
-                        {:id (gensym)
-                         :name (str
-                                (rand-nth ["Oscar" "Karen" "Vlad" "Rebecca" "Conrad"]) " "
-                                (rand-nth ["Miller" "Stasčnyk" "Ronin" "Meyer" "Black"]))
-                         :role (rand-nth [:admin :operator :manager :programmer :designer])}))))
-
-
-
 
 ^{::clerk/visibility {:code :hide}
   ::clerk/auto-expand-results? true}
-(make-rows 5)
+(def rows
+  (take 15 (repeatedly (fn []
+                         {:name (str
+                                 (rand-nth ["Oscar" "Karen" "Vlad" "Rebecca" "Conrad"]) " "
+                                 (rand-nth ["Miller" "Stasčnyk" "Ronin" "Meyer" "Black"]))
+                          :role (rand-nth [:admin :operator :manager :programmer :designer])
+                          :dice (shuffle (range 1 7))}))))
 
 ;; This option might become the default in the future.
 
 
 ;; ### 🙅🏼‍♂️ Viewer Budget
 
-;; In order to not send too much data to the browser, Clerk uses a per-result budget to limit. You can adjust it's default value of `200` using the `:nextjournal.clerk/budget` key.
+;; In order to not send too much data to the browser, Clerk uses a per-result budget to limit. You can see this budget in action above. Use the `:nextjournal.clerk/budget` key to change its default value of `200` or disable it completely using `nil`.
 
-#_"TODO: add good example"
+^{::clerk/budget nil
+  ::clerk/visibility {:code :hide}
+  ::clerk/auto-expand-results? true}
+rows
 
 ;; ## 🧱 Static Building
 
