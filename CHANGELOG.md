@@ -14,13 +14,11 @@ Changes can be:
 
 * 🔗 Interactive Links, Index and Homepage
 
-    Links can now be followed in interactive mode and the index can be viewed. Previously this could only be seen after a `build!`.
+    Links can now be followed in interactive mode and the index can be viewed. Previously this could only be seen after a `build!`. Add support evaluating a given doc by entering it in the browser's address bar.
 
     Use these features to build a new welcome page that gives more useful information, including links to potential notebooks in the project.
 
 * 🍕 `clerk/fragment` for splicing a seq of values into the document as if it were produced by results of individual cells. Useful when programmatically generating content.
-
-* 🔗 Support following `clerk/doc-url` links in interactive mode. Previously these links would only be functional in the static build. Update the browser url accordingly and support evaluating a given doc by entering it in the browser's address bar.
 
 * 🚨 Change `nextjournal.clerk.render/clerk-eval` to not recompute the currently shown document when using the 1-arity version. Added a second arity that takes an opts map with a `:recompute?` key.
 
