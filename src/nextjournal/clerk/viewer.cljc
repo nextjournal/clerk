@@ -15,6 +15,7 @@
                        [sci.impl.vars]
                        [sci.lang]
                        [applied-science.js-interop :as j]])
+            [nextjournal.clerk.parser :as parser]
             [nextjournal.markdown :as md]
             [nextjournal.markdown.parser :as md.parser]
             [nextjournal.markdown.transform :as md.transform])
@@ -159,12 +160,12 @@
   (when (wrapped-value? x)
     (:nextjournal/css-class x)))
 
-
 (def viewer-opts-normalization
+  "Normalizes ns for viewer opts keywords `:nextjournal.clerk/x` => `:nextjournal/x`"
   (into {}
-        (map #(vector (keyword "nextjournal.clerk" (name %))
-                      (keyword "nextjournal"       (name %))))
-        [:auto-expand-results? :budget :viewer :viewers :opts :width :css-class]))
+        (map (juxt #(keyword "nextjournal.clerk" (name %))
+                   #(keyword "nextjournal" (name %))))
+        (conj parser/block-settings :viewer :viewers)))
 
 (defn throw-when-viewer-opts-invalid [opts]
   (when-not (map? opts)
@@ -489,14 +490,9 @@
         opts-from-block (-> settings
                             (select-keys (keys viewer-opts-normalization))
                             (set/rename-keys viewer-opts-normalization))
-        opts-from-form-meta (-> result
-                                (select-keys (disj (set (vals viewer-opts-normalization))
-                                                   :nextjournal/viewer
-                                                   :nextjournal/viewers)))
         {:as to-present :nextjournal/keys [auto-expand-results?]} (merge (dissoc (->opts wrapped-value) :!budget :nextjournal/budget)
                                                                          opts-from-block
-                                                                         (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value)
-                                                                         opts-from-form-meta)
+                                                                         (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value))
         presented-result (-> (present to-present)
                              (update :nextjournal/opts
                                      (fn [{:as opts existing-id :id}]
@@ -518,7 +514,7 @@
 
                                      #?@(:clj [(= blob-mode :lazy-load)
                                                (assoc :nextjournal/fetch-opts {:blob-id blob-id}
-                                                      :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-form-meta]))]))}
+                                                      :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-block]))]))}
                (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)))))
 
 #_(nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)

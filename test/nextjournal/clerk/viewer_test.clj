@@ -292,6 +292,27 @@
                view/doc->viewer v/->value :blocks second
                v/->value :nextjournal/presented :nextjournal/css-class))))
 
+  (testing "Settings propagation from ns to form"
+    (is (= :full
+           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) (nextjournal.clerk/html [:div])")
+               view/doc->viewer v/->value :blocks (nth 2)
+               v/->value :nextjournal/presented :nextjournal/width)))
+
+    (is (= :wide
+           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) (nextjournal.clerk/html {:nextjournal.clerk/width :wide} [:div])")
+               view/doc->viewer v/->value :blocks (nth 2)
+               v/->value :nextjournal/presented :nextjournal/width)))
+
+    (is (= :wide
+           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) ^{:nextjournal.clerk/width :wide} (nextjournal.clerk/html [:div])")
+               view/doc->viewer v/->value :blocks (nth 2)
+               v/->value :nextjournal/presented :nextjournal/width)))
+
+    (is (= :wide
+           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) {:nextjournal.clerk/width :wide} (nextjournal.clerk/html [:div])")
+               view/doc->viewer v/->value :blocks (nth 2)
+               v/->value :nextjournal/presented :nextjournal/width))))
+
   (testing "Presented doc (with fragments) has unambiguous ids assigned to results"
     (let [ids (->> (eval/eval-string "(nextjournal.clerk/table [[1 2][3 4]])
 (nextjournal.clerk/fragment
