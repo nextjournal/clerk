@@ -390,9 +390,9 @@
   (< 1 (count xs)))
 
 (defn inspect-children [opts]
-  (map-indexed (fn [idx x] (cond-> [inspect-presented (update opts :path (fnil conj []) idx) x]
-                             (get-in x [:nextjournal/opts :id])
-                             (with-meta {:key (str (get-in x [:nextjournal/opts :id]) "@" @!eval-counter)})))))
+  (map (fn [x] (cond-> [inspect-presented opts x]
+                 (get-in x [:nextjournal/opts :id])
+                 (with-meta {:key (str (get-in x [:nextjournal/opts :id]) "@" @!eval-counter)})))))
 
 (def expand-style
   ["cursor-pointer"
@@ -609,11 +609,13 @@
   ([opts x]
    (if (valid-react-element? x)
      x
-     (let [{:nextjournal/keys [value viewer]} x]
+     (let [{:nextjournal/keys [value viewer] :keys [path]} x]
        #_(prn :inspect-presented value :valid-element? (react/isValidElement value) :viewer viewer)
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
        ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
-       [(:render-fn viewer) value (merge opts (:nextjournal/opts x) {:viewer viewer})]))))
+       [(:render-fn viewer) value (merge opts
+                                         (:nextjournal/opts x)
+                                         {:viewer viewer :path path})]))))
 
 (defn inspect [value]
   (r/with-let [!state (r/atom nil)]
