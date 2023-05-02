@@ -161,7 +161,7 @@
     (:nextjournal/css-class x)))
 
 (def viewer-opts-normalization
-  ":nextjournal.clerk/X => :nextjournal/X"
+  "Normalizes ns for viewer opts keywords `:nextjournal.clerk/x` => `:nextjournal/x`"
   (into {}
         (map (juxt #(keyword "nextjournal.clerk" (name %))
                    #(keyword "nextjournal" (name %))))
@@ -490,8 +490,6 @@
         opts-from-block (-> settings
                             (select-keys (keys viewer-opts-normalization))
                             (set/rename-keys viewer-opts-normalization))
-        #_ (println :opts-from-block opts-from-block)
-        #_ (println :opts-from-value (->opts (ensure-wrapped value)))
         {:as to-present :nextjournal/keys [auto-expand-results?]} (merge (dissoc (->opts wrapped-value) :!budget :nextjournal/budget)
                                                                          opts-from-block
                                                                          (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value))
