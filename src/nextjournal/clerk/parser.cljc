@@ -76,7 +76,7 @@
 #_(parse-visibility nil {:code :fold :result :hide})
 
 (defn ->visibility [form]
-  (if (visibility-marker? form)
+  (if (settings-marker? form)
     {:code :hide :result :hide}
     (cond-> (parse-visibility form (-> form meta :nextjournal.clerk/visibility))
       (ns? form) (merge {:result :hide}))))
