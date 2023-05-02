@@ -192,14 +192,15 @@
 
 #_(merge-settings {:nextjournal.clerk/visibility {:code :show :result :show}} {:nextjournal.clerk/visibility {:code :fold}})
 
-(defn add-block-settings [{:as analyzed-doc :keys [blocks block-settings]}]
-  (-> (reduce (fn [{:as state :keys [block-settings i]} {:as block :keys [form]}]
+(defn add-block-settings [{:as analyzed-doc :keys [blocks]}]
+  (-> (reduce (fn [{:as state :keys [block-settings]} {:as block :keys [form]}]
                 (let [next-block-settings (merge-settings block-settings (parse-global-block-settings form))]
-                  (cond-> (-> (update state :i inc)
-                              (update :blocks conj (cond-> block
-                                                     (code? block) (assoc :settings (merge-settings next-block-settings (parse-local-block-settings form))))))
+                  (cond-> (update state :blocks conj
+                                  (cond-> block
+                                    (code? block)
+                                    (assoc :settings (merge-settings next-block-settings (parse-local-block-settings form)))))
                     (code? block) (assoc :block-settings next-block-settings))))
-              (assoc analyzed-doc :blocks [] :i 0)
+              (assoc analyzed-doc :blocks [])
               blocks)
       (dissoc :block-settings)))
 
