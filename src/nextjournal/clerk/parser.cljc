@@ -53,6 +53,7 @@
     :nextjournal.clerk/budget
     :nextjournal.clerk/css-class
     :nextjournal.clerk/visibility
+    :nextjournal.clerk/opts
     :nextjournal.clerk/width})
 
 (defn settings-marker? [form]
