@@ -339,8 +339,7 @@
 
 (defn render-result [{:nextjournal/keys [fetch-opts hash presented]} {:keys [id auto-expand-results?]}]
   (let [!desc (hooks/use-state-with-deps presented [hash])
-        !expanded-at (hooks/use-state (when (map? @!desc)
-                                        (->expanded-at auto-expand-results? @!desc)))
+        !expanded-at (hooks/use-state-with-deps (when (map? @!desc) (->expanded-at auto-expand-results? @!desc)) [hash])
         fetch-fn (hooks/use-callback (when fetch-opts
                                        (fn [opts]
                                          (.then (fetch! fetch-opts opts)
