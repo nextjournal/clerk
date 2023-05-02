@@ -15,6 +15,7 @@
                        [sci.impl.vars]
                        [sci.lang]
                        [applied-science.js-interop :as j]])
+            [nextjournal.clerk.parser :as parser]
             [nextjournal.markdown :as md]
             [nextjournal.markdown.parser :as md.parser]
             [nextjournal.markdown.transform :as md.transform])
@@ -159,12 +160,12 @@
   (when (wrapped-value? x)
     (:nextjournal/css-class x)))
 
-
 (def viewer-opts-normalization
+  ":nextjournal.clerk/X => :nextjournal/X"
   (into {}
-        (map #(vector (keyword "nextjournal.clerk" (name %))
-                      (keyword "nextjournal"       (name %))))
-        [:auto-expand-results? :budget :viewer :viewers :opts :width :css-class]))
+        (map (juxt #(keyword "nextjournal.clerk" (name %))
+                   #(keyword "nextjournal" (name %))))
+        (conj parser/block-settings :viewer :viewers)))
 
 (defn throw-when-viewer-opts-invalid [opts]
   (when-not (map? opts)
