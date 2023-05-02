@@ -489,6 +489,8 @@
         opts-from-block (-> settings
                             (select-keys (keys viewer-opts-normalization))
                             (set/rename-keys viewer-opts-normalization))
+        #_ (println :opts-from-block opts-from-block)
+        #_ (println :opts-from-value (->opts (ensure-wrapped value)))
         {:as to-present :nextjournal/keys [auto-expand-results?]} (merge (dissoc (->opts wrapped-value) :!budget :nextjournal/budget)
                                                                          opts-from-block
                                                                          (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value))
