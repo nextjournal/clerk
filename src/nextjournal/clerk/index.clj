@@ -40,4 +40,3 @@
   (cond
     error (clerk/md error)
     paths (clerk/with-viewer index-viewer paths)))
-
