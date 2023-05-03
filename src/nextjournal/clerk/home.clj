@@ -55,8 +55,8 @@
   [:div.flex.mt-6.border-t
    (when-let [index-paths (:paths @index/!paths)]
      [:div {:class "w-1/2 border-r pt-6 pr-6"}
-      [:h4.text-lg "Your index"]
+      [:h4.text-lg "Static Build Index"]
       (clerk/with-viewer index/index-viewer (filter (partial index/query-fn @!filter) index-paths))])
    [:div {:class "w-1/2 pt-6 pl-6"}
-    [:h4.text-lg "Your notebooks"]
+    [:h4.text-lg "All Notebooks"]
     (clerk/with-viewer index/index-viewer (filter (partial index/query-fn @!filter) @!notebooks))]]])
