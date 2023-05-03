@@ -1,6 +1,6 @@
 (ns nextjournal.clerk.builder-ui
   {:nextjournal.clerk/visibility {:code :hide :result :hide}
-   :nextjournal.clerk/css-class [:pt-0]}
+   :nextjournal.clerk/doc-css-class [:pt-0]}
   (:require [nextjournal.clerk.viewer :as viewer]
             [clojure.string :as str]))
 
@@ -155,7 +155,7 @@
                              (str "unexpected state `" (pr-str state) "`"))]
        [:div.text-sm.font-medium.leading-none.truncate
         file]]
-      
+
       (when-let [{:keys [code code-executing]} (not-empty block-counts)]
         [:div.flex-shrink-0.whitespace-no-wrap.flex.items-center
          [:span.text-xs.mr-3
@@ -210,7 +210,7 @@
                               :errored "Errored")])
       [:div.text-sm.font-medium.leading-none
        phase-name]]
-     
+
      [:div.flex.items-center
       (when docs
         [:div.text-xs.mr-3 (count docs) " notebooks"])

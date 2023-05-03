@@ -1,6 +1,6 @@
-(ns notebooks.viewer-classes
+(ns viewer-classes
   {:nextjournal.clerk/visibility {:code :hide}
-   :nextjournal.clerk/css-class [:justify-center :bg-slate-200 :dark:bg-slate-900 :py-8 :min-h-screen]}
+   :nextjournal.clerk/doc-css-class [:justify-center :bg-slate-200 :dark:bg-slate-900 :py-8 :min-h-screen]}
   (:require [nextjournal.clerk :as clerk]
             [clojure.string :as str]))
 
@@ -20,4 +20,3 @@
        str/split-lines
        (group-by (comp keyword str/upper-case str first))
        (into (sorted-map))))
-

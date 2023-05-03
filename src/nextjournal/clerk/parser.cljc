@@ -48,7 +48,13 @@
 (defn visibility-marker? [form]
   (and (map? form) (contains? form :nextjournal.clerk/visibility)))
 
+(def doc-settings
+  "Settings allowed in the namespace's metadata map."
+  #{:nextjournal.clerk/doc-css-class})
+
 (def block-settings
+  "Settings allowed in form metadata or in viewer opttions. When specified in the namespace's meta map,
+  they apply to all forms in the notebook."
   #{:nextjournal.clerk/auto-expand-results?
     :nextjournal.clerk/budget
     :nextjournal.clerk/css-class
@@ -164,17 +170,20 @@
                                  :nextjournal.clerk/visibility {:code :fold}}(inc 1))
 
 (defn ->doc-settings [first-form]
-  {:ns? (ns? first-form)
-   :error-on-missing-vars (parse-error-on-missing-vars first-form)
-   :toc-visibility (or (#{true :collapsed} (:nextjournal.clerk/toc
-                                            (merge (-> first-form meta) ;; TODO: deprecate
-                                                   (when (ns? first-form)
-                                                     (merge (-> first-form second meta)
-                                                            (first (filter map? first-form)))))))
-                       false)
-   :block-settings (merge-with merge
-                               {:nextjournal.clerk/visibility {:code :show :result :show}}
-                               (parse-global-block-settings first-form))})
+  (merge
+   (when (ns? first-form) (select-keys (first (filter map? first-form)) doc-settings))
+   {:ns? (ns? first-form)
+    :error-on-missing-vars (parse-error-on-missing-vars first-form)
+    ;; TODO: unify with doc-settings, expose :n.c/toc-visibility user-facing
+    :toc-visibility (or (#{true :collapsed} (:nextjournal.clerk/toc
+                                             (merge (-> first-form meta) ;; TODO: deprecate
+                                                    (when (ns? first-form)
+                                                      (merge (-> first-form second meta)
+                                                             (first (filter map? first-form)))))))
+                        false)
+    :block-settings (merge-with merge
+                                {:nextjournal.clerk/visibility {:code :show :result :show}}
+                                (parse-global-block-settings first-form))}))
 
 
 #_(->doc-settings '(ns foo {:nextjournal.clerk/visbility {:code :fold}}))
