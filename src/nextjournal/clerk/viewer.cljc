@@ -1659,16 +1659,16 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convenience api
-(def html         (partial with-viewer html-viewer))
-(def md           (partial with-viewer markdown-viewer))
-(def plotly       (partial with-viewer plotly-viewer))
-(def vl           (partial with-viewer vega-lite-viewer))
-(def table        (partial with-viewer table-viewer))
-(def row          (partial with-viewer-extracting-opts row-viewer))
-(def col          (partial with-viewer-extracting-opts col-viewer))
-(def tex          (partial with-viewer katex-viewer))
+(def html         (partial with-viewer (:name html-viewer)))
+(def md           (partial with-viewer (:name markdown-viewer)))
+(def plotly       (partial with-viewer (:name plotly-viewer)))
+(def vl           (partial with-viewer (:name vega-lite-viewer)))
+(def table        (partial with-viewer (:name table-viewer)))
+(def row          (partial with-viewer-extracting-opts (:name row-viewer)))
+(def col          (partial with-viewer-extracting-opts (:name col-viewer)))
+(def tex          (partial with-viewer (:name katex-viewer)))
 (def notebook     (partial with-viewer (:name notebook-viewer)))
-(def code         (partial with-viewer code-viewer))
+(def code         (partial with-viewer (:name code-viewer)))
 
 (defn image
   ([image-or-url] (image {} image-or-url))
