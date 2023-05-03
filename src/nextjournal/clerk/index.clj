@@ -1,58 +1,43 @@
 (ns nextjournal.clerk.index
   {:nextjournal.clerk/visibility {:code :hide :result :hide}
    :nextjournal.clerk/no-cache true}
-  (:require [nextjournal.clerk :as clerk]
+  (:require [babashka.fs :as fs]
+            [clojure.string :as str]
+            [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.builder :as builder]))
 
 (def !paths (delay (builder/index-paths)))
 
-(def index-item-viewer
-  {:pred string?
-   :transform-fn (clerk/update-val (fn [path]
-                                     (clerk/html
-                                      [:li.border-t.first:border-t-0.dark:border-gray-800.odd:bg-slate-50.dark:odd:bg-white
-                                       {:class "dark:odd:bg-opacity-[0.03]"}
-                                       [:a.pl-4.pr-4.py-2.flex.w-full.items-center.justify-between.hover:bg-indigo-50.dark:hover:bg-gray-700
-                                        {:href (clerk/doc-url path)}
-                                        [:span.text-sm.md:text-md.monospace.flex-auto.block.truncate path]
-                                        [:svg.h-4.w-4.flex-shrink-0 {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke "currentColor"}
-                                         [:path {:stroke-linecap "round" :stroke-linejoin "round" :stroke-width "2" :d "M9 5l7 7-7 7"}]]]])))})
-
 (def index-viewer
-  {:render-fn '(fn [xs opts]
-                 [:div.not-prose
-                  [:h1.mb-4 "Clerk"]
-                  (into [:ul.border.dark:border-slate-800.rounded-md.overflow-hidden]
-                        (nextjournal.clerk.render/inspect-children opts)
-                        xs)])
-   :transform-fn (fn [wrapped-value]
-                   (update wrapped-value :nextjournal/viewers v/add-viewers [index-item-viewer]))})
+  {:render-fn '(fn [directories opts]
+                 [:div.not-prose.font-sans
+                  (into [:div]
+                        (map
+                         (fn [[dir files]]
+                           [:div.mb-6
+                            (when (seq dir)
+                              [:div.flex.items-center.gap-2.mb-1
+                               [:svg {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke-width "1.5" :stroke "currentColor" :class "w-4 h-4"}
+                                [:path {:stroke-linecap "round" :stroke-linejoin "round" :d "M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776"}]]
+                               [:span.font-bold dir]])
+                            (into [:ul
+                                   {:class (when (seq dir) "ml-[27px]")}]
+                                  (map (fn [file] [:li.mb-1
+                                                  [:a.text-blue-600.hover:underline {:href (nextjournal.clerk.viewer/doc-url file)} file]]))
+                                  files)]))
+                        directories)])
+   :transform-fn (comp
+                  clerk/mark-presented
+                  (clerk/update-val #(group-by (fn [path]
+                                                 (str/join fs/file-separator (butlast (fs/path path)))) %)))})
 
 {::clerk/visibility {:result :show}}
+
+(clerk/md (str "# " (str (last (fs/cwd)))))
+
 (let [{:keys [paths error]} @!paths]
   (cond
     error (clerk/md error)
     paths (clerk/with-viewer index-viewer paths)))
 
-#_[:div.bg-gray-100.dark:bg-gray-900.flex.justify-center.overflow-y-auto.w-screen.h-screen.p-4.md:p-0
-   {:ref ref-fn}
-   [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
-    [render/dark-mode-toggle !state]]
-   [:div.md:my-12.w-full.md:max-w-lg
-    [:div.bg-white.dark:bg-gray-800.shadow-lg.rounded-lg.border.dark:border-gray-800.dark:text-white
-     [:div.px-4.md:px-8.py-3
-      [:h1.text-xl "Clerk"]]
-     (into [:ul]
-           (map (fn [path]
-                  [:li.border-t.dark:border-gray-900
-                   [:a.pl-4.md:pl-8.pr-4.py-2.flex.w-full.items-center.justify-between.hover:bg-indigo-50.dark:hover:bg-gray-700
-                    {:href (doc-url view-data path)}
-                    [:span.text-sm.md:text-md.monospace.flex-auto.block.truncate path]
-                    [:svg.h-4.w-4.flex-shrink-0 {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke "currentColor"}
-                     [:path {:stroke-linecap "round" :stroke-linejoin "round" :stroke-width "2" :d "M9 5l7 7-7 7"}]]]]))
-           (sort paths))]
-    [:div.my-4.md:mb-0.text-xs.text-gray-400.sans-serif.px-4.md:px-8
-     [:a.hover:text-indigo-600.dark:hover:text-white
-      {:href "https://github.com/nextjournal/clerk"}
-      "Generated with Clerk."]]]]
