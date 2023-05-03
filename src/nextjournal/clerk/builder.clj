@@ -23,6 +23,7 @@
         (map #(str "notebooks/" % ".clj"))
         ["cards"
          "controlling_width"
+         "document_linking"
          "docs"
          "hello"
          "how_clerk_works"
@@ -41,6 +42,7 @@
          "visibility"
          "viewer_api"
          "viewer_api_meta"
+         "viewer_classes"
          "viewer_d3_require"
          "viewers_nested"
          "viewer_normalization"
