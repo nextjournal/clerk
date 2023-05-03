@@ -31,39 +31,44 @@
                   (clerk/update-val #(group-by (fn [path]
                                                  (str/join fs/file-separator (butlast (fs/path path)))) %)))})
 
-(defn filter-input-viewer [!state]
-  (v/with-viewer (assoc v/viewer-eval-viewer
-                        :render-fn '(fn [!state]
-                                      (let [!input-el (nextjournal.clerk.render.hooks/use-ref nil)]
-                                        (nextjournal.clerk.render.hooks/use-effect
-                                         (fn []
-                                           (let [keydown-handler (fn [e]
-                                                                   (when @!input-el
-                                                                     (when (and (.-metaKey e) (= (.-key e) "j"))
-                                                                       (.focus @!input-el))
-                                                                     (when (and (= @!input-el js/document.activeElement)
-                                                                                (= (.-key e) "Escape"))
-                                                                       (.blur @!input-el))))]
-                                             (js/document.addEventListener "keydown" keydown-handler)
-                                             #(js/document.removeEventListener "keydown" keydown-handler)))
-                                         [!input-el])
-                                        [:div.relative
-                                         [:input.pl-8.py-2.bg-white.rounded-lg.font-medium.font-sans.border.w-full.shadow-inner.transition-all
-                                          {:class "pr-[60px]"
-                                           :type :text
-                                           :placeholder "Type to filter…"
-                                           :value @!state
-                                           :on-input #(reset! !state (.. % -target -value))
-                                           :ref !input-el}]
-                                         [:div.text-slate-400.absolute
-                                          {:class "left-[10px] top-[11px]"}
-                                          [:svg
-                                           {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24"
-                                            :stroke-width "1.5" :stroke "currentColor" :class "w-[20px] h-[20px]"}
-                                           [:path {:stroke-linecap "round" :stroke-linejoin "round" :d "M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"}]]]
-                                         [:div.absolute.font-inter.text-slate-400.text-sm.font-medium.border.rounded-md.tracking-wide.px-1.shadow-sm.pointer-events-none
-                                          {:class "right-[10px] top-[9px]"}
-                                          "⌘J"]]))) !state))
+(def filter-input-viewer
+  (assoc v/viewer-eval-viewer
+         :var-from-def true
+         :render-fn '(fn [!!state]
+                       (let [!state (if (var? !!state) (resolve !!state) !!state)
+                             !input-el (nextjournal.clerk.render.hooks/use-ref nil)]
+                         (nextjournal.clerk.render.hooks/use-effect
+                          (fn []
+                            (let [keydown-handler (fn [e]
+                                                    (when @!input-el
+                                                      (when (and (.-metaKey e) (= (.-key e) "j"))
+                                                        (.focus @!input-el))
+                                                      (when (and (= @!input-el js/document.activeElement)
+                                                                 (= (.-key e) "Escape"))
+                                                        (.blur @!input-el))))]
+                              (js/document.addEventListener "keydown" keydown-handler)
+                              #(js/document.removeEventListener "keydown" keydown-handler)))
+                          [!input-el])
+                         [:div.relative
+                          [:input.pl-8.py-2.bg-white.rounded-lg.font-medium.font-sans.border.w-full.shadow-inner.transition-all
+                           {:class "pr-[60px]"
+                            :type :text
+                            :placeholder "Type to filter…"
+                            :value @!state
+                            :on-input #(reset! !state (.. % -target -value))
+                            :ref !input-el}]
+                          [:div.text-slate-400.absolute
+                           {:class "left-[10px] top-[11px]"}
+                           [:svg
+                            {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24"
+                             :stroke-width "1.5" :stroke "currentColor" :class "w-[20px] h-[20px]"}
+                            [:path {:stroke-linecap "round" :stroke-linejoin "round" :d "M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"}]]]
+                          [:div.absolute.font-inter.text-slate-400.text-sm.font-medium.border.rounded-md.tracking-wide.px-1.shadow-sm.pointer-events-none
+                           {:class "right-[10px] top-[9px]"}
+                           "⌘J"]]))))
+
+(defn query-fn [q path]
+  (str/includes? (str/lower-case path) (str/lower-case q)))
 
 {::clerk/visibility {:result :show}}
 
@@ -75,4 +80,4 @@
 (let [{:keys [paths error]} @!paths]
   (cond
     error (clerk/md error)
-    paths (clerk/with-viewer index-viewer (filter #(str/includes? % @!filter) paths))))
+    paths (clerk/with-viewer index-viewer (filter (partial query-fn @!filter) paths))))

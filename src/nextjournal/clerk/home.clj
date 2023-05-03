@@ -18,6 +18,9 @@
 (def !notebooks
   (atom (glob-notebooks)))
 
+^::clerk/sync
+(defonce !filter (atom ""))
+
 {::clerk/visibility {:result :show}}
 
 ^{::clerk/css-class ["w-full" "m-0"]}
@@ -47,11 +50,13 @@
     [:a.ml-3 {:href "#"} "🚀 Getting Started"]
     [:a.ml-3 {:href "#"} "🔍 Viewers"]
     [:a.ml-3 {:href "#"} "🙈 Controlling Visibility"]]]
+  [:div.mt-6
+   (clerk/with-viewer index/filter-input-viewer `!filter)]
   [:div.flex.mt-6.border-t
    (when-let [index-paths (:paths @index/!paths)]
      [:div {:class "w-1/2 border-r pt-6 pr-6"}
       [:h4.text-lg "Your index"]
-      (clerk/with-viewer index/index-viewer index-paths)])
+      (clerk/with-viewer index/index-viewer (filter (partial index/query-fn @!filter) index-paths))])
    [:div {:class "w-1/2 pt-6 pl-6"}
     [:h4.text-lg "Your notebooks"]
-    (clerk/with-viewer index/index-viewer @!notebooks)]]])
+    (clerk/with-viewer index/index-viewer (filter (partial index/query-fn @!filter) @!notebooks))]]])
