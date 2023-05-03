@@ -53,12 +53,13 @@
   [:div.mt-6
    (clerk/with-viewer index/filter-input-viewer `!filter)]
   [:div.flex.mt-6.border-t.font-sans
-   [:div {:class "w-1/2 border-r pt-6 pr-6"}
-    [:h4.text-lg "Static Build Index"]
-    (let [{:keys [paths error]} @index/!paths]
-      (cond
-        error (clerk/md {::clerk/css-class [:m-0]} error)
-        paths (clerk/with-viewer index/index-viewer (filter (partial index/query-fn @!filter) paths))))]
-   [:div {:class "w-1/2 pt-6 pl-6"}
+   [:div {:class (str "w-1/2 pt-6 " (when-not (seq @!filter) "pr-6 border-r"))}
     [:h4.text-lg "All Notebooks"]
-    (clerk/with-viewer index/index-viewer (filter (partial index/query-fn @!filter) @!notebooks))]]])
+    (clerk/with-viewer index/index-viewer (filter (partial index/query-fn @!filter) @!notebooks))]
+   (when-not (seq @!filter)
+     [:div {:class "w-1/2 pt-6 pl-6"}
+      [:h4.text-lg "Static Build Index"]
+      (let [{:keys [paths error]} @index/!paths]
+        (cond
+          error (clerk/md {::clerk/css-class [:m-0]} error)
+          paths (clerk/with-viewer index/index-viewer (filter (partial index/query-fn @!filter) paths))))])]])
