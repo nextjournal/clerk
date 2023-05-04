@@ -44,28 +44,6 @@
                                                                  (group-by (fn [path]
                                                                              (str/join fs/file-separator (butlast (fs/path path)))) paths))))))})
 
-(defn filtered+sorted-paths [{:keys [paths query]}]
-  (vec
-   (mapcat
-    (fn [[dir files]]
-      (sort files))
-    (sort-by key
-             (group-by (fn [path]
-                         (str/join fs/file-separator (butlast (fs/path path))))
-                       (filter (partial query-fn query) paths))))))
-
-(defn select-path [move]
-  (let [{:as filter :keys [query selected-path]} @!filter
-        paths (filtered+sorted-paths (merge @!paths filter))
-        index (.indexOf paths selected-path)
-        next-index (move index)]
-    (when (contains? paths next-index)
-      (swap! !filter assoc :selected-path (get paths next-index)))))
-
-(defn show-path []
-  (when-let [path (:selected-path @!filter)]
-    (clerk/show! path)))
-
 (def filter-input-viewer
   (assoc v/viewer-eval-viewer
          :var-from-def true
@@ -103,8 +81,8 @@
                             :placeholder "Type to filter…"
                             :value (:query @!state "")
                             :on-input (fn [e] (swap! !state #(-> %
-                                                                (assoc :query (.. e -target -value))
-                                                                (dissoc :selected-path))))
+                                                                 (assoc :query (.. e -target -value))
+                                                                 (dissoc :selected-path))))
                             :ref !input-el}]
                           [:div.text-slate-400.absolute
                            {:class "left-[10px] top-[11px]"}
@@ -125,6 +103,30 @@
 
 ^{::clerk/sync true ::clerk/viewer filter-input-viewer}
 (defonce !filter (atom {}))
+
+
+(defn filtered+sorted-paths [{:keys [paths query]}]
+  (vec
+   (mapcat
+    (fn [[dir files]]
+      (sort files))
+    (sort-by key
+             (group-by (fn [path]
+                         (str/join fs/file-separator (butlast (fs/path path))))
+                       (filter (partial query-fn query) paths))))))
+
+(defn select-path [move]
+  (let [{:as filter :keys [selected-path]} @!filter
+        paths (filtered+sorted-paths (merge @!paths filter))
+        index (.indexOf paths selected-path)
+        next-index (move index)]
+    (when (contains? paths next-index)
+      (swap! !filter assoc :selected-path (get paths next-index)))))
+
+(defn show-path []
+  (when-let [path (:selected-path @!filter)]
+    (clerk/show! path)))
+
 
 ^{::clerk/visibility {:result :hide} ::clerk/no-cache true}
 (add-watch !filter :empty-selected-path

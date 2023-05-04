@@ -3,7 +3,6 @@
   (:require [clojure.string :as str]
             [babashka.fs :as fs]
             [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.builder :as builder]
             [nextjournal.clerk.index :as index]))
 
 (defn glob-notebooks []
@@ -22,7 +21,7 @@
 (defonce !filter (atom {}))
 
 (defn select-path [move]
-  (let [{:as filter :keys [query selected-path]} @!filter
+  (let [{:as filter :keys [selected-path]} @!filter
         paths (index/filtered+sorted-paths (merge {:paths @!notebooks} filter))
         index (.indexOf paths selected-path)
         next-index (move index)]
