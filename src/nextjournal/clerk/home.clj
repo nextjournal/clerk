@@ -19,7 +19,20 @@
   (atom (glob-notebooks)))
 
 ^::clerk/sync
-(defonce !filter (atom ""))
+(defonce !filter (atom {}))
+
+(defn select-path [move]
+  (let [{:as filter :keys [query selected-path]} @!filter
+        paths (index/filtered+sorted-paths (merge {:paths @!notebooks} filter))
+        index (.indexOf paths selected-path)
+        next-index (move index)]
+    (when (contains? paths next-index)
+      (swap! !filter assoc :selected-path (get paths next-index)))))
+
+(add-watch !filter :empty-selected-path
+           (fn [_ _ old-filter {:as filter :keys [selected-path]}]
+             (when-not (contains? filter :selected-path)
+               (swap! !filter assoc :selected-path (first (index/filtered+sorted-paths (merge {:paths @!notebooks} filter)))))))
 
 {::clerk/visibility {:result :show}}
 
@@ -55,11 +68,14 @@
   [:div.flex.mt-6.border-t.font-sans
    [:div {:class (str "w-1/2 pt-6 " (when-not (seq @!filter) "pr-6 border-r"))}
     [:h4.text-lg "All Notebooks"]
-    (clerk/with-viewer index/index-viewer (filter (partial index/query-fn @!filter) @!notebooks))]
-   (when-not (seq @!filter)
+    (let [{:keys [query selected-path]} @!filter]
+      (clerk/with-viewer index/index-viewer {:paths (filter (partial index/query-fn query) @!notebooks)
+                                             :selected-path selected-path}))]
+   (when-not (seq (:query @!filter))
      [:div {:class "w-1/2 pt-6 pl-6"}
       [:h4.text-lg "Static Build Index"]
       (let [{:keys [paths error]} @index/!paths]
         (cond
           error (clerk/md {::clerk/css-class [:m-0]} error)
-          paths (clerk/with-viewer index/index-viewer (filter (partial index/query-fn @!filter) paths))))])]])
+          paths (let [{:keys [query]} @!filter]
+                  (clerk/with-viewer index/index-viewer {:paths (filter (partial index/query-fn query) paths)}))))])]])
