@@ -1,6 +1,6 @@
 (ns nextjournal.clerk.builder-ui
   {:nextjournal.clerk/visibility {:code :hide :result :hide}
-   :nextjournal.clerk/css-class [:pt-0]}
+   #_#_:nextjournal.clerk/css-class [:pt-0]}
   (:require [nextjournal.clerk.viewer :as viewer]
             [clojure.string :as str]))
 
