@@ -2,8 +2,26 @@
   {:nextjournal.clerk/visibility {:code :hide}
    :nextjournal.clerk/doc-css-class [:justify-center :bg-slate-200 :dark:bg-slate-900 :py-8 :min-h-screen]}
   (:require [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.viewer :as viewer]
             [babashka.fs :as fs]
             [clojure.string :as str]))
+
+;; Setting css classes globally should happen on the viewers for the
+;; notebook and results. This makes sense because it customizes the
+;; `:render-fn`.
+(clerk/set-viewers! [(assoc viewer/notebook-viewer :render-opts {:css-class [:justify-center :bg-slate-200 :dark:bg-slate-900 :py-8 :min-h-screen]})
+                     (assoc viewer/result-viewer :render-opts {:css-class [:border :rounded-lg :shadow-lg :bg-white :p-4 :max-w-2xl :mx-auto]})])
+
+;; To support customizing the result css class, we can't really use
+;; `:render-opts` because its opts don't apply to the result but to
+;; the wrapping `result-viewer`. Should we thus stick to
+;; `::clerk/css-class` for this?
+
+;; To make things work consistently, we'd then want to support
+;; `::clerk/css-class` on the ns meta again to change it doc-wide.
+
+;; We should rename `::clerk/opts` to `::clerk/render-opts` which
+;; communicates the intent much better.
 
 (clerk/html
  {::clerk/css-class [:border :rounded-lg :shadow-lg :bg-white :p-4 :max-w-2xl :mx-auto]}
