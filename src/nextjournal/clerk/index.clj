@@ -83,7 +83,6 @@
                                                           (.blur @!input-el)
                                                           (and (= (.-key e) "ArrowDown") (not native-scroll-modifier?))
                                                           (do
-                                                            (js/console.log e)
                                                             (.preventDefault e)
                                                             (nextjournal.clerk.render/clerk-eval '(select-path inc)))
                                                           (and (= (.-key e) "ArrowUp") (not native-scroll-modifier?))
