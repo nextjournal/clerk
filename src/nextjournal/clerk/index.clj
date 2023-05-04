@@ -24,13 +24,16 @@
                                    {:class (when (seq dir) "ml-[20px]")}]
                                   (map (fn [file]
                                          [:li.mb-1
-                                          [:a.hover:underline
+                                          [:a.hover:underline.inline-flex.items-center
                                            {:class (str
                                                     "px-[7px] py-[2px] "
                                                     (if (= selected-path file)
                                                       "bg-blue-700 rounded-md text-white"
                                                       "bg-white text-blue-600"))
-                                            :href (nextjournal.clerk.viewer/doc-url file)} file]]))
+                                            :href (nextjournal.clerk.viewer/doc-url file)}
+                                           file
+                                           (when (= selected-path file)
+                                             [:span.font-inter.opacity-60.relative.ml-1 {:class "top-[2px]"} "↩︎"])]]))
                                   (sort files))]))
                         directories)])
    :transform-fn (comp
@@ -59,6 +62,10 @@
     (when (contains? paths next-index)
       (swap! !filter assoc :selected-path (get paths next-index)))))
 
+(defn show-path []
+  (when-let [path (:selected-path @!filter)]
+    (clerk/show! path)))
+
 (def filter-input-viewer
   (assoc v/viewer-eval-viewer
          :var-from-def true
@@ -80,7 +87,11 @@
                                                         (= (.-key e) "ArrowUp")
                                                         (do
                                                           (.preventDefault e)
-                                                          (nextjournal.clerk.render/clerk-eval '(select-path dec))))))]
+                                                          (nextjournal.clerk.render/clerk-eval '(select-path dec)))
+                                                        (= (.-key e) "Enter")
+                                                        (do
+                                                          (.preventDefault e)
+                                                          (nextjournal.clerk.render/clerk-eval '(show-path))))))]
                               (js/document.addEventListener "keydown" keydown-handler)
                               #(js/document.removeEventListener "keydown" keydown-handler)))
                           [!input-el])

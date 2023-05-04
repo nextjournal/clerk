@@ -34,6 +34,10 @@
              (when-not (contains? filter :selected-path)
                (swap! !filter assoc :selected-path (first (index/filtered+sorted-paths (merge {:paths @!notebooks} filter)))))))
 
+(defn show-path []
+  (when-let [path (:selected-path @!filter)]
+    (clerk/show! path)))
+
 {::clerk/visibility {:result :show}}
 
 ^{::clerk/css-class ["w-full" "m-0"]}
