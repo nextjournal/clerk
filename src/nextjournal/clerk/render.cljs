@@ -161,8 +161,7 @@
     (.preventDefault e)
     (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path path :skip-history? true}))))
 
-(defn render-notebook [{:as doc xs :blocks
-                        :keys [bundle? sidenotes? toc toc-visibility header footer]} opts]
+(defn render-notebook [{xs :blocks :keys [bundle? sidenotes? toc toc-visibility header footer]} opts]
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
                !state (r/atom {:toc (toc-items (:children toc))
@@ -317,7 +316,7 @@
     true (-> viewer/assign-expanded-at (get :nextjournal/expanded-at {}))))
 
 (defn result-css-class [render-opts x]
-  (let [{:as viewer viewer-name :name} (viewer/->viewer x)
+  (let [{viewer-name :name} (viewer/->viewer x)
         viewer-css-class (:css-class render-opts)
         inner-viewer-name (some-> x viewer/->value viewer/->viewer :name)]
     (js/console.log :render-opts render-opts :viewer-css-class viewer-css-class)
@@ -338,7 +337,7 @@
          :nested-prose "w-full max-w-prose"
          "w-full max-w-prose px-8")])))
 
-(defn render-result [{:nextjournal/keys [fetch-opts hash presented]} {:as opts :keys [id auto-expand-results? viewer css-class]}]
+(defn render-result [{:nextjournal/keys [fetch-opts hash presented]} {:as opts :keys [id auto-expand-results? css-class]}]
   (let [!desc (hooks/use-state-with-deps presented [hash])
         !expanded-at (hooks/use-state-with-deps (when (map? @!desc) (->expanded-at auto-expand-results? @!desc)) [hash])
         fetch-fn (hooks/use-callback (when fetch-opts

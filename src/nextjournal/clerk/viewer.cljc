@@ -1116,17 +1116,17 @@
                                              (map (comp present (partial ensure-wrapped-with-viewers viewers))))))
       (assoc :header (present (with-viewers viewers (with-viewer `header-viewer doc))))
       #_(assoc :footer (present (footer doc)))
-      (select-keys (concat parser/doc-settings
-                           [:atom-var-name->state
-                            :blocks :bundle?
-                            :error
-                            :open-graph
-                            :ns
-                            :title
-                            :toc
-                            :toc-visibility
-                            :header
-                            :footer]))
+      (select-keys [:atom-var-name->state
+                    :blocks :bundle?
+                    :nextjournal.clerk/css-class
+                    :error
+                    :open-graph
+                    :ns
+                    :title
+                    :toc
+                    :toc-visibility
+                    :header
+                    :footer])
       (update-if :error present)
       (assoc :sidenotes? (boolean (seq (:footnotes doc))))
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))

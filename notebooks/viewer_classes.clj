@@ -1,6 +1,8 @@
+;; # 🎨 Custom Viewer CSS Classes
 (ns viewer-classes
   {:nextjournal.clerk/visibility {:code :hide}
-   :nextjournal.clerk/doc-css-class [:justify-center :bg-slate-200 :dark:bg-slate-900 :py-8 :min-h-screen]}
+   :nextjournal.clerk/doc-css-class [:flex :flex-col :items-center
+                                     :justify-center :bg-slate-200 :dark:bg-slate-900 :py-8 :min-h-screen]}
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as viewer]
             [babashka.fs :as fs]
@@ -9,8 +11,18 @@
 ;; Setting css classes globally should happen on the viewers for the
 ;; notebook and results. This makes sense because it customizes the
 ;; `:render-fn`.
-(clerk/set-viewers! [(assoc viewer/notebook-viewer :render-opts {:css-class [:justify-center :bg-slate-200 :dark:bg-slate-900 :py-8 :min-h-screen]})
-                     (assoc viewer/result-viewer :render-opts {:css-class [:border :rounded-lg :shadow-lg :bg-white :p-4 :max-w-2xl :mx-auto]})])
+
+#_
+^{::clerk/visibility {:code :show}}
+(clerk/add-viewers!
+ [(assoc viewer/notebook-viewer
+         :render-opts {:css-class [:flex :flex-col :items-center
+                                   :justify-center :bg-slate-200 :dark:bg-slate-900 :py-8 :min-h-screen]})
+
+  (assoc viewer/result-viewer
+         :render-opts {:css-class [:border :rounded-lg :shadow-lg :bg-white :p-4 :max-w-2xl :mx-auto]})])
+#_
+(clerk/reset-viewers! (clerk/get-default-viewers))
 
 ;; To support customizing the result css class, we can't really use
 ;; `:render-opts` because its opts don't apply to the result but to
