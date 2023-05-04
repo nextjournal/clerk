@@ -75,23 +75,25 @@
                           (fn []
                             (let [keydown-handler (fn [e]
                                                     (when @!input-el
-                                                      (cond
-                                                        (and (.-metaKey e) (= (.-key e) "j"))
-                                                        (.focus @!input-el)
-                                                        (and (= @!input-el js/document.activeElement) (= (.-key e) "Escape"))
-                                                        (.blur @!input-el)
-                                                        (= (.-key e) "ArrowDown")
-                                                        (do
-                                                          (.preventDefault e)
-                                                          (nextjournal.clerk.render/clerk-eval '(select-path inc)))
-                                                        (= (.-key e) "ArrowUp")
-                                                        (do
-                                                          (.preventDefault e)
-                                                          (nextjournal.clerk.render/clerk-eval '(select-path dec)))
-                                                        (= (.-key e) "Enter")
-                                                        (do
-                                                          (.preventDefault e)
-                                                          (nextjournal.clerk.render/clerk-eval '(show-path))))))]
+                                                      (let [native-scroll-modifier? (or (.-metaKey e) (.-altKey e) (.-ctrlKey e))]
+                                                        (cond
+                                                          (and (.-metaKey e) (= (.-key e) "j"))
+                                                          (.focus @!input-el)
+                                                          (and (= @!input-el js/document.activeElement) (= (.-key e) "Escape"))
+                                                          (.blur @!input-el)
+                                                          (and (= (.-key e) "ArrowDown") (not native-scroll-modifier?))
+                                                          (do
+                                                            (js/console.log e)
+                                                            (.preventDefault e)
+                                                            (nextjournal.clerk.render/clerk-eval '(select-path inc)))
+                                                          (and (= (.-key e) "ArrowUp") (not native-scroll-modifier?))
+                                                          (do
+                                                            (.preventDefault e)
+                                                            (nextjournal.clerk.render/clerk-eval '(select-path dec)))
+                                                          (= (.-key e) "Enter")
+                                                          (do
+                                                            (.preventDefault e)
+                                                            (nextjournal.clerk.render/clerk-eval '(show-path)))))))]
                               (js/document.addEventListener "keydown" keydown-handler)
                               #(js/document.removeEventListener "keydown" keydown-handler)))
                           [!input-el])
