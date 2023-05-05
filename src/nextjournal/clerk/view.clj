@@ -7,9 +7,11 @@
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
-  ([opts {:as doc :keys [ns file]}]
+  ([opts {:as doc :keys [doc-css-class ns file]}]
    (binding [*ns* ns]
-     (-> (merge doc opts) v/notebook v/present))))
+     (-> (merge doc opts) v/notebook
+         (cond->> doc-css-class (v/with-viewers (v/add-viewers [(assoc-in v/notebook-viewer [:render-opts :css-class] doc-css-class)])))
+         v/present))))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
