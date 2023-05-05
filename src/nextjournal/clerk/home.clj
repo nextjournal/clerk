@@ -21,6 +21,9 @@
 ^::clerk/sync
 (defonce !filter (atom {}))
 
+(defn query-fn [query path]
+  (str/includes? (str/lower-case path) (str/lower-case (or query ""))))
+
 (defn filtered+sorted-paths [{:keys [paths query]}]
   (vec
    (mapcat
@@ -33,7 +36,7 @@
 
 (defn select-path [move]
   (let [{:as filter :keys [selected-path]} @!filter
-        paths (index/filtered+sorted-paths (merge {:paths @!notebooks} filter))
+        paths (filtered+sorted-paths (merge {:paths @!notebooks} filter))
         index (.indexOf paths selected-path)
         next-index (move index)]
     (when (contains? paths next-index)
@@ -42,14 +45,11 @@
 (add-watch !filter :empty-selected-path
            (fn [_ _ old-filter {:as filter :keys [selected-path]}]
              (when-not (contains? filter :selected-path)
-               (swap! !filter assoc :selected-path (first (index/filtered+sorted-paths (merge {:paths @!notebooks} filter)))))))
+               (swap! !filter assoc :selected-path (first (filtered+sorted-paths (merge {:paths @!notebooks} filter)))))))
 
 (defn show-path []
   (when-let [path (:selected-path @!filter)]
     (clerk/show! path)))
-
-(defn query-fn [query path]
-  (str/includes? (str/lower-case path) (str/lower-case (or query ""))))
 
 (def index-viewer
   {:render-fn '(fn [{:keys [directories query selected-path]} opts]
