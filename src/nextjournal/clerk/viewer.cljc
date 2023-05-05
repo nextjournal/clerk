@@ -1134,10 +1134,12 @@
 (def notebook-viewer
   {:name `notebook-viewer
    :render-fn 'nextjournal.clerk.render/render-notebook
-   :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
-                   (-> wrapped-value
-                       (update :nextjournal/value (partial process-blocks viewers))
-                       mark-presented))})
+   :transform-fn (fn [{:as wrapped-value doc :nextjournal/value :nextjournal/keys [viewers]}]
+                   (let [{:keys [doc-css-class]} doc]
+                     (-> wrapped-value
+                         (update :nextjournal/value (partial process-blocks viewers))
+                         (cond-> doc-css-class (update :nextjournal/viewer assoc-in [:render-opts :css-class] doc-css-class))
+                         mark-presented)))})
 
 (def viewer-eval-viewer
   {:pred viewer-eval?
@@ -1278,22 +1280,37 @@
 #_(ensure-wrapped-with-viewers 42)
 #_(ensure-wrapped-with-viewers {:nextjournal/value 42 :nextjournal/viewers [:boo]})
 
-(defn apply-viewers* [wrapped-value]
+(defn apply-viewers* [{:as wrapped-value ::keys [parent-viewer]}]
   (when (empty? (->viewers wrapped-value))
     (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
   (let [viewers (->viewers wrapped-value)
         {:as viewer :keys [render-fn transform-fn]} (viewer-for viewers wrapped-value)
-        transformed-value (ensure-wrapped-with-viewers viewers
-                                                       (cond-> (dissoc wrapped-value :nextjournal/viewer)
-                                                         transform-fn transform-fn))
+        {:as transformed-value viewer' :nextjournal/viewer}
+        (ensure-wrapped-with-viewers viewers (-> wrapped-value
+                                                 (assoc :nextjournal/viewer viewer)
+                                                 (cond-> transform-fn transform-fn)))
         wrapped-value' (cond-> transformed-value
                          (-> transformed-value ->value wrapped-value?)
                          (merge (->value transformed-value)))]
     (if (and transform-fn (not render-fn))
-      (recur wrapped-value')
+      (recur (assoc wrapped-value' ::parent-viewer viewer'))
       (-> wrapped-value'
-          (assoc :nextjournal/viewer viewer)
+          (assoc :nextjournal/viewer (merge (when (map? parent-viewer) parent-viewer)
+                                            (when (map? viewer') viewer')
+                                            viewer))
           (merge (->opts wrapped-value))))))
+
+(comment
+  ;; 🚨FIXME: this is an infinite loop
+  (->viewer (apply-viewers*
+             (ensure-wrapped-with-viewers
+              (with-viewer {:transform-fn (fn [wv] (assoc-in wv [:render-opts :css-class] "bg-slate-200"))}
+                123))))
+
+  ;; this works
+  (->viewer (apply-viewers*
+             (ensure-wrapped-with-viewers
+              (with-viewer notebook-viewer @@(resolve 'nextjournal.clerk.webserver/!doc))))))
 
 (defn apply-viewers [x]
   (apply-viewers* (ensure-wrapped-with-viewers x)))
