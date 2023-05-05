@@ -10,6 +10,7 @@
   ([opts {:as doc :keys [doc-css-class ns file]}]
    (binding [*ns* ns]
      (-> (merge doc opts) v/notebook
+         ;; TODO: drop this! (see `v/notebook-viewer`)
          (cond->> doc-css-class (v/with-viewers (v/add-viewers [(assoc-in v/notebook-viewer [:render-opts :css-class] doc-css-class)])))
          v/present))))
 

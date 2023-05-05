@@ -390,6 +390,7 @@
 (defn expandable? [xs]
   (< 1 (count xs)))
 
+;; TODO: make this a def (drop the opts) call [inspect-presented x] and make !expanded-at info available via React context provider
 (defn inspect-children [opts]
   (map (fn [x] (cond-> [inspect-presented opts x]
                  (get-in x [:nextjournal/opts :id])
@@ -604,6 +605,7 @@
 (defn valid-react-element? [x] (react/isValidElement x))
 
 (defn inspect-presented
+  ;; TODO: drop arity-2, pass !expanded-at via React context provided from render-result (same as :fetch-fn)
   ([x]
    (r/with-let [!expanded-at (r/atom (:nextjournal/expanded-at x))]
      [inspect-presented {:!expanded-at !expanded-at} x]))
@@ -615,7 +617,7 @@
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
        ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
        [(:render-fn viewer) value (merge opts ;; TODO: verify we really want/need to merge, probably the table viewer needs it atm
-                                         ;; consider merging on the JVM on presentation
+                                         ;; consider merging on the JVM on presentation, this 3rd entry should just be (:nextjournal/opts x)
                                          (:render-opts viewer)
                                          (:nextjournal/opts x)
                                          {:viewer viewer :path path})]))))

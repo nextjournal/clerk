@@ -494,9 +494,9 @@
                                                                          opts-from-block
                                                                          (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value))
         presented-result (-> (present to-present)
-                             (update :nextjournal/opts
+                             (update :nextjournal/opts      ;; TODO rename to :nextjournal/render-opts
                                      (fn [{:as opts existing-id :id}]
-                                       (cond-> opts
+                                       (cond-> opts         ;; TODO: merge `opts` into :render-opts from viewer map
                                          auto-expand-results? (assoc :auto-expand-results? auto-expand-results?)
                                          (seq path) (assoc :fragment-item? true)
                                          (not existing-id) (assoc :id (processed-block-id (str id "-result") path)))))
@@ -942,6 +942,8 @@
                          (assoc :nextjournal/viewer `table-markup-viewer)
                          (update :nextjournal/width #(or % :wide))
                          (update :nextjournal/viewers update-table-viewers)
+                         ;; TODO: instead of setting opts in this wrapped value pass them as viewer-opts to the relevant child viewers directly (e.g. `table-row-viewer)
+                         ;; (merge of opts client-side will be dropped)
                          (update :nextjournal/opts merge {:num-cols (count (or head (first rows)))
                                                           :number-col? (into #{}
                                                                              (comp (map-indexed vector)
@@ -1137,6 +1139,8 @@
    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
                    (-> wrapped-value
                        (update :nextjournal/value (partial process-blocks viewers))
+                       ;; TODO: this will be safe once we drop propagation of ops via inspec-children in the client
+                       ;; (cond-> doc-css-class (assoc-in [:nextjournal/render-opts :css-class] doc-css-class))
                        mark-presented))})
 
 (def viewer-eval-viewer
