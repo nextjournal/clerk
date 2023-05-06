@@ -767,8 +767,11 @@
 (defn handle-initial-load [_]
   (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
 
+(defn path-from-url-hash [url]
+  (-> url ->URL .-hash (subs 2)))
+
 (defn handle-hashchange [{:keys [url->path path->doc]} ^js e]
-  (let [url (some-> e .-event_ .-newURL ->URL .-hash (subs 2))]
+  (let [url (some-> e .-event_ .-newURL path-from-url-hash)]
     (when-some [doc (get path->doc (get url->path url))]
       (set-state! {:doc doc}))))
 
@@ -798,7 +801,10 @@
     (if static-app?
       (let [url->path (set/map-invert path->url)]
         (when bundle? (setup-router! (assoc state :mode :fragment :url->path url->path)))
-        (set-state! {:doc (get path->doc (or current-path (url->path "")))})
+        (set-state! {:doc (get path->doc (or current-path
+                                             (when (and bundle? (exists? js/document))
+                                               (url->path (path-from-url-hash (.-location js/document))))
+                                             (url->path "")))})
         (mount))
       (do
         (setup-router! {:mode :path})
