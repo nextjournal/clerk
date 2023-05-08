@@ -316,9 +316,9 @@
     (let [deps-edn (edn/read-string (slurp "deps.edn"))]
       (if-some [clerk-alias (get-in deps-edn [:aliases :nextjournal/clerk])]
         (get clerk-alias :exec-args
-             {:error (str "No `:exec-args` found in `:nextjournal/clerk` alias. " help)})
-        {:error (str "No `:nextjournal/clerk` alias found in `deps.edn`. " help)}))
-    {:error (str "No `deps.edn` found in project. " help)}))
+             {:error (str "No `:exec-args` found in `:nextjournal/clerk` alias.")})
+        {:error (str "No `:nextjournal/clerk` alias found in `deps.edn`.")}))
+    {:error (str "No `deps.edn` found in project.")}))
 
 (def ^:dynamic ^:private *build-opts* nil)
 (defn index-paths []

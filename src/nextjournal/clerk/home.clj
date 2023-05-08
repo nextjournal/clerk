@@ -4,7 +4,6 @@
             [babashka.fs :as fs]
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.builder :as builder]
-            [nextjournal.clerk.index :as index]
             [nextjournal.clerk.viewer :as v]))
 
 (defn glob-notebooks []
