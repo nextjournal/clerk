@@ -25,7 +25,7 @@
         juji/editscript {:mvn/version "0.6.2"}}
 
  :aliases {:nextjournal/clerk {:extra-deps {org.clojure/clojure {:mvn/version "1.12.0-alpha3"} ;; for `:as-alias` support in static build
-                                            org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
+                                            org.slf4j/slf4j-nop {:mvn/version "2.0.7"}
                                             org.babashka/cli {:mvn/version "0.6.50"}}
                                :extra-paths ["notebooks"]
                                :exec-fn nextjournal.clerk/build!
@@ -42,7 +42,7 @@
                               cider/cider-nrepl {:mvn/version "0.29.0"}
                               com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.0.3"}
                               io.github.nextjournal/cas-client {:git/sha "84ab35c3321c1e51a589fddbeee058aecd055bf8"}
-                              org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
+                              org.slf4j/slf4j-nop {:mvn/version "2.0.7"}
                               org.babashka/cli {:mvn/version "0.5.40"}}
                  :extra-paths ["dev" "notebooks"]
                  :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}"
@@ -79,5 +79,4 @@
 
            :test-release-js {:jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/viewer.js\"}"]
                              :exec-args {:out-path "build"}
-                             :main-opts ["-m" "babashka.cli.exec"]}
-}}
+                             :main-opts ["-m" "babashka.cli.exec"]}}}

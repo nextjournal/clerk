@@ -112,8 +112,8 @@
   (testing "assigning viewers from form meta"
     (is (match? {:blocks [{:result {:nextjournal/viewer fn?}}]}
                 (eval/eval-string "^{:nextjournal.clerk/viewer nextjournal.clerk/table} (def markup [:h1 \"hi\"])")))
-    (is (match? {:blocks [{:result {:nextjournal/viewer :html}}]}
-                (eval/eval-string "^{:nextjournal.clerk/viewer :html} (def markup [:h1 \"hi\"])"))))
+    (is (match? {:blocks [{:result {:nextjournal/viewer `viewer/html}}]}
+                (eval/eval-string "^{:nextjournal.clerk/viewer 'nextjournal.clerk.viewer/html} (def markup [:h1 \"hi\"])"))))
 
   (testing "var result that's not from a def should stay untouched"
     (is (match? {:blocks [{:result {:nextjournal/value {:nextjournal.clerk/var-from-def var?}}}

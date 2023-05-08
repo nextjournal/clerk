@@ -390,9 +390,9 @@
   (< 1 (count xs)))
 
 (defn inspect-children [opts]
-  (map-indexed (fn [idx x] (cond-> [inspect-presented (update opts :path (fnil conj []) idx) x]
-                             (get-in x [:nextjournal/opts :id])
-                             (with-meta {:key (str (get-in x [:nextjournal/opts :id]) "@" @!eval-counter)})))))
+  (map (fn [x] (cond-> [inspect-presented opts x]
+                 (get-in x [:nextjournal/opts :id])
+                 (with-meta {:key (str (get-in x [:nextjournal/opts :id]) "@" @!eval-counter)})))))
 
 (def expand-style
   ["cursor-pointer"
@@ -609,11 +609,13 @@
   ([opts x]
    (if (valid-react-element? x)
      x
-     (let [{:nextjournal/keys [value viewer]} x]
+     (let [{:nextjournal/keys [value viewer] :keys [path]} x]
        #_(prn :inspect-presented value :valid-element? (react/isValidElement value) :viewer viewer)
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
        ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
-       [(:render-fn viewer) value (merge opts (:nextjournal/opts x) {:viewer viewer})]))))
+       [(:render-fn viewer) value (merge opts
+                                         (:nextjournal/opts x)
+                                         {:viewer viewer :path path})]))))
 
 (defn inspect [value]
   (r/with-let [!state (r/atom nil)]
@@ -765,8 +767,11 @@
 (defn handle-initial-load [_]
   (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
 
+(defn path-from-url-hash [url]
+  (-> url ->URL .-hash (subs 2)))
+
 (defn handle-hashchange [{:keys [url->path path->doc]} ^js e]
-  (let [url (some-> e .-event_ .-newURL ->URL .-hash (subs 2))]
+  (let [url (some-> e .-event_ .-newURL path-from-url-hash)]
     (when-some [doc (get path->doc (get url->path url))]
       (set-state! {:doc doc}))))
 
@@ -796,7 +801,10 @@
     (if static-app?
       (let [url->path (set/map-invert path->url)]
         (when bundle? (setup-router! (assoc state :mode :fragment :url->path url->path)))
-        (set-state! {:doc (get path->doc (or current-path (url->path "")))})
+        (set-state! {:doc (get path->doc (or current-path
+                                             (when (and bundle? (exists? js/document))
+                                               (url->path (path-from-url-hash (.-location js/document))))
+                                             (url->path "")))})
         (mount))
       (do
         (setup-router! {:mode :path})
