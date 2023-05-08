@@ -3,6 +3,7 @@
   (:require [clojure.string :as str]
             [babashka.fs :as fs]
             [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.builder :as builder]
             [nextjournal.clerk.index :as index]
             [nextjournal.clerk.viewer :as v]))
 
@@ -177,8 +178,8 @@
    (when-not (seq (:query @!filter))
      [:div {:class "w-1/2 pt-6 pl-6"}
       [:h4.text-lg "Static Build Index"]
-      (let [{:keys [paths error]} @index/!paths]
+      (let [{:keys [paths error]} (builder/index-paths)]
         (cond
-          error (clerk/md {::clerk/css-class [:m-0]} error)
+          error [:div {:class "-mx-8"} (clerk/md error)]
           paths (let [{:keys [query]} @!filter]
                   (clerk/with-viewer index-viewer {:paths (filter (partial query-fn query) paths)}))))])]])
