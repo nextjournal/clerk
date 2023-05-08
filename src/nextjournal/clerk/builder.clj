@@ -154,6 +154,7 @@
     (cond paths (if (sequential? paths)
                   {:resolved-paths paths}
                   {:error "`:paths` must be sequential" :paths paths})
+          index {:resolved-paths []}
           paths-fn (let [ex-msg "`:path-fn` must be a qualified symbol pointing at an existing var."]
                      (if-not (qualified-symbol? paths-fn)
                        {:error ex-msg :paths-fn paths-fn}
