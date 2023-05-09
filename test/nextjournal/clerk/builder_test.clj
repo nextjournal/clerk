@@ -26,6 +26,9 @@
                                         :out-path temp})
             (is (= expected @url*))))))))
 
+(def test-paths ["boo*.clj"])
+(def test-paths-fn (fn [] ["boo*.clj"]))
+
 (deftest expand-paths
   (testing "expands glob patterns"
     (let [{paths :expanded-paths} (builder/expand-paths {:paths ["notebooks/*clj"]})]
@@ -39,6 +42,12 @@
   (testing "supports paths"
     (is (= {:expanded-paths ["book.clj"]}
            (builder/expand-paths {:paths ["book.clj"]}))))
+
+  (testing "supports paths-fn"
+    (is (= {:expanded-paths ["book.clj"]}
+           (builder/expand-paths {:paths-fn `test-paths})))
+    (is (= {:expanded-paths ["book.clj"]}
+           (builder/expand-paths {:paths-fn `test-paths-fn}))))
 
   (testing "deduplicates index + paths"
     (is (= {:expanded-paths [(str (fs/file "notebooks" "rule_30.clj"))]}

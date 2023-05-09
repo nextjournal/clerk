@@ -154,7 +154,6 @@
     (cond paths (if (sequential? paths)
                   {:resolved-paths paths}
                   {:error "`:paths` must be sequential" :paths paths})
-          index {:resolved-paths []}
           paths-fn (let [ex-msg "`:path-fn` must be a qualified symbol pointing at an existing var."]
                      (if-not (qualified-symbol? paths-fn)
                        {:error ex-msg :paths-fn paths-fn}
@@ -171,19 +170,22 @@
                                {:error (str "`:paths-fn` must compute to a sequential value.")
                                 :paths-fn paths-fn :resolved-paths paths}
                                {:resolved-paths paths})))
-                         {:error ex-msg :paths-fn paths-fn}))))))
+                         {:error ex-msg :paths-fn paths-fn})))
+          index {:resolved-paths []})))
 
 #_(resolve-paths {:paths ["notebooks/di*.clj"]})
 #_(resolve-paths {:paths-fn 'clojure.core/inc})
+#_(resolve-paths {:paths-fn 'nextjournal.clerk.builder/clerk-docs})
 
 (defn expand-paths [build-opts]
   (let [{:as opts :keys [error resolved-paths]} (resolve-paths build-opts)]
     (if error
       opts
-      (->> {:expanded-paths (->> resolved-paths
-                                 (mapcat (partial fs/glob "."))
-                                 (filter (complement fs/directory?))
-                                 (mapv (comp str fs/file)))}
+      (->> resolved-paths
+           (mapcat (partial fs/glob "."))
+           (filter (complement fs/directory?))
+           (mapv (comp str fs/file))
+           (hash-map :expanded-paths)
            (maybe-add-index build-opts)
            (ensure-not-empty build-opts)))))
 
