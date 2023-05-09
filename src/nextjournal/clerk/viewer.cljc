@@ -796,7 +796,7 @@
   {:pred map-entry? :name `map-entry-viewer :render-fn '(fn [xs opts] (into [:<>] (comp (nextjournal.clerk.render/inspect-children opts) (interpose " ")) xs)) :page-size 2})
 
 (def read+inspect-viewer
-  {:name `read+inspect-viewer :render-fn '(fn [x] (try [nextjournal.clerk.render/inspect (read-string x)]
+  {:name `read+inspect-viewer :render-fn '(fn [x] (try [nextjournal.clerk.render/inspect (nextjournal.clerk.viewer/read-string-without-tag-table x)]
                                                        (catch js/Error _e
                                                          (nextjournal.clerk.render/render-unreadable-edn x))))})
 
