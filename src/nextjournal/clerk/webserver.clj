@@ -222,17 +222,22 @@
                              :resource->url @config/!resource->url
                              :conn-ws? true})}))))
 
+(defn serve-static-asset [{:keys [uri]}]
+  (some (fn [mount-path]
+          (let [path (fs/path mount-path (subs uri 1))]
+            (when (fs/exists? path) (serve-file uri path)))) @config/!static-assets-paths))
+
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
     (httpkit/as-channel req ws-handlers)
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
-        ("build" "js" "css") (serve-file uri (str "public" uri))
-        ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
+        "_fs" (serve-file uri (str/replace uri "/_fs/" ""))
         "_ws" {:status 200 :body "upgrading..."}
         "favicon.ico" {:status 404}
-        (serve-notebook req))
+        (or (when (not= uri "/") (serve-static-asset req))
+            (serve-notebook req)))
       (catch Throwable e
         {:status  500
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
