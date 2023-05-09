@@ -6,7 +6,7 @@
         babashka/fs {:mvn/version "0.2.14"}
         borkdude/edamame {:mvn/version "1.0.16"}
         weavejester/dependency {:mvn/version "0.2.1"}
-        com.nextjournal/beholder {:mvn/version "1.0.2"#_#_ :exclusions [org.slf4j/slf4j-api]}
+        com.nextjournal/beholder {:mvn/version "1.0.2"}
 
         io.github.nextjournal/markdown {:mvn/version "0.5.144"}
         babashka/process {:mvn/version "0.4.16"}
@@ -79,5 +79,4 @@
 
            :test-release-js {:jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/viewer.js\"}"]
                              :exec-args {:out-path "build"}
-                             :main-opts ["-m" "babashka.cli.exec"]}
-           }}
+                             :main-opts ["-m" "babashka.cli.exec"]}}}

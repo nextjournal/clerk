@@ -46,6 +46,7 @@
          "viewer_d3_require"
          "viewers_nested"
          "viewer_normalization"
+         "viewers/by_val_meta"
          "viewers/caption"
          "viewers/code"
          "viewers/control_lab"
