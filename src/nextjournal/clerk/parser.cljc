@@ -356,12 +356,17 @@
          :nodes (rest nodes)
          ::md-slice []))
 
+(defn fenced-clojure-code-block? [{:keys [type info language skip] eval? :eval}]
+  (and (= :code type) info
+       (or (empty? language) (re-matches #"clj(c?)|clojure" language))
+       (not skip) (not= "false" eval?)))
+
 (defn parse-markdown-string [{:as opts :keys [doc?]} s]
   (let [{:as ctx :keys [content]} (parse-markdown (markdown-context) s)]
     (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes content :md-context ctx}]
       (if-some [node (first nodes)]
         (recur
-         (if (and (code? node) (contains? node :info))
+         (if (fenced-clojure-code-block? node)
            (-> state
                (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
                (parse-markdown-cell opts))

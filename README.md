@@ -50,7 +50,7 @@ To use Clerk in your project, add the following dependency to your `deps.edn`:
 
 Require and start Clerk as part of your system start, e.g. in `user.clj`:
 
-```clojure
+```clojure skip
 (require '[nextjournal.clerk :as clerk])
 
 ;; start Clerk's built-in webserver on the default port 7777, opening the browser when done
@@ -68,7 +68,6 @@ Require and start Clerk as part of your system start, e.g. in `user.clj`:
 ;; Build a html file from the given notebook notebooks.
 ;; See the docstring for more options.
 (clerk/build! {:paths ["notebooks/rule_30.clj"]})
-
 ```
 
 You can then access Clerk at <http://localhost:7777>.
@@ -109,7 +108,7 @@ In IntelliJ/Cursive, you can [set up REPL commands](https://cursive-ide.com/user
 
 With [neovim](https://neovim.io/) + [conjure](https://github.com/Olical/conjure/) one can use the following vimscript function to save the file and show it with Clerk:
 
-```
+```vimscript
 function! ClerkShow()
   exe "w"
   exe "ConjureEval (nextjournal.clerk/show! \"" . expand("%:p") . "\")"
@@ -141,7 +140,7 @@ See [notebooks/onwards.md](https://github.com/nextjournal/clerk/blob/main/notebo
 If you are a researcher and use Clerk in your work, we encourage you to cite our work.
 You can use the following BibTeX citation:
 
-```
+```bibtex
 @misc{clerk-github,
   author =  {Martin Kavalar and
              Jack Rusher},
