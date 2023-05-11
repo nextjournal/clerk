@@ -1118,7 +1118,7 @@
       #_(assoc :footer (present (footer doc)))
       (select-keys [:atom-var-name->state
                     :blocks :bundle?
-                    :nextjournal.clerk/css-class
+                    :doc-css-class
                     :error
                     :open-graph
                     :ns
