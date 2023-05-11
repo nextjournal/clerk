@@ -649,6 +649,7 @@ v/table-viewer
 ;; the viewers per namespace. Here, we add the `literal-viewer` from
 ;; above to the whole namespace.
 
+^{::clerk/visibility {:result :hide}}
 (clerk/add-viewers! [literal-viewer])
 
 ;; As you can see we now get this viewer automatically, without
@@ -800,6 +801,19 @@ v/table-viewer
 ;;    (rand-int 42) ;; code will be visible
 ;;
 ;; This comes in quite handy for debugging too!
+;;
+;; ### 👻 Clerk Metadata
+;;
+;; By default, Clerk will hide Clerk's metadata annotations on cells
+;; to not distract from the essence. When you do want your reader
+;; learn how the metadata annotations are written – as for this book –
+;; you can opt out of this behaviour by modifying the
+;; `code-block-viewer`:
+;;
+;;    (clerk/add-viewers! [(assoc v/code-block-viewer :transform-fn (v/update-val :text))])
+;;
+^{::clerk/visibility {:code :hide :result :hide}}
+(v/reset-viewers! *ns* (v/add-viewers (v/get-viewers *ns*) [(assoc v/code-block-viewer :transform-fn (v/update-val :text))]))
 
 ;; ### 🍽 Table of Contents
 
