@@ -1,21 +1,27 @@
 # 🤺 Markdown Fences
 
-```clojure
-'evaluated
+```
+'(evaluated :and "highlighted")
 ```
 
 ```clojure
-'evaluated
+'(evaluated :and "highlighted")
 ```
 
 ```clojure eval=false
-'not-evaluated
+'(1 2 "not evaluated" :but-still-highlighted)
 ```
 
 ```clojure skip
-'not-evaluated
+'(1 2 "not evaluated" :but-still-highlighted)
 ```
 
 ```js
-() => { return 'not evaluated' }
+() => {
+  if (true) {
+    return 'not evaluated'
+  } else {
+    return 'what'
+  }
+}
 ```

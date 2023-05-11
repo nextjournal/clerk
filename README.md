@@ -121,7 +121,7 @@ nmap <silent> <localleader>cs :execute ClerkShow()<CR>
 Make sure you have [Babashka installed](https://github.com/babashka/babashka#installation), and run:
 
 ```bash
-bb dev :browse\? true
+bb dev :browse? true
 ```
 
 The will start everything needed to develop Clerk and open your

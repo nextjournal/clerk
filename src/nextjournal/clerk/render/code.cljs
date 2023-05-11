@@ -87,17 +87,22 @@
                   (< pos to)
                   (concat [(.sliceString text pos to)]))))))))
 
-(defn render-code [^String code _]
-  (let [builder (RangeSetBuilder.)
-        _ (highlightTree (.. clojureLanguage -parser (parse code)) highlight-style
-                         (fn [from to style]
-                           (.add builder from to (.mark Decoration (j/obj :class style)))))
-        decorations-rangeset (.finish builder)
-        text (.of Text (.split code "\n"))]
+(defn lang->deco-range [lang code]
+  (let [builder (RangeSetBuilder.)]
+    (when lang
+      (highlightTree (.. lang -parser (parse code)) highlight-style
+                     (fn [from to style]
+                       (.add builder from to (.mark Decoration (j/obj :class style))))))
+    (.finish builder)))
+
+(defn render-code [^String code {:keys [language]}]
+  (let [text (.of Text (.split code "\n"))]
     [:div.cm-editor
      [:cm-scroller
       (into [:div.cm-content.whitespace-pre]
-            (map (partial style-line decorations-rangeset text))
+            (map (partial style-line
+                          ;; TODO: use-promise hook resolving to language data according to @codemirror/language-data
+                          (lang->deco-range (when (= "clojure" language) clojureLanguage) code) text))
             (range 1 (inc (.-lines text))))]]))
 
 ;; editable code viewer
