@@ -649,6 +649,10 @@ v/table-viewer
 ;; the viewers per namespace. Here, we add the `literal-viewer` from
 ;; above to the whole namespace.
 
+
+;; **[FIXME]:** _this call is overridden by `add-viewers!` called in the Customization section below._
+
+^{::clerk/visibility {:result :hide}}
 (clerk/add-viewers! [literal-viewer])
 
 ;; As you can see we now get this viewer automatically, without
@@ -800,6 +804,16 @@ v/table-viewer
 ;;    (rand-int 42) ;; code will be visible
 ;;
 ;; This comes in quite handy for debugging too!
+;;
+;; ### 🔧 Viewer Behaviour
+;; By using `clerk/add-viewers!` we can prepend a collection of viewers to the default ones. Since order matters for viewer dispatch
+;; at presentation, the specified viewers will take precedence over the default ones.
+;;
+;; In particular this allows to modify the behaviour of named viewers: the following code tells Clerk to not hide
+;; cell metadata
+^{::clerk/visibility {:result :hide}}
+(clerk/add-viewers! [(assoc v/code-block-viewer
+                            :transform-fn (v/update-val :text))])
 
 ;; ### 🍽 Table of Contents
 
