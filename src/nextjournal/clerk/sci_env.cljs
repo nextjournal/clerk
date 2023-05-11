@@ -78,7 +78,8 @@
          :read-cond :allow
          :readers
          (fn [tag]
-           (or (get {'viewer-fn ->viewer-fn-with-error
+           (or (get @cljs.reader/*tag-table* tag)
+               (get {'viewer-fn ->viewer-fn-with-error
                      'viewer-fn/cherry cherry-env/->viewer-fn-with-error
                      'viewer-eval ->viewer-eval-with-error
                      'viewer-eval/cherry cherry-env/->viewer-eval-with-error} tag)
@@ -95,6 +96,10 @@
 (defn ^:export read-string [s]
   (edamame/parse-string s @!edamame-opts))
 
+(defn read-string-without-tag-table [s]
+  (binding [cljs.reader/*tag-table* (atom {})]
+    (edamame/parse-string s @!edamame-opts)))
+
 (def ^{:doc "Stub implementation to be replaced during static site generation. Clerk is only serving one page currently."}
   doc-url (sci/new-var 'doc-url viewer/doc-url))
 
@@ -104,6 +109,7 @@
           'doc-url doc-url
           'url-for render/url-for
           'read-string read-string
+          'read-string-without-tag-table read-string-without-tag-table
           'clerk-eval render/clerk-eval
           'consume-view-context view-context/consume
           'inspect-presented render/inspect-presented
