@@ -802,17 +802,15 @@ v/table-viewer
 ;;
 ;; This comes in quite handy for debugging too!
 ;;
-;; ### 🔧 Clerk Metadata
+;; ### 👻 Clerk Metadata
 ;; By default Clerk will hide metadata annotations on cells in order not to distract from the essence of your code. For
 ;; pedagogical purposes however, we might want to allow such metadata to be displayed in code blocks. We can do so by
 ;; altering the behaviour of the default code block viewer:
 ;;
 ;;    (clerk/add-viewers! [(assoc v/code-block-viewer :transform-fn (v/update-val :text))])
 ;;
-;;
 ^{::clerk/visibility {:code :hide :result :hide}}
 (v/reset-viewers! *ns* (v/add-viewers (v/get-viewers *ns*) [(assoc v/code-block-viewer :transform-fn (v/update-val :text))]))
-
 
 ;; ### 🍽 Table of Contents
 
