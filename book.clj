@@ -803,9 +803,12 @@ v/table-viewer
 ;; This comes in quite handy for debugging too!
 ;;
 ;; ### 👻 Clerk Metadata
-;; By default Clerk will hide metadata annotations on cells in order not to distract from the essence of your code. For
-;; pedagogical purposes however, we might want to allow such metadata to be displayed in code blocks. We can do so by
-;; altering the behaviour of the default code block viewer:
+;;
+;; By default, Clerk will hide Clerk's metadata annotations on cells
+;; to not distract from the essence. When you do want your reader
+;; learn how the metadata annotations are written – as for this book –
+;; you can opt out of this behaviour by modifying the
+;; `code-block-viewer`:
 ;;
 ;;    (clerk/add-viewers! [(assoc v/code-block-viewer :transform-fn (v/update-val :text))])
 ;;
