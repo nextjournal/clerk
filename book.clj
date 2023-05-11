@@ -649,9 +649,6 @@ v/table-viewer
 ;; the viewers per namespace. Here, we add the `literal-viewer` from
 ;; above to the whole namespace.
 
-
-;; **[FIXME]:** _this call is overridden by `add-viewers!` called in the Customization section below._
-
 ^{::clerk/visibility {:result :hide}}
 (clerk/add-viewers! [literal-viewer])
 
@@ -805,15 +802,17 @@ v/table-viewer
 ;;
 ;; This comes in quite handy for debugging too!
 ;;
-;; ### 🔧 Viewer Behaviour
-;; By using `clerk/add-viewers!` we can prepend a collection of viewers to the default ones. Since order matters for viewer dispatch
-;; at presentation, the specified viewers will take precedence over the default ones.
+;; ### 🔧 Clerk Metadata
+;; By default Clerk will hide metadata annotations on cells in order not to distract from the essence of your code. For
+;; pedagogical purposes however, we might want to allow such metadata to be displayed in code blocks. We can do so by
+;; altering the behaviour of the default code block viewer:
 ;;
-;; In particular this allows to modify the behaviour of named viewers: the following code tells Clerk to not hide
-;; cell metadata
-^{::clerk/visibility {:result :hide}}
-(clerk/add-viewers! [(assoc v/code-block-viewer
-                            :transform-fn (v/update-val :text))])
+;;    (clerk/add-viewers! [(assoc v/code-block-viewer :transform-fn (v/update-val :text))])
+;;
+;;
+^{::clerk/visibility {:code :hide :result :hide}}
+(v/reset-viewers! *ns* (v/add-viewers (v/get-viewers *ns*) [(assoc v/code-block-viewer :transform-fn (v/update-val :text))]))
+
 
 ;; ### 🍽 Table of Contents
 
