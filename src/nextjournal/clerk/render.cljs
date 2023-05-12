@@ -792,8 +792,10 @@
     (reset! !router (assoc state :listeners (listeners state)))))
 
 
-(defn ^:export ^:dev/after-load mount []
+(defn ^:export ^:dev/after-load mount [{:keys [init?]}]
   (when (and react-root (not hydrate?))
+    (when-not init?
+      (swap! !doc re-eval-viewer-fns))
     (.render react-root (r/as-element [root]))))
 
 (defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path]}]
@@ -805,11 +807,11 @@
                                              (when (and bundle? (exists? js/document))
                                                (url->path (path-from-url-hash (.-location js/document))))
                                              (url->path "")))})
-        (mount))
+        (mount {:init? true}))
       (do
         (setup-router! {:mode :path})
         (set-state! state)
-        (mount)))))
+        (mount {:init? true})))))
 
 
 (defn html-render [markup]
