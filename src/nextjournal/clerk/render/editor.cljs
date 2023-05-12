@@ -14,6 +14,7 @@
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clojure-mode.extensions.eval-region :as eval-region]
             [nextjournal.clojure-mode.keymap :as clojure-mode.keymap]
+            [reagent.core :as r]
             [rewrite-clj.node :as n]
             [rewrite-clj.parser :as p]
             [sci.core :as sci]
@@ -147,7 +148,7 @@
   (update doc :blocks (partial map (fn [{:as cell :keys [type text var form]}]
                                      (cond-> cell
                                        (= :code type)
-                                       (assoc :result                                                
+                                       (assoc :result
                                               {:nextjournal/value (cond->> (eval form)
                                                                     var (hash-map :nextjournal.clerk/var-from-def))}))))))
 
@@ -157,6 +158,12 @@
        (analyze-doc)
        (eval-blocks)
        (v/with-viewer v/notebook-viewer)))
+
+(defn eval-notebook-component [{:keys [code]}]
+  [eval-notebook code])
+
+(def ^:export EvalNotebook
+  (r/reactify-component eval-notebook-component (r/create-compiler {:function-components true})))
 
 (defonce bar-height 26)
 

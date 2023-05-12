@@ -7,7 +7,10 @@
                    :release {:output-dir "build/"}
                    :compiler-options {:source-map true}
                    :dev {:modules {:viewer {:entries [devtools]}}}
-                   :modules {:viewer {:entries [nextjournal.clerk.sci-env
+                   :modules {:viewer {:exports {EvalNotebook nextjournal.clerk.render.editor/EvalNotebook
+                                                TestComponent nextjournal.clerk.render/TestComponent
+                                                TestComponentHooks nextjournal.clerk.render/TestComponentHooks}
+                                      :entries [nextjournal.clerk.sci-env
                                                 nextjournal.clerk.trim-image]}}
                    :js-options {:output-feature-set :es8}
                    :build-hooks [(shadow.cljs.build-report/hook

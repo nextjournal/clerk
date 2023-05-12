@@ -899,3 +899,28 @@
                              (str "?" (opts->query opts))))))
 
 (def consume-view-context view-context/consume)
+
+(defn test-component [{:as props :keys [title]}]
+  (js/console.log "test component" (str props))
+  (r/with-let [!state (r/atom 0)]
+    [:div
+     [:h1 title]
+     [:button.p-2.bg-blue-200
+      {:on-click #(swap! !state inc)}
+      (str "Click Me / Uses Reagent Atoms: " @!state)]]))
+
+(defn test-component-hooks [{:as props :keys [title]}]
+  (js/console.log "test component hooks" (str props))
+  ;; using plain unwrapped hooks for simplicity
+  (let [[counter set-counter] (react/useState 0)]
+    [:div
+     [:h1 title]
+     [:button.p-2.bg-blue-200
+      {:on-click #(set-counter inc)}
+      (str "Click Me / Uses React Hooks: " counter)]]))
+
+(def ^:export TestComponent
+  (r/reactify-component test-component (r/create-compiler {:function-components true})))
+
+(def ^:export TestComponentHooks
+  (r/reactify-component test-component-hooks (r/create-compiler {:function-components true})))
