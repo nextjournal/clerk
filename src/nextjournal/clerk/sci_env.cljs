@@ -212,7 +212,7 @@
 
 (set! *eval* eval-form)
 
-(defn ^:export inspect-string [^String content]
+(defn ^:export inspect-string [{:keys [content]}]
   (as-> content
     doc
     (parser/parse-clojure-string {:doc? true} doc)
