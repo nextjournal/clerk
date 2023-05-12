@@ -15,7 +15,7 @@
             [edamame.core :as edamame]
             [goog.object]
             [nextjournal.clerk.cherry-env :as cherry-env]
-            [nextjournal.clerk.parser]
+            [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.render :as render]
             [nextjournal.clerk.render.code]
             [nextjournal.clerk.render.context :as view-context]
@@ -26,6 +26,7 @@
             [nextjournal.clojure-mode.commands]
             [nextjournal.clojure-mode.extensions.eval-region]
             [nextjournal.clojure-mode.keymap]
+            [reagent.core :as r]
             [reagent.dom.server :as dom-server]
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
@@ -210,3 +211,22 @@
 (sci/alter-var-root sci/print-err-fn (constantly *print-err-fn*))
 
 (set! *eval* eval-form)
+
+(defn ^:export inspect-string [^String content]
+  (as-> content
+    doc
+    (parser/parse-clojure-string {:doc? true} doc)
+    (update doc :blocks (partial map (fn [{:as b :keys [type text]}]
+                                       (cond-> b
+                                         (= :code type)
+                                         (assoc :result
+                                                {:nextjournal/value
+                                                 (let [val (eval-form (read-string text))]
+                                                   ;; FIXME: this won't be necessary once we unify v/html in SCI env to be the same as in nextjournal.clerk.viewer
+                                                   ;; v/html is currently html-render for supporting legacy render-fns
+                                                   (cond->> val
+                                                     (render/valid-react-element? val)
+                                                     (viewer/with-viewer viewer/reagent-viewer)))})))))
+    [render/inspect (viewer/with-viewer viewer/notebook-viewer {:nextjournal.clerk/width :wide} doc)]))
+
+(def ^:export InspectString (r/reactify-component inspect-string))
