@@ -796,7 +796,7 @@
   (when (and react-root (not hydrate?))
     (.render react-root (r/as-element [root]))))
 
-(defn ^:dev/after-load remount []
+(defn ^:dev/after-load ^:after-load re-render []
   (swap! !doc re-eval-viewer-fns)
   (mount))
 
