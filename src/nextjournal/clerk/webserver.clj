@@ -214,7 +214,7 @@
                                 (->nav-path 'nextjournal.clerk.home))}}
       :else
       (do
-        (try (show! {:skip-history? true} (->file-or-ns nav-path))
+        nil #_(try (show! {:skip-history? true} (->file-or-ns nav-path))
              (catch Exception _))
         {:status 200
          :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
