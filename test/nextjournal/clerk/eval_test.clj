@@ -121,9 +121,10 @@
                 (eval/eval-string "(def foo :bar) (var foo)"))))
 
   (testing "definitions occurring in side effects from macro expansions should not end up wrapped in var-from-def maps as the cell result"
-    (is (match? {:blocks [any?
+    (is (match? {:blocks [any? any?
                           {:result {:nextjournal/value :value}}]}
-                (eval/eval-string "(defmacro define [name body] `(do (def ~name ~body) ~name))
+                (eval/eval-string "(ns nextjournal.clerk.eval-test.def-side-effects)
+(defmacro define [name body] `(do (def ~name ~body) ~name))
 (define my-value :value)"))))
 
   (testing "can handle unbounded sequences"
