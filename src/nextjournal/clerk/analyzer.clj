@@ -85,7 +85,9 @@
 #_(rewrite-defcached '(nextjournal.clerk/defcached foo :bar))
 
 (defn deflike? [form]
-  (and (seq? form) (symbol? (first form)) (str/starts-with? (name (first form)) "def")))
+  (and (seq? form)
+       (symbol? (first form))
+       (= 'def (first form))))
 
 #_(deflike? '(defonce foo :bar))
 #_(deflike? '(rdef foo :bar))
@@ -155,8 +157,9 @@
                          (keep :var)
                          (map symbol))
                    nodes)
+
         var (when (and (= 1 (count vars))
-                       (deflike? form))
+                       (deflike? (:form analyzed)))
               (first vars))
         def-node (when var
                    (first (filter (comp #{:def} :op) nodes)))
@@ -173,7 +176,7 @@
                         (class-deps analyzed)
                         (when (var? form) #{(symbol form)}))
         hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
-    (cond-> {#_#_:analyzed analyzed
+    (cond-> {:expanded-form (:form analyzed)
              :form form
              :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
              :freezable? (and (not (some #{'clojure.core/intern} deps))
