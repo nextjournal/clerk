@@ -211,6 +211,7 @@
 #_(analyze '(intern *ns* 'foo :bar))
 #_(analyze '(import javax.imageio.ImageIO))
 #_(analyze '(defmulti foo :bar))
+#_(analyze '(declare a))
 #_(analyze '^{:nextjournal.clerk/hash-fn (fn [_] (clerk/valuehash (slurp "notebooks/hello.clj")))}
            (def contents
              (slurp "notebooks/hello.clj")))

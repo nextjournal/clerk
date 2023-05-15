@@ -283,7 +283,7 @@ my-uuid")]
 (deftest circular-dependency
   (is (match? {:graph {:dependencies {'circular/b #{'clojure.core/str
                                                     (symbol "circular/a+circular/b")}
-                                      'circular/a #{#_'clojure.core/declare 'clojure.core/str (symbol "circular/a+circular/b")}}}
+                                      'circular/a #{'clojure.core/declare 'clojure.core/str (symbol "circular/a+circular/b")}}}
                :->analysis-info {'circular/a any?
                                  'circular/b any?
                                  (symbol "circular/a+circular/b") {:form '(do (def a (str "boom " b)) (def b (str a " boom")))}}}
