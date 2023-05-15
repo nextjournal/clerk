@@ -87,7 +87,7 @@
 (defn deflike? [form]
   (and (seq? form)
        (symbol? (first form))
-       (= 'def (first form))))
+       (contains? #{'def 'defonce 'defn} (first form))))
 
 #_(deflike? '(defonce foo :bar))
 #_(deflike? '(rdef foo :bar))
@@ -159,7 +159,7 @@
                    nodes)
 
         var (when (and (= 1 (count vars))
-                       (deflike? (:form analyzed)))
+                       (deflike? (rewrite-defcached form)))
               (first vars))
         def-node (when var
                    (first (filter (comp #{:def} :op) nodes)))
