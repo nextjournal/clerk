@@ -69,7 +69,7 @@
 ;; ;; start Clerk's built-in webserver on the default port 7777, opening the browser when done
 ;; (clerk/serve! {:browse? true})
 
-;; ;; either call `clerk/show!` explicitly to show a given notebook.
+;; ;; either call `clerk/show!` explicitly to show a given notebook, or use the File Watcher described below.
 ;; (clerk/show! "notebooks/rule_30.clj")
 ;; ```
 
