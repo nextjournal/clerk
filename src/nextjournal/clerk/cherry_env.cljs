@@ -69,7 +69,6 @@
          (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))
 
 (defn ^:export cherry-compile-string [s]
-  (prn :compiling s)
   (cherry/compile-string
    s
    {:macros cherry-macros}))
