@@ -471,7 +471,7 @@ v/default-viewers
 ^{::clerk/viewer show-raw-value}
 (v/present 1)
 
-;; This data structure is is sent over Clerk's websocket to the
+;; This data structure is sent over Clerk's websocket to the
 ;; browser, where it will be displayed using the `:render-fn` found in
 ;; the `:nextjournal/viewer` key.
 
