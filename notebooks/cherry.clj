@@ -27,8 +27,7 @@
       [:pre
        (time (do (dotimes [_ 100000]
                    (js/Math.sin 100))
-                 (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3])))))])
-   #_#_:evaluator :cherry}
+                 (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3])))))])}
   {:nextjournal.clerk/render-evaluator :cherry}
   (+ 1 2 3 5))
 
@@ -46,7 +45,8 @@
 (clerk/with-viewer
   {:render-fn
    '(fn [value]
-      [nextjournal.clerk.render/inspect {:a (range 30)}])
+      (this-as this
+        [nextjournal.clerk.render/inspect {:a (range 30)}]))
    :evaluator :cherry}
   nil)
 
@@ -65,7 +65,7 @@
 ;; ## Input text and compile on the fly with cherry
 
 (clerk/with-viewer
-  {:evaluator :cherry
+  {;; :evaluator :cherry
    :render-fn
    '(fn [value]
       (let [default-value "(defn foo [x] (+ x 10))
@@ -86,14 +86,14 @@
            [nextjournal.clerk.render/inspect
             (try (js/eval @!compiled)
                  (catch :default e e))]])))}
+  {:nextjournal.clerk/render-evaluator :cherry}
   nil)
 
 ;; ## Functions defined with `defn` are part of the global context
 
 ;; (for now) and can be called in successive expressions
 
-(clerk/eval-cljs-str {:evaluator :cherry
-                      :nextjournal.clerk/render-evaluator :cherry}
+(clerk/eval-cljs-str {:nextjournal.clerk/render-evaluator :cherry}
                      "(defn foo [x] x)")
 
 (clerk/eval-cljs-str {:evaluator :cherry}
@@ -109,8 +109,7 @@
 
 ^::clerk/no-cache
 (clerk/eval-cljs
- {:evaluator :sci
-  :nextjournal.clerk/render-evaluator :cherry}
+ {:nextjournal.clerk/render-evaluator :cherry}
  '(defn emoji-picker
     {:async true}
     []

@@ -28,13 +28,12 @@
                    (java.nio.file Files StandardOpenOption)
                    (javax.imageio ImageIO))))
 
-(defonce only-define-recs-once
-  (do (defrecord ViewerEval [form])
+(defrecord ViewerEval [form])
 
-      (defrecord ViewerFn [form #?(:cljs f)]
-        #?@(:cljs [IFn
-                   (-invoke [this x] ((:f this) x))
-                   (-invoke [this x y] ((:f this) x y))]))))
+(defrecord ViewerFn [form #?(:cljs f)]
+  #?@(:cljs [IFn
+             (-invoke [this x] ((:f this) x))
+             (-invoke [this x y] ((:f this) x y))]))
 
 ;; Make sure `ViewerFn` and `ViewerEval` is changed atomically
 #?(:clj
@@ -204,12 +203,10 @@
   "Wraps the given value `x` and associates it with the given `viewer`. Takes an optional second `viewer-opts` arg."
   ([viewer x] (with-viewer viewer nil x))
   ([viewer viewer-opts x]
-   (let [evaluator (:nextjournal.clerk/render-evaluator viewer-opts)]
-     (cond-> (merge (when viewer-opts (normalize-viewer-opts viewer-opts))
-                (cond-> (ensure-wrapped x)
-                  (not (and (map? viewer) (empty? viewer)))
-                  (assoc :nextjournal/viewer (normalize-viewer viewer))))
-       evaluator (update :nextjournal/viewer assoc :evaluator evaluator)))))
+   (merge (when viewer-opts (normalize-viewer-opts viewer-opts))
+          (cond-> (ensure-wrapped x)
+            (not (and (map? viewer) (empty? viewer)))
+            (assoc :nextjournal/viewer (normalize-viewer viewer))))))
 
 ;; TODO: Think of a better name
 (defn with-viewer-extracting-opts [viewer & opts+items]
@@ -874,6 +871,7 @@
 
 (defn ->opts [wrapped-value]
   (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/opts
+                              :nextjournal/render-evaluator
                               :!budget :store!-wrapped-value :present-elision-fn :path :offset]))
 
 (defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
@@ -1367,13 +1365,16 @@
              (.update hasher (goog.crypt/stringToUtf8ByteArray (pr-str x)))
              (.digest hasher))))
 
-(defn process-viewer [viewer]
+(defn process-viewer [viewer {:nextjournal/keys [render-evaluator]}]
   (if-not (map? viewer)
     viewer
-    (-> viewer
-        (dissoc :pred :transform-fn :update-viewers-fn)
-        (as-> viewer (assoc viewer :hash (hash-sha1 viewer)))
-        (process-render-fn))))
+    (let [evaluator (:evaluator viewer)]
+      (-> viewer
+          (cond-> (and (not evaluator) render-evaluator)
+            (assoc :evaluator render-evaluator))
+          (dissoc :pred :transform-fn :update-viewers-fn)
+          (as-> viewer (assoc viewer :hash (hash-sha1 viewer)))
+          (process-render-fn)))))
 
 #_(process-viewer {:render-fn '#(vector :h1) :transform-fn mark-presented})
 
@@ -1385,7 +1386,7 @@
   (cond-> (-> wrapped-value
               (select-keys processed-keys)
               (dissoc :nextjournal/budget)
-              (update :nextjournal/viewer process-viewer))
+              (update :nextjournal/viewer process-viewer wrapped-value))
     present-elision-fn (vary-meta assoc :present-elision-fn present-elision-fn)))
 
 #_(process-wrapped-value (apply-viewers 42))
@@ -1718,7 +1719,6 @@
     (with-viewer (assoc viewer-eval-viewer :nextjournal.clerk/remount (hash-sha1 forms))
       (let [evaluator (or (:evaluator opts)
                           (:nextjournal.clerk/render-evaluator opts))]
-        (prn evaluator)
         (if (= :cherry evaluator)
           (assoc (->viewer-eval
                   `(do ~@forms))
@@ -1736,7 +1736,6 @@
                       (:nextjournal.clerk/render-evaluator opts)))
      (assoc (->viewer-eval
              `(let [prog#  (nextjournal.clerk.cherry-env/cherry-compile-string ~code-string)]
-                (prn :yolo ~code-string)
                 (js/global_eval prog#)))
             :evaluator :cherry)
      (eval-cljs (list 'load-string code-string)))))
