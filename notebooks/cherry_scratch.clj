@@ -22,7 +22,7 @@
                                     [:emoji-picker]])))
 
 (clerk/with-viewer
-  {:evaluator :cherry
+  {:render-evaluator :cherry
    :render-fn '(fn [_]
                  [nextjournal.clerk.render/render-promise
                   (emoji-picker)])}

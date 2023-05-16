@@ -32,7 +32,7 @@
   (+ 1 2 3 5))
 
 ;; Since we set `:nextjournal.clerk/render-evaluator :cherry` on the ns meta, evaluation happens through cherry by default
-;; (`this-as` does not work in SCI, so this is a proof cherry is used):
+;; (`this-as` does not work in SCI, so this is a proof cherry is used)
 
 (clerk/with-viewer
   {:render-fn
@@ -46,7 +46,7 @@
   {:render-fn
    '(fn [value]
       [nextjournal.clerk.render/render-code "(+ 1 2 3)"])
-   :evaluator :cherry}
+   :render-evaluator :cherry}
   (+ 1 2 3 5))
 
 ;; Recursive ...
@@ -56,12 +56,12 @@
    '(fn [value]
       (this-as this
         [nextjournal.clerk.render/inspect {:a (range 30)}]))
-   :evaluator :cherry}
+   :render-evaluator :cherry}
   nil)
 
 ;; cherry vega viewer!
 
-(def cherry-vega-viewer (assoc viewer/vega-lite-viewer :evaluator :cherry))
+(def cherry-vega-viewer (assoc viewer/vega-lite-viewer :render-evaluator :cherry))
 
 (clerk/with-viewer
   cherry-vega-viewer
@@ -105,7 +105,7 @@
 (clerk/eval-cljs-str {:nextjournal.clerk/render-evaluator :cherry}
                      "(defn foo [x] x)")
 
-(clerk/eval-cljs-str {:evaluator :cherry}
+(clerk/eval-cljs-str {:render-evaluator :cherry}
                      "(foo 1)")
 
 ;; ## Async/await works cherry
@@ -131,7 +131,7 @@
 
 ^::clerk/no-cache
 (clerk/with-viewer
-  {:evaluator :cherry
+  {:render-evaluator :cherry
    :render-fn '(fn [_]
                  [nextjournal.clerk.render/render-promise
                   (emoji-picker)])}
@@ -141,7 +141,7 @@
 
 ^::clerk/no-cache
 (clerk/eval-cljs
- {:evaluator :cherry}
+ {:render-evaluator :cherry}
  '(defn clicks []
     (reagent.core/with-let [!s (reagent.core/atom 0)]
       [:button {:on-click (fn []
@@ -150,7 +150,7 @@
 
 ^::clerk/no-cache
 (clerk/with-viewer
-  {:evaluator :cherry
+  {:render-evaluator :cherry
    :render-fn '(fn [_]
                  [clicks])
    }

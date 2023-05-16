@@ -78,13 +78,13 @@
 
 #?(:clj
    (defmethod print-method ViewerFn [v ^java.io.Writer w]
-     (.write w (str "#viewer-fn" (when (= :cherry (:evaluator v))
+     (.write w (str "#viewer-fn" (when (= :cherry (:render-evaluator v))
                                    "/cherry")
                     " " (pr-str (:form v))))))
 
 #?(:clj
    (defmethod print-method ViewerEval [v ^java.io.Writer w]
-     (.write w (str "#viewer-eval" (when (= :cherry (:evaluator v))
+     (.write w (str "#viewer-eval" (when (= :cherry (:render-evaluator v))
                                      "/cherry")
                     " " (pr-str (:form v)))))
    :cljs
@@ -1352,12 +1352,12 @@
 
 (declare assign-closing-parens)
 
-(defn process-render-fn [{:as viewer :keys [render-fn evaluator]}]
+(defn process-render-fn [{:as viewer :keys [render-fn render-evaluator]}]
   (cond-> viewer
     (and render-fn (not (viewer-fn? render-fn)))
     (update :render-fn (fn [rf]
                          (assoc (->viewer-fn rf)
-                                :evaluator (or evaluator :sci))))))
+                                :render-evaluator (or render-evaluator :sci))))))
 
 (defn hash-sha1 [x]
   #?(:clj (analyzer/valuehash :sha1 x)
@@ -1368,10 +1368,10 @@
 (defn process-viewer [viewer {:nextjournal/keys [render-evaluator]}]
   (if-not (map? viewer)
     viewer
-    (let [evaluator (:evaluator viewer)]
+    (let [evaluator (:render-evaluator viewer)]
       (-> viewer
           (cond-> (and (not evaluator) render-evaluator)
-            (assoc :evaluator render-evaluator))
+            (assoc :render-evaluator render-evaluator))
           (dissoc :pred :transform-fn :update-viewers-fn)
           (as-> viewer (assoc viewer :hash (hash-sha1 viewer)))
           (process-render-fn)))))
@@ -1717,12 +1717,12 @@
                        [opts forms]
                        [nil (cons opts forms)])]
     (with-viewer (assoc viewer-eval-viewer :nextjournal.clerk/remount (hash-sha1 forms))
-      (let [evaluator (or (:evaluator opts)
+      (let [evaluator (or (:render-evaluator opts)
                           (:nextjournal.clerk/render-evaluator opts))]
         (if (= :cherry evaluator)
           (assoc (->viewer-eval
                   `(do ~@forms))
-                 :evaluator evaluator)
+                 :render-evaluator evaluator)
           (->viewer-eval
            `(binding [*ns* *ns*]
               ~@forms)))))))
@@ -1732,12 +1732,12 @@
   ([opts code-string]
    ;; NOTE: this relies on implementation details on how SCI code is evaluated
    ;; and will change in a future version of Clerk
-   (if (= :cherry (or (:evaluator opts)
+   (if (= :cherry (or (:render-evaluator opts)
                       (:nextjournal.clerk/render-evaluator opts)))
      (assoc (->viewer-eval
              `(let [prog#  (nextjournal.clerk.cherry-env/cherry-compile-string ~code-string)]
                 (js/global_eval prog#)))
-            :evaluator :cherry)
+            :render-evaluator :cherry)
      (eval-cljs (list 'load-string code-string)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
