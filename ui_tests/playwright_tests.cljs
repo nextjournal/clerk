@@ -49,7 +49,7 @@
 (defn test-notebook [page link]
   (println "Visiting" link)
   (p/do (goto page link)
-        (p/delay 2000)
+        (p/delay 500)
         (p/let [loc (.locator page "div")
                 loc (.first loc)
                 visible? (.isVisible loc)]
@@ -60,14 +60,12 @@
          (-> (p/let [page (.newPage @browser)
                      _ (.on page "console"
                             (fn [msg]
-                              (js/console.log msg (.type msg))
                               (when (and (= "error" (.type msg))
                                          (not (str/ends-with?
                                                (.-url (.location msg)) "favicon.ico")))
                                 (swap! console-errors conj {:msg msg :notebook (.url page)}))))
                      _ (.on page "pageerror"
                             (fn [msg]
-                              (prn :pageerror)
                               (swap! console-errors conj {:msg msg :notebook (.url page)})))
                      _ (goto page @!index)
                      _ (is (-> (.locator page "h1:has-text(\"Clerk\")")
@@ -80,7 +78,6 @@
                      links (filter (fn [link]
                                      (str/includes? link "cherry")) links)]
                (p/run! #(test-notebook page %) links)
-               (prn :>>>> @console-errors)
                (p/delay 30000)
                (is (zero? (count @console-errors))
                    (str/join "\n" (map (fn [{:keys [msg notebook]}]
