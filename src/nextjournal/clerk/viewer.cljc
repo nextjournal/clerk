@@ -1369,7 +1369,7 @@
   (if-not (map? viewer)
     viewer
     (-> viewer
-        (cond-> (and (:render-evaluator viewer) render-evaluator)
+        (cond-> (and (not (:render-evaluator viewer)) render-evaluator)
           (assoc :render-evaluator render-evaluator))
         (dissoc :pred :transform-fn :update-viewers-fn)
         (as-> viewer (assoc viewer :hash (hash-sha1 viewer)))
