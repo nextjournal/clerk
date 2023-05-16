@@ -1368,13 +1368,12 @@
 (defn process-viewer [viewer {:nextjournal/keys [render-evaluator]}]
   (if-not (map? viewer)
     viewer
-    (let [evaluator (:render-evaluator viewer)]
-      (-> viewer
-          (cond-> (and (not evaluator) render-evaluator)
-            (assoc :render-evaluator render-evaluator))
-          (dissoc :pred :transform-fn :update-viewers-fn)
-          (as-> viewer (assoc viewer :hash (hash-sha1 viewer)))
-          (process-render-fn)))))
+    (-> viewer
+        (cond-> (and (:render-evaluator viewer) render-evaluator)
+          (assoc :render-evaluator render-evaluator))
+        (dissoc :pred :transform-fn :update-viewers-fn)
+        (as-> viewer (assoc viewer :hash (hash-sha1 viewer)))
+        (process-render-fn))))
 
 #_(process-viewer {:render-fn '#(vector :h1) :transform-fn mark-presented})
 
