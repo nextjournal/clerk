@@ -404,7 +404,7 @@
 
 ;; **Metadata Notation**
 
-;; In the examples above, we've used convience helper functions like
+;; In the examples above, we've used convenience helper functions like
 ;; `clerk/html` or `clerk/plotly` to wrap values in a viewer. If you
 ;; call this on the REPL, you'll notice a given value gets wrapped in
 ;; a map under the `:nextjournal/value` key with the viewer being in
