@@ -206,13 +206,12 @@
   "Wraps the given value `x` and associates it with the given `viewer`. Takes an optional second `viewer-opts` arg."
   ([viewer x] (with-viewer viewer nil x))
   ([viewer viewer-opts x]
-   (merge (when viewer-opts (normalize-viewer-opts viewer-opts))
-          (cond-> (ensure-wrapped x)
-            (not (and (map? viewer) (empty? viewer)))
-            (assoc :nextjournal/viewer (normalize-viewer viewer)))
-          (when-let [ev (:nextjournal.clerk/render-evaluator viewer-opts)]
-            (prn "hllllll")
-            {:evaluator ev}))))
+   (let [evaluator (:nextjournal.clerk/render-evaluator viewer-opts)]
+     (cond-> (merge (when viewer-opts (normalize-viewer-opts viewer-opts))
+                (cond-> (ensure-wrapped x)
+                  (not (and (map? viewer) (empty? viewer)))
+                  (assoc :nextjournal/viewer (normalize-viewer viewer))))
+       evaluator (update :nextjournal/viewer assoc :evaluator evaluator)))))
 
 ;; TODO: Think of a better name
 (defn with-viewer-extracting-opts [viewer & opts+items]
