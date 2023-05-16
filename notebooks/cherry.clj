@@ -31,6 +31,15 @@
   {:nextjournal.clerk/render-evaluator :cherry}
   (+ 1 2 3 5))
 
+;; Since we set `:nextjournal.clerk/render-evaluator :cherry` on the ns meta, evaluation happens through cherry by default
+;; (`this-as` does not work in SCI, so this is a proof cherry is used):
+
+(clerk/with-viewer
+  {:render-fn
+   '(fn [value]
+      [:pre (this-as this value)])}
+  (+ 1 2 3 5))
+
 ;; Let's use a render function in the :render-fn next
 
 (clerk/with-viewer
