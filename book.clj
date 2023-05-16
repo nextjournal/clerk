@@ -503,7 +503,7 @@ v/default-viewers
 
 ;; #### ⚙️ Transform
 
-;; When writing your own viewer, the first extention point you should reach for is `:tranform-fn`.
+;; When writing your own viewer, the first extension point you should reach for is `:tranform-fn`.
 
 #_ "exercise: wrap this in `v/present` and call it at the REPL"
 (v/with-viewer {:transform-fn #(clerk/html [:pre (pr-str %)])}
