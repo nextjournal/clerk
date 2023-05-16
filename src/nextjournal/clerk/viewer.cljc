@@ -28,12 +28,13 @@
                    (java.nio.file Files StandardOpenOption)
                    (javax.imageio ImageIO))))
 
-(defrecord ViewerEval [form])
+(defonce only-define-recs-once
+  (do (defrecord ViewerEval [form])
 
-(defrecord ViewerFn [form #?(:cljs f)]
-  #?@(:cljs [IFn
-             (-invoke [this x] ((:f this) x))
-             (-invoke [this x y] ((:f this) x y))]))
+      (defrecord ViewerFn [form #?(:cljs f)]
+        #?@(:cljs [IFn
+                   (-invoke [this x] ((:f this) x))
+                   (-invoke [this x y] ((:f this) x y))]))))
 
 ;; Make sure `ViewerFn` and `ViewerEval` is changed atomically
 #?(:clj
@@ -54,6 +55,8 @@
   (if-let [full-ns (some->> sym namespace symbol (get aliases) str)]
     (symbol full-ns (name sym))
     sym))
+
+#_(require '[editscript.edit])
 
 #_(resolve-symbol-alias {'v (find-ns 'nextjournal.clerk.viewer)} 'nextjournal.clerk.render/render-code)
 
@@ -76,13 +79,15 @@
 
 #?(:clj
    (defmethod print-method ViewerFn [v ^java.io.Writer w]
-     (.write w (str "#viewer-fn" (when (= :cherry (:evaluator v))
+     (.write w (str "#viewer-fn" (when (= :cherry (or (:evaluator v)
+                                                      (:nextjournal/render-evaluator v)))
                                    "/cherry")
                     " " (pr-str (:form v))))))
 
 #?(:clj
    (defmethod print-method ViewerEval [v ^java.io.Writer w]
-     (.write w (str "#viewer-eval" (when (= :cherry (:evaluator v))
+     (.write w (str "#viewer-eval" (when (= :cherry (or (:evaluator v)
+                                                        (:nextjournal/render-evaluator v)))
                                      "/cherry")
                     " " (pr-str (:form v)))))
    :cljs
@@ -204,7 +209,10 @@
    (merge (when viewer-opts (normalize-viewer-opts viewer-opts))
           (cond-> (ensure-wrapped x)
             (not (and (map? viewer) (empty? viewer)))
-            (assoc :nextjournal/viewer (normalize-viewer viewer))))))
+            (assoc :nextjournal/viewer (normalize-viewer viewer)))
+          (when-let [ev (:nextjournal.clerk/render-evaluator viewer-opts)]
+            (prn "hllllll")
+            {:evaluator ev}))))
 
 ;; TODO: Think of a better name
 (defn with-viewer-extracting-opts [viewer & opts+items]
@@ -1711,20 +1719,23 @@
                        [opts forms]
                        [nil (cons opts forms)])]
     (with-viewer (assoc viewer-eval-viewer :nextjournal.clerk/remount (hash-sha1 forms))
-      (if (= :cherry (:evaluator opts))
+      (let [evaluator (or (:evaluator opts)
+                          (:nextjournal.clerk/render-evaluator opts)
+                          :sci)]
         (assoc (->viewer-eval
                 `(do ~@forms))
-               :evaluator (:evaluator opts))
-        (->viewer-eval
-         `(binding [*ns* *ns*]
-            ~@forms))))))
+               :evaluator evaluator))
+      (->viewer-eval
+       `(binding [*ns* *ns*]
+          ~@forms)))))
 
 (defn eval-cljs-str
   ([code-string] (eval-cljs-str nil code-string))
   ([opts code-string]
    ;; NOTE: this relies on implementation details on how SCI code is evaluated
    ;; and will change in a future version of Clerk
-   (if (= :cherry (:evaluator opts))
+   (if (= :cherry (or (:evaluator opts)
+                      (:nextjournal.clerk/render-evaluator opts)))
      (assoc (->viewer-eval
              `(let [prog#  (nextjournal.clerk.cherry-env/cherry-compile-string ~code-string)]
                 (js/global_eval prog#)))

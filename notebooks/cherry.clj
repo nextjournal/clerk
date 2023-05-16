@@ -1,12 +1,12 @@
 ;; # Compile viewer functions using cherry
 (ns notebooks.cherry
-  #_{:nextjournal.clerk/visibility {:code :hide}
-     :nextjournal.clerk/auto-expand-results? true}
+  {#_#_:nextjournal.clerk/visibility {:code :hide}
+   #_#_:nextjournal.clerk/auto-expand-results? true
+   :nextjournal.clerk/render-evaluator :cherry}
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as viewer]))
 
-(comment
-  (clerk/clear-cache!))
+#_(clerk/clear-cache!)
 
 (clerk/with-viewer
   {:render-fn
@@ -14,6 +14,7 @@
       [:pre (time (do (dotimes [_ 100000]
                         (js/Math.sin 100))
                       (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3])))))])}
+  {:nextjournal.clerk/render-evaluator :sci}
   (+ 1 2 3 5))
 
 ;; Better performance:
@@ -24,8 +25,8 @@
       [:pre
        (time (do (dotimes [_ 100000]
                    (js/Math.sin 100))
-                 (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3])))))])
-   :evaluator :cherry}
+                 (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3])))))])}
+  {:nextjournal.clerk/render-evaluator :cherry}
   (+ 1 2 3 5))
 
 ;; Let's use a render function in the :render-fn next
