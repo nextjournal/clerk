@@ -1734,10 +1734,11 @@
   ([opts code-string]
    ;; NOTE: this relies on implementation details on how SCI code is evaluated
    ;; and will change in a future version of Clerk
-   (if (= :cherry (or (:evaluator opts)
+   (if true #_(= :cherry (or (:evaluator opts)
                       (:nextjournal.clerk/render-evaluator opts)))
      (assoc (->viewer-eval
              `(let [prog#  (nextjournal.clerk.cherry-env/cherry-compile-string ~code-string)]
+                (prn :yolo ~code-string)
                 (js/global_eval prog#)))
             :evaluator :cherry)
      (eval-cljs (list 'load-string code-string)))))

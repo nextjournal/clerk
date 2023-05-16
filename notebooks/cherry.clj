@@ -7,6 +7,8 @@
             [nextjournal.clerk.viewer :as viewer]))
 
 #_(clerk/clear-cache!)
+#_(clerk/halt!)
+#_(clerk/serve! {:port 7777})
 
 (clerk/with-viewer
   {:render-fn
@@ -89,7 +91,8 @@
 
 ;; (for now) and can be called in successive expressions
 
-(clerk/eval-cljs-str {:evaluator :cherry}
+(clerk/eval-cljs-str {:evaluator :cherry
+                      :nextjournal.clerk/render-evaluator :cherry}
                      "(defn foo [x] x)")
 
 (clerk/eval-cljs-str {:evaluator :cherry}
@@ -105,7 +108,8 @@
 
 ^::clerk/no-cache
 (clerk/eval-cljs
- {:evaluator :cherry}
+ {:evaluator :cherry
+  :nextjournal.clerk/render-evaluator :cherry}
  '(defn emoji-picker
     {:async true}
     []
