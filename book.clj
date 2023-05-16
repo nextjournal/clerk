@@ -600,7 +600,7 @@ v/table-viewer
 ;; also calls `clerk/mark-preserve-keys`. This tells Clerk to leave
 ;; the keys of the map as-is.
 
-;; In our `:render-fn`, which is called in the browser we will recieve
+;; In our `:render-fn`, which is called in the browser, we will receive
 ;; this map. Note that this is a quoted form, not a function. Clerk
 ;; will send this form to the browser for evaluation. There it will
 ;; create a `reagent/atom` that holds the selection state. Lastly,
