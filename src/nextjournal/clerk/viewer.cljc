@@ -1722,12 +1722,13 @@
       (let [evaluator (or (:evaluator opts)
                           (:nextjournal.clerk/render-evaluator opts)
                           :sci)]
-        (assoc (->viewer-eval
-                `(do ~@forms))
-               :evaluator evaluator))
-      (->viewer-eval
-       `(binding [*ns* *ns*]
-          ~@forms)))))
+        (if (= :cherry evaluator)
+          (assoc (->viewer-eval
+                  `(do ~@forms))
+                 :evaluator evaluator)
+          (->viewer-eval
+           `(binding [*ns* *ns*]
+              ~@forms)))))))
 
 (defn eval-cljs-str
   ([code-string] (eval-cljs-str nil code-string))
