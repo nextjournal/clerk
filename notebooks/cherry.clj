@@ -27,7 +27,8 @@
       [:pre
        (time (do (dotimes [_ 100000]
                    (js/Math.sin 100))
-                 (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3])))))])}
+                 (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3])))))])
+   #_#_:evaluator :cherry}
   {:nextjournal.clerk/render-evaluator :cherry}
   (+ 1 2 3 5))
 
@@ -108,7 +109,7 @@
 
 ^::clerk/no-cache
 (clerk/eval-cljs
- {:evaluator :cherry
+ {:evaluator :sci
   :nextjournal.clerk/render-evaluator :cherry}
  '(defn emoji-picker
     {:async true}

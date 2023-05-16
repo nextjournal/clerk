@@ -79,15 +79,13 @@
 
 #?(:clj
    (defmethod print-method ViewerFn [v ^java.io.Writer w]
-     (.write w (str "#viewer-fn" (when (= :cherry (or (:evaluator v)
-                                                      (:nextjournal/render-evaluator v)))
+     (.write w (str "#viewer-fn" (when (= :cherry (:evaluator v))
                                    "/cherry")
                     " " (pr-str (:form v))))))
 
 #?(:clj
    (defmethod print-method ViewerEval [v ^java.io.Writer w]
-     (.write w (str "#viewer-eval" (when (= :cherry (or (:evaluator v)
-                                                        (:nextjournal/render-evaluator v)))
+     (.write w (str "#viewer-eval" (when (= :cherry (:evaluator v))
                                      "/cherry")
                     " " (pr-str (:form v)))))
    :cljs
@@ -1719,8 +1717,8 @@
                        [nil (cons opts forms)])]
     (with-viewer (assoc viewer-eval-viewer :nextjournal.clerk/remount (hash-sha1 forms))
       (let [evaluator (or (:evaluator opts)
-                          (:nextjournal.clerk/render-evaluator opts)
-                          :sci)]
+                          (:nextjournal.clerk/render-evaluator opts))]
+        (prn evaluator)
         (if (= :cherry evaluator)
           (assoc (->viewer-eval
                   `(do ~@forms))
@@ -1734,7 +1732,7 @@
   ([opts code-string]
    ;; NOTE: this relies on implementation details on how SCI code is evaluated
    ;; and will change in a future version of Clerk
-   (if true #_(= :cherry (or (:evaluator opts)
+   (if (= :cherry (or (:evaluator opts)
                       (:nextjournal.clerk/render-evaluator opts)))
      (assoc (->viewer-eval
              `(let [prog#  (nextjournal.clerk.cherry-env/cherry-compile-string ~code-string)]
