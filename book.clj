@@ -588,8 +588,8 @@ v/table-viewer
 ;; representations and let the user switch between them in the
 ;; browser.
 
-;; We start with a simple function that takes a such an expression and
-;; turns it into a map with two representation, one TeX and the
+;; We start with a simple function that takes such an expression and
+;; turns it into a map with two representations, one TeX and the
 ;; original form.
 
 (defn transform-literal [expr]
