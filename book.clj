@@ -77,7 +77,7 @@
 
 ;; ### ⏱ File Watcher
 
-;; You can load, evaluate, and present a file with the clerk/show! function, but in most cases it's easier to start a file watcher with something like:
+;; You can load, evaluate, and present a file with the `clerk/show!` function, but in most cases it's easier to start a file watcher with something like:
 
 ;; ```clojure
 ;; (clerk/serve! {:watch-paths ["notebooks" "src"]})
