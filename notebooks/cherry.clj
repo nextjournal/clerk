@@ -1,8 +1,6 @@
 ;; # Compile viewer functions using cherry
 (ns notebooks.cherry
-  {#_#_:nextjournal.clerk/visibility {:code :hide}
-   #_#_:nextjournal.clerk/auto-expand-results? true
-   :nextjournal.clerk/render-evaluator :cherry}
+  {:nextjournal.clerk/render-evaluator :cherry}
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as viewer]))
 
