@@ -103,7 +103,7 @@
 ;; (for now) and can be called in successive expressions
 
 (clerk/eval-cljs-str {:nextjournal.clerk/render-evaluator :cherry}
-                     "(defn foo [x] x)")
+                     "(defn foo [x] (this-as this x))")
 
 (clerk/eval-cljs-str {:nextjournal.clerk/render-evaluator :cherry}
                      "(foo 1)")
@@ -155,4 +155,3 @@
                  [clicks])
    }
   nil)
-

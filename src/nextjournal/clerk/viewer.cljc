@@ -1140,10 +1140,24 @@
                        (update :nextjournal/value (partial process-blocks viewers))
                        mark-presented))})
 
+(defn maybe-rewrite-cljs-form [wv]
+  (let [cherry? (= :cherry (:nextjournal/render-evaluator (->opts wv)))
+        code-string (when (= 'load-string (some-> wv ->value :form first))
+                      (-> wv ->value :form second))]
+    (println :cherry? cherry? :load-string? code-string :FORM (-> wv ->value :form))
+    (cond-> wv
+      (and cherry? code-string)
+      (assoc :nextjournal/value
+             (->viewer-eval `(let [prog# (nextjournal.clerk.cherry-env/cherry-compile-string ~code-string)]
+                               (js/global_eval prog#))))
+      cherry?
+      (update :nextjournal/value assoc :render-evaluator :cherry))))
+
 (def viewer-eval-viewer
   {:pred viewer-eval?
    :var-from-def? true
    :transform-fn (comp mark-presented
+                       maybe-rewrite-cljs-form
                        (update-val
                         (fn [x]
                           (cond (viewer-eval? x) x
