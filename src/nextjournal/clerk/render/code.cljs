@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.render.code
-  (:require ["@codemirror/language" :refer [HighlightStyle syntaxHighlighting]]
+  (:require ["@codemirror/language" :refer [defaultHighlightStyle HighlightStyle syntaxHighlighting LanguageDescription]]
+            ["@codemirror/language-data" :refer [languages]]
             ["@codemirror/state" :refer [EditorState RangeSetBuilder Text]]
             ["@codemirror/view" :refer [EditorView Decoration]]
             ["@lezer/highlight" :refer [tags highlightTree]]
@@ -7,11 +8,13 @@
             [applied-science.js-interop :as j]
             [clojure.string :as str]
             [nextjournal.clerk.render.hooks :as hooks]
-            [nextjournal.clojure-mode :as clojure-mode]))
+            [nextjournal.clojure-mode :as clojure-mode]
+            [shadow.esm]))
 
 (def highlight-style
   (.define HighlightStyle
            (clj->js [{:tag (.-meta tags) :class "cmt-meta"}
+                     {:tag (.-null tags) :class "text-amber-200"}
                      {:tag (.-link tags) :class "cmt-link"}
                      {:tag (.-heading tags) :class "cmt-heading"}
                      {:tag (.-emphasis tags) :class "cmt-italic"}
@@ -87,22 +90,35 @@
                   (< pos to)
                   (concat [(.sliceString text pos to)]))))))))
 
-(defn lang->deco-range [lang code]
-  (let [builder (RangeSetBuilder.)]
+
+(defn matching-cm-lang [language]
+  (if (= "clojure" language)
+    (js/Promise.resolve clojureLanguage)
+    (when-some [^js lang-desc (.matchLanguageName LanguageDescription languages language)]
+      (.. lang-desc load
+          (then (fn [lang-support] (.-language lang-support)))))))
+
+(defn lang->deco-range [language code]
+  (js/console.log :langauge language )
+  (let [^js builder (RangeSetBuilder.)
+        ^js lang (when-some [p (matching-cm-lang language)] (hooks/use-promise p))]
     (when lang
+      (when (and lang (= language "js"))
+        (js/console.log :p lang (.. lang -parser (parse code))))
       (highlightTree (.. lang -parser (parse code)) highlight-style
                      (fn [from to style]
+                       #_ (when (= language "js") (js/console.log :token from to style ))
                        (.add builder from to (.mark Decoration (j/obj :class style))))))
     (.finish builder)))
 
 (defn render-code [^String code {:keys [language]}]
-  (let [text (.of Text (.split code "\n"))]
+  (let [^js text (.of Text (.split code "\n"))]
     [:div.cm-editor
      [:cm-scroller
       (into [:div.cm-content.whitespace-pre]
             (map (partial style-line
                           ;; TODO: use-promise hook resolving to language data according to @codemirror/language-data
-                          (lang->deco-range (when (= "clojure" language) clojureLanguage) code) text))
+                          (lang->deco-range language code) text))
             (range 1 (inc (.-lines text))))]]))
 
 ;; editable code viewer
