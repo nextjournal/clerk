@@ -443,7 +443,7 @@ v/default-viewers
 
 (assoc (frequencies (mapcat keys v/default-viewers)) :total (count v/default-viewers))
 
-;; We have a total of 41 viewers in the defaults. Let's start with a
+;; We have a total of 43 viewers in the defaults. Let's start with a
 ;; simple example and explain the different extensions points in the
 ;; viewer api.
 
