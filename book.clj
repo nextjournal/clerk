@@ -703,10 +703,10 @@ v/table-viewer
 
 ;; #### 👷 Loading Libraries
 
-;; This is a custom viewer for
+;; Here is a custom viewer for
 ;; [Mermaid](https://mermaid-js.github.io/mermaid), a markdown-like
 ;; syntax for creating diagrams from text. Note that this library
-;; isn't bundles with Clerk but we use a component based on
+;; isn't bundled with Clerk but we use a component based on
 ;; [d3-require](https://github.com/d3/d3-require) to load it at
 ;; runtime.
 
