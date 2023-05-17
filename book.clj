@@ -303,7 +303,7 @@
 
 ;; ### 🔠 Grid Layouts
 
-;; Layouts can be composed via `row`s and `col`s
+;; Layouts can be composed via `row`s and `col`s.
 ;;
 ;; Passing `:width`, `:height` or any other style attributes to
 ;; `::clerk/opts` will assign them on the row or col that contains
