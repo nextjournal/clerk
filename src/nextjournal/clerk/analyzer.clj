@@ -549,12 +549,21 @@
 #_(dep/immediate-dependencies (:graph (build-graph "src/nextjournal/clerk/analyzer.clj"))  #'nextjournal.clerk.analyzer/long-thing)
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/analyzer.clj"))  #'nextjournal.clerk.analyzer/long-thing)
 
+(defn strip-form-meta [form]
+  (clojure.walk/postwalk
+   (fn [v]
+     (if (or (instance? clojure.lang.IObj v)
+             (instance? clojure.lang.IMeta v))
+       (vary-meta v (constantly nil))
+       v))
+   form))
+
 (defn hash-codeblock [->hash {:as codeblock :keys [hash form id deps vars]}]
   (when (and (seq deps) (not (ifn? ->hash)))
     (throw (ex-info "`->hash` must be `ifn?`" {:->hash ->hash :codeblock codeblock})))
   (let [hashed-deps (into #{} (map ->hash) deps)]
     (sha1-base58 (binding [*print-length* nil]
-                   (pr-str (set/union (conj hashed-deps (if form form hash))
+                   (pr-str (set/union (conj hashed-deps (if form (strip-form-meta form) hash))
                                       vars))))))
 
 (defn hash
