@@ -47,7 +47,7 @@
 ;; cd clerk-demo
 ;; ```
 
-;; Then open `dev/user.clj` from the project in your favorite editor start a REPL into the project, see
+;; Then open `dev/user.clj` from the project in your favorite editor and start a REPL into the project. For editor-specific instructions see:
 ;; * [Emacs & Cider](https://docs.cider.mx/cider/basics/up_and_running.html#launch-an-nrepl-server-from-emacs)
 ;; * [Calva](https://calva.io/jack-in-guide/)
 ;; * [Cursive](https://cursive-ide.com/userguide/repl.html)
