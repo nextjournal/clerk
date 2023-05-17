@@ -860,7 +860,7 @@ rows
 ;; function.  You can pass it a set of notebooks via the `:paths`
 ;; option (also supporting glob patterns).
 
-;; When Clerk is building multuple notebooks, it will automatically
+;; When Clerk is building multiple notebooks, it will automatically
 ;; generate an index page that will be the first to show up when
 ;; opening the build. You can override this index page via the
 ;; `:index` option.
