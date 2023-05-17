@@ -1364,6 +1364,9 @@
              (.digest hasher))))
 
 (defn process-viewer [viewer {:nextjournal/keys [render-evaluator]}]
+  ;; TODO: drop wrapped-value arg here and handle this elsewhere by
+  ;; passing modified viewer stack
+  ;; `(clerk/update-viewers viewers {:render-fn #(assoc % :render-evaluator :cherry)})`
   (if-not (map? viewer)
     viewer
     (-> viewer
