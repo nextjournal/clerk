@@ -550,12 +550,13 @@
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/analyzer.clj"))  #'nextjournal.clerk.analyzer/long-thing)
 
 (defn strip-form-meta [form]
-  (clojure.walk/walk
+  (clojure.walk/postwalk
    (fn [v]
      (if (or (instance? clojure.lang.IObj v)
              (instance? clojure.lang.IMeta v))
        (vary-meta v (constantly nil))
-       v)) identity form))
+       v))
+   form))
 
 (defn hash-codeblock [->hash {:as codeblock :keys [hash form id deps vars]}]
   (when (and (seq deps) (not (ifn? ->hash)))
