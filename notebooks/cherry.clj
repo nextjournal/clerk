@@ -1,5 +1,5 @@
 ;; # Compile viewer functions using cherry
-(ns notebooks.cherry
+(ns cherry
   {:nextjournal.clerk/render-evaluator :cherry}
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as viewer]))
@@ -8,29 +8,25 @@
 #_(clerk/halt!)
 #_(clerk/serve! {:port 7777})
 
+;; Since we set `:nextjournal.clerk/render-evaluator :cherry` on the ns meta, evaluation happens through cherry by default
+;; in all codeblocks below. As a test for checking that Cherry is actually being picked up, we drop some `this-as` expressions
+;; in the code, since that will throw an exceptions when evaluated by SCI.
+
 (clerk/with-viewer
-  {:render-fn
-   '(fn [value]
-      [:pre (time (do (dotimes [_ 100000]
-                        (js/Math.sin 100))
-                      (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3])))))])}
-  {:nextjournal.clerk/render-evaluator :sci}
-  (+ 1 2 3 5))
+  '(fn [value]
+     [:pre (time (do (dotimes [_ 100000]
+                       (js/Math.sin 100))
+                     (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3])))))])
+  {:nextjournal.clerk/render-evaluator :sci} nil)
 
 ;; Better performance:
 
 (clerk/with-viewer
-  {:render-fn
-   '(fn [value]
-      [:pre
-       (time (do (dotimes [_ 100000]
-                   (js/Math.sin 100))
-                 (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3])))))])}
-  {:nextjournal.clerk/render-evaluator :cherry}
-  (+ 1 2 3 5))
-
-;; Since we set `:nextjournal.clerk/render-evaluator :cherry` on the ns meta, evaluation happens through cherry by default
-;; (`this-as` does not work in SCI, so this is a proof cherry is used)
+  '(fn [value]
+     [:pre
+      (time (do (dotimes [_ 100000]
+                  (js/Math.sin 100))
+                (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3])))))]) nil)
 
 (clerk/with-viewer
   {:render-fn
@@ -40,29 +36,18 @@
 
 ;; Let's use a render function in the :render-fn next
 
-(clerk/with-viewer
-  {:render-fn
-   '(fn [value]
-      [nextjournal.clerk.render/render-code "(+ 1 2 3)"])
-   :render-evaluator :cherry}
-  (+ 1 2 3 5))
+(clerk/with-viewer '(fn [value]
+                      [nextjournal.clerk.render/render-code "(+ 1 2 3)"]) nil)
 
 ;; Recursive ...
 
-(clerk/with-viewer
-  {:render-fn
-   '(fn [value]
-      (this-as this
-        [nextjournal.clerk.render/inspect {:a (range 30)}]))
-   :render-evaluator :cherry}
-  nil)
+(clerk/with-viewer '(fn [value]
+                      (this-as this
+                        [nextjournal.clerk.render/inspect {:a (range 30)}])) nil)
 
-;; cherry vega viewer!
+;; vega viewer still works
 
-(def cherry-vega-viewer (assoc viewer/vega-lite-viewer :render-evaluator :cherry))
-
-(clerk/with-viewer
-  cherry-vega-viewer
+(clerk/vl
   {:width 700 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
                                  :format {:type "topojson" :feature "counties"}}
    :transform [{:lookup "id" :from {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
@@ -100,11 +85,9 @@
 
 ;; (for now) and can be called in successive expressions
 
-(clerk/eval-cljs-str {:nextjournal.clerk/render-evaluator :cherry}
-                     "(defn foo [x] (this-as this (inc x)))")
+(clerk/eval-cljs-str "(defn foo [x] (this-as this (inc x)))")
 
-(clerk/eval-cljs-str {:nextjournal.clerk/render-evaluator :cherry}
-                     "(foo 1)")
+(clerk/eval-cljs-str "(foo 1)")
 
 ;; ## Async/await works cherry
 
@@ -115,7 +98,6 @@
 
 
 (clerk/eval-cljs
- {:nextjournal.clerk/render-evaluator :cherry}
  '(defn emoji-picker
     {:async true}
     []
@@ -127,22 +109,25 @@
 ;; In the next block we call it:
 
 (clerk/with-viewer
-  {:render-evaluator :cherry
-   :render-fn '(fn [_]
-                 [nextjournal.clerk.render/render-promise
-                  (emoji-picker)])}
-  nil)
+  '(fn [_]
+     [nextjournal.clerk.render/render-promise
+      (emoji-picker)]) nil)
 
 ;; ## Macros
 
 (clerk/eval-cljs
- {:render-evaluator :cherry}
  '(defn clicks []
     (reagent.core/with-let [!s (reagent.core/atom 0)]
       [:button.bg-teal-500.hover:bg-teal-700.text-white.font-bold.py-2.px-4.rounded.rounded-full.font-sans
        {:on-click (fn [] (swap! !s inc))}
        "Clicks: " @!s])))
 
-;; The following block is using `::clerk/render-evaluator :cherry` option as metadata
-^{::clerk/render-evaluator :cherry}
 (clerk/with-viewer '(fn [_] (this-as this [clicks])) nil)
+
+;; ## Evaluator option as form metadata
+^{::clerk/visibility {:code :hide :result :hide} ::clerk/no-cache true}
+(clerk/add-viewers! [(assoc viewer/code-block-viewer :transform-fn (viewer/update-val :text))])
+
+;; Test reverting the default option via metadata:
+^{::clerk/render-evaluator :sci}
+(clerk/with-viewer '(fn [_] (load-string "[:h1 \"Ahoi\"]")) nil)
