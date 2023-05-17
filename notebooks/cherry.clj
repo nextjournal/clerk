@@ -105,7 +105,7 @@
 (clerk/eval-cljs-str {:nextjournal.clerk/render-evaluator :cherry}
                      "(defn foo [x] x)")
 
-(clerk/eval-cljs-str {:render-evaluator :cherry}
+(clerk/eval-cljs-str {:nextjournal.clerk/render-evaluator :cherry}
                      "(foo 1)")
 
 ;; ## Async/await works cherry
