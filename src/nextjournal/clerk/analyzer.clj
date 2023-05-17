@@ -12,6 +12,7 @@
             [clojure.tools.analyzer.ast :as ana-ast]
             [clojure.tools.analyzer.jvm :as ana-jvm]
             [clojure.tools.analyzer.utils :as ana-utils]
+            [clojure.walk :as walk]
             [multiformats.base.b58 :as b58]
             [multiformats.hash :as hash]
             [nextjournal.clerk.parser :as parser]
@@ -113,8 +114,12 @@
 (defn unresolvable-symbol-handler [ns sym ast-node]
   ast-node)
 
+(defn wrong-tag-handler [tag ast-node]
+  ast-node)
+
 (def analyzer-passes-opts
   (assoc ana-jvm/default-passes-opts
+         :validate/wrong-tag-handler wrong-tag-handler
          :validate/unresolvable-symbol-handler unresolvable-symbol-handler))
 
 (defn form->ex-data
