@@ -114,7 +114,6 @@
 ;; async functions need `^:async`, we use a plain string.
 
 
-^::clerk/no-cache
 (clerk/eval-cljs
  {:nextjournal.clerk/render-evaluator :cherry}
  '(defn emoji-picker
@@ -127,7 +126,6 @@
 
 ;; In the next block we call it:
 
-^::clerk/no-cache
 (clerk/with-viewer
   {:render-evaluator :cherry
    :render-fn '(fn [_]
@@ -137,7 +135,6 @@
 
 ;; ## Macros
 
-^::clerk/no-cache
 (clerk/eval-cljs
  {:render-evaluator :cherry}
  '(defn clicks []
@@ -147,6 +144,5 @@
        "Clicks: " @!s])))
 
 ;; The following block is using `::clerk/render-evaluator :cherry` option as metadata
-^{::clerk/no-cache true
-  ::clerk/render-evaluator :cherry}
+^{::clerk/render-evaluator :cherry}
 (clerk/with-viewer '(fn [_] (this-as this [clicks])) nil)
