@@ -183,7 +183,7 @@
 
 ;; Clerk provides a built-in data table viewer that supports the three
 ;; most common tabular data shapes out of the box: a sequence of maps,
-;; where each map's keys are column names; a seq of seq, which is just
+;; where each map's keys are column names; a seq of seqs, which is just
 ;; a grid of values with an optional header; a map of seqs, in with
 ;; keys are column names and rows are the values for that column.
 
