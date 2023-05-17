@@ -742,7 +742,7 @@ v/table-viewer
 
 ;; ### 🙈 Visibility
 
-;; By default, Clerk will always show code and
+;; By default, Clerk will show all code and
 ;; results for a notebook.
 
 ;; You can use a map of the following shape to set the visibility of
