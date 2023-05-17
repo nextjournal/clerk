@@ -103,7 +103,7 @@
 ;; (for now) and can be called in successive expressions
 
 (clerk/eval-cljs-str {:nextjournal.clerk/render-evaluator :cherry}
-                     "(defn foo [x] (this-as this x))")
+                     "(defn foo [x] (this-as this (inc x)))")
 
 (clerk/eval-cljs-str {:nextjournal.clerk/render-evaluator :cherry}
                      "(foo 1)")
@@ -144,14 +144,11 @@
  {:render-evaluator :cherry}
  '(defn clicks []
     (reagent.core/with-let [!s (reagent.core/atom 0)]
-      [:button {:on-click (fn []
-                            (swap! !s inc))}
+      [:button.bg-teal-500.hover:bg-teal-700.text-white.font-bold.py-2.px-4.rounded.rounded-full.font-sans
+       {:on-click (fn [] (swap! !s inc))}
        "Clicks: " @!s])))
 
-^::clerk/no-cache
-(clerk/with-viewer
-  {:render-evaluator :cherry
-   :render-fn '(fn [_]
-                 [clicks])
-   }
-  nil)
+;; The following block is using `::clerk/render-evaluator :cherry` option as metadata
+^{::clerk/no-cache true
+  ::clerk/render-evaluator :cherry}
+(clerk/with-viewer '(fn [_] (this-as this [clicks])) nil)
