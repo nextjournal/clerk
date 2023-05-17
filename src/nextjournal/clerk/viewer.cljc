@@ -1140,24 +1140,10 @@
                        (update :nextjournal/value (partial process-blocks viewers))
                        mark-presented))})
 
-(defn maybe-rewrite-cljs-form [wv]
-  (let [cherry? (= :cherry (:nextjournal/render-evaluator (->opts wv)))
-        code-string (when (= 'load-string (some-> wv ->value :form first))
-                      (-> wv ->value :form second))]
-    (println :cherry? cherry? :load-string? code-string :FORM (-> wv ->value :form))
-    (cond-> wv
-      (and cherry? code-string)
-      (assoc :nextjournal/value
-             (->viewer-eval `(let [prog# (nextjournal.clerk.cherry-env/cherry-compile-string ~code-string)]
-                               (js/global_eval prog#))))
-      cherry?
-      (update :nextjournal/value assoc :render-evaluator :cherry))))
-
 (def viewer-eval-viewer
   {:pred viewer-eval?
    :var-from-def? true
    :transform-fn (comp mark-presented
-                       maybe-rewrite-cljs-form
                        (update-val
                         (fn [x]
                           (cond (viewer-eval? x) x
@@ -1172,6 +1158,20 @@
                     "#object"
                     [nextjournal.clerk.render/inspect [(symbol (pr-str (type x))) @x]]]
                    [nextjournal.clerk.render/inspect x]))})
+
+(defn maybe-rewrite-cljs-form [{:as wv :nextjournal/keys [render-evaluator]}]
+  (update wv :nextjournal/value
+          (fn [{:as viewer-eval :keys [form]}]
+            (let [code-string (when (and (list? form) (= 'load-string (first form))) (second form))]
+              (cond-> viewer-eval
+                (and (= :cherry render-evaluator) code-string)
+                (assoc :form (list 'js/global_eval (list 'nextjournal.clerk.cherry-env/cherry-compile-string code-string)))
+                (= :cherry render-evaluator)
+                (assoc :render-evaluator :cherry)
+                (not= :cherry render-evaluator)
+                (update :form #(list 'binding '[*ns* *ns*] %)))))))
+
+(def eval-cljs-viewer (update viewer-eval-viewer :transform-fn comp maybe-rewrite-cljs-form))
 
 (def default-viewers
   ;; maybe make this a sorted-map
@@ -1725,11 +1725,9 @@
    ;; it changes when the code changes and shows up in the doc patch.
    ;; TODO: simplify, maybe by applying Clerk's analysis to the cljs
    ;; part as well
-   (with-viewer (assoc viewer-eval-viewer :nextjournal.clerk/remount (hash-sha1 form))
+   (with-viewer (assoc eval-cljs-viewer :nextjournal.clerk/remount (hash-sha1 form))
      opts
-     (->viewer-eval `~form ;; TODO
-                    #_`(binding [*ns* *ns*]
-                         ~form)))))
+     (->viewer-eval form))))
 
 (defn eval-cljs-str
   ([code-string] (eval-cljs-str {} code-string))
