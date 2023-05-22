@@ -745,6 +745,10 @@ v/table-viewer
 (clerk/with-viewer slow-viewer
   1000000)
 
+;; For improved performance, the cherry compiler may be used, using the
+;; `:nextjournal.clerk/render-evaluator` option. SCI is more battle tested than
+;; cherry, but please do use it report issues if you have an unexpected problem.
+
 (clerk/with-viewer slow-viewer
   {:nextjournal.clerk/render-evaluator :cherry}
   1000000)
