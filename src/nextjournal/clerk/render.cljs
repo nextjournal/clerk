@@ -698,12 +698,15 @@
   (let [re-eval (fn [{:keys [form]}] (viewer/->viewer-fn form))]
     (w/postwalk (fn [x] (cond-> x (viewer/viewer-fn? x) re-eval)) doc)))
 
+(defn replace-viewer-fns [doc]
+  (w/postwalk-replace (:hash->viewer doc) (dissoc doc :hash->viewer)))
+
 (defn ^:export set-state! [{:as state :keys [doc]}]
   (when (contains? state :doc)
     (when (exists? js/window)
       ;; TODO: can we restore the scroll position when navigating back?
       (.scrollTo js/window #js {:top 0}))
-    (reset! !doc doc))
+    (reset! !doc (replace-viewer-fns doc)))
   ;; (when (and error (contains? @!doc :status))
   ;;   (swap! !doc dissoc :status))
   (when (remount? doc)

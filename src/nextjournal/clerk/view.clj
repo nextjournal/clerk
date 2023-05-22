@@ -1,15 +1,25 @@
 (ns nextjournal.clerk.view
-  (:require [nextjournal.clerk.viewer :as v]
-            [hiccup.page :as hiccup]
+  (:require [clojure.java.io :as io]
+            [clojure.set :as set]
             [clojure.string :as str]
-            [clojure.java.io :as io])
+            [clojure.walk :as walk]
+            [hiccup.page :as hiccup]
+            [nextjournal.clerk.viewer :as v])
   (:import (java.net URI)))
+
+(defn ^:private extract-hash->viewer [presentation]
+  (into {}
+        (map (juxt :hash identity))
+        (keep :nextjournal/viewer (tree-seq (some-fn map? vector?) #(cond-> % (map? %) vals) presentation))))
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns file]}]
    (binding [*ns* ns]
-     (-> (merge doc opts) v/notebook v/present))))
+     (let [presentation (-> (merge doc opts) v/notebook v/present)
+           hash->viewer (extract-hash->viewer presentation)]
+       (assoc (walk/postwalk-replace (set/map-invert hash->viewer) presentation)
+              :hash->viewer hash->viewer)))))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
