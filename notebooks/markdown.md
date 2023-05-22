@@ -916,7 +916,7 @@ Markdown provides backslash escapes for the following characters:
 ;; and parse it into a _nested clojure structure_ (an AST)
 
 
-(def parsed (md/parse markdown-input))
+(def parsed (md/parse markdown-syntax))
 ```
 
 At present, Clerk will split top level forms which are grouped together under the same cell, this is to guarantee that Clerk's dependency analysys among forms will still effectively avoid needless recomputations^[when code changes].
