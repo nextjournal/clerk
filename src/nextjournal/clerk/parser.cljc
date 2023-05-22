@@ -54,7 +54,8 @@
     :nextjournal.clerk/css-class
     :nextjournal.clerk/visibility
     :nextjournal.clerk/opts
-    :nextjournal.clerk/width})
+    :nextjournal.clerk/width
+    :nextjournal.clerk/render-evaluator})
 
 (defn settings-marker? [form]
   (boolean (and (map? form)

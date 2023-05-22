@@ -21,6 +21,7 @@
             [sci.configs.reagent.reagent :as sci.configs.reagent]))
 
 (cherry/preserve-ns 'cljs.core)
+(cherry/preserve-ns 'nextjournal.clerk.viewer)
 (cherry/preserve-ns 'nextjournal.clerk.render)
 (cherry/preserve-ns 'nextjournal.clerk.render.code)
 (cherry/preserve-ns 'nextjournal.clerk.render.hooks)
