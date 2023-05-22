@@ -600,12 +600,12 @@ v/table-viewer
 ;; also calls `clerk/mark-preserve-keys`. This tells Clerk to leave
 ;; the keys of the map as-is.
 
-;; In our `:render-fn`, which is called in the browser, we will receive
-;; this map. Note that this is a quoted form, not a function. Clerk
-;; will send this form to the browser for evaluation. There it will
-;; create a `reagent/atom` that holds the selection state. Lastly,
-;; `v/inspect-presented` is a component that takes a `wrapped-value`
-;; that ran through `v/present` and show it.
+;; In our `:render-fn`, which is called in the browser, we will receive this
+;; map. Note that this is a quoted form, not a function. Clerk will send this
+;; form to the browser for evaluation. There it will create a `reagent/atom`
+;; that holds the selection state. Lastly,
+;; `nextjournal.clerk.render/inspect-presented` is a component that takes a
+;; `wrapped-value` that ran through `v/present` and show it.
 
 (def literal-viewer
   {:pred sicmutils.expression/literal?
@@ -730,6 +730,27 @@ v/table-viewer
     Moving --> Still
     Moving --> Crash
     Crash --> [*]")
+
+;; #### Evaluator
+
+;; By default, [SCI](https://github.com/babashka/sci) is used for evaluating `:render-fn` functions in the browser.
+
+(def slow-viewer
+  {:transform-fn clerk/mark-presented
+   :render-fn '(fn [value]
+                 [:div (with-out-str (time
+                                      (dotimes [i value]
+                                        (+ 1 2 3))))])})
+
+(clerk/with-viewer slow-viewer
+  1000000)
+
+(clerk/with-viewer slow-viewer
+  {:nextjournal.clerk/render-evaluator :cherry}
+  1000000)
+
+#_(clerk/halt!)
+#_(clerk/serve! {:port 7777})
 
 ;; ## ⚙️ Customizations
 
