@@ -7,9 +7,10 @@
             [nextjournal.clerk.viewer :as v])
   (:import (java.net URI)))
 
+
 (defn ^:private extract-hash->viewer [presentation]
   (into {}
-        (map (juxt :hash identity))
+        (map (juxt #(symbol "nextjournal.clerk" (str "viewer-fn$" (:hash %))) identity))
         (keep :nextjournal/viewer (tree-seq (some-fn map? vector?) #(cond-> % (map? %) vals) presentation))))
 
 (defn doc->viewer
