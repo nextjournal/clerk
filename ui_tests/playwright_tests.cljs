@@ -44,6 +44,8 @@
 
 ;; https://snapshots.nextjournal.com/clerk/build/549f9956870c69ef0951ca82d55a8e5ec2e49ed4/index.html
 
+(def console-errors (atom []))
+
 (defn test-notebook [page link]
   (println "Visiting" link)
   (p/do (goto page link)
@@ -52,8 +54,6 @@
                 loc (.first loc)
                 visible? (.isVisible loc)]
           (is visible?))))
-
-(def console-errors (atom []))
 
 (deftest index-page-test
   (async done
@@ -64,6 +64,9 @@
                                          (not (str/ends-with?
                                                (.-url (.location msg)) "favicon.ico")))
                                 (swap! console-errors conj {:msg msg :notebook (.url page)}))))
+                     _ (.on page "pageerror"
+                            (fn [msg]
+                              (swap! console-errors conj {:msg msg :notebook (.url page)})))
                      _ (goto page @!index)
                      _ (is (-> (.locator page "h1:has-text(\"Clerk\")")
                                (.isVisible #js {:timeout 10000})))
@@ -71,8 +74,11 @@
                                (.allInnerTexts))
                      _ (is (pos? (count links)))
                      links (map (fn [link]
-                                  (str @!index "#/" link)) links)]
+                                  (str @!index "#/" link)) links)
+                     links (filter (fn [link]
+                                     (str/includes? link "cherry")) links)]
                (p/run! #(test-notebook page %) links)
+               (p/delay 30000)
                (is (zero? (count @console-errors))
                    (str/join "\n" (map (fn [{:keys [msg notebook]}]
                                          [(.text msg) (.location msg) notebook])

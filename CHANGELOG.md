@@ -22,16 +22,19 @@ Changes can be:
 
 * 🚨 Change `nextjournal.clerk.render/clerk-eval` to not recompute the currently shown document when using the 1-arity version. Added a second arity that takes an opts map with a `:recompute?` key.
 
-* ⭐️ Adds support for customization of viewer options 
+* 🍒 Add support for cherry as an alternative to sci to evaluate `:render-fn`s. You can change it per form (using form metadata or viewer opts) or doc-wide (using ns metadata) with `{:nextjournal.clerk/render-evaluator :cherry}`.
+
+* ⭐️ Adds support for customization of viewer options
 
   Support both globally (via ns metadata or a settings marker) or locally (via form metadata or the viewer options map).
-  
+
   Supported options are:
    * `:nextjournal.clerk/auto-expand-results?`
    * `:nextjournal.clerk/budget`
    * `:nextjournal.clerk/css-class`
    * `:nextjournal.clerk/visibility`
    * `:nextjournal.clerk/width`
+   * `:nextjournal.clerk/render-evaluator`
 
 * 🔌 Make websocket reconnect automatically on close to avoid having to reload the page
 
