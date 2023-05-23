@@ -408,8 +408,6 @@
                       ;; test against cljs release `bb build:js`
                       :resource->url {"/js/viewer.js" "./build/viewer.js"}
                       :index "notebooks/rule_30.clj"})
-
-
   (fs/delete-tree "public/build")
   (build-static-app! {:compile-css? true
                       :index "notebooks/rule_30.clj"
