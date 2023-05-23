@@ -428,9 +428,9 @@
       [triangle expanded?]]
      [:span.group-hover:text-indigo-700 opening-paren]]))
 
-(defn render-coll [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
+(defn render-coll [xs {:as opts :keys [closing-paren path viewer !expanded-at] :or {path []}}]
   (let [expanded? (get @!expanded-at path)
-        {:keys [opening-paren closing-paren]} viewer]
+        {:keys [opening-paren]} viewer]
     [:span.inspected-value.whitespace-nowrap
      {:class (when expanded? "inline-flex")}
      [:span
@@ -455,9 +455,8 @@
        :on-click #(when (fn? fetch-fn)
                     (fetch-fn fetch-opts))} (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")])])
 
-(defn render-map [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
-  (let [expanded? (get @!expanded-at path)
-        {:keys [closing-paren]} viewer]
+(defn render-map [xs {:as opts :keys [closing-paren path viewer !expanded-at] :or {path []}}]
+  (let [expanded? (get @!expanded-at path)]
     [:span.inspected-value.whitespace-nowrap
      {:class (when expanded? "inline-flex")}
      [:span
@@ -481,8 +480,8 @@
                   (inspect-presented opts %)))
           (if (string? s) [s] s))))
 
-(defn render-quoted-string [s {:as opts :keys [path viewer !expanded-at] :or {path []}}]
-  (let [{:keys [opening-paren closing-paren]} viewer]
+(defn render-quoted-string [s {:as opts :keys [closing-paren path viewer !expanded-at] :or {path []}}]
+  (let [{:keys [opening-paren]} viewer]
     [:span.inspected-value.inline-flex
      [:span.cmt-string
       (if (some #(and (string? %) (str/includes? % "\n")) (if (string? s) [s] s))
