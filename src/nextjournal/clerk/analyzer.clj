@@ -12,7 +12,7 @@
             [clojure.tools.analyzer.ast :as ana-ast]
             [clojure.tools.analyzer.jvm :as ana-jvm]
             [clojure.tools.analyzer.utils :as ana-utils]
-            [clojure.walk :as walk]
+            [clojure.walk :as w]
             [multiformats.base.b58 :as b58]
             [multiformats.hash :as hash]
             [nextjournal.clerk.parser :as parser]
@@ -550,10 +550,9 @@
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/analyzer.clj"))  #'nextjournal.clerk.analyzer/long-thing)
 
 (defn strip-form-meta [form]
-  (clojure.walk/postwalk
+  (w/postwalk
    (fn [v]
-     (if (or (instance? clojure.lang.IObj v)
-             (instance? clojure.lang.IMeta v))
+     (if (instance? clojure.lang.IObj v)
        (vary-meta v (constantly nil))
        v))
    form))
