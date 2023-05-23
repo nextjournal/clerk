@@ -18,6 +18,7 @@
 
 (def clerk-docs
   (into ["CHANGELOG.md"
+         "README.md"
          "notebooks/markdown.md"
          "notebooks/onwards.md"]
         (map #(str "notebooks/" % ".clj"))
@@ -36,7 +37,6 @@
          "multiviewer"
          "pagination"
          "paren_soup"
-         "readme"
          "rule_30"
          "slideshow"
          "visibility"
