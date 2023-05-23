@@ -9,6 +9,7 @@
             [clojure.string :as str]
             [clojure.walk :as w]
             [editscript.core :as editscript]
+            [goog.events :as gevents]
             [goog.object]
             [goog.string :as gstring]
             [nextjournal.clerk.render.code :as code]
@@ -24,6 +25,7 @@
             [sci.core :as sci]
             [sci.ctx-store]
             [shadow.cljs.modern :refer [defclass]]))
+
 
 (r/set-default-compiler! (r/create-compiler {:function-components true}))
 
@@ -138,7 +140,7 @@
 
 (declare clerk-eval)
 
-(defn ->URL [href]
+(defn ->URL [^js href]
   (js/URL. href))
 
 (defn handle-anchor-click [^js e]
@@ -150,26 +152,16 @@
                           (seq (.-hash url))
                           (assoc :fragment (subs (.-hash url) 1))))))))
 
-(defn history-push-state [{:keys [path fragment replace?]}]
-  (when (not= path (some-> js/history .-state .-clerk_show))
-    (j/call js/history
-            (if replace? :replaceState :pushState)
-            #js {:clerk_show path} nil (str "/" path (when fragment (str "#" fragment))))))
+(defn history-push-state [{:as opts :keys [path fragment replace?]}]
+  (when (not= path (some-> js/history .-state .-path))
+    (j/call js/history (if replace? :replaceState :pushState) (clj->js opts) "" (str "/" path (when fragment (str "#" fragment))))  ))
 
 (defn handle-history-popstate [^js e]
-  (when-some [notebook-path (some-> e .-state .-clerk_show)]
+  (when-let [{:as opts :keys [path]} (js->clj (.-state e) :keywordize-keys true)]
     (.preventDefault e)
-    (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path notebook-path
-                                                              :skip-history? true}))))
+    (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path path :skip-history? true}))))
 
-(defn handle-initial-load [_]
-  (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
-
-(when (exists? js/addEventListener)
-  ;; We need to push an initial history state when the document is first loaded via a hard request
-  (js/addEventListener "load" handle-initial-load))
-
-(defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility]} opts]
+(defn render-notebook [{:as _doc xs :blocks :keys [bundle? doc-css-class sidenotes? toc toc-visibility header footer]} opts]
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
                !state (r/atom {:toc (toc-items (:children toc))
@@ -187,20 +179,14 @@
                                         stored-open?
                                         (not= :collapsed toc-visibility))})
                root-ref-fn (fn [el]
-                             (if el
-                               (when (exists? js/document)
-                                 (js/document.addEventListener "click" handle-anchor-click)
-                                 (js/addEventListener "popstate" handle-history-popstate)
-                                 (setup-dark-mode! !state)
-                                 (when-some [heading (when (and (exists? js/location) (not bundle?))
-                                                       (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
-                                                            (catch js/Error _
-                                                              (js/console.warn (str "Clerk render-notebook, invalid hash: "
-                                                                                    (.-hash js/location))))))]
-                                   (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading))))
-                               (when (exists? js/document)
-                                 (js/document.removeEventListener "click" handle-anchor-click)
-                                 (js/removeEventListener "popstate" handle-history-popstate))))]
+                             (when (and el (exists? js/document))
+                               (setup-dark-mode! !state)
+                               (when-some [heading (when (and (exists? js/location) (not bundle?))
+                                                     (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
+                                                          (catch js/Error _
+                                                            (js/console.warn (str "Clerk render-notebook, invalid hash: "
+                                                                                  (.-hash js/location))))))]
+                                 (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
     (let [{:keys [md-toc mobile? open? visibility]} @!state
           doc-inset (cond
                       mobile? 0
@@ -231,13 +217,12 @@
            :initial (when toc-visibility {:margin-left doc-inset})
            :animate (when toc-visibility {:margin-left doc-inset})
            :transition navbar/spring
-           :class (str (or css-class "flex flex-col items-center notebook-viewer flex-auto ")
-                       (when sidenotes? "sidenotes-layout"))}]
-
+           :class (cond-> (or doc-css-class [:flex :flex-col :items-center :notebook-viewer :flex-auto])
+                    sidenotes? (conj :sidenotes-layout))}]
          ;; TODO: restore react keys via block-id
          ;; ^{:key (str processed-block-id "@" @!eval-counter)}
 
-         (inspect-children opts) xs)]])))
+         (inspect-children opts) (concat (when header [header]) xs (when footer [footer])))]])))
 
 (defn opts->query [opts]
   (->> opts
@@ -354,8 +339,7 @@
 
 (defn render-result [{:nextjournal/keys [fetch-opts hash presented]} {:keys [id auto-expand-results?]}]
   (let [!desc (hooks/use-state-with-deps presented [hash])
-        !expanded-at (hooks/use-state (when (map? @!desc)
-                                        (->expanded-at auto-expand-results? @!desc)))
+        !expanded-at (hooks/use-state-with-deps (when (map? @!desc) (->expanded-at auto-expand-results? @!desc)) [hash])
         fetch-fn (hooks/use-callback (when fetch-opts
                                        (fn [opts]
                                          (.then (fetch! fetch-opts opts)
@@ -625,11 +609,13 @@
   ([opts x]
    (if (valid-react-element? x)
      x
-     (let [{:nextjournal/keys [value viewer]} x]
+     (let [{:nextjournal/keys [value viewer] :keys [path]} x]
        #_(prn :inspect-presented value :valid-element? (react/isValidElement value) :viewer viewer)
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
        ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
-       [(:render-fn viewer) value (merge opts (:nextjournal/opts x) {:viewer viewer})]))))
+       [(:render-fn viewer) value (merge opts
+                                         (:nextjournal/opts x)
+                                         {:viewer viewer :path path})]))))
 
 (defn inspect [value]
   (r/with-let [!state (r/atom nil)]
@@ -763,13 +749,72 @@
     #_(js/console.log :<= type := msg)
     (dispatch-fn msg)))
 
-(defonce react-root
-  (when-let [el (and (exists? js/document) (js/document.getElementById "clerk"))]
-    (react-client/createRoot el)))
+(defonce container-el
+  (and (exists? js/document) (js/document.getElementById "clerk")))
 
-(defn ^:export ^:dev/after-load mount []
-  (when react-root
+(defonce hydrate?
+  (and container-el
+       (pos? (.-childElementCount container-el))))
+
+(defonce react-root
+  (when container-el
+    (if hydrate?
+      (react-client/hydrateRoot container-el (r/as-element [root]))
+      (react-client/createRoot container-el))))
+
+(defonce !router (atom nil))
+
+(defn handle-initial-load [_]
+  (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
+
+(defn path-from-url-hash [url]
+  (-> url ->URL .-hash (subs 2)))
+
+(defn handle-hashchange [{:keys [url->path path->doc]} ^js e]
+  (let [url (some-> e .-event_ .-newURL path-from-url-hash)]
+    (when-some [doc (get path->doc (get url->path url))]
+      (set-state! {:doc doc}))))
+
+(defn listeners [{:as state :keys [mode]}]
+  (case mode
+    :path
+    #{(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
+      (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
+      (gevents/listen js/window gevents/EventType.LOAD handle-initial-load false)}
+
+    :fragment
+    #{(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)}))
+
+(defn setup-router! [{:as state :keys [mode]}]
+  (when (and (exists? js/document) (exists? js/window))
+    (doseq [listener (:listeners @!router)]
+      (gevents/unlistenByKey listener))
+    (reset! !router (assoc state :listeners (listeners state)))))
+
+
+(defn ^:export mount []
+  (when (and react-root (not hydrate?))
     (.render react-root (r/as-element [root]))))
+
+(defn ^:dev/after-load ^:after-load re-render []
+  (swap! !doc re-eval-viewer-fns)
+  (mount))
+
+(defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path]}]
+  (let [static-app? (contains? state :path->doc)] ;; TODO: better check
+    (if static-app?
+      (let [url->path (set/map-invert path->url)]
+        (when bundle? (setup-router! (assoc state :mode :fragment :url->path url->path)))
+        (set-state! {:doc (get path->doc (or current-path
+                                             (when (and bundle? (exists? js/document))
+                                               (url->path (path-from-url-hash (.-location js/document))))
+                                             (url->path "")))})
+        (mount))
+      (do
+        (setup-router! {:mode :path})
+        (set-state! state)
+        (mount)))))
+
 
 (defn html-render [markup]
   (r/as-element

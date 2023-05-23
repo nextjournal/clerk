@@ -11,7 +11,6 @@
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
-            [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]))
 
@@ -219,8 +218,8 @@
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
   * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
-  ([x] (html {} x))
-  ([viewer-opts x] (with-viewer v/html-viewer viewer-opts x)))
+  ([x] (v/html x))
+  ([viewer-opts x] (v/html viewer-opts x)))
 
 (defn md
   "Displays `x` with the markdown viewer.
@@ -230,8 +229,8 @@
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
   * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
-  ([x] (md {} x))
-  ([viewer-opts x] (with-viewer v/markdown-viewer viewer-opts x)))
+  ([x] (v/md x))
+  ([viewer-opts x] (v/md viewer-opts x)))
 
 (defn plotly
   "Displays `x` with the plotly viewer.
@@ -241,8 +240,8 @@
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
   * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
-  ([x] (plotly {} x))
-  ([viewer-opts x] (with-viewer v/plotly-viewer viewer-opts x)))
+  ([x] (v/plotly x))
+  ([viewer-opts x] (v/plotly viewer-opts x)))
 
 (defn vl
   "Displays `x` with the vega embed viewer, supporting both vega-lite and vega.
@@ -256,8 +255,8 @@
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
   * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
-  ([x] (vl {} x))
-  ([viewer-opts x] (with-viewer v/vega-lite-viewer viewer-opts x)))
+  ([x] (v/vl x))
+  ([viewer-opts x] (v/vl viewer-opts x)))
 
 (defn use-headers
   "Treats the first element of the seq `xs` as a header for the table.
@@ -281,8 +280,8 @@
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
   * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
-  ([xs] (table {} xs))
-  ([viewer-opts xs] (with-viewer v/table-viewer viewer-opts xs)))
+  ([xs] (v/table xs))
+  ([viewer-opts xs] (v/table viewer-opts xs)))
 
 (defn row
   "Displays `xs` as rows.
@@ -294,7 +293,7 @@
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
   * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
-  [& xs] (apply v/with-viewer-extracting-opts v/row-viewer xs))
+  [& xs] (apply v/row xs))
 
 (defn col
   "Displays `xs` as columns.
@@ -306,7 +305,7 @@
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
   * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
-  [& xs] (apply v/with-viewer-extracting-opts v/col-viewer xs))
+  [& xs] (apply v/col xs))
 
 (defn tex
   "Displays `x` as LaTeX using KaTeX.
@@ -316,19 +315,19 @@
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
   * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
-  ([x] (tex {} x))
-  ([viewer-opts x] (with-viewer v/katex-viewer viewer-opts x)))
+  ([x] (v/tex x))
+  ([viewer-opts x] (v/tex viewer-opts x)))
 
 (defn hide-result
   "Deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead."
   {:deprecated "0.10"}
-  ([x] (v/print-hide-result-deprecation-warning) (with-viewer v/hide-result-viewer {} x))
-  ([viewer-opts x] (v/print-hide-result-deprecation-warning) (with-viewer v/hide-result-viewer viewer-opts x)))
+  ([x] #_:clj-kondo/ignore (v/hide-result x))
+  ([viewer-opts x] #_:clj-kondo/ignore (v/hide-result viewer-opts x)))
 
 (defn image
   "Creates a `java.awt.image.BufferedImage` from `url`, which can be a `java.net.URL` or a string, and
   displays it using the `buffered-image-viewer`."
-  ([url] (image {} url))
+  ([url] (v/image url))
   ([viewer-opts url] (v/image viewer-opts url)))
 
 (defn caption
@@ -353,14 +352,13 @@
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
   * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
-  ([code-string-or-form] (code {} code-string-or-form))
-  ([viewer-opts code-string-or-form] (with-viewer v/code-viewer viewer-opts code-string-or-form)))
+  ([code-string-or-form] (v/code code-string-or-form))
+  ([viewer-opts code-string-or-form] (v/code viewer-opts code-string-or-form)))
 
 (defn eval-cljs-str
   "Evaluates the given ClojureScript `code-string` in the browser."
-  ([code-string] (eval-cljs-str code-string nil))
-  ([opts code-string]
-   (v/eval-cljs-str opts code-string)))
+  ([code-string] (v/eval-cljs-str code-string))
+  ([opts code-string] (v/eval-cljs-str opts code-string)))
 
 (defn eval-cljs
   "Evaluates the given ClojureScript forms in the browser."
@@ -393,13 +391,6 @@
     `(nextjournal.clerk/with-viewer v/examples-viewer
        (mapv (fn [form# val#] {:form form# :val val#}) ~(mapv (fn [x#] `'~x#) body) ~(vec body)))))
 
-(defn file->viewer
-  "Evaluates the given `file` and returns it's viewer representation."
-  ([file] (file->viewer {:inline-results? true} file))
-  ([opts file] (view/doc->viewer opts (eval/eval-file file))))
-
-#_(file->viewer "notebooks/rule_30.clj")
-
 (defn halt-watcher!
   "Halts the filesystem watcher when active."
   []
@@ -410,7 +401,7 @@
 
 (defn ^:private normalize-opts [opts]
   (set/rename-keys opts #_(into {} (map (juxt identity #(keyword (str (name %) "?")))) [:bundle :browse :dashboard])
-                   {:bundle :bundle?, :browse :browse?, :dashboard :dashboard? :compile-css :compile-css? :ssr :ssr?}))
+                   {:bundle :bundle?, :browse :browse?, :dashboard :dashboard? :compile-css :compile-css? :ssr :ssr? :exclude-js :exclude-js?}))
 
 (defn ^:private started-via-bb-cli? [opts]
   (contains? (meta opts) :org.babashka/cli))

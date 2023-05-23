@@ -26,6 +26,7 @@
             [nextjournal.clojure-mode.commands]
             [nextjournal.clojure-mode.extensions.eval-region]
             [nextjournal.clojure-mode.keymap]
+            [reagent.dom.server :as dom-server]
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
@@ -77,7 +78,8 @@
          :read-cond :allow
          :readers
          (fn [tag]
-           (or (get {'viewer-fn ->viewer-fn-with-error
+           (or (get @cljs.reader/*tag-table* tag)
+               (get {'viewer-fn ->viewer-fn-with-error
                      'viewer-fn/cherry cherry-env/->viewer-fn-with-error
                      'viewer-eval ->viewer-eval-with-error
                      'viewer-eval/cherry cherry-env/->viewer-eval-with-error} tag)
@@ -94,6 +96,10 @@
 (defn ^:export read-string [s]
   (edamame/parse-string s @!edamame-opts))
 
+(defn read-string-without-tag-table [s]
+  (binding [cljs.reader/*tag-table* (atom {})]
+    (edamame/parse-string s @!edamame-opts)))
+
 (def ^{:doc "Stub implementation to be replaced during static site generation. Clerk is only serving one page currently."}
   doc-url (sci/new-var 'doc-url viewer/doc-url))
 
@@ -103,6 +109,7 @@
           'doc-url doc-url
           'url-for render/url-for
           'read-string read-string
+          'read-string-without-tag-table read-string-without-tag-table
           'clerk-eval render/clerk-eval
           'consume-view-context view-context/consume
           'inspect-presented render/inspect-presented
@@ -167,10 +174,11 @@
 (defn ^:export eval-form [f]
   (sci/eval-form (sci.ctx-store/get-ctx) f))
 
-(defn ^:export set-state [state]
-  (render/set-state! state))
+(def ^:export init render/init)
 
-(def ^:export mount render/mount)
+(defn ^:export ssr [state-str]
+  (init (read-string state-str))
+  (dom-server/render-to-string [render/root]))
 
 (defn reconnect-timeout [failed-connection-attempts]
   (get [0 0 100 500 5000] failed-connection-attempts 10000))
