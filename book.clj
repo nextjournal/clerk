@@ -742,6 +742,35 @@ v/table-viewer
                                       (dotimes [i value]
                                         (+ 1 2 3))))])})
 
+(def fps-viewer
+  {:transform-fn clerk/mark-presented
+   :render-fn
+   '(let [start-time (atom (js/Date.now))
+          frame (atom 0)
+          fps (reagent.core/atom 0)
+          complicated-calculation (reagent.core/atom 1)
+          tick-fn (fn tick []
+                    (let [time (js/Date.now)
+                          _ (swap! frame inc)]
+                      (when (> (- time @start-time) 1000)
+                        (do (reset! fps (/ @frame (.toFixed (/ (- time @start-time) 1000) 1)))
+                            (reset! start-time time)
+                            (reset! frame 0)
+                            (swap! complicated-calculation js/Math.sin)))
+                      (js/window.requestAnimationFrame tick)))]
+      (tick-fn)
+      (fn [value]
+        [:div
+         [:div "FPS: " @fps]
+         [:div "Calculated value:" @complicated-calculation]]))})
+
+(clerk/with-viewer fps-viewer
+  nil)
+
+(clerk/with-viewer fps-viewer
+  {:nextjournal.clerk/render-evaluator :cherry}
+  nil)
+
 (clerk/with-viewer slow-viewer
   1000000)
 
