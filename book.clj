@@ -745,10 +745,11 @@ v/table-viewer
 (def fps-viewer
   {:transform-fn clerk/mark-presented
    :render-fn
-   '(let [start-time (atom (js/Date.now))
+   '(let [hidden? (reagent.core/atom false)
+          start-time (atom (js/Date.now))
           frame (atom 0)
           fps (reagent.core/atom 0)
-          complicated-calculation (reagent.core/atom 1)
+          complicated-calculation (reagent.core/atom (range 400000))
           tick-fn (fn tick []
                     (let [time (js/Date.now)
                           _ (swap! frame inc)]
@@ -756,13 +757,18 @@ v/table-viewer
                         (do (reset! fps (/ @frame (.toFixed (/ (- time @start-time) 1000) 1)))
                             (reset! start-time time)
                             (reset! frame 0)
-                            (swap! complicated-calculation js/Math.sin)))
+                            (swap! complicated-calculation #(map (fn [s]
+                                                                   (inc (* 2 (js/Math.sin s)))) %))))
                       (js/window.requestAnimationFrame tick)))]
       (tick-fn)
       (fn [value]
         [:div
-         [:div "FPS: " @fps]
-         [:div "Calculated value:" @complicated-calculation]]))})
+         [:button {:class "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                   :on-click #(swap! hidden? not)}"Hide"]
+         (when-not @hidden?
+           [:div
+            [:div "FPS: " @fps]
+            [:div "Calculated value:" (apply + @complicated-calculation)]])]))})
 
 (clerk/with-viewer fps-viewer
   nil)
