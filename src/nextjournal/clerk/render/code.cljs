@@ -94,14 +94,14 @@
 (defn matching-cm-lang [language]
   (if (= "clojure" language)
     (js/Promise.resolve clojureLanguage)
-    (when-some [^js lang-desc (.matchLanguageName LanguageDescription languages language)]
-      (.. lang-desc load
-          (then (fn [lang-support] (.-language lang-support)))))))
+    (if-some [^js lang-desc (.matchLanguageName LanguageDescription languages language)]
+      (.. lang-desc load (then (fn [lang-support] (.-language lang-support))))
+      (js/Promise.resolve nil))))
 
 (defn lang->deco-range [language code]
   (js/console.log :langauge language )
   (let [^js builder (RangeSetBuilder.)
-        ^js lang (when-some [p (matching-cm-lang language)] (hooks/use-promise p))]
+        ^js lang (hooks/use-promise (matching-cm-lang language))]
     (when lang
       (when (and lang (= language "js"))
         (js/console.log :p lang (.. lang -parser (parse code))))
