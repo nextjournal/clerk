@@ -792,9 +792,13 @@
     (reset! !router (assoc state :listeners (listeners state)))))
 
 
-(defn ^:export ^:dev/after-load mount []
+(defn ^:export mount []
   (when (and react-root (not hydrate?))
     (.render react-root (r/as-element [root]))))
+
+(defn ^:dev/after-load ^:after-load re-render []
+  (swap! !doc re-eval-viewer-fns)
+  (mount))
 
 (defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path]}]
   (let [static-app? (contains? state :path->doc)] ;; TODO: better check
