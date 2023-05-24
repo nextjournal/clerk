@@ -300,13 +300,15 @@
 (defn read-string [s]
   (js/nextjournal.clerk.sci_env.read-string s))
 
+(defn replace-viewer-fns [doc]
+  (w/postwalk-replace (:name->viewer doc) (dissoc doc :name->viewer)))
 
 (defn fetch! [{:keys [blob-id]} opts]
   #_(js/console.log :fetch! blob-id opts)
   (-> (js/fetch (str "/_blob/" blob-id (when (seq opts)
                                          (str "?" (opts->query opts)))))
       (.then #(.text %))
-      (.then #(try (read-string %)
+      (.then #(try (replace-viewer-fns (read-string %))
                    (catch js/Error e
                      (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e})
                      (render-unreadable-edn %))))))
@@ -681,9 +683,6 @@
 (defn re-eval-viewer-fns [doc]
   (let [re-eval (fn [{:keys [form]}] (viewer/->viewer-fn form))]
     (w/postwalk (fn [x] (cond-> x (viewer/viewer-fn? x) re-eval)) doc)))
-
-(defn replace-viewer-fns [doc]
-  (w/postwalk-replace (:hash->viewer doc) (dissoc doc :hash->viewer)))
 
 (defn ^:export set-state! [{:as state :keys [doc]}]
   (when (contains? state :doc)

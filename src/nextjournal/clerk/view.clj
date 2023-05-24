@@ -8,7 +8,7 @@
   (:import (java.net URI)))
 
 
-(defn ^:private extract-hash->viewer [presentation]
+(defn ^:private extract-name->viewer [presentation]
   (into {}
         (map (juxt (fn [viewer]
                      (or (when (qualified-symbol? (:name viewer))
@@ -16,14 +16,16 @@
                          (symbol "nextjournal.clerk.viewer" (str "viewer-fn$" (:hash viewer))))) identity))
         (keep :nextjournal/viewer (tree-seq (some-fn map? vector?) #(cond-> % (map? %) vals) presentation))))
 
+(defn +name->viewer [presentation]
+  (let [name->viewer (extract-name->viewer presentation)]
+    (assoc (walk/postwalk-replace (set/map-invert name->viewer) presentation)
+           :name->viewer name->viewer)))
+
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns file]}]
    (binding [*ns* ns]
-     (let [presentation (-> (merge doc opts) v/notebook v/present)
-           hash->viewer (extract-hash->viewer presentation)]
-       (assoc (walk/postwalk-replace (set/map-invert hash->viewer) presentation)
-              :hash->viewer hash->viewer)))))
+     (-> (merge doc opts) v/notebook v/present +name->viewer))))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
