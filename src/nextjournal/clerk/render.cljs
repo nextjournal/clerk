@@ -161,7 +161,7 @@
     (.preventDefault e)
     (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path path :skip-history? true}))))
 
-(defn render-notebook [{:as _doc xs :blocks :keys [bundle? css-class sidenotes? toc toc-visibility header footer]} opts]
+(defn render-notebook [{:as _doc xs :blocks :keys [bundle? doc-css-class sidenotes? toc toc-visibility header footer]} opts]
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
                !state (r/atom {:toc (toc-items (:children toc))
@@ -217,8 +217,8 @@
            :initial (when toc-visibility {:margin-left doc-inset})
            :animate (when toc-visibility {:margin-left doc-inset})
            :transition navbar/spring
-           :class (str (or css-class "flex flex-col items-center notebook-viewer flex-auto ")
-                       (when sidenotes? "sidenotes-layout"))}]
+           :class (cond-> (or doc-css-class [:flex :flex-col :items-center :notebook-viewer :flex-auto])
+                    sidenotes? (conj :sidenotes-layout))}]
          ;; TODO: restore react keys via block-id
          ;; ^{:key (str processed-block-id "@" @!eval-counter)}
 
@@ -792,9 +792,13 @@
     (reset! !router (assoc state :listeners (listeners state)))))
 
 
-(defn ^:export ^:dev/after-load mount []
+(defn ^:export mount []
   (when (and react-root (not hydrate?))
     (.render react-root (r/as-element [root]))))
+
+(defn ^:dev/after-load ^:after-load re-render []
+  (swap! !doc re-eval-viewer-fns)
+  (mount))
 
 (defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path]}]
   (let [static-app? (contains? state :path->doc)] ;; TODO: better check

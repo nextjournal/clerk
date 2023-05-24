@@ -21,8 +21,10 @@
          "notebooks/onwards.md"]
         (map #(str "notebooks/" % ".clj"))
         ["cards"
+         "cherry"
          "controlling_width"
          "docs"
+         "document_linking"
          "hello"
          "how_clerk_works"
          "exec_status"
@@ -40,6 +42,7 @@
          "visibility"
          "viewer_api"
          "viewer_api_meta"
+         "viewer_classes"
          "viewer_d3_require"
          "viewers_nested"
          "viewer_normalization"
@@ -60,8 +63,7 @@
          "viewers/plotly"
          "viewers/table"
          "viewers/tex"
-         "viewers/vega"
-         "cherry"]))
+         "viewers/vega"]))
 
 
 (defn strip-index [path]

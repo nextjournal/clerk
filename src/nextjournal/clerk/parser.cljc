@@ -54,7 +54,8 @@
     :nextjournal.clerk/css-class
     :nextjournal.clerk/visibility
     :nextjournal.clerk/opts
-    :nextjournal.clerk/width})
+    :nextjournal.clerk/width
+    :nextjournal.clerk/render-evaluator})
 
 (defn settings-marker? [form]
   (boolean (and (map? form)
@@ -164,17 +165,22 @@
                                  :nextjournal.clerk/visibility {:code :fold}}(inc 1))
 
 (defn ->doc-settings [first-form]
-  {:ns? (ns? first-form)
-   :error-on-missing-vars (parse-error-on-missing-vars first-form)
-   :toc-visibility (or (#{true :collapsed} (:nextjournal.clerk/toc
-                                            (merge (-> first-form meta) ;; TODO: deprecate
-                                                   (when (ns? first-form)
-                                                     (merge (-> first-form second meta)
-                                                            (first (filter map? first-form)))))))
-                       false)
-   :block-settings (merge-with merge
-                               {:nextjournal.clerk/visibility {:code :show :result :show}}
-                               (parse-global-block-settings first-form))})
+  (let [doc-css-class (when (ns? first-form)
+                        (:nextjournal.clerk/doc-css-class (first (filter map? first-form))))]
+    (cond-> {:ns? (ns? first-form)
+             :error-on-missing-vars (parse-error-on-missing-vars first-form)
+             :toc-visibility (or (#{true :collapsed} (:nextjournal.clerk/toc
+                                                      (merge (-> first-form meta) ;; TODO: deprecate
+                                                             (when (ns? first-form)
+                                                               (merge (-> first-form second meta)
+                                                                      (first (filter map? first-form)))))))
+                                 false)
+             :block-settings (merge-with merge
+                                         {:nextjournal.clerk/visibility {:code :show :result :show}}
+                                         (parse-global-block-settings first-form))}
+      doc-css-class (assoc :doc-css-class (cond-> doc-css-class
+                                            (or (keyword? doc-css-class) (string? doc-css-class))
+                                            vector) ))))
 
 
 #_(->doc-settings '(ns foo {:nextjournal.clerk/visbility {:code :fold}}))
