@@ -10,7 +10,10 @@
 
 (defn ^:private extract-hash->viewer [presentation]
   (into {}
-        (map (juxt #(symbol "nextjournal.clerk" (str "viewer-fn$" (:hash %))) identity))
+        (map (juxt (fn [viewer]
+                     (or (when (qualified-symbol? (:name viewer))
+                           (symbol (namespace (:name viewer)) (str (name (:name viewer)) "$" (:hash viewer))))
+                         (symbol "nextjournal.clerk.viewer" (str "viewer-fn$" (:hash viewer))))) identity))
         (keep :nextjournal/viewer (tree-seq (some-fn map? vector?) #(cond-> % (map? %) vals) presentation))))
 
 (defn doc->viewer

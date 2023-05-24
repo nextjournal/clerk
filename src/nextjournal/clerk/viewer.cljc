@@ -801,13 +801,13 @@
                                                          (nextjournal.clerk.render/render-unreadable-edn x))))})
 
 (def vector-viewer
-  {:pred vector? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "[" :closing-paren "]" :page-size 20})
+  {:pred vector? :name `vector-viewer :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "[" :closing-paren "]" :page-size 20})
 
 (def set-viewer
-  {:pred set? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "#{" :closing-paren "}" :page-size 20})
+  {:pred set? :name `set-viewer :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "#{" :closing-paren "}" :page-size 20})
 
 (def sequential-viewer
-  {:pred sequential? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "(" :closing-paren ")" :page-size 20})
+  {:pred sequential? :name `sequential-viewer :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "(" :closing-paren ")" :page-size 20})
 
 (def map-viewer
   {:pred map? :name `map-viewer :render-fn 'nextjournal.clerk.render/render-map :opening-paren "{" :closing-paren "}" :page-size 10})
