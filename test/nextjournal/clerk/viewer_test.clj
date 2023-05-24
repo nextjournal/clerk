@@ -343,7 +343,7 @@
                  :blocks
                  (tree-seq coll? seq)
                  (keep :nextjournal/viewer)
-                 (filter #(str/starts-with? (str %) "nextjournal.clerk.viewer/vector-viewer"))))))
+                 (filter #{'nextjournal.clerk.viewer/vector-viewer$5dsD1KJESfc8Dy8gPeGQfZCX2ayE8f})))))
 
     (is (= 5
            (count
@@ -351,14 +351,15 @@
                  view/doc->viewer v/->value :blocks
                  (tree-seq coll? seq)
                  (keep :nextjournal/viewer)
-                 (filter #(str/starts-with? (str %) "nextjournal.clerk.viewer/vector-viewer"))))))
+                 (filter #{'nextjournal.clerk.viewer/vector-viewer$5dsD1KJESfc8Dy8gPeGQfZCX2ayE8f})))))
 
     (is (= 101
            (count
             (->> (eval/eval-string "^{:nextjournal.clerk/budget nil}(reduce (fn [acc i] (vector i acc)) :fin (range 101 0 -1))")
                  view/doc->viewer v/->value :blocks
                  (tree-seq coll? seq)
-                 (filter #(str/starts-with? (str %) "nextjournal.clerk.viewer/vector-viewer"))))))))
+                 (keep :nextjournal/viewer)
+                 (filter #{'nextjournal.clerk.viewer/vector-viewer$5dsD1KJESfc8Dy8gPeGQfZCX2ayE8f})))))))
 
 (deftest ->edn
   (testing "normal symbols and keywords"
