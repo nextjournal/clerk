@@ -2,7 +2,6 @@
   "Clerk's Static App Builder."
   (:require [babashka.fs :as fs]
             [babashka.process :refer [sh]]
-            [clojure.edn :as edn]
             [clojure.java.browse :as browse]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -332,19 +331,10 @@
        (str (viewer/relative-root-prefix-from (viewer/map-index opts file))
             url (when fragment (str "#" fragment)))))))
 
-(defn read-opts-from-deps-edn! []
-  (if (fs/exists? "deps.edn")
-    (let [deps-edn (edn/read-string (slurp "deps.edn"))]
-      (if-some [clerk-alias (get-in deps-edn [:aliases :nextjournal/clerk])]
-        (get clerk-alias :exec-args
-             {:error (str "No `:exec-args` found in `:nextjournal/clerk` alias.")})
-        {:error (str "No `:nextjournal/clerk` alias found in `deps.edn`.")}))
-    {:error (str "No `deps.edn` found in project.")}))
-
 (def ^:dynamic ^:private *build-opts* nil)
 (def build-help-link "\n\nLearn how to [set up your static build](https://book.clerk.vision/#static-building).")
 (defn index-paths
-  ([] (index-paths (or *build-opts* (read-opts-from-deps-edn!))))
+  ([] (index-paths (or *build-opts* (config/read-opts-from-deps-edn!))))
   ([{:as opts :keys [index error]}]
    (if error
      (update opts :error str build-help-link)
@@ -353,6 +343,7 @@
          (update result :error str build-help-link)
          {:paths (remove #{index "index.clj"} expanded-paths)})))))
 
+#_(config/read-opts-from-deps-edn!)
 #_(index-paths)
 #_(index-paths {:paths ["CHANGELOG.md"]})
 #_(index-paths {:paths-fn "boom"})

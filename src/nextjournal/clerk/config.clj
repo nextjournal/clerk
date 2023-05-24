@@ -1,7 +1,19 @@
 (ns nextjournal.clerk.config
-  (:require [clojure.edn :as edn]
+  (:require [babashka.fs :as fs]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]))
+
+(defn read-opts-from-deps-edn! []
+  (if (fs/exists? "deps.edn")
+    (let [deps-edn (edn/read-string (slurp "deps.edn"))]
+      (if-some [clerk-alias (get-in deps-edn [:aliases :nextjournal/clerk])]
+        (get clerk-alias :exec-args
+             {:error (str "No `:exec-args` found in `:nextjournal/clerk` alias.")})
+        {:error (str "No `:nextjournal/clerk` alias found in `deps.edn`.")}))
+    {:error (str "No `deps.edn` found in project.")}))
+
+(def builder-opts (delay (read-opts-from-deps-edn!)))
 
 (def cache-dir
   (or (System/getProperty "clerk.cache_dir")
