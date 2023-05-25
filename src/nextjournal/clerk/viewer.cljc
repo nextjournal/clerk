@@ -1077,9 +1077,7 @@
   #?(:cljs ""
      :clj (if static-build?
             (if index (str index) "")
-            (cond index index
-                  (fs/exists? "index.clj") "index.clj"
-                  :else "'nextjournal.clerk.index"))))
+            (if (fs/exists? "index.clj") "index.clj" "'nextjournal.clerk.index"))))
 
 (defn header [{:as opts :keys [nav-path static-build?] :git/keys [url sha]}]
   (html [:div.viewer.w-full.max-w-prose.px-8.not-prose.mt-3
