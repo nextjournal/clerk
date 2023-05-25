@@ -12,6 +12,7 @@
             [clojure.tools.analyzer.ast :as ana-ast]
             [clojure.tools.analyzer.jvm :as ana-jvm]
             [clojure.tools.analyzer.utils :as ana-utils]
+            [clojure.walk :as walk]
             [multiformats.base.b58 :as b58]
             [multiformats.hash :as hash]
             [nextjournal.clerk.parser :as parser]
@@ -113,8 +114,12 @@
 (defn unresolvable-symbol-handler [ns sym ast-node]
   ast-node)
 
+(defn wrong-tag-handler [tag ast-node]
+  ast-node)
+
 (def analyzer-passes-opts
   (assoc ana-jvm/default-passes-opts
+         :validate/wrong-tag-handler wrong-tag-handler
          :validate/unresolvable-symbol-handler unresolvable-symbol-handler))
 
 (defn form->ex-data
@@ -544,12 +549,21 @@
 #_(dep/immediate-dependencies (:graph (build-graph "src/nextjournal/clerk/analyzer.clj"))  #'nextjournal.clerk.analyzer/long-thing)
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/analyzer.clj"))  #'nextjournal.clerk.analyzer/long-thing)
 
+(defn strip-form-meta [form]
+  (clojure.walk/postwalk
+   (fn [v]
+     (if (or (instance? clojure.lang.IObj v)
+             (instance? clojure.lang.IMeta v))
+       (vary-meta v (constantly nil))
+       v))
+   form))
+
 (defn hash-codeblock [->hash {:as codeblock :keys [hash form id deps vars]}]
   (when (and (seq deps) (not (ifn? ->hash)))
     (throw (ex-info "`->hash` must be `ifn?`" {:->hash ->hash :codeblock codeblock})))
   (let [hashed-deps (into #{} (map ->hash) deps)]
     (sha1-base58 (binding [*print-length* nil]
-                   (pr-str (set/union (conj hashed-deps (if form form hash))
+                   (pr-str (set/union (conj hashed-deps (if form (strip-form-meta form) hash))
                                       vars))))))
 
 (defn hash
