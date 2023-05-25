@@ -810,7 +810,7 @@
   {:pred sequential? :name `sequential-viewer :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "(" :closing-paren ")" :page-size 20})
 
 (def map-viewer
-  {:pred map? :name `map-viewer :render-fn 'nextjournal.clerk.render/render-map :opening-paren "{" :closing-paren "}" :page-size 10})
+  {:pred map? :name `map-viewer :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "{" :closing-paren "}" :page-size 10})
 
 #?(:cljs (defn var->symbol [v] (if (instance? sci.lang.Var v) (sci.impl.vars/toSymbol v) (symbol v))))
 
@@ -1640,9 +1640,9 @@
                              (or (-> value last :nextjournal/viewer :closing-paren) ;; the last element can carry parens
                                  (and (= `map-entry-viewer (-> value last :nextjournal/viewer :name)) ;; the last element is a map entry whose value can carry parens
                                       (-> value last :nextjournal/value last :nextjournal/viewer :closing-paren))))]
-     (cond-> (if (or (not closing) defer-closing?)
-               node
-               (assoc-in node [:nextjournal/opts :closing-paren] (cons closing closing-parens)))
+     (cond-> (assoc-in node [:nextjournal/opts :closing-parens] (if (or (not closing) defer-closing?)
+                                                                  '()
+                                                                  (cons closing closing-parens)))
        non-leaf? (update :nextjournal/value
                          (fn [xs]
                            (into []

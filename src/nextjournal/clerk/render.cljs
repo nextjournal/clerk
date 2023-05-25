@@ -428,21 +428,20 @@
       [triangle expanded?]]
      [:span.group-hover:text-indigo-700 opening-paren]]))
 
-(defn render-coll [xs {:as opts :keys [closing-paren path viewer !expanded-at] :or {path []}}]
+(defn render-coll [xs {:as opts :keys [closing-parens path viewer !expanded-at] :or {path []}}]
   (let [expanded? (get @!expanded-at path)
-        {:keys [opening-paren]} viewer]
+        {:keys [opening-paren closing-paren]} viewer]
     [:span.inspected-value.whitespace-nowrap
      {:class (when expanded? "inline-flex")}
      [:span
-      (if (< 1 (count xs))
+      (if (expandable? xs)
         [expand-button !expanded-at opening-paren path]
         [:span opening-paren])
       (into [:<>]
             (comp (inspect-children opts)
                   (interpose (if expanded? [:<> [:br] triangle-spacer nbsp (when (= 2 (count opening-paren)) nbsp)] " ")))
             xs)
-      [:span
-       (cond->> closing-paren (list? closing-paren) (into [:<>]))]]]))
+      (into [:span] (or closing-parens [closing-paren]))]]))
 
 (defn render-elision [{:as fetch-opts :keys [total offset unbounded?]} _]
   [view-context/consume :fetch-fn
@@ -455,20 +454,6 @@
        :on-click #(when (fn? fetch-fn)
                     (fetch-fn fetch-opts))} (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")])])
 
-(defn render-map [xs {:as opts :keys [closing-paren path viewer !expanded-at] :or {path []}}]
-  (let [expanded? (get @!expanded-at path)]
-    [:span.inspected-value.whitespace-nowrap
-     {:class (when expanded? "inline-flex")}
-     [:span
-      (if (expandable? xs)
-        [expand-button !expanded-at "{" path]
-        [:span "{"])
-      (into [:<>]
-            (comp (inspect-children opts)
-                  (interpose (if expanded? [:<> [:br] triangle-spacer nbsp #_(repeat (inc (count path)) nbsp)] " ")))
-            xs)
-      (cond->> closing-paren (list? closing-paren) (into [:<>]))]]))
-
 
 (defn render-string [s {:as opts :keys [path !expanded-at] :or {path []}}]
   (let [expanded? (get @!expanded-at path)]
@@ -480,16 +465,16 @@
                   (inspect-presented opts %)))
           (if (string? s) [s] s))))
 
-(defn render-quoted-string [s {:as opts :keys [closing-paren path viewer !expanded-at] :or {path []}}]
-  (let [{:keys [opening-paren]} viewer]
+(defn render-quoted-string [s {:as opts :keys [closing-parens path viewer !expanded-at] :or {path []}}]
+  (let [{:keys [opening-paren closing-paren]} viewer]
     [:span.inspected-value.inline-flex
      [:span.cmt-string
       (if (some #(and (string? %) (str/includes? % "\n")) (if (string? s) [s] s))
         [expand-button !expanded-at opening-paren path]
         [:span opening-paren])]
-     [:div
-      [:span.cmt-string (viewer/->value (render-string s opts)) (first closing-paren)]
-      (when (list? closing-paren) (into [:<>] (rest closing-paren)))]]))
+     (into [:div
+            [:span.cmt-string (viewer/->value (render-string s opts)) (first closing-paren)]
+            (rest closing-parens)])]))
 
 (defn render-number [num]
   [:span.cmt-number.inspected-value
