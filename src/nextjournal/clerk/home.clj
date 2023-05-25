@@ -21,6 +21,8 @@
 ^::clerk/sync
 (defonce !filter (atom {}))
 
+#_(reset! !filter {})
+
 (defn query-fn [query path]
   (str/includes? (str/lower-case path) (str/lower-case (or query ""))))
 
@@ -42,10 +44,10 @@
     (when (contains? paths next-index)
       (swap! !filter assoc :selected-path (get paths next-index)))))
 
-(add-watch !filter :empty-selected-path
-           (fn [_ _ old-filter {:as filter :keys [selected-path]}]
-             (when-not (contains? filter :selected-path)
-               (swap! !filter assoc :selected-path (first (filtered+sorted-paths (merge {:paths @!notebooks} filter)))))))
+#_(add-watch !filter :empty-selected-path
+             (fn [_ _ old-filter {:as filter :keys [selected-path]}]
+               (when-not (contains? filter :selected-path)
+                 (swap! !filter assoc :selected-path (first (filtered+sorted-paths (merge {:paths @!notebooks} filter)))))))
 
 (defn show-path []
   (when-let [path (:selected-path @!filter)]
@@ -166,8 +168,8 @@
     [:a.ml-3 {:href "#"} "🚀 Getting Started"]
     [:a.ml-3 {:href "#"} "🔍 Viewers"]
     [:a.ml-3 {:href "#"} "🙈 Controlling Visibility"]]]
-  [:div.mt-6
-   (clerk/with-viewer filter-input-viewer `!filter)]
+  #_[:div.mt-6
+     (clerk/with-viewer filter-input-viewer `!filter)]
   [:div.flex.mt-6.border-t.font-sans
    [:div {:class (str "w-1/2 pt-6 " (when-not (seq @!filter) "pr-6 border-r"))}
     [:h4.text-lg "All Notebooks"]
