@@ -40,6 +40,10 @@ Changes can be:
 
 * 💫 Cache expressions that return `nil` in memory
 
+* 🐜 Turn off analyzer pass for validation of `:type` tags, fixes [#488](https://github.com/nextjournal/clerk/issues/488) @craig-latacora
+
+* 🐜 Strip `:type` metadata from forms before printing them to hash, fixes [#489](https://github.com/nextjournal/clerk/issues/489) @craig-latacora
+
 * 🐜 Ensure custom `print-method` supporting unreadable symbols preserves metadata
 
 ## 0.13.842 (2023-03-07)
