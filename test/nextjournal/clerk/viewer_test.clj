@@ -173,17 +173,20 @@
                 (v/present 10/33))))
 
   (testing "opts are not propagated to children during presentation"
-    (let [count-opts (fn [o]
+    (let [count-opts (fn [o k]
                        (let [c (atom 0)]
-                         (w/postwalk (fn [f] (when (= :nextjournal/opts f) (swap! c inc)) f) o)
+                         (w/postwalk (fn [f] (when (and (map? f)
+                                                        (contains? f :nextjournal/opts)
+                                                        (-> f :nextjournal/opts k))
+                                               (swap! c inc)) f) o)
                          @c))]
       (let [presented (v/present (v/col {:nextjournal.clerk/opts {:width 150}} 1 2 3))]
-        (is (= {:width 150} (:nextjournal/opts presented)))
-        (is (= 1 (count-opts presented))))
+        (is (match? {:width 150} (:nextjournal/opts presented)))
+        (is (= 1 (count-opts presented :width))))
 
       (let [presented (v/present (v/table {:col1 [1 2] :col2 '[a b]}))]
-        (is (= {:num-cols 2 :number-col? #{0}} (:nextjournal/opts presented)))
-        (is (= 1 (count-opts presented))))))
+        (is (match? {:num-cols 2 :number-col? #{0}} (:nextjournal/opts presented)))
+        (is (= 1 (count-opts presented :num-cols))))))
 
   (testing "viewer opts are normalized"
     (is (= (v/desc->values (v/present {:nextjournal/value (range 10) :nextjournal/budget 3}))
@@ -219,13 +222,13 @@
                  (get-in (path-to-value [0 1 1]))
                  (get 2)
                  :nextjournal/opts
-                 :closing-paren)))
+                 :closing-parens)))
       (is (= '(")" "}")
              (-> after
                  (get-in (path-to-value [1]))
                  (get 1)
                  :nextjournal/opts
-                 :closing-paren))))))
+                 :closing-parens))))))
 
 (defn tree-re-find [data re]
   (->> data
