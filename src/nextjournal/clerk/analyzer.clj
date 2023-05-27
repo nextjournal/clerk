@@ -105,7 +105,7 @@
                            :syntax-quote {:resolve-symbol tools.reader/resolve-symbol}
                            :readers *data-readers*
                            :read-cond :allow
-                           :regex #(list `re-pattern %)
+                           :regex true
                            :features #{:clj}
                            :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))}))
 
