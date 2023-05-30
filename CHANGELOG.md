@@ -42,6 +42,10 @@ Changes can be:
 
 * 💫 Support non-evaluated clojure code listings in markdown documents by specifying `{:nextjournal.clerk/code-listing true}` after the language ([#482](https://github.com/nextjournal/clerk/issues/482)).
 
+* 🐜 Turn off analyzer pass for validation of `:type` tags, fixes [#488](https://github.com/nextjournal/clerk/issues/488) @craig-latacora
+
+* 🐜 Strip `:type` metadata from forms before printing them to hash, fixes [#489](https://github.com/nextjournal/clerk/issues/489) @craig-latacora
+
 * 🐜 Ensure custom `print-method` supporting unreadable symbols preserves metadata
 
 ## 0.13.842 (2023-03-07)
