@@ -89,7 +89,7 @@
                   (concat [(.sliceString text pos to)]))))))))
 
 (defn matching-language-parser [language]
-  (if  (= "clojure" language)
+  (if  (#{"clojure" "clojurescript" "clj" "cljs" "cljc" "edn"} language)
     (js/Promise.resolve (.-parser clojureLanguage))
     (.. (shadow.esm/dynamic-import "https://cdn.skypack.dev/@codemirror/language-data@6.1.0")
         (then (fn [mod]

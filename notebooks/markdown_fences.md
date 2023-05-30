@@ -23,11 +23,13 @@
 
 ## 🏳️‍🌈 Polyglot Highlighting
 
+EDN
+
 ```edn
 (1 2 "not evaluated" :but-still-highlighted)
 ```
 
-javascript
+Javascript
 
 ```js
 () => {
@@ -39,7 +41,7 @@ javascript
 }
 ```
 
-python
+Python
 
 ```py
 class Foo(object):
