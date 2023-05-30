@@ -41,10 +41,21 @@ javascript
 
 python
 
-```python
+```py
 class Foo(object):
     def __init__(self):
         pass
     def do_this(self):
         return 1
+```
+
+C++
+
+```c++
+#include <iostream>
+
+int main() {
+    std::cout << "Hello, world!" << std::endl;
+    return 0;
+}
 ```

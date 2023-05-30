@@ -94,8 +94,8 @@
     (.. (shadow.esm/dynamic-import "https://cdn.skypack.dev/@codemirror/language-data@6.1.0")
         (then (fn [mod]
                 (when-some [langs (.-languages mod)]
-                  (when-some [^js matching (or (.matchFilename LanguageDescription langs language)
-                                               (.matchLanguageName LanguageDescription langs language))]
+                  (when-some [^js matching (or (.matchLanguageName LanguageDescription langs language)
+                                               (.matchFilename LanguageDescription langs (str "code." language)))]
                     (.load matching)))))
         (then (fn [lang] (when lang
                            (js/console.log :found language lang)
