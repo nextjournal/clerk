@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.parser
   "Clerk's Parser turns Clojure & Markdown files and strings into Clerk documents."
-  (:require [clojure.set :as set]
+  (:require [clojure.edn :as edn]
+            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.zip]
             [nextjournal.markdown :as markdown]
@@ -361,7 +362,7 @@
   (and (code? block)
        (or (empty? language)
            (re-matches #"clj(c?)|clojure" language))
-       (not (:nextjournal.clerk/code-listing (read-string {:eof {}} (subs info (count language)))))))
+       (not (:nextjournal.clerk/code-listing (edn/read-string {:eof {}} (subs info (count language)))))))
 
 (defn parse-markdown-string [{:as opts :keys [doc?]} s]
   (let [{:as ctx :keys [content]} (parse-markdown (markdown-context) s)]
