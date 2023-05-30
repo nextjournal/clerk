@@ -1466,7 +1466,7 @@
 
 (defn ^:private present-elision* [!path->wrapped-value {:as fetch-opts :keys [path]}]
   (if-let [wrapped-value (@!path->wrapped-value path)]
-    (present* (merge wrapped-value (make-!budget-opts wrapped-value) fetch-opts))
+    (assign-closing-parens (present* (merge wrapped-value (make-!budget-opts wrapped-value) fetch-opts)))
     (throw (ex-info "could not find wrapped-value at path" {:!path->wrapped-value !path->wrapped-value :fetch-otps fetch-opts}))))
 
 
