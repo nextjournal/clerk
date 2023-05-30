@@ -357,24 +357,45 @@
          :nodes (rest nodes)
          ::md-slice []))
 
-(defn fenced-clojure-code-block? [{:as block :keys [type info language]}]
-  (and (code? block)
-       (or (empty? language)
-           (re-matches #"clj(c?)|clojure" language))
-       (not (:nextjournal.clerk/code-listing (let [parsed (p/parse-string-all (subs info (count language)))]
-                                               (when (n/sexpr-able? parsed)
-                                                 (n/sexpr parsed)))))))
+(defn parse-code-info-string
+  "https://spec.commonmark.org/0.30/#code-fence"
+  [{:as node :keys [info]}]
+  (if-not (code? node)
+    {:eval? false}
+    (try
+      ;; TODO: really?
+      (let [sexprs (n/child-sexprs (p/parse-string-all info))
+            language (some #(and (symbol? %) %) sexprs)
+            metadata (some #(and (map? %) %) sexprs)]
+        {:language (if language (name language) "clojure")
+         :metadata metadata
+         :eval? (and (or (not language) (#{'clojure 'clojurescript 'clj 'cljs 'cljc} language))
+                     (not (:nextjournal.clerk/code-listing metadata)))})
+      (catch #?(:clj Throwable :cljs :default) cause
+        (throw (ex-info "We allow info strings of the following shape:
+```language {map with clerk metadata}
+code
+```" node cause))))))
+
+#_ (parse-code-info-string {:type :heading})
+#_ (parse-code-info-string {:type :code :info "clojure"})
+#_ (parse-code-info-string {:type :code :info " clojure"})
+#_ (parse-code-info-string {:type :code :info "clojure {"})
+#_ (parse-code-info-string {:type :code :info "clojure &@foo !!!"})
+#_ (parse-code-info-string {:type :code :info "clojure {:nextjournal.clerk/code-listing true}"})
+#_ (ex-message *e)
 
 (defn parse-markdown-string [{:as opts :keys [doc?]} s]
   (let [{:as ctx :keys [content]} (parse-markdown (markdown-context) s)]
     (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes content :md-context ctx}]
       (if-some [node (first nodes)]
         (recur
-         (if (fenced-clojure-code-block? node)
-           (-> state
-               (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
-               (parse-markdown-cell opts))
-           (-> state (update :nodes rest) (cond-> doc? (update ::md-slice conj node)))))
+         (let [{:keys [language eval?]} (parse-code-info-string node)]
+           (if eval?
+             (-> state
+                 (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
+                 (parse-markdown-cell opts))
+             (-> state (update :nodes rest) (cond-> doc? (update ::md-slice conj (cond-> node language (assoc :language language))))))))
 
         (-> state
             (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
