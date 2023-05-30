@@ -40,6 +40,8 @@ Changes can be:
 
 * 💫 Cache expressions that return `nil` in memory
 
+* 💫 Support non-evaluated clojure code listings in markdown documents by specifying `{:nextjournal.clerk/code-listing true}` after the language ([#482](https://github.com/nextjournal/clerk/issues/482)).
+
 * 🐜 Ensure custom `print-method` supporting unreadable symbols preserves metadata
 
 ## 0.13.842 (2023-03-07)
