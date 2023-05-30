@@ -173,8 +173,6 @@
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
     (eval '(nextjournal.clerk/recompute!)))
 
-(declare present+reset!)
-
 (defn ->nav-path [file-or-ns]
   (cond (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
         (str "'" file-or-ns)
