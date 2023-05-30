@@ -300,8 +300,9 @@
 (defn read-string [s]
   (js/nextjournal.clerk.sci_env.read-string s))
 
-(defn replace-viewer-fns [doc]
-  (w/postwalk-replace (:name->viewer doc) (dissoc doc :name->viewer)))
+(defn replace-viewer-fns [{:as doc :keys [name->viewer]}]
+  (assoc (w/postwalk-replace name->viewer doc)
+         :name->viewer name->viewer))
 
 (defn fetch! [{:keys [blob-id]} opts]
   #_(js/console.log :fetch! blob-id opts)
@@ -596,6 +597,8 @@
    (if (valid-react-element? x)
      x
      (let [{:nextjournal/keys [value viewer] :keys [path]} x]
+       (when-not (:render-fn viewer)
+         (throw (ex-info "A render function is missing" {:viewer viewer})))
        #_(prn :inspect-presented value :valid-element? (react/isValidElement value) :viewer viewer)
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
        ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
@@ -702,10 +705,10 @@
 
 (defn patch-state! [{:keys [patch]}]
   (if (remount? patch)
-    (do (swap! !doc #(re-eval-viewer-fns (apply-patch % patch)))
+    (do (swap! !doc #(re-eval-viewer-fns (replace-viewer-fns (apply-patch % patch))))
         ;; TODO: figure out why it doesn't work without `js/setTimeout`
         (js/setTimeout #(swap! !eval-counter inc) 10))
-    (swap! !doc apply-patch patch)))
+    (swap! !doc #(replace-viewer-fns (apply-patch % patch)))))
 
 (defonce !pending-clerk-eval-replies
   (atom {}))
