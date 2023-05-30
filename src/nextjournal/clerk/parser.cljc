@@ -383,6 +383,7 @@ code
 #_ (parse-code-info-string {:type :code :info "clojure {"})
 #_ (parse-code-info-string {:type :code :info "clojure &@foo !!!"})
 #_ (parse-code-info-string {:type :code :info "clojure {:nextjournal.clerk/code-listing true}"})
+#_ (parse-code-info-string {:type :code :info "{:nextjournal.clerk/code-listing true} c++"})
 #_ (ex-message *e)
 
 (defn parse-markdown-string [{:as opts :keys [doc?]} s]

@@ -99,7 +99,8 @@
                     (.load matching)))))
         (then (fn [lang] (when lang
                            (js/console.log :found language lang)
-                           (.. lang -language -parser)))))))
+                           (.. lang -language -parser))))
+        (catch (fn [err] (js/console.warn err))))))
 
 (defn lang->deco-range [language code]
   (let [^js builder (RangeSetBuilder.)
