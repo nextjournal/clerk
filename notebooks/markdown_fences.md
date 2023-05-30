@@ -8,11 +8,11 @@
 '(evaluated :and "highlighted")
 ```
 
-```clojure eval=false
+```clojure {:nextjournal.clerk/code-listing true}
 '(1 2 "not evaluated" :but-still-highlighted)
 ```
 
-```clojure skip
+```clojure {:nextjournal.clerk/code-listing true}
 '(1 2 "not evaluated" :but-still-highlighted)
 ```
 

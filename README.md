@@ -50,11 +50,11 @@ To use Clerk in your project, add the following dependency to your `deps.edn`:
 
 Require and start Clerk as part of your system start, e.g. in `user.clj`:
 
-```clojure skip
+```clojure {:nextjournal.clerk/code-listing true}
 (require '[nextjournal.clerk :as clerk])
 
 ;; start Clerk's built-in webserver on the default port 7777, opening the browser when done
-(clerk/serve! {:browse? true})
+(clerk/serve! {:browse true})
 
 ;; either call `clerk/show!` explicitly
 (clerk/show! "notebooks/rule_30.clj")
@@ -121,7 +121,7 @@ nmap <silent> <localleader>cs :execute ClerkShow()<CR>
 Make sure you have [Babashka installed](https://github.com/babashka/babashka#installation), and run:
 
 ```bash
-bb dev :browse? true
+bb dev :browse true
 ```
 
 The will start everything needed to develop Clerk and open your
@@ -129,7 +129,7 @@ default browser. You can connect your favorite editor to it using nREPL.
 
 Any trailing arguments to `bb dev` will be forwarded to `clojure -X`
 and `clerk/serve!`. So if you prefer to not open your browser, leave 
-out the `:browse\? true` arguments.
+out the `:browse true` arguments.
 
 ## 🐞 Known Issues
 

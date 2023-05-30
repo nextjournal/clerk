@@ -357,10 +357,11 @@
          :nodes (rest nodes)
          ::md-slice []))
 
-(defn fenced-clojure-code-block? [{:keys [type info language skip] eval? :eval}]
-  (and (= :code type) info
-       (or (empty? language) (re-matches #"clj(c?)|clojure" language))
-       (not skip) (not= "false" eval?)))
+(defn fenced-clojure-code-block? [{:as block :keys [type info language]}]
+  (and (code? block)
+       (or (empty? language)
+           (re-matches #"clj(c?)|clojure" language))
+       (not (:nextjournal.clerk/code-listing (read-string {:eof {}} (subs info (count language)))))))
 
 (defn parse-markdown-string [{:as opts :keys [doc?]} s]
   (let [{:as ctx :keys [content]} (parse-markdown (markdown-context) s)]
