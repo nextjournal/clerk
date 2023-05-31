@@ -89,18 +89,20 @@
                   (concat [(.sliceString text pos to)]))))))))
 
 (defn matching-language-parser [language]
-  (if  (#{"clojure" "clojurescript" "clj" "cljs" "cljc" "edn"} language)
+  (cond
+    (not language)
+    (js/Promise.resolve nil)
+    (#{"clojure" "clojurescript" "clj" "cljs" "cljc" "edn"} language)
     (js/Promise.resolve (.-parser clojureLanguage))
+    :else
     (.. (shadow.esm/dynamic-import "https://cdn.skypack.dev/@codemirror/language-data@6.1.0")
-        (then (fn [mod]
+        (then (fn [^js mod]
                 (when-some [langs (.-languages mod)]
                   (when-some [^js matching (or (.matchLanguageName LanguageDescription langs language)
                                                (.matchFilename LanguageDescription langs (str "code." language)))]
                     (.load matching)))))
-        (then (fn [lang] (when lang
-                           (js/console.log :found language lang)
-                           (.. lang -language -parser))))
-        (catch (fn [err] (js/console.warn err))))))
+        (then (fn [^js lang-support] (when lang-support (.. lang-support -language -parser))))
+        (catch (fn [err] (js/console.warn (str "Cannot load language parser for: " language) err))))))
 
 (defn lang->deco-range [language code]
   (let [^js builder (RangeSetBuilder.)
