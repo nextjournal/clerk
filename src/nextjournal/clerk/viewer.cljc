@@ -598,8 +598,7 @@
               code?
               (conj (with-viewer (if fold? `folded-code-block-viewer `code-block-viewer)
                       {:nextjournal/opts (assoc (select-keys cell [:loc])
-                                                :id (processed-block-id (str id "-code"))
-                                                :language "clojure")}
+                                                :id (processed-block-id (str id "-code")))}
                       (dissoc cell :result)))
               (or result? eval?)
               (conj (cond-> (ensure-wrapped (-> cell (assoc ::doc doc) (set/rename-keys {:result ::result})))
