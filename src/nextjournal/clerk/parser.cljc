@@ -54,7 +54,8 @@
     :nextjournal.clerk/css-class
     :nextjournal.clerk/visibility
     :nextjournal.clerk/opts
-    :nextjournal.clerk/width})
+    :nextjournal.clerk/width
+    :nextjournal.clerk/render-evaluator})
 
 (defn settings-marker? [form]
   (boolean (and (map? form)
@@ -356,12 +357,20 @@
          :nodes (rest nodes)
          ::md-slice []))
 
+(defn fenced-clojure-code-block? [{:as block :keys [type info language]}]
+  (and (code? block)
+       (or (empty? language)
+           (re-matches #"clj(c?)|clojure" language))
+       (not (:nextjournal.clerk/code-listing (let [parsed (p/parse-string-all (subs info (count language)))]
+                                               (when (n/sexpr-able? parsed)
+                                                 (n/sexpr parsed)))))))
+
 (defn parse-markdown-string [{:as opts :keys [doc?]} s]
   (let [{:as ctx :keys [content]} (parse-markdown (markdown-context) s)]
     (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes content :md-context ctx}]
       (if-some [node (first nodes)]
         (recur
-         (if (and (code? node) (contains? node :info))
+         (if (fenced-clojure-code-block? node)
            (-> state
                (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
                (parse-markdown-cell opts))

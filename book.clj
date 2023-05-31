@@ -47,7 +47,7 @@
 ;; cd clerk-demo
 ;; ```
 
-;; Then open `dev/user.clj` from the project in your favorite editor start a REPL into the project, see
+;; Then open `dev/user.clj` from the project in your favorite editor and start a REPL into the project. For editor-specific instructions see:
 ;; * [Emacs & Cider](https://docs.cider.mx/cider/basics/up_and_running.html#launch-an-nrepl-server-from-emacs)
 ;; * [Calva](https://calva.io/jack-in-guide/)
 ;; * [Cursive](https://cursive-ide.com/userguide/repl.html)
@@ -58,7 +58,7 @@
 ;; To use Clerk in your project, add the following dependency to your `deps.edn`:
 
 ;; ```edn
-;; {:deps {io.github.nextjournal/clerk {:mvn/version "0.9.513"}}}
+;; {:deps {io.github.nextjournal/clerk {:mvn/version "0.13.842"}}}
 ;; ```
 
 ;; Require and start Clerk as part of your system start, e.g. in `user.clj`:
@@ -69,7 +69,7 @@
 ;; ;; start Clerk's built-in webserver on the default port 7777, opening the browser when done
 ;; (clerk/serve! {:browse? true})
 
-;; ;; either call `clerk/show!` explicitly to show a given notebook.
+;; ;; either call `clerk/show!` explicitly to show a given notebook, or use the File Watcher described below.
 ;; (clerk/show! "notebooks/rule_30.clj")
 ;; ```
 
@@ -77,7 +77,7 @@
 
 ;; ### ⏱ File Watcher
 
-;; You can load, evaluate, and present a file with the clerk/show! function, but in most cases it's easier to start a file watcher with something like:
+;; You can load, evaluate, and present a file with the `clerk/show!` function, but in most cases it's easier to start a file watcher with something like:
 
 ;; ```clojure
 ;; (clerk/serve! {:watch-paths ["notebooks" "src"]})
@@ -183,8 +183,8 @@
 
 ;; Clerk provides a built-in data table viewer that supports the three
 ;; most common tabular data shapes out of the box: a sequence of maps,
-;; where each map's keys are column names; a seq of seq, which is just
-;; a grid of values with an optional header; a map of seqs, in with
+;; where each map's keys are column names; a seq of seqs, which is just
+;; a grid of values with an optional header; a map of seqs, in which
 ;; keys are column names and rows are the values for that column.
 
 (clerk/table [[1 2]
@@ -246,7 +246,7 @@
 ;; You can provide a map of [embed options](https://github.com/vega/vega-embed#embed) to the vega viewer via the `:embed/opts` key.
 ;;
 ;; Clerk handles conversion from EDN to JSON for you.
-;; The official Vega-Lite examples are in JSON, but a Clojure/EDN version available:
+;; The official Vega-Lite examples are in JSON, but a Clojure/EDN version is available:
 ;; [Carsten Behring's Vega gallery in EDN](https://github.clerk.garden/behrica/vl-galery/).
 
 ;; ### 🎼 Code
@@ -303,7 +303,7 @@
 
 ;; ### 🔠 Grid Layouts
 
-;; Layouts can be composed via `row`s and `col`s
+;; Layouts can be composed via `row`s and `col`s.
 ;;
 ;; Passing `:width`, `:height` or any other style attributes to
 ;; `::clerk/opts` will assign them on the row or col that contains
@@ -404,7 +404,7 @@
 
 ;; **Metadata Notation**
 
-;; In the examples above, we've used convience helper functions like
+;; In the examples above, we've used convenience helper functions like
 ;; `clerk/html` or `clerk/plotly` to wrap values in a viewer. If you
 ;; call this on the REPL, you'll notice a given value gets wrapped in
 ;; a map under the `:nextjournal/value` key with the viewer being in
@@ -443,7 +443,7 @@ v/default-viewers
 
 (assoc (frequencies (mapcat keys v/default-viewers)) :total (count v/default-viewers))
 
-;; We have a total of 41 viewers in the defaults. Let's start with a
+;; We have a total of 43 viewers in the defaults. Let's start with a
 ;; simple example and explain the different extensions points in the
 ;; viewer api.
 
@@ -471,7 +471,7 @@ v/default-viewers
 ^{::clerk/viewer show-raw-value}
 (v/present 1)
 
-;; This data structure is is sent over Clerk's websocket to the
+;; This data structure is sent over Clerk's websocket to the
 ;; browser, where it will be displayed using the `:render-fn` found in
 ;; the `:nextjournal/viewer` key.
 
@@ -503,7 +503,7 @@ v/default-viewers
 
 ;; #### ⚙️ Transform
 
-;; When writing your own viewer, the first extention point you should reach for is `:tranform-fn`.
+;; When writing your own viewer, the first extension point you should reach for is `:tranform-fn`.
 
 #_ "exercise: wrap this in `v/present` and call it at the REPL"
 (v/with-viewer {:transform-fn #(clerk/html [:pre (pr-str %)])}
@@ -588,8 +588,8 @@ v/table-viewer
 ;; representations and let the user switch between them in the
 ;; browser.
 
-;; We start with a simple function that takes a such an expression and
-;; turns it into a map with two representation, one TeX and the
+;; We start with a simple function that takes such an expression and
+;; turns it into a map with two representations, one TeX and the
 ;; original form.
 
 (defn transform-literal [expr]
@@ -600,7 +600,7 @@ v/table-viewer
 ;; also calls `clerk/mark-preserve-keys`. This tells Clerk to leave
 ;; the keys of the map as-is.
 
-;; In our `:render-fn`, which is called in the browser we will recieve
+;; In our `:render-fn`, which is called in the browser, we will receive
 ;; this map. Note that this is a quoted form, not a function. Clerk
 ;; will send this form to the browser for evaluation. There it will
 ;; create a `reagent/atom` that holds the selection state. Lastly,
@@ -703,10 +703,10 @@ v/table-viewer
 
 ;; #### 👷 Loading Libraries
 
-;; This is a custom viewer for
+;; Here is a custom viewer for
 ;; [Mermaid](https://mermaid-js.github.io/mermaid), a markdown-like
 ;; syntax for creating diagrams from text. Note that this library
-;; isn't bundles with Clerk but we use a component based on
+;; isn't bundled with Clerk but we use a component based on
 ;; [d3-require](https://github.com/d3/d3-require) to load it at
 ;; runtime.
 
@@ -742,7 +742,7 @@ v/table-viewer
 
 ;; ### 🙈 Visibility
 
-;; By default, Clerk will always show code and
+;; By default, Clerk will show all code and
 ;; results for a notebook.
 
 ;; You can use a map of the following shape to set the visibility of
@@ -860,7 +860,7 @@ rows
 ;; function.  You can pass it a set of notebooks via the `:paths`
 ;; option (also supporting glob patterns).
 
-;; When Clerk is building multuple notebooks, it will automatically
+;; When Clerk is building multiple notebooks, it will automatically
 ;; generate an index page that will be the first to show up when
 ;; opening the build. You can override this index page via the
 ;; `:index` option.

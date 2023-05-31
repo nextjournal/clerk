@@ -22,20 +22,29 @@ Changes can be:
 
 * 🚨 Change `nextjournal.clerk.render/clerk-eval` to not recompute the currently shown document when using the 1-arity version. Added a second arity that takes an opts map with a `:recompute?` key.
 
-* ⭐️ Adds support for customization of viewer options 
+* 🍒 Add support for cherry as an alternative to sci to evaluate `:render-fn`s. You can change it per form (using form metadata or viewer opts) or doc-wide (using ns metadata) with `{:nextjournal.clerk/render-evaluator :cherry}`.
+
+* ⭐️ Adds support for customization of viewer options
 
   Support both globally (via ns metadata or a settings marker) or locally (via form metadata or the viewer options map).
-  
+
   Supported options are:
    * `:nextjournal.clerk/auto-expand-results?`
    * `:nextjournal.clerk/budget`
    * `:nextjournal.clerk/css-class`
    * `:nextjournal.clerk/visibility`
    * `:nextjournal.clerk/width`
+   * `:nextjournal.clerk/render-evaluator`
 
 * 🔌 Make websocket reconnect automatically on close to avoid having to reload the page
 
 * 💫 Cache expressions that return `nil` in memory
+
+* 💫 Support non-evaluated clojure code listings in markdown documents by specifying `{:nextjournal.clerk/code-listing true}` after the language ([#482](https://github.com/nextjournal/clerk/issues/482)).
+
+* 🐜 Turn off analyzer pass for validation of `:type` tags, fixes [#488](https://github.com/nextjournal/clerk/issues/488) @craig-latacora
+
+* 🐜 Strip `:type` metadata from forms before printing them to hash, fixes [#489](https://github.com/nextjournal/clerk/issues/489) @craig-latacora
 
 * 🐜 Ensure custom `print-method` supporting unreadable symbols preserves metadata
 
