@@ -359,6 +359,7 @@
 
 (defn fenced-clojure-code-block? [{:as block :keys [type info language]}]
   (and (code? block)
+       info
        (or (empty? language)
            (re-matches #"clj(c?)|clojure" language))
        (not (:nextjournal.clerk/code-listing (let [parsed (p/parse-string-all (subs info (count language)))]
