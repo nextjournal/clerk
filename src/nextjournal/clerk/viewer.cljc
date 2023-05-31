@@ -913,7 +913,11 @@
                                               (with-md-viewer)))})
 
 (def code-viewer
-  {:name `code-viewer :render-fn 'nextjournal.clerk.render/render-code :transform-fn (comp mark-presented (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))})
+  {:name `code-viewer
+   :render-fn 'nextjournal.clerk.render/render-code
+   :transform-fn (comp mark-presented
+                       #(update-in % [:nextjournal/opts :language] (fn [lang] (or lang "clojure")))
+                       (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))})
 
 (def reagent-viewer
   {:name `reagent-viewer :render-fn 'nextjournal.clerk.render/render-reagent :transform-fn mark-presented})
