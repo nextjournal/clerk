@@ -381,6 +381,8 @@ code
 #_ (parse-code-info-string {:type :code :info "clojure"})
 #_ (parse-code-info-string {:type :code :info " clojure"})
 #_ (parse-code-info-string {:type :code :info "clojure {"})
+#_ (parse-code-info-string {:type :code :info "{r, eval=FALSE}"}) ;; RMarkdown/Knitr
+#_ (parse-code-info-string {:type :code :info "{r, eval=FALSE, include=TRUE}"}) ;; RMarkdown/Knitr (failing)
 #_ (parse-code-info-string {:type :code :info "clojure &@foo !!!"})
 #_ (parse-code-info-string {:type :code :info "clojure {:nextjournal.clerk/code-listing true}"})
 #_ (parse-code-info-string {:type :code :info "{:nextjournal.clerk/code-listing true} c++"})
