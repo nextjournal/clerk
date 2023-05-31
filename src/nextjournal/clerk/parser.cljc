@@ -369,7 +369,7 @@
             metadata (some #(and (map? %) %) sexprs)]
         {:language (if language (name language) "clojure")
          :metadata metadata
-         :eval? (and (or (not language) (#{'clojure 'clojurescript 'clj 'cljs 'cljc} language))
+         :eval? (and (or (not language) (#{'clojure 'clj 'cljc} language))
                      (not (:nextjournal.clerk/code-listing metadata)))})
       (catch #?(:clj Throwable :cljs :default) cause
         (throw (ex-info "We allow info strings of the following shape:
