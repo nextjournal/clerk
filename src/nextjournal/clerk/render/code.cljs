@@ -104,22 +104,36 @@
         (then (fn [^js lang-support] (when lang-support (.. lang-support -language -parser))))
         (catch (fn [err] (js/console.warn (str "Cannot load language parser for: " language) err))))))
 
-(defn lang->deco-range [language code]
+(defn add-style-ranges! [range-builder syntax-tree]
+  (highlightTree syntax-tree highlight-style
+                 (fn [from to style]
+                   (.add range-builder from to (.mark Decoration (j/obj :class style))))))
+
+(defn clojure-style-rangeset [code]
+  (.finish (doto (RangeSetBuilder.)
+             (add-style-ranges! (.. ^js clojureLanguage -parser (parse code))))))
+
+(defn syntax-highlight [{:keys [code style-rangeset]}]
+  (let [text (.of Text (.split code "\n"))]
+    (into [:div.cm-content.whitespace-pre]
+          (map (partial style-line style-rangeset text))
+          (range 1 (inc (.-lines text))))))
+
+(defn highlight-clojure [{:keys [code]}]
+  [syntax-highlight {:code code :style-rangeset (clojure-style-rangeset code)}])
+
+(defn highlight-language [{:keys [code language]}]
   (let [^js builder (RangeSetBuilder.)
         ^js parser (hooks/use-promise (matching-language-parser language))]
-    (when parser
-      (highlightTree (.parse parser code) highlight-style
-                     (fn [from to style]
-                       (.add builder from to (.mark Decoration (j/obj :class style))))))
-    (.finish builder)))
+    (when parser (add-style-ranges! builder (.parse parser code)))
+    [syntax-highlight {:code code :style-rangeset (.finish builder)}]))
 
 (defn render-code [^String code {:keys [language]}]
-  (let [text (.of Text (.split code "\n"))]
-    [:div.cm-editor
-     [:cm-scroller
-      (into [:div.cm-content.whitespace-pre]
-            (map (partial style-line (lang->deco-range language code) text))
-            (range 1 (inc (.-lines text))))]]))
+  [:div.cm-editor
+   [:cm-scroller
+    (if (#{"clojure" "clojurescript" "clj" "cljs" "cljc" "edn"} language)
+      [highlight-clojure {:code code}]
+      [highlight-language {:code code :language language}])]])
 
 ;; editable code viewer
 (def theme
