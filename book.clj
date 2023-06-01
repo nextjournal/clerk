@@ -251,7 +251,7 @@
 
 ;; ### 🎼 Code
 
-;; The code viewer uses
+;; By default the code viewer uses
 ;; [clojure-mode](https://nextjournal.github.io/clojure-mode/) for
 ;; syntax highlighting.
 (clerk/code (macroexpand '(when test
@@ -261,6 +261,21 @@
 (clerk/code '(ns foo "A great ns" (:require [clojure.string :as str])))
 
 (clerk/code "(defn my-fn\n  \"This is a Doc String\"\n  [args]\n  42)")
+
+;; You might specify different langauges via `::clerk/opts` like so
+(clerk/code {::clerk/opts {:language "python"}} "
+class Foo(object):
+    def __init__(self):
+        pass
+    def do_this(self):
+        return 1")
+
+(clerk/code {::clerk/opts {:language "c++"}} "
+#include <iostream>
+int main() {
+    std::cout << \" Hello, world! \" << std::endl
+    return 0
+}")
 
 ;; ### 🏞 Images
 
