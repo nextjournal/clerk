@@ -122,7 +122,7 @@
 (defn highlight-clojure [{:keys [code]}]
   [syntax-highlight {:code code :style-rangeset (clojure-style-rangeset code)}])
 
-(defn highlight-language [{:keys [code language]}]
+(defn highlight-imported-language [{:keys [code language]}]
   (let [^js builder (RangeSetBuilder.)
         ^js parser (hooks/use-promise (matching-language-parser language))]
     (when parser (add-style-ranges! builder (.parse parser code)))
@@ -133,7 +133,7 @@
    [:cm-scroller
     (if (#{"clojure" "clojurescript" "clj" "cljs" "cljc" "edn"} language)
       [highlight-clojure {:code code}]
-      [highlight-language {:code code :language language}])]])
+      [highlight-imported-language {:code code :language language}])]])
 
 ;; editable code viewer
 (def theme
