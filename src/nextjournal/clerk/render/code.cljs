@@ -1,6 +1,6 @@
 (ns nextjournal.clerk.render.code
   (:require ["@codemirror/language" :refer [HighlightStyle syntaxHighlighting LanguageDescription]]
-            ["@codemirror/state" :refer [EditorState RangeSetBuilder Text]]
+            ["@codemirror/state" :refer [EditorState RangeSet RangeSetBuilder Text]]
             ["@codemirror/view" :refer [EditorView Decoration]]
             ["@lezer/highlight" :refer [tags highlightTree]]
             ["@nextjournal/lang-clojure" :refer [clojureLanguage]]
@@ -89,16 +89,14 @@
                   (concat [(.sliceString text pos to)]))))))))
 
 (defn import-matching-language-parser [language]
-  (if (not language)
-    (js/Promise.resolve nil)
-    (.. (shadow.esm/dynamic-import "https://cdn.skypack.dev/@codemirror/language-data@6.1.0")
-        (then (fn [^js mod]
-                (when-some [langs (.-languages mod)]
-                  (when-some [^js matching (or (.matchLanguageName LanguageDescription langs language)
-                                               (.matchFilename LanguageDescription langs (str "code." language)))]
-                    (.load matching)))))
-        (then (fn [^js lang-support] (when lang-support (.. lang-support -language -parser))))
-        (catch (fn [err] (js/console.warn (str "Cannot load language parser for: " language) err))))))
+  (.. (shadow.esm/dynamic-import "https://cdn.skypack.dev/@codemirror/language-data@6.1.0")
+      (then (fn [^js mod]
+              (when-some [langs (.-languages mod)]
+                (when-some [^js matching (or (.matchLanguageName LanguageDescription langs language)
+                                             (.matchFilename LanguageDescription langs (str "code." language)))]
+                  (.load matching)))))
+      (then (fn [^js lang-support] (when lang-support (.. lang-support -language -parser))))
+      (catch (fn [err] (js/console.warn (str "Cannot load language parser for: " language) err)))))
 
 (defn add-style-ranges! [range-builder syntax-tree]
   (highlightTree syntax-tree highlight-style
@@ -115,9 +113,6 @@
           (map (partial style-line style-rangeset text))
           (range 1 (inc (.-lines text))))))
 
-(defn highlight-clojure [{:keys [code]}]
-  [syntax-highlight {:code code :style-rangeset (clojure-style-rangeset code)}])
-
 (defn highlight-imported-language [{:keys [code language]}]
   (let [^js builder (RangeSetBuilder.)
         ^js parser (hooks/use-promise (import-matching-language-parser language))]
@@ -127,8 +122,12 @@
 (defn render-code [^String code {:keys [language]}]
   [:div.cm-editor
    [:cm-scroller
-    (if (#{"clojure" "clojurescript" "clj" "cljs" "cljc" "edn"} language)
-      [highlight-clojure {:code code}]
+    (cond
+      (not language)
+      [syntax-highlight {:code code :style-rangeset (.-empty RangeSet)}]
+      (#{"clojure" "clojurescript" "clj" "cljs" "cljc" "edn"} language)
+      [syntax-highlight {:code code :style-rangeset (clojure-style-rangeset code)}]
+      :else
       [highlight-imported-language {:code code :language language}])]])
 
 ;; editable code viewer
