@@ -360,10 +360,9 @@
 (defn parse-code-info-string
   "https://spec.commonmark.org/0.30/#code-fence"
   [{:as node :keys [info]}]
-  (if-not (code? node)
+  (if-not (and (code? node) info)
     {:eval? false}
     (try
-      ;; TODO: really?
       (let [sexprs (n/child-sexprs (p/parse-string-all info))
             language (some #(and (symbol? %) %) sexprs)
             metadata (some #(and (map? %) %) sexprs)]
@@ -393,12 +392,15 @@ code
     (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes content :md-context ctx}]
       (if-some [node (first nodes)]
         (recur
-         (let [{:keys [language eval?]} (parse-code-info-string node)]
+         (let [{:keys [language eval? _metadata]} (parse-code-info-string node)]
            (if eval?
              (-> state
                  (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
                  (parse-markdown-cell opts))
-             (-> state (update :nodes rest) (cond-> doc? (update ::md-slice conj (cond-> node language (assoc :language language))))))))
+             (-> state
+                 (update :nodes rest)
+                 (cond-> doc? (update ::md-slice conj
+                                      (cond-> node language (assoc :language language))))))))
 
         (-> state
             (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))

@@ -63,3 +63,10 @@ int main() {
     return 0;
 }
 ```
+
+## [Indented Code Blocks](https://spec.commonmark.org/0.30/#indented-code-blocks) should not be highlighted
+
+    (no (off) :fence)
+    (not "highlighted")
+
+fin.
