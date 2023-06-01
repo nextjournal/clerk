@@ -88,7 +88,7 @@
                   (< pos to)
                   (concat [(.sliceString text pos to)]))))))))
 
-(defn matching-language-parser [language]
+(defn import-matching-language-parser [language]
   (cond
     (not language)
     (js/Promise.resolve nil)
@@ -124,7 +124,7 @@
 
 (defn highlight-imported-language [{:keys [code language]}]
   (let [^js builder (RangeSetBuilder.)
-        ^js parser (hooks/use-promise (matching-language-parser language))]
+        ^js parser (hooks/use-promise (import-matching-language-parser language))]
     (when parser (add-style-ranges! builder (.parse parser code)))
     [syntax-highlight {:code code :style-rangeset (.finish builder)}]))
 
