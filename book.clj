@@ -95,7 +95,7 @@
 
 ;; In Emacs, add the following to your config:
 
-;; ```elisp
+;; ```el
 ;; (defun clerk-show ()
 ;;   (interactive)
 ;;   (when-let
@@ -121,7 +121,7 @@
 
 ;; With [neovim](https://neovim.io/) + [conjure](https://github.com/Olical/conjure/) one can use the following vimscript function to save the file and show it with Clerk:
 
-;; ```
+;; ```vimscript
 ;; function! ClerkShow()
 ;; exe "w"
 ;; exe "ConjureEval (nextjournal.clerk/show! \"" . expand("%:p") . "\")"
