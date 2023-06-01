@@ -64,9 +64,10 @@ int main() {
 }
 ```
 
-## [Indented Code Blocks](https://spec.commonmark.org/0.30/#indented-code-blocks) should not be highlighted
+## Indented Code Blocks
+[Indented code blocks](https://spec.commonmark.org/0.30/#indented-code-blocks) default to clojure highlighting
 
     (no (off) :fence)
-    (not "highlighted")
+    (but "highlighted")
 
 fin.

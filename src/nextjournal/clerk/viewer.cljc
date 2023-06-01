@@ -707,7 +707,7 @@
     :transform-fn (update-val #(with-viewer `html-viewer
                                  [:div.code-viewer.code-listing
                                   (with-viewer `code-viewer
-                                    {:nextjournal/opts (select-keys % [:language])}
+                                    {:nextjournal/opts {:language (:language % "clojure")}}
                                     (str/trim-newline (md.transform/->text %)))]))}
 
    ;; marks
