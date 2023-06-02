@@ -42,6 +42,8 @@ Changes can be:
 
 * 💫 Support non-evaluated clojure code listings in markdown documents by specifying `{:nextjournal.clerk/code-listing true}` after the language ([#482](https://github.com/nextjournal/clerk/issues/482)).
 
+* 🏳️‍🌈 Syntax highlighting for code listings in all [languages supported by codemirror](https://github.com/codemirror/language-data) ([#500](https://github.com/nextjournal/clerk/issues/500)).
+
 * 🐜 Turn off analyzer pass for validation of `:type` tags, fixes [#488](https://github.com/nextjournal/clerk/issues/488) @craig-latacora
 
 * 🐜 Strip `:type` metadata from forms before printing them to hash, fixes [#489](https://github.com/nextjournal/clerk/issues/489) @craig-latacora

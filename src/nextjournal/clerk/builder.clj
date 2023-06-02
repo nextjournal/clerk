@@ -20,6 +20,7 @@
   (into ["CHANGELOG.md"
          "README.md"
          "notebooks/markdown.md"
+         "notebooks/markdown_fences.md"
          "notebooks/onwards.md"]
         (map #(str "notebooks/" % ".clj"))
         ["cards"

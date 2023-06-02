@@ -598,8 +598,7 @@
               code?
               (conj (with-viewer (if fold? `folded-code-block-viewer `code-block-viewer)
                       {:nextjournal/opts (assoc (select-keys cell [:loc])
-                                                :id (processed-block-id (str id "-code"))
-                                                :language "clojure")}
+                                                :id (processed-block-id (str id "-code")))}
                       (dissoc cell :result)))
               (or result? eval?)
               (conj (cond-> (ensure-wrapped (-> cell (assoc ::doc doc) (set/rename-keys {:result ::result})))
@@ -708,7 +707,7 @@
     :transform-fn (update-val #(with-viewer `html-viewer
                                  [:div.code-viewer.code-listing
                                   (with-viewer `code-viewer
-                                    {:nextjournal/opts (select-keys % [:language])}
+                                    {:nextjournal/opts {:language (:language % "clojure")}}
                                     (str/trim-newline (md.transform/->text %)))]))}
 
    ;; marks
@@ -914,7 +913,11 @@
                                               (with-md-viewer)))})
 
 (def code-viewer
-  {:name `code-viewer :render-fn 'nextjournal.clerk.render/render-code :transform-fn (comp mark-presented (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))})
+  {:name `code-viewer
+   :render-fn 'nextjournal.clerk.render/render-code
+   :transform-fn (comp mark-presented
+                       #(update-in % [:nextjournal/opts :language] (fn [lang] (or lang "clojure")))
+                       (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))})
 
 (def reagent-viewer
   {:name `reagent-viewer :render-fn 'nextjournal.clerk.render/render-reagent :transform-fn mark-presented})
