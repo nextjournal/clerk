@@ -18,10 +18,6 @@ Use `{:nextjournal.clerk/code-listing true}` in the fence info to signal that a 
 ```clojure {:nextjournal.clerk/code-listing true}
 (1 2 "not evaluated" :but-still-highlighted)
 ```
-if no language is specified we assume it's a clojure cell
-```{:nextjournal.clerk/code-listing true}
-(1 2 "not evaluated" :but-still-highlighted)
-```
 
 ## 🏳️‍🌈 Polyglot Highlighting
 
