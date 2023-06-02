@@ -262,7 +262,7 @@
 
 (clerk/code "(defn my-fn\n  \"This is a Doc String\"\n  [args]\n  42)")
 
-;; You might specify different langauges via `::clerk/opts` like so
+;; You can specify the language for syntax highlighting via `::clerk/opts`.
 (clerk/code {::clerk/opts {:language "python"}} "
 class Foo(object):
     def __init__(self):
@@ -270,12 +270,15 @@ class Foo(object):
     def do_this(self):
         return 1")
 
-(clerk/code {::clerk/opts {:language "c++"}} "
+;; Or use a code fence with a language in a markdown.
+
+(clerk/md "```c++
 #include <iostream>
 int main() {
     std::cout << \" Hello, world! \" << std::endl
     return 0
-}")
+}
+```")
 
 ;; ### 🏞 Images
 
