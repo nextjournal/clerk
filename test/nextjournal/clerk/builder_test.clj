@@ -14,7 +14,8 @@
       (is (= (#'builder/path-to-url-canonicalize dice) (str/replace dice  (File/separator) "/"))))))
 
 (deftest static-app
-  (let [url* (volatile! nil)]
+  (let [url* (volatile! nil)
+        original-*ns* *ns*]
     (with-redefs [clojure.java.browse/browse-url (fn [path]
                                                    (vreset! url* path))]
       (testing "browser receives canonical url in this system arch"
@@ -24,7 +25,10 @@
             (builder/build-static-app! {:browse? true
                                         :paths ["notebooks/hello.clj"]
                                         :out-path temp})
-            (is (= expected @url*))))))))
+            (is (= expected @url*)))))
+
+      (testing "*ns* isn't changed (#506)"
+        (is (= original-*ns* *ns*))))))
 
 (def test-paths ["boo*.clj"])
 (def test-paths-fn (fn [] ["boo*.clj"]))

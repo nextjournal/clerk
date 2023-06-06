@@ -50,6 +50,8 @@ Changes can be:
 
 * 🐜 Ensure custom `print-method` supporting unreadable symbols preserves metadata
 
+* 🐞 Preserve `*ns*` during `build!`, fixes [#506](https://github.com/nextjournal/clerk/issues/506)
+
 ## 0.13.842 (2023-03-07)
 
 * 💫 Support pagination for values nested inside `clerk/html`
