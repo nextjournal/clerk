@@ -18,6 +18,14 @@ Changes can be:
 
     Use these features to build a new welcome page that gives more useful information, including links to potential notebooks in the project.
 
+* ⚡️ Speed up analysis of gitlibs using git sha, resolve protocol methods
+
+    This significantly speeds up analysis for gitlibs by using the git sha as a hash (thus treating them as immutable) instead of handling them on a per-form level.
+
+    Also resolve protocol methods to the defining protocol, which would previously not be detected.
+
+    Lastly drop the location cache which is no longer needed.
+
 * 🍕 `clerk/fragment` for splicing a seq of values into the document as if it were produced by results of individual cells. Useful when programmatically generating content.
 
 * 🚨 Change `nextjournal.clerk.render/clerk-eval` to not recompute the currently shown document when using the 1-arity version. Added a second arity that takes an opts map with a `:recompute?` key.
