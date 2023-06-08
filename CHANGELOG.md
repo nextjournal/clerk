@@ -24,6 +24,8 @@ Changes can be:
 
 * 🍒 Add support for cherry as an alternative to sci to evaluate `:render-fn`s. You can change it per form (using form metadata or viewer opts) or doc-wide (using ns metadata) with `{:nextjournal.clerk/render-evaluator :cherry}`.
 
+* 🏳️‍🌈 Syntax highlighting for code listings in all [languages supported by codemirror](https://github.com/codemirror/language-data) ([#500](https://github.com/nextjournal/clerk/issues/500)).
+
 * ⭐️ Adds support for customization of viewer options
 
   Support both globally (via ns metadata or a settings marker) or locally (via form metadata or the viewer options map).
@@ -42,7 +44,9 @@ Changes can be:
 
 * 💫 Support non-evaluated clojure code listings in markdown documents by specifying `{:nextjournal.clerk/code-listing true}` after the language ([#482](https://github.com/nextjournal/clerk/issues/482)).
 
-* 🏳️‍🌈 Syntax highlighting for code listings in all [languages supported by codemirror](https://github.com/codemirror/language-data) ([#500](https://github.com/nextjournal/clerk/issues/500)).
+* 💫 Support imported vars (e.g. by potemkin) in location analysis
+
+    By considering `:file` on var meta in location analysis. Previously we would not find a location for vars where the namespace did not match the source file. As we're not caching negative findings this can speed up analysis for deps with a large number of imported vars significantly.
 
 * 🐜 Turn off analyzer pass for validation of `:type` tags, fixes [#488](https://github.com/nextjournal/clerk/issues/488) @craig-latacora
 

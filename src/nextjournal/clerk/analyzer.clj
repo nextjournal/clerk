@@ -406,6 +406,14 @@
                 [".clj" ".cljc"]))
         (cp/classpath-directories)))
 
+(defn var->file [var]
+  (when-let [file-from-var (-> var meta :file)]
+    (some (fn [classpath-dir]
+            (let [path (str classpath-dir fs/file-separator file-from-var)]
+              (when (fs/exists? path)
+                path)))
+          (cp/classpath-directories))))
+
 (defn normalize-filename [f]
   (if (fs/windows?)
     (-> f fs/normalize fs/unixify)
@@ -441,14 +449,27 @@
 #_(symbol->jar 'io.methvin.watcher.PathUtils/cast)
 #_(symbol->jar 'java.net.http.HttpClient/newHttpClient)
 
+(defn var->location [var]
+  (when-let [file (:file (meta var))]
+    (if (fs/absolute? file)
+      (when (fs/exists? file)
+        (fs/relativize (fs/cwd) (fs/file file)))
+      (when-let [resource (io/resource file)]
+        (let [protocol (.getProtocol resource)]
+          (or (and (= "jar" protocol)
+                   (second (re-find #"^file:(.*)!" (.getFile resource))))
+              (and (= "file" protocol)
+                   (.getFile resource))))))))
 
 (defn find-location [sym]
   (if (deref? sym)
     (find-location (second sym))
-    (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
-      (or (ns->file ns)
-          (ns->jar ns))
-      (symbol->jar sym))))
+    (or (some-> sym resolve var->location)
+        (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
+          (or (ns->file ns)
+              (ns->jar ns))
+          (symbol->jar sym)))))
+
 
 #_(find-location `inc)
 #_(find-location '@nextjournal.clerk.webserver/!doc)
