@@ -1,16 +1,27 @@
 ;; # 🧩Fragments
 (ns fragments
+  {:nextjournal.clerk/auto-expand-results? true}
   (:require [nextjournal.clerk :as clerk]))
 
 ;; With `clerk/fragment` we allow to embed a sequence of values into the document as if they were results of individual cells, nesting is allowed.
 
 (clerk/fragment
  (clerk/table [[1 2] [3 4]])
+ (take 15 (repeatedly (fn []
+                        {:name (str
+                                (rand-nth ["Oscar" "Karen" "Vlad" "Rebecca" "Conrad"]) " "
+                                (rand-nth ["Miller" "Stasčnyk" "Ronin" "Meyer" "Black"]))
+                         :role (rand-nth [:admin :operator :manager :programmer :designer])
+                         :dice (shuffle (range 1 7))})))
  (clerk/image "trees.png")
  (clerk/plotly {::clerk/width :full} {:data [{:y [1 3 2]}]})
  (clerk/html {::clerk/width :full} [:div.h-20.bg-amber-200])
  (clerk/fragment (clerk/html {::clerk/width :full} [:div.h-20.bg-amber-300])
-                 (clerk/html {::clerk/width :full} [:div.h-20.bg-amber-400])))
+                 (clerk/html {::clerk/width :full} [:div.h-20.bg-amber-400])
+                 (reduce (fn [acc i] (vector i acc)) :fin (range 200 0 -1))
+                 (reduce (fn [acc i] (vector i acc)) :fin (range 200 0 -1))
+                 (clerk/with-viewer {} {::clerk/budget 5}
+                   (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1)))))
 
 ;; ## Collapsible Sections
 ;; Fragments allow to hide (and in future versions of Clerk, probably fold) chunks of prose interspersed with results. That is, by using the usual visibility annotation

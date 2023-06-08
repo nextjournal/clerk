@@ -48,6 +48,22 @@
 (defn visibility-marker? [form]
   (and (map? form) (contains? form :nextjournal.clerk/visibility)))
 
+(def block-settings
+  #{:nextjournal.clerk/auto-expand-results?
+    :nextjournal.clerk/budget
+    :nextjournal.clerk/css-class
+    :nextjournal.clerk/visibility
+    :nextjournal.clerk/opts
+    :nextjournal.clerk/width
+    :nextjournal.clerk/render-evaluator})
+
+(defn settings-marker? [form]
+  (boolean (and (map? form)
+                (some (fn [setting] (contains? form setting)) block-settings))))
+
+#_(settings-marker? {:foo :bar})
+#_(settings-marker? {:nextjournal.clerk/budget nil})
+
 (defn parse-visibility [form visibility]
   (or (legacy-form-visibility form visibility) ;; TODO: drop legacy visibiliy support before 1.0
       (when-let [visibility-map (and visibility (cond->> visibility (not (map? visibility)) (hash-map :code)))]
@@ -62,7 +78,7 @@
 #_(parse-visibility nil {:code :fold :result :hide})
 
 (defn ->visibility [form]
-  (if (visibility-marker? form)
+  (if (settings-marker? form)
     {:code :hide :result :hide}
     (cond-> (parse-visibility form (-> form meta :nextjournal.clerk/visibility))
       (ns? form) (merge {:result :hide}))))
@@ -97,23 +113,12 @@
                        {:nextjournal.clerk/visibility {:result :hide}}))
 
 (defn parse-error-on-missing-vars [first-form]
-  (if-some [setting (when (ns? first-form)
-                      (get-doc-setting first-form :nextjournal.clerk/error-on-missing-vars))]
+  (if-some [setting (get-doc-setting first-form :nextjournal.clerk/error-on-missing-vars)]
     (do (when-not (#{:on :off} setting)
           (throw (ex-info (str "Invalid setting `" (pr-str setting) "` for `:nextjournal.clerk/error-on-missing-vars`. Valid values are `:on` and `:off`.")
                           {:nextjournal.clerk/error-on-missing-vars setting})))
         setting)
     (if (ns? first-form) :on :off)))
-
-(defn ->doc-settings [first-form]
-  {:ns? (ns? first-form)
-   :error-on-missing-vars (parse-error-on-missing-vars first-form)
-   :toc-visibility (or (#{true :collapsed} (:nextjournal.clerk/toc
-                                            (merge (-> first-form meta) ;; TODO: deprecate
-                                                   (when (ns? first-form)
-                                                     (merge (-> first-form second meta)
-                                                            (first (filter map? first-form)))))))
-                       false)})
 
 (defn ->open-graph [{:keys [title blocks]}]
   (merge {:type "article:clerk"
@@ -129,19 +134,57 @@
    (nextjournal.clerk.analyzer/analyze-doc
     (parse-file {:doc? true} "notebooks/open_graph.clj")))
 
-(defn add-open-graph-metadata [doc] (assoc doc :open-graph (->open-graph doc)))
+(defn add-open-graph-metadata [doc]
+  (assoc doc :open-graph (->open-graph doc)))
 
-;; TODO: Unify with get-doc-settings
-(defn add-auto-expand-results [{:as doc :keys [blocks]}]
-  (assoc doc :auto-expand-results? (some (fn [{:keys [form]}]
-                                           (when (ns? form) (some :nextjournal.clerk/auto-expand-results? form)))
-                                         blocks)))
+(defn parse-global-block-settings
+  "Parses the global (doc-wide) settings the given `form` if this node
+  is `ns?` or a `settings-marker?`. Returns `nil` otherwise."
+  [form]
+  (when (or (ns? form) (settings-marker? form))
+    (merge (when-let [val (->doc-visibility form)]
+             {:nextjournal.clerk/visibility val})
+           (select-keys (cond (settings-marker? form) form
+                              (ns? form) (first (filter map? form)))
+                        (disj block-settings :nextjournal.clerk/visibility)))))
 
-(defn add-css-class [{:as doc :keys [blocks]}]
-  (assoc doc :css-class (some (fn [{:keys [form]}]
-                                (when (ns? form) (some :nextjournal.clerk/css-class form)))
-                              blocks)))
+#_(parse-global-block-settings '(ns foo {:nextjournal.clerk/visibility {:code :fold}}))
+#_(parse-global-block-settings '(ns foo {:nextjournal.clerk/budget nil :nextjournal.clerk/width :full}))
 
+(defn parse-local-block-settings
+  "Parses the local settings of the given `form`."
+  [form]
+  (merge (some->> (->visibility form) (hash-map :nextjournal.clerk/visibility))
+         (select-keys (merge (meta form)
+                             (cond (settings-marker? form) form
+                                   (ns? form) (first (filter map? form))))
+                      (disj block-settings :nextjournal.clerk/visibility))))
+
+#_(parse-local-block-settings '(ns foo))
+#_(parse-local-block-settings '^{:nextjournal.clerk/budget nil
+                                 :nextjournal.clerk/visibility {:code :fold}}(inc 1))
+
+(defn ->doc-settings [first-form]
+  (let [doc-css-class (when (ns? first-form)
+                        (:nextjournal.clerk/doc-css-class (first (filter map? first-form))))]
+    (cond-> {:ns? (ns? first-form)
+             :error-on-missing-vars (parse-error-on-missing-vars first-form)
+             :toc-visibility (or (#{true :collapsed} (:nextjournal.clerk/toc
+                                                      (merge (-> first-form meta) ;; TODO: deprecate
+                                                             (when (ns? first-form)
+                                                               (merge (-> first-form second meta)
+                                                                      (first (filter map? first-form)))))))
+                                 false)
+             :block-settings (merge-with merge
+                                         {:nextjournal.clerk/visibility {:code :show :result :show}}
+                                         (parse-global-block-settings first-form))}
+      doc-css-class (assoc :doc-css-class (cond-> doc-css-class
+                                            (or (keyword? doc-css-class) (string? doc-css-class))
+                                            vector) ))))
+
+
+#_(->doc-settings '(ns foo {:nextjournal.clerk/visbility {:code :fold}}))
+#_(->doc-settings '(ns foo {:nextjournal.clerk/budget nil :nextjournal.clerk/width :full}))
 #_(->doc-settings '^{:nextjournal.clerk/toc :boom} (ns foo)) ;; TODO: error
 
 (defn markdown? [{:as block :keys [type]}]
@@ -150,16 +193,23 @@
 (defn code? [{:as block :keys [type]}]
   (contains? #{:code} type))
 
-(defn add-block-visibility [{:as analyzed-doc :keys [blocks]}]
-  (-> (reduce (fn [{:as state :keys [visibility]} {:as block :keys [form]}]
-                (let [visibility' (merge visibility (->doc-visibility form))]
-                  (cond-> (-> state
-                              (update :blocks conj (cond-> block
-                                                     (code? block) (assoc :visibility (merge visibility' (->visibility form))))))
-                    (code? block) (assoc :visibility visibility'))))
-              (assoc analyzed-doc :blocks [] :visibility {:code :show :result :show})
+(defn merge-settings [current-settings new-settings]
+  (-> (merge-with merge current-settings (select-keys new-settings [:nextjournal.clerk/visibility]))
+      (merge (dissoc new-settings :nextjournal.clerk/visibility))))
+
+#_(merge-settings {:nextjournal.clerk/visibility {:code :show :result :show}} {:nextjournal.clerk/visibility {:code :fold}})
+
+(defn add-block-settings [{:as analyzed-doc :keys [blocks]}]
+  (-> (reduce (fn [{:as state :keys [block-settings]} {:as block :keys [form]}]
+                (let [next-block-settings (merge-settings block-settings (parse-global-block-settings form))]
+                  (cond-> (update state :blocks conj
+                                  (cond-> block
+                                    (code? block)
+                                    (assoc :settings (merge-settings next-block-settings (parse-local-block-settings form)))))
+                    (code? block) (assoc :block-settings next-block-settings))))
+              (assoc analyzed-doc :blocks [])
               blocks)
-      (dissoc :visibility)))
+      (dissoc :block-settings)))
 
 (def code-tags
   #{:deref :map :meta :list :quote :syntax-quote :reader-macro :set :token :var :vector})
@@ -307,12 +357,26 @@
          :nodes (rest nodes)
          ::md-slice []))
 
+(defn runnable-code-block? [{:as block :keys [info language]}]
+  (and (code? block)
+       info
+       (or (empty? language)
+           (re-matches #"clj(c?)|clojure" language))
+       (not (:nextjournal.clerk/code-listing
+             (when-some [parsed (when (and (seq language) (str/starts-with? info language))
+                                  (p/parse-string-all (subs info (count language))))]
+               (when (n/sexpr-able? parsed)
+                 (n/sexpr parsed)))))))
+
+#_(runnable-code-block? {:type :code :language "clojure" :info "clojure"})
+#_(runnable-code-block? {:type :code :language "clojure" :info "clojure {:nextjournal.clerk/code-listing true}"})
+
 (defn parse-markdown-string [{:as opts :keys [doc?]} s]
   (let [{:as ctx :keys [content]} (parse-markdown (markdown-context) s)]
     (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes content :md-context ctx}]
       (if-some [node (first nodes)]
         (recur
-         (if (and (code? node) (contains? node :info))
+         (if (runnable-code-block? node)
            (-> state
                (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
                (parse-markdown-cell opts))

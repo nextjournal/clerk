@@ -262,12 +262,12 @@
 
   (testing "Doc options are propagated to blob processing"
     (let [test-doc (eval/eval-string "(java.awt.image.BufferedImage. 20 20 1)")]
-      (is (not-empty (tree-re-find (view/doc->viewer {:inline-results? true
+      (is (not-empty (tree-re-find (view/doc->viewer {:static-build? true
                                                       :bundle? true
                                                       :out-path builder/default-out-path} test-doc)
                                    #"data:image/png;base64")))
 
-      (is (not-empty (tree-re-find (view/doc->viewer {:inline-results? true
+      (is (not-empty (tree-re-find (view/doc->viewer {:static-build? true
                                                       :bundle? false
                                                       :out-path builder/default-out-path} test-doc)
                                    #"_data/.+\.png")))))
@@ -292,6 +292,27 @@
                view/doc->viewer v/->value :blocks second
                v/->value :nextjournal/presented :nextjournal/css-class))))
 
+  (testing "Settings propagation from ns to form"
+    (is (= :full
+           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) (nextjournal.clerk/html [:div])")
+               view/doc->viewer v/->value :blocks (nth 2)
+               v/->value :nextjournal/presented :nextjournal/width)))
+
+    (is (= :wide
+           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) (nextjournal.clerk/html {:nextjournal.clerk/width :wide} [:div])")
+               view/doc->viewer v/->value :blocks (nth 2)
+               v/->value :nextjournal/presented :nextjournal/width)))
+
+    (is (= :wide
+           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) ^{:nextjournal.clerk/width :wide} (nextjournal.clerk/html [:div])")
+               view/doc->viewer v/->value :blocks (nth 2)
+               v/->value :nextjournal/presented :nextjournal/width)))
+
+    (is (= :wide
+           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) {:nextjournal.clerk/width :wide} (nextjournal.clerk/html [:div])")
+               view/doc->viewer v/->value :blocks (nth 2)
+               v/->value :nextjournal/presented :nextjournal/width))))
+
   (testing "Presented doc (with fragments) has unambiguous ids assigned to results"
     (let [ids (->> (eval/eval-string "(nextjournal.clerk/table [[1 2][3 4]])
 (nextjournal.clerk/fragment
@@ -312,7 +333,29 @@
             (->> (eval/eval-string "1\n(nextjournal.clerk/fragment 2 3 (nextjournal.clerk/fragment 4 5))\n6")
                  view/doc->viewer v/->value :blocks
                  (tree-seq coll? seq)
-                 (filter (every-pred map? :nextjournal/presented :nextjournal/blob-id))))))))
+                 (filter (every-pred map? :nextjournal/presented :nextjournal/blob-id)))))))
+
+  (testing "customizing budget, user-facing"
+    (is (= 5
+           (count
+            (->> (eval/eval-string "^{:nextjournal.clerk/budget 5}(reduce (fn [acc _i] (vector acc)) :fin (range 100 0 -1))")
+                 view/doc->viewer v/->value :blocks
+                 (tree-seq coll? seq)
+                 (filter (every-pred map? (comp #{'nextjournal.clerk.render/render-coll} :form :render-fn)))))))
+
+    (is (= 5
+           (count
+            (->> (eval/eval-string "(nextjournal.clerk/with-viewer {} {:nextjournal.clerk/budget 5} (reduce (fn [acc i] (vector acc)) :fin (range 15 0 -1)))")
+                 view/doc->viewer v/->value :blocks
+                 (tree-seq coll? seq)
+                 (filter (every-pred map? (comp #{'nextjournal.clerk.render/render-coll} :form :render-fn)))))))
+
+    (is (= 101
+           (count
+            (->> (eval/eval-string "^{:nextjournal.clerk/budget nil}(reduce (fn [acc i] (vector i acc)) :fin (range 101 0 -1))")
+                 view/doc->viewer v/->value :blocks
+                 (tree-seq coll? seq)
+                 (filter (every-pred map? (comp #{'nextjournal.clerk.render/render-coll} :form :render-fn)))))))))
 
 (deftest ->edn
   (testing "normal symbols and keywords"
@@ -332,7 +375,11 @@
            (pr-str (symbol "~")))))
 
   (testing "splicing reader conditional prints normally (issue #338)"
-    (is (= "?@" (pr-str (symbol "?@"))))))
+    (is (= "?@" (pr-str (symbol "?@")))))
+
+  (testing "custom print-method for symbol preserves metadata"
+    (is (-> (binding [*print-meta* true]
+              (pr-str '[^:foo bar])) read-string first meta :foo))))
 
 (deftest removed-metadata
   (is (= "(do 'this)"

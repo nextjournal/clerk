@@ -17,11 +17,12 @@
 
 (clerk/with-viewer
   '(fn [_ _] [:div
-              "Go to "
-              [:a.text-lg {:href (nextjournal.clerk.viewer/doc-url "notebooks/viewers/image.clj")} "images"]
-              " notebook."]) nil)
+             "Go to "
+             [:a.text-lg {:href (nextjournal.clerk.viewer/doc-url "notebooks/viewers/image.clj")} "images"]
+             " notebook."]) nil)
 
 (clerk/html
- [:ol (list [:li "One"]
-            [:li "Two"]
-            [:li "Three"])])
+ [:ol
+  [:li [:a {:href (clerk/doc-url "notebooks/document_linking.clj")} "Cross Document Linking"]]
+  [:li [:a {:href (clerk/doc-url "notebooks/rule_30.clj")} "Rule 30"]]
+  [:li [:a {:href (clerk/doc-url "notebooks/markdown.md")} "Appendix"]]])

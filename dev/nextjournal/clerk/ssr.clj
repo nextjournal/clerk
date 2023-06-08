@@ -44,7 +44,7 @@
 
 (defn render [edn-string]
   (force !eval-viewer-source)
-  (execute-fn context "nextjournal.clerk.static_app.ssr" edn-string))
+  (execute-fn context "nextjournal.clerk.sci_env.ssr" edn-string))
 
 
 (comment

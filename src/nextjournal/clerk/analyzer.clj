@@ -12,6 +12,7 @@
             [clojure.tools.analyzer.ast :as ana-ast]
             [clojure.tools.analyzer.jvm :as ana-jvm]
             [clojure.tools.analyzer.utils :as ana-utils]
+            [clojure.walk :as walk]
             [multiformats.base.b58 :as b58]
             [multiformats.hash :as hash]
             [nextjournal.clerk.parser :as parser]
@@ -113,8 +114,12 @@
 (defn unresolvable-symbol-handler [ns sym ast-node]
   ast-node)
 
+(defn wrong-tag-handler [tag ast-node]
+  ast-node)
+
 (def analyzer-passes-opts
   (assoc ana-jvm/default-passes-opts
+         :validate/wrong-tag-handler wrong-tag-handler
          :validate/unresolvable-symbol-handler unresolvable-symbol-handler))
 
 (defn form->ex-data
@@ -351,12 +356,9 @@
                        (cond-> state
                          doc? (merge doc))
                        (-> doc :blocks count range))
-         doc? (-> parser/add-block-visibility
+         doc? (-> parser/add-block-settings
                   parser/add-open-graph-metadata
-                  parser/add-auto-expand-results
-                  parser/add-css-class
                   filter-code-blocks-without-form))))))
-
 
 #_(let [parsed (nextjournal.clerk.parser/parse-clojure-string "clojure.core/dec")]
     (build-graph (analyze-doc parsed)))
@@ -568,12 +570,20 @@
 #_(dep/immediate-dependencies (:graph (build-graph "src/nextjournal/clerk/analyzer.clj"))  #'nextjournal.clerk.analyzer/long-thing)
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/analyzer.clj"))  #'nextjournal.clerk.analyzer/long-thing)
 
+(defn ^:private remove-type-meta
+  "Walks given `form` removing `:type` from metadata to ensure it can be printed."
+  [form]
+  (walk/postwalk (fn [x] (cond-> x
+                           (contains? (meta x) :type)
+                           (vary-meta dissoc :type)))
+                 form))
+
 (defn hash-codeblock [->hash {:as codeblock :keys [hash form id deps vars]}]
   (when (and (seq deps) (not (ifn? ->hash)))
     (throw (ex-info "`->hash` must be `ifn?`" {:->hash ->hash :codeblock codeblock})))
   (let [hashed-deps (into #{} (map ->hash) deps)]
     (sha1-base58 (binding [*print-length* nil]
-                   (pr-str (set/union (conj hashed-deps (if form form hash))
+                   (pr-str (set/union (conj hashed-deps (if form (remove-type-meta form) hash))
                                       vars))))))
 
 (defn hash
