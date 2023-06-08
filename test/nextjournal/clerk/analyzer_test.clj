@@ -79,7 +79,7 @@
 
   (testing "protocol methods are resolved to protocol in deps"
     (is (= '#{nextjournal.clerk.analyzer/BoundedCountCheck}
-           (:deps (ana/analyze 'ana/-exceeds-bounded-count-limit?))))))
+           (:deps (ana/analyze 'nextjournal.clerk.analyzer/-exceeds-bounded-count-limit?))))))
 
 (deftest read-string-tests
   (testing "read-string should read regex's such that value equalility is preserved"
