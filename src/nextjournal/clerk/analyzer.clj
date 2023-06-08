@@ -145,6 +145,10 @@
                          (form->ex-data form)
                          e)))))))
 
+(defn ^:private var->protocol [v]
+  (or (:protocol (meta v))
+      v))
+
 (defn analyze [form]
   (let [!deps      (atom #{})
         mexpander (fn [form env]
@@ -173,7 +177,7 @@
                                        (when-not (= op :the-var)
                                          (list `deref (symbol var))))))
                          nodes)
-        deps (set/union (set/difference (into #{} (map symbol) @!deps) vars)
+        deps (set/union (set/difference (into #{} (map (comp symbol var->protocol)) @!deps) vars)
                         deref-deps
                         (class-deps analyzed)
                         (when (var? form) #{(symbol form)}))
@@ -226,7 +230,6 @@
                          (rewrite-clj.parser/parse-string-all s) "hi")))))
 #_(type (first (:deps (analyze #'analyze-form))))
 #_(-> (analyze '(proxy [clojure.lang.ISeq] [])))
-
 
 (defn- circular-dependency-error? [e]
   (-> e ex-data :reason #{::dep/circular-dependency}))
@@ -371,12 +374,12 @@
 (defn analyze-file
   ([file]
    (let [current-file-sha (sha1-base58 (fs/read-all-bytes file))]
-            (or (when-let [{:as cached-analysis :keys [file-sha]} (@!file->analysis-cache file)]
-                  (when (= file-sha current-file-sha)
-                    cached-analysis))
-                (let [analysis (analyze-doc {:file-sha current-file-sha} (parser/parse-file {} file))]
-                  (swap! !file->analysis-cache assoc file analysis)
-                  analysis))))
+     (or (when-let [{:as cached-analysis :keys [file-sha]} (@!file->analysis-cache file)]
+           (when (= file-sha current-file-sha)
+             cached-analysis))
+         (let [analysis (analyze-doc {:file-sha current-file-sha} (parser/parse-file {} file))]
+           (swap! !file->analysis-cache assoc file analysis)
+           analysis))))
   ([state file]
    (analyze-doc state (parser/parse-file {} file))))
 
@@ -470,8 +473,8 @@
               (ns->jar ns))
           (symbol->jar sym)))))
 
-
 #_(find-location `inc)
+#_(find-location `*print-dup*)
 #_(find-location '@nextjournal.clerk.webserver/!doc)
 #_(find-location `dep/depend)
 #_(find-location 'java.util.UUID)
@@ -479,25 +482,6 @@
 #_(find-location 'io.methvin.watcher.PathUtils)
 #_(find-location 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER)
 #_(find-location 'String)
-
-(defn find-location+cache [!ns->loc sym]
-  (if (deref? sym)
-    (find-location+cache !ns->loc (second sym))
-    (if-let [ns-sym (and (qualified-symbol? sym) (-> sym namespace symbol))]
-      (or (@!ns->loc ns-sym)
-          (when-let [loc (find-location sym)]
-            (swap! !ns->loc assoc ns-sym loc)
-            loc))
-      (find-location sym))))
-
-(def !ns->loc-cache (atom {}))
-
-#_(reset! !ns->loc-cache {})
-
-(defn find-location-cached [sym]
-  (find-location+cache !ns->loc-cache sym))
-
-#_(find-location-cached `inc)
 
 (def hash-jar
   (memoize (fn [f]
@@ -530,21 +514,23 @@
              (assoc :counter 0))]
     (let [unhashed (unhashed-deps ->analysis-info)
           loc->syms (apply dissoc
-                           (group-by find-location-cached unhashed)
+                           (group-by find-location unhashed)
                            analyzed-file-set)]
       (if (and (seq loc->syms) (< counter 10))
         (recur (-> (reduce (fn [g [source symbols]]
-                             (if (or (nil? source)
-                                     (str/ends-with? source ".jar"))
-                               (update g :->analysis-info merge (into {} (map (juxt identity (constantly (if source (hash-jar source) {})))) symbols))
-                               (-> g
-                                   (update :analyzed-file-set conj source)
-                                   (merge-analysis-info (analyze-file source)))))
+                             (let [jar? (or (nil? source)
+                                            (str/ends-with? source ".jar"))
+                                   gitlib-hash (and (not jar?)
+                                                    (second (re-find #".gitlibs/libs/.*/(\b[0-9a-f]{5,40}\b)/" (fs/unixify source))))]
+                               (if (or jar? gitlib-hash)
+                                 (update g :->analysis-info merge (into {} (map (juxt identity (constantly (if source (or gitlib-hash (hash-jar source)) {})))) symbols))
+                                 (-> g
+                                     (update :analyzed-file-set conj source)
+                                     (merge-analysis-info (analyze-file source))))))
                            state
                            loc->syms)
                    (update :counter inc)))
         (dissoc state :analyzed-file-set :counter)))))
-
 
 (comment
   (def parsed (parser/parse-file {:doc? true} "src/nextjournal/clerk/webserver.clj"))

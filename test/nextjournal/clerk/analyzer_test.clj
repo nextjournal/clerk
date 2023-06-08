@@ -75,7 +75,11 @@
     (is (every? symbol? (:deps (ana/analyze '(.hashCode clojure.lang.Compiler)))))
 
     (is (every? symbol? (:deps (ana/analyze '(defprotocol MyProtocol
-                                               (-check [_]))))))))
+                                               (-check [_])))))))
+
+  (testing "protocol methods are resolved to protocol in deps"
+    (is (= '#{nextjournal.clerk.analyzer/BoundedCountCheck}
+           (:deps (ana/analyze 'ana/-exceeds-bounded-count-limit?))))))
 
 (deftest read-string-tests
   (testing "read-string should read regex's such that value equalility is preserved"
@@ -193,16 +197,6 @@
 
   (testing "weavejester.dependency/graph"
     (is (re-find #"dependency-.*\.jar" (ana/find-location 'weavejester.dependency/graph)))))
-
-(deftest find-location+cache
-  (let [!ns->loc (atom {})]
-    (testing "populates the cache"
-      (ana/find-location+cache !ns->loc 'clojure.core/inc)
-      (is (= (@!ns->loc 'clojure.core) (ana/find-location 'clojure.core/inc))))
-
-    (testing "doesn't call `find-location` with cache populated"
-      (with-redefs [ana/find-location (fn [_] :bogus/value)]
-        (is (re-find #"clojure-1\..*\.jar" (ana/find-location+cache !ns->loc 'clojure.core/inc)))))))
 
 (defn analyze-string [s]
   (-> (parser/parse-clojure-string {:doc? true} s)
