@@ -753,8 +753,8 @@ v/table-viewer
 
 ;; By default, [SCI](https://github.com/babashka/sci) is used for evaluating `:render-fn` functions in the browser.
 
-;; What follows is an inefficient but fun way to compute the nth fibacci number
-;; and show how long it took.
+;; What follows is an inefficient but fun way to compute the nth fibonacci
+;; number and show how long it took.
 
 (def fib-viewer
   {:render-fn '(fn [n opts]
