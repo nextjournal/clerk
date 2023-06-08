@@ -749,62 +749,35 @@ v/table-viewer
     Moving --> Crash
     Crash --> [*]")
 
-;; #### Evaluator
+;; #### 🧙 Evaluator
 
 ;; By default, [SCI](https://github.com/babashka/sci) is used for evaluating `:render-fn` functions in the browser.
 
-(def slow-viewer
-  {:transform-fn clerk/mark-presented
-   :render-fn '(fn [value]
-                 [:div (with-out-str (time
-                                      (dotimes [i value]
-                                        (+ 1 2 3))))])})
+;; What follows is an inefficient but fun way to compute the nth fibacci number
+;; and show how long it took. Since this computation is numerically intensive,
+;; cherry outperforms SCI since it can compile to performant JavaScript code.
 
-(def fps-viewer
-  {:transform-fn clerk/mark-presented
-   :render-fn
-   '(let [hidden? (reagent.core/atom false)
-          start-time (atom (js/Date.now))
-          frame (atom 0)
-          fps (reagent.core/atom 0)
-          complicated-calculation (reagent.core/atom (range 400000))
-          tick-fn (fn tick []
-                    (let [time (js/Date.now)
-                          _ (swap! frame inc)]
-                      (when (> (- time @start-time) 1000)
-                        (do (reset! fps (/ @frame (.toFixed (/ (- time @start-time) 1000) 1)))
-                            (reset! start-time time)
-                            (reset! frame 0)
-                            (swap! complicated-calculation #(map (fn [s]
-                                                                   (inc (* 2 (js/Math.sin s)))) %))))
-                      (js/window.requestAnimationFrame tick)))]
-      (tick-fn)
-      (fn [value]
-        [:div
-         [:button {:class "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-                   :on-click #(swap! hidden? not)}"Hide"]
-         (when-not @hidden?
-           [:div
-            [:div "FPS: " @fps]
-            [:div "Calculated value:" (apply + @complicated-calculation)]])]))})
+(def fib-viewer
+  {:render-fn '(fn [n opts]
+                 (reagent.core/with-let
+                   [fib (fn fib [x]
+                          (if (< x 2)
+                            1
+                            (+ (fib (dec x)) (fib (dec (dec x))))))
+                    time-before (js/performance.now)
+                    nth-fib (fib n)
+                    time-after (js/performance.now)]
+                   [:div
+                    [:p
+                     (if (= :cherry (-> opts :viewer :render-evaluator))
+                       "Cherry"
+                       "SCI")
+                     " computed the " n "th fibonacci number (" nth-fib ")"
+                     " in " (int (- time-after time-before)) "ms."]]))})
 
-(clerk/with-viewer fps-viewer
-  nil)
+(clerk/with-viewer fib-viewer 25)
 
-(clerk/with-viewer fps-viewer
-  {:nextjournal.clerk/render-evaluator :cherry}
-  nil)
-
-(clerk/with-viewer slow-viewer
-  1000000)
-
-;; For improved performance, the cherry compiler may be used, using the
-;; `:nextjournal.clerk/render-evaluator` option. SCI is more battle tested than
-;; cherry, but please do use it report issues if you have an unexpected problem.
-
-(clerk/with-viewer slow-viewer
-  {:nextjournal.clerk/render-evaluator :cherry}
-  1000000)
+(clerk/with-viewer fib-viewer {::clerk/render-evaluator :cherry} 25)
 
 #_(clerk/halt!)
 #_(clerk/serve! {:port 7777})
