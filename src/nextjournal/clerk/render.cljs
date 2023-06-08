@@ -915,11 +915,11 @@
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
    [:path {:fill-rule "evenodd" :d "M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" :clip-rule "evenodd"}]])
 
-(defn render-code-block [code-string {:keys [id]}]
+(defn render-code-block [code-string {:as opts :keys [id]}]
   [:div.viewer.code-viewer.w-full.max-w-wide {:data-block-id id}
-   [code/render-code code-string]])
+   [code/render-code code-string (assoc opts :language "clojure")]])
 
-(defn render-folded-code-block [code-string {:keys [id]}]
+(defn render-folded-code-block [code-string {:as opts :keys [id]}]
   (let [!hidden? (hooks/use-state true)]
     (if @!hidden?
       [:div.relative.pl-12.font-sans.text-slate-400.cursor-pointer.flex.overflow-y-hidden.group
@@ -952,7 +952,7 @@
          {:class "text-[10px]"}
          "evaluated in 0.2s"]]
        [:div.code-viewer.mb-2.relative.code-viewer.w-full.max-w-wide {:data-block-id id :style {:margin-top 0}}
-        [render-code code-string]]])))
+        [render-code code-string (assoc opts :language "clojure")]]])))
 
 
 (defn url-for [{:as src :keys [blob-id]}]

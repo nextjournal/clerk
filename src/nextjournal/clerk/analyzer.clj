@@ -12,6 +12,7 @@
             [clojure.tools.analyzer.ast :as ana-ast]
             [clojure.tools.analyzer.jvm :as ana-jvm]
             [clojure.tools.analyzer.utils :as ana-utils]
+            [clojure.walk :as walk]
             [multiformats.base.b58 :as b58]
             [multiformats.hash :as hash]
             [nextjournal.clerk.parser :as parser]
@@ -113,8 +114,12 @@
 (defn unresolvable-symbol-handler [ns sym ast-node]
   ast-node)
 
+(defn wrong-tag-handler [tag ast-node]
+  ast-node)
+
 (def analyzer-passes-opts
   (assoc ana-jvm/default-passes-opts
+         :validate/wrong-tag-handler wrong-tag-handler
          :validate/unresolvable-symbol-handler unresolvable-symbol-handler))
 
 (defn form->ex-data
@@ -139,6 +144,10 @@
          (throw (ex-info "Failed to analyze form"
                          (form->ex-data form)
                          e)))))))
+
+(defn ^:private var->protocol [v]
+  (or (:protocol (meta v))
+      v))
 
 (defn analyze [form]
   (let [!deps      (atom #{})
@@ -168,7 +177,7 @@
                                        (when-not (= op :the-var)
                                          (list `deref (symbol var))))))
                          nodes)
-        deps (set/union (set/difference (into #{} (map symbol) @!deps) vars)
+        deps (set/union (set/difference (into #{} (map (comp symbol var->protocol)) @!deps) vars)
                         deref-deps
                         (class-deps analyzed)
                         (when (var? form) #{(symbol form)}))
@@ -221,7 +230,6 @@
                          (rewrite-clj.parser/parse-string-all s) "hi")))))
 #_(type (first (:deps (analyze #'analyze-form))))
 #_(-> (analyze '(proxy [clojure.lang.ISeq] [])))
-
 
 (defn- circular-dependency-error? [e]
   (-> e ex-data :reason #{::dep/circular-dependency}))
@@ -366,12 +374,12 @@
 (defn analyze-file
   ([file]
    (let [current-file-sha (sha1-base58 (fs/read-all-bytes file))]
-            (or (when-let [{:as cached-analysis :keys [file-sha]} (@!file->analysis-cache file)]
-                  (when (= file-sha current-file-sha)
-                    cached-analysis))
-                (let [analysis (analyze-doc {:file-sha current-file-sha} (parser/parse-file {} file))]
-                  (swap! !file->analysis-cache assoc file analysis)
-                  analysis))))
+     (or (when-let [{:as cached-analysis :keys [file-sha]} (@!file->analysis-cache file)]
+           (when (= file-sha current-file-sha)
+             cached-analysis))
+         (let [analysis (analyze-doc {:file-sha current-file-sha} (parser/parse-file {} file))]
+           (swap! !file->analysis-cache assoc file analysis)
+           analysis))))
   ([state file]
    (analyze-doc state (parser/parse-file {} file))))
 
@@ -400,6 +408,14 @@
                       path)))
                 [".clj" ".cljc"]))
         (cp/classpath-directories)))
+
+(defn var->file [var]
+  (when-let [file-from-var (-> var meta :file)]
+    (some (fn [classpath-dir]
+            (let [path (str classpath-dir fs/file-separator file-from-var)]
+              (when (fs/exists? path)
+                path)))
+          (cp/classpath-directories))))
 
 (defn normalize-filename [f]
   (if (fs/windows?)
@@ -436,16 +452,29 @@
 #_(symbol->jar 'io.methvin.watcher.PathUtils/cast)
 #_(symbol->jar 'java.net.http.HttpClient/newHttpClient)
 
+(defn var->location [var]
+  (when-let [file (:file (meta var))]
+    (if (fs/absolute? file)
+      (when (fs/exists? file)
+        (fs/relativize (fs/cwd) (fs/file file)))
+      (when-let [resource (io/resource file)]
+        (let [protocol (.getProtocol resource)]
+          (or (and (= "jar" protocol)
+                   (second (re-find #"^file:(.*)!" (.getFile resource))))
+              (and (= "file" protocol)
+                   (.getFile resource))))))))
 
 (defn find-location [sym]
   (if (deref? sym)
     (find-location (second sym))
-    (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
-      (or (ns->file ns)
-          (ns->jar ns))
-      (symbol->jar sym))))
+    (or (some-> sym resolve var->location)
+        (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
+          (or (ns->file ns)
+              (ns->jar ns))
+          (symbol->jar sym)))))
 
 #_(find-location `inc)
+#_(find-location `*print-dup*)
 #_(find-location '@nextjournal.clerk.webserver/!doc)
 #_(find-location `dep/depend)
 #_(find-location 'java.util.UUID)
@@ -453,25 +482,6 @@
 #_(find-location 'io.methvin.watcher.PathUtils)
 #_(find-location 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER)
 #_(find-location 'String)
-
-(defn find-location+cache [!ns->loc sym]
-  (if (deref? sym)
-    (find-location+cache !ns->loc (second sym))
-    (if-let [ns-sym (and (qualified-symbol? sym) (-> sym namespace symbol))]
-      (or (@!ns->loc ns-sym)
-          (when-let [loc (find-location sym)]
-            (swap! !ns->loc assoc ns-sym loc)
-            loc))
-      (find-location sym))))
-
-(def !ns->loc-cache (atom {}))
-
-#_(reset! !ns->loc-cache {})
-
-(defn find-location-cached [sym]
-  (find-location+cache !ns->loc-cache sym))
-
-#_(find-location-cached `inc)
 
 (def hash-jar
   (memoize (fn [f]
@@ -504,21 +514,23 @@
              (assoc :counter 0))]
     (let [unhashed (unhashed-deps ->analysis-info)
           loc->syms (apply dissoc
-                           (group-by find-location-cached unhashed)
+                           (group-by find-location unhashed)
                            analyzed-file-set)]
       (if (and (seq loc->syms) (< counter 10))
         (recur (-> (reduce (fn [g [source symbols]]
-                             (if (or (nil? source)
-                                     (str/ends-with? source ".jar"))
-                               (update g :->analysis-info merge (into {} (map (juxt identity (constantly (if source (hash-jar source) {})))) symbols))
-                               (-> g
-                                   (update :analyzed-file-set conj source)
-                                   (merge-analysis-info (analyze-file source)))))
+                             (let [jar? (or (nil? source)
+                                            (str/ends-with? source ".jar"))
+                                   gitlib-hash (and (not jar?)
+                                                    (second (re-find #".gitlibs/libs/.*/(\b[0-9a-f]{5,40}\b)/" (fs/unixify source))))]
+                               (if (or jar? gitlib-hash)
+                                 (update g :->analysis-info merge (into {} (map (juxt identity (constantly (if source (or gitlib-hash (hash-jar source)) {})))) symbols))
+                                 (-> g
+                                     (update :analyzed-file-set conj source)
+                                     (merge-analysis-info (analyze-file source))))))
                            state
                            loc->syms)
                    (update :counter inc)))
         (dissoc state :analyzed-file-set :counter)))))
-
 
 (comment
   (def parsed (parser/parse-file {:doc? true} "src/nextjournal/clerk/webserver.clj"))
@@ -544,12 +556,20 @@
 #_(dep/immediate-dependencies (:graph (build-graph "src/nextjournal/clerk/analyzer.clj"))  #'nextjournal.clerk.analyzer/long-thing)
 #_(dep/transitive-dependencies (:graph (build-graph "src/nextjournal/clerk/analyzer.clj"))  #'nextjournal.clerk.analyzer/long-thing)
 
+(defn ^:private remove-type-meta
+  "Walks given `form` removing `:type` from metadata to ensure it can be printed."
+  [form]
+  (walk/postwalk (fn [x] (cond-> x
+                           (contains? (meta x) :type)
+                           (vary-meta dissoc :type)))
+                 form))
+
 (defn hash-codeblock [->hash {:as codeblock :keys [hash form id deps vars]}]
   (when (and (seq deps) (not (ifn? ->hash)))
     (throw (ex-info "`->hash` must be `ifn?`" {:->hash ->hash :codeblock codeblock})))
   (let [hashed-deps (into #{} (map ->hash) deps)]
     (sha1-base58 (binding [*print-length* nil]
-                   (pr-str (set/union (conj hashed-deps (if form form hash))
+                   (pr-str (set/union (conj hashed-deps (if form (remove-type-meta form) hash))
                                       vars))))))
 
 (defn hash

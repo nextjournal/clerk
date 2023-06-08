@@ -95,7 +95,7 @@
 
 ;; In Emacs, add the following to your config:
 
-;; ```elisp
+;; ```el
 ;; (defun clerk-show ()
 ;;   (interactive)
 ;;   (when-let
@@ -121,7 +121,7 @@
 
 ;; With [neovim](https://neovim.io/) + [conjure](https://github.com/Olical/conjure/) one can use the following vimscript function to save the file and show it with Clerk:
 
-;; ```
+;; ```vimscript
 ;; function! ClerkShow()
 ;; exe "w"
 ;; exe "ConjureEval (nextjournal.clerk/show! \"" . expand("%:p") . "\")"
@@ -251,7 +251,7 @@
 
 ;; ### 🎼 Code
 
-;; The code viewer uses
+;; By default the code viewer uses
 ;; [clojure-mode](https://nextjournal.github.io/clojure-mode/) for
 ;; syntax highlighting.
 (clerk/code (macroexpand '(when test
@@ -261,6 +261,24 @@
 (clerk/code '(ns foo "A great ns" (:require [clojure.string :as str])))
 
 (clerk/code "(defn my-fn\n  \"This is a Doc String\"\n  [args]\n  42)")
+
+;; You can specify the language for syntax highlighting via `::clerk/opts`.
+(clerk/code {::clerk/opts {:language "python"}} "
+class Foo(object):
+    def __init__(self):
+        pass
+    def do_this(self):
+        return 1")
+
+;; Or use a code fence with a language in a markdown.
+
+(clerk/md "```c++
+#include <iostream>
+int main() {
+    std::cout << \" Hello, world! \" << std::endl
+    return 0
+}
+```")
 
 ;; ### 🏞 Images
 

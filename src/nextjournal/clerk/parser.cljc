@@ -357,12 +357,26 @@
          :nodes (rest nodes)
          ::md-slice []))
 
+(defn runnable-code-block? [{:as block :keys [info language]}]
+  (and (code? block)
+       info
+       (or (empty? language)
+           (re-matches #"clj(c?)|clojure" language))
+       (not (:nextjournal.clerk/code-listing
+             (when-some [parsed (when (and (seq language) (str/starts-with? info language))
+                                  (p/parse-string-all (subs info (count language))))]
+               (when (n/sexpr-able? parsed)
+                 (n/sexpr parsed)))))))
+
+#_(runnable-code-block? {:type :code :language "clojure" :info "clojure"})
+#_(runnable-code-block? {:type :code :language "clojure" :info "clojure {:nextjournal.clerk/code-listing true}"})
+
 (defn parse-markdown-string [{:as opts :keys [doc?]} s]
   (let [{:as ctx :keys [content]} (parse-markdown (markdown-context) s)]
     (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes content :md-context ctx}]
       (if-some [node (first nodes)]
         (recur
-         (if (and (code? node) (contains? node :info))
+         (if (runnable-code-block? node)
            (-> state
                (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
                (parse-markdown-cell opts))

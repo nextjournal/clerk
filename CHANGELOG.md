@@ -18,11 +18,21 @@ Changes can be:
 
     Use these features to build a new welcome page that gives more useful information, including links to potential notebooks in the project.
 
+* ⚡️ Speed up analysis of gitlibs using git sha, resolve protocol methods
+
+    This significantly speeds up analysis for gitlibs by using the git sha as a hash (thus treating them as immutable) instead of handling them on a per-form level.
+
+    Also resolve protocol methods to the defining protocol, which would previously not be detected.
+
+    Lastly drop the location cache which is no longer needed.
+
 * 🍕 `clerk/fragment` for splicing a seq of values into the document as if it were produced by results of individual cells. Useful when programmatically generating content.
 
 * 🚨 Change `nextjournal.clerk.render/clerk-eval` to not recompute the currently shown document when using the 1-arity version. Added a second arity that takes an opts map with a `:recompute?` key.
 
 * 🍒 Add support for cherry as an alternative to sci to evaluate `:render-fn`s. You can change it per form (using form metadata or viewer opts) or doc-wide (using ns metadata) with `{:nextjournal.clerk/render-evaluator :cherry}`.
+
+* 🏳️‍🌈 Syntax highlighting for code listings in all [languages supported by codemirror](https://github.com/codemirror/language-data) ([#500](https://github.com/nextjournal/clerk/issues/500)).
 
 * ⭐️ Adds support for customization of viewer options
 
@@ -40,7 +50,19 @@ Changes can be:
 
 * 💫 Cache expressions that return `nil` in memory
 
+* 💫 Support non-evaluated clojure code listings in markdown documents by specifying `{:nextjournal.clerk/code-listing true}` after the language ([#482](https://github.com/nextjournal/clerk/issues/482)).
+
+* 💫 Support imported vars (e.g. by potemkin) in location analysis
+
+    By considering `:file` on var meta in location analysis. Previously we would not find a location for vars where the namespace did not match the source file. As we're not caching negative findings this can speed up analysis for deps with a large number of imported vars significantly.
+
+* 🐜 Turn off analyzer pass for validation of `:type` tags, fixes [#488](https://github.com/nextjournal/clerk/issues/488) @craig-latacora
+
+* 🐜 Strip `:type` metadata from forms before printing them to hash, fixes [#489](https://github.com/nextjournal/clerk/issues/489) @craig-latacora
+
 * 🐜 Ensure custom `print-method` supporting unreadable symbols preserves metadata
+
+* 🐞 Preserve `*ns*` during `build!`, fixes [#506](https://github.com/nextjournal/clerk/issues/506)
 
 ## 0.13.842 (2023-03-07)
 

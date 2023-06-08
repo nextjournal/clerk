@@ -50,11 +50,11 @@ To use Clerk in your project, add the following dependency to your `deps.edn`:
 
 Require and start Clerk as part of your system start, e.g. in `user.clj`:
 
-```clojure
+```clojure {:nextjournal.clerk/code-listing true}
 (require '[nextjournal.clerk :as clerk])
 
 ;; start Clerk's built-in webserver on the default port 7777, opening the browser when done
-(clerk/serve! {:browse? true})
+(clerk/serve! {:browse true})
 
 ;; either call `clerk/show!` explicitly
 (clerk/show! "notebooks/rule_30.clj")
@@ -68,7 +68,6 @@ Require and start Clerk as part of your system start, e.g. in `user.clj`:
 ;; Build a html file from the given notebook notebooks.
 ;; See the docstring for more options.
 (clerk/build! {:paths ["notebooks/rule_30.clj"]})
-
 ```
 
 You can then access Clerk at <http://localhost:7777>.
@@ -109,7 +108,7 @@ In IntelliJ/Cursive, you can [set up REPL commands](https://cursive-ide.com/user
 
 With [neovim](https://neovim.io/) + [conjure](https://github.com/Olical/conjure/) one can use the following vimscript function to save the file and show it with Clerk:
 
-```
+```vimscript
 function! ClerkShow()
   exe "w"
   exe "ConjureEval (nextjournal.clerk/show! \"" . expand("%:p") . "\")"
@@ -122,7 +121,7 @@ nmap <silent> <localleader>cs :execute ClerkShow()<CR>
 Make sure you have [Babashka installed](https://github.com/babashka/babashka#installation), and run:
 
 ```bash
-bb dev :browse\? true
+bb dev :browse true
 ```
 
 The will start everything needed to develop Clerk and open your
@@ -130,7 +129,7 @@ default browser. You can connect your favorite editor to it using nREPL.
 
 Any trailing arguments to `bb dev` will be forwarded to `clojure -X`
 and `clerk/serve!`. So if you prefer to not open your browser, leave 
-out the `:browse\? true` arguments.
+out the `:browse true` arguments.
 
 ## 🐞 Known Issues
 
@@ -141,7 +140,7 @@ See [notebooks/onwards.md](https://github.com/nextjournal/clerk/blob/main/notebo
 If you are a researcher and use Clerk in your work, we encourage you to cite our work.
 You can use the following BibTeX citation:
 
-```
+```bibtex
 @misc{clerk-github,
   author =  {Martin Kavalar and
              Jack Rusher},

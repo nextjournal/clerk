@@ -597,9 +597,9 @@
             (cond-> []
               code?
               (conj (with-viewer (if fold? `folded-code-block-viewer `code-block-viewer)
-                      {:nextjournal/opts (merge {:id (processed-block-id (str id "-code"))} (select-keys cell [:loc]))}
+                      {:nextjournal/opts (assoc (select-keys cell [:loc])
+                                                :id (processed-block-id (str id "-code")))}
                       (dissoc cell :result)))
-
               (or result? eval?)
               (conj (cond-> (ensure-wrapped (-> cell (assoc ::doc doc) (set/rename-keys {:result ::result})))
                       (and eval? (not result?))
@@ -704,11 +704,11 @@
    {:name :nextjournal.markdown/plain :transform-fn (into-markup [:<>])}
    {:name :nextjournal.markdown/ruler :transform-fn (into-markup [:hr])}
    {:name :nextjournal.markdown/code
-    :transform-fn (fn [wrapped-value]
-                    (with-viewer `html-viewer
-                      [:div.code-viewer.code-listing
-                       (with-viewer `code-viewer
-                         (str/trim-newline (md.transform/->text (->value wrapped-value))))]))}
+    :transform-fn (update-val #(with-viewer `html-viewer
+                                 [:div.code-viewer.code-listing
+                                  (with-viewer `code-viewer
+                                    {:nextjournal/opts {:language (:language % "clojure")}}
+                                    (str/trim-newline (md.transform/->text %)))]))}
 
    ;; marks
    {:name :nextjournal.markdown/em :transform-fn (into-markup [:em])}
@@ -913,7 +913,11 @@
                                               (with-md-viewer)))})
 
 (def code-viewer
-  {:name `code-viewer :render-fn 'nextjournal.clerk.render/render-code :transform-fn (comp mark-presented (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))})
+  {:name `code-viewer
+   :render-fn 'nextjournal.clerk.render/render-code
+   :transform-fn (comp mark-presented
+                       #(update-in % [:nextjournal/opts :language] (fn [lang] (or lang "clojure")))
+                       (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))})
 
 (def reagent-viewer
   {:name `reagent-viewer :render-fn 'nextjournal.clerk.render/render-reagent :transform-fn mark-presented})

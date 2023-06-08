@@ -68,6 +68,8 @@
                                org.clojure/data.csv {:mvn/version "1.0.0"}
                                hickory/hickory {:mvn/version "0.7.1"}
                                sicmutils/sicmutils {:mvn/version "0.20.0"}
+                               io.github.mentat-collective/emmy {:git/sha "b98fef51d80d3edcff3100562b929f9980ff34d7"
+                                                                 :exclusions [org.babashka/sci]}
                                io.github.nextjournal/clerk-slideshow {:git/sha "0e6e890fd4f862fa3535290cb7e29591c6e0ec85"}}}
 
            :build {:deps {io.github.nextjournal/clerk {:local/root "."}
