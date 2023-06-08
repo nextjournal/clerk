@@ -754,8 +754,7 @@ v/table-viewer
 ;; By default, [SCI](https://github.com/babashka/sci) is used for evaluating `:render-fn` functions in the browser.
 
 ;; What follows is an inefficient but fun way to compute the nth fibacci number
-;; and show how long it took. Since this computation is numerically intensive,
-;; cherry outperforms SCI since it can compile to performant JavaScript code.
+;; and show how long it took.
 
 (def fib-viewer
   {:render-fn '(fn [n opts]
@@ -776,6 +775,12 @@ v/table-viewer
                      " in " (int (- time-after time-before)) "ms."]]))})
 
 (clerk/with-viewer fib-viewer 25)
+
+;; You can opt into [cherry](https://github.com/squint-cljs/cherry) as an
+;; alternative evaluator by setting `{::clerk/render-evaluator :cherry}` via the
+;; viewers opts (see [Customizations](#customizations)). The main difference between cherry and SCI
+;; for viewer functions is performance. For performance-sensitive code cherry is
+;; better suited since it compiles directly to JavaScript code.
 
 (clerk/with-viewer fib-viewer {::clerk/render-evaluator :cherry} 25)
 
