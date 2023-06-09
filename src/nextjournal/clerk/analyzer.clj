@@ -454,15 +454,16 @@
 
 (defn var->location [var]
   (when-let [file (:file (meta var))]
-    (if (fs/absolute? file)
-      (when (fs/exists? file)
-        (fs/relativize (fs/cwd) (fs/file file)))
-      (when-let [resource (io/resource file)]
-        (let [protocol (.getProtocol resource)]
-          (or (and (= "jar" protocol)
-                   (second (re-find #"^file:(.*)!" (.getFile resource))))
-              (and (= "file" protocol)
-                   (.getFile resource))))))))
+    (some-> (if (fs/absolute? file)
+              (when (fs/exists? file)
+                (fs/relativize (fs/cwd) (fs/file file)))
+              (when-let [resource (io/resource file)]
+                (let [protocol (.getProtocol resource)]
+                  (or (and (= "jar" protocol)
+                           (second (re-find #"^file:(.*)!" (.getFile resource))))
+                      (and (= "file" protocol)
+                           (.getFile resource))))))
+            str)))
 
 (defn find-location [sym]
   (if (deref? sym)
