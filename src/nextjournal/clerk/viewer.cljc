@@ -305,6 +305,17 @@
 (defn mark-preserve-keys [wrapped-value]
   (assoc wrapped-value :nextjournal/preserve-keys? true))
 
+(defn inspect-wrapped-values
+  "Takes `x` and modifies it such that Clerk will show raw
+  wrapped-values. Useful for inspecting the inner workings of the
+  viewer api. Also useable as a `:transform-fn`.
+
+  Will eagerly walk the whole data structure so unsuited for infinite
+  sequences."
+  [x]
+  ;; exploits the fact that that our keyword renderer doesn't show spaces
+  (w/postwalk-replace {:nextjournal/value (keyword "nextjournal/value ")} x))
+
 (defn fetch-all [_opts _xs]
   (throw (ex-info "`fetch-all` is deprecated, please use a `:transform-fn` with `mark-presented` instead." {})))
 

@@ -473,20 +473,13 @@ v/default-viewers
 ;; transforms it such that Clerk can send it to the browser where it
 ;; will be rendered.
 
-
-^{::clerk/visibility {:code :fold :result :hide}}
-(defn show-raw-value [x]
-  (binding [*print-namespace-maps* false]
-    (clerk/code (with-out-str (clojure.pprint/pprint x)))))
-
 ;; Let's start with one of the simplest examples. You can see that
 ;; `present` takes our value `1` and transforms it into a map, with
 ;; `1` under a `:nextjournal/value` key and the number viewer assigned
 ;; under the `:nextjournal/viewer` key.  We call this map a
 ;; `wrapped-value`.
 
-
-^{::clerk/viewer show-raw-value}
+^{::clerk/viewer v/inspect-wrapped-values ::clerk/auto-expand-results? true}
 (v/present 1)
 
 ;; This data structure is sent over Clerk's websocket to the
@@ -495,7 +488,7 @@ v/default-viewers
 
 ;; Now onto something slightly more complex, `#{1 2 3}`.
 
-^{::clerk/viewer show-raw-value}
+^{::clerk/viewer v/inspect-wrapped-values ::clerk/auto-expand-results? true}
 (v/present #{1 2 3})
 
 
@@ -524,13 +517,14 @@ v/default-viewers
 ;; When writing your own viewer, the first extension point you should reach for is `:tranform-fn`.
 
 #_ "exercise: wrap this in `v/present` and call it at the REPL"
-(v/with-viewer {:transform-fn #(clerk/html [:pre (pr-str %)])}
+(v/with-viewer {:transform-fn v/inspect-wrapped-values}
   "Exploring the viewer api")
 
 ;; As you can see the argument to the `:transform-fn` isn't just the
-;; string we're passing it, but a `wrapped-value`. We will look at
-;; what this enables in a bit. But let's look at one of the simplest
-;; examples first.
+;; string we're passing it, but a map with the original value under a
+;; `:nextjournal/value` key. We call this map a `wrapped-value`. We
+;; will look at what this enables in a bit. But let's look at one of
+;; the simplest examples first.
 
 ;; **A first simple example**
 
@@ -543,7 +537,7 @@ v/default-viewers
   "James Clerk Maxwell")
 
 ;; The `:transform-fn` runs on the JVM, which means you can explore what it does at your REPL by calling `v/present` on such a value.
-^{::clerk/viewer show-raw-value}
+^{::clerk/viewer v/inspect-wrapped-values}
 (v/present (v/with-viewer greet-viewer
              "James Clerk Maxwell"))
 
@@ -580,7 +574,7 @@ v/table-viewer
 ;; `clerk/mark-presented` as a `:transform-fn`. Compare the result
 ;; below in which `[1 2 3]` appears unaltered with what you see above.
 
-^{::clerk/viewer show-raw-value}
+^{::clerk/viewer v/inspect-wrapped-values}
 (v/present (clerk/with-viewer {:transform-fn clerk/mark-presented
                                :render-fn '(fn [x] [:pre (pr-str x)])}
              [1 2 3]))
@@ -591,7 +585,7 @@ v/table-viewer
 ;; `clerk/mark-preserve-keys`. This will still transform (and
 ;; paginate) the values of the map, but leave the keys unaltered.
 
-^{::clerk/viewer show-raw-value}
+^{::clerk/viewer v/inspect-wrapped-values ::clerk/auto-expand-results? true}
 (v/present (clerk/with-viewer {:transform-fn clerk/mark-preserve-keys}
              {:hello 42}))
 
