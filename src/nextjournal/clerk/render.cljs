@@ -19,7 +19,6 @@
             [nextjournal.clerk.render.navbar :as navbar]
             [nextjournal.clerk.render.window :as window]
             [nextjournal.clerk.viewer :as viewer]
-            [nextjournal.markdown.transform :as md.transform]
             [reagent.core :as r]
             [reagent.ratom :as ratom]
             [sci.core :as sci]
