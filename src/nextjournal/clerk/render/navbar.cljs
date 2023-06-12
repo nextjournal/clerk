@@ -77,41 +77,38 @@
           [:<>
            (if (seq items)
              [:div.flex.cursor-pointer
-              {:class (theme-class theme :expandable)}
-              [:div.flex.items-center.justify-center.flex-shrink-0
-               {:class "w-[20px] h-[20px] mr-[4px]"
+              {:class "text-base md:text-[14px] leading-normal md:dark:hover:bg-slate-700 dark:text-white px-3 py-2 md:py-1"}
+              [:div.flex.items-center.justify-center.flex-shrink-0.hover:bg-slate-200.rounded.cursor-pointer.group
+               {:class "w-[20px] h-[20px] mr-[2px] -ml-[4px]"
                 :on-click (fn [event]
                             (stop-event! event)
                             (swap! !state assoc-in (vec (conj update-at i :expanded?)) (not expanded?)))}
                [:svg.transform.transition
                 {:viewBox "0 0 100 100"
-                 :class (str (theme-class theme :triangle) " "
+                 :class (str "text-slate-500 group-hover:text-slate-700 dark:text-slate-400" " "
                              "w-[10px] h-[10px] "
                              (if expanded? "rotate-180" "rotate-90"))}
                 [:polygon {:points "5.9,88.2 50,11.8 94.1,88.2 " :fill "currentColor"}]]]
-              [:a {:href path} label]]
-             [:a.flex
-              {:href path
-               :class (theme-class theme :item)
-               :on-click (fn []
-
-                           (when mobile?
-                             (swap! !state assoc :visible? false)))}
-              [:div.flex.items-center.justify-center.flex-shrink-0
-               {:class "w-[20px] h-[20px] mr-[4px]"}
-               (if loading?
-                 [:svg.animate-spin.h-3.w-3.text-slate-500.dark:text-slate-400
-                  {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24"}
-                  [:circle.opacity-25 {:cx "12" :cy "12" :r "10" :stroke "currentColor" :stroke-width "4"}]
-                  [:path.opacity-75 {:fill "currentColor" :d "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"}]]
-                 (when emoji
-                   [:div emoji]))]
-              [:div
-               (if emoji
-                 (subs label (count emoji))
-                 label)]])
+              [:a.hover:bg-slate-200.rounded.px-1.-ml-1.relative
+               {:href path}
+               (when emoji
+                 [:div.inline-flex.items-center.justify-center.flex-shrink-0
+                  {:class "w-[16px] h-[16px] mr-[2px]"}
+                  emoji])
+               (if emoji (subs label (count emoji)) label)]]
+             [:div {:class "flex text-base md:text-[14px] leading-normal md:dark:hover:bg-slate-700 dark:text-white px-3 py-2 md:py-1"}
+              [:a.hover:bg-slate-200.rounded.px-1.-ml-1.relative
+               {:href path
+                :on-click (fn []
+                            (when mobile?
+                              (swap! !state assoc :visible? false)))}
+               (when emoji
+                 [:div.inline-flex.items-center.justify-center.flex-shrink-0
+                  {:class "w-[16px] h-[16px] mr-[2px]"}
+                  emoji])
+               (if emoji (subs label (count emoji)) label)]])
            (when (and (seq items) expanded?)
-             [:div.ml-3
+             [:div.ml-2.mb-2
               [navbar-items !state items (vec (conj update-at i :items))]])]))
       items))))
 
