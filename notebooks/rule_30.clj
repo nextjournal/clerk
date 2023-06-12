@@ -43,21 +43,3 @@
 (def board
   (let [evolve #(mapv rule-30 (partition 3 1 (repeat 0) (cons 0 %)))]
     (->> first-generation (iterate evolve) (take 17) (apply list))))
-
-(defn template [f]
-  (clojure.walk/postwalk (fn [x] (if (and (qualified-symbol? x)
-                                          (#{(str *ns*) "clojure.core"} (namespace x)))
-                                   (symbol (name x))
-                                   x))
-                         f))
-
-(defn build-scroll-to-form [var]
-  (template `(do (str ~(random-uuid))
-                 (.. js/document (querySelector ~(format "[data-block-id='%s-result']" (symbol var))) scrollIntoViewIfNeeded))))
-
-(build-scroll-to-form #'board)
-
-
-^::clerk/no-cache
-(clerk/eval-cljs (build-scroll-to-form
-                  (rand-nth (map :id (:blocks @nextjournal.clerk.webserver/!doc)))))
