@@ -17,6 +17,7 @@
   (mapv (fn [{:as item :keys [emoji attrs]}]
           {:title (md.transform/->text item)
            :expanded? true
+           :scroll-to-anchor? false
            :emoji emoji
            :path (clerk/doc-url file (:id attrs))
            :items (md-toc->navbar-items file item)}) children))
@@ -27,7 +28,19 @@
                       (partial parser/parse-file {:doc? true})))
         paths))
 
-(clerk/add-viewers! [(update v/notebook-viewer
-                             :transform-fn (partial comp
-                                                    (fn [doc] (assoc-in doc [:nextjournal/value :toc]
-                                                                        (meta-toc notebooks)))))])
+(def book-viewer
+  (update v/notebook-viewer
+          :transform-fn (partial comp
+                                 (fn [doc]
+                                   (println :doc (:file (v/->value doc)))
+                                   (assoc-in doc [:nextjournal/value :toc]
+                                             (meta-toc notebooks))))))
+
+(clerk/add-viewers! [book-viewer])
+
+
+;; Test actuall cross-doc toc
+#_
+(clerk/reset-viewers! :default
+                      (clerk/add-viewers (clerk/get-default-viewers)
+                                         [book-viewer]))

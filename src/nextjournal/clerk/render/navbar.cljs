@@ -52,14 +52,15 @@
     (into
      [:div]
      (map
-      (fn [{:keys [path title items]}]
+      (fn [{:keys [path title items scroll-to-anchor?]}]
         [:<>
          [:a.flex
-          {:href path
-           :class (theme-class theme :item)
-           :on-click (fn [event]
-                       (stop-event! event)
-                       (scroll-to-anchor! !state path))}
+          (cond-> {:href path
+                   :class (theme-class theme :item)}
+            scroll-to-anchor?
+            (assoc :on-click (fn [event]
+                               (stop-event! event)
+                               (scroll-to-anchor! !state path))))
           [:div (merge {} options) title]]
          (when (seq items)
            [:div.ml-3

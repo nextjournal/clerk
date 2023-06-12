@@ -1148,7 +1148,7 @@
       #_(assoc :footer (present (footer doc)))
 
       (update :toc md-toc->navbar-items)
-
+      (update :file str)
       #_#_ TODO (full customization ?)
       #_ (assoc :toc (present (with-viewers viewers (with-viewer `toc-viewer doc))))
 
@@ -1156,6 +1156,7 @@
                     :blocks :bundle?
                     :doc-css-class
                     :error
+                    :file
                     :open-graph
                     :ns
                     :title
