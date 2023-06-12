@@ -13,18 +13,19 @@
    "notebooks/tracer.clj"
    "notebooks/document_linking.clj"])
 
-(defn md-toc->navbar-items [file {:keys [children]}]
+(defn md-toc->navbar-items [current-notebook file {:keys [children]}]
+  (println :expanded? (= current-notebook file))
   (mapv (fn [{:as item :keys [emoji attrs]}]
           {:title (md.transform/->text item)
-           :expanded? true
+           :expanded? (= current-notebook file)
            :scroll-to-anchor? false
            :emoji emoji
            :path (clerk/doc-url file (:id attrs))
-           :items (md-toc->navbar-items file item)}) children))
+           :items (md-toc->navbar-items current-notebook file item)}) children))
 
-(defn meta-toc [paths]
+(defn meta-toc [current-notebook paths]
   (into []
-        (mapcat (comp (fn [{:keys [toc file]}] (md-toc->navbar-items file toc))
+        (mapcat (comp (fn [{:keys [toc file]}] (md-toc->navbar-items current-notebook file toc))
                       (partial parser/parse-file {:doc? true})))
         paths))
 
@@ -37,13 +38,11 @@
                                 original-transform
                                 (assoc :nextjournal/opts {:expandable? true})
                                 (assoc-in [:nextjournal/value :toc]
-                                          (meta-toc notebooks)))))))
+                                          (meta-toc (:file (v/->value wrapped-value)) notebooks)))))))
 
-#_
-(clerk/add-viewers! [book-viewer])
+#_(clerk/add-viewers! [book-viewer])
 
-;; Test actuall cross-doc toc
-
+;; Test actual cross-doc toc
 (clerk/reset-viewers! :default
                       (clerk/add-viewers (clerk/get-default-viewers)
                                          [book-viewer]))
