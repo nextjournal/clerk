@@ -36,21 +36,6 @@
 (defn reagent-atom? [x]
   (satisfies? ratom/IReactiveAtom x))
 
-(defn toc-items [items]
-  (reduce
-   (fn [acc {:as item :keys [content children attrs emoji]}]
-     (if content
-       (let [title (md.transform/->text item)]
-         (->> {:title title
-               :emoji emoji
-               :path (str "#" (:id attrs))
-               :items (toc-items children)}
-              (conj acc)
-              vec))
-       (toc-items (:children item))))
-   []
-   items))
-
 (defn dark-mode-toggle [!state]
   (let [{:keys [dark-mode?]} @!state
         spring {:type :spring :stiffness 200 :damping 10}]
@@ -164,7 +149,7 @@
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? doc-css-class sidenotes? toc toc-visibility header footer]} opts]
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
-               !state (r/atom {:toc (toc-items (:children toc))
+               !state (r/atom {:toc toc
                                :visibility toc-visibility
                                :md-toc toc
                                :dark-mode? (localstorage/get-item local-storage-dark-mode-key)
@@ -187,15 +172,16 @@
                                                             (js/console.warn (str "Clerk render-notebook, invalid hash: "
                                                                                   (.-hash js/location))))))]
                                  (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
-    (let [{:keys [md-toc mobile? open? visibility]} @!state
+    (let [{:keys [mobile? open? visibility] old-toc :toc} @!state
           doc-inset (cond
                       mobile? 0
                       open? navbar-width
                       :else 0)]
-      (when-not (= md-toc toc)
-        (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc :open? open?))
       (when-not (= visibility toc-visibility)
         (swap! !state assoc :visibility toc-visibility :open? (not= :collapsed toc-visibility)))
+
+      ;; FIXME: wth
+      (when-not (= old-toc toc) (swap! !state assoc :toc toc))
       [:div.flex
        {:ref root-ref-fn}
        [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
