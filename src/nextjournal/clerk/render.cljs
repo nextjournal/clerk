@@ -148,7 +148,7 @@
     (when (= (.-search url) "?clerk/show!")
       (.preventDefault e)
       (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
-                        (cond-> {:nav-path (subs (.-pathname url) 1)}
+                        (cond-> {:nav-path (subs (js/decodeURI (.-pathname url)) 1)}
                           (seq (.-hash url))
                           (assoc :fragment (subs (.-hash url) 1))))))))
 
