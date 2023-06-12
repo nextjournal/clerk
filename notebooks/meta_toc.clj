@@ -1,10 +1,13 @@
-;; # 📕 Cross-Document Table of Contents
-(ns cross-document-toc
+;; # 📕 Meta Table of Contents
+(ns meta-toc
   {:nextjournal.clerk/toc true }
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.clerk.viewer :as v]))
+
+;; This assembles the table of contents programmatically from a
+;; collection of notebooks.
 
 ;; ## Notebooks
 (def notebooks
@@ -33,7 +36,6 @@
   (update v/notebook-viewer
           :transform-fn (fn [original-transform]
                           (fn [wrapped-value]
-                            (println :doc (:file (v/->value wrapped-value)))
                             (-> wrapped-value
                                 original-transform
                                 (assoc :nextjournal/opts {:expandable? true})

@@ -36,6 +36,7 @@
          "fragments"
          "hiding_clerk_metadata"
          "js_import"
+         "meta_toc"
          "multiviewer"
          "pagination"
          "paren_soup"
