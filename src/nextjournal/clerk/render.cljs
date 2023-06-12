@@ -146,22 +146,23 @@
     (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path path :skip-history? true}))))
 
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? doc-css-class sidenotes? toc toc-visibility header footer]} opts]
+  (js/console.log :opts opts )
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
-               !state (r/atom {:toc toc
-                               :visibility toc-visibility
-                               :md-toc toc
-                               :dark-mode? (localstorage/get-item local-storage-dark-mode-key)
-                               :theme {:slide-over "bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900"}
-                               :width navbar-width
-                               :mobile? (and (exists? js/innerWidth) (< js/innerWidth 640))
-                               :mobile-width 300
-                               :local-storage-key local-storage-key
-                               :set-hash? (not bundle?)
-                               :scroll-el (when (exists? js/document) (js/document.querySelector "html"))
-                               :open? (if-some [stored-open? (localstorage/get-item local-storage-key)]
-                                        stored-open?
-                                        (not= :collapsed toc-visibility))})
+               !state (r/atom (merge {:items toc
+                                      :visibility toc-visibility
+                                      :md-toc toc
+                                      :dark-mode? (localstorage/get-item local-storage-dark-mode-key)
+                                      :theme {:slide-over "bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900"}
+                                      :width navbar-width
+                                      :mobile? (and (exists? js/innerWidth) (< js/innerWidth 640))
+                                      :mobile-width 300
+                                      :local-storage-key local-storage-key
+                                      :set-hash? (not bundle?)
+                                      :scroll-el (when (exists? js/document) (js/document.querySelector "html"))
+                                      :open? (if-some [stored-open? (localstorage/get-item local-storage-key)]
+                                               stored-open?
+                                               (not= :collapsed toc-visibility))} opts))
                root-ref-fn (fn [el]
                              (when (and el (exists? js/document))
                                (setup-dark-mode! !state)

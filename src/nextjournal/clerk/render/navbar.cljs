@@ -52,12 +52,12 @@
     (into
      [:div]
      (map
-      (fn [{:keys [path title items scroll-to-anchor?]}]
+      (fn [{:keys [path title items]}]
         [:<>
          [:a.flex
           (cond-> {:href path
                    :class (theme-class theme :item)}
-            scroll-to-anchor?
+            (str/starts-with? path "#")
             (assoc :on-click (fn [event]
                                (stop-event! event)
                                (scroll-to-anchor! !state path))))
@@ -72,35 +72,29 @@
     (into
      [:div]
      (map-indexed
-      (fn [i {:keys [emoji path title expanded? loading? items toc]}]
+      (fn [i {:keys [emoji path title expanded? loading? items]}]
         (let [label (or title (str/capitalize (last (str/split path #"/"))))]
           [:<>
            (if (seq items)
              [:div.flex.cursor-pointer
-              {:class (theme-class theme :expandable)
-               :on-click (fn [event]
-                           (stop-event! event)
-                           (swap! !state assoc-in (vec (conj update-at i :expanded?)) (not expanded?)))}
+              {:class (theme-class theme :expandable)}
               [:div.flex.items-center.justify-center.flex-shrink-0
-               {:class "w-[20px] h-[20px] mr-[4px]"}
+               {:class "w-[20px] h-[20px] mr-[4px]"
+                :on-click (fn [event]
+                            (stop-event! event)
+                            (swap! !state assoc-in (vec (conj update-at i :expanded?)) (not expanded?)))}
                [:svg.transform.transition
                 {:viewBox "0 0 100 100"
                  :class (str (theme-class theme :triangle) " "
                              "w-[10px] h-[10px] "
                              (if expanded? "rotate-180" "rotate-90"))}
                 [:polygon {:points "5.9,88.2 50,11.8 94.1,88.2 " :fill "currentColor"}]]]
-              [:div label]]
+              [:a {:href path} label]]
              [:a.flex
               {:href path
                :class (theme-class theme :item)
                :on-click (fn []
-                           (when toc
-                             (swap! !state assoc-in (vec (conj update-at i :loading?)) true)
-                             (js/setTimeout
-                              (fn []
-                                (swap! !state #(-> (assoc-in % (vec (conj update-at i :loading?)) false)
-                                                   (assoc :toc toc))))
-                              500))
+
                            (when mobile?
                              (swap! !state assoc :visible? false)))}
               [:div.flex.items-center.justify-center.flex-shrink-0
@@ -110,12 +104,8 @@
                   {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24"}
                   [:circle.opacity-25 {:cx "12" :cy "12" :r "10" :stroke "currentColor" :stroke-width "4"}]
                   [:path.opacity-75 {:fill "currentColor" :d "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"}]]
-                 (if emoji
-                   [:div emoji]
-                   [:svg.h-4.w-4
-                    {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke "currentColor"
-                     :class (theme-class theme :icon)}
-                    [:path {:stroke-linecap "round" :stroke-linejoin "round" :stroke-width "2" :d "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"}]]))]
+                 (when emoji
+                   [:div emoji]))]
               [:div
                (if emoji
                  (subs label (count emoji))
@@ -126,30 +116,16 @@
       items))))
 
 (defn navbar [!state]
-  (let [{:keys [items theme toc]} @!state
-        items? (seq items)]
+  (let [{:keys [theme items expandable?]} @!state]
     [:div.relative.overflow-x-hidden.h-full
-     (when items?
-       [:div.absolute.left-0.top-0.w-full.h-full.overflow-y-auto.transform.transition.pb-10
-        {:class (str (theme-class theme :project) " "
-                     (if toc "-translate-x-full" "translate-x-0"))}
-        [:div.px-3.mb-1
-         {:class (theme-class theme :heading)}
-         "Project"]
-        [navbar-items !state (:items @!state) [:items]]])
-     [:div.absolute.left-0.top-0.w-full.h-full.overflow-y-auto.transform
-      {:class (str (when items? "transition ")
-                   (theme-class theme :toc) " "
-                   (if toc "translate-x-0" "translate-x-full"))}
-      (if (and (seq items) (seq toc))
-        [:div.px-3.py-1.cursor-pointer
-         {:class (theme-class theme :back)
-          :on-click #(swap! !state dissoc :toc)}
-         "← Back to project"]
-        [:div.px-3.mb-1
-         {:class (theme-class theme :heading)}
-         "TOC"])
-      [toc-items !state toc (when (< (count toc) 2) {:class "font-medium"})]]]))
+     [:div.absolute.left-0.top-0.w-full.h-full.overflow-y-auto
+      {:class (theme-class theme :project)}
+      [:div.px-3.mb-1
+       {:class (theme-class theme :heading)}
+       "TOC"]
+      (if expandable?
+        [navbar-items !state items [:items]]
+        [toc-items !state items (when (< (count items) 2) {:class "font-medium"})])]]))
 
 (defn toggle-button [!state content & [opts]]
   (let [{:keys [mobile? mobile-open? open?]} @!state]

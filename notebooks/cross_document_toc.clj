@@ -30,17 +30,20 @@
 
 (def book-viewer
   (update v/notebook-viewer
-          :transform-fn (partial comp
-                                 (fn [doc]
-                                   (println :doc (:file (v/->value doc)))
-                                   (assoc-in doc [:nextjournal/value :toc]
-                                             (meta-toc notebooks))))))
+          :transform-fn (fn [original-transform]
+                          (fn [wrapped-value]
+                            (println :doc (:file (v/->value wrapped-value)))
+                            (-> wrapped-value
+                                original-transform
+                                (assoc :nextjournal/opts {:expandable? true})
+                                (assoc-in [:nextjournal/value :toc]
+                                          (meta-toc notebooks)))))))
 
+#_
 (clerk/add-viewers! [book-viewer])
 
-
 ;; Test actuall cross-doc toc
-#_
+
 (clerk/reset-viewers! :default
                       (clerk/add-viewers (clerk/get-default-viewers)
                                          [book-viewer]))
