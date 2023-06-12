@@ -68,7 +68,7 @@
       items))))
 
 (defn navbar-items [!state items update-at]
-  (let [{:keys [mobile? theme]} @!state]
+  (let [{:keys [mobile?]} @!state]
     (into
      [:div]
      (map-indexed

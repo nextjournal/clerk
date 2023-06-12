@@ -377,7 +377,7 @@
      (or (when-let [{:as cached-analysis :keys [file-sha]} (@!file->analysis-cache file)]
            (when (= file-sha current-file-sha)
              cached-analysis))
-         (let [analysis (analyze-doc {:file-sha current-file-sha} (parser/parse-file {} file))]
+         (let [analysis (analyze-doc {:file-sha current-file-sha :graph (dep/graph)} (parser/parse-file {} file))]
            (swap! !file->analysis-cache assoc file analysis)
            analysis))))
   ([state file]

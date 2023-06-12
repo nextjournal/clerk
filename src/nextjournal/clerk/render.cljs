@@ -146,7 +146,6 @@
     (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path path :skip-history? true}))))
 
 (defn render-notebook [{:as _doc xs :blocks :keys [bundle? doc-css-class sidenotes? toc toc-visibility header footer]} opts]
-  (js/console.log :opts opts )
   (r/with-let [local-storage-key "clerk-navbar"
                navbar-width 220
                !state (r/atom (merge {:items toc
