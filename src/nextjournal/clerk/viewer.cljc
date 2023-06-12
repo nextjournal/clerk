@@ -1148,6 +1148,7 @@
       #_(assoc :footer (present (footer doc)))
 
       (update :toc md-toc->navbar-items)
+
       #_#_ TODO (full customization ?)
       #_ (assoc :toc (present (with-viewers viewers (with-viewer `toc-viewer doc))))
 
