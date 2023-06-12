@@ -1,6 +1,6 @@
 ;; # 📕 Meta Table of Contents
 (ns meta-toc
-  {:nextjournal.clerk/toc true }
+  {:nextjournal.clerk/toc true}
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.markdown.transform :as md.transform]
@@ -17,7 +17,6 @@
    "notebooks/document_linking.clj"])
 
 (defn md-toc->navbar-items [current-notebook file {:keys [children]}]
-  (println :expanded? (= current-notebook file))
   (mapv (fn [{:as item :keys [emoji attrs]}]
           {:title (md.transform/->text item)
            :expanded? (= current-notebook file)
@@ -45,6 +44,4 @@
 #_(clerk/add-viewers! [book-viewer])
 
 ;; Test actual cross-doc toc
-(clerk/reset-viewers! :default
-                      (clerk/add-viewers (clerk/get-default-viewers)
-                                         [book-viewer]))
+(clerk/add-viewers! [book-viewer])
