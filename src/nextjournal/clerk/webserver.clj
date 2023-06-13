@@ -182,7 +182,8 @@
         (string? file-or-ns)
         (when (fs/exists? file-or-ns)
           (fs/unixify (cond->> file-or-ns
-                        (fs/absolute? file-or-ns)
+                        (and (fs/absolute? file-or-ns)
+                             (not (str/starts-with? (fs/relativize (fs/cwd) file-or-ns) "..")))
                         (fs/relativize (fs/cwd)))))
 
         :else (str file-or-ns)))

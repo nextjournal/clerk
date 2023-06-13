@@ -154,7 +154,8 @@
 
 (defn history-push-state [{:as opts :keys [path fragment replace?]}]
   (when (not= path (some-> js/history .-state .-path))
-    (j/call js/history (if replace? :replaceState :pushState) (clj->js opts) "" (str "/" path (when fragment (str "#" fragment))))  ))
+    (j/call js/history (if replace? :replaceState :pushState) (clj->js opts) "" (str (.. js/document -location -origin)
+                                                                                     "/" path (when fragment (str "#" fragment))))))
 
 (defn handle-history-popstate [^js e]
   (when-let [{:as opts :keys [path]} (js->clj (.-state e) :keywordize-keys true)]
