@@ -72,58 +72,58 @@
     (into
      [:div]
      (map-indexed
-      (fn [i {:keys [emoji path title expanded? loading? items]}]
+      (fn [i {:keys [emoji path title expanded? items]}]
         (let [label (or title (str/capitalize (last (str/split path #"/"))))]
-          [:<>
+          [:div.text-base.leading-normal.dark:text-white
+           {:class "md:text-[14px]"}
            (if (seq items)
-             [:div.flex.cursor-pointer
-              {:class "text-base md:text-[14px] leading-normal md:dark:hover:bg-slate-700 dark:text-white px-3 py-2 md:py-1"}
-              [:div.flex.items-center.justify-center.flex-shrink-0.hover:bg-slate-200.rounded.cursor-pointer.group
-               {:class "w-[20px] h-[20px] mr-[2px] -ml-[4px]"
+             [:div.flex.relative.hover:bg-slate-200.dark:hover:bg-slate-900.rounded.group.transition
+              {:class "ml-[8px] mr-[4px] pl-[2px] pr-[6px] gap-[2px]"}
+              [:div.flex.items-center.justify-center.relative.flex-shrink-0.border.border-transparent.hover:border-indigo-700.hover:bg-indigo-500.dark:hover:bg-indigo-700.hover:shadow.text-slate-600.hover:text-white.dark:text-slate-400.dark:hover:text-white.rounded.cursor-pointer.active:scale-95
+               {:class "w-[18px] h-[18px] top-[5px]"
                 :on-click (fn [event]
                             (stop-event! event)
                             (swap! !state assoc-in (vec (conj update-at i :expanded?)) (not expanded?)))}
-               [:svg.transform.transition
-                {:viewBox "0 0 100 100"
-                 :class (str "text-slate-500 group-hover:text-slate-700 dark:text-slate-400" " "
-                             "w-[10px] h-[10px] "
-                             (if expanded? "rotate-180" "rotate-90"))}
-                [:polygon {:points "5.9,88.2 50,11.8 94.1,88.2 " :fill "currentColor"}]]]
-              [:a.hover:bg-slate-200.rounded.px-1.-ml-1.relative
-               {:href path}
-               (when emoji
-                 [:div.inline-flex.items-center.justify-center.flex-shrink-0
-                  {:class "w-[16px] h-[16px] mr-[2px]"}
-                  emoji])
-               (if emoji (subs label (count emoji)) label)]]
-             [:div {:class "flex text-base md:text-[14px] leading-normal md:dark:hover:bg-slate-700 dark:text-white px-3 py-2 md:py-1"}
-              [:a.hover:bg-slate-200.rounded.px-1.-ml-1.relative
-               {:href path
-                :on-click (fn []
-                            (when mobile?
-                              (swap! !state assoc :visible? false)))}
-               (when emoji
-                 [:div.inline-flex.items-center.justify-center.flex-shrink-0
-                  {:class "w-[16px] h-[16px] mr-[2px]"}
-                  emoji])
-               (if emoji (subs label (count emoji)) label)]])
+               [:svg.w-3.h-3.transition
+                {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke-width "1.5" :stroke "currentColor"
+                 :class (if expanded? "rotate-90" "rotate-0")}
+                [:path {:stroke-linecap "round" :stroke-linejoin "round" :d "M8.25 4.5l7.5 7.5-7.5 7.5"}]]]
+              [:a.py-1.flex.flex-auto.gap-1.group-hover:text-indigo-700.dark:group-hover:text-white.hover:underline.decoration-indigo-300.dark:decoration-slate-400.underline-offset-2
+               {:href path :class (when expanded? "font-medium")}
+               emoji
+               [:span (if emoji (subs label (count emoji)) label)]]
+              (when expanded?
+                [:span.absolute.bottom-0.border-l.border-slate-300.dark:border-slate-600
+                 {:class "top-[25px] left-[10px]"}])]
+             [:a.flex.flex-auto.gap-1.py-1.rounded.hover:bg-slate-200.dark:hover:bg-slate-900.hover:text-indigo-700.dark:hover:text-white.hover:underline.decoration-indigo-300.dark:decoration-slate-400.underline-offset-2.transition
+              {:class "px-[6px] ml-[8px] mr-[4px]"
+               :href path
+               :on-click (fn []
+                           (when mobile?
+                             (swap! !state assoc :visible? false)))}
+              emoji
+              [:span (if emoji (subs label (count emoji)) label)]])
            (when (and (seq items) expanded?)
-             [:div.ml-2.mb-2
+             [:div.relative
+              {:class (str "ml-[16px] "
+                           (when expanded? "mb-2"))}
+              (when expanded?
+                [:span.absolute.top-0.border-l.border-slate-300.dark:border-slate-600
+                 {:class "left-[2px] bottom-[8px]"}])
               [navbar-items !state items (vec (conj update-at i :items))]])]))
       items))))
 
 (defn navbar [!state]
-  (let [{:keys [theme items #_expandable?]} @!state]
+  (let [{:keys [theme items expandable?]} @!state]
     [:div.relative.overflow-x-hidden.h-full
      [:div.absolute.left-0.top-0.w-full.h-full.overflow-y-auto
       {:class (theme-class theme :project)}
       [:div.px-3.mb-1
        {:class (theme-class theme :heading)}
        "TOC"]
-      [toc-items !state items (when (< (count items) 2) {:class "font-medium"})]
-      #_(if expandable?
-          [navbar-items !state items [:items]]
-          [toc-items !state items (when (< (count items) 2) {:class "font-medium"})])]]))
+      (if expandable?
+        [navbar-items !state items [:items]]
+        [toc-items !state items (when (< (count items) 2) {:class "font-medium"})])]]))
 
 (defn toggle-button [!state content & [opts]]
   (let [{:keys [mobile? mobile-open? open?]} @!state]
