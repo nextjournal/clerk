@@ -113,16 +113,17 @@
       items))))
 
 (defn navbar [!state]
-  (let [{:keys [theme items expandable?]} @!state]
+  (let [{:keys [theme items #_expandable?]} @!state]
     [:div.relative.overflow-x-hidden.h-full
      [:div.absolute.left-0.top-0.w-full.h-full.overflow-y-auto
       {:class (theme-class theme :project)}
       [:div.px-3.mb-1
        {:class (theme-class theme :heading)}
        "TOC"]
-      (if expandable?
-        [navbar-items !state items [:items]]
-        [toc-items !state items (when (< (count items) 2) {:class "font-medium"})])]]))
+      [toc-items !state items (when (< (count items) 2) {:class "font-medium"})]
+      #_(if expandable?
+          [navbar-items !state items [:items]]
+          [toc-items !state items (when (< (count items) 2) {:class "font-medium"})])]]))
 
 (defn toggle-button [!state content & [opts]]
   (let [{:keys [mobile? mobile-open? open?]} @!state]
