@@ -880,9 +880,7 @@ v/table-viewer
 ;; click and expand it first, set the
 ;; `:nextjournal.clerk/auto-expand-results?` option.
 
-
-^{::clerk/visibility {:code :hide}
-  ::clerk/auto-expand-results? true}
+^{::clerk/visibility {:code :fold}}
 (def rows
   (take 15 (repeatedly (fn []
                          {:name (str
@@ -891,6 +889,9 @@ v/table-viewer
                           :role (rand-nth [:admin :operator :manager :programmer :designer])
                           :dice (shuffle (range 1 7))}))))
 
+
+^{::clerk/auto-expand-results? true} rows
+
 ;; This option might become the default in the future.
 
 
@@ -898,10 +899,7 @@ v/table-viewer
 
 ;; In order to not send too much data to the browser, Clerk uses a per-result budget to limit. You can see this budget in action above. Use the `:nextjournal.clerk/budget` key to change its default value of `200` or disable it completely using `nil`.
 
-^{::clerk/budget nil
-  ::clerk/visibility {:code :hide}
-  ::clerk/auto-expand-results? true}
-rows
+^{::clerk/budget nil ::clerk/auto-expand-results? true} rows
 
 ;; ## 🧱 Static Building
 

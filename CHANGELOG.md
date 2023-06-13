@@ -33,7 +33,13 @@ Changes can be:
 
     Lastly drop the location cache which is no longer needed.
 
-* 🍕 `clerk/fragment` for splicing a seq of values into the document as if it were produced by results of individual cells. Useful when programmatically generating content.
+* 🍕 Add `clerk/fragment` for splicing a seq of values into the document as if it were produced by results of individual cells. Useful when programmatically generating content.
+
+* 🚰 Improve Tap Inspector
+
+    * Support customizing of `:nextjournal.clerk/width` and `:nextjournal.clerk/budget` for individual tapped values
+    * Fix re-rendering of tapped values by assigning stable react keys
+    * Build it on top of `clerk/fragment`
 
 * 🍒 Add support for cherry as an alternative to sci to evaluate `:render-fn`s. You can change it per form (using form metadata or viewer opts) or doc-wide (using ns metadata) with `{:nextjournal.clerk/render-evaluator :cherry}`.
 
@@ -60,6 +66,8 @@ Changes can be:
 * 💫 Support imported vars (e.g. by potemkin) in location analysis
 
     By considering `:file` on var meta in location analysis. Previously we would not find a location for vars where the namespace did not match the source file. As we're not caching negative findings this can speed up analysis for deps with a large number of imported vars significantly.
+    
+* 💫 Support serializing `#inst` and `#uuid` to render-fns
 
 * 🐜 Turn off analyzer pass for validation of `:type` tags, fixes [#488](https://github.com/nextjournal/clerk/issues/488) @craig-latacora
 
