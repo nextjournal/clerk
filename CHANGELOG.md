@@ -8,6 +8,13 @@ Changes can be:
 
 ## Unreleased
 
+* 🚨 Breaking Changes:
+
+    * Change `nextjournal.clerk.render/clerk-eval` to not recompute the currently shown document when using the 1-arity version. Added a second arity that takes an opts map with a `:recompute?` key.
+
+    * Change `nextjournal.clerk/eval-cljs` to only take one form (like `clojure.core/eval`) but support viewer opts. If you want multiple forms to be evaluated, wrap them in a `do`.
+
+
 * 💈 Show execution progress
 
     To see what's going on while waiting for a long-running computation, Clerk will now show an execution status bar on the top. For named cells (defining a var) it will show the name of the var, for anonymous expressions, a preview of the form.
@@ -27,8 +34,6 @@ Changes can be:
     Lastly drop the location cache which is no longer needed.
 
 * 🍕 `clerk/fragment` for splicing a seq of values into the document as if it were produced by results of individual cells. Useful when programmatically generating content.
-
-* 🚨 Change `nextjournal.clerk.render/clerk-eval` to not recompute the currently shown document when using the 1-arity version. Added a second arity that takes an opts map with a `:recompute?` key.
 
 * 🍒 Add support for cherry as an alternative to sci to evaluate `:render-fn`s. You can change it per form (using form metadata or viewer opts) or doc-wide (using ns metadata) with `{:nextjournal.clerk/render-evaluator :cherry}`.
 
