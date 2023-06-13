@@ -4,7 +4,7 @@
 .cpcache/
 .lsp/
 node_modules
-/scratch/
+/scratch
 notebooks/scratch*
 /public/js/
 /.shadow-cljs/

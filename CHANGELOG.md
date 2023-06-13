@@ -8,6 +8,10 @@ Changes can be:
 
 ## Unreleased
 
+...
+
+## 0.14.919 (2023-06-13)
+
 * 🚨 Breaking Changes:
 
     * Change `nextjournal.clerk.render/clerk-eval` to not recompute the currently shown document when using the 1-arity version. Added a second arity that takes an opts map with a `:recompute?` key.
