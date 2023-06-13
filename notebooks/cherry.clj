@@ -1,4 +1,4 @@
-;; # 🍒Compile viewer functions using cherry
+;; # 🍒 Compile viewer functions using cherry
 (ns cherry
   {:nextjournal.clerk/render-evaluator :cherry
    :nextjournal.clerk/toc true}
@@ -20,7 +20,7 @@
                      (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3])))))])
   {:nextjournal.clerk/render-evaluator :sci} nil)
 
-;; ## ⏱️Better performance:
+;; ## ⏱️ Better performance:
 
 (clerk/with-viewer
   '(fn [value]
@@ -55,7 +55,7 @@
                                     :key "id" :fields ["rate"]}}]
    :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}})
 
-;; ## 🔨Input text and compile on the fly with cherry
+;; ## 🔨 Input text and compile on the fly with cherry
 
 (clerk/with-viewer
   {;; :evaluator :cherry
@@ -81,7 +81,7 @@
   {:nextjournal.clerk/render-evaluator :cherry}
   nil)
 
-;; ## 🌍Functions defined with `defn` are part of the global context
+;; ## 🌍 Functions defined with `defn` are part of the global context
 
 ;; (for now) and can be called in successive expressions
 
@@ -113,7 +113,7 @@
      [nextjournal.clerk.render/render-promise
       (emoji-picker)]) nil)
 
-;; ## 🧩Macros
+;; ## 🧩 Macros
 
 (clerk/eval-cljs
  '(defn clicks []
@@ -124,7 +124,7 @@
 
 (clerk/with-viewer '(fn [_] (this-as this [clicks])) nil)
 
-;; ## 👻Evaluator option as form metadata
+;; ## 👻 Evaluator option as form metadata
 ^{::clerk/visibility {:code :hide :result :hide} ::clerk/no-cache true}
 (clerk/add-viewers! [(assoc viewer/code-block-viewer :transform-fn (viewer/update-val :text))])
 
