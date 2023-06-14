@@ -644,7 +644,7 @@
         (map (juxt :name identity))
         viewers))
 
-(defn ^:private merge-first [m1 m2]
+(defn ^:private merge-prepending [m1 m2]
   (into (apply dissoc m2 (keys m1))
         m1))
 
@@ -653,8 +653,8 @@
 (defn merge-viewers [viewers merged-viewers]
   (when-let [unnamed-viewers (not-empty (filter (complement :name) (concat viewers merged-viewers)))]
     (throw (ex-info "every viewer must have a name" {:unnamed-viewers unnamed-viewers})))
-  (vals (merge-first (->ordered-map-by-name viewers)
-                     (->ordered-map-by-name merged-viewers))))
+  (vals (merge-prepending (->ordered-map-by-name viewers)
+                          (->ordered-map-by-name merged-viewers))))
 
 (def table-missing-viewer
   {:name `table-missing-viewer
