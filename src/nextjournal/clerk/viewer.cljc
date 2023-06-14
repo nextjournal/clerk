@@ -4,6 +4,7 @@
             [clojure.datafy :as datafy]
             [clojure.set :as set]
             [clojure.walk :as w]
+            [flatland.ordered.map :refer [ordered-map]]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
                       [editscript.edit]
@@ -632,13 +633,13 @@
 #_(update-viewers default-viewers {:page-size #(dissoc % :page-size)})
 
 (defn ^:private ->ordered-map-by-name [viewers]
-  (into (array-map)
+  (into (ordered-map)
         (map (juxt :name identity))
         viewers))
 
 (defn ^:private merge-prepending [m1 m2]
   (into (apply dissoc m2 (keys m1))
-        (merge m1 m2)))
+        (into m1 m2)))
 
 #_(merge-prepending (ordered-map :bar 1 :baz 2) (ordered-map {:baz 3 :a 1}))
 
@@ -653,6 +654,11 @@
   ([viewers added-viewers] (into (filterv (complement :name) (concat viewers added-viewers))
                                  (merge-viewers (filter :name viewers)
                                                 (filter :name added-viewers)))))
+
+#_(add-viewers (take 10 default-viewers)
+               [{:pred number?
+                 :render-fn '#(vector :div.inline-block {:style {:width 16 :height 16}
+                                                         :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")})}])
 
 (def table-missing-viewer
   {:name `table-missing-viewer
@@ -1334,7 +1340,7 @@
         transformed-value (cond-> (ensure-wrapped-with-viewers viewers
                                                                (cond-> (dissoc wrapped-value :nextjournal/viewer)
                                                                  transform-fn transform-fn))
-                            merged-viewers (update :nextjournal/viewers merge-viewers merged-viewers))
+                            merged-viewers (update :nextjournal/viewers add-viewers merged-viewers))
         wrapped-value' (cond-> transformed-value
                          (-> transformed-value ->value wrapped-value?)
                          (merge (->value transformed-value)))]
