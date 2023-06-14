@@ -52,16 +52,18 @@
     (into
      [:div]
      (map
-      (fn [{:keys [path title items]}]
+      (fn [{:keys [path emoji title items]}]
         [:<>
-         [:a.flex
+         [:a.flex.flex-auto.gap-1.py-1.rounded.hover:bg-slate-200.dark:hover:bg-slate-900.hover:text-indigo-700.dark:hover:text-white.hover:underline.decoration-indigo-300.dark:decoration-slate-400.underline-offset-2.transition
           (cond-> {:href path
-                   :class (theme-class theme :item)}
+                   :class "px-[6px] ml-[8px] mr-[4px] md:text-[14px]"}
             (str/starts-with? path "#")
             (assoc :on-click (fn [event]
                                (stop-event! event)
                                (scroll-to-anchor! !state path))))
-          [:div (merge {} options) title]]
+          (when emoji
+            [:span.flex-shrink-0 emoji])
+          [:span (if emoji (subs title (count emoji)) title)]]
          (when (seq items)
            [:div.ml-3
             [toc-items !state items]])])
@@ -103,7 +105,8 @@
                             (navigate-or-scroll! !state path event)
                             (when mobile?
                               (swap! !state assoc :visible? false)))}
-               emoji
+               (when emoji
+                 [:span.flex-shrink-0 emoji])
                [:span (if emoji (subs label (count emoji)) label)]]
               (when expanded?
                 [:span.absolute.bottom-0.border-l.border-slate-300.dark:border-slate-600
@@ -115,7 +118,8 @@
                            (navigate-or-scroll! !state path event)
                            (when mobile?
                              (swap! !state assoc :visible? false)))}
-              emoji
+              (when emoji
+                [:span.flex-shrink-0 emoji])
               [:span (if emoji (subs label (count emoji)) label)]])
            (when (and (seq items) expanded?)
              [:div.relative
