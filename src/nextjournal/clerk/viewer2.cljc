@@ -949,12 +949,11 @@
 
 (def markdown-viewer
   {:name `markdown-viewer
-   :viewers markdown-viewers
+   :merged-viewers markdown-viewers
    :transform-fn (fn [wrapped-value]
                    (-> wrapped-value
                        mark-presented
                        (update :nextjournal/value #(cond->> % (string? %) md/parse))
-                       (update :nextjournal/viewers merge-viewers markdown-viewers)
                        (with-md-viewer)))})
 
 (def code-viewer
@@ -986,12 +985,12 @@
 
 (def table-viewer
   {:name `table-viewer
+   :merged-viewers table-viewers
    :transform-fn (fn [wrapped-value]
                    (if-let [{:keys [head rows]} (normalize-table-data (->value wrapped-value))]
                      (-> wrapped-value
                          (assoc :nextjournal/viewer `table-markup-viewer)
                          (update :nextjournal/width #(or % :wide))
-                         (update :nextjournal/viewers merge-viewers table-viewers)
                          (update :nextjournal/opts merge {:num-cols (count (or head (first rows)))
                                                           :number-col? (into #{}
                                                                              (comp (map-indexed vector)
@@ -1333,10 +1332,11 @@
   (when (empty? (->viewers wrapped-value))
     (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
   (let [viewers (->viewers wrapped-value)
-        {:as viewer :keys [render-fn transform-fn]} (viewer-for viewers wrapped-value)
-        transformed-value (ensure-wrapped-with-viewers viewers
-                                                       (cond-> (dissoc wrapped-value :nextjournal/viewer)
-                                                         transform-fn transform-fn))
+        {:as viewer :keys [render-fn transform-fn merged-viewers]} (viewer-for viewers wrapped-value)
+        transformed-value (cond-> (ensure-wrapped-with-viewers viewers
+                                                               (cond-> (dissoc wrapped-value :nextjournal/viewer)
+                                                                 transform-fn transform-fn))
+                            merged-viewers (update :nextjournal/viewers merge-viewers merged-viewers))
         wrapped-value' (cond-> transformed-value
                          (-> transformed-value ->value wrapped-value?)
                          (merge (->value transformed-value)))]
