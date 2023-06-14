@@ -28,6 +28,6 @@
 
 ;; ---
 
-;; Drag the following slider `(slider #'num★ {:min 1 :max 44})` to control the number of stars (currently **`(deref num★)`**) in our custom horizontal rules.
+;; Drag the following slider `(cx/slider {:min 1 :max 44} 'num★)` to control the number of stars (currently **`(deref num★)`**) in our custom horizontal rules.
 
 ;; ---
