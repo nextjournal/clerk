@@ -54,7 +54,7 @@
      (map
       (fn [{:keys [path emoji title items]}]
         [:<>
-         [:a.flex.flex-auto.gap-1.py-1.rounded.hover:bg-slate-200.dark:hover:bg-slate-900.hover:text-indigo-700.dark:hover:text-white.hover:underline.decoration-indigo-300.dark:decoration-slate-400.underline-offset-2.transition
+         [:a.flex.flex-auto.gap-1.py-1.rounded.hover:bg-slate-200.dark:hover:bg-slate-900.hover:text-indigo-700.dark:text-white.dark:hover:text-white.hover:underline.decoration-indigo-300.dark:decoration-slate-400.underline-offset-2.transition
           (cond-> {:href path
                    :class "px-[6px] ml-[8px] mr-[4px] md:text-[14px]"}
             (str/starts-with? path "#")
