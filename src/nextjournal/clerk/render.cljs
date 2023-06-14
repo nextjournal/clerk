@@ -180,7 +180,7 @@
 
       ;; FIXME: wth
       (when-not (= old-toc toc) (swap! !state assoc :toc toc))
-      [:> LazyMotion {:strict true :features domAnimation}
+      [:> LazyMotion {:features domAnimation}
        [:div.flex
         {:ref root-ref-fn}
         [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
@@ -198,12 +198,14 @@
         [:div.flex-auto.w-screen.scroll-container
          (into
           [:> (.-div m)
-           {:key "notebook-viewer"
-            :initial (when toc-visibility {:margin-left doc-inset})
-            :animate (when toc-visibility {:margin-left doc-inset})
-            :transition navbar/spring
-            :class (cond-> (or doc-css-class [:flex :flex-col :items-center :notebook-viewer :flex-auto])
-                     sidenotes? (conj :sidenotes-layout))}]
+           (merge
+            {:key "notebook-viewer"
+             :class (cond-> (or doc-css-class [:flex :flex-col :items-center :notebook-viewer :flex-auto])
+                      sidenotes? (conj :sidenotes-layout))}
+            (when toc-visibility
+              {:initial (when toc-visibility {:margin-left doc-inset})
+               :animate (when toc-visibility {:margin-left doc-inset})
+               :transition navbar/spring}))]
           ;; TODO: restore react keys via block-id
           ;; ^{:key (str processed-block-id "@" @!eval-counter)}
 
