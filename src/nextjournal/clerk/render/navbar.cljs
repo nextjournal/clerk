@@ -48,26 +48,23 @@
       (get key)))
 
 (defn toc-items [!state items & [options]]
-  (let [{:keys [theme]} @!state]
-    (into
-     [:div]
-     (map
-      (fn [{:keys [path emoji title items]}]
-        [:<>
-         [:a.flex.flex-auto.gap-1.py-1.rounded.hover:bg-slate-200.dark:hover:bg-slate-900.hover:text-indigo-700.dark:text-white.dark:hover:text-white.hover:underline.decoration-indigo-300.dark:decoration-slate-400.underline-offset-2.transition
-          (cond-> {:href path
-                   :class "px-[6px] ml-[8px] mr-[4px] md:text-[14px]"}
-            (str/starts-with? path "#")
-            (assoc :on-click (fn [event]
-                               (stop-event! event)
-                               (scroll-to-anchor! !state path))))
-          (when emoji
-            [:span.flex-shrink-0 emoji])
-          [:span (if emoji (subs title (count emoji)) title)]]
-         (when (seq items)
-           [:div.ml-3
-            [toc-items !state items]])])
-      items))))
+  (into [:div]
+        (map (fn [{:keys [path emoji title items]}]
+               [:<>
+                [:a.flex.flex-auto.gap-1.py-1.rounded.hover:bg-slate-200.dark:hover:bg-slate-900.hover:text-indigo-700.dark:text-white.dark:hover:text-white.hover:underline.decoration-indigo-300.dark:decoration-slate-400.underline-offset-2.transition
+                 (cond-> {:href path
+                          :class "px-[6px] ml-[8px] mr-[4px] md:text-[14px]"}
+                   (str/starts-with? path "#")
+                   (assoc :on-click (fn [event]
+                                      (stop-event! event)
+                                      (scroll-to-anchor! !state path))))
+                 (when emoji
+                   [:span.flex-shrink-0 emoji])
+                 [:span (if emoji (subs title (count emoji)) title)]]
+                (when (seq items)
+                  [:div.ml-3
+                   [toc-items !state items]])]))
+        items))
 
 (defn navigate-or-scroll! [!state path event]
   (let [[path-name search] (.split path "?")
