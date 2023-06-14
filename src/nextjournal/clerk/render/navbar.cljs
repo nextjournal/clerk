@@ -67,6 +67,14 @@
             [toc-items !state items]])])
       items))))
 
+(defn navigate-or-scroll! [!state path event]
+  (let [[path-name search] (.split path "?")
+        current-path-name (.-pathname js/location)
+        [_ hash] (some-> search (.split "#"))]
+    (when (and search hash (= path-name current-path-name))
+      (.preventDefault event)
+      (scroll-to-anchor! !state (str "#" hash)))))
+
 (defn navbar-items [!state items update-at]
   (let [{:keys [mobile?]} @!state]
     (into
@@ -89,7 +97,12 @@
                  :class (if expanded? "rotate-90" "rotate-0")}
                 [:path {:stroke-linecap "round" :stroke-linejoin "round" :d "M8.25 4.5l7.5 7.5-7.5 7.5"}]]]
               [:a.py-1.flex.flex-auto.gap-1.group-hover:text-indigo-700.dark:group-hover:text-white.hover:underline.decoration-indigo-300.dark:decoration-slate-400.underline-offset-2
-               {:href path :class (when expanded? "font-medium")}
+               {:href path
+                :class (when expanded? "font-medium")
+                :on-click (fn [event]
+                            (navigate-or-scroll! !state path event)
+                            (when mobile?
+                              (swap! !state assoc :visible? false)))}
                emoji
                [:span (if emoji (subs label (count emoji)) label)]]
               (when expanded?
@@ -98,7 +111,8 @@
              [:a.flex.flex-auto.gap-1.py-1.rounded.hover:bg-slate-200.dark:hover:bg-slate-900.hover:text-indigo-700.dark:hover:text-white.hover:underline.decoration-indigo-300.dark:decoration-slate-400.underline-offset-2.transition
               {:class "px-[6px] ml-[8px] mr-[4px]"
                :href path
-               :on-click (fn []
+               :on-click (fn [event]
+                           (navigate-or-scroll! !state path event)
                            (when mobile?
                              (swap! !state assoc :visible? false)))}
               emoji
