@@ -4,7 +4,6 @@
             [clojure.datafy :as datafy]
             [clojure.set :as set]
             [clojure.walk :as w]
-            [flatland.ordered.map :refer [ordered-map]]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
                       [editscript.edit]
@@ -28,9 +27,6 @@
                    (java.net URI URL)
                    (java.nio.file Files StandardOpenOption)
                    (javax.imageio ImageIO))))
-
-(comment
-  (clojure.repl.deps/add-lib 'org.flatland/ordered {:mvn/version "1.15.11"}))
 
 (defrecord ViewerEval [form])
 
@@ -635,26 +631,28 @@
 
 #_(update-viewers default-viewers {:page-size #(dissoc % :page-size)})
 
+(defn merge-viewers [viewers added-viewers]
+  (when-let [unnamed-viewers (not-empty (filter (complement :name) (concat viewers added-viewers)))]
+    (throw (ex-info "every viewer must have a name" {:unnamed-viewers unnamed-viewers})))
+  (vec (vals (merge-prepending (->ordered-map-by-name viewers)
+                               (->ordered-map-by-name added-viewers)))))
+
 (defn add-viewers
   ([added-viewers] (add-viewers (get-default-viewers) added-viewers))
-  ([viewers added-viewers] (into (vec added-viewers) viewers)))
+  ([viewers added-viewers] (into (filterv (complement :name) (concat viewers added-viewers))
+                                 (merge-viewers (filter :name viewers)
+                                                (filter :name added-viewers)))))
 
 (defn ->ordered-map-by-name [viewers]
-  (into (ordered-map)
+  (into (array-map)
         (map (juxt :name identity))
         viewers))
 
 (defn ^:private merge-prepending [m1 m2]
   (into (apply dissoc m2 (keys m1))
-        m1))
+        (merge m1 m2)))
 
-#_(merge-first (ordered-map :foo 1 :bar 2) (ordered-map {:foo {:a 1} :baz 123}))
-
-(defn merge-viewers [viewers merged-viewers]
-  (when-let [unnamed-viewers (not-empty (filter (complement :name) (concat viewers merged-viewers)))]
-    (throw (ex-info "every viewer must have a name" {:unnamed-viewers unnamed-viewers})))
-  (vals (merge-prepending (->ordered-map-by-name viewers)
-                          (->ordered-map-by-name merged-viewers))))
+#_(merge-prepending (ordered-map :bar 1 :baz 2) (ordered-map {:baz 3 :a 1}))
 
 (def table-missing-viewer
   {:name `table-missing-viewer
@@ -1054,7 +1052,7 @@
 
 #?(:cljs
    (def js-array-viewer
-     {:name js-array-viewer
+     {:name `js-array-viewer
       :pred js-iterable?
       :transform-fn (update-val seq)
       :render-fn '(fn [v opts]
