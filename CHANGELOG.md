@@ -8,7 +8,7 @@ Changes can be:
 
 ## Unreleased
 
-...
+* 💫 Assign `:name` to every viewer in `default-viewers`
 
 ## 0.14.919 (2023-06-13)
 

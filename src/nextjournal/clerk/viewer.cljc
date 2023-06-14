@@ -393,7 +393,8 @@
   (var? (get-safe x :nextjournal.clerk/var-from-def)))
 
 (def var-from-def-viewer
-  {:pred var-from-def?
+  {:name `var-from-def-viewer
+   :pred var-from-def?
    :transform-fn (update-val (comp deref :nextjournal.clerk/var-from-def))})
 
 (defn apply-viewer-unwrapping-var-from-def
@@ -772,17 +773,19 @@
     :transform-fn (fn [wrapped-value] (with-viewer `html-viewer [:sup.sidenote-ref (-> wrapped-value ->value :ref inc)]))}])
 
 (def char-viewer
-  {:pred char? :render-fn '(fn [c] [:span.cmt-string.inspected-value "\\" c])})
+  {:name `char-viewer :pred char? :render-fn '(fn [c] [:span.cmt-string.inspected-value "\\" c])})
 
 (def string-viewer
-  {:pred string?
+  {:name `string-viewer
+   :pred string?
    :render-fn 'nextjournal.clerk.render/render-quoted-string
    :opening-paren "\""
    :closing-paren "\""
    :page-size 80})
 
 (def number-viewer
-  {:pred number?
+  {:name `number-viewer
+   :pred number?
    :render-fn 'nextjournal.clerk.render/render-number
    #?@(:clj [:transform-fn (update-val #(cond-> %
                                           (or (instance? clojure.lang.Ratio %)
@@ -792,19 +795,19 @@
   {:name `number-hex-viewer :render-fn '(fn [num] (nextjournal.clerk.render/render-number (str "0x" (.toString (js/Number. num) 16))))})
 
 (def symbol-viewer
-  {:pred symbol? :render-fn '(fn [x] [:span.cmt-keyword.inspected-value (str x)])})
+  {:name `symbol-viewer :pred symbol? :render-fn '(fn [x] [:span.cmt-keyword.inspected-value (str x)])})
 
 (def keyword-viewer
-  {:pred keyword? :render-fn '(fn [x] [:span.cmt-atom.inspected-value (str x)])})
+  {:name `keyword-viewer :pred keyword? :render-fn '(fn [x] [:span.cmt-atom.inspected-value (str x)])})
 
 (def nil-viewer
-  {:pred nil? :render-fn '(fn [_] [:span.cmt-default.inspected-value "nil"])})
+  {:name `nil-viewer :pred nil? :render-fn '(fn [_] [:span.cmt-default.inspected-value "nil"])})
 
 (def boolean-viewer
-  {:pred boolean? :render-fn '(fn [x] [:span.cmt-bool.inspected-value (str x)])})
+  {:name `boolean-viewer :pred boolean? :render-fn '(fn [x] [:span.cmt-bool.inspected-value (str x)])})
 
 (def map-entry-viewer
-  {:pred map-entry? :name `map-entry-viewer :render-fn '(fn [xs opts] (into [:<>] (comp (nextjournal.clerk.render/inspect-children opts) (interpose " ")) xs)) :page-size 2})
+  {:name `map-entry-viewer :pred map-entry? :render-fn '(fn [xs opts] (into [:<>] (comp (nextjournal.clerk.render/inspect-children opts) (interpose " ")) xs)) :page-size 2})
 
 (def read+inspect-viewer
   {:name `read+inspect-viewer :render-fn '(fn [x] (try [nextjournal.clerk.render/inspect (nextjournal.clerk.viewer/read-string-without-tag-table x)]
@@ -812,21 +815,22 @@
                                                          (nextjournal.clerk.render/render-unreadable-edn x))))})
 
 (def vector-viewer
-  {:pred vector? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "[" :closing-paren "]" :page-size 20})
+  {:name `vector-viewer :pred vector? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "[" :closing-paren "]" :page-size 20})
 
 (def set-viewer
-  {:pred set? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "#{" :closing-paren "}" :page-size 20})
+  {:name `set-viewer :pred set? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "#{" :closing-paren "}" :page-size 20})
 
 (def sequential-viewer
-  {:pred sequential? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "(" :closing-paren ")" :page-size 20})
+  {:name `sequential-viewer :pred sequential? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "(" :closing-paren ")" :page-size 20})
 
 (def map-viewer
-  {:pred map? :name `map-viewer :render-fn 'nextjournal.clerk.render/render-map :opening-paren "{" :closing-paren "}" :page-size 10})
+  {:name `map-viewer :pred map? :render-fn 'nextjournal.clerk.render/render-map :opening-paren "{" :closing-paren "}" :page-size 10})
 
 #?(:cljs (defn var->symbol [v] (if (instance? sci.lang.Var v) (sci.impl.vars/toSymbol v) (symbol v))))
 
 (def var-viewer
-  {:pred (some-fn var? #?(:cljs #(instance? sci.lang.Var %)))
+  {:name `var-viewer
+   :pred (some-fn var? #?(:cljs #(instance? sci.lang.Var %)))
    :transform-fn (comp #?(:cljs var->symbol :clj symbol) ->value)
    :render-fn '(fn [x] [:span.inspected-value [:span.cmt-meta "#'" (str x)]])})
 
@@ -846,12 +850,14 @@
                                   :nextjournal/content-type "image/png"
                                   :nextjournal/width (image-width image)}
                                  mark-presented))])
+   :name `image-viewer
    :render-fn '(fn [blob-or-url] [:div.flex.flex-col.items-center.not-prose
                                   [:img {:src #?(:clj  (nextjournal.clerk.render/url-for blob-or-url)
                                                  :cljs blob-or-url)}]])})
 
 (def ideref-viewer
-  {:pred #(#?(:clj instance? :cljs satisfies?) IDeref %)
+  {:name `ideref-viewer
+   :pred #(#?(:clj instance? :cljs satisfies?) IDeref %)
    :transform-fn (update-val (fn [ideref]
                                (with-viewer `tagged-value-viewer
                                  {:tag "object"
@@ -862,12 +868,13 @@
                                                    (deref ideref)))})))})
 
 (def regex-viewer
-  {:pred #?(:clj (partial instance? java.util.regex.Pattern) :cljs regexp?)
+  {:name `regex-viewer
+   :pred #?(:clj (partial instance? java.util.regex.Pattern) :cljs regexp?)
    :transform-fn (fn [wrapped-value] (with-viewer `tagged-value-viewer {:tag "" :value (let [regex (->value wrapped-value)]
                                                                                          #?(:clj (.pattern regex) :cljs (.-source regex)))}))})
 
 (def fallback-viewer
-  {:pred (constantly :true) :transform-fn (update-val #(with-viewer `read+inspect-viewer (pr-str %)))})
+  {:name `fallback-viewer :pred (constantly :true) :transform-fn (update-val #(with-viewer `read+inspect-viewer (pr-str %)))})
 
 (def elision-viewer
   {:name `elision-viewer :render-fn 'nextjournal.clerk.render/render-elision :transform-fn mark-presented})
@@ -1156,7 +1163,8 @@
                        mark-presented))})
 
 (def viewer-eval-viewer
-  {:pred viewer-eval?
+  {:name `viewer-eval-viewer
+   :pred viewer-eval?
    :var-from-def? true
    :transform-fn (comp mark-presented
                        (update-val
