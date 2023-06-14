@@ -1,5 +1,5 @@
 (ns nextjournal.clerk.render
-  (:require ["framer-motion" :refer [motion]]
+  (:require ["framer-motion" :refer [m LazyMotion domAnimation]]
             ["react" :as react]
             ["react-dom/client" :as react-client]
             ["vh-sticky-table-header" :as sticky-table-header]
@@ -25,7 +25,6 @@
             [sci.ctx-store]
             [shadow.cljs.modern :refer [defclass]]))
 
-
 (r/set-default-compiler! (r/create-compiler {:function-components true}))
 
 (declare inspect inspect-presented reagent-viewer html html-viewer)
@@ -42,25 +41,25 @@
      [:button.text-slate-400.hover:text-slate-600.dark:hover:text-white.cursor-pointer
       {:on-click #(swap! !state assoc :dark-mode? (not dark-mode?))}
       (if dark-mode?
-        [:> (.-svg motion)
+        [:> (.-svg m)
          {:xmlns "http://www.w3.org/2000/svg"
           :class "w-5 h-5 md:w-4 md:h-4"
           :viewBox "0 0 50 50"
           :key "moon"}
-         [:> (.-path motion)
+         [:> (.-path m)
           {:d "M 43.81 29.354 C 43.688 28.958 43.413 28.626 43.046 28.432 C 42.679 28.238 42.251 28.198 41.854 28.321 C 36.161 29.886 30.067 28.272 25.894 24.096 C 21.722 19.92 20.113 13.824 21.683 8.133 C 21.848 7.582 21.697 6.985 21.29 6.578 C 20.884 6.172 20.287 6.022 19.736 6.187 C 10.659 8.728 4.691 17.389 5.55 26.776 C 6.408 36.163 13.847 43.598 23.235 44.451 C 32.622 45.304 41.28 39.332 43.816 30.253 C 43.902 29.96 43.9 29.647 43.81 29.354 Z"
            :fill "currentColor"
            :initial "initial"
            :animate "animate"
            :variants {:initial {:scale 0.6 :rotate 90}
                       :animate {:scale 1 :rotate 0 :transition spring}}}]]
-        [:> (.-svg motion)
+        [:> (.-svg m)
          {:key "sun"
           :class "w-5 h-5 md:w-4 md:h-4"
           :viewBox "0 0 24 24"
           :fill "none"
           :xmlns "http://www.w3.org/2000/svg"}
-         [:>(.-circle motion)
+         [:> (.-circle m)
           {:cx "11.9998"
            :cy "11.9998"
            :r "5.75375"
@@ -69,7 +68,7 @@
            :animate "animate"
            :variants {:initial {:scale 1.5}
                       :animate {:scale 1 :transition spring}}}]
-         [:> (.-g motion)
+         [:> (.-g m)
           {:initial "initial"
            :animate "animate"
            :variants {:initial {:rotate 45}
@@ -181,33 +180,34 @@
 
       ;; FIXME: wth
       (when-not (= old-toc toc) (swap! !state assoc :toc toc))
-      [:div.flex
-       {:ref root-ref-fn}
-       [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
-        [dark-mode-toggle !state]]
-       (when (and toc toc-visibility)
-         [:<>
-          [navbar/toggle-button !state
-           [:<>
-            [:svg {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke "currentColor" :width 20 :height 20}
-             [:path {:stroke-linecap "round" :stroke-linejoin "round" :stroke-width "2" :d "M4 6h16M4 12h16M4 18h16"}]]
-            [:span.uppercase.tracking-wider.ml-1.font-bold
-             {:class "text-[12px]"} "ToC"]]
-           {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-[7px] text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
-          [navbar/panel !state [navbar/navbar !state]]])
-       [:div.flex-auto.w-screen.scroll-container
-        (into
-         [:> (.-div motion)
-          {:key "notebook-viewer"
-           :initial (when toc-visibility {:margin-left doc-inset})
-           :animate (when toc-visibility {:margin-left doc-inset})
-           :transition navbar/spring
-           :class (cond-> (or doc-css-class [:flex :flex-col :items-center :notebook-viewer :flex-auto])
-                    sidenotes? (conj :sidenotes-layout))}]
-         ;; TODO: restore react keys via block-id
-         ;; ^{:key (str processed-block-id "@" @!eval-counter)}
+      [:> LazyMotion {:strict true :features domAnimation}
+       [:div.flex
+        {:ref root-ref-fn}
+        [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
+         [dark-mode-toggle !state]]
+        (when (and toc toc-visibility)
+          [:<>
+           [navbar/toggle-button !state
+            [:<>
+             [:svg {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke "currentColor" :width 20 :height 20}
+              [:path {:stroke-linecap "round" :stroke-linejoin "round" :stroke-width "2" :d "M4 6h16M4 12h16M4 18h16"}]]
+             [:span.uppercase.tracking-wider.ml-1.font-bold
+              {:class "text-[12px]"} "ToC"]]
+            {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-[7px] text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
+           [navbar/panel !state [navbar/navbar !state]]])
+        [:div.flex-auto.w-screen.scroll-container
+         (into
+          [:> (.-div m)
+           {:key "notebook-viewer"
+            :initial (when toc-visibility {:margin-left doc-inset})
+            :animate (when toc-visibility {:margin-left doc-inset})
+            :transition navbar/spring
+            :class (cond-> (or doc-css-class [:flex :flex-col :items-center :notebook-viewer :flex-auto])
+                     sidenotes? (conj :sidenotes-layout))}]
+          ;; TODO: restore react keys via block-id
+          ;; ^{:key (str processed-block-id "@" @!eval-counter)}
 
-         (inspect-children opts) (concat (when header [header]) xs (when footer [footer])))]])))
+          (inspect-children opts) (concat (when header [header]) xs (when footer [footer])))]]])))
 
 (defn opts->query [opts]
   (->> opts

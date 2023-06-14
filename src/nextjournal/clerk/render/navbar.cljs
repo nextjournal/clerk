@@ -1,5 +1,5 @@
 (ns nextjournal.clerk.render.navbar
-  (:require ["framer-motion" :as framer-motion :refer [motion AnimatePresence]]
+  (:require ["framer-motion" :as framer-motion :refer [m AnimatePresence]]
             [nextjournal.clerk.render.localstorage :as localstorage]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
@@ -156,7 +156,7 @@
        [:> AnimatePresence
         {:initial false}
         (when (and mobile? mobile-open?)
-          [:> (.-div motion)
+          [:> (.-div m)
            {:key (str component-key "-backdrop")
             :class "fixed z-10 bg-gray-500 bg-opacity-75 left-0 top-0 bottom-0 right-0"
             :initial {:opacity 0}
@@ -165,7 +165,7 @@
             :on-click #(swap! !state assoc :mobile-open? false)
             :transition spring}])
         (when (or mobile-open? (and (not mobile?) open?))
-          [:> (.-div motion)
+          [:> (.-div m)
            {:key (str component-key "-nav")
             :style {:width w}
             :class (str "h-screen z-10 flex-shrink-0 fixed "
