@@ -1,9 +1,10 @@
-(ns nextjournal.clerk.viewer2
+(ns nextjournal.clerk.viewer
   (:require [clojure.string :as str]
             [clojure.pprint :as pprint]
             [clojure.datafy :as datafy]
             [clojure.set :as set]
             [clojure.walk :as w]
+            [flatland.ordered.map :refer [ordered-map]]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
                       [editscript.edit]
@@ -27,6 +28,9 @@
                    (java.net URI URL)
                    (java.nio.file Files StandardOpenOption)
                    (javax.imageio ImageIO))))
+
+(comment
+  (clojure.repl.deps/add-lib 'org.flatland/ordered {:mvn/version "1.15.11"}))
 
 (defrecord ViewerEval [form])
 
@@ -635,7 +639,27 @@
   ([added-viewers] (add-viewers (get-default-viewers) added-viewers))
   ([viewers added-viewers] (into (vec added-viewers) viewers)))
 
-(def table-missing-viewer {:pred #{:nextjournal/missing} :render-fn '(fn [x] [:<>])})
+(defn ->ordered-map-by-name [viewers]
+  (into (ordered-map)
+        (map (juxt :name identity))
+        viewers))
+
+(defn ^:private merge-first [m1 m2]
+  (into (apply dissoc m2 (keys m1))
+        m1))
+
+#_(merge-first (ordered-map :foo 1 :bar 2) (ordered-map {:foo {:a 1} :baz 123}))
+
+(defn merge-viewers [viewers merged-viewers]
+  (when-let [unnamed-viewers (not-empty (filter (complement :name) (concat viewers merged-viewers)))]
+    (throw (ex-info "every viewer must have a name" {:unnamed-viewers unnamed-viewers})))
+  (vals (merge-first (->ordered-map-by-name viewers)
+                     (->ordered-map-by-name merged-viewers))))
+
+(def table-missing-viewer
+  {:name `table-missing-viewer
+   :pred #{:nextjournal/missing}
+   :render-fn '(fn [x] [:<>])})
 
 (def table-markup-viewer
   {:name `table-markup-viewer
@@ -669,32 +693,33 @@
                         {:class (if (even? (peek path)) "bg-black/5 dark:bg-gray-800" "bg-white dark:bg-gray-900")}]
                        (map-indexed (fn [idx cell] [:td.pl-6.pr-2.py-1 (when (and (ifn? number-col?) (number-col? idx)) {:class "text-right"}) (nextjournal.clerk.render/inspect-presented opts cell)])) row))})
 
-(defn update-table-viewers [viewers]
-  (-> viewers
-      (update-viewers {(comp #{string?} :pred) #(-> %
-                                                    (dissoc :closing-paren :opening-paren)
-                                                    (assoc :render-fn 'nextjournal.clerk.render/render-string))
-                       (comp #{number?} :pred) #(assoc % :render-fn '(fn [x] [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))
-                       (comp #{`elision-viewer} :name) #(assoc % :render-fn '(fn [{:as fetch-opts :keys [total offset unbounded?]} {:keys [num-cols]}]
-                                                                               [nextjournal.clerk.render/consume-view-context
-                                                                                :fetch-fn
-                                                                                (fn [fetch-fn]
-                                                                                  [:tr.border-t.dark:border-slate-700
-                                                                                   [:td.py-1.relative
-                                                                                    {:col-span num-cols
-                                                                                     :class (if (fn? fetch-fn)
-                                                                                              "bg-indigo-50 hover:bg-indigo-100 dark:bg-gray-800 dark:hover:bg-slate-700 cursor-pointer"
-                                                                                              "text-gray-400 text-slate-500")
-                                                                                     :on-click (fn [_] (when (fn? fetch-fn)
-                                                                                                         (fetch-fn fetch-opts)))}
-                                                                                    [:span.sticky
-                                                                                     {:style {:left "min(50vw, 50%)"} :class "-translate-x-1/2"}
-                                                                                     (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]]])]))})
-      (add-viewers [table-missing-viewer
-                    table-markup-viewer
-                    table-head-viewer
-                    table-body-viewer
-                    table-row-viewer])))
+(def table-viewers
+  [(-> string-viewer
+       (dissoc :closing-paren :opening-paren)
+       (assoc :render-fn 'nextjournal.clerk.render/render-string))
+   (assoc number-viewer :render-fn '(fn [x] [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))
+   (assoc elision-viewer
+          :render-fn
+          '(fn [{:as fetch-opts :keys [total offset unbounded?]} {:keys [num-cols]}]
+             [nextjournal.clerk.render/consume-view-context
+              :fetch-fn
+              (fn [fetch-fn]
+                [:tr.border-t.dark:border-slate-700
+                 [:td.py-1.relative
+                  {:col-span num-cols
+                   :class (if (fn? fetch-fn)
+                            "bg-indigo-50 hover:bg-indigo-100 dark:bg-gray-800 dark:hover:bg-slate-700 cursor-pointer"
+                            "text-gray-400 text-slate-500")
+                   :on-click (fn [_] (when (fn? fetch-fn)
+                                       (fetch-fn fetch-opts)))}
+                  [:span.sticky
+                   {:style {:left "min(50vw, 50%)"} :class "-translate-x-1/2"}
+                   (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]]])]))
+   table-missing-viewer
+   table-markup-viewer
+   table-head-viewer
+   table-body-viewer
+   table-row-viewer])
 
 #?(:clj (def utc-date-format ;; from `clojure.instant/thread-local-utc-date-format`
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
@@ -923,12 +948,14 @@
   {:name `vega-lite-viewer :render-fn 'nextjournal.clerk.render/render-vega-lite :transform-fn mark-presented})
 
 (def markdown-viewer
-  {:name `markdown-viewer :transform-fn (fn [wrapped-value]
-                                          (-> wrapped-value
-                                              mark-presented
-                                              (update :nextjournal/value #(cond->> % (string? %) md/parse))
-                                              (update :nextjournal/viewers add-viewers markdown-viewers)
-                                              (with-md-viewer)))})
+  {:name `markdown-viewer
+   :viewers markdown-viewers
+   :transform-fn (fn [wrapped-value]
+                   (-> wrapped-value
+                       mark-presented
+                       (update :nextjournal/value #(cond->> % (string? %) md/parse))
+                       (update :nextjournal/viewers merge-viewers markdown-viewers)
+                       (with-md-viewer)))})
 
 (def code-viewer
   {:name `code-viewer
@@ -964,7 +991,7 @@
                      (-> wrapped-value
                          (assoc :nextjournal/viewer `table-markup-viewer)
                          (update :nextjournal/width #(or % :wide))
-                         (update :nextjournal/viewers update-table-viewers)
+                         (update :nextjournal/viewers merge-viewers table-viewers)
                          (update :nextjournal/opts merge {:num-cols (count (or head (first rows)))
                                                           :number-col? (into #{}
                                                                              (comp (map-indexed vector)
