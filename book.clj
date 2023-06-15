@@ -211,6 +211,21 @@
 ;; `::clerk/page-size`. Use a value of `nil` to show all rows.
 (clerk/table {::clerk/page-size 7} (map (comp vector (partial str "Row #")) (range 1 31)))
 
+;; The built-in table viewer adds a number of child-viewers on its
+;; `:add-viewers` key. Those sub-viewers control the markup for the
+;; table and the display of strings (to turn off quoting inside table
+;; cells).
+(:add-viewers v/table-viewer)
+
+;; Modifying the `:add-viewers` key allows us to create a custom table
+;; viewer that shows missing values differently.
+(def table-viewer-custom-missing-values
+  (update v/table-viewer :add-viewers v/add-viewers [(assoc v/table-missing-viewer :render-fn '(fn [x] [:span.red "N/A"]))]))
+
+^{::clerk/viewer table-viewer-custom-missing-values}
+{:A [1 2 3] :B [1 3] :C [1 2]}
+
+
 ;; ### 🧮 TeX
 
 ;; As we've already seen, all comment blocks can contain TeX (we use

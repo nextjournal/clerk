@@ -8,6 +8,14 @@ Changes can be:
 
 ## Unreleased
 
+* 👁️ Improve viewer customization
+
+    * Simplify customization of number of rows displayed for table viewer using viewer-opts, e.g. `(clerk/table {::clerk/page-size 7})`. Pass `{::clerk/page-size nil}` to display elisions. Can also be passed a form metadata. Fixes [#406](https://github.com/nextjournal/clerk/issues/406).
+
+    * Change semantics of `clerk/add-viewers!` to perform in-place positional replacement of named added viewers. Anonymous viewers (without a `:name`) or new named viewers will be prepended to the viewer stack. Assign a symbol `:name` to all of `clerk/default-viewers`.
+
+    * Support first-class `:add-viewers` attribute on viewer map which will do `clerk/add-viewers` before passing viewers down the tree. Use it in `table-viewer` and `markdown-viewer`. Both these viewers can now be customized more easily. For example, you can customize the `table-viewer` to show missing values differently, see [docs](http://localhost:7777/book.clj#tables).
+
 * 💫 Assign `:name` to every viewer in `default-viewers`
 
 ## 0.14.919 (2023-06-13)
