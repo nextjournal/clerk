@@ -30,12 +30,12 @@
        (group-by (comp keyword str/upper-case str first))
        (into (sorted-map))))
 
-(clerk/table {:nextjournal/width :full} letter->words)
+(clerk/table {::clerk/width :full} letter->words)
 
 ;; ## Customize Page Size
-(clerk/with-viewer (dissoc v/table-viewer :page-size)
-  (map vector (range 1 26)))
+(clerk/table {::clerk/page-size 7} (map vector (range 1 26)))
 
+;; Or setting it on the viewer.
 (clerk/with-viewer (assoc v/table-viewer :page-size 7)
   (map vector (range 1 26)))
 

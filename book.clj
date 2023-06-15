@@ -207,7 +207,9 @@
 (clerk/table {:head ["odd numbers" "even numbers"]
               :rows [[1 2] [3 4]]}) ;; map with `:rows` and optional `:head` keys
 
-
+;; To customize the number of rows in the table viewer, set
+;; `::clerk/page-size`. Use a value of `nil` to show all rows.
+(clerk/table {::clerk/page-size 7} (map (comp vector (partial str "Row #")) (range 1 31)))
 
 ;; ### 🧮 TeX
 
