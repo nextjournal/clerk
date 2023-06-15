@@ -643,7 +643,7 @@
 
 #_(merge-prepending (ordered-map :bar 1 :baz 2) (ordered-map {:baz 3 :a 1}))
 
-(defn merge-viewers [viewers added-viewers]
+(defn ^:private merge-viewers [viewers added-viewers]
   (when-let [unnamed-viewers (not-empty (filter (complement :name) (concat viewers added-viewers)))]
     (throw (ex-info "every viewer must have a name" {:unnamed-viewers unnamed-viewers})))
   (vec (vals (merge-prepending (->ordered-map-by-name viewers)
@@ -687,7 +687,6 @@
 
 (def table-body-viewer
   {:name `table-body-viewer
-   :page-size 20
    :render-fn '(fn [rows opts] (into [:tbody] (map-indexed (fn [idx row] (nextjournal.clerk.render/inspect-presented (update opts :path conj idx) row))) rows))})
 
 (def table-row-viewer
@@ -925,7 +924,7 @@
 
 (def markdown-viewer
   {:name `markdown-viewer
-   :merged-viewers markdown-viewers
+   :add-viewers markdown-viewers
    :transform-fn (fn [wrapped-value]
                    (-> wrapped-value
                        mark-presented
@@ -989,8 +988,9 @@
 
 (def table-viewer
   {:name `table-viewer
-   :merged-viewers table-viewers
-   :transform-fn (fn [wrapped-value]
+   :add-viewers table-viewers
+   :page-size 20
+   :transform-fn (fn [{:as wrapped-value :nextjournal/keys [applied-viewer]}]
                    (if-let [{:keys [head rows]} (normalize-table-data (->value wrapped-value))]
                      (-> wrapped-value
                          (assoc :nextjournal/viewer `table-markup-viewer)
@@ -1001,7 +1001,8 @@
                                                                                    (keep #(when (number? (second %)) (first %))))
                                                                              (not-empty (first rows)))})
                          (assoc :nextjournal/value (cond->> []
-                                                     (seq rows) (cons (with-viewer `table-body-viewer (map (partial with-viewer `table-row-viewer) rows)))
+                                                     (seq rows) (cons (with-viewer `table-body-viewer (select-keys applied-viewer [:page-size])
+                                                                        (map (partial with-viewer `table-row-viewer) rows)))
                                                      head (cons (with-viewer (:name table-head-viewer table-head-viewer) head)))))
                      (-> wrapped-value
                          mark-presented
@@ -1336,11 +1337,12 @@
   (when (empty? (->viewers wrapped-value))
     (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
   (let [viewers (->viewers wrapped-value)
-        {:as viewer :keys [render-fn transform-fn merged-viewers]} (viewer-for viewers wrapped-value)
+        {:as viewer viewers-to-add :add-viewers :keys [render-fn transform-fn]} (viewer-for viewers wrapped-value)
         transformed-value (cond-> (ensure-wrapped-with-viewers viewers
-                                                               (cond-> (dissoc wrapped-value :nextjournal/viewer)
+                                                               (cond-> (set/rename-keys wrapped-value {:nextjournal/viewer
+                                                                                                       :nextjournal/applied-viewer})
                                                                  transform-fn transform-fn))
-                            merged-viewers (update :nextjournal/viewers add-viewers merged-viewers))
+                            viewers-to-add (update :nextjournal/viewers add-viewers viewers-to-add))
         wrapped-value' (cond-> transformed-value
                          (-> transformed-value ->value wrapped-value?)
                          (merge (->value transformed-value)))]
@@ -1458,7 +1460,8 @@
                           (tree-seq (some-fn map? vector?) #(cond-> % (map? %) vals) desc)))))
 
 (defn ->fetch-opts [wrapped-value]
-  (merge {:n (-> wrapped-value ->viewer :page-size)}
+  (merge {:n (or (:page-size wrapped-value)
+                 (-> wrapped-value ->viewer :page-size))}
          (select-keys wrapped-value [:path :offset])))
 
 (defn get-elision [wrapped-value]

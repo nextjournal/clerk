@@ -68,8 +68,8 @@
 ;; override single table components
 
 (def custom-table-viewer
-  (update v/table-viewer :merged-viewers v/merge-viewers [(assoc v/table-head-viewer :transform-fn (v/update-val (partial map (comp (partial str "Column: ") str/capitalize name))))
-                                                          (assoc v/table-missing-viewer :render-fn '(fn [x] [:span.red "N/A"]))]))
+  (update v/table-viewer :add-viewers v/add-viewers [(assoc v/table-head-viewer :transform-fn (v/update-val (partial map (comp (partial str "Column: ") str/capitalize name))))
+                                                     (assoc v/table-missing-viewer :render-fn '(fn [x] [:span.red "N/A"]))]))
 
 (clerk/with-viewer custom-table-viewer
   {:col/a [1 2 3 4] :col/b [1 2 3] :col/c [1 2 3]})

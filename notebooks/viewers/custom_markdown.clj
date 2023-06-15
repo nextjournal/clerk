@@ -17,7 +17,7 @@
     :transform-fn (v/into-markup [:table.monospace])}])
 
 (def pretty-markdown-viewer
-  (update v/markdown-viewer :merged-viewers v/merge-viewers custom-markdown-viewers))
+  (update v/markdown-viewer :add-viewers v/add-viewers custom-markdown-viewers))
 
 (v/add-viewers! [pretty-markdown-viewer])
 

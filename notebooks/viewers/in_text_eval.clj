@@ -21,7 +21,7 @@
 
 ^{::clerk/visibility {:result :hide}}
 (def markdown+eval-viewer
-  (update v/markdown-viewer :merged-viewers v/merge-viewers markdown-eval-viewers))
+  (update v/markdown-viewer :add-viewers v/add-viewers markdown-eval-viewers))
 
 ^{::clerk/visibility {:result :hide}}
 (clerk/add-viewers! [markdown+eval-viewer]) ;; register viewer globally for ns
