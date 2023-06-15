@@ -14,7 +14,7 @@ Changes can be:
 
     * Change semantics of `clerk/add-viewers!` to perform in-place positional replacement of named added viewers. Anonymous viewers (without a `:name`) or new named viewers will be prepended to the viewer stack. Assign a symbol `:name` to all of `clerk/default-viewers`.
 
-    * Support first-class `:add-viewers` attribute on viewer map which will do `clerk/add-viewers` before passing viewers down the tree. Use it in `table-viewer` and `markdown-viewer`. Both these viewers can now be customized more easily. For example, you can customize the `table-viewer` to show missing values differently, see [docs](http://localhost:7777/book.clj#tables).
+    * Support first-class `:add-viewers` attribute on viewer map which will do `clerk/add-viewers` before passing viewers down the tree. Use it in `table-viewer` and `markdown-viewer`. Both these viewers can now be customized more easily. For example, you can customize the `table-viewer` to show missing values differently, see [Book of Clerk](https://book.clerk.vision/#tables).
 
 * 💫 Assign `:name` to every viewer in `default-viewers`
 
