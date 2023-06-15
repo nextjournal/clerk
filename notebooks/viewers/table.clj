@@ -32,6 +32,14 @@
 
 (clerk/table {:nextjournal/width :full} letter->words)
 
+;; ## Customize Page Size
+(clerk/with-viewer (dissoc v/table-viewer :page-size)
+  (map vector (range 1 26)))
+
+(clerk/with-viewer (assoc v/table-viewer :page-size 7)
+  (map vector (range 1 26)))
+
+
 ;; ## Table Errors
 ;; The table viewer will perform normalization and show an error in case of failure:
 (clerk/table (set (range 30)))
@@ -80,7 +88,6 @@
                            comp (v/update-val (comp (fn [table] (update table :head (partial map (comp str/capitalize name))))
                                                     v/normalize-table-data)))
   {:a [1 2] :b [3 4]})
-
 
 ;; ## Nesting tables inside html
 (clerk/html [:div.bg-amber-100.p-2

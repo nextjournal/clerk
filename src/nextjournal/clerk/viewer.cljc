@@ -1001,8 +1001,7 @@
                                                                                    (keep #(when (number? (second %)) (first %))))
                                                                              (not-empty (first rows)))})
                          (assoc :nextjournal/value (cond->> []
-                                                     (seq rows) (cons (with-viewer `table-body-viewer (when (map? applied-viewer)
-                                                                                                        (select-keys applied-viewer [:page-size]))
+                                                     (seq rows) (cons (with-viewer `table-body-viewer (select-keys applied-viewer [:page-size])
                                                                         (map (partial with-viewer `table-row-viewer) rows)))
                                                      head (cons (with-viewer (:name table-head-viewer table-head-viewer) head)))))
                      (-> wrapped-value
@@ -1340,8 +1339,9 @@
   (let [viewers (->viewers wrapped-value)
         {:as viewer viewers-to-add :add-viewers :keys [render-fn transform-fn]} (viewer-for viewers wrapped-value)
         transformed-value (cond-> (ensure-wrapped-with-viewers viewers
-                                                               (cond-> (set/rename-keys wrapped-value {:nextjournal/viewer
-                                                                                                       :nextjournal/applied-viewer})
+                                                               (cond-> (-> wrapped-value
+                                                                           (dissoc :nextjournal/viewer)
+                                                                           (assoc :nextjournal/applied-viewer viewer))
                                                                  transform-fn transform-fn))
                             viewers-to-add (update :nextjournal/viewers add-viewers viewers-to-add))
         wrapped-value' (cond-> transformed-value
