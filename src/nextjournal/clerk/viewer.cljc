@@ -4,6 +4,7 @@
             [clojure.datafy :as datafy]
             [clojure.set :as set]
             [clojure.walk :as w]
+            [flatland.ordered.map :refer [ordered-map]]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
                       [editscript.edit]
@@ -631,11 +632,38 @@
 
 #_(update-viewers default-viewers {:page-size #(dissoc % :page-size)})
 
+(defn ^:private ->ordered-map-by-name [viewers]
+  (into (ordered-map)
+        (map (juxt :name identity))
+        viewers))
+
+(defn ^:private merge-prepending [m1 m2]
+  (into (apply dissoc m2 (keys m1))
+        (into m1 m2)))
+
+#_(merge-prepending (ordered-map :bar 1 :baz 2) (ordered-map {:baz 3 :a 1}))
+
+(defn ^:private merge-viewers [viewers added-viewers]
+  (when-let [unnamed-viewers (not-empty (filter (complement :name) (concat viewers added-viewers)))]
+    (throw (ex-info "every viewer must have a name" {:unnamed-viewers unnamed-viewers})))
+  (vec (vals (merge-prepending (->ordered-map-by-name viewers)
+                               (->ordered-map-by-name added-viewers)))))
+
 (defn add-viewers
   ([added-viewers] (add-viewers (get-default-viewers) added-viewers))
-  ([viewers added-viewers] (into (vec added-viewers) viewers)))
+  ([viewers added-viewers] (into (filterv (complement :name) (concat viewers added-viewers))
+                                 (merge-viewers (filter :name viewers)
+                                                (filter :name added-viewers)))))
 
-(def table-missing-viewer {:pred #{:nextjournal/missing} :render-fn '(fn [x] [:<>])})
+#_(add-viewers (take 10 default-viewers)
+               [{:pred number?
+                 :render-fn '#(vector :div.inline-block {:style {:width 16 :height 16}
+                                                         :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")})}])
+
+(def table-missing-viewer
+  {:name `table-missing-viewer
+   :pred #{:nextjournal/missing}
+   :render-fn '(fn [x] [:<>])})
 
 (def table-markup-viewer
   {:name `table-markup-viewer
@@ -659,7 +687,6 @@
 
 (def table-body-viewer
   {:name `table-body-viewer
-   :page-size 20
    :render-fn '(fn [rows opts] (into [:tbody] (map-indexed (fn [idx row] (nextjournal.clerk.render/inspect-presented (update opts :path conj idx) row))) rows))})
 
 (def table-row-viewer
@@ -668,33 +695,6 @@
                  (into [:tr.hover:bg-gray-200.dark:hover:bg-slate-700
                         {:class (if (even? (peek path)) "bg-black/5 dark:bg-gray-800" "bg-white dark:bg-gray-900")}]
                        (map-indexed (fn [idx cell] [:td.pl-6.pr-2.py-1 (when (and (ifn? number-col?) (number-col? idx)) {:class "text-right"}) (nextjournal.clerk.render/inspect-presented opts cell)])) row))})
-
-(defn update-table-viewers [viewers]
-  (-> viewers
-      (update-viewers {(comp #{string?} :pred) #(-> %
-                                                    (dissoc :closing-paren :opening-paren)
-                                                    (assoc :render-fn 'nextjournal.clerk.render/render-string))
-                       (comp #{number?} :pred) #(assoc % :render-fn '(fn [x] [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))
-                       (comp #{`elision-viewer} :name) #(assoc % :render-fn '(fn [{:as fetch-opts :keys [total offset unbounded?]} {:keys [num-cols]}]
-                                                                               [nextjournal.clerk.render/consume-view-context
-                                                                                :fetch-fn
-                                                                                (fn [fetch-fn]
-                                                                                  [:tr.border-t.dark:border-slate-700
-                                                                                   [:td.py-1.relative
-                                                                                    {:col-span num-cols
-                                                                                     :class (if (fn? fetch-fn)
-                                                                                              "bg-indigo-50 hover:bg-indigo-100 dark:bg-gray-800 dark:hover:bg-slate-700 cursor-pointer"
-                                                                                              "text-gray-400 text-slate-500")
-                                                                                     :on-click (fn [_] (when (fn? fetch-fn)
-                                                                                                         (fetch-fn fetch-opts)))}
-                                                                                    [:span.sticky
-                                                                                     {:style {:left "min(50vw, 50%)"} :class "-translate-x-1/2"}
-                                                                                     (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]]])]))})
-      (add-viewers [table-missing-viewer
-                    table-markup-viewer
-                    table-head-viewer
-                    table-body-viewer
-                    table-row-viewer])))
 
 #?(:clj (def utc-date-format ;; from `clojure.instant/thread-local-utc-date-format`
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
@@ -923,12 +923,13 @@
   {:name `vega-lite-viewer :render-fn 'nextjournal.clerk.render/render-vega-lite :transform-fn mark-presented})
 
 (def markdown-viewer
-  {:name `markdown-viewer :transform-fn (fn [wrapped-value]
-                                          (-> wrapped-value
-                                              mark-presented
-                                              (update :nextjournal/value #(cond->> % (string? %) md/parse))
-                                              (update :nextjournal/viewers add-viewers markdown-viewers)
-                                              (with-md-viewer)))})
+  {:name `markdown-viewer
+   :add-viewers markdown-viewers
+   :transform-fn (fn [wrapped-value]
+                   (-> wrapped-value
+                       mark-presented
+                       (update :nextjournal/value #(cond->> % (string? %) md/parse))
+                       (with-md-viewer)))})
 
 (def code-viewer
   {:name `code-viewer
@@ -957,21 +958,54 @@
                                                 [:div.flex.items-center.justify-center
                                                  (nextjournal.clerk.render/inspect-presented opts item)])) items))})
 
+(def table-viewers
+  [(-> string-viewer
+       (dissoc :closing-paren :opening-paren)
+       (assoc :render-fn 'nextjournal.clerk.render/render-string))
+   (assoc number-viewer :render-fn '(fn [x] [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))
+   (assoc elision-viewer
+          :render-fn
+          '(fn [{:as fetch-opts :keys [total offset unbounded?]} {:keys [num-cols]}]
+             [nextjournal.clerk.render/consume-view-context
+              :fetch-fn
+              (fn [fetch-fn]
+                [:tr.border-t.dark:border-slate-700
+                 [:td.py-1.relative
+                  {:col-span num-cols
+                   :class (if (fn? fetch-fn)
+                            "bg-indigo-50 hover:bg-indigo-100 dark:bg-gray-800 dark:hover:bg-slate-700 cursor-pointer"
+                            "text-gray-400 text-slate-500")
+                   :on-click (fn [_] (when (fn? fetch-fn)
+                                       (fetch-fn fetch-opts)))}
+                  [:span.sticky
+                   {:style {:left "min(50vw, 50%)"} :class "-translate-x-1/2"}
+                   (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]]])]))
+   table-missing-viewer
+   table-markup-viewer
+   table-head-viewer
+   table-body-viewer
+   table-row-viewer])
+
 (def table-viewer
   {:name `table-viewer
-   :transform-fn (fn [wrapped-value]
+   :add-viewers table-viewers
+   :page-size 20
+   :transform-fn (fn [{:as wrapped-value :nextjournal/keys [applied-viewer]}]
                    (if-let [{:keys [head rows]} (normalize-table-data (->value wrapped-value))]
                      (-> wrapped-value
                          (assoc :nextjournal/viewer `table-markup-viewer)
                          (update :nextjournal/width #(or % :wide))
-                         (update :nextjournal/viewers update-table-viewers)
                          (update :nextjournal/opts merge {:num-cols (count (or head (first rows)))
                                                           :number-col? (into #{}
                                                                              (comp (map-indexed vector)
                                                                                    (keep #(when (number? (second %)) (first %))))
                                                                              (not-empty (first rows)))})
                          (assoc :nextjournal/value (cond->> []
-                                                     (seq rows) (cons (with-viewer `table-body-viewer (map (partial with-viewer `table-row-viewer) rows)))
+                                                     (seq rows) (cons (with-viewer `table-body-viewer (merge (-> applied-viewer
+                                                                                                                 (select-keys [:page-size])
+                                                                                                                 (set/rename-keys {:page-size :nextjournal/page-size}))
+                                                                                                             (select-keys wrapped-value [:nextjournal/page-size]))
+                                                                        (map (partial with-viewer `table-row-viewer) rows)))
                                                      head (cons (with-viewer (:name table-head-viewer table-head-viewer) head)))))
                      (-> wrapped-value
                          mark-presented
@@ -1028,7 +1062,7 @@
 
 #?(:cljs
    (def js-array-viewer
-     {:name js-array-viewer
+     {:name `js-array-viewer
       :pred js-iterable?
       :transform-fn (update-val seq)
       :render-fn '(fn [v opts]
@@ -1306,10 +1340,13 @@
   (when (empty? (->viewers wrapped-value))
     (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
   (let [viewers (->viewers wrapped-value)
-        {:as viewer :keys [render-fn transform-fn]} (viewer-for viewers wrapped-value)
-        transformed-value (ensure-wrapped-with-viewers viewers
-                                                       (cond-> (dissoc wrapped-value :nextjournal/viewer)
-                                                         transform-fn transform-fn))
+        {:as viewer viewers-to-add :add-viewers :keys [render-fn transform-fn]} (viewer-for viewers wrapped-value)
+        transformed-value (cond-> (ensure-wrapped-with-viewers viewers
+                                                               (cond-> (-> wrapped-value
+                                                                           (dissoc :nextjournal/viewer)
+                                                                           (assoc :nextjournal/applied-viewer viewer))
+                                                                 transform-fn transform-fn))
+                            viewers-to-add (update :nextjournal/viewers add-viewers viewers-to-add))
         wrapped-value' (cond-> transformed-value
                          (-> transformed-value ->value wrapped-value?)
                          (merge (->value transformed-value)))]
@@ -1427,7 +1464,7 @@
                           (tree-seq (some-fn map? vector?) #(cond-> % (map? %) vals) desc)))))
 
 (defn ->fetch-opts [wrapped-value]
-  (merge {:n (-> wrapped-value ->viewer :page-size)}
+  (merge {:n (:nextjournal/page-size wrapped-value (-> wrapped-value ->viewer :page-size))}
          (select-keys wrapped-value [:path :offset])))
 
 (defn get-elision [wrapped-value]

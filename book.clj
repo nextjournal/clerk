@@ -207,6 +207,23 @@
 (clerk/table {:head ["odd numbers" "even numbers"]
               :rows [[1 2] [3 4]]}) ;; map with `:rows` and optional `:head` keys
 
+;; To customize the number of rows in the table viewer, set
+;; `::clerk/page-size`. Use a value of `nil` to show all rows.
+(clerk/table {::clerk/page-size 7} (map (comp vector (partial str "Row #")) (range 1 31)))
+
+;; The built-in table viewer adds a number of child-viewers on its
+;; `:add-viewers` key. Those sub-viewers control the markup for the
+;; table and the display of strings (to turn off quoting inside table
+;; cells).
+(:add-viewers v/table-viewer)
+
+;; Modifying the `:add-viewers` key allows us to create a custom table
+;; viewer that shows missing values differently.
+(def table-viewer-custom-missing-values
+  (update v/table-viewer :add-viewers v/add-viewers [(assoc v/table-missing-viewer :render-fn '(fn [x] [:span.red "N/A"]))]))
+
+^{::clerk/viewer table-viewer-custom-missing-values}
+{:A [1 2 3] :B [1 3] :C [1 2]}
 
 
 ;; ### 🧮 TeX
@@ -544,18 +561,11 @@ v/default-viewers
 
 ;; **Passing modified viewers down the tree**
 
-#_ "TODO: move this into clerk?"
-(defn add-child-viewers [viewer viewers]
-  (update viewer :transform-fn (fn [transform-fn-orig]
-                                 (fn [wrapped-value]
-                                   (update (transform-fn-orig wrapped-value) :nextjournal/viewers clerk/add-viewers viewers)))))
-
 v/table-viewer
 
 (def custom-table-viewer
-  (add-child-viewers v/table-viewer
-                     [(assoc v/table-head-viewer :transform-fn (v/update-val (partial map (comp (partial str "Column: ") str/capitalize name))))
-                      (assoc v/table-missing-viewer :render-fn '(fn [x] [:span.red "N/A"]))]))
+  (update v/table-viewer :add-viewers v/add-viewers [(assoc v/table-head-viewer :transform-fn (v/update-val (partial map (comp (partial str "Column: ") str/capitalize name))))
+                                                     (assoc v/table-missing-viewer :render-fn '(fn [x] [:span.red "N/A"]))]))
 
 (clerk/with-viewer custom-table-viewer
   {:col/a [1 2 3 4] :col/b [1 2 3] :col/c [1 2 3]})
