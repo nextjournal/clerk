@@ -1001,7 +1001,10 @@
                                                                                    (keep #(when (number? (second %)) (first %))))
                                                                              (not-empty (first rows)))})
                          (assoc :nextjournal/value (cond->> []
-                                                     (seq rows) (cons (with-viewer `table-body-viewer (select-keys applied-viewer [:page-size])
+                                                     (seq rows) (cons (with-viewer `table-body-viewer (merge (-> applied-viewer
+                                                                                                                 (select-keys [:page-size])
+                                                                                                                 (set/rename-keys {:page-size :nextjournal/page-size}))
+                                                                                                             (select-keys wrapped-value [:nextjournal/page-size]))
                                                                         (map (partial with-viewer `table-row-viewer) rows)))
                                                      head (cons (with-viewer (:name table-head-viewer table-head-viewer) head)))))
                      (-> wrapped-value
@@ -1461,8 +1464,7 @@
                           (tree-seq (some-fn map? vector?) #(cond-> % (map? %) vals) desc)))))
 
 (defn ->fetch-opts [wrapped-value]
-  (merge {:n (or (:page-size wrapped-value)
-                 (-> wrapped-value ->viewer :page-size))}
+  (merge {:n (:nextjournal/page-size wrapped-value (-> wrapped-value ->viewer :page-size))}
          (select-keys wrapped-value [:path :offset])))
 
 (defn get-elision [wrapped-value]
