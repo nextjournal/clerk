@@ -1001,7 +1001,8 @@
                                                                                    (keep #(when (number? (second %)) (first %))))
                                                                              (not-empty (first rows)))})
                          (assoc :nextjournal/value (cond->> []
-                                                     (seq rows) (cons (with-viewer `table-body-viewer (select-keys applied-viewer [:page-size])
+                                                     (seq rows) (cons (with-viewer `table-body-viewer (when (map? applied-viewer)
+                                                                                                        (select-keys applied-viewer [:page-size]))
                                                                         (map (partial with-viewer `table-row-viewer) rows)))
                                                      head (cons (with-viewer (:name table-head-viewer table-head-viewer) head)))))
                      (-> wrapped-value
