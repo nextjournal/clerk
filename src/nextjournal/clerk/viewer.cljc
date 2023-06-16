@@ -824,7 +824,7 @@
   {:name `sequential-viewer :pred sequential? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "(" :closing-paren ")" :page-size 20})
 
 (def map-viewer
-  {:name `map-viewer :pred map? :render-fn 'nextjournal.clerk.render/render-map :opening-paren "{" :closing-paren "}" :page-size 10})
+  {:name `map-viewer :pred map? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "{" :closing-paren "}" :page-size 10})
 
 #?(:cljs (defn var->symbol [v] (if (instance? sci.lang.Var v) (sci.impl.vars/toSymbol v) (symbol v))))
 
