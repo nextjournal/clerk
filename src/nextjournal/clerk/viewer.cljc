@@ -1700,9 +1700,9 @@
                              (or (-> value last :nextjournal/viewer :closing-paren) ;; the last element can carry parens
                                  (and (= `map-entry-viewer (-> value last :nextjournal/viewer :name)) ;; the last element is a map entry whose value can carry parens
                                       (-> value last :nextjournal/value last :nextjournal/viewer :closing-paren))))]
-     (cond-> (assoc-in node [:nextjournal/opts :closing-parens] (if (or (not closing) defer-closing?)
-                                                                  '()
-                                                                  (cons closing closing-parens)))
+     (cond-> (assoc-in node [:nextjournal/render-opts :closing-parens] (if (or (not closing) defer-closing?)
+                                                                         '()
+                                                                         (cons closing closing-parens)))
        non-leaf? (update :nextjournal/value
                          (fn [xs]
                            (into []
