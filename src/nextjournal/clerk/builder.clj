@@ -18,7 +18,9 @@
 
 (def clerk-docs
   (into ["CHANGELOG.md"
+         "README.md"
          "notebooks/markdown.md"
+         "notebooks/markdown_fences.md"
          "notebooks/onwards.md"]
         (map #(str "notebooks/" % ".clj"))
         ["cards"
@@ -37,7 +39,6 @@
          "multiviewer"
          "pagination"
          "paren_soup"
-         "readme"
          "rule_30"
          "slideshow"
          "visibility"
@@ -388,7 +389,8 @@
                       (report-fn {:stage :building :doc doc :idx idx})
                       (let [{result :result duration :time-ms} (eval/time-ms
                                                                 (try
-                                                                  (binding [*build-opts* opts
+                                                                  (binding [*ns* *ns*
+                                                                            *build-opts* opts
                                                                             viewer/doc-url (partial doc-url opts state file)]
                                                                     (let [doc (eval/eval-analyzed-doc doc)]
                                                                       (assoc doc :viewer (view/doc->viewer (assoc opts :static-build? true

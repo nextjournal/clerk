@@ -83,6 +83,13 @@
     (let [value (v/html [:div [:ul [:li {:nextjournal/value (range 30)}]]])]
       (is (= (v/->value value) (v/->value (v/desc->values (resolve-elision (v/present value)))))))))
 
+(deftest default-viewers
+  (testing "viewers have names matching vars"
+    (doseq [[viewer-name viewer] (into {}
+                                       (map (juxt :name (comp deref resolve :name))) 
+                                       v/default-viewers)]
+      (is (= viewer-name (:name viewer))))))
+
 (deftest apply-viewers
   (testing "selects number viewer"
     (is (match? {:nextjournal/value 42
@@ -172,20 +179,20 @@
     (is (match? {:nextjournal/value "10/33"}
                 (v/present 10/33))))
 
-  (testing "opts are not propagated to children during presentation"
+  (testing "render opts are not propagated to children during presentation"
     (let [count-opts (fn [o k]
                        (let [c (atom 0)]
                          (w/postwalk (fn [f] (when (and (map? f)
-                                                        (contains? f :nextjournal/opts)
-                                                        (-> f :nextjournal/opts k))
+                                                        (contains? f :nextjournal/render-opts)
+                                                        (-> f :nextjournal/render-opts k))
                                                (swap! c inc)) f) o)
                          @c))]
-      (let [presented (v/present (v/col {:nextjournal.clerk/opts {:width 150}} 1 2 3))]
-        (is (match? {:width 150} (:nextjournal/opts presented)))
+      (let [presented (v/present (v/col {:nextjournal.clerk/render-opts {:width 150}} 1 2 3))]
+        (is (match? {:width 150} (:nextjournal/render-opts presented)))
         (is (= 1 (count-opts presented :width))))
 
       (let [presented (v/present (v/table {:col1 [1 2] :col2 '[a b]}))]
-        (is (match? {:num-cols 2 :number-col? #{0}} (:nextjournal/opts presented)))
+        (is (match? {:num-cols 2 :number-col? #{0}} (:nextjournal/render-opts presented)))
         (is (= 1 (count-opts presented :num-cols))))))
 
   (testing "viewer opts are normalized"
@@ -325,7 +332,7 @@
                    view/doc->viewer v/->value :blocks
                    (tree-seq coll? seq)
                    (filter (every-pred map? :nextjournal/presented))
-                   (map (comp :id :nextjournal/opts :nextjournal/presented)))]
+                   (map (comp :id :nextjournal/render-opts :nextjournal/presented)))]
       (is (= 5 (count ids)))
       (is (every? (every-pred not-empty string?) ids))
       (is (distinct? ids))))

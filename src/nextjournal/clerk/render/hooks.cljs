@@ -138,12 +138,16 @@
   "React hook which resolves a promise and handles errors."
   [p]
   (let [handle-error (use-error-handler)
+        !latest-promise (use-ref p)
         !state (use-state nil)]
     (use-effect (fn []
+                  (reset! !latest-promise p)
                   (-> p
-                      (.then #(reset! !state %))
-                      (.catch handle-error)))
-                #js [])
+                      (.then #(when (= p @!latest-promise)
+                                (reset! !state %)))
+                      (.catch #(when (= p @!latest-promise)
+                                 (handle-error %)))))
+                #js [p])
     @!state))
 
 (defn ^js use-d3-require [package]

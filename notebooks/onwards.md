@@ -88,18 +88,27 @@ Notes about what currently breaks 💥 and what could be better tomorrow.
 - [x] Set expanded state depending on shape (width) of the data
 - [x] Allow to control viewer expansion state programmatically
 - [x] Support cherry as alternative js evaluator
-- [ ] Make `doc-url` work in live app using `v/clerk-eval` with homepage, 404 and symbol links
+- [x] Make `doc-url` work in live app using `v/clerk-eval` with homepage, 404 and symbol links
+- [x] Build static build on CI
+- [x] Hook up new table viewer
+- [x] Status log
+- [x] Rename `:nextjournal.clerk/opts` to `:nextjournal.clerk/render-opts`
+- [ ] Improve page load performance of large documents like book (probably by evaluating each `:render-fn` only once)
+- [ ] Introduce window/session concept to support opening concurrent documents
+- [ ] Introduce per-session/connection state for sync
+- [ ] Make clerk sync recomputations more granular (only recompute deps of changed atom)
 - [ ] Global config with consistent inheritance to ns, expression
-- [ ] Add sync atoms to book
-- [ ] Add tap inspector to book
-- [ ] Add customizing clerk: markdown backtick eval example to book
 - [ ] Tap & eval viewer window
 - [ ] Add multiviewer to default viewers
 - [ ] Make stacktraces clickable
 - [ ] Mark uncacheable results in browser window including explanation
-- [x] Build static build on CI
-- [x] Hook up new table viewer
 - [ ] Add CAS storage option for static builds
-- [x] Status log
+- [ ] Improve performance of analysis & presentation
+## 📖 Book Updates
+- [ ] Explain `render-opts` and `viewer-opts` in book
+- [ ] Add sync atoms to book
+- [ ] Add tap inspector to book
+- [ ] Add customizing clerk: markdown backtick eval example to book
+- [ ] Add example for cross-document table of contents
 ## 💡 Ideas
 - [ ] Hook up distributed caching using CAS + cloud bucket

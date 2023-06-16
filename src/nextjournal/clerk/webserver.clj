@@ -180,7 +180,8 @@
         (string? file-or-ns)
         (when (fs/exists? file-or-ns)
           (fs/unixify (cond->> file-or-ns
-                        (fs/absolute? file-or-ns)
+                        (and (fs/absolute? file-or-ns)
+                             (not (str/starts-with? (fs/relativize (fs/cwd) file-or-ns) "..")))
                         (fs/relativize (fs/cwd)))))
 
         :else (str file-or-ns)))
@@ -190,7 +191,7 @@
 
 (defn ->file-or-ns [nav-path]
   (cond (str/starts-with? nav-path "'") (symbol (subs nav-path 1))
-        :else nav-path))
+        (re-find #"\.(cljc?|md)$" nav-path) nav-path))
 
 (defn show! [opts file-or-ns]
   ((resolve 'nextjournal.clerk/show!) opts file-or-ns))
@@ -211,14 +212,17 @@
        :headers {"Location" (or (:nav-path @!doc)
                                 (->nav-path 'nextjournal.clerk.home))}}
       :else
-      (do
-        (try (show! {:skip-history? true} (->file-or-ns nav-path))
-             (catch Exception _))
-        {:status 200
-         :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
-         :body (view/->html {:doc (view/doc->viewer @!doc)
-                             :resource->url @config/!resource->url
-                             :conn-ws? true})}))))
+      (if-let [file-or-ns (->file-or-ns nav-path)]
+        (do (try (show! {:skip-history? true} file-or-ns)
+                 (catch Exception _))
+            {:status 200
+             :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
+             :body (view/->html {:doc (view/doc->viewer @!doc)
+                                 :resource->url @config/!resource->url
+                                 :conn-ws? true})})
+        {:status 404
+         :headers {"Content-Type" "text/plain"}
+         :body (format "Could not find notebook at %s." (pr-str nav-path))}))))
 
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)

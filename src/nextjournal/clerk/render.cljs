@@ -148,13 +148,14 @@
     (when (= (.-search url) "?clerk/show!")
       (.preventDefault e)
       (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
-                        (cond-> {:nav-path (subs (.-pathname url) 1)}
+                        (cond-> {:nav-path (subs (js/decodeURI (.-pathname url)) 1)}
                           (seq (.-hash url))
                           (assoc :fragment (subs (.-hash url) 1))))))))
 
 (defn history-push-state [{:as opts :keys [path fragment replace?]}]
   (when (not= path (some-> js/history .-state .-path))
-    (j/call js/history (if replace? :replaceState :pushState) (clj->js opts) "" (str "/" path (when fragment (str "#" fragment))))  ))
+    (j/call js/history (if replace? :replaceState :pushState) (clj->js opts) "" (str (.. js/document -location -origin)
+                                                                                     "/" path (when fragment (str "#" fragment))))))
 
 (defn handle-history-popstate [^js e]
   (when-let [{:as opts :keys [path]} (js->clj (.-state e) :keywordize-keys true)]
@@ -327,7 +328,7 @@
       (cond-> viewer-css-class
         (string? viewer-css-class) vector)
       ["viewer"
-       (when (get-in x [:nextjournal/opts :fragment-item?]) "fragment-item")
+       (when (get-in x [:nextjournal/render-opts :fragment-item?]) "fragment-item")
        (when viewer-name (name viewer-name))
        (when inner-viewer-name (name inner-viewer-name))
        (case (or (viewer/width x)
@@ -394,8 +395,8 @@
 
 (defn inspect-children [opts]
   (map (fn [x] (cond-> [inspect-presented opts x]
-                 (get-in x [:nextjournal/opts :id])
-                 (with-meta {:key (str (get-in x [:nextjournal/opts :id]) "@" @!eval-counter)})))))
+                 (get-in x [:nextjournal/render-opts :id])
+                 (with-meta {:key (str (get-in x [:nextjournal/render-opts :id]) "@" @!eval-counter)})))))
 
 (def expand-style
   ["cursor-pointer"
@@ -603,7 +604,7 @@
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
        ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
        [(:render-fn viewer) value (merge opts
-                                         (:nextjournal/opts x)
+                                         (:nextjournal/render-opts x)
                                          {:viewer viewer :path path})]))))
 
 (defn inspect [value]
@@ -904,11 +905,11 @@
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
    [:path {:fill-rule "evenodd" :d "M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" :clip-rule "evenodd"}]])
 
-(defn render-code-block [code-string {:keys [id]}]
+(defn render-code-block [code-string {:as opts :keys [id]}]
   [:div.viewer.code-viewer.w-full.max-w-wide {:data-block-id id}
-   [code/render-code code-string]])
+   [code/render-code code-string (assoc opts :language "clojure")]])
 
-(defn render-folded-code-block [code-string {:keys [id]}]
+(defn render-folded-code-block [code-string {:as opts :keys [id]}]
   (let [!hidden? (hooks/use-state true)]
     (if @!hidden?
       [:div.relative.pl-12.font-sans.text-slate-400.cursor-pointer.flex.overflow-y-hidden.group
@@ -941,7 +942,7 @@
          {:class "text-[10px]"}
          "evaluated in 0.2s"]]
        [:div.code-viewer.mb-2.relative.code-viewer.w-full.max-w-wide {:data-block-id id :style {:margin-top 0}}
-        [render-code code-string]]])))
+        [render-code code-string (assoc opts :language "clojure")]]])))
 
 
 (defn url-for [{:as src :keys [blob-id]}]
