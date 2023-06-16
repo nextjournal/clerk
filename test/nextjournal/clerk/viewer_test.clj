@@ -228,13 +228,13 @@
              (-> after
                  (get-in (path-to-value [0 1 1]))
                  (get 2)
-                 :nextjournal/opts
+                 :nextjournal/render-opts
                  :closing-parens)))
       (is (= '(")" "}")
              (-> after
                  (get-in (path-to-value [1]))
                  (get 1)
-                 :nextjournal/opts
+                 :nextjournal/render-opts
                  :closing-parens))))))
 
 (defn tree-re-find [data re]
