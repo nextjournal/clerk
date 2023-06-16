@@ -125,7 +125,7 @@
 
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
-  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
+  * `:nextjournal.clerk/render-opts`: a map argument that will be passed as a secong arg to the viewers `:render-fn`"
   ([viewer x] (with-viewer viewer {} x))
   ([viewer viewer-opts x] (v/with-viewer viewer viewer-opts x)))
 
@@ -217,7 +217,7 @@
 
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
-  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
+  * `:nextjournal.clerk/render-opts`: a map argument that will be passed as a secong arg to the viewers `:render-fn`"
   ([x] (v/html x))
   ([viewer-opts x] (v/html viewer-opts x)))
 
@@ -228,7 +228,7 @@
 
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
-  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
+  * `:nextjournal.clerk/render-opts`: a map argument that will be passed as a secong arg to the viewers `:render-fn`"
   ([x] (v/md x))
   ([viewer-opts x] (v/md viewer-opts x)))
 
@@ -239,7 +239,7 @@
 
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
-  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
+  * `:nextjournal.clerk/render-opts`: a map argument that will be passed as a secong arg to the viewers `:render-fn`"
   ([x] (v/plotly x))
   ([viewer-opts x] (v/plotly viewer-opts x)))
 
@@ -254,7 +254,7 @@
 
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
-  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
+  * `:nextjournal.clerk/render-opts`: a map argument that will be passed as a secong arg to the viewers `:render-fn`"
   ([x] (v/vl x))
   ([viewer-opts x] (v/vl viewer-opts x)))
 
@@ -279,7 +279,7 @@
 
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
-  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
+  * `:nextjournal.clerk/render-opts`: a map argument that will be passed as a secong arg to the viewers `:render-fn`"
   ([xs] (v/table xs))
   ([viewer-opts xs] (v/table viewer-opts xs)))
 
@@ -292,7 +292,7 @@
 
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
-  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
+  * `:nextjournal.clerk/render-opts`: a map argument that will be passed as a secong arg to the viewers `:render-fn`"
   [& xs] (apply v/row xs))
 
 (defn col
@@ -304,7 +304,7 @@
 
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
-  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
+  * `:nextjournal.clerk/render-opts`: a map argument that will be passed as a secong arg to the viewers `:render-fn`"
   [& xs] (apply v/col xs))
 
 (defn tex
@@ -314,7 +314,7 @@
 
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
-  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
+  * `:nextjournal.clerk/render-opts`: a map argument that will be passed as a secong arg to the viewers `:render-fn`"
   ([x] (v/tex x))
   ([viewer-opts x] (v/tex viewer-opts x)))
 
@@ -351,7 +351,7 @@
 
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
-  * `:nextjournal.clerk/opts`: a map argument that will be passed to the viewers `:render-fn`"
+  * `:nextjournal.clerk/render-opts`: a map argument that will be passed as a secong arg to the viewers `:render-fn`"
   ([code-string-or-form] (v/code code-string-or-form))
   ([viewer-opts code-string-or-form] (v/code viewer-opts code-string-or-form)))
 

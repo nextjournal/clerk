@@ -16,6 +16,8 @@ Changes can be:
 
     * Support first-class `:add-viewers` attribute on viewer map which will do `clerk/add-viewers` before passing viewers down the tree. Use it in `table-viewer` and `markdown-viewer`. Both these viewers can now be customized more easily. For example, you can customize the `table-viewer` to show missing values differently, see [Book of Clerk](https://book.clerk.vision/#tables).
 
+* 🚨 Rename `:nextjournal.clerk/opts` to `:nextjournal.clerk/render-opts` to clarify this options map is available as the second arg to parametrize the `:render-fn`. Still support the `:nextjournal.clerk/opts` for now.
+
 * 💫 Assign `:name` to every viewer in `default-viewers`
 
 * 🐞 Show correct non-var return value for deflike form, fixes [#499](https://github.com/nextjournal/clerk/issues/499)
