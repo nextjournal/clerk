@@ -42,10 +42,11 @@ ALPHA, expect breaking changes.
 
 ## 👩‍🎨 Using Clerk
 
-To use Clerk in your project, add the following dependency to your `deps.edn`:
+To use Clerk in your project, you'll need Java 11+ and [`clojure`](https://clojure.org/guides/install_clojure). Add the
+following dependency to your `deps.edn`:
 
 ```edn
-{:deps {io.github.nextjournal/clerk {:mvn/version "0.13.842"}}}
+{:deps {io.github.nextjournal/clerk {:mvn/version "0.14.919"}}}
 ```
 
 Require and start Clerk as part of your system start, e.g. in `user.clj`:

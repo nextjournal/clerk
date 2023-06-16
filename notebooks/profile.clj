@@ -10,6 +10,8 @@
 (def parsed
   (parser/parse-file "notebooks/rule_30.clj"))
 
+
+
 (def analyzed
   (analyzer/analyze-doc parsed))
 
@@ -18,6 +20,8 @@
 (do (time (analyzer/build-graph analyzed)) :done)
 
 
+
+(prof/profile (analyzer/build-graph analyzed))
 
 (prof/profile (analyzer/build-graph analyzed))
 

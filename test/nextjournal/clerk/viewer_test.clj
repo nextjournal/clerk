@@ -83,6 +83,13 @@
     (let [value (v/html [:div [:ul [:li {:nextjournal/value (range 30)}]]])]
       (is (= (v/->value value) (v/->value (v/desc->values (resolve-elision (v/present value)))))))))
 
+(deftest default-viewers
+  (testing "viewers have names matching vars"
+    (doseq [[viewer-name viewer] (into {}
+                                       (map (juxt :name (comp deref resolve :name))) 
+                                       v/default-viewers)]
+      (is (= viewer-name (:name viewer))))))
+
 (deftest apply-viewers
   (testing "selects number viewer"
     (is (match? {:nextjournal/value 42

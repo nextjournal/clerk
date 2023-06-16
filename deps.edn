@@ -7,6 +7,7 @@
         borkdude/edamame {:mvn/version "1.0.16"}
         weavejester/dependency {:mvn/version "0.2.1"}
         com.nextjournal/beholder {:mvn/version "1.0.2"}
+        org.flatland/ordered {:mvn/version "1.15.11"}
 
         io.github.nextjournal/markdown {:mvn/version "0.5.144"}
         babashka/process {:mvn/version "0.4.16"}
@@ -24,7 +25,7 @@
 
         juji/editscript {:mvn/version "0.6.2"}}
 
- :aliases {:nextjournal/clerk {:extra-deps {org.clojure/clojure {:mvn/version "1.12.0-alpha3"} ;; for `:as-alias` support in static build
+ :aliases {:nextjournal/clerk {:extra-deps {org.clojure/clojure {:mvn/version "1.11.1"} ;; for `:as-alias` support in static build
                                             org.slf4j/slf4j-nop {:mvn/version "2.0.7"}
                                             org.babashka/cli {:mvn/version "0.6.50"}}
                                :extra-paths ["notebooks"]
@@ -36,7 +37,7 @@
 
            :sci {:extra-deps {io.github.nextjournal/clerk.render {:local/root "render"}}}
 
-           :dev {:extra-deps {org.clojure/clojure {:mvn/version "1.11.1"} ;; for `:as-alias` support but only in dev
+           :dev {:extra-deps {org.clojure/clojure {:mvn/version "1.12.0-alpha3"} ;; for `:as-alias` & `add-lib` support but only in dev
                               arrowic/arrowic {:mvn/version "0.1.1"}
                               binaryage/devtools {:mvn/version "1.0.3"}
                               cider/cider-nrepl {:mvn/version "0.29.0"}
@@ -68,6 +69,8 @@
                                org.clojure/data.csv {:mvn/version "1.0.0"}
                                hickory/hickory {:mvn/version "0.7.1"}
                                sicmutils/sicmutils {:mvn/version "0.20.0"}
+                               io.github.mentat-collective/emmy {:git/sha "b98fef51d80d3edcff3100562b929f9980ff34d7"
+                                                                 :exclusions [org.babashka/sci]}
                                io.github.nextjournal/clerk-slideshow {:git/sha "0e6e890fd4f862fa3535290cb7e29591c6e0ec85"}}}
 
            :build {:deps {io.github.nextjournal/clerk {:local/root "."}

@@ -8,4 +8,4 @@
         io.github.nextjournal/clojure-mode {:git/sha "ac038ebf6e5da09dd2b8a31609e9ff4a65e36852"}
         thheller/shadow-cljs {:mvn/version "2.23.1"}
         io.github.squint-cljs/cherry {;; :local/root "/Users/borkdude/dev/cherry"
-                                      :git/sha "ac27030016e5ae8f5280a62eaf81dfe0dc83924b"}}}
+                                      :git/sha "ac89d93f136ee8fab91f62949de5b5822ba08b3c"}}}

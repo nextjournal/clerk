@@ -70,11 +70,10 @@
           [:div
            [:div.flex
             [:div.viewer-code.flex-auto.w-80.mb-2 [nextjournal.clerk.render.code/editor !input]]
-            [:button.flex-none.bg-slate-100.mb-2.pl-2.pr-2
-             {:on-click click-handler}
-             "Compile!"]]
-           [:div.bg-slate-50
-            [nextjournal.clerk.render/render-code @!compiled]]
+            [:button.flex-none.rounded-md.border.border-slate-200.bg-slate-100.mb-2.pl-2.pr-2.font-sans
+             {:on-click click-handler} "Compile!"]]
+           [:div.bg-slate-100.p-2.border.border-slate-200
+            [nextjournal.clerk.render/render-code @!compiled {:language "js"}]]
            [nextjournal.clerk.render/inspect
             (try (js/eval @!compiled)
                  (catch :default e e))]])))}

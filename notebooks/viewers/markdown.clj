@@ -33,8 +33,8 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
 ;; > — Special Forms
 
 ;; ## Code Listings
-
-;; ```
+;; Clojure
+;; ```clj
 ;; {:name :code,
 ;;  :render-fn 'nextjournal.clerk.render/render-code,
 ;;  :transform-fn
@@ -45,7 +45,19 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
 ;;      [v]
 ;;      (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))}
 ;; ```
-
+;; APL
+;; ```apl
+;; numbers ← 1 2 3 4 5
+;; sum ← 0
+;; n ← ≢numbers  ⍝ Get the number of elements in the array
+;;
+;; :For i :In ⍳n
+;; sum ← sum + numbers[i]
+;; :End
+;;
+;; sum
+;; ```
+;;
 ;; ## Soft vs. Hard Line Breaks
 ;; This one ⇥
 ;; ⇤ is a [soft break](https://spec.commonmark.org/0.30/#soft-line-breaks) and is rendered as a space.

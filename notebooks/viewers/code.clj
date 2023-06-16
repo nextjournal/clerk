@@ -36,6 +36,22 @@ with     quite
                 some
    whitespace      ")
 
+;; Code in some other language, say Rust:
+(clerk/code {::clerk/opts {:language "rust"}}
+  "fn calculate_factorial(n: u32, result: &mut u32) {
+    if n == 0 {
+        *result = 1;
+    } else {
+        *result = n * calculate_factorial(n - 1, result);
+    }
+}
+fn main() {
+    let number = 5;
+    let mut result = 0;
+    calculate_factorial(number, &mut result);
+    println!(\"The factorial of {} is: {}\", number, result);
+}")
+
 ;; Editable code viewer
 (clerk/with-viewer
   '(fn [code-str _] [:div.viewer-code [nextjournal.clerk.render.code/editor (reagent.core/atom code-str)]])
