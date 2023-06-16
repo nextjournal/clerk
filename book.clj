@@ -39,6 +39,8 @@
 
 ;; ## 🚀 Getting Started
 
+;; Clerk requires Java 11 or newer and [`clojure`](https://clojure.org/guides/install_clojure) installed.
+
 ;; ### 🤹 Clerk Demo
 
 ;; When you're not yet familiar with Clerk, we recommend cloning and playing with the [nextjournal/clerk-demo](https://github.com/nextjournal/clerk-demo) repo.
