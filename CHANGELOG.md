@@ -18,6 +18,8 @@ Changes can be:
 
 * 💫 Assign `:name` to every viewer in `default-viewers`
 
+* 🐞 Show correct non-var return value for deflike form, fixes [#499](https://github.com/nextjournal/clerk/issues/499)
+
 ## 0.14.919 (2023-06-13)
 
 * 🚨 Breaking Changes:

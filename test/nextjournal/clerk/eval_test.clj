@@ -120,6 +120,12 @@
                           {:result {:nextjournal/value var?}}]}
                 (eval/eval-string "(def foo :bar) (var foo)"))))
 
+  (testing "definitions occurring in side effects from macro expansions should not end up wrapped in var-from-def maps as the cell result"
+    (is (= :my-value
+           (-> (eval/eval-string "(ns nextjournal.clerk.eval-test.def-side-effects {:nextjournal.clerk/no-cache true})
+(defmacro define [name val] `(do (def ~name ~val) ~val))
+(define my-value :my-value)") :blocks peek :result :nextjournal/value))))
+
   (testing "can handle unbounded sequences"
     (is (match? {:blocks [{:result {:nextjournal/value seq?}}]}
                 (eval/eval-string "(range)")))
