@@ -163,7 +163,7 @@
 
 (def viewer-opts-normalization
   "Normalizes ns for viewer opts keywords `:nextjournal.clerk/x` => `:nextjournal/x`"
-  (into {}
+  (into {:nextjournal/opts :nextjournal/render-opts}
         (map (juxt #(keyword "nextjournal.clerk" (name %))
                    #(keyword "nextjournal" (name %))))
         (conj parser/block-settings :viewer :viewers)))
@@ -179,8 +179,8 @@
                       {:width width :css-class css-class}))))
   opts)
 
-(defn normalize-viewer-opts [opts]
-  (throw-when-viewer-opts-invalid (set/rename-keys opts viewer-opts-normalization)))
+(defn normalize-viewer-opts [viewer-opts]
+  (throw-when-viewer-opts-invalid (set/rename-keys viewer-opts viewer-opts-normalization)))
 
 (defn normalize-viewer [viewer]
   (cond (keyword? viewer) viewer
@@ -330,12 +330,12 @@
     (with-viewer (keyword "nextjournal.markdown" (name type)) wrapped-value)))
 
 (defn into-markup [markup]
-  (fn [{:as wrapped-value :nextjournal/keys [viewers opts]}]
+  (fn [{:as wrapped-value :nextjournal/keys [viewers render-opts]}]
     (-> (with-viewer {:name `markdown-node-viewer :render-fn 'identity} wrapped-value)
         mark-presented
         (update :nextjournal/value
                 (fn [{:as node :keys [text content] ::keys [doc]}]
-                  (into (cond-> markup (fn? markup) (apply [(merge opts node)]))
+                  (into (cond-> markup (fn? markup) (apply [(merge render-opts node)]))
                         (cond text [text]
                               content (mapv #(-> (ensure-wrapped-with-viewers viewers (assoc % ::doc doc))
                                                  (with-md-viewer)
@@ -507,7 +507,7 @@
                                                                          opts-from-block
                                                                          (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value))
         presented-result (-> (present to-present)
-                             (update :nextjournal/opts
+                             (update :nextjournal/render-opts
                                      (fn [{:as opts existing-id :id}]
                                        (cond-> opts
                                          auto-expand-results? (assoc :auto-expand-results? auto-expand-results?)
@@ -574,7 +574,7 @@
 
 (defn md-image->viewer [doc block-id idx {:keys [attrs]}]
   (with-viewer `html-viewer
-    #?(:clj {:nextjournal/opts {:id (processed-block-id block-id [idx])}
+    #?(:clj {:nextjournal/render-opts {:id (processed-block-id block-id [idx])}
              :nextjournal/width (try (image-width (read-image (:src attrs)))
                                      (catch Throwable _ :prose))})
     [:div.flex.flex-col.items-center.not-prose.mb-4
@@ -598,7 +598,7 @@
                 (mapcat (fn [fragment]
                           (if (= :image (:type (first fragment)))
                             (map #(md-image->viewer doc id (swap! !idx inc) %) fragment)
-                            [(with-viewer `markdown-viewer {:nextjournal/opts {:id (processed-block-id id [(swap! !idx inc)])}}
+                            [(with-viewer `markdown-viewer {:nextjournal/render-opts {:id (processed-block-id id [(swap! !idx inc)])}}
                                (process-sidenotes {:type :doc
                                                    :content (vec fragment)
                                                    ::doc doc} doc))]))
@@ -610,8 +610,8 @@
             (cond-> []
               code?
               (conj (with-viewer (if fold? `folded-code-block-viewer `code-block-viewer)
-                      {:nextjournal/opts (assoc (select-keys cell [:loc])
-                                                :id (processed-block-id (str id "-code")))}
+                      {:nextjournal/render-opts (assoc (select-keys cell [:loc])
+                                                       :id (processed-block-id (str id "-code")))}
                       (dissoc cell :result)))
               (or result? eval?)
               (conj (cond-> (ensure-wrapped (-> cell (assoc ::doc doc) (set/rename-keys {:result ::result})))
@@ -719,7 +719,7 @@
     :transform-fn (update-val #(with-viewer `html-viewer
                                  [:div.code-viewer.code-listing
                                   (with-viewer `code-viewer
-                                    {:nextjournal/opts {:language (:language % "clojure")}}
+                                    {:nextjournal/render-opts {:language (:language % "clojure")}}
                                     (str/trim-newline (md.transform/->text %)))]))}
 
    ;; marks
@@ -886,7 +886,7 @@
   {:name `mathjax-viewer :render-fn 'nextjournal.clerk.render/render-mathjax :transform-fn mark-presented})
 
 (defn ->opts [wrapped-value]
-  (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/opts
+  (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/render-opts
                               :nextjournal/render-evaluator
                               :!budget :store!-wrapped-value :present-elision-fn :path :offset]))
 
@@ -935,7 +935,7 @@
   {:name `code-viewer
    :render-fn 'nextjournal.clerk.render/render-code
    :transform-fn (comp mark-presented
-                       #(update-in % [:nextjournal/opts :language] (fn [lang] (or lang "clojure")))
+                       #(update-in % [:nextjournal/render-opts :language] (fn [lang] (or lang "clojure")))
                        (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))})
 
 (def reagent-viewer
@@ -995,11 +995,11 @@
                      (-> wrapped-value
                          (assoc :nextjournal/viewer `table-markup-viewer)
                          (update :nextjournal/width #(or % :wide))
-                         (update :nextjournal/opts merge {:num-cols (count (or head (first rows)))
-                                                          :number-col? (into #{}
-                                                                             (comp (map-indexed vector)
-                                                                                   (keep #(when (number? (second %)) (first %))))
-                                                                             (not-empty (first rows)))})
+                         (update :nextjournal/render-opts merge {:num-cols (count (or head (first rows)))
+                                                                 :number-col? (into #{}
+                                                                                    (comp (map-indexed vector)
+                                                                                          (keep #(when (number? (second %)) (first %))))
+                                                                                    (not-empty (first rows)))})
                          (assoc :nextjournal/value (cond->> []
                                                      (seq rows) (cons (with-viewer `table-body-viewer (merge (-> applied-viewer
                                                                                                                  (select-keys [:page-size])

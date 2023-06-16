@@ -52,7 +52,7 @@
   #{:nextjournal.clerk/auto-expand-results?
     :nextjournal.clerk/budget
     :nextjournal.clerk/css-class
-    :nextjournal.clerk/opts
+    :nextjournal.clerk/render-opts
     :nextjournal.clerk/page-size
     :nextjournal.clerk/render-evaluator
     :nextjournal.clerk/visibility
