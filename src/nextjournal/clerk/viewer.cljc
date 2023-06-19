@@ -77,14 +77,18 @@
 
 #?(:clj
    (defmethod print-method ViewerFn [v ^java.io.Writer w]
-     (.write w (str "#viewer-fn" (when (= :cherry (:render-evaluator v))
-                                   "/cherry")
+     (.write w (str "#viewer-fn" (case (:render-evaluator v)
+                                   :cherry "/cherry"
+                                   :squint "/squint"
+                                   (nil :sci) "")
                     " " (pr-str (:form v))))))
 
 #?(:clj
    (defmethod print-method ViewerEval [v ^java.io.Writer w]
-     (.write w (str "#viewer-eval" (when (= :cherry (:render-evaluator v))
-                                     "/cherry")
+     (.write w (str "#viewer-eval" (case (:render-evaluator v)
+                                     :cherry "/cherry"
+                                     :squint "/squint"
+                                     (nil :sci) "")
                     " " (pr-str (:form v)))))
    :cljs
    (extend-type ViewerEval
