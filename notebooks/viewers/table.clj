@@ -30,7 +30,15 @@
        (group-by (comp keyword str/upper-case str first))
        (into (sorted-map))))
 
-(clerk/table {:nextjournal/width :full} letter->words)
+(clerk/table {::clerk/width :full} letter->words)
+
+;; ## Customize Page Size
+(clerk/table {::clerk/page-size 7} (map vector (range 1 26)))
+
+;; Or setting it on the viewer.
+(clerk/with-viewer (assoc v/table-viewer :page-size 7)
+  (map vector (range 1 26)))
+
 
 ;; ## Table Errors
 ;; The table viewer will perform normalization and show an error in case of failure:
@@ -67,13 +75,9 @@
 ;; ## Custom Table Viewers
 ;; override single table components
 
-(defn add-child-viewers [viewer viewers]
-  (update viewer :transform-fn (partial comp #(update % :nextjournal/viewers clerk/add-viewers viewers))))
-
 (def custom-table-viewer
-  (add-child-viewers v/table-viewer
-                     [(assoc v/table-head-viewer :transform-fn (v/update-val (partial map (comp (partial str "Column: ") str/capitalize name))))
-                      (assoc v/table-missing-viewer :render-fn '(fn [x] [:span.red "N/A"]))]))
+  (update v/table-viewer :add-viewers v/add-viewers [(assoc v/table-head-viewer :transform-fn (v/update-val (partial map (comp (partial str "Column: ") str/capitalize name))))
+                                                     (assoc v/table-missing-viewer :render-fn '(fn [x] [:span.red "N/A"]))]))
 
 (clerk/with-viewer custom-table-viewer
   {:col/a [1 2 3 4] :col/b [1 2 3] :col/c [1 2 3]})
@@ -84,7 +88,6 @@
                            comp (v/update-val (comp (fn [table] (update table :head (partial map (comp str/capitalize name))))
                                                     v/normalize-table-data)))
   {:a [1 2] :b [3 4]})
-
 
 ;; ## Nesting tables inside html
 (clerk/html [:div.bg-amber-100.p-2

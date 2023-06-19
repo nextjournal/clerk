@@ -8,6 +8,29 @@ Changes can be:
 
 ## Unreleased
 
+* 👁️ Improve viewer customization
+
+    * Simplify customization of number of rows displayed for table viewer using viewer-opts, e.g. `(clerk/table {::clerk/page-size 7})`. Pass `{::clerk/page-size nil}` to display elisions. Can also be passed a form metadata. Fixes [#406](https://github.com/nextjournal/clerk/issues/406).
+
+    * Change semantics of `clerk/add-viewers!` to perform in-place positional replacement of named added viewers. Anonymous viewers (without a `:name`) or new named viewers will be prepended to the viewer stack. Assign a symbol `:name` to all of `clerk/default-viewers`.
+
+    * Support first-class `:add-viewers` attribute on viewer map which will do `clerk/add-viewers` before passing viewers down the tree. Use it in `table-viewer` and `markdown-viewer`. Both these viewers can now be customized more easily. For example, you can customize the `table-viewer` to show missing values differently, see [Book of Clerk](https://book.clerk.vision/#tables).
+
+* 🚨 Rename `:nextjournal.clerk/opts` to `:nextjournal.clerk/render-opts` to clarify this options map is available as the second arg to parametrize the `:render-fn`. Still support the `:nextjournal.clerk/opts` for now.
+
+* 💫 Assign `:name` to every viewer in `default-viewers`
+
+* 🐞 Show correct non-var return value for deflike form, fixes [#499](https://github.com/nextjournal/clerk/issues/499)
+
+## 0.14.919 (2023-06-13)
+
+* 🚨 Breaking Changes:
+
+    * Change `nextjournal.clerk.render/clerk-eval` to not recompute the currently shown document when using the 1-arity version. Added a second arity that takes an opts map with a `:recompute?` key.
+
+    * Change `nextjournal.clerk/eval-cljs` to only take one form (like `clojure.core/eval`) but support viewer opts. If you want multiple forms to be evaluated, wrap them in a `do`.
+
+
 * 💈 Show execution progress
 
     To see what's going on while waiting for a long-running computation, Clerk will now show an execution status bar on the top. For named cells (defining a var) it will show the name of the var, for anonymous expressions, a preview of the form.
@@ -26,9 +49,13 @@ Changes can be:
 
     Lastly drop the location cache which is no longer needed.
 
-* 🍕 `clerk/fragment` for splicing a seq of values into the document as if it were produced by results of individual cells. Useful when programmatically generating content.
+* 🍕 Add `clerk/fragment` for splicing a seq of values into the document as if it were produced by results of individual cells. Useful when programmatically generating content.
 
-* 🚨 Change `nextjournal.clerk.render/clerk-eval` to not recompute the currently shown document when using the 1-arity version. Added a second arity that takes an opts map with a `:recompute?` key.
+* 🚰 Improve Tap Inspector
+
+    * Support customizing of `:nextjournal.clerk/width` and `:nextjournal.clerk/budget` for individual tapped values
+    * Fix re-rendering of tapped values by assigning stable react keys
+    * Build it on top of `clerk/fragment`
 
 * 🍒 Add support for cherry as an alternative to sci to evaluate `:render-fn`s. You can change it per form (using form metadata or viewer opts) or doc-wide (using ns metadata) with `{:nextjournal.clerk/render-evaluator :cherry}`.
 
@@ -55,6 +82,8 @@ Changes can be:
 * 💫 Support imported vars (e.g. by potemkin) in location analysis
 
     By considering `:file` on var meta in location analysis. Previously we would not find a location for vars where the namespace did not match the source file. As we're not caching negative findings this can speed up analysis for deps with a large number of imported vars significantly.
+    
+* 💫 Support serializing `#inst` and `#uuid` to render-fns
 
 * 🐜 Turn off analyzer pass for validation of `:type` tags, fixes [#488](https://github.com/nextjournal/clerk/issues/488) @craig-latacora
 

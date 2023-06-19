@@ -135,7 +135,8 @@
 
 (defn history-push-state [{:as opts :keys [path fragment replace?]}]
   (when (not= path (some-> js/history .-state .-path))
-    (j/call js/history (if replace? :replaceState :pushState) (clj->js opts) "" (str "/" path (when fragment (str "#" fragment))))  ))
+    (j/call js/history (if replace? :replaceState :pushState) (clj->js opts) "" (str (.. js/document -location -origin)
+                                                                                     "/" path (when fragment (str "#" fragment))))))
 
 (defn handle-history-popstate [^js e]
   (when-let [{:as opts :keys [path]} (js->clj (.-state e) :keywordize-keys true)]
@@ -281,7 +282,7 @@
       (cond-> viewer-css-class
         (string? viewer-css-class) vector)
       ["viewer"
-       (when (get-in x [:nextjournal/opts :fragment-item?]) "fragment-item")
+       (when (get-in x [:nextjournal/render-opts :fragment-item?]) "fragment-item")
        (when viewer-name (name viewer-name))
        (when inner-viewer-name (name inner-viewer-name))
        (case (or (viewer/width x)
@@ -348,8 +349,8 @@
 
 (defn inspect-children [opts]
   (map (fn [x] (cond-> [inspect-presented opts x]
-                 (get-in x [:nextjournal/opts :id])
-                 (with-meta {:key (str (get-in x [:nextjournal/opts :id]) "@" @!eval-counter)})))))
+                 (get-in x [:nextjournal/render-opts :id])
+                 (with-meta {:key (str (get-in x [:nextjournal/render-opts :id]) "@" @!eval-counter)})))))
 
 (def expand-style
   ["cursor-pointer"
@@ -571,7 +572,7 @@
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
        ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
        [(:render-fn viewer) value (merge opts
-                                         (:nextjournal/opts x)
+                                         (:nextjournal/render-opts x)
                                          {:viewer viewer :path path})]))))
 
 (defn inspect [value]

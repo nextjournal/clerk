@@ -130,16 +130,21 @@
                    (find-var var)
                    result)
           var-value (cond-> result (and var (var? result)) deref)
+          var-from-def? (and var (var? result) (= var (symbol result)))
           no-cache? (or ns-effect?
                         no-cache?
                         (boolean (seq @!interned-vars))
                         config/cache-disabled?)]
-      (when (and (not no-cache?) (not ns-effect?) freezable? (cachable-value? var-value))
+      (when (and (not no-cache?)
+                 (not ns-effect?)
+                 freezable?
+                 (cachable-value? var-value)
+                 (or (not var) var-from-def?))
         (cache! digest-file var-value))
       (let [blob-id (cond no-cache? (analyzer/->hash-str var-value)
                           (fn? var-value) nil
                           :else hash)
-            result (if var
+            result (if var-from-def?
                      (var-from-def var)
                      result)]
         (cond-> (wrapped-with-metadata result blob-id)

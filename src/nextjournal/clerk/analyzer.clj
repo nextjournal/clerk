@@ -164,6 +164,7 @@
                          (keep :var)
                          (map symbol))
                    nodes)
+
         var (when (and (= 1 (count vars))
                        (deflike? form))
               (first vars))
@@ -217,6 +218,7 @@
 #_(analyze '(intern *ns* 'foo :bar))
 #_(analyze '(import javax.imageio.ImageIO))
 #_(analyze '(defmulti foo :bar))
+#_(analyze '(declare a))
 #_(analyze '^{:nextjournal.clerk/hash-fn (fn [_] (clerk/valuehash (slurp "notebooks/hello.clj")))}
            (def contents
              (slurp "notebooks/hello.clj")))
