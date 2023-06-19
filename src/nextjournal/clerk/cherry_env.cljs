@@ -47,6 +47,7 @@
 
 (j/update-in! js/globalThis [:reagent :ratom] j/extend! (munge-ns-obj reagent-ratom-namespace))
 (j/assoc! js/globalThis :global_eval (fn [x]
+                                       ;; (prn :global-eval x)
                                        (js/eval.apply js/globalThis #js [x])))
 
 (def cherry-macros {'reagent.core {'with-let sci.configs.reagent/with-let}})

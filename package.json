@@ -36,7 +36,7 @@
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.0",
     "postcss": "^8.4.5",
-    "shadow-cljs": "^2.16.7",
+    "shadow-cljs": "^2.23.5",
     "tailwindcss": "^3.0.9"
   }
 }

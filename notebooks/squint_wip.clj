@@ -31,21 +31,23 @@
                      " computed the " n "th fibonacci number (" nth-fib ")"
                      " in " (js/Math.ceil (- time-after time-before) 2) "ms."]]))})
 
-(clerk/with-viewer fib-viewer 25)
+;; (clerk/with-viewer fib-viewer 25)
 
-;; You can opt into [cherry](https://github.com/squint-cljs/cherry) as an
-;; alternative evaluator by setting `{::clerk/render-evaluator :cherry}` via the
-;; viewers opts (see [Customizations](#customizations)). The main difference between cherry and SCI
-;; for viewer functions is performance. For performance-sensitive code cherry is
-;; better suited since it compiles directly to JavaScript code.
+;; ;; You can opt into [cherry](https://github.com/squint-cljs/cherry) as an
+;; ;; alternative evaluator by setting `{::clerk/render-evaluator :cherry}` via the
+;; ;; viewers opts (see [Customizations](#customizations)). The main difference between cherry and SCI
+;; ;; for viewer functions is performance. For performance-sensitive code cherry is
+;; ;; better suited since it compiles directly to JavaScript code.
 
-(clerk/with-viewer fib-viewer {::clerk/render-evaluator :cherry} 25)
+;; (clerk/with-viewer fib-viewer {::clerk/render-evaluator :cherry} 25)
 
-(clerk/with-viewer {:render-fn '(fn [n opts]
-                                  (let [fib (fn fib [x] (if (= x 10)
-                                                          :hello
-                                                          (fib (dec x))))]
-                                    (fib 20)))}
-  {::clerk/render-evaluator :squint} 25)
+;; (clerk/with-viewer {:render-fn '(fn [n opts]
+;;                                   (let [fib (fn fib [x]
+;;                                               (= 1 2)
+;;                                               (if (= x 10)
+;;                                                 :hello
+;;                                                 (fib (dec x))))]
+;;                                     (fib 20)))}
+;;   {::clerk/render-evaluator :squint} 25)
 
 #_(clerk/with-viewer fib-viewer {::clerk/render-evaluator :squint} 25)
