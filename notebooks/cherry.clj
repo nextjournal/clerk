@@ -1,4 +1,4 @@
-;; # 🍒 Compile viewer functions using cherry
+;; # 🍒Compile viewer functions using cherry
 (ns cherry
   {:nextjournal.clerk/render-evaluator :cherry
    :nextjournal.clerk/toc true}
@@ -20,7 +20,7 @@
                      (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3])))))])
   {:nextjournal.clerk/render-evaluator :sci} nil)
 
-;; ## ⏱️ Better performance:
+;; ## ⏱️Better performance:
 
 (clerk/with-viewer
   '(fn [value]

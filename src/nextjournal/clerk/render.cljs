@@ -34,13 +34,12 @@
 (defn reagent-atom? [x]
   (satisfies? ratom/IReactiveAtom x))
 
-(defn dark-mode-toggle [!state]
-  (let [{:keys [dark-mode?]} @!state
-        spring {:type :spring :stiffness 200 :damping 10}]
+(defn dark-mode-toggle [!dark-mode?]
+  (let [spring {:type :spring :stiffness 200 :damping 10}]
     [:div.relative.dark-mode-toggle
      [:button.text-slate-400.hover:text-slate-600.dark:hover:text-white.cursor-pointer
-      {:on-click #(swap! !state assoc :dark-mode? (not dark-mode?))}
-      (if dark-mode?
+      {:on-click #(swap! !dark-mode? not)}
+      (if @!dark-mode?
         [:> (.-svg m)
          {:xmlns "http://www.w3.org/2000/svg"
           :class "w-5 h-5 md:w-4 md:h-4"
@@ -89,14 +88,13 @@
       (.remove class-list "dark")))
   (localstorage/set-item! local-storage-dark-mode-key dark-mode?))
 
-(defn setup-dark-mode! [!state]
-  (let [{:keys [dark-mode?]} @!state]
-    (add-watch !state ::dark-mode
-               (fn [_ _ old {:keys [dark-mode?]}]
-                 (when (not= (:dark-mode? old) dark-mode?)
-                   (set-dark-mode! dark-mode?))))
-    (when dark-mode?
-      (set-dark-mode! dark-mode?))))
+(defn setup-dark-mode! [!dark-mode?]
+  (add-watch !dark-mode? ::dark-mode-watch
+             (fn [_ _ old dark-mode?]
+               (when (not= old dark-mode?)
+                 (set-dark-mode! dark-mode?))))
+  (when @!dark-mode?
+    (set-dark-mode! @!dark-mode?)))
 
 (defonce !eval-counter (r/atom 0))
 
@@ -144,72 +142,45 @@
     (.preventDefault e)
     (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path path :skip-history? true}))))
 
-(defn render-notebook [{:as _doc xs :blocks :keys [bundle? doc-css-class sidenotes? toc toc-visibility header footer]} opts]
-  (r/with-let [local-storage-key "clerk-navbar"
-               navbar-width 220
-               !state (r/atom (merge {:items toc
-                                      :visibility toc-visibility
-                                      :md-toc toc
-                                      :dark-mode? (localstorage/get-item local-storage-dark-mode-key)
-                                      :theme {:slide-over "bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900"}
-                                      :width navbar-width
-                                      :mobile? (and (exists? js/innerWidth) (< js/innerWidth 640))
-                                      :mobile-width 300
-                                      :local-storage-key local-storage-key
-                                      :set-hash? (not bundle?)
-                                      :scroll-el (when (exists? js/document) (js/document.querySelector "html"))
-                                      :open? (if-some [stored-open? (localstorage/get-item local-storage-key)]
-                                               stored-open?
-                                               (not= :collapsed toc-visibility))} opts))
+(defn render-notebook [{:as doc xs :blocks :keys [bundle? doc-css-class sidenotes? toc toc-visibility header footer]}
+                       {:as render-opts :keys [!expanded-at expandable-toc?]}]
+  (js/console.log "render-notebook" render-opts)
+  (r/with-let [!dark-mode? (r/atom (localstorage/get-item local-storage-dark-mode-key))
                root-ref-fn (fn [el]
                              (when (and el (exists? js/document))
-                               (setup-dark-mode! !state)
+                               (setup-dark-mode! !dark-mode?)
                                (when-some [heading (when (and (exists? js/location) (not bundle?))
                                                      (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
                                                           (catch js/Error _
                                                             (js/console.warn (str "Clerk render-notebook, invalid hash: "
                                                                                   (.-hash js/location))))))]
                                  (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
-    (let [{:keys [mobile? open? visibility] old-toc :toc} @!state
-          doc-inset (cond
-                      mobile? 0
-                      open? navbar-width
-                      :else 0)]
-      (when-not (= visibility toc-visibility)
-        (swap! !state assoc :visibility toc-visibility :open? (not= :collapsed toc-visibility)))
-
-      ;; FIXME: wth
-      (when-not (= old-toc toc) (swap! !state assoc :toc toc))
-      [:> LazyMotion {:features domAnimation}
-       [:div.flex
-        {:ref root-ref-fn}
-        [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
-         [dark-mode-toggle !state]]
-        (when (and toc toc-visibility)
-          [:<>
-           [navbar/toggle-button !state
-            [:<>
-             [:svg {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke "currentColor" :width 20 :height 20}
-              [:path {:stroke-linecap "round" :stroke-linejoin "round" :stroke-width "2" :d "M4 6h16M4 12h16M4 18h16"}]]
-             [:span.uppercase.tracking-wider.ml-1.font-bold
-              {:class "text-[12px]"} "ToC"]]
-            {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-[7px] text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
-           [navbar/panel !state [navbar/navbar !state]]])
-        [:div.flex-auto.w-screen.scroll-container
-         (into
-          [:> (.-div m)
-           (merge
-            {:key "notebook-viewer"
-             :class (cond-> (or doc-css-class [:flex :flex-col :items-center :notebook-viewer :flex-auto])
-                      sidenotes? (conj :sidenotes-layout))}
-            (when toc-visibility
-              {:initial (when toc-visibility {:margin-left doc-inset})
-               :animate (when toc-visibility {:margin-left doc-inset})
-               :transition navbar/spring}))]
-          ;; TODO: restore react keys via block-id
-          ;; ^{:key (str processed-block-id "@" @!eval-counter)}
-
-          (inspect-children opts) (concat (when header [header]) xs (when footer [footer])))]]])))
+    (when (and (not (:toc-open? @!expanded-at)) (not (navbar/mobile?)))
+      (swap! !expanded-at assoc :toc-open? (if-some [stored-open? (localstorage/get-item navbar/local-storage-key)]
+                                             stored-open?
+                                             (not= :collapsed toc-visibility))))
+    [:> LazyMotion {:features domAnimation}
+     [:div.flex
+      {:ref root-ref-fn}
+      [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
+       [dark-mode-toggle !dark-mode?]]
+      (when toc
+        [navbar/view toc (assoc render-opts :set-hash? (not bundle?))])
+      [:div.flex-auto.w-screen.scroll-container
+       (into
+        [:> (.-div m)
+         (merge
+          {:key "notebook-viewer"
+           :class (cond-> (or doc-css-class [:flex :flex-col :items-center :notebook-viewer :flex-auto])
+                    sidenotes? (conj :sidenotes-layout))}
+          (when (and toc (not (navbar/mobile?)))
+            (let [inset {:margin-left (if (:toc-open? @!expanded-at) navbar/width 0)}]
+              {:initial inset
+               :animate inset
+               :transition navbar/spring})))]
+        ;; TODO: restore react keys via block-id
+        ;; ^{:key (str processed-block-id "@" @!eval-counter)}
+        (inspect-children render-opts) (concat (when header [header]) xs (when footer [footer])))]]]))
 
 (defn opts->query [opts]
   (->> opts
