@@ -17,7 +17,6 @@
   just before a section instead of having it glued to the top of
   the viewport."
   [anchor]
-  (js/console.log anchor)
   (let [scroll-top (.. js/document -body -scrollTop)
         scroll-el (js/document.querySelector "html")
         offset 40]
@@ -42,11 +41,9 @@
         (.preventDefault event)
         (when set-hash?
           (.pushState js/history #js {} "" anchor))
-        (js/console.log "scroll to" anchor)
         (scroll-to-anchor! anchor)))))
 
 (defn render-items [items {:as render-opts :keys [!expanded-at expandable-toc? mobile-toc?]}]
-  (js/console.log render-opts)
   (into
    [:div]
    (map-indexed
@@ -167,7 +164,6 @@
     [render-items toc render-opts]]])
 
 (defn view [toc {:as render-opts :keys [!expanded-at]}]
-  (js/console.log "view" render-opts)
   (r/with-let [!mobile-toc? (r/atom (mobile?))
                handle-resize #(reset! !mobile-toc? (mobile?))
                ref-fn #(if %

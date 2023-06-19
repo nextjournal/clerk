@@ -144,7 +144,6 @@
 
 (defn render-notebook [{:as doc xs :blocks :keys [bundle? doc-css-class sidenotes? toc toc-visibility header footer]}
                        {:as render-opts :keys [!expanded-at expandable-toc?]}]
-  (js/console.log "render-notebook" render-opts)
   (r/with-let [!dark-mode? (r/atom (localstorage/get-item local-storage-dark-mode-key))
                root-ref-fn (fn [el]
                              (when (and el (exists? js/document))
