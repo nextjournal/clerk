@@ -1,7 +1,6 @@
 (ns nextjournal.clerk.squint-env
   (:refer-clojure :exclude [time])
   (:require [applied-science.js-interop :as j]
-            [squint.compiler :as squint]
             [cljs.math]
             [cljs.reader]
             [clojure.string :as str]
@@ -18,7 +17,8 @@
             [nextjournal.clojure-mode.keymap]
             [reagent.core :as reagent]
             [reagent.ratom :as ratom]
-            [sci.configs.reagent.reagent :as sci.configs.reagent]))
+            [sci.configs.reagent.reagent :as sci.configs.reagent]
+            [squint.compiler :as squint]))
 
 (declare eval-form)
 
@@ -37,9 +37,13 @@
          (js/console.error "error in viewer-eval" e)
          (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))
 
-(defn ^:export cherry-compile-string [s]
+(defn ^:export squint-compile-string [s]
   (squint/compile-string s))
 
+(def cherry-macros {'reagent.core {'with-let sci.configs.reagent/with-let}})
+
 (defn ^:export eval-form [f]
-  (js/global-eval (squint/compile-string
-                   (str f))))
+  (let [js-str (:body (squint/compile-string*
+                       (str f) {:context :expr
+                                :core-alias 'cljs.core}))]
+    (js/global-eval js-str {:macros cherry-macros})))

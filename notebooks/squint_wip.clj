@@ -1,5 +1,10 @@
-(ns scratch
+(ns squint-wip
+  {:nextjournal.clerk/cache false}
   (:require [nextjournal.clerk :as clerk]))
+
+#_(clerk/clear-cache!)
+#_(clerk/halt!)
+#_(clerk/serve! {:port 7777})
 
 ;; #### 🧙 Evaluator
 
@@ -20,9 +25,9 @@
                     time-after (js/performance.now)]
                    [:div
                     [:p
-                     (if (= :cherry (-> opts :viewer :render-evaluator))
-                       "Cherry"
-                       "SCI")
+                     (let [evaluator (or (-> opts :viewer :render-evaluator)
+                                         :sci)]
+                       (clojure.string/capitalize (name evaluator)))
                      " computed the " n "th fibonacci number (" nth-fib ")"
                      " in " (js/Math.ceil (- time-after time-before) 2) "ms."]]))})
 
@@ -36,4 +41,11 @@
 
 (clerk/with-viewer fib-viewer {::clerk/render-evaluator :cherry} 25)
 
-(clerk/with-viewer fib-viewer {::clerk/render-evaluator :squint} 25)
+(clerk/with-viewer {:render-fn '(fn [n opts]
+                                  (let [fib (fn fib [x] (if (= x 10)
+                                                          :hello
+                                                          (fib (dec x))))]
+                                    (fib 20)))}
+  {::clerk/render-evaluator :squint} 25)
+
+#_(clerk/with-viewer fib-viewer {::clerk/render-evaluator :squint} 25)

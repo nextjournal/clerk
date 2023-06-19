@@ -1774,8 +1774,8 @@
   * dropping the `(binding [*ns* *ns*] ,,,)`
   * rewriting `load-string`"
   [form]
-  (let [form-without-binding (last form)]
-    (if (and (list? form-without-binding) (= 'load-string (first form-without-binding)))
+  form #_(let [form-without-binding (last form)]
+    (if (and (seq? form-without-binding) (= 'load-string (first form-without-binding)))
       (list 'js/global_eval (list 'nextjournal.clerk.cherry-env/cherry-compile-string (second form-without-binding)))
       form-without-binding)))
 

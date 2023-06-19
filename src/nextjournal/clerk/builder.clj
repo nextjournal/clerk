@@ -192,7 +192,7 @@
            (maybe-add-index build-opts)
            (ensure-not-empty build-opts)))))
 
-#_(expand-paths {:paths ["notebooks/di*.clj"] :index "src/nextjournal/clerk/index.clj"})
+#_(time (expand-paths {:paths ["notebooks/di*.clj"] :index "src/nextjournal/clerk/index.clj"}))
 #_(expand-paths {:paths ['notebooks/rule_30.clj]})
 #_(expand-paths {:index "book.clj"})
 #_(expand-paths {:paths-fn `clerk-docs})
@@ -200,6 +200,12 @@
 #_(do (defn my-paths [] ["notebooks/h*.clj"])
       (expand-paths {:paths-fn `my-paths}))
 #_(expand-paths {:paths ["notebooks/viewers**"]})
+#_(time (expand-paths {:paths clerk-docs}))
+
+(count ["CHANGELOG.md" "README.md" "notebooks/markdown.md" "notebooks/markdown_fences.md" "notebooks/onwards.md" "notebooks/cards.clj" "notebooks/cherry.clj" "notebooks/controlling_width.clj" "notebooks/docs.clj" "notebooks/document_linking.clj" "notebooks/hello.clj" "notebooks/how_clerk_works.clj" "notebooks/exec_status.clj" "notebooks/eval_cljs.clj" "notebooks/example.clj" "notebooks/fragments.clj" "notebooks/hiding_clerk_metadata.clj" "notebooks/js_import.clj" "notebooks/multiviewer.clj" "notebooks/pagination.clj" "notebooks/paren_soup.clj" "notebooks/rule_30.clj" "notebooks/slideshow.clj" "notebooks/visibility.clj" "notebooks/viewer_api.clj" "notebooks/viewer_api_meta.clj" "notebooks/viewer_classes.clj" "notebooks/viewer_d3_require.clj" "notebooks/viewers_nested.clj" "notebooks/viewer_normalization.clj" "notebooks/viewers/by_val_meta.clj" "notebooks/viewers/caption.clj" "notebooks/viewers/code.clj" "notebooks/viewers/control_lab.clj" "notebooks/viewers/custom_markdown.clj" "notebooks/viewers/grid.clj" "notebooks/viewers/html.clj" "notebooks/viewers/image.clj" "notebooks/viewers/in_text_eval.clj" "notebooks/viewers/instants.clj" "notebooks/viewers/last_result.clj" "notebooks/viewers/markdown.clj" "notebooks/viewers/printing.clj" "notebooks/viewers/plotly.clj" "notebooks/viewers/table.clj" "notebooks/viewers/tex.clj" "notebooks/viewers/vega.clj"])
+
+(time (dotimes [_ 47]
+        (count (fs/glob "." "**"))))
 
 (defn process-build-opts [{:as opts :keys [paths index expand-paths?]}]
   (merge {:out-path default-out-path
