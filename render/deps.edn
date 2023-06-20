@@ -6,6 +6,6 @@
         reagent/reagent {:mvn/version "1.2.0"}
         io.github.babashka/sci.configs {:git/sha "0702ea5a21ad92e6d7cca6d36de84271083ea68f"}
         io.github.nextjournal/clojure-mode {:git/sha "ac038ebf6e5da09dd2b8a31609e9ff4a65e36852"}
-        thheller/shadow-cljs {:mvn/version "2.23.3"}
+        thheller/shadow-cljs {:mvn/version "2.23.8"}
         io.github.squint-cljs/cherry {;; :local/root "/Users/borkdude/dev/cherry"
                                       :git/sha "ac89d93f136ee8fab91f62949de5b5822ba08b3c"}}}
