@@ -160,7 +160,7 @@
       {:ref root-ref-fn}
       [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
        [dark-mode-toggle !dark-mode?]]
-      (when (not-empty toc)
+      (when (and toc toc-visibility)
         [navbar/view toc (assoc render-opts :set-hash? (not bundle?) :toc-visibility toc-visibility)])
       [:div.flex-auto.w-screen.scroll-container
        (into
@@ -170,7 +170,7 @@
            :class (cond-> (or doc-css-class [:flex :flex-col :items-center :notebook-viewer :flex-auto])
                     sidenotes? (conj :sidenotes-layout))}
           (when (and toc (not (navbar/mobile?)))
-            (let [inset {:margin-left (if (:toc-open? @!expanded-at) navbar/width 0)}]
+            (let [inset {:margin-left (if (and toc-visibility (:toc-open? @!expanded-at)) navbar/width 0)}]
               {:initial inset
                :animate inset
                :transition navbar/spring})))]
