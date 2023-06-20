@@ -98,12 +98,16 @@
 
 (defonce !eval-counter (r/atom 0))
 
-(defn exec-status [{:keys [progress status]}]
-  [:div.w-full.bg-purple-200.dark:bg-purple-900.rounded.z-20 {:class "h-0.5"}
-   [:div.bg-purple-600.dark:bg-purple-400 {:class "h-0.5" :style {:width (str (* progress 100) "%")}}]
-   [:div.absolute.text-purple-600.dark:text-white.text-xs.font-sans.ml-1.bg-white.dark:bg-purple-900.rounded-full.shadow.z-20.font-bold.px-2.border.border-slate-300.dark:border-purple-400
-    {:style {:font-size "0.5rem"} :class "left-[35px] md:left-0 mt-[7px] md:mt-1"}
-    status]])
+(defn exec-status [{:keys [progress cell-progress status]}]
+  [:<>
+   [:div.w-full.bg-purple-200.dark:bg-purple-900.rounded.z-20 {:class "h-[2px]"}
+    [:div.bg-purple-600.dark:bg-purple-400 {:class "h-[2px]" :style {:width (str (* progress 100) "%")}}]
+    [:div.absolute.text-purple-600.dark:text-white.text-xs.font-sans.ml-1.bg-white.dark:bg-purple-900.rounded-full.shadow.z-20.font-bold.px-2.border.border-slate-300.dark:border-purple-400
+     {:style {:font-size "0.5rem"} :class "left-[35px] md:left-0 mt-[7px] md:mt-1"}
+     status]]
+   (when cell-progress
+     [:div.w-full.bg-sky-100.dark:bg-purple-900.rounded.z-20 {:class "h-[2px] mt-[0.5px]"}
+      [:div.bg-sky-500.dark:bg-purple-400 {:class "h-[2px]" :style {:width (str (* cell-progress 100) "%")}}]])])5
 
 (defn connection-status [status]
   [:div.absolute.text-red-600.dark:text-white.text-xs.font-sans.ml-1.bg-white.dark:bg-red-800.rounded-full.shadow.z-20.font-bold.px-2.border.border-red-400
