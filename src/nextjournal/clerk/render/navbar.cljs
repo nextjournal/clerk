@@ -1,5 +1,5 @@
 (ns nextjournal.clerk.render.navbar
-  (:require ["framer-motion" :as framer-motion :refer [m AnimatePresence]]
+  (:require ["framer-motion" :as framer-motion :refer [motion AnimatePresence]]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
             [nextjournal.clerk.render.hooks :as hooks]
@@ -109,7 +109,7 @@
 (def spring {:type :spring :duration 0.35 :bounce 0.1})
 
 (defn mobile-backdrop [{:keys [!expanded-at]}]
-  [:> (.-div m)
+  [:> (.-div motion)
    {:key "mobile-toc-backdrop"
     :class "fixed z-10 bg-gray-500 bg-opacity-75 left-0 top-0 bottom-0 right-0"
     :initial {:opacity 0}
@@ -147,7 +147,7 @@
 (def mobile-width 300)
 
 (defn toc-panel [toc {:as render-opts :keys [!expanded-at mobile-toc?]}]
-  [:> (.-div m)
+  [:> (.-div motion)
    (let [inset-or-x (if mobile-toc? :x :margin-left)
          w (if mobile-toc? mobile-width width)]
      {:key "toc-panel"
@@ -165,16 +165,17 @@
      "TOC"]
     [render-items toc render-opts]]])
 
+(defn ->toc-expanded-at [toc toc-visibility]
+  {:toc-open? (if-some [stored-open? (localstorage/get-item local-storage-key)]
+                stored-open?
+                (not= :collapsed toc-visibility))
+   :toc (into {}
+              (map (juxt identity some?))
+              (keep #(when (and (map? %) (:expanded? %)) (:path %)) (tree-seq coll? not-empty toc)))})
+
 (defn view [toc {:as render-opts :keys [!expanded-at toc-visibility]}]
-  (hooks/use-effect
-   (fn []
-     (swap! !expanded-at assoc :toc-open? (if-some [stored-open? (localstorage/get-item local-storage-key)]
-                                           stored-open?
-                                           (not= :collapsed toc-visibility)))
-     (swap! !expanded-at assoc :toc (into {}
-                                         (map (juxt identity some?))
-                                         (keep #(when (and (map? %) (:expanded? %)) (:path %)) (tree-seq coll? not-empty toc)))))
-   [toc])
+  (hooks/use-effect (fn [] (swap! !expanded-at merge (->toc-expanded-at toc toc-visibility)))
+                    [toc toc-visibility])
   (r/with-let [!mobile-toc? (r/atom (mobile?))
                handle-resize #(reset! !mobile-toc? (mobile?))
                ref-fn #(if %
