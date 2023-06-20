@@ -41,13 +41,13 @@
 
 ;; (clerk/with-viewer fib-viewer {::clerk/render-evaluator :cherry} 25)
 
-;; (clerk/with-viewer {:render-fn '(fn [n opts]
-;;                                   (let [fib (fn fib [x]
-;;                                               (= 1 2)
-;;                                               (if (= x 10)
-;;                                                 :hello
-;;                                                 (fib (dec x))))]
-;;                                     (fib 20)))}
-;;   {::clerk/render-evaluator :squint} 25)
+(clerk/with-viewer {:render-fn '(fn [n opts]
+                                  (let [fib (fn fib [x]
+                                              (= 1 2)
+                                              (if (= x 10)
+                                                :hello
+                                                (fib (dec x))))]
+                                    (fib 20)))}
+  {::clerk/render-evaluator :squint} 25)
 
 #_(clerk/with-viewer fib-viewer {::clerk/render-evaluator :squint} 25)
