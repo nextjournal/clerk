@@ -447,8 +447,8 @@
       (when browse?
         (let [{:keys [host port]} @webserver/!server]
           (browse/browse-url (format "http://%s:%s" host port)))
-        (when (started-via-bb-cli? config)
-          @(promise)))))
+        )))
+  @(promise) ;; wait until user presses ctrl-c
   config)
 
 #_(serve! (with-meta {:help true} {:org.babashka/cli {}}))
