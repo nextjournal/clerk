@@ -20,6 +20,8 @@ Changes can be:
 
 * 📖 Improve Table of Contents design and fixing re-rendering issues. Also added suport for chapter expansion.
 
+* 📒 Mention Tap Inspector in Book of Clerk & on Homepage
+
 * 🛠 Upgrade `framer-motion` dep to `10.12.16`.
 
 * 💫 Assign `:name` to every viewer in `default-viewers`

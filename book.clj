@@ -132,8 +132,6 @@
 ;; nmap <silent> <localleader>cs :execute ClerkShow()<CR>
 ;; ```
 
-
-
 ;; ## 🔍 Viewers
 
 ;; Clerk comes with a number of useful built-in viewers e.g. for
@@ -912,6 +910,20 @@ v/table-viewer
 ;; In order to not send too much data to the browser, Clerk uses a per-result budget to limit. You can see this budget in action above. Use the `:nextjournal.clerk/budget` key to change its default value of `200` or disable it completely using `nil`.
 
 ^{::clerk/budget nil ::clerk/auto-expand-results? true} rows
+
+;; ## 🚰 Tap Inspector
+
+;; Clerk comes with an inspector notebook for Clojure's tap system. Use the following form from your REPL to show it.
+
+;;```clojure
+;;(nextjournal.clerk/show! 'nextjournal.clerk.tap)
+;;```
+
+;; You can then call `tap>` from anywhere in your codebase and the Tap Inspector will show your value. This supports the full viewer api described above.
+
+;;```clojure
+;;(tap> (clerk/html [:h1 "Hello 🚰 Tap Inspector 👋"]))
+;;```
 
 ;; ## 🧱 Static Building
 
