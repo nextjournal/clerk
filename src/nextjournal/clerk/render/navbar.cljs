@@ -17,8 +17,8 @@
   just before a section instead of having it glued to the top of
   the viewport."
   [anchor]
-  (let [scroll-top (.. js/document -body -scrollTop)
-        scroll-el (js/document.querySelector "html")
+  (let [scroll-el (js/document.querySelector "html")
+        scroll-top (.-scrollTop scroll-el)
         offset 40]
     (when-let [anim @!scroll-animation]
       (.stop anim))
@@ -35,9 +35,10 @@
 (defn navigate-or-scroll! [event {:as item :keys [path]} {:keys [set-hash?]}]
   (let [[path-name search] (.split path "?")
         current-path-name (.-pathname js/location)
+        anchor-only? (str/starts-with? path-name "#")
         [_ hash] (some-> search (.split "#"))]
-    (when (and search hash (= path-name current-path-name))
-      (let [anchor (str "#" hash)]
+    (when (or (and search hash (= path-name current-path-name)) anchor-only?)
+      (let [anchor (if anchor-only? path-name (str "#" hash))]
         (.preventDefault event)
         (when set-hash?
           (.pushState js/history #js {} "" anchor))
