@@ -31,7 +31,6 @@
   (update v/notebook-viewer
           :transform-fn (fn [original-transform]
                           (fn [wrapped-value]
-                            (println :doc (:file (v/->value wrapped-value)))
                             (-> wrapped-value
                                 original-transform
                                 (assoc :nextjournal/render-opts {:expandable-toc? true})
