@@ -20,7 +20,10 @@ Changes can be:
 
 * 💫 Assign `:name` to every viewer in `default-viewers`
 
+* 🐞 Don't run existing files through `fs/glob`, fixes [#504](https://github.com/nextjournal/clerk/issues/504). Also improves performance of homepage.
+
 * 🐞 Show correct non-var return value for deflike form, fixes [#499](https://github.com/nextjournal/clerk/issues/499)
+
 
 ## 0.14.919 (2023-06-13)
 
