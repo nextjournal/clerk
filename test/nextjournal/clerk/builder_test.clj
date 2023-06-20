@@ -58,6 +58,10 @@
            (builder/expand-paths {:paths ["notebooks/rule_**.clj"]
                                   :index (str (fs/file "notebooks" "rule_30.clj"))}))))
 
+  (testing "supports absolute paths (#504)"
+    (is (= {:expanded-paths [(str (fs/file (fs/cwd) "book.clj"))]}
+           (builder/expand-paths {:paths [(str (fs/file (fs/cwd) "book.clj"))]}))))
+
   (testing "invalid args"
     (is (match? {:error #"must set either"}
                 (builder/expand-paths {})))
