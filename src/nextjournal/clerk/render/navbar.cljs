@@ -77,7 +77,7 @@
                             (swap! !expanded-at assoc :toc-open? false)))}
              (when emoji
                [:span.flex-shrink-0 emoji])
-             [:span (if emoji (subs label (count emoji)) label)]]
+             [:span label]]
             (when (and expandable-toc? expanded?)
               [:span.absolute.bottom-0.border-l.border-slate-300.dark:border-slate-600
                {:class "top-[25px] left-[10px]"}])]
@@ -90,7 +90,7 @@
                            (swap! !expanded-at assoc :toc-open? false)))}
             (when emoji
               [:span.flex-shrink-0 emoji])
-            [:span (if emoji (subs label (count emoji)) label)]])
+            [:span label]])
          (when (and (seq items) (or (not expandable-toc?) (and expandable-toc? expanded?)))
            [:div.relative
             {:class (str (if expandable-toc? "ml-[16px] " "ml-[19px] ")

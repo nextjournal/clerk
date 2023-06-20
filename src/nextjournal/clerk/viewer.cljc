@@ -1165,17 +1165,10 @@
 
 (defn md-toc->navbar-items [{:keys [children]}]
   (mapv (fn [{:as node :keys [emoji attrs]}]
-          {:title (md.transform/->text node)
-           :expanded? true
+          {:title (str/replace (md.transform/->text node) (re-pattern (str "^" emoji "[ ]?")) "")
            :emoji emoji
            :path (str "#" (:id attrs))
            :items (md-toc->navbar-items node)}) children))
-
-;; TODO
-(def toc-viewer
-  {:name `toc-viewer
-   :transform-fn (comp mark-presented md-toc->navbar-items :toc)
-   :render-fn 'nextjournal.clerk.render/render-toc})
 
 (comment #?(:clj (nextjournal.clerk/recompute!)))
 
@@ -1190,8 +1183,6 @@
 
       (update :toc md-toc->navbar-items)
       (update :file str)
-      #_#_ TODO (full customization ?)
-      #_ (assoc :toc (present (with-viewers viewers (with-viewer `toc-viewer doc))))
 
       (select-keys [:atom-var-name->state
                     :blocks :bundle?
