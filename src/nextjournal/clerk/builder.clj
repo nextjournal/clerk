@@ -186,7 +186,9 @@
     (if error
       opts
       (->> resolved-paths
-           (mapcat (partial fs/glob "."))
+           (mapcat (fn [path] (if (fs/exists? path)
+                                [path]
+                                (fs/glob "." path))))
            (filter (complement fs/directory?))
            (mapv (comp str fs/file))
            (hash-map :expanded-paths)
@@ -198,7 +200,7 @@
 #_(expand-paths {:index "book.clj"})
 #_(expand-paths {:paths-fn `clerk-docs})
 #_(expand-paths {:paths-fn `clerk-docs-2})
-#_(do (defn my-paths [] ["notebooks/h*.clj"])
+#_(do (defn my-paths [] ["notebooks/h*.clj"])§
       (expand-paths {:paths-fn `my-paths}))
 #_(expand-paths {:paths ["notebooks/viewers**"]})
 
