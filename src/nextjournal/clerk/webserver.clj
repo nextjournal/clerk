@@ -260,8 +260,8 @@
 
 (defn set-status! [status]
   (swap! !doc (fn [doc] (-> (or doc (help-doc))
-                           (vary-meta assoc :status status)
-                           (vary-meta update ::!send-status-future broadcast-status-debounced! status)))))
+                            (vary-meta assoc :status status)
+                            (vary-meta update ::!send-status-future broadcast-status-debounced! status)))))
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
 

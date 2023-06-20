@@ -137,7 +137,7 @@
 }
 @media (min-width: 960px){
     .notebook-viewer .code-viewer .cm-content {
-        @apply pb-2 pl-12;
+        @apply pl-12;
     }
     .notebook-viewer .code-listing {
         width: 48rem !important;

@@ -1,7 +1,8 @@
 ;; # 💈 Execution Status
 (ns exec-status
   {:nextjournal.clerk/toc true}
-  (:require [nextjournal.clerk :as clerk]))
+  (:require [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.webserver :as webserver]))
 
 ;; To see what's going on while waiting for a long-running
 ;; computation, Clerk will now show an execution status bar on the
@@ -25,9 +26,20 @@
 
 {:progress 0.15 :status "Analyzing…"}
 
-{:progress 0.55 :status "Evaluating…"}
+{:progress 0.55 :cell-progress 0.34 :status "Evaluating…"}
 
 {:progress 0.95 :status "Presenting…"}
+
+(defn set-cell-progress! [progress]
+  (swap! webserver/!doc (fn [doc] (if-let [status (-> doc meta :status)]
+                                    (let [status+progress (assoc status :cell-progress progress)]
+                                      (when-let [send-future (-> doc meta ::webserver/!send-status-future)]
+                                        (future-cancel send-future))
+                                      (webserver/broadcast-status! status+progress)
+                                      (-> doc
+                                          (vary-meta dissoc ::!send-status-future)
+                                          (vary-meta assoc :status status+progress)))
+                                    doc))))
 
 (defonce !rand
   (atom 0))
@@ -36,9 +48,15 @@
 (Thread/sleep (+ 2000 @!rand))
 
 (def sleepy-cell
-  (Thread/sleep (+ 2001 @!rand)))
+  (let [total (+ 2001 @!rand)]
+    (doseq [i (range total)]
+      (do
+        (Thread/sleep 10)
+        (set-cell-progress! (/ i (float total)))))))
 
 (Thread/sleep (+ 2002 @!rand))
 
 (def sleepy-cell-2
   (Thread/sleep (+ 2003 @!rand)))
+
+

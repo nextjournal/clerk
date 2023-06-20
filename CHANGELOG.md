@@ -18,12 +18,17 @@ Changes can be:
 
 * 🚨 Rename `:nextjournal.clerk/opts` to `:nextjournal.clerk/render-opts` to clarify this options map is available as the second arg to parametrize the `:render-fn`. Still support the `:nextjournal.clerk/opts` for now.
 
+* 📖 Improve Table of Contents design and fixing re-rendering issues. Also added suport for chapter expansion.
+
+* 📒 Mention Tap Inspector in Book of Clerk & on Homepage
+
+* 🛠 Upgrade `framer-motion` dep to `10.12.16`.
+
 * 💫 Assign `:name` to every viewer in `default-viewers`
 
 * 🐞 Don't run existing files through `fs/glob`, fixes [#504](https://github.com/nextjournal/clerk/issues/504). Also improves performance of homepage.
 
 * 🐞 Show correct non-var return value for deflike form, fixes [#499](https://github.com/nextjournal/clerk/issues/499)
-
 
 ## 0.14.919 (2023-06-13)
 

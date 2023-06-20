@@ -1,6 +1,6 @@
 ;; # How Clerk Works 🕵🏻‍♀️
-^{:nextjournal.clerk/toc true}
 (ns how-clerk-works
+  {:nextjournal.clerk/toc true}
   (:require [next.jdbc :as jdbc]
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.parser :as parser]
