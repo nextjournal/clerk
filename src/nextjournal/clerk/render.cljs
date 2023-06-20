@@ -160,7 +160,7 @@
       {:ref root-ref-fn}
       [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
        [dark-mode-toggle !dark-mode?]]
-      (when toc
+      (when (not-empty toc)
         [navbar/view toc (assoc render-opts :set-hash? (not bundle?) :toc-visibility toc-visibility)])
       [:div.flex-auto.w-screen.scroll-container
        (into

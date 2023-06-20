@@ -70,7 +70,7 @@
                 [:path {:stroke-linecap "round" :stroke-linejoin "round" :d "M8.25 4.5l7.5 7.5-7.5 7.5"}]]])
             [:a.py-1.flex.flex-auto.gap-1.group-hover:text-indigo-700.dark:group-hover:text-white.hover:underline.decoration-indigo-300.dark:decoration-slate-400.underline-offset-2
              {:href path
-              :class (when expanded? "font-medium")
+              :class (when (and expandable-toc? expanded?) "font-medium")
               :on-click (fn [event]
                           (navigate-or-scroll! event item render-opts)
                           (when mobile-toc?
@@ -78,7 +78,7 @@
              (when emoji
                [:span.flex-shrink-0 emoji])
              [:span (if emoji (subs label (count emoji)) label)]]
-            (when expanded?
+            (when (and expandable-toc? expanded?)
               [:span.absolute.bottom-0.border-l.border-slate-300.dark:border-slate-600
                {:class "top-[25px] left-[10px]"}])]
            [:a.flex.flex-auto.gap-1.py-1.rounded.hover:bg-slate-200.dark:hover:bg-slate-900.hover:text-indigo-700.dark:hover:text-white.hover:underline.decoration-indigo-300.dark:decoration-slate-400.underline-offset-2.transition
@@ -95,7 +95,7 @@
            [:div.relative
             {:class (str (if expandable-toc? "ml-[16px] " "ml-[19px] ")
                          (when expanded? "mb-2"))}
-            (when expanded?
+            (when (and expandable-toc? expanded?)
               [:span.absolute.top-0.border-l.border-slate-300.dark:border-slate-600
                {:class "left-[2px] bottom-[8px]"}])
             [render-items items render-opts]])]))
