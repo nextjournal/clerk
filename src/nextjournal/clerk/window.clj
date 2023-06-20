@@ -35,9 +35,12 @@
   ([id]
    (case id
      ::clerk/taps (open! id {:title "🚰 Taps" :css-class "p-0 relative overflow-auto"}
-                   (v/with-viewers (v/add-viewers [tap/tap-viewer])
-                     (v/with-viewer taps-viewer {:nextjournal/opts {:taps-view @!taps-view}}
-                       @tap/!taps)))))
+                         (v/with-viewers (v/add-viewers [tap/tap-viewer])
+                           (v/with-viewer taps-viewer {:nextjournal/opts {:taps-view @!taps-view}}
+                             @tap/!taps)))
+     ::clerk/sci-repl (open! id {:title "SCI REPL" :css-class "p-0 relative overflow-auto"}
+                             (v/with-viewer {:render-fn 'nextjournal.clerk.render.window/sci-repl
+                                             :transform-fn clerk/mark-presented} nil))))
   ([id content] (open! id {} content))
   ([id opts content]
    ;; TODO: consider calling v/transform-result

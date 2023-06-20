@@ -1,6 +1,16 @@
 (ns nextjournal.clerk.render.window
-  (:require [applied-science.js-interop :as j]
-            [nextjournal.clerk.render.hooks :as hooks]))
+  (:require ["@codemirror/view" :as cm-view :refer [keymap highlightActiveLine]]
+            [applied-science.js-interop :as j]
+            [clojure.string :as str]
+            [nextjournal.clerk.render.code :as code]
+            [nextjournal.clerk.render.hooks :as hooks]
+            [nextjournal.clerk.sci-env.completions :as completions]
+            [nextjournal.clojure-mode.extensions.eval-region :as eval-region]
+            [sci.core :as sci]
+            [sci.ctx-store]))
+
+(defn inspect-fn []
+  @(resolve 'nextjournal.clerk.render/inspect))
 
 (defn resizer [{:keys [on-resize on-resize-start on-resize-end] :or {on-resize-start #() on-resize-end #()}}]
   (let [!direction (hooks/use-state nil)
@@ -121,6 +131,64 @@
       (j/assoc-in! [:style :height] "calc(100vh - 10px)")
       (j/assoc-in! [:style :top] "5px")
       (j/assoc-in! [:style :left] "5px")))
+
+(defn eval-string
+  ([source] (sci/eval-string* (sci.ctx-store/get-ctx) source))
+  ([ctx source]
+   (when-some [code (not-empty (str/trim source))]
+     (try {:result (sci/eval-string* ctx code)}
+          (catch js/Error e
+            {:error (str (.-message e))})))))
+
+(j/defn eval-at-cursor [on-result ^:js {:keys [state]}]
+  (some->> (eval-region/cursor-node-string state)
+           (eval-string)
+           (on-result))
+  true)
+
+(j/defn eval-top-level [on-result ^:js {:keys [state]}]
+  (some->> (eval-region/top-level-string state)
+           (eval-string)
+           (on-result))
+  true)
+
+(j/defn eval-cell [on-result ^:js {:keys [state]}]
+  (-> (.-doc state)
+      (str)
+      (eval-string)
+      (on-result))
+  true)
+
+(defn sci-extension [{:keys [modifier on-result]}]
+  (.of cm-view/keymap
+       (j/lit
+        [{:key "Mod-Enter"
+          :run (partial eval-cell on-result)}
+         {:key (str modifier "-Enter")
+          :shift (partial eval-top-level on-result)
+          :run (partial eval-at-cursor on-result)}])))
+
+(defn sci-repl []
+  (let [!code-str (hooks/use-state "")
+        !results (hooks/use-state ())]
+    [:div.flex.flex-col.bg-gray-50
+     [:div.w-full.border-t.border-b.border-slate-300.shadow-inner.px-2.py-1.bg-slate-100
+      [code/editor !code-str {:extensions #js [(.of keymap nextjournal.clojure-mode.keymap/paredit)
+                                               completions/completion-source
+                                               (sci-extension {:modifier "Alt"
+                                                               :on-result #(swap! !results conj {:result %
+                                                                                                 :evaled-at (js/Date.)
+                                                                                                 :react-key (gensym)})})]}]]
+     (into
+      [:div.w-full.flex-auto.overflow-auto]
+      (map (fn [{:as r :keys [result evaled-at react-key]}]
+             ^{:key react-key}
+             [:div.border-b.px-2.py-2.text-xs.font-mono
+              [:div.font-mono.text-slate-40.flex-shrink-0.text-right
+               {:class "text-[9px]"}
+               (str (first (.. evaled-at toTimeString (split " "))) ":" (.getMilliseconds evaled-at))]
+              [(inspect-fn) result]]))
+      @!results)]))
 
 (defn show
   ([content] (show content {}))

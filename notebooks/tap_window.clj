@@ -45,4 +45,5 @@
                    :encoding {:x {:field "a" :type "nominal" :axis {:labelAngle 0}}
                               :y {:field "b" :type "quantitative"}}}))
   (tap> 1)
-  (tap/reset-taps!))
+  (tap/reset-taps!)
+  (clerk/window! ::clerk/sci-repl))
