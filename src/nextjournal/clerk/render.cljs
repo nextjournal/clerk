@@ -155,17 +155,13 @@
                                                             (js/console.warn (str "Clerk render-notebook, invalid hash: "
                                                                                   (.-hash js/location))))))]
                                  (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
-    (when (and (not (:toc-open? @!expanded-at)) (not (navbar/mobile?)))
-      (swap! !expanded-at assoc :toc-open? (if-some [stored-open? (localstorage/get-item navbar/local-storage-key)]
-                                             stored-open?
-                                             (not= :collapsed toc-visibility))))
     [:> LazyMotion {:features domAnimation}
      [:div.flex
       {:ref root-ref-fn}
       [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
        [dark-mode-toggle !dark-mode?]]
       (when toc
-        [navbar/view toc (assoc render-opts :set-hash? (not bundle?))])
+        [navbar/view toc (assoc render-opts :set-hash? (not bundle?) :toc-visibility toc-visibility)])
       [:div.flex-auto.w-screen.scroll-container
        (into
         [:> (.-div m)

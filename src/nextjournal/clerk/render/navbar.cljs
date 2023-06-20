@@ -1,8 +1,9 @@
 (ns nextjournal.clerk.render.navbar
   (:require ["framer-motion" :as framer-motion :refer [m AnimatePresence]]
-            [nextjournal.clerk.render.localstorage :as localstorage]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
+            [nextjournal.clerk.render.hooks :as hooks]
+            [nextjournal.clerk.render.localstorage :as localstorage]
             [reagent.core :as r]))
 
 (defn stop-event! [event]
@@ -50,7 +51,7 @@
    (map-indexed
     (fn [i {:as item :keys [emoji path title items]}]
       (let [label (or title (str/capitalize (last (str/split path #"/"))))
-            expanded? (get @!expanded-at path)]
+            expanded? (get-in @!expanded-at [:toc path])]
         [:div.text-base.leading-normal.dark:text-white
          {:class "md:text-[14px]"}
          (if (seq items)
@@ -62,7 +63,7 @@
                {:class "w-[18px] h-[18px] top-[5px]"
                 :on-click (fn [event]
                             (stop-event! event)
-                            (swap! !expanded-at update path not))}
+                            (swap! !expanded-at update-in [:toc path] not))}
                [:svg.w-3.h-3.transition
                 {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke-width "1.5" :stroke "currentColor"
                  :class (if expanded? "rotate-90" "rotate-0")}
@@ -164,7 +165,16 @@
      "TOC"]
     [render-items toc render-opts]]])
 
-(defn view [toc {:as render-opts :keys [!expanded-at]}]
+(defn view [toc {:as render-opts :keys [!expanded-at toc-visibility]}]
+  (hooks/use-effect
+   (fn []
+     (swap! !expanded-at assoc :toc-open? (if-some [stored-open? (localstorage/get-item local-storage-key)]
+                                           stored-open?
+                                           (not= :collapsed toc-visibility)))
+     (swap! !expanded-at assoc :toc (into {}
+                                         (map (juxt identity some?))
+                                         (keep #(when (and (map? %) (:expanded? %)) (:path %)) (tree-seq coll? not-empty toc)))))
+   [toc])
   (r/with-let [!mobile-toc? (r/atom (mobile?))
                handle-resize #(reset! !mobile-toc? (mobile?))
                ref-fn #(if %

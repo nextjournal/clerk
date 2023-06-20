@@ -1,6 +1,6 @@
 ;; # 📕 Cross-Document Table of Contents
 (ns cross-document-toc
-  {:nextjournal.clerk/toc true }
+  {:nextjournal.clerk/toc true}
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.markdown.transform :as md.transform]
@@ -14,11 +14,9 @@
    "notebooks/document_linking.clj"])
 
 (defn md-toc->navbar-items [current-notebook file {:keys [children]}]
-  (println :expanded? (= current-notebook file))
   (mapv (fn [{:as item :keys [emoji attrs]}]
           {:title (md.transform/->text item)
            :expanded? (= current-notebook file)
-           :scroll-to-anchor? false
            :emoji emoji
            :path (clerk/doc-url file (:id attrs))
            :items (md-toc->navbar-items current-notebook file item)}) children))
@@ -46,15 +44,3 @@
 (clerk/reset-viewers! :default
                       (clerk/add-viewers (clerk/get-default-viewers)
                                          [book-viewer]))
-
-;; ## Expandable
-
-(clerk/with-viewer {:render-fn 'nextjournal.clerk.render.navbar/render-items
-                    :transform-fn clerk/mark-presented}
-  (meta-toc "notebooks/how_clerk_works.clj" notebooks))
-
-
-
-#_(clerk/with-viewer {:render-fn 'nextjournal.clerk.render.navbar/toc-items
-                      :transform-fn clerk/mark-presented}
-    (meta-toc "notebooks/how_clerk_works.clj" notebooks))
