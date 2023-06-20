@@ -446,7 +446,9 @@
                           :watcher (apply beholder/watch #(file-event %) watch-paths)}))
       (when browse?
         (let [{:keys [host port]} @webserver/!server]
-          (browse/browse-url (format "http://%s:%s" host port))))))
+          (browse/browse-url (format "http://%s:%s" host port)))
+        (when (started-via-bb-cli? config)
+          @(promise)))))
   config)
 
 #_(serve! (with-meta {:help true} {:org.babashka/cli {}}))
