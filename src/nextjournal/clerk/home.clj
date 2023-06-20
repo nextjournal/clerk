@@ -170,8 +170,8 @@
     [:a.ml-3 {:href "#"} "🙈 Controlling Visibility"]]]
   #_[:div.mt-6
      (clerk/with-viewer filter-input-viewer `!filter)]
-  [:div.flex.mt-6.border-t.font-sans
-   [:div {:class (str "w-1/2 pt-6 " (when-not (seq @!filter) "pr-6 border-r"))}
+  [:div.flex.mt-6.border-t.dark:border-slate-700.font-sans
+   [:div {:class (str "w-1/2 pt-6 " (when-not (seq @!filter) "pr-6 border-r dark:border-slate-700"))}
     [:h4.text-lg "All Notebooks"]
     (let [{:keys [query selected-path]} @!filter]
       (clerk/with-viewer index-viewer {:paths (filter (partial query-fn query) @!notebooks)
