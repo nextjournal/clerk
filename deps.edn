@@ -27,7 +27,7 @@
 
  :aliases {:nextjournal/clerk {:extra-deps {org.clojure/clojure {:mvn/version "1.11.1"} ;; for `:as-alias` support in static build
                                             org.slf4j/slf4j-nop {:mvn/version "2.0.7"}
-                                            org.babashka/cli {:mvn/version "0.6.50"}}
+                                            org.babashka/cli {:mvn/version "0.7.52"}}
                                :extra-paths ["notebooks"]
                                :exec-fn nextjournal.clerk/build!
                                :exec-args {:paths-fn nextjournal.clerk.builder/clerk-docs}

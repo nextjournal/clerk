@@ -446,9 +446,7 @@
                           :watcher (apply beholder/watch #(file-event %) watch-paths)}))
       (when browse?
         (let [{:keys [host port]} @webserver/!server]
-          (browse/browse-url (format "http://%s:%s" host port)))
-        )))
-  @(promise) ;; wait until user presses ctrl-c
+          (browse/browse-url (format "http://%s:%s" host port))))))
   config)
 
 #_(serve! (with-meta {:help true} {:org.babashka/cli {}}))
