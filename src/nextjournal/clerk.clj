@@ -12,7 +12,8 @@
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.viewer :as v]
-            [nextjournal.clerk.webserver :as webserver]))
+            [nextjournal.clerk.webserver :as webserver]
+            [nextjournal.clerk.window :as window]))
 
 (defonce ^:private !show-filter-fn (atom nil))
 (defonce ^:private !last-file (atom nil))
@@ -77,6 +78,10 @@
 #_(show! (do (require 'clojure.inspector) (find-ns 'clojure.inspector)))
 #_(show! "https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj")
 #_(show! (java.io.StringReader. ";; # In Memory Notebook 👋\n(+ 41 1)"))
+
+(defn window! [& args] (apply window/open! args))
+(defn close-window! [id] (window/close! id))
+(defn close-all-windows! [] (window/close-all!))
 
 (defn recompute!
   "Recomputes the currently visible doc, without parsing it."

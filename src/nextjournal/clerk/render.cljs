@@ -17,7 +17,7 @@
             [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clerk.render.localstorage :as localstorage]
             [nextjournal.clerk.render.navbar :as navbar]
-            [nextjournal.clerk.render.window :as window]
+            #_[nextjournal.clerk.render.window :as window]
             [nextjournal.clerk.viewer :as viewer]
             [reagent.core :as r]
             [reagent.ratom :as ratom]
@@ -138,6 +138,7 @@
                           (assoc :fragment (subs (.-hash url) 1))))))))
 
 (defn history-push-state [{:as opts :keys [path fragment replace?]}]
+  (js/console.log :history-push-state opts)
   (when (not= path (some-> js/history .-state .-path))
     (j/call js/history (if replace? :replaceState :pushState) (clj->js opts) "" (str (.. js/document -location -origin)
                                                                                      "/" path (when fragment (str "#" fragment))))))
@@ -549,6 +550,7 @@
     [:span.cmt-meta tag] (when space? nbsp) value]))
 
 (defonce !doc (ratom/atom nil))
+(defonce !windows (ratom/atom {}))
 (defonce !viewers viewer/!viewers)
 
 (defn set-viewers! [scope viewers]
@@ -588,8 +590,7 @@
                                                 (swap! !state update :desc viewer/merge-presentations more fetch-opts))))}
      [inspect-presented (:desc @!state)]]))
 
-(defn show-window [& content]
-  [window/show content])
+(declare clerk-eval)
 
 (defn root []
   [:<>
@@ -601,7 +602,17 @@
       [exec-status status])]
    (when-let [error (get-in @!doc [:nextjournal/value :error])]
      [:div.fixed.top-0.left-0.w-full.h-full
-      [inspect-presented error]])])
+      [inspect-presented error]])
+   #_(when-not (:nextjournal/window-id @!doc)
+       (into [:<>]
+             (map (fn [[id state]]
+                    ^{:key id}
+                    [window/show
+                     [render-result state {}]
+                     (-> state
+                         (assoc :id id :on-close #(clerk-eval `(nextjournal.clerk.window/close! ~id)))
+                         (dissoc :nextjournal/presented))]))
+             @!windows))])
 
 (declare mount)
 
@@ -697,9 +708,14 @@
         (if error (reject error) (resolve reply)))
     (js/console.warn :process-eval-reply!/not-found :eval-id eval-id :keys (keys @!pending-clerk-eval-replies))))
 
+(defn set-window-state! [{:keys [id state]}] (swap! !windows assoc id state))
+(defn close-window! [{:keys [id]}] (swap! !windows dissoc id))
+
 (defn ^:export dispatch [{:as msg :keys [type]}]
   (let [dispatch-fn (get {:patch-state! patch-state!
                           :set-state! set-state!
+                          :set-window-state! set-window-state!
+                          :close-window! close-window!
                           :eval-reply process-eval-reply!}
                          type
                          (fn [_]
