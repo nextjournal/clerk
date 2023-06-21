@@ -43,18 +43,15 @@
   ([id content] (open! id {} content))
   ([id opts content]
    ;; TODO: consider calling v/transform-result
-   (webserver/update-window! id (merge opts {:nextjournal/presented (update (v/present content) :nextjournal/css-class #(or % ["px-0"]))
-                                             :nextjournal/hash (gensym)
-                                             :nextjournal/fetch-opts {:blob-id (str id)}
-                                             :nextjournal/blob-id (str id)}))))
+   (webserver/update-window! id content)))
 
 (add-watch tap/!taps ::tap-watcher (fn [_ _ _ _] (open! :nextjournal.clerk/taps)))
 
 (defn close! [id] (webserver/close-window! id))
 
 (defn close-all! []
-  (doseq [w (keys @webserver/!windows)]
-    (close! w)))
+  #_(doseq [w (keys @webserver/!windows)]
+      (close! w)))
 
 #_(open! :nextjournal.clerk/taps)
 #_(doseq [f @@(resolve 'clojure.core/tapset)] (remove-tap f))

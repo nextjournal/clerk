@@ -185,12 +185,17 @@
 (defn reconnect-timeout [failed-connection-attempts]
   (get [0 0 100 500 5000] failed-connection-attempts 10000))
 
-(defn ^:export connect [ws-url]
+(defn ^:export connect [ws-url window-edn]
   (when (::failed-attempts @render/!doc)
     (swap! render/!doc assoc ::connection-status "Reconnecting…"))
-  (let [ws (js/WebSocket. ws-url)]
+  (let [window (when window-edn
+                 (read-string window-edn))
+        ws (js/WebSocket. ws-url)]
     (set! (.-onmessage ws) onmessage)
-    (set! (.-onopen ws) (fn [e] (swap! render/!doc dissoc ::connection-status ::failed-attempts)))
+    (set! (.-onopen ws) (fn [e]
+                          (when window
+                            (.send ws {:type :set-window! :window window}))
+                          (swap! render/!doc dissoc ::connection-status ::failed-attempts)))
     (set! (.-onclose ws) (fn [e]
                            (let [timeout (reconnect-timeout (::failed-attempts @render/!doc 0))]
                              (swap! render/!doc
@@ -200,7 +205,7 @@
                                                                        (str "Disconnected, reconnecting in " timeout "ms…")
                                                                        "Reconnecting…"))
                                           (update ::failed-attempts (fnil inc 0)))))
-                             (js/setTimeout #(connect ws-url) timeout))))
+                             (js/setTimeout #(connect ws-url window-edn) timeout))))
     (set! (.-clerk_ws ^js goog/global) ws)
     (set! (.-ws_send ^js goog/global) (fn [msg] (.send ws msg)))))
 

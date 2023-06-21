@@ -55,7 +55,6 @@
                        (assoc-in [:nextjournal/render-opts :id] (::key value)) ;; assign custom react key
                        (update-in [:nextjournal/value ::tapped-at] inst->local-time-str)))})
 
-
 ^{:nextjournal.clerk/visibility {:result :show}
   :nextjournal.clerk/viewers (v/add-viewers [tap-viewer])}
 (v/fragment (cond->> @!taps

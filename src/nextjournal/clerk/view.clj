@@ -50,7 +50,7 @@
   ;; https://html.spec.whatwg.org/multipage/syntax.html#cdata-rcdata-restrictions
   (str/replace s "</script>" "</nextjournal.clerk.view/escape-closing-script-tag>"))
 
-(defn ->html [{:as state :keys [conn-ws? current-path html exclude-js?]}]
+(defn ->html [{:as state :keys [conn-ws? current-path html exclude-js? window-id]}]
   (hiccup/html5
    [:head
     [:meta {:charset "UTF-8"}]
@@ -66,4 +66,4 @@
 let state = " (-> state v/->edn escape-closing-script-tag pr-str) ".replaceAll('nextjournal.clerk.view/escape-closing-script-tag', 'script')
 viewer.init(viewer.read_string(state))\n"
        (when conn-ws?
-         "viewer.connect(document.location.origin.replace(/^http/, 'ws') + '/_ws')")])]))
+         (format "viewer.connect(document.location.origin.replace(/^http/, 'ws') + '/_ws', '%s')" (pr-str window-id)))])]))

@@ -17,7 +17,7 @@
             [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clerk.render.localstorage :as localstorage]
             [nextjournal.clerk.render.navbar :as navbar]
-            [nextjournal.clerk.render.window :as window]
+            #_[nextjournal.clerk.render.window :as window]
             [nextjournal.clerk.viewer :as viewer]
             [reagent.core :as r]
             [reagent.ratom :as ratom]
@@ -138,6 +138,7 @@
                           (assoc :fragment (subs (.-hash url) 1))))))))
 
 (defn history-push-state [{:as opts :keys [path fragment replace?]}]
+  (js/console.log :history-push-state opts)
   (when (not= path (some-> js/history .-state .-path))
     (j/call js/history (if replace? :replaceState :pushState) (clj->js opts) "" (str (.. js/document -location -origin)
                                                                                      "/" path (when fragment (str "#" fragment))))))
@@ -602,15 +603,16 @@
    (when-let [error (get-in @!doc [:nextjournal/value :error])]
      [:div.fixed.top-0.left-0.w-full.h-full
       [inspect-presented error]])
-   (into [:<>]
-         (map (fn [[id state]]
-                ^{:key id}
-                [window/show
-                 [render-result state {}]
-                 (-> state
-                     (assoc :id id :on-close #(clerk-eval `(nextjournal.clerk.window/close! ~id)))
-                     (dissoc :nextjournal/presented))]))
-         @!windows)])
+   #_(when-not (:nextjournal/window-id @!doc)
+       (into [:<>]
+             (map (fn [[id state]]
+                    ^{:key id}
+                    [window/show
+                     [render-result state {}]
+                     (-> state
+                         (assoc :id id :on-close #(clerk-eval `(nextjournal.clerk.window/close! ~id)))
+                         (dissoc :nextjournal/presented))]))
+             @!windows))])
 
 (declare mount)
 
