@@ -1,5 +1,5 @@
 (ns nextjournal.clerk.sci-env.completions
-  (:require ["@codemirror/autocomplete" :as cm-autocomplete :refer [CompletionContext]]
+  (:require ["@codemirror/autocomplete" :as cm-autocomplete]
             ["@codemirror/language" :as cm-lang]
             [clojure.string :as str]
             [goog.object :as gobject]

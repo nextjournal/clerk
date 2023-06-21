@@ -1,10 +1,11 @@
 (ns nextjournal.clerk.render.window
-  (:require ["@codemirror/view" :as cm-view :refer [keymap highlightActiveLine]]
+  (:require ["@codemirror/view" :as cm-view :refer [keymap]]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
             [nextjournal.clerk.render.code :as code]
             [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clerk.sci-env.completions :as completions]
+            [nextjournal.clojure-mode.keymap :as clojure-mode.keymap]
             [nextjournal.clojure-mode.extensions.eval-region :as eval-region]
             [sci.core :as sci]
             [sci.ctx-store]))
@@ -173,7 +174,7 @@
         !results (hooks/use-state ())]
     [:div.flex.flex-col.bg-gray-50
      [:div.w-full.border-t.border-b.border-slate-300.shadow-inner.px-2.py-1.bg-slate-100
-      [code/editor !code-str {:extensions #js [(.of keymap nextjournal.clojure-mode.keymap/paredit)
+      [code/editor !code-str {:extensions #js [(.of keymap clojure-mode.keymap/paredit)
                                                completions/completion-source
                                                (sci-extension {:modifier "Alt"
                                                                :on-result #(swap! !results conj {:result %
