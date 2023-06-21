@@ -4,6 +4,7 @@
 .cpcache/
 .lsp/
 node_modules
+/scratch
 notebooks/scratch*
 /public/js/
 /.shadow-cljs/
@@ -21,3 +22,4 @@ clerk.iml
 .clj-kondo/marick
 .clj-kondo/nextjournal/clerk
 .secrets.env
+report.html

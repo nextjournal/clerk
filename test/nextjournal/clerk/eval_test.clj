@@ -112,13 +112,19 @@
   (testing "assigning viewers from form meta"
     (is (match? {:blocks [{:result {:nextjournal/viewer fn?}}]}
                 (eval/eval-string "^{:nextjournal.clerk/viewer nextjournal.clerk/table} (def markup [:h1 \"hi\"])")))
-    (is (match? {:blocks [{:result {:nextjournal/viewer :html}}]}
-                (eval/eval-string "^{:nextjournal.clerk/viewer :html} (def markup [:h1 \"hi\"])"))))
+    (is (match? {:blocks [{:result {:nextjournal/viewer `viewer/html}}]}
+                (eval/eval-string "^{:nextjournal.clerk/viewer 'nextjournal.clerk.viewer/html} (def markup [:h1 \"hi\"])"))))
 
   (testing "var result that's not from a def should stay untouched"
     (is (match? {:blocks [{:result {:nextjournal/value {:nextjournal.clerk/var-from-def var?}}}
                           {:result {:nextjournal/value var?}}]}
                 (eval/eval-string "(def foo :bar) (var foo)"))))
+
+  (testing "definitions occurring in side effects from macro expansions should not end up wrapped in var-from-def maps as the cell result"
+    (is (= :my-value
+           (-> (eval/eval-string "(ns nextjournal.clerk.eval-test.def-side-effects {:nextjournal.clerk/no-cache true})
+(defmacro define [name val] `(do (def ~name ~val) ~val))
+(define my-value :my-value)") :blocks peek :result :nextjournal/value))))
 
   (testing "can handle unbounded sequences"
     (is (match? {:blocks [{:result {:nextjournal/value seq?}}]}

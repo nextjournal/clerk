@@ -42,6 +42,7 @@
   strong { @apply font-bold; }
   em     { @apply italic; }
   pre    { @apply m-0 font-mono; }
+  table img { @apply inline-block; }
 }
 
 /* Compatibility */
@@ -136,7 +137,7 @@
 }
 @media (min-width: 960px){
     .notebook-viewer .code-viewer .cm-content {
-        @apply py-4 pl-12;
+        @apply pl-12;
     }
     .notebook-viewer .code-listing {
         width: 48rem !important;
@@ -299,8 +300,6 @@
 /* Notebook Spacing */
 /* --------------------------------------------------------------- */
 
-.notebook-viewer { @apply py-16; }
-#clerk-static-app .notebook-viewer { @apply pt-[0.8rem] pb-16; }
 .markdown-viewer *:first-child:not(.code-viewer):not(li):not(h2):not(.sidenote) { @apply mt-0; }
 /*.viewer + .viewer { @apply mt-6; }*/
 .viewer + .result-viewer { @apply mt-0; }

@@ -7,6 +7,7 @@
         borkdude/edamame {:mvn/version "1.0.16"}
         weavejester/dependency {:mvn/version "0.2.1"}
         com.nextjournal/beholder {:mvn/version "1.0.2"}
+        org.flatland/ordered {:mvn/version "1.15.11"}
 
         io.github.nextjournal/markdown {:mvn/version "0.5.144"}
         babashka/process {:mvn/version "0.4.16"}
@@ -25,8 +26,8 @@
         juji/editscript {:mvn/version "0.6.2"}}
 
  :aliases {:nextjournal/clerk {:extra-deps {org.clojure/clojure {:mvn/version "1.11.1"} ;; for `:as-alias` support in static build
-                                            org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
-                                            org.babashka/cli {:mvn/version "0.5.40"}}
+                                            org.slf4j/slf4j-nop {:mvn/version "2.0.7"}
+                                            org.babashka/cli {:mvn/version "0.7.52"}}
                                :extra-paths ["notebooks"]
                                :exec-fn nextjournal.clerk/build!
                                :exec-args {:paths-fn nextjournal.clerk.builder/clerk-docs}
@@ -36,13 +37,13 @@
 
            :sci {:extra-deps {io.github.nextjournal/clerk.render {:local/root "render"}}}
 
-           :dev {:extra-deps {org.clojure/clojure {:mvn/version "1.11.1"} ;; for `:as-alias` support but only in dev
+           :dev {:extra-deps {org.clojure/clojure {:mvn/version "1.12.0-alpha3"} ;; for `:as-alias` & `add-lib` support but only in dev
                               arrowic/arrowic {:mvn/version "0.1.1"}
                               binaryage/devtools {:mvn/version "1.0.3"}
                               cider/cider-nrepl {:mvn/version "0.29.0"}
                               com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.0.3"}
                               io.github.nextjournal/cas-client {:git/sha "84ab35c3321c1e51a589fddbeee058aecd055bf8"}
-                              org.slf4j/slf4j-nop {:mvn/version "1.7.36"}
+                              org.slf4j/slf4j-nop {:mvn/version "2.0.7"}
                               org.babashka/cli {:mvn/version "0.5.40"}}
                  :extra-paths ["dev" "notebooks"]
                  :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}"
@@ -68,6 +69,8 @@
                                org.clojure/data.csv {:mvn/version "1.0.0"}
                                hickory/hickory {:mvn/version "0.7.1"}
                                sicmutils/sicmutils {:mvn/version "0.20.0"}
+                               io.github.mentat-collective/emmy {:git/sha "b98fef51d80d3edcff3100562b929f9980ff34d7"
+                                                                 :exclusions [org.babashka/sci]}
                                io.github.nextjournal/clerk-slideshow {:git/sha "0e6e890fd4f862fa3535290cb7e29591c6e0ec85"}}}
 
            :build {:deps {io.github.nextjournal/clerk {:local/root "."}
@@ -75,4 +78,8 @@
                           io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}
                           io.github.slipset/deps-deploy {:git/sha "b4359c5d67ca002d9ed0c4b41b710d7e5a82e3bf"}}
                    :extra-paths ["bb" "src" "resources"] ;; for loading lookup-url in build
-                   :ns-default build}}}
+                   :ns-default build}
+
+           :test-release-js {:jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/viewer.js\"}"]
+                             :exec-args {:out-path "build"}
+                             :main-opts ["-m" "babashka.cli.exec"]}}}

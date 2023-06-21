@@ -31,6 +31,11 @@
   build:static-app {:doc "Builds a static app with default notebooks"
                     :task (apply clojure "-X:demo:nextjournal/clerk" *command-line-args*)}
 
+  build:static-app-test-release
+  {:doc "Builds static app which uses output of build:js.
+         Run with additional --paths notebooks/cherry.clj to test single notebook."
+   :task (apply clojure "-M:demo:nextjournal/clerk:test-release-js" *command-line-args*)}
+
   -check {:depends [lint test:clj]}
 
   check {:doc "Check to run before pushing"

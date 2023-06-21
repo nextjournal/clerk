@@ -1,13 +1,14 @@
 (ns nextjournal.clerk.render.code
-  (:require ["@codemirror/language" :refer [HighlightStyle syntaxHighlighting]]
-            ["@codemirror/state" :refer [EditorState RangeSetBuilder Text]]
+  (:require ["@codemirror/language" :refer [HighlightStyle syntaxHighlighting LanguageDescription]]
+            ["@codemirror/state" :refer [EditorState RangeSet RangeSetBuilder Text]]
             ["@codemirror/view" :refer [EditorView Decoration]]
             ["@lezer/highlight" :refer [tags highlightTree]]
             ["@nextjournal/lang-clojure" :refer [clojureLanguage]]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
             [nextjournal.clerk.render.hooks :as hooks]
-            [nextjournal.clojure-mode :as clojure-mode]))
+            [nextjournal.clojure-mode :as clojure-mode]
+            [shadow.esm]))
 
 (def highlight-style
   (.define HighlightStyle
@@ -87,18 +88,47 @@
                   (< pos to)
                   (concat [(.sliceString text pos to)]))))))))
 
-(defn render-code [^String code _]
-  (let [builder (RangeSetBuilder.)
-        _ (highlightTree (.. clojureLanguage -parser (parse code)) highlight-style
-                         (fn [from to style]
-                           (.add builder from to (.mark Decoration (j/obj :class style)))))
-        decorations-rangeset (.finish builder)
-        text (.of Text (.split code "\n"))]
-    [:div.cm-editor
-     [:cm-scroller
-      (into [:div.cm-content.whitespace-pre]
-            (map (partial style-line decorations-rangeset text))
-            (range 1 (inc (.-lines text))))]]))
+(defn import-matching-language-parser [language]
+  (.. (shadow.esm/dynamic-import "https://cdn.skypack.dev/@codemirror/language-data@6.1.0")
+      (then (fn [^js mod]
+              (when-some [langs (.-languages mod)]
+                (when-some [^js matching (or (.matchLanguageName LanguageDescription langs language)
+                                             (.matchFilename LanguageDescription langs (str "code." language)))]
+                  (.load matching)))))
+      (then (fn [^js lang-support] (when lang-support (.. lang-support -language -parser))))
+      (catch (fn [err] (js/console.warn (str "Cannot load language parser for: " language) err)))))
+
+(defn add-style-ranges! [range-builder syntax-tree]
+  (highlightTree syntax-tree highlight-style
+                 (fn [from to style]
+                   (.add range-builder from to (.mark Decoration (j/obj :class style))))))
+
+(defn clojure-style-rangeset [code]
+  (.finish (doto (RangeSetBuilder.)
+             (add-style-ranges! (.. ^js clojureLanguage -parser (parse code))))))
+
+(defn syntax-highlight [{:keys [code style-rangeset]}]
+  (let [text (.of Text (.split code "\n"))]
+    (into [:div.cm-content.whitespace-pre]
+          (map (partial style-line style-rangeset text))
+          (range 1 (inc (.-lines text))))))
+
+(defn highlight-imported-language [{:keys [code language]}]
+  (let [^js builder (RangeSetBuilder.)
+        ^js parser (hooks/use-promise (import-matching-language-parser language))]
+    (when parser (add-style-ranges! builder (.parse parser code)))
+    [syntax-highlight {:code code :style-rangeset (.finish builder)}]))
+
+(defn render-code [^String code {:keys [language]}]
+  [:div.cm-editor
+   [:cm-scroller
+    (cond
+      (not language)
+      [syntax-highlight {:code code :style-rangeset (.-empty RangeSet)}]
+      (#{"clojure" "clojurescript" "clj" "cljs" "cljc" "edn"} language)
+      [syntax-highlight {:code code :style-rangeset (clojure-style-rangeset code)}]
+      :else
+      [highlight-imported-language {:code code :language language}])]])
 
 ;; editable code viewer
 (def theme

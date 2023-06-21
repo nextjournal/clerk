@@ -2,19 +2,104 @@
 
 Changes can be:
 * 🌟⭐️💫 features
+* 🚨 possibly breaking
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
 ## Unreleased
 
+* 👁️ Improve viewer customization
+
+    * Simplify customization of number of rows displayed for table viewer using viewer-opts, e.g. `(clerk/table {::clerk/page-size 7})`. Pass `{::clerk/page-size nil}` to display elisions. Can also be passed a form metadata. Fixes [#406](https://github.com/nextjournal/clerk/issues/406).
+
+    * Change semantics of `clerk/add-viewers!` to perform in-place positional replacement of named added viewers. Anonymous viewers (without a `:name`) or new named viewers will be prepended to the viewer stack. Assign a symbol `:name` to all of `clerk/default-viewers`.
+
+    * Support first-class `:add-viewers` attribute on viewer map which will do `clerk/add-viewers` before passing viewers down the tree. Use it in `table-viewer` and `markdown-viewer`. Both these viewers can now be customized more easily. For example, you can customize the `table-viewer` to show missing values differently, see [Book of Clerk](https://book.clerk.vision/#tables).
+
+* 🚨 Rename `:nextjournal.clerk/opts` to `:nextjournal.clerk/render-opts` to clarify this options map is available as the second arg to parametrize the `:render-fn`. Still support the `:nextjournal.clerk/opts` for now.
+
+* 📖 Improve Table of Contents design and fixing re-rendering issues. Also added suport for chapter expansion.
+
+* 📒 Mention Tap Inspector in Book of Clerk & on Homepage
+
+* 🛠 Upgrade `framer-motion` dep to `10.12.16`.
+
+* 💫 Assign `:name` to every viewer in `default-viewers`
+
+* 🐞 Don't run existing files through `fs/glob`, fixes [#504](https://github.com/nextjournal/clerk/issues/504). Also improves performance of homepage.
+
+* 🐞 Show correct non-var return value for deflike form, fixes [#499](https://github.com/nextjournal/clerk/issues/499)
+
+## 0.14.919 (2023-06-13)
+
+* 🚨 Breaking Changes:
+
+    * Change `nextjournal.clerk.render/clerk-eval` to not recompute the currently shown document when using the 1-arity version. Added a second arity that takes an opts map with a `:recompute?` key.
+
+    * Change `nextjournal.clerk/eval-cljs` to only take one form (like `clojure.core/eval`) but support viewer opts. If you want multiple forms to be evaluated, wrap them in a `do`.
+
+
 * 💈 Show execution progress
 
     To see what's going on while waiting for a long-running computation, Clerk will now show an execution status bar on the top. For named cells (defining a var) it will show the name of the var, for anonymous expressions, a preview of the form.
 
-* 🍕 `clerk/fragment` for splicing a seq of values into the document as if it were produced by results of individual cells. Useful when programmatically generating content.
+* 🔗 Interactive Links, Index and Homepage
+
+    Links can now be followed in interactive mode and the index can be viewed. Previously this could only be seen after a `build!`. Add support evaluating a given doc by entering it in the browser's address bar.
+
+    Use these features to build a new welcome page that gives more useful information, including links to potential notebooks in the project.
+
+* ⚡️ Speed up analysis of gitlibs using git sha, resolve protocol methods
+
+    This significantly speeds up analysis for gitlibs by using the git sha as a hash (thus treating them as immutable) instead of handling them on a per-form level.
+
+    Also resolve protocol methods to the defining protocol, which would previously not be detected.
+
+    Lastly drop the location cache which is no longer needed.
+
+* 🍕 Add `clerk/fragment` for splicing a seq of values into the document as if it were produced by results of individual cells. Useful when programmatically generating content.
+
+* 🚰 Improve Tap Inspector
+
+    * Support customizing of `:nextjournal.clerk/width` and `:nextjournal.clerk/budget` for individual tapped values
+    * Fix re-rendering of tapped values by assigning stable react keys
+    * Build it on top of `clerk/fragment`
+
+* 🍒 Add support for cherry as an alternative to sci to evaluate `:render-fn`s. You can change it per form (using form metadata or viewer opts) or doc-wide (using ns metadata) with `{:nextjournal.clerk/render-evaluator :cherry}`.
+
+* 🏳️‍🌈 Syntax highlighting for code listings in all [languages supported by codemirror](https://github.com/codemirror/language-data) ([#500](https://github.com/nextjournal/clerk/issues/500)).
+
+* ⭐️ Adds support for customization of viewer options
+
+  Support both globally (via ns metadata or a settings marker) or locally (via form metadata or the viewer options map).
+
+  Supported options are:
+   * `:nextjournal.clerk/auto-expand-results?`
+   * `:nextjournal.clerk/budget`
+   * `:nextjournal.clerk/css-class`
+   * `:nextjournal.clerk/visibility`
+   * `:nextjournal.clerk/width`
+   * `:nextjournal.clerk/render-evaluator`
 
 * 🔌 Make websocket reconnect automatically on close to avoid having to reload the page
+
 * 💫 Cache expressions that return `nil` in memory
+
+* 💫 Support non-evaluated clojure code listings in markdown documents by specifying `{:nextjournal.clerk/code-listing true}` after the language ([#482](https://github.com/nextjournal/clerk/issues/482)).
+
+* 💫 Support imported vars (e.g. by potemkin) in location analysis
+
+    By considering `:file` on var meta in location analysis. Previously we would not find a location for vars where the namespace did not match the source file. As we're not caching negative findings this can speed up analysis for deps with a large number of imported vars significantly.
+    
+* 💫 Support serializing `#inst` and `#uuid` to render-fns
+
+* 🐜 Turn off analyzer pass for validation of `:type` tags, fixes [#488](https://github.com/nextjournal/clerk/issues/488) @craig-latacora
+
+* 🐜 Strip `:type` metadata from forms before printing them to hash, fixes [#489](https://github.com/nextjournal/clerk/issues/489) @craig-latacora
+
+* 🐜 Ensure custom `print-method` supporting unreadable symbols preserves metadata
+
+* 🐞 Preserve `*ns*` during `build!`, fixes [#506](https://github.com/nextjournal/clerk/issues/506)
 
 ## 0.13.842 (2023-03-07)
 

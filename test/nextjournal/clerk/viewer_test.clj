@@ -83,6 +83,13 @@
     (let [value (v/html [:div [:ul [:li {:nextjournal/value (range 30)}]]])]
       (is (= (v/->value value) (v/->value (v/desc->values (resolve-elision (v/present value)))))))))
 
+(deftest default-viewers
+  (testing "viewers have names matching vars"
+    (doseq [[viewer-name viewer] (into {}
+                                       (map (juxt :name (comp deref resolve :name))) 
+                                       v/default-viewers)]
+      (is (= viewer-name (:name viewer))))))
+
 (deftest apply-viewers
   (testing "selects number viewer"
     (is (match? {:nextjournal/value 42
@@ -175,14 +182,14 @@
   (testing "opts are not propagated to children during presentation"
     (let [count-opts (fn [o]
                        (let [c (atom 0)]
-                         (w/postwalk (fn [f] (when (= :nextjournal/opts f) (swap! c inc)) f) o)
+                         (w/postwalk (fn [f] (when (= :nextjournal/render-opts f) (swap! c inc)) f) o)
                          @c))]
-      (let [presented (v/present (v/col {:nextjournal.clerk/opts {:width 150}} 1 2 3))]
-        (is (= {:width 150} (:nextjournal/opts presented)))
+      (let [presented (v/present (v/col {:nextjournal.clerk/render-opts {:width 150}} 1 2 3))]
+        (is (= {:width 150} (:nextjournal/render-opts presented)))
         (is (= 1 (count-opts presented))))
 
       (let [presented (v/present (v/table {:col1 [1 2] :col2 '[a b]}))]
-        (is (= {:num-cols 2 :number-col? #{0}} (:nextjournal/opts presented)))
+        (is (= {:num-cols 2 :number-col? #{0}} (:nextjournal/render-opts presented)))
         (is (= 1 (count-opts presented))))))
 
   (testing "viewer opts are normalized"
@@ -262,12 +269,12 @@
 
   (testing "Doc options are propagated to blob processing"
     (let [test-doc (eval/eval-string "(java.awt.image.BufferedImage. 20 20 1)")]
-      (is (not-empty (tree-re-find (view/doc->viewer {:inline-results? true
+      (is (not-empty (tree-re-find (view/doc->viewer {:static-build? true
                                                       :bundle? true
                                                       :out-path builder/default-out-path} test-doc)
                                    #"data:image/png;base64")))
 
-      (is (not-empty (tree-re-find (view/doc->viewer {:inline-results? true
+      (is (not-empty (tree-re-find (view/doc->viewer {:static-build? true
                                                       :bundle? false
                                                       :out-path builder/default-out-path} test-doc)
                                    #"_data/.+\.png")))))
@@ -292,6 +299,27 @@
                view/doc->viewer v/->value :blocks second
                v/->value :nextjournal/presented :nextjournal/css-class))))
 
+  (testing "Settings propagation from ns to form"
+    (is (= :full
+           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) (nextjournal.clerk/html [:div])")
+               view/doc->viewer v/->value :blocks (nth 2)
+               v/->value :nextjournal/presented :nextjournal/width)))
+
+    (is (= :wide
+           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) (nextjournal.clerk/html {:nextjournal.clerk/width :wide} [:div])")
+               view/doc->viewer v/->value :blocks (nth 2)
+               v/->value :nextjournal/presented :nextjournal/width)))
+
+    (is (= :wide
+           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) ^{:nextjournal.clerk/width :wide} (nextjournal.clerk/html [:div])")
+               view/doc->viewer v/->value :blocks (nth 2)
+               v/->value :nextjournal/presented :nextjournal/width)))
+
+    (is (= :wide
+           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) {:nextjournal.clerk/width :wide} (nextjournal.clerk/html [:div])")
+               view/doc->viewer v/->value :blocks (nth 2)
+               v/->value :nextjournal/presented :nextjournal/width))))
+
   (testing "Presented doc (with fragments) has unambiguous ids assigned to results"
     (let [ids (->> (eval/eval-string "(nextjournal.clerk/table [[1 2][3 4]])
 (nextjournal.clerk/fragment
@@ -301,7 +329,7 @@
                    view/doc->viewer v/->value :blocks
                    (tree-seq coll? seq)
                    (filter (every-pred map? :nextjournal/presented))
-                   (map (comp :id :nextjournal/opts :nextjournal/presented)))]
+                   (map (comp :id :nextjournal/render-opts :nextjournal/presented)))]
       (is (= 5 (count ids)))
       (is (every? (every-pred not-empty string?) ids))
       (is (distinct? ids))))
@@ -354,7 +382,11 @@
            (pr-str (symbol "~")))))
 
   (testing "splicing reader conditional prints normally (issue #338)"
-    (is (= "?@" (pr-str (symbol "?@"))))))
+    (is (= "?@" (pr-str (symbol "?@")))))
+
+  (testing "custom print-method for symbol preserves metadata"
+    (is (-> (binding [*print-meta* true]
+              (pr-str '[^:foo bar])) read-string first meta :foo))))
 
 (deftest removed-metadata
   (is (= "(do 'this)"

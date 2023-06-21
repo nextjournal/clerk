@@ -4,6 +4,10 @@
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.webserver :as webserver]))
 
+(deftest ->file-or-ns
+  (is (= 'nextjournal.clerk.tap (webserver/->file-or-ns "'nextjournal.clerk.tap")))
+  (is (= "notebooks/rule_30.clj" (webserver/->file-or-ns "notebooks/rule_30.clj"))))
+
 (deftest serve-blob
   (testing "lazy loading of simple range"
     (let [doc (let [doc (eval/eval-string "(range 100)")]

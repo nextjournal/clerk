@@ -10,14 +10,22 @@
 (def parsed
   (parser/parse-file "notebooks/rule_30.clj"))
 
+
+
 (def analyzed
   (analyzer/analyze-doc parsed))
 
 
 
-(do (time (analyzer/build-graph analyzed)) :done)
+(time
+ (prof/profile (dotimes [_ 10]
+                 (analyzer/build-graph analyzed))))
 
 
+
+(prof/profile
+ (dotimes [_ 10]
+   (nextjournal.clerk/show! "notebooks/rule_30.clj")))
 
 (prof/profile (analyzer/build-graph analyzed))
 

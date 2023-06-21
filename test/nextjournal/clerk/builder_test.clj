@@ -3,6 +3,7 @@
             [clojure.java.browse :as browse]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
+            [matcher-combinators.test]
             [nextjournal.clerk.builder :as builder])
   (:import (clojure.lang ExceptionInfo)
            (java.io File)))
@@ -13,7 +14,8 @@
       (is (= (#'builder/path-to-url-canonicalize dice) (str/replace dice  (File/separator) "/"))))))
 
 (deftest static-app
-  (let [url* (volatile! nil)]
+  (let [url* (volatile! nil)
+        original-*ns* *ns*]
     (with-redefs [clojure.java.browse/browse-url (fn [path]
                                                    (vreset! url* path))]
       (testing "browser receives canonical url in this system arch"
@@ -23,49 +25,72 @@
             (builder/build-static-app! {:browse? true
                                         :paths ["notebooks/hello.clj"]
                                         :out-path temp})
-            (is (= expected @url*))))))))
+            (is (= expected @url*)))))
+
+      (testing "*ns* isn't changed (#506)"
+        (is (= original-*ns* *ns*))))))
+
+(def test-paths ["boo*.clj"])
+(def test-paths-fn (fn [] ["boo*.clj"]))
 
 (deftest expand-paths
   (testing "expands glob patterns"
-    (let [paths (builder/expand-paths {:paths ["notebooks/*clj"]})]
+    (let [{paths :expanded-paths} (builder/expand-paths {:paths ["notebooks/*clj"]})]
       (is (> (count paths) 25))
       (is (every? #(str/ends-with? % ".clj") paths))))
 
   (testing "supports index"
-    (is (= ["book.clj"] (builder/expand-paths {:index "book.clj"}))))
+    (is (= {:expanded-paths ["book.clj"]}
+           (builder/expand-paths {:index "book.clj"}))))
 
   (testing "supports paths"
-    (is (= ["book.clj"] (builder/expand-paths {:paths ["book.clj"]}))))
+    (is (= {:expanded-paths ["book.clj"]}
+           (builder/expand-paths {:paths ["book.clj"]}))))
+
+  (testing "supports paths-fn"
+    (is (= {:expanded-paths ["book.clj"]}
+           (builder/expand-paths {:paths-fn `test-paths})))
+    (is (= {:expanded-paths ["book.clj"]}
+           (builder/expand-paths {:paths-fn `test-paths-fn}))))
 
   (testing "deduplicates index + paths"
-    (is (= [(str (fs/file "notebooks" "rule_30.clj"))]
+    (is (= {:expanded-paths [(str (fs/file "notebooks" "rule_30.clj"))]}
            (builder/expand-paths {:paths ["notebooks/rule_**.clj"]
                                   :index (str (fs/file "notebooks" "rule_30.clj"))}))))
 
+  (testing "supports absolute paths (#504)"
+    (is (= {:expanded-paths [(str (fs/file (fs/cwd) "book.clj"))]}
+           (builder/expand-paths {:paths [(str (fs/file (fs/cwd) "book.clj"))]}))))
+
   (testing "invalid args"
-    (is (thrown-with-msg? ExceptionInfo #"must set either"
-                          (builder/expand-paths {})))
-    (is (thrown-with-msg? ExceptionInfo #"must be a qualified symbol pointing at an existing var"
-                          (builder/expand-paths {:paths-fn :foo})))
-    (is (thrown-with-msg? ExceptionInfo #"must be a qualified symbol pointing at an existing var"
-                          (builder/expand-paths {:paths-fn 'foo})))
-    (is (thrown-with-msg? ExceptionInfo #"must be a qualified symbol pointing at an existing var"
-                          (builder/expand-paths {:paths-fn 'clerk.test.non-existant-name-space/bar})))
-    (is (thrown-with-msg? ExceptionInfo #"must be a qualified symbol pointing at an existing var"
-                          (builder/expand-paths {:paths-fn 'clojure.core/non-existant-var})))
-    (is (thrown-with-msg? ExceptionInfo #"must be a qualified symbol pointing at an existing var"
-                          (builder/expand-paths {:paths-fn "hi"})))
-    (is (thrown-with-msg? ExceptionInfo #"nothing to build"
-                          (builder/expand-paths {:paths []})))
-    (is (thrown-with-msg? ExceptionInfo #"An error occured invoking"
-                          (builder/expand-paths {:paths-fn 'clojure.core/inc})))
-    (is (thrown-with-msg? ExceptionInfo #"`:paths-fn` must compute sequential value"
-                          (builder/expand-paths {:paths-fn 'clojure.core/+})))
-    (is (thrown? ExceptionInfo (builder/expand-paths {:index ["book.clj"]})))))
+    (is (match? {:error #"must set either"}
+                (builder/expand-paths {})))
+    (is (match? {:error #"must be a qualified symbol pointing at an existing var"}
+                (builder/expand-paths {:paths-fn :foo})))
+    (is (match? {:error #"must be a qualified symbol pointing at an existing var"}
+                (builder/expand-paths {:paths-fn 'foo})))
+    (is (match? {:error #"must be a qualified symbol pointing at an existing var"}
+                (builder/expand-paths {:paths-fn 'clerk.test.non-existant-name-space/bar})))
+    (is (match? {:error #"must be a qualified symbol pointing at an existing var"}
+                (builder/expand-paths {:paths-fn 'clojure.core/non-existant-var})))
+    (is (match? {:error #"must be a qualified symbol pointing at an existing var"}
+                (builder/expand-paths {:paths-fn "hi"})))
+    (is (match? {:error #"nothing to build"}
+                (builder/expand-paths {:paths []})))
+    (is (match? {:error #"An error occured invoking"}
+                (builder/expand-paths {:paths-fn 'clojure.core/inc})))
+    (is (match? {:error #"must compute to a sequential value."}
+                (builder/expand-paths {:paths-fn 'clojure.core/+})))
+    (is (match? {:error "`:index` must be either an instance of java.net.URL or a string and point to an existing file"}
+                (builder/expand-paths {:index ["book.clj"]})))))
 
 (deftest build-static-app!
   (testing "error when paths are empty (issue #339)"
-    (is (thrown-with-msg? ExceptionInfo #"nothing to build" (builder/build-static-app! {:paths []})))))
+    (is (thrown-with-msg? ExceptionInfo #"nothing to build" (builder/build-static-app! {:paths []}))))
+
+  (testing "error when index is of the wrong type"
+    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index 0})))
+    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index "not/existing/notebook.clj"})))))
 
 (deftest process-build-opts
   (testing "assigns index when only one path is given"
@@ -78,11 +103,11 @@
 
 (deftest doc-url
   (testing "link to same dir unbundled"
-    (is (= "../notebooks/rule_30.html" ;; NOTE: could also be just "rule_30.html"
+    (is (= "./../notebooks/rule_30.html" ;; NOTE: could also be just "rule_30.html"
            (builder/doc-url {:bundle? false} [{:file "notebooks/viewer_api.clj"} {:file "notebooks/rule_30.clj"}] "notebooks/viewer_api.clj" "notebooks/rule_30.clj"))))
 
   (testing "respects the mapped index"
-    (is (= "notebooks/rule_30.html"
+    (is (= "./notebooks/rule_30.html"
            (builder/doc-url {:bundle? false} [{:file "index.clj"} {:file "notebooks/rule_30.clj"}] "index.clj" "notebooks/rule_30.clj"))))
 
   (testing "bundle case"
