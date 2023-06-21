@@ -1,9 +1,7 @@
 ;; # 🚰 Tap Inspector
 (ns nextjournal.clerk.tap
   {:nextjournal.clerk/visibility {:code :hide :result :hide}}
-  (:require [clojure.core :as core]
-            [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as v])
+  (:require [nextjournal.clerk.viewer :as v])
   (:import (java.time Instant LocalTime ZoneId)))
 
 (defn inst->local-time-str [inst] (str (LocalTime/ofInstant inst (ZoneId/systemDefault))))
@@ -25,18 +23,18 @@
                [:button.text-xs.rounded-full.px-3.py-1.border-2.font-sans.hover:bg-slate-100.cursor-pointer
                 {:on-click #(nextjournal.clerk.render/clerk-eval `(reset-taps!))} "Clear"]]))))
 
-^{::clerk/sync true ::clerk/viewer switch-view ::clerk/visibility {:result :show}}
+^{:nextjournal.clerk/sync true :nextjournal.clerk/viewer switch-view :nextjournal.clerk/visibility {:result :show}}
 (defonce !view (atom :stream))
 
 (defonce !taps (atom ()))
 
 (defn reset-taps! []
   (reset! !taps ())
-  (clerk/recompute!))
+  ((resolve 'nextjournal.clerk/recompute!)))
 
 (defn tapped [x]
   (swap! !taps conj (record-tap x))
-  (clerk/recompute!))
+  ((resolve 'nextjournal.clerk/recompute!)))
 
 (defonce tap-setup
   (add-tap (fn [x] ((resolve `tapped) x))))
@@ -58,25 +56,25 @@
                        (update-in [:nextjournal/value ::tapped-at] inst->local-time-str)))})
 
 
-^{::clerk/visibility {:result :show}
-  ::clerk/viewers (v/add-viewers [tap-viewer])}
-(clerk/fragment (cond->> @!taps
-                  (= :latest @!view) (take 1)))
+^{:nextjournal.clerk/visibility {:result :show}
+  :nextjournal.clerk/viewers (v/add-viewers [tap-viewer])}
+(v/fragment (cond->> @!taps
+              (= :latest @!view) (take 1)))
 
 (comment
   (last @!taps)
   (dotimes [_i 5]
     (tap> (rand-int 1000)))
   (tap> (shuffle (range (+ 20 (rand-int 200)))))
-  (tap> (clerk/md "> The purpose of visualization is **insight**, not pictures."))
+  (tap> (v/md "> The purpose of visualization is **insight**, not pictures."))
   (tap> (v/plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
-  (tap> (clerk/html  {::clerk/width :full} [:h1.w-full.border-2.border-amber-500.bg-amber-500.h-10]))
-  (tap> (clerk/table {::clerk/width :full} [[1 2] [3 4]]))
-  (tap> (clerk/plotly {::clerk/width :full} {:data [{:y [3 1 2]}]}))
-  (tap> (clerk/image "trees.png"))
+  (tap> (v/html  {:nextjournal.clerk/width :full} [:h1.w-full.border-2.border-amber-500.bg-amber-500.h-10]))
+  (tap> (v/table {:nextjournal.clerk/width :full} [[1 2] [3 4]]))
+  (tap> (v/plotly {:nextjournal.clerk/width :full} {:data [{:y [3 1 2]}]}))
+  (tap> (v/image "trees.png"))
   (do (require 'rule-30)
-      (tap> (clerk/with-viewers (clerk/add-viewers rule-30/viewers) rule-30/rule-30)))
-  (tap> (clerk/with-viewers (clerk/add-viewers rule-30/viewers) rule-30/board))
-  (tap> (clerk/html [:h1 "Fin. 👋"]))
+      (tap> (v/with-viewers (v/add-viewers rule-30/viewers) rule-30/rule-30)))
+  (tap> (v/with-viewers (v/add-viewers rule-30/viewers) rule-30/board))
+  (tap> (v/html [:h1 "Fin. 👋"]))
   (tap> (reduce (fn [acc _] (vector acc)) :fin (range 200)))
   (reset-taps!))
