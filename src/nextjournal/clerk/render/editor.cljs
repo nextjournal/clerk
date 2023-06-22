@@ -130,6 +130,7 @@
                                                                      (when (.-selection tr)
                                                                        (reset! !eval-result nil))
                                                                      #js {})))
+                                                           (eval-region/extension {:modifier "Meta"})
                                                            (.of keymap
                                                                 (j/lit
                                                                  [{:key "Alt-Enter"
