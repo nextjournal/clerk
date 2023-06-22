@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.render.editor
   (:require ["@codemirror/autocomplete" :refer [autocompletion]]
+            ["@codemirror/state" :refer [EditorState]]
             ["@codemirror/language" :refer [syntaxTree]]
             ["@codemirror/view" :refer [keymap placeholder hoverTooltip]]
             ["@nextjournal/lang-clojure" :refer [clojureLanguage]]
@@ -126,6 +127,11 @@
                                                            (.of keymap clojure-mode.keymap/paredit)
                                                            doc-tooltip
                                                            completion-source
+                                                           (.. EditorState -transactionExtender
+                                                               (of (fn [^js tr]
+                                                                     (when (.-selection tr)
+                                                                       (reset! !eval-result nil))
+                                                                     #js {})))
                                                            (.of keymap
                                                                 (j/lit
                                                                  [{:key "Alt-Enter"
@@ -137,13 +143,14 @@
          (on-eval view)
          #(.destroy view))))    
     [:div.fixed.w-screen.h-screen.flex.flex-col.top-0.left-0
-     [:div.flex.flex-auto
+     [:div.flex
       [:div.bg-slate-200.border-r.border-slate-300.dark:border-slate-600.px-4.py-3.dark:bg-slate-800
        {:class "w-[50vw]"}
        [:div {:ref !container-el}]]
-      [:div.bg-white.dark:bg-slate-950.overflow-y-auto
+      [:div.bg-white.dark:bg-slate-950.bg-white.flex.flex-col.max-h-screen.overflow-y-auto
        {:class "w-[50vw]"}
        [render/inspect @!notebook]]]
      (when-let [result @!eval-result]
-       [:div.border-t.bg-white.px-4.py-2
+       [:div.border-t.border-slate-300.px-4.py-2.flex-shrink-0.absolute.bottom-0.left-0.w-screen.bg-white
+        {:style {:box-shadow "0 -2px 3px 0 rgb(0 0 0 / 0.025)"}}
         [render/inspect result]])]))
