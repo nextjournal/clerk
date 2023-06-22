@@ -144,7 +144,7 @@
      [:style {:type "text/css"} ".notebook-viewer { padding-top: 2.5rem; } .notebook-viewer .viewer:first-child { display: none; }"]
      [:div.fixed.w-screen.h-screen.flex.flex-col.top-0.left-0
       [:div.flex
-       [:div.bg-slate-200.border-r.border-slate-300.dark:border-slate-600.px-4.py-3.dark:bg-slate-800
+       [:div.bg-slate-200.border-r.border-slate-300.dark:border-slate-600.px-4.py-3.dark:bg-slate-800.overflow-y-auto
         {:class "w-[50vw]" :style {:height (str "calc(100vh - " command-bar-height "px)")}}
         [:div.h-screen {:ref !container-el}]]
        [:div.bg-white.dark:bg-slate-950.bg-white.flex.flex-col.overflow-y-auto
