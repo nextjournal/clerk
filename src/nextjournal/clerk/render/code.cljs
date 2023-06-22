@@ -151,7 +151,22 @@
                                  :overflow "hidden"}
                   ".cm-tooltip > ul > li" {:padding "3px 10px 3px 0 !important"}
                   ".cm-tooltip > ul > li:first-child" {:border-top-left-radius "3px"
-                                                       :border-top-right-radius "3px"}})))
+                                                       :border-top-right-radius "3px"}
+                  ".cm-tooltip.cm-tooltip-autocomplete" {:border "0"
+                                                         :border-radius "6px"
+                                                         :box-shadow "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)"
+                                                         "& > ul" {:font-size "12px"
+                                                                   :font-family "'Fira Code', monospace"
+                                                                   :background "rgb(241 245 249)"
+                                                                   :border "1px solid rgb(203 213 225)"
+                                                                   :border-radius "6px"}}
+                  ".cm-tooltip-autocomplete ul li[aria-selected]" {:background "rgb(79 70 229)"
+                                                                   :color "#fff"}
+                  ".cm-tooltip.cm-tooltip-hover" {:background "rgb(241 245 249)"
+                                                  :border-radius "6px"
+                                                  :border "1px solid rgb(203 213 225)"
+                                                  :box-shadow "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)"
+                                                  :max-width "550px"}})))
 
 (def read-only (.. EditorView -editable (of false)))
 

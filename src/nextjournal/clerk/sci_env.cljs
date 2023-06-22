@@ -19,6 +19,7 @@
             [nextjournal.clerk.render :as render]
             [nextjournal.clerk.render.code]
             [nextjournal.clerk.render.context :as view-context]
+            [nextjournal.clerk.render.editor]
             [nextjournal.clerk.render.hooks]
             [nextjournal.clerk.render.navbar]
             [nextjournal.clerk.trim-image]
@@ -158,6 +159,7 @@
                        'nextjournal.clerk.parser
                        'nextjournal.clerk.render
                        'nextjournal.clerk.render.code
+                       'nextjournal.clerk.render.editor
                        'nextjournal.clerk.render.hooks
                        'nextjournal.clerk.render.navbar
 
