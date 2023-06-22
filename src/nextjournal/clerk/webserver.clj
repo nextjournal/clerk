@@ -23,8 +23,11 @@
              :visibility {:code :hide, :result :show}
              :result {:nextjournal/value (v/html (help-hiccup))}}]})
 
-(defonce !clients (atom #{}))
-(defonce !doc (atom nil))
+(defonce !client->session (atom {}))
+
+#_(defonce ^:dynamic !doc nil)
+(defonce ^:dynamic *session* nil)
+(defonce !session->doc (atom {nil (atom nil)}))
 (defonce !last-sender-ch (atom nil))
 
 #_(view/doc->viewer @!doc)
@@ -36,7 +39,8 @@
   (httpkit/send! ch (v/->edn msg)))
 
 (defn broadcast! [msg]
-  (doseq [ch @!clients]
+  (doseq [[ch session] @!client->session
+          :when (= session *session*)]
     (when (not= @!last-sender-ch *sender-ch*)
       (send! ch {:type :patch-state! :patch []
                  :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-ch* ch)))]}))
@@ -111,8 +115,15 @@
   (when-let [scheduled-send-status-future (-> doc meta ::!send-status-future)]
     (future-cancel scheduled-send-status-future)))
 
+(defn get-doc!
+  ([] (get-doc! nil))
+  ([session]
+   (or (get @!session->doc session)
+       (throw (ex-info (format "No `!doc` found in session `%s`." (pr-str session)) {:session session})))))
+
 (defn present+reset! [doc]
-  (let [presented (view/doc->viewer doc)
+  (let [!doc (get-doc!)
+        presented (view/doc->viewer doc)
         sync-vars-old (v/extract-sync-atom-vars @!doc)
         sync-vars (v/extract-sync-atom-vars doc)]
     (doseq [sync-var (set/difference sync-vars sync-vars-old)]
@@ -123,19 +134,23 @@
     (reset! !doc (with-meta doc presented))
     presented))
 
-(defn update-doc! [{:as doc :keys [nav-path fragment skip-history?]}]
-  (broadcast! (if (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
-                {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
-                (cond-> {:type :set-state!
-                         :doc (present+reset! doc)}
-                  (and nav-path (not skip-history?))
-                  (assoc :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/history-push-state
-                                                         (cond-> {:path nav-path} fragment (assoc :fragment fragment))))])))))
+(defn update-doc!
+  ([doc] (update-doc! (get-doc!) doc))
+  ([!doc {:as doc :keys [nav-path fragment skip-history?]}]
+   (broadcast! (if (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
+                 {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
+                 (cond-> {:type :set-state!
+                          :doc (present+reset! doc)}
+                   (and nav-path (not skip-history?))
+                   (assoc :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/history-push-state
+                                                          (cond-> {:path nav-path} fragment (assoc :fragment fragment))))]))))))
 
 #_(update-doc! (help-doc))
 
-(defn update-error! [ex]
-  (update-doc! (assoc @!doc :error ex)))
+(defn update-error!
+  ([ex] (update-error! (get-doc!) ex))
+  ([!doc ex]
+   (update-doc! (assoc @!doc :error ex))))
 
 (defn read-msg [s]
   (binding [*data-readers* v/data-readers]
@@ -149,25 +164,27 @@
 #_(pr-str (read-msg "#viewer-eval (resolve 'clojure.core/inc)"))
 
 (def ws-handlers
-  {:on-open (fn [ch] (swap! !clients conj ch))
-   :on-close (fn [ch _reason] (swap! !clients disj ch))
+  {:on-open (fn [ch] (swap! !client->session assoc ch *session*))
+   :on-close (fn [ch _reason] (swap! !client->session dissoc ch))
    :on-receive (fn [sender-ch edn-string]
-                 (binding [*ns* (or (:ns @!doc)
-                                    (create-ns 'user))]
-                   (let [{:as msg :keys [type recompute?]} (read-msg edn-string)]
-                     (case type
-                       :eval (do (send! sender-ch (merge {:type :eval-reply :eval-id (:eval-id msg)}
-                                                         (try {:reply (eval (:form msg))}
-                                                              (catch Exception e
-                                                                {:error (Throwable->map e)}))))
-                                 (when recompute?
-                                   (eval '(nextjournal.clerk/recompute!))))
-                       :swap! (when-let [var (resolve (:var-name msg))]
-                                (try
-                                  (binding [*sender-ch* sender-ch]
-                                    (apply swap! @var (eval (:args msg))))
-                                  (catch Exception ex
-                                    (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) update-error!)))))))))})
+                 (binding [*session* (get @!client->session sender-ch)]
+                   (let [!doc (get-doc! *session*)
+                         {:as msg :keys [type recompute?]} (read-msg edn-string)]
+                     (binding [*ns* (or (:ns @!doc)
+                                        (create-ns 'user))]
+                       (case type
+                         :eval (do (send! sender-ch (merge {:type :eval-reply :eval-id (:eval-id msg)}
+                                                           (try {:reply (eval (:form msg))}
+                                                                (catch Exception e
+                                                                  {:error (Throwable->map e)}))))
+                                   (when recompute?
+                                     (eval '(nextjournal.clerk/recompute!))))
+                         :swap! (when-let [var (resolve (:var-name msg))]
+                                  (try
+                                    (binding [*sender-ch* sender-ch]
+                                      (apply swap! @var (eval (:args msg))))
+                                    (catch Exception ex
+                                      (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) update-error!))))))))))})
 
 #_(do
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
@@ -175,18 +192,23 @@
 
 (declare present+reset!)
 
+(defn maybe-append-session [url]
+  (cond-> url
+    *session* (str "?session=" *session*)))
+
 (defn ->nav-path [file-or-ns]
-  (cond (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
-        (str "'" file-or-ns)
+  (maybe-append-session
+   (cond (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
+         (str "'" file-or-ns)
 
-        (string? file-or-ns)
-        (when (fs/exists? file-or-ns)
-          (fs/unixify (cond->> (fs/strip-ext file-or-ns)
-                        (and (fs/absolute? file-or-ns)
-                             (not (str/starts-with? (fs/relativize (fs/cwd) file-or-ns) "..")))
-                        (fs/relativize (fs/cwd)))))
+         (string? file-or-ns)
+         (when (fs/exists? file-or-ns)
+           (fs/unixify (cond->> (fs/strip-ext file-or-ns)
+                         (and (fs/absolute? file-or-ns)
+                              (not (str/starts-with? (fs/relativize (fs/cwd) file-or-ns) "..")))
+                         (fs/relativize (fs/cwd)))))
 
-        :else (str file-or-ns)))
+         :else (str file-or-ns))))
 
 #_(->nav-path "notebooks/rule_30.clj")
 #_(->nav-path 'nextjournal.clerk.home)
@@ -205,6 +227,9 @@
 #_(maybe-add-extension "notebooks/rule_30.clj")
 #_(maybe-add-extension "notebooks/markdown")
 #_(maybe-add-extension "'nextjournal.clerk.home")
+
+#_(binding [*session* "foo"]
+    (nextjournal.clerk/show! 'nextjournal.clerk.tap))
 
 (defn ->file-or-ns [nav-path]
   (cond (str/blank? nav-path) (or (maybe-add-extension "index")
@@ -228,35 +253,39 @@
 
       (str/blank? nav-path)
       {:status 302
-       :headers {"Location" (or (:nav-path @!doc)
-                                (->nav-path 'nextjournal.clerk.home))}}
+       :headers {"Location" (maybe-append-session (or (:nav-path @(get-doc!))
+                                                      (->nav-path 'nextjournal.clerk.home)))}}
       :else
       (if-let [file-or-ns (->file-or-ns (maybe-add-extension nav-path))]
         (do (try (show! {:skip-history? true} file-or-ns)
                  (catch Exception _))
             {:status 200
              :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
-             :body (view/->html {:doc (view/doc->viewer @!doc)
+             :body (view/->html {:doc (view/doc->viewer @(get-doc!))
                                  :resource->url @config/!resource->url
                                  :conn-ws? true})})
         {:status 404
          :headers {"Content-Type" "text/plain"}
          :body (format "Could not find notebook at %s." (pr-str nav-path))}))))
 
+(defn get-session [{:as req :keys [query-string]}]
+  (some-> query-string query-string->map :session edn/read-string))
+
 (defn app [{:as req :keys [uri]}]
-  (if (:websocket? req)
-    (httpkit/as-channel req ws-handlers)
-    (try
-      (case (get (re-matches #"/([^/]*).*" uri) 1)
-        "_blob" (serve-blob @!doc (extract-blob-opts req))
-        ("build" "js" "css") (serve-file uri (str "public" uri))
-        ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
-        "_ws" {:status 200 :body "upgrading..."}
-        "favicon.ico" {:status 404}
-        (serve-notebook req))
-      (catch Throwable e
-        {:status  500
-         :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
+  (binding [*session* (get-session req)]
+    (if (:websocket? req)
+      (httpkit/as-channel req ws-handlers)
+      (try
+        (case (get (re-matches #"/([^/]*).*" uri) 1)
+          "_blob" (serve-blob @(get-doc!) (extract-blob-opts req))
+          ("build" "js" "css") (serve-file uri (str "public" uri))
+          ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
+          "_ws" {:status 200 :body "upgrading..."}
+          "favicon.ico" {:status 404}
+          (serve-notebook req))
+        (catch Throwable e
+          {:status  500
+           :body    (with-out-str (pprint/pprint (Throwable->map e)))})))))
 
 #_(nextjournal.clerk/serve! {})
 
@@ -275,10 +304,12 @@
     (Thread/sleep 50)
     (broadcast-status! status)))
 
-(defn set-status! [status]
-  (swap! !doc (fn [doc] (-> (or doc (help-doc))
-                            (vary-meta assoc :status status)
-                            (vary-meta update ::!send-status-future broadcast-status-debounced! status)))))
+(defn set-status!
+  ([status] (set-status! (get-doc!) status))
+  ([!doc status]
+   (swap! !doc (fn [doc] (-> (or doc (help-doc))
+                             (vary-meta assoc :status status)
+                             (vary-meta update ::!send-status-future broadcast-status-debounced! status))))))
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
 

@@ -60,7 +60,7 @@
                                         {::doc {:file file-or-ns}}
                                         e))))
              _ (reset! !last-file file)
-             {:keys [blob->result]} @webserver/!doc
+             {:keys [blob->result]} @(webserver/get-doc!)
              {:keys [result time-ms]} (try (eval/time-ms (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!)))
                                            (catch Exception e
                                              (throw (ex-info (str "`nextjournal.clerk/show!` encountered an eval error with: `" (pr-str file-or-ns) "`") {::doc doc} e))))]
@@ -81,8 +81,8 @@
 (defn recompute!
   "Recomputes the currently visible doc, without parsing it."
   []
-  (binding [*ns* (:ns @webserver/!doc)]
-    (let [{:keys [result time-ms]} (eval/time-ms (eval/eval-analyzed-doc @webserver/!doc))]
+  (binding [*ns* (:ns @(webserver/get-doc!))]
+    (let [{:keys [result time-ms]} (eval/time-ms (eval/eval-analyzed-doc @(webserver/get-doc!)))]
       (println (str "Clerk recomputed '" @!last-file "' in " time-ms "ms."))
       (webserver/update-doc! result))))
 
@@ -521,20 +521,20 @@
   * a symbol representing the var name (qualified or not)
   * the form of an anonymous expression"
   ([]
-   (swap! webserver/!doc dissoc :blob->result)
+   (swap! (webserver/get-doc!) dissoc :blob->result)
    (if (fs/exists? config/cache-dir)
      (do (fs/delete-tree config/cache-dir)
          (prn :cache-dir/deleted config/cache-dir))
      (prn :cache-dir/does-not-exist config/cache-dir)))
   ([sym-or-form]
-   (if-let [{:as block :keys [id result]} (first (analyzer/find-blocks @webserver/!doc sym-or-form))]
+   (if-let [{:as block :keys [id result]} (first (analyzer/find-blocks @(webserver/get-doc!) sym-or-form))]
      (let [{:nextjournal/keys [blob-id]} result
            cache-file (fs/file config/cache-dir (str "@" blob-id))
-           cached-in-memory? (contains? (:blob->result @webserver/!doc) blob-id)
+           cached-in-memory? (contains? (:blob->result @(webserver/get-doc!)) blob-id)
            cached-on-fs? (fs/exists? cache-file)]
        (if-not (or cached-in-memory? cached-on-fs?)
          (prn :cache/not-cached {:id id})
-         (do (swap! webserver/!doc update :blob->result dissoc blob-id)
+         (do (swap! (webserver/get-doc!) update :blob->result dissoc blob-id)
              (fs/delete-if-exists cache-file)
              (prn :cache/removed {:id id :cached-in-memory? cached-in-memory? :cached-on-fs? cached-on-fs?}))))
      (prn :cache/no-block-found {:sym-or-form sym-or-form}))))
