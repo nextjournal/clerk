@@ -14,6 +14,7 @@
                        [goog.crypt.Sha1]
                        [reagent.ratom :as ratom]
                        [sci.core :as sci]
+                       [sci.impl.vars]
                        [sci.lang]
                        [applied-science.js-interop :as j]])
             [nextjournal.clerk.parser :as parser]
@@ -465,7 +466,7 @@
 (defn datafy-scope [scope]
   (cond
     #?@(:clj [(instance? clojure.lang.Namespace scope) (ns-name scope)]
-        :cljs [(instance? sci.lang.Namespace scope) (sci.impl.namespaces/sci-ns-name scope)])
+        :cljs [(instance? sci.lang.Namespace scope) (sci/ns-name scope)])
     (symbol? scope) scope
     (#{:default} scope) scope
     :else (throw (ex-info (str "Unsupported scope `" scope "`. Valid scopes are namespaces, symbol namespace names or `:default`.")

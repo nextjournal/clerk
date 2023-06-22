@@ -1,20 +1,18 @@
 (ns nextjournal.clerk.render.editor
   (:require ["@codemirror/autocomplete" :refer [autocompletion]]
-            ["@codemirror/state" :refer [EditorState]]
             ["@codemirror/language" :refer [syntaxTree]]
+            ["@codemirror/state" :refer [EditorState]]
             ["@codemirror/view" :refer [keymap placeholder hoverTooltip]]
-            ["@nextjournal/lang-clojure" :refer [clojureLanguage]]
-            ["react" :as react]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
-            [nextjournal.clerk.render.hooks :as hooks]
+            [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.render :as render]
             [nextjournal.clerk.render.code :as code]
-            [nextjournal.clerk.viewer :as v]
-            [nextjournal.clojure-mode :as clojure-mode]
-            [nextjournal.clojure-mode.keymap :as clojure-mode.keymap]
-            [nextjournal.clojure-mode.extensions.eval-region :as eval-region]
+            [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clerk.sci-env.completions :as sci-completions]
+            [nextjournal.clerk.viewer :as v]
+            [nextjournal.clojure-mode.extensions.eval-region :as eval-region]
+            [nextjournal.clojure-mode.keymap :as clojure-mode.keymap]
             [sci.core :as sci]
             [sci.ctx-store]
             [shadow.esm]))
@@ -65,10 +63,10 @@
    (fn [^js view pos side]
      (let [node-before (.. (syntaxTree (.-state view)) (resolveInner pos -1))
            text-at-point (.. view -state (sliceDoc (.-from node-before) (.-to node-before)))
-           {:as res :keys [candidated info]} (some->> (sci-completions/completions {:ctx (sci.ctx-store/get-ctx) :ns "user" :symbol text-at-point})
-                                                      :completions
-                                                      (filter #(= (:candidate %) text-at-point))
-                                                      first)]
+           {:as res :keys [info]} (some->> (sci-completions/completions {:ctx (sci.ctx-store/get-ctx) :ns "user" :symbol text-at-point})
+                                           :completions
+                                           (filter #(= (:candidate %) text-at-point))
+                                           first)]
        (when (and res info)
          (let [{:keys [arglists-str doc name]} info]
            #js {:pos pos
@@ -91,7 +89,7 @@
 
 (defn eval-notebook [code]
   (as-> code doc
-    (nextjournal.clerk.parser/parse-clojure-string {:doc? true} doc)
+    (parser/parse-clojure-string {:doc? true} doc)
     (update doc :blocks (partial map (fn [{:as b :keys [type text]}]
                                        (cond-> b
                                          (= :code type)
