@@ -1,4 +1,4 @@
-(ns notebooks.editor
+(ns editor
   {:nextjournal.clerk/visibility {:code :hide}
    :nextjournal.clerk/doc-css-class [:overflow-hidden :p-0]}
   (:require [nextjournal.clerk :as clerk]
