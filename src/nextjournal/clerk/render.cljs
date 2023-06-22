@@ -17,7 +17,7 @@
             [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clerk.render.localstorage :as localstorage]
             [nextjournal.clerk.render.navbar :as navbar]
-            [nextjournal.clerk.render.window :as window]
+            [nextjournal.clerk.render.panel :as panel]
             [nextjournal.clerk.viewer :as viewer]
             [reagent.core :as r]
             [reagent.ratom :as ratom]
@@ -550,6 +550,7 @@
 
 (defonce !doc (ratom/atom nil))
 (defonce !viewers viewer/!viewers)
+(defonce !panels (ratom/atom {}))
 
 (defn set-viewers! [scope viewers]
   #_(js/console.log :set-viewers! {:scope scope :viewers viewers})
@@ -588,8 +589,10 @@
                                                 (swap! !state update :desc viewer/merge-presentations more fetch-opts))))}
      [inspect-presented (:desc @!state)]]))
 
-(defn show-window [& content]
-  [window/show content])
+(defn show-panel [panel-id panel]
+  (swap! !panels assoc panel-id panel))
+
+#_(show-panel :test {:content [:div "Test"] :width 600 :height 600})
 
 (defn root []
   [:<>
@@ -601,7 +604,16 @@
       [exec-status status])]
    (when-let [error (get-in @!doc [:nextjournal/value :error])]
      [:div.fixed.top-0.left-0.w-full.h-full
-      [inspect-presented error]])])
+      [inspect-presented error]])
+   (into [:<>]
+         (map (fn [[id state]]
+                (js/console.log state)
+                ^{:key id}
+                [panel/show
+                 (:content state)
+                 (-> state
+                     (assoc :id id :on-close #(swap! !panels dissoc id)))]))
+         @!panels)])
 
 (declare mount)
 
