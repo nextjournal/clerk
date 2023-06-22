@@ -141,16 +141,18 @@
                                                                    :run (partial eval-at-cursor on-result)}]))]))
                             @!container-el))]
          (on-eval view)
-         #(.destroy view))))    
-    [:div.fixed.w-screen.h-screen.flex.flex-col.top-0.left-0
-     [:div.flex
-      [:div.bg-slate-200.border-r.border-slate-300.dark:border-slate-600.px-4.py-3.dark:bg-slate-800.h-screen
-       {:class "w-[50vw]"}
-       [:div.h-screen {:ref !container-el}]]
-      [:div.bg-white.dark:bg-slate-950.bg-white.flex.flex-col.overflow-y-auto.h-screen
-       {:class "w-[50vw]"}
-       [render/inspect @!notebook]]]
-     (when-let [result @!eval-result]
-       [:div.border-t.border-slate-300.px-4.py-2.flex-shrink-0.absolute.bottom-0.left-0.w-screen.bg-white
-        {:style {:box-shadow "0 -2px 3px 0 rgb(0 0 0 / 0.025)"}}
-        [render/inspect result]])]))
+         #(.destroy view))))
+    [:<>
+     [:style {:type "text/css"} ".notebook-viewer { padding-top: 2.5rem; } .notebook-viewer .viewer:first-child { display: none; }"]
+     [:div.fixed.w-screen.h-screen.flex.flex-col.top-0.left-0
+      [:div.flex
+       [:div.bg-slate-200.border-r.border-slate-300.dark:border-slate-600.px-4.py-3.dark:bg-slate-800.h-screen
+        {:class "w-[50vw]"}
+        [:div.h-screen {:ref !container-el}]]
+       [:div.bg-white.dark:bg-slate-950.bg-white.flex.flex-col.overflow-y-auto.h-screen
+        {:class "w-[50vw]"}
+        [render/inspect @!notebook]]]
+      (when-let [result @!eval-result]
+        [:div.border-t.border-slate-300.px-4.py-2.flex-shrink-0.absolute.bottom-0.left-0.w-screen.bg-white
+         {:style {:box-shadow "0 -2px 3px 0 rgb(0 0 0 / 0.025)"}}
+         [render/inspect result]])]]))
