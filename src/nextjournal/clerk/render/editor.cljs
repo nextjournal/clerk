@@ -144,10 +144,10 @@
          #(.destroy view))))    
     [:div.fixed.w-screen.h-screen.flex.flex-col.top-0.left-0
      [:div.flex
-      [:div.bg-slate-200.border-r.border-slate-300.dark:border-slate-600.px-4.py-3.dark:bg-slate-800
+      [:div.bg-slate-200.border-r.border-slate-300.dark:border-slate-600.px-4.py-3.dark:bg-slate-800.h-screen
        {:class "w-[50vw]"}
-       [:div {:ref !container-el}]]
-      [:div.bg-white.dark:bg-slate-950.bg-white.flex.flex-col.max-h-screen.overflow-y-auto
+       [:div.h-screen {:ref !container-el}]]
+      [:div.bg-white.dark:bg-slate-950.bg-white.flex.flex-col.overflow-y-auto.h-screen
        {:class "w-[50vw]"}
        [render/inspect @!notebook]]]
      (when-let [result @!eval-result]
