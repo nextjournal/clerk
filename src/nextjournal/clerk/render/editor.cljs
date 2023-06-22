@@ -103,7 +103,7 @@
                                                      (v/with-viewer v/reagent-viewer)))})))))
     (v/with-viewer v/notebook-viewer {:nextjournal.clerk/width :wide} doc)))
 
-
+(defonce command-bar-height 26)
 
 (defn view [code-string]
   (let [!notebook (hooks/use-state nil)
@@ -144,14 +144,25 @@
      [:style {:type "text/css"} ".notebook-viewer { padding-top: 2.5rem; } .notebook-viewer .viewer:first-child { display: none; }"]
      [:div.fixed.w-screen.h-screen.flex.flex-col.top-0.left-0
       [:div.flex
-       [:div.bg-slate-200.border-r.border-slate-300.dark:border-slate-600.px-4.py-3.dark:bg-slate-800.h-screen
-        {:class "w-[50vw]"}
+       [:div.bg-slate-200.border-r.border-slate-300.dark:border-slate-600.px-4.py-3.dark:bg-slate-800
+        {:class "w-[50vw]" :style {:height (str "calc(100vh - " command-bar-height "px)")}}
         [:div.h-screen {:ref !container-el}]]
-       [:div.bg-white.dark:bg-slate-950.bg-white.flex.flex-col.overflow-y-auto.h-screen
-        {:class "w-[50vw]"}
+       [:div.bg-white.dark:bg-slate-950.bg-white.flex.flex-col.overflow-y-auto
+        {:class "w-[50vw]" :style {:height (str "calc(100vh - " command-bar-height "px)")}}
         [:> render/ErrorBoundary {:hash (gensym)}
          [render/inspect @!notebook]]]]
+      [:div.absolute.left-0.bottom-0.w-screen.bg-slate-900.border-t.border-slate-950.flex.justify-left.px-4.font-mono.gap-4.items-center.text-white
+       {:class "text-[12px]" :style {:height command-bar-height}}
+       [:div.flex.gap-1.items-center
+        "Eval notebook"
+        [:div.font-inter.text-slate-300 "⌥↩"]]
+       [:div.flex.gap-1.items-center
+        "Eval at cursor"
+        [:div.font-inter.text-slate-300 "⌘↩"]]
+       [:div.flex.gap-1.items-center
+        "Eval top level"
+        [:div.font-inter.text-slate-300 "⇧⌘↩"]]]
       (when-let [result @!eval-result]
-        [:div.border-t.border-slate-300.px-4.py-2.flex-shrink-0.absolute.bottom-0.left-0.w-screen.bg-white
-         {:style {:box-shadow "0 -2px 3px 0 rgb(0 0 0 / 0.025)"}}
+        [:div.border-t.border-slate-300.px-4.py-2.flex-shrink-0.absolute.left-0.w-screen.bg-white
+         {:style {:box-shadow "0 -2px 3px 0 rgb(0 0 0 / 0.025)" :bottom command-bar-height}}
          [render/inspect result]])]]))
