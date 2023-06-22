@@ -151,7 +151,8 @@
         [:div.h-screen {:ref !container-el}]]
        [:div.bg-white.dark:bg-slate-950.bg-white.flex.flex-col.overflow-y-auto.h-screen
         {:class "w-[50vw]"}
-        [render/inspect @!notebook]]]
+        [:> render/ErrorBoundary {:hash (gensym)}
+         [render/inspect @!notebook]]]]
       (when-let [result @!eval-result]
         [:div.border-t.border-slate-300.px-4.py-2.flex-shrink-0.absolute.bottom-0.left-0.w-screen.bg-white
          {:style {:box-shadow "0 -2px 3px 0 rgb(0 0 0 / 0.025)"}}
