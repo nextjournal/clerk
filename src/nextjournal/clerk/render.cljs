@@ -607,7 +607,6 @@
       [inspect-presented error]])
    (into [:<>]
          (map (fn [[id state]]
-                (js/console.log state)
                 ^{:key id}
                 [panel/show
                  (:content state)
