@@ -11,17 +11,17 @@
 
 ;; Windows have identity. In order to spawn one, you have to call something like:
 
-(clerk/window! :my-window {:foo (vec (repeat 2 {:baz (range 30) :fooze (range 40)})) :bar (range 20)})
+#_(clerk/window! :my-window {:foo (vec (repeat 2 {:baz (range 30) :fooze (range 40)})) :bar (range 20)})
 
 ;; This creates a window with a `:my-window` id. The id makes the window addressable and, as such, allows to update its contents from the REPL. For example, you can call …
 
-(clerk/window! :my-window {:title "A debug window"} (zipmap (range 1000) (map #(* % %) (range 1000))))
+#_(clerk/window! :my-window {:title "A debug window"} (zipmap (range 1000) (map #(* % %) (range 1000))))
 
 ;; … to replace the contens of `:my-window`. The window itself will not be reinstantiated. The example also shows that `window!` takes an optional second `opts` argument that can be used to give it a custom title.
 
 ;; Windows have a dedicated close button but you can also use the id to close it from the REPL, e.g.
 
-(clerk/close-window! :my-window)
+#_(clerk/close-window! :my-window)
 
 ;; Finally, there's also special `::clerk/taps` window that doesn't require you to set any content. Instead, it will show you a stream of taps (independant of the notebooks you are working in). So, whenever you `tap>` something, the Taps window will show it when it's open:
 

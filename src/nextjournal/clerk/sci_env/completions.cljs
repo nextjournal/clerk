@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.sci-env.completions
   (:require ["@codemirror/autocomplete" :as cm-autocomplete]
             ["@codemirror/language" :as cm-lang]
+            ["@codemirror/view" :as cm-view]
             [clojure.string :as str]
             [goog.object :as gobject]
             [sci.core :as sci]
@@ -56,10 +57,33 @@
               (when (re-find pat (str sym-ns "/" sym-name))
                 [sym-ns (str sym-ns "/" sym-name)]))))))
 
-(defn completions [{:keys [ctx]
-                    ns-str :ns
-                    :as request}]
-  (js/console.log "request" request)
+(defn format-1 [fmt-str x]
+  (str/replace-first fmt-str "%s" x))
+
+(defn info [{:keys [sym ctx] ns-str :ns}]
+  (if-not sym
+    {:status ["no-eldoc" "done"]
+     :err "Message should contain a `sym`"}
+    (let [code (-> "(when-let [the-var (ns-resolve '%s '%s)] (meta the-var))"
+                   (format-1 ns-str)
+                   (format-1 sym))
+          [kind val] (try [::success (sci/eval-string* ctx code)]
+                          (catch :default e
+                            [::error (str e)]))
+          {:keys [doc file line name arglists]} val]
+      (if (and name (= kind ::success))
+        (cond-> {:ns (some-> val :ns ns-name)
+                 :arglists (pr-str arglists)
+                 :eldoc (mapv #(mapv str %) arglists)
+                 :arglists-str (.join (apply array arglists) "\n")
+                 :status ["done"]
+                 :name name}
+          doc (assoc :doc doc)
+          file (assoc :file file)
+          line (assoc :line line))
+        {:status ["done" "no-eldoc"]}))))
+
+(defn completions [{:keys [ctx] ns-str :ns :as request}]
   (try
     (let [sci-ns (when ns-str
                    (sci/find-ns ctx (symbol ns-str)))]
@@ -102,8 +126,10 @@
                                   svs)
                 completions (concat completions from-imports)
                 completions (->> (map (fn [[namespace name]]
-                                        (cond-> {"candidate" (str name)}
-                                          namespace (assoc "ns" (str namespace))))
+                                        (let [candidate (str name)
+                                              info (when namespace
+                                                     (info {:ns (str namespace) :sym candidate :ctx ctx}))]
+                                          {:candidate candidate :info info}))
                                       completions)
                                  distinct vec)]
             {:completions completions
@@ -119,9 +145,40 @@
         text-before (.. context -state (sliceDoc (.-from node-before) (.-pos context)))]
     #js {:from (.-from node-before)
          :options (clj->js (map
-                            (fn [{:strs [candidate]}]
-                              (doto {:label candidate} prn))
+                            (fn [{:as option :keys [candidate info]}]
+                              (let [{:keys [arglists arglists-str]} info]
+                                (cond-> {:label candidate :type (if arglists "function" "namespace")}
+                                  arglists (assoc :detail arglists-str))))
                             (:completions (completions {:ctx (sci.ctx-store/get-ctx) :ns "user" :symbol text-before}))))}))
+
+(def doc-tooltip
+  (cm-view/hoverTooltip
+   (fn [^js view pos side]
+     (let [node-before (.. (cm-lang/syntaxTree (.-state view)) (resolveInner pos -1))
+           text-at-point (.. view -state (sliceDoc (.-from node-before) (.-to node-before)))
+           {:as res :keys [candidated info]} (some->> (completions {:ctx (sci.ctx-store/get-ctx) :ns "user" :symbol text-at-point})
+                                                      :completions
+                                                      (filter #(= (:candidate %) text-at-point))
+                                                      first)]
+       (when (and res info)
+         (let [{:keys [arglists-str doc name]} info]
+           #js {:pos pos
+                :create (fn [view]
+                          (let [dom (doto (js/document.createElement "div")
+                                      (.setAttribute "class" "font-mono text-[11px] p-2"))
+                                name-el (doto (js/document.createElement "div")
+                                          (.setAttribute "class" "font-bold"))
+                                args-el (doto (js/document.createElement "span")
+                                          (.setAttribute "class" "ml-2 italic font-normal"))
+                                docs-el (doto (js/document.createElement "div")
+                                          (.setAttribute "class" "pre-wrap mt-3"))]
+                            (set! (.-textContent name-el) (str name))
+                            (set! (.-textContent args-el) arglists-str)
+                            (.appendChild name-el args-el)
+                            (.appendChild dom name-el)
+                            (set! (.-textContent docs-el) doc)
+                            (.appendChild dom docs-el)
+                            #js {:dom dom}))}))))))
 
 (def completion-source
   (cm-autocomplete/autocompletion #js {:override #js [autocomplete]}))

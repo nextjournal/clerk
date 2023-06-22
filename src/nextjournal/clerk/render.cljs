@@ -17,7 +17,7 @@
             [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clerk.render.localstorage :as localstorage]
             [nextjournal.clerk.render.navbar :as navbar]
-            [nextjournal.clerk.render.window :as window]
+            [nextjournal.clerk.render.panel :as panel]
             [nextjournal.clerk.viewer :as viewer]
             [reagent.core :as r]
             [reagent.ratom :as ratom]
@@ -549,8 +549,13 @@
     [:span.cmt-meta tag] (when space? nbsp) value]))
 
 (defonce !doc (ratom/atom nil))
-(defonce !windows (ratom/atom {}))
+(defonce !panels (ratom/atom {}))
 (defonce !viewers viewer/!viewers)
+
+(defn sci-repl []
+  (swap! !panels assoc ::sci-repl {:content [panel/sci-repl]
+                                   :css-class "p-0 relative overflow-auto"
+                                   :width 640}))
 
 (defn set-viewers! [scope viewers]
   #_(js/console.log :set-viewers! {:scope scope :viewers viewers})
@@ -605,12 +610,11 @@
    (into [:<>]
          (map (fn [[id state]]
                 ^{:key id}
-                [window/show
-                 [render-result state {}]
+                [panel/show
+                 (:content state)
                  (-> state
-                     (assoc :id id :on-close #(clerk-eval `(nextjournal.clerk.window/close! ~id)))
-                     (dissoc :nextjournal/presented))]))
-         @!windows)])
+                     (assoc :id id :on-close #(swap! !panels dissoc id)))]))
+         @!panels)])
 
 (declare mount)
 
@@ -706,14 +710,9 @@
         (if error (reject error) (resolve reply)))
     (js/console.warn :process-eval-reply!/not-found :eval-id eval-id :keys (keys @!pending-clerk-eval-replies))))
 
-(defn set-window-state! [{:keys [id state]}] (swap! !windows assoc id state))
-(defn close-window! [{:keys [id]}] (swap! !windows dissoc id))
-
 (defn ^:export dispatch [{:as msg :keys [type]}]
   (let [dispatch-fn (get {:patch-state! patch-state!
                           :set-state! set-state!
-                          :set-window-state! set-window-state!
-                          :close-window! close-window!
                           :eval-reply process-eval-reply!}
                          type
                          (fn [_]

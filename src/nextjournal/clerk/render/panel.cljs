@@ -1,4 +1,4 @@
-(ns nextjournal.clerk.render.window
+(ns nextjournal.clerk.render.panel
   (:require ["@codemirror/view" :as cm-view :refer [keymap]]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
@@ -169,28 +169,6 @@
           :shift (partial eval-top-level on-result)
           :run (partial eval-at-cursor on-result)}])))
 
-(defn sci-repl []
-  (let [!code-str (hooks/use-state "")
-        !results (hooks/use-state ())]
-    [:div.flex.flex-col.bg-gray-50
-     [:div.w-full.border-t.border-b.border-slate-300.shadow-inner.px-2.py-1.bg-slate-100
-      [code/editor !code-str {:extensions #js [(.of keymap clojure-mode.keymap/paredit)
-                                               completions/completion-source
-                                               (sci-extension {:modifier "Alt"
-                                                               :on-result #(swap! !results conj {:result %
-                                                                                                 :evaled-at (js/Date.)
-                                                                                                 :react-key (gensym)})})]}]]
-     (into
-      [:div.w-full.flex-auto.overflow-auto]
-      (map (fn [{:as r :keys [result evaled-at react-key]}]
-             ^{:key react-key}
-             [:div.border-b.px-2.py-2.text-xs.font-mono
-              [:div.font-mono.text-slate-40.flex-shrink-0.text-right
-               {:class "text-[9px]"}
-               (str (first (.. evaled-at toTimeString (split " "))) ":" (.getMilliseconds evaled-at))]
-              [(inspect-fn) result]]))
-      @!results)]))
-
 (defn show
   ([content] (show content {}))
   ([content {:as opts :keys [css-class]}]
@@ -210,7 +188,7 @@
       [:div.fixed.bg-white.dark:bg-slate-900.shadow-xl.text-slate-800.dark:text-slate-100.rounded-lg.flex.flex-col.hover:ring-2
        {:class (str "z-[1000] " (if @!dragging? "ring-indigo-600 select-none ring-2 " "ring-slate-300 dark:ring-slate-700 ring-1 "))
         :ref !panel-ref
-        :style {:top 30 :right 30 :width 400 :height 400}}
+        :style {:top 30 :right 30 :width (:width opts 400) :height (:height opts 400)}}
        [resizer {:on-resize (fn [dir dx dy]
                               (when-let [panel @!panel-ref]
                                 (let [rect (j/lookup (.getBoundingClientRect panel))]
@@ -258,3 +236,63 @@
                                       (reset! !docking-ref nil))}
                       opts)]
        [:div {:class (str "flex-auto " (or css-class "p-3 overflow-auto"))} content]]])))
+
+(def cm-theme
+  (.theme cm-view/EditorView
+          (j/lit {".cm-content" {:white-space "pre-wrap"
+                                 :padding "5px 0"
+                                 :min-height "60px"
+                                 :flex "1 1 0"}
+                  "&.cm-focused" {:outline "0 !important"}
+                  ".cm-line" {:padding "0 4px"
+                              :line-height "1.4"
+                              :font-size "13px"
+                              :font-family "'Fira Code', monospace"}
+                  ".cm-matchingBracket" {:border-bottom "1px solid var(--teal-color)"
+                                         :color "inherit"}
+                  ".cm-gutters" {:background "transparent"
+                                 :border "none"}
+                  ".cm-gutterElement" {:margin-left "5px"}
+                  ;; only show cursor when focused
+                  ".cm-cursor" {:visibility "hidden"}
+                  "&.cm-focused .cm-cursor" {:visibility "visible"}
+                  ".cm-tooltip.cm-tooltip-autocomplete" {:border "0"
+                                                         :border-radius "6px"
+                                                         :box-shadow "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)"
+                                                         "& > ul" {:font-size "12px"
+                                                                   :font-family "'Fira Code', monospace"
+                                                                   :background "rgb(241 245 249)"
+                                                                   :border "1px solid rgb(203 213 225)"
+                                                                   :border-radius "6px"}}
+                  ".cm-tooltip-autocomplete ul li[aria-selected]" {:background "rgb(79 70 229)"
+                                                                   :color "#fff"}
+                  ".cm-tooltip.cm-tooltip-hover" {:background "rgb(241 245 249)"
+                                                  :border-radius "6px"
+                                                  :border "1px solid rgb(203 213 225)"
+                                                  :box-shadow "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)"}})))
+
+(defn sci-repl []
+  (let [!code-str (hooks/use-state "")
+        !results (hooks/use-state ())]
+    [:div.flex.flex-col.bg-gray-50
+     [:div.w-full.border-t.border-b.border-slate-300.shadow-inner.px-2.py-1.bg-slate-100
+      [code/editor !code-str {:extensions #js [cm-theme
+                                               (cm-view/placeholder "Evaluate forms with Option+Return")
+                                               (.of keymap clojure-mode.keymap/paredit)
+                                               completions/doc-tooltip
+                                               completions/completion-source
+                                               (sci-extension {:modifier "Alt"
+                                                               :on-result #(swap! !results conj {:result %
+                                                                                                 :evaled-at (js/Date.)
+                                                                                                 :react-key (gensym)})})]}]]
+     (into
+      [:div.w-full.flex-auto.overflow-auto]
+      (map (fn [{:as r :keys [result evaled-at react-key]}]
+             ^{:key react-key}
+             [:div.border-b.px-2.py-2.text-xs.font-mono
+              [:div.font-mono.text-slate-40.flex-shrink-0.text-right
+               {:class "text-[9px]"}
+               (str (first (.. evaled-at toTimeString (split " "))) ":" (.getMilliseconds evaled-at))]
+              [(inspect-fn) result]]))
+      @!results)]))
+

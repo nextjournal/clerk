@@ -27,7 +27,7 @@
 (defonce !doc (atom nil))
 (defonce !windows (atom {}))
 (defonce !last-sender-ch (atom nil))
-
+@!windows
 #_(view/doc->viewer @!doc)
 #_(reset! !doc nil)
 
