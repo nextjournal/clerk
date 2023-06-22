@@ -28,6 +28,7 @@
          "controlling_width"
          "docs"
          "document_linking"
+         "editor"
          "hello"
          "how_clerk_works"
          "exec_status"

@@ -13,7 +13,7 @@
                 :cljs [[goog.crypt]
                        [goog.crypt.Sha1]
                        [reagent.ratom :as ratom]
-                       [sci.impl.vars]
+                       [sci.core :as sci]
                        [sci.lang]
                        [applied-science.js-interop :as j]])
             [nextjournal.clerk.parser :as parser]
@@ -464,11 +464,14 @@
 
 (defn datafy-scope [scope]
   (cond
-    #?@(:clj [(instance? clojure.lang.Namespace scope) (ns-name scope)])
+    #?@(:clj [(instance? clojure.lang.Namespace scope) (ns-name scope)]
+        :cljs [(instance? sci.lang.Namespace scope) (sci.impl.namespaces/sci-ns-name scope)])
     (symbol? scope) scope
     (#{:default} scope) scope
     :else (throw (ex-info (str "Unsupported scope `" scope "`. Valid scopes are namespaces, symbol namespace names or `:default`.")
                           {:scope scope}))))
+(defn get-*ns* []
+  (or *ns* #?(:cljs @sci.core/ns)))
 
 (defn get-viewers
   ([scope] (get-viewers scope nil))
@@ -505,7 +508,7 @@
                             (set/rename-keys viewer-opts-normalization))
         {:as to-present :nextjournal/keys [auto-expand-results?]} (merge (dissoc (->opts wrapped-value) :!budget :nextjournal/budget)
                                                                          opts-from-block
-                                                                         (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value))
+                                                                         (ensure-wrapped-with-viewers (or viewers (get-viewers (get-*ns*))) value))
         presented-result (-> (present to-present)
                              (update :nextjournal/render-opts
                                      (fn [{:as opts existing-id :id}]
@@ -1339,7 +1342,7 @@
 #_(viewer-for default-viewers (with-viewer {:transform-fn identity} [:h1 "Hello Hiccup"]))
 
 (defn ensure-wrapped-with-viewers
-  ([x] (ensure-wrapped-with-viewers (get-viewers *ns*) x))
+  ([x] (ensure-wrapped-with-viewers (get-viewers (get-*ns*)) x))
   ([viewers x]
    (-> x
        ensure-wrapped
@@ -1727,13 +1730,13 @@
                                  xs)))))))
 
 (defn reset-viewers!
-  ([viewers] (reset-viewers! *ns* viewers))
+  ([viewers] (reset-viewers! (get-*ns*) viewers))
   ([scope viewers]
    (swap! !viewers assoc (datafy-scope scope) viewers)
    viewers))
 
 (defn add-viewers! [viewers]
-  (reset-viewers! *ns* (add-viewers (get-default-viewers) viewers)))
+  (reset-viewers! (get-*ns*) (add-viewers (get-default-viewers) viewers)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convenience api
