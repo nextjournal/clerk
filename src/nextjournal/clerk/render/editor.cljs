@@ -149,8 +149,9 @@
         [:div.h-screen {:ref !container-el}]]
        [:div.bg-white.dark:bg-slate-950.bg-white.flex.flex-col.overflow-y-auto
         {:class "w-[50vw]" :style {:height (str "calc(100vh - " command-bar-height "px)")}}
-        [:> render/ErrorBoundary {:hash (gensym)}
-         [render/inspect @!notebook]]]]
+        (when-let [notebook @!notebook]
+          [:> render/ErrorBoundary {:hash (gensym)}
+           [render/inspect notebook]])]]
       [:div.absolute.left-0.bottom-0.w-screen.bg-slate-900.border-t.border-slate-950.flex.justify-left.px-4.font-mono.gap-4.items-center.text-white
        {:class "text-[12px]" :style {:height command-bar-height}}
        [:div.flex.gap-1.items-center
