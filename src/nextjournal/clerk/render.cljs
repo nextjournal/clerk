@@ -27,7 +27,7 @@
 
 (r/set-default-compiler! (r/create-compiler {:function-components true}))
 
-(declare inspect inspect-presented reagent-viewer html html-viewer)
+(declare inspect inspect-presented html html-viewer)
 
 (def nbsp (gstring/unescapeEntities "&nbsp;"))
 
