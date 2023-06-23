@@ -2,7 +2,7 @@
   (:require ["@codemirror/autocomplete" :refer [autocompletion]]
             ["@codemirror/language" :refer [syntaxTree]]
             ["@codemirror/state" :refer [EditorState]]
-            ["@codemirror/view" :refer [keymap placeholder hoverTooltip]]
+            ["@codemirror/view" :refer [keymap placeholder]]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
             [nextjournal.clerk.parser :as parser]
@@ -122,13 +122,14 @@
                             @!container-el))]
          (on-eval view)
          #(.destroy view))))
+    (code/use-dark-mode !view)
     [:<>
      [:style {:type "text/css"} (str ".notebook-viewer { padding-top: 2.5rem; } "
                                      ".notebook-viewer .viewer:first-child { display: none; } "
-                                     ".dark-mode-toggle { display: none !important; }")]
+                                     "#clerk > div > div > .dark-mode-toggle { display: none !important; }")]
      [:div.fixed.w-screen.h-screen.flex.flex-col.top-0.left-0
       [:div.flex
-       [:div.bg-slate-200.border-r.border-slate-300.dark:border-slate-600.px-4.py-3.dark:bg-slate-800.overflow-y-auto
+       [:div.bg-slate-200.border-r.border-slate-300.dark:border-slate-600.px-4.py-3.dark:bg-slate-950.overflow-y-auto
         {:class "w-[50vw]" :style {:height (str "calc(100vh - " (* bar-height 2) "px)")}}
         [:div.h-screen {:ref !container-el}]]
        [:div.bg-white.dark:bg-slate-950.bg-white.flex.flex-col.overflow-y-auto
@@ -136,8 +137,8 @@
         (when-let [notebook @!notebook]
           [:> render/ErrorBoundary {:hash (gensym)}
            [render/inspect notebook]])]]
-      [:div.absolute.left-0.bottom-0.w-screen.border-t.font-mono.text-white
-       [:div.bg-slate-900.border-t.border-slate-950.flex.px-4.font-mono.gap-4.items-center.text-white
+      [:div.absolute.left-0.bottom-0.w-screen.font-mono.text-white.border-t.dark:border-slate-600
+       [:div.bg-slate-900.dark:bg-slate-800.flex.px-4.font-mono.gap-4.items-center.text-white
         {:class "text-[12px]" :style {:height bar-height}}
         [:div.flex.gap-1.items-center
          "Eval notebook"
@@ -163,7 +164,7 @@
         [:div.flex.gap-1.items-center
          "Contract selection"
          [:div.font-inter.text-slate-300 "⌘2"]]]
-       [:div.w-screen.bg-slate-800.border-t.border-slate-950.px-4.font-mono.items-center.text-white.flex.items-center
+       [:div.w-screen.bg-slate-800.dark:bg-slate-950.px-4.font-mono.items-center.text-white.flex.items-center
         {:class "text-[12px] py-[4px]" :style {:min-height bar-height}}
         (when-let [{:keys [name arglists-str doc]} @!info]
           [:div

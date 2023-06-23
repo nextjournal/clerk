@@ -1,14 +1,36 @@
 (ns nextjournal.clerk.render.code
   (:require ["@codemirror/language" :refer [HighlightStyle syntaxHighlighting LanguageDescription]]
-            ["@codemirror/state" :refer [EditorState RangeSet RangeSetBuilder Text]]
+            ["@codemirror/state" :refer [Compartment EditorState RangeSet RangeSetBuilder Text]]
             ["@codemirror/view" :refer [EditorView Decoration]]
             ["@lezer/highlight" :refer [tags highlightTree]]
             ["@nextjournal/lang-clojure" :refer [clojureLanguage]]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
             [nextjournal.clerk.render.hooks :as hooks]
+            [nextjournal.clerk.render.localstorage :as localstorage]
             [nextjournal.clojure-mode :as clojure-mode]
+            [reagent.core :as r]
             [shadow.esm]))
+
+(def local-storage-dark-mode-key "clerk-darkmode")
+
+(def !dark-mode?
+  (r/atom (boolean (localstorage/get-item local-storage-dark-mode-key))))
+
+(defn set-dark-mode! [dark-mode?]
+  (let [class-list (.-classList (js/document.querySelector "html"))]
+    (if dark-mode?
+      (.add class-list "dark")
+      (.remove class-list "dark")))
+  (localstorage/set-item! local-storage-dark-mode-key dark-mode?))
+
+(defn setup-dark-mode! []
+  (add-watch !dark-mode? ::dark-mode-watch
+             (fn [_ _ old dark-mode?]
+               (when (not= old dark-mode?)
+                 (set-dark-mode! dark-mode?))))
+  (when @!dark-mode?
+    (set-dark-mode! @!dark-mode?)))
 
 (def highlight-style
   (.define HighlightStyle
@@ -131,7 +153,7 @@
       [highlight-imported-language {:code code :language language}])]])
 
 ;; editable code viewer
-(def theme
+(defn get-theme []
   (.theme EditorView
           (j/lit {"&.cm-focused" {:outline "none"}
                   ".cm-line" {:padding "0"
@@ -166,7 +188,7 @@
                                                   :border-radius "6px"
                                                   :border "1px solid rgb(203 213 225)"
                                                   :box-shadow "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)"
-                                                  :max-width "550px"}})))
+                                                  :max-width "550px"}}) #js {:dark @!dark-mode?}))
 
 (def read-only (.. EditorView -editable (of false)))
 
@@ -176,10 +198,17 @@
             (when (.-docChanged tr) (f (.. tr -state sliceDoc)))
             #js {}))))
 
+(def theme (Compartment.))
+
+(defn use-dark-mode [!view]
+  (hooks/use-effect (fn []
+                      (add-watch !dark-mode? ::dark-mode #(.dispatch @!view #js {:effects (.reconfigure theme (get-theme))}))
+                      #(remove-watch !dark-mode? ::dark-mode))))
+
 (def ^:export default-extensions
   #js [clojure-mode/default-extensions
        (syntaxHighlighting highlight-style)
-       theme])
+       (.of theme (get-theme))])
 
 (defn make-state [doc extensions]
   (.create EditorState (j/obj :doc doc :extensions extensions)))
@@ -211,4 +240,5 @@
                                 (j/lit {:changes [{:insert @!code-str
                                                    :from 0 :to (.. state -doc -length)}]}))))))
       [@!code-str])
+     (use-dark-mode !view)
      [:div {:ref !container-el}])))
