@@ -797,12 +797,6 @@
 (def html
   (partial viewer/with-viewer html-viewer))
 
-(defn render-reagent [x]
-  (r/as-element (cond-> x (fn? x) vector)))
-
-;; TODO: remove
-(def reagent-viewer render-reagent)
-
 (defn render-promise [p opts]
   (let [!state (hooks/use-state {:pending true})]
     (hooks/use-effect (fn []
