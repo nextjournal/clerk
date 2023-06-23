@@ -1,7 +1,8 @@
 ;; # 🃏 CLJS Cards
-^{:nextjournal.clerk/toc true :nextjournal.clerk/visibility {:code :hide}}
 (ns cards
-  {:nextjournal.clerk/no-cache true}
+  {:nextjournal.clerk/toc true
+   :nextjournal.clerk/no-cache true
+   :nextjournal.clerk/visibility {:code :hide}}
   (:require [applied-science.js-interop :as-alias j]
             [cards-macro :as c]
             [nextjournal.clerk :as clerk]

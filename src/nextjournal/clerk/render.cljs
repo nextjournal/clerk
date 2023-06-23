@@ -786,10 +786,9 @@
 
 
 (defn html-render [markup]
-  (r/as-element
-   (if (string? markup)
-     [:span {:dangerouslySetInnerHTML {:__html markup}}]
-     markup)))
+  (r/as-element (if (string? markup)
+                  [:span {:dangerouslySetInnerHTML {:__html markup}}]
+                  markup)))
 
 (def html-viewer
   {:render-fn html-render})
