@@ -73,14 +73,8 @@
     (update doc :blocks (partial map (fn [{:as b :keys [type text]}]
                                        (cond-> b
                                          (= :code type)
-                                         (assoc :result
-                                                {:nextjournal/value
-                                                 (let [val (eval (render/read-string text))]
-                                                   ;; FIXME: this won't be necessary once we unify v/html in SCI env to be the same as in nextjournal.clerk.viewer
-                                                   ;; v/html is currently html-render for supporting legacy render-fns
-                                                   (cond->> val
-                                                     (render/valid-react-element? val)
-                                                     (v/with-viewer v/reagent-viewer)))})))))
+                                         (assoc :result                                                
+                                                {:nextjournal/value (eval (render/read-string text))})))))
     (v/with-viewer v/notebook-viewer {:nextjournal.clerk/width :wide} doc)))
 
 (defonce bar-height 26)
@@ -95,8 +89,7 @@
         on-result #(reset! !eval-result %)
         on-eval #(reset! !notebook (try
                                      (eval-notebook (.. % -state -doc toString))
-                                     (catch js/Error error (v/with-viewer v/reagent-viewer
-                                                             [render/error-view error]))))]
+                                     (catch js/Error error (v/html [render/error-view error]))))]
     (hooks/use-effect
      (fn []
        (let [^js view
