@@ -4,7 +4,6 @@
             ["@codemirror/state" :refer [EditorState]]
             ["@codemirror/view" :refer [keymap placeholder]]
             [applied-science.js-interop :as j]
-
             [clojure.string :as str]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.render :as render]
@@ -16,6 +15,7 @@
             [nextjournal.clojure-mode.extensions.eval-region :as eval-region]
             [nextjournal.clojure-mode.keymap :as clojure-mode.keymap]
             [rewrite-clj.node :as n]
+            [rewrite-clj.parser :as p]
             [sci.core :as sci]
             [sci.ctx-store]
             [shadow.esm]))
@@ -115,10 +115,11 @@
    (binding [*ns* *ns*]
      (let [!id->count (atom {})]
        (cond-> (reduce (fn [{:as state notebook-ns :ns :keys [ns-aliases]} i]
-                         (let [{:as block :keys [type text node]} (get-in doc [:blocks i])]
+                         (let [{:as block :keys [type text]} (get-in doc [:blocks i])]
                            (if (not= type :code)
                              (assoc-in state [:blocks i :id] (get-block-id !id->count block))
-                             (let [form (try (n/sexpr node (when ns-aliases {:auto-resolve ns-aliases}))
+                             (let [node (p/parse-string text)
+                                   form (try (n/sexpr node (when ns-aliases {:auto-resolve ns-aliases}))
                                              (catch js/Error e
                                                (throw (ex-info (str "Clerk analysis failed reading block: "
                                                                     (ex-message e))

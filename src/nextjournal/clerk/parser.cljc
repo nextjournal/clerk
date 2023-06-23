@@ -324,7 +324,6 @@
                     (update :nodes rest)
                     (update :blocks conj {:type :code
                                           :text (n/string node)
-                                          :node node
                                           :loc (-> (meta node)
                                                    (set/rename-keys {:row :line :end-row :end-line
                                                                      :col :column :end-col :end-column})
