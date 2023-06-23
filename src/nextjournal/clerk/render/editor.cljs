@@ -179,6 +179,6 @@
            (when (and doc @!show-docstring?)
              [:div.text-slate-300.mt-2.mb-1.leading-relaxed {:class "max-w-[640px]"} doc])])]]
       (when-let [result @!eval-result]
-        [:div.border-t.border-slate-300.px-4.py-2.flex-shrink-0.absolute.left-0.w-screen.bg-white
+        [:div.border-t.border-slate-300.dark:border-slate-600.px-4.py-2.flex-shrink-0.absolute.left-0.w-screen.bg-white.dark:bg-slate-950
          {:style {:box-shadow "0 -2px 3px 0 rgb(0 0 0 / 0.025)" :bottom (* bar-height 2)}}
          [render/inspect result]])]]))
