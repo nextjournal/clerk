@@ -9,6 +9,7 @@
             [nextjournal.clerk.render :as render]
             [nextjournal.clerk.render.code :as code]
             [nextjournal.clerk.render.hooks :as hooks]
+            [nextjournal.clerk.render.panel :as panel]
             [nextjournal.clerk.sci-env.completions :as sci-completions]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clojure-mode.extensions.eval-region :as eval-region]
@@ -149,6 +150,8 @@
         !info (hooks/use-state nil)
         !show-docstring? (hooks/use-state false)
         !view (hooks/use-ref nil)
+        !editor-panel (hooks/use-ref nil)
+        !notebook-panel (hooks/use-ref nil)
         on-result #(reset! !eval-result %)
         on-eval #(reset! !notebook (try
                                      (eval-notebook (.. % -state -doc toString))
@@ -192,11 +195,21 @@
                                      "#clerk > div > div > .dark-mode-toggle { display: none !important; }")]
      [:div.fixed.w-screen.h-screen.flex.flex-col.top-0.left-0
       [:div.flex
-       [:div.bg-slate-200.border-r.border-slate-300.dark:border-slate-600.px-4.py-3.dark:bg-slate-950.overflow-y-auto
-        {:class "w-[50vw]" :style {:height (str "calc(100vh - " (* bar-height 2) "px)")}}
-        [:div.h-screen {:ref !container-el}]]
+       [:div.relative
+        {:ref !editor-panel :style {:width "50vw"}}
+        [:div.bg-slate-200.border-r.border-slate-300.dark:border-slate-600.px-4.py-3.dark:bg-slate-950.overflow-y-auto.relative
+         {:style {:height (str "calc(100vh - " (* bar-height 2) "px)")}}
+         [:div.h-screen {:ref !container-el}]]
+        [:div.absolute.right-0.top-0.bottom-0.z-1000.group
+         {:class "w-[9px] -mr-[5px]"}
+         [:div.absolute.h-full.bg-transparent.group-hover:bg-blue-500.transition.pointer-events-none
+          {:class "left-[3px] w-[3px]"}]
+         [panel/resizer {:axis :x :on-resize (fn [_ dx _]
+                                               (j/assoc-in! @!editor-panel [:style :width] (str (+ (.-offsetWidth @!editor-panel) dx) "px"))
+                                               (j/assoc-in! @!notebook-panel [:style :width] (str (- (.-offsetWidth @!notebook-panel) dx) "px")))}]]]
        [:div.bg-white.dark:bg-slate-950.bg-white.flex.flex-col.overflow-y-auto
-        {:class "w-[50vw]" :style {:height (str "calc(100vh - " (* bar-height 2) "px)")}}
+        {:ref !notebook-panel
+         :style {:width "50vw" :height (str "calc(100vh - " (* bar-height 2) "px)")}}
         (when-let [notebook @!notebook]
           [:> render/ErrorBoundary {:hash (gensym)}
            [render/inspect notebook]])]]
