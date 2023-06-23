@@ -1,4 +1,5 @@
 (ns nextjournal.clerk.viewer
+  (:refer-clojure :exclude [var?])
   (:require [clojure.string :as str]
             [clojure.pprint :as pprint]
             [clojure.datafy :as datafy]
@@ -390,6 +391,10 @@
   (fn [wrapped-value] (apply update wrapped-value :nextjournal/value f args)))
 
 #_((update-val + 1) {:nextjournal/value 41})
+
+(defn var? [x]
+  (or (clojure.core/var? x)
+      #?(:cljs (instance? sci.lang.Var x))))
 
 (defn var-from-def? [x]
   (var? (get-safe x :nextjournal.clerk/var-from-def)))
@@ -834,7 +839,7 @@
 
 (def var-viewer
   {:name `var-viewer
-   :pred (some-fn var? #?(:cljs #(instance? sci.lang.Var %)))
+   :pred var?
    :transform-fn (comp #?(:cljs var->symbol :clj symbol) ->value)
    :render-fn '(fn [x] [:span.inspected-value [:span.cmt-meta "#'" (str x)]])})
 

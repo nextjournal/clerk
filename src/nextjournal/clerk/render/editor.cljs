@@ -67,15 +67,78 @@
              first
              :info)))
 
+(defn get-block-id [!id->count {:as block :keys [var form type doc]}]
+  (let [id->count @!id->count
+        id (if var
+             var
+             (let [hash-fn hash]
+               (symbol (str *ns*)
+                       (case type
+                         :code (str "anon-expr-" (hash-fn form))
+                         :markdown (str "markdown-" (hash-fn doc))))))]
+    (swap! !id->count update id (fnil inc 0))
+    (if (id->count id)
+      (symbol (str *ns*) (str (name id) "#" (inc (id->count id))))
+      id)))
+
+
+(defn analyze [form]
+  (cond-> {:form form}
+    (and (seq? form)
+         (str/starts-with? (str (first form)) "def"))
+    (assoc :var (second form))))
+
+(defn ns-resolver [notebook-ns]
+  (into {} (map (juxt key (comp ns-name val))) '{clerk nextjournal.clerk}))
+
+;; TODO: unify with `analyzer/analyze-doc` and move to parser
+(defn analyze-doc
+  ([doc]
+   (analyze-doc {:doc? true} doc))
+  ([{:as state :keys [doc?]} doc]
+   (binding [*ns* *ns*]
+     (let [!id->count (atom {})]
+       (cond-> (reduce (fn [{:as state notebook-ns :ns} i]
+                         (let [{:as block :keys [type text]} (get-in doc [:blocks i])]
+                           (if (not= type :code)
+                             (assoc-in state [:blocks i :id] (get-block-id !id->count block))
+                             (let [form (try (render/read-string text)
+                                             (catch js/Error e
+                                               (throw (ex-info (str "Clerk analysis failed reading block: "
+                                                                    (ex-message e))
+                                                               {:block block
+                                                                :file (:file doc)}
+                                                               e))))
+                                   analyzed (cond-> (analyze form)
+                                              (:file doc) (assoc :file (:file doc)))
+                                   block-id (get-block-id !id->count (merge analyzed block))
+                                   analyzed (assoc analyzed :id block-id)]
+                               (cond-> state
+                                 doc? (update-in [:blocks i] merge analyzed)
+                                 doc? (assoc-in [:blocks i :text-without-meta]
+                                                (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))
+                                 (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))))))
+                       (cond-> state
+                         doc? (merge doc))
+                       (-> doc :blocks count range))
+         doc? (-> parser/add-block-settings
+                  parser/add-open-graph-metadata
+                  parser/filter-code-blocks-without-form))))))
+
+(defn eval-blocks [doc]
+  (update doc :blocks (partial map (fn [{:as cell :keys [type text var form]}]
+                                     (cond-> cell
+                                       (= :code type)
+                                       (assoc :result                                                
+                                              {:nextjournal/value (cond->> (eval form)
+                                                                    var (hash-map :nextjournal.clerk/var-from-def))}))))))
+
 (defn eval-notebook [code]
-  (as-> code doc
-    (parser/parse-clojure-string {:doc? true} doc)
-    (update doc :blocks (partial map (fn [{:as b :keys [type text]}]
-                                       (cond-> b
-                                         (= :code type)
-                                         (assoc :result                                                
-                                                {:nextjournal/value (eval (render/read-string text))})))))
-    (v/with-viewer v/notebook-viewer {:nextjournal.clerk/width :wide} doc)))
+  (->> code
+       (parser/parse-clojure-string {:doc? true})
+       (analyze-doc)
+       (eval-blocks)
+       (v/with-viewer v/notebook-viewer)))
 
 (defonce bar-height 26)
 
