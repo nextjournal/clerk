@@ -4,6 +4,7 @@
             ["@codemirror/state" :refer [EditorState]]
             ["@codemirror/view" :refer [keymap placeholder]]
             [applied-science.js-interop :as j]
+
             [clojure.string :as str]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.render :as render]
@@ -14,6 +15,7 @@
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clojure-mode.extensions.eval-region :as eval-region]
             [nextjournal.clojure-mode.keymap :as clojure-mode.keymap]
+            [rewrite-clj.node :as n]
             [sci.core :as sci]
             [sci.ctx-store]
             [shadow.esm]))
@@ -92,6 +94,19 @@
 (defn ns-resolver [notebook-ns]
   (into {} (map (juxt key (comp ns-name val))) '{clerk nextjournal.clerk}))
 
+(defn parse-ns-aliases [ns-form]
+  (some (fn [x]
+          (when (and (seq? x)
+                     (= :require (first x)))
+            (into {}
+                  (keep (fn [require-form]
+                          (when (and (vector? require-form)
+                                     (= 3 (count require-form))
+                                     (contains? #{:as :as-alias} (second require-form)))
+                            ((juxt peek first) require-form))))
+                  (rest x))))
+        ns-form))
+
 ;; TODO: unify with `analyzer/analyze-doc` and move to parser
 (defn analyze-doc
   ([doc]
@@ -99,11 +114,11 @@
   ([{:as state :keys [doc?]} doc]
    (binding [*ns* *ns*]
      (let [!id->count (atom {})]
-       (cond-> (reduce (fn [{:as state notebook-ns :ns} i]
-                         (let [{:as block :keys [type text]} (get-in doc [:blocks i])]
+       (cond-> (reduce (fn [{:as state notebook-ns :ns :keys [ns-aliases]} i]
+                         (let [{:as block :keys [type text node]} (get-in doc [:blocks i])]
                            (if (not= type :code)
                              (assoc-in state [:blocks i :id] (get-block-id !id->count block))
-                             (let [form (try (render/read-string text)
+                             (let [form (try (n/sexpr node (when ns-aliases {:auto-resolve ns-aliases}))
                                              (catch js/Error e
                                                (throw (ex-info (str "Clerk analysis failed reading block: "
                                                                     (ex-message e))
@@ -115,6 +130,7 @@
                                    block-id (get-block-id !id->count (merge analyzed block))
                                    analyzed (assoc analyzed :id block-id)]
                                (cond-> state
+                                 (and (not ns-aliases) (parser/ns? form)) (assoc :ns-aliases (parse-ns-aliases form))
                                  doc? (update-in [:blocks i] merge analyzed)
                                  doc? (assoc-in [:blocks i :text-without-meta]
                                                 (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))

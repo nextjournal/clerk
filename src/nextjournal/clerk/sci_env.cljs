@@ -164,6 +164,7 @@
              "react" react}
    :ns-aliases '{clojure.math cljs.math}
    :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
+                       'nextjournal.clerk viewer-namespace ;; TODO: expose cljs variant of `nextjournal.clerk` with docstrings
                        'clojure.core {'read-string read-string
                                       'implements? (sci/copy-var implements?* core-ns)
                                       'time (sci/copy-var time core-ns)
