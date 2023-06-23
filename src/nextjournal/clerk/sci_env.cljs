@@ -105,8 +105,7 @@
 
 (def viewer-namespace
   (merge (sci/copy-ns nextjournal.clerk.viewer (sci/create-ns 'nextjournal.clerk.viewer))
-         {'html render/html-render
-          'doc-url doc-url
+         {'doc-url doc-url
           'url-for render/url-for
           'read-string read-string
           'read-string-without-tag-table read-string-without-tag-table
