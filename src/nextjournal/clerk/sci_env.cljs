@@ -104,22 +104,22 @@
 (def ^{:doc "Stub implementation to be replaced during static site generation. Clerk is only serving one page currently."}
   doc-url (sci/new-var 'doc-url viewer/doc-url))
 
-(defn html-render-or-viewer [x]
+(defn ^:private render-html-or-viewer [x]
   ;; We've dropped the need to write `nextjournal.clerk.viewer/html` in `:render-fn`s in 0.12, see
   ;; https://github.com/nextjournal/clerk/blob/62b91b7e5a4487472129ea41095de6c62e8834ce/CHANGELOG.md#012699-2022-12-02
 
   ;; If we don't override `nextjournal.clerk.viewer/html` for the sci
   ;; env, we'd produce an infinte loop in the browser. So we're
   ;; instead checking if we're inside a reactive context and only
-  ;; calling html-render in that case. Otherwise (i.e. in
+  ;; calling `render-html` in that case. Otherwise (i.e. in
   ;; `notebooks/cards.clj` we call the normal viewer fn.
   (if ratom/*ratom-context*
-    (render/html-render x)
+    (render/render-html x)
     (viewer/html x)))
 
 (def viewer-namespace
   (merge (sci/copy-ns nextjournal.clerk.viewer (sci/create-ns 'nextjournal.clerk.viewer))
-         {'html html-render-or-viewer
+         {'html render-html-or-viewer
           'doc-url doc-url
           'url-for render/url-for
           'read-string read-string

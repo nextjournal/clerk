@@ -911,7 +911,7 @@
 
 (def html-viewer
   {:name `html-viewer
-   :render-fn 'nextjournal.clerk.render/html-render
+   :render-fn 'nextjournal.clerk.render/render-html
    :transform-fn (comp mark-presented transform-html)})
 
 #_(present (with-viewer html-viewer [:div {:nextjournal/value (range 30)} {:nextjournal/value (range 30)}]))

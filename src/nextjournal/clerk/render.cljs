@@ -785,16 +785,10 @@
         (mount)))))
 
 
-(defn html-render [markup]
+(defn render-html [markup]
   (r/as-element (if (string? markup)
                   [:span {:dangerouslySetInnerHTML {:__html markup}}]
                   markup)))
-
-(def html-viewer
-  {:render-fn html-render})
-
-(def html
-  (partial viewer/with-viewer html-viewer))
 
 (defn render-promise [p opts]
   (let [!state (hooks/use-state {:pending true})]
