@@ -911,7 +911,7 @@
 
 (def html-viewer
   {:name `html-viewer
-   :render-fn 'identity
+   :render-fn 'nextjournal.clerk.render/render-html
    :transform-fn (comp mark-presented transform-html)})
 
 #_(present (with-viewer html-viewer [:div {:nextjournal/value (range 30)} {:nextjournal/value (range 30)}]))
@@ -937,9 +937,6 @@
    :transform-fn (comp mark-presented
                        #(update-in % [:nextjournal/render-opts :language] (fn [lang] (or lang "clojure")))
                        (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))})
-
-(def reagent-viewer
-  {:name `reagent-viewer :render-fn 'nextjournal.clerk.render/render-reagent :transform-fn mark-presented})
 
 (def row-viewer
   {:name `row-viewer :render-fn '(fn [items opts]
@@ -1265,7 +1262,6 @@
    plotly-viewer
    vega-lite-viewer
    markdown-viewer
-   reagent-viewer
    row-viewer
    col-viewer
    table-viewer

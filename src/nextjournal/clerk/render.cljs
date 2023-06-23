@@ -27,7 +27,7 @@
 
 (r/set-default-compiler! (r/create-compiler {:function-components true}))
 
-(declare inspect inspect-presented reagent-viewer html html-viewer)
+(declare inspect inspect-presented html html-viewer)
 
 (def nbsp (gstring/unescapeEntities "&nbsp;"))
 
@@ -785,23 +785,10 @@
         (mount)))))
 
 
-(defn html-render [markup]
-  (r/as-element
-   (if (string? markup)
-     [:span {:dangerouslySetInnerHTML {:__html markup}}]
-     markup)))
-
-(def html-viewer
-  {:render-fn html-render})
-
-(def html
-  (partial viewer/with-viewer html-viewer))
-
-(defn render-reagent [x]
-  (r/as-element (cond-> x (fn? x) vector)))
-
-;; TODO: remove
-(def reagent-viewer render-reagent)
+(defn render-html [markup]
+  (r/as-element (if (string? markup)
+                  [:span {:dangerouslySetInnerHTML {:__html markup}}]
+                  markup)))
 
 (defn render-promise [p opts]
   (let [!state (hooks/use-state {:pending true})]

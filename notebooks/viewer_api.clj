@@ -71,6 +71,10 @@
 (clerk/with-viewer '#(vector :div "Greetings to " [:strong %] "!")
   "James Clerk Maxwell")
 
+;; Legacy `:render-fn` with `html`:
+(clerk/with-viewer '#(nextjournal.clerk.viewer/html (vector :div "Greetings to " [:strong %] "!"))
+  "James Clerk Maxwell (legacy)")
+
 ^{::clerk/viewer {:render-fn '#(vector :span "The answer is " % ".")
                   :transform-fn (comp inc :nextjournal/value)}}
 (do 41)
