@@ -58,34 +58,14 @@
 (def completion-source
   (autocompletion #js {:override #js [autocomplete]}))
 
-(def doc-tooltip
-  (hoverTooltip
-   (fn [^js view pos side]
-     (let [node-before (.. (syntaxTree (.-state view)) (resolveInner pos -1))
-           text-at-point (.. view -state (sliceDoc (.-from node-before) (.-to node-before)))
-           {:as res :keys [info]} (some->> (sci-completions/completions {:ctx (sci.ctx-store/get-ctx) :ns "user" :symbol text-at-point})
-                                           :completions
-                                           (filter #(= (:candidate %) text-at-point))
-                                           first)]
-       (when (and res info)
-         (let [{:keys [arglists-str doc name]} info]
-           #js {:pos pos
-                :create (fn [view]
-                          (let [dom (doto (js/document.createElement "div")
-                                      (.setAttribute "class" "font-mono text-[11px] p-2"))
-                                name-el (doto (js/document.createElement "div")
-                                          (.setAttribute "class" "font-bold"))
-                                args-el (doto (js/document.createElement "span")
-                                          (.setAttribute "class" "ml-2 italic font-normal"))
-                                docs-el (doto (js/document.createElement "div")
-                                          (.setAttribute "class" "pre-wrap mt-3"))]
-                            (set! (.-textContent name-el) (str name))
-                            (set! (.-textContent args-el) arglists-str)
-                            (.appendChild name-el args-el)
-                            (.appendChild dom name-el)
-                            (set! (.-textContent docs-el) doc)
-                            (.appendChild dom docs-el)
-                            #js {:dom dom}))}))))))
+(defn info-at-point [^js view pos]
+  (let [node-before (.. (syntaxTree (.-state view)) (resolveInner pos -1))
+        text-at-point (.. view -state (sliceDoc (.-from node-before) (.-to node-before)))]
+    (some->> (sci-completions/completions {:ctx (sci.ctx-store/get-ctx) :ns "user" :symbol text-at-point})
+             :completions
+             (filter #(= (:candidate %) text-at-point))
+             first
+             :info)))
 
 (defn eval-notebook [code]
   (as-> code doc
@@ -103,12 +83,14 @@
                                                      (v/with-viewer v/reagent-viewer)))})))))
     (v/with-viewer v/notebook-viewer {:nextjournal.clerk/width :wide} doc)))
 
-(defonce command-bar-height 26)
+(defonce bar-height 26)
 
 (defn view [code-string]
   (let [!notebook (hooks/use-state nil)
         !eval-result (hooks/use-state nil)
         !container-el (hooks/use-ref nil)
+        !info (hooks/use-state nil)
+        !show-docstring? (hooks/use-state false)
         !view (hooks/use-ref nil)
         on-result #(reset! !eval-result %)
         on-eval #(reset! !notebook (try
@@ -123,12 +105,13 @@
                                              (.concat code/default-extensions
                                                       #js [(placeholder "Show code with Option+Return")
                                                            (.of keymap clojure-mode.keymap/paredit)
-                                                           doc-tooltip
                                                            completion-source
                                                            (.. EditorState -transactionExtender
                                                                (of (fn [^js tr]
                                                                      (when (.-selection tr)
-                                                                       (reset! !eval-result nil))
+                                                                       (reset! !eval-result nil)
+                                                                       (reset! !show-docstring? false)
+                                                                       (reset! !info (some-> (info-at-point @!view (.-to (first (.. tr -selection asSingle -ranges)))))))
                                                                      #js {})))
                                                            (eval-region/extension {:modifier "Meta"})
                                                            (.of keymap
@@ -137,34 +120,71 @@
                                                                    :run on-eval}
                                                                   {:key "Mod-Enter"
                                                                    :shift (partial eval-top-level on-result)
-                                                                   :run (partial eval-at-cursor on-result)}]))]))
+                                                                   :run (partial eval-at-cursor on-result)}
+                                                                  {:key "Mod-i"
+                                                                   :preventDefault true
+                                                                   :run #(swap! !show-docstring? not)}
+                                                                  {:key "Escape"
+                                                                   :run #(reset! !show-docstring? false)}]))]))
                             @!container-el))]
          (on-eval view)
          #(.destroy view))))
     [:<>
-     [:style {:type "text/css"} ".notebook-viewer { padding-top: 2.5rem; } .notebook-viewer .viewer:first-child { display: none; }"]
+     [:style {:type "text/css"} (str ".notebook-viewer { padding-top: 2.5rem; } "
+                                     ".notebook-viewer .viewer:first-child { display: none; } "
+                                     ".dark-mode-toggle { display: none !important; }")]
      [:div.fixed.w-screen.h-screen.flex.flex-col.top-0.left-0
       [:div.flex
        [:div.bg-slate-200.border-r.border-slate-300.dark:border-slate-600.px-4.py-3.dark:bg-slate-800.overflow-y-auto
-        {:class "w-[50vw]" :style {:height (str "calc(100vh - " command-bar-height "px)")}}
+        {:class "w-[50vw]" :style {:height (str "calc(100vh - " (* bar-height 2) "px)")}}
         [:div.h-screen {:ref !container-el}]]
        [:div.bg-white.dark:bg-slate-950.bg-white.flex.flex-col.overflow-y-auto
-        {:class "w-[50vw]" :style {:height (str "calc(100vh - " command-bar-height "px)")}}
+        {:class "w-[50vw]" :style {:height (str "calc(100vh - " (* bar-height 2) "px)")}}
         (when-let [notebook @!notebook]
           [:> render/ErrorBoundary {:hash (gensym)}
            [render/inspect notebook]])]]
-      [:div.absolute.left-0.bottom-0.w-screen.bg-slate-900.border-t.border-slate-950.flex.justify-left.px-4.font-mono.gap-4.items-center.text-white
-       {:class "text-[12px]" :style {:height command-bar-height}}
-       [:div.flex.gap-1.items-center
-        "Eval notebook"
-        [:div.font-inter.text-slate-300 "⌥↩"]]
-       [:div.flex.gap-1.items-center
-        "Eval at cursor"
-        [:div.font-inter.text-slate-300 "⌘↩"]]
-       [:div.flex.gap-1.items-center
-        "Eval top level"
-        [:div.font-inter.text-slate-300 "⇧⌘↩"]]]
+      [:div.absolute.left-0.bottom-0.w-screen.border-t.font-mono.text-white
+       [:div.bg-slate-900.border-t.border-slate-950.flex.px-4.font-mono.gap-4.items-center.text-white
+        {:class "text-[12px]" :style {:height bar-height}}
+        [:div.flex.gap-1.items-center
+         "Eval notebook"
+         [:div.font-inter.text-slate-300 "⌥↩"]]
+        [:div.flex.gap-1.items-center
+         "Eval at cursor"
+         [:div.font-inter.text-slate-300 "⌘↩"]]
+        [:div.flex.gap-1.items-center
+         "Eval top level"
+         [:div.font-inter.text-slate-300 "⇧⌘↩"]]
+        [:div.flex.gap-1.items-center
+         "Slurp forward"
+         [:div.font-inter.text-slate-300 "Ctrl→"]]
+        [:div.flex.gap-1.items-center
+         "Barf forward"
+         [:div.font-inter.text-slate-300 "Ctrl←"]]
+        [:div.flex.gap-1.items-center
+         "Splice"
+         [:div.font-inter.text-slate-300 "⌥S"]]
+        [:div.flex.gap-1.items-center
+         "Expand selection"
+         [:div.font-inter.text-slate-300 "⌘1"]]
+        [:div.flex.gap-1.items-center
+         "Contract selection"
+         [:div.font-inter.text-slate-300 "⌘2"]]]
+       [:div.w-screen.bg-slate-800.border-t.border-slate-950.px-4.font-mono.items-center.text-white.flex.items-center
+        {:class "text-[12px] py-[4px]" :style {:min-height bar-height}}
+        (when-let [{:keys [name arglists-str doc]} @!info]
+          [:div
+           [:div.flex.gap-4
+            [:div.flex.gap-2
+             [:span.font-bold (str name)]
+             [:span arglists-str]]
+            (when (and doc (not @!show-docstring?))
+              [:div.flex.gap-1.items-center.text-slate-300
+               "Show docstring"
+               [:div.font-inter.text-slate-400.flex-shrink-0 "⌘I"]])]
+           (when (and doc @!show-docstring?)
+             [:div.text-slate-300.mt-2.mb-1.leading-relaxed {:class "max-w-[640px]"} doc])])]]
       (when-let [result @!eval-result]
         [:div.border-t.border-slate-300.px-4.py-2.flex-shrink-0.absolute.left-0.w-screen.bg-white
-         {:style {:box-shadow "0 -2px 3px 0 rgb(0 0 0 / 0.025)" :bottom command-bar-height}}
+         {:style {:box-shadow "0 -2px 3px 0 rgb(0 0 0 / 0.025)" :bottom (* bar-height 2)}}
          [render/inspect result]])]]))
