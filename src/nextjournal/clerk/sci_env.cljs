@@ -19,6 +19,7 @@
             [nextjournal.clerk.render :as render]
             [nextjournal.clerk.render.code]
             [nextjournal.clerk.render.context :as view-context]
+            [nextjournal.clerk.render.editor]
             [nextjournal.clerk.render.hooks]
             [nextjournal.clerk.render.navbar]
             [nextjournal.clerk.trim-image]
@@ -163,6 +164,7 @@
              "react" react}
    :ns-aliases '{clojure.math cljs.math}
    :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
+                       'nextjournal.clerk viewer-namespace ;; TODO: expose cljs variant of `nextjournal.clerk` with docstrings
                        'clojure.core {'read-string read-string
                                       'implements? (sci/copy-var implements?* core-ns)
                                       'time (sci/copy-var time core-ns)
@@ -172,6 +174,7 @@
                        'nextjournal.clerk.parser
                        'nextjournal.clerk.render
                        'nextjournal.clerk.render.code
+                       'nextjournal.clerk.render.editor
                        'nextjournal.clerk.render.hooks
                        'nextjournal.clerk.render.navbar
 

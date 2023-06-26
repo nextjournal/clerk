@@ -2,7 +2,8 @@
   (:require [applied-science.js-interop :as j]
             [nextjournal.clerk.render.hooks :as hooks]))
 
-(defn resizer [{:keys [on-resize on-resize-start on-resize-end] :or {on-resize-start #() on-resize-end #()}}]
+(defn resizer [{:keys [axis on-resize on-resize-start on-resize-end]
+                :or {on-resize-start #() on-resize-end #()}}]
   (let [!direction (hooks/use-state nil)
         !mouse-down (hooks/use-state false)
         handle-mouse-down (fn [dir]
@@ -23,31 +24,35 @@
                                                 (reset! !mouse-down false))]
                           (js/addEventListener "mouseup" handle-mouse-up)
                           #(js/removeEventListener "mouseup" handle-mouse-up))))
-    [:<>
-     [:div.absolute.z-2.cursor-nwse-resize
-      {:on-mouse-down #(handle-mouse-down :top-left)
-       :class "w-[14px] h-[14px] -left-[7px] -top-[7px]"}]
-     [:div.absolute.z-1.left-0.w-full.cursor-ns-resize
-      {:on-mouse-down #(handle-mouse-down :top)
-       :class "h-[4px] -top-[4px]"}]
-     [:div.absolute.z-2.cursor-nesw-resize
-      {:on-mouse-down #(handle-mouse-down :top-right)
-       :class "w-[14px] h-[14px] -right-[7px] -top-[7px]"}]
-     [:div.absolute.z-1.top-0.h-full.cursor-ew-resize
-      {:on-mouse-down #(handle-mouse-down :right)
-       :class "w-[4px] -right-[2px]"}]
-     [:div.absolute.z-2.cursor-nwse-resize
-      {:on-mouse-down #(handle-mouse-down :bottom-right)
-       :class "w-[14px] h-[14px] -right-[7px] -bottom-[7px]"}]
-     [:div.absolute.z-1.bottom-0.w-full.cursor-ns-resize
-      {:on-mouse-down #(handle-mouse-down :bottom)
-       :class "h-[4px] -left-[2px]"}]
-     [:div.absolute.z-2.cursor-nesw-resize
-      {:on-mouse-down #(handle-mouse-down :bottom-left)
-       :class "w-[14px] h-[14px] -left-[7px] -bottom-[7px]"}]
-     [:div.absolute.z-1.left-0.top-0.h-full.cursor-ew-resize
-      {:on-mouse-down #(handle-mouse-down :left)
-       :class "w-[4px]"}]]))
+    (if axis
+      [:div.w-full.h-full
+       {:class (if (= axis :x) "cursor-col-resize" "cursor-row-resize")
+        :on-mouse-down #(handle-mouse-down (if (= axis :x) :left :up))}]
+      [:<>
+       [:div.absolute.z-2.cursor-nwse-resize
+        {:on-mouse-down #(handle-mouse-down :top-left)
+         :class "w-[14px] h-[14px] -left-[7px] -top-[7px]"}]
+       [:div.absolute.z-1.left-0.w-full.cursor-ns-resize
+        {:on-mouse-down #(handle-mouse-down :top)
+         :class "h-[4px] -top-[4px]"}]
+       [:div.absolute.z-2.cursor-nesw-resize
+        {:on-mouse-down #(handle-mouse-down :top-right)
+         :class "w-[14px] h-[14px] -right-[7px] -top-[7px]"}]
+       [:div.absolute.z-1.top-0.h-full.cursor-ew-resize
+        {:on-mouse-down #(handle-mouse-down :right)
+         :class "w-[4px] -right-[2px]"}]
+       [:div.absolute.z-2.cursor-nwse-resize
+        {:on-mouse-down #(handle-mouse-down :bottom-right)
+         :class "w-[14px] h-[14px] -right-[7px] -bottom-[7px]"}]
+       [:div.absolute.z-1.bottom-0.w-full.cursor-ns-resize
+        {:on-mouse-down #(handle-mouse-down :bottom)
+         :class "h-[4px] -left-[2px]"}]
+       [:div.absolute.z-2.cursor-nesw-resize
+        {:on-mouse-down #(handle-mouse-down :bottom-left)
+         :class "w-[14px] h-[14px] -left-[7px] -bottom-[7px]"}]
+       [:div.absolute.z-1.left-0.top-0.h-full.cursor-ew-resize
+        {:on-mouse-down #(handle-mouse-down :left)
+         :class "w-[4px]"}]])))
 
 (defn header [{:keys [id title on-drag on-drag-start on-drag-end on-close] :or {on-drag-start #() on-drag-end #()}}]
   (let [!mouse-down (hooks/use-state false)

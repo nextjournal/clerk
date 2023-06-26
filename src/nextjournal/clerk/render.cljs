@@ -15,7 +15,6 @@
             [nextjournal.clerk.render.code :as code]
             [nextjournal.clerk.render.context :as view-context]
             [nextjournal.clerk.render.hooks :as hooks]
-            [nextjournal.clerk.render.localstorage :as localstorage]
             [nextjournal.clerk.render.navbar :as navbar]
             [nextjournal.clerk.render.panel :as panel]
             [nextjournal.clerk.viewer :as viewer]
@@ -34,12 +33,12 @@
 (defn reagent-atom? [x]
   (satisfies? ratom/IReactiveAtom x))
 
-(defn dark-mode-toggle [!dark-mode?]
+(defn dark-mode-toggle []
   (let [spring {:type :spring :stiffness 200 :damping 10}]
     [:div.relative.dark-mode-toggle
      [:button.text-slate-400.hover:text-slate-600.dark:hover:text-white.cursor-pointer
-      {:on-click #(swap! !dark-mode? not)}
-      (if @!dark-mode?
+      {:on-click #(swap! code/!dark-mode? not)}
+      (if @code/!dark-mode?
         [:> (.-svg motion)
          {:xmlns "http://www.w3.org/2000/svg"
           :class "w-5 h-5 md:w-4 md:h-4"
@@ -78,23 +77,6 @@
           [:circle {:cx "20.9101" :cy "17.1436" :r "1.71143" :transform "rotate(-60 20.9101 17.1436)" :fill "currentColor"}]
           [:circle {:cx "20.9101" :cy "6.8555" :r "1.71143" :transform "rotate(-120 20.9101 6.8555)" :fill "currentColor"}]
           [:circle {:cx "12" :cy "1.71143" :r "1.71143" :fill "currentColor"}]]])]]))
-
-(def local-storage-dark-mode-key "clerk-darkmode")
-
-(defn set-dark-mode! [dark-mode?]
-  (let [class-list (.-classList (js/document.querySelector "html"))]
-    (if dark-mode?
-      (.add class-list "dark")
-      (.remove class-list "dark")))
-  (localstorage/set-item! local-storage-dark-mode-key dark-mode?))
-
-(defn setup-dark-mode! [!dark-mode?]
-  (add-watch !dark-mode? ::dark-mode-watch
-             (fn [_ _ old dark-mode?]
-               (when (not= old dark-mode?)
-                 (set-dark-mode! dark-mode?))))
-  (when @!dark-mode?
-    (set-dark-mode! @!dark-mode?)))
 
 (defonce !eval-counter (r/atom 0))
 
@@ -149,10 +131,9 @@
 
 (defn render-notebook [{:as doc xs :blocks :keys [bundle? doc-css-class sidenotes? toc toc-visibility header footer]}
                        {:as render-opts :keys [!expanded-at expandable-toc?]}]
-  (r/with-let [!dark-mode? (r/atom (localstorage/get-item local-storage-dark-mode-key))
-               root-ref-fn (fn [el]
+  (r/with-let [root-ref-fn (fn [el]
                              (when (and el (exists? js/document))
-                               (setup-dark-mode! !dark-mode?)
+                               (code/setup-dark-mode!)
                                (when-some [heading (when (and (exists? js/location) (not bundle?))
                                                      (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
                                                           (catch js/Error _
@@ -163,7 +144,7 @@
     [:div.flex
      {:ref root-ref-fn}
      [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
-      [dark-mode-toggle !dark-mode?]]
+      [dark-mode-toggle]]
      (when (and toc toc-visibility)
        [navbar/view toc (assoc render-opts :set-hash? (not bundle?) :toc-visibility toc-visibility)])
      [:div.flex-auto.w-screen.scroll-container

@@ -310,9 +310,6 @@
             (throw (ex-info (str "The var `#'" missing-dep "` is being referenced, but Clerk can't find it in the namespace's source code. Did you remove it? This validation can fail when the namespace is mutated programmatically (e.g. using `clojure.core/intern` or side-effecting macros). You can turn off this check by adding `{:nextjournal.clerk/error-on-missing-vars :off}` to the namespace metadata.")
                             {:var-name missing-dep :form form :file file #_#_:defined defined }))))))))
 
-(defn filter-code-blocks-without-form [doc]
-  (update doc :blocks #(filterv (some-fn :form (complement parser/code?)) %)))
-
 (defn ns-resolver [notebook-ns]
   (if notebook-ns
     (into {} (map (juxt key (comp ns-name val))) (ns-aliases notebook-ns))
@@ -363,7 +360,7 @@
                        (-> doc :blocks count range))
          doc? (-> parser/add-block-settings
                   parser/add-open-graph-metadata
-                  filter-code-blocks-without-form))))))
+                  parser/filter-code-blocks-without-form))))))
 
 #_(let [parsed (nextjournal.clerk.parser/parse-clojure-string "clojure.core/dec")]
     (build-graph (analyze-doc parsed)))
