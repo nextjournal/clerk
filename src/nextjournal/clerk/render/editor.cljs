@@ -202,7 +202,7 @@
          [:div.h-screen {:ref !container-el}]]
         [:div.absolute.right-0.top-0.bottom-0.z-1000.group
          {:class "w-[9px] -mr-[5px]"}
-         [:div.absolute.h-full.bg-transparent.group-hover:bg-blue-500.transition.pointer-events-none
+         [:div.absolute.h-full.bg-transparent.group-hover:bg-indigo-600.transition.pointer-events-none
           {:class "left-[3px] w-[3px]"}]
          [panel/resizer {:axis :x :on-resize (fn [_ dx _]
                                                (j/assoc-in! @!editor-panel [:style :width] (str (+ (.-offsetWidth @!editor-panel) dx) "px"))
