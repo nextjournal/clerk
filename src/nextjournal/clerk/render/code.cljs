@@ -152,43 +152,42 @@
       :else
       [highlight-imported-language {:code code :language language}])]])
 
-;; editable code viewer
+(defn get-base-theme []
+  (.baseTheme EditorView
+              (j/lit {"&.cm-focused" {:outline "none"}
+                      ".cm-line" {:padding "0"
+                                  :line-height "1.6"
+                                  :font-size "15px"
+                                  :font-family "\"Fira Mono\", monospace"}
+                      ".cm-cursor" {:visibility "hidden"}
+                      "&.cm-focused .cm-cursor" {:visibility "visible"
+                                                 :animation "steps(1) cm-blink 1.2s infinite"}
+                      "&.cm-focused .cm-selectionBackground" {:background-color "Highlight"}
+                      ".cm-tooltip" {:border "1px solid rgba(0,0,0,.1)"
+                                     :border-radius "3px"
+                                     :overflow "hidden"}
+                      ".cm-tooltip > ul > li" {:padding "3px 10px 3px 0 !important"}
+                      ".cm-tooltip > ul > li:first-child" {:border-top-left-radius "3px"
+                                                           :border-top-right-radius "3px"}
+                      ".cm-tooltip.cm-tooltip-autocomplete" {:border "0"
+                                                             :border-radius "6px"
+                                                             :box-shadow "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)"
+                                                             "& > ul" {:font-size "12px"
+                                                                       :font-family "'Fira Code', monospace"
+                                                                       :background "rgb(241 245 249)"
+                                                                       :border "1px solid rgb(203 213 225)"
+                                                                       :border-radius "6px"}}
+                      ".cm-tooltip-autocomplete ul li[aria-selected]" {:background "rgb(79 70 229)"
+                                                                       :color "#fff"}
+                      "&dark .cm-tooltip.cm-tooltip-autocomplete" {"& > ul" {:background "#1f2937"
+                                                                             :border "1px solid #475569"}}})
+              #js {:dark @!dark-mode?}))
+
 (defn get-theme []
   (.theme EditorView
-          (j/lit {"&.cm-focused" {:outline "none"}
-                  ".cm-line" {:padding "0"
-                              :line-height "1.6"
-                              :font-size "15px"
-                              :font-family "\"Fira Mono\", monospace"}
-                  ".cm-matchingBracket" {:border-bottom "1px solid var(--teal-color)"
-                                         :color "inherit"}
-
-                  ;; only show cursor when focused
-                  ".cm-cursor" {:visibility "hidden"}
-                  "&.cm-focused .cm-cursor" {:visibility "visible"
-                                             :animation "steps(1) cm-blink 1.2s infinite"}
-                  "&.cm-focused .cm-selectionBackground" {:background-color "Highlight"}
-                  ".cm-tooltip" {:border "1px solid rgba(0,0,0,.1)"
-                                 :border-radius "3px"
-                                 :overflow "hidden"}
-                  ".cm-tooltip > ul > li" {:padding "3px 10px 3px 0 !important"}
-                  ".cm-tooltip > ul > li:first-child" {:border-top-left-radius "3px"
-                                                       :border-top-right-radius "3px"}
-                  ".cm-tooltip.cm-tooltip-autocomplete" {:border "0"
-                                                         :border-radius "6px"
-                                                         :box-shadow "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)"
-                                                         "& > ul" {:font-size "12px"
-                                                                   :font-family "'Fira Code', monospace"
-                                                                   :background "rgb(241 245 249)"
-                                                                   :border "1px solid rgb(203 213 225)"
-                                                                   :border-radius "6px"}}
-                  ".cm-tooltip-autocomplete ul li[aria-selected]" {:background "rgb(79 70 229)"
-                                                                   :color "#fff"}
-                  ".cm-tooltip.cm-tooltip-hover" {:background "rgb(241 245 249)"
-                                                  :border-radius "6px"
-                                                  :border "1px solid rgb(203 213 225)"
-                                                  :box-shadow "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)"
-                                                  :max-width "550px"}}) #js {:dark @!dark-mode?}))
+          (j/lit {".cm-matchingBracket" {:border-bottom "1px solid var(--teal-color)"
+                                         :color "inherit"}})
+          #js {:dark @!dark-mode?}))
 
 (def read-only (.. EditorView -editable (of false)))
 
@@ -198,16 +197,19 @@
             (when (.-docChanged tr) (f (.. tr -state sliceDoc)))
             #js {}))))
 
+(def base-theme (Compartment.))
 (def theme (Compartment.))
 
 (defn use-dark-mode [!view]
   (hooks/use-effect (fn []
-                      (add-watch !dark-mode? ::dark-mode #(.dispatch @!view #js {:effects (.reconfigure theme (get-theme))}))
+                      (add-watch !dark-mode? ::dark-mode #(.dispatch @!view #js {:effects #js [(.reconfigure base-theme (get-base-theme))
+                                                                                               (.reconfigure theme (get-theme))]}))
                       #(remove-watch !dark-mode? ::dark-mode))))
 
 (def ^:export default-extensions
   #js [clojure-mode/default-extensions
        (syntaxHighlighting highlight-style)
+       (.of base-theme (get-base-theme))
        (.of theme (get-theme))])
 
 (defn make-state [doc extensions]
