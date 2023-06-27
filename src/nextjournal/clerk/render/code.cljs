@@ -1,7 +1,8 @@
 (ns nextjournal.clerk.render.code
-  (:require ["@codemirror/language" :refer [HighlightStyle syntaxHighlighting LanguageDescription]]
+  (:require ["@codemirror/commands" :refer [history historyKeymap]]
+            ["@codemirror/language" :refer [HighlightStyle syntaxHighlighting LanguageDescription]]
             ["@codemirror/state" :refer [Compartment EditorState RangeSet RangeSetBuilder Text]]
-            ["@codemirror/view" :refer [EditorView Decoration]]
+            ["@codemirror/view" :refer [Decoration EditorView keymap]]
             ["@lezer/highlight" :refer [tags highlightTree]]
             ["@nextjournal/lang-clojure" :refer [clojureLanguage]]
             [applied-science.js-interop :as j]
@@ -207,10 +208,12 @@
                       #(remove-watch !dark-mode? ::dark-mode))))
 
 (def ^:export default-extensions
-  #js [clojure-mode/default-extensions
+  #js [(history)
+       clojure-mode/default-extensions
        (syntaxHighlighting highlight-style)
        (.of base-theme (get-base-theme))
-       (.of theme (get-theme))])
+       (.of theme (get-theme))
+       (.of keymap historyKeymap)])
 
 (defn make-state [doc extensions]
   (.create EditorState (j/obj :doc doc :extensions extensions)))
