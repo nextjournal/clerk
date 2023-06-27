@@ -184,7 +184,10 @@
                                                                    :preventDefault true
                                                                    :run #(swap! !show-docstring? not)}
                                                                   {:key "Escape"
-                                                                   :run #(reset! !show-docstring? false)}]))]))
+                                                                   :run #(reset! !show-docstring? false)}
+                                                                  {:key "Mod-s"
+                                                                   :run #()
+                                                                   :preventDefault true}]))]))
                             @!container-el))]
          (on-eval view)
          #(.destroy view))))
