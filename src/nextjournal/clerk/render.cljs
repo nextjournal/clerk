@@ -112,12 +112,11 @@
 
 (defn handle-anchor-click [^js e]
   (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
-    (when (= (.-search url) "?clerk/show!")
-      (.preventDefault e)
-      (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
-                        (cond-> {:nav-path (subs (js/decodeURI (.-pathname url)) 1)}
-                          (seq (.-hash url))
-                          (assoc :fragment (subs (.-hash url) 1))))))))
+    (.preventDefault e)
+    (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
+                      (cond-> {:nav-path (subs (js/decodeURI (.-pathname url)) 1)}
+                        (seq (.-hash url))
+                        (assoc :fragment (subs (.-hash url) 1)))))))
 
 (defn history-push-state [{:as opts :keys [path fragment replace?]}]
   (when (not= path (some-> js/history .-state .-path))

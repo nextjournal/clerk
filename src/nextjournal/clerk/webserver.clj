@@ -198,8 +198,22 @@
 (defn show! [opts file-or-ns]
   ((resolve 'nextjournal.clerk/show!) opts file-or-ns))
 
+(defn find-first-existing-file [files]
+  (first (filter fs/exists? files)))
+
+(defn maybe-add-extension [nav-path]
+  (if (and (string? nav-path)
+           (fs/exists? nav-path))
+    nav-path
+    (find-first-existing-file (map #(str (fs/file nav-path) "." %) ["md" "clj" "cljc"]))))
+
+#_(maybe-add-extension "notebooks/rule_30")
+#_(maybe-add-extension "notebooks/rule_30.clj")
+#_(maybe-add-extension "notebooks/markdown")
+
+
 (defn navigate! [{:as opts :keys [nav-path]}]
-  (show! opts (->file-or-ns nav-path)))
+  (show! opts (->file-or-ns (maybe-add-extension nav-path))))
 
 (defn prefetch-request? [req] (= "prefetch" (-> req :headers (get "purpose"))))
 
@@ -214,7 +228,7 @@
        :headers {"Location" (or (:nav-path @!doc)
                                 (->nav-path 'nextjournal.clerk.home))}}
       :else
-      (if-let [file-or-ns (->file-or-ns nav-path)]
+      (if-let [file-or-ns (->file-or-ns (maybe-add-extension nav-path))]
         (do (try (show! {:skip-history? true} file-or-ns)
                  (catch Exception _))
             {:status 200

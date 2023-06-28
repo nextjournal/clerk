@@ -1767,7 +1767,7 @@
 (defn ^:dynamic doc-url
   ([path] (doc-url path nil))
   ([path fragment]
-   (str "/" path "?clerk/show!" (when fragment (str "#" fragment)))))
+   (str "/" path (when fragment (str "#" fragment)))))
 
 #_(doc-url "notebooks/rule_30.clj#board")
 #_(doc-url "notebooks/rule_30.clj")
