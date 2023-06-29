@@ -205,6 +205,9 @@
       (expand-paths {:paths-fn `my-paths}))
 #_(expand-paths {:paths ["notebooks/viewers**"]})
 
+(def builtin-index
+  (io/resource "nextjournal/clerk/index.clj"))
+
 (defn process-build-opts [{:as opts :keys [paths index expand-paths?]}]
   (merge {:out-path default-out-path
           :bundle? false
@@ -223,14 +226,15 @@
                  (assoc :index (first expanded-paths))
                  (and (not index) (< 1 (count expanded-paths)) (every? (complement #{"index.clj"}) expanded-paths))
                  (as-> opts
-                   (let [index (io/resource "nextjournal/clerk/index.clj")]
-                     (-> opts (assoc :index index) (update :expanded-paths conj index)))))))))
+                     (-> opts (assoc :index builtin-index) (update :expanded-paths conj builtin-index))))))))
 
 #_(process-build-opts {:index 'book.clj :expand-paths? true})
 #_(process-build-opts {:paths ["notebooks/rule_30.clj"] :expand-paths? true})
 #_(process-build-opts {:paths ["notebooks/rule_30.clj"
                                "notebooks/markdown.md"] :expand-paths? true})
+
 (defn build-static-app-opts [{:as opts :keys [bundle? out-path browse? index]} docs]
+  (prn :build-static-app-opts index)
   (let [path->doc (into {} (map (juxt (comp str fs/strip-ext strip-index (partial viewer/map-index opts) :file) :viewer)) docs)]
     (assoc opts
            :bundle? bundle?
@@ -262,9 +266,9 @@
 
 (defn write-static-app!
   [opts docs]
-  (let [{:as opts :keys [bundle? out-path browse? ssr?]} (process-build-opts opts)
+  (let [{:keys [bundle? out-path browse? ssr?]} opts
         index-html (str out-path fs/file-separator "index.html")
-        {:as static-app-opts :keys [path->doc]} (build-static-app-opts (viewer/update-if opts :index str) docs)]
+        {:as static-app-opts :keys [path->doc]} (build-static-app-opts opts docs)]
     (when-not (contains? (set (keys path->doc)) "")
       (throw (ex-info "Index must have been processed at this point" {:static-app-opts static-app-opts})))
     (when-not (fs/exists? (fs/parent index-html))
@@ -384,7 +388,8 @@
                                                                             *build-opts* opts
                                                                             viewer/doc-url (partial doc-url opts file)]
                                                                     (let [doc (eval/eval-analyzed-doc doc)]
-                                                                      (assoc doc :viewer (view/doc->viewer (assoc opts :static-build? true
+                                                                      (assoc doc :viewer (view/doc->viewer (assoc opts
+                                                                                                                  :static-build? true
                                                                                                                   :nav-path (str file)) doc))))
                                                                   (catch Exception e
                                                                     {:error e})))]
