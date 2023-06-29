@@ -100,7 +100,7 @@
   (testing "coerces index symbol arg and adds it to expanded-paths"
     (is (= ["book.clj"] (:expanded-paths (builder/process-build-opts {:index 'book.clj :expand-paths? true}))))))
 
-
+#_
 (deftest doc-url
   (testing "link to same dir unbundled"
     (is (= "./../notebooks/rule_30.html" ;; NOTE: could also be just "rule_30.html"

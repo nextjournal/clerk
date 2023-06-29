@@ -230,22 +230,12 @@
 #_(process-build-opts {:paths ["notebooks/rule_30.clj"] :expand-paths? true})
 #_(process-build-opts {:paths ["notebooks/rule_30.clj"
                                "notebooks/markdown.md"] :expand-paths? true})
-
-(defn build-path->url [{:as opts :keys [bundle?]} docs]
-  (into {}
-        (map (comp (juxt identity #(cond-> (->> % (viewer/map-index opts) strip-index) (not bundle?) ->html-extension))
-                   str :file))
-        docs))
-#_(build-path->url {:bundle? false} [{:file "notebooks/foo.clj"} {:file "index.clj"}])
-#_(build-path->url {:bundle? true}  [{:file "notebooks/foo.clj"} {:file "index.clj"}])
-
 (defn build-static-app-opts [{:as opts :keys [bundle? out-path browse? index]} docs]
-  (let [path->doc (into {} (map (juxt (comp str :file) :viewer)) docs)]
+  (let [path->doc (into {} (map (juxt (comp str fs/strip-ext strip-index (partial viewer/map-index opts) :file) :viewer)) docs)]
     (assoc opts
            :bundle? bundle?
            :path->doc path->doc
-           :paths (vec (keys path->doc))
-           :path->url (build-path->url opts docs))))
+           :paths (vec (keys path->doc)))))
 
 (defn ssr!
   "Shells out to node to generate server-side-rendered html."
@@ -268,21 +258,21 @@
 
 (defn cleanup [build-opts]
   (select-keys build-opts
-               [:bundle? :path->doc :path->url :current-path :resource->url :exclude-js? :index :html]))
+               [:bundle? :path->doc :current-path :resource->url :exclude-js? :index :html]))
 
 (defn write-static-app!
   [opts docs]
   (let [{:as opts :keys [bundle? out-path browse? ssr?]} (process-build-opts opts)
         index-html (str out-path fs/file-separator "index.html")
-        {:as static-app-opts :keys [path->url path->doc]} (build-static-app-opts (viewer/update-if opts :index str) docs)]
-    (when-not (contains? (-> path->url vals set) "")
-      (throw (ex-info "Index must have been processed at this point" {:opts opts :docs docs})))
+        {:as static-app-opts :keys [path->doc]} (build-static-app-opts (viewer/update-if opts :index str) docs)]
+    (when-not (contains? (set (keys path->doc)) "")
+      (throw (ex-info "Index must have been processed at this point" {:static-app-opts static-app-opts})))
     (when-not (fs/exists? (fs/parent index-html))
       (fs/create-dirs (fs/parent index-html)))
     (if bundle?
       (spit index-html (view/->html (cleanup static-app-opts)))
       (doseq [[path doc] path->doc]
-        (let [out-html (str out-path fs/file-separator (->> path (viewer/map-index opts) ->html-extension))]
+        (let [out-html (fs/file out-path path "index.html")]
           (fs/create-dirs (fs/parent out-html))
           (spit out-html (view/->html (-> static-app-opts
                                           (assoc :path->doc (hash-map path doc) :current-path path)
@@ -330,14 +320,14 @@
       (fs/delete-tree tw-folder)
       (update opts :resource->url assoc "/css/viewer.css" url))))
 
-(defn doc-url
-  ([opts doc file path] (doc-url opts doc file path nil))
-  ([{:as opts :keys [bundle?]} docs file path fragment]
-   (let [url (get (build-path->url (viewer/update-if opts :index str) docs) path)]
-     (if bundle?
-       (str "#/" url)
-       (str (viewer/relative-root-prefix-from (viewer/map-index opts file))
-            url (when fragment (str "#" fragment)))))))
+#_(defn doc-url
+    ([opts doc file path] (doc-url opts doc file path nil))
+    ([{:as opts :keys [bundle?]} docs file path fragment]
+     (let [url (get (build-path->url (viewer/update-if opts :index str) docs) path)]
+       (if bundle?
+         (str "#/" url)
+         (str (viewer/relative-root-prefix-from (viewer/map-index opts file))
+              url (when fragment (str "#" fragment)))))))
 
 (defn read-opts-from-deps-edn! []
   (if (fs/exists? "deps.edn")
@@ -395,7 +385,7 @@
                                                                 (try
                                                                   (binding [*ns* *ns*
                                                                             *build-opts* opts
-                                                                            viewer/doc-url (partial doc-url opts state file)]
+                                                                            #_#_viewer/doc-url (partial doc-url opts state file)]
                                                                     (let [doc (eval/eval-analyzed-doc doc)]
                                                                       (assoc doc :viewer (view/doc->viewer (assoc opts :static-build? true
                                                                                                                   :nav-path (str file)) doc))))
@@ -422,7 +412,7 @@
 
 (comment
   (build-static-app! {:paths clerk-docs :bundle? true})
-  (build-static-app! {:paths ["notebooks/index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :index "notebooks/index.clj"})
+  (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
   (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
   (build-static-app! {:paths ["notebooks/viewers/**"]})
   (build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
@@ -455,3 +445,14 @@
                       :bundle? true
                       :git/sha "d60f5417"
                       :git/url "https://github.com/nextjournal/clerk"}))
+
+
+
+(comment
+  ;; single doc
+  (build-static-app! {:paths ["notebooks/hello.clj"]})
+  ;; multi bundle
+  (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
+  ;; multi unbundled
+  (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? false}))
+

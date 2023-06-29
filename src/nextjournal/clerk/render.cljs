@@ -107,27 +107,6 @@
 
 (declare clerk-eval)
 
-(defn ->URL [^js href]
-  (js/URL. href))
-
-(defn handle-anchor-click [^js e]
-  (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
-    (.preventDefault e)
-    (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
-                      (cond-> {:nav-path (subs (js/decodeURI (.-pathname url)) 1)}
-                        (seq (.-hash url))
-                        (assoc :fragment (subs (.-hash url) 1)))))))
-
-(defn history-push-state [{:as opts :keys [path fragment replace?]}]
-  (when (not= path (some-> js/history .-state .-path))
-    (j/call js/history (if replace? :replaceState :pushState) (clj->js opts) "" (str (.. js/document -location -origin)
-                                                                                     "/" path (when fragment (str "#" fragment))))))
-
-(defn handle-history-popstate [^js e]
-  (when-let [{:as opts :keys [path]} (js->clj (.-state e) :keywordize-keys true)]
-    (.preventDefault e)
-    (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path path :skip-history? true}))))
-
 (defn render-notebook [{:as doc xs :blocks :keys [bundle? doc-css-class sidenotes? toc toc-visibility header footer]}
                        {:as render-opts :keys [!expanded-at expandable-toc?]}]
   (r/with-let [root-ref-fn (fn [el]
@@ -713,26 +692,53 @@
 
 (defonce !router (atom nil))
 
-(defn handle-initial-load [_]
-  (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
+(defn ->URL [^js href]
+  (js/URL. href))
 
 (defn path-from-url-hash [url]
   (-> url ->URL .-hash (subs 2)))
 
-(defn handle-hashchange [{:keys [url->path path->doc]} ^js e]
-  (let [url (some-> e .-event_ .-newURL path-from-url-hash)]
-    (when-some [doc (get path->doc (get url->path url))]
-      (set-state! {:doc doc}))))
+(defn static-app? [state]
+  (contains? state :path->doc))
 
-(defn listeners [{:as state :keys [mode]}]
-  (case mode
-    :path
-    #{(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
-      (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
-      (gevents/listen js/window gevents/EventType.LOAD handle-initial-load false)}
+(defn ->doc-url [url]
+  (let [path (js/decodeURI (.-pathname url))
+        doc-path (js/decodeURI (.-pathname (.-location js/document)))]
+    (if (str/starts-with? path doc-path)
+      (subs path (count doc-path))
+      (subs path 1))))
 
-    :fragment
-    #{(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)}))
+(defn handle-anchor-click [{:as state :keys [path->doc url->path]} ^js e]
+  (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
+    (if (static-app? state)
+      (when (:bundle? state)
+        (.preventDefault e)
+        (js/console.log :click-bundle e (->doc-url url) )
+        (when-some [doc (get path->doc (->doc-url url))]
+          (set-state! {:doc doc})))
+      (do (.preventDefault e)
+          (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
+                            (cond-> {:nav-path (->doc-url url)}
+                              (seq (.-hash url))
+                              (assoc :fragment (subs (.-hash url) 1)))))))))
+
+(defn history-push-state [{:as opts :keys [path fragment replace?]}]
+  (when (not= path (some-> js/history .-state .-path))
+    (j/call js/history (if replace? :replaceState :pushState) (clj->js opts) "" (str (.. js/document -location -origin)
+                                                                                     "/" path (when fragment (str "#" fragment))))))
+
+(defn handle-history-popstate [state ^js e]
+  (when-let [{:as opts :keys [path]} (js->clj (.-state e) :keywordize-keys true)]
+    (.preventDefault e)
+    (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path path :skip-history? true}))))
+
+(defn handle-initial-load [state ^js _e]
+  (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
+
+(defn listeners [state]
+  #{(gevents/listen js/document gevents/EventType.CLICK (partial handle-anchor-click state) false)
+    (gevents/listen js/window gevents/EventType.POPSTATE (partial handle-history-popstate state) false)
+    (gevents/listen js/window gevents/EventType.LOAD (partial handle-initial-load state) false)})
 
 (defn setup-router! [{:as state :keys [mode]}]
   (when (and (exists? js/document) (exists? js/window))
@@ -750,19 +756,17 @@
   (mount))
 
 (defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path]}]
-  (let [static-app? (contains? state :path->doc)] ;; TODO: better check
-    (if static-app?
-      (let [url->path (set/map-invert path->url)]
-        (when bundle? (setup-router! (assoc state :mode :fragment :url->path url->path)))
-        (set-state! {:doc (get path->doc (or current-path
-                                             (when (and bundle? (exists? js/document))
-                                               (url->path (path-from-url-hash (.-location js/document))))
-                                             (url->path "")))})
-        (mount))
-      (do
-        (setup-router! {:mode :path})
-        (set-state! state)
-        (mount)))))
+  (if (static-app? state)
+    (do
+      (js/console.log :init (keys path->doc))
+      (when bundle?
+        (setup-router! (assoc state :mode :path)))
+      (set-state! {:doc (get path->doc (or current-path ""))})
+      (mount))
+    (do
+      (setup-router! {:mode :path})
+      (set-state! state)
+      (mount))))
 
 
 (defn render-html [markup]

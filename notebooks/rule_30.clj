@@ -3,6 +3,8 @@
 (ns rule-30
   (:require [nextjournal.clerk :as clerk]))
 
+;; [Back to index](../)
+
 (def viewers
   [{:pred number?
     :render-fn '#(vector :div.inline-block {:style {:width 16 :height 16}
