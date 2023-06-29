@@ -710,9 +710,8 @@
 
 (defn ignore-anchor-click?
   [e ^js url]
-  (let [current-origin (if (exists? js/location)
+  (let [current-origin (when (exists? js/location)
                          (.-origin js/location))
-        el (some-> e .-target closest-anchor-parent)
         ^js dataset (some-> e .-target closest-anchor-parent .-dataset)]
     (or (not= current-origin (.-origin url))
         (.-altKey e)
