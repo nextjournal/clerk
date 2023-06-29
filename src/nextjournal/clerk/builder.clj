@@ -321,8 +321,8 @@
       (update opts :resource->url assoc "/css/viewer.css" url))))
 
 (defn doc-url
-  ([opts doc file path] (doc-url opts doc file path nil))
-  ([opts docs file path fragment]
+  ([opts file path] (doc-url opts doc file path nil))
+  ([opts file path fragment]
    (str (viewer/relative-root-prefix-from (viewer/map-index opts file))
         path (when fragment (str "#" fragment)))))
 
@@ -382,7 +382,7 @@
                                                                 (try
                                                                   (binding [*ns* *ns*
                                                                             *build-opts* opts
-                                                                            viewer/doc-url (partial doc-url opts state file)]
+                                                                            viewer/doc-url (partial doc-url opts file)]
                                                                     (let [doc (eval/eval-analyzed-doc doc)]
                                                                       (assoc doc :viewer (view/doc->viewer (assoc opts :static-build? true
                                                                                                                   :nav-path (str file)) doc))))
