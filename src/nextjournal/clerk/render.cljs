@@ -708,20 +708,31 @@
       (subs path (count doc-path))
       (subs path 1))))
 
+(defn ignore-anchor-click?
+  [e ^js url]
+  (let [current-origin (if (exists? js/location)
+                         (.-origin js/location))
+        el (some-> e .-target closest-anchor-parent)
+        ^js dataset (some-> e .-target closest-anchor-parent .-dataset)]
+    (or (not= current-origin (.-origin url))
+        (.-altKey e)
+        (some-> dataset .-ignoreAnchorClick some?))))
+
+
 (defn handle-anchor-click [{:as state :keys [path->doc url->path]} ^js e]
   (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
-    (if (static-app? state)
-      (when (:bundle? state)
-        (.preventDefault e)
-        (js/console.log :click-bundle e (->doc-url url) )
-        (if-some [doc (get path->doc (->doc-url url))]
-          (set-state! {:doc doc})
-          (js/console.warn :doc-url (->doc-url url) :missing-in-docs (keys path->doc))))
-      (do (.preventDefault e)
-          (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
-                            (cond-> {:nav-path (->doc-url url)}
-                              (seq (.-hash url))
-                              (assoc :fragment (subs (.-hash url) 1)))))))))
+    (when-not (ignore-anchor-click? e url)
+      (if (static-app? state)
+        (when (:bundle? state)
+          (.preventDefault e)
+          (if-some [doc (get path->doc (->doc-url url))]
+            (set-state! {:doc doc})
+            (js/console.warn :doc-url (->doc-url url) :missing-in-docs (keys path->doc))))
+        (do (.preventDefault e)
+            (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
+                              (cond-> {:nav-path (->doc-url url)}
+                                (seq (.-hash url))
+                                (assoc :fragment (subs (.-hash url) 1))))))))))
 
 (defn history-push-state [{:as opts :keys [path fragment replace?]}]
   (when (not= path (some-> js/history .-state .-path))
@@ -759,7 +770,6 @@
 (defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path]}]
   (if (static-app? state)
     (do
-      (js/console.log :init (keys path->doc))
       (when bundle?
         (setup-router! (assoc state :mode :path)))
       (set-state! {:doc (get path->doc (or current-path ""))})
