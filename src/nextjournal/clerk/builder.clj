@@ -410,6 +410,7 @@
 (comment
   (build-static-app! {:paths clerk-docs :bundle? true})
   (build-static-app! {:paths ["notebooks/hello.clj"]})
+  (build-static-app! {:paths ["CHANGELOG.md" "notebooks/editor.clj"]})
   (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
   (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false})
   (build-static-app! {:paths ["notebooks/viewers/**"]})
@@ -443,16 +444,3 @@
                       :bundle? true
                       :git/sha "d60f5417"
                       :git/url "https://github.com/nextjournal/clerk"}))
-
-
-
-(comment
-  ;; single doc
-  (build-static-app! {:paths ["notebooks/hello.clj"]})
-  ;; multi bundle
-  (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
-  ;; multi unbundled
-  (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false})
-
-  )
-
