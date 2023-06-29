@@ -283,7 +283,9 @@
                                           (cond-> ssr? ssr!)
                                           cleanup))))))
     (when browse?
-      (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize)))
+      (browse/browse-url (if-let [{:keys [port]} (and (= out-path "public/build") @webserver/!server)]
+                           (str "http://localhost:" port "/build/")
+                           (-> index-html fs/absolutize .toString path-to-url-canonicalize))))
     {:docs docs
      :index-html index-html
      :build-href (if (and @webserver/!server (= out-path default-out-path)) "/build/" index-html)}))
@@ -414,10 +416,10 @@
 
 (comment
   (build-static-app! {:paths clerk-docs :bundle? true})
-  (build-static-app! {:paths ["notebooks/hello.clj"]})
-  (build-static-app! {:paths ["CHANGELOG.md" "notebooks/editor.clj"]})
-  (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
-  (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false})
+  (build-static-app! {:paths ["notebooks/hello.clj"] :browse? true})
+  (build-static-app! {:paths ["CHANGELOG.md" "notebooks/editor.clj"] :browse? true})
+  (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true :browse? true})
+  (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? true})
   (build-static-app! {:paths ["notebooks/viewers/**"]})
   (build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
   (reset! config/!resource->url @config/!asset-map)
