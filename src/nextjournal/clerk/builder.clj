@@ -416,7 +416,7 @@
 
 (comment
   (build-static-app! {:paths clerk-docs :bundle? true})
-  (build-static-app! {:paths ["notebooks/hello.clj"] :browse? true})
+  (build-static-app! {:paths ["notebooks/editor.clj"] :browse? true})
   (build-static-app! {:paths ["CHANGELOG.md" "notebooks/editor.clj"] :browse? true})
   (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true :browse? true})
   (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? true})
