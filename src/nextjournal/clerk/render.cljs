@@ -714,8 +714,9 @@
       (when (:bundle? state)
         (.preventDefault e)
         (js/console.log :click-bundle e (->doc-url url) )
-        (when-some [doc (get path->doc (->doc-url url))]
-          (set-state! {:doc doc})))
+        (if-some [doc (get path->doc (->doc-url url))]
+          (set-state! {:doc doc})
+          (js/console.warn :doc-url (->doc-url url) :missing-in-docs (keys path->doc))))
       (do (.preventDefault e)
           (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
                             (cond-> {:nav-path (->doc-url url)}

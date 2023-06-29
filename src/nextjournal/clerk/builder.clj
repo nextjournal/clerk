@@ -320,14 +320,11 @@
       (fs/delete-tree tw-folder)
       (update opts :resource->url assoc "/css/viewer.css" url))))
 
-#_(defn doc-url
-    ([opts doc file path] (doc-url opts doc file path nil))
-    ([{:as opts :keys [bundle?]} docs file path fragment]
-     (let [url (get (build-path->url (viewer/update-if opts :index str) docs) path)]
-       (if bundle?
-         (str "#/" url)
-         (str (viewer/relative-root-prefix-from (viewer/map-index opts file))
-              url (when fragment (str "#" fragment)))))))
+(defn doc-url
+  ([opts doc file path] (doc-url opts doc file path nil))
+  ([opts docs file path fragment]
+   (str (viewer/relative-root-prefix-from (viewer/map-index opts file))
+        path (when fragment (str "#" fragment)))))
 
 (defn read-opts-from-deps-edn! []
   (if (fs/exists? "deps.edn")
@@ -385,7 +382,7 @@
                                                                 (try
                                                                   (binding [*ns* *ns*
                                                                             *build-opts* opts
-                                                                            #_#_viewer/doc-url (partial doc-url opts state file)]
+                                                                            viewer/doc-url (partial doc-url opts state file)]
                                                                     (let [doc (eval/eval-analyzed-doc doc)]
                                                                       (assoc doc :viewer (view/doc->viewer (assoc opts :static-build? true
                                                                                                                   :nav-path (str file)) doc))))
@@ -452,7 +449,9 @@
   ;; single doc
   (build-static-app! {:paths ["notebooks/hello.clj"]})
   ;; multi bundle
-  (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
+  (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true})
   ;; multi unbundled
-  (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? false}))
+  (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false})
+
+  )
 
