@@ -321,7 +321,7 @@
       (update opts :resource->url assoc "/css/viewer.css" url))))
 
 (defn doc-url
-  ([opts file path] (doc-url opts doc file path nil))
+  ([opts file path] (doc-url opts file path nil))
   ([opts file path fragment]
    (str (viewer/relative-root-prefix-from (viewer/map-index opts file))
         path (when fragment (str "#" fragment)))))

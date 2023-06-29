@@ -15,7 +15,7 @@
                                       [:li.border-t.first:border-t-0.dark:border-gray-800.odd:bg-slate-50.dark:odd:bg-white
                                        {:class "dark:odd:bg-opacity-[0.03]"}
                                        [:a.pl-4.pr-4.py-2.flex.w-full.items-center.justify-between.hover:bg-indigo-50.dark:hover:bg-gray-700
-                                        {:href (clerk/doc-url path)}
+                                        {:href (clerk/doc-url (fs/strip-ext path))}
                                         [:span.text-sm.md:text-md.monospace.flex-auto.block.truncate path]
                                         [:svg.h-4.w-4.flex-shrink-0 {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke "currentColor"}
                                          [:path {:stroke-linecap "round" :stroke-linejoin "round" :stroke-width "2" :d "M9 5l7 7-7 7"}]]]])))})
