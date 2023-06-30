@@ -314,14 +314,17 @@
               (str path))
             (pr-str viewer)))
     (let [{:as ret :keys [out err exit]}
-          (sh "tailwindcss"
-              "--input"  tw-input
-              "--config" tw-config
-              ;; FIXME: pass inline
-              ;;"--content" (str tw-viewer)
-              ;;"--content" (str tw-folder "/**/*.edn")
-              "--output" tw-output
-              "--minify")]
+          (try (sh "tailwindcss"
+                   "--input"  tw-input
+                   "--config" tw-config
+                   ;; FIXME: pass inline
+                   ;;"--content" (str tw-viewer)
+                   ;;"--content" (str tw-folder "/**/*.edn")
+                   "--output" tw-output
+                   "--minify")
+               (catch java.io.IOException e
+                 (throw (ex-info "Clerk could not find the `tailwindcss` executable.
+Please install it using `npm install -D tailwindcss` and try again." {} e))))]
       (println err)
       (println out)
       (when-not (= 0 exit)
