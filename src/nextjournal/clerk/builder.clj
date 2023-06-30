@@ -322,9 +322,8 @@
                    ;;"--content" (str tw-folder "/**/*.edn")
                    "--output" tw-output
                    "--minify")
-               (catch java.io.IOException e
-                 (throw (ex-info "Clerk could not find the `tailwindcss` executable.
-Please install it using `npm install -D tailwindcss` and try again." {} e))))]
+               (catch java.io.IOException _
+                 (throw (Exception. "Clerk could not find the `tailwindcss` executable. Please install it using `npm install -D tailwindcss` and try again."))))]
       (println err)
       (println out)
       (when-not (= 0 exit)
