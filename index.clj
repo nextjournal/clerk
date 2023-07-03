@@ -9,5 +9,5 @@
  [:div.viewer-markdown
   [:ul
    [:li [:a.underline {:href (clerk/doc-url "notebooks/rule_30")} "Rule 30"]]
-   [:li [:a.underline {:href (clerk/doc-url "design/links.md")} "Link Design"]]
+   [:li [:a.underline {:href (clerk/doc-url "notebooks/links")} "Link Design"]]
    [:li [:a.underline {:href (clerk/doc-url "notebooks/markdown")} "Markdown"]]]])

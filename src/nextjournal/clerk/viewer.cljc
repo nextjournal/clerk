@@ -1138,7 +1138,7 @@
 (defn index-path [{:keys [static-build? index]}]
   #?(:cljs ""
      :clj (if static-build?
-            (if index (str index) "")
+            ""
             (if (fs/exists? "index.clj") "index.clj" "'nextjournal.clerk.index"))))
 
 (defn header [{:as opts :keys [nav-path static-build?] :git/keys [url sha]}]

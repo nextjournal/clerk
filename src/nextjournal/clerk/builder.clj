@@ -234,7 +234,6 @@
                                "notebooks/markdown.md"] :expand-paths? true})
 
 (defn build-static-app-opts [{:as opts :keys [bundle? out-path browse? index]} docs]
-  (prn :build-static-app-opts index)
   (let [path->doc (into {} (map (juxt (comp str fs/strip-ext strip-index (partial viewer/map-index opts) :file) :viewer)) docs)]
     (assoc opts
            :bundle? bundle?
@@ -395,7 +394,10 @@
                                                                     (let [doc (eval/eval-analyzed-doc doc)]
                                                                       (assoc doc :viewer (view/doc->viewer (assoc opts
                                                                                                                   :static-build? true
-                                                                                                                  :nav-path (str file)) doc))))
+                                                                                                                  :nav-path (if (instance? java.net.URL file)
+                                                                                                                              (str "'" (:ns doc))
+                                                                                                                              (str file)))
+                                                                                                           doc))))
                                                                   (catch Exception e
                                                                     {:error e})))]
                         (report-fn (merge {:stage :built :duration duration :idx idx}
@@ -421,7 +423,8 @@
   (build-static-app! {:paths clerk-docs :bundle? true})
   (build-static-app! {:paths ["notebooks/editor.clj"] :browse? true})
   (build-static-app! {:paths ["CHANGELOG.md" "notebooks/editor.clj"] :browse? true})
-  (build-static-app! {:paths ["index.clj" "design/links.md" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true :browse? true})
+  (build-static-app! {:paths ["index.clj" "notebooks/links.md" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true :browse? true})
+  (build-static-app! {:paths ["notebooks/links.md" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true :browse? true})
   (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? true})
   (build-static-app! {:paths ["notebooks/viewers/**"]})
   (build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
@@ -454,3 +457,4 @@
                       :bundle? true
                       :git/sha "d60f5417"
                       :git/url "https://github.com/nextjournal/clerk"}))
+
