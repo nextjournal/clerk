@@ -329,8 +329,11 @@
 (defn doc-url
   ([opts file path] (doc-url opts file path nil))
   ([opts file path fragment]
-   (str (viewer/relative-root-prefix-from (viewer/map-index opts file))
-        path (when fragment (str "#" fragment)))))
+   (if (:bundle? opts)
+     (cond-> (str "#/" path)
+       fragment (str ":" fragment))
+     (str (viewer/relative-root-prefix-from (viewer/map-index opts file)) path
+          (when fragment (str "#" fragment))))))
 
 (defn read-opts-from-deps-edn! []
   (if (fs/exists? "deps.edn")
@@ -418,7 +421,7 @@
   (build-static-app! {:paths clerk-docs :bundle? true})
   (build-static-app! {:paths ["notebooks/editor.clj"] :browse? true})
   (build-static-app! {:paths ["CHANGELOG.md" "notebooks/editor.clj"] :browse? true})
-  (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true :browse? true})
+  (build-static-app! {:paths ["index.clj" "design/links.md" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? true :browse? true})
   (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? true})
   (build-static-app! {:paths ["notebooks/viewers/**"]})
   (build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
