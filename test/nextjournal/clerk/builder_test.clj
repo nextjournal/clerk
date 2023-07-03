@@ -100,16 +100,16 @@
   (testing "coerces index symbol arg and adds it to expanded-paths"
     (is (= ["book.clj"] (:expanded-paths (builder/process-build-opts {:index 'book.clj :expand-paths? true}))))))
 
-#_
+
 (deftest doc-url
   (testing "link to same dir unbundled"
-    (is (= "./../notebooks/rule_30.html" ;; NOTE: could also be just "rule_30.html"
-           (builder/doc-url {:bundle? false} [{:file "notebooks/viewer_api.clj"} {:file "notebooks/rule_30.clj"}] "notebooks/viewer_api.clj" "notebooks/rule_30.clj"))))
+    (is (= "./../notebooks/rule_30" ;; NOTE: could also be just "rule_30.html"
+           (builder/doc-url {:bundle? false} "notebooks/viewer_api.clj" "notebooks/rule_30"))))
 
   (testing "respects the mapped index"
-    (is (= "./notebooks/rule_30.html"
-           (builder/doc-url {:bundle? false} [{:file "index.clj"} {:file "notebooks/rule_30.clj"}] "index.clj" "notebooks/rule_30.clj"))))
+    (is (= "./notebooks/rule_30"
+           (builder/doc-url {:bundle? false} "index.clj" "notebooks/rule_30"))))
 
   (testing "bundle case"
-    (is (= "#/notebooks/rule_30.clj"
-           (builder/doc-url {:bundle? true} [{:file "notebooks/index.clj"} {:file "notebooks/rule_30.clj"}] "index.clj" "notebooks/rule_30.clj")))))
+    (is (= "#/notebooks/rule_30"
+           (builder/doc-url {:bundle? true} "index.clj" "notebooks/rule_30")))))
