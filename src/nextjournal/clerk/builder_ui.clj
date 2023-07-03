@@ -22,18 +22,18 @@
 
 (defn checkmark-svg [& [{:keys [size] :or {size 18}}]]
   [:div.flex.justify-center {:class "w-[24px] h-[24px]"}
-   [:svg {:xmlns "http://www.w3.org/2000/svg", :fill "none", :viewbox "0 0 24 24", :stroke-width "1.5", :stroke "currentColor", :class "w-6 h-6"}
+   [:svg {:xmlns "http://www.w3.org/2000/svg", :fill "none", :viewBox "0 0 24 24", :stroke-width "1.5", :stroke "currentColor", :class "w-6 h-6"}
     [:path {:stroke-linecap "round", :stroke-linejoin "round", :d "M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"}]]])
 
 (defn error-svg [& [{:keys [size] :or {size 18}}]]
   [:div.flex.justify-center {:class "w-[24px] h-[24px]"}
    [:svg.text-red-400
-    {:xmlns "http://www.w3.org/2000/svg", :viewbox "0 0 20 20", :fill "currentColor"
+    {:xmlns "http://www.w3.org/2000/svg", :viewBox "0 0 20 20", :fill "currentColor"
      :style {:width size :height size}}
     [:path {:fill-rule "evenodd", :d "M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z", :clip-rule "evenodd"}]]])
 
 (def publish-icon-svg
-  [:svg {:width "18", :height "18", :viewbox "0 0 18 18", :fill "none", :xmlns "http://www.w3.org/2000/svg"}
+  [:svg {:width "18", :height "18", :viewBox "0 0 18 18", :fill "none", :xmlns "http://www.w3.org/2000/svg"}
    [:path {:d "M9 17C12.7267 17 15.8583 14.4517 16.7473 11.0026M9 17C5.27327 17 2.14171 14.4517 1.25271 11.0026M9 17C11.2091 17 13 13.4183 13 9C13 4.58172 11.2091 1 9 1M9 17C6.79086 17 5 13.4183 5 9C5 4.58172 6.79086 1 9 1M9 1C11.9913 1 14.5991 2.64172 15.9716 5.07329M9 1C6.00872 1 3.40088 2.64172 2.02838 5.07329M15.9716 5.07329C14.102 6.68924 11.6651 7.66667 9 7.66667C6.33486 7.66667 3.89802 6.68924 2.02838 5.07329M15.9716 5.07329C16.6264 6.23327 17 7.573 17 9C17 9.69154 16.9123 10.3626 16.7473 11.0026M16.7473 11.0026C14.4519 12.2753 11.8106 13 9 13C6.18943 13 3.54811 12.2753 1.25271 11.0026M1.25271 11.0026C1.08775 10.3626 1 9.69154 1 9C1 7.573 1.37362 6.23327 2.02838 5.07329", :stroke "currentColor", :stroke-linecap "round", :stroke-linejoin "round"}]])
 
 ^{:nextjournal.clerk/visibility {:result :show}}
@@ -304,7 +304,7 @@
       (checkmark-svg)
       [:div.text-lg.ml-2.mb-0.font-medium "Your notebooks have been built."]]
      [:a.font-medium.rounded-full.text-sm.px-3.py-1.bg-greenish-20.flex.items-center.border-2.border-greenish.animate-border-pulse.hover:border-white.hover:animate-none
-      {:href link}
+      {:href link :data-ignore-anchor-click true}
       [:div publish-icon-svg]
       [:span.ml-2 "Open"]]]
     [:div.flex.items-center.px-4.lg:px-0

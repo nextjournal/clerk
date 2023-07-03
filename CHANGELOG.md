@@ -32,6 +32,12 @@ Changes can be:
   * `nextjournal.clerk.viewer/html` instead.
   
   Also rename `nextjournal.clerk.render/html-render` to `nextjournal.clerk.render/render-html` and make `nextjournal.clerk.viewer/html` use it when called from a reactive context.
+  
+* 🚨 Unify the link handling between `build!` and `serve!` 
+
+  By no longer using extensions in either mode (was `.clj|md` in `serve!` and `.html` in `build!`).
+  
+  To support this in the unbundled static build, we're now writing directories with `index.html` for each notebook. This makes links in this build no longer accessible without a http server. If you're looking for a self-contained html that works without a webserver, set the `:bundle` option.
 
 * 📖 Improve Table of Contents design and fixing re-rendering issues. Also added suport for chapter expansion.
 

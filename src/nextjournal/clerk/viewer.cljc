@@ -1138,7 +1138,7 @@
 (defn index-path [{:keys [static-build? index]}]
   #?(:cljs ""
      :clj (if static-build?
-            (if index (str index) "")
+            ""
             (if (fs/exists? "index.clj") "index.clj" "'nextjournal.clerk.index"))))
 
 (defn header [{:as opts :keys [nav-path static-build?] :git/keys [url sha]}]
@@ -1767,7 +1767,7 @@
 (defn ^:dynamic doc-url
   ([path] (doc-url path nil))
   ([path fragment]
-   (str "/" path "?clerk/show!" (when fragment (str "#" fragment)))))
+   (str "/" path (when fragment (str "#" fragment)))))
 
 #_(doc-url "notebooks/rule_30.clj#board")
 #_(doc-url "notebooks/rule_30.clj")
