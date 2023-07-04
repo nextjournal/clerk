@@ -154,23 +154,20 @@
       (reset! !doc (with-meta doc presented))
       presented)))
 
-(defn update-doc!
-  ([doc] (update-doc! (get-doc! *session*) doc))
-  ([!doc {:as doc :keys [nav-path fragment skip-history?]}]
-   (broadcast! (if (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
-                 {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! !doc doc) {:algo :quick}))}
-                 (cond-> {:type :set-state!
-                          :doc (present+reset! !doc doc)}
-                   (and nav-path (not skip-history?))
-                   (assoc :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/history-push-state
-                                                          (cond-> {:path nav-path} fragment (assoc :fragment fragment))))]))))))
+(defn update-doc! [!doc {:as doc :keys [nav-path fragment skip-history?]}]
+  (broadcast! (if (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
+                {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! !doc doc) {:algo :quick}))}
+                (cond-> {:type :set-state!
+                         :doc (present+reset! !doc doc)}
+                  (and nav-path (not skip-history?))
+                  (assoc :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/history-push-state
+                                                         (cond-> {:path nav-path} fragment (assoc :fragment fragment))))])))))
 
 #_(update-doc! (help-doc))
 
-(defn update-error!
-  ([ex] (update-error! (get-doc!) ex))
-  ([!doc ex]
-   (update-doc! (assoc @!doc :error ex))))
+(defn ^:private update-error! [ex]
+  (let [!doc (get-doc!)]
+    (update-doc! !doc (assoc @!doc :error ex))))
 
 (defn read-msg [s]
   (binding [*data-readers* v/data-readers]
@@ -329,12 +326,10 @@
     (Thread/sleep 50)
     (broadcast-status! status)))
 
-(defn set-status!
-  ([status] (set-status! (get-doc!) status))
-  ([!doc status]
-   (swap! !doc (fn [doc] (-> (or doc (help-doc))
-                             (vary-meta assoc :status status)
-                             (vary-meta update ::!send-status-future broadcast-status-debounced! status))))))
+(defn set-status! [!doc status]
+  (swap! !doc (fn [doc] (-> (or doc (help-doc))
+                            (vary-meta assoc :status status)
+                            (vary-meta update ::!send-status-future broadcast-status-debounced! status)))))
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
 
