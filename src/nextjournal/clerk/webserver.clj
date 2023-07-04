@@ -110,7 +110,6 @@
 #_(serve-file "public" {:uri "/js/viewer.js"})
 
 (defn sync-atom-changed [key atom old-state new-state]
-  (prn :sync-atom-changed {:*session* *session*})
   (eval '(nextjournal.clerk/recompute!)))
 
 (defn maybe-cancel-send-status-future [doc]
@@ -122,6 +121,10 @@
   ([session]
    (or (get @!session->doc session)
        (throw (ex-info (format "No `!doc` found in session `%s`." (pr-str session)) {:session session})))))
+
+#_(defn depedent-vars [{:as doc :keys [session]} sync-vars]
+    (let [deps (weavejester.dependency/transitive-dependents-set (:graph doc) sync-vars)]
+      (into #{} (filter (comp :vars (:->analysis-info doc)) deps))))
 
 (defn session-bindings [{:as doc :keys [session]}]
   ;; TODO: filter private ones
@@ -136,17 +139,7 @@
             private-sync-vars)
       {})))
 
-#_#_#_#_(session-bindings @(get-doc!))
-(session-bindings @(get-doc! 'foo))
-
-(with-bindings (session-bindings @(get-doc! 'foo))
-  @#'scratch/!offset)
-
-@#'scratch/!offset
-
-#_(swap! (get-in @!session->state ['foo #'scratch/!offset]) inc)
-#_(into {} (map (juxt key (comp some? deref val))) @!session->doc)
-
+#_(session-bindings @(get-doc! 'foo))
 
 (defn present+reset! [!doc doc]
   (let [presented (view/doc->viewer doc)
