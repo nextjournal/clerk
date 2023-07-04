@@ -28,6 +28,7 @@
 #_(defonce ^:dynamic !doc nil)
 (defonce ^:dynamic *session* nil)
 (defonce !session->doc (atom {nil (atom nil)}))
+(defonce !session->state (atom {}))
 (defonce !last-sender-ch (atom nil))
 
 #_(view/doc->viewer @!doc)
@@ -109,6 +110,7 @@
 #_(serve-file "public" {:uri "/js/viewer.js"})
 
 (defn sync-atom-changed [key atom old-state new-state]
+  (prn :sync-atom-changed {:*session* *session*})
   (eval '(nextjournal.clerk/recompute!)))
 
 (defn maybe-cancel-send-status-future [doc]
@@ -116,31 +118,56 @@
     (future-cancel scheduled-send-status-future)))
 
 (defn get-doc!
-  ([] (get-doc! nil))
+  ([] (get-doc! *session*))
   ([session]
    (or (get @!session->doc session)
        (throw (ex-info (format "No `!doc` found in session `%s`." (pr-str session)) {:session session})))))
 
-(defn present+reset! [doc]
-  (let [!doc (get-doc!)
-        presented (view/doc->viewer doc)
+(defn session-bindings [{:as doc :keys [session]}]
+  ;; TODO: filter private ones
+  (let [private-sync-vars (v/extract-sync-atom-vars doc)]
+    (doseq [private-sync-var private-sync-vars
+            :when (not (get-in @!session->state [session private-sync-var]))]
+      (swap! !session->state assoc-in [session private-sync-var] (atom @@private-sync-var)))
+    (if session
+      (into {}
+            (map (juxt identity (fn [private-sync-var]
+                                  (get-in @!session->state [session private-sync-var]))))
+            private-sync-vars)
+      {})))
+
+#_#_#_#_(session-bindings @(get-doc!))
+(session-bindings @(get-doc! 'foo))
+
+(with-bindings (session-bindings @(get-doc! 'foo))
+  @#'scratch/!offset)
+
+@#'scratch/!offset
+
+#_(swap! (get-in @!session->state ['foo #'scratch/!offset]) inc)
+#_(into {} (map (juxt key (comp some? deref val))) @!session->doc)
+
+
+(defn present+reset! [!doc doc]
+  (let [presented (view/doc->viewer doc)
         sync-vars-old (v/extract-sync-atom-vars @!doc)
         sync-vars (v/extract-sync-atom-vars doc)]
-    (doseq [sync-var (set/difference sync-vars sync-vars-old)]
-      (add-watch @sync-var (symbol sync-var) sync-atom-changed))
-    (doseq [sync-var (set/difference sync-vars-old sync-vars)]
-      (remove-watch @sync-var (symbol sync-var)))
-    (maybe-cancel-send-status-future @!doc)
-    (reset! !doc (with-meta doc presented))
-    presented))
+    (with-bindings (session-bindings doc)
+      (doseq [sync-var (set/difference sync-vars sync-vars-old)]
+        (add-watch @sync-var (symbol sync-var) sync-atom-changed))
+      (doseq [sync-var (set/difference sync-vars-old sync-vars)]
+        (remove-watch @sync-var (symbol sync-var)))
+      (maybe-cancel-send-status-future @!doc)
+      (reset! !doc (with-meta doc presented))
+      presented)))
 
 (defn update-doc!
-  ([doc] (update-doc! (get-doc!) doc))
+  ([doc] (update-doc! (get-doc! *session*) doc))
   ([!doc {:as doc :keys [nav-path fragment skip-history?]}]
    (broadcast! (if (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
-                 {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
+                 {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! !doc doc) {:algo :quick}))}
                  (cond-> {:type :set-state!
-                          :doc (present+reset! doc)}
+                          :doc (present+reset! !doc doc)}
                    (and nav-path (not skip-history?))
                    (assoc :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/history-push-state
                                                           (cond-> {:path nav-path} fragment (assoc :fragment fragment))))]))))))
@@ -164,11 +191,12 @@
 #_(pr-str (read-msg "#viewer-eval (resolve 'clojure.core/inc)"))
 
 (def ws-handlers
-  {:on-open (fn [ch] (swap! !client->session assoc ch *session*))
+  {:on-open (fn [ch]
+              (swap! !client->session assoc ch *session*))
    :on-close (fn [ch _reason] (swap! !client->session dissoc ch))
    :on-receive (fn [sender-ch edn-string]
                  (binding [*session* (get @!client->session sender-ch)]
-                   (let [!doc (get-doc! *session*)
+                   (let [!doc (get-doc!)
                          {:as msg :keys [type recompute?]} (read-msg edn-string)]
                      (binding [*ns* (or (:ns @!doc)
                                         (create-ns 'user))]
@@ -238,12 +266,15 @@
         (re-find #"\.(cljc?|md)$" nav-path) nav-path))
 
 (defn show! [opts file-or-ns]
-  ((resolve 'nextjournal.clerk/show!) opts file-or-ns))
+  ((resolve 'nextjournal.clerk/show!) (assoc opts :session *session*) file-or-ns))
 
 (defn navigate! [{:as opts :keys [nav-path]}]
   (show! opts (->file-or-ns (maybe-add-extension nav-path))))
 
 (defn prefetch-request? [req] (= "prefetch" (-> req :headers (get "purpose"))))
+
+(defn create-session-doc! []
+  (swap! !session->doc update *session* (fn [prev] (or prev (atom nil)))))
 
 (defn serve-notebook [{:as req :keys [uri]}]
   (let [nav-path (subs uri 1)]
@@ -257,7 +288,8 @@
                                                       (->nav-path 'nextjournal.clerk.home)))}}
       :else
       (if-let [file-or-ns (->file-or-ns (maybe-add-extension nav-path))]
-        (do (try (show! {:skip-history? true} file-or-ns)
+        (do (create-session-doc!)
+            (try (show! {:skip-history? true} file-or-ns)
                  (catch Exception _))
             {:status 200
              :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
