@@ -673,3 +673,24 @@
 #_(find-blocks @nextjournal.clerk.webserver/!doc 'scratch/foo)
 #_(find-blocks @nextjournal.clerk.webserver/!doc 'foo)
 #_(find-blocks @nextjournal.clerk.webserver/!doc '(rand-int 1000))
+
+(defn dependent-vars
+  [{:as analyzed-doc :keys [graph ->analysis-info]} vars-set]
+  (let [deps (dep/transitive-dependents-set graph vars-set)]
+    (into #{} (filter (comp :vars ->analysis-info) deps))))
+
+
+(let [form '(do (def ^:dynamic *test-dyn-var* 33))
+      vars-to-rewrite '#{*test-dyn-var*}]
+  (walk/postwalk (fn [f]
+                   (if (and (deflike? f) (= 'def (first f)) (contains? vars-to-rewrite (second f)))
+                     (concat ['var-set (list 'var (second f))]
+                             (drop 2 f))
+                     f))
+                 form))
+
+(drop 2 (list 1 2 3 4))
+
+(count (ns-map *ns*))
+
+(count (ns-interns *ns*))

@@ -5,6 +5,7 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [editscript.core :as editscript]
+            [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
@@ -109,8 +110,12 @@
 
 #_(serve-file "public" {:uri "/js/viewer.js"})
 
+(def ^:dynamic *test-dyn-var*
+  0)
+
 (defn sync-atom-changed [key atom old-state new-state]
-  (eval '(nextjournal.clerk/recompute!)))
+  (prn :sync-atom-changed {:*test-dyn-var* *test-dyn-var*})
+  ((resolve 'nextjournal.clerk/recompute!)))
 
 (defn maybe-cancel-send-status-future [doc]
   (when-let [scheduled-send-status-future (-> doc meta ::!send-status-future)]
@@ -122,39 +127,52 @@
    (or (get @!session->doc session)
        (throw (ex-info (format "No `!doc` found in session `%s`." (pr-str session)) {:session session})))))
 
-#_(defn depedent-vars [{:as doc :keys [session]} sync-vars]
-    (let [deps (weavejester.dependency/transitive-dependents-set (:graph doc) sync-vars)]
-      (into #{} (filter (comp :vars (:->analysis-info doc)) deps))))
+
+(defn dependent-var-bindings [doc sync-vars]
+  (into {#'*test-dyn-var* 42}
+        (map (juxt resolve (comp deref resolve)))
+        (analyzer/dependent-vars doc sync-vars)))
+
+#_(dependent-var-bindings @(get-doc! 'foo) '#{scratch/!offset})
 
 (defn session-bindings [{:as doc :keys [session]}]
-  ;; TODO: filter private ones
-  (let [private-sync-vars (v/extract-sync-atom-vars doc)]
-    (doseq [private-sync-var private-sync-vars
-            :when (not (get-in @!session->state [session private-sync-var]))]
-      (swap! !session->state assoc-in [session private-sync-var] (atom @@private-sync-var)))
-    (if session
-      (into {}
+  (if session
+    (let [private-sync-vars (v/extract-sync-atom-vars doc)]
+      ;; TODO: filter private vars
+      (doseq [private-sync-var private-sync-vars
+              :when (not (get-in @!session->state [session private-sync-var]))]
+        (swap! !session->state assoc-in [session private-sync-var] (atom @@private-sync-var)))
+      (into (dependent-var-bindings doc private-sync-vars)
             (map (juxt identity (fn [private-sync-var]
                                   (get-in @!session->state [session private-sync-var]))))
-            private-sync-vars)
-      {})))
+            private-sync-vars))
+    {}))
 
 #_(session-bindings @(get-doc! 'foo))
+#_(session-bindings @(get-doc! nil))
 
 (defn present+reset! [!doc doc]
-  (let [presented (view/doc->viewer doc)
-        sync-vars-old (v/extract-sync-atom-vars @!doc)
-        sync-vars (v/extract-sync-atom-vars doc)]
-    (with-bindings (session-bindings doc)
-      (doseq [sync-var (set/difference sync-vars sync-vars-old)]
-        (add-watch @sync-var (symbol sync-var) sync-atom-changed))
-      (doseq [sync-var (set/difference sync-vars-old sync-vars)]
+  (with-bindings (session-bindings doc)
+    (let [recreate-all-watches? true
+          presented (view/doc->viewer doc)
+          sync-vars-old (v/extract-sync-atom-vars @!doc)
+          sync-vars (v/extract-sync-atom-vars doc)]
+      (prn :present+reset! {:*test-dyn-var* *test-dyn-var* :sync-vars sync-vars})
+      (doseq [sync-var (if recreate-all-watches?
+                         sync-vars-old
+                         (set/difference sync-vars-old sync-vars))]
         (remove-watch @sync-var (symbol sync-var)))
+      (doseq [sync-var (if recreate-all-watches?
+                         sync-vars
+                         (set/difference sync-vars sync-vars-old))]
+        (prn :add-watch sync-var)
+        (add-watch @sync-var (symbol sync-var) sync-atom-changed))
       (maybe-cancel-send-status-future @!doc)
       (reset! !doc (with-meta doc presented))
       presented)))
 
 (defn update-doc! [!doc {:as doc :keys [nav-path fragment skip-history?]}]
+  (prn :update-doc! {:*test-dyn-var* *test-dyn-var*})
   (broadcast! (if (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
                 {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! !doc doc) {:algo :quick}))}
                 (cond-> {:type :set-state!
@@ -186,23 +204,25 @@
    :on-close (fn [ch _reason] (swap! !client->session dissoc ch))
    :on-receive (fn [sender-ch edn-string]
                  (binding [*session* (get @!client->session sender-ch)]
-                   (let [!doc (get-doc!)
+                   (let [!doc (get-doc! *session*)
                          {:as msg :keys [type recompute?]} (read-msg edn-string)]
-                     (binding [*ns* (or (:ns @!doc)
-                                        (create-ns 'user))]
-                       (case type
-                         :eval (do (send! sender-ch (merge {:type :eval-reply :eval-id (:eval-id msg)}
-                                                           (try {:reply (eval (:form msg))}
-                                                                (catch Exception e
-                                                                  {:error (Throwable->map e)}))))
-                                   (when recompute?
-                                     (eval '(nextjournal.clerk/recompute!))))
-                         :swap! (when-let [var (resolve (:var-name msg))]
-                                  (try
-                                    (binding [*sender-ch* sender-ch]
-                                      (apply swap! @var (eval (:args msg))))
-                                    (catch Exception ex
-                                      (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) update-error!))))))))))})
+                     (prn :on-recieve/session-bindings (session-bindings @!doc) :msg msg)
+                     (with-bindings (session-bindings @!doc)
+                       (binding [*ns* (or (:ns @!doc)
+                                          (create-ns 'user))]
+                         (case type
+                           :eval (do (send! sender-ch (merge {:type :eval-reply :eval-id (:eval-id msg)}
+                                                             (try {:reply (eval (:form msg))}
+                                                                  (catch Exception e
+                                                                    {:error (Throwable->map e)}))))
+                                     (when recompute?
+                                       (eval '(nextjournal.clerk/recompute!))))
+                           :swap! (when-let [var (resolve (:var-name msg))]
+                                    (try
+                                      (binding [*sender-ch* sender-ch]
+                                        (apply swap! @var (eval (:args msg))))
+                                      (catch Exception ex
+                                        (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) update-error!)))))))))))})
 
 #_(do
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
