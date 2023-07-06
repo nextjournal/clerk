@@ -680,17 +680,5 @@
     (into #{} (filter (comp :vars ->analysis-info) deps))))
 
 
-(let [form '(do (def ^:dynamic *test-dyn-var* 33))
-      vars-to-rewrite '#{*test-dyn-var*}]
-  (walk/postwalk (fn [f]
-                   (if (and (deflike? f) (= 'def (first f)) (contains? vars-to-rewrite (second f)))
-                     (concat ['var-set (list 'var (second f))]
-                             (drop 2 f))
-                     f))
-                 form))
+#_(rewrite-form '(do (def ^:dynamic *test-dyn-var* 33)) '#{*test-dyn-var*})
 
-(drop 2 (list 1 2 3 4))
-
-(count (ns-map *ns*))
-
-(count (ns-interns *ns*))

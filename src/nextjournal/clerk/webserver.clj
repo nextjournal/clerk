@@ -127,6 +127,7 @@
    (or (get @!session->doc session)
        (throw (ex-info (format "No `!doc` found in session `%s`." (pr-str session)) {:session session})))))
 
+(keys @!session->doc)
 
 (defn dependent-var-bindings [doc sync-vars]
   (into {#'*test-dyn-var* 42}

@@ -125,6 +125,7 @@
           {:keys [result]} (time-ms (binding [config/*in-clerk* true]
                                       (assert form "form must be set")
                                       (with-redefs [clojure.core/intern (partial intern+record !interned-vars)]
+                                        (prn :eval form)
                                         (eval form))))
           result (if (and (nil? result) var (= 'defonce (first form)))
                    (find-var var)
@@ -191,7 +192,7 @@
                   (wrapped-with-metadata (:nextjournal/value cached-result-in-memory) hash))
                 (when (and cached-result? freezable?)
                   (lookup-cached-result var hash cas-hash))
-                (eval+cache! form-info hash digest-file))
+                (eval+cache! (assoc form-info :form form) hash digest-file))
       (seq opts-from-form-meta)
       (merge opts-from-form-meta))))
 
@@ -243,6 +244,35 @@
               (update :blob->result select-keys blob-ids)
               (dissoc :blob-ids)) analyzer/throw-if-dep-is-missing)))
 
+(def session-ns-prefix
+  "nextjournal.clerk.synthetic-session.")
+
+(defn session-ns-name [{:keys [ns session]}]
+  (symbol (str session-ns-prefix (ns-name ns) ".session=" session)))
+
+#_(session-ns-name {:ns (create-ns 'scratch) :session 'foo})
+
+
+(do
+  (defn rewrite-ns-form [doc session-ns]
+    (update-in doc [:blocks 0 :form] (fn [ns-form]
+                                       (concat [(first ns-form)
+                                                (ns-name session-ns)]
+                                               (drop 2 ns-form)))))
+  
+  (defn eval-in-session [{:as analyzed-doc :keys [session ns]}]
+    (if session
+      (let [session-ns (session-ns-name analyzed-doc)]
+        (binding [*ns* (create-ns session-ns)]
+          (doseq [var (keep resolve
+                            (filter (comp #{(str (ns-name ns))} namespace)
+                                    (keys (:->analysis-info analyzed-doc))))]
+            (intern session-ns (-> var symbol name symbol) @var))
+          (eval-analyzed-doc (rewrite-ns-form analyzed-doc session-ns))))
+      (eval-analyzed-doc analyzed-doc)))
+
+  (:blocks (eval-in-session (assoc @(nextjournal.clerk.webserver/get-doc!) :session 'my-session-1))))
+
 (defn +eval-results
   "Evaluates the given `parsed-doc` using the `in-memory-cache` and augments it with the results."
   [in-memory-cache {:as parsed-doc :keys [set-status-fn]}]
@@ -252,7 +282,7 @@
     (binding [*ns* ns]
       (-> analyzed-doc
           analyzer/hash
-          eval-analyzed-doc))))
+          eval-in-session))))
 
 (defn eval-doc
   "Evaluates the given `doc`."

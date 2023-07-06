@@ -1,6 +1,7 @@
 (ns session
   (:require [nextjournal.clerk :as clerk]))
 
+^{::clerk/sync true}
 (defonce ^:dynamic !offset
   (atom 0))
 
@@ -28,3 +29,4 @@
 (get-offset)
 
 (inc offset)
+
