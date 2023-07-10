@@ -2,9 +2,8 @@
 
 (defn in-session-ns [{:keys [ns session-ns]} var]
   (if (and var session-ns)
-    (do (prn :in-session-ns session-ns ns var)
-        (symbol (str session-ns)
-                (name var)))
+    (symbol (str session-ns)
+            (name var))
     var))
 
 (def session-ns-prefix

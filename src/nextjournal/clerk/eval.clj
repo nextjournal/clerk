@@ -81,11 +81,9 @@
                                  #_(prn :thaw-error e)
                                  nil))]
     (wrapped-with-metadata (if introduced-var
-                             (do
-                               (prn :introduced-var introduced-var)
-                               (var-from-def (intern (-> introduced-var namespace symbol)
-                                                     (-> introduced-var name symbol)
-                                                     cached-value)))
+                             (var-from-def (intern (-> introduced-var namespace symbol)
+                                                   (-> introduced-var name symbol)
+                                                   cached-value))
                              cached-value)
                            hash)))
 
@@ -128,7 +126,6 @@
           {:keys [result]} (time-ms (binding [config/*in-clerk* true]
                                       (assert form "form must be set")
                                       (with-redefs [clojure.core/intern (partial intern+record !interned-vars)]
-                                        (prn :eval form)
                                         (eval form))))
           result (if (and (nil? result) var (= 'defonce (first form)))
                    (find-var var)
@@ -249,7 +246,6 @@
 
 
 (defn eval-in-session [{:as analyzed-doc :keys [session ns]}]
-  (prn :eval-in-session ns session)
   (if session
     (let [session-ns (session/session-ns-name analyzed-doc)]
       (binding [*ns* (create-ns session-ns)]

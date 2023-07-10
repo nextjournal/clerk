@@ -674,8 +674,4 @@
 #_(find-blocks @nextjournal.clerk.webserver/!doc 'foo)
 #_(find-blocks @nextjournal.clerk.webserver/!doc '(rand-int 1000))
 
-(defn dependent-vars
-  [{:as analyzed-doc :keys [graph ->analysis-info]} vars-set]
-  (let [deps (dep/transitive-dependents-set graph vars-set)]
-    (into #{} (filter (comp :vars ->analysis-info) deps))))
 

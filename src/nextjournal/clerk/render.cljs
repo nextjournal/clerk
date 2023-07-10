@@ -607,7 +607,6 @@
 (defn set-reset-sync-atoms! [new-val] (set! *reset-sync-atoms?* new-val))
 
 (defn intern-atoms! [atom-var-name->state]
-  (js/console.log :intern-atoms atom-var-name->state)
   (let [vars-in-use (into #{} (keys atom-var-name->state))
         vars-interned @!synced-atom-vars]
     (doseq [var-name-to-unmap (set/difference vars-interned vars-in-use)]
