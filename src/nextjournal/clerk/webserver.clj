@@ -112,7 +112,6 @@
 
 
 (defn sync-atom-changed [key atom old-state new-state]
-  (prn :sync-atom-changed {:key key})
   ((resolve 'nextjournal.clerk/recompute!)))
 
 (defn maybe-cancel-send-status-future [doc]
@@ -130,7 +129,6 @@
         presented (view/doc->viewer doc)
         sync-vars-old (v/extract-sync-atom-vars @!doc)
         sync-vars (v/extract-sync-atom-vars doc)]
-    (prn :present+reset! {:sync-vars sync-vars :sync-vars-old sync-vars-old})
     (doseq [sync-var (if recreate-all-watches?
                        sync-vars-old
                        (set/difference sync-vars-old sync-vars))]
@@ -138,14 +136,12 @@
     (doseq [sync-var (if recreate-all-watches?
                        sync-vars
                        (set/difference sync-vars sync-vars-old))]
-      (prn :add-watch (session/in-session-ns doc (symbol sync-var)))
       (add-watch @sync-var (session/in-session-ns doc (symbol sync-var)) sync-atom-changed))
     (maybe-cancel-send-status-future @!doc)
     (reset! !doc (with-meta doc presented))
     presented))
 
 (defn update-doc! [!doc {:as doc :keys [nav-path fragment skip-history?]}]
-  (prn :update-doc! {})
   (broadcast! (if (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
                 {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! !doc doc) {:algo :quick}))}
                 (cond-> {:type :set-state!

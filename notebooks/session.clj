@@ -20,10 +20,10 @@
 
 @!offset
 
-(def ^:dynamic offset
+(def offset
   @!offset)
 
-(defn ^:dynamic get-offset []
+(defn get-offset []
   @!offset)
 
 (get-offset)
