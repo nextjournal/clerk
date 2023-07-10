@@ -18,6 +18,8 @@
              :embed/opts {:actions false}}))
 
 
+#_(swap! !offset inc)
+
 @!offset
 
 (def offset
@@ -29,4 +31,3 @@
 (get-offset)
 
 (inc offset)
-

@@ -24,12 +24,15 @@
              :visibility {:code :hide, :result :show}
              :result {:nextjournal/value (v/html (help-hiccup))}}]})
 
-(defonce !client->session (atom {}))
+(defonce !clients (atom #{}))
 
 #_(defonce ^:dynamic !doc nil)
 (defonce ^:dynamic *session* nil)
 (defonce !session->doc (atom {nil (atom nil)}))
 (defonce !last-sender-ch (atom nil))
+
+(hash (first @!clients))
+(hash (second @!clients))
 
 #_(view/doc->viewer @!doc)
 #_(reset! !doc nil)
@@ -39,9 +42,12 @@
 (defn send! [ch msg]
   (httpkit/send! ch (v/->edn msg)))
 
+(defn get-session [client]
+  (hash client))
+
 (defn broadcast! [msg]
-  (doseq [[ch session] @!client->session
-          :when (= session *session*)]
+  (doseq [ch @!clients
+          :when (= (get-session ch) *session*)]
     (when (not= @!last-sender-ch *sender-ch*)
       (send! ch {:type :patch-state! :patch []
                  :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-ch* ch)))]}))
@@ -128,6 +134,7 @@
         presented (view/doc->viewer doc)
         sync-vars-old (v/extract-sync-atom-vars @!doc)
         sync-vars (v/extract-sync-atom-vars doc)]
+    (prn :present+reset! *session*)
     (doseq [sync-var (if recreate-all-watches?
                        sync-vars-old
                        (set/difference sync-vars-old sync-vars))]
@@ -166,12 +173,15 @@
 
 #_(pr-str (read-msg "#viewer-eval (resolve 'clojure.core/inc)"))
 
+(defn create-session-doc! []
+  (swap! !session->doc update *session* (fn [prev] (or prev (atom nil)))))
+
 (def ws-handlers
-  {:on-open (fn [ch]
-              (swap! !client->session assoc ch *session*))
-   :on-close (fn [ch _reason] (swap! !client->session dissoc ch))
+  {:on-open (fn [ch] (swap! !clients conj ch))
+   :on-close (fn [ch _reason] (swap! !clients disj ch))
    :on-receive (fn [sender-ch edn-string]
-                 (binding [*session* (get @!client->session sender-ch)]
+                 (binding [*session* (get-session sender-ch)]
+                   (create-session-doc!)
                    (let [!doc (get-doc! *session*)
                          {:as msg :keys [type recompute?]} (read-msg edn-string)]
                      (binding [*ns* (or (:ns @!doc)
@@ -196,23 +206,18 @@
 
 (declare present+reset!)
 
-(defn maybe-append-session [url]
-  (cond-> url
-    *session* (str "?session=" *session*)))
-
 (defn ->nav-path [file-or-ns]
-  (maybe-append-session
-   (cond (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
-         (str "'" file-or-ns)
+  (cond (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
+        (str "'" file-or-ns)
 
-         (string? file-or-ns)
-         (when (fs/exists? file-or-ns)
-           (fs/unixify (cond->> (fs/strip-ext file-or-ns)
-                         (and (fs/absolute? file-or-ns)
-                              (not (str/starts-with? (fs/relativize (fs/cwd) file-or-ns) "..")))
-                         (fs/relativize (fs/cwd)))))
+        (string? file-or-ns)
+        (when (fs/exists? file-or-ns)
+          (fs/unixify (cond->> (fs/strip-ext file-or-ns)
+                        (and (fs/absolute? file-or-ns)
+                             (not (str/starts-with? (fs/relativize (fs/cwd) file-or-ns) "..")))
+                        (fs/relativize (fs/cwd)))))
 
-         :else (str file-or-ns))))
+        :else (str file-or-ns)))
 
 #_(->nav-path "notebooks/rule_30.clj")
 #_(->nav-path 'nextjournal.clerk.home)
@@ -245,12 +250,10 @@
   ((resolve 'nextjournal.clerk/show!) (assoc opts :session *session*) file-or-ns))
 
 (defn navigate! [{:as opts :keys [nav-path]}]
+  (prn :navigate! *session* opts)
   (show! opts (->file-or-ns (maybe-add-extension nav-path))))
 
 (defn prefetch-request? [req] (= "prefetch" (-> req :headers (get "purpose"))))
-
-(defn create-session-doc! []
-  (swap! !session->doc update *session* (fn [prev] (or prev (atom nil)))))
 
 (defn serve-notebook [{:as req :keys [uri]}]
   (let [nav-path (subs uri 1)]
@@ -260,12 +263,11 @@
 
       (str/blank? nav-path)
       {:status 302
-       :headers {"Location" (maybe-append-session (or (:nav-path @(get-doc!))
-                                                      (->nav-path 'nextjournal.clerk.home)))}}
+       :headers {"Location" (or (:nav-path @(get-doc!))
+                                (->nav-path 'nextjournal.clerk.home))}}
       :else
       (if-let [file-or-ns (->file-or-ns (maybe-add-extension nav-path))]
-        (do (create-session-doc!)
-            (try (show! {:skip-history? true} file-or-ns)
+        (do (try (show! {:skip-history? true} file-or-ns)
                  (catch Exception _))
             {:status 200
              :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
@@ -276,24 +278,24 @@
          :headers {"Content-Type" "text/plain"}
          :body (format "Could not find notebook at %s." (pr-str nav-path))}))))
 
-(defn get-session [{:as req :keys [query-string]}]
+(defn get-req-session [{:as req :keys [query-string]}]
   (some-> query-string query-string->map :session edn/read-string))
 
 (defn app [{:as req :keys [uri]}]
-  (binding [*session* (get-session req)]
-    (if (:websocket? req)
-      (httpkit/as-channel req ws-handlers)
-      (try
-        (case (get (re-matches #"/([^/]*).*" uri) 1)
-          "_blob" (serve-blob @(get-doc!) (extract-blob-opts req))
-          ("build" "js" "css") (serve-file uri (str "public" uri))
-          ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
-          "_ws" {:status 200 :body "upgrading..."}
-          "favicon.ico" {:status 404}
-          (serve-notebook req))
-        (catch Throwable e
-          {:status  500
-           :body    (with-out-str (pprint/pprint (Throwable->map e)))})))))
+  (if (:websocket? req)
+    (binding [*session* (get-session (:async-channel req))]
+      (httpkit/as-channel req ws-handlers))
+    (try
+      (case (get (re-matches #"/([^/]*).*" uri) 1)
+        "_blob" (serve-blob @(get-doc!) (extract-blob-opts req))
+        ("build" "js" "css") (serve-file uri (str "public" uri))
+        ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
+        "_ws" {:status 200 :body "upgrading..."}
+        "favicon.ico" {:status 404}
+        (serve-notebook req))
+      (catch Throwable e
+        {:status  500
+         :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
 
 #_(nextjournal.clerk/serve! {})
 

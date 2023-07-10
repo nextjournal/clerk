@@ -10,7 +10,7 @@
   "nextjournal.clerk.synthetic-session.")
 
 (defn session-ns-name [{:keys [ns session]}]
-  (symbol (str session-ns-prefix (ns-name ns) ".session=" session)))
+  (symbol (str session-ns-prefix (ns-name ns) ".session=" (nextjournal.clerk.analyzer/valuehash session))))
 
 #_(session-ns-name {:ns (create-ns 'scratch) :session 'foo})
 
