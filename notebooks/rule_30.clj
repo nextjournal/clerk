@@ -10,7 +10,8 @@
    {:pred (every-pred list? (partial every? (some-fn number? vector?)))
     :render-fn '#(into [:div.flex.flex-col] (nextjournal.clerk.render/inspect-children %2) %1)}
    {:pred (every-pred vector? (complement map-entry?) (partial every? number?))
-    :render-fn '#(into [:div.flex.inline-flex] (nextjournal.clerk.render/inspect-children %2) %1)}])
+    :render-fn '#(into [:div.flex.inline-flex] (nextjournal.clerk.render/inspect-children %2) %1)}
+   {:pred var? :transform-fn (clerk/update-val deref)}])
 
 (clerk/add-viewers! viewers)
 

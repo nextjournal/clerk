@@ -15,9 +15,8 @@
             [nextjournal.clerk.render.code :as code]
             [nextjournal.clerk.render.context :as view-context]
             [nextjournal.clerk.render.hooks :as hooks]
-            [nextjournal.clerk.render.localstorage :as localstorage]
             [nextjournal.clerk.render.navbar :as navbar]
-            [nextjournal.clerk.render.window :as window]
+            [nextjournal.clerk.render.panel :as panel]
             [nextjournal.clerk.viewer :as viewer]
             [reagent.core :as r]
             [reagent.ratom :as ratom]
@@ -27,19 +26,19 @@
 
 (r/set-default-compiler! (r/create-compiler {:function-components true}))
 
-(declare inspect inspect-presented reagent-viewer html html-viewer)
+(declare inspect inspect-presented html html-viewer)
 
 (def nbsp (gstring/unescapeEntities "&nbsp;"))
 
 (defn reagent-atom? [x]
   (satisfies? ratom/IReactiveAtom x))
 
-(defn dark-mode-toggle [!dark-mode?]
+(defn dark-mode-toggle []
   (let [spring {:type :spring :stiffness 200 :damping 10}]
     [:div.relative.dark-mode-toggle
      [:button.text-slate-400.hover:text-slate-600.dark:hover:text-white.cursor-pointer
-      {:on-click #(swap! !dark-mode? not)}
-      (if @!dark-mode?
+      {:on-click #(swap! code/!dark-mode? not)}
+      (if @code/!dark-mode?
         [:> (.-svg motion)
          {:xmlns "http://www.w3.org/2000/svg"
           :class "w-5 h-5 md:w-4 md:h-4"
@@ -79,23 +78,6 @@
           [:circle {:cx "20.9101" :cy "6.8555" :r "1.71143" :transform "rotate(-120 20.9101 6.8555)" :fill "currentColor"}]
           [:circle {:cx "12" :cy "1.71143" :r "1.71143" :fill "currentColor"}]]])]]))
 
-(def local-storage-dark-mode-key "clerk-darkmode")
-
-(defn set-dark-mode! [dark-mode?]
-  (let [class-list (.-classList (js/document.querySelector "html"))]
-    (if dark-mode?
-      (.add class-list "dark")
-      (.remove class-list "dark")))
-  (localstorage/set-item! local-storage-dark-mode-key dark-mode?))
-
-(defn setup-dark-mode! [!dark-mode?]
-  (add-watch !dark-mode? ::dark-mode-watch
-             (fn [_ _ old dark-mode?]
-               (when (not= old dark-mode?)
-                 (set-dark-mode! dark-mode?))))
-  (when @!dark-mode?
-    (set-dark-mode! @!dark-mode?)))
-
 (defonce !eval-counter (r/atom 0))
 
 (defn exec-status [{:keys [progress cell-progress status]}]
@@ -125,34 +107,11 @@
 
 (declare clerk-eval)
 
-(defn ->URL [^js href]
-  (js/URL. href))
-
-(defn handle-anchor-click [^js e]
-  (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
-    (when (= (.-search url) "?clerk/show!")
-      (.preventDefault e)
-      (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
-                        (cond-> {:nav-path (subs (js/decodeURI (.-pathname url)) 1)}
-                          (seq (.-hash url))
-                          (assoc :fragment (subs (.-hash url) 1))))))))
-
-(defn history-push-state [{:as opts :keys [path fragment replace?]}]
-  (when (not= path (some-> js/history .-state .-path))
-    (j/call js/history (if replace? :replaceState :pushState) (clj->js opts) "" (str (.. js/document -location -origin)
-                                                                                     "/" path (when fragment (str "#" fragment))))))
-
-(defn handle-history-popstate [^js e]
-  (when-let [{:as opts :keys [path]} (js->clj (.-state e) :keywordize-keys true)]
-    (.preventDefault e)
-    (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path path :skip-history? true}))))
-
 (defn render-notebook [{:as doc xs :blocks :keys [bundle? doc-css-class sidenotes? toc toc-visibility header footer]}
                        {:as render-opts :keys [!expanded-at expandable-toc?]}]
-  (r/with-let [!dark-mode? (r/atom (localstorage/get-item local-storage-dark-mode-key))
-               root-ref-fn (fn [el]
+  (r/with-let [root-ref-fn (fn [el]
                              (when (and el (exists? js/document))
-                               (setup-dark-mode! !dark-mode?)
+                               (code/setup-dark-mode!)
                                (when-some [heading (when (and (exists? js/location) (not bundle?))
                                                      (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
                                                           (catch js/Error _
@@ -163,7 +122,7 @@
     [:div.flex
      {:ref root-ref-fn}
      [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
-      [dark-mode-toggle !dark-mode?]]
+      [dark-mode-toggle]]
      (when (and toc toc-visibility)
        [navbar/view toc (assoc render-opts :set-hash? (not bundle?) :toc-visibility toc-visibility)])
      [:div.flex-auto.w-screen.scroll-container
@@ -550,6 +509,7 @@
 
 (defonce !doc (ratom/atom nil))
 (defonce !viewers viewer/!viewers)
+(defonce !panels (ratom/atom {}))
 
 (defn set-viewers! [scope viewers]
   #_(js/console.log :set-viewers! {:scope scope :viewers viewers})
@@ -588,8 +548,10 @@
                                                 (swap! !state update :desc viewer/merge-presentations more fetch-opts))))}
      [inspect-presented (:desc @!state)]]))
 
-(defn show-window [& content]
-  [window/show content])
+(defn show-panel [panel-id panel]
+  (swap! !panels assoc panel-id panel))
+
+#_(show-panel :test {:content [:div "Test"] :width 600 :height 600})
 
 (defn root []
   [:<>
@@ -601,7 +563,15 @@
       [exec-status status])]
    (when-let [error (get-in @!doc [:nextjournal/value :error])]
      [:div.fixed.top-0.left-0.w-full.h-full
-      [inspect-presented error]])])
+      [inspect-presented error]])
+   (into [:<>]
+         (map (fn [[id state]]
+                ^{:key id}
+                [panel/show
+                 (:content state)
+                 (-> state
+                     (assoc :id id :on-close #(swap! !panels dissoc id)))]))
+         @!panels)])
 
 (declare mount)
 
@@ -722,32 +692,71 @@
 
 (defonce !router (atom nil))
 
-(defn handle-initial-load [_]
-  (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
+(defn ->URL [^js href]
+  (js/URL. href))
 
 (defn path-from-url-hash [url]
   (-> url ->URL .-hash (subs 2)))
 
+(defn static-app? [state]
+  (contains? state :path->doc))
+
+(defn ->doc-url [url]
+  (let [path (js/decodeURI (.-pathname url))
+        doc-path (js/decodeURI (.-pathname (.-location js/document)))]
+    (if (str/starts-with? path doc-path)
+      (subs path (count doc-path))
+      (subs path 1))))
+
+(defn ignore-anchor-click?
+  [e ^js url]
+  (let [current-origin (when (exists? js/location)
+                         (.-origin js/location))
+        ^js dataset (some-> e .-target closest-anchor-parent .-dataset)]
+    (or (not= current-origin (.-origin url))
+        (.-altKey e)
+        (some-> dataset .-ignoreAnchorClick some?))))
+
+(defn history-push-state [{:as opts :keys [path fragment replace?]}]
+  (when (not= path (some-> js/history .-state .-path))
+    (j/call js/history (if replace? :replaceState :pushState) (clj->js opts) "" (str (.. js/document -location -origin)
+                                                                                     "/" path (when fragment (str "#" fragment))))))
+
+(defn handle-history-popstate [state ^js e]
+  (when-let [{:as opts :keys [path]} (js->clj (.-state e) :keywordize-keys true)]
+    (.preventDefault e)
+    (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path path :skip-history? true}))))
+
 (defn handle-hashchange [{:keys [url->path path->doc]} ^js e]
+  ;; used for navigation in static bundle build
   (let [url (some-> e .-event_ .-newURL path-from-url-hash)]
-    (when-some [doc (get path->doc (get url->path url))]
+    (when-some [doc (get path->doc url)]
       (set-state! {:doc doc}))))
 
-(defn listeners [{:as state :keys [mode]}]
-  (case mode
-    :path
-    #{(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
-      (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
-      (gevents/listen js/window gevents/EventType.LOAD handle-initial-load false)}
+(defn handle-anchor-click [{:as state :keys [path->doc url->path]} ^js e]
+  (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
+    (when-not (ignore-anchor-click? e url)
+      (.preventDefault e)
+      (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
+                        (cond-> {:nav-path (->doc-url url)}
+                          (seq (.-hash url))
+                          (assoc :fragment (subs (.-hash url) 1))))))))
 
-    :fragment
-    #{(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)}))
+(defn handle-initial-load [state ^js _e]
+  (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
 
-(defn setup-router! [{:as state :keys [mode]}]
+(defn setup-router! [state]
   (when (and (exists? js/document) (exists? js/window))
     (doseq [listener (:listeners @!router)]
       (gevents/unlistenByKey listener))
-    (reset! !router (assoc state :listeners (listeners state)))))
+    (reset! !router
+            (assoc state :listeners
+                   (cond (and (static-app? state) (:bundle? state))
+                         [(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)]
+                         (not (static-app? state))
+                         [(gevents/listen js/document gevents/EventType.CLICK (partial handle-anchor-click state) false)
+                          (gevents/listen js/window gevents/EventType.POPSTATE (partial handle-history-popstate state) false)
+                          (gevents/listen js/window gevents/EventType.LOAD (partial handle-initial-load state) false)])))))
 
 
 (defn ^:export mount []
@@ -759,38 +768,20 @@
   (mount))
 
 (defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path]}]
-  (let [static-app? (contains? state :path->doc)] ;; TODO: better check
-    (if static-app?
-      (let [url->path (set/map-invert path->url)]
-        (when bundle? (setup-router! (assoc state :mode :fragment :url->path url->path)))
-        (set-state! {:doc (get path->doc (or current-path
-                                             (when (and bundle? (exists? js/document))
-                                               (url->path (path-from-url-hash (.-location js/document))))
-                                             (url->path "")))})
-        (mount))
-      (do
-        (setup-router! {:mode :path})
-        (set-state! state)
-        (mount)))))
+  (setup-router! state)
+  (set-state! (if (static-app? state)
+                {:doc (get path->doc (or (if bundle?
+                                           (path-from-url-hash (->URL (.-href js/location)))
+                                           current-path)
+                                         ""))}
+                state))
+  (mount))
 
 
-(defn html-render [markup]
-  (r/as-element
-   (if (string? markup)
-     [:span {:dangerouslySetInnerHTML {:__html markup}}]
-     markup)))
-
-(def html-viewer
-  {:render-fn html-render})
-
-(def html
-  (partial viewer/with-viewer html-viewer))
-
-(defn render-reagent [x]
-  (r/as-element (cond-> x (fn? x) vector)))
-
-;; TODO: remove
-(def reagent-viewer render-reagent)
+(defn render-html [markup]
+  (r/as-element (if (string? markup)
+                  [:span {:dangerouslySetInnerHTML {:__html markup}}]
+                  markup)))
 
 (defn render-promise [p opts]
   (let [!state (hooks/use-state {:pending true})]

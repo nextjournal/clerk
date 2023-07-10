@@ -1,4 +1,5 @@
 (ns nextjournal.clerk.viewer
+  (:refer-clojure :exclude [var?])
   (:require [clojure.string :as str]
             [clojure.pprint :as pprint]
             [clojure.datafy :as datafy]
@@ -13,6 +14,7 @@
                 :cljs [[goog.crypt]
                        [goog.crypt.Sha1]
                        [reagent.ratom :as ratom]
+                       [sci.core :as sci]
                        [sci.impl.vars]
                        [sci.lang]
                        [applied-science.js-interop :as j]])
@@ -394,6 +396,10 @@
 
 #_((update-val + 1) {:nextjournal/value 41})
 
+(defn var? [x]
+  (or (clojure.core/var? x)
+      #?(:cljs (instance? sci.lang.Var x))))
+
 (defn var-from-def? [x]
   (var? (get-safe x :nextjournal.clerk/var-from-def)))
 
@@ -468,11 +474,14 @@
 
 (defn datafy-scope [scope]
   (cond
-    #?@(:clj [(instance? clojure.lang.Namespace scope) (ns-name scope)])
+    #?@(:clj [(instance? clojure.lang.Namespace scope) (ns-name scope)]
+        :cljs [(instance? sci.lang.Namespace scope) (sci/ns-name scope)])
     (symbol? scope) scope
     (#{:default} scope) scope
     :else (throw (ex-info (str "Unsupported scope `" scope "`. Valid scopes are namespaces, symbol namespace names or `:default`.")
                           {:scope scope}))))
+(defn get-*ns* []
+  (or *ns* #?(:cljs @sci.core/ns)))
 
 (defn get-viewers
   ([scope] (get-viewers scope nil))
@@ -509,7 +518,7 @@
                             (set/rename-keys viewer-opts-normalization))
         {:as to-present :nextjournal/keys [auto-expand-results?]} (merge (dissoc (->opts wrapped-value) :!budget :nextjournal/budget)
                                                                          opts-from-block
-                                                                         (ensure-wrapped-with-viewers (or viewers (get-viewers *ns*)) value))
+                                                                         (ensure-wrapped-with-viewers (or viewers (get-viewers (get-*ns*))) value))
         presented-result (-> (present to-present)
                              (update :nextjournal/render-opts
                                      (fn [{:as opts existing-id :id}]
@@ -834,7 +843,7 @@
 
 (def var-viewer
   {:name `var-viewer
-   :pred (some-fn var? #?(:cljs #(instance? sci.lang.Var %)))
+   :pred var?
    :transform-fn (comp #?(:cljs var->symbol :clj symbol) ->value)
    :render-fn '(fn [x] [:span.inspected-value [:span.cmt-meta "#'" (str x)]])})
 
@@ -915,7 +924,7 @@
 
 (def html-viewer
   {:name `html-viewer
-   :render-fn 'identity
+   :render-fn 'nextjournal.clerk.render/render-html
    :transform-fn (comp mark-presented transform-html)})
 
 #_(present (with-viewer html-viewer [:div {:nextjournal/value (range 30)} {:nextjournal/value (range 30)}]))
@@ -941,9 +950,6 @@
    :transform-fn (comp mark-presented
                        #(update-in % [:nextjournal/render-opts :language] (fn [lang] (or lang "clojure")))
                        (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))})
-
-(def reagent-viewer
-  {:name `reagent-viewer :render-fn 'nextjournal.clerk.render/render-reagent :transform-fn mark-presented})
 
 (def row-viewer
   {:name `row-viewer :render-fn '(fn [items opts]
@@ -1136,7 +1142,7 @@
 (defn index-path [{:keys [static-build? index]}]
   #?(:cljs ""
      :clj (if static-build?
-            (if index (str index) "")
+            ""
             (if (fs/exists? "index.clj") "index.clj" "'nextjournal.clerk.index"))))
 
 (defn header [{:as opts :keys [nav-path static-build?] :git/keys [url sha]}]
@@ -1269,7 +1275,6 @@
    plotly-viewer
    vega-lite-viewer
    markdown-viewer
-   reagent-viewer
    row-viewer
    col-viewer
    table-viewer
@@ -1343,7 +1348,7 @@
 #_(viewer-for default-viewers (with-viewer {:transform-fn identity} [:h1 "Hello Hiccup"]))
 
 (defn ensure-wrapped-with-viewers
-  ([x] (ensure-wrapped-with-viewers (get-viewers *ns*) x))
+  ([x] (ensure-wrapped-with-viewers (get-viewers (get-*ns*)) x))
   ([viewers x]
    (-> x
        ensure-wrapped
@@ -1731,13 +1736,13 @@
                                  xs)))))))
 
 (defn reset-viewers!
-  ([viewers] (reset-viewers! *ns* viewers))
+  ([viewers] (reset-viewers! (get-*ns*) viewers))
   ([scope viewers]
    (swap! !viewers assoc (datafy-scope scope) viewers)
    viewers))
 
 (defn add-viewers! [viewers]
-  (reset-viewers! *ns* (add-viewers (get-default-viewers) viewers)))
+  (reset-viewers! (get-*ns*) (add-viewers (get-default-viewers) viewers)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public convenience api
@@ -1766,7 +1771,7 @@
 (defn ^:dynamic doc-url
   ([path] (doc-url path nil))
   ([path fragment]
-   (str "/" path "?clerk/show!" (when fragment (str "#" fragment)))))
+   (str "/" path (when fragment (str "#" fragment)))))
 
 #_(doc-url "notebooks/rule_30.clj#board")
 #_(doc-url "notebooks/rule_30.clj")

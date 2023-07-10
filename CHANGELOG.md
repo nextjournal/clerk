@@ -18,6 +18,27 @@ Changes can be:
 
 * 🚨 Rename `:nextjournal.clerk/opts` to `:nextjournal.clerk/render-opts` to clarify this options map is available as the second arg to parametrize the `:render-fn`. Still support the `:nextjournal.clerk/opts` for now.
 
+* 🚨 Simplify html rendering internals
+  
+  Removed
+  
+    * `nextjournal.clerk.viewer/reagent-viewer`,
+    * `nextjournal.clerk.render/html-viewer`,
+    * `nextjournal.clerk.render/html`, and
+    * `nextjournal.clerk.render/render-reagent`. 
+    
+  From now on, please use
+  * `nextjournal.clerk.viewer/html-viewer`, and
+  * `nextjournal.clerk.viewer/html` instead.
+  
+  Also rename `nextjournal.clerk.render/html-render` to `nextjournal.clerk.render/render-html` and make `nextjournal.clerk.viewer/html` use it when called from a reactive context.
+  
+* 🚨 Unify the link handling between `build!` and `serve!` 
+
+  By no longer using extensions in either mode (was `.clj|md` in `serve!` and `.html` in `build!`).
+  
+  To support this in the unbundled static build, we're now writing directories with `index.html` for each notebook. This makes links in this build no longer accessible without a http server. If you're looking for a self-contained html that works without a webserver, set the `:bundle` option.
+
 * 📖 Improve Table of Contents design and fixing re-rendering issues. Also added suport for chapter expansion.
 
 * 📒 Mention Tap Inspector in Book of Clerk & on Homepage

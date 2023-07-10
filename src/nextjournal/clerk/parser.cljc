@@ -372,6 +372,9 @@
 #_(runnable-code-block? {:type :code :language "clojure" :info "clojure"})
 #_(runnable-code-block? {:type :code :language "clojure" :info "clojure {:nextjournal.clerk/code-listing true}"})
 
+(defn filter-code-blocks-without-form [doc]
+  (update doc :blocks #(filterv (some-fn :form (complement code?)) %)))
+
 (defn parse-markdown-string [{:as opts :keys [doc?]} s]
   (let [{:as ctx :keys [content]} (parse-markdown (markdown-context) s)]
     (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes content :md-context ctx}]
