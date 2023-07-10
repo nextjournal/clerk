@@ -29,7 +29,6 @@
 #_(defonce ^:dynamic !doc nil)
 (defonce ^:dynamic *session* nil)
 (defonce !session->doc (atom {nil (atom nil)}))
-(defonce !session->state (atom {}))
 (defonce !last-sender-ch (atom nil))
 
 #_(view/doc->viewer @!doc)
