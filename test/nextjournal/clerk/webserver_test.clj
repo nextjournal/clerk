@@ -19,24 +19,3 @@
       (is (= `nextjournal.clerk.viewer/elision-viewer (:name elision-viewer)))
       (is body)
       (is (= (-> body webserver/read-msg :nextjournal/value first :nextjournal/value) 20)))))
-
-
-#_#_#_#_
-(def ^:dynamic *test-dyn-var* 0)
-
-(var-set #'foo)
-
-
-(binding [*test-dyn-var* 42]
-  (def ^:dynamic *test-dyn-var* 33)
-  (var-set #'*test-dyn-var* 33)
-  *test-dyn-var*)
-
-
-(binding [webserver/*session* :my-session]
-  (let [evaluated-doc (eval/eval-string "(ns clerk.sessions-test (:require [nextjournal.clerk :as clerk]))
-^{::clerk/sync true}
-(defonce ^:dynamic !offset (atom 0))
-(def ^:dynamic offset-dep-var @!offset)")]
-    
-    (is (= 0 @(resolve 'clerk.sessions-test/offset-dep-var)))))

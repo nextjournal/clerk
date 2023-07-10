@@ -84,7 +84,7 @@
   "Recomputes the currently visible doc, without parsing it."
   []
   (let [!doc (webserver/get-doc!)]
-    (prn :recompute! {:webserver/*test-dyn-var* webserver/*test-dyn-var*})
+    (prn :recompute! {})
     (binding [*ns* (:ns @!doc)]
       (let [{:keys [result time-ms]} (eval/time-ms (eval/eval-analyzed-doc @!doc))]
         (println (str "Clerk recomputed '" @!last-file "' in " time-ms "ms."))

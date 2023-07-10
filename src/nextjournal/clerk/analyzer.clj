@@ -679,6 +679,3 @@
   (let [deps (dep/transitive-dependents-set graph vars-set)]
     (into #{} (filter (comp :vars ->analysis-info) deps))))
 
-
-#_(rewrite-form '(do (def ^:dynamic *test-dyn-var* 33)) '#{*test-dyn-var*})
-
