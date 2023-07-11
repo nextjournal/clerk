@@ -59,6 +59,7 @@
         (if (= x 10)
           :dude
           (fib (dec x))))
+      (set! js/window.fib fib)
       1))
 
 (clerk/eval-cljs
