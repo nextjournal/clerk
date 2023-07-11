@@ -788,6 +788,8 @@ v/table-viewer
 
 (clerk/with-viewer fib-viewer {::clerk/render-evaluator :cherry} 25)
 
+(clerk/with-viewer fib-viewer {::clerk/render-evaluator :squint} 25)
+
 #_(clerk/halt!)
 #_(clerk/serve! {:port 7777})
 

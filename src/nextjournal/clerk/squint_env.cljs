@@ -1,7 +1,6 @@
 (ns nextjournal.clerk.squint-env
   (:refer-clojure :exclude [time])
-  (:require [applied-science.js-interop :as j]
-            [cljs.math]
+  (:require [cljs.math]
             [cljs.reader]
             [clojure.string :as str]
             [goog.object]
@@ -15,8 +14,6 @@
             [nextjournal.clojure-mode.commands]
             [nextjournal.clojure-mode.extensions.eval-region]
             [nextjournal.clojure-mode.keymap]
-            [reagent.core :as reagent]
-            [reagent.ratom :as ratom]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [squint.compiler :as squint]))
 
