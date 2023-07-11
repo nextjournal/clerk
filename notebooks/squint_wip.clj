@@ -45,7 +45,7 @@
                                   (let [fib (fn fib [x]
                                               (= 1 2)
                                               (if (= x 10)
-                                                :hello
+                                                :dude
                                                 (fib (dec x))))]
                                     (fib 20)))}
   {::clerk/render-evaluator :squint} 25)
