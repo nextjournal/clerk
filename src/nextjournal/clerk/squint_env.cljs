@@ -40,8 +40,9 @@
 (def cherry-macros {'reagent.core {'with-let sci.configs.reagent/with-let}})
 
 (defn ^:export eval-form [f]
+  (prn :squint-expr f)
   (let [js-str (:body (squint/compile-string*
                        (str f) {:context :expr
                                 :core-alias 'cljs.core}))]
-    (prn :js-str js-str)
+    (prn :squint-js-str js-str)
     (js/global-eval js-str {:macros cherry-macros})))

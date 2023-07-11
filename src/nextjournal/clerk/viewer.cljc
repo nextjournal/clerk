@@ -1233,10 +1233,15 @@
    :render-fn '(fn [x opts]
                  (if (nextjournal.clerk.render/reagent-atom? x)
                    ;; special atoms handling to support reactivity
-                   [nextjournal.clerk.render/render-tagged-value {:space? false}
+                   (cljs.core/vector nextjournal.clerk.render/render-tagged-value (cljs.core/array-map (cljs.core/keyword "space?") false)
+                                     "#object"
+                                     (cljs.core/vector nextjournal.clerk.render/inspect (cljs.core/vector (cljs.core/symbol (cljs.core/pr_str (cljs.core/type x)))
+                                                                                                          (cljs.core/deref x))))
+                   #_[nextjournal.clerk.render/render-tagged-value {:space? false}
                     "#object"
                     [nextjournal.clerk.render/inspect [(symbol (pr-str (type x))) @x]]]
-                   [nextjournal.clerk.render/inspect x]))})
+                   (cljs.core/vector nextjournal.clerk.render/inspect x)
+                   #_[nextjournal.clerk.render/inspect x]))})
 
 (def default-viewers
   ;; maybe make this a sorted-map
