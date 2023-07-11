@@ -52,7 +52,7 @@
 (defn session-by-connection [req]
   (hash (:async-channel req)))
 
-(def get-session session-by-query)
+(def get-session session-by-connection)
 
 (defn broadcast! [msg]
   (doseq [ch @!clients
@@ -192,6 +192,7 @@
                (swap! !clients disj ch))
    :on-receive (fn [sender-ch edn-string]
                  (binding [*session* (get-session (@!ch->req sender-ch))]
+                   (prn :on-receive *session*)
                    (create-session-doc!)
                    (let [!doc (get-doc! *session*)
                          {:as msg :keys [type recompute?]} (read-msg edn-string)]
@@ -291,24 +292,24 @@
          :headers {"Content-Type" "text/plain"}
          :body (format "Could not find notebook at %s." (pr-str nav-path))}))))
 
-(defn get-req-session [{:as req :keys [query-string]}]
-  (some-> query-string query-string->map :session edn/read-string))
 
 (defn app [{:as req :keys [uri]}]
-  (if (:websocket? req)
-    (do (swap! !ch->req assoc (:async-channel req) req)
-        (httpkit/as-channel req ws-handlers))
-    (try
-      (case (get (re-matches #"/([^/]*).*" uri) 1)
-        "_blob" (serve-blob @(get-doc!) (extract-blob-opts req))
-        ("build" "js" "css") (serve-file uri (str "public" uri))
-        ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
-        "_ws" {:status 200 :body "upgrading..."}
-        "favicon.ico" {:status 404}
-        (serve-notebook req))
-      (catch Throwable e
-        {:status  500
-         :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
+  (binding [*session* (get-session req)]
+    (create-session-doc!)
+    (if (:websocket? req)
+      (do (swap! !ch->req assoc (:async-channel req) req)
+          (httpkit/as-channel req ws-handlers))
+      (try
+        (case (get (re-matches #"/([^/]*).*" uri) 1)
+          "_blob" (serve-blob @(get-doc!) (extract-blob-opts req))
+          ("build" "js" "css") (serve-file uri (str "public" uri))
+          ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
+          "_ws" {:status 200 :body "upgrading..."}
+          "favicon.ico" {:status 404}
+          (serve-notebook req))
+        (catch Throwable e
+          {:status  500
+           :body    (with-out-str (pprint/pprint (Throwable->map e)))})))))
 
 #_(nextjournal.clerk/serve! {})
 
