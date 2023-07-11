@@ -34,6 +34,7 @@
                                :main-opts ["-m" "babashka.cli.exec"]
                                :jvm-opts ["-Dclojure.main.report=stdout"]
                                :nextjournal.clerk/aliases [:demo]}
+           :nextjournal/garden {:exec-fn nextjournal.clerk/serve!}
 
            :sci {:extra-deps {io.github.nextjournal/clerk.render {:local/root "render"}}}
 
