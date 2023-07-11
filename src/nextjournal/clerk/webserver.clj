@@ -31,8 +31,7 @@
 (defonce !session->doc (atom {nil (atom nil)}))
 (defonce !last-sender-ch (atom nil))
 
-(hash (first @!clients))
-(hash (second @!clients))
+(defonce !ch->req (atom {}))
 
 #_(view/doc->viewer @!doc)
 #_(reset! !doc nil)
@@ -42,12 +41,22 @@
 (defn send! [ch msg]
   (httpkit/send! ch (v/->edn msg)))
 
-(defn get-session [client]
-  (hash client))
+(declare query-string->map)
+
+(defn get-global-session [_req]
+  nil)
+
+(defn session-by-query [req]
+  (:session (query-string->map (:query-string req))))
+
+(defn session-by-connection [req]
+  (hash (:async-channel req)))
+
+(def get-session session-by-query)
 
 (defn broadcast! [msg]
   (doseq [ch @!clients
-          :when (= (get-session ch) *session*)]
+          :when (= (get-session (@!ch->req ch)) *session*)]
     (when (not= @!last-sender-ch *sender-ch*)
       (send! ch {:type :patch-state! :patch []
                  :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-ch* ch)))]}))
@@ -178,9 +187,11 @@
 
 (def ws-handlers
   {:on-open (fn [ch] (swap! !clients conj ch))
-   :on-close (fn [ch _reason] (swap! !clients disj ch))
+   :on-close (fn [ch _reason]
+               (swap! !ch->req dissoc ch)
+               (swap! !clients disj ch))
    :on-receive (fn [sender-ch edn-string]
-                 (binding [*session* (get-session sender-ch)]
+                 (binding [*session* (get-session (@!ch->req sender-ch))]
                    (create-session-doc!)
                    (let [!doc (get-doc! *session*)
                          {:as msg :keys [type recompute?]} (read-msg edn-string)]
@@ -255,6 +266,7 @@
 
 (defn prefetch-request? [req] (= "prefetch" (-> req :headers (get "purpose"))))
 
+
 (defn serve-notebook [{:as req :keys [uri]}]
   (let [nav-path (subs uri 1)]
     (cond
@@ -263,8 +275,9 @@
 
       (str/blank? nav-path)
       {:status 302
-       :headers {"Location" (or (:nav-path @(get-doc!))
-                                (->nav-path 'nextjournal.clerk.home))}}
+       :headers {"Location" (str (or (:nav-path @(get-doc!))
+                                     (->nav-path 'nextjournal.clerk.home))
+                                 "?" (:query-string req))}}
       :else
       (if-let [file-or-ns (->file-or-ns (maybe-add-extension nav-path))]
         (do (try (show! {:skip-history? true} file-or-ns)
@@ -283,8 +296,8 @@
 
 (defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
-    (binding [*session* (get-session (:async-channel req))]
-      (httpkit/as-channel req ws-handlers))
+    (do (swap! !ch->req assoc (:async-channel req) req)
+        (httpkit/as-channel req ws-handlers))
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @(get-doc!) (extract-blob-opts req))

@@ -66,4 +66,4 @@
 let state = " (-> state v/->edn escape-closing-script-tag pr-str) ".replaceAll('nextjournal.clerk.view/escape-closing-script-tag', 'script')
 viewer.init(viewer.read_string(state))\n"
        (when conn-ws?
-         "viewer.connect(window.location.origin.replace(/^http/, 'ws') + '/_ws')")])]))
+         "viewer.connect(window.location.origin.replace(/^http/, 'ws') + '/_ws' + window.location.search)")])]))

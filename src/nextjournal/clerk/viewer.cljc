@@ -1163,7 +1163,9 @@
              [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
               {:href (when (and url sha) (if default-index? (str url "/tree/" sha) (str url "/blob/" sha "/" nav-path)))}
               (if (and url default-index?) #?(:clj (subs (.getPath (URL. url)) 1) :cljs url) nav-path)
-              (when sha [:<> "@" [:span.tabular-nums (subs sha 0 7)]])])]]]))
+              (when sha [:<> "@" [:span.tabular-nums (subs sha 0 7)]])])
+           #?(:clj (when-let [session (:session opts)]
+                     [:span [:span.mx-2 "•"] "Session: " (pr-str session)]))]]]))
 
 (def header-viewer
   {:name `header-viewer
