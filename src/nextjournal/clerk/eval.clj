@@ -246,7 +246,6 @@
 
 
 (defn eval-in-session [{:as analyzed-doc :keys [session ns]}]
-  (prn :eval-in-session session ns (session/session-ns-name analyzed-doc))
   (if session
     (let [session-ns (session/session-ns-name analyzed-doc)]
       (eval-analyzed-doc analyzed-doc)
