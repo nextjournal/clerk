@@ -1199,6 +1199,7 @@
                     :file
                     :open-graph
                     :ns
+                    :session
                     :title
                     :toc
                     :toc-visibility

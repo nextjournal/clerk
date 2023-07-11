@@ -108,8 +108,10 @@
     {:status 404}))
 
 (defn extract-blob-opts [{:as _req :keys [uri query-string]}]
-  {:blob-id (str/replace uri "/_blob/" "")
-   :fetch-opts (get-fetch-opts query-string)})
+  (let [{:as fetch-opts :keys [session]} (get-fetch-opts query-string)]
+    (cond-> {:blob-id (str/replace uri "/_blob/" "")
+             :fetch-opts (dissoc fetch-opts :session)}
+      session (assoc :session (edn/read-string session)))))
 
 (defn serve-file [uri path]
   (let [file (when (fs/exists? path)
@@ -143,7 +145,6 @@
         presented (view/doc->viewer doc)
         sync-vars-old (v/extract-sync-atom-vars @!doc)
         sync-vars (v/extract-sync-atom-vars doc)]
-    (prn :present+reset! *session*)
     (doseq [sync-var (if recreate-all-watches?
                        sync-vars-old
                        (set/difference sync-vars-old sync-vars))]
@@ -192,7 +193,6 @@
                (swap! !clients disj ch))
    :on-receive (fn [sender-ch edn-string]
                  (binding [*session* (get-session (@!ch->req sender-ch))]
-                   (prn :on-receive *session*)
                    (create-session-doc!)
                    (let [!doc (get-doc! *session*)
                          {:as msg :keys [type recompute?]} (read-msg edn-string)]
@@ -262,7 +262,6 @@
   ((resolve 'nextjournal.clerk/show!) (assoc opts :session *session*) file-or-ns))
 
 (defn navigate! [{:as opts :keys [nav-path]}]
-  (prn :navigate! *session* opts)
   (show! opts (->file-or-ns (maybe-add-extension nav-path))))
 
 (defn prefetch-request? [req] (= "prefetch" (-> req :headers (get "purpose"))))
@@ -301,7 +300,8 @@
           (httpkit/as-channel req ws-handlers))
       (try
         (case (get (re-matches #"/([^/]*).*" uri) 1)
-          "_blob" (serve-blob @(get-doc!) (extract-blob-opts req))
+          "_blob" (let [{:as blob-opts :keys [session]} (extract-blob-opts req)]
+                    (serve-blob @(get-doc! session) blob-opts))
           ("build" "js" "css") (serve-file uri (str "public" uri))
           ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
           "_ws" {:status 200 :body "upgrading..."}

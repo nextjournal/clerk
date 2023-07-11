@@ -1,4 +1,5 @@
-(ns nextjournal.clerk.session)
+(ns nextjournal.clerk.session
+  (:require [nextjournal.clerk.analyzer :as analyzer]))
 
 (defn in-session-ns [{:keys [ns session-ns]} var]
   (if (and var session-ns)
@@ -10,7 +11,7 @@
   "nextjournal.clerk.synthetic-session.")
 
 (defn session-ns-name [{:keys [ns session]}]
-  (symbol (str session-ns-prefix (ns-name ns) ".session=" (nextjournal.clerk.analyzer/valuehash session))))
+  (symbol (str session-ns-prefix (ns-name ns) ".session=" (analyzer/valuehash session))))
 
 #_(session-ns-name {:ns (create-ns 'scratch) :session 'foo})
 

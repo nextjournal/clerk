@@ -217,16 +217,20 @@
 (defn read-string [s]
   (js/nextjournal.clerk.sci_env.read-string s))
 
+(declare !doc)
 
 (defn fetch! [{:keys [blob-id]} opts]
-  #_(js/console.log :fetch! blob-id opts)
-  (-> (js/fetch (str "/_blob/" blob-id (when (seq opts)
-                                         (str "?" (opts->query opts)))))
-      (.then #(.text %))
-      (.then #(try (read-string %)
-                   (catch js/Error e
-                     (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e})
-                     (render-unreadable-edn %))))))
+  (let [session (:session (:nextjournal/value @!doc))
+        opts+session (cond-> opts
+                       session (assoc :session (pr-str session)))]
+    #_(js/console.log :fetch! blob-id opts session)
+    (-> (js/fetch (str "/_blob/" blob-id (when (seq opts+session)
+                                           (str "?" (opts->query opts+session)))))
+        (.then #(.text %))
+        (.then #(try (read-string %)
+                     (catch js/Error e
+                       (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e})
+                       (render-unreadable-edn %)))))))
 
 (defn ->expanded-at [auto-expand? presented]
   (cond-> presented
