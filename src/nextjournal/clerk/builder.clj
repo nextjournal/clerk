@@ -25,6 +25,7 @@
         (map #(str "notebooks/" % ".clj"))
         ["cards"
          "cherry"
+         "squint_wip"
          "controlling_width"
          "docs"
          "document_linking"
