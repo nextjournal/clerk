@@ -1112,8 +1112,8 @@
         blocks))
 
 (defn in-main-ns [doc var]
-  #?(:clj session/in-main-ns
-     :cljs identity))
+  #?(:clj (session/in-main-ns doc var)
+     :cljs var))
 
 (defn atom-var-name->state [doc]
   (->viewer-eval
