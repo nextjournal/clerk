@@ -123,8 +123,8 @@
   ([store ns name] (record-interned-symbol store ns name) (core-intern ns name))
   ([store ns name val] (record-interned-symbol store ns name) (core-intern ns name val)))
 
-(defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
-  (prn :eval+cache form freezable?)
+(defn ^:private eval+cache! [{:keys [form var session-var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
+  (prn :eval+cache form var session-var)
   (try
     (let [!interned-vars (atom #{})
           {:keys [result]} (time-ms (binding [config/*in-clerk* true]
@@ -132,10 +132,10 @@
                                       (with-redefs [clojure.core/intern (partial intern+record !interned-vars)]
                                         (eval form))))
           result (if (and (nil? result) var (= 'defonce (first form)))
-                   (find-var var)
+                   (find-var session-var)
                    result)
           var-value (cond-> result (and var (var? result)) deref)
-          var-from-def? (and var (var? result) (= var (symbol result)))
+          var-from-def? (and var (var? result) (= session-var (symbol result)))
           no-cache? (or ns-effect?
                         no-cache?
                         (boolean (seq @!interned-vars))
@@ -150,7 +150,7 @@
                           (fn? var-value) nil
                           :else hash)
             result (if var-from-def?
-                     (var-from-def var)
+                     (var-from-def session-var)
                      result)]
         (cond-> (wrapped-with-metadata result blob-id)
           (seq @!interned-vars)
@@ -184,20 +184,21 @@
                                 (select-keys (keys v/viewer-opts-normalization))
                                 v/normalize-viewer-opts
                                 maybe-eval-viewers)]
-    #_(prn :cached? (cond no-cache? :no-cache
-                          cached-result? (if cached-result-in-memory
-                                           :in-memory
-                                           :in-cas)
-                          cas-hash :no-cas-file
-                          :else :no-digest-file)
-           :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
+    (prn :cached? (cond no-cache? :no-cache
+                        cached-result? (if cached-result-in-memory
+                                         :in-memory
+                                         :in-cas)
+                        cas-hash :no-cas-file
+                        :else :no-digest-file)
+         :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
     (fs/create-dirs config/cache-dir)
     (cond-> (or (when (and cached-result? cached-result-in-memory)
                   (wrapped-with-metadata (:nextjournal/value cached-result-in-memory) hash))
                 (when (and cached-result? freezable?)
                   (lookup-cached-result (session/in-session-ns doc var) hash cas-hash))
                 (eval+cache! (-> form-info
-                                 (update :var (partial session/in-session-ns doc))
+                                 #_(update :var (partial session/in-session-ns doc))
+                                 (assoc :session-var (session/in-session-ns doc var))
                                  (assoc :form form))
                              hash
                              digest-file))
@@ -303,3 +304,20 @@
 
 #_(eval-string "(+ 39 3)")
 
+(defn eval-string-in-session [code-string session]
+  (eval-doc (assoc (parser/parse-clojure-string {:doc? true} code-string) :session session)))
+
+(let [code-string "(ns my-session)
+^:nextjournal.clerk/sync
+(defonce !offset (atom 0))
+@!offset
+(defn get-offset [] @!offset)
+(get-offset)"
+      {:keys [blocks]} (eval-string-in-session code-string :foo)]
+
+  
+
+
+  (let [get-values (fn [blocks] (into [] (map (comp :nextjournal/value :result blocks)) [2 4]))
+        !offset (-> blocks second :result :nextjournal/value :nextjournal.clerk/var-from-def deref)]
+    (get-values blocks)))

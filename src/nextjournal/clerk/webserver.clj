@@ -368,5 +368,6 @@
 #_(serve! {:port 7777})
 #_(serve! {:port 7777 :host "0.0.0.0"})
 
-#_(binding [*session* "a11"]
-    (nextjournal.clerk/recompute!))
+
+(map :result
+     (:blocks @(get-doc! 754506985)))

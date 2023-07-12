@@ -214,16 +214,19 @@
   (remove-ns 'my-session)
   (remove-ns (session/session-ns-name {:ns (create-ns 'my-session)
                                        :session :foo}))
-  (let [{:keys [blocks]} (eval-string-in-session "(ns my-session)
+  (let [code-string "(ns my-session)
 ^:nextjournal.clerk/sync
 (defonce !offset (atom 0))
-(defn get-offset [] @!offset)"
-                                                 :foo)]
+@!offset
+(defn get-offset [] @!offset)
+(get-offset)"
+        {:keys [blocks]} (eval-string-in-session code-string :foo)]
+
     (testing "var-from-def is correctly assigned"
       (is (-> blocks
-              peek
+              (get 3)
               :result
-              viewer/->value
+              :nextjournal/value
               viewer/var-from-def?)))
 
 
@@ -237,7 +240,15 @@
 
     (testing "session should have fresh atom"
       (is (not= @(resolve 'my-session/!offset)
-                (-> blocks second :result viewer/->value :nextjournal.clerk/var-from-def deref))))))
+                (-> blocks second :result :nextjournal/value :nextjournal.clerk/var-from-def deref))))
+
+
+    (testing "has correct values"
+      (let [get-values (fn [blocks] (into [] (map (comp :nextjournal/value :result blocks)) [2 4]))
+            !offset (-> blocks second :result :nextjournal/value :nextjournal.clerk/var-from-def deref)]
+        (is (= [0 0] (get-values blocks)))
+        (swap! !offset inc)
+        (is (= [1 1] (get-values (:blocks (eval-string-in-session code-string :foo)))))))))
 
 (clerk/defcached my-expansive-thing
   (do (Thread/sleep 1 #_10000) 42))
