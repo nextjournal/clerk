@@ -52,7 +52,7 @@
 (defn session-by-connection [req]
   (hash (:async-channel req)))
 
-(def get-session session-by-query)
+(def get-session session-by-connection)
 
 (defn broadcast! [msg]
   (doseq [ch @!clients

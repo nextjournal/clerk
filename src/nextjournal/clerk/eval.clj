@@ -123,8 +123,6 @@
   ([store ns name] (record-interned-symbol store ns name) (core-intern ns name))
   ([store ns name val] (record-interned-symbol store ns name) (core-intern ns name val)))
 
-(prn :===============)
-
 (defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
   (prn :eval+cache form freezable?)
   (try
@@ -134,8 +132,7 @@
                                       (with-redefs [clojure.core/intern (partial intern+record !interned-vars)]
                                         (eval form))))
           result (if (and (nil? result) var (= 'defonce (first form)))
-                   (do (prn :find-var var)
-                       (find-var var))
+                   (find-var var)
                    result)
           var-value (cond-> result (and var (var? result)) deref)
           var-from-def? (and var (var? result) (= var (symbol result)))
@@ -155,8 +152,6 @@
             result (if var-from-def?
                      (var-from-def var)
                      result)]
-        (when (nextjournal.clerk.viewer/var-from-def? result)
-          (prn :result (-> result :nextjournal.clerk/var-from-def deref) result ))
         (cond-> (wrapped-with-metadata result blob-id)
           (seq @!interned-vars)
           (assoc :nextjournal/interned @!interned-vars))))
