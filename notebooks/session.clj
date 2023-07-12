@@ -2,7 +2,7 @@
   (:require [nextjournal.clerk :as clerk]))
 
 ^{::clerk/sync true}
-(defonce ^:dynamic !offset
+(defonce !offset
   (atom 0))
 
 (clerk/col (clerk/with-viewer '(fn [_] [:div

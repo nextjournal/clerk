@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.session
-  (:require [nextjournal.clerk.analyzer :as analyzer]))
+  (:require [clojure.string :as str]
+            [nextjournal.clerk.analyzer :as analyzer]))
 
 (defn in-session-ns [{:keys [ns session-ns]} var]
   (if (and var session-ns)
@@ -10,10 +11,17 @@
 (def session-ns-prefix
   "nextjournal.clerk.synthetic-session.")
 
-(defn session-ns-name [{:keys [ns session]}]
-  (symbol (str session-ns-prefix (ns-name ns) ".session=" (analyzer/valuehash session))))
+(def session-ns-pattern
+  (re-pattern (str "^" session-ns-prefix "\\w+\\.")))
 
-#_(session-ns-name {:ns (create-ns 'scratch) :session 'foo})
+(defn session-ns-name [{:keys [ns session]}]
+  (symbol (str session-ns-prefix (analyzer/valuehash session) "." (ns-name ns))))
+
+(defn ->orignal-ns [sym]
+  (if (qualified-symbol? sym)
+    (symbol (str/replace (namespace sym) session-ns-pattern "")
+            (name sym))
+    sym))
 
 (defn rewrite-ns-form [doc session-ns]
   (update-in doc [:blocks 0 :form] (fn [ns-form]

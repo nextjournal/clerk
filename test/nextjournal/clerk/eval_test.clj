@@ -5,6 +5,7 @@
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
+            [nextjournal.clerk.session :as session]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as viewer]))
 
@@ -205,6 +206,30 @@
   (testing "should not fail on var present at runtime if there's no ns form"
     (intern (create-ns 'existing-var) 'foo :bar)
     (is (eval/eval-string "(in-ns 'existing-var) foo"))))
+
+(defn eval-string-in-session [code-string session]
+  (eval/eval-doc (assoc (parser/parse-clojure-string {:doc? true} code-string) :session session)))
+
+(deftest eval-in-session
+  (let [{:keys [blocks]} (eval-string-in-session "(ns my-session)
+(defonce !offset (atom 0))
+(defn get-offset [] @!offset)"
+                                                 :foo)]
+    (testing "var-from-def is correctly assigned"
+      (is (-> blocks
+              peek
+              :result
+              viewer/->value
+              viewer/var-from-def?)))
+
+
+    (testing "vars live in session-ns"
+      (is (= #{(session/session-ns-name {:ns (create-ns 'my-session)
+                                         :session :foo})}
+             (into #{}
+                   (map (comp symbol namespace symbol))
+                   (keep (comp :nextjournal.clerk/var-from-def :nextjournal/value :result)
+                         blocks)))))))
 
 (clerk/defcached my-expansive-thing
   (do (Thread/sleep 1 #_10000) 42))

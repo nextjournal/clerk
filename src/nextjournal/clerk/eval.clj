@@ -20,9 +20,12 @@
   (nippy/get-recorded-serializable-classes))
 
 ;; nippy tweaks
-(alter-var-root #'nippy/*thaw-serializable-allowlist* (fn [_] (conj nippy/default-thaw-serializable-allowlist "java.io.File" "clojure.lang.Var" "clojure.lang.Namespace")))
-(nippy/extend-freeze BufferedImage :java.awt.image.BufferedImage [x out] (ImageIO/write x "png" (ImageIO/createImageOutputStream out)))
-(nippy/extend-thaw :java.awt.image.BufferedImage [in] (ImageIO/read in))
+
+(defonce nippy-tweaks
+  (do
+    (alter-var-root #'nippy/*thaw-serializable-allowlist* (fn [_] (conj nippy/default-thaw-serializable-allowlist "java.io.File" "clojure.lang.Var" "clojure.lang.Namespace")))
+    (nippy/extend-freeze BufferedImage :java.awt.image.BufferedImage [x out] (ImageIO/write x "png" (ImageIO/createImageOutputStream out)))
+    (nippy/extend-thaw :java.awt.image.BufferedImage [in] (ImageIO/read in))))
 
 #_(-> [(clojure.java.io/file "notebooks") (find-ns 'user)] nippy/freeze nippy/thaw)
 
@@ -192,7 +195,11 @@
                   (wrapped-with-metadata (:nextjournal/value cached-result-in-memory) hash))
                 (when (and cached-result? freezable?)
                   (lookup-cached-result (session/in-session-ns doc var) hash cas-hash))
-                (eval+cache! (assoc form-info :form form) hash digest-file))
+                (eval+cache! (-> form-info
+                                 (update :var (partial session/in-session-ns doc))
+                                 (assoc :form form))
+                             hash
+                             digest-file))
       (seq opts-from-form-meta)
       (merge opts-from-form-meta))))
 
@@ -298,3 +305,4 @@
    (eval-doc in-memory-cache (parser/parse-clojure-string {:doc? true} code-string))))
 
 #_(eval-string "(+ 39 3)")
+
