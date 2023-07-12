@@ -1,6 +1,7 @@
 (ns session
   (:require [nextjournal.clerk :as clerk]))
 
+
 ^{::clerk/sync true}
 (defonce !offset
   (atom 0))
@@ -31,3 +32,7 @@
 (get-offset)
 
 (inc offset)
+
+
+(deref (resolve (nextjournal.clerk.session/in-session-ns
+                 {:ns *ns* :session-ns (ns-name (find-ns 'nextjournal.clerk.synthetic-session.8VwGozFmXSSFmEuvET3BLkgwVkZfLzbbhneqSEqdx11skpSE9eWLnLJtN8oHGN7XNCmxpt7Md789kYGoS18Xq1WHZA.session))} (symbol #'!offset))))

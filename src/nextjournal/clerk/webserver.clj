@@ -52,7 +52,7 @@
 (defn session-by-connection [req]
   (hash (:async-channel req)))
 
-(def get-session session-by-connection)
+(def get-session session-by-query)
 
 (defn broadcast! [msg]
   (doseq [ch @!clients
@@ -186,31 +186,6 @@
 (defn create-session-doc! []
   (swap! !session->doc update *session* (fn [prev] (or prev (atom nil)))))
 
-(def ws-handlers
-  {:on-open (fn [ch] (swap! !clients conj ch))
-   :on-close (fn [ch _reason]
-               (swap! !ch->req dissoc ch)
-               (swap! !clients disj ch))
-   :on-receive (fn [sender-ch edn-string]
-                 (binding [*session* (get-session (@!ch->req sender-ch))]
-                   (create-session-doc!)
-                   (let [!doc (get-doc! *session*)
-                         {:as msg :keys [type recompute?]} (read-msg edn-string)]
-                     (binding [*ns* (or (:ns @!doc)
-                                        (create-ns 'user))]
-                       (case type
-                         :eval (do (send! sender-ch (merge {:type :eval-reply :eval-id (:eval-id msg)}
-                                                           (try {:reply (eval (:form msg))}
-                                                                (catch Exception e
-                                                                  {:error (Throwable->map e)}))))
-                                   (when recompute?
-                                     (eval '(nextjournal.clerk/recompute!))))
-                         :swap! (when-let [var (resolve (:var-name msg))]
-                                  (try
-                                    (binding [*sender-ch* sender-ch]
-                                      (apply swap! @var (eval (:args msg))))
-                                    (catch Exception ex
-                                      (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) update-error!))))))))))})
 
 #_(do
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
@@ -291,13 +266,43 @@
          :headers {"Content-Type" "text/plain"}
          :body (format "Could not find notebook at %s." (pr-str nav-path))}))))
 
+(defn on-open [ch]
+  (swap! !clients conj ch))
+
+(defn on-close [ch _reason]
+  (swap! !ch->req dissoc ch)
+  (swap! !clients disj ch))
+
+(defn on-recieve [sender-ch edn-string]
+  (binding [*session* (get-session (@!ch->req sender-ch))]
+    (let [!doc (get-doc! *session*)
+          {:as msg :keys [type recompute?]} (read-msg edn-string)]
+      (prn :on-receive msg)
+      (binding [*ns* (or (:ns @!doc)
+                         (create-ns 'user))]
+        (case type
+          :eval (do (send! sender-ch (merge {:type :eval-reply :eval-id (:eval-id msg)}
+                                            (try {:reply (eval (:form msg))}
+                                                 (catch Exception e
+                                                   {:error (Throwable->map e)}))))
+                    (when recompute?
+                      (eval '(nextjournal.clerk/recompute!))))
+          :swap! (when-let [var (resolve (session/in-session-ns @!doc (:var-name msg)))]
+                   (prn :var var)
+                   (try
+                     (binding [*sender-ch* sender-ch]
+                       (apply swap! @var (eval (:args msg))))
+                     (catch Exception ex
+                       (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) update-error!))))))))))
 
 (defn app [{:as req :keys [uri]}]
   (binding [*session* (get-session req)]
     (create-session-doc!)
     (if (:websocket? req)
       (do (swap! !ch->req assoc (:async-channel req) req)
-          (httpkit/as-channel req ws-handlers))
+          (httpkit/as-channel req {:on-open #'on-open
+                                   :on-close #'on-close 
+                                   :on-receive #'on-recieve}))
       (try
         (case (get (re-matches #"/([^/]*).*" uri) 1)
           "_blob" (let [{:as blob-opts :keys [session]} (extract-blob-opts req)]
@@ -362,3 +367,6 @@
 
 #_(serve! {:port 7777})
 #_(serve! {:port 7777 :host "0.0.0.0"})
+
+#_(binding [*session* "a11"]
+    (nextjournal.clerk/recompute!))

@@ -8,6 +8,12 @@
             (name var))
     var))
 
+(defn in-main-ns [{:keys [ns session-ns]} var]
+  (if (and var session-ns)
+    (symbol (str ns)
+            (name var))
+    var))
+
 (def session-ns-prefix
   "nextjournal.clerk.synthetic-session.")
 

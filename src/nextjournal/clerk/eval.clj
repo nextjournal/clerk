@@ -123,7 +123,10 @@
   ([store ns name] (record-interned-symbol store ns name) (core-intern ns name))
   ([store ns name val] (record-interned-symbol store ns name) (core-intern ns name val)))
 
+(prn :===============)
+
 (defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
+  (prn :eval+cache form freezable?)
   (try
     (let [!interned-vars (atom #{})
           {:keys [result]} (time-ms (binding [config/*in-clerk* true]
@@ -131,7 +134,8 @@
                                       (with-redefs [clojure.core/intern (partial intern+record !interned-vars)]
                                         (eval form))))
           result (if (and (nil? result) var (= 'defonce (first form)))
-                   (find-var var)
+                   (do (prn :find-var var)
+                       (find-var var))
                    result)
           var-value (cond-> result (and var (var? result)) deref)
           var-from-def? (and var (var? result) (= var (symbol result)))
@@ -151,6 +155,8 @@
             result (if var-from-def?
                      (var-from-def var)
                      result)]
+        (when (nextjournal.clerk.viewer/var-from-def? result)
+          (prn :result (-> result :nextjournal.clerk/var-from-def deref) result ))
         (cond-> (wrapped-with-metadata result blob-id)
           (seq @!interned-vars)
           (assoc :nextjournal/interned @!interned-vars))))
@@ -256,11 +262,7 @@
   (if session
     (let [session-ns (session/session-ns-name analyzed-doc)]
       (eval-analyzed-doc analyzed-doc)
-      (binding [*ns* (create-ns session-ns)]
-        (doseq [var (keep resolve
-                          (filter (comp #{(str (ns-name ns))} namespace)
-                                  (keys (:->analysis-info analyzed-doc))))]
-          (intern session-ns (-> var symbol name symbol) @var))
+      (binding [*ns* (create-ns session-ns)]        
         (eval-analyzed-doc (-> analyzed-doc
                                (session/rewrite-ns-form session-ns)
                                (assoc :session-ns session-ns)))))

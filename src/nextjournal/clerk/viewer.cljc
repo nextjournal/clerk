@@ -9,6 +9,7 @@
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
                       [editscript.edit]
+                      [nextjournal.clerk.session :as session]
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.analyzer :as analyzer]]
                 :cljs [[goog.crypt]
@@ -1110,11 +1111,15 @@
                     var))))
         blocks))
 
+(defn in-main-ns [doc var]
+  #?(:clj session/in-main-ns
+     :cljs identity))
+
 (defn atom-var-name->state [doc]
   (->viewer-eval
    (list 'nextjournal.clerk.render/intern-atoms!
          (into {}
-               (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote))))
+               (map (juxt #(list 'quote (in-main-ns doc (symbol %))) #(->> % deref deref (list 'quote))))
                (extract-sync-atom-vars doc)))))
 
 (defn update-if [m k f]

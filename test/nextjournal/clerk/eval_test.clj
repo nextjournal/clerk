@@ -211,7 +211,11 @@
   (eval/eval-doc (assoc (parser/parse-clojure-string {:doc? true} code-string) :session session)))
 
 (deftest eval-in-session
+  (remove-ns 'my-session)
+  (remove-ns (session/session-ns-name {:ns (create-ns 'my-session)
+                                       :session :foo}))
   (let [{:keys [blocks]} (eval-string-in-session "(ns my-session)
+^:nextjournal.clerk/sync
 (defonce !offset (atom 0))
 (defn get-offset [] @!offset)"
                                                  :foo)]
@@ -229,7 +233,11 @@
              (into #{}
                    (map (comp symbol namespace symbol))
                    (keep (comp :nextjournal.clerk/var-from-def :nextjournal/value :result)
-                         blocks)))))))
+                         blocks)))))
+
+    (testing "session should have fresh atom"
+      (is (not= @(resolve 'my-session/!offset)
+                (-> blocks second :result viewer/->value :nextjournal.clerk/var-from-def deref))))))
 
 (clerk/defcached my-expansive-thing
   (do (Thread/sleep 1 #_10000) 42))
