@@ -205,7 +205,9 @@
     (swap! render/!doc assoc ::connection-status "Reconnecting…"))
   (let [ws (js/WebSocket. ws-url)]
     (set! (.-onmessage ws) onmessage)
-    (set! (.-onopen ws) (fn [e] (swap! render/!doc dissoc ::connection-status ::failed-attempts)))
+    (set! (.-onopen ws) (fn [e]
+                          (render/clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path (subs js/location.pathname 1) :skip-history? true}))
+                          (swap! render/!doc dissoc ::connection-status ::failed-attempts)))
     (set! (.-onclose ws) (fn [e]
                            (let [timeout (reconnect-timeout (::failed-attempts @render/!doc 0))]
                              (swap! render/!doc

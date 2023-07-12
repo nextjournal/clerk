@@ -277,7 +277,7 @@
   (binding [*session* (get-session (@!ch->req sender-ch))]
     (let [!doc (get-doc! *session*)
           {:as msg :keys [type recompute?]} (read-msg edn-string)]
-      (prn :on-receive msg)
+      (create-session-doc!)
       (binding [*ns* (or (:ns @!doc)
                          (create-ns 'user))]
         (case type
