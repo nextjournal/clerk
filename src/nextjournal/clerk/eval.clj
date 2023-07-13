@@ -256,7 +256,6 @@
 (defn eval-in-session [{:as analyzed-doc :keys [session ns]}]
   (if session
     (let [session-ns (session/session-ns-name analyzed-doc)]
-      (eval-analyzed-doc analyzed-doc) ;; TODO: check if we need this
       (binding [*ns* (create-ns session-ns)]        
         (eval-analyzed-doc (-> analyzed-doc
                                (session/rewrite-ns-form session-ns)
