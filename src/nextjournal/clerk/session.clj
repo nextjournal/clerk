@@ -22,7 +22,7 @@
   (re-pattern (str "^" session-ns-prefix "\\w+\\.")))
 
 (defn ^:private valuehash [session]
-  (->> session hash/sha2-512 hash/encode b58/format-btc))
+  (->> session pr-str hash/sha2-512 hash/encode b58/format-btc))
 
 (defn session-ns-name [{:keys [ns session]}]
   (symbol (str session-ns-prefix (valuehash session) "." (ns-name ns))))
