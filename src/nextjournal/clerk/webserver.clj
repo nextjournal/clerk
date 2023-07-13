@@ -288,7 +288,6 @@
                     (when recompute?
                       (eval '(nextjournal.clerk/recompute!))))
           :swap! (when-let [var (resolve (session/in-session-ns @!doc (:var-name msg)))]
-                   (prn :var var)
                    (try
                      (binding [*sender-ch* sender-ch]
                        (apply swap! @var (eval (:args msg))))
@@ -368,6 +367,3 @@
 #_(serve! {:port 7777})
 #_(serve! {:port 7777 :host "0.0.0.0"})
 
-
-(map :result
-     (:blocks @(get-doc! 754506985)))

@@ -124,7 +124,6 @@
   ([store ns name val] (record-interned-symbol store ns name) (core-intern ns name val)))
 
 (defn ^:private eval+cache! [{:keys [form var session-var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
-  (prn :eval+cache form var session-var)
   (try
     (let [!interned-vars (atom #{})
           {:keys [result]} (time-ms (binding [config/*in-clerk* true]
@@ -184,13 +183,13 @@
                                 (select-keys (keys v/viewer-opts-normalization))
                                 v/normalize-viewer-opts
                                 maybe-eval-viewers)]
-    (prn :cached? (cond no-cache? :no-cache
-                        cached-result? (if cached-result-in-memory
-                                         :in-memory
-                                         :in-cas)
-                        cas-hash :no-cas-file
-                        :else :no-digest-file)
-         :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
+    #_(prn :cached? (cond no-cache? :no-cache
+                          cached-result? (if cached-result-in-memory
+                                           :in-memory
+                                           :in-cas)
+                          cas-hash :no-cas-file
+                          :else :no-digest-file)
+           :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
     (fs/create-dirs config/cache-dir)
     (cond-> (or (when (and cached-result? cached-result-in-memory)
                   (wrapped-with-metadata (:nextjournal/value cached-result-in-memory) hash))
@@ -257,7 +256,7 @@
 (defn eval-in-session [{:as analyzed-doc :keys [session ns]}]
   (if session
     (let [session-ns (session/session-ns-name analyzed-doc)]
-      (eval-analyzed-doc analyzed-doc)
+      (eval-analyzed-doc analyzed-doc) ;; TODO: check if we need this
       (binding [*ns* (create-ns session-ns)]        
         (eval-analyzed-doc (-> analyzed-doc
                                (session/rewrite-ns-form session-ns)
@@ -303,21 +302,3 @@
    (eval-doc in-memory-cache (parser/parse-clojure-string {:doc? true} code-string))))
 
 #_(eval-string "(+ 39 3)")
-
-(defn eval-string-in-session [code-string session]
-  (eval-doc (assoc (parser/parse-clojure-string {:doc? true} code-string) :session session)))
-
-(let [code-string "(ns my-session)
-^:nextjournal.clerk/sync
-(defonce !offset (atom 0))
-@!offset
-(defn get-offset [] @!offset)
-(get-offset)"
-      {:keys [blocks]} (eval-string-in-session code-string :foo)]
-
-  
-
-
-  (let [get-values (fn [blocks] (into [] (map (comp :nextjournal/value :result blocks)) [2 4]))
-        !offset (-> blocks second :result :nextjournal/value :nextjournal.clerk/var-from-def deref)]
-    (get-values blocks)))

@@ -35,3 +35,11 @@
                                               (ns-name session-ns)]
                                              (drop 2 ns-form)))))
 
+
+(defn deref-dep-in-session [{:as doc :keys [ns session-ns]} deref-dep]
+  (when-not (and (= 2 (count deref-dep))
+                 (qualified-symbol? (second deref-dep)))
+    (throw (ex-info "deref-dep must be of form `(deref dep)`" {:deref-dep deref-dep})))
+  (if (and session-ns (= (namespace (second deref-dep)) (str ns)))
+    (list (first deref-dep) (symbol (str session-ns) (name (second deref-dep))))
+    deref-dep))

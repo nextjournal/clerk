@@ -2,22 +2,23 @@
   {:nextjournal.clerk/no-cache true}
   (:refer-clojure :exclude [hash read-string])
   (:require [babashka.fs :as fs]
-            [edamame.core :as edamame]
             [clojure.core :as core]
             [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.string :as str]
-            [clojure.tools.reader :as tools.reader]
             [clojure.tools.analyzer :as ana]
             [clojure.tools.analyzer.ast :as ana-ast]
             [clojure.tools.analyzer.jvm :as ana-jvm]
             [clojure.tools.analyzer.utils :as ana-utils]
+            [clojure.tools.reader :as tools.reader]
             [clojure.walk :as walk]
+            [edamame.core :as edamame]
             [multiformats.base.b58 :as b58]
             [multiformats.hash :as hash]
-            [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.classpath :as cp]
             [nextjournal.clerk.config :as config]
+            [nextjournal.clerk.parser :as parser]
+            [nextjournal.clerk.session :as session]
             [taoensso.nippy :as nippy]
             [weavejester.dependency :as dep]))
 
@@ -633,7 +634,9 @@
     (let [topo-comp (dep/topo-comparator graph)
           deref-deps-to-eval (set/difference deref-deps (-> ->hash keys set))
           doc-with-deref-dep-hashes (reduce (fn [state deref-dep]
-                                              (assoc-in state [:->hash deref-dep] (->hash-str (eval deref-dep))))
+                                              (assoc-in state
+                                                        [:->hash deref-dep]
+                                                        (->hash-str (eval (session/deref-dep-in-session analyzed-doc deref-dep)))))
                                             analyzed-doc
                                             (sort topo-comp deref-deps-to-eval))]
       #_(prn :hash-deref-deps/form form :deref-deps deref-deps-to-eval)
@@ -643,7 +646,7 @@
 #_(nextjournal.clerk/show! "notebooks/hash_fn.clj")
 
 #_(do (swap! hash-fn/!state inc)
-      (nextjournal.clerk/recompute!))
+(nextjournal.clerk/recompute!))
 
 #_(deref nextjournal.clerk.webserver/!doc)
 
@@ -673,5 +676,3 @@
 #_(find-blocks @nextjournal.clerk.webserver/!doc 'scratch/foo)
 #_(find-blocks @nextjournal.clerk.webserver/!doc 'foo)
 #_(find-blocks @nextjournal.clerk.webserver/!doc '(rand-int 1000))
-
-
