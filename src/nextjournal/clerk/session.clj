@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.session
   (:require [clojure.string :as str]
-            [nextjournal.clerk.analyzer :as analyzer]))
+            [multiformats.base.b58 :as b58]
+            [multiformats.hash :as hash]))
 
 (defn in-session-ns [{:keys [ns session-ns]} var]
   (if (and var session-ns)
@@ -20,8 +21,11 @@
 (def session-ns-pattern
   (re-pattern (str "^" session-ns-prefix "\\w+\\.")))
 
+(defn ^:private valuehash [session]
+  (->> session hash/sha2-512 hash/encode b58/format-btc))
+
 (defn session-ns-name [{:keys [ns session]}]
-  (symbol (str session-ns-prefix (analyzer/valuehash session) "." (ns-name ns))))
+  (symbol (str session-ns-prefix (valuehash session) "." (ns-name ns))))
 
 (defn ->orignal-ns [sym]
   (if (qualified-symbol? sym)
