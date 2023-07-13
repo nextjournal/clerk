@@ -243,11 +243,13 @@
                 (-> blocks second :result :nextjournal/value :nextjournal.clerk/var-from-def deref))))
 
 
-    (testing "has correct values"
-      (let [get-values (fn [blocks] (into [] (map (comp :nextjournal/value :result blocks)) [2 4]))
-            !offset (-> blocks second :result :nextjournal/value :nextjournal.clerk/var-from-def deref)]
-        (is (= [0 0] (get-values blocks)))
-        (swap! !offset inc)
+    (let [get-values (fn [blocks] (into [] (map (comp :nextjournal/value :result blocks)) [2 4]))
+          !offset (-> blocks second :result :nextjournal/value :nextjournal.clerk/var-from-def deref)]
+      (testing "has correct values initially"
+        (is (= [0 0] (get-values blocks))))
+
+      (testing "has incremented values after swap!"
+        (is (swap! !offset inc))
         (is (= [1 1] (get-values (:blocks (eval-string-in-session code-string :foo)))))))))
 
 (clerk/defcached my-expansive-thing

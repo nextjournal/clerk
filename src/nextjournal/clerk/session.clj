@@ -27,12 +27,6 @@
 (defn session-ns-name [{:keys [ns session]}]
   (symbol (str session-ns-prefix (valuehash session) "." (ns-name ns))))
 
-(defn ->orignal-ns [sym]
-  (if (qualified-symbol? sym)
-    (symbol (str/replace (namespace sym) session-ns-pattern "")
-            (name sym))
-    sym))
-
 (defn rewrite-ns-form [doc session-ns]
   (update-in doc [:blocks 0 :form] (fn [ns-form]
                                      (concat [(first ns-form)
