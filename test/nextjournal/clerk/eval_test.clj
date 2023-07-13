@@ -249,7 +249,7 @@
         (is (= [0 0] (get-values blocks))))
 
       (testing "has incremented values after swap!"
-        (is (swap! !offset inc))
+        (is (= 1 (swap! !offset inc)))
         (is (= [1 1] (get-values (:blocks (eval-string-in-session code-string :foo)))))))))
 
 (clerk/defcached my-expansive-thing
