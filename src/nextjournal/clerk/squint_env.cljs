@@ -15,7 +15,10 @@
             [nextjournal.clojure-mode.extensions.eval-region]
             [nextjournal.clojure-mode.keymap]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
+            [cherry.embed :as cherry]
             [squint.compiler :as squint]))
+
+(cherry/preserve-ns 'clojure.string)
 
 (declare eval-form)
 
