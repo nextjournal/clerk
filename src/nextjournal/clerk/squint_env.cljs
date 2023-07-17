@@ -16,7 +16,10 @@
             [nextjournal.clojure-mode.keymap]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [cherry.embed :as cherry]
-            [squint.compiler :as squint]))
+            [squint.compiler :as squint]
+            ["esm:./squint/core" :as squint-core]))
+
+(js/console.log squint-core)
 
 (cherry/preserve-ns 'clojure.string)
 

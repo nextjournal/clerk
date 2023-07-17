@@ -7,5 +7,5 @@
         io.github.babashka/sci.configs {:git/sha "0702ea5a21ad92e6d7cca6d36de84271083ea68f"}
         io.github.nextjournal/clojure-mode {:git/sha "1f55406087814a0dda6806396aa596dbe13ea302"}
         thheller/shadow-cljs {:mvn/version "2.24.1"}
-        io.github.squint-cljs/cherry {#_#_:local/root "/Users/borkdude/dev/cherry"
-                                      :git/sha "d4c5f7b45aeb55ecf90805fe3ee2757b33213657"}}}
+        io.github.squint-cljs/cherry {:local/root "/Users/borkdude/dev/cherry"
+                                      #_#_:git/sha "d4c5f7b45aeb55ecf90805fe3ee2757b33213657"}}}
