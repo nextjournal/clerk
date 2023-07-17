@@ -62,8 +62,14 @@
       (set! js/window.fib fib)
       1))
 
+;; A function in squint can be evaluated with cherry or SCI:
+
+(clerk/eval-cljs
+ {::clerk/render-evaluator :sci}
+ '(js/window.fib 10))
+
 (clerk/eval-cljs
  {::clerk/render-evaluator :cherry}
- '(prn (js/fib 10)))
+ '(js/window.fib 10))
 
 #_(clerk/with-viewer fib-viewer {::clerk/render-evaluator :squint} 25)

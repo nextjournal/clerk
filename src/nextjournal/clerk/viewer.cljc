@@ -1235,7 +1235,7 @@
                    ;; special atoms handling to support reactivity
                    (cljs.core/vector nextjournal.clerk.render/render-tagged-value (cljs.core/array-map (cljs.core/keyword "space?") false)
                                      "#object"
-                                     (cljs.core/vector nextjournal.clerk.render/inspect (cljs.core/vector (cljs.core/symbol (cljs.core/pr_str (cljs.core/type x)))
+                                     (cljs.core/vector nextjournal.clerk.render/inspect (cljs.core/vector (cljs.core/symbol (cljs.core/pr-str (cljs.core/type x)))
                                                                                                           (cljs.core/deref x))))
                    #_[nextjournal.clerk.render/render-tagged-value {:space? false}
                     "#object"
@@ -1806,7 +1806,7 @@
 
 (defn ^:private maybe-rewrite-cljs-form-for-cherry [{:as wrapped-value :nextjournal/keys [render-evaluator]}]
   (cond-> wrapped-value
-    (= :cherry render-evaluator)
+    (#{:cherry :squint} render-evaluator)
     (update :nextjournal/value
             (fn [{:as viewer-eval :keys [form]}]
               (-> viewer-eval
