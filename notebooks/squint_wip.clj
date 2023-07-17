@@ -41,6 +41,8 @@
 
 (clerk/with-viewer fib-viewer {::clerk/render-evaluator :cherry} 25)
 
+(clerk/with-viewer fib-viewer {::clerk/render-evaluator :squint} 25)
+
 #_(clerk/with-viewer fib-viewer {::clerk/render-evaluator :squint} 25)
 
 (clerk/with-viewer {:render-fn '(fn [n opts]
@@ -55,6 +57,7 @@
 (clerk/eval-cljs
  {::clerk/render-evaluator :squint}
  '(do (defn fib [x]
+        (prn (map #(:foo %) [{:foo 1} {:foo 2}]))
         (= 1 2)
         (if (= x 10)
           :dude

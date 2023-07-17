@@ -46,6 +46,7 @@
   (prn :squint-expr f)
   (let [js-str (:body (squint/compile-string*
                        (str f) {:context :expr
-                                :core-alias 'cljs.core}))]
+                                :core-alias 'squint
+                                :macros cherry-macros}))]
     (prn :squint-js-str js-str)
-    (js/global-eval js-str {:macros cherry-macros})))
+    (js/global-eval js-str)))
