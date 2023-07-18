@@ -56,6 +56,13 @@
 
 (clerk/eval-cljs
  {::clerk/render-evaluator :squint}
+ '(do (def arr [1 2 3])
+      (squint_core.aset arr 0 1)
+      (str arr)
+      1))
+
+(clerk/eval-cljs
+ {::clerk/render-evaluator :squint}
  '(do (defn fib [x]
         (prn (map #(:foo %) [{:foo 1} {:foo 2}]))
         (= 1 2)
