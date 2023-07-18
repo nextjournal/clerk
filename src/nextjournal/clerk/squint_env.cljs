@@ -17,9 +17,17 @@
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [cherry.embed :as cherry]
             [squint.compiler :as squint]
-            ["esm:./squint/core" :as squint-core]))
+            [shadow.esm :as esm]
+            ["/squint/core" :as squint-core]
+            ))
+
+(set! (.-squint_core js/globalThis) squint-core)
 
 (js/console.log squint-core)
+
+#_(-> (esm/dynamic-import "squint/core.js")
+    (.catch (fn [err]
+              (js/console.log "err" err))))
 
 (cherry/preserve-ns 'clojure.string)
 
@@ -49,7 +57,7 @@
   (prn :squint-expr f)
   (let [js-str (:body (squint/compile-string*
                        (str f) {:context :expr
-                                :core-alias 'squint
+                                :core-alias 'squint_core
                                 :macros cherry-macros}))]
     (prn :squint-js-str js-str)
     (js/global-eval js-str)))
