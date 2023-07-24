@@ -289,20 +289,31 @@
      :index-html index-html
      :build-href (if (and @webserver/!server (= out-path default-out-path)) "/build/" index-html)}))
 
+(def create-parent-dirs (comp fs/create-dirs fs/parent))
+
+(def render-files
+  #{"render.cljs"
+    "render/panel.cljs"
+    "render/code.cljs"
+    "render/navbar.cljs"
+    "render/editor.cljs"})
 
 (defn compile-css!
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
-  [{:as opts :keys [resource->url]} docs]
+  [opts docs]
   (let [tw-folder (fs/create-dirs "tw")
         tw-input (str tw-folder "/input.css")
         tw-config (str tw-folder "/tailwind.config.cjs")
-        tw-output (str tw-folder "/viewer.css")
-        tw-viewer (str tw-folder "/viewer.js")]
+        tw-output (str tw-folder "/viewer.css")]
     (spit tw-config (slurp (io/resource "stylesheets/tailwind.config.js")))
     ;; NOTE: a .cjs extension is safer in case the current npm project is of type module (like Clerk's): in this case all .js files
     ;; are treated as ES modules and this is not the case of our tw config.
     (spit tw-input (slurp (io/resource "stylesheets/viewer.css")))
-    (spit tw-viewer (slurp (get resource->url "/js/viewer.js")))
+
+    (doseq [[src dest] (map (juxt #(io/resource (str "nextjournal/clerk/" %))
+                                  #(doto (fs/path tw-folder %) create-parent-dirs)) render-files)]
+      (fs/copy src dest {:replace-existing true}))
+
     (doseq [{:keys [file viewer]} docs]
       (spit (let [path (fs/path tw-folder (str/replace file #"\.(cljc?|md)$" ".edn"))]
               (fs/create-dirs (fs/parent path))
@@ -312,9 +323,6 @@
           (try (sh "tailwindcss"
                    "--input"  tw-input
                    "--config" tw-config
-                   ;; FIXME: pass inline
-                   ;;"--content" (str tw-viewer)
-                   ;;"--content" (str tw-folder "/**/*.edn")
                    "--output" tw-output
                    "--minify")
                (catch java.io.IOException _
