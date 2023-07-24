@@ -1,6 +1,6 @@
 module.exports = {
   darkMode: "class",
-  content: ["./tw/viewer.js", "./tw/**/*.edn"],
+  content: ["./tw/**/*.{txt,js,md,clj,cljc,cljs}"],
   safelist: ['dark'],
   theme: {
     extend: {},

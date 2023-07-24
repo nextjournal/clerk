@@ -34,9 +34,9 @@
     "w3c-keyname": "2.2.4"
   },
   "devDependencies": {
-    "@tailwindcss/typography": "^0.5.0",
+    "@tailwindcss/typography": "^0.5.9",
     "postcss": "^8.4.5",
     "shadow-cljs": "^2.16.7",
-    "tailwindcss": "^3.0.9"
+    "tailwindcss": "^3.3.3"
   }
 }

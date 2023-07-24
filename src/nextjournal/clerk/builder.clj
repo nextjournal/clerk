@@ -5,6 +5,7 @@
             [clojure.java.browse :as browse]
             [clojure.java.io :as io]
             [clojure.string :as str]
+            [multiformats.base.b58 :as b58]
             [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.builder-ui :as builder-ui]
             [nextjournal.clerk.config :as config]
@@ -14,7 +15,10 @@
             [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as viewer]
-            [nextjournal.clerk.webserver :as webserver]))
+            [nextjournal.clerk.webserver :as webserver])
+  (:import (java.io IOException InputStream)
+           (java.nio.file CopyOption Files Path StandardCopyOption)))
+
 
 (def clerk-docs
   (into ["CHANGELOG.md"
@@ -215,40 +219,65 @@
      :index-html index-html
      :build-href (if (and @webserver/!server (= out-path default-out-path)) "/build/" index-html)}))
 
+(def create-parent-dirs (comp fs/create-dirs fs/parent))
+
+(def files-with-tw-classes
+  #{"viewer.cljc"
+    "render.cljs"
+    "render/panel.cljs"
+    "render/code.cljs"
+    "render/navbar.cljs"
+    "render/editor.cljs"})
+
+(defn custom-js-bundle? [resource->url]
+  (not= (get resource->url "/js/viewer.js")
+        (get @config/!asset-map "/js/viewer.js")))
+
+(defn copy-resource [src dest]
+  (Files/copy ^InputStream (io/input-stream src)
+              ^Path dest
+              ^"[Ljava.nio.file.CopyOption;"
+              (into-array CopyOption [StandardCopyOption/REPLACE_EXISTING])))
 
 (defn compile-css!
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
-  [{:as opts :keys [resource->url]} docs]
+  [{:as opts :keys [resource->url out-path]} docs]
   (let [tw-folder (fs/create-dirs "tw")
         tw-input (str tw-folder "/input.css")
         tw-config (str tw-folder "/tailwind.config.cjs")
-        tw-output (str tw-folder "/viewer.css")
-        tw-viewer (str tw-folder "/viewer.js")]
+        tw-output (str tw-folder "/viewer.css")]
     (spit tw-config (slurp (io/resource "stylesheets/tailwind.config.js")))
     ;; NOTE: a .cjs extension is safer in case the current npm project is of type module (like Clerk's): in this case all .js files
     ;; are treated as ES modules and this is not the case of our tw config.
     (spit tw-input (slurp (io/resource "stylesheets/viewer.css")))
-    (spit tw-viewer (slurp (get resource->url "/js/viewer.js")))
-    (doseq [{:keys [file viewer]} docs]
-      (spit (let [path (fs/path tw-folder (str/replace file #"\.(cljc?|md)$" ".edn"))]
-              (fs/create-dirs (fs/parent path))
-              (str path))
-            (pr-str viewer)))
-    (let [{:as ret :keys [out err exit]}
-          (try (sh "tailwindcss"
+
+    (if (custom-js-bundle? resource->url)
+      (spit (str tw-folder "/viewer.js")
+            (slurp (let [js-url (get resource->url "/js/viewer.js")]
+                     (cond->> js-url (view/relative? js-url) (str out-path fs/file-separator)))))
+      (do
+        (println "\nTailwind: using Clerk source files as content…")
+        (doseq [[src dest] (map (juxt #(io/resource (str "nextjournal/clerk/" %))
+                                      #(doto (fs/path tw-folder %) create-parent-dirs)) files-with-tw-classes)]
+          (copy-resource src dest))))
+
+    ;; copy content files
+    (doseq [{:keys [file]} docs]
+      (copy-resource file (fs/path tw-folder (str (b58/format-btc (.getBytes (str file))) ".txt"))))
+
+    (let [tw-command (if (zero? (:exit (try (sh "which tailwindcss") (catch Throwable _)))) "tailwindcss" "npx tailwindcss")
+          {:as ret :keys [out err exit]}
+          (try (sh tw-command
                    "--input"  tw-input
                    "--config" tw-config
-                   ;; FIXME: pass inline
-                   ;;"--content" (str tw-viewer)
-                   ;;"--content" (str tw-folder "/**/*.edn")
                    "--output" tw-output
                    "--minify")
-               (catch java.io.IOException _
-                 (throw (Exception. "Clerk could not find the `tailwindcss` executable. Please install it using `npm install -D tailwindcss` and try again."))))]
+               (catch IOException _
+                 (throw (Exception. "Clerk could not find the `tailwindcss` executable. Please install it using `npm install -D tailwindcss @tailwindcss/typography` and try again."))))]
       (println err)
       (println out)
-      (when-not (= 0 exit)
-        (throw (ex-info (str "Clerk build! failed\n" out "\n" err) ret))))
+      (when-not (zero? exit)
+        (throw (ex-info (str "Clerk build! failed\n" out "\n" err "\ntailwind command: " tw-command "'.\n\nEnsure tailwindcss is properly installed via `npm install -D tailwindcss @tailwindcss/typography` and try again.") ret))))
     (let [url (viewer/store+get-cas-url! (assoc opts :ext "css") (fs/read-all-bytes tw-output))]
       (fs/delete-tree tw-folder)
       (update opts :resource->url assoc "/css/viewer.css" url))))
@@ -351,9 +380,13 @@
   (print (:out (sh "tree public/build")))
 
   (build-static-app! {:compile-css? true
-                      :index "notebooks/rule_30.clj"
-                      :paths ["notebooks/hello.clj"
-                              "notebooks/markdown.md"]})
+                      :resource->url @config/!asset-map
+                      ;; shadow-cljs release viewer --config-merge '{:output-dir "public/build/js"}'
+                      ;; :resource->url {"/js/viewer.js" "js/viewer.js"}
+                      :paths ["index.md"
+                              "notebooks/links.md"
+                              "notebooks/rule_30.clj"
+                              "notebooks/viewers/image.clj"]})
   (build-static-app! {;; test against cljs release `bb build:js`
                       :resource->url {"/js/viewer.js" "/viewer.js"}
                       :paths ["notebooks/cherry.clj"]
