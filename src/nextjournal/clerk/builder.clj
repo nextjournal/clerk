@@ -291,8 +291,9 @@
 
 (def create-parent-dirs (comp fs/create-dirs fs/parent))
 
-(def render-files
-  #{"render.cljs"
+(def files-with-tw-classes
+  #{"index.clj"
+    "render.cljs"
     "render/panel.cljs"
     "render/code.cljs"
     "render/navbar.cljs"
@@ -309,11 +310,9 @@
     ;; NOTE: a .cjs extension is safer in case the current npm project is of type module (like Clerk's): in this case all .js files
     ;; are treated as ES modules and this is not the case of our tw config.
     (spit tw-input (slurp (io/resource "stylesheets/viewer.css")))
-
     (doseq [[src dest] (map (juxt #(io/resource (str "nextjournal/clerk/" %))
-                                  #(doto (fs/path tw-folder %) create-parent-dirs)) render-files)]
+                                  #(doto (fs/path tw-folder %) create-parent-dirs)) files-with-tw-classes)]
       (fs/copy src dest {:replace-existing true}))
-
     (doseq [{:keys [file viewer]} docs]
       (spit (let [path (fs/path tw-folder (str/replace file #"\.(cljc?|md)$" ".edn"))]
               (fs/create-dirs (fs/parent path))
