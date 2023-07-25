@@ -292,7 +292,7 @@
 
 (defn compile-css!
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
-  [{:as opts :keys [resource->url]} docs]
+  [{:as opts :keys [resource->url out-path]} docs]
   (let [tw-folder (fs/create-dirs "tw")
         tw-input (str tw-folder "/input.css")
         tw-config (str tw-folder "/tailwind.config.cjs")
@@ -302,7 +302,8 @@
     ;; NOTE: a .cjs extension is safer in case the current npm project is of type module (like Clerk's): in this case all .js files
     ;; are treated as ES modules and this is not the case of our tw config.
     (spit tw-input (slurp (io/resource "stylesheets/viewer.css")))
-    (spit tw-viewer (slurp (get resource->url "/js/viewer.js")))
+    (spit tw-viewer (slurp (let [js-url (get resource->url "/js/viewer.js")]
+                             (cond->> js-url (view/relative? js-url) (str out-path fs/file-separator)))))
     (doseq [{:keys [file viewer]} docs]
       (spit (let [path (fs/path tw-folder (str/replace file #"\.(cljc?|md)$" ".edn"))]
               (fs/create-dirs (fs/parent path))
