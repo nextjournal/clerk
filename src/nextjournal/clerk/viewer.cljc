@@ -437,7 +437,8 @@
 
 #?(:clj
    (defn relative-root-prefix-from [path]
-     (str "./" (str/join (repeat (get (frequencies (str path)) \/ 0) "../")))))
+     (str "./" (str/join (repeat (inc (get (frequencies (str path)) \/ 0))
+                                 "../")))))
 
 #?(:clj
    (defn map-index [{:as _opts :keys [index]} path]
