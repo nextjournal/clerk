@@ -459,4 +459,3 @@
                       :bundle? true
                       :git/sha "d60f5417"
                       :git/url "https://github.com/nextjournal/clerk"}))
-
