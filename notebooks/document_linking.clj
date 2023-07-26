@@ -9,7 +9,7 @@
  [:ol
   [:li [:a {:href (clerk/doc-url "notebooks/viewers/html")} "HTML"]]
   [:li [:a {:href (clerk/doc-url "notebooks/viewers/image")} "Images"]]
-  [:li [:a {:href (clerk/doc-url "notebooks/markdown.md" "appendix")} "Markdown / Appendix"]]
+  [:li [:a {:href (clerk/doc-url "notebooks/markdown" "appendix")} "Markdown / Appendix"]]
   [:li [:a {:href (clerk/doc-url "notebooks/how_clerk_works" "step-3:-analyzer")} "Clerk Analyzer"]]
   [:li [:a {:href (clerk/doc-url "book")} "The 📕Book"]]
   [:li [:a {:href (clerk/doc-url "")} "Homepage"]]])
