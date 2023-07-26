@@ -299,9 +299,13 @@
     "render/navbar.cljs"
     "render/editor.cljs"})
 
+(defn custom-js-bundle? [resource->url]
+  (not= (get resource->url "/js/viewer.js")
+        (get @config/!asset-map "/js/viewer.js")))
+
 (defn compile-css!
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
-  [opts docs]
+  [{:as opts :keys [resource->url out-path]} docs]
   (let [tw-folder (fs/create-dirs "tw")
         tw-input (str tw-folder "/input.css")
         tw-config (str tw-folder "/tailwind.config.cjs")
@@ -310,14 +314,21 @@
     ;; NOTE: a .cjs extension is safer in case the current npm project is of type module (like Clerk's): in this case all .js files
     ;; are treated as ES modules and this is not the case of our tw config.
     (spit tw-input (slurp (io/resource "stylesheets/viewer.css")))
-    (doseq [[src dest] (map (juxt #(io/resource (str "nextjournal/clerk/" %))
-                                  #(doto (fs/path tw-folder %) create-parent-dirs)) files-with-tw-classes)]
-      (fs/copy src dest {:replace-existing true}))
+
+    (if (custom-js-bundle? resource->url)
+      (spit (str tw-folder "/viewer.js")
+            (slurp (let [js-url (get resource->url "/js/viewer.js")]
+                     (cond->> js-url (view/relative? js-url) (str out-path fs/file-separator)))))
+      (doseq [[src dest] (map (juxt #(io/resource (str "nextjournal/clerk/" %))
+                                    #(doto (fs/path tw-folder %) create-parent-dirs)) files-with-tw-classes)]
+        (fs/copy src dest {:replace-existing true})))
+
     (doseq [{:keys [file viewer]} docs]
       (spit (let [path (fs/path tw-folder (str/replace file #"\.(cljc?|md)$" ".edn"))]
               (fs/create-dirs (fs/parent path))
               (str path))
             (pr-str viewer)))
+
     (let [{:as ret :keys [out err exit]}
           (try (sh "tailwindcss"
                    "--input"  tw-input
