@@ -436,8 +436,11 @@
        cas-url)))
 
 #?(:clj
+   (def index-path? (partial re-matches #"index.(cljc?|md)")))
+
+#?(:clj
    (defn relative-root-prefix-from [path]
-     (str "./" (when (not= "index.clj" path)
+     (str "./" (when-not (index-path? path)
                  (str/join (repeat (inc (get (frequencies (str path)) \/ 0))
                                    "../"))))))
 
