@@ -224,9 +224,9 @@
                  (dissoc :expand-paths?)
                  (and (not index) (= 1 (count expanded-paths)))
                  (assoc :index (first expanded-paths))
-                 (and (not index) (< 1 (count expanded-paths)) (every? (complement #{"index.clj"}) expanded-paths))
+                 (and (not index) (< 1 (count expanded-paths)) (every? (complement (partial re-matches #"index.(cljc?|md)")) expanded-paths))
                  (as-> opts
-                     (-> opts (assoc :index builtin-index) (update :expanded-paths conj builtin-index))))))))
+                   (-> opts (assoc :index builtin-index) (update :expanded-paths conj builtin-index))))))))
 
 #_(process-build-opts {:index 'book.clj :expand-paths? true})
 #_(process-build-opts {:paths ["notebooks/rule_30.clj"] :expand-paths? true})
