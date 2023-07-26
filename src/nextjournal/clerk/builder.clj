@@ -318,9 +318,11 @@
       (spit (str tw-folder "/viewer.js")
             (slurp (let [js-url (get resource->url "/js/viewer.js")]
                      (cond->> js-url (view/relative? js-url) (str out-path fs/file-separator)))))
-      (doseq [[src dest] (map (juxt #(io/resource (str "nextjournal/clerk/" %))
-                                    #(doto (fs/path tw-folder %) create-parent-dirs)) files-with-tw-classes)]
-        (fs/copy src dest {:replace-existing true})))
+      (do
+        (println "\nTailwind: using cljs source files as input…")
+        (doseq [[src dest] (map (juxt #(io/resource (str "nextjournal/clerk/" %))
+                                      #(doto (fs/path tw-folder %) create-parent-dirs)) files-with-tw-classes)]
+          (fs/copy src dest {:replace-existing true}))))
 
     (doseq [{:keys [file viewer]} docs]
       (spit (let [path (fs/path tw-folder (str/replace (str file) #"\.(cljc?|md)$" ".edn"))]
@@ -328,18 +330,19 @@
               (str path))
             (pr-str viewer)))
 
-    (let [{:as ret :keys [out err exit]}
-          (try (sh "tailwindcss"
+    (let [tw-command (if (zero? (:exit (try (sh "which tailwindcss") (catch Throwable _)))) "tailwindcss" "npx tailwindcss")
+          {:as ret :keys [out err exit]}
+          (try (sh tw-command
                    "--input"  tw-input
                    "--config" tw-config
                    "--output" tw-output
                    "--minify")
                (catch java.io.IOException _
-                 (throw (Exception. "Clerk could not find the `tailwindcss` executable. Please install it using `npm install -D tailwindcss` and try again."))))]
+                 (throw (Exception. "Clerk could not find the `tailwindcss` executable. Please install it using `npm install -D tailwindcss @tailwindcss/typography` and try again."))))]
       (println err)
       (println out)
-      (when-not (= 0 exit)
-        (throw (ex-info (str "Clerk build! failed\n" out "\n" err) ret))))
+      (when-not (zero? exit)
+        (throw (ex-info (str "Clerk build! failed\n" out "\n" err "\ntailwind command: " tw-command "'.\n\nEnsure tailwindcss is properly installed via `npm install -D tailwindcss @tailwindcss/typography` and try again.") ret))))
     (let [url (viewer/store+get-cas-url! (assoc opts :ext "css") (fs/read-all-bytes tw-output))]
       (fs/delete-tree tw-folder)
       (update opts :resource->url assoc "/css/viewer.css" url))))

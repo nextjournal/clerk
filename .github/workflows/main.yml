@@ -192,13 +192,14 @@ jobs:
           key: ${{ runner.os }}-maven-ssr-${{ hashFiles('deps.edn') }}
 
       - name: 🎨 Setup Tailwindcss
-        run: yarn global add tailwindcss @tailwindcss/typography
-
-      - name: 🧶 Yarn Global
-        run: echo $(yarn global dir)/node_modules
+        run: |
+          npm install
+          # we're affected by https://github.com/npm/cli/issues/5126 (touching yarn.lock messes up the frontend hash)
+          git status
+          git checkout yarn.lock
 
       - name: 🧪 Build Rule 30 Notebook with SSR
-        run: NODE_PATH=$(yarn global dir)/node_modules clojure -J-Dclojure.main.report=stdout -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :index '"notebooks/rule_30.clj"' :paths [] :ssr true :compile-css true :exclude-js true
+        run: clojure -J-Dclojure.main.report=stdout -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :index '"notebooks/rule_30.clj"' :paths [] :ssr true :compile-css true :exclude-js true
 
       - name: 🔐 Google Auth
         uses: google-github-actions/auth@v0
