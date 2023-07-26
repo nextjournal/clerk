@@ -292,8 +292,7 @@
 (def create-parent-dirs (comp fs/create-dirs fs/parent))
 
 (def files-with-tw-classes
-  #{"index.clj"
-    "render.cljs"
+  #{"render.cljs"
     "render/panel.cljs"
     "render/code.cljs"
     "render/navbar.cljs"
@@ -324,7 +323,7 @@
         (fs/copy src dest {:replace-existing true})))
 
     (doseq [{:keys [file viewer]} docs]
-      (spit (let [path (fs/path tw-folder (str/replace file #"\.(cljc?|md)$" ".edn"))]
+      (spit (let [path (fs/path tw-folder (str/replace (str file) #"\.(cljc?|md)$" ".edn"))]
               (fs/create-dirs (fs/parent path))
               (str path))
             (pr-str viewer)))
