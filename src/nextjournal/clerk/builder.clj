@@ -324,7 +324,7 @@
 
     (doseq [{:keys [file viewer]} docs]
       (spit (let [path (fs/path tw-folder (str/replace (str file) #"\.(cljc?|md)$" ".edn"))]
-              (fs/create-dirs (fs/parent path))
+              (create-parent-dirs path)
               (str path))
             (pr-str viewer)))
 
