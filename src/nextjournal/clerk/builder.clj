@@ -314,6 +314,9 @@
     ;; are treated as ES modules and this is not the case of our tw config.
     (spit tw-input (slurp (io/resource "stylesheets/viewer.css")))
 
+    ;; extract classes from built-in index
+    (fs/copy builtin-index (fs/path tw-folder "index.clj") {:replace-existing true})
+
     (if (custom-js-bundle? resource->url)
       (spit (str tw-folder "/viewer.js")
             (slurp (let [js-url (get resource->url "/js/viewer.js")]
