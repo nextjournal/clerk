@@ -458,9 +458,6 @@
   (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? true})
   (build-static-app! {:paths ["notebooks/viewers/**"]})
   (build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
-  (reset! config/!resource->url @config/!asset-map)
-  (swap! config/!resource->url dissoc "/css/viewer.css")
-
   (build-static-app! {:ssr? true
                       :exclude-js? true
                       ;; test against cljs release `bb build:js`
@@ -474,9 +471,13 @@
                       :index "notebooks/rule_30.clj"})
   (fs/delete-tree "public/build")
   (build-static-app! {:compile-css? true
-                      :index "notebooks/rule_30.clj"
-                      :paths ["notebooks/hello.clj"
-                              "notebooks/markdown.md"]})
+                      :resource->url @config/!asset-map
+                      ;; shadow-cljs release viewer --config-merge '{:output-dir "public/build/js"}'
+                      ;; :resource->url {"/js/viewer.js" "js/viewer.js"}
+                      :paths ["index.md"
+                              "notebooks/links.md"
+                              "notebooks/rule_30.clj"
+                              "notebooks/viewers/image.clj"]})
   (build-static-app! {;; test against cljs release `bb build:js`
                       :resource->url {"/js/viewer.js" "/viewer.js"}
                       :paths ["notebooks/cherry.clj"]
