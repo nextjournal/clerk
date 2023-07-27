@@ -15,7 +15,8 @@
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.clerk.webserver :as webserver]
             [nextjournal.clerk.config :as config])
-  (:import (java.io IOException)
+  (:import (java.io IOException InputStream)
+           (java.nio.file CopyOption Files Path StandardCopyOption)
            (java.net URL)))
 
 (def clerk-docs
@@ -305,6 +306,12 @@
   (not= (get resource->url "/js/viewer.js")
         (get @config/!asset-map "/js/viewer.js")))
 
+(defn copy-resource [src dest]
+  (Files/copy ^InputStream (io/input-stream src)
+              ^Path dest
+              ^"[Ljava.nio.file.CopyOption;"
+              (into-array CopyOption [StandardCopyOption/REPLACE_EXISTING])))
+
 (defn compile-css!
   "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
   [{:as opts :keys [resource->url out-path]} docs]
@@ -325,14 +332,11 @@
         (println "\nTailwind: using Clerk source files as content…")
         (doseq [[src dest] (map (juxt #(io/resource (str "nextjournal/clerk/" %))
                                       #(doto (fs/path tw-folder %) create-parent-dirs)) files-with-tw-classes)]
-          (fs/copy src dest {:replace-existing true}))))
+          (copy-resource src dest))))
 
     ;; copy content files
     (doseq [{:keys [file]} docs]
-      ;; `file` is either a relative path or a URL
-      (fs/copy file
-               (doto (fs/path tw-folder "content" (str (b58/format-btc (.getBytes (str file))) "-" (fs/file-name file)))
-                 create-parent-dirs println) {:replace-existing true}))
+      (copy-resource file (fs/path tw-folder (str (b58/format-btc (.getBytes (str file))) ".txt"))))
 
     (let [tw-command (if (zero? (:exit (try (sh "which tailwindcss") (catch Throwable _)))) "tailwindcss" "npx tailwindcss")
           {:as ret :keys [out err exit]}
