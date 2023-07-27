@@ -33,7 +33,7 @@ The helper `clerk/doc-url` allows to reference notebooks by path. We currently s
 
 ```clojure
 (clerk/html
- [:ol
+ [:ol.bg-lime-100
   [:li [:a {:href (clerk/doc-url 'nextjournal.clerk.home)} "Home"]]
   [:li [:a {:href (clerk/doc-url "notebooks/viewers/html")} "HTML"]]
   [:li [:a {:href (clerk/doc-url "notebooks/viewers/image")} "Images"]]
@@ -64,4 +64,3 @@ Links should work inside markdown as well.
 
 * [HTML](../notebooks/viewers/html) (relative link)
 * [HTML](clerk/doc-url,"notebooks/viewers/html") (doc url, currently not functional)
-

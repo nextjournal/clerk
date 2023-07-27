@@ -199,7 +199,7 @@ jobs:
           git checkout yarn.lock
 
       - name: 🧪 Build Rule 30 Notebook with SSR
-        run: clojure -J-Dclojure.main.report=stdout -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :index '"notebooks/rule_30.clj"' :paths [] :ssr true :compile-css true :exclude-js true
+        run: clojure -J-Dclojure.main.report=stdout -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :paths '["notebooks/rule_30.clj" "notebooks/links.md"]' :ssr true :compile-css true :exclude-js true
 
       - name: 🔐 Google Auth
         uses: google-github-actions/auth@v0
