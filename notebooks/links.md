@@ -33,7 +33,7 @@ The helper `clerk/doc-url` allows to reference notebooks by path. We currently s
 
 ```clojure
 (clerk/html
- [:ol.bg-lime-300
+ [:ol.bg-lime-200
   [:li [:a {:href (clerk/doc-url 'nextjournal.clerk.home)} "Home"]]
   [:li [:a {:href (clerk/doc-url "notebooks/viewers/html")} "HTML"]]
   [:li [:a {:href (clerk/doc-url "notebooks/viewers/image")} "Images"]]

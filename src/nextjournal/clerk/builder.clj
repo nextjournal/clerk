@@ -6,6 +6,7 @@
             [clojure.java.browse :as browse]
             [clojure.java.io :as io]
             [clojure.string :as str]
+            [multiformats.base.b58 :as b58]
             [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.builder-ui :as builder-ui]
             [nextjournal.clerk.eval :as eval]
@@ -328,8 +329,9 @@
 
     ;; copy content files
     (doseq [{:keys [file]} docs]
-      (fs/copy file                                         ;; file is either a relative path or an URL
-               (doto (fs/path tw-folder (str/replace (str file) #"^file:/" ""))
+      ;; `file` is either a relative path or a URL
+      (fs/copy file
+               (doto (fs/path tw-folder "content" (str (b58/format-btc (.getBytes (str file))) "-" (fs/file-name file)))
                  create-parent-dirs println) {:replace-existing true}))
 
     (let [tw-command (if (zero? (:exit (try (sh "which tailwindcss") (catch Throwable _)))) "tailwindcss" "npx tailwindcss")
