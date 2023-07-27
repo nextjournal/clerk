@@ -14,7 +14,8 @@
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.clerk.webserver :as webserver]
             [nextjournal.clerk.config :as config])
-  (:import (java.net URL)))
+  (:import (java.io IOException)
+           (java.net URL)))
 
 (def clerk-docs
   (into ["CHANGELOG.md"
@@ -292,7 +293,8 @@
 (def create-parent-dirs (comp fs/create-dirs fs/parent))
 
 (def files-with-tw-classes
-  #{"render.cljs"
+  #{"viewer.cljc"
+    "render.cljs"
     "render/panel.cljs"
     "render/code.cljs"
     "render/navbar.cljs"
@@ -314,24 +316,21 @@
     ;; are treated as ES modules and this is not the case of our tw config.
     (spit tw-input (slurp (io/resource "stylesheets/viewer.css")))
 
-    ;; extract classes from built-in index
-    (fs/copy builtin-index (fs/path tw-folder "index.clj") {:replace-existing true})
-
     (if (custom-js-bundle? resource->url)
       (spit (str tw-folder "/viewer.js")
             (slurp (let [js-url (get resource->url "/js/viewer.js")]
                      (cond->> js-url (view/relative? js-url) (str out-path fs/file-separator)))))
       (do
-        (println "\nTailwind: using cljs source files as input…")
+        (println "\nTailwind: using Clerk source files as content…")
         (doseq [[src dest] (map (juxt #(io/resource (str "nextjournal/clerk/" %))
                                       #(doto (fs/path tw-folder %) create-parent-dirs)) files-with-tw-classes)]
           (fs/copy src dest {:replace-existing true}))))
 
-    (doseq [{:keys [file viewer]} docs]
-      (spit (let [path (fs/path tw-folder (str/replace (str file) #"\.(cljc?|md)$" ".edn"))]
-              (create-parent-dirs path)
-              (str path))
-            (pr-str viewer)))
+    ;; copy content files
+    (doseq [{:keys [file]} docs]
+      (fs/copy file                                         ;; file is either a relative path or an URL
+               (doto (fs/path tw-folder (str/replace (str file) #"^file:/" ""))
+                 create-parent-dirs println) {:replace-existing true}))
 
     (let [tw-command (if (zero? (:exit (try (sh "which tailwindcss") (catch Throwable _)))) "tailwindcss" "npx tailwindcss")
           {:as ret :keys [out err exit]}
@@ -340,7 +339,7 @@
                    "--config" tw-config
                    "--output" tw-output
                    "--minify")
-               (catch java.io.IOException _
+               (catch IOException _
                  (throw (Exception. "Clerk could not find the `tailwindcss` executable. Please install it using `npm install -D tailwindcss @tailwindcss/typography` and try again."))))]
       (println err)
       (println out)
