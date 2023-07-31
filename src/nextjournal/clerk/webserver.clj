@@ -197,7 +197,8 @@
 (defn maybe-add-extension [nav-path]
   (if (and (string? nav-path)
            (or (str/starts-with? nav-path "'")
-               (fs/exists? nav-path)))
+               (and (fs/exists? nav-path)
+                    (not (fs/directory? nav-path)))))
     nav-path
     (find-first-existing-file (map #(str (fs/file nav-path) "." %) ["md" "clj" "cljc"]))))
 
