@@ -147,20 +147,27 @@
   (update doc :blocks (partial map (fn [{:as cell :keys [type text var form]}]
                                      (cond-> cell
                                        (= :code type)
-                                       (assoc :result                                                
+                                       (assoc :result
                                               {:nextjournal/value (cond->> (eval form)
                                                                     var (hash-map :nextjournal.clerk/var-from-def))}))))))
 
 (defn eval-notebook [code]
-  (->> code
-       (parser/parse-clojure-string {:doc? true})
-       (analyze-doc)
-       (eval-blocks)
-       (v/with-viewer v/notebook-viewer)))
+  (new js/Promise
+       (fn [resolve reject]
+         (try
+           (resolve
+             (->> code
+                  (parser/parse-clojure-string {:doc? true})
+                  (analyze-doc)
+                  (eval-blocks)
+                  (v/with-viewer v/notebook-viewer)
+                  v/present))
+           (catch js/Error error
+             (reject error))))))
 
 (defonce bar-height 26)
 
-(defn view [code-string]
+(defn view [code-string {:as _opts :keys [eval-notebook-fn]}]
   (let [!notebook (hooks/use-state nil)
         !eval-result (hooks/use-state nil)
         !container-el (hooks/use-ref nil)
@@ -170,9 +177,10 @@
         !editor-panel (hooks/use-ref nil)
         !notebook-panel (hooks/use-ref nil)
         on-result #(reset! !eval-result %)
-        on-eval #(reset! !notebook (try
-                                     (eval-notebook (.. % -state -doc toString))
-                                     (catch js/Error error (v/html [render/error-view error]))))]
+        on-eval (fn [^js editor-view]
+                  (.. ((or eval-notebook-fn eval-notebook) (.. editor-view -state -doc toString))
+                      (then (fn [result] (reset! !notebook result)))
+                      (catch (fn [error] (reset! !notebook (v/html [render/error-view error]))))))]
     (hooks/use-effect
      (fn []
        (let [^js view
@@ -229,7 +237,7 @@
          :style {:width "50vw" :height (str "calc(100vh - " (* bar-height 2) "px)")}}
         (when-let [notebook @!notebook]
           [:> render/ErrorBoundary {:hash (gensym)}
-           [render/inspect notebook]])]]
+           [render/inspect-presented notebook]])]]
       [:div.absolute.left-0.bottom-0.w-screen.font-mono.text-white.border-t.dark:border-slate-600
        [:div.bg-slate-900.dark:bg-slate-800.flex.px-4.font-mono.gap-4.items-center.text-white
         {:class "text-[12px]" :style {:height bar-height}}
