@@ -14,6 +14,7 @@
             [clojure.string :as str]
             [edamame.core :as edamame]
             [goog.object]
+            [goog.events]
             [nextjournal.clerk.cherry-env :as cherry-env]
             [nextjournal.clerk.parser]
             [nextjournal.clerk.render :as render]
@@ -205,7 +206,9 @@
     (swap! render/!doc assoc ::connection-status "Reconnecting…"))
   (let [ws (js/WebSocket. ws-url)]
     (set! (.-onmessage ws) onmessage)
-    (set! (.-onopen ws) (fn [e] (swap! render/!doc dissoc ::connection-status ::failed-attempts)))
+    (set! (.-onopen ws) (fn [e]
+                          (swap! render/!doc dissoc ::connection-status ::failed-attempts)
+                          (.dispatchEvent js/window (new js/Event "clerk.wsopen"))))
     (set! (.-onclose ws) (fn [e]
                            (let [timeout (reconnect-timeout (::failed-attempts @render/!doc 0))]
                              (swap! render/!doc

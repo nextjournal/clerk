@@ -5,6 +5,7 @@
             ["@codemirror/view" :refer [keymap placeholder]]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
+            [goog.events]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.render :as render]
             [nextjournal.clerk.render.code :as code]
@@ -220,8 +221,7 @@
                                                                   {:key "Escape"
                                                                    :run #(reset! !show-docstring? false)}]))]))
                             @!container-el))]
-         ;; FIXME! we need a callback on ws ready
-         (js/setTimeout #(on-eval view) 500)
+         (goog.events/listenOnce js/window "clerk.wsopen" #(on-eval view) false)
          #(.destroy view))))
     (code/use-dark-mode !view)
     [:<>
