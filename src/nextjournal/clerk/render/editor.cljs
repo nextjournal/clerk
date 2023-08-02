@@ -180,7 +180,8 @@
         on-eval (fn [^js editor-view]
                   (.. ((or eval-notebook-fn eval-notebook) (.. editor-view -state -doc toString))
                       (then (fn [result] (reset! !notebook result)))
-                      (catch (fn [error] (reset! !notebook (v/html [render/error-view error]))))))]
+                      (catch (fn [error]
+                               (reset! !notebook (v/present (v/html [render/error-view error])))))))]
     (hooks/use-effect
      (fn []
        (let [^js view
