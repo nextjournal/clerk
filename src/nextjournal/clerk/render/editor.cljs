@@ -22,30 +22,21 @@
             [shadow.esm]))
 
 (defn eval-string
-  ([source] (sci/eval-string* (sci.ctx-store/get-ctx) source))
+  ([source] (eval-string (sci.ctx-store/get-ctx) source))
   ([ctx source]
-   (when-some [code (not-empty (str/trim source))]
-     (try {:result (sci/eval-string* ctx code)}
-          (catch js/Error e
-            {:error (str (.-message e))})))))
+   (new js/Promise
+        (fn [resolve reject]
+          (if-some [code (not-empty (str/trim source))]
+            (try (resolve (v/present (sci/eval-string* ctx code)))
+                 (catch js/Error e
+                   (reject e)))
+            (resolve nil))))))
 
-(j/defn eval-at-cursor [on-result ^:js {:keys [state]}]
-  (some->> (eval-region/cursor-node-string state)
-           (eval-string)
-           (on-result))
-  true)
-
-(j/defn eval-top-level [on-result ^:js {:keys [state]}]
-  (some->> (eval-region/top-level-string state)
-           (eval-string)
-           (on-result))
-  true)
-
-(j/defn eval-cell [on-result ^:js {:keys [state]}]
-  (-> (.-doc state)
-      (str)
-      (eval-string)
-      (on-result))
+(j/defn eval-region* [get-region-fn eval-fn on-result-fn ^:js {:keys [state]}]
+  (when-some [code-str (get-region-fn state)]
+    (.. (eval-fn code-str)
+        (then on-result-fn)
+        (catch (fn [error] (on-result-fn (v/present (v/html [render/error-view error])))))))
   true)
 
 (defn autocomplete [^js context]
@@ -176,7 +167,7 @@
     [:circle.opacity-25 {:cx "12" :cy "12" :r "10" :stroke "currentColor" :stroke-width "4"}]
     [:path.opacity-75 {:fill "currentColor" :d "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"}]]])
 
-(defn view [code-string {:as _opts :keys [eval-notebook-fn]}]
+(defn view [code-string {:as _opts :keys [eval-notebook-fn eval-string-fn]}]
   (let [!notebook (hooks/use-state nil)
         !eval-result (hooks/use-state nil)
         !container-el (hooks/use-ref nil)
@@ -213,8 +204,8 @@
                                                                  [{:key "Alt-Enter"
                                                                    :run on-eval}
                                                                   {:key "Mod-Enter"
-                                                                   :shift (partial eval-top-level on-result)
-                                                                   :run (partial eval-at-cursor on-result)}
+                                                                   :shift (partial eval-region* eval-region/top-level-string (or eval-string-fn eval-string) on-result)
+                                                                   :run (partial eval-region* eval-region/cursor-node-string (or eval-string-fn eval-string) on-result)}
                                                                   {:key "Mod-i"
                                                                    :preventDefault true
                                                                    :run #(swap! !show-docstring? not)}
@@ -294,4 +285,4 @@
       (when-let [result @!eval-result]
         [:div.border-t.border-slate-300.dark:border-slate-600.px-4.py-2.flex-shrink-0.absolute.left-0.w-screen.bg-white.dark:bg-slate-950
          {:style {:box-shadow "0 -2px 3px 0 rgb(0 0 0 / 0.025)" :bottom (* bar-height 2)}}
-         [render/inspect result]])]]))
+         [render/inspect-presented result]])]]))
