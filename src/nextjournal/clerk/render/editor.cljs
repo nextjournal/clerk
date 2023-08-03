@@ -221,7 +221,7 @@
                                                                   {:key "Escape"
                                                                    :run #(reset! !show-docstring? false)}]))]))
                             @!container-el))]
-         (goog.events/listenOnce js/window "clerk.wsopen" #(on-eval view) false)
+         (on-eval view)
          #(.destroy view))))
     (code/use-dark-mode !view)
     [:<>

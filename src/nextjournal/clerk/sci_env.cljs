@@ -201,15 +201,26 @@
 (defn reconnect-timeout [failed-connection-attempts]
   (get [0 0 100 500 5000] failed-connection-attempts 10000))
 
+(def !ws-connection
+  (atom {:outbox (.-EMPTY cljs.core.PersistentQueue) :connected? false}))
+
+(defn ws-connected? [] (:connected? @!ws-connection))
+(defn flush-ws-outbox []
+  (let [out (:outbox @!ws-connection)]
+    (swap! !ws-connection assoc :outbox (.-EMPTY cljs.core.PersistentQueue))
+    out))
+
 (defn ^:export connect [ws-url]
   (when (::failed-attempts @render/!doc)
     (swap! render/!doc assoc ::connection-status "Reconnecting…"))
   (let [ws (js/WebSocket. ws-url)]
     (set! (.-onmessage ws) onmessage)
     (set! (.-onopen ws) (fn [e]
+                          (swap! !ws-connection assoc :connected? true)
                           (swap! render/!doc dissoc ::connection-status ::failed-attempts)
-                          (.dispatchEvent js/window (new js/Event "clerk.wsopen"))))
+                          (doseq [msg (flush-ws-outbox)] (.send ws msg))))
     (set! (.-onclose ws) (fn [e]
+                           (swap! !ws-connection assoc :connected? false)
                            (let [timeout (reconnect-timeout (::failed-attempts @render/!doc 0))]
                              (swap! render/!doc
                                     (fn [doc]
@@ -220,7 +231,11 @@
                                           (update ::failed-attempts (fnil inc 0)))))
                              (js/setTimeout #(connect ws-url) timeout))))
     (set! (.-clerk_ws ^js goog/global) ws)
-    (set! (.-ws_send ^js goog/global) (fn [msg] (.send ws msg)))))
+    (set! (.-ws_send ^js goog/global)
+          (fn [msg]
+            (if (ws-connected?)
+              (.send ws msg)
+              (swap! !ws-connection update :outbox conj msg))))))
 
 (sci.ctx-store/reset-ctx! (sci/init initial-sci-opts))
 
