@@ -312,11 +312,13 @@
                                                                  [{:key "Alt-Enter"
                                                                    :run show-notebook}
                                                                   {:key "Mod-Enter"
-                                                                   :shift (partial eval-region* eval-region/top-level-string (or eval-string-fn eval-string) on-result)
-                                                                   :run (partial eval-region* eval-region/cursor-node-string (or eval-string-fn eval-string) on-result)}
-                                                                  {:key "Mod-i"
-                                                                   :preventDefault true
-                                                                   :run #(swap! !show-docstring? not)}
+                                                                   :shift (fn eval-top-level-form [state]
+                                                                            (eval-region* eval-region/top-level-string (or eval-string-fn eval-string) on-result state))
+                                                                   :run (fn eval-form-at-cursor [state]
+                                                                          (eval-region* eval-region/cursor-node-string (or eval-string-fn eval-string) on-result state))}
+                                                                  #_#_{:key "Mod-i"
+                                                                       :preventDefault true
+                                                                       :run #(swap! !show-docstring? not)}
                                                                   {:key "Escape"
                                                                    :run #(reset! !show-docstring? false)}]))]))
                             @!container-el))]
