@@ -16,6 +16,8 @@
             [nextjournal.clojure-mode.extensions.eval-region :as eval-region]
             [nextjournal.clojure-mode.keymap :as clojure-mode.keymap]
             [nextjournal.command-bar :as command-bar]
+            [nextjournal.command-bar.keybind :as keybind]
+            [reagent.core :as reagent]
             [rewrite-clj.node :as n]
             [rewrite-clj.parser :as p]
             [sci.core :as sci]
@@ -149,14 +151,119 @@
        (fn [resolve reject]
          (try
            (resolve
-             (->> code
-                  (parser/parse-clojure-string {:doc? true})
-                  (analyze-doc)
-                  (eval-blocks)
-                  (v/with-viewer v/notebook-viewer)
-                  v/present))
+            (->> code
+                 (parser/parse-clojure-string {:doc? true})
+                 (analyze-doc)
+                 (eval-blocks)
+                 (v/with-viewer v/notebook-viewer)
+                 v/present))
            (catch js/Error error
              (reject error))))))
+
+(defonce !eval-result (reagent/atom nil))
+
+(defn keys-view [spec]
+  (into [:span.inline-flex {:class "gap-[2px]"}]
+        (map (fn [k] [:span.rounded-sm.shadow.border.border-slate-300.shadow-inner.font-bold.leading-none.text-center
+                     {:class "px-[3px] py-[1px] min-w-[16px]"} k]))
+        (str/split (command-bar/get-pretty-spec spec) #" ")))
+
+(defn doc-view [sym]
+  [:div.font-mono {:class "text-[12px]"}
+   (let [{:as info :keys [arglists-str doc ns name]} (sci-completions/info {:sym sym :ns "user" :ctx (sci.ctx-store/get-ctx)})]
+     (if ns
+       [:div
+        [:div.flex.gap-2
+         [:div.font-bold ns "/" name]
+         [:div arglists-str]]
+        (let [bindings (keep (fn [{:as binding :keys [var]}]
+                               (when-let [{:keys [ns name]} (meta var)]
+                                 (when (and (= ns (:ns info)) (= name (:name info)))
+                                   binding)))
+                             @command-bar/!global-bindings)]
+          (when (seq bindings)
+            (into [:div.mt-3 "It is bound to "]
+                  (map-indexed (fn [i {:keys [spec]}]
+                                 [:<>
+                                  (when-not (zero? i)
+                                    [:span ", and "])
+                                  [keys-view spec]]))
+                  bindings)))
+        (when doc
+          [:div.mt-3 doc])]
+       [:div "No docs found for " [:span.font-bold sym] "."]))])
+
+(defn doc
+  "Shows bindings and doc for a given function."
+  []
+  (command-bar/toggle-interactive!
+   (fn [!state]
+     (hooks/use-effect
+      (fn []
+        (keybind/disable!)
+        #(keybind/enable!)))
+     [:<>
+      [command-bar/label {:text "Which name:"}]
+      [command-bar/input !state {:placeholder "Enter name…"
+                                 :default-value (or (:doc/name @!state) "")
+                                 :on-key-down (fn [event]
+                                                (when (= (.-key event) "Enter")
+                                                  (swap! !eval-result assoc :result (reagent/as-element [doc-view (:doc/name @!state)])))
+                                                (when (contains? #{"Escape" "Enter"} (.-key event))
+                                                  (.preventDefault event)
+                                                  (.stopPropagation event)
+                                                  (command-bar/kill-interactive!)
+                                                  (swap! !state dissoc :doc/name)))
+                                 :on-input (fn [event]
+                                             (swap! !state assoc :doc/name (.. event -target -value)))}]])))
+
+(defn key-description [{:keys [codemirror? run spec var]}]
+  [:div.font-mono {:class "text-[12px]"}
+   [:div
+    [keys-view spec]
+    " is bound to "
+    (when codemirror?
+      [:span "CodeMirror's "])
+    [:span
+     (when-let [ns (some-> var meta :ns)]
+       [:span ns "/"])
+     [:span.font-bold (command-bar/get-fn-name run)]]
+    (when codemirror?
+      " command")]
+   (when-let [docs (some-> var meta :doc)]
+     [:div.mt-3 docs])])
+
+(defn describe-key
+  "Describes which function a key or sequence of keys is bound to. Shows the bound function's docstring when available."
+  []
+  (command-bar/toggle-interactive!
+   (fn [!state]
+     (hooks/use-effect
+      (fn []
+        (keybind/disable!)
+        #(keybind/enable!)))
+     [:<>
+      [command-bar/label {:text "Describe key:"}]
+      [command-bar/input !state {:placeholder "Press a key or binding…"
+                                 :default-value (if-let [spec (:describe-key/spec @!state)]
+                                                  (command-bar/get-pretty-spec spec)
+                                                  "")
+                                 :on-key-down (fn [event]
+                                                (.preventDefault event)
+                                                (.stopPropagation event)
+                                                (if (= (.-key event) "Escape")
+                                                  (command-bar/kill-interactive!)
+                                                  (let [chord (keybind/e->chord event)
+                                                        spec (cond-> chord
+                                                               (command-bar/mod-only-chord? chord) (dissoc :button)
+                                                               true command-bar/chord->spec)]
+                                                    (swap! !state assoc :describe-key/spec spec))))
+                                 :on-key-up (fn [event]
+                                              (when-let [spec (:describe-key/spec @!state)]
+                                                (when-let [binding (command-bar/get-binding-from-spec spec)]
+                                                  (swap! !eval-result assoc :result (reagent/as-element [key-description binding])))
+                                                (swap! !state dissoc :describe-key/spec)
+                                                (command-bar/kill-interactive!)))}]])))
 
 (defonce bar-height 26)
 
@@ -170,19 +277,18 @@
 
 (defn view [code-string {:as _opts :keys [eval-notebook-fn eval-string-fn]}]
   (let [!notebook (hooks/use-state nil)
-        !eval-result (hooks/use-state nil)
         !container-el (hooks/use-ref nil)
         !info (hooks/use-state nil)
         !show-docstring? (hooks/use-state false)
         !view (hooks/use-ref nil)
         !editor-panel (hooks/use-ref nil)
         !notebook-panel (hooks/use-ref nil)
-        on-result #(reset! !eval-result %)
-        on-eval (fn [^js editor-view]
-                  (.. ((or eval-notebook-fn eval-notebook) (.. editor-view -state -doc toString))
-                      (then (fn [result] (reset! !notebook result)))
-                      (catch (fn [error]
-                               (reset! !notebook (v/present (v/html [render/error-view error])))))))]
+        on-result #(reset! !eval-result {:result %})
+        show-notebook (fn [^js editor-view]
+                        (.. ((or eval-notebook-fn eval-notebook) (.. editor-view -state -doc toString))
+                            (then (fn [result] (reset! !notebook result)))
+                            (catch (fn [error]
+                                     (reset! !notebook (v/present (v/html [render/error-view error])))))))]
     (hooks/use-effect
      (fn []
        (let [^js view
@@ -204,7 +310,7 @@
                                                            (.of keymap
                                                                 (j/lit
                                                                  [{:key "Alt-Enter"
-                                                                   :run on-eval}
+                                                                   :run show-notebook}
                                                                   {:key "Mod-Enter"
                                                                    :shift (partial eval-region* eval-region/top-level-string (or eval-string-fn eval-string) on-result)
                                                                    :run (partial eval-region* eval-region/cursor-node-string (or eval-string-fn eval-string) on-result)}
@@ -214,7 +320,7 @@
                                                                   {:key "Escape"
                                                                    :run #(reset! !show-docstring? false)}]))]))
                             @!container-el))]
-         (on-eval view)
+         (show-notebook view)
          #(.destroy view))))
     (code/use-dark-mode !view)
     [:<>
@@ -237,14 +343,18 @@
                                                (j/assoc-in! @!notebook-panel [:style :width] (str (- (.-offsetWidth @!notebook-panel) dx) "px")))}]]]
        [:div.bg-white.dark:bg-slate-950.bg-white.flex.flex-col.overflow-y-auto
         {:ref !notebook-panel
-         :style {:width "50vw" :height (str "calc(100vh - " (* bar-height 2) "px)")}}
+         :style {:width "50vw" :height (str "calc(100vh - " bar-height "px)")}}
         (if-some [notebook @!notebook]
           [:> render/ErrorBoundary {:hash (gensym)}
            [render/inspect-presented notebook]]
           [:div.flex.flex-col.items-center.justify-items-center.my-10
            [spinner-svg {:size "100px"}]])]]
-      (when-let [result @!eval-result]
+      (when-let [{:keys [error result]} @!eval-result]
         [:div.border-t.border-slate-300.dark:border-slate-600.px-4.py-2.flex-shrink-0.absolute.left-0.w-screen.bg-white.dark:bg-slate-950
-         {:style {:box-shadow "0 -2px 3px 0 rgb(0 0 0 / 0.025)" :bottom (* bar-height 2)}}
-         [render/inspect-presented result]])
-      [command-bar/view {}]]]))
+         {:style {:box-shadow "0 -2px 3px 0 rgb(0 0 0 / 0.025)" :bottom bar-height}}
+         (cond
+           error [:div.red error]
+           (render/valid-react-element? result) result
+           :else (render/inspect result))])
+      [command-bar/view {"Alt-d" #'describe-key
+                         "Shift-Alt-d" #'doc}]]]))
