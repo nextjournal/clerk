@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.render.editor
   (:require ["@codemirror/autocomplete" :refer [autocompletion]]
+            ["@codemirror/commands" :refer [history historyKeymap]]
             ["@codemirror/language" :refer [syntaxTree]]
             ["@codemirror/state" :refer [EditorState]]
             ["@codemirror/view" :refer [keymap placeholder]]
@@ -296,6 +297,7 @@
                             (code/make-state code-string
                                              (.concat code/default-extensions
                                                       #js [(placeholder "Show code with Option+Return")
+                                                           (history)
                                                            (.of keymap clojure-mode.keymap/paredit)
                                                            completion-source
                                                            command-bar/extension
@@ -307,6 +309,7 @@
                                                                        (reset! !info (some-> (info-at-point @!view (.-to (first (.. tr -selection asSingle -ranges)))))))
                                                                      #js {})))
                                                            (eval-region/extension {:modifier "Meta"})
+                                                           (.of keymap historyKeymap)
                                                            (.of keymap
                                                                 (j/lit
                                                                  [{:key "Alt-Enter"
