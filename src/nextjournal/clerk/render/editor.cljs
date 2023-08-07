@@ -310,6 +310,7 @@
                                                                      #js {})))
                                                            (eval-region/extension {:modifier "Meta"})
                                                            (.of keymap historyKeymap)
+                                                           (.of keymap clojure-mode.keymap/complete)
                                                            (.of keymap
                                                                 (j/lit
                                                                  [{:key "Alt-Enter"
