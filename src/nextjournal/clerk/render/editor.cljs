@@ -15,6 +15,7 @@
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clojure-mode.extensions.eval-region :as eval-region]
             [nextjournal.clojure-mode.keymap :as clojure-mode.keymap]
+            [nextjournal.command-bar :as command-bar]
             [rewrite-clj.node :as n]
             [rewrite-clj.parser :as p]
             [sci.core :as sci]
@@ -191,6 +192,7 @@
                                                       #js [(placeholder "Show code with Option+Return")
                                                            (.of keymap clojure-mode.keymap/paredit)
                                                            completion-source
+                                                           command-bar/extension
                                                            (.. EditorState -transactionExtender
                                                                (of (fn [^js tr]
                                                                      (when (.-selection tr)
@@ -224,7 +226,7 @@
        [:div.relative
         {:ref !editor-panel :style {:width "50vw"}}
         [:div.bg-slate-200.border-r.border-slate-300.dark:border-slate-600.px-4.py-3.dark:bg-slate-950.overflow-y-auto.relative
-         {:style {:height (str "calc(100vh - " (* bar-height 2) "px)")}}
+         {:style {:height (str "calc(100vh - " bar-height "px)")}}
          [:div.h-screen {:ref !container-el}]]
         [:div.absolute.right-0.top-0.bottom-0.z-1000.group
          {:class "w-[9px] -mr-[5px]"}
@@ -241,48 +243,8 @@
            [render/inspect-presented notebook]]
           [:div.flex.flex-col.items-center.justify-items-center.my-10
            [spinner-svg {:size "100px"}]])]]
-      [:div.absolute.left-0.bottom-0.w-screen.font-mono.text-white.border-t.dark:border-slate-600
-       [:div.bg-slate-900.dark:bg-slate-800.flex.px-4.font-mono.gap-4.items-center.text-white
-        {:class "text-[12px]" :style {:height bar-height}}
-        [:div.flex.gap-1.items-center
-         "Eval notebook"
-         [:div.font-inter.text-slate-300 "⌥↩"]]
-        [:div.flex.gap-1.items-center
-         "Eval at cursor"
-         [:div.font-inter.text-slate-300 "⌘↩"]]
-        [:div.flex.gap-1.items-center
-         "Eval top level"
-         [:div.font-inter.text-slate-300 "⇧⌘↩"]]
-        [:div.flex.gap-1.items-center
-         "Slurp forward"
-         [:div.font-inter.text-slate-300 "Ctrl→"]]
-        [:div.flex.gap-1.items-center
-         "Barf forward"
-         [:div.font-inter.text-slate-300 "Ctrl←"]]
-        [:div.flex.gap-1.items-center
-         "Splice"
-         [:div.font-inter.text-slate-300 "⌥S"]]
-        [:div.flex.gap-1.items-center
-         "Expand selection"
-         [:div.font-inter.text-slate-300 "⌘1"]]
-        [:div.flex.gap-1.items-center
-         "Contract selection"
-         [:div.font-inter.text-slate-300 "⌘2"]]]
-       [:div.w-screen.bg-slate-800.dark:bg-slate-950.px-4.font-mono.items-center.text-white.flex.items-center
-        {:class "text-[12px] py-[4px]" :style {:min-height bar-height}}
-        (when-let [{:keys [name arglists-str doc]} @!info]
-          [:div
-           [:div.flex.gap-4
-            [:div.flex.gap-2
-             [:span.font-bold (str name)]
-             [:span arglists-str]]
-            (when (and doc (not @!show-docstring?))
-              [:div.flex.gap-1.items-center.text-slate-300
-               "Show docstring"
-               [:div.font-inter.text-slate-400.flex-shrink-0 "⌘I"]])]
-           (when (and doc @!show-docstring?)
-             [:div.text-slate-300.mt-2.mb-1.leading-relaxed {:class "max-w-[640px]"} doc])])]]
       (when-let [result @!eval-result]
         [:div.border-t.border-slate-300.dark:border-slate-600.px-4.py-2.flex-shrink-0.absolute.left-0.w-screen.bg-white.dark:bg-slate-950
          {:style {:box-shadow "0 -2px 3px 0 rgb(0 0 0 / 0.025)" :bottom (* bar-height 2)}}
-         [render/inspect-presented result]])]]))
+         [render/inspect-presented result]])
+      [command-bar/view {}]]]))
