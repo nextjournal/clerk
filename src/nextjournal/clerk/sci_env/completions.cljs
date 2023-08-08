@@ -133,6 +133,6 @@
              :status ["done"]})
           {:status ["done"]})))
     (catch :default e
-      (js/console.error "ERROR" e)
+      #_(js/console.error "ERROR" e)
       {:completions []
        :status ["done"]})))
