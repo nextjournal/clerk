@@ -298,7 +298,6 @@
                                              (.concat code/default-extensions
                                                       #js [(placeholder "Show code with Option+Return")
                                                            (history)
-                                                           (.of keymap clojure-mode.keymap/paredit)
                                                            completion-source
                                                            command-bar/extension
                                                            (.. EditorState -transactionExtender
