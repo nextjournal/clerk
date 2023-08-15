@@ -1621,9 +1621,10 @@
                                   (contains? #{:map-entry} prev-type) (or content-length 0)
                                   (vector? value) 2
                                   :else 1)))]
-    (if (vector? value)
-      (reduce compute-expanded-at state' value)
-      state')))
+    (reduce compute-expanded-at state' (cond
+                                         (vector? value) value
+                                         (map? value) (vals value)))))
+
 
 (defn collect-expandable-paths [state wrapped-value]
   (if-let [{:nextjournal/keys [value] :keys [path]} (when (wrapped-value? wrapped-value)
