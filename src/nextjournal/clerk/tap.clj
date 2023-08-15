@@ -1,6 +1,7 @@
 ;; # 🚰 Tap Inspector
 (ns nextjournal.clerk.tap
-  {:nextjournal.clerk/visibility {:code :hide :result :hide}}
+  {:nextjournal.clerk/visibility {:code :hide :result :hide}
+   :nextjournal.clerk/auto-expand-results? true}
   (:require [clojure.core :as core]
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v])
