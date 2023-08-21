@@ -325,6 +325,11 @@
                                                                   {:key "Escape"
                                                                    :run #(reset! !show-docstring? false)}]))]))
                             @!container-el))]
+
+         (js/console.log :keys
+                         (->> (.. view -state (facet keymap) flat (filter #(and (or (.-key %) (.-mac %)) (.-run %) (.. % -run -name))))
+                              (map #(.. % -run -name))))
+
          (show-notebook view)
          #(.destroy view))))
     (code/use-dark-mode !view)
