@@ -940,7 +940,7 @@ v/table-viewer
 ;; Also notably, there is a `:compile-css` option which compiles a css
 ;; file containing only the used CSS classes from the generated
 ;; markup. (Otherwise, Clerk is using Tailwind's Play CDN script which
-;; can the page flicker, initially.)
+;; can make the page flicker, initially.)
 
 ;; If set, the `:ssr` option will use React's server-side-rendering to
 ;; include the generated markup in the build HTML.
