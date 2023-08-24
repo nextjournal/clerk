@@ -63,7 +63,7 @@
              {:keys [blob->result]} @webserver/!doc
              {:keys [result time-ms]} (try (eval/time-ms (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!)))
                                            (catch Exception e
-                                             (throw (ex-info (str "`nextjournal.clerk/show!` encountered an eval error with: `" (pr-str file-or-ns) "`") {::doc doc} e))))]
+                                             (throw (ex-info (str "`nextjournal.clerk/show!` encountered an eval error with: `" (pr-str file-or-ns) "`") {::doc (assoc doc :blob->result blob->result)} e))))]
          (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
          (webserver/update-doc! result))
        (catch Exception e
