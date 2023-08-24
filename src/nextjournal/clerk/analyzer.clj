@@ -609,9 +609,10 @@
    (let [digest-fn (case hash-type
                      :sha1 sha1-base58
                      :sha512 sha2-base58)]
-     (-> value
-         nippy/fast-freeze
-         digest-fn))))
+     (binding [nippy/*incl-metadata?* false]
+       (-> value
+           nippy/fast-freeze
+           digest-fn)))))
 
 #_(valuehash (range 100))
 #_(valuehash :sha1 (range 100))
