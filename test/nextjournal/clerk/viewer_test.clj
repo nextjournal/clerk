@@ -282,6 +282,11 @@
                                                       :out-path builder/default-out-path} test-doc)
                                    #"_data/.+\.png")))))
 
+  (testing "presentations are pure, result hashes are stable"
+    (let [test-doc (eval/eval-string "(range 100)")]
+      (is (= (view/doc->viewer {} test-doc)
+             (view/doc->viewer {} test-doc)))))
+
   (testing "Setting custom options on results via metadata"
     (is (= :full
            (-> (eval/eval-string "^{:nextjournal.clerk/width :full} (nextjournal.clerk/html [:div])")

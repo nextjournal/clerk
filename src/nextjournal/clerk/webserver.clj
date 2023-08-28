@@ -179,25 +179,43 @@
 
         (string? file-or-ns)
         (when (fs/exists? file-or-ns)
-          (fs/unixify (cond->> file-or-ns
+          (fs/unixify (cond->> (fs/strip-ext file-or-ns)
                         (and (fs/absolute? file-or-ns)
                              (not (str/starts-with? (fs/relativize (fs/cwd) file-or-ns) "..")))
                         (fs/relativize (fs/cwd)))))
 
         :else (str file-or-ns)))
 
+#_(->nav-path "notebooks/rule_30.clj")
 #_(->nav-path 'nextjournal.clerk.home)
-#_(->nav-path 'nextjournal.clerk.tap)
+
+(defn find-first-existing-file [files]
+  (first (filter fs/exists? files)))
+
+(defn maybe-add-extension [nav-path]
+  (if (and (string? nav-path)
+           (or (str/starts-with? nav-path "'")
+               (and (fs/exists? nav-path)
+                    (not (fs/directory? nav-path)))))
+    nav-path
+    (find-first-existing-file (map #(str (fs/file nav-path) "." %) ["md" "clj" "cljc"]))))
+
+#_(maybe-add-extension "notebooks/rule_30")
+#_(maybe-add-extension "notebooks/rule_30.clj")
+#_(maybe-add-extension "notebooks/markdown")
+#_(maybe-add-extension "'nextjournal.clerk.home")
 
 (defn ->file-or-ns [nav-path]
-  (cond (str/starts-with? nav-path "'") (symbol (subs nav-path 1))
+  (cond (str/blank? nav-path) (or (maybe-add-extension "index")
+                                  'nextjournal.clerk.index)
+        (str/starts-with? nav-path "'") (symbol (subs nav-path 1))
         (re-find #"\.(cljc?|md)$" nav-path) nav-path))
 
 (defn show! [opts file-or-ns]
   ((resolve 'nextjournal.clerk/show!) opts file-or-ns))
 
 (defn navigate! [{:as opts :keys [nav-path]}]
-  (show! opts (->file-or-ns nav-path)))
+  (show! opts (->file-or-ns (maybe-add-extension nav-path))))
 
 (defn prefetch-request? [req] (= "prefetch" (-> req :headers (get "purpose"))))
 
@@ -212,7 +230,7 @@
        :headers {"Location" (or (:nav-path @!doc)
                                 (->nav-path 'nextjournal.clerk.home))}}
       :else
-      (if-let [file-or-ns (->file-or-ns nav-path)]
+      (if-let [file-or-ns (->file-or-ns (maybe-add-extension nav-path))]
         (do (try (show! {:skip-history? true} file-or-ns)
                  (catch Exception _))
             {:status 200
@@ -258,8 +276,8 @@
 
 (defn set-status! [status]
   (swap! !doc (fn [doc] (-> (or doc (help-doc))
-                           (vary-meta assoc :status status)
-                           (vary-meta update ::!send-status-future broadcast-status-debounced! status)))))
+                            (vary-meta assoc :status status)
+                            (vary-meta update ::!send-status-future broadcast-status-debounced! status)))))
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
 

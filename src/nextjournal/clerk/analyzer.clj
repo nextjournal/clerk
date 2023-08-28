@@ -310,9 +310,6 @@
             (throw (ex-info (str "The var `#'" missing-dep "` is being referenced, but Clerk can't find it in the namespace's source code. Did you remove it? This validation can fail when the namespace is mutated programmatically (e.g. using `clojure.core/intern` or side-effecting macros). You can turn off this check by adding `{:nextjournal.clerk/error-on-missing-vars :off}` to the namespace metadata.")
                             {:var-name missing-dep :form form :file file #_#_:defined defined }))))))))
 
-(defn filter-code-blocks-without-form [doc]
-  (update doc :blocks #(filterv (some-fn :form (complement parser/code?)) %)))
-
 (defn ns-resolver [notebook-ns]
   (if notebook-ns
     (into {} (map (juxt key (comp ns-name val))) (ns-aliases notebook-ns))
@@ -363,7 +360,7 @@
                        (-> doc :blocks count range))
          doc? (-> parser/add-block-settings
                   parser/add-open-graph-metadata
-                  filter-code-blocks-without-form))))))
+                  parser/filter-code-blocks-without-form))))))
 
 #_(let [parsed (nextjournal.clerk.parser/parse-clojure-string "clojure.core/dec")]
     (build-graph (analyze-doc parsed)))
@@ -379,7 +376,7 @@
      (or (when-let [{:as cached-analysis :keys [file-sha]} (@!file->analysis-cache file)]
            (when (= file-sha current-file-sha)
              cached-analysis))
-         (let [analysis (analyze-doc {:file-sha current-file-sha} (parser/parse-file {} file))]
+         (let [analysis (analyze-doc {:file-sha current-file-sha :graph (dep/graph)} (parser/parse-file {} file))]
            (swap! !file->analysis-cache assoc file analysis)
            analysis))))
   ([state file]
@@ -612,9 +609,10 @@
    (let [digest-fn (case hash-type
                      :sha1 sha1-base58
                      :sha512 sha2-base58)]
-     (-> value
-         nippy/fast-freeze
-         digest-fn))))
+     (binding [nippy/*incl-metadata?* false]
+       (-> value
+           nippy/fast-freeze
+           digest-fn)))))
 
 #_(valuehash (range 100))
 #_(valuehash :sha1 (range 100))

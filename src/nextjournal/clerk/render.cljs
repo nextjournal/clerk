@@ -15,49 +15,30 @@
             [nextjournal.clerk.render.code :as code]
             [nextjournal.clerk.render.context :as view-context]
             [nextjournal.clerk.render.hooks :as hooks]
-            [nextjournal.clerk.render.localstorage :as localstorage]
             [nextjournal.clerk.render.navbar :as navbar]
-            [nextjournal.clerk.render.window :as window]
+            [nextjournal.clerk.render.panel :as panel]
             [nextjournal.clerk.viewer :as viewer]
-            [nextjournal.markdown.transform :as md.transform]
             [reagent.core :as r]
             [reagent.ratom :as ratom]
             [sci.core :as sci]
             [sci.ctx-store]
             [shadow.cljs.modern :refer [defclass]]))
 
-
 (r/set-default-compiler! (r/create-compiler {:function-components true}))
 
-(declare inspect inspect-presented reagent-viewer html html-viewer)
+(declare inspect inspect-presented html html-viewer)
 
 (def nbsp (gstring/unescapeEntities "&nbsp;"))
 
 (defn reagent-atom? [x]
   (satisfies? ratom/IReactiveAtom x))
 
-(defn toc-items [items]
-  (reduce
-   (fn [acc {:as item :keys [content children attrs emoji]}]
-     (if content
-       (let [title (md.transform/->text item)]
-         (->> {:title title
-               :emoji emoji
-               :path (str "#" (:id attrs))
-               :items (toc-items children)}
-              (conj acc)
-              vec))
-       (toc-items (:children item))))
-   []
-   items))
-
-(defn dark-mode-toggle [!state]
-  (let [{:keys [dark-mode?]} @!state
-        spring {:type :spring :stiffness 200 :damping 10}]
+(defn dark-mode-toggle []
+  (let [spring {:type :spring :stiffness 200 :damping 10}]
     [:div.relative.dark-mode-toggle
      [:button.text-slate-400.hover:text-slate-600.dark:hover:text-white.cursor-pointer
-      {:on-click #(swap! !state assoc :dark-mode? (not dark-mode?))}
-      (if dark-mode?
+      {:on-click #(swap! code/!dark-mode? not)}
+      (if @code/!dark-mode?
         [:> (.-svg motion)
          {:xmlns "http://www.w3.org/2000/svg"
           :class "w-5 h-5 md:w-4 md:h-4"
@@ -76,7 +57,7 @@
           :viewBox "0 0 24 24"
           :fill "none"
           :xmlns "http://www.w3.org/2000/svg"}
-         [:>(.-circle motion)
+         [:> (.-circle motion)
           {:cx "11.9998"
            :cy "11.9998"
            :r "5.75375"
@@ -97,32 +78,18 @@
           [:circle {:cx "20.9101" :cy "6.8555" :r "1.71143" :transform "rotate(-120 20.9101 6.8555)" :fill "currentColor"}]
           [:circle {:cx "12" :cy "1.71143" :r "1.71143" :fill "currentColor"}]]])]]))
 
-(def local-storage-dark-mode-key "clerk-darkmode")
-
-(defn set-dark-mode! [dark-mode?]
-  (let [class-list (.-classList (js/document.querySelector "html"))]
-    (if dark-mode?
-      (.add class-list "dark")
-      (.remove class-list "dark")))
-  (localstorage/set-item! local-storage-dark-mode-key dark-mode?))
-
-(defn setup-dark-mode! [!state]
-  (let [{:keys [dark-mode?]} @!state]
-    (add-watch !state ::dark-mode
-               (fn [_ _ old {:keys [dark-mode?]}]
-                 (when (not= (:dark-mode? old) dark-mode?)
-                   (set-dark-mode! dark-mode?))))
-    (when dark-mode?
-      (set-dark-mode! dark-mode?))))
-
 (defonce !eval-counter (r/atom 0))
 
-(defn exec-status [{:keys [progress status]}]
-  [:div.w-full.bg-purple-200.dark:bg-purple-900.rounded.z-20 {:class "h-0.5"}
-   [:div.bg-purple-600.dark:bg-purple-400 {:class "h-0.5" :style {:width (str (* progress 100) "%")}}]
-   [:div.absolute.text-purple-600.dark:text-white.text-xs.font-sans.ml-1.bg-white.dark:bg-purple-900.rounded-full.shadow.z-20.font-bold.px-2.border.border-slate-300.dark:border-purple-400
-    {:style {:font-size "0.5rem"} :class "left-[35px] md:left-0 mt-[7px] md:mt-1"}
-    status]])
+(defn exec-status [{:keys [progress cell-progress status]}]
+  [:<>
+   [:div.w-full.bg-purple-200.dark:bg-purple-900.rounded.z-20 {:class "h-[2px]"}
+    [:div.bg-purple-600.dark:bg-purple-400 {:class "h-[2px]" :style {:width (str (* progress 100) "%")}}]
+    [:div.absolute.text-purple-600.dark:text-white.text-xs.font-sans.ml-1.bg-white.dark:bg-purple-900.rounded-full.shadow.z-20.font-bold.px-2.border.border-slate-300.dark:border-purple-400
+     {:style {:font-size "0.5rem"} :class "left-[35px] md:left-0 mt-[7px] md:mt-1"}
+     status]]
+   (when cell-progress
+     [:div.w-full.bg-sky-100.dark:bg-purple-900.rounded.z-20 {:class "h-[2px] mt-[0.5px]"}
+      [:div.bg-sky-500.dark:bg-purple-400 {:class "h-[2px]" :style {:width (str (* cell-progress 100) "%")}}]])])5
 
 (defn connection-status [status]
   [:div.absolute.text-red-600.dark:text-white.text-xs.font-sans.ml-1.bg-white.dark:bg-red-800.rounded-full.shadow.z-20.font-bold.px-2.border.border-red-400
@@ -140,90 +107,39 @@
 
 (declare clerk-eval)
 
-(defn ->URL [^js href]
-  (js/URL. href))
-
-(defn handle-anchor-click [^js e]
-  (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
-    (when (= (.-search url) "?clerk/show!")
-      (.preventDefault e)
-      (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
-                        (cond-> {:nav-path (subs (js/decodeURI (.-pathname url)) 1)}
-                          (seq (.-hash url))
-                          (assoc :fragment (subs (.-hash url) 1))))))))
-
-(defn history-push-state [{:as opts :keys [path fragment replace?]}]
-  (when (not= path (some-> js/history .-state .-path))
-    (j/call js/history (if replace? :replaceState :pushState) (clj->js opts) "" (str (.. js/document -location -origin)
-                                                                                     "/" path (when fragment (str "#" fragment))))))
-
-(defn handle-history-popstate [^js e]
-  (when-let [{:as opts :keys [path]} (js->clj (.-state e) :keywordize-keys true)]
-    (.preventDefault e)
-    (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path path :skip-history? true}))))
-
-(defn render-notebook [{:as _doc xs :blocks :keys [bundle? doc-css-class sidenotes? toc toc-visibility header footer]} opts]
-  (r/with-let [local-storage-key "clerk-navbar"
-               navbar-width 220
-               !state (r/atom {:toc (toc-items (:children toc))
-                               :visibility toc-visibility
-                               :md-toc toc
-                               :dark-mode? (localstorage/get-item local-storage-dark-mode-key)
-                               :theme {:slide-over "bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900"}
-                               :width navbar-width
-                               :mobile? (and (exists? js/innerWidth) (< js/innerWidth 640))
-                               :mobile-width 300
-                               :local-storage-key local-storage-key
-                               :set-hash? (not bundle?)
-                               :scroll-el (when (exists? js/document) (js/document.querySelector "html"))
-                               :open? (if-some [stored-open? (localstorage/get-item local-storage-key)]
-                                        stored-open?
-                                        (not= :collapsed toc-visibility))})
-               root-ref-fn (fn [el]
+(defn render-notebook [{:as doc xs :blocks :keys [bundle? doc-css-class sidenotes? toc toc-visibility header footer]}
+                       {:as render-opts :keys [!expanded-at expandable-toc?]}]
+  (r/with-let [root-ref-fn (fn [el]
                              (when (and el (exists? js/document))
-                               (setup-dark-mode! !state)
+                               (code/setup-dark-mode!)
                                (when-some [heading (when (and (exists? js/location) (not bundle?))
                                                      (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
                                                           (catch js/Error _
                                                             (js/console.warn (str "Clerk render-notebook, invalid hash: "
                                                                                   (.-hash js/location))))))]
-                                 (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
-    (let [{:keys [md-toc mobile? open? visibility]} @!state
-          doc-inset (cond
-                      mobile? 0
-                      open? navbar-width
-                      :else 0)]
-      (when-not (= md-toc toc)
-        (swap! !state assoc :toc (toc-items (:children toc)) :md-toc toc :open? open?))
-      (when-not (= visibility toc-visibility)
-        (swap! !state assoc :visibility toc-visibility :open? (not= :collapsed toc-visibility)))
-      [:div.flex
-       {:ref root-ref-fn}
-       [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
-        [dark-mode-toggle !state]]
-       (when (and toc toc-visibility)
-         [:<>
-          [navbar/toggle-button !state
-           [:<>
-            [:svg {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke "currentColor" :width 20 :height 20}
-             [:path {:stroke-linecap "round" :stroke-linejoin "round" :stroke-width "2" :d "M4 6h16M4 12h16M4 18h16"}]]
-            [:span.uppercase.tracking-wider.ml-1.font-bold
-             {:class "text-[12px]"} "ToC"]]
-           {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-[7px] text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"}]
-          [navbar/panel !state [navbar/navbar !state]]])
-       [:div.flex-auto.w-screen.scroll-container
-        (into
-         [:> (.-div motion)
-          {:key "notebook-viewer"
-           :initial (when toc-visibility {:margin-left doc-inset})
-           :animate (when toc-visibility {:margin-left doc-inset})
-           :transition navbar/spring
-           :class (cond-> (or doc-css-class [:flex :flex-col :items-center :notebook-viewer :flex-auto])
-                    sidenotes? (conj :sidenotes-layout))}]
-         ;; TODO: restore react keys via block-id
-         ;; ^{:key (str processed-block-id "@" @!eval-counter)}
-
-         (inspect-children opts) (concat (when header [header]) xs (when footer [footer])))]])))
+                                 (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))
+               _ (swap! !expanded-at merge (navbar/->toc-expanded-at toc toc-visibility))]
+    [:div.flex
+     {:ref root-ref-fn}
+     [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
+      [dark-mode-toggle]]
+     (when (and toc toc-visibility)
+       [navbar/view toc (assoc render-opts :set-hash? (not bundle?) :toc-visibility toc-visibility)])
+     [:div.flex-auto.w-screen.scroll-container
+      (into
+       [:> (.-div motion)
+        (merge
+         {:key "notebook-viewer"
+          :class (cond-> (or doc-css-class [:flex :flex-col :items-center :notebook-viewer :flex-auto])
+                   sidenotes? (conj :sidenotes-layout))}
+         (when (and toc (not (navbar/mobile?)))
+           (let [inset {:margin-left (if (and toc-visibility (:toc-open? @!expanded-at)) navbar/width 0)}]
+             {:initial inset
+              :animate inset
+              :transition navbar/spring})))]
+       ;; TODO: restore react keys via block-id
+       ;; ^{:key (str processed-block-id "@" @!eval-counter)}
+       (inspect-children render-opts) (concat (when header [header]) xs (when footer [footer])))]]))
 
 (defn opts->query [opts]
   (->> opts
@@ -580,6 +496,7 @@
 
 (defonce !doc (ratom/atom nil))
 (defonce !viewers viewer/!viewers)
+(defonce !panels (ratom/atom {}))
 
 (defn set-viewers! [scope viewers]
   #_(js/console.log :set-viewers! {:scope scope :viewers viewers})
@@ -620,8 +537,10 @@
                                                 (swap! !state update :desc viewer/merge-presentations more fetch-opts))))}
      [inspect-presented (:desc @!state)]]))
 
-(defn show-window [& content]
-  [window/show content])
+(defn show-panel [panel-id panel]
+  (swap! !panels assoc panel-id panel))
+
+#_(show-panel :test {:content [:div "Test"] :width 600 :height 600})
 
 (defn root []
   [:<>
@@ -633,7 +552,15 @@
       [exec-status status])]
    (when-let [error (get-in @!doc [:nextjournal/value :error])]
      [:div.fixed.top-0.left-0.w-full.h-full
-      [inspect-presented error]])])
+      [inspect-presented error]])
+   (into [:<>]
+         (map (fn [[id state]]
+                ^{:key id}
+                [panel/show
+                 (:content state)
+                 (-> state
+                     (assoc :id id :on-close #(swap! !panels dissoc id)))]))
+         @!panels)])
 
 (declare mount)
 
@@ -754,32 +681,71 @@
 
 (defonce !router (atom nil))
 
-(defn handle-initial-load [_]
-  (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
+(defn ->URL [^js href]
+  (js/URL. href))
 
 (defn path-from-url-hash [url]
   (-> url ->URL .-hash (subs 2)))
 
+(defn static-app? [state]
+  (contains? state :path->doc))
+
+(defn ->doc-url [url]
+  (let [path (js/decodeURI (.-pathname url))
+        doc-path (js/decodeURI (.-pathname (.-location js/document)))]
+    (if (str/starts-with? path doc-path)
+      (subs path (count doc-path))
+      (subs path 1))))
+
+(defn ignore-anchor-click?
+  [e ^js url]
+  (let [current-origin (when (exists? js/location)
+                         (.-origin js/location))
+        ^js dataset (some-> e .-target closest-anchor-parent .-dataset)]
+    (or (not= current-origin (.-origin url))
+        (.-altKey e)
+        (some-> dataset .-ignoreAnchorClick some?))))
+
+(defn history-push-state [{:as opts :keys [path fragment replace?]}]
+  (when (not= path (some-> js/history .-state .-path))
+    (j/call js/history (if replace? :replaceState :pushState) (clj->js opts) "" (str (.. js/document -location -origin)
+                                                                                     "/" path (when fragment (str "#" fragment))))))
+
+(defn handle-history-popstate [state ^js e]
+  (when-let [{:as opts :keys [path]} (js->clj (.-state e) :keywordize-keys true)]
+    (.preventDefault e)
+    (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path path :skip-history? true}))))
+
 (defn handle-hashchange [{:keys [url->path path->doc]} ^js e]
+  ;; used for navigation in static bundle build
   (let [url (some-> e .-event_ .-newURL path-from-url-hash)]
-    (when-some [doc (get path->doc (get url->path url))]
+    (when-some [doc (get path->doc url)]
       (set-state! {:doc doc}))))
 
-(defn listeners [{:as state :keys [mode]}]
-  (case mode
-    :path
-    #{(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
-      (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
-      (gevents/listen js/window gevents/EventType.LOAD handle-initial-load false)}
+(defn handle-anchor-click [{:as state :keys [path->doc url->path]} ^js e]
+  (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
+    (when-not (ignore-anchor-click? e url)
+      (.preventDefault e)
+      (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
+                        (cond-> {:nav-path (->doc-url url)}
+                          (seq (.-hash url))
+                          (assoc :fragment (subs (.-hash url) 1))))))))
 
-    :fragment
-    #{(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)}))
+(defn handle-initial-load [state ^js _e]
+  (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
 
-(defn setup-router! [{:as state :keys [mode]}]
+(defn setup-router! [state]
   (when (and (exists? js/document) (exists? js/window))
     (doseq [listener (:listeners @!router)]
       (gevents/unlistenByKey listener))
-    (reset! !router (assoc state :listeners (listeners state)))))
+    (reset! !router
+            (assoc state :listeners
+                   (cond (and (static-app? state) (:bundle? state))
+                         [(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)]
+                         (not (static-app? state))
+                         [(gevents/listen js/document gevents/EventType.CLICK (partial handle-anchor-click state) false)
+                          (gevents/listen js/window gevents/EventType.POPSTATE (partial handle-history-popstate state) false)
+                          (gevents/listen js/window gevents/EventType.LOAD (partial handle-initial-load state) false)])))))
 
 
 (defn ^:export mount []
@@ -791,38 +757,20 @@
   (mount))
 
 (defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path]}]
-  (let [static-app? (contains? state :path->doc)] ;; TODO: better check
-    (if static-app?
-      (let [url->path (set/map-invert path->url)]
-        (when bundle? (setup-router! (assoc state :mode :fragment :url->path url->path)))
-        (set-state! {:doc (get path->doc (or current-path
-                                             (when (and bundle? (exists? js/document))
-                                               (url->path (path-from-url-hash (.-location js/document))))
-                                             (url->path "")))})
-        (mount))
-      (do
-        (setup-router! {:mode :path})
-        (set-state! state)
-        (mount)))))
+  (setup-router! state)
+  (set-state! (if (static-app? state)
+                {:doc (get path->doc (or (if bundle?
+                                           (path-from-url-hash (->URL (.-href js/location)))
+                                           current-path)
+                                         ""))}
+                state))
+  (mount))
 
 
-(defn html-render [markup]
-  (r/as-element
-   (if (string? markup)
-     [:span {:dangerouslySetInnerHTML {:__html markup}}]
-     markup)))
-
-(def html-viewer
-  {:render-fn html-render})
-
-(def html
-  (partial viewer/with-viewer html-viewer))
-
-(defn render-reagent [x]
-  (r/as-element (cond-> x (fn? x) vector)))
-
-;; TODO: remove
-(def reagent-viewer render-reagent)
+(defn render-html [markup]
+  (r/as-element (if (string? markup)
+                  [:span {:dangerouslySetInnerHTML {:__html markup}}]
+                  markup)))
 
 (defn render-promise [p opts]
   (let [!state (hooks/use-state {:pending true})]

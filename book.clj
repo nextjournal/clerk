@@ -132,8 +132,6 @@
 ;; nmap <silent> <localleader>cs :execute ClerkShow()<CR>
 ;; ```
 
-
-
 ;; ## 🔍 Viewers
 
 ;; Clerk comes with a number of useful built-in viewers e.g. for
@@ -913,6 +911,20 @@ v/table-viewer
 
 ^{::clerk/budget nil ::clerk/auto-expand-results? true} rows
 
+;; ## 🚰 Tap Inspector
+
+;; Clerk comes with an inspector notebook for Clojure's tap system. Use the following form from your REPL to show it.
+
+;;```clojure
+;;(nextjournal.clerk/show! 'nextjournal.clerk.tap)
+;;```
+
+;; You can then call `tap>` from anywhere in your codebase and the Tap Inspector will show your value. This supports the full viewer api described above.
+
+;;```clojure
+;;(tap> (clerk/html [:h1 "Hello 🚰 Tap Inspector 👋"]))
+;;```
+
 ;; ## 🧱 Static Building
 
 ;; Clerk can make a static HTML build from a collection of notebooks.
@@ -928,7 +940,7 @@ v/table-viewer
 ;; Also notably, there is a `:compile-css` option which compiles a css
 ;; file containing only the used CSS classes from the generated
 ;; markup. (Otherwise, Clerk is using Tailwind's Play CDN script which
-;; can the page flicker, initially.)
+;; can make the page flicker, initially.)
 
 ;; If set, the `:ssr` option will use React's server-side-rendering to
 ;; include the generated markup in the build HTML.

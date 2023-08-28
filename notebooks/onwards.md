@@ -107,7 +107,7 @@ Notes about what currently breaks 💥 and what could be better tomorrow.
 ## 📖 Book Updates
 - [ ] Explain `render-opts` and `viewer-opts` in book
 - [ ] Add sync atoms to book
-- [ ] Add tap inspector to book
+- [x] Add tap inspector to book
 - [ ] Add customizing clerk: markdown backtick eval example to book
 - [ ] Add example for cross-document table of contents
 ## 💡 Ideas

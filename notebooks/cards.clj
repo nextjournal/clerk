@@ -1,7 +1,8 @@
 ;; # 🃏 CLJS Cards
-^{:nextjournal.clerk/toc true :nextjournal.clerk/visibility {:code :hide}}
 (ns cards
-  {:nextjournal.clerk/no-cache true}
+  {:nextjournal.clerk/toc true
+   :nextjournal.clerk/no-cache true
+   :nextjournal.clerk/visibility {:code :hide}}
   (:require [applied-science.js-interop :as-alias j]
             [cards-macro :as c]
             [nextjournal.clerk :as clerk]
@@ -126,13 +127,12 @@
  (reagent/as-element [:h1 "♻️"]))
 
 (c/card
- (v/with-viewer `v/reagent-viewer
-   (fn []
-     (reagent/with-let [c (reagent/atom 0)]
-       [:<>
-        [:h2 "Count: " @c]
-        [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold.mr-2 {:on-click #(swap! c inc)} "increment"]
-        [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold {:on-click #(swap! c dec)} "decrement"]]))))
+ (v/with-viewer '(fn [] (reagent/with-let [c (reagent/atom 0)]
+                          [:<>
+                           [:h2 "Count: " @c]
+                           [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold.mr-2 {:on-click #(swap! c inc)} "increment"]
+                           [:button.rounded.bg-blue-500.text-white.py-2.px-4.font-bold {:on-click #(swap! c dec)} "decrement"]]))
+   {}))
 
 ;; ## Using `v/with-viewer`
 (c/card
@@ -223,13 +223,6 @@
    (update doc :blocks (partial map (fn [{:as b :keys [type text]}]
                                       (cond-> b
                                         (= :code type)
-                                        (assoc :result
-                                               {:nextjournal/value
-                                                (let [val (eval (read-string text))]
-                                                  ;; FIXME: this won't be necessary once we unify v/html in SCI env to be the same as in nextjournal.clerk.viewer
-                                                  ;; v/html is currently html-render for supporting legacy render-fns
-                                                  (cond->> val
-                                                    (nextjournal.clerk.render/valid-react-element? val)
-                                                    (v/with-viewer v/reagent-viewer)))})))))
+                                        (assoc :result {:nextjournal/value (eval (read-string text))})))))
    (v/with-viewer v/notebook-viewer {::clerk/width :wide} doc))
  )

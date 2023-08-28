@@ -27,7 +27,7 @@
 
  :aliases {:nextjournal/clerk {:extra-deps {org.clojure/clojure {:mvn/version "1.11.1"} ;; for `:as-alias` support in static build
                                             org.slf4j/slf4j-nop {:mvn/version "2.0.7"}
-                                            org.babashka/cli {:mvn/version "0.6.50"}}
+                                            org.babashka/cli {:mvn/version "0.7.52"}}
                                :extra-paths ["notebooks"]
                                :exec-fn nextjournal.clerk/build!
                                :exec-args {:paths-fn nextjournal.clerk.builder/clerk-docs}
@@ -71,7 +71,7 @@
                                sicmutils/sicmutils {:mvn/version "0.20.0"}
                                io.github.mentat-collective/emmy {:git/sha "b98fef51d80d3edcff3100562b929f9980ff34d7"
                                                                  :exclusions [org.babashka/sci]}
-                               io.github.nextjournal/clerk-slideshow {:git/sha "0e6e890fd4f862fa3535290cb7e29591c6e0ec85"}}}
+                               io.github.nextjournal/clerk-slideshow {:git/sha "11a83fea564da04b9d17734f2031a4921d917893"}}}
 
            :build {:deps {io.github.nextjournal/clerk {:local/root "."}
                           io.github.nextjournal/cas-client {:git/sha "84ab35c3321c1e51a589fddbeee058aecd055bf8"}

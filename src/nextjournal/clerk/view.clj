@@ -41,7 +41,7 @@
 
 (defn adjust-relative-path [{:as state :keys [current-path]} url]
   (cond->> url
-    (and current-path (relative? url))
+    (and (not-empty current-path) (relative? url))
     (str (v/relative-root-prefix-from (v/map-index state current-path)))))
 
 (defn include-viewer-css [state]

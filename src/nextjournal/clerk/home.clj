@@ -126,8 +126,8 @@
                             :placeholder "Type to filter…"
                             :value (:query @!state "")
                             :on-input (fn [e] (swap! !state #(-> %
-                                                                (assoc :query (.. e -target -value))
-                                                                (dissoc :selected-path))))
+                                                                 (assoc :query (.. e -target -value))
+                                                                 (dissoc :selected-path))))
                             :ref !input-el}]
                           [:div.text-slate-400.absolute
                            {:class "left-[10px] top-[11px]"}
@@ -138,6 +138,13 @@
                           [:div.absolute.font-inter.text-slate-400.dark:bg-slate-900.text-sm.font-medium.border.dark:border-slate-700.rounded-md.tracking-wide.px-1.shadow-sm.dark:shadow.pointer-events-none
                            {:class "right-[10px] top-[9px]"}
                            "⌘J"]]))))
+
+(defn code-highlight
+  ([code] (code-highlight {} code))
+  ([opts code]
+   [:span.font-mono.bg-white.bg-amber-100.border.border-amber-300.relative.dark:bg-slate-900.dark:border-slate-600.rounded.font-bold
+    {:class (str "px-[4px] py-[1px] -top-[1px] mx-[2px] " (:class opts))}
+    code]))
 
 {::clerk/visibility {:result :show}}
 
@@ -153,25 +160,31 @@
   [:div.rounded-lg.border-2.border-amber-100.bg-amber-50.dark:border-slate-600.dark:bg-slate-800.dark:text-slate-100.px-8.py-4.mx-auto.text-center.font-sans.mt-6.md:mt-4
    [:div.font-medium
     "Call "
-    [:span.font-mono.text-sm.bg-white.bg-amber-100.border.border-amber-300.relative.dark:bg-slate-900.dark:border-slate-600.rounded.font-bold
-     {:class "px-[4px] py-[1px] -top-[1px] mx-[2px]"}
-     "nextjournal.clerk/show!"]
+    (code-highlight {:class "text-sm"} "nextjournal.clerk/show!")
     " from your REPL to make a notebook appear!"]
    [:div.mt-2.text-sm "⚡️ This works best when you " [:a {:href "https://book.clerk.vision/#editor-integration"} "set up your editor to use a key binding for this!"]]]
-  [:div.rounded-lg.border-2.border-indigo-100.bg-indigo-50.dark:border-slate-600.dark:bg-slate-800.dark:text-slate-100.px-8.py-4.mt-6.text-center.font-sans
+  [:div.rounded-lg.border-2.border-indigo-100.bg-indigo-50.dark:border-slate-600.dark:bg-slate-800.dark:text-slate-100.px-8.py-4.mt-4.text-center.font-sans
    [:div.font-medium.md:flex.items-center.justify-center
-    [:span.text-xl.relative {:class "top-[2px] mr-2"} "📖"]
-    [:span "New to Clerk? Learn all about it in " [:a {:href "https://book.clerk.vision"} [:span.block.md:inline "The Book of Clerk."]]]]
+    [:span.text-xl.relative {:class "top-[2px] mr-2"} ""]
+    [:span "🌱 New to Clerk? Learn all about it in the " [:a {:href "https://book.clerk.vision"} [:span.block.md:inline "📖 Book of Clerk."]]]]
    #_
    [:div.mt-2.text-sm
     "Here are some handy links:"
     [:a.ml-3 {:href "#"} "🚀 Getting Started"]
     [:a.ml-3 {:href "#"} "🔍 Viewers"]
     [:a.ml-3 {:href "#"} "🙈 Controlling Visibility"]]]
+  [:div.rounded-lg.border-2.border-amber-100.bg-amber-50.dark:border-slate-600.dark:bg-slate-800.dark:text-slate-100.px-8.py-4.mx-auto.text-center.font-sans.mt-6.md:mt-4
+   [:div [:span.font-medium "💡 Tip:"] " Show the " [:a {:href "/'nextjournal.clerk.tap"} "🚰 Tap Inspector"] " to inspect values using " (code-highlight {:class "text-sm" }"tap>") "."]
+   [:div.mt-2.text-xs
+    (code-highlight {:class "text-sm"} "(nextjournal.clerk/show! 'nextjournal.clerk.tap)")]]
   #_[:div.mt-6
-     (clerk/with-viewer filter-input-viewer `!filter)]
-  [:div.flex.mt-6.border-t.font-sans
-   [:div {:class (str "w-1/2 pt-6 " (when-not (seq @!filter) "pr-6 border-r"))}
+     (clerk/with-viewer filter-input-viewer `!filter)]])
+
+^{::clerk/css-class ["w-full" "m-0"]}
+(clerk/html
+ [:div.max-w-prose.px-8.mx-auto.-mt-6
+  [:div.flex.mt-6.border-t.dark:border-slate-700.font-sans
+   [:div {:class (str "w-1/2 pt-6 " (when-not (seq @!filter) "pr-6 border-r dark:border-slate-700"))}
     [:h4.text-lg "All Notebooks"]
     (let [{:keys [query selected-path]} @!filter]
       (clerk/with-viewer index-viewer {:paths (filter (partial query-fn query) @!notebooks)
@@ -183,4 +196,5 @@
         (cond
           error [:div {:class "-mx-8"} (clerk/md error)]
           paths (let [{:keys [query]} @!filter]
-                  (clerk/with-viewer index-viewer {:paths (filter (partial query-fn query) paths)}))))])]])
+                  (clerk/with-viewer index-viewer {:paths (filter (partial query-fn query) paths)}))))])]]
+ )
