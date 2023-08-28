@@ -72,6 +72,7 @@
      acc)))
 
 #_(ns-tree ns-matches)
+#_(ns-tree ())
 
 ^{::clerk/visibility {:result :show}}
 (clerk/html
@@ -86,13 +87,7 @@
       (when ns-str
         (into [:div.text-sm.font-sans.px-5.mt-3]
               (map render-ns)
-              [{:name "nextjournal"
-                :nss [{:name "nextjournal.clerk"
-                       :vars [{:name "stop"}
-                              {:name "watch"}]
-                       :nss [{:name "nextjournal.clerk.viewer"
-                              :vars [{:name "!viewers"}
-                                     {:name "->ViewerEval"}]}]}]}]))
+              (ns-tree ns-matches)))
       #_(clerk/with-viewers [{:pred seq?
                               :render-fn '#(into [:div.flex.flex-col]
                                                  (nextjournal.clerk.render/inspect-children %2) %1) #_#_:page-size 20}
