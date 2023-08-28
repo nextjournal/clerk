@@ -43,13 +43,14 @@
 (defn var->doc-viewer
   "Takes a clojure `var` and returns a Clerk viewer to display its documentation."
   [var]
-  (let [{:keys [doc name arglists]} (meta var)]
+  (let [{:keys [doc arglists] var-name :name} (meta var)]
     (clerk/html
      [:div.border-t.border-slate-200.pt-6.mt-6
-      [:div.font-sans.font-bold.text-base {:style {:margin 0}} name]
+      {:id (name (symbol var))}
+      [:div.font-sans.font-bold.text-base {:style {:margin 0}} var-name]
       (when (seq arglists)
         [:div.pt-4
-         (clerk/code (str/join "\n" (mapv (comp pr-str #(concat [name] %)) arglists)))])
+         (clerk/code (str/join "\n" (mapv (comp pr-str #(concat [var-name] %)) arglists)))])
       (when doc
         [:div.mt-4.viewer-markdown.prose
          (clerk/md doc)])])))
@@ -64,7 +65,12 @@
    (when (and vars (= @!active-ns name))
      [:<>
       (into [:div.text-xs.font-sans.mt-1.ml-3.mb-3]
-            (map (fn [var] [:div.mt-1 var]))
+            (map (fn [var]
+                   [:div.mt-1.hover:text-indigo-600.cursor-pointer.hover:underline
+                    {:on-click (viewer/->viewer-eval `(fn []
+                                                        (when-some [el (js/document.getElementById ~(str var))]
+                                                          (.scrollIntoView el))))}
+                    var]))
             vars)
       [:div.border-b.mb-3]])
    (when nss
