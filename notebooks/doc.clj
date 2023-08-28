@@ -75,7 +75,8 @@
   ([nss-map ns-matches acc]
    (if-some [ns-name (first ns-matches)]
      (recur nss-map
-            (remove #(str/starts-with? % ns-name) ns-matches)
+            (remove (some-fn #{ns-name} #(str/starts-with? % (str ns-name ".")))
+                    ns-matches)
             (conj acc (ns-node-with-branches nss-map ns-name)))
      acc)))
 
