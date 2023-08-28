@@ -120,39 +120,40 @@
     [:div.px-3.py-3.border-b
      (clerk/with-viewer {:render-fn render-input
                          :transform-fn clerk/mark-presented} (viewer/->viewer-eval `!ns-query))]
-    (cond (not (str/blank? @!ns-query))
-          [:div
-           [:div.tracking-wider.uppercase.text-slate-400.px-5.font-sans.text-xs.mt-5 "Search results"]
-           (into [:div.text-sm.font-sans.px-5.mt-3]
-                 (map render-ns)
-                 (ns-tree ns-matches))]
-          (= @!active-ns :all)
-          [:div
-           [:div.tracking-wider.uppercase.text-slate-500.px-5.font-sans.text-xs.mt-5 "All namespaces"]
-           (into [:div.text-sm.font-sans.px-5.mt-2]
-                 (map render-ns)
-                 (ns-tree (sort (map (comp str ns-name) (all-ns)))))]
-          :else
-          (let [path (path-to-ns @!active-ns)]
-            [:<>
-             [:div
+    [:div.pb-5
+     (cond (not (str/blank? @!ns-query))
+           [:div
+            [:div.tracking-wider.uppercase.text-slate-400.px-5.font-sans.text-xs.mt-5 "Search results"]
+            (into [:div.text-sm.font-sans.px-5.mt-3]
+                  (map render-ns)
+                  (ns-tree ns-matches))]
+           (= @!active-ns :all)
+           [:div
+            [:div.tracking-wider.uppercase.text-slate-500.px-5.font-sans.text-xs.mt-5 "All namespaces"]
+            (into [:div.text-sm.font-sans.px-5.mt-2]
+                  (map render-ns)
+                  (ns-tree (sort (map (comp str ns-name) (all-ns)))))]
+           :else
+           (let [path (path-to-ns @!active-ns)]
+             [:<>
               [:div
-               [:div.tracking-wider.uppercase.text-slate-500.px-5.font-sans.text-xs.mt-5.mb-2 "Nav"]
-               (when-some [ns-name (some-> (str/join "." (butlast (str/split @!active-ns #"\."))) symbol find-ns ns-name str)]
-                 [:div.px-5.font-sans.text-xs.mt-1.text-indigo-600.hover:underline.cursor-pointer
-                  {:on-click (viewer/->viewer-eval `(fn []
-                                                      (reset! !active-ns ~ns-name)
-                                                      (reset! !ns-query "")))}
-                  "One level up"])
-               [:div.px-5.font-sans.text-xs.mt-1.text-indigo-600.hover:underline.cursor-pointer
-                {:on-click (viewer/->viewer-eval `(fn []
-                                                    (reset! !active-ns :all)
-                                                    (reset! !ns-query "")))}
-                "All namespaces"]]
-              [:div.tracking-wider.uppercase.text-slate-500.px-5.font-sans.text-xs.mt-5 "Current namespace"]
-              (into [:div.text-sm.font-sans.px-5.mt-2]
-                    (map render-ns)
-                    (ns-tree (match-nss @!active-ns)))]]))]
+               [:div
+                [:div.tracking-wider.uppercase.text-slate-500.px-5.font-sans.text-xs.mt-5.mb-2 "Nav"]
+                (when-some [ns-name (some-> (str/join "." (butlast (str/split @!active-ns #"\."))) symbol find-ns ns-name str)]
+                  [:div.px-5.font-sans.text-xs.mt-1.text-indigo-600.hover:underline.cursor-pointer
+                   {:on-click (viewer/->viewer-eval `(fn []
+                                                       (reset! !active-ns ~ns-name)
+                                                       (reset! !ns-query "")))}
+                   "One level up"])
+                [:div.px-5.font-sans.text-xs.mt-1.text-indigo-600.hover:underline.cursor-pointer
+                 {:on-click (viewer/->viewer-eval `(fn []
+                                                     (reset! !active-ns :all)
+                                                     (reset! !ns-query "")))}
+                 "All namespaces"]]
+               [:div.tracking-wider.uppercase.text-slate-500.px-5.font-sans.text-xs.mt-5 "Current namespace"]
+               (into [:div.text-sm.font-sans.px-5.mt-2]
+                     (map render-ns)
+                     (ns-tree (match-nss @!active-ns)))]]))]]
    [:div.flex-auto.max-h-screen.overflow-y-auto.px-8.py-5
     (let [ns (some-> @!active-ns symbol find-ns)]
       (cond
@@ -168,15 +169,18 @@
                      [:div.font-bold.font-sans.text-xl {:style {:margin 0}} (if (= @!active-ns :all)
                                                                               "All namespaces in classpath"
                                                                               @!active-ns)]
-                     (into [:div]
+                     (into [:div.mt-2]
                            (map (fn [ns-str]
-                                  [:div.pt-3.mt-3
-                                   [:div.font-sans.text-base
-                                    {:style {:margin 0}
-                                     :on-click (viewer/->viewer-eval `(fn []
-                                                                        (reset! !active-ns ~ns-str)
-                                                                        (reset! !ns-query "")))}
-                                    ns-str]]))
+                                  [:div.pt-5.mt-5.border-t.hover:text-indigo-600.cursor-pointer.group
+                                   {:on-click (viewer/->viewer-eval `(fn []
+                                                                       (reset! !active-ns ~ns-str)
+                                                                       (reset! !ns-query "")))}
+                                   [:div.font-sans.text-base.font-bold.group-hover:underline
+                                    {:style {:margin 0}}
+                                    ns-str]
+                                   (when-let [doc (some-> ns-str symbol find-ns meta :doc)]
+                                     [:div.mt-2.leading-normal.viewer-markdown.prose.text-sm
+                                      (clerk/md doc)])]))
                            (if (= :all @!active-ns)
                              (sort (map :name (ns-tree (map (comp str ns-name) (all-ns)))))
                              (match-nss @!active-ns)))]
