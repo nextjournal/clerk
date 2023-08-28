@@ -49,10 +49,10 @@
 
 (defn render-var [{:keys [name]}]
   #_(reset! doc/!ns-query ns)
-  [:div.text-red-500 name])
+  [:div.text-red-500.mt-1 name])
 
 (defn render-ns [{:keys [name nss vars]}]
-  [:div
+  [:div.mt-1
    [:div name]
    (when vars
      (into [:div.ml-3] (map render-var) vars))
