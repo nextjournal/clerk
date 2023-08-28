@@ -1,4 +1,3 @@
-;; # 📓 Doc Browser
 (ns doc
   {:nextjournal.clerk/visibility {:code :hide :result :hide}}
   (:require [clojure.string :as str]
@@ -14,7 +13,7 @@
                :spell-check "false"
                :placeholder "Filter namespaces…"
                :value @!query
-               :class "px-3 py-2 relative bg-white bg-white rounded text-base font-sans border border-slate-200 shadow-inner outline-none focus:outline-none focus:ring w-full"
+               :class "px-2 py-1 relative bg-white bg-white rounded border border-slate-200 shadow-inner outline-none focus:outline-none focus:ring w-full text-sm font-sans"
                :on-input #(reset! !query (.. % -target -value))}]
       [:button.absolute.right-2.text-xl.cursor-pointer
        {:class "top-1/2 -translate-y-1/2"
@@ -24,23 +23,6 @@
 (defonce !ns-query (atom "nextjournal.clerk"))
 #_(reset! !ns-query "nextjournal.clerk")
 
-
-!ns-query
-
-^{::clerk/visibility {:result :show}
-  ::clerk/viewer {:render-fn render-input
-                  :transform-fn clerk/mark-presented}}
-(viewer/->viewer-eval `!ns-query)
-
-^{::clerk/viewers (clerk/add-viewers
-                   [{:pred seq?
-                     :render-fn '#(into [:div.border.rounded-md.bg-white.shadow.flex.flex-col.mb-1]
-                                        (nextjournal.clerk.render/inspect-children %2) %1) :page-size 20}
-                    {:pred string?
-                     :render-fn '(fn [ns] [:button.text-xs.font-medium.font-sans.cursor-pointer.px-3.py-2.hover:bg-blue-100.text-slate-700.text-left
-                                           {:on-click #(reset! doc/!ns-query ns)} ns])}])}
-
-^{::clerk/visibility {:result :show}}
 (def ns-matches
   (filter (partial re-find (re-pattern @!ns-query)) (sort (map str (all-ns)))))
 
@@ -50,7 +32,7 @@
   (let [{:keys [doc name arglists]} (meta var)]
     (clerk/html
      [:div.border-t.border-slate-200.pt-6.mt-6
-      [:h2 {:style {:margin 0}} name]
+      [:div.font-sans.font-bold.text-base {:style {:margin 0}} name]
       (when (seq arglists)
         [:div.pt-4
          (clerk/code (str/join "\n" (mapv (comp pr-str #(concat [name] %)) arglists)))])
@@ -58,26 +40,55 @@
         [:div.mt-4.viewer-markdown.prose
          (clerk/md doc)])])))
 
-#_(var->doc-viewer #'var->doc-viewer)
+(defn render-var [{:keys [name]}]
+  [:div.text-red-500 name])
 
-(defn namespace->doc-viewer [ns]
-  (clerk/html
-   [:div.text-sm.mt-6
-    [:h1 {:style {:margin 0}} (ns-name ns)]
-    (when-let [doc (-> ns meta :doc)]
-      [:div.mt-4.leading-normal.viewer-markdown.prose
-       (clerk/md doc)])
-    (into [:<>]
-          (map (comp :nextjournal/value var->doc-viewer val))
-          (into (sorted-map) (-> ns ns-publics)))]))
-
-(def ns-doc-viewer {:pred #(instance? clojure.lang.Namespace %)
-                    :transform-fn (clerk/update-val namespace->doc-viewer)})
+(defn render-ns [{:keys [name nss vars]}]
+  [:div
+   [:div name]
+   (when vars
+     (into [:div.ml-3] (map render-var) vars))
+   (when nss
+     (into [:div.ml-3] (map render-ns) nss))])
 
 ^{::clerk/visibility {:result :show}}
-(when-let [ns-name (first ns-matches)]
-  (clerk/with-viewer ns-doc-viewer (find-ns (symbol ns-name))))
-
-
+(clerk/html
+ (let [ns-str (first ns-matches)]
+   [:<>
+    [:style ".markdown-viewer { padding: 0 !important; }"]
+    [:div.w-screen.h-screen.flex.fixed.left-0.top-0.bg-white.dark:bg-slate-950
+     [:div.border-r.py-3.flex-shrink-0.overflow-y-auto {:class "w-[300px]"}
+      [:div.px-3
+       (clerk/with-viewer {:render-fn render-input
+                           :transform-fn clerk/mark-presented} (viewer/->viewer-eval `!ns-query))]
+      (when ns-str
+        (into [:div.text-sm.font-sans.px-5.mt-3]
+              (map render-ns)
+              [{:name "nextjournal"
+                :nss [{:name "nextjournal.clerk"
+                       :vars [{:name "stop"}
+                              {:name "watch"}]
+                       :nss [{:name "nextjournal.clerk.viewer"
+                              :vars [{:name "!viewers"}
+                                     {:name "->ViewerEval"}]}]}]}]))
+      #_(clerk/with-viewers [{:pred seq?
+                              :render-fn '#(into [:div.flex.flex-col]
+                                                 (nextjournal.clerk.render/inspect-children %2) %1) #_#_:page-size 20}
+                             {:pred string?
+                              :render-fn '(fn [ns]
+                                            [:button.text-xs.font-sans.cursor-pointer.px-5.py-1.hover:bg-indigo-100.text-left
+                                             {:on-click #(reset! doc/!ns-query ns)} ns])}] (as-tree (map #(str/split % #"\.") ns-matches)))]
+     [:div.flex-auto.max-h-screen.overflow-y-auto.px-8.py-5
+      (if ns-str
+        (let [ns (find-ns (symbol ns-str))]
+          [:<>
+           [:div.font-bold.font-sans.text-xl {:style {:margin 0}} (ns-name ns)]
+           (when-let [doc (-> ns meta :doc)]
+             [:div.mt-4.leading-normal.viewer-markdown.prose
+              (clerk/md doc)])
+           (into [:<>]
+                 (map (comp :nextjournal/value var->doc-viewer val))
+                 (into (sorted-map) (-> ns ns-publics)))])
+        [:div "No namespaces found."])]]]))
 
 #_(deref nextjournal.clerk.webserver/!doc)
