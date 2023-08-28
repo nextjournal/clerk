@@ -103,12 +103,25 @@
 
 (deftest doc-url
   (testing "link to same dir unbundled"
-    (is (= "./../notebooks/rule_30" ;; NOTE: could also be just "rule_30.html"
+    ;; in the unbundled case the current URL on a given notebook is given by
+    ;;
+    ;; fs-path              |  URL
+    ;; ----------------------------------------------------
+    ;; path/to/notebook.clj |  path/to/notebok/[index.html]
+    (is (= "./../../notebooks/rule_30" ;; NOTE: could also be just "rule_30.html"
            (builder/doc-url {:bundle? false} "notebooks/viewer_api.clj" "notebooks/rule_30"))))
 
   (testing "respects the mapped index"
     (is (= "./notebooks/rule_30"
-           (builder/doc-url {:bundle? false} "index.clj" "notebooks/rule_30"))))
+           (builder/doc-url {:bundle? false} "index.clj" "notebooks/rule_30")))
+
+    (is (= "./notebooks/rule_30"
+           (builder/doc-url {:bundle? false :index "notebooks/path/to/notebook.clj"}
+                            "notebooks/path/to/notebook.clj" "notebooks/rule_30")))
+
+    (is (= "./../../../../notebooks/rule_30"
+           (builder/doc-url {:bundle? false}
+                            "notebooks/path/to/notebook.clj" "notebooks/rule_30"))))
 
   (testing "bundle case"
     (is (= "#/notebooks/rule_30"

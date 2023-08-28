@@ -176,7 +176,7 @@
   [:div.rounded-lg.border-2.border-amber-100.bg-amber-50.dark:border-slate-600.dark:bg-slate-800.dark:text-slate-100.px-8.py-4.mx-auto.text-center.font-sans.mt-6.md:mt-4
    [:div [:span.font-medium "💡 Tip:"] " Show the " [:a {:href "/'nextjournal.clerk.tap"} "🚰 Tap Inspector"] " to inspect values using " (code-highlight {:class "text-sm" }"tap>") "."]
    [:div.mt-2.text-xs
-    (code-highlight {:class "text-sm"} "(nextjournal.clerk/show 'nextjournal.clerk.tap)")]]
+    (code-highlight {:class "text-sm"} "(nextjournal.clerk/show! 'nextjournal.clerk.tap)")]]
   #_[:div.mt-6
      (clerk/with-viewer filter-input-viewer `!filter)]])
 

@@ -224,9 +224,9 @@
                  (dissoc :expand-paths?)
                  (and (not index) (= 1 (count expanded-paths)))
                  (assoc :index (first expanded-paths))
-                 (and (not index) (< 1 (count expanded-paths)) (every? (complement #{"index.clj"}) expanded-paths))
+                 (and (not index) (< 1 (count expanded-paths)) (every? (complement viewer/index-path?) expanded-paths))
                  (as-> opts
-                     (-> opts (assoc :index builtin-index) (update :expanded-paths conj builtin-index))))))))
+                   (-> opts (assoc :index builtin-index) (update :expanded-paths conj builtin-index))))))))
 
 #_(process-build-opts {:index 'book.clj :expand-paths? true})
 #_(process-build-opts {:paths ["notebooks/rule_30.clj"] :expand-paths? true})
@@ -309,14 +309,16 @@
               (str path))
             (pr-str viewer)))
     (let [{:as ret :keys [out err exit]}
-          (sh "tailwindcss"
-              "--input"  tw-input
-              "--config" tw-config
-              ;; FIXME: pass inline
-              ;;"--content" (str tw-viewer)
-              ;;"--content" (str tw-folder "/**/*.edn")
-              "--output" tw-output
-              "--minify")]
+          (try (sh "tailwindcss"
+                   "--input"  tw-input
+                   "--config" tw-config
+                   ;; FIXME: pass inline
+                   ;;"--content" (str tw-viewer)
+                   ;;"--content" (str tw-folder "/**/*.edn")
+                   "--output" tw-output
+                   "--minify")
+               (catch java.io.IOException _
+                 (throw (Exception. "Clerk could not find the `tailwindcss` executable. Please install it using `npm install -D tailwindcss` and try again."))))]
       (println err)
       (println out)
       (when-not (= 0 exit)
@@ -457,4 +459,3 @@
                       :bundle? true
                       :git/sha "d60f5417"
                       :git/url "https://github.com/nextjournal/clerk"}))
-

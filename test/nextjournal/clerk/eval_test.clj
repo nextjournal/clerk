@@ -7,7 +7,8 @@
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.session :as session]
             [nextjournal.clerk.view :as view]
-            [nextjournal.clerk.viewer :as viewer]))
+            [nextjournal.clerk.viewer :as viewer]
+            [nextjournal.clerk.webserver :as webserver]))
 
 (deftest eval-string
   (testing "hello 42"
@@ -273,3 +274,15 @@
   (testing "class is not cachable"
     (is (not (#'eval/cachable-value? java.lang.String)))
     (is (not (#'eval/cachable-value? {:foo java.lang.String})))))
+
+(deftest show!-test
+  (testing "in-memory cache is preserved when exception is thrown (#549)"
+    (let [code "{:f inc :n (rand-int 100000)}"
+          get-result #(:blob->result @webserver/!doc)]
+      (clerk/show! (java.io.StringReader. code))
+      (let [result-first-run (get-result)]
+        (try (clerk/show! (java.io.StringReader. (str code " (throw (ex-info \"boom\" {}))")))
+             (catch Exception _ nil))
+        (clerk/show! (java.io.StringReader. code))
+        (is (= result-first-run (get-result)))))))
+
