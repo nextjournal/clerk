@@ -51,11 +51,11 @@
    (when nss
      (into [:div.ml-3] (map render-ns) nss))])
 
-(defn branch-fn [nss-map ns-name]
+(defn ns-node-with-branches [nss-map ns-name]
   (let [sub-nss (get nss-map ns-name)
         vars (some-> ns-name symbol find-ns ns-publics not-empty vals vec)]
     (cond-> {:name ns-name}
-      sub-nss (assoc :nss (mapv (partial branch-fn nss-map) sub-nss))
+      sub-nss (assoc :nss (mapv (partial ns-node-with-branches nss-map) sub-nss))
       vars (assoc :vars vars))))
 
 (defn ns-tree
@@ -68,7 +68,7 @@
    (if-some [ns-name (first ns-matches)]
      (recur nss-map
             (remove #(str/starts-with? % ns-name) ns-matches)
-            (conj acc (branch-fn nss-map ns-name)))
+            (conj acc (ns-node-with-branches nss-map ns-name)))
      acc)))
 
 #_(ns-tree ns-matches)
