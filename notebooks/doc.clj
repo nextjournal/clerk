@@ -23,8 +23,15 @@
 (defonce !ns-query (atom "nextjournal.clerk"))
 #_(reset! !ns-query "nextjournal.clerk")
 
+(defn escape-pattern-str [s]
+  (let [esc-chars "[](){}<>*&^%$#!\\|? "]
+    (->> s
+         (replace (zipmap esc-chars (map #(str "\\" %) esc-chars)))
+         (reduce str)
+         str)))
+
 (def ns-matches
-  (filter (partial re-find (re-pattern @!ns-query)) (sort (map str (all-ns)))))
+  (filter (partial re-find (re-pattern (escape-pattern-str @!ns-query))) (sort (map str (all-ns)))))
 
 (defn var->doc-viewer
   "Takes a clojure `var` and returns a Clerk viewer to display its documentation."
@@ -41,6 +48,7 @@
          (clerk/md doc)])])))
 
 (defn render-var [{:keys [name]}]
+  #_(reset! doc/!ns-query ns)
   [:div.text-red-500 name])
 
 (defn render-ns [{:keys [name nss vars]}]
@@ -87,14 +95,7 @@
       (when ns-str
         (into [:div.text-sm.font-sans.px-5.mt-3]
               (map render-ns)
-              (ns-tree ns-matches)))
-      #_(clerk/with-viewers [{:pred seq?
-                              :render-fn '#(into [:div.flex.flex-col]
-                                                 (nextjournal.clerk.render/inspect-children %2) %1) #_#_:page-size 20}
-                             {:pred string?
-                              :render-fn '(fn [ns]
-                                            [:button.text-xs.font-sans.cursor-pointer.px-5.py-1.hover:bg-indigo-100.text-left
-                                             {:on-click #(reset! doc/!ns-query ns)} ns])}] (as-tree (map #(str/split % #"\.") ns-matches)))]
+              (ns-tree ns-matches)))]
      [:div.flex-auto.max-h-screen.overflow-y-auto.px-8.py-5
       (if ns-str
         (let [ns (find-ns (symbol ns-str))]
