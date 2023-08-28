@@ -72,7 +72,7 @@
 
 (defn ns-node-with-branches [nss-map ns-name]
   (let [sub-nss (get nss-map ns-name)
-        vars (some-> ns-name symbol find-ns ns-publics not-empty vals vec)]
+        vars (some-> ns-name symbol find-ns ns-publics not-empty keys vec sort)]
     (cond-> {:name ns-name}
       sub-nss (assoc :nss (mapv (partial ns-node-with-branches nss-map) sub-nss))
       vars (assoc :vars vars))))
