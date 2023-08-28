@@ -47,15 +47,12 @@
         [:div.mt-4.viewer-markdown.prose
          (clerk/md doc)])])))
 
-(defn render-var [{:keys [name]}]
-  #_(reset! doc/!ns-query ns)
-  [:div.text-red-500.mt-1 name])
-
 (defn render-ns [{:keys [name nss vars]}]
   [:div.mt-1
    [:div name]
    (when vars
-     (into [:div.ml-3] (map render-var) vars))
+     (into [:div.ml-3] (map (fn [var]
+                              [:div.mt-1.text-xs.italic var])) vars))
    (when nss
      (into [:div.ml-3] (map render-ns) nss))])
 
