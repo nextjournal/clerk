@@ -51,6 +51,28 @@
    (when nss
      (into [:div.ml-3] (map render-ns) nss))])
 
+(defn branch-fn [nss-map ns-name]
+  (let [sub-nss (get nss-map ns-name)
+        vars (some-> ns-name symbol find-ns ns-publics not-empty vals vec)]
+    (cond-> {:name ns-name}
+      sub-nss (assoc :nss (mapv (partial branch-fn nss-map) sub-nss))
+      vars (assoc :vars vars))))
+
+(defn ns-tree
+  ([ns-matches]
+   (ns-tree (update-keys (group-by #(butlast (clojure.string/split % #"\.")) ns-matches)
+                         (partial clojure.string/join "."))
+            ns-matches
+            []))
+  ([nss-map ns-matches acc]
+   (if-some [ns-name (first ns-matches)]
+     (recur nss-map
+            (remove #(str/starts-with? % ns-name) ns-matches)
+            (conj acc (branch-fn nss-map ns-name)))
+     acc)))
+
+#_(ns-tree ns-matches)
+
 ^{::clerk/visibility {:result :show}}
 (clerk/html
  (let [ns-str (first ns-matches)]
