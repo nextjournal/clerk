@@ -11,7 +11,7 @@
       [:input {:type :text
                :auto-correct "off"
                :spell-check "false"
-               :placeholder "Filter namespaces…"
+               :placeholder "Search namespaces…"
                :value @!query
                :class "px-2 py-1 relative bg-white bg-white rounded border border-slate-200 shadow-inner outline-none focus:outline-none focus:ring w-full text-sm font-sans"
                :on-input #(reset! !query (.. % -target -value))}]
@@ -54,20 +54,28 @@
         [:div.mt-4.viewer-markdown.prose
          (clerk/md doc)])])))
 
-(defn render-ns [{:keys [name nss]}]
+(defn render-ns [{:keys [name nss vars]}]
   [:div.mt-1
-   [:div.hover:underline.cursor-pointer.hover:text-indigo-600
+   [:div.hover:underline.cursor-pointer.hover:text-indigo-600.whitespace-nowrap
     {:class (when (= @!active-ns name) "font-bold")
      :on-click (viewer/->viewer-eval `(fn []
                                         (reset! !active-ns ~name)
                                         (reset! !ns-query "")))} name]
+   (when (and vars (= @!active-ns name))
+     [:<>
+      (into [:div.text-xs.font-sans.mt-1.ml-3.mb-3]
+            (map (fn [var] [:div.mt-1 var]))
+            vars)
+      [:div.border-b.mb-3]])
    (when nss
      (into [:div.ml-3] (map render-ns) nss))])
 
 (defn ns-node-with-branches [nss-map ns-name]
-  (let [sub-nss (get nss-map ns-name)]
+  (let [sub-nss (get nss-map ns-name)
+        vars (some-> ns-name symbol find-ns ns-publics not-empty vals vec)]
     (cond-> {:name ns-name}
-      sub-nss (assoc :nss (mapv (partial ns-node-with-branches nss-map) sub-nss)))))
+      sub-nss (assoc :nss (mapv (partial ns-node-with-branches nss-map) sub-nss))
+      vars (assoc :vars vars))))
 
 (defn ns-tree
   ([ns-matches]
@@ -102,8 +110,8 @@
  [:<>
   [:style ".markdown-viewer { padding: 0 !important; }"]
   [:div.w-screen.h-screen.flex.fixed.left-0.top-0.bg-white.dark:bg-slate-950
-   [:div.border-r.py-3.flex-shrink-0.overflow-y-auto {:class "w-[300px]"}
-    [:div.px-3
+   [:div.border-r.flex-shrink-0.overflow-y-auto {:class "w-[300px]"}
+    [:div.px-3.py-3.border-b
      (clerk/with-viewer {:render-fn render-input
                          :transform-fn clerk/mark-presented} (viewer/->viewer-eval `!ns-query))]
     (cond (not (str/blank? @!ns-query))
@@ -114,7 +122,7 @@
                  (ns-tree ns-matches))]
           (= @!active-ns :all)
           [:div
-           [:div.tracking-wider.uppercase.text-slate-400.px-5.font-sans.text-xs.mt-5 "All namespaces"]
+           [:div.tracking-wider.uppercase.text-slate-500.px-5.font-sans.text-xs.mt-5 "All namespaces"]
            (into [:div.text-sm.font-sans.px-5.mt-2]
                  (map render-ns)
                  (ns-tree (sort (map (comp str ns-name) (all-ns)))))]
@@ -122,18 +130,23 @@
           (let [path (path-to-ns @!active-ns)]
             [:<>
              [:div
-              [:div.text-slate-500.px-5.font-sans.text-xs.mt-3
-               {:on-click (viewer/->viewer-eval `(fn []
-                                                   (reset! !active-ns :all)
-                                                   (reset! !ns-query "")))}
-               "Show all namespaces"]
+              [:div
+               [:div.tracking-wider.uppercase.text-slate-500.px-5.font-sans.text-xs.mt-5.mb-2 "Nav"]
+               (when-some [ns-name (some-> (str/join "." (butlast (str/split @!active-ns #"\."))) symbol find-ns ns-name str)]
+                 [:div.px-5.font-sans.text-xs.mt-1.text-indigo-600.hover:underline.cursor-pointer
+                  {:on-click (viewer/->viewer-eval `(fn []
+                                                      (reset! !active-ns ~ns-name)
+                                                      (reset! !ns-query "")))}
+                  "One level up"])
+               [:div.px-5.font-sans.text-xs.mt-1.text-indigo-600.hover:underline.cursor-pointer
+                {:on-click (viewer/->viewer-eval `(fn []
+                                                    (reset! !active-ns :all)
+                                                    (reset! !ns-query "")))}
+                "All namespaces"]]
+              [:div.tracking-wider.uppercase.text-slate-500.px-5.font-sans.text-xs.mt-5 "Current namespace"]
               (into [:div.text-sm.font-sans.px-5.mt-2]
                     (map render-ns)
-                    (ns-tree path))]
-             (when-let [vars (some-> @!active-ns symbol find-ns ns-publics not-empty vals vec)]
-               (into [:div.text-xs.font-sans.px-5.mt-1]
-                     (map (fn [var] [:div.mt-1 {:class (str "ml-" (* (count path) 3))} var]))
-                     vars))]))]
+                    (ns-tree (match-nss @!active-ns)))]]))]
    [:div.flex-auto.max-h-screen.overflow-y-auto.px-8.py-5
     (let [ns (some-> @!active-ns symbol find-ns)]
       (cond
