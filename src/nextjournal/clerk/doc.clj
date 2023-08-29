@@ -33,13 +33,6 @@
 (defonce !active-ns (atom ""))
 #_(reset! !active-ns "nextjournal.clerk")
 
-(defn escape-pattern-str [s]
-  (let [esc-chars "[](){}<>*&^%$#!\\|? "]
-    (->> s
-         (replace (zipmap esc-chars (map #(str "\\" %) esc-chars)))
-         (reduce str)
-         str)))
-
 (defn str-match-nss [s]
   (filter #(str/includes? % s) (sort (map str (all-ns)))))
 
