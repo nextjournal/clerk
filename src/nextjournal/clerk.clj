@@ -1,5 +1,10 @@
 (ns nextjournal.clerk
-  "Clerk's Public API."
+  "Clerk's Public API.
+
+  Further API:
+  * [[nextjournal.clerk.parser]]
+  * [[nextjournal.clerk.viewer]]
+  * [[nextjournal.clerk.analyzer]]"
   (:require [babashka.fs :as fs]
             [clojure.java.browse :as browse]
             [clojure.java.io :as io]

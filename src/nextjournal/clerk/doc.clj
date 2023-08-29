@@ -161,7 +161,7 @@
                (into [:div.text-sm.font-sans.px-5.mt-2]
                      (map render-ns)
                      (ns-tree (str-match-nss @!active-ns)))]])]]
-     [:div.flex-auto.max-h-screen.overflow-y-auto.px-8.py-5
+     [:div#main-column.flex-auto.max-h-screen.overflow-y-auto.px-8.py-5
       (let [ns (some-> @!active-ns symbol find-ns)]
         (cond
           ns [:<>
@@ -197,7 +197,9 @@
 
 (defn resolve-internal-link [link]
   (viewer/resolve-internal-link (cond->> link
-                                  (and (not (qualified-symbol? (symbol link))) @!active-ns)
+                                  (and @!active-ns (not= :all @!active-ns)
+                                       (not (find-ns (symbol link)))
+                                       (not (qualified-symbol? (symbol link))))
                                   (str @!active-ns "/"))))
 
 (def custom-markdown-viewers
@@ -211,13 +213,19 @@
     :render-fn '(fn [{:keys [var ns]} _]
                   [:a {:href (str "#" var)
                        :on-click (fn [e] (.stopPropagation e) (.preventDefault e)
-                                   (when (and var ns)
-                                     (let [scroll-to-target #(when-some [el (js/document.getElementById (name var))]
-                                                               (.scrollIntoView el))]
-                                       (if (not= @!active-ns (str ns))
-                                         (do (reset! !active-ns (str ns))
-                                             (js/setTimeout scroll-to-target 500)) ;; TODO: smarter
-                                         (scroll-to-target)))))} (str var)])}])
+                                   (when (resolve '!active-ns)
+                                     (let [scroll-to-target (fn []
+                                                              (if var
+                                                                (when-some [el (js/document.getElementById (name var))]
+                                                                  (.scrollIntoView el))
+                                                                (when ns
+                                                                  (when-some [page (js/document.getElementById "main-column")]
+                                                                    (.scroll page (applied-science.js-interop/obj :top 0))))))]
+                                       (when ns
+                                         (if (not= @!active-ns (str ns))
+                                           (do (reset! !active-ns (str ns))
+                                               (js/setTimeout scroll-to-target 500)) ;; TODO: smarter
+                                           (scroll-to-target))))))} (str (or var ns))])}])
 
 (def custom-internal-links
   (update viewer/markdown-viewer :add-viewers viewer/add-viewers custom-markdown-viewers))
