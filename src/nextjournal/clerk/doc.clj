@@ -3,7 +3,8 @@
   {:nextjournal.clerk/visibility {:code :hide :result :hide}}
   (:require [clojure.string :as str]
             [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as viewer]))
+            [nextjournal.clerk.viewer :as viewer]
+            [nextjournal.markdown.transform :as md.transform]))
 
 (def render-input
   '(fn [!query]
@@ -202,32 +203,58 @@
                                        (not (qualified-symbol? (symbol link))))
                                   (str @!active-ns "/"))))
 
+(defn spy [x] (println :x (str "'" x "'")
+                       :t (type x)
+                       :ns (ns-name *ns*)) x)
+
+^::clerk/no-cache
+(clerk/eval-cljs
+ '(defn handle-click [{:keys [label var ns]} e]
+    (js/console.log :handle-click/ns ns :var var)
+    (.stopPropagation e) (.preventDefault e)
+    (when (resolve '!active-ns)
+      (let [scroll-to-target (fn []
+                               (if var
+                                 (when-some [el (js/document.getElementById (name var))]
+                                   (.scrollIntoView el))
+                                 (when ns
+                                   (when-some [page (js/document.getElementById "main-column")]
+                                     (.scroll page (applied-science.js-interop/obj :top 0))))))]
+        (when ns
+          (if (not= @!active-ns (str ns))
+            (do (reset! !active-ns (str ns))
+                (js/setTimeout scroll-to-target 500))       ;; TODO: smarter
+            (scroll-to-target)))))))
+
+^::clerk/no-cache
+(clerk/eval-cljs
+ '(defn render-link [{:as info :keys [label]} _]
+    [:a {:href "#" :on-click (partial handle-click info)} label]))
+
+(def get-info
+  (comp clerk/mark-presented
+        (fn [wv]
+          (let [{:as node :keys [type text attrs]} (-> wv :nextjournal/value)]
+            (when-some [{:as info :keys [ns var]}
+                        (some-> (resolve-internal-link (case type :internal-link text :link (:href attrs)))
+                                (viewer/update-if :ns ns-name)
+                                (viewer/update-if :var symbol))]
+              (assoc info :label
+                          (str (case type
+                                 :internal-link (or var ns)
+                                 :link (md.transform/->text node)))))))))
+
 (def custom-markdown-viewers
   [{:name :nextjournal.markdown/internal-link
-    :transform-fn (comp clerk/mark-presented
-                        (fn [wv]
-                          (when-some [info (-> wv :nextjournal/value :text resolve-internal-link)]
-                            (-> info
-                                (viewer/update-if :var symbol)
-                                (viewer/update-if :ns ns-name)))))
-    :render-fn '(fn [{:keys [var ns]} _]
-                  [:a {:href (str "#" var)
-                       :on-click (fn [e] (.stopPropagation e) (.preventDefault e)
-                                   (when (resolve '!active-ns)
-                                     (let [scroll-to-target (fn []
-                                                              (if var
-                                                                (when-some [el (js/document.getElementById (name var))]
-                                                                  (.scrollIntoView el))
-                                                                (when ns
-                                                                  (when-some [page (js/document.getElementById "main-column")]
-                                                                    (.scroll page (applied-science.js-interop/obj :top 0))))))]
-                                       (when ns
-                                         (if (not= @!active-ns (str ns))
-                                           (do (reset! !active-ns (str ns))
-                                               (js/setTimeout scroll-to-target 500)) ;; TODO: smarter
-                                           (scroll-to-target))))))} (str (or var ns))])}])
+    :render-fn 'render-link
+    :transform-fn get-info}
+   {:name :nextjournal.markdown/link
+    :render-fn 'render-link
+    :transform-fn get-info}])
 
 (def custom-internal-links
   (update viewer/markdown-viewer :add-viewers viewer/add-viewers custom-markdown-viewers))
 
 (viewer/add-viewers! [custom-internal-links])
+
+#_(clerk/clear-cache!)

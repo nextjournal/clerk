@@ -2,9 +2,9 @@
   "Clerk's Public API.
 
   Further API:
-  * [[nextjournal.clerk.parser]]
-  * [[nextjournal.clerk.viewer]]
-  * [[nextjournal.clerk.analyzer]]"
+  * [Parsing](nextjournal.clerk.parser)
+  * [Viewers API](nextjournal.clerk.viewer)
+  * [Static analysis and caching](nextjournal.clerk.analyzer)"
   (:require [babashka.fs :as fs]
             [clojure.java.browse :as browse]
             [clojure.java.io :as io]
