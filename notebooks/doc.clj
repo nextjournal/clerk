@@ -6,15 +6,23 @@
 
 (def render-input
   '(fn [!query]
-     (prn :query !query)
+     (nextjournal.clerk.render.hooks/use-effect
+      (fn []
+        (let [keydown-handler (fn [event]
+                                (when (and (.-metaKey event) (= "k" (.-key event)))
+                                  (.focus (js/document.getElementById "search-nss"))))]
+          (js/document.addEventListener "keydown" keydown-handler)
+          #(js/document.removeEventListener "keydown" keydown-handler))))
      [:div.my-1.relative
-      [:input.px-2.py-1.relative.bg-white.dark:bg-slate-900.bg-white.rounded.border.dark:border-slate-700.shadow-inner.outline-none.focus:outline-none.focus:ring.w-full.text-sm.font-sans
+      [:input#search-nss.px-2.py-1.relative.bg-white.dark:bg-slate-900.bg-white.rounded.border.dark:border-slate-700.shadow-inner.outline-none.focus:outline-none.focus:ring-2.focus.ring-indigo-500.hover:border-slate-400.focus:hover:border-slate-200.w-full.text-sm.font-sans.dark:hover:border-slate-600.dark:focus:border-sslate-700
        {:type :text
         :auto-correct "off"
         :spell-check "false"
         :placeholder "Search namespaces…"
         :value @!query
         :on-input #(reset! !query (.. % -target -value))}]
+      [:div.text-xs.absolute.right-2.text-slate-400.dark:text-slate-400.font-inter.tracking-widest.pointer-events-none
+       {:class "top-1/2 -translate-y-1/2"} "⌘K"]
       #_[:button.absolute.right-2.text-xl.cursor-pointer
          {:class "top-1/2 -translate-y-1/2"
           :on-click #(reset! !query (clojure.string/join "." (drop-last (clojure.string/split @!query #"\."))))} "⏮"]]))
