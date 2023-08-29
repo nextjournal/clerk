@@ -19,7 +19,6 @@
                        [sci.lang]
                        [applied-science.js-interop :as j]])
             [nextjournal.clerk.parser :as parser]
-            [nextjournal.markdown :as md]
             [nextjournal.markdown.parser :as md.parser]
             [nextjournal.markdown.transform :as md.transform])
   #?(:clj (:import (com.pngencoder PngEncoder)
