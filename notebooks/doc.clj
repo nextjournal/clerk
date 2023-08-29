@@ -8,13 +8,13 @@
   '(fn [!query]
      (prn :query !query)
      [:div.my-1.relative
-      [:input {:type :text
-               :auto-correct "off"
-               :spell-check "false"
-               :placeholder "Search namespaces…"
-               :value @!query
-               :class "px-2 py-1 relative bg-white bg-white rounded border border-slate-200 shadow-inner outline-none focus:outline-none focus:ring w-full text-sm font-sans"
-               :on-input #(reset! !query (.. % -target -value))}]
+      [:input.px-2.py-1.relative.bg-white.dark:bg-slate-900.bg-white.rounded.border.dark:border-slate-700.shadow-inner.outline-none.focus:outline-none.focus:ring.w-full.text-sm.font-sans
+       {:type :text
+        :auto-correct "off"
+        :spell-check "false"
+        :placeholder "Search namespaces…"
+        :value @!query
+        :on-input #(reset! !query (.. % -target -value))}]
       #_[:button.absolute.right-2.text-xl.cursor-pointer
          {:class "top-1/2 -translate-y-1/2"
           :on-click #(reset! !query (clojure.string/join "." (drop-last (clojure.string/split @!query #"\."))))} "⏮"]]))
@@ -45,7 +45,7 @@
   [var]
   (let [{:keys [doc arglists] var-name :name} (meta var)]
     (clerk/html
-     [:div.border-t.border-slate-200.pt-6.mt-6
+     [:div.border-t.dark:border-slate-800.pt-6.mt-6
       {:id (name (symbol var))}
       [:div.font-sans.font-bold.text-base {:style {:margin 0}} var-name]
       (when (seq arglists)
@@ -57,7 +57,7 @@
 
 (defn render-ns [{:keys [name nss vars]}]
   [:div.mt-1
-   [:div.hover:underline.cursor-pointer.hover:text-indigo-600.whitespace-nowrap
+   [:div.hover:underline.cursor-pointer.hover:text-indigo-600.dark:hover:text-white.whitespace-nowrap
     {:class (when (= @!active-ns name) "font-bold")
      :on-click (viewer/->viewer-eval `(fn []
                                         (reset! !active-ns ~name)
@@ -66,13 +66,14 @@
      [:<>
       (into [:div.text-xs.font-sans.mt-1.ml-3.mb-3]
             (map (fn [var]
-                   [:div.mt-1.hover:text-indigo-600.cursor-pointer.hover:underline
+                   [:div.mt-1.hover:text-indigo-600.dark:hover:text-white.cursor-pointer.hover:underline
                     {:on-click (viewer/->viewer-eval `(fn []
                                                         (when-some [el (js/document.getElementById ~(str var))]
                                                           (.scrollIntoView el))))}
                     var]))
             vars)
-      [:div.border-b.mb-3]])
+      (when nss
+        [:div.border-b.dark:border-slate-800.mb-3])])
    (when nss
      (into [:div.ml-3] (map render-ns) nss))])
 
@@ -116,20 +117,20 @@
  [:<>
   [:style ".markdown-viewer { padding: 0 !important; }"]
   [:div.w-screen.h-screen.flex.fixed.left-0.top-0.bg-white.dark:bg-slate-950
-   [:div.border-r.flex-shrink-0.flex.flex-col {:class "w-[300px]"}
-    [:div.px-3.py-3.border-b
+   [:div.border-r.dark:border-slate-800.flex-shrink-0.flex.flex-col {:class "w-[300px]"}
+    [:div.px-3.py-3.border-b.dark:border-slate-800
      (clerk/with-viewer {:render-fn render-input
                          :transform-fn clerk/mark-presented} (viewer/->viewer-eval `!ns-query))]
     [:div.pb-5.flex-auto.overflow-y-auto
      (cond (not (str/blank? @!ns-query))
            [:div
-            [:div.tracking-wider.uppercase.text-slate-400.px-5.font-sans.text-xs.mt-5 "Search results"]
+            [:div.tracking-wider.uppercase.text-slate-500.dark:text-slate-400.px-5.font-sans.text-xs.mt-5 "Search results"]
             (into [:div.text-sm.font-sans.px-5.mt-3]
                   (map render-ns)
                   (ns-tree ns-matches))]
            (= @!active-ns :all)
            [:div
-            [:div.tracking-wider.uppercase.text-slate-500.px-5.font-sans.text-xs.mt-5 "All namespaces"]
+            [:div.tracking-wider.uppercase.text-slate-500.dark:text-slate-400.px-5.font-sans.text-xs.mt-5 "All namespaces"]
             (into [:div.text-sm.font-sans.px-5.mt-2]
                   (map render-ns)
                   (ns-tree (sort (map (comp str ns-name) (all-ns)))))]
@@ -138,19 +139,19 @@
              [:<>
               [:div
                [:div
-                [:div.tracking-wider.uppercase.text-slate-500.px-5.font-sans.text-xs.mt-5.mb-2 "Nav"]
+                [:div.tracking-wider.uppercase.text-slate-500.dark:text-slate-400.px-5.font-sans.text-xs.mt-5.mb-2 "Nav"]
                 (when-some [ns-name (some-> (str/join "." (butlast (str/split @!active-ns #"\."))) symbol find-ns ns-name str)]
-                  [:div.px-5.font-sans.text-xs.mt-1.text-indigo-600.hover:underline.cursor-pointer
+                  [:div.px-5.font-sans.text-xs.mt-1.hover:text-indigo-600.dark:hover:text-white.hover:underline.cursor-pointer
                    {:on-click (viewer/->viewer-eval `(fn []
                                                        (reset! !active-ns ~ns-name)
                                                        (reset! !ns-query "")))}
                    "One level up"])
-                [:div.px-5.font-sans.text-xs.mt-1.text-indigo-600.hover:underline.cursor-pointer
+                [:div.px-5.font-sans.text-xs.mt-1.hover:text-indigo-600.dark:hover:text-white.hover:underline.cursor-pointer
                  {:on-click (viewer/->viewer-eval `(fn []
                                                      (reset! !active-ns :all)
                                                      (reset! !ns-query "")))}
                  "All namespaces"]]
-               [:div.tracking-wider.uppercase.text-slate-500.px-5.font-sans.text-xs.mt-5 "Current namespace"]
+               [:div.tracking-wider.uppercase.text-slate-500.dark:text-slate-400.px-5.font-sans.text-xs.mt-5 "Current namespace"]
                (into [:div.text-sm.font-sans.px-5.mt-2]
                      (map render-ns)
                      (ns-tree (match-nss @!active-ns)))]]))]]
@@ -171,7 +172,7 @@
                                                                               @!active-ns)]
                      (into [:div.mt-2]
                            (map (fn [ns-str]
-                                  [:div.pt-5.mt-5.border-t.hover:text-indigo-600.cursor-pointer.group
+                                  [:div.pt-5.mt-5.border-t.dark:border-slate-800.hover:text-indigo-600.cursor-pointer.group
                                    {:on-click (viewer/->viewer-eval `(fn []
                                                                        (reset! !active-ns ~ns-str)
                                                                        (reset! !ns-query "")))}
