@@ -115,7 +115,7 @@
 (clerk/html
  (let [matches (try
                  (match-nss @!ns-query)
-                 (catch Exception e :error))]
+                 (catch Exception _ :error))]
    [:<>
     [:style ".markdown-viewer { padding: 0 !important; }"]
     [:div.w-screen.h-screen.flex.fixed.left-0.top-0.bg-white.dark:bg-slate-950
@@ -142,26 +142,25 @@
                     (map render-ns)
                     (ns-tree (sort (map (comp str ns-name) (all-ns)))))]
              :else
-             (let [path (path-to-ns @!active-ns)]
-               [:<>
-                [:div
-                 [:div
-                  [:div.tracking-wider.uppercase.text-slate-500.dark:text-slate-400.px-5.font-sans.text-xs.mt-5.mb-2 "Nav"]
-                  (when-some [ns-name (some-> (str/join "." (butlast (str/split @!active-ns #"\."))) symbol find-ns ns-name str)]
-                    [:div.px-5.font-sans.text-xs.mt-1.hover:text-indigo-600.dark:hover:text-white.hover:underline.cursor-pointer
-                     {:on-click (viewer/->viewer-eval `(fn []
-                                                         (reset! !active-ns ~ns-name)
-                                                         (reset! !ns-query "")))}
-                     "One level up"])
+             [:<>
+              [:div
+               [:div
+                [:div.tracking-wider.uppercase.text-slate-500.dark:text-slate-400.px-5.font-sans.text-xs.mt-5.mb-2 "Nav"]
+                (when-some [ns-name (some-> (str/join "." (butlast (str/split @!active-ns #"\."))) symbol find-ns ns-name str)]
                   [:div.px-5.font-sans.text-xs.mt-1.hover:text-indigo-600.dark:hover:text-white.hover:underline.cursor-pointer
                    {:on-click (viewer/->viewer-eval `(fn []
-                                                       (reset! !active-ns :all)
+                                                       (reset! !active-ns ~ns-name)
                                                        (reset! !ns-query "")))}
-                   "All namespaces"]]
-                 [:div.tracking-wider.uppercase.text-slate-500.dark:text-slate-400.px-5.font-sans.text-xs.mt-5 "Current namespace"]
-                 (into [:div.text-sm.font-sans.px-5.mt-2]
-                       (map render-ns)
-                       (ns-tree (str-match-nss @!active-ns)))]]))]]
+                   "One level up"])
+                [:div.px-5.font-sans.text-xs.mt-1.hover:text-indigo-600.dark:hover:text-white.hover:underline.cursor-pointer
+                 {:on-click (viewer/->viewer-eval `(fn []
+                                                     (reset! !active-ns :all)
+                                                     (reset! !ns-query "")))}
+                 "All namespaces"]]
+               [:div.tracking-wider.uppercase.text-slate-500.dark:text-slate-400.px-5.font-sans.text-xs.mt-5 "Current namespace"]
+               (into [:div.text-sm.font-sans.px-5.mt-2]
+                     (map render-ns)
+                     (ns-tree (str-match-nss @!active-ns)))]])]]
      [:div.flex-auto.max-h-screen.overflow-y-auto.px-8.py-5
       (let [ns (some-> @!active-ns symbol find-ns)]
         (cond
