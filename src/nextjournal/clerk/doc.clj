@@ -203,10 +203,6 @@
                                        (not (qualified-symbol? (symbol link))))
                                   (str @!active-ns "/"))))
 
-(defn spy [x] (println :x (str "'" x "'")
-                       :t (type x)
-                       :ns (ns-name *ns*)) x)
-
 ^::clerk/no-cache
 (clerk/eval-cljs
  '(defn handle-click [{:keys [label var ns]} e]
@@ -252,9 +248,9 @@
     :render-fn 'render-link
     :transform-fn get-info}])
 
-(def custom-internal-links
+(def markdown-viewer
   (update viewer/markdown-viewer :add-viewers viewer/add-viewers custom-markdown-viewers))
 
-(viewer/add-viewers! [custom-internal-links])
+(viewer/add-viewers! [markdown-viewer])
 
 #_(clerk/clear-cache!)
