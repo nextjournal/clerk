@@ -14,18 +14,15 @@
           (js/document.addEventListener "keydown" keydown-handler)
           #(js/document.removeEventListener "keydown" keydown-handler))))
      [:div.my-1.relative
-      [:input#search-nss.px-2.py-1.relative.bg-white.dark:bg-slate-900.bg-white.rounded.border.dark:border-slate-700.shadow-inner.outline-none.focus:outline-none.focus:ring-2.focus.ring-indigo-500.hover:border-slate-400.focus:hover:border-slate-200.w-full.text-sm.font-sans.dark:hover:border-slate-600.dark:focus:border-sslate-700
+      [:input#search-nss.px-2.py-1.relative.bg-white.dark:bg-slate-900.bg-white.rounded.border.dark:border-slate-700.shadow-inner.outline-none.focus:outline-none.focus:ring-2.focus.ring-indigo-500.hover:border-slate-400.focus:hover:border-slate-200.w-full.text-xs.font-sans.dark:hover:border-slate-600.dark:focus:border-sslate-700
        {:type :text
         :auto-correct "off"
         :spell-check "false"
-        :placeholder "Search namespaces…"
+        :placeholder "Search namespaces via Regex…"
         :value @!query
         :on-input #(reset! !query (.. % -target -value))}]
       [:div.text-xs.absolute.right-2.text-slate-400.dark:text-slate-400.font-inter.tracking-widest.pointer-events-none
-       {:class "top-1/2 -translate-y-1/2"} "⌘K"]
-      #_[:button.absolute.right-2.text-xl.cursor-pointer
-         {:class "top-1/2 -translate-y-1/2"
-          :on-click #(reset! !query (clojure.string/join "." (drop-last (clojure.string/split @!query #"\."))))} "⏮"]]))
+       {:class "top-1/2 -translate-y-1/2"} "⌘K"]]))
 
 ^{::clerk/sync true}
 (defonce !ns-query (atom ""))
@@ -42,11 +39,11 @@
          (reduce str)
          str)))
 
-(defn match-nss [s]
-  (filter (partial re-find (re-pattern (escape-pattern-str s))) (sort (map str (all-ns)))))
+(defn str-match-nss [s]
+  (filter #(str/includes? % s) (sort (map str (all-ns)))))
 
-(def ns-matches
-  (match-nss @!ns-query))
+(defn match-nss [re]
+  (filter (partial re-find (re-pattern re)) (sort (map str (all-ns)))))
 
 (defn var->doc-viewer
   "Takes a clojure `var` and returns a Clerk viewer to display its documentation."
@@ -122,78 +119,86 @@
 
 ^{::clerk/visibility {:result :show}}
 (clerk/html
- [:<>
-  [:style ".markdown-viewer { padding: 0 !important; }"]
-  [:div.w-screen.h-screen.flex.fixed.left-0.top-0.bg-white.dark:bg-slate-950
-   [:div.border-r.dark:border-slate-800.flex-shrink-0.flex.flex-col {:class "w-[300px]"}
-    [:div.px-3.py-3.border-b.dark:border-slate-800
-     (clerk/with-viewer {:render-fn render-input
-                         :transform-fn clerk/mark-presented} (viewer/->viewer-eval `!ns-query))]
-    [:div.pb-5.flex-auto.overflow-y-auto
-     (cond (not (str/blank? @!ns-query))
-           [:div
-            [:div.tracking-wider.uppercase.text-slate-500.dark:text-slate-400.px-5.font-sans.text-xs.mt-5 "Search results"]
-            (into [:div.text-sm.font-sans.px-5.mt-3]
-                  (map render-ns)
-                  (ns-tree ns-matches))]
-           (= @!active-ns :all)
-           [:div
-            [:div.tracking-wider.uppercase.text-slate-500.dark:text-slate-400.px-5.font-sans.text-xs.mt-5 "All namespaces"]
-            (into [:div.text-sm.font-sans.px-5.mt-2]
-                  (map render-ns)
-                  (ns-tree (sort (map (comp str ns-name) (all-ns)))))]
-           :else
-           (let [path (path-to-ns @!active-ns)]
-             [:<>
-              [:div
-               [:div
-                [:div.tracking-wider.uppercase.text-slate-500.dark:text-slate-400.px-5.font-sans.text-xs.mt-5.mb-2 "Nav"]
-                (when-some [ns-name (some-> (str/join "." (butlast (str/split @!active-ns #"\."))) symbol find-ns ns-name str)]
+ (let [matches (try
+                 (match-nss @!ns-query)
+                 (catch Exception e :error))]
+   [:<>
+    [:style ".markdown-viewer { padding: 0 !important; }"]
+    [:div.w-screen.h-screen.flex.fixed.left-0.top-0.bg-white.dark:bg-slate-950
+     [:div.border-r.dark:border-slate-800.flex-shrink-0.flex.flex-col {:class "w-[300px]"}
+      [:div.px-3.py-3.border-b.dark:border-slate-800
+       (clerk/with-viewer {:render-fn render-input
+                           :transform-fn clerk/mark-presented} (viewer/->viewer-eval `!ns-query))
+       (when (= matches :error)
+         [:div.text-red-600.dark:text-red-400.mt-2.font-sans.px-2.text-xs
+          "😖 Invalid or incomplete Regex pattern."])]
+      [:div.pb-5.flex-auto.overflow-y-auto
+       (cond (not (str/blank? @!ns-query))
+             [:div
+              [:div.tracking-wider.uppercase.text-slate-500.dark:text-slate-400.px-5.font-sans.text-xs.mt-5 "Search results"]
+              (if (and (not= :error matches) (seq matches))
+                (into [:div.text-sm.font-sans.px-5.mt-3]
+                      (map render-ns)
+                      (ns-tree matches))
+                [:div.px-5.mt-3.font-sans.text-sm "Nothing found."])]
+             (= @!active-ns :all)
+             [:div
+              [:div.tracking-wider.uppercase.text-slate-500.dark:text-slate-400.px-5.font-sans.text-xs.mt-5 "All namespaces"]
+              (into [:div.text-sm.font-sans.px-5.mt-2]
+                    (map render-ns)
+                    (ns-tree (sort (map (comp str ns-name) (all-ns)))))]
+             :else
+             (let [path (path-to-ns @!active-ns)]
+               [:<>
+                [:div
+                 [:div
+                  [:div.tracking-wider.uppercase.text-slate-500.dark:text-slate-400.px-5.font-sans.text-xs.mt-5.mb-2 "Nav"]
+                  (when-some [ns-name (some-> (str/join "." (butlast (str/split @!active-ns #"\."))) symbol find-ns ns-name str)]
+                    [:div.px-5.font-sans.text-xs.mt-1.hover:text-indigo-600.dark:hover:text-white.hover:underline.cursor-pointer
+                     {:on-click (viewer/->viewer-eval `(fn []
+                                                         (reset! !active-ns ~ns-name)
+                                                         (reset! !ns-query "")))}
+                     "One level up"])
                   [:div.px-5.font-sans.text-xs.mt-1.hover:text-indigo-600.dark:hover:text-white.hover:underline.cursor-pointer
                    {:on-click (viewer/->viewer-eval `(fn []
-                                                       (reset! !active-ns ~ns-name)
+                                                       (reset! !active-ns :all)
                                                        (reset! !ns-query "")))}
-                   "One level up"])
-                [:div.px-5.font-sans.text-xs.mt-1.hover:text-indigo-600.dark:hover:text-white.hover:underline.cursor-pointer
-                 {:on-click (viewer/->viewer-eval `(fn []
-                                                     (reset! !active-ns :all)
-                                                     (reset! !ns-query "")))}
-                 "All namespaces"]]
-               [:div.tracking-wider.uppercase.text-slate-500.dark:text-slate-400.px-5.font-sans.text-xs.mt-5 "Current namespace"]
-               (into [:div.text-sm.font-sans.px-5.mt-2]
-                     (map render-ns)
-                     (ns-tree (match-nss @!active-ns)))]]))]]
-   [:div.flex-auto.max-h-screen.overflow-y-auto.px-8.py-5
-    (let [ns (some-> @!active-ns symbol find-ns)]
-      (cond
-        ns [:<>
-            [:div.font-bold.font-sans.text-xl {:style {:margin 0}} (ns-name ns)]
-            (when-let [doc (-> ns meta :doc)]
-              [:div.mt-4.leading-normal.viewer-markdown.prose
-               (clerk/md doc)])
-            (into [:<>]
-                  (map (comp :nextjournal/value var->doc-viewer val))
-                  (into (sorted-map) (-> ns ns-publics)))]
-        @!active-ns [:<>
-                     [:div.font-bold.font-sans.text-xl {:style {:margin 0}} (if (= @!active-ns :all)
-                                                                              "All namespaces in classpath"
-                                                                              @!active-ns)]
-                     (into [:div.mt-2]
-                           (map (fn [ns-str]
-                                  [:div.pt-5.mt-5.border-t.dark:border-slate-800.hover:text-indigo-600.cursor-pointer.group
-                                   {:on-click (viewer/->viewer-eval `(fn []
-                                                                       (reset! !active-ns ~ns-str)
-                                                                       (reset! !ns-query "")))}
-                                   [:div.font-sans.text-base.font-bold.group-hover:underline
-                                    {:style {:margin 0}}
-                                    ns-str]
-                                   (when-let [doc (some-> ns-str symbol find-ns meta :doc)]
-                                     [:div.mt-2.leading-normal.viewer-markdown.prose.text-sm
-                                      (clerk/md doc)])]))
-                           (if (= :all @!active-ns)
-                             (sort (map :name (ns-tree (map (comp str ns-name) (all-ns)))))
-                             (match-nss @!active-ns)))]
-        :else [:div "No namespaces found."]))]]])
+                   "All namespaces"]]
+                 [:div.tracking-wider.uppercase.text-slate-500.dark:text-slate-400.px-5.font-sans.text-xs.mt-5 "Current namespace"]
+                 (into [:div.text-sm.font-sans.px-5.mt-2]
+                       (map render-ns)
+                       (ns-tree (str-match-nss @!active-ns)))]]))]]
+     [:div.flex-auto.max-h-screen.overflow-y-auto.px-8.py-5
+      (let [ns (some-> @!active-ns symbol find-ns)]
+        (cond
+          ns [:<>
+              [:div.font-bold.font-sans.text-xl {:style {:margin 0}} (ns-name ns)]
+              (when-let [doc (-> ns meta :doc)]
+                [:div.mt-4.leading-normal.viewer-markdown.prose
+                 (clerk/md doc)])
+              (into [:<>]
+                    (map (comp :nextjournal/value var->doc-viewer val))
+                    (into (sorted-map) (-> ns ns-publics)))]
+          @!active-ns [:<>
+                       [:div.font-bold.font-sans.text-xl {:style {:margin 0}} (if (= @!active-ns :all)
+                                                                                "All namespaces in classpath"
+                                                                                @!active-ns)]
+                       (into [:div.mt-2]
+                             (map (fn [ns-str]
+                                    [:div.pt-5.mt-5.border-t.dark:border-slate-800.hover:text-indigo-600.cursor-pointer.group
+                                     {:on-click (viewer/->viewer-eval `(fn []
+                                                                         (reset! !active-ns ~ns-str)
+                                                                         (reset! !ns-query "")))}
+                                     [:div.font-sans.text-base.font-bold.group-hover:underline
+                                      {:style {:margin 0}}
+                                      ns-str]
+                                     (when-let [doc (some-> ns-str symbol find-ns meta :doc)]
+                                       [:div.mt-2.leading-normal.viewer-markdown.prose.text-sm
+                                        (clerk/md doc)])]))
+                             (if (= :all @!active-ns)
+                               (sort (map :name (ns-tree (map (comp str ns-name) (all-ns)))))
+                               (str-match-nss @!active-ns)))]
+          :else [:div "No namespaces found."]))]]]))
 
 #_(deref nextjournal.clerk.webserver/!doc)
 
