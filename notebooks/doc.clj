@@ -116,11 +116,11 @@
  [:<>
   [:style ".markdown-viewer { padding: 0 !important; }"]
   [:div.w-screen.h-screen.flex.fixed.left-0.top-0.bg-white.dark:bg-slate-950
-   [:div.border-r.flex-shrink-0.overflow-y-auto {:class "w-[300px]"}
+   [:div.border-r.flex-shrink-0.flex.flex-col {:class "w-[300px]"}
     [:div.px-3.py-3.border-b
      (clerk/with-viewer {:render-fn render-input
                          :transform-fn clerk/mark-presented} (viewer/->viewer-eval `!ns-query))]
-    [:div.pb-5
+    [:div.pb-5.flex-auto.overflow-y-auto
      (cond (not (str/blank? @!ns-query))
            [:div
             [:div.tracking-wider.uppercase.text-slate-400.px-5.font-sans.text-xs.mt-5 "Search results"]
