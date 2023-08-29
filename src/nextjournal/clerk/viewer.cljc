@@ -541,7 +541,7 @@
 
                                      #?@(:clj [(= blob-mode :lazy-load)
                                                (assoc :nextjournal/fetch-opts {:blob-id blob-id}
-                                                      :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-block]))]))}
+                                                      :nextjournal/hash (analyzer/->hash-str [presented-result opts-from-block]))]))}
                (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)))))
 
 #_(nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)

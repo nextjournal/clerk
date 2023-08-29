@@ -263,7 +263,7 @@
                                                 (fn [more]
                                                   (swap! !desc viewer/merge-presentations more opts)
                                                   (swap! !expanded-at #(merge (->expanded-at auto-expand-results? @!desc) %))))))
-                                     [hash])
+                                     [fetch-opts hash])
         on-key-down (hooks/use-callback (fn [event]
                                           (if (.-altKey event)
                                             (swap! !expanded-at assoc :prompt-multi-expand? true)
