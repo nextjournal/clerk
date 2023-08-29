@@ -986,7 +986,7 @@
    :transform-fn (fn [wrapped-value]
                    (-> wrapped-value
                        mark-presented
-                       (update :nextjournal/value #(cond->> % (string? %) md/parse))
+                       (update :nextjournal/value #(cond->> % (string? %) parser/parse-markdown))
                        (with-md-viewer)))})
 
 (def code-viewer

@@ -293,8 +293,9 @@
 
 (defn parse-markdown
   "Like `n.markdown.parser/parse` but allows to reuse the same context in successive calls"
-  [ctx md]
-  (markdown.parser/apply-tokens ctx (markdown/tokenize md)))
+  ([md] (parse-markdown (markdown-context) md))
+  ([ctx md]
+   (markdown.parser/apply-tokens ctx (markdown/tokenize md))))
 
 #_(parse-markdown-string {:doc? true} "# Title\nSome [[internal-link]] to be followed.")
 
