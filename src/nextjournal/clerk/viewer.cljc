@@ -724,12 +724,13 @@
                 (when-some [var (try (requiring-resolve sym)
                                      (catch Exception _ nil))]
                   (merge {:var var} (resolve-internal-link (-> var symbol namespace))))
-                (when-some [ns (try (require sym)
-                                    (find-ns sym)
-                                    (catch Exception _ nil))]
+                (if-some [ns (try (require sym)
+                                  (find-ns sym)
+                                  (catch Exception _ nil))]
                   (cond-> {:ns ns}
                     (fs/exists? (analyzer/ns->file sym))
-                    (assoc :path (analyzer/ns->file sym)))))))))
+                    (assoc :path (analyzer/ns->file sym)))
+                  (resolve-internal-link (str (ns-name *ns*) "/" link))))))))
 
 #_(resolve-internal-link "notebooks/hello.clj")
 #_(resolve-internal-link "nextjournal.clerk.tap")
