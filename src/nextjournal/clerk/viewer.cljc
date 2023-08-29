@@ -472,7 +472,9 @@
                     %)
                  presented-result)))
 
-(defn get-default-viewers []
+(defn get-default-viewers
+  "Returns viewers from the global scope when set, defaults to [[default-viewers]] (see also [[!viewers]])."
+  []
   (:default @!viewers default-viewers))
 
 (defn datafy-scope [scope]
@@ -982,6 +984,7 @@
   {:name `vega-lite-viewer :render-fn 'nextjournal.clerk.render/render-vega-lite :transform-fn mark-presented})
 
 (def markdown-viewer
+  "A clerk viewer for rendering markdown. See also [[nextjournal.clerk/md]]."
   {:name `markdown-viewer
    :add-viewers markdown-viewers
    :transform-fn (fn [wrapped-value]

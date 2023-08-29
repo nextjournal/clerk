@@ -222,13 +222,16 @@
   ([viewer-opts x] (v/html viewer-opts x)))
 
 (defn md
-  "Displays `x` with the markdown viewer.
+  "Displays `x` with the markdown viewer. Accepts strings or a structure as returned by [[nextjournal.markdown/parse]].
 
   Supports an optional first `viewer-opts` map arg with the following optional keys:
 
   * `:nextjournal.clerk/width`: set the width to `:full`, `:wide`, `:prose`
   * `:nextjournal.clerk/viewers`: a seq of viewers to use for presentation of this value and its children
-  * `:nextjournal.clerk/render-opts`: a map argument that will be passed as a secong arg to the viewers `:render-fn`"
+  * `:nextjournal.clerk/render-opts`: a map argument that will be passed as a secong arg to the viewers `:render-fn`.
+
+  See also [[nextjournal.clerk.viewer/markdown-viewer]]."
+
   ([x] (v/md x))
   ([viewer-opts x] (v/md viewer-opts x)))
 
@@ -553,7 +556,7 @@
 #_(with-cache (do (Thread/sleep 4200) 42))
 
 (defmacro defcached
-  "Like `clojure.core/def` but with Clerk's caching of the value."
+  "Like `clojure.core/def` but with Clerk's caching of the value. See also [[with-cache]]."
   [name expr]
   `(let [result# (-> ~(v/->edn expr) eval/eval-string :blob->result first val :nextjournal/value)]
      (def ~name result#)))
