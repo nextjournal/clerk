@@ -1333,7 +1333,7 @@
    hide-result-viewer])
 
 (defonce
-  ^{:doc "atom containing a map of and per-namespace viewers or `:defaults` overridden viewers."}
+  ^{:doc "atom containing a map of and per-namespace viewers or `:defaults` overridden viewers. See also [[get-default-viewers]]."}
   !viewers
   (#?(:clj atom :cljs ratom/atom) {}))
 

@@ -195,3 +195,31 @@
 
 #_(deref nextjournal.clerk.webserver/!doc)
 
+(defn resolve-internal-link [link]
+  (viewer/resolve-internal-link (cond->> link
+                                  (and (not (qualified-symbol? (symbol link))) @!active-ns)
+                                  (str @!active-ns "/"))))
+
+(def custom-markdown-viewers
+  [{:name :nextjournal.markdown/internal-link
+    :transform-fn (comp clerk/mark-presented
+                        (fn [wv]
+                          (when-some [info (-> wv :nextjournal/value :text resolve-internal-link)]
+                            (-> info
+                                (viewer/update-if :var symbol)
+                                (viewer/update-if :ns ns-name)))))
+    :render-fn '(fn [{:keys [var ns]} _]
+                  [:a {:href (str "#" var)
+                       :on-click (fn [e] (.stopPropagation e) (.preventDefault e)
+                                   (when (and var ns)
+                                     (let [scroll-to-target #(when-some [el (js/document.getElementById (name var))]
+                                                               (.scrollIntoView el))]
+                                       (if (not= @!active-ns (str ns))
+                                         (do (reset! !active-ns (str ns))
+                                             (js/setTimeout scroll-to-target 500)) ;; TODO: smarter
+                                         (scroll-to-target)))))} (str var)])}])
+
+(def custom-internal-links
+  (update viewer/markdown-viewer :add-viewers viewer/add-viewers custom-markdown-viewers))
+
+(viewer/add-viewers! [custom-internal-links])
