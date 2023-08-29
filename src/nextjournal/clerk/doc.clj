@@ -1,4 +1,5 @@
-(ns doc
+(ns nextjournal.clerk.doc
+  "Clerk's documentation browser."
   {:nextjournal.clerk/visibility {:code :hide :result :hide}}
   (:require [clojure.string :as str]
             [nextjournal.clerk :as clerk]
@@ -29,8 +30,8 @@
 #_(reset! !ns-query "")
 
 ^{::clerk/sync true}
-(defonce !active-ns (atom "nextjournal.clerk.viewer"))
-#_(reset! !active-ns "nextjournal.clerk.viewer")
+(defonce !active-ns (atom ""))
+#_(reset! !active-ns "nextjournal.clerk")
 
 (defn escape-pattern-str [s]
   (let [esc-chars "[](){}<>*&^%$#!\\|? "]
