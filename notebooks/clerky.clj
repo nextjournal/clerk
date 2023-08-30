@@ -1,6 +1,11 @@
+;; # 📞 Clerk Call API
 (ns clerky
   {:nextjournal.clerk/visibility {:code :hide :result :hide}}
   (:require [nextjournal.clerk :as clerk]))
+
+;; - consider taking care of swap! ourselves / leave pure API functions user facing
+;; - consider wrapping views so to expose just `state` or `db` / no deref
+;; - consider skipping API handler registration on recomputes
 
 ^{::clerk/sync true}
 (defonce !state (atom 0))
