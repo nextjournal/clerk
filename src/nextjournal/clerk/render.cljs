@@ -661,6 +661,15 @@
      (ws-send! {:type :eval :form form :eval-id eval-id :recompute? (boolean recompute?)})
      promise)))
 
+(defn api-call
+  ([sym] (api-call sym []))
+  ([sym args]
+   (let [eval-id (gensym)
+         promise (js/Promise. (fn [resolve reject]
+                                (swap! !pending-clerk-eval-replies assoc eval-id {:resolve resolve :reject reject})))]
+     (ws-send! {:type :api :call sym :args args :eval-id eval-id})
+     promise)))
+
 (defn process-eval-reply! [{:keys [eval-id reply error]}]
   (if-let [{:keys [resolve reject]} (get @!pending-clerk-eval-replies eval-id)]
     (do (swap! !pending-clerk-eval-replies dissoc eval-id)

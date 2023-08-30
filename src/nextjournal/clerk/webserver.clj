@@ -162,6 +162,17 @@
                                                                 {:error (Throwable->map e)}))))
                                  (when recompute?
                                    (eval '(nextjournal.clerk/recompute!))))
+
+                       :api (let [{:keys [call args eval-id]} msg]
+                              (send! sender-ch
+                                     (if-some [{:keys [api-fn state]} (v/get-api-fn call)]
+                                       (merge {:type :eval-reply :eval-id eval-id}
+                                              (try {:reply (apply (resolve api-fn) state args)}
+                                                   (catch Exception e
+                                                     {:error (Throwable->map e)})))
+                                       {:type :eval-reply :eval-id eval-id
+                                        :error (Throwable->map (ex-info "Unknown API" {:call call :args args}))})))
+
                        :swap! (when-let [var (resolve (:var-name msg))]
                                 (try
                                   (binding [*sender-ch* sender-ch]

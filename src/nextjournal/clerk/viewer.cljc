@@ -605,6 +605,18 @@
 
 #_(present @nextjournal.clerk.webserver/!doc)
 
+(defonce !api-handlers (atom {}))
+
+(defn ns-qualify [sym] (symbol (str (ns-name *ns*)) (name sym)))
+(defn get-api-fn [sym] (let [k (ns-qualify sym)]
+                         (when-some [opts (get @!api-handlers k)]
+                           (assoc opts :api-fn k))))
+#?(:clj
+   (defn register-api-handler! [{:keys [var]}]
+     (when var
+       (when-some [opts (:clerk/api (meta (resolve var)))]
+         (swap! !api-handlers assoc var opts)))))
+
 (defn with-block-viewer [doc {:as cell :keys [type id]}]
   (case type
     :markdown (let [{:keys [content]} (:doc cell)
@@ -621,6 +633,7 @@
     :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
                 {:keys [code? result? fold?]} (->display cell)
                 eval? (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)]
+            #?(:clj (register-api-handler! cell))
             (cond-> []
               code?
               (conj (with-viewer (if fold? `folded-code-block-viewer `code-block-viewer)
