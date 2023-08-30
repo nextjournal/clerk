@@ -124,17 +124,6 @@
 #_(ns-tree ns-matches)
 #_(ns-tree ())
 
-(defn parent-ns [ns-str]
-  (when (str/includes? ns-str ".")
-    (str/join "." (butlast (str/split ns-str #"\.")))))
-
-(defn prepend-parent [nss]
-  (when-let [parent (parent-ns (first nss))]
-    (cons parent nss)))
-
-(defn path-to-ns [ns-str]
-  (last (take-while some? (iterate prepend-parent [ns-str]))))
-
 ^{::clerk/visibility {:result :show}}
 (clerk/html
  (let [matches (try
