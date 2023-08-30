@@ -725,13 +725,12 @@
                 (when-some [var (try (requiring-resolve sym)
                                      (catch Exception _ nil))]
                   (merge {:var var} (resolve-internal-link (-> var symbol namespace))))
-                (if-some [ns (try (require sym)
-                                  (find-ns sym)
-                                  (catch Exception _ nil))]
+                (when-some [ns (try (require sym)
+                                    (find-ns sym)
+                                    (catch Exception _ nil))]
                   (cond-> {:ns ns}
                     (fs/exists? (analyzer/ns->file sym))
-                    (assoc :path (analyzer/ns->file sym)))
-                  (resolve-internal-link (str (ns-name *ns*) "/" link))))))))
+                    (assoc :path (analyzer/ns->file sym)))))))))
 
 #_(resolve-internal-link "notebooks/hello.clj")
 #_(resolve-internal-link "nextjournal.clerk.tap")
@@ -750,13 +749,14 @@
 
 (defn process-href [^String href]
   #?(:cljs href
-     :clj (if (.getScheme (URI. href))
+     :clj (if (or (.getScheme (URI. href)) (str/starts-with? href "/"))
             href
             (let [{:keys [path fragment]} (process-internal-link href)]
-              (doc-url path fragment)))))
+              (if (or path fragment) (doc-url path fragment) href)))))
 
-#_(process-href "foo.bar.dang")
-#_(process-internal-link "foo.bar.dang")
+#_(process-href "rule-30")
+#_(process-href "#some-id")
+#_(process-internal-link "#some-id")
 
 #_(process-internal-link "notebooks/rule_30.clj")
 #_(process-internal-link "viewers.html")
