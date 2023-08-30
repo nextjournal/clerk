@@ -6,6 +6,29 @@
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.markdown.transform :as md.transform]))
 
+(clerk/eval-cljs
+ '(defn handle-click [{:keys [label var ns]} e]
+    (.stopPropagation e)
+    (.preventDefault e)
+    (when (resolve '!active-ns)
+      (let [scroll-to-target (fn []
+                               (if var
+                                 (when-some [el (js/document.getElementById (name var))]
+                                   (.scrollIntoView el))
+                                 (when ns
+                                   (when-some [page (js/document.getElementById "main-column")]
+                                     (.scroll page (applied-science.js-interop/obj :top 0))))))]
+        (when ns
+          (if (not= @!active-ns (str ns))
+            (do (reset! !active-ns (str ns))
+                ;; TODO: smarter
+                (js/setTimeout scroll-to-target 500))
+            (scroll-to-target)))))))
+
+(clerk/eval-cljs
+ '(defn render-link [{:as info :keys [label]} _]
+    [:a {:href "#" :on-click (partial handle-click info)} label]))
+
 (def render-input
   '(fn [!query]
      (nextjournal.clerk.render.hooks/use-effect
@@ -203,30 +226,6 @@
                                        (not (qualified-symbol? (symbol link))))
                                   (str @!active-ns "/"))))
 
-^::clerk/no-cache
-(clerk/eval-cljs
- '(defn handle-click [{:keys [label var ns]} e]
-    (js/console.log :handle-click/ns ns :var var)
-    (.stopPropagation e) (.preventDefault e)
-    (when (resolve '!active-ns)
-      (let [scroll-to-target (fn []
-                               (if var
-                                 (when-some [el (js/document.getElementById (name var))]
-                                   (.scrollIntoView el))
-                                 (when ns
-                                   (when-some [page (js/document.getElementById "main-column")]
-                                     (.scroll page (applied-science.js-interop/obj :top 0))))))]
-        (when ns
-          (if (not= @!active-ns (str ns))
-            (do (reset! !active-ns (str ns))
-                (js/setTimeout scroll-to-target 500))       ;; TODO: smarter
-            (scroll-to-target)))))))
-
-^::clerk/no-cache
-(clerk/eval-cljs
- '(defn render-link [{:as info :keys [label]} _]
-    [:a {:href "#" :on-click (partial handle-click info)} label]))
-
 (def get-info
   (comp clerk/mark-presented
         (fn [wv]
@@ -242,10 +241,10 @@
 
 (def custom-markdown-viewers
   [{:name :nextjournal.markdown/internal-link
-    :render-fn 'render-link
+    :render-fn 'nextjournal.clerk.doc/render-link
     :transform-fn get-info}
    {:name :nextjournal.markdown/link
-    :render-fn 'render-link
+    :render-fn 'nextjournal.clerk.doc/render-link
     :transform-fn get-info}])
 
 (def markdown-viewer
