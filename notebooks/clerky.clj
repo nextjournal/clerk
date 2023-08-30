@@ -11,12 +11,12 @@
 (defonce !state (atom 0))
 
 (defn inc-counter
-  {:clerk/api {:state !state}}
-  [!state] (swap! !state inc))
+  {::clerk/api {:state !state}}
+  [x] (swap! x inc))
 
 (defn dec-counter
-  {:clerk/api {:state !state}}
-  [!state] (swap! !state dec))
+  {::clerk/api {:state !state}}
+  [x] (swap! x dec))
 
 (def render-view
   '(fn [!state]

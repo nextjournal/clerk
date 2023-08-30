@@ -614,7 +614,7 @@
 #?(:clj
    (defn register-api-handler! [{:keys [var]}]
      (when var
-       (when-some [opts (:clerk/api (meta (resolve var)))]
+       (when-some [opts (:nextjournal.clerk/api (meta (resolve var)))]
          (swap! !api-handlers assoc var opts)))))
 
 (defn with-block-viewer [doc {:as cell :keys [type id]}]
