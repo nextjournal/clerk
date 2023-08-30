@@ -1782,7 +1782,7 @@
             (prn "`hide-result` has been deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead."))))
 
 (defn hide-result
-  "Deprecated, please put ^{:nextjournal.clerk/visibility {:result :hide}} metadata on the form instead."
+  "Deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead."
   {:deprecated "0.10"}
   ([x] (print-hide-result-deprecation-warning) (with-viewer hide-result-viewer {} x))
   ([viewer-opts x] (print-hide-result-deprecation-warning) (with-viewer hide-result-viewer viewer-opts x)))
