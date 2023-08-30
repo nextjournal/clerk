@@ -748,10 +748,23 @@
      :cljs
      {:path link :title link}))
 
+(defn process-href [^String href]
+  #?(:cljs href
+     :clj (if (.getScheme (URI. href))
+            href
+            (let [{:keys [path fragment]} (process-internal-link href)]
+              (doc-url path fragment)))))
+
+#_(process-href "foo.bar.dang")
+#_(process-internal-link "foo.bar.dang")
+
 #_(process-internal-link "notebooks/rule_30.clj")
 #_(process-internal-link "viewers.html")
 #_(process-internal-link "how-clerk-works/hashes")
 #_(process-internal-link "rule-30/first-generation")
+
+(defn update-if [m k f] (if (k m) (update m k f) m))
+#_(update-if {:n "42"} :n #(Integer/parseInt %))
 
 (declare html)
 
@@ -782,7 +795,7 @@
    {:name :nextjournal.markdown/strong :transform-fn (into-markup [:strong])}
    {:name :nextjournal.markdown/monospace :transform-fn (into-markup [:code])}
    {:name :nextjournal.markdown/strikethrough :transform-fn (into-markup [:s])}
-   {:name :nextjournal.markdown/link :transform-fn (into-markup #(vector :a (:attrs %)))}
+   {:name :nextjournal.markdown/link :transform-fn (into-markup #(vector :a (update-if (:attrs %) :href process-href)))}
    {:name :nextjournal.markdown/internal-link
     :transform-fn (update-val
                    (fn [{:keys [text]}]
@@ -1168,13 +1181,6 @@
          (into {}
                (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote))))
                (extract-sync-atom-vars doc)))))
-
-(defn update-if [m k f]
-  (if (k m)
-    (update m k f)
-    m))
-
-#_(update-if {:n "42"} :n #(Integer/parseInt %))
 
 (declare html)
 
