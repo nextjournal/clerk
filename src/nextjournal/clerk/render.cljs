@@ -92,7 +92,7 @@
       [:div.bg-sky-500.dark:bg-purple-400 {:class "h-[2px]" :style {:width (str (* cell-progress 100) "%")}}]])])5
 
 (defn connection-status [status]
-  [:div.absolute.text-red-600.dark:text-white.text-xs.font-sans.ml-1.bg-white.dark:bg-red-800.rounded-full.shadow.z-20.font-bold.px-2.border.border-red-400
+  [:div.absolute.text-red-600.dark:text-white.text-xs.font-sans.ml-1.bg-white.dark:bg-red-800.rounded-full.shadow.z-30.font-bold.px-2.border.border-red-400
    {:style {:font-size "0.5rem"} :class "left-[35px] md:left-0 mt-[7px] md:mt-1"}
    status])
 
