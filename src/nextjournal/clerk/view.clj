@@ -55,6 +55,13 @@
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
+    [:script {:type "text/javascript"}
+     "if ('serviceWorker' in navigator) {
+        navigator.serviceWorker
+          .register('/js/service_worker.js')
+          .then(function() { console.log('Service Worker: Registered') })
+          .catch(function(error) { console.log('Service Worker: Error', error) })
+      }"]
     (when current-path (v/open-graph-metas (-> state :path->doc (get current-path) v/->value :open-graph)))
     (if exclude-js?
       (include-viewer-css state)
@@ -66,7 +73,4 @@
 let state = " (-> state v/->edn escape-closing-script-tag pr-str) ".replaceAll('nextjournal.clerk.view/escape-closing-script-tag', 'script')
 viewer.init(viewer.read_string(state))\n"
        (when conn-ws?
-         "if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/js/service_worker.js');
-};
-viewer.connect(document.location.origin.replace(/^http/, 'ws') + '/_ws')")])]))
+         "viewer.connect(document.location.origin.replace(/^http/, 'ws') + '/_ws')")])]))
