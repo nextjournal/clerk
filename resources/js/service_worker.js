@@ -1,4 +1,4 @@
-const cacheName = 'clerk-browser-cache-v1';
+const cacheName = 'clerk-browser-cache-v2';
 
 const hosts = [
   'https://fonts.bunny.net',
@@ -6,8 +6,6 @@ const hosts = [
   'https://storage.clerk.garden',
   'https://cdn.jsdelivr.net'
 ];
-
-console.log("inside service worker");
 
 self.addEventListener('install', function(event) {
   console.log('Service Worker: Installed');
@@ -27,6 +25,8 @@ self.addEventListener('activate', function(event) {
           }
         }));
     }));
+
+  return self.clients.claim()
 });
 
 self.addEventListener('fetch', function(event) {

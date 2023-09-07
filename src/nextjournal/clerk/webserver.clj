@@ -4,6 +4,7 @@
             [clojure.pprint :as pprint]
             [clojure.set :as set]
             [clojure.string :as str]
+            [clojure.java.io :as io]
             [editscript.core :as editscript]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.view :as view]
@@ -103,6 +104,14 @@
       {:status 404})))
 
 #_(serve-file "public" {:uri "/js/viewer.js"})
+
+(defn serve-resource [resource-name]
+  (if-some [r (io/resource resource-name)]
+    {:status 200 :body (slurp r)}
+    {:status 404}))
+
+#_(serve-resource "stylesheets/viewer.css")
+#_(serve-resource "service_worker.js")
 
 (defn sync-atom-changed [key atom old-state new-state]
   (eval '(nextjournal.clerk/recompute!)))
@@ -251,6 +260,7 @@
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
         ("build" "js" "css") (serve-file uri (str "public" uri))
+        "service_worker.js" (serve-resource "js/service_worker.js")
         ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
         "_ws" {:status 200 :body "upgrading..."}
         "favicon.ico" {:status 404}
