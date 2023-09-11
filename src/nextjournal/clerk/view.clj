@@ -59,7 +59,7 @@
       [:script {:type "text/javascript"}
        "if ('serviceWorker' in navigator) {
           navigator.serviceWorker
-            .register('/service_worker.js')
+            .register('/clerk_service_worker.js')
             .then(function() { console.log('Service Worker: Registered') })
             .catch(function(error) { console.log('Service Worker: Error', error) })
         }"])
