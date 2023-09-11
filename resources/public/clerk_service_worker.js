@@ -8,11 +8,12 @@ const hosts = [
 ];
 
 self.addEventListener('install', function(event) {
-  console.log('Service Worker: Installed');
+  //console.log('install', event);
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', function(event) {
-  console.log('Service Worker: Activated');
+  //console.log('activate', event);
 
   // Remove unwanted caches
   event.waitUntil(
@@ -30,7 +31,7 @@ self.addEventListener('activate', function(event) {
 });
 
 self.addEventListener('fetch', function(event) {
-  console.log("Service Worker: Fetching", event);
+  //console.log(event);
 
   event.respondWith(
     caches.match(event.request).then(function(response) {

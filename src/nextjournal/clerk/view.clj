@@ -60,7 +60,7 @@
        "if ('serviceWorker' in navigator) {
           navigator.serviceWorker
             .register('/clerk_service_worker.js')
-            .then(function() { console.log('Service Worker: Registered') })
+            //.then(function() { console.log('Service Worker: Registered') })
             .catch(function(error) { console.log('Service Worker: Error', error) })
         }"])
     (when current-path (v/open-graph-metas (-> state :path->doc (get current-path) v/->value :open-graph)))
