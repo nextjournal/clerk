@@ -722,7 +722,7 @@
     (j/call js/history (if replace? :replaceState :pushState) (clj->js opts) "" (str (.. js/document -location -origin)
                                                                                      "/" path (when fragment (str "#" fragment))))))
 
-(defn handle-history-popstate [_ ^js e]
+(defn handle-history-popstate [^js e]
   (let [{:keys [path]} (js->clj (.-state e) :keywordize-keys true)]
     (when path
       (.preventDefault e)
@@ -734,7 +734,7 @@
     (when-some [doc (get path->doc url)]
       (set-state! {:doc doc}))))
 
-(defn handle-anchor-click [{:as state :keys [path->doc url->path]} ^js e]
+(defn handle-anchor-click [^js e]
   (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
     (when-not (ignore-anchor-click? e url)
       (.preventDefault e)
@@ -743,7 +743,7 @@
                           (seq (.-hash url))
                           (assoc :fragment (subs (.-hash url) 1))))))))
 
-(defn handle-initial-load [state ^js _e]
+(defn handle-initial-load [^js _e]
   (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
 
 (defn setup-router! [state]
@@ -755,9 +755,9 @@
                    (cond (and (static-app? state) (:bundle? state))
                          [(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)]
                          (not (static-app? state))
-                         [(gevents/listen js/document gevents/EventType.CLICK (partial handle-anchor-click state) false)
-                          (gevents/listen js/window gevents/EventType.POPSTATE (partial handle-history-popstate state) false)
-                          (gevents/listen js/window gevents/EventType.LOAD (partial handle-initial-load state) false)])))))
+                         [(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
+                          (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
+                          (gevents/listen js/window gevents/EventType.LOAD handle-initial-load false)])))))
 
 
 (defn ^:export mount []
