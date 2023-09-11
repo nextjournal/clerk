@@ -722,10 +722,11 @@
     (j/call js/history (if replace? :replaceState :pushState) (clj->js opts) "" (str (.. js/document -location -origin)
                                                                                      "/" path (when fragment (str "#" fragment))))))
 
-(defn handle-history-popstate [state ^js e]
-  (when-let [{:as opts :keys [path]} (js->clj (.-state e) :keywordize-keys true)]
-    (.preventDefault e)
-    (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path path :skip-history? true}))))
+(defn handle-history-popstate [_ ^js e]
+  (let [{:keys [path]} (js->clj (.-state e) :keywordize-keys true)]
+    (when path
+      (.preventDefault e)
+      (clerk-eval (list 'nextjournal.clerk.webserver/navigate! {:nav-path path :skip-history? true})))))
 
 (defn handle-hashchange [{:keys [url->path path->doc]} ^js e]
   ;; used for navigation in static bundle build
