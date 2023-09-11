@@ -2,9 +2,11 @@ const cacheName = 'clerk-browser-cache-v2';
 
 const hosts = [
   'https://fonts.bunny.net',
+  'https://cdn.skypack.dev',
   'https://cdn.tailwindcss.com',
   'https://storage.clerk.garden',
-  'https://cdn.jsdelivr.net'
+  'https://cdn.jsdelivr.net',
+  'https://vega.github.io'  
 ];
 
 self.addEventListener('install', function(event) {
