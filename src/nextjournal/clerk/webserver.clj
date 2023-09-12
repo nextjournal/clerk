@@ -103,8 +103,13 @@
        :body (fs/read-all-bytes file)}
       {:status 404})))
 
-#_(serve-file "public" {:uri "/js/viewer.js"})
+(defn serve-resource [resource]
+  (cond-> {:status 200
+           :body (io/input-stream resource)}
+    (= "js" (fs/extension (fs/file (.getFile resource))))
+    (assoc :headers {"Content-Type" "text/javascript"})))
 
+#_(serve-resource (io/resource "public/clerk_service_worker.js"))
 
 (defn sync-atom-changed [key atom old-state new-state]
   (eval '(nextjournal.clerk/recompute!)))
@@ -253,7 +258,7 @@
       (case (get (re-matches #"/([^/]*).*" uri) 1)
         "_blob" (serve-blob @!doc (extract-blob-opts req))
         ("build" "js" "css") (serve-file uri (str "public" uri))
-        "clerk_service_worker.js" (serve-file uri (fs/path (io/resource "public/clerk_service_worker.js")))
+        "clerk_service_worker.js" (serve-resource (io/resource "public/clerk_service_worker.js"))
         ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
         "_ws" {:status 200 :body "upgrading..."}
         "favicon.ico" {:status 404}
