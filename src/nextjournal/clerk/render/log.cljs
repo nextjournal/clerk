@@ -64,7 +64,8 @@
                   ".cm-gutterElement" {:margin-left "5px"}
                   ;; only show cursor when focused
                   ".cm-cursor" {:visibility "hidden"}
-                  "&.cm-focused .cm-cursor" {:visibility "visible"}
+                  "&.cm-focused .cm-cursor" {:visibility "visible"
+                                             :animation "steps(1) cm-blink 1.2s infinite"}
                   ".cm-tooltip.cm-tooltip-autocomplete" {:border "0"
                                                          :border-radius "6px"
                                                          :box-shadow "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)"
@@ -73,8 +74,9 @@
                                                                    :background "rgb(241 245 249)"
                                                                    :border "1px solid rgb(203 213 225)"
                                                                    :border-radius "6px"}}
-                  ".cm-tooltip-autocomplete ul li[aria-selected]" {:background "rgb(79 70 229)"
-                                                                   :color "#fff"}
+                  ".cm-tooltip-autocomplete ul li" {:color "#333"}
+                  ".cm-tooltip-autocomplete ul li[aria-selected]" {:background "rgb(79 70 229) !important"
+                                                                   :color "#fff !important"}
                   ".cm-tooltip.cm-tooltip-hover" {:background "rgb(241 245 249)"
                                                   :border-radius "6px"
                                                   :border "1px solid rgb(203 213 225)"
