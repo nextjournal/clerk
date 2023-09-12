@@ -16,7 +16,6 @@
           {:nextjournal/keys [value]} presented
           {elision-viewer :nextjournal/viewer elision-fetch-opts :nextjournal/value} (peek value)
           {:keys [body]} (webserver/serve-blob doc (merge fetch-opts {:fetch-opts elision-fetch-opts}))]
-      (is (= `nextjournal.clerk.viewer/elision-viewer (:name elision-viewer)))
+      (is (= `nextjournal.clerk.viewer/elision-viewer$5drduatKq2QJCDhSX1Pu45i4whSPHk elision-viewer))
       (is body)
       (is (= (-> body webserver/read-msg :nextjournal/value first :nextjournal/value) 20)))))
-

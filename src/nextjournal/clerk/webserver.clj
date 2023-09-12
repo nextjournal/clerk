@@ -85,7 +85,7 @@
       (if (contains? desc :nextjournal/content-type)
         {:body (v/->value desc)
          :content-type (:nextjournal/content-type desc)}
-        {:body (v/->edn desc)}))
+        {:body (v/->edn (view/+name->viewer desc))}))
     {:status 404}))
 
 (defn extract-blob-opts [{:as _req :keys [uri query-string]}]
@@ -174,8 +174,6 @@
 #_(do
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
     (eval '(nextjournal.clerk/recompute!)))
-
-(declare present+reset!)
 
 (defn ->nav-path [file-or-ns]
   (cond (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))

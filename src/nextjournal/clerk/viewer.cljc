@@ -838,7 +838,7 @@
   {:name `sequential-viewer :pred sequential? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "(" :closing-paren ")" :page-size 20})
 
 (def map-viewer
-  {:name `map-viewer :pred map? :render-fn 'nextjournal.clerk.render/render-map :opening-paren "{" :closing-paren "}" :page-size 10})
+  {:name `map-viewer :pred map? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "{" :closing-paren "}" :page-size 10})
 
 #?(:cljs (defn var->symbol [v] (if (instance? sci.lang.Var v) (sci.impl.vars/toSymbol v) (symbol v))))
 
@@ -1548,7 +1548,7 @@
 
 (defn ^:private present-elision* [!path->wrapped-value {:as fetch-opts :keys [path]}]
   (if-let [wrapped-value (@!path->wrapped-value path)]
-    (present* (merge wrapped-value (make-!budget-opts wrapped-value) fetch-opts))
+    (assign-closing-parens (present* (merge wrapped-value (make-!budget-opts wrapped-value) fetch-opts)))
     (throw (ex-info "could not find wrapped-value at path" {:!path->wrapped-value !path->wrapped-value :fetch-otps fetch-opts}))))
 
 
@@ -1722,10 +1722,9 @@
                              (or (-> value last :nextjournal/viewer :closing-paren) ;; the last element can carry parens
                                  (and (= `map-entry-viewer (-> value last :nextjournal/viewer :name)) ;; the last element is a map entry whose value can carry parens
                                       (-> value last :nextjournal/value last :nextjournal/viewer :closing-paren))))]
-     (cond-> (cond
-               (not closing) node
-               defer-closing? (update node :nextjournal/viewer dissoc :closing-paren)
-               :else (update-in node [:nextjournal/viewer :closing-paren] cons closing-parens))
+     (cond-> (assoc-in node [:nextjournal/render-opts :closing-parens] (if (or (not closing) defer-closing?)
+                                                                         '()
+                                                                         (cons closing closing-parens)))
        non-leaf? (update :nextjournal/value
                          (fn [xs]
                            (into []

@@ -217,13 +217,16 @@
 (defn read-string [s]
   (js/nextjournal.clerk.sci_env.read-string s))
 
+(defn replace-viewer-fns [{:as doc :keys [name->viewer]}]
+  (assoc (w/postwalk-replace name->viewer doc)
+         :name->viewer name->viewer))
 
 (defn fetch! [{:keys [blob-id]} opts]
   #_(js/console.log :fetch! blob-id opts)
   (-> (js/fetch (str "/_blob/" blob-id (when (seq opts)
                                          (str "?" (opts->query opts)))))
       (.then #(.text %))
-      (.then #(try (read-string %)
+      (.then #(try (replace-viewer-fns (read-string %))
                    (catch js/Error e
                      (js/console.error #js {:message "sci read error" :blob-id blob-id :code-string % :error e})
                      (render-unreadable-edn %))))))
@@ -345,21 +348,20 @@
       [triangle expanded?]]
      [:span.group-hover:text-indigo-700 opening-paren]]))
 
-(defn render-coll [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
+(defn render-coll [xs {:as opts :keys [closing-parens path viewer !expanded-at] :or {path []}}]
   (let [expanded? (get @!expanded-at path)
         {:keys [opening-paren closing-paren]} viewer]
     [:span.inspected-value.whitespace-nowrap
      {:class (when expanded? "inline-flex")}
      [:span
-      (if (< 1 (count xs))
+      (if (expandable? xs)
         [expand-button !expanded-at opening-paren path]
         [:span opening-paren])
       (into [:<>]
             (comp (inspect-children opts)
                   (interpose (if expanded? [:<> [:br] triangle-spacer nbsp (when (= 2 (count opening-paren)) nbsp)] " ")))
             xs)
-      [:span
-       (cond->> closing-paren (list? closing-paren) (into [:<>]))]]]))
+      (into [:span] (or closing-parens [closing-paren]))]]))
 
 (defn render-elision [{:as fetch-opts :keys [total offset unbounded?]} _]
   [view-context/consume :fetch-fn
@@ -372,21 +374,6 @@
        :on-click #(when (fn? fetch-fn)
                     (fetch-fn fetch-opts))} (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")])])
 
-(defn render-map [xs {:as opts :keys [path viewer !expanded-at] :or {path []}}]
-  (let [expanded? (get @!expanded-at path)
-        {:keys [closing-paren]} viewer]
-    [:span.inspected-value.whitespace-nowrap
-     {:class (when expanded? "inline-flex")}
-     [:span
-      (if (expandable? xs)
-        [expand-button !expanded-at "{" path]
-        [:span "{"])
-      (into [:<>]
-            (comp (inspect-children opts)
-                  (interpose (if expanded? [:<> [:br] triangle-spacer nbsp #_(repeat (inc (count path)) nbsp)] " ")))
-            xs)
-      (cond->> closing-paren (list? closing-paren) (into [:<>]))]]))
-
 
 (defn render-string [s {:as opts :keys [path !expanded-at] :or {path []}}]
   (let [expanded? (get @!expanded-at path)]
@@ -398,16 +385,16 @@
                   (inspect-presented opts %)))
           (if (string? s) [s] s))))
 
-(defn render-quoted-string [s {:as opts :keys [path viewer !expanded-at] :or {path []}}]
+(defn render-quoted-string [s {:as opts :keys [closing-parens path viewer !expanded-at] :or {path []}}]
   (let [{:keys [opening-paren closing-paren]} viewer]
     [:span.inspected-value.inline-flex
      [:span.cmt-string
       (if (some #(and (string? %) (str/includes? % "\n")) (if (string? s) [s] s))
         [expand-button !expanded-at opening-paren path]
         [:span opening-paren])]
-     [:div
-      [:span.cmt-string (viewer/->value (render-string s opts)) (first closing-paren)]
-      (when (list? closing-paren) (into [:<>] (rest closing-paren)))]]))
+     (into [:div
+            [:span.cmt-string (viewer/->value (render-string s opts)) (first closing-paren)]
+            (rest closing-parens)])]))
 
 (defn render-number [num]
   [:span.cmt-number.inspected-value
@@ -528,6 +515,8 @@
    (if (valid-react-element? x)
      x
      (let [{:nextjournal/keys [value viewer] :keys [path]} x]
+       (when-not (:render-fn viewer)
+         (throw (ex-info "A render function is missing" {:viewer viewer})))
        #_(prn :inspect-presented value :valid-element? (react/isValidElement value) :viewer viewer)
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
        ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
@@ -631,7 +620,7 @@
     (when (exists? js/window)
       ;; TODO: can we restore the scroll position when navigating back?
       (.scrollTo js/window #js {:top 0}))
-    (reset! !doc doc))
+    (reset! !doc (replace-viewer-fns doc)))
   ;; (when (and error (contains? @!doc :status))
   ;;   (swap! !doc dissoc :status))
   (when (remount? doc)
@@ -644,10 +633,10 @@
 
 (defn patch-state! [{:keys [patch]}]
   (if (remount? patch)
-    (do (swap! !doc #(re-eval-viewer-fns (apply-patch % patch)))
+    (do (swap! !doc #(re-eval-viewer-fns (replace-viewer-fns (apply-patch % patch))))
         ;; TODO: figure out why it doesn't work without `js/setTimeout`
         (js/setTimeout #(swap! !eval-counter inc) 10))
-    (swap! !doc apply-patch patch)))
+    (swap! !doc #(replace-viewer-fns (apply-patch % patch)))))
 
 (defonce !pending-clerk-eval-replies
   (atom {}))

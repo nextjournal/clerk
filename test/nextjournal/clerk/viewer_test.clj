@@ -179,18 +179,21 @@
     (is (match? {:nextjournal/value "10/33"}
                 (v/present 10/33))))
 
-  (testing "opts are not propagated to children during presentation"
-    (let [count-opts (fn [o]
+  (testing "render opts are not propagated to children during presentation"
+    (let [count-opts (fn [o k]
                        (let [c (atom 0)]
-                         (w/postwalk (fn [f] (when (= :nextjournal/render-opts f) (swap! c inc)) f) o)
+                         (w/postwalk (fn [f] (when (and (map? f)
+                                                        (contains? f :nextjournal/render-opts)
+                                                        (-> f :nextjournal/render-opts k))
+                                               (swap! c inc)) f) o)
                          @c))]
       (let [presented (v/present (v/col {:nextjournal.clerk/render-opts {:width 150}} 1 2 3))]
-        (is (= {:width 150} (:nextjournal/render-opts presented)))
-        (is (= 1 (count-opts presented))))
+        (is (match? {:width 150} (:nextjournal/render-opts presented)))
+        (is (= 1 (count-opts presented :width))))
 
       (let [presented (v/present (v/table {:col1 [1 2] :col2 '[a b]}))]
-        (is (= {:num-cols 2 :number-col? #{0}} (:nextjournal/render-opts presented)))
-        (is (= 1 (count-opts presented))))))
+        (is (match? {:num-cols 2 :number-col? #{0}} (:nextjournal/render-opts presented)))
+        (is (= 1 (count-opts presented :num-cols))))))
 
   (testing "viewer opts are normalized"
     (is (= (v/desc->values (v/present {:nextjournal/value (range 10) :nextjournal/budget 3}))
@@ -225,14 +228,14 @@
              (-> after
                  (get-in (path-to-value [0 1 1]))
                  (get 2)
-                 v/->viewer
-                 :closing-paren)))
+                 :nextjournal/render-opts
+                 :closing-parens)))
       (is (= '(")" "}")
              (-> after
                  (get-in (path-to-value [1]))
                  (get 1)
-                 v/->viewer
-                 :closing-paren))))))
+                 :nextjournal/render-opts
+                 :closing-parens))))))
 
 (defn tree-re-find [data re]
   (->> data
@@ -351,23 +354,27 @@
     (is (= 5
            (count
             (->> (eval/eval-string "^{:nextjournal.clerk/budget 5}(reduce (fn [acc _i] (vector acc)) :fin (range 100 0 -1))")
-                 view/doc->viewer v/->value :blocks
+                 view/doc->viewer  v/->value
+                 :blocks
                  (tree-seq coll? seq)
-                 (filter (every-pred map? (comp #{'nextjournal.clerk.render/render-coll} :form :render-fn)))))))
+                 (keep :nextjournal/viewer)
+                 (filter #{'nextjournal.clerk.viewer/vector-viewer$5dsD1KJESfc8Dy8gPeGQfZCX2ayE8f})))))
 
     (is (= 5
            (count
             (->> (eval/eval-string "(nextjournal.clerk/with-viewer {} {:nextjournal.clerk/budget 5} (reduce (fn [acc i] (vector acc)) :fin (range 15 0 -1)))")
                  view/doc->viewer v/->value :blocks
                  (tree-seq coll? seq)
-                 (filter (every-pred map? (comp #{'nextjournal.clerk.render/render-coll} :form :render-fn)))))))
+                 (keep :nextjournal/viewer)
+                 (filter #{'nextjournal.clerk.viewer/vector-viewer$5dsD1KJESfc8Dy8gPeGQfZCX2ayE8f})))))
 
     (is (= 101
            (count
             (->> (eval/eval-string "^{:nextjournal.clerk/budget nil}(reduce (fn [acc i] (vector i acc)) :fin (range 101 0 -1))")
                  view/doc->viewer v/->value :blocks
                  (tree-seq coll? seq)
-                 (filter (every-pred map? (comp #{'nextjournal.clerk.render/render-coll} :form :render-fn)))))))))
+                 (keep :nextjournal/viewer)
+                 (filter #{'nextjournal.clerk.viewer/vector-viewer$5dsD1KJESfc8Dy8gPeGQfZCX2ayE8f})))))))
 
 (deftest ->edn
   (testing "normal symbols and keywords"
