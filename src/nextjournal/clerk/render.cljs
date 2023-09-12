@@ -584,7 +584,10 @@
 
 (defn ws-send! [msg]
   (if (exists? js/ws_send)
-    (js/ws_send (pr-str msg))
+    (do
+      (js/ws_send (pr-str msg))
+      (when @log/!log-visible?
+        (log/log :ws-edn :ws-send! msg)))
     (js/console.warn "Clerk can't send websocket message in static build, skipping...")))
 
 (defn atom-changed [var-name _atom _old-state new-state]
@@ -680,6 +683,8 @@
                          (fn [_]
                            (js/console.warn (str "no on-message dispatch for type `" type "`"))))]
     #_(js/console.log :<= type := msg)
+    (when @log/!log-visible?
+      (log/log :ws-edn :dispatch msg))
     (dispatch-fn msg)))
 
 (defonce container-el
