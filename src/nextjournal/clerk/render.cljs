@@ -15,6 +15,7 @@
             [nextjournal.clerk.render.code :as code]
             [nextjournal.clerk.render.context :as view-context]
             [nextjournal.clerk.render.hooks :as hooks]
+            [nextjournal.clerk.render.log :as log]
             [nextjournal.clerk.render.navbar :as navbar]
             [nextjournal.clerk.render.panel :as panel]
             [nextjournal.clerk.viewer :as viewer]
@@ -553,9 +554,13 @@
 
 #_(show-panel :test {:content [:div "Test"] :width 600 :height 600})
 
+(defn debug []
+  (log/show))
+
 (defn root []
   [:<>
    [inspect-presented @!doc]
+   (when @log/!log-visible? [log/panel])
    [:div.fixed.w-full.z-20.top-0.left-0.w-full
     (when-let [status (:nextjournal.clerk.sci-env/connection-status @!doc)]
       [connection-status status])

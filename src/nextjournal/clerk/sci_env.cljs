@@ -21,6 +21,7 @@
             [nextjournal.clerk.render.context :as view-context]
             [nextjournal.clerk.render.editor]
             [nextjournal.clerk.render.hooks]
+            [nextjournal.clerk.render.log :as log]
             [nextjournal.clerk.render.navbar]
             [nextjournal.clerk.trim-image]
             [nextjournal.clerk.viewer :as viewer]
@@ -186,6 +187,8 @@
                       sci.configs.reagent/namespaces)})
 
 (defn ^:export onmessage [ws-msg]
+  (when @log/!log-visible?
+    (log/log :ws-raw :ws-msg (.-data ws-msg)))
   (render/dispatch (read-string (.-data ws-msg))))
 
 (defn ^:export eval-form [f]
