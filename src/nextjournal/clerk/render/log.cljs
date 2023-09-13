@@ -5,6 +5,7 @@
             [nextjournal.clerk.render.code :as code]
             [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clerk.render.localstorage :as localstorage]
+            [nextjournal.clerk.render.panel :as panel]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.clerk.sci-env.completions :as completions]
             [nextjournal.clojure-mode.keymap :as clojure-mode.keymap]
@@ -17,7 +18,9 @@
   (reagent/atom (merge {:visible? false :panel-height 420 :selected-event-name :all}
                        (localstorage/get-item "log"))))
 
-(add-watch !state ::persist-log-state #(localstorage/set-item! "log" %4))
+(add-watch !state ::persist-log-state (fn [_ _ _ state]
+                                        (when-not (:resizing? state)
+                                          (localstorage/set-item! "log" state))))
 
 (defonce !history (reagent/atom []))
 
@@ -145,10 +148,22 @@
 (defn spacer []
   [:div {:style {:height (:panel-height @!state)}}])
 
+(defn resizer []
+  [:div.absolute.left-0.right-0.group
+   {:class "h-[10px] -top-[5px]"}
+   [:div.opacity-0.group-hover:opacity-100.transition-all.absolute.left-0.border-b.border-indigo-600.w-full.pointer-events-none
+    {:class "top-[4px] border-[2px]"}]
+   [panel/resizer {:axis :y
+                   :on-resize-start #(swap! !state assoc :resizing? true)
+                   :on-resize (fn [dir _ dy]
+                                (swap! !state update :panel-height #(if (= dir :top) (+ % dy) (- % dy))))
+                   :on-resize-end #(swap! !state dissoc :resizing?)}]])
+
 (defn panel []
-  (let [{:keys [panel-height selected-event-name]} @!state]
+  (let [{:keys [panel-height resizing? selected-event-name]} @!state]
     [:div.fixed.left-0.right-0.bottom-0.border-t.border-slate-300.flex.flex-col.bg-white
-     {:style {:height (:panel-height @!state) :zIndex 2000 :box-shadow "0 -3px 3px rgba(0,0,0,.03)"}}
+     {:class (when resizing? "select-none")
+      :style {:height (:panel-height @!state) :zIndex 2000 :box-shadow "0 -3px 3px rgba(0,0,0,.03)"}}
      [:div.bg-slate-100.p-1.border-b.border-slate-300.flex.items-center.gap-3
       [:div.text-slate-700.hover:text-slate-900.cursor-pointer
        {:on-click #(swap! !state assoc :visible? false)}
@@ -167,4 +182,5 @@
               @!history
               (filter #(= (:event-name %) selected-event-name) @!history)))]
      [:div.bg-slate-100.p-1.border-t.border-slate-300.flex.items-center
-      [sci-repl]]]))
+      [sci-repl]]
+     [resizer]]))
