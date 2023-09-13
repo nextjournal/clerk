@@ -140,7 +140,8 @@
               :transition navbar/spring})))]
        ;; TODO: restore react keys via block-id
        ;; ^{:key (str processed-block-id "@" @!eval-counter)}
-       (inspect-children render-opts) (concat (when header [header]) xs (when footer [footer])))]]))
+       (inspect-children render-opts) (concat (when header [header]) xs (when footer [footer])))
+      (when (log/visible?) [log/spacer])]]))
 
 (defn opts->query [opts]
   (->> opts
@@ -560,7 +561,7 @@
 (defn root []
   [:<>
    [inspect-presented @!doc]
-   (when @log/!log-visible? [log/panel])
+   (when (log/visible?) [log/panel])
    [:div.fixed.w-full.z-20.top-0.left-0.w-full
     (when-let [status (:nextjournal.clerk.sci-env/connection-status @!doc)]
       [connection-status status])
@@ -586,7 +587,7 @@
   (if (exists? js/ws_send)
     (do
       (js/ws_send (pr-str msg))
-      (when @log/!log-visible?
+      (when (log/visible?)
         (log/log :ws-edn :ws-send! msg)))
     (js/console.warn "Clerk can't send websocket message in static build, skipping...")))
 
@@ -683,7 +684,7 @@
                          (fn [_]
                            (js/console.warn (str "no on-message dispatch for type `" type "`"))))]
     #_(js/console.log :<= type := msg)
-    (when @log/!log-visible?
+    (when (log/visible?)
       (log/log :ws-edn :dispatch msg))
     (dispatch-fn msg)))
 

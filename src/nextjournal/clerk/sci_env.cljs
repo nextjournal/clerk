@@ -187,7 +187,7 @@
                       sci.configs.reagent/namespaces)})
 
 (defn ^:export onmessage [ws-msg]
-  (when @log/!log-visible?
+  (when (log/visible?)
     (log/log :ws-raw :ws-msg (.-data ws-msg)))
   (render/dispatch (read-string (.-data ws-msg))))
 

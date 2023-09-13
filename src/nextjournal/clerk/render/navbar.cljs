@@ -4,6 +4,7 @@
             [clojure.string :as str]
             [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clerk.render.localstorage :as localstorage]
+            [nextjournal.clerk.render.log :as log]
             [reagent.core :as r]))
 
 (defn stop-event! [event]
@@ -164,7 +165,8 @@
     [:div.px-3.mb-1.mt-1.md:mt-0.text-xs.uppercase.tracking-wider.text-slate-500.dark:text-slate-400.font-medium.px-3.mb-1.leading-none
      {:class "md:text-[12px]"}
      "TOC"]
-    [render-items toc render-opts]]])
+    [render-items toc render-opts]
+    (when (log/visible?) [log/spacer])]])
 
 (defn ->toc-expanded-at [toc toc-visibility]
   {:toc-open? (if-some [stored-open? (localstorage/get-item local-storage-key)]
