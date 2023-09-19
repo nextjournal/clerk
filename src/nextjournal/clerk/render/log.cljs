@@ -40,12 +40,6 @@
 
 (defn log-line [{:keys [event-name timestamp pairs]}]
   [:div.flex.gap-3.p-1.border-b {:class "min-h-[32px]"}
-   (into [:div.flex-auto.text-xs.font-mono]
-         (map (fn [[k v]]
-                [:div.flex.gap-3
-                 [:div.whitespace-nowrap [(inspect-fn) k]]
-                 [:div [(inspect-fn) v]]]))
-         (partition 2 pairs))
    [:div
     [:div.text-white.rounded-sm.font-sans.flex-shrink-0.whitespace-nowrap.leading-none
      {:class "text-[10px] px-[5px] py-[3px] bg-indigo-600 mt-[3px]"}
@@ -53,7 +47,13 @@
    [:div
     [:div.font-mono.flex-shrink-0.whitespace-nowrap.pr-1
      {:class "text-[10px] mt-[4px]"}
-     (.toLocaleTimeString timestamp "en-US")]]])
+     (.toLocaleTimeString timestamp "en-US")]]
+   (into [:div.flex-auto.text-xs.font-mono]
+         (map (fn [[k v]]
+                [:div.flex.gap-3
+                 [:div.whitespace-nowrap [(inspect-fn) k]]
+                 [:div [(inspect-fn) v]]]))
+         (partition 2 pairs))])
 
 (def cm-theme
   (.theme cm-view/EditorView
