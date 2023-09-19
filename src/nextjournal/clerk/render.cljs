@@ -666,7 +666,12 @@
   ([{:keys [recompute?]} form]
    (let [eval-id (gensym)
          promise (js/Promise. (fn [resolve reject]
-                                (swap! !pending-clerk-eval-replies assoc eval-id {:resolve resolve :reject reject})))]
+                                (swap! !pending-clerk-eval-replies assoc eval-id {:resolve (fn [reply]
+                                                                                             (log/log :clerk-eval :form form :resolve reply)
+                                                                                             (resolve reply))
+                                                                                  :reject (fn [error]
+                                                                                            (log/log :clerk-eval :form form :reject error)
+                                                                                            (reject error))})))]
      (ws-send! {:type :eval :form form :eval-id eval-id :recompute? (boolean recompute?)})
      promise)))
 
