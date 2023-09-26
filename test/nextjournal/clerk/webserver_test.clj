@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.webserver-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.java.io :as io]
+            [clojure.test :refer [deftest is testing]]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.webserver :as webserver]))
@@ -19,3 +20,16 @@
       (is (= `nextjournal.clerk.viewer/elision-viewer$5drduatKq2QJCDhSX1Pu45i4whSPHk elision-viewer))
       (is body)
       (is (= (-> body webserver/read-msg :nextjournal/value first :nextjournal/value) 20)))))
+
+(deftest serve-file-test
+  (testing "serving a file resource"
+    (is (= 200 (:status (webserver/serve-file "public/clerk_service_worker.js" "resources/public/clerk_service_worker.js")))
+        (= {"Content-Type" "text/javascript"} (:headers (webserver/serve-file "public/clerk_service_worker.js" "resources/public/clerk_service_worker.js"))))))
+
+(deftest serve-resource-test
+  (testing "serving a file resource"
+    (is (= 200 (:status (webserver/serve-resource (io/resource "public/clerk_service_worker.js"))))
+        (= {"Content-Type" "text/javascript"} (:headers (webserver/serve-resource (io/resource "public/clerk_service_worker.js"))))))
+
+  (testing "serving a resource from a jar"
+    (is (= 200 (:status (webserver/serve-resource (io/resource "weavejester/dependency.cljc")))))))
