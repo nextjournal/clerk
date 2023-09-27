@@ -196,7 +196,8 @@
         (.then #(clojure.walk/postwalk-replace @!viewer-fns->resolved x)))))
 
 (defn ^:export onmessage [ws-msg]
-  (render/dispatch (read-string (.-data ws-msg))))
+  (-> (await-render-fns (read-string (.-data ws-msg)))
+      (.then #(render/dispatch %))))
 
 (defn ^:export eval-form [f]
   (sci-async/eval-form (sci.ctx-store/get-ctx) f))
