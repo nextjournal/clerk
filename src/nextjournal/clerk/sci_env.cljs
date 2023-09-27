@@ -32,6 +32,7 @@
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
+            [sci.async :as sci-async]
             [sci.ctx-store]
             [shadow.esm]))
 
@@ -189,7 +190,7 @@
   (render/dispatch (read-string (.-data ws-msg))))
 
 (defn ^:export eval-form [f]
-  (sci/eval-form (sci.ctx-store/get-ctx) f))
+  (sci-async/eval-form (sci.ctx-store/get-ctx) f))
 
 (def ^:export init render/init)
 
