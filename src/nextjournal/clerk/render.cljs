@@ -535,6 +535,14 @@
                                          (:nextjournal/render-opts x)
                                          {:viewer viewer :path path})]))))
 
+
+;; TODO: figure out if we can make `inspect` work synchronously by
+;; evaluating the `:render-fn`s on init to fix the flicker
+(declare await-render-fns)
+(defn await+inspect-presented [x]
+  (when-let [desc (hooks/use-promise (await-render-fns x))]
+    [inspect-presented desc]))
+
 (defn inspect [value]
   (r/with-let [!state (r/atom nil)]
     (when (not= (:value @!state ::not-found) value)
@@ -546,7 +554,7 @@
                                                 (.resolve js/Promise (present-elision-fn fetch-opts)))
                                               (fn [more]
                                                 (swap! !state update :desc viewer/merge-presentations more fetch-opts))))}
-     [inspect-presented (:desc @!state)]]))
+     [await+inspect-presented (:desc @!state)]]))
 
 (defn show-panel [panel-id panel]
   (swap! !panels assoc panel-id panel))
