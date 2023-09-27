@@ -186,13 +186,24 @@
                       sci.configs.js-interop/namespaces
                       sci.configs.reagent/namespaces)})
 
+(defn await-render-fns [x]
+  (let [viewer-fns (set (filter viewer/viewer-fn? (tree-seq coll? seq x)))
+        !viewer-fns->resolved (atom {})]
+    (doseq [viewer-fn viewer-fns]
+      (.then (:f viewer-fn)
+             #(swap! !viewer-fns->resolved assoc viewer-fn (assoc viewer-fn :f %))))
+    (-> (js/Promise.allSettled (into-array (map :f viewer-fns)))
+        (.then #(clojure.walk/postwalk-replace @!viewer-fns->resolved x)))))
+
 (defn ^:export onmessage [ws-msg]
   (render/dispatch (read-string (.-data ws-msg))))
 
 (defn ^:export eval-form [f]
   (sci-async/eval-form (sci.ctx-store/get-ctx) f))
 
-(def ^:export init render/init)
+(defn ^:export init [state]
+  (-> (await-render-fns state)
+      (.then #(render/init %))))
 
 (defn ^:export ssr [state-str]
   (init (read-string state-str))

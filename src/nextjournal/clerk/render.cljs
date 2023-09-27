@@ -520,10 +520,6 @@
 
 (defn valid-react-element? [x] (react/isValidElement x))
 
-(defn render-p [render-fn-promise value opts]
-  (when-let [render-fn (hooks/use-promise render-fn-promise)]
-    [render-fn value opts]))
-
 (defn inspect-presented
   ([x]
    (r/with-let [!expanded-at (r/atom (:nextjournal/expanded-at x))]
@@ -535,9 +531,9 @@
        #_(prn :inspect-presented value :valid-element? (react/isValidElement value) :viewer viewer)
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
        ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
-       [render-p (:f (:render-fn viewer)) value (merge opts
-                                                       (:nextjournal/render-opts x)
-                                                       {:viewer viewer :path path})]))))
+       [(:render-fn viewer) value (merge opts
+                                         (:nextjournal/render-opts x)
+                                         {:viewer viewer :path path})]))))
 
 (defn inspect [value]
   (r/with-let [!state (r/atom nil)]
