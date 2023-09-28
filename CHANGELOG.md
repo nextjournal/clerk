@@ -8,6 +8,10 @@ Changes can be:
 
 ## Unreleased
 
+...
+
+## 0.15.957 (2023-09-28)
+
 * 🔌 Offline support
 
   Support working fully offline by adding a ServiceWorker to intercept and cache network requests to remote assets in the browser. It works for Clerk's js bundle, its tailwind css script, fonts and as well as javascript dynamically loaded using d3-require like Clerk's Vega and Plotly viewers.
