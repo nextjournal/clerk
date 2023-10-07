@@ -1140,16 +1140,23 @@
         (= (str index) nav-path)
         (re-matches #"(^|.*/)(index\.(clj|cljc|md))$" nav-path))))
 
-(defn index-path [{:keys [static-build? index]}]
+(defn route-index?
+  "Should the index router be enabled, true for the static builds or when a closed :docs is set."
+  [{:keys [expanded-paths]}]
+  (boolean (seq expanded-paths)))
+
+(defn index-path [{:as opts :keys [index]}]
+  ;; TODO: make sure `:expanded-paths` from `serve!` is available here
   #?(:cljs ""
-     :clj (if static-build?
+     :clj (if (route-index? opts)
             ""
             (if (fs/exists? "index.clj") "index.clj" "'nextjournal.clerk.index"))))
 
 (defn header [{:as opts :keys [nav-path static-build?] :git/keys [url sha]}]
   (html [:div.viewer.w-full.max-w-prose.px-8.not-prose.mt-3
          [:div.mb-8.text-xs.sans-serif.text-slate-400
-          (when (and (not static-build?) (not (home? opts)))
+          (when (and (not (route-index? opts))
+                     (not (home? opts)))
             [:<>
              [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
               {:href (doc-url "'nextjournal.clerk.home")} "Home"]

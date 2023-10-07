@@ -223,13 +223,24 @@
 (defn show! [opts file-or-ns]
   ((resolve 'nextjournal.clerk/show!) opts file-or-ns))
 
+(defn route-index
+  "A routing function"
+  [opts nav-path]
+  (if (str/blank? nav-path)
+    (cond (= 1 (count (:expanded-paths opts))) (first (:expanded-paths opts))
+          (maybe-add-extension "index") "index" ;; TODO: check if index is part of expanded-paths
+          :else "'nextjournal.clerk.index")
+    nav-path))
+
 (defn navigate! [{:as opts :keys [nav-path]}]
+  ;; TODO: perform `route-index` when needed, needs `:expanded-paths` for `v/route-index?`
   (show! opts (->file-or-ns (maybe-add-extension nav-path))))
 
 (defn prefetch-request? [req] (= "prefetch" (-> req :headers (get "purpose"))))
 
-(defn serve-notebook [{:as req :keys [uri]}]
-  (let [nav-path (subs uri 1)]
+(defn serve-notebook [opts {:as req :keys [uri]}]
+  (let [nav-path (cond->> (subs uri 1)
+                   (v/route-index? opts) (route-index opts))]
     (cond
       (prefetch-request? req)
       {:status 404}
@@ -240,7 +251,9 @@
                                 (->nav-path 'nextjournal.clerk.home))}}
       :else
       (if-let [file-or-ns (->file-or-ns (maybe-add-extension nav-path))]
-        (do (try (show! {:skip-history? true} file-or-ns)
+        (do (try (show! (merge {:skip-history? true}
+                               (select-keys opts [:expanded-paths]))
+                        file-or-ns)
                  (catch Exception _))
             {:status 200
              :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
@@ -251,7 +264,7 @@
          :headers {"Content-Type" "text/plain"}
          :body (format "Could not find notebook at %s." (pr-str nav-path))}))))
 
-(defn app [{:as req :keys [uri]}]
+(defn app [opts {:as req :keys [uri]}]
   (if (:websocket? req)
     (httpkit/as-channel req ws-handlers)
     (try
@@ -262,7 +275,7 @@
         ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
         "_ws" {:status 200 :body "upgrading..."}
         "favicon.ico" {:status 404}
-        (serve-notebook req))
+        (serve-notebook opts req))
       (catch Throwable e
         {:status  500
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
@@ -305,10 +318,10 @@
 
 #_(halt!)
 
-(defn serve! [{:keys [host port] :or {host "localhost" port 7777}}]
+(defn serve! [{:as opts :keys [host port] :or {host "localhost" port 7777}}]
   (halt!)
   (try
-    (reset! !server {:host host :port port :instance (httpkit/run-server #'app {:ip host :port port :legacy-return-value? false})})
+    (reset! !server {:host host :port port :instance (httpkit/run-server (partial #'app opts) {:ip host :port port :legacy-return-value? false})})
     (println (format "Clerk webserver started on http://%s:%s ..." host port ))
     (catch java.net.BindException e
       (let [msg (format "Clerk webserver could not be started because port %d is not available. Stop what's running on port %d or specify a different port." port port)]
