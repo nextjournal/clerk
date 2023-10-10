@@ -109,6 +109,10 @@
 .max-w-prose { @apply max-w-[46rem] !important; }
 .max-w-wide  { @apply max-w-3xl !important; }
 
+.notebook-viewer {
+    container-type: inline-size;
+}
+
 /* List Styles */
 /* --------------------------------------------------------------- */
 
@@ -135,7 +139,7 @@
 .code-viewer .cm-content {
   @apply py-4 px-8;
 }
-@media (min-width: 960px){
+@container (width > 959px) {
     .notebook-viewer .code-viewer .cm-content {
         @apply pl-12;
     }
@@ -320,7 +324,7 @@
 .sidenote-container {
   @apply mb-4;
 }
-@media (min-width: 860px) {
+@container (width > 859px) {
   .sidenote sup { @apply inline; }
   .sidenote-column {
     @apply w-[165px] absolute right-0 top-0 -mr-[205px];
@@ -358,7 +362,7 @@
 .result-viewer figure {
   @apply mt-0 !important;
 }
-@media (min-width: 768px) {
+@container (width > 767px) {
   .devcard-desc > div {
     @apply max-w-full m-0;
   }
