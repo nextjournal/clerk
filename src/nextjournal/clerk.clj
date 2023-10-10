@@ -23,11 +23,13 @@
 
   Accepts ns using a quoted symbol or a `clojure.lang.Namespace`, calls `slurp` on all other arguments, e.g.:
 
+  ```clj
   (nextjournal.clerk/show! \"notebooks/vega.clj\")
   (nextjournal.clerk/show! 'nextjournal.clerk.tap)
   (nextjournal.clerk/show! (find-ns 'nextjournal.clerk.tap))
   (nextjournal.clerk/show! \"https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj\")
   (nextjournal.clerk/show! (java.io.StringReader. \";; # Notebook from String 👋\n(+ 41 1)\"))
+  ```
   "
   ([file-or-ns] (show! {} file-or-ns))
   ([opts file-or-ns]

@@ -51,7 +51,7 @@
         [:div.pt-4
          (clerk/code (str/join "\n" (mapv (comp pr-str #(concat [var-name] %)) arglists)))])
       (when doc
-        [:div.mt-4.viewer-markdown.prose
+        [:div.mt-4.viewer-markdown
          (clerk/md doc)])])))
 
 (defn render-ns [{:keys [name nss vars]}]
@@ -117,8 +117,13 @@
                  (match-nss @!ns-query)
                  (catch Exception _ :error))]
    [:<>
-    [:style ".markdown-viewer { padding: 0 !important; }"]
-    [:div.w-screen.h-screen.flex.fixed.left-0.top-0.bg-white.dark:bg-slate-950
+    [:style (str ".markdown-viewer { padding: 0 !important; } "
+                 ".notebook-viewer .max-w-prose { max-width: 100vw !important; }"
+                 ".markdown-viewer p, .markdown-viewer ul, .markdown-viewer ol, .markdown-viewer blockquote { max-width: 65ch; }"
+                 ".doc-viewer .markdown-viewer .code-viewer { background: transparent; }"
+                 ".notebook-viewer .doc-viewer .code-listing { width: auto !important; }"
+                 ".doc-viewer .cm-editor { max-width: 100% !important; overflow-x: auto; }")]
+    [:div.w-screen.h-screen.flex.fixed.left-0.top-0.bg-white.dark:bg-slate-950.doc-viewer
      [:div.border-r.dark:border-slate-800.flex-shrink-0.flex.flex-col {:class "w-[300px]"}
       [:div.px-3.py-3.border-b.dark:border-slate-800
        (clerk/with-viewer {:render-fn render-input
@@ -167,7 +172,7 @@
           ns [:<>
               [:div.font-bold.font-sans.text-xl {:style {:margin 0}} (ns-name ns)]
               (when-let [doc (-> ns meta :doc)]
-                [:div.mt-4.leading-normal.viewer-markdown.prose
+                [:div.mt-4.leading-normal.viewer-markdown
                  (clerk/md doc)])
               (into [:<>]
                     (map (comp :nextjournal/value var->doc-viewer val))
@@ -186,7 +191,7 @@
                                       {:style {:margin 0}}
                                       ns-str]
                                      (when-let [doc (some-> ns-str symbol find-ns meta :doc)]
-                                       [:div.mt-2.leading-normal.viewer-markdown.prose.text-sm
+                                       [:div.mt-2.leading-normal.viewer-markdown.text-sm
                                         (clerk/md doc)])]))
                              (if (= :all @!active-ns)
                                (sort (map :name (ns-tree (map (comp str ns-name) (all-ns)))))
