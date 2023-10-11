@@ -1,12 +1,13 @@
 (ns nextjournal.clerk.index
-  {:nextjournal.clerk/visibility {:code :hide :result :hide}}
+  {:nextjournal.clerk/visibility {:code :hide :result :hide}
+   :nextjournal.clerk/no-cache true}
   (:require [babashka.fs :as fs]
             [clojure.string :as str]
             [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as v]
-            [nextjournal.clerk.builder :as builder]))
+            [nextjournal.clerk.paths :as paths]
+            [nextjournal.clerk.viewer :as v]))
 
-(def !paths (delay (builder/index-paths)))
+(def !paths (delay (paths/index-paths)))
 
 (def index-item-viewer
   {:pred string?

@@ -2,7 +2,6 @@
   "Clerk's Static App Builder."
   (:require [babashka.fs :as fs]
             [babashka.process :refer [sh]]
-            [clojure.edn :as edn]
             [clojure.java.browse :as browse]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -256,31 +255,6 @@
      (str (viewer/relative-root-prefix-from (viewer/map-index opts file)) path
           (when fragment (str "#" fragment))))))
 
-(defn read-opts-from-deps-edn! []
-  (if (fs/exists? "deps.edn")
-    (let [deps-edn (edn/read-string (slurp "deps.edn"))]
-      (if-some [clerk-alias (get-in deps-edn [:aliases :nextjournal/clerk])]
-        (get clerk-alias :exec-args
-             {:error (str "No `:exec-args` found in `:nextjournal/clerk` alias.")})
-        {:error (str "No `:nextjournal/clerk` alias found in `deps.edn`.")}))
-    {:error (str "No `deps.edn` found in project.")}))
-
-(def ^:dynamic ^:private *build-opts* nil)
-(def build-help-link "\n\nLearn how to [set up your static build](https://book.clerk.vision/#static-building).")
-(defn index-paths
-  ([] (index-paths (or *build-opts* (read-opts-from-deps-edn!))))
-  ([{:as opts :keys [index error]}]
-   (if error
-     (update opts :error str build-help-link)
-     (let [{:as result :keys [expanded-paths error]} (paths/expand-paths opts)]
-       (if error
-         (update result :error str build-help-link)
-         {:paths (remove #{index "index.clj"} expanded-paths)})))))
-
-#_(index-paths)
-#_(index-paths {:paths ["CHANGELOG.md"]})
-#_(index-paths {:paths-fn "boom"})
-
 (defn build-static-app! [{:as opts :keys [bundle?]}]
   (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css? expanded-paths error]}
         (process-build-opts (assoc opts :expand-paths? true))
@@ -311,7 +285,7 @@
                       (let [{result :result duration :time-ms} (eval/time-ms
                                                                 (try
                                                                   (binding [*ns* *ns*
-                                                                            *build-opts* opts
+                                                                            paths/*build-opts* opts
                                                                             viewer/doc-url (partial doc-url opts file)]
                                                                     (let [doc (eval/eval-analyzed-doc doc)]
                                                                       (assoc doc :viewer (view/doc->viewer (assoc opts

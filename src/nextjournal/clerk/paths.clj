@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.paths
   "Clerk's paths expansion and paths-fn handling."
-  (:require [babashka.fs :as fs])
+  (:require [babashka.fs :as fs]
+            [clojure.edn :as edn])
   (:import [java.net URL]))
 
 (defn ^:private ensure-not-empty [build-opts {:as opts :keys [error expanded-paths]}]
@@ -90,3 +91,32 @@
 #_(do (defn my-paths [] ["notebooks/h*.clj"])§
       (expand-paths {:paths-fn `my-paths}))
 #_(expand-paths {:paths ["notebooks/viewers**"]})
+
+
+(defn read-opts-from-deps-edn! []
+  (if (fs/exists? "deps.edn")
+    (let [deps-edn (edn/read-string (slurp "deps.edn"))]
+      (if-some [clerk-alias (get-in deps-edn [:aliases :nextjournal/clerk])]
+        (get clerk-alias :exec-args
+             {:error (str "No `:exec-args` found in `:nextjournal/clerk` alias.")})
+        {:error (str "No `:nextjournal/clerk` alias found in `deps.edn`.")}))
+    {:error (str "No `deps.edn` found in project.")}))
+
+(def ^:dynamic *build-opts* nil)
+
+(def build-help-link "\n\nLearn how to [set up your static build](https://book.clerk.vision/#static-building).")
+
+(defn index-paths
+  ([] (index-paths (or *build-opts* (read-opts-from-deps-edn!))))
+  ([{:as opts :keys [index error]}]
+   (prn :index-paths opts)
+   (if error
+     (update opts :error str build-help-link)
+     (let [{:as result :keys [expanded-paths error]} (if (contains? opts :expanded-paths) opts (expand-paths opts))]
+       (if error
+         (update result :error str build-help-link)
+         {:paths (remove #{index "index.clj"} expanded-paths)})))))
+
+#_(index-paths)
+#_(index-paths {:paths ["CHANGELOG.md"]})
+#_(index-paths {:paths-fn "boom"})

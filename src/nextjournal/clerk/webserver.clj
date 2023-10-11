@@ -267,9 +267,10 @@
                                 (->nav-path 'nextjournal.clerk.home))}}
       :else
       (if-let [file-or-ns (->file-or-ns (maybe-add-extension nav-path))]
-        (do (try (show! (merge {:skip-history? true}
-                               (select-keys opts [:expanded-paths :index]))
-                        file-or-ns)
+        (do (try (binding [paths/*build-opts* opts]
+                   (show! (merge {:skip-history? true}
+                                 (select-keys opts [:expanded-paths :index]))
+                          file-or-ns))
                  (catch Exception _))
             {:status 200
              :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
