@@ -50,7 +50,8 @@
                     :else
                     file-or-ns)
              doc (try (merge opts
-                             {:nav-path (webserver/->nav-path file-or-ns)}
+                             {:file file
+                              :nav-path (webserver/->nav-path file-or-ns)}
                              (parser/parse-file {:doc? true} file))
                       (catch java.io.FileNotFoundException _e
                         (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
