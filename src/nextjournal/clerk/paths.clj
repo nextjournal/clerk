@@ -58,6 +58,15 @@
 #_(resolve-paths {:paths-fn 'clojure.core/inc})
 #_(resolve-paths {:paths-fn 'nextjournal.clerk.builder/clerk-docs})
 
+(defn set-index-when-single-path [{:as opts :keys [expanded-paths]}]
+  (cond-> opts
+    (and (not (contains? opts :index))
+         (= 1 (count expanded-paths)))
+    (assoc :index (first expanded-paths))))
+
+#_(set-index-when-single-path {:expanded-paths ["notebooks/rule_30.clj"]})
+#_(set-index-when-single-path {:expanded-paths ["notebooks/rule_30.clj" "book.clj"]})
+
 (defn expand-paths [build-opts]
   (let [{:as opts :keys [error resolved-paths]} (resolve-paths build-opts)]
     (if error
@@ -70,12 +79,13 @@
            (mapv (comp str fs/file))
            (hash-map :expanded-paths)
            (maybe-add-index build-opts)
+           (set-index-when-single-path)
            (ensure-not-empty build-opts)))))
 
 #_(expand-paths {:paths ["notebooks/di*.clj"] :index "src/nextjournal/clerk/index.clj"})
 #_(expand-paths {:paths ['notebooks/rule_30.clj]})
 #_(expand-paths {:index "book.clj"})
-#_(expand-paths {:paths-fn `clerk-docs})
+#_(expand-paths {:paths-fn `nextjournal.clerk.builder/clerk-docs})
 #_(expand-paths {:paths-fn `clerk-docs-2})
 #_(do (defn my-paths [] ["notebooks/h*.clj"])§
       (expand-paths {:paths-fn `my-paths}))

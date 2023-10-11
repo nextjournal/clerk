@@ -1141,7 +1141,7 @@
         (re-matches #"(^|.*/)(index\.(clj|cljc|md))$" nav-path))))
 
 (defn route-index?
-  "Should the index router be enabled, true for the static builds or when a closed :docs is set."
+  "Should the index router be enabled, true for the static builds or when a `:expanded-paths` is set."
   [{:keys [expanded-paths]}]
   (boolean (seq expanded-paths)))
 

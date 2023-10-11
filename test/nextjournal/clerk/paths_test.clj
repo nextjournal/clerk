@@ -15,27 +15,27 @@
       (is (every? #(str/ends-with? % ".clj") paths))))
 
   (testing "supports index"
-    (is (= {:expanded-paths ["book.clj"]}
-           (paths/expand-paths {:index "book.clj"}))))
+    (is (= ["book.clj"]
+           (:expanded-paths (paths/expand-paths {:index "book.clj"})))))
 
   (testing "supports paths"
-    (is (= {:expanded-paths ["book.clj"]}
-           (paths/expand-paths {:paths ["book.clj"]}))))
+    (is (= ["book.clj"]
+           (:expanded-paths (paths/expand-paths {:paths ["book.clj"]})))))
 
   (testing "supports paths-fn"
-    (is (= {:expanded-paths ["book.clj"]}
-           (paths/expand-paths {:paths-fn `test-paths})))
-    (is (= {:expanded-paths ["book.clj"]}
-           (paths/expand-paths {:paths-fn `test-paths-fn}))))
+    (is (= ["book.clj"]
+           (:expanded-paths (paths/expand-paths {:paths-fn `test-paths}))))
+    (is (= ["book.clj"]
+           (:expanded-paths (paths/expand-paths {:paths-fn `test-paths-fn})))))
 
   (testing "deduplicates index + paths"
-    (is (= {:expanded-paths [(str (fs/file "notebooks" "rule_30.clj"))]}
-           (paths/expand-paths {:paths ["notebooks/rule_**.clj"]
-                                :index (str (fs/file "notebooks" "rule_30.clj"))}))))
+    (is (= [(str (fs/file "notebooks" "rule_30.clj"))]
+           (:expanded-paths (paths/expand-paths {:paths ["notebooks/rule_**.clj"]
+                                                 :index (str (fs/file "notebooks" "rule_30.clj"))})))))
 
   (testing "supports absolute paths (#504)"
-    (is (= {:expanded-paths [(str (fs/file (fs/cwd) "book.clj"))]}
-           (paths/expand-paths {:paths [(str (fs/file (fs/cwd) "book.clj"))]}))))
+    (is (= [(str (fs/file (fs/cwd) "book.clj"))]
+           (:expanded-paths (paths/expand-paths {:paths [(str (fs/file (fs/cwd) "book.clj"))]})))))
 
   (testing "invalid args"
     (is (match? {:error #"must set either"}

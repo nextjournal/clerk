@@ -144,8 +144,6 @@
                (cond-> #_opts'
                  expand-paths?
                  (dissoc :expand-paths?)
-                 (and (not index) (= 1 (count expanded-paths)))
-                 (assoc :index (first expanded-paths))
                  (and (not index) (< 1 (count expanded-paths)) (every? (complement viewer/index-path?) expanded-paths))
                  (as-> opts
                      (-> opts (assoc :index builtin-index) (update :expanded-paths conj builtin-index))))))))

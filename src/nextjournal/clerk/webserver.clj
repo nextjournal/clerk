@@ -1,12 +1,13 @@
 (ns nextjournal.clerk.webserver
   (:require [babashka.fs :as fs]
             [clojure.edn :as edn]
+            [clojure.java.io :as io]
             [clojure.pprint :as pprint]
             [clojure.set :as set]
             [clojure.string :as str]
-            [clojure.java.io :as io]
             [editscript.core :as editscript]
             [nextjournal.clerk.config :as config]
+            [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [org.httpkit.server :as httpkit])
@@ -27,6 +28,8 @@
 (defonce !clients (atom #{}))
 (defonce !doc (atom nil))
 (defonce !last-sender-ch (atom nil))
+
+(defonce !server (atom nil))
 
 #_(view/doc->viewer @!doc)
 #_(reset! !doc nil)
@@ -225,11 +228,11 @@
 
 (defn route-index
   "A routing function"
-  [opts nav-path]
+  [{:as opts :keys [index expanded-paths]} nav-path]
   (if (str/blank? nav-path)
-    (cond (= 1 (count (:expanded-paths opts))) (first (:expanded-paths opts))
-          (maybe-add-extension "index") "index" ;; TODO: check if index is part of expanded-paths
-          :else "'nextjournal.clerk.index")
+    (or index
+        (get (set expanded-paths) (maybe-add-extension "index"))
+        "'nextjournal.clerk.index")
     nav-path))
 
 (defn navigate! [{:as opts :keys [nav-path]}]
@@ -238,8 +241,19 @@
 
 (defn prefetch-request? [req] (= "prefetch" (-> req :headers (get "purpose"))))
 
-(defn serve-notebook [opts {:as req :keys [uri]}]
-  (let [nav-path (cond->> (subs uri 1)
+(defn process-paths [{:as opts :keys [paths paths-fn index]}]
+  (if (or paths paths-fn index)
+    (paths/expand-paths opts)
+    opts))
+
+#_(process-paths {:paths ["notebooks/rule_30.clj"]})
+#_(process-paths {:paths ["notebooks/no_rule_30.clj"]})
+#_(v/route-index? (process-paths @!server))
+#_(route-index (process-paths @!server) "")
+
+(defn serve-notebook [{:as req :keys [uri]}]
+  (let [opts (process-paths @!server)
+        nav-path (cond->> (subs uri 1)
                    (v/route-index? opts) (route-index opts))]
     (cond
       (prefetch-request? req)
@@ -252,7 +266,7 @@
       :else
       (if-let [file-or-ns (->file-or-ns (maybe-add-extension nav-path))]
         (do (try (show! (merge {:skip-history? true}
-                               (select-keys opts [:expanded-paths]))
+                               (select-keys @!server [:expanded-paths]))
                         file-or-ns)
                  (catch Exception _))
             {:status 200
@@ -264,7 +278,7 @@
          :headers {"Content-Type" "text/plain"}
          :body (format "Could not find notebook at %s." (pr-str nav-path))}))))
 
-(defn app [opts {:as req :keys [uri]}]
+(defn app [{:as req :keys [uri]}]
   (if (:websocket? req)
     (httpkit/as-channel req ws-handlers)
     (try
@@ -275,7 +289,7 @@
         ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
         "_ws" {:status 200 :body "upgrading..."}
         "favicon.ico" {:status 404}
-        (serve-notebook opts req))
+        (serve-notebook req))
       (catch Throwable e
         {:status  500
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
@@ -308,8 +322,6 @@
 ;; * load notebook without results
 ;; * allow page reload
 
-(defonce !server (atom nil))
-
 (defn halt! []
   (when-let [{:keys [port instance]} @!server]
     @(httpkit/server-stop! instance)
@@ -321,7 +333,7 @@
 (defn serve! [{:as opts :keys [host port] :or {host "localhost" port 7777}}]
   (halt!)
   (try
-    (reset! !server {:host host :port port :instance (httpkit/run-server (partial #'app opts) {:ip host :port port :legacy-return-value? false})})
+    (reset! !server (assoc opts :instance (httpkit/run-server #'app {:ip host :port port :legacy-return-value? false})))
     (println (format "Clerk webserver started on http://%s:%s ..." host port ))
     (catch java.net.BindException e
       (let [msg (format "Clerk webserver could not be started because port %d is not available. Stop what's running on port %d or specify a different port." port port)]
@@ -330,4 +342,6 @@
         (throw (ex-info msg {:port port} e))))))
 
 #_(serve! {:port 7777})
+#_(serve! {:port 7777 :paths ["notebooks/rule_30.clj" "book.clj"]})
+#_(serve! {:port 7777 :paths ["notebooks/rule_30.clj" "book.clj" "index.clj"]})
 #_(serve! {:port 7777 :host "0.0.0.0"})
