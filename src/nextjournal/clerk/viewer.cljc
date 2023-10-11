@@ -1134,19 +1134,19 @@
 (defn home? [{:keys [nav-path]}]
   (contains? #{"src/nextjournal/home.clj" "'nextjournal.clerk.home"} nav-path))
 
-(defn index? [{:as opts :keys [nav-path index]}]
-  (when nav-path
-    (or (= "'nextjournal.clerk.index" nav-path)
-        (= (str index) nav-path)
-        (re-matches #"(^|.*/)(index\.(clj|cljc|md))$" nav-path))))
-
 (defn route-index?
-  "Should the index router be enabled, true for the static builds or when a `:expanded-paths` is set."
+  "Should the index router be enabled?"
   [{:keys [expanded-paths]}]
   (boolean (seq expanded-paths)))
 
+(defn index? [{:as opts :keys [nav-path index]}]
+  (when nav-path
+    (or (= "'nextjournal.clerk.index" nav-path)
+        (and (route-index? opts) (str/blank? nav-path))
+        (= (str index) nav-path)
+        (re-matches #"(^|.*/)(index\.(clj|cljc|md))$" nav-path))))
+
 (defn index-path [{:as opts :keys [index]}]
-  ;; TODO: make sure `:expanded-paths` from `serve!` is available here
   #?(:cljs ""
      :clj (if (route-index? opts)
             ""

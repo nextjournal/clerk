@@ -185,8 +185,20 @@
 
 (declare present+reset!)
 
+(defn process-paths [{:as opts :keys [paths paths-fn index]}]
+  (if (or paths paths-fn index)
+    (paths/expand-paths opts)
+    opts))
+
+#_(process-paths {:paths ["notebooks/rule_30.clj"]})
+#_(process-paths {:paths ["notebooks/no_rule_30.clj"]})
+#_(v/route-index? (process-paths @!server))
+#_(route-index (process-paths @!server) "")
+
 (defn ->nav-path [file-or-ns]
-  (cond (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
+  (cond (= (:index (process-paths @!server)) file-or-ns) ""
+
+        (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
         (str "'" file-or-ns)
 
         (string? file-or-ns)
@@ -241,16 +253,6 @@
 
 (defn prefetch-request? [req] (= "prefetch" (-> req :headers (get "purpose"))))
 
-(defn process-paths [{:as opts :keys [paths paths-fn index]}]
-  (if (or paths paths-fn index)
-    (paths/expand-paths opts)
-    opts))
-
-#_(process-paths {:paths ["notebooks/rule_30.clj"]})
-#_(process-paths {:paths ["notebooks/no_rule_30.clj"]})
-#_(v/route-index? (process-paths @!server))
-#_(route-index (process-paths @!server) "")
-
 (defn serve-notebook [{:as req :keys [uri]}]
   (let [opts (process-paths @!server)
         nav-path (cond->> (subs uri 1)
@@ -266,7 +268,7 @@
       :else
       (if-let [file-or-ns (->file-or-ns (maybe-add-extension nav-path))]
         (do (try (show! (merge {:skip-history? true}
-                               (select-keys @!server [:expanded-paths]))
+                               (select-keys opts [:expanded-paths :index]))
                         file-or-ns)
                  (catch Exception _))
             {:status 200
@@ -342,6 +344,7 @@
         (throw (ex-info msg {:port port} e))))))
 
 #_(serve! {:port 7777})
+#_(serve! {:port 7777 :paths ["notebooks/rule_30.clj"]})
 #_(serve! {:port 7777 :paths ["notebooks/rule_30.clj" "book.clj"]})
 #_(serve! {:port 7777 :paths ["notebooks/rule_30.clj" "book.clj" "index.clj"]})
 #_(serve! {:port 7777 :host "0.0.0.0"})
