@@ -8,7 +8,7 @@ Changes can be:
 
 ## Unreleased
 
-...
+* 🛠 Upgrade `com.taoensso/nippy` dep to `3.3.0`
 
 ## 0.15.957 (2023-09-28)
 
