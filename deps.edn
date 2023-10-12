@@ -73,6 +73,10 @@
                                                                  :exclusions [org.babashka/sci]}
                                io.github.nextjournal/clerk-slideshow {:git/sha "11a83fea564da04b9d17734f2031a4921d917893"}}}
 
+           :nextjournal/garden {:exec-fn nextjournal.clerk/serve!
+                                :exec-args {:index "book.clj"}
+                                :nextjournal.garden/aliases [:demo]}
+
            :build {:deps {io.github.nextjournal/clerk {:local/root "."}
                           io.github.nextjournal/cas-client {:git/sha "84ab35c3321c1e51a589fddbeee058aecd055bf8"}
                           io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}
