@@ -1175,9 +1175,10 @@
                                     (= "'nextjournal.clerk.index" nav-path))]
              ;; TODO: check if we can drop `nav-path` once we make sure `file` is also set in the static build
              [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
-              {:href (when (and url sha) (if default-index? (str url "/tree/" sha) (str url "/blob/" sha "/" (or file nav-path))))}
-              (if (and url default-index?) #?(:clj (subs (.getPath (URL. url)) 1) :cljs url) (or file nav-path))
-              (when sha [:<> "@" [:span.tabular-nums (subs sha 0 7)]])])]]]))
+              (when (string? file)
+                {:href (when (and url sha) (if default-index? (str url "/tree/" sha) (str url "/blob/" sha "/" file)))})
+              (if (and url default-index?) #?(:clj (subs (.getPath (URL. url)) 1) :cljs url) (if (string? file) file nav-path))
+              (when (and (string? file) sha) [:<> "@" [:span.tabular-nums (subs sha 0 7)]])])]]]))
 
 (def header-viewer
   {:name `header-viewer
