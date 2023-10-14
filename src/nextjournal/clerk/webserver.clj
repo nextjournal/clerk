@@ -238,7 +238,8 @@
         (re-find #"\.(cljc?|md)$" nav-path) nav-path))
 
 (defn show! [opts file-or-ns]
-  ((resolve 'nextjournal.clerk/show!) opts file-or-ns))
+  (binding [paths/*build-opts* opts]
+    ((resolve 'nextjournal.clerk/show!) opts file-or-ns)))
 
 (defn route-index
   "A routing function"
@@ -249,16 +250,19 @@
         "'nextjournal.clerk.index")
     nav-path))
 
+(defn maybe-route-index [opts path]
+  (cond->> path
+    (v/route-index? opts) (route-index opts)))
+
 (defn navigate! [{:as opts :keys [nav-path]}]
-  ;; TODO: perform `route-index` when needed, needs `:expanded-paths` for `v/route-index?`
-  (show! opts (->file-or-ns (maybe-add-extension nav-path))))
+  (let [route-opts (process-paths @!server)]
+    (show! (merge route-opts opts) (->file-or-ns (maybe-add-extension (maybe-route-index route-opts nav-path))))))
 
 (defn prefetch-request? [req] (= "prefetch" (-> req :headers (get "purpose"))))
 
 (defn serve-notebook [{:as req :keys [uri]}]
   (let [opts (process-paths @!server)
-        nav-path (cond->> (subs uri 1)
-                   (v/route-index? opts) (route-index opts))]
+        nav-path (maybe-route-index opts (subs uri 1))]
     (cond
       (prefetch-request? req)
       {:status 404}
@@ -269,10 +273,9 @@
                                 (->nav-path 'nextjournal.clerk.home))}}
       :else
       (if-let [file-or-ns (->file-or-ns (maybe-add-extension nav-path))]
-        (do (try (binding [paths/*build-opts* opts]
-                   (show! (merge {:skip-history? true}
-                                 (select-keys opts [:expanded-paths :index :git/sha :git/url]))
-                          file-or-ns))
+        (do (try (show! (merge {:skip-history? true}
+                               (select-keys opts [:expanded-paths :index :git/sha :git/url]))
+                        file-or-ns)
                  (catch Exception _))
             {:status 200
              :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
