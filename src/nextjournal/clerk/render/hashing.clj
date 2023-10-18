@@ -2,7 +2,7 @@
   "Computes a hash based for Clerk's render cljs bundle."
   {:no-doc true}
   (:require [babashka.fs :as fs]
-            [babashka.process :refer [sh shell]]
+            [babashka.process :refer [shell]]
             [clojure.java.io :as io]
             [nextjournal.dejavu :as djv]))
 
@@ -57,12 +57,12 @@
   [dest-file]
   ;; NOTE: a .cjs extension is safer in case the current npm project is of type module (like Clerk's): in this case all .js files
   ;; are treated as ES modules and this is not the case of our tw config.
-  (sh "yarn install")
-  (sh "yarn tailwindcss"
-      "--input" (str (resource-path "stylesheets/viewer.css"))
-      "--config" (str (resource-path "stylesheets/tailwind.config.js"))
-      "--output" dest-file
-      "--minify"))
+  (shell "yarn install")
+  (shell "yarn tailwindcss"
+         "--input" (str (resource-path "stylesheets/viewer.css"))
+         "--config" (str (resource-path "stylesheets/tailwind.config.js"))
+         "--output" dest-file
+         "--minify"))
 
 #_ (compile-css! "compiled-viewer.css")
 
