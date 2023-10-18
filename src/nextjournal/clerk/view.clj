@@ -29,22 +29,21 @@
     (str (v/relative-root-prefix-from (v/map-index state current-path)))))
 
 (defn include-viewer-css [state]
-  (list
-   (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
-   [:link {:rel "preconnect" :href "https://fonts.bunny.net"}]
-   (hiccup/include-css "https://fonts.bunny.net/css?family=fira-mono:400,700%7Cfira-sans:400,400i,500,500i,700,700i%7Cfira-sans-condensed:700,700i%7Cpt-serif:400,400i,700,700i")
-   (if-let [css-url (get-in state [:resource->url "/css/viewer.css"])]
-     (hiccup/include-css (adjust-relative-path state css-url))
-     (list (hiccup/include-js "https://cdn.tailwindcss.com?plugins=typography")
-           [:script (-> (slurp (io/resource "stylesheets/tailwind.config.js"))
-                        (str/replace #"^module.exports" "tailwind.config")
-                        (str/replace #"require\(.*\)" ""))]
-           [:style {:type "text/tailwindcss"} (slurp (io/resource "stylesheets/viewer.css"))]))))
+  (if-let [css-url (get-in state [:resource->url "/css/viewer.css"])]
+    (hiccup/include-css (adjust-relative-path state css-url))
+    (list (hiccup/include-js "https://cdn.tailwindcss.com?plugins=typography")
+          [:script (-> (slurp (io/resource "stylesheets/tailwind.config.js"))
+                       (str/replace #"^module.exports" "tailwind.config")
+                       (str/replace #"require\(.*\)" ""))]
+          [:style {:type "text/tailwindcss"} (slurp (io/resource "stylesheets/viewer.css"))])))
 
 (defn include-css+js [state]
   (list
    (include-viewer-css state)
-   [:script {:type "module" :src (adjust-relative-path state (get-in state [:resource->url "/js/viewer.js"]))}]))
+   [:script {:type "module" :src (adjust-relative-path state (get-in state [:resource->url "/js/viewer.js"]))}]
+   (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
+   [:link {:rel "preconnect" :href "https://fonts.bunny.net"}]
+   (hiccup/include-css "https://fonts.bunny.net/css?family=fira-mono:400,700%7Cfira-sans:400,400i,500,500i,700,700i%7Cfira-sans-condensed:700,700i%7Cpt-serif:400,400i,700,700i")))
 
 (defn escape-closing-script-tag [s]
   ;; we must escape closing `</script>` tags, see
