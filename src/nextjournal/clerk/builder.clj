@@ -329,10 +329,10 @@
             (slurp (let [js-url (get resource->url "/js/viewer.js")]
                      (cond->> js-url (view/relative? js-url) (str out-path fs/file-separator)))))
       (do
-        (println "\nTailwind: using Clerk source files as content…")
-        (doseq [[src dest] (map (juxt #(io/resource (str "nextjournal/clerk/" %))
-                                      #(doto (fs/path tw-folder %) create-parent-dirs)) files-with-tw-classes)]
-          (copy-resource src dest))))
+        (println "\nTailwind: using candidate classes from Clerk source files as content…")
+        (copy-resource (doto (get resource->url "tw-candidate-classes.txt")
+                         (assert "Could not find tailwind candidate classes in resource map."))
+                       (fs/path tw-folder "candidate-classes.txt"))))
 
     ;; copy content files
     (doseq [{:keys [file]} docs]
@@ -341,7 +341,7 @@
     (let [tw-command (if (zero? (:exit (try (sh "which tailwindcss") (catch Throwable _)))) "tailwindcss" "npx tailwindcss")
           {:as ret :keys [out err exit]}
           (try (sh tw-command
-                   "--input"  tw-input
+                   "--input" tw-input
                    "--config" tw-config
                    "--output" tw-output
                    "--minify")
@@ -477,7 +477,7 @@
                       :paths ["index.md"
                               "notebooks/links.md"
                               "notebooks/rule_30.clj"
-                              "notebooks/viewers/image.clj"]})
+                              "noftebooks/markdown.md"]})
   (build-static-app! {;; test against cljs release `bb build:js`
                       :resource->url {"/js/viewer.js" "/viewer.js"}
                       :paths ["notebooks/cherry.clj"]
