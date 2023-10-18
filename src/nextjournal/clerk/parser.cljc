@@ -236,7 +236,7 @@
 (defn root-location [zloc] (last (take-while some? (iterate z/up zloc))))
 
 (defn remove-clerk-keys
-  "Takes a map zipper location, returns a new location representing the input map node with all ::clerk namespaced keys removed.
+  "Takes a map zipper location, returns a new location representing the input map node with all `::clerk` namespaced keys removed.
    Whitespace is preserved when possible."
   [map-loc]
   (loop [loc (z/down map-loc) parent map-loc]

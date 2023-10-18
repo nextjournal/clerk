@@ -23,11 +23,13 @@
 
   Accepts ns using a quoted symbol or a `clojure.lang.Namespace`, calls `slurp` on all other arguments, e.g.:
 
+  ```clj
   (nextjournal.clerk/show! \"notebooks/vega.clj\")
   (nextjournal.clerk/show! 'nextjournal.clerk.tap)
   (nextjournal.clerk/show! (find-ns 'nextjournal.clerk.tap))
   (nextjournal.clerk/show! \"https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj\")
   (nextjournal.clerk/show! (java.io.StringReader. \";; # Notebook from String 👋\n(+ 41 1)\"))
+  ```
   "
   ([file-or-ns] (show! {} file-or-ns))
   ([opts file-or-ns]
@@ -63,7 +65,7 @@
              {:keys [blob->result]} @webserver/!doc
              {:keys [result time-ms]} (try (eval/time-ms (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!)))
                                            (catch Exception e
-                                             (throw (ex-info (str "`nextjournal.clerk/show!` encountered an eval error with: `" (pr-str file-or-ns) "`") {::doc doc} e))))]
+                                             (throw (ex-info (str "`nextjournal.clerk/show!` encountered an eval error with: `" (pr-str file-or-ns) "`") {::doc (assoc doc :blob->result blob->result)} e))))]
          (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
          (webserver/update-doc! result))
        (catch Exception e

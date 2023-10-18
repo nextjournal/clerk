@@ -8,6 +8,16 @@ Changes can be:
 
 ## Unreleased
 
+...
+
+## 0.15.957 (2023-09-28)
+
+* 🔌 Offline support
+
+  Support working fully offline by adding a ServiceWorker to intercept and cache network requests to remote assets in the browser. It works for Clerk's js bundle, its tailwind css script, fonts and as well as javascript dynamically loaded using d3-require like Clerk's Vega and Plotly viewers.
+
+  To use it, you need to open Clerk in the browser when online to populate the cache. Viewers that are dynamically loaded (e.g. Vega or Plotly) need to be used once while offline to be cached. We're considering loading them on worker init in a follow up.
+
 * 👁️ Improve viewer customization
 
     * Simplify customization of number of rows displayed for table viewer using viewer-opts, e.g. `(clerk/table {::clerk/page-size 7})`. Pass `{::clerk/page-size nil}` to display elisions. Can also be passed a form metadata. Fixes [#406](https://github.com/nextjournal/clerk/issues/406).
@@ -46,6 +56,8 @@ Changes can be:
 * 🛠 Upgrade `framer-motion` dep to `10.12.16`.
 
 * 💫 Assign `:name` to every viewer in `default-viewers`
+
+* 🐜 Ensure `var->location` returns a string path location fixing `Cannot open <#object[sun.nio.fs.UnixPath ,,,> as an InputStream` errors
 
 * 🐞 Don't run existing files through `fs/glob`, fixes [#504](https://github.com/nextjournal/clerk/issues/504). Also improves performance of homepage.
 
