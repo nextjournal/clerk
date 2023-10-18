@@ -186,11 +186,11 @@
 (declare present+reset!)
 
 (defn process-paths [{:as opts :keys [paths paths-fn index]}]
-  (merge (if (or paths paths-fn index)
+  (merge {:git/sha "5d8581e93cc08d9121afe6c1eb9b81960ce9b0dc"
+          :git/url "https://github.com/nextjournal/clerk"}
+         (if (or paths paths-fn index)
            (paths/expand-paths opts)
-           opts)
-         {:git/sha "5d8581e93cc08d9121afe6c1eb9b81960ce9b0dc"
-          :git/url "https://github.com/nextjournal/clerk"}))
+           opts)))
 
 #_(process-paths {:paths ["notebooks/rule_30.clj"]})
 #_(process-paths {:paths ["notebooks/no_rule_30.clj"]})
