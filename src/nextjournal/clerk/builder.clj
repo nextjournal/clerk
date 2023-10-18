@@ -329,10 +329,10 @@
             (slurp (let [js-url (get resource->url "/js/viewer.js")]
                      (cond->> js-url (view/relative? js-url) (str out-path fs/file-separator)))))
       (do
-        (println "\nTailwind: using candidate classes from Clerk source files as content…")
-        (copy-resource (doto (get resource->url "tw-candidate-classes.txt")
-                         (assert "Could not find tailwind candidate classes in resource map."))
-                       (fs/path tw-folder "candidate-classes.txt"))))
+        (println "\nTailwind: using clerk standard compiled css as content…")
+        (copy-resource (doto (get resource->url "/css/compiled-viewer.css")
+                         (assert "Could not find tailwind compiled base file."))
+                       (fs/path tw-folder "base-classes.txt"))))
 
     ;; copy content files
     (doseq [{:keys [file]} docs]

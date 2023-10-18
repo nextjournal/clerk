@@ -22,7 +22,7 @@
             :task (clojure "-M:sci:demo:dev release viewer")}
 
   build+upload-viewer-resources {:doc "Refreshes assets stored on CDN (google storage)"
-                                 :extra-paths ["src"]
+                                 :extra-paths ["src" "resources"]
                                  :task nextjournal.clerk.render.hashing/build+upload-viewer-resources}
 
   lint {:doc "Lints project using clj-kondo"

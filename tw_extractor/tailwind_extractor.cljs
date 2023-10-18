@@ -22,16 +22,26 @@
                                                (update :files next)
                                                (update :candidates (fnil into #{}) (extract-candidate-classes content)))))))
     (do
-      (await (fsp/appendFile dest-file (str/join "\n" candidates)))
+      (when dest-file (await (fsp/appendFile dest-file (str/join "\n" candidates))))
       (println (str "Extracted " (count candidates) " candidates.")))))
 
-;; run with `yarn nbb -m tailwind-extractor tw-candidates.txt`
 (defn -main [& args]
   (chdir "..")
-  (let [dest-file (or (first args) "test.txt")
-        files (glob/sync "**/**.{clj,cljs,cljc}")]
-    (when (fs/existsSync dest-file)
-      (await (fsp/rm dest-file)))
-    (println (str "Processing " (count files) " files…"))
-    (collect-candidate-classes {:dest-file dest-file
-                                :files files})))
+  (let [[command dest-file] args]
+    (case command
+
+      "collect"
+      (let [files (glob/sync "**/**.{clj,cljs,cljc}")]
+        (when (and dest-file (fs/existsSync dest-file))
+          (await (fsp/rm dest-file)))
+        (println (str "Processing " (count files) " files…"))
+        (collect-candidate-classes {:dest-file dest-file
+                                    :files files}))
+      "extract"
+      (do
+        (assert dest-file)
+        (await (.then (slurp dest-file)
+                      (fn [txt] (println :candidate-classes (str/join "\n" (extract-candidate-classes txt)))))))
+
+      ;; else
+      (println "Usage:\n  yarn nbb -m tailwind-extractor <collect|extract> target-file"))))
