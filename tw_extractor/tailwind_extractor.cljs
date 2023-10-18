@@ -32,4 +32,4 @@
     (when (fs/existsSync dest-file)
       (await (fsp/rm dest-file)))
     (tokenize {:dest-file dest-file
-               :files (glob/sync "src/**/**.{clj,cljs,cljc}")})))
+               :files (glob/sync "**/**.{clj,cljs,cljc}")})))
