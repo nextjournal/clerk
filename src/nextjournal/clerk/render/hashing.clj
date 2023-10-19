@@ -36,13 +36,9 @@
     (str (djv/file-set-hash base-dir (file-set base-dir)))))
 #_(front-end-hash)
 
-(def git-set
-  (try (set (map fs/absolutize (clojure.string/split-lines (:out (sh "git ls")))))
-       (catch Exception _ any?)))
-
 (defn clerk-sources+notebooks-hash []
   (let [base-dir (get-base-dir)]
-    (str (djv/file-set-hash base-dir (filter git-set (fs/glob base-dir "**.{clj,cljc,cljs,md}"))))))
+    (str (djv/file-set-hash base-dir (fs/glob base-dir "**.{clj,cljc,cljs,md}")))))
 
 #_(clerk-sources+notebooks-hash)
 
@@ -69,7 +65,8 @@
           "--input" (str (resource-path "stylesheets/viewer.css"))
           "--config" (str (resource-path "stylesheets/tailwind.config.js"))
           "--output" dest-file
-          "--minify")))
+          "--minify"))
+  (println (format "Compiled CSS (size: %s)" (count (slurp dest-file)))))
 
 #_ (compile-css! "compiled-viewer.css")
 
