@@ -470,6 +470,7 @@
   (fs/delete-tree "public/build")
   (build-static-app! {:compile-css? true
                       :resource->url @config/!asset-map
+                      :ssr? true :exclude-js? true
                       ;; shadow-cljs release viewer --config-merge '{:output-dir "public/build/js"}'
                       ;; :resource->url {"/js/viewer.js" "js/viewer.js"}
                       :paths ["notebooks/links.md"
