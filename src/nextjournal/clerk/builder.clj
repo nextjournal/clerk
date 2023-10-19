@@ -292,16 +292,6 @@
      :index-html index-html
      :build-href (if (and @webserver/!server (= out-path default-out-path)) "/build/" index-html)}))
 
-(def create-parent-dirs (comp fs/create-dirs fs/parent))
-
-(def files-with-tw-classes
-  #{"viewer.cljc"
-    "render.cljs"
-    "render/panel.cljs"
-    "render/code.cljs"
-    "render/navbar.cljs"
-    "render/editor.cljs"})
-
 (defn custom-js-bundle? [resource->url]
   (not= (get resource->url "/js/viewer.js")
         (get @config/!asset-map "/js/viewer.js")))
