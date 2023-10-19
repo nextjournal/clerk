@@ -1,6 +1,6 @@
 module.exports = {
   darkMode: "class",
-  content: ["./**.{txt,md,clj,cljc,cljs}"],
+  content: ["**.{txt,md,clj,cljc,cljs}"],
   safelist: ['dark'],
   theme: {
     extend: {},

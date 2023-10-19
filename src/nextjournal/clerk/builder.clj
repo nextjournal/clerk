@@ -328,11 +328,9 @@
       (spit (str tw-folder "/viewer.js")
             (slurp (let [js-url (get resource->url "/js/viewer.js")]
                      (cond->> js-url (view/relative? js-url) (str out-path fs/file-separator)))))
-      (do
-        (println "\nTailwind: using clerk standard compiled css as content…")
-        (copy-resource (doto (get resource->url "/css/compiled-viewer.css")
-                         (assert "Could not find tailwind compiled base file."))
-                       (fs/path tw-folder "base-classes.txt"))))
+      (let [compiled-css (get resource->url "/css/compiled-viewer.css")]
+        (println (format "Tailwind: using clerk standard compiled css (%s) as content…" compiled-css))
+        (copy-resource compiled-css (fs/path tw-folder "base-classes.txt"))))
 
     ;; copy content files
     (doseq [{:keys [file]} docs]
@@ -474,10 +472,8 @@
                       :resource->url @config/!asset-map
                       ;; shadow-cljs release viewer --config-merge '{:output-dir "public/build/js"}'
                       ;; :resource->url {"/js/viewer.js" "js/viewer.js"}
-                      :paths ["index.md"
-                              "notebooks/links.md"
-                              "notebooks/rule_30.clj"
-                              "noftebooks/markdown.md"]})
+                      :paths ["notebooks/links.md"
+                              "notebooks/rule_30.clj"]})
   (build-static-app! {;; test against cljs release `bb build:js`
                       :resource->url {"/js/viewer.js" "/viewer.js"}
                       :paths ["notebooks/cherry.clj"]

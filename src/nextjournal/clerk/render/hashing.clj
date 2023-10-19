@@ -2,8 +2,9 @@
   "Computes a hash based for Clerk's render cljs bundle."
   {:no-doc true}
   (:require [babashka.fs :as fs]
-            [babashka.process :refer [shell]]
+            [babashka.process :refer [shell sh]]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [nextjournal.dejavu :as djv]))
 
 (def output-dirs ["resources/public/ui"
@@ -35,11 +36,14 @@
     (str (djv/file-set-hash base-dir (file-set base-dir)))))
 #_(front-end-hash)
 
+(def git-set
+  (try (set (map fs/absolutize (clojure.string/split-lines (:out (sh "git ls")))))
+       (catch Exception _ any?)))
+
 (defn clerk-sources+notebooks-hash []
   (let [base-dir (get-base-dir)]
-    (str (djv/file-set-hash base-dir
-                            (concat (fs/glob base-dir "notebooks/**.{clj,cljc,md}")
-                                    (fs/glob base-dir "src/**.{clj,cljs,cljc}"))))))
+    (str (djv/file-set-hash base-dir (filter git-set (fs/glob base-dir "**.{clj,cljc,cljs,md}"))))))
+
 #_(clerk-sources+notebooks-hash)
 
 (defn assets-tag []
