@@ -58,11 +58,13 @@
   ;; NOTE: a .cjs extension is safer in case the current npm project is of type module (like Clerk's): in this case all .js files
   ;; are treated as ES modules and this is not the case of our tw config.
   (shell "yarn install")
-  (shell "yarn tailwindcss"
-         "--input" (str (resource-path "stylesheets/viewer.css"))
-         "--config" (str (resource-path "stylesheets/tailwind.config.js"))
-         "--output" dest-file
-         "--minify"))
+  (println "Compiling CSS…")
+  (time
+   (shell "yarn tailwindcss"
+          "--input" (str (resource-path "stylesheets/viewer.css"))
+          "--config" (str (resource-path "stylesheets/tailwind.config.js"))
+          "--output" dest-file
+          "--minify")))
 
 #_ (compile-css! "compiled-viewer.css")
 
