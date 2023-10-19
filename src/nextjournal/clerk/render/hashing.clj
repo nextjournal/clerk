@@ -57,10 +57,11 @@
   [dest-file]
   ;; NOTE: a .cjs extension is safer in case the current npm project is of type module (like Clerk's): in this case all .js files
   ;; are treated as ES modules and this is not the case of our tw config.
-  (shell "yarn install")
-  (println "Compiling CSS…")
+  (shell {:dir (str (get-base-dir))} "yarn install")
+  (println (format "Compiling CSS… base-dir: '%s'" (get-base-dir)))
   (time
-   (shell "yarn tailwindcss"
+   (shell {:dir (str (get-base-dir))}
+          "yarn tailwindcss"
           "--input" (str (resource-path "stylesheets/viewer.css"))
           "--config" (str (resource-path "stylesheets/tailwind.config.js"))
           "--output" dest-file
