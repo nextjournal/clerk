@@ -41,7 +41,7 @@
                             (concat
                              [(fs/path base-dir "index.clj")
                               (fs/path base-dir "book.clj")]
-                             (fs/glob base-dir "notebooks/**.{md,clj,cljc}")
+                             (fs/glob base-dir "notebooks/**.{md,clj,cljc,cljs}")
                              (fs/glob base-dir "src/**/*.{clj,cljc,cljs}"))))))
 
 #_(clerk-sources+notebooks-hash)

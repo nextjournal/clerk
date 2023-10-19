@@ -1,7 +1,7 @@
 module.exports = {
   darkMode: "class",
   content: ["index.clj", "book.clj",
-            "notebooks/**.{md,clj,cljc,txt}",
+            "notebooks/**.{md,clj,cljc,cljs}",
             "src/**/*.{clj,cljc,cljs}",
             "tw/**.{md,clj,cljc,cljs,txt}"],
   safelist: ['dark'],
