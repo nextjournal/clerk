@@ -3,7 +3,7 @@ module.exports = {
   content: ["index.clj", "book.clj",
             "notebooks/**.{md,clj,cljc,cljs}",
             "src/**/*.{clj,cljc,cljs}",
-            "tw/**.{md,clj,cljc,cljs,txt}"],
+            "tw/**.{js,txt}"],
   safelist: ['dark'],
   theme: {
     extend: {},
