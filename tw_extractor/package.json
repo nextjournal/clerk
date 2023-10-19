@@ -1,7 +1,0 @@
-{
-  "dependencies": {
-    "nbb": "^1.2.179",
-    "glob": "^8.0.3",
-    "tailwindcss": "^3.3.3"
-  }
-}
