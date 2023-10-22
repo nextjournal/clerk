@@ -177,7 +177,9 @@
   (paths/process-paths @!server))
 
 (defn ->nav-path [file-or-ns]
-  (cond (= (:index (get-build-opts)) file-or-ns) ""
+  (cond (or (= 'nextjournal.clerk.index file-or-ns)
+            (= (:index (get-build-opts)) file-or-ns))
+        ""
 
         (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
         (str "'" file-or-ns)
@@ -186,7 +188,7 @@
         (paths/drop-extension (or (paths/path-in-cwd file-or-ns) file-or-ns))))
 
 #_(->nav-path (str (fs/file (fs/cwd) "notebooks/rule_30.clj")))
-#_(->nav-path (str 'nextjournal.clerk.index))
+#_(->nav-path 'nextjournal.clerk.index)
 #_(->nav-path "notebooks/rule_30.clj")
 #_(->nav-path 'nextjournal.clerk.home)
 
@@ -326,5 +328,5 @@
 #_(serve! {:port 7777})
 #_(serve! {:port 7777 :paths ["notebooks/rule_30.clj"]})
 #_(serve! {:port 7777 :paths ["notebooks/rule_30.clj" "book.clj"]})
-#_(serve! {:port 7777 :paths ["notebooks/rule_30.clj" "book.clj" "index.clj"]})
+#_(serve! {:port 7777 :paths ["notebooks/rule_30.clj" "notebooks/links.md" "notebooks/markdown.md" "index.clj"]})
 #_(serve! {:port 7777 :host "0.0.0.0"})
