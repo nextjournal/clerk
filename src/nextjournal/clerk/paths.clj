@@ -1,7 +1,8 @@
 (ns nextjournal.clerk.paths
   "Clerk's paths expansion and paths-fn handling."
   (:require [babashka.fs :as fs]
-            [clojure.edn :as edn])
+            [clojure.edn :as edn]
+            [clojure.string :as str])
   (:import [java.net URL]))
 
 (defn ^:private ensure-not-empty [build-opts {:as opts :keys [error expanded-paths]}]
@@ -109,7 +110,6 @@
 (defn index-paths
   ([] (index-paths (or *build-opts* (read-opts-from-deps-edn!))))
   ([{:as opts :keys [index error]}]
-   (prn :index-paths opts)
    (if error
      (update opts :error str build-help-link)
      (let [{:as result :keys [expanded-paths error]} (if (contains? opts :expanded-paths) opts (expand-paths opts))]
@@ -120,3 +120,41 @@
 #_(index-paths)
 #_(index-paths {:paths ["CHANGELOG.md"]})
 #_(index-paths {:paths-fn "boom"})
+
+(defn read-git-attrs []
+  ;; TODO: remove hardcoded stuff
+  {:git/sha "5d8581e93cc08d9121afe6c1eb9b81960ce9b0dc"
+   :git/url "https://github.com/nextjournal/clerk"})
+
+(defn process-paths [{:as opts :keys [paths paths-fn index]}]
+  (merge (if (or paths paths-fn index)
+           (expand-paths opts)
+           opts)
+         (read-git-attrs)))
+
+#_(process-paths {:paths ["notebooks/rule_30.clj"]})
+#_(process-paths {:paths ["notebooks/no_rule_30.clj"]})
+#_(v/route-index? (process-paths @!server))
+#_(route-index (process-paths @!server) "")
+
+
+(defn path-in-cwd
+  "Turns `file` into a unixified (forward slashed) path if the is in the cwd,
+  returns `nil` otherwise."
+  [file]
+  (when (and (string? file)
+             (fs/exists? file))
+    (let [rel (fs/relativize (fs/cwd) (fs/canonicalize file #{:nofollow-links}))]
+      (when-not (str/starts-with? (str rel) "..")
+        (fs/unixify rel)))))
+
+#_(path-in-cwd "notebooks/rule_30.clj")
+#_(path-in-cwd "/tmp/foo.clj")
+#_(path-in-cwd "../scratch/rule_30.clj")
+
+(defn drop-extension [file]
+  (cond-> file
+    (fs/extension file)
+    (str/replace (re-pattern (format ".%s$" (fs/extension file))) "")))
+
+#_(drop-extension "notebooks/rule_30.clj")

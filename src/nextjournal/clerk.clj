@@ -11,6 +11,7 @@
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
+            [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]))
 
@@ -49,9 +50,11 @@
 
                     :else
                     file-or-ns)
-             doc (try (merge opts
-                             {:file file
-                              :nav-path (webserver/->nav-path file-or-ns)}
+             doc (try (merge (webserver/get-build-opts)
+                             opts
+                             (when-let [path (paths/path-in-cwd file-or-ns)]
+                               {:file-path path})
+                             {:nav-path (webserver/->nav-path file-or-ns)}
                              (parser/parse-file {:doc? true} file))
                       (catch java.io.FileNotFoundException _e
                         (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
@@ -62,7 +65,8 @@
                                         e))))
              _ (reset! !last-file file)
              {:keys [blob->result]} @webserver/!doc
-             {:keys [result time-ms]} (try (eval/time-ms (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!)))
+             {:keys [result time-ms]} (try (eval/time-ms (binding [paths/*build-opts* (webserver/get-build-opts)]
+                                                           (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!))))
                                            (catch Exception e
                                              (throw (ex-info (str "`nextjournal.clerk/show!` encountered an eval error with: `" (pr-str file-or-ns) "`") {::doc (assoc doc :blob->result blob->result)} e))))]
          (println (str "Clerk evaluated '" file "' in " time-ms "ms."))

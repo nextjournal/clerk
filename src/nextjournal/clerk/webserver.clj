@@ -185,33 +185,20 @@
 
 (declare present+reset!)
 
-(defn process-paths [{:as opts :keys [paths paths-fn index]}]
-  (merge (if (or paths paths-fn index)
-           (paths/expand-paths opts)
-           opts)
-         {:git/sha "5d8581e93cc08d9121afe6c1eb9b81960ce9b0dc"
-          :git/url "https://github.com/nextjournal/clerk"}))
-
-#_(process-paths {:paths ["notebooks/rule_30.clj"]})
-#_(process-paths {:paths ["notebooks/no_rule_30.clj"]})
-#_(v/route-index? (process-paths @!server))
-#_(route-index (process-paths @!server) "")
+(defn get-build-opts []
+  (paths/process-paths @!server))
 
 (defn ->nav-path [file-or-ns]
-  (cond (= (:index (process-paths @!server)) file-or-ns) ""
+  (cond (= (:index (get-build-opts)) file-or-ns) ""
 
         (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
         (str "'" file-or-ns)
 
         (string? file-or-ns)
-        (when (fs/exists? file-or-ns)
-          (fs/unixify (cond->> (fs/strip-ext file-or-ns)
-                        (and (fs/absolute? file-or-ns)
-                             (not (str/starts-with? (fs/relativize (fs/cwd) file-or-ns) "..")))
-                        (fs/relativize (fs/cwd)))))
+        (paths/drop-extension (or (paths/path-in-cwd file-or-ns) file-or-ns))))
 
-        :else (str file-or-ns)))
-
+#_(->nav-path (str (fs/file (fs/cwd) "notebooks/rule_30.clj")))
+#_(->nav-path (str 'nextjournal.clerk.index))
 #_(->nav-path "notebooks/rule_30.clj")
 #_(->nav-path 'nextjournal.clerk.home)
 
@@ -238,8 +225,7 @@
         (re-find #"\.(cljc?|md)$" nav-path) nav-path))
 
 (defn show! [opts file-or-ns]
-  (binding [paths/*build-opts* opts]
-    ((resolve 'nextjournal.clerk/show!) opts file-or-ns)))
+  ((resolve 'nextjournal.clerk/show!) opts file-or-ns))
 
 (defn route-index
   "A routing function"
@@ -255,13 +241,13 @@
     (v/route-index? opts) (route-index opts)))
 
 (defn navigate! [{:as opts :keys [nav-path]}]
-  (let [route-opts (process-paths @!server)]
+  (let [route-opts (get-build-opts)]
     (show! (merge route-opts opts) (->file-or-ns (maybe-add-extension (maybe-route-index route-opts nav-path))))))
 
 (defn prefetch-request? [req] (= "prefetch" (-> req :headers (get "purpose"))))
 
 (defn serve-notebook [{:as req :keys [uri]}]
-  (let [opts (process-paths @!server)
+  (let [opts (paths/process-paths @!server)
         nav-path (maybe-route-index opts (subs uri 1))]
     (cond
       (prefetch-request? req)

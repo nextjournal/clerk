@@ -1139,12 +1139,11 @@
   [{:keys [expanded-paths]}]
   (boolean (seq expanded-paths)))
 
-(defn index? [{:as opts :keys [nav-path index]}]
-  (when nav-path
-    (or (= "'nextjournal.clerk.index" nav-path)
-        (and (route-index? opts) (str/blank? nav-path))
-        (= (str index) nav-path)
-        (re-matches #"(^|.*/)(index\.(clj|cljc|md))$" nav-path))))
+
+(defn index? [{:as opts :keys [file index ns]}]
+  (or (= (some-> ns ns-name) 'nextjournal.clerk.index)
+      (some->> file str (re-matches #"(^|.*/)(index\.(clj|cljc|md))$"))
+      (and index (= file index))))
 
 (defn index-path [{:as opts :keys [index]}]
   #?(:cljs ""
@@ -1152,7 +1151,7 @@
             ""
             (if (fs/exists? "index.clj") "index.clj" "'nextjournal.clerk.index"))))
 
-(defn header [{:as opts :keys [file nav-path static-build?] :git/keys [url sha]}]
+(defn header [{:as opts :keys [file file-path nav-path static-build? ns] :git/keys [url sha]}]
   (html [:div.viewer.w-full.max-w-prose.px-8.not-prose.mt-3
          [:div.mb-8.text-xs.sans-serif.text-slate-400
           (when (and (not (route-index? opts))
@@ -1170,15 +1169,14 @@
            (if static-build? "Generated with " "Served from ")
            [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
             {:href "https://clerk.vision"} "Clerk"]
-           " from "
-           (let [default-index? (or (str/ends-with? (str nav-path) "src/nextjournal/clerk/index.clj")
-                                    (= "'nextjournal.clerk.index" nav-path))]
-             ;; TODO: check if we can drop `nav-path` once we make sure `file` is also set in the static build
-             [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
-              (when (string? file)
-                {:href (when (and url sha) (if default-index? (str url "/tree/" sha) (str url "/blob/" sha "/" file)))})
-              (if (and url default-index?) #?(:clj (subs (.getPath (URL. url)) 1) :cljs url) (if (string? file) file nav-path))
-              (when (and (string? file) sha) [:<> "@" [:span.tabular-nums (subs sha 0 7)]])])]]]))
+           (let [default-index? (= 'nextjournal.clerk.index (some-> ns ns-name))]
+             (when (or file-path default-index?)
+               [:<>
+                " from "
+                [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
+                 {:href (when (and url sha) (if default-index? (str url "/tree/" sha) (str url "/blob/" sha "/" file-path)))}
+                 (if (and url default-index?) #?(:clj (subs (.getPath (URL. url)) 1) :cljs url) (or file-path nav-path))
+                 (when sha [:<> "@" [:span.tabular-nums (subs sha 0 7)]])]]))]]]))
 
 (def header-viewer
   {:name `header-viewer
