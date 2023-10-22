@@ -13,18 +13,6 @@
             [org.httpkit.server :as httpkit])
   (:import (java.nio.file Files)))
 
-(defn help-hiccup []
-  [:p "Call " [:span.code "nextjournal.clerk/show!"] " from your REPL"
-   (when-let [watch-paths (seq (:paths @@(resolve 'nextjournal.clerk/!watcher)))]
-     (into [:<> " or save a file in "]
-           (interpose " or " (map #(vector :span.code %) watch-paths))))
-   " to make your notebook appear…"])
-
-(defn help-doc []
-  {:blocks [{:type :code
-             :visibility {:code :hide, :result :show}
-             :result {:nextjournal/value (v/html (help-hiccup))}}]})
-
 (defonce !clients (atom #{}))
 (defonce !doc (atom nil))
 (defonce !last-sender-ch (atom nil))
