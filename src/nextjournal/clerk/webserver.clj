@@ -296,7 +296,7 @@
     (broadcast-status! status)))
 
 (defn set-status! [status]
-  (swap! !doc (fn [doc] (-> (or doc (help-doc))
+  (swap! !doc (fn [doc] (-> (or doc {})
                             (vary-meta assoc :status status)
                             (vary-meta update ::!send-status-future broadcast-status-debounced! status)))))
 

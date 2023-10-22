@@ -2,7 +2,8 @@
   "Clerk's paths expansion and paths-fn handling."
   (:require [babashka.fs :as fs]
             [clojure.edn :as edn]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [nextjournal.clerk.git :as git])
   (:import [java.net URL]))
 
 (defn ^:private ensure-not-empty [build-opts {:as opts :keys [error expanded-paths]}]
@@ -121,16 +122,11 @@
 #_(index-paths {:paths ["CHANGELOG.md"]})
 #_(index-paths {:paths-fn "boom"})
 
-(defn read-git-attrs []
-  ;; TODO: remove hardcoded stuff
-  {:git/sha "5d8581e93cc08d9121afe6c1eb9b81960ce9b0dc"
-   :git/url "https://github.com/nextjournal/clerk"})
-
 (defn process-paths [{:as opts :keys [paths paths-fn index]}]
   (merge (if (or paths paths-fn index)
            (expand-paths opts)
            opts)
-         (read-git-attrs)))
+         (git/read-git-attrs)))
 
 #_(process-paths {:paths ["notebooks/rule_30.clj"]})
 #_(process-paths {:paths ["notebooks/no_rule_30.clj"]})
