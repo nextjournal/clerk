@@ -2,19 +2,18 @@
   "Clerk's Static App Builder."
   (:require [babashka.fs :as fs]
             [babashka.process :refer [sh]]
-            [clojure.edn :as edn]
             [clojure.java.browse :as browse]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.builder-ui :as builder-ui]
+            [nextjournal.clerk.config :as config]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
+            [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as viewer]
-            [nextjournal.clerk.webserver :as webserver]
-            [nextjournal.clerk.config :as config])
-  (:import (java.net URL)))
+            [nextjournal.clerk.webserver :as webserver]))
 
 (def clerk-docs
   (into ["CHANGELOG.md"
@@ -127,84 +126,6 @@
 (def default-out-path
   (str "public" fs/file-separator "build"))
 
-(defn ^:private ensure-not-empty [build-opts {:as opts :keys [error expanded-paths]}]
-  (if error
-    opts
-    (if (empty? expanded-paths)
-      (merge {:error "nothing to build" :expanded-paths expanded-paths} (select-keys build-opts [:paths :paths-fn :index]))
-      opts)))
-
-(defn ^:private maybe-add-index [{:as build-opts :keys [index]} {:as opts :keys [expanded-paths]}]
-  (if-not (contains? build-opts :index)
-    opts
-    (if (and (not (instance? URL index))
-             (not (symbol? index))
-             (or (not (string? index)) (not (fs/exists? index))))
-      {:error "`:index` must be either an instance of java.net.URL or a string and point to an existing file"
-       :index index}
-      (cond-> opts
-        (and index (not (contains? (set expanded-paths) index)))
-        (update :expanded-paths conj index)))))
-
-#_(maybe-add-index {:index "book.clj"} {:expanded-paths ["README.md"]})
-#_(maybe-add-index {:index 'book.clj} {:expanded-paths ["README.md"]})
-
-(defn resolve-paths [{:as build-opts :keys [paths paths-fn index]}]
-  (when (and paths paths-fn)
-    (binding [*out* *err*]
-      (println "[info] both `:paths` and `:paths-fn` are set, `:paths` will take precendence.")))
-  (if (not (or paths paths-fn index))
-    {:error "must set either `:paths`, `:paths-fn` or `:index`."
-     :build-opts build-opts}
-    (cond paths (if (sequential? paths)
-                  {:resolved-paths paths}
-                  {:error "`:paths` must be sequential" :paths paths})
-          paths-fn (let [ex-msg "`:path-fn` must be a qualified symbol pointing at an existing var."]
-                     (if-not (qualified-symbol? paths-fn)
-                       {:error ex-msg :paths-fn paths-fn}
-                       (if-some [resolved-var (try (requiring-resolve paths-fn)
-                                                   (catch Exception _e nil))]
-                         (let [{:as opts :keys [error paths]}
-                               (try {:paths (cond-> @resolved-var (fn? @resolved-var) (apply []))}
-                                    (catch Exception e
-                                      {:error (str "An error occured invoking `" (pr-str resolved-var) "`: " (ex-message e))
-                                       :paths-fn paths-fn}))]
-                           (if error
-                             opts
-                             (if-not (sequential? paths)
-                               {:error (str "`:paths-fn` must compute to a sequential value.")
-                                :paths-fn paths-fn :resolved-paths paths}
-                               {:resolved-paths paths})))
-                         {:error ex-msg :paths-fn paths-fn})))
-          index {:resolved-paths []})))
-
-#_(resolve-paths {:paths ["notebooks/di*.clj"]})
-#_(resolve-paths {:paths-fn 'clojure.core/inc})
-#_(resolve-paths {:paths-fn 'nextjournal.clerk.builder/clerk-docs})
-
-(defn expand-paths [build-opts]
-  (let [{:as opts :keys [error resolved-paths]} (resolve-paths build-opts)]
-    (if error
-      opts
-      (->> resolved-paths
-           (mapcat (fn [path] (if (fs/exists? path)
-                                [path]
-                                (fs/glob "." path))))
-           (filter (complement fs/directory?))
-           (mapv (comp str fs/file))
-           (hash-map :expanded-paths)
-           (maybe-add-index build-opts)
-           (ensure-not-empty build-opts)))))
-
-#_(expand-paths {:paths ["notebooks/di*.clj"] :index "src/nextjournal/clerk/index.clj"})
-#_(expand-paths {:paths ['notebooks/rule_30.clj]})
-#_(expand-paths {:index "book.clj"})
-#_(expand-paths {:paths-fn `clerk-docs})
-#_(expand-paths {:paths-fn `clerk-docs-2})
-#_(do (defn my-paths [] ["notebooks/h*.clj"])§
-      (expand-paths {:paths-fn `my-paths}))
-#_(expand-paths {:paths ["notebooks/viewers**"]})
-
 (def builtin-index
   (io/resource "nextjournal/clerk/index.clj"))
 
@@ -216,17 +137,15 @@
          (let [opts+index (cond-> opts
                             index (assoc :index (str index)))
                {:as opts' :keys [expanded-paths]} (cond-> opts+index
-                                                    expand-paths? (merge (expand-paths opts+index)))]
+                                                    expand-paths? (merge (paths/expand-paths opts+index)))]
            (-> opts'
                (update :resource->url #(merge {} %2 %1) @config/!resource->url)
                (cond-> #_opts'
                  expand-paths?
                  (dissoc :expand-paths?)
-                 (and (not index) (= 1 (count expanded-paths)))
-                 (assoc :index (first expanded-paths))
                  (and (not index) (< 1 (count expanded-paths)) (every? (complement viewer/index-path?) expanded-paths))
                  (as-> opts
-                   (-> opts (assoc :index builtin-index) (update :expanded-paths conj builtin-index))))))))
+                     (-> opts (assoc :index builtin-index) (update :expanded-paths conj builtin-index))))))))
 
 #_(process-build-opts {:index 'book.clj :expand-paths? true})
 #_(process-build-opts {:paths ["notebooks/rule_30.clj"] :expand-paths? true})
@@ -336,31 +255,6 @@
      (str (viewer/relative-root-prefix-from (viewer/map-index opts file)) path
           (when fragment (str "#" fragment))))))
 
-(defn read-opts-from-deps-edn! []
-  (if (fs/exists? "deps.edn")
-    (let [deps-edn (edn/read-string (slurp "deps.edn"))]
-      (if-some [clerk-alias (get-in deps-edn [:aliases :nextjournal/clerk])]
-        (get clerk-alias :exec-args
-             {:error (str "No `:exec-args` found in `:nextjournal/clerk` alias.")})
-        {:error (str "No `:nextjournal/clerk` alias found in `deps.edn`.")}))
-    {:error (str "No `deps.edn` found in project.")}))
-
-(def ^:dynamic ^:private *build-opts* nil)
-(def build-help-link "\n\nLearn how to [set up your static build](https://book.clerk.vision/#static-building).")
-(defn index-paths
-  ([] (index-paths (or *build-opts* (read-opts-from-deps-edn!))))
-  ([{:as opts :keys [index error]}]
-   (if error
-     (update opts :error str build-help-link)
-     (let [{:as result :keys [expanded-paths error]} (expand-paths opts)]
-       (if error
-         (update result :error str build-help-link)
-         {:paths (remove #{index "index.clj"} expanded-paths)})))))
-
-#_(index-paths)
-#_(index-paths {:paths ["CHANGELOG.md"]})
-#_(index-paths {:paths-fn "boom"})
-
 (defn build-static-app! [{:as opts :keys [bundle?]}]
   (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css? expanded-paths error]}
         (process-build-opts (assoc opts :expand-paths? true))
@@ -391,11 +285,10 @@
                       (let [{result :result duration :time-ms} (eval/time-ms
                                                                 (try
                                                                   (binding [*ns* *ns*
-                                                                            *build-opts* opts
+                                                                            paths/*build-opts* opts
                                                                             viewer/doc-url (partial doc-url opts file)]
                                                                     (let [doc (eval/eval-analyzed-doc doc)]
                                                                       (assoc doc :viewer (view/doc->viewer (assoc opts
-                                                                                                                  :static-build? true
                                                                                                                   :nav-path (if (instance? java.net.URL file)
                                                                                                                               (str "'" (:ns doc))
                                                                                                                               (str file)))
