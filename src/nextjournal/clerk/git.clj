@@ -5,8 +5,8 @@
 
 (defn ^:private shell-out-str
   "Shell helper, calls a cmd and returns it output string trimmed."
-  [cmd]
-  (str/trim (:out (p/shell {:out :string} cmd))))
+  [& cmd]
+  (str/trim (:out (apply p/shell {:out :string} cmd))))
 
 #_(shell-out-str "git rev-parse HEAD")
 #_(shell-out-str "zonk")
@@ -24,17 +24,19 @@
     (str/replace remote-url #"\.git$" "")
 
     (->github-project remote-url)
-    (str "https://github.com/%s" (->github-project remote-url))))
+    (str "https://github.com/" (->github-project remote-url))))
 
 #_(->https-git-url "https://github.com/nextjournal/clerk.git")
 #_(->https-git-url "git@github.com:nextjournal/clerk.git")
 
 (defn read-git-attrs []
   (try {:git/sha (shell-out-str "git rev-parse HEAD")
-        :git/url (some ->https-git-url
-                       (map #(shell-out-str (str "git remote get-url " %))
-                            (str/split-lines (shell-out-str "git remote"))))}
-       (catch Exception _
+        :git/url (let [branch (shell-out-str "git symbolic-ref --short HEAD")
+                       remote (shell-out-str "git" "config" (str "branch." branch ".remote"))
+                       remote-url (shell-out-str "git" "remote" "get-url" remote)]
+                    (->https-git-url remote-url))}
+       (catch Exception e
+         (prn e)
          {})))
 
 #_(read-git-attrs)
