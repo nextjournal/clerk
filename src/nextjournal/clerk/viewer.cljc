@@ -1771,7 +1771,7 @@
 (defn image
   ([image-or-url] (image {} image-or-url))
   ([viewer-opts image-or-url]
-   (with-viewer image-viewer viewer-opts
+   (with-viewer (:name image-viewer) viewer-opts
      #?(:cljs image-or-url :clj (read-image image-or-url)))))
 
 (defn caption [text content]
