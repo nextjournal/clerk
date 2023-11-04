@@ -398,3 +398,12 @@
          (-> (eval/eval-string "(ns test.removed-metadata\n(:require [nextjournal.clerk :as c]))\n\n^::c/no-cache (do 'this)")
              view/doc->viewer
              v/->value :blocks second v/->value))))
+
+(deftest col-viewer-map-args
+  (testing "extracts first arg as viewer-opts"
+    (is (= [{:foo :bar}]
+           (v/->value (v/col {:nextjournal.clerk/width :wide} {:foo :bar})))))
+
+  (testing "doesn't treat plain map as viewer-opts"
+    (is (= [{:foo :bar} {:bar :baz}]
+           (v/->value (v/col {:foo :bar} {:bar :baz}))))))

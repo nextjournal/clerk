@@ -8,7 +8,8 @@ Changes can be:
 
 ## Unreleased
 
-...
+* 💫 Allow to disable welcome page in `serve!`
+* 🐞 Fix `row` and `col` viewers not showing a first map argument, fixes [#567](https://github.com/nextjournal/clerk/issues/567) @teodorlu
 
 ## 0.15.957 (2023-09-28)
 

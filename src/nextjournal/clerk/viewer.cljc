@@ -213,7 +213,9 @@
 (defn with-viewer-extracting-opts [viewer & opts+items]
   ;; TODO: maybe support sequantial & viewer-opts?
   (cond
-    (and (map? (first opts+items)) (not (wrapped-value? (first opts+items))))
+    (and (map? (first opts+items))
+         (not (wrapped-value? (first opts+items)))
+         (seq (set/intersection parser/block-settings (set (keys (first opts+items))) )))
     (with-viewer viewer (first opts+items) (rest opts+items))
 
     (and (sequential? (first opts+items)) (= 1 (count opts+items)))
