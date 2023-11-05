@@ -25,7 +25,6 @@
 
 #_(-> [(clojure.java.io/file "notebooks") (find-ns 'user)] nippy/freeze nippy/thaw)
 
-
 (defn ->cache-file [hash]
   (str config/cache-dir fs/file-separator hash))
 
@@ -87,7 +86,7 @@
                            hash)))
 
 
-(defn ^:private cachable-value? [value]
+(defn cachable? [value]
   (and (some? value)
        (try
          (and (not (analyzer/exceeds-bounded-count-limit? value))
@@ -97,10 +96,12 @@
          (catch Exception _
            false))))
 
-#_(cachable-value? (vec (range 100)))
-#_(cachable-value? (range))
-#_(cachable-value? (map inc (range)))
-#_(cachable-value? [{:hello (map inc (range))}])
+#_(cachable? (vec (range 100)))
+#_(cachable? (range))
+#_(cachable? java.lang.String)
+#_(cachable? (map inc (range)))
+#_(cachable? [{:hello (map inc (range))}])
+#_(cachable? {:foo (javax.imageio.ImageIO/read (clojure.java.io/file "trees.png"))})
 
 
 (defn ^:private cache! [digest-file var-value]
@@ -138,7 +139,7 @@
       (when (and (not no-cache?)
                  (not ns-effect?)
                  freezable?
-                 (cachable-value? var-value)
+                 (cachable? var-value)
                  (or (not var) var-from-def?))
         (cache! digest-file var-value))
       (let [blob-id (cond no-cache? (analyzer/->hash-str var-value)
