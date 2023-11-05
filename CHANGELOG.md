@@ -12,7 +12,7 @@ Changes can be:
 
 * 🛠 Bump depdendencies
 
-  * `com.taoensso/nippy` to `3.3`
+  * `com.taoensso/nippy` to `3.4.0-beta1`
   * `io.github.nextjournal/markdown` to `0.5.146`
 
 * 🐞 Fix caching behaviour of `clerk/image` and support overriding image-viewer by name
