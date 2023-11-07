@@ -176,6 +176,8 @@
 (defn get-build-opts []
   (paths/process-paths @!server))
 
+#_(get-build-opts)
+
 (defn ->nav-path [file-or-ns]
   (cond (or (= 'nextjournal.clerk.index file-or-ns)
             (= (:index (get-build-opts)) file-or-ns))
@@ -214,16 +216,14 @@
         (str/starts-with? nav-path "'") (symbol (subs nav-path 1))
         (re-find #"\.(cljc?|md)$" nav-path) nav-path))
 
-(defn ensure-allowed-path [file-or-ns]
-  (if-let [expanded-paths (and (:expanded-paths (get-build-opts)))]
-    (when (contains? (conj (set expanded-paths) 'nextjournal.clerk.index) file-or-ns)
-      file-or-ns)
-    file-or-ns))
+(defn forbidden-path? [file-or-ns]
+  (if-let [expanded-paths (:expanded-paths (get-build-opts))]
+    (not (contains? (conj (set expanded-paths) 'nextjournal.clerk.index) file-or-ns))
+    false))
 
 (defn show! [opts file-or-ns]
-  (if-let [allowed-path (ensure-allowed-path file-or-ns)]
-    ((resolve 'nextjournal.clerk/show!) opts file-or-ns)
-    (prn :not-allowed file-or-ns)))
+  (when-not (forbidden-path? file-or-ns)
+    ((resolve 'nextjournal.clerk/show!) opts file-or-ns)))
 
 (defn route-index
   "A routing function"
@@ -256,7 +256,9 @@
        :headers {"Location" (or (:nav-path @!doc)
                                 (->nav-path 'nextjournal.clerk.home))}}
       :else
-      (if-let [file-or-ns (ensure-allowed-path (->file-or-ns (maybe-add-extension nav-path)))]
+      (if-let [file-or-ns (let [file-or-ns (->file-or-ns (maybe-add-extension nav-path))]
+                            (when-not (forbidden-path? file-or-ns)
+                              file-or-ns))]
         (do
           (try (show! (merge {:skip-history? true}
                              (select-keys opts [:expanded-paths :index :git/sha :git/url]))
@@ -336,6 +338,7 @@
 
 #_(serve! {:port 7777})
 #_(serve! {:port 7777 :paths ["notebooks/rule_30.clj"]})
+#_(serve! {:port 7777 :paths ["notebooks/rule_30.clj"] :index "notebooks/links.md"})
 #_(serve! {:port 7777 :paths ["notebooks/rule_30.clj" "book.clj"]})
 #_(serve! {:port 7777 :paths ["notebooks/rule_30.clj" "notebooks/links.md" "notebooks/markdown.md" "index.clj"]})
 #_(serve! {:port 7777 :host "0.0.0.0"})

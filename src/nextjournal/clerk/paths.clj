@@ -21,7 +21,7 @@
              (or (not (string? index)) (not (fs/exists? index))))
       {:error "`:index` must be either an instance of java.net.URL or a string and point to an existing file"
        :index index}
-      (cond-> opts
+      (cond-> (merge (select-keys build-opts [:paths :paths-fn :index]) opts)
         (and index (not (contains? (set expanded-paths) index)))
         (update :expanded-paths conj index)))))
 
@@ -86,7 +86,7 @@
            (ensure-not-empty build-opts)))))
 
 #_(expand-paths {:paths ["notebooks/di*.clj"] :index "src/nextjournal/clerk/index.clj"})
-#_(expand-paths {:paths ['notebooks/rule_30.clj]})
+#_(expand-paths {:paths ['notebooks/rule_30.clj] :index "notebooks/markdown.md"})
 #_(expand-paths {:index "book.clj"})
 #_(expand-paths {:paths-fn `nextjournal.clerk.builder/clerk-docs})
 #_(expand-paths {:paths-fn `clerk-docs-2})
@@ -129,6 +129,7 @@
          (git/read-git-attrs)))
 
 #_(process-paths {:paths ["notebooks/rule_30.clj"]})
+#_(process-paths {:paths ["notebooks/rule_30.clj"] :index "notebooks/links.md"})
 #_(process-paths {:paths ["notebooks/no_rule_30.clj"]})
 #_(v/route-index? (process-paths @!server))
 #_(route-index (process-paths @!server) "")
