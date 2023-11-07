@@ -214,8 +214,16 @@
         (str/starts-with? nav-path "'") (symbol (subs nav-path 1))
         (re-find #"\.(cljc?|md)$" nav-path) nav-path))
 
+(defn ensure-allowed-path [file-or-ns]
+  (if-let [expanded-paths (and (:expanded-paths (get-build-opts)))]
+    (when (contains? (conj (set expanded-paths) 'nextjournal.clerk.index) file-or-ns)
+      file-or-ns)
+    file-or-ns))
+
 (defn show! [opts file-or-ns]
-  ((resolve 'nextjournal.clerk/show!) opts file-or-ns))
+  (if-let [allowed-path (ensure-allowed-path file-or-ns)]
+    ((resolve 'nextjournal.clerk/show!) opts file-or-ns)
+    (prn :not-allowed file-or-ns)))
 
 (defn route-index
   "A routing function"
@@ -248,16 +256,17 @@
        :headers {"Location" (or (:nav-path @!doc)
                                 (->nav-path 'nextjournal.clerk.home))}}
       :else
-      (if-let [file-or-ns (->file-or-ns (maybe-add-extension nav-path))]
-        (do (try (show! (merge {:skip-history? true}
-                               (select-keys opts [:expanded-paths :index :git/sha :git/url]))
-                        file-or-ns)
-                 (catch Exception _))
-            {:status 200
-             :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
-             :body (view/->html {:doc (view/doc->viewer @!doc)
-                                 :resource->url @config/!resource->url
-                                 :conn-ws? true})})
+      (if-let [file-or-ns (ensure-allowed-path (->file-or-ns (maybe-add-extension nav-path)))]
+        (do
+          (try (show! (merge {:skip-history? true}
+                             (select-keys opts [:expanded-paths :index :git/sha :git/url]))
+                      file-or-ns)
+               (catch Exception _))
+          {:status 200
+           :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
+           :body (view/->html {:doc (view/doc->viewer @!doc)
+                               :resource->url @config/!resource->url
+                               :conn-ws? true})})
         {:status 404
          :headers {"Content-Type" "text/plain"}
          :body (format "Could not find notebook at %s." (pr-str nav-path))}))))
