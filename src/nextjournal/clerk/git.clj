@@ -34,9 +34,9 @@
         :git/url (let [branch (shell-out-str "git symbolic-ref --short HEAD")
                        remote (shell-out-str "git" "config" (str "branch." branch ".remote"))
                        remote-url (shell-out-str "git" "remote" "get-url" remote)]
-                    (->https-git-url remote-url))}
+                   (->https-git-url remote-url))}
        (catch Exception e
-         (prn e)
+         #_(prn e)
          {})))
 
 #_(read-git-attrs)

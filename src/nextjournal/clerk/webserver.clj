@@ -203,11 +203,13 @@
                (and (fs/exists? nav-path)
                     (not (fs/directory? nav-path)))))
     nav-path
-    (find-first-existing-file (map #(str (fs/file nav-path) "." %) ["md" "clj" "cljc"]))))
+    (or (find-first-existing-file (map #(str (fs/file nav-path) "." %) ["md" "clj" "cljc"]))
+        nav-path)))
 
 #_(maybe-add-extension "notebooks/rule_30")
 #_(maybe-add-extension "notebooks/rule_30.clj")
 #_(maybe-add-extension "notebooks/markdown")
+#_(maybe-add-extension "asdf")
 #_(maybe-add-extension "'nextjournal.clerk.home")
 
 (defn ->file-or-ns [nav-path]
@@ -338,6 +340,7 @@
 
 #_(serve! {:port 7777})
 #_(serve! {:port 7777 :paths ["notebooks/rule_30.clj"]})
+#_(serve! {:port 7777 :paths ["notebooks/rule_30.clj" "notebooks/links.md"]})
 #_(serve! {:port 7777 :paths ["notebooks/rule_30.clj"] :index "notebooks/links.md"})
 #_(serve! {:port 7777 :paths ["notebooks/rule_30.clj" "book.clj"]})
 #_(serve! {:port 7777 :paths ["notebooks/rule_30.clj" "notebooks/links.md" "notebooks/markdown.md" "index.clj"]})
