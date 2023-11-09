@@ -327,6 +327,20 @@ int main() {
  "Implements of the Paper Printing Industry"
  (clerk/image "https://nextjournal.com/data/QmX99isUndwqBz7nj8fdG7UoDakNDSH1TZcvY2Y6NUTe6o?filename=image.gif&content-type=image/gif"))
 
+;; Captions aren't limited to images and work together with any arbitrary content that you provide, e.g. a table:
+
+^{::clerk/visibility {:code :fold}}
+(clerk/caption
+ "Modern Symmetrical Unary(7) in [Solresol](https://wiki.xxiivv.com/site/solresol.html)"
+ (clerk/table {:head ["Solfège" "French IPA" "English IPA" "Meaning"]
+               :rows [["Do"	"/do/" "/doʊ/" "no"]
+                      ["Re" "/ʁɛ/" "/ɹeɪ/" "and, also"]
+                      ["Mi" "/mi/" "/miː/" "or"]
+                      ["Fa" "/fa/" "/fɑː/" "at, to"]
+                      ["Sol" "/sɔl/" "/soʊl/" "but, if"]
+                      ["La" "/la/" "/lɑː/" "the, then"]
+                      ["Si" "/si/" "/siː/" "yes"]]}))
+
 ;; ### 📒 Markdown
 
 ;; The same Markdown support Clerk uses for comment blocks is also
