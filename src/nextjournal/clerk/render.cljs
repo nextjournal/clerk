@@ -871,7 +871,7 @@
 (defn render-folded-code-block [code-string {:as opts :keys [id]}]
   (let [!hidden? (hooks/use-state true)]
     (if @!hidden?
-      [:div.relative.pl-12.font-sans.text-slate-400.cursor-pointer.flex.overflow-y-hidden.group
+      [:div.relative.font-sans.text-slate-400.cursor-pointer.flex.overflow-y-hidden.group
        [:span.hover:text-slate-500
         {:class "text-[10px]"
          :on-click #(swap! !hidden? not)}
