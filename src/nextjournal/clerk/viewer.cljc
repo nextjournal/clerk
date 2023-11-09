@@ -1789,7 +1789,7 @@
 (defn caption [text content]
   (col
    content
-   (html [:figcaption.text-xs.text-slate-500.text-center.mt-1 text])))
+   (html [:figcaption.text-center.mt-1 (md text)])))
 
 (defn ^:dynamic doc-url
   ([path] (doc-url path nil))

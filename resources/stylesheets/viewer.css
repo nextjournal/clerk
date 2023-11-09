@@ -259,6 +259,13 @@
     @apply mb-0 !important;
 }
 
+figcaption .markdown-viewer {
+    @apply text-xs text-slate-500;
+}
+
+figcaption .markdown-viewer a {
+    @apply underline;
+}
 /* Images */
 /* --------------------------------------------------------------- */
 
