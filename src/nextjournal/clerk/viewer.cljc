@@ -788,12 +788,11 @@
                         mark-presented
                         (update :nextjournal/value
                                 (fn [{:as node :keys [text content] ::keys [doc]}]
-                                  (let [main-col (filter #(not= (:type %) :sidenote-column) content)
-                                        sidenote-col (filter #(= (:type %) :sidenote-column) content)]
-                                    (into
-                                     [:div.sidenote-container
-                                      (into [:div.sidenote-main-col] (mapv (partial apply-viewers-to-md viewers doc) main-col))]
-                                     (mapv (partial apply-viewers-to-md viewers doc) sidenote-col)))))))}
+                                  [:div.sidenote-container
+                                   (into [:div.sidenote-main-col]
+                                         (map (partial apply-viewers-to-md viewers doc))
+                                         (drop-last content))
+                                   (apply-viewers-to-md viewers doc (last content))]))))}
    {:name :nextjournal.markdown/sidenote-column :transform-fn (into-markup [:div.sidenote-column])}
    {:name :nextjournal.markdown/sidenote
     :transform-fn (into-markup (fn [{:keys [ref]}]
