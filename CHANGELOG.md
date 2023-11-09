@@ -19,6 +19,8 @@ Changes can be:
 
 * 🐞 Fix `row` and `col` viewers not showing a first map argument, fixes [#567](https://github.com/nextjournal/clerk/issues/567) @teodorlu
 
+* 🐞 Fix long sidenotes overlapping with subsequent content, fixes [#564](https://github.com/nextjournal/clerk/issues/564) @hlship
+
 ## 0.15.957 (2023-09-28)
 
 * 🔌 Offline support
