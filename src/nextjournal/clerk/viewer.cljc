@@ -333,6 +333,15 @@
       (throw (ex-info "no type given for with-md-viewer" {:wrapped-value wrapped-value})))
     (with-viewer (keyword "nextjournal.markdown" (name type)) wrapped-value)))
 
+(defn apply-viewers-to-md [viewers doc x]
+  (-> (ensure-wrapped-with-viewers viewers (assoc x ::doc doc))
+      (with-md-viewer)
+      (apply-viewers)
+      (as-> w
+          (if (= `markdown-node-viewer (:name (->viewer w)))
+            (->value w)
+            [(inspect-fn) (process-wrapped-value w)]))))
+
 (defn into-markup [markup]
   (fn [{:as wrapped-value :nextjournal/keys [viewers render-opts]}]
     (-> (with-viewer {:name `markdown-node-viewer :render-fn 'identity} wrapped-value)
@@ -341,14 +350,7 @@
                 (fn [{:as node :keys [text content] ::keys [doc]}]
                   (into (cond-> markup (fn? markup) (apply [(merge render-opts node)]))
                         (cond text [text]
-                              content (mapv #(-> (ensure-wrapped-with-viewers viewers (assoc % ::doc doc))
-                                                 (with-md-viewer)
-                                                 (apply-viewers)
-                                                 (as-> w
-                                                     (if (= `markdown-node-viewer (:name (->viewer w)))
-                                                       (->value w)
-                                                       [(inspect-fn) (process-wrapped-value w)])))
-                                            content))))))))
+                              content (mapv (partial apply-viewers-to-md viewers doc) content))))))))
 
 ;; A hack for making Clerk not fail in the precense of
 ;; programmatically generated keywords or symbols that cannot be read.
@@ -780,7 +782,18 @@
    {:name :nextjournal.markdown/toc :transform-fn (into-markup [:div.toc])}
 
    ;; sidenotes
-   {:name :nextjournal.markdown/sidenote-container :transform-fn (into-markup [:div.sidenote-container])}
+   {:name :nextjournal.markdown/sidenote-container
+    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers render-opts]}]
+                    (-> (with-viewer {:name `markdown-node-viewer :render-fn 'identity} wrapped-value)
+                        mark-presented
+                        (update :nextjournal/value
+                                (fn [{:as node :keys [text content] ::keys [doc]}]
+                                  (let [main-col (filter #(not= (:type %) :sidenote-column) content)
+                                        sidenote-col (filter #(= (:type %) :sidenote-column) content)]
+                                    (into
+                                     [:div.sidenote-container
+                                      (into [:div.sidenote-main-col] (mapv (partial apply-viewers-to-md viewers doc) main-col))]
+                                     (mapv (partial apply-viewers-to-md viewers doc) sidenote-col)))))))}
    {:name :nextjournal.markdown/sidenote-column :transform-fn (into-markup [:div.sidenote-column])}
    {:name :nextjournal.markdown/sidenote
     :transform-fn (into-markup (fn [{:keys [ref]}]

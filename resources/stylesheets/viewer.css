@@ -14,7 +14,7 @@
   .font-condensed { font-family: "Fira Sans Condensed", sans-serif; }
   .font-inter     { font-family: "Inter", sans-serif; }
   body {
-    @apply font-serif antialiased text-gray-900 sm:overscroll-y-none;
+    @apply font-serif antialiased text-gray-900 sm:overscroll-y-none pb-8;
   }
   code, .code {
     @apply font-mono text-sm text-gray-900 bg-slate-50 px-0.5 py-px rounded dark:bg-gray-800;
@@ -320,6 +320,16 @@
 .sidenote-container {
   @apply mb-4;
 }
+.sidenote-main-col *:last-child {
+  @apply mb-0;
+}
+.sidenote-main-col {
+  @apply w-full;
+}
+.sidenote-main-col > ul > li:first-child,
+.sidenote-main-col > ol > li:first-child {
+  @apply mt-0;
+}
 @media (min-width: 860px) {
   .sidenote sup { @apply inline; }
   .sidenote-column {
@@ -335,13 +345,13 @@
     @apply pr-[241px];
   }
   .sidenote-container {
-    @apply relative mb-0 flex justify-between;
+    @apply relative flex justify-between;
   }
   .sidenote-container > *:not(.sidenote-column) {
     margin-right: 40px;
   }
   .sidenote:last-of-type {
-    margin-bottom: 1rem;
+
   }
   .sidenotes-layout h1 {
     @apply w-[756px] !important;
