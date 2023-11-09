@@ -10,6 +10,8 @@ Changes can be:
 
 * 💫 Allow to disable welcome page in `serve!`
 
+* 💫 Support using Markdown syntax in `clerk/caption` text
+
 * 🛠 Bump depdendencies
 
   * `com.taoensso/nippy` to `3.4.0-beta1`
