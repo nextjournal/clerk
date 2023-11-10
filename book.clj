@@ -378,14 +378,14 @@ int main() {
 ;; nice captions:
 
 (defn caption [text]
-  (clerk/html [:span.text-slate-500.text-xs.text-center.font-sans text]))
+  (clerk/html [:figcaption.text-center.mt-1 text]))
 
 (clerk/row
  (clerk/col image-1 (caption "Figure 1: Decorative A"))
  (clerk/col image-2 (caption "Figure 2: Decorative B"))
  (clerk/col image-3 (caption "Figure 3: Decorative C")))
 
-;; Note: the caption example is _exactly_ how clerk actually implements `clerk/caption`.
+;; Note: the caption example is _exactly_ how `clerk/caption` is implemented in Clerk.
 
 ;; **Alternative notations**
 ;;
