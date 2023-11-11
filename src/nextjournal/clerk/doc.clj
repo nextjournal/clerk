@@ -3,7 +3,31 @@
   {:nextjournal.clerk/visibility {:code :hide :result :hide}}
   (:require [clojure.string :as str]
             [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as viewer]))
+            [nextjournal.clerk.viewer :as viewer]
+            [nextjournal.markdown.transform :as md.transform]))
+
+(clerk/eval-cljs
+ '(defn handle-click [{:keys [label var ns]} e]
+    (.stopPropagation e)
+    (.preventDefault e)
+    (when (resolve '!active-ns)
+      (let [scroll-to-target (fn []
+                               (if var
+                                 (when-some [el (js/document.getElementById (name var))]
+                                   (.scrollIntoView el))
+                                 (when ns
+                                   (when-some [page (js/document.getElementById "main-column")]
+                                     (.scroll page (applied-science.js-interop/obj :top 0))))))]
+        (when ns
+          (if (not= @!active-ns (str ns))
+            (do (reset! !active-ns (str ns))
+                ;; TODO: smarter
+                (js/setTimeout scroll-to-target 500))
+            (scroll-to-target)))))))
+
+(clerk/eval-cljs
+ '(defn render-link [{:as info :keys [label]} _]
+    [:a {:href "#" :on-click (partial handle-click info)} label]))
 
 (def render-input
   '(fn [!query]
@@ -100,17 +124,6 @@
 #_(ns-tree ns-matches)
 #_(ns-tree ())
 
-(defn parent-ns [ns-str]
-  (when (str/includes? ns-str ".")
-    (str/join "." (butlast (str/split ns-str #"\.")))))
-
-(defn prepend-parent [nss]
-  (when-let [parent (parent-ns (first nss))]
-    (cons parent nss)))
-
-(defn path-to-ns [ns-str]
-  (last (take-while some? (iterate prepend-parent [ns-str]))))
-
 ^{::clerk/visibility {:result :show}}
 (clerk/html
  (let [matches (try
@@ -166,7 +179,7 @@
                (into [:div.text-sm.font-sans.px-5.mt-2]
                      (map render-ns)
                      (ns-tree (str-match-nss @!active-ns)))]])]]
-     [:div.flex-auto.max-h-screen.overflow-y-auto.px-8.py-5
+     [:div#main-column.flex-auto.max-h-screen.overflow-y-auto.px-8.py-5
       (let [ns (some-> @!active-ns symbol find-ns)]
         (cond
           ns [:<>
@@ -200,3 +213,37 @@
 
 #_(deref nextjournal.clerk.webserver/!doc)
 
+(defn resolve-internal-link [link]
+  (viewer/resolve-internal-link (cond->> link
+                                  (and @!active-ns (not= :all @!active-ns)
+                                       (not (find-ns (symbol link)))
+                                       (not (qualified-symbol? (symbol link))))
+                                  (str @!active-ns "/"))))
+
+(def get-info
+  (comp clerk/mark-presented
+        (fn [wv]
+          (let [{:as node :keys [type text attrs]} (-> wv :nextjournal/value)]
+            (when-some [{:as info :keys [ns var]}
+                        (some-> (resolve-internal-link (case type :internal-link text :link (:href attrs)))
+                                (viewer/update-if :ns ns-name)
+                                (viewer/update-if :var symbol))]
+              (assoc info :label
+                          (str (case type
+                                 :internal-link (or var ns)
+                                 :link (md.transform/->text node)))))))))
+
+(def custom-markdown-viewers
+  [{:name :nextjournal.markdown/internal-link
+    :render-fn 'nextjournal.clerk.doc/render-link
+    :transform-fn get-info}
+   {:name :nextjournal.markdown/link
+    :render-fn 'nextjournal.clerk.doc/render-link
+    :transform-fn get-info}])
+
+(def markdown-viewer
+  (update viewer/markdown-viewer :add-viewers viewer/add-viewers custom-markdown-viewers))
+
+(viewer/add-viewers! [markdown-viewer])
+
+#_(clerk/clear-cache!)

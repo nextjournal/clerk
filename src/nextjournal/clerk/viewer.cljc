@@ -19,7 +19,6 @@
                        [sci.lang]
                        [applied-science.js-interop :as j]])
             [nextjournal.clerk.parser :as parser]
-            [nextjournal.markdown :as md]
             [nextjournal.markdown.parser :as md.parser]
             [nextjournal.markdown.transform :as md.transform])
   #?(:clj (:import (com.pngencoder PngEncoder)
@@ -30,6 +29,8 @@
                    (java.net URI URL)
                    (java.nio.file Files StandardOpenOption)
                    (javax.imageio ImageIO))))
+
+(declare doc-url)
 
 (defrecord ViewerEval [form])
 
@@ -474,7 +475,9 @@
                     %)
                  presented-result)))
 
-(defn get-default-viewers []
+(defn get-default-viewers
+  "Returns viewers from the global scope when set, defaults to [[default-viewers]] (see also [[!viewers]])."
+  []
   (:default @!viewers default-viewers))
 
 (defn datafy-scope [scope]
@@ -718,6 +721,57 @@
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
             (.setTimeZone (java.util.TimeZone/getTimeZone "GMT")))))
 
+#?(:clj (defn resolve-internal-link [link]
+          (if (fs/exists? link)
+            {:path link}
+            (let [sym (symbol link)]
+              (if (qualified-symbol? sym)
+                (when-some [var (try (requiring-resolve sym)
+                                     (catch Exception _ nil))]
+                  (merge {:var var} (resolve-internal-link (-> var symbol namespace))))
+                (when-some [ns (try (require sym)
+                                    (find-ns sym)
+                                    (catch Exception _ nil))]
+                  (cond-> {:ns ns}
+                    (fs/exists? (analyzer/ns->file sym))
+                    (assoc :path (analyzer/ns->file sym)))))))))
+
+#_(resolve-internal-link "notebooks/hello.clj")
+#_(resolve-internal-link "nextjournal.clerk.tap")
+#_(resolve-internal-link "rule-30/board")
+
+(defn process-internal-link [link]
+  #?(:clj
+     (let [{:keys [path var]} (resolve-internal-link link)]
+       {:path path
+        :fragment (when var (str (-> var symbol str) "-code"))
+        :title (or (when var (-> var symbol str))
+                   (when path (:title (parser/parse-file {:doc? true} path)))
+                   link)})
+     :cljs
+     {:path link :title link}))
+
+(defn process-href [^String href]
+  #?(:cljs href
+     :clj (if (or (.getScheme (URI. href)) (str/starts-with? href "/"))
+            href
+            (let [{:keys [path fragment]} (process-internal-link href)]
+              (if (or path fragment) (doc-url path fragment) href)))))
+
+#_(process-href "rule-30")
+#_(process-href "#some-id")
+#_(process-internal-link "#some-id")
+
+#_(process-internal-link "notebooks/rule_30.clj")
+#_(process-internal-link "viewers.html")
+#_(process-internal-link "how-clerk-works/hashes")
+#_(process-internal-link "rule-30/first-generation")
+
+(defn update-if [m k f] (if (k m) (update m k f) m))
+#_(update-if {:n "42"} :n #(Integer/parseInt %))
+
+(declare html)
+
 (def markdown-viewers
   [{:name :nextjournal.markdown/doc
     :transform-fn (into-markup (fn [{:keys [id]}] [:div.viewer.markdown-viewer.w-full.max-w-prose.px-8 {:data-block-id id}]))}
@@ -745,7 +799,12 @@
    {:name :nextjournal.markdown/strong :transform-fn (into-markup [:strong])}
    {:name :nextjournal.markdown/monospace :transform-fn (into-markup [:code])}
    {:name :nextjournal.markdown/strikethrough :transform-fn (into-markup [:s])}
-   {:name :nextjournal.markdown/link :transform-fn (into-markup #(vector :a (:attrs %)))}
+   {:name :nextjournal.markdown/link :transform-fn (into-markup #(vector :a (update-if (:attrs %) :href process-href)))}
+   {:name :nextjournal.markdown/internal-link
+    :transform-fn (update-val
+                   (fn [{:keys [text]}]
+                     (let [{:keys [path fragment title]} (process-internal-link text)]
+                       (html [:a.internal-link {:href (doc-url path fragment)} title]))))}
 
    ;; inlines
    {:name :nextjournal.markdown/text :transform-fn (into-markup [:<>])}
@@ -951,12 +1010,13 @@
   {:name `vega-lite-viewer :render-fn 'nextjournal.clerk.render/render-vega-lite :transform-fn mark-presented})
 
 (def markdown-viewer
+  "A clerk viewer for rendering markdown. See also [[nextjournal.clerk/md]]."
   {:name `markdown-viewer
    :add-viewers markdown-viewers
    :transform-fn (fn [wrapped-value]
                    (-> wrapped-value
                        mark-presented
-                       (update :nextjournal/value #(cond->> % (string? %) md/parse))
+                       (update :nextjournal/value #(cond->> % (string? %) parser/parse-markdown))
                        (with-md-viewer)))})
 
 (def code-viewer
@@ -1136,14 +1196,7 @@
                (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote))))
                (extract-sync-atom-vars doc)))))
 
-(defn update-if [m k f]
-  (if (k m)
-    (update m k f)
-    m))
-
-#_(update-if {:n "42"} :n #(Integer/parseInt %))
-
-(declare html doc-url)
+(declare html)
 
 (defn home? [{:keys [nav-path]}]
   (contains? #{"src/nextjournal/home.clj" "'nextjournal.clerk.home"} nav-path))
@@ -1310,7 +1363,7 @@
    hide-result-viewer])
 
 (defonce
-  ^{:doc "atom containing a map of and per-namespace viewers or `:defaults` overridden viewers."}
+  ^{:doc "An atom containing a map of per-namespace viewers or `:default` overridden viewers. See also how to [get default viewers](get-default-viewers)."}
   !viewers
   (#?(:clj atom :cljs ratom/atom) {}))
 

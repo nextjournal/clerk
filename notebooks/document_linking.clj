@@ -23,3 +23,10 @@
       [:li [:a {:href (nextjournal.clerk.viewer/doc-url "notebooks/viewers/html")} "HTML"]]
       [:li [:a {:href (nextjournal.clerk.viewer/doc-url "notebooks/markdown")} "Markdown"]]
       [:li [:a {:href (nextjournal.clerk.viewer/doc-url "notebooks/viewer_api")} "Viewer API / Tables"]]]) nil)
+
+;; ## Links in prose
+;; * Link to a namespace `[[rule-30]]` renders as [[rule-30]]
+;; * Link to a var `[[how-clerk-works/hashes]]` renders as [[how-clerk-works/hashes]]
+;; * Link to a path `[[notebooks/viewers/image.clj]]` renders as [[notebooks/viewers/image.clj]]
+;;
+;; The href of regular links is processed in a similar fashion: `[Clerk Analyzer](how-clerk-works/hashes)` renders as [Clerk Analyzer](how-clerk-works/hashes).
