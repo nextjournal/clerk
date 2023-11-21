@@ -694,14 +694,25 @@
 (def table-head-viewer
   {:name `table-head-viewer
    :render-fn '(fn [header-row {:as opts :keys [path number-col?]}]
-                 [:thead
-                  (into [:tr]
-                        (map-indexed (fn [i {:as header-cell :nextjournal/keys [value]}]
-                                       (let [title (when (or (string? value) (keyword? value) (symbol? value))
-                                                     value)]
-                                         [:th.pl-6.pr-2.py-1.align-bottom.font-medium.top-0.z-10.bg-white.dark:bg-slate-900.border-b.border-gray-300.dark:border-slate-700
-                                          (cond-> {:class (when (and (ifn? number-col?) (number-col? i)) "text-right")} title (assoc :title title))
-                                          (nextjournal.clerk.render/inspect-presented opts header-cell)]))) header-row)])})
+                 (let [header-values (nextjournal.clerk.viewer/desc->values header-row)
+                       sub-header-values (filter map? header-values)
+                       header-cell (fn [i value]
+                                     (let [sub-headers? (map? value)
+                                           title (cond
+                                                   sub-headers? (first (keys value))
+                                                   (or (string? value) (keyword? value) (symbol? value)) value)]
+                                       [:th.pl-6.pr-2.py-1.align-bottom.font-medium.top-0.z-10.bg-white.dark:bg-slate-900.border-b.border-gray-300.dark:border-slate-700
+                                        (cond-> {:class (when (and (ifn? number-col?) (number-col? i)) "text-right")}
+                                          title (assoc :title title)
+                                          sub-headers? (assoc :col-span (count (first (vals value))))
+                                          (and (seq sub-header-values) (not sub-headers?)) (assoc :row-span 2))
+                                        (nextjournal.clerk.render/inspect-presented opts (nextjournal.clerk.viewer/present title))]))]
+                   [:thead
+                    (into [:tr] (map-indexed header-cell) header-values)
+                    (when (seq sub-header-values)
+                      (into [:tr]
+                            (map-indexed header-cell)
+                            (flatten (map vals sub-header-values))))]))})
 
 (def table-body-viewer
   {:name `table-body-viewer
@@ -1001,7 +1012,7 @@
                             "bg-indigo-50 hover:bg-indigo-100 dark:bg-gray-800 dark:hover:bg-slate-700 cursor-pointer"
                             "text-gray-400 text-slate-500")
                    :on-click (fn [_] (when (fn? fetch-fn)
-                                       (fetch-fn fetch-opts)))}
+                                      (fetch-fn fetch-opts)))}
                   [:span.sticky
                    {:style {:left "min(50vw, 50%)"} :class "-translate-x-1/2"}
                    (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]]])]))
@@ -1011,32 +1022,53 @@
    table-body-viewer
    table-row-viewer])
 
+(defn process-sub-tables [{:keys [head rows]}]
+  (let [{:keys [head-with-subhead rows-with-subrows]}
+        (reduce (fn [{:keys [i head-with-subhead rows-with-subrows]} k]
+                  (let [nested (when (coll? (nth (first rows) i))
+                                 (normalize-table-data (map #(let [x (nth % i)] (if (coll? x) x {})) rows)))]
+                    {:i (inc i)
+                     :head-with-subhead (conj head-with-subhead (if nested {k (:head nested)} k))
+                     :rows-with-subrows (map-indexed (fn [row-index row]
+                                                       (assoc (vec row) i (if nested {:subrows (nth (:rows nested) row-index)} (nth row i))))
+                                                     rows-with-subrows)}))
+                {:i 0 :head-with-subhead [] :rows-with-subrows rows}
+                head)]
+    {:head head-with-subhead
+     :rows (map #(reduce (fn [acc x] (if (and (map? x) (:subrows x))
+                                      (vec (concat acc (:subrows x)))
+                                      (conj acc x))) [] %)
+                rows-with-subrows)}))
+
 (def table-viewer
   {:name `table-viewer
    :add-viewers table-viewers
    :page-size 20
-   :transform-fn (fn [{:as wrapped-value :nextjournal/keys [applied-viewer]}]
-                   (if-let [{:keys [head rows]} (normalize-table-data (->value wrapped-value))]
-                     (-> wrapped-value
-                         (assoc :nextjournal/viewer `table-markup-viewer)
-                         (update :nextjournal/width #(or % :wide))
-                         (update :nextjournal/render-opts merge {:num-cols (count (or head (first rows)))
-                                                                 :number-col? (into #{}
-                                                                                    (comp (map-indexed vector)
-                                                                                          (keep #(when (number? (second %)) (first %))))
-                                                                                    (not-empty (first rows)))})
-                         (assoc :nextjournal/value (cond->> []
-                                                     (seq rows) (cons (with-viewer `table-body-viewer (merge (-> applied-viewer
-                                                                                                                 (select-keys [:page-size])
-                                                                                                                 (set/rename-keys {:page-size :nextjournal/page-size}))
-                                                                                                             (select-keys wrapped-value [:nextjournal/page-size]))
-                                                                        (map (partial with-viewer `table-row-viewer) rows)))
-                                                     head (cons (with-viewer (:name table-head-viewer table-head-viewer) head)))))
-                     (-> wrapped-value
-                         mark-presented
-                         (assoc :nextjournal/width :wide)
-                         (assoc :nextjournal/value [(present wrapped-value)])
-                         (assoc :nextjournal/viewer {:render-fn 'nextjournal.clerk.render/render-table-error}))))})
+   :transform-fn (fn [{:as wrapped-value :nextjournal/keys [applied-viewer render-opts]}]
+                   (let [value (->value wrapped-value)
+                         {:as normalized-table :keys [rows]} (normalize-table-data value)]
+                     (if-let [{:keys [head rows]} (cond-> normalized-table
+                                                    (and (some? normalized-table) (some coll? (first rows))) (process-sub-tables))]
+                       (-> wrapped-value
+                           (assoc :nextjournal/viewer `table-markup-viewer)
+                           (update :nextjournal/width #(or % :wide))
+                           (update :nextjournal/render-opts merge {:num-cols (count (or head (first rows)))
+                                                                   :number-col? (into #{}
+                                                                                      (comp (map-indexed vector)
+                                                                                            (keep #(when (number? (second %)) (first %))))
+                                                                                      (not-empty (first rows)))})
+                           (assoc :nextjournal/value (cond->> []
+                                                       (seq rows) (cons (with-viewer `table-body-viewer (merge (-> applied-viewer
+                                                                                                                   (select-keys [:page-size])
+                                                                                                                   (set/rename-keys {:page-size :nextjournal/page-size}))
+                                                                                                               (select-keys wrapped-value [:nextjournal/page-size]))
+                                                                          (map (partial with-viewer `table-row-viewer) rows)))
+                                                       head (cons (with-viewer (:name table-head-viewer table-head-viewer) head)))))
+                       (-> wrapped-value
+                           mark-presented
+                           (assoc :nextjournal/width :wide)
+                           (assoc :nextjournal/value [(present wrapped-value)])
+                           (assoc :nextjournal/viewer {:render-fn 'nextjournal.clerk.render/render-table-error})))))})
 
 (def table-error-viewer
   {:name `table-error-viewer :render-fn 'nextjournal.clerk.render/render-table-error :page-size 1})
