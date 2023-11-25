@@ -10,6 +10,8 @@ Changes can be:
 
 * 💫 Allow to disable welcome page in `serve!`
 
+* 💫 Add `clerk/comment` that behaves like `clojure.core/comment` outside of Clerk but shows the results like regular top-level forms in Clerk.
+
 * 💫 Support using Markdown syntax in `clerk/caption` text
 
 * 🛠 Bump depdendencies

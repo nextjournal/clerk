@@ -1,5 +1,6 @@
 (ns nextjournal.clerk
   "Clerk's Public API."
+  (:refer-clojure :exclude [comment])
   (:require [babashka.fs :as fs]
             [clojure.java.browse :as browse]
             [clojure.java.io :as io]
@@ -388,6 +389,14 @@
   (partial with-viewer (:name v/notebook-viewer)))
 
 (defn doc-url [& args] (apply v/doc-url args))
+
+(defmacro comment
+  "Evaluates the expressions in `body` showing the results in Clerk.
+
+  Does nothing outside of Clerk, like `clojure.core/comment`."
+  [& body]
+  (when nextjournal.clerk.config/*in-clerk*
+    `(nextjournal.clerk/fragment ~(vec body))))
 
 (defmacro example
   "Evaluates the expressions in `body` showing code next to results in Clerk.
