@@ -50,7 +50,7 @@
   (into
    [:div]
    (map-indexed
-    (fn [i {:as item :keys [emoji path title items]}]
+    (fn [i {:as item :keys [css-class emoji path title items]}]
       (let [label (or title (str/capitalize (last (str/split path #"/"))))
             expanded? (get-in @!expanded-at [:toc path])]
         [:div.text-base.leading-normal.dark:text-white
@@ -78,7 +78,7 @@
                             (swap! !expanded-at assoc :toc-open? false)))}
              (when emoji
                [:span.flex-shrink-0 emoji])
-             [:span label]]
+             [:span {:class css-class} label]]
             (when (and expandable-toc? expanded?)
               [:span.absolute.bottom-0.border-l.border-slate-300.dark:border-slate-600
                {:class "top-[25px] left-[10px]"}])]
@@ -91,7 +91,7 @@
                            (swap! !expanded-at assoc :toc-open? false)))}
             (when emoji
               [:span.flex-shrink-0 emoji])
-            [:span label]])
+            [:span {:class css-class} label]])
          (when (and (seq items) (or (not expandable-toc?) (and expandable-toc? expanded?)))
            [:div.relative
             {:class (str (if expandable-toc? "ml-[16px] " "ml-[19px] ")
