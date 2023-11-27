@@ -148,8 +148,7 @@
                                      (cond-> cell
                                        (= :code type)
                                        (assoc :result {:nextjournal/value
-                                                       (cond->>
-                                                           (eval-string text)
+                                                       (cond->> (eval-string text)
                                                          var (hash-map :nextjournal.clerk/var-from-def))}))))))
 
 (defn eval-notebook [code]
