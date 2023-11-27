@@ -6,4 +6,5 @@
 (clerk/with-viewer
   {:render-fn 'nextjournal.clerk.render.editor/view
    :transform-fn clerk/mark-presented}
-  (slurp "notebooks/rule_30.clj"))
+  "(def x 1)
+`(do ~x)")
