@@ -99,7 +99,8 @@
             (when (and expandable-toc? expanded?)
               [:span.absolute.top-0.border-l.border-slate-300.dark:border-slate-600
                {:class "left-[2px] bottom-[8px]"}])
-            [render-items items render-opts]])]))
+            [render-items items (merge render-opts (select-keys item [:expandable-toc?]))]])]))
+
     items)))
 
 (def local-storage-key "clerk-navbar")
