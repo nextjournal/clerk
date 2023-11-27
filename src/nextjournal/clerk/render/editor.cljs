@@ -147,10 +147,10 @@
   (update doc :blocks (partial map (fn [{:as cell :keys [type text var form]}]
                                      (cond-> cell
                                        (= :code type)
-                                       (assoc :result {:nextjournal/value (cond->>
-                                                                              (sci/eval-string* (sci.ctx-store/get-ctx) text)
-                                                                            #_(eval form)
-                                                                            var (hash-map :nextjournal.clerk/var-from-def))}))))))
+                                       (assoc :result {:nextjournal/value
+                                                       (cond->>
+                                                           (eval-string text)
+                                                         var (hash-map :nextjournal.clerk/var-from-def))}))))))
 
 (defn spy [x]
   (prn "------------------------")
