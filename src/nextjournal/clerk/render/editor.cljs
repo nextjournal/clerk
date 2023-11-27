@@ -152,10 +152,6 @@
                                                            (eval-string text)
                                                          var (hash-map :nextjournal.clerk/var-from-def))}))))))
 
-(defn spy [x]
-  (prn "------------------------")
-  (prn x) x)
-
 (defn eval-notebook [code]
   (->> code
        (parser/parse-clojure-string {:doc? true})
