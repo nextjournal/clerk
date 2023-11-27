@@ -46,13 +46,14 @@
           (.pushState js/history #js {} "" anchor))
         (scroll-to-anchor! anchor)))))
 
-(defn render-items [items {:as render-opts :keys [!expanded-at expandable-toc? mobile-toc?]}]
+(defn render-items [items {:as render-opts :keys [!expanded-at mobile-toc?]}]
   (into
    [:div]
    (map-indexed
     (fn [i {:as item :keys [css-class emoji path title items]}]
       (let [label (or title (str/capitalize (last (str/split path #"/"))))
-            expanded? (get-in @!expanded-at [:toc path])]
+            expanded? (get-in @!expanded-at [:toc path])
+            {:keys [expandable-toc?]} (merge render-opts item)]
         [:div.text-base.leading-normal.dark:text-white
          {:class "md:text-[14px]"}
          (if (seq items)
@@ -99,7 +100,7 @@
             (when (and expandable-toc? expanded?)
               [:span.absolute.top-0.border-l.border-slate-300.dark:border-slate-600
                {:class "left-[2px] bottom-[8px]"}])
-            [render-items items (merge render-opts (select-keys item [:expandable-toc?]))]])]))
+            [render-items items render-opts]])]))
 
     items)))
 
