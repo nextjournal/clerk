@@ -749,12 +749,18 @@
   (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
     (when-not (ignore-anchor-click? e url)
       (.preventDefault e)
-      (let [edn-path (str "/" (or (not-empty (subs (.-pathname url) 1)) "index") ".edn")]
-        (js/console.log :path-to-edn edn-path )
+      (let [path (.-pathname url)
+            edn-path (str path
+                          (when (str/ends-with? path "/") "index")
+                          ".edn")]
+        (js/console.log "pathname" path "path to EDN" edn-path)
         (-> (js/fetch edn-path)
             (.then (fn [r]
                      (if (.-ok r)
-                       (.then (.text r) (fn [edn] (set-state! {:doc (read-string edn)})))
+                       (.then (.text r)
+                              (fn [edn]
+                                (set-state! {:doc (read-string edn)})
+                                (.pushState js/history #js {} "" (str path "/")))) ;; 👈 trailing slash is needed to make relative paths work
                        (js/console.error "EDN not found" r))))
             (.catch (fn [e] (js/console.log "Fetch failed" e ))))))))
 
