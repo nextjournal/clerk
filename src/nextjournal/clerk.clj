@@ -429,7 +429,7 @@
 
   * a `:host` for the webserver to listen on, defaulting to `\"localhost\"`
   * a `:port` for the webserver to listen on, defaulting to `7777`
-  * `:browse?` will open Clerk in a browser after it's been started
+  * `:browse` will open Clerk in a browser after it's been started
   * a sequence of `:watch-paths` that Clerk will watch for file system events and show any changed file
   * a `:show-filter-fn` to restrict when to re-evaluate or show a notebook as a result of file system event. Useful for e.g. pinning a notebook. Will be called with the string path of the changed file.
 

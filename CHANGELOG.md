@@ -33,6 +33,8 @@ Changes can be:
 
 * 🐞 Fix tap viewer keeping open/collapsed state [#543](https://github.com/nextjournal/clerk/issues/543) @teodorlu
 
+* 🐞  Fix `serve!` `:browse` option for default host & port
+
 * 🐞 Fix `unquote` in experimental cljs Clerk editor, fixes [#576](https://github.com/nextjournal/clerk/issues/576) @sritchie
 
 * 🐞 Fix `row` and `col` viewers not showing a first map argument, fixes [#567](https://github.com/nextjournal/clerk/issues/567) @teodorlu
