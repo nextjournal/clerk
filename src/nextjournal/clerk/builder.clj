@@ -345,17 +345,6 @@
                       :index "notebooks/rule_30.clj"
                       :paths ["notebooks/hello.clj"
                               "notebooks/markdown.md"]})
-
-  (let [paths ["notebooks/meta_toc.clj"
-               "notebooks/rule_30.clj"
-               "notebooks/nested/cherry.clj"
-               "notebooks/viewer_api.clj"]]
-    (reset! viewer/!viewers {})
-    (viewer/reset-viewers! :default (viewer/add-viewers [(meta-toc/notebook-viewer {:paths paths})]))
-    (build-static-app! {:xhr? true
-                        :resource->url {"/js/viewer.js" "http://localhost:7777/js/viewer.js"}
-                        :paths paths}))
-
   (build-static-app! {;; test against cljs release `bb build:js`
                       :resource->url {"/js/viewer.js" "/viewer.js"}
                       :paths ["notebooks/cherry.clj"]
