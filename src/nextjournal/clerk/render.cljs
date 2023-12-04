@@ -745,6 +745,19 @@
 (defn handle-initial-load [^js _e]
   (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
 
+(defn click->xhr-request [e]
+  (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
+    (when-not (ignore-anchor-click? e url)
+      (.preventDefault e)
+      (let [edn-path (str "/" (or (not-empty (subs (.-pathname url) 1)) "index") ".edn")]
+        (js/console.log :path-to-edn edn-path )
+        (-> (js/fetch edn-path)
+            (.then (fn [r]
+                     (if (.-ok r)
+                       (.then (.text r) (fn [edn] (set-state! {:doc (read-string edn)})))
+                       (js/console.error "EDN not found" r))))
+            (.catch (fn [e] (js/console.log "Fetch failed" e ))))))))
+
 (defn setup-router! [state]
   (when (and (exists? js/document) (exists? js/window))
     (doseq [listener (:listeners @!router)]
@@ -753,6 +766,8 @@
             (assoc state :listeners
                    (cond (and (static-app? state) (:bundle? state))
                          [(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)]
+                         (and (static-app? state) (:xhr? state))
+                         [(gevents/listen js/document gevents/EventType.CLICK click->xhr-request false)]
                          (not (static-app? state))
                          [(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
                           (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)

@@ -180,11 +180,11 @@
 
 (defn cleanup [build-opts]
   (select-keys build-opts
-               [:bundle? :path->doc :current-path :resource->url :exclude-js? :index :html]))
+               [:bundle? :xhr? :path->doc :current-path :resource->url :exclude-js? :index :html]))
 
 (defn write-static-app!
   [opts docs]
-  (let [{:keys [bundle? out-path browse? ssr?]} opts
+  (let [{:keys [bundle? xhr? out-path browse? ssr?]} opts
         index-html (str out-path fs/file-separator "index.html")
         {:as static-app-opts :keys [path->doc]} (build-static-app-opts opts docs)]
     (when-not (contains? (set (keys path->doc)) "")
@@ -196,6 +196,9 @@
       (doseq [[path doc] path->doc]
         (let [out-html (fs/file out-path path "index.html")]
           (fs/create-dirs (fs/parent out-html))
+          (when xhr?
+            (spit (str (fs/path out-path (str (or (not-empty path) "index") ".edn")))
+                  (viewer/->edn doc)))
           (spit out-html (view/->html (-> static-app-opts
                                           (assoc :path->doc (hash-map path doc) :current-path path)
                                           (cond-> ssr? ssr!)
@@ -342,6 +345,14 @@
                       :index "notebooks/rule_30.clj"
                       :paths ["notebooks/hello.clj"
                               "notebooks/markdown.md"]})
+
+  (build-static-app! {:xhr? true
+                      :paths ["notebooks/meta_toc.clj"
+                              "notebooks/rule_30.clj"
+                              "notebooks/visibility.clj"
+                              "notebooks/viewer_api.clj"
+                              "notebooks/viewer_classes.clj"]})
+
   (build-static-app! {;; test against cljs release `bb build:js`
                       :resource->url {"/js/viewer.js" "/viewer.js"}
                       :paths ["notebooks/cherry.clj"]
