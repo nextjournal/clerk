@@ -39,6 +39,8 @@ Changes can be:
 
 * 🐞 Fix long sidenotes overlapping with subsequent content, fixes [#564](https://github.com/nextjournal/clerk/issues/564) @hlship
 
+* 🐞  Swallow git errors in shell-out-str instead of printing them to stdout/err
+
 ## 0.15.957 (2023-09-28)
 
 * 🔌 Offline support
