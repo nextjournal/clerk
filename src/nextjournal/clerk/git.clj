@@ -3,7 +3,7 @@
   (:require [babashka.process :as p]
             [clojure.string :as str]))
 
-(defn ^:private  shell-out-str
+(defn ^:private shell-out-str
   "Shell helper, calls a cmd and returns it output string trimmed."
   [& cmd]
   (str/trim (:out (p/check (apply p/sh {:out :string} cmd)))))
