@@ -609,6 +609,9 @@
 
 #_(present @nextjournal.clerk.webserver/!doc)
 
+(defn update-if [m k f] (if (k m) (update m k f) m))
+#_(update-if {:n "42"} :n #(Integer/parseInt %))
+
 (defn with-block-viewer [doc {:as cell :keys [type id]}]
   (case type
     :markdown (let [{:keys [content]} (:doc cell)
@@ -622,7 +625,7 @@
                                                    ::doc doc} doc))]))
                         (partition-by (comp #{:image} :type) content)))
 
-    :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
+    :code (let [cell (update-if cell :result apply-viewer-unwrapping-var-from-def)
                 {:keys [code? result? fold?]} (->display cell)
                 eval? (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)]
             (cond-> []
@@ -631,7 +634,7 @@
                       {:nextjournal/render-opts (assoc (select-keys cell [:loc])
                                                        :id (processed-block-id (str id "-code")))}
                       (dissoc cell :result)))
-              (or result? eval?)
+              (and (:result cell) (or result? eval?))
               (conj (cond-> (ensure-wrapped (-> cell (assoc ::doc doc) (set/rename-keys {:result ::result})))
                       (and eval? (not result?))
                       (assoc :nextjournal/viewer (assoc result-viewer :render-fn '(fn [_] [:<>])))))))))
@@ -1135,13 +1138,6 @@
          (into {}
                (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote))))
                (extract-sync-atom-vars doc)))))
-
-(defn update-if [m k f]
-  (if (k m)
-    (update m k f)
-    m))
-
-#_(update-if {:n "42"} :n #(Integer/parseInt %))
 
 (declare html doc-url)
 

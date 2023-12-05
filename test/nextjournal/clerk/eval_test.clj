@@ -240,4 +240,3 @@
              (catch Exception _ nil))
         (clerk/show! (java.io.StringReader. code))
         (is (= result-first-run (get-result)))))))
-
