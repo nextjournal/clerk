@@ -1,5 +1,6 @@
 (ns notebooks.nested-tables
-  {:nextjournal.clerk/visibility {:code :hide}
+  {:nextjournal.clerk/visibility {:code :hide :result :hide}
+   :nextjournal.clerk/auto-expand-results? true
    :nextjournal.clerk/no-cache true}
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as viewer]))
@@ -248,5 +249,9 @@
 
 #_(viewer/process-sub-tables (viewer/normalize-table-data nested-table))
 
+{::clerk/visibility {:result :show}}
+
 ^{::clerk/width :full}
 (clerk/table nested-table)
+
+nested-table

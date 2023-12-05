@@ -702,7 +702,8 @@
                                                    sub-headers? (first (keys value))
                                                    (or (string? value) (keyword? value) (symbol? value)) value)]
                                        [:th.pl-6.pr-2.py-1.align-bottom.font-medium.top-0.z-10.bg-white.dark:bg-slate-900.border-b.border-gray-300.dark:border-slate-700
-                                        (cond-> {:class (when (and (ifn? number-col?) (number-col? i)) "text-right")}
+                                        (cond-> {:class (str (when (and (ifn? number-col?) (number-col? i)) "text-right ")
+                                                             (when (seq sub-header-values) "border align-middle "))}
                                           title (assoc :title title)
                                           sub-headers? (assoc :col-span (count (first (vals value))))
                                           (and (seq sub-header-values) (not sub-headers?)) (assoc :row-span 2))
