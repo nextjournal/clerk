@@ -14,6 +14,8 @@ Changes can be:
 
 * 💫 Support using Markdown syntax in `clerk/caption` text
 
+* 💫 Redesign examples viewer to be more readable and in a way that doesn't force `display: flex` onto contents.
+
 * 🛠 Bump depdendencies
 
   * `com.taoensso/nippy` to `3.4.0-beta1`
