@@ -869,7 +869,9 @@
   {:name `throwable-viewer
    :render-fn 'nextjournal.clerk.render/render-throwable
    :pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
-   :transform-fn (comp mark-presented (update-val (comp demunge-ex-data datafy/datafy)))})
+   :transform-fn (comp mark-presented (update-val (comp demunge-ex-data
+                                                        #(update % :via (partial mapv (fn [via] (update-in via [:data :nextjournal.clerk/doc] dissoc :blob->result))))
+                                                        datafy/datafy)))})
 
 (def image-viewer
   {#?@(:clj [:pred #(instance? BufferedImage %)
