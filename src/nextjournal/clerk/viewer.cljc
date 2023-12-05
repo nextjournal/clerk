@@ -1541,9 +1541,9 @@
               (make-elision viewers fetch-opts))))))
 
 (defn present+paginate-string [{:as wrapped-value :nextjournal/keys [viewers viewer value]}]
-  (let [paginate? (number? (-> wrapped-value ->fetch-opts :n))
-        {:as elision :keys [n total path offset]} (when paginate? (get-elision wrapped-value))]
-    (if (and paginate? n (< n total))
+  (let [{:as elision :keys [n total path offset]} (when (number? (-> wrapped-value ->fetch-opts :n))
+                                                    (get-elision wrapped-value))]
+    (if (and elision n (< n total))
       (let [new-offset (min (+ (or offset 0) n) total)]
         (cond-> [(subs value (or offset 0) new-offset)]
           (pos? (- total new-offset)) (conj (let [fetch-opts (-> elision
