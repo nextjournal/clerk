@@ -365,8 +365,15 @@
             (catch Exception _e false))))
 
 #?(:clj
+   (defn tools-reader-readable?
+     "Check if a symbol/keyword has a slash in its name, and therefore is not readable by tools.reader"
+     [symbol-or-keyword-name]
+     (nil? (re-find #"/" symbol-or-keyword-name))))
+
+#?(:clj
    (defmethod print-method clojure.lang.Keyword [o w]
-     (if (roundtrippable? o)
+     (if (and (roundtrippable? o)
+              (tools-reader-readable? (name o)))
        (print-simple o w)
        (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
                                           (list 'keyword ns (name o))
@@ -374,8 +381,9 @@
 
 #?(:clj
    (defmethod print-method clojure.lang.Symbol [o w]
-     (if (or (roundtrippable? o)
-             (= (name o) "?@")) ;; splicing reader conditional, see issue #338
+     (if (and (or (roundtrippable? o)
+                  (= (name o) "?@"))  ;; splicing reader conditional, see issue #338
+              (tools-reader-readable? (name o)))
        (print-simple o w)
        (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
                                           (list 'symbol ns (name o))
