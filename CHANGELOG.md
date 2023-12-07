@@ -25,6 +25,8 @@ Changes can be:
 
 * 🐜 Make edn transmission resilient to symbols and keywords containing multiple slashes like `foo/bar/baz`. Those can be read by `read-string` but not in ClojureScript which is based on `tools.reader`.
 
+* 🐞 Fix `:nextjournal.clerk/page-size` option throwing when set on string values, fixes [#584][https://github.com/nextjournal/clerk/issues/584]
+
 * 🐞 Fix caching behaviour of `clerk/image` and support overriding image-viewer by name
 
 * 🐞 Fix `unquote` in experimental cljs Clerk editor, fixes [#576](https://github.com/nextjournal/clerk/issues/576) @sritchie
