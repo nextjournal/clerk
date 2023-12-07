@@ -21,6 +21,8 @@ Changes can be:
   * `com.taoensso/nippy` to `3.4.0-beta1`
   * `io.github.nextjournal/markdown` to `0.5.146`
 
+* 🐜 Make edn transmission resilient to symbols and keywords containing multiple slashes like `foo/bar/baz`. Those can be read by `read-string` but not in ClojureScript which is based on `tools.reader`.
+
 * 🐞 Fix caching behaviour of `clerk/image` and support overriding image-viewer by name
 
 * 🐞 Fix `unquote` in experimental cljs Clerk editor, fixes [#576](https://github.com/nextjournal/clerk/issues/576) @sritchie

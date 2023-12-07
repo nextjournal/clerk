@@ -8,6 +8,7 @@
             [flatland.ordered.map :refer [ordered-map]]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
+                      [clojure.tools.reader :as tools.reader]
                       [editscript.edit]
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.analyzer :as analyzer]]
@@ -361,7 +362,7 @@
 
 #?(:clj (defn roundtrippable? [x]
           (try
-            (= x (-> x str read-string))
+            (= x (-> x str tools.reader/read-string))
             (catch Exception _e false))))
 
 #?(:clj
@@ -375,7 +376,7 @@
 #?(:clj
    (defmethod print-method clojure.lang.Symbol [o w]
      (if (or (roundtrippable? o)
-             (= (name o) "?@")) ;; splicing reader conditional, see issue #338
+             (= (name o) "?@"))  ;; splicing reader conditional, see issue #338
        (print-simple o w)
        (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
                                           (list 'symbol ns (name o))
@@ -1105,7 +1106,7 @@
 
 #?(:clj
    (defn edn-roundtrippable? [x]
-     (= x (-> x ->edn read-string))))
+     (= x (-> x ->edn tools.reader/read-string))))
 
 #?(:clj
    (defn throw-if-sync-var-is-invalid [var]
