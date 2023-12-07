@@ -1511,14 +1511,12 @@
 
 (defn get-elision [wrapped-value]
   (let [{:as fetch-opts :keys [n]} (->fetch-opts wrapped-value)]
-    (merge fetch-opts (bounded-count-opts n (->value wrapped-value)))))
+    (when (number? n)
+      (merge fetch-opts (bounded-count-opts n (->value wrapped-value))))))
 
 #_(get-elision (present (range)))
 #_(get-elision (present "abc"))
 #_(get-elision (present (str/join (repeat 1000 "abc"))))
-
-(defn get-fetch-opts-n [wrapped-value]
-  (-> wrapped-value ->fetch-opts :n))
 
 (defn present+paginate-children [{:as wrapped-value :nextjournal/keys [budget viewers preserve-keys?] :keys [!budget]}]
   (let [{:as fetch-opts :keys [offset n]} (->fetch-opts wrapped-value)
@@ -1541,10 +1539,9 @@
       (conj (let [fetch-opts (assoc elision :offset new-offset)]
               (make-elision viewers fetch-opts))))))
 
-(defn present+paginate-string [{:as wrapped-value :nextjournal/keys [viewers viewer value]}]
-  (let [{:as elision :keys [n total path offset]} (and (:page-size viewer)
-                                                       (get-elision wrapped-value))]
-    (if (and n (< n total))
+(defn present+paginate-string [{:as wrapped-value :nextjournal/keys [viewers value]}]
+  (let [{:as elision :keys [n total path offset]} (get-elision wrapped-value)]
+    (if (and elision n (< n total))
       (let [new-offset (min (+ (or offset 0) n) total)]
         (cond-> [(subs value (or offset 0) new-offset)]
           (pos? (- total new-offset)) (conj (let [fetch-opts (-> elision

@@ -180,6 +180,11 @@
                                       :nextjournal/hash string?}}]
                 (eval+extract-doc-blocks "(range)"))))
 
+  (testing "Skipping pagination for strings"
+    (is (= "012345678910111213141516171819202122232425262728293031323334353637383940414243444546474849"
+           (-> (eval+extract-doc-blocks "^{:nextjournal.clerk/page-size nil} (apply str (range 50))")
+               second :nextjournal/value :nextjournal/presented :nextjournal/value))))
+
   (testing "assigns folded visibility"
     (is (match? [{:nextjournal/viewer {:name `viewer/folded-code-block-viewer}
                   :nextjournal/value "{:some :map}"}
