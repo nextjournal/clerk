@@ -484,8 +484,7 @@
           [:div.font-bold "Unhandled " type])
         [:div.font-bold.mt-1 message]
         (when data
-          [:> ErrorBoundary
-           [:div.mt-1 [inspect data]]])])
+          [:div.mt-1 [inspect (viewer/inspect-wrapped-values data)]])])
      via))
    [:div.py-6.overflow-x-auto
     [:table.w-full
