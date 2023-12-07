@@ -8,6 +8,7 @@
             [flatland.ordered.map :refer [ordered-map]]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
+                      [clojure.tools.reader :as tools.reader]
                       [editscript.edit]
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.analyzer :as analyzer]]
@@ -361,7 +362,7 @@
 
 #?(:clj (defn roundtrippable? [x]
           (try
-            (= x (-> x str read-string))
+            (= x (-> x str tools.reader/read-string))
             (catch Exception _e false))))
 
 #?(:clj
@@ -375,7 +376,7 @@
 #?(:clj
    (defmethod print-method clojure.lang.Symbol [o w]
      (if (or (roundtrippable? o)
-             (= (name o) "?@")) ;; splicing reader conditional, see issue #338
+             (= (name o) "?@"))  ;; splicing reader conditional, see issue #338
        (print-simple o w)
        (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
                                           (list 'symbol ns (name o))
@@ -1110,7 +1111,7 @@
 
 #?(:clj
    (defn edn-roundtrippable? [x]
-     (= x (-> x ->edn read-string))))
+     (= x (-> x ->edn tools.reader/read-string))))
 
 #?(:clj
    (defn throw-if-sync-var-is-invalid [var]
@@ -1858,12 +1859,10 @@
                    (-> wrapped-value
                        mark-preserve-keys
                        (assoc :nextjournal/viewer {:render-fn '(fn [{:keys [form val]} opts]
-                                                                 [:div.flex.flex-wrap
-                                                                  {:class "py-[7px]"}
-                                                                  [:div [:div.bg-slate-100.px-2.rounded
-                                                                         (nextjournal.clerk.render/inspect-presented opts form)]]
-                                                                  [:div.flex.mt-1
-                                                                   [:div.mx-2.font-sans.text-xs.text-slate-500 {:class "mt-[2px]"} "⇒"]
+                                                                 [:div.mb-3.last:mb-0
+                                                                  [:div.bg-slate-100.dark:bg-slate-800.px-4.py-2.border-l-2.border-slate-200.dark:border-slate-700
+                                                                   (nextjournal.clerk.render/inspect-presented opts form)]
+                                                                  [:div.pt-2.px-4.border-l-2.border-transparent
                                                                    (nextjournal.clerk.render/inspect-presented opts val)]])})
                        (update-in [:nextjournal/value :form] code)))})
 
@@ -1871,6 +1870,7 @@
   {:transform-fn (update-val (fn [examples]
                                (mapv (partial with-viewer example-viewer) examples)))
    :render-fn '(fn [examples opts]
-                 (into [:div.border-l-2.border-slate-300.pl-4
-                        [:div.uppercase.tracking-wider.text-xs.font-sans.text-slate-500.mt-4.mb-2 "Examples"]]
-                       (nextjournal.clerk.render/inspect-children opts) examples))})
+                 [:div
+                  [:div.uppercase.tracking-wider.text-xs.font-sans.font-bold.text-slate-500.dark:text-white.mb-2.mt-3 "Examples"]
+                  (into [:div]
+                        (nextjournal.clerk.render/inspect-children opts) examples)])})

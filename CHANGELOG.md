@@ -14,10 +14,14 @@ Changes can be:
 
 * 💫 Support using Markdown syntax in `clerk/caption` text
 
+* 💫 Redesign examples viewer to be more readable and in a way that doesn't force `display: flex` onto contents.
+
 * 🛠 Bump depdendencies
 
   * `com.taoensso/nippy` to `3.4.0-beta1`
   * `io.github.nextjournal/markdown` to `0.5.146`
+
+* 🐜 Make edn transmission resilient to symbols and keywords containing multiple slashes like `foo/bar/baz`. Those can be read by `read-string` but not in ClojureScript which is based on `tools.reader`.
 
 * 🐞 Fix caching behaviour of `clerk/image` and support overriding image-viewer by name
 
