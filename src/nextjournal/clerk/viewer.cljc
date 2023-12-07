@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [var?])
   (:require [clojure.string :as str]
             [clojure.pprint :as pprint]
+            [clojure.tools.reader :as tools.reader]
             [clojure.datafy :as datafy]
             [clojure.set :as set]
             [clojure.walk :as w]
@@ -361,19 +362,12 @@
 
 #?(:clj (defn roundtrippable? [x]
           (try
-            (= x (-> x str read-string))
+            (= x (-> x str tools.reader/read-string))
             (catch Exception _e false))))
 
 #?(:clj
-   (defn tools-reader-readable?
-     "Check if a symbol/keyword has a slash in its name, and therefore is not readable by tools.reader"
-     [symbol-or-keyword-name]
-     (nil? (re-find #"/" symbol-or-keyword-name))))
-
-#?(:clj
    (defmethod print-method clojure.lang.Keyword [o w]
-     (if (and (roundtrippable? o)
-              (tools-reader-readable? (name o)))
+     (if (roundtrippable? o)
        (print-simple o w)
        (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
                                           (list 'keyword ns (name o))
@@ -381,9 +375,8 @@
 
 #?(:clj
    (defmethod print-method clojure.lang.Symbol [o w]
-     (if (and (or (roundtrippable? o)
-                  (= (name o) "?@"))  ;; splicing reader conditional, see issue #338
-              (tools-reader-readable? (name o)))
+     (if (or (roundtrippable? o)
+             (= (name o) "?@"))  ;; splicing reader conditional, see issue #338
        (print-simple o w)
        (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
                                           (list 'symbol ns (name o))
@@ -1113,7 +1106,7 @@
 
 #?(:clj
    (defn edn-roundtrippable? [x]
-     (= x (-> x ->edn read-string))))
+     (= x (-> x ->edn tools.reader/read-string))))
 
 #?(:clj
    (defn throw-if-sync-var-is-invalid [var]
