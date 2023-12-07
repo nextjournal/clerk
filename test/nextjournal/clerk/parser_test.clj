@@ -3,7 +3,8 @@
             [matcher-combinators.matchers :as m]
             [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk.analyzer-test :refer [analyze-string]]
-            [nextjournal.clerk.parser :as parser]))
+            [nextjournal.clerk.parser :as parser]
+            [nextjournal.clerk.view :as view]))
 
 (defmacro with-ns-binding [ns-sym & body]
   `(binding [*ns* (find-ns ~ns-sym)]
@@ -156,3 +157,13 @@ par two"))))
   (testing "unreadable forms"
     (is (= (parser/text-with-clerk-metadata-removed "^{:un :balanced :map} (do nothing)" clerk-ns-alias)
            "^{:un :balanced :map} (do nothing)"))))
+
+(deftest presenting-a-parsed-document
+  (testing "presenting a parsed document doesn't produce garbage"
+    (is (match? [{:nextjournal/viewer {:name 'nextjournal.clerk.viewer/code-block-viewer}}
+                 {:nextjournal/viewer {:name 'nextjournal.clerk.viewer/code-block-viewer}}
+                 {:nextjournal/viewer {:name 'nextjournal.clerk.viewer/code-block-viewer}}]
+                (-> (parser/parse-clojure-string {:doc? true} "(ns testing-presented-parsed) 123 :ahoi")
+                    view/doc->viewer
+                    :nextjournal/value
+                    :blocks)))))

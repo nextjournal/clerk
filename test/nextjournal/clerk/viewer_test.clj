@@ -386,6 +386,12 @@
     (is (= "#viewer-eval (symbol \"~\")"
            (pr-str (symbol "~")))))
 
+  (testing "symbols and keywords with two slashes readable by `read-string` but not `tools.reader/read-string` print as viewer-eval"
+    (is (= "#viewer-eval (symbol \"foo\" \"bar/baz\")"
+           (pr-str (read-string "foo/bar/baz"))))
+    (is (= "#viewer-eval (keyword \"foo\" \"bar/baz\")"
+           (pr-str (read-string ":foo/bar/baz")))))
+
   (testing "splicing reader conditional prints normally (issue #338)"
     (is (= "?@" (pr-str (symbol "?@")))))
 
