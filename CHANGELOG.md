@@ -14,10 +14,18 @@ Changes can be:
 
 * 💫 Support using Markdown syntax in `clerk/caption` text
 
+* 💫 Redesign examples viewer to be more readable and in a way that doesn't force `display: flex` onto contents.
+
 * 🛠 Bump depdendencies
 
   * `com.taoensso/nippy` to `3.4.0-beta1`
   * `io.github.nextjournal/markdown` to `0.5.146`
+
+* 🐜 Fix blank screen caused by react unmounting when an exception occurs during `clerk/show!`, fixes [#586](https://github.com/nextjournal/clerk/issues/586) @elken
+
+* 🐜 Make edn transmission resilient to symbols and keywords containing multiple slashes like `foo/bar/baz`. Those can be read by `read-string` but not in ClojureScript which is based on `tools.reader`.
+
+* 🐞 Fix `:nextjournal.clerk/page-size` option throwing when set on string values, fixes [#584][https://github.com/nextjournal/clerk/issues/584]
 
 * 🐞 Fix caching behaviour of `clerk/image` and support overriding image-viewer by name
 
