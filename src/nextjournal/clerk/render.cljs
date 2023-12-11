@@ -757,12 +757,12 @@
         (-> (js/fetch edn-path)
             (.then (fn [r]
                      (if (.-ok r)
-                       (.then (.text r)
-                              (fn [edn]
-                                (set-state! {:doc (read-string edn)})
-                                (.pushState js/history #js {} "" (str path "/")))) ;; 👈 trailing slash is needed to make relative paths work
-                       (js/console.error "EDN not found" r))))
-            (.catch (fn [e] (js/console.log "Fetch failed" e ))))))))
+                       (.text r)
+                       (throw (ex-info "Not Found" {:response r})))))
+            (.then (fn [edn]
+                     (set-state! {:doc (read-string edn)})
+                     (.pushState js/history #js {} "" (str path "/")))) ;; 👈 trailing slash is needed to make relative paths work
+            (.catch (fn [e] (js/console.error "Fetch failed" e ))))))))
 
 (defn setup-router! [state]
   (when (and (exists? js/document) (exists? js/window))
