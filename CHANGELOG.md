@@ -14,12 +14,16 @@ Changes can be:
 
 * 💫 Support using Markdown syntax in `clerk/caption` text
 
+* 💫 Support toggling auto-expansion of results in tap viewer
+
 * 🛠 Bump depdendencies
 
   * `com.taoensso/nippy` to `3.4.0-beta1`
   * `io.github.nextjournal/markdown` to `0.5.146`
 
 * 🐞 Fix caching behaviour of `clerk/image` and support overriding image-viewer by name
+
+* 🐞 Fix tap viewer keeping open/collapsed state [#543](https://github.com/nextjournal/clerk/issues/543) @teodorlu
 
 * 🐞 Fix `row` and `col` viewers not showing a first map argument, fixes [#567](https://github.com/nextjournal/clerk/issues/567) @teodorlu
 
