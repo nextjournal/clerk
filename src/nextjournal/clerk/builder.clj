@@ -197,7 +197,7 @@
         (let [out-html (fs/file out-path path "index.html")]
           (fs/create-dirs (fs/parent out-html))
           (when client-side-routing?
-            (spit (str (fs/path out-path (str (or (not-empty path) "index") ".edn")))
+            (spit (fs/file out-path (str (or (not-empty path) "index") ".edn"))
                   (viewer/->edn doc)))
           (spit out-html (view/->html (-> static-app-opts
                                           (assoc :path->doc (hash-map path doc) :current-path path)
