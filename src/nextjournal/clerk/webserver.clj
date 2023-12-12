@@ -330,7 +330,10 @@
 (defn serve! [{:as opts :keys [host port] :or {host "localhost" port 7777}}]
   (halt!)
   (try
-    (reset! !server (assoc opts :instance (httpkit/run-server #'app {:ip host :port port :legacy-return-value? false})))
+    (reset! !server (assoc opts
+                           :host host
+                           :port port
+                           :instance (httpkit/run-server #'app {:ip host :port port :legacy-return-value? false})))
     (println (format "Clerk webserver started on http://%s:%s ..." host port ))
     (catch java.net.BindException e
       (let [msg (format "Clerk webserver could not be started because port %d is not available. Stop what's running on port %d or specify a different port." port port)]
