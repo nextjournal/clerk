@@ -8,6 +8,7 @@
             [flatland.ordered.map :refer [ordered-map]]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
+                      [clojure.tools.reader :as tools.reader]
                       [editscript.edit]
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.analyzer :as analyzer]]
@@ -361,7 +362,7 @@
 
 #?(:clj (defn roundtrippable? [x]
           (try
-            (= x (-> x str read-string))
+            (= x (-> x str tools.reader/read-string))
             (catch Exception _e false))))
 
 #?(:clj
@@ -375,7 +376,7 @@
 #?(:clj
    (defmethod print-method clojure.lang.Symbol [o w]
      (if (or (roundtrippable? o)
-             (= (name o) "?@")) ;; splicing reader conditional, see issue #338
+             (= (name o) "?@"))  ;; splicing reader conditional, see issue #338
        (print-simple o w)
        (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
                                           (list 'symbol ns (name o))
@@ -609,6 +610,9 @@
 
 #_(present @nextjournal.clerk.webserver/!doc)
 
+(defn update-if [m k f] (if (k m) (update m k f) m))
+#_(update-if {:n "42"} :n #(Integer/parseInt %))
+
 (defn with-block-viewer [doc {:as cell :keys [type id]}]
   (case type
     :markdown (let [{:keys [content]} (:doc cell)
@@ -622,7 +626,7 @@
                                                    ::doc doc} doc))]))
                         (partition-by (comp #{:image} :type) content)))
 
-    :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
+    :code (let [cell (update-if cell :result apply-viewer-unwrapping-var-from-def)
                 {:keys [code? result? fold?]} (->display cell)
                 eval? (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)]
             (cond-> []
@@ -631,7 +635,7 @@
                       {:nextjournal/render-opts (assoc (select-keys cell [:loc])
                                                        :id (processed-block-id (str id "-code")))}
                       (dissoc cell :result)))
-              (or result? eval?)
+              (and (:result cell) (or result? eval?))
               (conj (cond-> (ensure-wrapped (-> cell (assoc ::doc doc) (set/rename-keys {:result ::result})))
                       (and eval? (not result?))
                       (assoc :nextjournal/viewer (assoc result-viewer :render-fn '(fn [_] [:<>])))))))))
@@ -866,7 +870,8 @@
   {:name `throwable-viewer
    :render-fn 'nextjournal.clerk.render/render-throwable
    :pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
-   :transform-fn (comp mark-presented (update-val (comp demunge-ex-data datafy/datafy)))})
+   :transform-fn (comp mark-presented (update-val (comp demunge-ex-data
+                                                        datafy/datafy)))})
 
 (def image-viewer
   {#?@(:clj [:pred #(instance? BufferedImage %)
@@ -1105,7 +1110,7 @@
 
 #?(:clj
    (defn edn-roundtrippable? [x]
-     (= x (-> x ->edn read-string))))
+     (= x (-> x ->edn tools.reader/read-string))))
 
 #?(:clj
    (defn throw-if-sync-var-is-invalid [var]
@@ -1135,13 +1140,6 @@
          (into {}
                (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote))))
                (extract-sync-atom-vars doc)))))
-
-(defn update-if [m k f]
-  (if (k m)
-    (update m k f)
-    m))
-
-#_(update-if {:n "42"} :n #(Integer/parseInt %))
 
 (declare html doc-url)
 
@@ -1513,14 +1511,12 @@
 
 (defn get-elision [wrapped-value]
   (let [{:as fetch-opts :keys [n]} (->fetch-opts wrapped-value)]
-    (merge fetch-opts (bounded-count-opts n (->value wrapped-value)))))
+    (when (number? n)
+      (merge fetch-opts (bounded-count-opts n (->value wrapped-value))))))
 
 #_(get-elision (present (range)))
 #_(get-elision (present "abc"))
 #_(get-elision (present (str/join (repeat 1000 "abc"))))
-
-(defn get-fetch-opts-n [wrapped-value]
-  (-> wrapped-value ->fetch-opts :n))
 
 (defn present+paginate-children [{:as wrapped-value :nextjournal/keys [budget viewers preserve-keys?] :keys [!budget]}]
   (let [{:as fetch-opts :keys [offset n]} (->fetch-opts wrapped-value)
@@ -1543,10 +1539,9 @@
       (conj (let [fetch-opts (assoc elision :offset new-offset)]
               (make-elision viewers fetch-opts))))))
 
-(defn present+paginate-string [{:as wrapped-value :nextjournal/keys [viewers viewer value]}]
-  (let [{:as elision :keys [n total path offset]} (and (:page-size viewer)
-                                                       (get-elision wrapped-value))]
-    (if (and n (< n total))
+(defn present+paginate-string [{:as wrapped-value :nextjournal/keys [viewers value]}]
+  (let [{:as elision :keys [n total path offset]} (get-elision wrapped-value)]
+    (if (and elision n (< n total))
       (let [new-offset (min (+ (or offset 0) n) total)]
         (cond-> [(subs value (or offset 0) new-offset)]
           (pos? (- total new-offset)) (conj (let [fetch-opts (-> elision
@@ -1861,12 +1856,10 @@
                    (-> wrapped-value
                        mark-preserve-keys
                        (assoc :nextjournal/viewer {:render-fn '(fn [{:keys [form val]} opts]
-                                                                 [:div.flex.flex-wrap
-                                                                  {:class "py-[7px]"}
-                                                                  [:div [:div.bg-slate-100.px-2.rounded
-                                                                         (nextjournal.clerk.render/inspect-presented opts form)]]
-                                                                  [:div.flex.mt-1
-                                                                   [:div.mx-2.font-sans.text-xs.text-slate-500 {:class "mt-[2px]"} "⇒"]
+                                                                 [:div.mb-3.last:mb-0
+                                                                  [:div.bg-slate-100.dark:bg-slate-800.px-4.py-2.border-l-2.border-slate-200.dark:border-slate-700
+                                                                   (nextjournal.clerk.render/inspect-presented opts form)]
+                                                                  [:div.pt-2.px-4.border-l-2.border-transparent
                                                                    (nextjournal.clerk.render/inspect-presented opts val)]])})
                        (update-in [:nextjournal/value :form] code)))})
 
@@ -1874,6 +1867,7 @@
   {:transform-fn (update-val (fn [examples]
                                (mapv (partial with-viewer example-viewer) examples)))
    :render-fn '(fn [examples opts]
-                 (into [:div.border-l-2.border-slate-300.pl-4
-                        [:div.uppercase.tracking-wider.text-xs.font-sans.text-slate-500.mt-4.mb-2 "Examples"]]
-                       (nextjournal.clerk.render/inspect-children opts) examples))})
+                 [:div
+                  [:div.uppercase.tracking-wider.text-xs.font-sans.font-bold.text-slate-500.dark:text-white.mb-2.mt-3 "Examples"]
+                  (into [:div]
+                        (nextjournal.clerk.render/inspect-children opts) examples)])})
