@@ -347,6 +347,7 @@
                                                            (assoc-in state [:->analysis-info ana-key] analyzed))
                                                          (dissoc state :doc?)
                                                          (->ana-keys analyzed))
+                                           (parser/ns? form) (assoc-in [:blocks i :ns?] true)
                                            doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
                                            doc? (assoc-in [:blocks i :text-without-meta]
                                                           (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))
