@@ -270,6 +270,7 @@
            :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
            :body (view/->html {:doc (view/doc->viewer @!doc)
                                :resource->url @config/!resource->url
+                               :render-router :serve
                                :conn-ws? true})})
         {:status 404
          :headers {"Content-Type" "text/plain"}

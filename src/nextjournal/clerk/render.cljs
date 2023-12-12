@@ -751,6 +751,7 @@
       (.preventDefault e)
       (let [path (.-pathname url)
             edn-path (str path (when (str/ends-with? path "/") "index") ".edn")]
+        (js/console.log "fetch EDN" edn-path )
         (-> (js/fetch edn-path)
             (.then (fn [r]
                      (if (.-ok r)
@@ -764,20 +765,21 @@
                                    (str "/"))))) ;; trailing slash is needed to make relative paths work
             (.catch (fn [e] (js/console.error "Fetch failed" e ))))))))
 
-(defn setup-router! [state]
+(defn setup-router! [{:as state :keys [render-router]}]
   (when (and (exists? js/document) (exists? js/window))
     (doseq [listener (:listeners @!router)]
       (gevents/unlistenByKey listener))
     (reset! !router
             (assoc state :listeners
-                   (cond (and (static-app? state) (:bundle? state))
-                         [(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)]
-                         (and (static-app? state) (:client-side-routing? state))
-                         [(gevents/listen js/document gevents/EventType.CLICK click->xhr-request false)]
-                         (not (static-app? state))
-                         [(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
-                          (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
-                          (gevents/listen js/window gevents/EventType.LOAD handle-initial-load false)])))))
+                   (case render-router
+                     :bundle
+                     [(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)]
+                     :fetch-edn
+                     [(gevents/listen js/document gevents/EventType.CLICK click->xhr-request false)]
+                     :serve
+                     [(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
+                      (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
+                      (gevents/listen js/window gevents/EventType.LOAD handle-initial-load false)])))))
 
 
 (defn ^:export mount []
@@ -788,8 +790,8 @@
   (swap! !doc re-eval-viewer-fns)
   (mount))
 
-(defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path]}]
-  (setup-router! state)
+(defn ^:export init [{:as state :keys [bundle? path->doc render-router current-path]}]
+  (when render-router (setup-router! state))
   (set-state! (if (static-app? state)
                 {:doc (get path->doc (or (if bundle?
                                            (path-from-url-hash (->URL (.-href js/location)))

@@ -129,11 +129,18 @@
 (def builtin-index
   (io/resource "nextjournal/clerk/index.clj"))
 
-(defn process-build-opts [{:as opts :keys [paths index expand-paths?]}]
+(defn process-build-opts [{:as opts :keys [paths index expand-paths? render-router bundle?]}]
   (merge {:out-path default-out-path
           :bundle? false
           :browse? false
           :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
+         (when (or render-router bundle?)
+           ;; TODO: deprecate `:bundle?` option in favour of `:render-router`
+           (when (and bundle? render-router (not= :bundle render-router))
+             (throw (ex-info "Incompatible options: `:bundle?` implies `:render-router` is `:bundle`." {:opts opts})))
+           (when (and render-router (not= :fetch-edn render-router))
+             (throw (ex-info "Only `:fetch-edn` value is currently allowed for the `:render-router` mode. A value of `:bundle` is currently implied by the `:bundle?` option." {:opts opts})))
+           {:render-router (or (when bundle? :bundle) render-router)})
          (let [opts+index (cond-> opts
                             index (assoc :index (str index)))
                {:as opts' :keys [expanded-paths]} (cond-> opts+index
@@ -180,11 +187,11 @@
 
 (defn cleanup [build-opts]
   (select-keys build-opts
-               [:bundle? :client-side-routing? :path->doc :current-path :resource->url :exclude-js? :index :html]))
+               [:bundle? :render-router :path->doc :current-path :resource->url :exclude-js? :index :html]))
 
 (defn write-static-app!
   [opts docs]
-  (let [{:keys [bundle? client-side-routing? out-path browse? ssr?]} opts
+  (let [{:keys [bundle? render-router out-path browse? ssr?]} opts
         index-html (str out-path fs/file-separator "index.html")
         {:as static-app-opts :keys [path->doc]} (build-static-app-opts opts docs)]
     (when-not (contains? (set (keys path->doc)) "")
@@ -196,7 +203,7 @@
       (doseq [[path doc] path->doc]
         (let [out-html (fs/file out-path path "index.html")]
           (fs/create-dirs (fs/parent out-html))
-          (when client-side-routing?
+          (when (= :fetch-edn render-router)
             (spit (fs/file out-path (str (or (not-empty path) "index") ".edn"))
                   (viewer/->edn doc)))
           (spit out-html (view/->html (-> static-app-opts

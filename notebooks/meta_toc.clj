@@ -48,4 +48,4 @@
   ;; Test actual cross-doc toc
   (viewer/reset-viewers! :default (viewer/add-viewers [book-viewer]))
   (viewer/reset-viewers! :default (viewer/get-default-viewers))
-  (clerk/build! {:client-side-routing? true :paths notebooks}))
+  (clerk/build! {:render-router :fetch-edn :paths notebooks}))

@@ -417,7 +417,7 @@
 
 (defn ^:private normalize-opts [opts]
   (set/rename-keys opts #_(into {} (map (juxt identity #(keyword (str (name %) "?")))) [:bundle :browse :dashboard])
-                   {:bundle :bundle?, :browse :browse?, :dashboard :dashboard? :compile-css :compile-css? :ssr :ssr? :exclude-js :exclude-js? :client-side-routing :client-side-routing?}))
+                   {:bundle :bundle?, :browse :browse?, :dashboard :dashboard? :compile-css :compile-css? :ssr :ssr? :exclude-js :exclude-js?}))
 
 (defn ^:private started-via-bb-cli? [opts]
   (contains? (meta opts) :org.babashka/cli))
@@ -499,7 +499,10 @@
   Passing at least one of the above is required. When both `:paths` and `:paths-fn` are given, `:paths` takes precendence.
 
   - `:bundle`              - if true results in a single self-contained html file including inlined images
-  - `:client-side-routing` - if true navigation across document links is handled by the client (the `:bundle` flag must not be set for this to have effect)
+  - `:render-router`       - a keyword which determines how navigation among built notebooks behaves, possible values are:
+                               `:fetch-edn` when clicking a link, target document data is fetched and swapped when request
+                               completes. This is the only allowed value at the moment. By default, this setting is not
+                               enabled (no client-side routing is taking place).
   - `:compile-css`         - if true compiles css file containing only the used classes
   - `:ssr`                 - if true runs react server-side-rendering and includes the generated markup in the html
   - `:browse`              - if true will open browser with the built file on success
@@ -513,7 +516,9 @@
                                         :coerce :symbol}
                              :index {:desc "Override the name of the index file (default `index.clj|md`), will be added to paths."}
                              :bundle {:desc "Flag to build a self-contained html file inlcuding inlined images"}
-                             :client-side-routing {:desc "Flag to tell the client to handle navigation across document links. Has an effect only when the `:bundle` flag is not used."}
+                             :render-router {:desc "A keyword to select the routing mode"
+                                             :coerce :keyword
+                                             :validate #{:serve :bundle :fetch-edn}}
                              :browse {:desc "Opens the browser on boot when set."}
                              :dashboard {:desc "Flag to serve a dashboard with the build progress."}
                              :out-path {:desc "Path to an build output folder, defaults to \"public/build\"."}
