@@ -536,6 +536,8 @@
                              #?(:clj (->> (process-blobs blob-opts))))
         viewer-eval-result? (-> presented-result :nextjournal/value viewer-eval?)]
     #_(prn :presented-result viewer-eval? presented-result)
+    ;; TODO: adjust path for fragment-item?
+    (when (seq path) (prn :path path))
     (-> wrapped-value
         mark-presented
         (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result :nextjournal/blob-id blob-id}
