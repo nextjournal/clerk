@@ -425,26 +425,34 @@
 (defn serve!
   "Main entrypoint to Clerk taking an configurations map.
 
-  Will obey the following optional configuration entries:
+  Options:
+  - `:host` for the webserver to listen on, defaulting to `\"localhost\"`
+  - `:port` for the webserver to listen on, defaulting to `7777`
+  - `:browse` will open Clerk in the default browser after it's been started
+  - `:watch-paths` that Clerk will watch for file system events and show any changed file
+  - `:show-filter-fn` to restrict when to re-evaluate or show a notebook as a result of file system event. Useful for e.g. pinning a notebook. Will be called with the string path of the changed file.
+  - `:paths`     - restricts serving to the given paths, supports glob patterns. Will disable Clerk's homepage when set.
+  - `:paths-fn`  - a symbol resolving to a 0-arity function returning computed paths.
+  - `:index`     - path to a file to override Clerk's default index, will be added to paths.
 
-  * a `:host` for the webserver to listen on, defaulting to `\"localhost\"`
-  * a `:port` for the webserver to listen on, defaulting to `7777`
-  * `:browse` will open Clerk in a browser after it's been started
-  * a sequence of `:watch-paths` that Clerk will watch for file system events and show any changed file
-  * a `:show-filter-fn` to restrict when to re-evaluate or show a notebook as a result of file system event. Useful for e.g. pinning a notebook. Will be called with the string path of the changed file.
+  When both `:paths` and `:paths-fn` are given, `:paths` takes precendence.
 
   Can be called multiple times and Clerk will happily serve you according to the latest config."
   {:org.babashka/cli {:spec {:watch-paths {:desc "Paths on which to watch for changes and show a changed document."
                                            :coerce []}
-                             :host {:desc "Host or ip for the webserver to listen on, defaults to \"locahost\"."
-                                    :coerce :string}
+                             :paths {:desc "Restricts serving to the given paths, supports glob patterns. Will disable Clerk's homepage when set."
+                                     :coerce []}
+                             :paths-fn {:desc "Symbol resolving to a 0-arity function returning computed paths."
+                                        :coerce :symbol}
+                             :host {:desc "Host or ip for the webserver to listen on, defaults to \"locahost\"."}
                              :port {:desc "Port number for the webserver to listen on, defaults to 7777."
                                     :coerce :number}
+                             :index {:desc "Override the name of the index file (default \"index.clj|md\", will be added to paths."}
                              :show-filter-fn {:desc "Symbol resolving to a fn to restrict when to show a notebook as a result of file system event."
                                               :coerce :symbol}
                              :browse {:desc "Opens the browser on boot when set."
                                       :coerce :boolean}}
-                      :order [:watch-paths :port :show-filter-fn :browse]}}
+                      :order [:host :port :browse :watch-paths :show-filter-fn :paths :paths-fn :index]}}
   [config]
   (if (:help config)
     (if-let [format-opts (and (started-via-bb-cli? config) (requiring-resolve 'babashka.cli/format-opts))]
@@ -488,11 +496,10 @@
   - `:paths-fn`  - a symbol resolving to a 0-arity function returning computed paths
   - `:index`     - a string allowing to override the name of the index file, will be added to `:paths`
 
-  Passing at least one of the above is required. When both `:paths`
-  and `:paths-fn` are given, `:paths` takes precendence.
+  Passing at least one of the above is required. When both `:paths` and `:paths-fn` are given, `:paths` takes precendence.
 
   - `:bundle`              - if true results in a single self-contained html file including inlined images
-  - `:client-side-routing` - if true navigation across documents is handled by the client (the `:bundle` option must not be true for this to have effect)
+  - `:client-side-routing` - if true navigation across document links is handled by the client (the `:bundle` flag must not be set for this to have effect)
   - `:compile-css`         - if true compiles css file containing only the used classes
   - `:ssr`                 - if true runs react server-side-rendering and includes the generated markup in the html
   - `:browse`              - if true will open browser with the built file on success
