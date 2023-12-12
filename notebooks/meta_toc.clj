@@ -154,4 +154,4 @@
   ;; Test actual cross-doc toc
   (viewer/reset-viewers! :default (viewer/add-viewers [(notebook-viewer {:paths paths})]))
   (reset! viewer/!viewers {})
-  (clerk/build! {:xhr? true :paths paths}))
+  (clerk/build! {:client-side-routing? true :paths paths}))

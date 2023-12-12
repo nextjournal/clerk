@@ -772,7 +772,7 @@
             (assoc state :listeners
                    (cond (and (static-app? state) (:bundle? state))
                          [(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)]
-                         (and (static-app? state) (:xhr? state))
+                         (and (static-app? state) (:client-side-routing? state))
                          [(gevents/listen js/document gevents/EventType.CLICK click->xhr-request false)]
                          (not (static-app? state))
                          [(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
