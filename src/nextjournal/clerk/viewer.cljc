@@ -522,7 +522,7 @@
                             (select-keys (keys viewer-opts-normalization))
                             (set/rename-keys viewer-opts-normalization))
         {:as to-present :nextjournal/keys [auto-expand-results?]} (merge (dissoc (->opts wrapped-value) :!budget :nextjournal/budget)
-                                                                         (dissoc cell :result)
+                                                                         (dissoc cell :result ::doc) ;; TODO: reintroduce doc once we know why it OOMs the static build on CI (some walk issue probably)
                                                                          opts-from-block
                                                                          (ensure-wrapped-with-viewers (or viewers (get-viewers (get-*ns*))) value))
         presented-result (-> (present to-present)
