@@ -614,6 +614,27 @@
 (defn update-if [m k f] (if (k m) (update m k f) m))
 #_(update-if {:n "42"} :n #(Integer/parseInt %))
 
+(defn transform-cell [{:as cell :keys [id result]}]
+  (let [cell (update-if cell :result apply-viewer-unwrapping-var-from-def)
+        {:keys [code? result? fold?]} (->display cell)
+        eval? (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)]
+    (prn :cell (keys cell))
+    (cond-> []
+      code?
+      (conj (with-viewer (if fold? `folded-code-block-viewer `code-block-viewer)
+              {:nextjournal/render-opts (assoc (select-keys cell [:loc])
+                                               :id (processed-block-id (str id "-code")))}
+              (dissoc cell :result)))
+      (and (:result cell) (or result? eval?))
+      (conj (cond-> (ensure-wrapped (set/rename-keys cell {:result ::result}))
+              (and eval? (not result?))
+              (assoc :nextjournal/viewer (assoc result-viewer :render-fn '(fn [_] [:<>]))))))))
+
+(def cell-viewer
+  {:name `cell-viewer
+   :transform-fn (update-val transform-cell)
+   :render-fn '(fn [xs opts] (into [:<>] (nextjournal.clerk.render/inspect-children opts) xs))})
+
 (defn with-block-viewer [doc {:as cell :keys [type id]}]
   (case type
     :markdown (let [{:keys [content]} (:doc cell)
@@ -627,19 +648,12 @@
                                                    ::doc doc} doc))]))
                         (partition-by (comp #{:image} :type) content)))
 
-    :code (let [cell (update-if cell :result apply-viewer-unwrapping-var-from-def)
-                {:keys [code? result? fold?]} (->display cell)
-                eval? (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)]
-            (cond-> []
-              code?
-              (conj (with-viewer (if fold? `folded-code-block-viewer `code-block-viewer)
-                      {:nextjournal/render-opts (assoc (select-keys cell [:loc])
-                                                       :id (processed-block-id (str id "-code")))}
-                      (dissoc cell :result)))
-              (and (:result cell) (or result? eval?))
-              (conj (cond-> (ensure-wrapped (-> cell (assoc ::doc doc) (set/rename-keys {:result ::result})))
-                      (and eval? (not result?))
-                      (assoc :nextjournal/viewer (assoc result-viewer :render-fn '(fn [_] [:<>])))))))))
+    :code [(with-viewer `cell-viewer (assoc cell ::doc doc))]))
+
+#_(-> (nextjournal.clerk.eval/eval-string "(ns dang) {:nextjournal.clerk/visibility {:code :hide}} 1")
+      nextjournal.clerk.view/doc->viewer
+      ->value :blocks)
+
 
 #_(:blocks (:nextjournal/value (nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)))
 
@@ -1278,6 +1292,7 @@
    set-viewer
    sequential-viewer
    viewer-eval-viewer
+   cell-viewer
    fragment-viewer
    result-viewer
    map-viewer
