@@ -6,7 +6,7 @@
 (defn ^:private shell-out-str
   "Shell helper, calls a cmd and returns it output string trimmed."
   [& cmd]
-  (str/trim (:out (apply p/shell {:out :string} cmd))))
+  (str/trim (:out (p/check (apply p/sh {:out :string} cmd)))))
 
 #_(shell-out-str "git rev-parse HEAD")
 #_(shell-out-str "zonk")

@@ -10,18 +10,38 @@ Changes can be:
 
 * 💫 Allow to disable welcome page in `serve!`
 
+* 💫 Add `clerk/comment` that behaves like `clojure.core/comment` outside of Clerk but shows the results like regular top-level forms in Clerk.
+
 * 💫 Support using Markdown syntax in `clerk/caption` text
+
+* 💫 Support toggling auto-expansion of results in tap viewer
+
+* 💫 Redesign examples viewer to be more readable and in a way that doesn't force `display: flex` onto contents.
 
 * 🛠 Bump depdendencies
 
   * `com.taoensso/nippy` to `3.4.0-beta1`
   * `io.github.nextjournal/markdown` to `0.5.146`
 
+* 🐜 Fix blank screen caused by react unmounting when an exception occurs during `clerk/show!`, fixes [#586](https://github.com/nextjournal/clerk/issues/586) @elken
+
+* 🐜 Make edn transmission resilient to symbols and keywords containing multiple slashes like `foo/bar/baz`. Those can be read by `read-string` but not in ClojureScript which is based on `tools.reader`.
+
+* 🐞 Fix `:nextjournal.clerk/page-size` option throwing when set on string values, fixes [#584][https://github.com/nextjournal/clerk/issues/584]
+
 * 🐞 Fix caching behaviour of `clerk/image` and support overriding image-viewer by name
+
+* 🐞 Fix tap viewer keeping open/collapsed state [#543](https://github.com/nextjournal/clerk/issues/543) @teodorlu
+
+* 🐞  Fix `serve!` `:browse` option for default host & port
+
+* 🐞 Fix `unquote` in experimental cljs Clerk editor, fixes [#576](https://github.com/nextjournal/clerk/issues/576) @sritchie
 
 * 🐞 Fix `row` and `col` viewers not showing a first map argument, fixes [#567](https://github.com/nextjournal/clerk/issues/567) @teodorlu
 
 * 🐞 Fix long sidenotes overlapping with subsequent content, fixes [#564](https://github.com/nextjournal/clerk/issues/564) @hlship
+
+* 🐞  Swallow git errors in shell-out-str instead of printing them to stdout/err
 
 ## 0.15.957 (2023-09-28)
 

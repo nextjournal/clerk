@@ -18,7 +18,7 @@
 
 (defn md-toc->navbar-items [current-notebook file {:keys [children]}]
   (mapv (fn [{:as item :keys [emoji attrs]}]
-          {:title (md.transform/->text item)
+          {:title (cond-> (md.transform/->text item) (seq emoji) (subs (count emoji)))
            :expanded? (= current-notebook file)
            :scroll-to-anchor? false
            :emoji emoji
@@ -37,7 +37,7 @@
                           (fn [wrapped-value]
                             (-> wrapped-value
                                 original-transform
-                                (assoc :nextjournal/opts {:expandable? true})
+                                (assoc :nextjournal/render-opts {:expandable-toc? true})
                                 (assoc-in [:nextjournal/value :toc]
                                           (meta-toc (:file (v/->value wrapped-value)) notebooks)))))))
 
