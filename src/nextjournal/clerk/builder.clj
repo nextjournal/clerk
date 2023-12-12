@@ -52,6 +52,7 @@
          "viewers/by_val_meta"
          "viewers/caption"
          "viewers/code"
+         "viewers/context"
          "viewers/control_lab"
          "viewers/custom_markdown"
          "viewers/grid"
