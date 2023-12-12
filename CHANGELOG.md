@@ -14,6 +14,8 @@ Changes can be:
 
 * 💫 Support using Markdown syntax in `clerk/caption` text
 
+* 💫 Support toggling auto-expansion of results in tap viewer
+
 * 💫 Redesign examples viewer to be more readable and in a way that doesn't force `display: flex` onto contents.
 
 * 🛠 Bump depdendencies
@@ -28,6 +30,8 @@ Changes can be:
 * 🐞 Fix `:nextjournal.clerk/page-size` option throwing when set on string values, fixes [#584][https://github.com/nextjournal/clerk/issues/584]
 
 * 🐞 Fix caching behaviour of `clerk/image` and support overriding image-viewer by name
+
+* 🐞 Fix tap viewer keeping open/collapsed state [#543](https://github.com/nextjournal/clerk/issues/543) @teodorlu
 
 * 🐞 Fix `unquote` in experimental cljs Clerk editor, fixes [#576](https://github.com/nextjournal/clerk/issues/576) @sritchie
 
