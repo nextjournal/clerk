@@ -213,7 +213,9 @@
 (defn with-viewer-extracting-opts [viewer & opts+items]
   ;; TODO: maybe support sequantial & viewer-opts?
   (cond
-    (and (map? (first opts+items)) (not (wrapped-value? (first opts+items))))
+    (and (map? (first opts+items))
+         (not (wrapped-value? (first opts+items)))
+         (seq (set/intersection parser/block-settings (set (keys (first opts+items))) )))
     (with-viewer viewer (first opts+items) (rest opts+items))
 
     (and (sequential? (first opts+items)) (= 1 (count opts+items)))
@@ -331,6 +333,15 @@
       (throw (ex-info "no type given for with-md-viewer" {:wrapped-value wrapped-value})))
     (with-viewer (keyword "nextjournal.markdown" (name type)) wrapped-value)))
 
+(defn apply-viewers-to-md [viewers doc x]
+  (-> (ensure-wrapped-with-viewers viewers (assoc x ::doc doc))
+      (with-md-viewer)
+      (apply-viewers)
+      (as-> w
+          (if (= `markdown-node-viewer (:name (->viewer w)))
+            (->value w)
+            [(inspect-fn) (process-wrapped-value w)]))))
+
 (defn into-markup [markup]
   (fn [{:as wrapped-value :nextjournal/keys [viewers render-opts]}]
     (-> (with-viewer {:name `markdown-node-viewer :render-fn 'identity} wrapped-value)
@@ -339,14 +350,7 @@
                 (fn [{:as node :keys [text content] ::keys [doc]}]
                   (into (cond-> markup (fn? markup) (apply [(merge render-opts node)]))
                         (cond text [text]
-                              content (mapv #(-> (ensure-wrapped-with-viewers viewers (assoc % ::doc doc))
-                                                 (with-md-viewer)
-                                                 (apply-viewers)
-                                                 (as-> w
-                                                     (if (= `markdown-node-viewer (:name (->viewer w)))
-                                                       (->value w)
-                                                       [(inspect-fn) (process-wrapped-value w)])))
-                                            content))))))))
+                              content (mapv (partial apply-viewers-to-md viewers doc) content))))))))
 
 ;; A hack for making Clerk not fail in the precense of
 ;; programmatically generated keywords or symbols that cannot be read.
@@ -778,7 +782,17 @@
    {:name :nextjournal.markdown/toc :transform-fn (into-markup [:div.toc])}
 
    ;; sidenotes
-   {:name :nextjournal.markdown/sidenote-container :transform-fn (into-markup [:div.sidenote-container])}
+   {:name :nextjournal.markdown/sidenote-container
+    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers render-opts]}]
+                    (-> (with-viewer {:name `markdown-node-viewer :render-fn 'identity} wrapped-value)
+                        mark-presented
+                        (update :nextjournal/value
+                                (fn [{:as node :keys [text content] ::keys [doc]}]
+                                  [:div.sidenote-container
+                                   (into [:div.sidenote-main-col]
+                                         (map (partial apply-viewers-to-md viewers doc))
+                                         (drop-last content))
+                                   (apply-viewers-to-md viewers doc (last content))]))))}
    {:name :nextjournal.markdown/sidenote-column :transform-fn (into-markup [:div.sidenote-column])}
    {:name :nextjournal.markdown/sidenote
     :transform-fn (into-markup (fn [{:keys [ref]}]
@@ -1134,22 +1148,28 @@
 (defn home? [{:keys [nav-path]}]
   (contains? #{"src/nextjournal/home.clj" "'nextjournal.clerk.home"} nav-path))
 
-(defn index? [{:as opts :keys [nav-path index]}]
-  (when nav-path
-    (or (= "'nextjournal.clerk.index" nav-path)
-        (= (str index) nav-path)
-        (re-matches #"(^|.*/)(index\.(clj|cljc|md))$" nav-path))))
+(defn route-index?
+  "Should the index router be enabled?"
+  [{:keys [expanded-paths]}]
+  (boolean (seq expanded-paths)))
 
-(defn index-path [{:keys [static-build? index]}]
+
+(defn index? [{:as opts :keys [file index ns]}]
+  (or (= (some-> ns ns-name) 'nextjournal.clerk.index)
+      (some->> file str (re-matches #"(^|.*/)(index\.(clj|cljc|md))$"))
+      (and index (= file index))))
+
+(defn index-path [{:as opts :keys [index]}]
   #?(:cljs ""
-     :clj (if static-build?
+     :clj (if (route-index? opts)
             ""
             (if (fs/exists? "index.clj") "index.clj" "'nextjournal.clerk.index"))))
 
-(defn header [{:as opts :keys [nav-path static-build?] :git/keys [url sha]}]
+(defn header [{:as opts :keys [file file-path nav-path static-build? ns] :git/keys [url sha]}]
   (html [:div.viewer.w-full.max-w-prose.px-8.not-prose.mt-3
          [:div.mb-8.text-xs.sans-serif.text-slate-400
-          (when (and (not static-build?) (not (home? opts)))
+          (when (and (not (route-index? opts))
+                     (not (home? opts)))
             [:<>
              [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
               {:href (doc-url "'nextjournal.clerk.home")} "Home"]
@@ -1163,12 +1183,14 @@
            (if static-build? "Generated with " "Served from ")
            [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
             {:href "https://clerk.vision"} "Clerk"]
-           " from "
-           (let [default-index? (str/ends-with? (str nav-path) "src/nextjournal/clerk/index.clj")]
-             [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
-              {:href (when (and url sha) (if default-index? (str url "/tree/" sha) (str url "/blob/" sha "/" nav-path)))}
-              (if (and url default-index?) #?(:clj (subs (.getPath (URL. url)) 1) :cljs url) nav-path)
-              (when sha [:<> "@" [:span.tabular-nums (subs sha 0 7)]])])]]]))
+           (let [default-index? (= 'nextjournal.clerk.index (some-> ns ns-name))]
+             (when (or file-path default-index?)
+               [:<>
+                " from "
+                [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
+                 {:href (when (and url sha) (if default-index? (str url "/tree/" sha) (str url "/blob/" sha "/" file-path)))}
+                 (if (and url default-index?) #?(:clj (subs (.getPath (URL. url)) 1) :cljs url) (or file-path nav-path))
+                 (when sha [:<> "@" [:span.tabular-nums (subs sha 0 7)]])]]))]]]))
 
 (def header-viewer
   {:name `header-viewer
@@ -1762,13 +1784,13 @@
 (defn image
   ([image-or-url] (image {} image-or-url))
   ([viewer-opts image-or-url]
-   (with-viewer image-viewer viewer-opts
+   (with-viewer (:name image-viewer) viewer-opts
      #?(:cljs image-or-url :clj (read-image image-or-url)))))
 
 (defn caption [text content]
   (col
    content
-   (html [:figcaption.text-xs.text-slate-500.text-center.mt-1 text])))
+   (html [:figcaption.text-center.mt-1 (md text)])))
 
 (defn ^:dynamic doc-url
   ([path] (doc-url path nil))
@@ -1783,7 +1805,7 @@
             (prn "`hide-result` has been deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead."))))
 
 (defn hide-result
-  "Deprecated, please put ^{:nextjournal.clerk/visibility {:result :hide}} metadata on the form instead."
+  "Deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead."
   {:deprecated "0.10"}
   ([x] (print-hide-result-deprecation-warning) (with-viewer hide-result-viewer {} x))
   ([viewer-opts x] (print-hide-result-deprecation-warning) (with-viewer hide-result-viewer viewer-opts x)))

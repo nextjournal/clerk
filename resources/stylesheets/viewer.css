@@ -14,7 +14,7 @@
   .font-condensed { font-family: "Fira Sans Condensed", sans-serif; }
   .font-inter     { font-family: "Inter", sans-serif; }
   body {
-    @apply font-serif antialiased text-gray-900 sm:overscroll-y-none;
+    @apply font-serif antialiased text-gray-900 sm:overscroll-y-none pb-8;
   }
   code, .code {
     @apply font-mono text-sm text-gray-900 bg-slate-50 px-0.5 py-px rounded dark:bg-gray-800;
@@ -259,6 +259,13 @@
     @apply mb-0 !important;
 }
 
+figcaption .markdown-viewer {
+    @apply text-xs text-slate-500;
+}
+
+figcaption .markdown-viewer a {
+    @apply underline;
+}
 /* Images */
 /* --------------------------------------------------------------- */
 
@@ -320,10 +327,20 @@
 .sidenote-container {
   @apply mb-4;
 }
+.sidenote-main-col *:last-child {
+  @apply mb-0;
+}
+.sidenote-main-col {
+  @apply w-full;
+}
+.sidenote-main-col > ul > li:first-child,
+.sidenote-main-col > ol > li:first-child {
+  @apply mt-0;
+}
 @media (min-width: 860px) {
   .sidenote sup { @apply inline; }
   .sidenote-column {
-    @apply w-[165px] absolute right-0 top-0 -mr-[205px];
+    @apply w-[165px] -mr-[205px] flex-shrink-0;
   }
   .sidenote {
     @apply bg-transparent dark:bg-transparent p-0;
@@ -335,7 +352,13 @@
     @apply pr-[241px];
   }
   .sidenote-container {
-    @apply relative mb-0;
+    @apply relative flex justify-between;
+  }
+  .sidenote-container > *:not(.sidenote-column) {
+    margin-right: 40px;
+  }
+  .sidenote:last-of-type {
+
   }
   .sidenotes-layout h1 {
     @apply w-[756px] !important;

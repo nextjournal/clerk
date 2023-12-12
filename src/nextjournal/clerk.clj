@@ -1,5 +1,6 @@
 (ns nextjournal.clerk
   "Clerk's Public API."
+  (:refer-clojure :exclude [comment])
   (:require [babashka.fs :as fs]
             [clojure.java.browse :as browse]
             [clojure.java.io :as io]
@@ -11,6 +12,7 @@
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
+            [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]))
 
@@ -23,11 +25,13 @@
 
   Accepts ns using a quoted symbol or a `clojure.lang.Namespace`, calls `slurp` on all other arguments, e.g.:
 
+  ```clj
   (nextjournal.clerk/show! \"notebooks/vega.clj\")
   (nextjournal.clerk/show! 'nextjournal.clerk.tap)
   (nextjournal.clerk/show! (find-ns 'nextjournal.clerk.tap))
   (nextjournal.clerk/show! \"https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj\")
   (nextjournal.clerk/show! (java.io.StringReader. \";; # Notebook from String 👋\n(+ 41 1)\"))
+  ```
   "
   ([file-or-ns] (show! {} file-or-ns))
   ([opts file-or-ns]
@@ -49,7 +53,10 @@
 
                     :else
                     file-or-ns)
-             doc (try (merge opts
+             doc (try (merge (webserver/get-build-opts)
+                             opts
+                             (when-let [path (paths/path-in-cwd file-or-ns)]
+                               {:file-path path})
                              {:nav-path (webserver/->nav-path file-or-ns)}
                              (parser/parse-file {:doc? true} file))
                       (catch java.io.FileNotFoundException _e
@@ -61,9 +68,10 @@
                                         e))))
              _ (reset! !last-file file)
              {:keys [blob->result]} @webserver/!doc
-             {:keys [result time-ms]} (try (eval/time-ms (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!)))
+             {:keys [result time-ms]} (try (eval/time-ms (binding [paths/*build-opts* (webserver/get-build-opts)]
+                                                           (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!))))
                                            (catch Exception e
-                                             (throw (ex-info (str "`nextjournal.clerk/show!` encountered an eval error with: `" (pr-str file-or-ns) "`") {::doc doc} e))))]
+                                             (throw (ex-info (str "`nextjournal.clerk/show!` encountered an eval error with: `" (pr-str file-or-ns) "`") {::doc (assoc doc :blob->result blob->result)} e))))]
          (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
          (webserver/update-doc! result))
        (catch Exception e
@@ -381,6 +389,14 @@
   (partial with-viewer (:name v/notebook-viewer)))
 
 (defn doc-url [& args] (apply v/doc-url args))
+
+(defmacro comment
+  "Evaluates the expressions in `body` showing the results in Clerk.
+
+  Does nothing outside of Clerk, like `clojure.core/comment`."
+  [& body]
+  (when nextjournal.clerk.config/*in-clerk*
+    `(nextjournal.clerk/fragment ~(vec body))))
 
 (defmacro example
   "Evaluates the expressions in `body` showing code next to results in Clerk.

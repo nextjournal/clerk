@@ -299,20 +299,15 @@ int main() {
 
 ;; ### 🏞 Images
 
-;; Clerk now has built-in support for the
-;; `java.awt.image.BufferedImage` class, which is the native image
-;; format of the JVM.
-;;
-;; When combined with `javax.imageio.ImageIO/read`, one can easily
-;; load images in a variety of formats from a `java.io.File`, an
-;; `java.io.InputStream`, or any resource that a `java.net.URL` can
-;; address.
+;; Clerk offers the `clerk/image` viewer to create a buffered image
+;; from a string or anything `javax.imageio.ImageIO/read` can take
+;; (URL, File or InputStream).
 ;;
 ;; For example, we can fetch a photo of De zaaier, Vincent van Gogh's
 ;; famous painting of a farmer sowing a field from Wiki Commons like
 ;; this:
 
-(ImageIO/read (URL. "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/The_Sower.jpg/1510px-The_Sower.jpg"))
+(clerk/image "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/The_Sower.jpg/1510px-The_Sower.jpg")
 
 ;; We've put some effort into making the default image rendering
 ;; pleasing. The viewer uses the dimensions and aspect ratio of each
@@ -320,11 +315,31 @@ int main() {
 ;; fashion. For example, an image larger than 900px wide with an
 ;; aspect ratio larger then two will be displayed full width:
 
-(ImageIO/read (URL. "https://images.unsplash.com/photo-1532879311112-62b7188d28ce?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8"))
+(clerk/image "https://images.unsplash.com/photo-1532879311112-62b7188d28ce?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8")
 
 ;; On the other hand, smaller images are centered and shown using their intrinsic dimensions:
 
-(ImageIO/read (URL. "https://nextjournal.com/data/QmSJ6eu6kUFeWrqXyYaiWRgJxAVQt2ivaoNWc1dtTEADCf?filename=thermo.png&content-type=image/png"))
+(clerk/image "https://nextjournal.com/data/QmSJ6eu6kUFeWrqXyYaiWRgJxAVQt2ivaoNWc1dtTEADCf?filename=thermo.png&content-type=image/png")
+
+;; You can use `clerk/image` together with `clerk/caption` which will render a simple caption under the image:
+
+(clerk/caption
+ "Implements of the Paper Printing Industry"
+ (clerk/image "https://nextjournal.com/data/QmX99isUndwqBz7nj8fdG7UoDakNDSH1TZcvY2Y6NUTe6o?filename=image.gif&content-type=image/gif"))
+
+;; Captions aren't limited to images and work together with any arbitrary content that you provide, e.g. a table:
+
+^{::clerk/visibility {:code :fold}}
+(clerk/caption
+ "Modern Symmetrical Unary(7) in [Solresol](https://wiki.xxiivv.com/site/solresol.html)"
+ (clerk/table {:head ["Solfège" "French IPA" "English IPA" "Meaning"]
+               :rows [["Do"	"/do/" "/doʊ/" "no"]
+                      ["Re" "/ʁɛ/" "/ɹeɪ/" "and, also"]
+                      ["Mi" "/mi/" "/miː/" "or"]
+                      ["Fa" "/fa/" "/fɑː/" "at, to"]
+                      ["Sol" "/sɔl/" "/soʊl/" "but, if"]
+                      ["La" "/la/" "/lɑː/" "the, then"]
+                      ["Si" "/si/" "/siː/" "yes"]]}))
 
 ;; ### 📒 Markdown
 
@@ -363,12 +378,14 @@ int main() {
 ;; nice captions:
 
 (defn caption [text]
-  (clerk/html [:span.text-slate-500.text-xs.text-center.font-sans text]))
+  (clerk/html [:figcaption.text-center.mt-1 text]))
 
 (clerk/row
  (clerk/col image-1 (caption "Figure 1: Decorative A"))
  (clerk/col image-2 (caption "Figure 2: Decorative B"))
  (clerk/col image-3 (caption "Figure 3: Decorative C")))
+
+;; Note: the caption example is _exactly_ how `clerk/caption` is implemented in Clerk.
 
 ;; **Alternative notations**
 ;;
@@ -940,7 +957,7 @@ v/table-viewer
 ;; Also notably, there is a `:compile-css` option which compiles a css
 ;; file containing only the used CSS classes from the generated
 ;; markup. (Otherwise, Clerk is using Tailwind's Play CDN script which
-;; can the page flicker, initially.)
+;; can make the page flicker, initially.)
 
 ;; If set, the `:ssr` option will use React's server-side-rendering to
 ;; include the generated markup in the build HTML.

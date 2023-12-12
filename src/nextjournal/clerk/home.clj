@@ -1,9 +1,9 @@
 (ns nextjournal.clerk.home
   {:nextjournal.clerk/visibility {:code :hide :result :hide}}
-  (:require [clojure.string :as str]
-            [babashka.fs :as fs]
+  (:require [babashka.fs :as fs]
+            [clojure.string :as str]
             [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.builder :as builder]
+            [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.viewer :as v]))
 
 (defn glob-notebooks []
@@ -176,7 +176,7 @@
   [:div.rounded-lg.border-2.border-amber-100.bg-amber-50.dark:border-slate-600.dark:bg-slate-800.dark:text-slate-100.px-8.py-4.mx-auto.text-center.font-sans.mt-6.md:mt-4
    [:div [:span.font-medium "💡 Tip:"] " Show the " [:a {:href "/'nextjournal.clerk.tap"} "🚰 Tap Inspector"] " to inspect values using " (code-highlight {:class "text-sm" }"tap>") "."]
    [:div.mt-2.text-xs
-    (code-highlight {:class "text-sm"} "(nextjournal.clerk/show 'nextjournal.clerk.tap)")]]
+    (code-highlight {:class "text-sm"} "(nextjournal.clerk/show! 'nextjournal.clerk.tap)")]]
   #_[:div.mt-6
      (clerk/with-viewer filter-input-viewer `!filter)]])
 
@@ -192,7 +192,7 @@
    (when-not (seq (:query @!filter))
      [:div {:class "w-1/2 pt-6 pl-6"}
       [:h4.text-lg "Static Build Index"]
-      (let [{:keys [paths error]} (builder/index-paths)]
+      (let [{:keys [paths error]} (paths/index-paths)]
         (cond
           error [:div {:class "-mx-8"} (clerk/md error)]
           paths (let [{:keys [query]} @!filter]

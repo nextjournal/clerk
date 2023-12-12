@@ -40,6 +40,7 @@
         [_ hash] (some-> search (.split "#"))]
     (when (or (and search hash (= path-name current-path-name)) anchor-only?)
       (let [anchor (if anchor-only? path-name (str "#" hash))]
+        (.stopPropagation event)
         (.preventDefault event)
         (when set-hash?
           (.pushState js/history #js {} "" anchor))

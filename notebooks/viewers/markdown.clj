@@ -78,9 +78,11 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
 ;; on the [Tufte CSS website](https://edwardtufte.github.io/tufte-css/).
 ;;
 ;; Sidenotes are a great example of the web not being like print. On sufficiently
-;; large viewports, Tufte CSS uses the margin for sidenotes, margin notes, and
+;; large viewports, Tufte CSS^[Cascading Style Sheets] uses the margin for sidenotes, margin notes, and
 ;; small figures. On smaller viewports, elements that would go in the margin are
-;; hidden until the user toggles them into view. The goal is to present related
+;; hidden until the user toggles them into view.
+;;
+;; The goal is to present related
 ;; but not necessary information such as asides or citations as close as possible
 ;; to the text that references them. At the same time, this secondary information
 ;; should stay out of the way of the eye, not interfering with the progression of
@@ -98,6 +100,18 @@ It's [Markdown](https://daringfireball.net/projects/markdown/), like you know it
 ;; And it can be followed by lists so the list layout also has to adapt to the
 ;; new content width once a sidenote is present in the document:
 ;;
+;; ### Long sidenotes
+;;
+;; Sometimes sidenotes can be longer than the content they are anchored to. [^long]
+;;
+;; [^long]: In this case they should push their proximate content down instead of
+;; overlapping with it. This would be especially glaring when the subsequent element
+;; is a code cell, which spans both the main contentn col and sidenote col.
+
+;; ```clj
+;; (comment "Here is a Clojure code listing to be pushed down by the sidenote.")
+;; ```
+
 ;; Things to do:
 
 ;; * Hire two private investigators. Get them to follow each other.

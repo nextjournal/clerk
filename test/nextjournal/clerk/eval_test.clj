@@ -1,12 +1,14 @@
 (ns nextjournal.clerk.eval-test
-  (:require [clojure.string :as str]
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]
-            [nextjournal.clerk.viewer :as viewer]))
+            [nextjournal.clerk.viewer :as viewer]
+            [nextjournal.clerk.webserver :as webserver]))
 
 (deftest eval-string
   (testing "hello 42"
@@ -218,12 +220,24 @@
 
 (deftest cacheable-value?-test
   (testing "finite sequence is cacheable"
-    (is (#'eval/cachable-value? (vec (range 100)))))
-  (testing "nippy doesn't know how to freeze instances of clojure.lang.Iterate"
-    (is (not (#'eval/cachable-value? (range 100)))))
+    (is (eval/cachable? (vec (range 100)))))
   (testing "infinite sequences can't be cached"
-    (is (not (#'eval/cachable-value? (range))))
-    (is (not (#'eval/cachable-value? (map inc (range))))))
+    (is (not (eval/cachable? (range))))
+    (is (not (eval/cachable? (map inc (range))))))
   (testing "class is not cachable"
-    (is (not (#'eval/cachable-value? java.lang.String)))
-    (is (not (#'eval/cachable-value? {:foo java.lang.String})))))
+    (is (not (eval/cachable? java.lang.String)))
+    (is (not (eval/cachable? {:foo java.lang.String}))))
+  (testing "image is cachable"
+    (is (eval/cachable? (javax.imageio.ImageIO/read (io/file "trees.png"))))))
+
+(deftest show!-test
+  (testing "in-memory cache is preserved when exception is thrown (#549)"
+    (let [code "{:f inc :n (rand-int 100000)}"
+          get-result #(:blob->result @webserver/!doc)]
+      (clerk/show! (java.io.StringReader. code))
+      (let [result-first-run (get-result)]
+        (try (clerk/show! (java.io.StringReader. (str code " (throw (ex-info \"boom\" {}))")))
+             (catch Exception _ nil))
+        (clerk/show! (java.io.StringReader. code))
+        (is (= result-first-run (get-result)))))))
+
