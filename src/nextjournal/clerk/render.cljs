@@ -750,10 +750,7 @@
     (when-not (ignore-anchor-click? e url)
       (.preventDefault e)
       (let [path (.-pathname url)
-            edn-path (str path
-                          (when (str/ends-with? path "/") "index")
-                          ".edn")]
-        (js/console.log "pathname" path "path to EDN" edn-path)
+            edn-path (str path (when (str/ends-with? path "/") "index") ".edn")]
         (-> (js/fetch edn-path)
             (.then (fn [r]
                      (if (.-ok r)
@@ -761,7 +758,10 @@
                        (throw (ex-info "Not Found" {:response r})))))
             (.then (fn [edn]
                      (set-state! {:doc (read-string edn)})
-                     (.pushState js/history #js {} "" (str path "/")))) ;; 👈 trailing slash is needed to make relative paths work
+                     (.pushState js/history #js {} ""
+                                 (cond-> path
+                                   (not (str/ends-with? path "/"))
+                                   (str "/"))))) ;; trailing slash is needed to make relative paths work
             (.catch (fn [e] (js/console.error "Fetch failed" e ))))))))
 
 (defn setup-router! [state]
