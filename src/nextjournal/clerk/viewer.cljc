@@ -559,17 +559,16 @@
 (def hide-result-viewer
   {:name `hide-result-viewer :transform-fn (fn [_] nil)})
 
-(defn ->display [{:as cell :keys [settings]}]
+(defn ->visibility [{:as cell :keys [settings]}]
   (let [{:keys [code result]} (:nextjournal.clerk/visibility settings)]
     {:code? (not= :hide code)
-     :fold? (= code :fold)
      :result? (and (:result cell)
                    (or (not= :hide result)
                        (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)))}))
 
-#_(->display {:settings {:nextjournal.clerk/visibility {:code :show :result :show}}})
-#_(->display {:settings {:nextjournal.clerk/visibility {:code :fold :result :show}}})
-#_(->display {:settings {:nextjournal.clerk/visibility {:code :fold :result :hide}}})
+#_(->visibility {:settings {:nextjournal.clerk/visibility {:code :show :result :show}}})
+#_(->visibility {:settings {:nextjournal.clerk/visibility {:code :fold :result :show}}})
+#_(->visibility {:settings {:nextjournal.clerk/visibility {:code :fold :result :hide}}})
 
 (defn process-sidenotes [cell-doc {:keys [footnotes]}]
   (if (seq footnotes)
@@ -620,16 +619,26 @@
 (defn update-if [m k f] (if (k m) (update m k f) m))
 #_(update-if {:n "42"} :n #(Integer/parseInt %))
 
-(defn transform-cell [{:as cell :keys [id]}]
-  (let [{:keys [code? result? fold?]} (->display cell)]
+(defn cell->code-block-viewer [{:as cell :keys [id]}]
+  (with-viewer (if (= :fold (-> cell :settings :nextjournal.clerk/visibility :code))
+                 `folded-code-block-viewer
+                 `code-block-viewer)
+    {:nextjournal/render-opts (-> cell (select-keys [:loc]) (assoc :id (processed-block-id (str id "-code"))))}
+    (dissoc cell ::doc :result)))
+
+(defn cell->result-viewer [cell]
+  (-> cell
+      (update-if :result apply-viewer-unwrapping-var-from-def)
+      (set/rename-keys {:result ::result})
+      ensure-wrapped))
+
+(defn transform-cell [cell]
+  (let [{:keys [code? result?]} (->visibility cell)]
     (cond-> []
       code?
-      (conj (with-viewer (if fold? `folded-code-block-viewer `code-block-viewer)
-              {:nextjournal/render-opts (assoc (select-keys cell [:loc])
-                                               :id (processed-block-id (str id "-code")))}
-              (dissoc cell :result)))
+      (conj (cell->code-block-viewer cell))
       result?
-      (conj (ensure-wrapped (set/rename-keys cell {:result ::result}))))))
+      (conj (cell->result-viewer cell)))))
 
 (def cell-viewer
   {:name `cell-viewer
@@ -649,10 +658,7 @@
                                                    ::doc doc} doc))]))
                         (partition-by (comp #{:image} :type) content)))
 
-    :code [(with-viewer `cell-viewer
-             (-> cell
-                 (assoc ::doc doc)
-                 (update-if :result apply-viewer-unwrapping-var-from-def)))]))
+    :code [(with-viewer `cell-viewer (assoc cell ::doc doc))]))
 
 #_(-> (nextjournal.clerk.eval/eval-string "(ns dang) {:nextjournal.clerk/visibility {:code :hide}} 1")
       nextjournal.clerk.view/doc->viewer

@@ -51,21 +51,33 @@
                      (clerk/html [:blockquote.bg-sky-50.rounded.py-1
                                   (clerk/md (str "## " (ns-name doc-ns) "\n" (:doc (meta doc-ns))))])))})
 
-;; In addition, transform-fns can hook onto the visibility of results to, say, override defaults
-(def even-number-viewer
-  (assoc viewer/number-viewer
-         :transform-fn (fn [{:as wv :nextjournal/keys [value]}]
-                         (cond-> wv (even? value) (assoc-in [:nextjournal/visibility :result] :show)))))
+;; In addition, transform-fns can hook onto the visibility of results to, say, override defaults or make the result of the
+;; ns cell show up
+(def cell-viewer
+  (assoc viewer/cell-viewer
+         :transform-fn (clerk/update-val
+                        (fn [cell]
+                          ;; default visibility check
+                          (let [{:keys [code? result?]} (viewer/->visibility cell)]
+                            (cond-> []
+                              code?
+                              (conj (viewer/cell->code-block-viewer cell))
+                              (or result?
+                                  (:ns? cell)
+                                  (-> cell :result :nextjournal/value (as-> n (when (number? n) (even? n)))))
+                              (conj (viewer/cell->result-viewer cell))))))))
 
-;; given by e.g. a visibility marker
+;; given by e.g. a visibility marker.
 ;;
 ;;    {::clerk/visibility {:result :hide}}
+;;
+;; The number `2` should still be displayed here:
 
-{::clerk/visibility {:result :hide}}
+{::clerk/visibility {:result :hide :code :hide}}
 
 1
 2
 3
 
 ^::clerk/no-cache
-(clerk/add-viewers! [cljc-viewer ns-viewer even-number-viewer])
+(clerk/add-viewers! [cljc-viewer ns-viewer cell-viewer])
