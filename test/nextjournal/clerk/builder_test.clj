@@ -4,7 +4,8 @@
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [matcher-combinators.test]
-            [nextjournal.clerk.builder :as builder])
+            [nextjournal.clerk.builder :as builder]
+            [nextjournal.clerk.viewer :as viewer])
   (:import (clojure.lang ExceptionInfo)
            (java.io File)))
 
@@ -32,11 +33,27 @@
 
 (deftest build-static-app!
   (testing "error when paths are empty (issue #339)"
-    (is (thrown-with-msg? ExceptionInfo #"nothing to build" (builder/build-static-app! {:paths []}))))
-
+    (is (thrown-with-msg? ExceptionInfo #"nothing to build" (builder/build-static-app! {:paths []
+                                                                                        :report-fn identity}))))
   (testing "error when index is of the wrong type"
-    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index 0})))
-    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index "not/existing/notebook.clj"})))))
+    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index 0
+                                                                                    :report-fn identity})))
+    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index "not/existing/notebook.clj"
+                                                                                    :report-fn identity}))))
+  (testing "images are all saved to cas"
+    (is (every? (every-pred string? (partial re-find #"cas-path"))
+                (-> (with-redefs [builder/write-static-app! (fn [_opts state] state)
+                                  viewer/store+get-cas-url! (fn [_opts _content] "cas-path")]
+
+                      (:state (builder/build-static-app! {:paths ["notebooks/viewers/image.clj"]
+                                                          :report-fn identity})))
+                    first
+                    :viewer :nextjournal/value :blocks
+                    (->> (tree-seq coll? seq)
+                         (filter map?)
+                         (keep :nextjournal/presented)
+                         (filter (comp #{`viewer/image-viewer} :name :nextjournal/viewer))
+                         (map :nextjournal/value)))))))
 
 (deftest process-build-opts
   (testing "assigns index when only one path is given"
