@@ -130,7 +130,16 @@
 (def builtin-index
   (io/resource "nextjournal/clerk/index.clj"))
 
-(defn process-build-opts [{:as opts :keys [paths index expand-paths?]}]
+(defn validate-render-router! [{:as opts :keys [render-router bundle?]}]
+  (if bundle?
+    (when (not= render-router :bundle)
+      (throw (ex-info "Incompatible options: `:bundle?` implies `:render-router` is `:bundle`." {:opts opts})))
+    (when (not= render-router :fetch-edn)
+      (throw (ex-info "Only `:fetch-edn` value is currently allowed for the `:render-router` mode. A value of `:bundle` is currently implied by the `:bundle?` option." {:opts opts})))))
+
+(defn process-build-opts [{:as opts :keys [paths index expand-paths? render-router bundle?]}]
+  (when render-router
+    (validate-render-router! opts))
   (merge {:out-path default-out-path
           :bundle? false
           :browse? false
@@ -142,6 +151,8 @@
            (-> opts'
                (update :resource->url #(merge {} %2 %1) @config/!resource->url)
                (cond-> #_opts'
+                 (and bundle? (not render-router))
+                 (assoc :render-router :bundle)
                  expand-paths?
                  (dissoc :expand-paths?)
                  (and (not index) (< 1 (count expanded-paths)) (every? (complement viewer/index-path?) expanded-paths))
@@ -181,11 +192,11 @@
 
 (defn cleanup [build-opts]
   (select-keys build-opts
-               [:bundle? :path->doc :current-path :resource->url :exclude-js? :index :html]))
+               [:bundle? :render-router :path->doc :current-path :resource->url :exclude-js? :index :html]))
 
 (defn write-static-app!
   [opts docs]
-  (let [{:keys [bundle? out-path browse? ssr?]} opts
+  (let [{:keys [bundle? render-router out-path browse? ssr?]} opts
         index-html (str out-path fs/file-separator "index.html")
         {:as static-app-opts :keys [path->doc]} (build-static-app-opts opts docs)]
     (when-not (contains? (set (keys path->doc)) "")
@@ -197,6 +208,9 @@
       (doseq [[path doc] path->doc]
         (let [out-html (fs/file out-path path "index.html")]
           (fs/create-dirs (fs/parent out-html))
+          (when (= :fetch-edn render-router)
+            (spit (fs/file out-path (str (or (not-empty path) "index") ".edn"))
+                  (viewer/->edn doc)))
           (spit out-html (view/->html (-> static-app-opts
                                           (assoc :path->doc (hash-map path doc) :current-path path)
                                           (cond-> ssr? ssr!)
@@ -290,6 +304,7 @@
                                                                             viewer/doc-url (partial doc-url opts file)]
                                                                     (let [doc (eval/eval-analyzed-doc doc)]
                                                                       (assoc doc :viewer (view/doc->viewer (assoc opts
+                                                                                                                  :static-build? true
                                                                                                                   :nav-path (if (instance? java.net.URL file)
                                                                                                                               (str "'" (:ns doc))
                                                                                                                               (str file)))
@@ -326,6 +341,15 @@
   (build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
   (reset! config/!resource->url @config/!asset-map)
   (swap! config/!resource->url dissoc "/css/viewer.css")
+
+  (build-static-app! {:bundle? true
+                      :render-router :bundle
+                      :browse true
+                      :index "notebooks/rule_30.clj"})
+
+  (build-static-app! {:render-router :fetch-edn
+                      :index "notebooks/document_linking.clj"
+                      :paths ["notebooks/viewers/html.clj" "notebooks/rule_30.clj"]})
 
   (build-static-app! {:ssr? true
                       :exclude-js? true

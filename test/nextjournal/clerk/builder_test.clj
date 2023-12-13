@@ -32,11 +32,19 @@
 
 (deftest build-static-app!
   (testing "error when paths are empty (issue #339)"
-    (is (thrown-with-msg? ExceptionInfo #"nothing to build" (builder/build-static-app! {:paths []}))))
-
+    (is (thrown-with-msg? ExceptionInfo #"nothing to build" (builder/build-static-app! {:paths []
+                                                                                        :report-fn identity}))))
   (testing "error when index is of the wrong type"
-    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index 0})))
-    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index "not/existing/notebook.clj"})))))
+    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index 0
+                                                                                    :report-fn identity})))
+    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index "not/existing/notebook.clj"
+                                                                                    :report-fn identity}))))
+  (testing "image is saved to _data dir"
+    (is (fs/with-temp-dir [temp-dir {}]
+          (builder/build-static-app! {:index "notebooks/viewers/single_image.clj"
+                                      :out-path temp-dir
+                                      :report-fn identity})
+          (first (map fs/file-name (fs/list-dir (fs/file temp-dir "_data") "**.png")))))))
 
 (deftest process-build-opts
   (testing "assigns index when only one path is given"
@@ -44,8 +52,13 @@
            (:index (builder/process-build-opts {:paths ["notebooks/rule_30.clj"] :expand-paths? true})))))
 
   (testing "coerces index symbol arg and adds it to expanded-paths"
-    (is (= ["book.clj"] (:expanded-paths (builder/process-build-opts {:index 'book.clj :expand-paths? true}))))))
+    (is (= ["book.clj"] (:expanded-paths (builder/process-build-opts {:index 'book.clj :expand-paths? true})))))
 
+  (testing "conform render-router options"
+    (is (= :bundle (:render-router (builder/process-build-opts {:bundle? true}))))
+    (is (= :fetch-edn (:render-router (builder/process-build-opts {:render-router :fetch-edn}))))
+    (is (thrown? clojure.lang.ExceptionInfo (builder/process-build-opts {:bundle? true :render-router :fetch-edn})))
+    (is (thrown? clojure.lang.ExceptionInfo (builder/process-build-opts {:render-router :foo})))))
 
 (deftest doc-url
   (testing "link to same dir unbundled"

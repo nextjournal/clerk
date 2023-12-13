@@ -41,6 +41,8 @@ Changes can be:
 
 * 🐞 Fix long sidenotes overlapping with subsequent content, fixes [#564](https://github.com/nextjournal/clerk/issues/564) @hlship
 
+* 🐞 Fix image embedding regression in static build introduced in 424bf35040a266f71d00d8a581ba7cdfcfcd4a75
+
 * 🐞  Swallow git errors in shell-out-str instead of printing them to stdout/err
 
 ## 0.15.957 (2023-09-28)
