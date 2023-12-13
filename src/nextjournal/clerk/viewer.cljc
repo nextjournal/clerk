@@ -614,9 +614,8 @@
 (defn update-if [m k f] (if (k m) (update m k f) m))
 #_(update-if {:n "42"} :n #(Integer/parseInt %))
 
-(defn transform-cell [{:as cell :keys [id result]}]
-  (let [cell (update-if cell :result apply-viewer-unwrapping-var-from-def)
-        {:keys [code? result? fold?]} (->display cell)
+(defn transform-cell [{:as cell :keys [id]}]
+  (let [{:keys [code? result? fold?]} (->display cell)
         eval? (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)]
     (cond-> []
       code?
@@ -647,7 +646,10 @@
                                                    ::doc doc} doc))]))
                         (partition-by (comp #{:image} :type) content)))
 
-    :code [(with-viewer `cell-viewer (assoc cell ::doc doc))]))
+    :code [(with-viewer `cell-viewer
+             (-> cell
+                 (assoc ::doc doc)
+                 (update-if :result apply-viewer-unwrapping-var-from-def)))]))
 
 #_(-> (nextjournal.clerk.eval/eval-string "(ns dang) {:nextjournal.clerk/visibility {:code :hide}} 1")
       nextjournal.clerk.view/doc->viewer
