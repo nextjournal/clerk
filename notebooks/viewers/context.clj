@@ -45,14 +45,13 @@
 ;; Or build a viewer which will display the namespace's name and docs:
 
 (def ns-viewer
-  {:pred {:wrapped (fn [{:keys [ns?]}] ns?)}
+  {:pred {:wrapped :ns?}
    :transform-fn (fn [{:as wv :keys [form]}]
                    (let [doc-ns (find-ns (second form))]
                      (clerk/html [:blockquote.bg-sky-50.rounded.py-1
                                   (clerk/md (str "## " (ns-name doc-ns) "\n" (:doc (meta doc-ns))))])))})
 
-;; In addition, transform-fns can hook onto the visibility of results to, say, override defaults or make the result of the
-;; ns cell show up
+;; In addition, by customizing the cell viewer we might override visibility defaults
 (def cell-viewer
   (update viewer/cell-viewer
           :transform-fn comp
