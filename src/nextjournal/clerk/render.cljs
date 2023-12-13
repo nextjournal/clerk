@@ -770,16 +770,17 @@
     (doseq [listener (:listeners @!router)]
       (gevents/unlistenByKey listener))
     (reset! !router
-            (assoc state :listeners
-                   (case render-router
-                     :bundle
-                     [(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)]
-                     :fetch-edn
-                     [(gevents/listen js/document gevents/EventType.CLICK click->xhr-request false)]
-                     :serve
-                     [(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
-                      (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
-                      (gevents/listen js/window gevents/EventType.LOAD handle-initial-load false)])))))
+            (when render-router
+              (assoc state :listeners
+                     (case render-router
+                       :bundle
+                       [(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)]
+                       :fetch-edn
+                       [(gevents/listen js/document gevents/EventType.CLICK click->xhr-request false)]
+                       :serve
+                       [(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
+                        (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
+                        (gevents/listen js/window gevents/EventType.LOAD handle-initial-load false)]))))))
 
 
 (defn ^:export mount []
@@ -790,8 +791,8 @@
   (swap! !doc re-eval-viewer-fns)
   (mount))
 
-(defn ^:export init [{:as state :keys [bundle? path->doc render-router current-path]}]
-  (when render-router (setup-router! state))
+(defn ^:export init [{:as state :keys [bundle? path->doc current-path]}]
+  (setup-router! state)
   (set-state! (if (static-app? state)
                 {:doc (get path->doc (or (if bundle?
                                            (path-from-url-hash (->URL (.-href js/location)))
