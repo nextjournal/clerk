@@ -32,11 +32,19 @@
 
 (deftest build-static-app!
   (testing "error when paths are empty (issue #339)"
-    (is (thrown-with-msg? ExceptionInfo #"nothing to build" (builder/build-static-app! {:paths []}))))
-
+    (is (thrown-with-msg? ExceptionInfo #"nothing to build" (builder/build-static-app! {:paths []
+                                                                                        :report-fn identity}))))
   (testing "error when index is of the wrong type"
-    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index 0})))
-    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index "not/existing/notebook.clj"})))))
+    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index 0
+                                                                                    :report-fn identity})))
+    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index "not/existing/notebook.clj"
+                                                                                    :report-fn identity}))))
+  (testing "image is saved to _data dir"
+    (is (fs/with-temp-dir [temp-dir {}]
+          (builder/build-static-app! {:index "notebooks/viewers/single_image.clj"
+                                      :out-path temp-dir
+                                      :report-fn identity})
+          (first (map fs/file-name (fs/list-dir (fs/file temp-dir "_data") "**.png")))))))
 
 (deftest process-build-opts
   (testing "assigns index when only one path is given"
