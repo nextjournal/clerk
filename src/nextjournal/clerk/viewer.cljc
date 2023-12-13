@@ -542,6 +542,10 @@
                                      viewer-eval-result?
                                      (assoc ::viewer-eval-form (-> presented-result :nextjournal/value :form))
 
+                                     (and viewer-eval-result?
+                                          (= :hide (-> cell :settings :nextjournal.clerk/visibility :result)))
+                                     (assoc-in [:nextjournal/presented :nextjournal/viewer :render-fn :form] '(fn [_ _] [:<>]))
+
                                      (-> form meta :nextjournal.clerk/open-graph :image)
                                      (assoc :nextjournal/open-graph-image-capture true)
 
@@ -555,9 +559,10 @@
 (def hide-result-viewer
   {:name `hide-result-viewer :transform-fn (fn [_] nil)})
 
-(defn ->display [{:as code-cell :keys [result settings]}]
+(defn ->display [{:as cell :keys [settings]}]
   (let [{:keys [code result]} (:nextjournal.clerk/visibility settings)]
-    {:result? (not= :hide result)
+    {:result? (or (not= :hide result)
+                  (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?))
      :fold? (= code :fold)
      :code? (not= :hide code)}))
 
@@ -615,18 +620,15 @@
 #_(update-if {:n "42"} :n #(Integer/parseInt %))
 
 (defn transform-cell [{:as cell :keys [id]}]
-  (let [{:keys [code? result? fold?]} (->display cell)
-        eval? (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)]
+  (let [{:keys [code? result? fold?]} (->display cell)]
     (cond-> []
       code?
       (conj (with-viewer (if fold? `folded-code-block-viewer `code-block-viewer)
               {:nextjournal/render-opts (assoc (select-keys cell [:loc])
                                                :id (processed-block-id (str id "-code")))}
               (dissoc cell :result)))
-      (and (:result cell) (or result? eval?))
-      (conj (cond-> (ensure-wrapped (set/rename-keys cell {:result ::result}))
-              (and eval? (not result?))
-              (assoc :nextjournal/viewer (assoc result-viewer :render-fn '(fn [_] [:<>]))))))))
+      (and (:result cell) result?)
+      (conj (ensure-wrapped (set/rename-keys cell {:result ::result}))))))
 
 (def cell-viewer
   {:name `cell-viewer
