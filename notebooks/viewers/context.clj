@@ -57,10 +57,10 @@
           :transform-fn comp
           (clerk/update-val (fn [cell]
                               (update-in cell [:settings ::clerk/visibility :result]
-                                         #(or (#{:show} %)
-                                              (if (or (:ns? cell) (-> cell :result :nextjournal/value (as-> n (when (number? n) (even? n)))))
-                                                :show
-                                                :hide)))))))
+                                         #(if (or (:ns? cell)
+                                                  (-> cell :result :nextjournal/value (as-> n (when (number? n) (even? n)))))
+                                            :show
+                                            %))))))
 
 ;; given by e.g. a visibility marker.
 ;;
