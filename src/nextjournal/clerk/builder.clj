@@ -129,18 +129,20 @@
 (def builtin-index
   (io/resource "nextjournal/clerk/index.clj"))
 
+(defn validate-render-router! [{:as opts :keys [render-router bundle?]}]
+  (if bundle?
+    (when (not= render-router :bundle)
+      (throw (ex-info "Incompatible options: `:bundle?` implies `:render-router` is `:bundle`." {:opts opts})))
+    (when (not= render-router :fetch-edn)
+      (throw (ex-info "Only `:fetch-edn` value is currently allowed for the `:render-router` mode. A value of `:bundle` is currently implied by the `:bundle?` option." {:opts opts})))))
+
 (defn process-build-opts [{:as opts :keys [paths index expand-paths? render-router bundle?]}]
+  (when render-router
+    (validate-render-router! opts))
   (merge {:out-path default-out-path
           :bundle? false
           :browse? false
           :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
-         (when (or render-router bundle?)
-           ;; TODO: deprecate `:bundle?` option in favour of `:render-router`
-           (when (and bundle? render-router (not= :bundle render-router))
-             (throw (ex-info "Incompatible options: `:bundle?` implies `:render-router` is `:bundle`." {:opts opts})))
-           (when (and render-router (not= :fetch-edn render-router))
-             (throw (ex-info "Only `:fetch-edn` value is currently allowed for the `:render-router` mode. A value of `:bundle` is currently implied by the `:bundle?` option." {:opts opts})))
-           {:render-router (or (when bundle? :bundle) render-router)})
          (let [opts+index (cond-> opts
                             index (assoc :index (str index)))
                {:as opts' :keys [expanded-paths]} (cond-> opts+index
@@ -148,6 +150,8 @@
            (-> opts'
                (update :resource->url #(merge {} %2 %1) @config/!resource->url)
                (cond-> #_opts'
+                 (and bundle? (not render-router))
+                 (assoc :render-router :bundle)
                  expand-paths?
                  (dissoc :expand-paths?)
                  (and (not index) (< 1 (count expanded-paths)) (every? (complement viewer/index-path?) expanded-paths))
@@ -336,6 +340,15 @@
   (build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
   (reset! config/!resource->url @config/!asset-map)
   (swap! config/!resource->url dissoc "/css/viewer.css")
+
+  (build-static-app! {:bundle? true
+                      :render-router :bundle
+                      :browse true
+                      :index "notebooks/rule_30.clj"})
+
+  (build-static-app! {:render-router :fetch-edn
+                      :index "notebooks/document_linking.clj"
+                      :paths ["notebooks/viewers/html.clj" "notebooks/rule_30.clj"]})
 
   (build-static-app! {:ssr? true
                       :exclude-js? true
