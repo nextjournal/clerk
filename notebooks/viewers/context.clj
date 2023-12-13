@@ -54,18 +54,14 @@
 ;; In addition, transform-fns can hook onto the visibility of results to, say, override defaults or make the result of the
 ;; ns cell show up
 (def cell-viewer
-  (assoc viewer/cell-viewer
-         :transform-fn (clerk/update-val
-                        (fn [cell]
-                          ;; default visibility check
-                          (let [{:keys [code? result?]} (viewer/->visibility cell)]
-                            (cond-> []
-                              code?
-                              (conj (viewer/cell->code-block-viewer cell))
-                              (or result?
-                                  (:ns? cell)
-                                  (-> cell :result :nextjournal/value (as-> n (when (number? n) (even? n)))))
-                              (conj (viewer/cell->result-viewer cell))))))))
+  (update viewer/cell-viewer
+          :transform-fn comp
+          (clerk/update-val (fn [cell]
+                              (update-in cell [:settings ::clerk/visibility :result]
+                                         #(or (#{:show} %)
+                                              (if (or (:ns? cell) (-> cell :result :nextjournal/value (as-> n (when (number? n) (even? n)))))
+                                                :show
+                                                :hide)))))))
 
 ;; given by e.g. a visibility marker.
 ;;
