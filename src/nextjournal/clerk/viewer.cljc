@@ -660,11 +660,6 @@
 
     :code [(with-viewer `cell-viewer (assoc cell ::doc doc))]))
 
-#_(-> (nextjournal.clerk.eval/eval-string "(ns dang) {:nextjournal.clerk/visibility {:code :hide}} 1")
-      nextjournal.clerk.view/doc->viewer
-      ->value :blocks)
-
-
 #_(:blocks (:nextjournal/value (nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)))
 
 #_(nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)
