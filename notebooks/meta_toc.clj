@@ -3,6 +3,7 @@
   {:nextjournal.clerk/toc true}
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.parser :as parser]
+            [nextjournal.clerk.viewer :as viewer]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.clerk.viewer :as v]))
 
@@ -41,7 +42,10 @@
                                 (assoc-in [:nextjournal/value :toc]
                                           (meta-toc (:file (v/->value wrapped-value)) notebooks)))))))
 
-#_(clerk/add-viewers! [book-viewer])
-
-;; Test actual cross-doc toc
 (clerk/add-viewers! [book-viewer])
+
+(comment
+  ;; Test actual cross-doc toc
+  (viewer/reset-viewers! :default (viewer/add-viewers [book-viewer]))
+  (viewer/reset-viewers! :default (viewer/get-default-viewers))
+  (clerk/build! {:render-router :fetch-edn :paths notebooks}))

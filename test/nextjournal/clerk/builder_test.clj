@@ -52,8 +52,13 @@
            (:index (builder/process-build-opts {:paths ["notebooks/rule_30.clj"] :expand-paths? true})))))
 
   (testing "coerces index symbol arg and adds it to expanded-paths"
-    (is (= ["book.clj"] (:expanded-paths (builder/process-build-opts {:index 'book.clj :expand-paths? true}))))))
+    (is (= ["book.clj"] (:expanded-paths (builder/process-build-opts {:index 'book.clj :expand-paths? true})))))
 
+  (testing "conform render-router options"
+    (is (= :bundle (:render-router (builder/process-build-opts {:bundle? true}))))
+    (is (= :fetch-edn (:render-router (builder/process-build-opts {:render-router :fetch-edn}))))
+    (is (thrown? clojure.lang.ExceptionInfo (builder/process-build-opts {:bundle? true :render-router :fetch-edn})))
+    (is (thrown? clojure.lang.ExceptionInfo (builder/process-build-opts {:render-router :foo})))))
 
 (deftest doc-url
   (testing "link to same dir unbundled"
