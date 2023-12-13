@@ -7,6 +7,7 @@
             [nextjournal.clerk.builder :as builder]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.eval :as eval]
+            [nextjournal.clerk.eval-test :as eval-test]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]))
 
@@ -86,7 +87,7 @@
 (deftest default-viewers
   (testing "viewers have names matching vars"
     (doseq [[viewer-name viewer] (into {}
-                                       (map (juxt :name (comp deref resolve :name))) 
+                                       (map (juxt :name (comp deref resolve :name)))
                                        v/default-viewers)]
       (is (= viewer-name (:name viewer))))))
 
@@ -286,43 +287,43 @@
 
   (testing "Setting custom options on results via metadata"
     (is (= :full
-           (-> (eval/eval-string "^{:nextjournal.clerk/width :full} (nextjournal.clerk/html [:div])")
-               view/doc->viewer v/->value :blocks second
-               v/->value :nextjournal/presented :nextjournal/width)))
+           (-> (eval-test/eval+extract-doc-blocks "^{:nextjournal.clerk/width :full} (nextjournal.clerk/html [:div])")
+               second v/->value :nextjournal/presented :nextjournal/width)))
+
     (is (= [:rounded :bg-indigo-600 :font-bold]
-           (-> (eval/eval-string "^{:nextjournal.clerk/css-class [:rounded :bg-indigo-600 :font-bold]} (nextjournal.clerk/table [[1 2][3 4]])")
-               view/doc->viewer v/->value :blocks second
+           (-> (eval-test/eval+extract-doc-blocks "^{:nextjournal.clerk/css-class [:rounded :bg-indigo-600 :font-bold]} (nextjournal.clerk/table [[1 2][3 4]])")
+               second
                v/->value :nextjournal/presented :nextjournal/css-class))))
 
   (testing "Setting custom options on results via viewer API"
     (is (= :full
-           (-> (eval/eval-string "(nextjournal.clerk/html {:nextjournal.clerk/width :full} [:div])")
-               view/doc->viewer v/->value :blocks second
+           (-> (eval-test/eval+extract-doc-blocks "(nextjournal.clerk/html {:nextjournal.clerk/width :full} [:div])")
+               second
                v/->value :nextjournal/presented :nextjournal/width)))
     (is (= [:rounded :bg-indigo-600 :font-bold]
-           (-> (eval/eval-string "(nextjournal.clerk/table {:nextjournal.clerk/css-class [:rounded :bg-indigo-600 :font-bold]} [[1 2][3 4]])")
-               view/doc->viewer v/->value :blocks second
+           (-> (eval-test/eval+extract-doc-blocks "(nextjournal.clerk/table {:nextjournal.clerk/css-class [:rounded :bg-indigo-600 :font-bold]} [[1 2][3 4]])")
+               second
                v/->value :nextjournal/presented :nextjournal/css-class))))
 
   (testing "Settings propagation from ns to form"
     (is (= :full
-           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) (nextjournal.clerk/html [:div])")
-               view/doc->viewer v/->value :blocks (nth 2)
+           (-> (eval-test/eval+extract-doc-blocks "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) (nextjournal.clerk/html [:div])")
+               (nth 2)
                v/->value :nextjournal/presented :nextjournal/width)))
 
     (is (= :wide
-           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) (nextjournal.clerk/html {:nextjournal.clerk/width :wide} [:div])")
-               view/doc->viewer v/->value :blocks (nth 2)
+           (-> (eval-test/eval+extract-doc-blocks "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) (nextjournal.clerk/html {:nextjournal.clerk/width :wide} [:div])")
+               (nth 2)
                v/->value :nextjournal/presented :nextjournal/width)))
 
     (is (= :wide
-           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) ^{:nextjournal.clerk/width :wide} (nextjournal.clerk/html [:div])")
-               view/doc->viewer v/->value :blocks (nth 2)
+           (-> (eval-test/eval+extract-doc-blocks "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) ^{:nextjournal.clerk/width :wide} (nextjournal.clerk/html [:div])")
+               (nth 2)
                v/->value :nextjournal/presented :nextjournal/width)))
 
     (is (= :wide
-           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) {:nextjournal.clerk/width :wide} (nextjournal.clerk/html [:div])")
-               view/doc->viewer v/->value :blocks (nth 2)
+           (-> (eval-test/eval+extract-doc-blocks "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) {:nextjournal.clerk/width :wide} (nextjournal.clerk/html [:div])")
+               (nth 2)
                v/->value :nextjournal/presented :nextjournal/width))))
 
   (testing "Presented doc (with fragments) has unambiguous ids assigned to results"
@@ -401,9 +402,8 @@
 
 (deftest removed-metadata
   (is (= "(do 'this)"
-         (-> (eval/eval-string "(ns test.removed-metadata\n(:require [nextjournal.clerk :as c]))\n\n^::c/no-cache (do 'this)")
-             view/doc->viewer
-             v/->value :blocks second v/->value))))
+         (-> (eval-test/eval+extract-doc-blocks "(ns test.removed-metadata\n(:require [nextjournal.clerk :as c]))\n\n^::c/no-cache (do 'this)")
+             second v/->value))))
 
 (deftest col-viewer-map-args
   (testing "extracts first arg as viewer-opts"

@@ -142,7 +142,8 @@
       eval/eval-string
       view/doc->viewer
       :nextjournal/value
-      :blocks))
+      :blocks
+      (->> (mapcat :nextjournal/value))))
 
 (deftest eval-string+doc->viewer
   (testing "assigns correct width from viewer function opts"
