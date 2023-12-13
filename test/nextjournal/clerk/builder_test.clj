@@ -4,8 +4,7 @@
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [matcher-combinators.test]
-            [nextjournal.clerk.builder :as builder]
-            [nextjournal.clerk.viewer :as viewer])
+            [nextjournal.clerk.builder :as builder])
   (:import (clojure.lang ExceptionInfo)
            (java.io File)))
 
