@@ -531,13 +531,11 @@
                                      (fn [{:as opts existing-id :id}]
                                        (cond-> opts
                                          auto-expand-results? (assoc :auto-expand-results? auto-expand-results?)
-                                         (seq path) (assoc :fragment-item? true)
+                                         (< 1 (count path)) (assoc :fragment-item? true)
                                          (not existing-id) (assoc :id (processed-block-id (str id "-result") path)))))
                              #?(:clj (->> (process-blobs blob-opts))))
         viewer-eval-result? (-> presented-result :nextjournal/value viewer-eval?)]
     #_(prn :presented-result viewer-eval? presented-result)
-    ;; TODO: adjust path for fragment-item?
-    (when (seq path) (prn :path path))
     (-> wrapped-value
         mark-presented
         (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result :nextjournal/blob-id blob-id}
@@ -620,7 +618,6 @@
   (let [cell (update-if cell :result apply-viewer-unwrapping-var-from-def)
         {:keys [code? result? fold?]} (->display cell)
         eval? (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)]
-    (prn :cell (keys cell))
     (cond-> []
       code?
       (conj (with-viewer (if fold? `folded-code-block-viewer `code-block-viewer)
