@@ -561,10 +561,11 @@
 
 (defn ->display [{:as cell :keys [settings]}]
   (let [{:keys [code result]} (:nextjournal.clerk/visibility settings)]
-    {:result? (or (not= :hide result)
-                  (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?))
+    {:code? (not= :hide code)
      :fold? (= code :fold)
-     :code? (not= :hide code)}))
+     :result? (and (:result cell)
+                   (or (not= :hide result)
+                       (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)))}))
 
 #_(->display {:settings {:nextjournal.clerk/visibility {:code :show :result :show}}})
 #_(->display {:settings {:nextjournal.clerk/visibility {:code :fold :result :show}}})
@@ -627,7 +628,7 @@
               {:nextjournal/render-opts (assoc (select-keys cell [:loc])
                                                :id (processed-block-id (str id "-code")))}
               (dissoc cell :result)))
-      (and (:result cell) result?)
+      result?
       (conj (ensure-wrapped (set/rename-keys cell {:result ::result}))))))
 
 (def cell-viewer
