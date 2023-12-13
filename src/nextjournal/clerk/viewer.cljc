@@ -1202,7 +1202,7 @@
            [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
             {:href "https://clerk.vision"} "Clerk"]
            (let [default-index? (= 'nextjournal.clerk.index (some-> ns ns-name))]
-             (when (or file-path default-index?)
+             (when (or file-path default-index? url)
                [:<>
                 " from "
                 [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
