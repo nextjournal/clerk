@@ -40,20 +40,12 @@
                                                                                     :report-fn identity})))
     (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index "not/existing/notebook.clj"
                                                                                     :report-fn identity}))))
-  (testing "images are all saved to cas"
-    (is (every? (every-pred string? (partial re-find #"cas-path"))
-                (-> (with-redefs [builder/write-static-app! (fn [_opts state] state)
-                                  viewer/store+get-cas-url! (fn [_opts _content] "cas-path")]
-
-                      (:state (builder/build-static-app! {:paths ["notebooks/viewers/image.clj"]
-                                                          :report-fn identity})))
-                    first
-                    :viewer :nextjournal/value :blocks
-                    (->> (tree-seq coll? seq)
-                         (filter map?)
-                         (keep :nextjournal/presented)
-                         (filter (comp #{`viewer/image-viewer} :name :nextjournal/viewer))
-                         (map :nextjournal/value)))))))
+  (testing "image is saved to _data dir"
+    (is (fs/with-temp-dir [temp-dir {}]
+          (builder/build-static-app! {:index "notebooks/viewers/single_image.clj"
+                                      :out-path temp-dir
+                                      :report-fn identity})
+          (first (map fs/file-name (fs/list-dir (fs/file temp-dir "_data") "**.png")))))))
 
 (deftest process-build-opts
   (testing "assigns index when only one path is given"
