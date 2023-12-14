@@ -462,7 +462,6 @@
                    (store+get-cas-url! (assoc doc+blob-opts :ext image-type) value)))
        result)))
 
-#_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" "notebooks/image.clj" "notebooks/viewers/image.clj"] :bundle? false :browse? false})
 #_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" "notebooks/image.clj" "notebooks/viewers/image.clj"] :browse? false})
 
 #?(:clj
@@ -512,11 +511,11 @@
 
 (defn transform-result [{:as wrapped-value :keys [path]}]
   (let [{:as _cell :keys [form id settings] ::keys [result doc]} (:nextjournal/value wrapped-value)
-        {:keys [static-build? bundle?]} doc
+        {:keys [static-build? package]} doc
         {:nextjournal/keys [value blob-id viewers]} result
         blob-mode (cond
                     (and (not static-build?) blob-id) :lazy-load
-                    bundle? :inline ;; TODO: provide a separte setting for this
+                    (= :single-file package) :inline ;; TODO: provide a separte setting for this
                     :else :file)
         #?(:clj blob-opts :cljs _) (assoc doc :blob-mode blob-mode :blob-id blob-id)
         opts-from-block (-> settings
@@ -569,14 +568,14 @@
     (md.parser/insert-sidenote-containers (assoc cell-doc :footnotes footnotes))
     cell-doc))
 
-(defn process-image-source [src {:as doc :keys [file bundle?]}]
+(defn process-image-source [src {:as doc :keys [file package]}]
   #?(:cljs src
      :clj  (cond
              (not (fs/exists? src)) src
-             (false? bundle?) (str (relative-root-prefix-from (map-index doc file))
-                                   (store+get-cas-url! (assoc doc :ext (fs/extension src))
-                                                       (fs/read-all-bytes src)))
-             bundle? (data-uri-base64-encode (fs/read-all-bytes src) (Files/probeContentType (fs/path src)))
+             (= :directory package) (str (relative-root-prefix-from (map-index doc file))
+                                         (store+get-cas-url! (assoc doc :ext (fs/extension src))
+                                                             (fs/read-all-bytes src)))
+             (= :single-file package) (data-uri-base64-encode (fs/read-all-bytes src) (Files/probeContentType (fs/path src)))
              :else (str "/_fs/" src))))
 
 #?(:clj
@@ -1216,7 +1215,7 @@
       (update :file str)
 
       (select-keys [:atom-var-name->state
-                    :blocks :bundle?
+                    :blocks :package
                     :doc-css-class
                     :error
                     :file

@@ -107,12 +107,12 @@
 
 (declare clerk-eval)
 
-(defn render-notebook [{:as doc xs :blocks :keys [bundle? doc-css-class sidenotes? toc toc-visibility header footer]}
+(defn render-notebook [{:as doc xs :blocks :keys [package doc-css-class sidenotes? toc toc-visibility header footer]}
                        {:as render-opts :keys [!expanded-at expandable-toc?]}]
   (r/with-let [root-ref-fn (fn [el]
                              (when (and el (exists? js/document))
                                (code/setup-dark-mode!)
-                               (when-some [heading (when (and (exists? js/location) (not bundle?))
+                               (when-some [heading (when (and (exists? js/location) (= :directory package))
                                                      (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
                                                           (catch js/Error _
                                                             (js/console.warn (str "Clerk render-notebook, invalid hash: "
@@ -124,7 +124,7 @@
      [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
       [dark-mode-toggle]]
      (when (and toc toc-visibility)
-       [navbar/view toc (assoc render-opts :set-hash? (not bundle?) :toc-visibility toc-visibility)])
+       [navbar/view toc (assoc render-opts :set-hash? (= :directory package) :toc-visibility toc-visibility)])
      [:div.flex-auto.w-screen.scroll-container
       (into
        [:> (.-div motion)
@@ -791,10 +791,10 @@
   (swap! !doc re-eval-viewer-fns)
   (mount))
 
-(defn ^:export init [{:as state :keys [bundle? path->doc current-path]}]
+(defn ^:export init [{:as state :keys [package path->doc current-path]}]
   (setup-router! state)
   (set-state! (if (static-app? state)
-                {:doc (get path->doc (or (if bundle?
+                {:doc (get path->doc (or (if (= :single-file package)
                                            (path-from-url-hash (->URL (.-href js/location)))
                                            current-path)
                                          ""))}
