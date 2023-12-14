@@ -275,7 +275,6 @@
                                    #"data:image/png;base64")))
 
       (is (not-empty (tree-re-find (view/doc->viewer {:static-build? true
-                                                      :bundle? false
                                                       :out-path builder/default-out-path} test-doc)
                                    #"_data/.+\.png")))))
 
