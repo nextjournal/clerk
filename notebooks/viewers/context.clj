@@ -2,11 +2,9 @@
 
 (ns viewers.context
   "Or how viewer API functions learn to take advantage of the document context"
-  {:nextjournal.clerk/visibility {:code :hide}}
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as viewer]))
 
-{::clerk/visibility {:code :show}}
 ;; A viewer's `:pred` function can perform viewer selection based on a value.
 
 ;; It would sometimes be useful to have more context available. Examples of this are:
@@ -21,6 +19,7 @@
 (def cljc-viewer
   {:pred {:wrapped (fn [{:keys [form]}]
                      (contains? (meta form) :cljc))}
+
    :transform-fn (fn [{:keys [form]}]
                    (clerk/eval-cljs form))})
 
@@ -51,28 +50,23 @@
                      (clerk/html [:blockquote.bg-sky-50.rounded.py-1
                                   (clerk/md (str "## " (ns-name doc-ns) "\n" (:doc (meta doc-ns))))])))})
 
-;; In addition, by customizing the cell viewer we might override visibility defaults
-(def cell-viewer
+;; By customizing the cell viewer we might override visibility at runtime: in this example we're
+;; - hiding all forms holding a defn (except the `^:cljc` ones)
+;; - showing the namespace result (which is hidden by default otherwise)
+
+(defn defn? [cell]
+  (and (not (:cljc (meta (:form cell))))
+       (some-> cell :result :nextjournal/value ::clerk/var-from-def deref fn?)))
+
+(def custom-cell-viewer
   (update viewer/cell-viewer
           :transform-fn comp
           (clerk/update-val (fn [cell]
-                              (update-in cell [:settings ::clerk/visibility :result]
-                                         #(if (or (:ns? cell)
-                                                  (-> cell :result :nextjournal/value (as-> n (when (number? n) (even? n)))))
-                                            :show
-                                            %))))))
+                              (update-in cell [:settings ::clerk/visibility]
+                                         #(cond
+                                            (:ns? cell) {:code :hide :result :show}
+                                            (defn? cell) {:code :hide :result :hide}
+                                            'else %))))))
 
-;; given by e.g. a visibility marker.
-;;
-;;    {::clerk/visibility {:result :hide}}
-;;
-;; The number `2` should still be displayed here:
-
-{::clerk/visibility {:result :hide :code :hide}}
-
-1
-2
-3
-
-^::clerk/no-cache
-(clerk/add-viewers! [cljc-viewer ns-viewer cell-viewer])
+^{::clerk/visibility {:result :hide} ::clerk/no-cache true}
+(clerk/add-viewers! [cljc-viewer ns-viewer custom-cell-viewer])
