@@ -417,7 +417,7 @@
 
 (defn deprecate+migrate-opts [{:as opts :keys [bundle?]}]
   (when (contains? opts :bundle?)
-    (println "The `:bundle(?)` option is deprecated and will be dropped in 1.0.0. Use `:package :single-file` instead."))
+    (println "\nThe `:bundle(?)` option is deprecated and will be dropped in 1.0.0. Use `:package :single-file` instead.\n"))
   (-> opts (dissoc :bundle?)
       (cond-> bundle?
         (assoc :package :single-page))))
