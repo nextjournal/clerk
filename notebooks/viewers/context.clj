@@ -50,7 +50,7 @@
                      (clerk/html [:blockquote.bg-sky-50.rounded.py-1
                                   (clerk/md (str "## " (ns-name doc-ns) "\n" (:doc (meta doc-ns))))])))})
 
-;; By customizing the cell viewer we might override visibility at runtime: in this example we're
+;; By customizing the cell viewer we might override visibility at presentation time: in this example we're
 ;; - hiding all forms holding a defn (except the `^:cljc` ones)
 ;; - showing the namespace result (which is hidden by default otherwise)
 
