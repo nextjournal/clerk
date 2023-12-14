@@ -415,9 +415,17 @@
     (beholder/stop watcher)
     (reset! !watcher nil)))
 
+(defn deprecate+migrate-opts [{:as opts :keys [bundle?]}]
+  (when (contains? opts :bundle?)
+    (println "The `:bundle(?)` option is deprecated and will be dropped in 1.0.0. Use `:package :single-file` instead."))
+  (-> opts (dissoc :bundle?)
+      (cond-> bundle?
+        (assoc :package :single-page))))
+
 (defn ^:private normalize-opts [opts]
-  (set/rename-keys opts #_(into {} (map (juxt identity #(keyword (str (name %) "?")))) [:bundle :browse :dashboard])
-                   {:bundle :bundle?, :browse :browse?, :dashboard :dashboard? :compile-css :compile-css? :ssr :ssr? :exclude-js :exclude-js?}))
+  (deprecate+migrate-opts
+   (set/rename-keys opts #_(into {} (map (juxt identity #(keyword (str (name %) "?")))) [:bundle :browse :dashboard])
+                    {:bundle :bundle?, :browse :browse?, :dashboard :dashboard? :compile-css :compile-css? :ssr :ssr? :exclude-js :exclude-js?})))
 
 (defn ^:private started-via-bb-cli? [opts]
   (contains? (meta opts) :org.babashka/cli))
@@ -437,7 +445,7 @@
 
   When both `:paths` and `:paths-fn` are given, `:paths` takes precendence.
 
-  Can be called multiple times and Clerk will happily serve you according to the latest config."  
+  Can be called multiple times and Clerk will happily serve you according to the latest config."
   {:org.babashka/cli {:spec {:watch-paths {:desc "Paths on which to watch for changes and show a changed document."
                                            :coerce []}
                              :paths {:desc "Restricts serving to the given paths, supports glob patterns. Will disable Clerk's homepage when set."
@@ -492,25 +500,32 @@
   "Creates a static html build from a collection of notebooks.
 
   Options:
-  - `:paths`     - a vector of relative paths to notebooks to include in the build
-  - `:paths-fn`  - a symbol resolving to a 0-arity function returning computed paths
-  - `:index`     - a string allowing to override the name of the index file, will be added to `:paths`
+  - `:paths`     a vector of relative paths to notebooks to include in the build
+  - `:paths-fn`  a symbol resolving to a 0-arity function returning computed paths
+  - `:index`     a string allowing to override the name of the index file, will be added to `:paths`
 
   Passing at least one of the above is required. When both `:paths` and `:paths-fn` are given, `:paths` takes precendence.
 
-  - `:bundle`      - if true results in a single self-contained html file including inlined images
-  - `:compile-css` - if true compiles css file containing only the used classes
-  - `:ssr`         - if true runs react server-side-rendering and includes the generated markup in the html
-  - `:browse`      - if true will open browser with the built file on success
-  - `:dashboard`   - if true will start a server and show a rich build report in the browser (use with `:bundle` to open browser)
-  - `:out-path`    - a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
-  - `:git/sha`, `:git/url` - when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
+  - `:package`     a keyword to specify how the static build should be bundled:
+    - `:directory` (default) constructs a distinct html file for each document in `:paths`
+    - `:single-file` bundles all documents into a single html file
+  - `:bundle`      [DEPRECATED use :pacakge :single-page instead] if true results in a single self-contained html file including inlined images
+  - `:compile-css` if true compiles css file containing only the used classes
+  - `:ssr`         if true runs react server-side-rendering and includes the generated markup in the html
+  - `:browse`      if true will open browser with the built file on success
+  - `:dashboard`   if true will start a server and show a rich build report in the browser (use with `:bundle` to open browser)
+  - `:out-path`    a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
+  - `:git/sha`, `:git/url` when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
   "
   {:org.babashka/cli {:spec {:paths {:desc "Paths to notebooks toc include in the build, supports glob patterns."
                                      :coerce []}
                              :paths-fn {:desc "Symbol resolving to a 0-arity function returning computed paths."
                                         :coerce :symbol}
                              :index {:desc "Override the name of the index file (default `index.clj|md`), will be added to paths."}
+                             :package {:desc "Indicates how the static build should be packaged"
+                                       :coerce :keyword
+                                       :default :directory
+                                       :validate #{:directory :single-file}}
                              :bundle {:desc "Flag to build a self-contained html file inlcuding inlined images"}
                              :browse {:desc "Opens the browser on boot when set."}
                              :dashboard {:desc "Flag to serve a dashboard with the build progress."}

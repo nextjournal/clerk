@@ -54,11 +54,11 @@
   (testing "coerces index symbol arg and adds it to expanded-paths"
     (is (= ["book.clj"] (:expanded-paths (builder/process-build-opts {:index 'book.clj :expand-paths? true})))))
 
-  (testing "conform render-router options"
-    (is (= :bundle (:render-router (builder/process-build-opts {:bundle? true}))))
-    (is (= :fetch-edn (:render-router (builder/process-build-opts {:render-router :fetch-edn}))))
-    (is (thrown? clojure.lang.ExceptionInfo (builder/process-build-opts {:bundle? true :render-router :fetch-edn})))
-    (is (thrown? clojure.lang.ExceptionInfo (builder/process-build-opts {:render-router :foo})))))
+  (testing "package option default"
+    (is (match? {:package :directory :render-router :fetch-edn}
+                (builder/process-build-opts {})))
+    (is (match? {:package :single-file :render-router :bundle}
+                (builder/process-build-opts {:package :single-file})))))
 
 (deftest doc-url
   (testing "link to same dir unbundled"
