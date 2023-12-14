@@ -36,10 +36,10 @@
 (defn navigate-or-scroll! [event {:as item :keys [path]} {:keys [set-hash?]}]
   (let [[path-name search] (.split path "?")
         current-path-name (.-pathname js/location)
-        anchor-only? (str/starts-with? path-name "#")
+        anchor-only? (str/starts-with? path "#")
         [_ hash] (some-> search (.split "#"))]
     (when (or (and search hash (= path-name current-path-name)) anchor-only?)
-      (let [anchor (if anchor-only? path-name (str "#" hash))]
+      (let [anchor (if anchor-only? path (str "#" hash))]
         (.stopPropagation event)
         (.preventDefault event)
         (when set-hash?
