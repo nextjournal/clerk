@@ -700,9 +700,6 @@
 (defn path-from-url-hash [url]
   (-> url ->URL .-hash (subs 2)))
 
-(defn static-app? [state]
-  (contains? state :path->doc))
-
 (defn ->doc-url [url]
   (let [path (js/decodeURI (.-pathname url))
         doc-path (js/decodeURI (.-pathname (.-location js/document)))]
@@ -754,30 +751,31 @@
                (if (.-ok r)
                  (.text r)
                  (throw (ex-info "Not Found" {:response r})))))
-      (then (fn [edn] (set-state! {:doc (read-string edn)}) true))
-      (catch (fn [e] (js/console.error "Fetch failed" e)))))
+      (then (fn [edn] (set-state! {:doc (read-string edn)}) {:ok true}))
+      (catch (fn [e] (js/console.error "Fetch failed" e) {:ok false :error e}))))
 
-(defn click->xhr-request [e]
+(defn click->fetch [e]
   (when-some [url (some-> ^js e .-target closest-anchor-parent .-href ->URL)]
     (when-not (ignore-anchor-click? e url)
       (.preventDefault e)
       (let [path (.-pathname url)]
         (.. (fetch+set-state (str path (when (str/ends-with? path "/") "index") ".edn"))
-            (then (fn [_] (.pushState js/history #js {} ""
-                                      (cond-> path
-                                        (not (str/ends-with? path "/"))
-                                        (str "/"))))))))))      ;; trailing slash is needed to make relative paths work
+            (then (fn [{:keys [ok]}]
+                    (when ok
+                      (.pushState js/history #js {} ""
+                                  (cond-> path
+                                    (not (str/ends-with? path "/"))
+                                    (str "/")))))))))))     ;; a trailing slash is needed to make relative paths work
 
-(defn load->xhr-request [{:keys [current-path]} _e]
+(defn load->fetch [{:keys [current-path]} _e]
   ;; TODO: consider fixing this discrepancy via writing EDN one step deeper in directory
   (fetch+set-state (-> (.-pathname js/document.location)
                        (str/replace #"/(index.html)?$" "")
                        (cond->
-                              (empty? current-path)
-                              (str "/index.edn")
-                              (seq current-path)
-                              (str/replace (re-pattern (str "(" current-path ")") )
-                                           "$1.edn")))))
+                         (empty? current-path)
+                         (str "/index.edn")
+                         (seq current-path)
+                         (str ".edn")))))
 
 (defn setup-router! [{:as state :keys [render-router]}]
   (when (and (exists? js/document) (exists? js/window))
@@ -791,8 +789,8 @@
                        [(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)]
                        :fetch-edn
                        ;; TODO: better names
-                       [(gevents/listen js/document gevents/EventType.CLICK click->xhr-request false)
-                        (gevents/listen js/window gevents/EventType.LOAD (partial load->xhr-request state) false)]
+                       [(gevents/listen js/document gevents/EventType.CLICK click->fetch false)
+                        (gevents/listen js/window gevents/EventType.LOAD (partial load->fetch state) false)]
                        :serve
                        [(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
                         (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)

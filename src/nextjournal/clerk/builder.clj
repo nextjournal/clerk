@@ -201,7 +201,8 @@
           (spit (fs/file out-path (str (or (not-empty path) "index") ".edn"))
                 (viewer/->edn doc))
           (spit out-html (view/->html (-> static-app-opts
-                                          (assoc :path->doc (hash-map path doc) :current-path path)
+                                          (dissoc :path->doc)
+                                          (assoc :current-path path)
                                           (cond-> ssr? ssr!)
                                           cleanup))))))
     (when browse?
