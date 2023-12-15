@@ -747,35 +747,37 @@
 (defn handle-initial-load [^js _e]
   (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
 
-(defn fetch+set-state-from [path]
-  (let [edn-path (str path
-                      (when (str/ends-with? path "/") "index")
-                      ".edn")]
-    (js/console.log "path" path "fetch EDN" edn-path)
-    (-> (js/fetch edn-path)
-        (.then (fn [r]
-                 (if (.-ok r)
-                   (.text r)
-                   (throw (ex-info "Not Found" {:response r})))))
-        (.then (fn [edn]
-                 (set-state! {:doc (read-string edn)})
-                 (.pushState js/history #js {} ""
-                             (cond-> path
-                               (not (str/ends-with? path "/"))
-                               (str "/")))))                ;; trailing slash is needed to make relative paths work
-        (.catch (fn [e] (js/console.error "Fetch failed" e))))))
+(defn fetch+set-state [edn-path]
+  (js/console.log "fetch" edn-path)
+  (.. ^js (js/fetch edn-path)
+      (then (fn [r]
+               (if (.-ok r)
+                 (.text r)
+                 (throw (ex-info "Not Found" {:response r})))))
+      (then (fn [edn] (set-state! {:doc (read-string edn)}) true))
+      (catch (fn [e] (js/console.error "Fetch failed" e)))))
 
 (defn click->xhr-request [e]
-  (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
+  (when-some [url (some-> ^js e .-target closest-anchor-parent .-href ->URL)]
     (when-not (ignore-anchor-click? e url)
       (.preventDefault e)
-      (fetch+set-state-from (.-pathname url)))))
+      (let [path (.-pathname url)]
+        (.. (fetch+set-state (str path (when (str/ends-with? path "/") "index") ".edn"))
+            (then (fn [_] (.pushState js/history #js {} ""
+                                      (cond-> path
+                                        (not (str/ends-with? path "/"))
+                                        (str "/"))))))))))      ;; trailing slash is needed to make relative paths work
 
-(defn load->xhr-request [{:keys [current-path]} e]
-  (js/console.log :location (.-pathname js/document.location)
-                  :current-path current-path)
-  (fetch+set-state-from (str/replace (.-pathname js/document.location)
-                                     #"/index.html$" "")))
+(defn load->xhr-request [{:keys [current-path]} _e]
+  ;; TODO: consider fixing this discrepancy via writing EDN one step deeper in directory
+  (fetch+set-state (-> (.-pathname js/document.location)
+                       (str/replace #"/(index.html)?$" "")
+                       (cond->
+                              (empty? current-path)
+                              (str "/index.edn")
+                              (seq current-path)
+                              (str/replace (re-pattern (str "(" current-path ")") )
+                                           "$1.edn")))))
 
 (defn setup-router! [{:as state :keys [render-router]}]
   (when (and (exists? js/document) (exists? js/window))
