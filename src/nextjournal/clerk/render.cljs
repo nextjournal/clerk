@@ -758,24 +758,32 @@
   (when-some [url (some-> ^js e .-target closest-anchor-parent .-href ->URL)]
     (when-not (ignore-anchor-click? e url)
       (.preventDefault e)
-      (let [path (.-pathname url)]
-        (.. (fetch+set-state (str path (when (str/ends-with? path "/") "index") ".edn"))
+      (let [path (.-pathname url)
+            edn-path (str path (when (str/ends-with? path "/") "index") ".edn")]
+        (.. (fetch+set-state edn-path)
             (then (fn [{:keys [ok]}]
                     (when ok
-                      (.pushState js/history #js {} ""
+                      (.pushState js/history #js {:ednPath edn-path} ""
                                   (cond-> path
                                     (not (str/ends-with? path "/"))
                                     (str "/")))))))))))     ;; a trailing slash is needed to make relative paths work
 
 (defn load->fetch [{:keys [current-path]} _e]
   ;; TODO: consider fixing this discrepancy via writing EDN one step deeper in directory
-  (fetch+set-state (-> (.-pathname js/document.location)
-                       (str/replace #"/(index.html)?$" "")
-                       (cond->
-                         (empty? current-path)
-                         (str "/index.edn")
-                         (seq current-path)
-                         (str ".edn")))))
+  (let [edn-path (-> (.-pathname js/document.location)
+                     (str/replace #"/(index.html)?$" "")
+                     (cond->
+                       (empty? current-path)
+                       (str "/index.edn")
+                       (seq current-path)
+                       (str ".edn")))]
+    (fetch+set-state edn-path)
+    (.pushState js/history #js {:ednPath edn-path} "" nil)))
+
+(defn popstate->fetch [e]
+  (when-some [edn-path (some-> ^js e .-state .-ednPath)]
+    (.preventDefault e)
+    (fetch+set-state edn-path)))
 
 (defn setup-router! [{:as state :keys [render-router]}]
   (when (and (exists? js/document) (exists? js/window))
@@ -788,8 +796,8 @@
                        :bundle
                        [(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)]
                        :fetch-edn
-                       ;; TODO: better names
                        [(gevents/listen js/document gevents/EventType.CLICK click->fetch false)
+                        (gevents/listen js/window gevents/EventType.POPSTATE popstate->fetch false)
                         (gevents/listen js/window gevents/EventType.LOAD (partial load->fetch state) false)]
                        :serve
                        [(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
