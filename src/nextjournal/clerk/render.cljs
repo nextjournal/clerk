@@ -780,8 +780,9 @@
     (fetch+set-state edn-path)
     (.pushState js/history #js {:ednPath edn-path} "" nil)))
 
-(defn popstate->fetch [e]
-  (when-some [edn-path (some-> ^js e .-state .-ednPath)]
+(defn popstate->fetch [^js e]
+  (js/console.log "popstate" (.-state e) )
+  (when-some [edn-path (some-> e .-state .-ednPath)]
     (.preventDefault e)
     (fetch+set-state edn-path)))
 
