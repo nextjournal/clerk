@@ -360,8 +360,12 @@
                       :resource->url {"/js/viewer.js" "/viewer.js"}
                       :paths ["notebooks/cherry.clj"]
                       :out-path "build"})
-  (build-static-app! {:paths ["CHANGELOG.md"
+
+  ;; test doc-url links
+  (build-static-app! {:index "notebooks/document_linking.clj"
+                      :paths ["CHANGELOG.md"
                               "notebooks/markdown.md"
-                              "notebooks/viewers/html.clj"]
+                              "notebooks/viewers/html.clj"
+                              "notebooks/viewers/image.clj"]
                       :git/sha "d60f5417"
                       :git/url "https://github.com/nextjournal/clerk"}))
