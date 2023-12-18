@@ -781,11 +781,8 @@
     (.pushState js/history #js {:edn_path edn-path} "" nil)))
 
 (defn popstate->fetch [^js e]
-  (js/console.log "popstate" (.. e -state)
-                  "edn-path" (.. e -state -edn_path))
   (when-some [edn-path (.. e -state -edn_path)]
     (.preventDefault e)
-    (js/console.log "fetching" )
     (fetch+set-state edn-path)))
 
 (defn setup-router! [{:as state :keys [render-router]}]
