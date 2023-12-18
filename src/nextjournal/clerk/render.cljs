@@ -777,8 +777,10 @@
                        (str "/index.edn")
                        (seq current-path)
                        (str ".edn")))]
-    (fetch+set-state edn-path)
-    (.pushState js/history #js {:edn_path edn-path} "" nil)))
+    (.then (fetch+set-state edn-path)
+           (fn [{:keys [ok]}]
+             (when ok
+               (.pushState js/history #js {:edn_path edn-path} "" nil))))))
 
 (defn popstate->fetch [^js e]
   (when-some [edn-path (.. e -state -edn_path)]
