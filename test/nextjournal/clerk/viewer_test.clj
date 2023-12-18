@@ -269,12 +269,11 @@
 
   (testing "Doc options are propagated to blob processing"
     (let [test-doc (eval/eval-string "(java.awt.image.BufferedImage. 20 20 1)")]
-      (is (not-empty (tree-re-find (view/doc->viewer {:static-build? true
-                                                      :package :single-file
+      (is (not-empty (tree-re-find (view/doc->viewer {:package :single-file
                                                       :out-path builder/default-out-path} test-doc)
                                    #"data:image/png;base64")))
 
-      (is (not-empty (tree-re-find (view/doc->viewer {:static-build? true
+      (is (not-empty (tree-re-find (view/doc->viewer {:package :directory
                                                       :out-path builder/default-out-path} test-doc)
                                    #"_data/.+\.png")))))
 

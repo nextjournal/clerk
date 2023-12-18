@@ -511,12 +511,12 @@
 
 (defn transform-result [{:as wrapped-value :keys [path]}]
   (let [{:as _cell :keys [form id settings] ::keys [result doc]} (:nextjournal/value wrapped-value)
-        {:keys [static-build? package]} doc
+        {:keys [package]} doc
         {:nextjournal/keys [value blob-id viewers]} result
         blob-mode (cond
-                    (and (not static-build?) blob-id) :lazy-load
-                    (= :single-file package) :inline ;; TODO: provide a separte setting for this
-                    :else :file)
+                    (= :single-file package) :inline
+                    (= :directory package) :file
+                    blob-id :lazy-load)
         #?(:clj blob-opts :cljs _) (assoc doc :blob-mode blob-mode :blob-id blob-id)
         opts-from-block (-> settings
                             (select-keys (keys viewer-opts-normalization))
@@ -1162,7 +1162,7 @@
             ""
             (if (fs/exists? "index.clj") "index.clj" "'nextjournal.clerk.index"))))
 
-(defn header [{:as opts :keys [file file-path nav-path static-build? ns] :git/keys [url sha]}]
+(defn header [{:as opts :keys [file-path nav-path package ns] :git/keys [url sha]}]
   (html [:div.viewer.w-full.max-w-prose.px-8.not-prose.mt-3
          [:div.mb-8.text-xs.sans-serif.text-slate-400
           (when (and (not (route-index? opts))
@@ -1177,7 +1177,7 @@
               {:href (doc-url (index-path opts))} "Index"]
              [:span.mx-2 "•"]])
           [:span
-           (if static-build? "Generated with " "Served from ")
+           (if package "Generated with " "Served from ")
            [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
             {:href "https://clerk.vision"} "Clerk"]
            (let [default-index? (= 'nextjournal.clerk.index (some-> ns ns-name))]
