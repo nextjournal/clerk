@@ -760,18 +760,19 @@
 
 (defn fetch+set-state [edn-path]
   (.. ^js (js/fetch edn-path)
-      (then (fn [r]
+      (then (fn handle-response [r]
               (if (.-ok r)
                 {:buffer ""
                  :reader (.. r -body getReader)
                  :content-length (js/Number. (.. r -headers (get "content-length")))}
-                (throw (ex-info "Not Found" {:response r})))))
+                (throw (ex-info (.-statusText r) {:url (.-url r)
+                                                  :status (.-status r)
+                                                  :headers (.-headers r)})))))
       (then read-response+show-progress)
       (then (fn [edn] (set-state! {:doc (read-string edn)}) {:ok true}))
       (catch (fn [e] (js/console.error "Fetch failed" e)
-               (set-state! {:doc {:nextjournal/viewer {:render-fn (constantly [:<>])}
-                                  :nextjournal/value {:error (viewer/present (ex-info "fetching EDN data failed"
-                                                                                      {:url edn-path} e))}}})
+               (set-state! {:doc {:nextjournal/viewer {:render-fn (constantly [:<>])} ;; FIXME: make :error top level on state
+                                  :nextjournal/value {:error (viewer/present e)}}})
                {:ok false :error e}))))
 
 (defn click->fetch [e]
