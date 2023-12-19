@@ -745,7 +745,6 @@
   (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
 
 (defn fetch+set-state [edn-path]
-  (js/console.log "fetch" edn-path)
   (.. ^js (js/fetch edn-path)
       (then (fn [r]
                (if (.-ok r)
