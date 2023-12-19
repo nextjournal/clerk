@@ -563,7 +563,7 @@
    (when-let [error (get-in @!doc [:nextjournal/value :error])]
      [:div.fixed.top-0.left-0.w-full.h-full
       [inspect-presented error]])
-   (when @!doc
+   (when (:nextjournal/value @!doc)
      [inspect-presented @!doc])
    (into [:<>]
          (map (fn [[id state]]
@@ -749,8 +749,7 @@
 (defn delay-resolve [v] (new js/Promise (fn [res] (js/setTimeout #(res v) 100))))
 
 (defn read-response+show-progress [{:as state :keys [reader buffer content-length]}]
-  (set-state! {:doc {:status {:progress (if (zero? (count buffer)) 0.2 (/ (count buffer) content-length))}
-                     :nextjournal/viewer {:render-fn (constantly [:<>])}}})
+  (swap! !doc assoc :status {:progress (if (zero? (count buffer)) 0.2 (/ (count buffer) content-length))})
   (.. reader read
       ;; delay a bit for progress bar to be visible
       (then delay-resolve)
