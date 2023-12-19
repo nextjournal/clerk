@@ -89,7 +89,7 @@
      status]]
    (when cell-progress
      [:div.w-full.bg-sky-100.dark:bg-purple-900.rounded.z-20 {:class "h-[2px] mt-[0.5px]"}
-      [:div.bg-sky-500.dark:bg-purple-400 {:class "h-[2px]" :style {:width (str (* cell-progress 100) "%")}}]])])5
+      [:div.bg-sky-500.dark:bg-purple-400 {:class "h-[2px]" :style {:width (str (* cell-progress 100) "%")}}]])])
 
 (defn connection-status [status]
   [:div.absolute.text-red-600.dark:text-white.text-xs.font-sans.ml-1.bg-white.dark:bg-red-800.rounded-full.shadow.z-30.font-bold.px-2.border.border-red-400
@@ -555,9 +555,6 @@
 
 (defn root []
   [:<>
-   (if @!doc
-     [inspect-presented @!doc]
-     [:em.p-5.font-sans "loading..."])
    [:div.fixed.w-full.z-20.top-0.left-0.w-full
     (when-let [status (:nextjournal.clerk.sci-env/connection-status @!doc)]
       [connection-status status])
@@ -566,6 +563,8 @@
    (when-let [error (get-in @!doc [:nextjournal/value :error])]
      [:div.fixed.top-0.left-0.w-full.h-full
       [inspect-presented error]])
+   (when @!doc
+     [inspect-presented @!doc])
    (into [:<>]
          (map (fn [[id state]]
                 ^{:key id}
@@ -744,12 +743,31 @@
 (defn handle-initial-load [^js _e]
   (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
 
+(defn utf8-decode [bytes]
+  (.decode (js/TextDecoder. "utf-8") bytes))
+
+(defn delay-resolve [v] (new js/Promise (fn [res] (js/setTimeout #(res v) 100))))
+
+(defn read-response+show-progress [{:as state :keys [reader buffer content-length]}]
+  (set-state! {:doc {:status {:progress (if (zero? (count buffer)) 0.2 (/ (count buffer) content-length))}
+                     :nextjournal/viewer {:render-fn (constantly [:<>])}}})
+  (.. reader read
+      ;; delay a bit for progress bar to be visible
+      (then delay-resolve)
+      (then (fn [ret]
+              (if (.-done ret)
+                buffer
+                (read-response+show-progress (update state :buffer str (utf8-decode (.-value ret)))))))))
+
 (defn fetch+set-state [edn-path]
   (.. ^js (js/fetch edn-path)
       (then (fn [r]
               (if (.-ok r)
-                (.text r)
+                {:buffer ""
+                 :reader (.. r -body getReader)
+                 :content-length (js/Number. (.. r -headers (get "content-length")))}
                 (throw (ex-info "Not Found" {:response r})))))
+      (then read-response+show-progress)
       (then (fn [edn] (set-state! {:doc (read-string edn)}) {:ok true}))
       (catch (fn [e] (js/console.error "Fetch failed" e)
                (set-state! {:doc {:nextjournal/viewer {:render-fn (constantly [:<>])}
