@@ -747,11 +747,15 @@
 (defn fetch+set-state [edn-path]
   (.. ^js (js/fetch edn-path)
       (then (fn [r]
-               (if (.-ok r)
-                 (.text r)
-                 (throw (ex-info "Not Found" {:response r})))))
+              (if (.-ok r)
+                (.text r)
+                (throw (ex-info "Not Found" {:response r})))))
       (then (fn [edn] (set-state! {:doc (read-string edn)}) {:ok true}))
-      (catch (fn [e] (js/console.error "Fetch failed" e) {:ok false :error e}))))
+      (catch (fn [e] (js/console.error "Fetch failed" e)
+               (set-state! {:doc {:nextjournal/viewer {:render-fn (constantly [:<>])}
+                                  :nextjournal/value {:error (viewer/present (ex-info "fetching EDN data failed"
+                                                                                      {:url edn-path} e))}}})
+               {:ok false :error e}))))
 
 (defn click->fetch [e]
   (when-some [url (some-> ^js e .-target closest-anchor-parent .-href ->URL)]
@@ -759,13 +763,11 @@
       (.preventDefault e)
       (let [path (.-pathname url)
             edn-path (str path (when (str/ends-with? path "/") "index") ".edn")]
-        (.. (fetch+set-state edn-path)
-            (then (fn [{:keys [ok]}]
-                    (when ok
-                      (.pushState js/history #js {:edn_path edn-path} ""
-                                  (cond-> path
-                                    (not (str/ends-with? path "/"))
-                                    (str "/")))))))))))     ;; a trailing slash is needed to make relative paths work
+        (.pushState js/history #js {:edn_path edn-path} ""
+                    (cond-> path
+                      (not (str/ends-with? path "/"))
+                      (str "/"))) ;; a trailing slash is needed to make relative paths work
+        (fetch+set-state edn-path)))))
 
 (defn load->fetch [{:keys [current-path]} _e]
   ;; TODO: consider fixing this discrepancy via writing EDN one step deeper in directory
@@ -776,10 +778,8 @@
                        (str "/index.edn")
                        (seq current-path)
                        (str ".edn")))]
-    (.then (fetch+set-state edn-path)
-           (fn [{:keys [ok]}]
-             (when ok
-               (.pushState js/history #js {:edn_path edn-path} "" nil))))))
+    (.pushState js/history #js {:edn_path edn-path} "" nil)
+    (fetch+set-state edn-path)))
 
 (defn popstate->fetch [^js e]
   (when-some [edn-path (.. e -state -edn_path)]
