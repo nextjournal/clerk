@@ -112,7 +112,7 @@
   (r/with-let [root-ref-fn (fn [el]
                              (when (and el (exists? js/document))
                                (code/setup-dark-mode!)
-                               (when-some [heading (when (and (exists? js/location) (= :directory package))
+                               (when-some [heading (when (and (exists? js/location) (not= :single-file package))
                                                      (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
                                                           (catch js/Error _
                                                             (js/console.warn (str "Clerk render-notebook, invalid hash: "
@@ -124,7 +124,7 @@
      [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
       [dark-mode-toggle]]
      (when (and toc toc-visibility)
-       [navbar/view toc (assoc render-opts :set-hash? (= :directory package) :toc-visibility toc-visibility)])
+       [navbar/view toc (assoc render-opts :set-hash? (not= :single-file package) :toc-visibility toc-visibility)])
      [:div.flex-auto.w-screen.scroll-container
       (into
        [:> (.-div motion)
