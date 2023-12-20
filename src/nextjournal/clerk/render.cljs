@@ -89,7 +89,7 @@
      status]]
    (when cell-progress
      [:div.w-full.bg-sky-100.dark:bg-purple-900.rounded.z-20 {:class "h-[2px] mt-[0.5px]"}
-      [:div.bg-sky-500.dark:bg-purple-400 {:class "h-[2px]" :style {:width (str (* cell-progress 100) "%")}}]])])5
+      [:div.bg-sky-500.dark:bg-purple-400 {:class "h-[2px]" :style {:width (str (* cell-progress 100) "%")}}]])])
 
 (defn connection-status [status]
   [:div.absolute.text-red-600.dark:text-white.text-xs.font-sans.ml-1.bg-white.dark:bg-red-800.rounded-full.shadow.z-30.font-bold.px-2.border.border-red-400
@@ -107,12 +107,12 @@
 
 (declare clerk-eval)
 
-(defn render-notebook [{:as doc xs :blocks :keys [bundle? doc-css-class sidenotes? toc toc-visibility header footer]}
+(defn render-notebook [{:as doc xs :blocks :keys [package doc-css-class sidenotes? toc toc-visibility header footer]}
                        {:as render-opts :keys [!expanded-at expandable-toc?]}]
   (r/with-let [root-ref-fn (fn [el]
                              (when (and el (exists? js/document))
                                (code/setup-dark-mode!)
-                               (when-some [heading (when (and (exists? js/location) (not bundle?))
+                               (when-some [heading (when (and (exists? js/location) (= :directory package))
                                                      (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
                                                           (catch js/Error _
                                                             (js/console.warn (str "Clerk render-notebook, invalid hash: "
@@ -124,7 +124,7 @@
      [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
       [dark-mode-toggle]]
      (when (and toc toc-visibility)
-       [navbar/view toc (assoc render-opts :set-hash? (not bundle?) :toc-visibility toc-visibility)])
+       [navbar/view toc (assoc render-opts :set-hash? (= :directory package) :toc-visibility toc-visibility)])
      [:div.flex-auto.w-screen.scroll-container
       (into
        [:> (.-div motion)
@@ -555,7 +555,6 @@
 
 (defn root []
   [:<>
-   [inspect-presented @!doc]
    [:div.fixed.w-full.z-20.top-0.left-0.w-full
     (when-let [status (:nextjournal.clerk.sci-env/connection-status @!doc)]
       [connection-status status])
@@ -564,6 +563,8 @@
    (when-let [error (get-in @!doc [:nextjournal/value :error])]
      [:div.fixed.top-0.left-0.w-full.h-full
       [inspect-presented error]])
+   (when (:nextjournal/value @!doc)
+     [inspect-presented @!doc])
    (into [:<>]
          (map (fn [[id state]]
                 ^{:key id}
@@ -698,9 +699,6 @@
 (defn path-from-url-hash [url]
   (-> url ->URL .-hash (subs 2)))
 
-(defn static-app? [state]
-  (contains? state :path->doc))
-
 (defn ->doc-url [url]
   (let [path (js/decodeURI (.-pathname url))
         doc-path (js/decodeURI (.-pathname (.-location js/document)))]
@@ -745,25 +743,66 @@
 (defn handle-initial-load [^js _e]
   (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
 
-(defn click->xhr-request [e]
-  (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
+(defn utf8-decode [bytes]
+  (.decode (js/TextDecoder. "utf-8") bytes))
+
+(defn delay-resolve [v] (new js/Promise (fn [res] (js/setTimeout #(res v) 100))))
+
+(defn read-response+show-progress [{:as state :keys [reader buffer content-length]}]
+  (swap! !doc assoc :status {:progress (if (zero? (count buffer)) 0.2 (/ (count buffer) content-length))})
+  (.. reader read
+      ;; delay a bit for progress bar to be visible
+      (then delay-resolve)
+      (then (fn [ret]
+              (if (.-done ret)
+                buffer
+                (read-response+show-progress (update state :buffer str (utf8-decode (.-value ret)))))))))
+
+(defn fetch+set-state [edn-path]
+  (.. ^js (js/fetch edn-path)
+      (then (fn handle-response [r]
+              (if (.-ok r)
+                {:buffer ""
+                 :reader (.. r -body getReader)
+                 :content-length (js/Number. (.. r -headers (get "content-length")))}
+                (throw (ex-info (.-statusText r) {:url (.-url r)
+                                                  :status (.-status r)
+                                                  :headers (.-headers r)})))))
+      (then read-response+show-progress)
+      (then (fn [edn] (set-state! {:doc (read-string edn)}) {:ok true}))
+      (catch (fn [e] (js/console.error "Fetch failed" e)
+               (set-state! {:doc {:nextjournal/viewer {:render-fn (constantly [:<>])} ;; FIXME: make :error top level on state
+                                  :nextjournal/value {:error (viewer/present e)}}})
+               {:ok false :error e}))))
+
+(defn click->fetch [e]
+  (when-some [url (some-> ^js e .-target closest-anchor-parent .-href ->URL)]
     (when-not (ignore-anchor-click? e url)
       (.preventDefault e)
       (let [path (.-pathname url)
             edn-path (str path (when (str/ends-with? path "/") "index") ".edn")]
-        (js/console.log "fetch EDN" edn-path )
-        (-> (js/fetch edn-path)
-            (.then (fn [r]
-                     (if (.-ok r)
-                       (.text r)
-                       (throw (ex-info "Not Found" {:response r})))))
-            (.then (fn [edn]
-                     (set-state! {:doc (read-string edn)})
-                     (.pushState js/history #js {} ""
-                                 (cond-> path
-                                   (not (str/ends-with? path "/"))
-                                   (str "/"))))) ;; trailing slash is needed to make relative paths work
-            (.catch (fn [e] (js/console.error "Fetch failed" e ))))))))
+        (.pushState js/history #js {:edn_path edn-path} ""
+                    (cond-> path
+                      (not (str/ends-with? path "/"))
+                      (str "/"))) ;; a trailing slash is needed to make relative paths work
+        (fetch+set-state edn-path)))))
+
+(defn load->fetch [{:keys [current-path]} _e]
+  ;; TODO: consider fixing this discrepancy via writing EDN one step deeper in directory
+  (let [edn-path (-> (.-pathname js/document.location)
+                     (str/replace #"/(index.html)?$" "")
+                     (cond->
+                       (empty? current-path)
+                       (str "/index.edn")
+                       (seq current-path)
+                       (str ".edn")))]
+    (.pushState js/history #js {:edn_path edn-path} "" nil)
+    (fetch+set-state edn-path)))
+
+(defn popstate->fetch [^js e]
+  (when-some [edn-path (.. e -state -edn_path)]
+    (.preventDefault e)
+    (fetch+set-state edn-path)))
 
 (defn setup-router! [{:as state :keys [render-router]}]
   (when (and (exists? js/document) (exists? js/window))
@@ -776,7 +815,9 @@
                        :bundle
                        [(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)]
                        :fetch-edn
-                       [(gevents/listen js/document gevents/EventType.CLICK click->xhr-request false)]
+                       [(gevents/listen js/document gevents/EventType.CLICK click->fetch false)
+                        (gevents/listen js/window gevents/EventType.POPSTATE popstate->fetch false)
+                        (gevents/listen js/window gevents/EventType.LOAD (partial load->fetch state) false)]
                        :serve
                        [(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
                         (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
@@ -791,14 +832,12 @@
   (swap! !doc re-eval-viewer-fns)
   (mount))
 
-(defn ^:export init [{:as state :keys [bundle? path->doc current-path]}]
+(defn ^:export init [{:as state :keys [render-router path->doc]}]
   (setup-router! state)
-  (set-state! (if (static-app? state)
-                {:doc (get path->doc (or (if bundle?
-                                           (path-from-url-hash (->URL (.-href js/location)))
-                                           current-path)
-                                         ""))}
-                state))
+  (when (contains? #{:bundle :serve} render-router)
+    (set-state! (case render-router
+                  :bundle {:doc (get path->doc (or (path-from-url-hash (->URL (.-href js/location))) ""))}
+                  :serve state)))
   (mount))
 
 
