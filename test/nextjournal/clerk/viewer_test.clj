@@ -260,23 +260,21 @@
     (let [test-doc (eval/eval-string ";; Some inline image ![alt](trees.png) here.")]
       (is (not-empty (tree-re-find (view/doc->viewer test-doc) #"_fs/trees.png")))))
 
-  (testing "Local images are inlined in bundled static builds"
+  (testing "Local images are inlined in single-file static builds"
     (let [test-doc (eval/eval-string ";; Some inline image ![alt](trees.png) here.")]
-      (is (not-empty (tree-re-find (view/doc->viewer {:bundle? true} test-doc) #"data:image/png;base64")))))
+      (is (not-empty (tree-re-find (view/doc->viewer {:package :single-file} test-doc) #"data:image/png;base64")))))
 
-  (testing "Local images are content addressed for unbundled static builds"
+  (testing "Local images are content addressed for default static builds"
     (let [test-doc (eval/eval-string ";; Some inline image ![alt](trees.png) here.")]
-      (is (not-empty (tree-re-find (view/doc->viewer {:bundle? false :out-path (str (fs/temp-dir))} test-doc) #"_data/.+\.png")))))
+      (is (not-empty (tree-re-find (view/doc->viewer {:package :directory :out-path (str (fs/temp-dir))} test-doc) #"_data/.+\.png")))))
 
   (testing "Doc options are propagated to blob processing"
     (let [test-doc (eval/eval-string "(java.awt.image.BufferedImage. 20 20 1)")]
-      (is (not-empty (tree-re-find (view/doc->viewer {:static-build? true
-                                                      :bundle? true
+      (is (not-empty (tree-re-find (view/doc->viewer {:package :single-file
                                                       :out-path builder/default-out-path} test-doc)
                                    #"data:image/png;base64")))
 
-      (is (not-empty (tree-re-find (view/doc->viewer {:static-build? true
-                                                      :bundle? false
+      (is (not-empty (tree-re-find (view/doc->viewer {:package :directory
                                                       :out-path builder/default-out-path} test-doc)
                                    #"_data/.+\.png")))))
 

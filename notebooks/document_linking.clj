@@ -1,6 +1,7 @@
 ;; # 🖇️ Document Linking
 (ns document-linking
-  {:nextjournal.clerk/toc true}
+  {:nextjournal.clerk/no-cache true
+   :nextjournal.clerk/toc true}
   (:require [nextjournal.clerk :as clerk]))
 
 ;; ## `clerk/doc-url` helper

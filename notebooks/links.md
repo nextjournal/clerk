@@ -9,14 +9,14 @@
 We have three different modes to consider for links:
 
 1. Interactive mode `serve!`
-2. Static build unbundled `(build! {:bundle false})`
-3. Static build bundled `(build! {:bundle true})`
+2. Static build `(build! {:package :directory})`
+3. Static build single-file `(build! {:package :single-file})`
 
 The behaviour when triggering links we want is:
 
 1. Interactive mode: trigger a js event `(clerk-eval 'nextjournal.clerk.webserver/navigate! ,,,)`, the doc will in turn be updated via the websocket
-2. Static build unbundled: not intercept the link, let the browser perform its normal navigation
-3. Static build bundled: trigger a js event to update the doc, update the browser's hash so the doc state is persisted on reload
+2. Static build: not intercept the link, let the browser perform its normal navigation
+3. Static build single-file: trigger a js event to update the doc, update the browser's hash so the doc state is persisted on reload
 
 We can allow folks to write normal (relative) links. The limitations here being that things like open in new tab would not work and we can't support a routing function. Both these limitations means we probably want to continue encouraging the use of a helper like `clerk/doc-url` going forward.
 
@@ -64,4 +64,3 @@ Links should work inside markdown as well.
 
 * [HTML](../notebooks/viewers/html) (relative link)
 * [HTML](clerk/doc-url,"notebooks/viewers/html") (doc url, currently not functional)
-
