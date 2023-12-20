@@ -708,10 +708,11 @@
 
 (defn ignore-anchor-click?
   [e ^js url]
-  (let [current-origin (when (exists? js/location)
-                         (.-origin js/location))
+  (let [[current-origin current-path] (when (exists? js/location)
+                                        [(.-origin js/location) (.-pathname js/location)])
         ^js dataset (some-> e .-target closest-anchor-parent .-dataset)]
     (or (not= current-origin (.-origin url))
+        (= current-path (.-pathname url))
         (.-altKey e)
         (some-> dataset .-ignoreAnchorClick some?))))
 
@@ -782,9 +783,9 @@
       (let [path (.-pathname url)
             edn-path (str path (when (str/ends-with? path "/") "index") ".edn")]
         (.pushState js/history #js {:edn_path edn-path} ""
-                    (cond-> path
-                      (not (str/ends-with? path "/"))
-                      (str "/"))) ;; a trailing slash is needed to make relative paths work
+                    (str (cond-> path
+                           (not (str/ends-with? path "/"))
+                           (str "/")) (.-hash url))) ;; a trailing slash is needed to make relative paths work
         (fetch+set-state edn-path)))))
 
 (defn load->fetch [{:keys [current-path]} _e]
@@ -800,7 +801,7 @@
     (fetch+set-state edn-path)))
 
 (defn popstate->fetch [^js e]
-  (when-some [edn-path (.. e -state -edn_path)]
+  (when-some [edn-path (when (.-state e) (.. e -state -edn_path))]
     (.preventDefault e)
     (fetch+set-state edn-path)))
 
