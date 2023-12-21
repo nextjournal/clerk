@@ -235,6 +235,10 @@
       ensure-wrapped
       (assoc :nextjournal/viewers viewers)))
 
+(def ^:dynamic *viewers* nil)
+
+(defmacro with-viewers* [vs & body] `(binding [*viewers* ~vs] ~@body))
+
 #_(->> "x^2" (with-viewer `latex-viewer) (with-viewers [{:name `latex-viewer :render-fn `mathjax-viewer}]))
 
 (defn get-safe
@@ -492,6 +496,7 @@
   ([scope] (get-viewers scope nil))
   ([scope value]
    (or (when value (->viewers value))
+       *viewers*
        (when scope (@!viewers (datafy-scope scope)))
        (get-default-viewers))))
 
