@@ -52,7 +52,7 @@
                  [:div.border-t.relative.py-3.mt-2
                   [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
                    {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
-                  [:div.overflow-x-auto [nextjournal.clerk.render/inspect-presented opts val]]])
+                  [:div.overflow-x-auto [nextjournal.clerk.render/inspect-presented (select-keys opts [:!expanded-at]) val]]])
 
    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
                    (-> wrapped-value
@@ -82,5 +82,8 @@
       (tap> (clerk/with-viewers (clerk/add-viewers rule-30/viewers) rule-30/rule-30)))
   (tap> (clerk/with-viewers (clerk/add-viewers rule-30/viewers) rule-30/board))
   (tap> (clerk/html [:h1 "Fin. 👋"]))
+
+  (tap> (map (comp #(map (constantly '🌮) %) range) (range 1 100)))
+
   (tap> (reduce (fn [acc _] (vector acc)) :fin (range 200)))
   (reset-taps!))
