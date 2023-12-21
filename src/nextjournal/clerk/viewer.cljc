@@ -608,13 +608,23 @@
     [:div.flex.flex-col.items-center.not-prose.mb-4
      [:img (update attrs :src process-image-source doc)]]))
 
+(defn maybe-wrap-var-from-def [val form]
+  ;; TODO: from def only
+  #_ (prn :maybe-wrap/form form)
+  (cond->> val
+    (and (var? val) (list? form) (#{'def 'defonce} (first form)))
+    (hash-map :nextjournal.clerk/var-from-def)))
+
 (def fragment-viewer
   {:name `fragment-viewer
    :pred #(some-> % (get-safe ::result) (get-safe :nextjournal/value) (get-safe :nextjournal.clerk/fragment))
    :render-fn '(fn [xs opts] (into [:<>] (nextjournal.clerk.render/inspect-children opts) xs))
    :transform-fn (update-val (fn [x]
-                               (mapv #(assoc-in x [::result :nextjournal/value] %)
-                                     (get-in x [::result :nextjournal/value :nextjournal.clerk/fragment]))))})
+                               #_ (prn :fragment-viewer/form (:form x) :ks (keys x))
+                               (vec
+                                (map-indexed #(assoc-in x [::result :nextjournal/value]
+                                                        (maybe-wrap-var-from-def %2 (nth (:form x) (inc %1))))
+                                             (get-in x [::result :nextjournal/value :nextjournal.clerk/fragment])))))})
 
 
 #_(present @nextjournal.clerk.webserver/!doc)
@@ -1880,6 +1890,7 @@
 ;; examples
 (def example-viewer
   {:transform-fn (fn [wrapped-value]
+                   #_ (prn :example-viewer/form (get-in wrapped-value [:nextjournal/value :form]))
                    (-> wrapped-value
                        mark-preserve-keys
                        (assoc :nextjournal/viewer {:render-fn '(fn [{:keys [form val]} opts]
@@ -1888,7 +1899,9 @@
                                                                    (nextjournal.clerk.render/inspect-presented opts form)]
                                                                   [:div.pt-2.px-4.border-l-2.border-transparent
                                                                    (nextjournal.clerk.render/inspect-presented opts val)]])})
-                       (update-in [:nextjournal/value :form] code)))})
+                       (update-in [:nextjournal/value :form] code)
+                       (update-in [:nextjournal/value :val] maybe-wrap-var-from-def
+                                  (get-in wrapped-value [:nextjournal/value :form]))))})
 
 (def examples-viewer
   {:transform-fn (update-val (fn [examples]
