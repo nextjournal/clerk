@@ -8,6 +8,8 @@ Changes can be:
 
 ## Unreleased
 
+* 🌟 The whole cell context (e.g. its form, code text etc.) is now passed to viewer functions along with the wrapped result. In addition, a new cell-viewer has been added to possibly transform a cell's properties prior to presentation. This can be used, for instance, to alter a cell's visibility programmatically ([#575](https://github.com/nextjournal/clerk/issues/575)). 
+
 * 💫 Allow to disable welcome page in `serve!`
 
 * 💫 Add `clerk/comment` that behaves like `clojure.core/comment` outside of Clerk but shows the results like regular top-level forms in Clerk.
