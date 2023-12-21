@@ -13,5 +13,7 @@
   (-> 42 range shuffle)
   (macroexpand '(example (+ 1 2)))
   (clerk/html [:h1 "👋"])
+  (def my-var 42)
+  #'my-var
   (range)
   (javax.imageio.ImageIO/read (java.net.URL. "https://nextjournal.com/data/QmeyvaR3Q5XSwe14ZS6D5WBQGg1zaBaeG3SeyyuUURE2pq?filename=thermos.gif&content-type=image/gif")))
