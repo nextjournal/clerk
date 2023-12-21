@@ -1879,7 +1879,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; examples
 (def example-viewer
-  {:transform-fn (fn [wrapped-value]
+  {:name `example-viewer
+   :transform-fn (fn [wrapped-value]
                    (-> wrapped-value
                        mark-preserve-keys
                        (assoc :nextjournal/viewer {:render-fn '(fn [{:keys [form val]} opts]
@@ -1891,7 +1892,8 @@
                        (update-in [:nextjournal/value :form] code)))})
 
 (def examples-viewer
-  {:transform-fn (update-val (fn [examples]
+  {:name `examples-viewer
+   :transform-fn (update-val (fn [examples]
                                (mapv (partial with-viewer example-viewer) examples)))
    :render-fn '(fn [examples opts]
                  [:div
