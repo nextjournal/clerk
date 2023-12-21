@@ -160,9 +160,12 @@ par two"))))
 
 (deftest presenting-a-parsed-document
   (testing "presenting a parsed document doesn't produce garbage"
-    (is (match? [{:nextjournal/viewer {:name 'nextjournal.clerk.viewer/code-block-viewer}}
-                 {:nextjournal/viewer {:name 'nextjournal.clerk.viewer/code-block-viewer}}
-                 {:nextjournal/viewer {:name 'nextjournal.clerk.viewer/code-block-viewer}}]
+    (is (match? [{:nextjournal/viewer {:name 'nextjournal.clerk.viewer/cell-viewer}
+                  :nextjournal/value [{:nextjournal/viewer {:name 'nextjournal.clerk.viewer/code-block-viewer}}]}
+                 {:nextjournal/viewer {:name 'nextjournal.clerk.viewer/cell-viewer}
+                  :nextjournal/value [{:nextjournal/viewer {:name 'nextjournal.clerk.viewer/code-block-viewer}}]}
+                 {:nextjournal/viewer {:name 'nextjournal.clerk.viewer/cell-viewer}
+                  :nextjournal/value [{:nextjournal/viewer {:name 'nextjournal.clerk.viewer/code-block-viewer}}]}]
                 (-> (parser/parse-clojure-string {:doc? true} "(ns testing-presented-parsed) 123 :ahoi")
                     view/doc->viewer
                     :nextjournal/value
