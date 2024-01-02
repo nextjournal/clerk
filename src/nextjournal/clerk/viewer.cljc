@@ -514,7 +514,7 @@
                                    (str "-" (str/join "-" path))))))
 
 (defn transform-result [{:as wrapped-value :keys [path]}]
-  (let [{:as cell :keys [form id settings result] ::keys [doc]} (:nextjournal/value wrapped-value)
+  (let [{:as cell :keys [form id settings result] ::keys [fragment-item? doc]} (:nextjournal/value wrapped-value)
         {:keys [package]} doc
         {:nextjournal/keys [value blob-id viewers]} result
         blob-mode (cond
@@ -534,6 +534,7 @@
                                      (fn [{:as opts existing-id :id}]
                                        (cond-> opts
                                          auto-expand-results? (assoc :auto-expand-results? auto-expand-results?)
+                                         fragment-item? (assoc :fragment-item? true)
                                          (not existing-id) (assoc :id (processed-block-id (str id "-result") path)))))
                              #?(:clj (->> (process-blobs blob-opts))))
         viewer-eval-result? (-> presented-result :nextjournal/value viewer-eval?)]
@@ -623,7 +624,9 @@
   (if-some [fgmt (-> result (get-safe :nextjournal/value) (get-safe :nextjournal.clerk/fragment))]
     (mapcat (fn [r]
               (fragment-tree-seq
-               (assoc-in cell [:result :nextjournal/value] r))) fgmt)
+               (-> cell
+                   (assoc ::fragment-item? true)
+                   (assoc-in [:result :nextjournal/value] r)))) fgmt)
     (list cell)))
 
 (defn cell->result-viewer [cell]
