@@ -514,7 +514,7 @@
                                    (str "-" (str/join "-" path))))))
 
 (defn transform-result [{:as wrapped-value :keys [path]}]
-  (let [{:as cell :keys [form id settings] ::keys [result doc]} (:nextjournal/value wrapped-value)
+  (let [{:as cell :keys [form id settings result] ::keys [doc]} (:nextjournal/value wrapped-value)
         {:keys [package]} doc
         {:nextjournal/keys [value blob-id viewers]} result
         blob-mode (cond
@@ -534,7 +534,6 @@
                                      (fn [{:as opts existing-id :id}]
                                        (cond-> opts
                                          auto-expand-results? (assoc :auto-expand-results? auto-expand-results?)
-                                         (< 1 (count path)) (assoc :fragment-item? true)
                                          (not existing-id) (assoc :id (processed-block-id (str id "-result") path)))))
                              #?(:clj (->> (process-blobs blob-opts))))
         viewer-eval-result? (-> presented-result :nextjournal/value viewer-eval?)]
@@ -608,15 +607,6 @@
     [:div.flex.flex-col.items-center.not-prose.mb-4
      [:img (update attrs :src process-image-source doc)]]))
 
-(def fragment-viewer
-  {:name `fragment-viewer
-   :pred #(some-> % (get-safe ::result) (get-safe :nextjournal/value) (get-safe :nextjournal.clerk/fragment))
-   :render-fn '(fn [xs opts] (into [:<>] (nextjournal.clerk.render/inspect-children opts) xs))
-   :transform-fn (update-val (fn [x]
-                               (mapv #(assoc-in x [::result :nextjournal/value] %)
-                                     (get-in x [::result :nextjournal/value :nextjournal.clerk/fragment]))))})
-
-
 #_(present @nextjournal.clerk.webserver/!doc)
 
 (defn update-if [m k f] (if (k m) (update m k f) m))
@@ -629,11 +619,18 @@
     {:nextjournal/render-opts (-> cell (select-keys [:loc]) (assoc :id (processed-block-id (str id "-code"))))}
     (dissoc cell ::doc :result)))
 
+(defn fragment-tree-seq [{:as cell :keys [result]}]
+  (if-some [fgmt (-> result (get-safe :nextjournal/value) (get-safe :nextjournal.clerk/fragment))]
+    (mapcat (fn [r]
+              (fragment-tree-seq
+               (assoc-in cell [:result :nextjournal/value] r))) fgmt)
+    (list cell)))
+
 (defn cell->result-viewer [cell]
   (-> cell
       (update-if :result apply-viewer-unwrapping-var-from-def)
-      (set/rename-keys {:result ::result})
-      ensure-wrapped))
+      fragment-tree-seq
+      (->> (mapv (partial with-viewer result-viewer)))))
 
 (defn transform-cell [cell]
   (let [{:keys [code? result?]} (->visibility cell)]
@@ -641,7 +638,7 @@
       code?
       (conj (cell->code-block-viewer cell))
       result?
-      (conj (cell->result-viewer cell)))))
+      (into (cell->result-viewer cell)))))
 
 (def cell-viewer
   {:name `cell-viewer
@@ -1127,7 +1124,6 @@
 
 (def result-viewer
   {:name `result-viewer
-   :pred #(some? (get-safe % ::result))
    :render-fn 'nextjournal.clerk.render/render-result
    :transform-fn transform-result})
 
@@ -1301,7 +1297,6 @@
    sequential-viewer
    viewer-eval-viewer
    cell-viewer
-   fragment-viewer
    result-viewer
    map-viewer
    var-viewer
