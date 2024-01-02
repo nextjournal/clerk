@@ -109,7 +109,8 @@
 (def build-help-link "\n\nLearn how to [set up your static build](https://book.clerk.vision/#static-building).")
 
 (defn index-paths
-  ([] (index-paths (or *build-opts* (read-opts-from-deps-edn!))))
+  ([] (index-paths (or (not-empty (select-keys *build-opts* [:index :paths :paths-fn :expanded-paths]))
+                       (read-opts-from-deps-edn!))))
   ([{:as opts :keys [index error]}]
    (if error
      (update opts :error str build-help-link)
