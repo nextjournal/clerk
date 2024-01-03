@@ -625,12 +625,12 @@
     (and (var? val) (list? form) (#{'def 'defonce} (first form)))
     (hash-map :nextjournal.clerk/var-from-def)))
 
-(defn fragment-tree-seq
-  ([cell] (fragment-tree-seq (:form cell) cell))
+(defn fragment-seq
+  ([cell] (fragment-seq (:form cell) cell))
   ([form {:as cell :keys [result]}]
    (if-some [fgmt (-> result :nextjournal/value (get-safe :nextjournal.clerk/fragment))]
      (mapcat (fn [r i]
-               (fragment-tree-seq
+               (fragment-seq
                 (when (list? form) (get (vec form) (inc i)))
                 (-> cell
                     (assoc ::fragment-item? true)
@@ -641,7 +641,7 @@
 (defn cell->result-viewer [cell]
   (-> cell
       (update-if :result apply-viewer-unwrapping-var-from-def)
-      fragment-tree-seq
+      fragment-seq
       (->> (mapv (partial with-viewer
                           (cond-> result-viewer
                             (hidden-viewer-eval-result? cell)
