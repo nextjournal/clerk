@@ -126,11 +126,18 @@
 #_(ensure-wrapped 123)
 #_(ensure-wrapped {:nextjournal/value 456})
 
+(defn get-safe
+  ([key] #(get-safe % key))
+  ([map key]
+   (when (map? map)
+     (try (get map key) ;; can throw for e.g. sorted-map
+          (catch #?(:clj Exception :cljs js/Error) _e nil)))))
+
 (defn ->value
   "Takes `x` and returns the `:nextjournal/value` from it, or otherwise `x` unmodified."
   [x]
   (if (wrapped-value? x)
-    (:nextjournal/value x)
+    (get-safe x :nextjournal/value)
     x))
 
 #_(->value (with-viewer `code-viewer '(+ 1 2 3)))
@@ -240,13 +247,6 @@
 (defmacro with-viewers* [vs & body] `(binding [*viewers* ~vs] ~@body))
 
 #_(->> "x^2" (with-viewer `latex-viewer) (with-viewers [{:name `latex-viewer :render-fn `mathjax-viewer}]))
-
-(defn get-safe
-  ([key] #(get-safe % key))
-  ([map key]
-   (when (map? map)
-     (try (get map key) ;; can throw for e.g. sorted-map
-          (catch #?(:clj Exception :cljs js/Error) _e nil)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; table viewer normalization
@@ -564,7 +564,7 @@
     {:code? (not= :hide code)
      :result? (and (:result cell)
                    (or (not= :hide result)
-                       (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)))}))
+                       (-> cell :result ->value ->value viewer-eval?)))}))
 
 (defn hidden-viewer-eval-result? [{:keys [settings result]}]
   (and (= :hide (-> settings :nextjournal.clerk/visibility :result))

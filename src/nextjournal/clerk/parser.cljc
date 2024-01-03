@@ -52,6 +52,7 @@
   #{:nextjournal.clerk/auto-expand-results?
     :nextjournal.clerk/budget
     :nextjournal.clerk/css-class
+    :nextjournal.clerk/eval
     :nextjournal.clerk/render-opts
     :nextjournal.clerk/page-size
     :nextjournal.clerk/render-evaluator
@@ -199,6 +200,14 @@
 
 (defn code? [{:as block :keys [type]}]
   (contains? #{:code} type))
+
+(def eval?
+  (every-pred code?
+              (complement (comp #{:sci :skip} :nextjournal.clerk/eval :settings))))
+
+(def sci-eval?
+  (every-pred code?
+              (comp #{:sci} :nextjournal.clerk/eval :settings)))
 
 (defn merge-settings [current-settings new-settings]
   (-> (merge-with merge current-settings (select-keys new-settings [:nextjournal.clerk/visibility]))
