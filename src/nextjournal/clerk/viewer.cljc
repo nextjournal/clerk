@@ -620,14 +620,23 @@
     {:nextjournal/render-opts (-> cell (select-keys [:loc]) (assoc :id (processed-block-id (str id "-code"))))}
     (dissoc cell ::doc :result)))
 
-(defn fragment-tree-seq [{:as cell :keys [result]}]
-  (if-some [fgmt (-> result (get-safe :nextjournal/value) (get-safe :nextjournal.clerk/fragment))]
-    (mapcat (fn [r]
-              (fragment-tree-seq
-               (-> cell
-                   (assoc ::fragment-item? true)
-                   (assoc-in [:result :nextjournal/value] r)))) fgmt)
-    (list cell)))
+(defn maybe-wrap-var-from-def [val form]
+  (cond->> val
+    (and (var? val) (list? form) (#{'def 'defonce} (first form)))
+    (hash-map :nextjournal.clerk/var-from-def)))
+
+(defn fragment-tree-seq
+  ([cell] (fragment-tree-seq (:form cell) cell))
+  ([form {:as cell :keys [result]}]
+   (if-some [fgmt (-> result :nextjournal/value (get-safe :nextjournal.clerk/fragment))]
+     (mapcat (fn [r i]
+               (fragment-tree-seq
+                (when (list? form) (get (vec form) (inc i)))
+                (-> cell
+                    (assoc ::fragment-item? true)
+                    (assoc-in [:result :nextjournal/value] r))))
+             fgmt (range (count fgmt)))
+     (list (update-in cell [:result :nextjournal/value] maybe-wrap-var-from-def form)))))
 
 (defn cell->result-viewer [cell]
   (-> cell
@@ -1890,6 +1899,7 @@
                                                                    (nextjournal.clerk.render/inspect-presented opts form)]
                                                                   [:div.pt-2.px-4.border-l-2.border-transparent
                                                                    (nextjournal.clerk.render/inspect-presented opts val)]])})
+                       (update-in [:nextjournal/value :val] maybe-wrap-var-from-def (get-in wrapped-value [:nextjournal/value :form]))
                        (update-in [:nextjournal/value :form] code)))})
 
 (def examples-viewer

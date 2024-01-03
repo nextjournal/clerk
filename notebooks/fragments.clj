@@ -15,6 +15,7 @@
                          :dice (shuffle (range 1 7))})))
  (clerk/image "trees.png")
  (clerk/plotly {::clerk/width :full} {:data [{:y [1 3 2]}]})
+ (def my-var 'should-display-its-value)
  (clerk/html {::clerk/width :full} [:div.h-20.bg-amber-200])
  (clerk/fragment (clerk/html {::clerk/width :full} [:div.h-20.bg-amber-300])
                  (clerk/html {::clerk/width :full} [:div.h-20.bg-amber-400])
