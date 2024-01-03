@@ -545,10 +545,6 @@
                                      viewer-eval-result?
                                      (assoc ::viewer-eval-form (-> presented-result :nextjournal/value :form))
 
-                                     (and viewer-eval-result?
-                                          (= :hide (-> cell :settings :nextjournal.clerk/visibility :result)))
-                                     (assoc-in [:nextjournal/presented :nextjournal/viewer :render-fn :form] '(fn [_ _] [:<>]))
-
                                      (-> form meta :nextjournal.clerk/open-graph :image)
                                      (assoc :nextjournal/open-graph-image-capture true)
 
@@ -568,6 +564,10 @@
      :result? (and (:result cell)
                    (or (not= :hide result)
                        (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)))}))
+
+(defn hidden-viewer-eval-result? [{:keys [settings result]}]
+  (and (= :hide (-> settings :nextjournal.clerk/visibility :result))
+       (viewer-eval? (-> result :nextjournal/value (get-safe :nextjournal/value)))))
 
 #_(->visibility {:settings {:nextjournal.clerk/visibility {:code :show :result :show}}})
 #_(->visibility {:settings {:nextjournal.clerk/visibility {:code :fold :result :show}}})
@@ -633,7 +633,10 @@
   (-> cell
       (update-if :result apply-viewer-unwrapping-var-from-def)
       fragment-tree-seq
-      (->> (mapv (partial with-viewer result-viewer)))))
+      (->> (mapv (partial with-viewer
+                          (cond-> result-viewer
+                            (hidden-viewer-eval-result? cell)
+                            (assoc :render-fn '(fn [_ _] [:<>]))))))))
 
 (defn transform-cell [cell]
   (let [{:keys [code? result?]} (->visibility cell)]
