@@ -338,13 +338,29 @@
       (is (every? (every-pred not-empty string?) ids))
       (is (distinct? ids))))
 
-  (testing "Fragments renders values from def vars"
+  (testing "Clerk fragments and comments render values from def vars"
     (is (= 3
            (-> (eval-test/eval+extract-doc-blocks "(ns nextjournal.clerk.viewer-test.fragments (:require [nextjournal.clerk :as clerk]))
 (clerk/fragment
  1 2 (def x 3))")
-               last :nextjournal/value :nextjournal/presented :nextjournal/value))))
+               last :nextjournal/value :nextjournal/presented :nextjournal/value)))
+    (is (= 3
+           (-> (eval-test/eval+extract-doc-blocks "(ns nextjournal.clerk.viewer-test.fragments (:require [nextjournal.clerk :as clerk]))
+(clerk/comment
+ 1 2 (def x 3))")
+               last :nextjournal/value :nextjournal/presented :nextjournal/value)))
 
+    (is (= 4
+           (-> (eval-test/eval+extract-doc-blocks "(ns nextjournal.clerk.viewer-test.fragments (:require [nextjournal.clerk :as clerk]))
+(clerk/comment
+ 1 2 (clerk/comment 3 (def x 4)))")
+               last :nextjournal/value :nextjournal/presented :nextjournal/value)))
+
+    (is (= 4
+           (-> (eval-test/eval+extract-doc-blocks "(ns nextjournal.clerk.viewer-test.fragments (:require [nextjournal.clerk :as clerk]))
+(clerk/fragment
+ 1 (clerk/comment 2 (clerk/fragment 3 (def x 4))))")
+               last :nextjournal/value :nextjournal/presented :nextjournal/value))))
 
   (testing "Fragments emit distinct results for all of their (nested) children"
     (is (= 6
