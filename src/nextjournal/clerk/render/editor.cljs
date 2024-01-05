@@ -21,7 +21,7 @@
             [shadow.esm]))
 
 (defn eval-string
-  ([source] (sci/eval-string* (sci.ctx-store/get-ctx) source))
+  ([source] (eval-string (sci.ctx-store/get-ctx) source))
   ([ctx source]
    (when-some [code (not-empty (str/trim source))]
      (try {:result (sci/eval-string* ctx code)}
