@@ -188,6 +188,12 @@
 #_(->doc-settings '(ns foo {:nextjournal.clerk/budget nil :nextjournal.clerk/width :full}))
 #_(->doc-settings '^{:nextjournal.clerk/toc :boom} (ns foo)) ;; TODO: error
 
+(defn deflike? [form]
+  (and (seq? form) (symbol? (first form)) (str/starts-with? (name (first form)) "def")))
+
+#_(deflike? '(defonce foo :bar))
+#_(deflike? '(rdef foo :bar))
+
 (defn markdown? [{:as block :keys [type]}]
   (contains? #{:markdown} type))
 

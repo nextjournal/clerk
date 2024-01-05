@@ -622,20 +622,20 @@
 
 (defn maybe-wrap-var-from-def [val form]
   (cond->> val
-    (and (var? val) (list? form) (#{'def 'defonce} (first form)))
+    (and (var? val) (parser/deflike? form))
     (hash-map :nextjournal.clerk/var-from-def)))
 
 (defn fragment-seq
   ([cell] (fragment-seq (:form cell) cell))
   ([form {:as cell :keys [result]}]
-   (if-some [fgmt (-> result :nextjournal/value (get-safe :nextjournal.clerk/fragment))]
+   (if-some [fragment (-> result :nextjournal/value (get-safe :nextjournal.clerk/fragment))]
      (mapcat (fn [r i]
                (fragment-seq
                 (when (list? form) (get (vec form) (inc i)))
                 (-> cell
                     (assoc ::fragment-item? true)
                     (assoc-in [:result :nextjournal/value] r))))
-             fgmt (range (count fgmt)))
+             fragment (range (count fragment)))
      (list (update-in cell [:result :nextjournal/value] maybe-wrap-var-from-def form)))))
 
 (defn cell->result-viewer [cell]

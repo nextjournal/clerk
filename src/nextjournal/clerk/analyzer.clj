@@ -85,12 +85,6 @@
 
 #_(rewrite-defcached '(nextjournal.clerk/defcached foo :bar))
 
-(defn deflike? [form]
-  (and (seq? form) (symbol? (first form)) (str/starts-with? (name (first form)) "def")))
-
-#_(deflike? '(defonce foo :bar))
-#_(deflike? '(rdef foo :bar))
-
 (defn auto-resolves [ns]
   (as-> (ns-aliases ns) $
     (assoc $ :current (ns-name *ns*))
@@ -166,7 +160,7 @@
                    nodes)
 
         var (when (and (= 1 (count vars))
-                       (deflike? form))
+                       (parser/deflike? form))
               (first vars))
         def-node (when var
                    (first (filter (comp #{:def} :op) nodes)))
