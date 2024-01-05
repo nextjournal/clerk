@@ -514,7 +514,7 @@
                                    (str "-" (str/join "-" path))))))
 
 (defn transform-result [{:as wrapped-value :keys [path]}]
-  (let [{:as cell :keys [form id settings] ::keys [result doc]} (:nextjournal/value wrapped-value)
+  (let [{:as cell :keys [form id settings result] ::keys [fragment-item? doc]} (:nextjournal/value wrapped-value)
         {:keys [package]} doc
         {:nextjournal/keys [value blob-id viewers]} result
         blob-mode (cond
@@ -534,7 +534,7 @@
                                      (fn [{:as opts existing-id :id}]
                                        (cond-> opts
                                          auto-expand-results? (assoc :auto-expand-results? auto-expand-results?)
-                                         (< 1 (count path)) (assoc :fragment-item? true)
+                                         fragment-item? (assoc :fragment-item? true)
                                          (not existing-id) (assoc :id (processed-block-id (str id "-result") path)))))
                              #?(:clj (->> (process-blobs blob-opts))))
         viewer-eval-result? (-> presented-result :nextjournal/value viewer-eval?)]
@@ -544,10 +544,6 @@
         (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result :nextjournal/blob-id blob-id}
                                      viewer-eval-result?
                                      (assoc ::viewer-eval-form (-> presented-result :nextjournal/value :form))
-
-                                     (and viewer-eval-result?
-                                          (= :hide (-> cell :settings :nextjournal.clerk/visibility :result)))
-                                     (assoc-in [:nextjournal/presented :nextjournal/viewer :render-fn :form] '(fn [_ _] [:<>]))
 
                                      (-> form meta :nextjournal.clerk/open-graph :image)
                                      (assoc :nextjournal/open-graph-image-capture true)
@@ -568,6 +564,10 @@
      :result? (and (:result cell)
                    (or (not= :hide result)
                        (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)))}))
+
+(defn hidden-viewer-eval-result? [{:keys [settings result]}]
+  (and (= :hide (-> settings :nextjournal.clerk/visibility :result))
+       (viewer-eval? (-> result :nextjournal/value (get-safe :nextjournal/value)))))
 
 #_(->visibility {:settings {:nextjournal.clerk/visibility {:code :show :result :show}}})
 #_(->visibility {:settings {:nextjournal.clerk/visibility {:code :fold :result :show}}})
@@ -608,15 +608,6 @@
     [:div.flex.flex-col.items-center.not-prose.mb-4
      [:img (update attrs :src process-image-source doc)]]))
 
-(def fragment-viewer
-  {:name `fragment-viewer
-   :pred #(some-> % (get-safe ::result) (get-safe :nextjournal/value) (get-safe :nextjournal.clerk/fragment))
-   :render-fn '(fn [xs opts] (into [:<>] (nextjournal.clerk.render/inspect-children opts) xs))
-   :transform-fn (update-val (fn [x]
-                               (mapv #(assoc-in x [::result :nextjournal/value] %)
-                                     (get-in x [::result :nextjournal/value :nextjournal.clerk/fragment]))))})
-
-
 #_(present @nextjournal.clerk.webserver/!doc)
 
 (defn update-if [m k f] (if (k m) (update m k f) m))
@@ -629,11 +620,32 @@
     {:nextjournal/render-opts (-> cell (select-keys [:loc]) (assoc :id (processed-block-id (str id "-code"))))}
     (dissoc cell ::doc :result)))
 
+(defn maybe-wrap-var-from-def [val form]
+  (cond->> val
+    (and (var? val) (parser/deflike? form))
+    (hash-map :nextjournal.clerk/var-from-def)))
+
+(defn fragment-seq
+  ([cell] (fragment-seq (:form cell) cell))
+  ([form {:as cell :keys [result]}]
+   (if-some [fragment (-> result :nextjournal/value (get-safe :nextjournal.clerk/fragment))]
+     (mapcat (fn [r i]
+               (fragment-seq
+                (when (list? form) (get (vec form) (inc i)))
+                (-> cell
+                    (assoc ::fragment-item? true)
+                    (assoc-in [:result :nextjournal/value] r))))
+             fragment (range (count fragment)))
+     (list (update-in cell [:result :nextjournal/value] maybe-wrap-var-from-def form)))))
+
 (defn cell->result-viewer [cell]
   (-> cell
       (update-if :result apply-viewer-unwrapping-var-from-def)
-      (set/rename-keys {:result ::result})
-      ensure-wrapped))
+      fragment-seq
+      (->> (mapv (partial with-viewer
+                          (cond-> result-viewer
+                            (hidden-viewer-eval-result? cell)
+                            (assoc :render-fn '(fn [_ _] [:<>]))))))))
 
 (defn transform-cell [cell]
   (let [{:keys [code? result?]} (->visibility cell)]
@@ -641,7 +653,7 @@
       code?
       (conj (cell->code-block-viewer cell))
       result?
-      (conj (cell->result-viewer cell)))))
+      (into (cell->result-viewer cell)))))
 
 (def cell-viewer
   {:name `cell-viewer
@@ -1127,7 +1139,6 @@
 
 (def result-viewer
   {:name `result-viewer
-   :pred #(some? (get-safe % ::result))
    :render-fn 'nextjournal.clerk.render/render-result
    :transform-fn transform-result})
 
@@ -1301,7 +1312,6 @@
    sequential-viewer
    viewer-eval-viewer
    cell-viewer
-   fragment-viewer
    result-viewer
    map-viewer
    var-viewer
@@ -1889,6 +1899,7 @@
                                                                    (nextjournal.clerk.render/inspect-presented opts form)]
                                                                   [:div.pt-2.px-4.border-l-2.border-transparent
                                                                    (nextjournal.clerk.render/inspect-presented opts val)]])})
+                       (update-in [:nextjournal/value :val] maybe-wrap-var-from-def (get-in wrapped-value [:nextjournal/value :form]))
                        (update-in [:nextjournal/value :form] code)))})
 
 (def examples-viewer

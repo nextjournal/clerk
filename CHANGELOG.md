@@ -49,6 +49,8 @@ Changes can be:
 
 * 🐞  Swallow git errors in shell-out-str instead of printing them to stdout/err
 
+* 🐞 Fixes an issue in fragments which showed definitions as vars instead of their values
+
 ## 0.15.957 (2023-09-28)
 
 * 🔌 Offline support
