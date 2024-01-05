@@ -24,7 +24,7 @@
   ([source] (eval-string (sci.ctx-store/get-ctx) source))
   ([ctx source]
    (when-some [code (not-empty (str/trim source))]
-     (try {:result (sci/eval-string* ctx code)}
+     (try (sci/eval-string* ctx code)
           (catch js/Error e
             {:error (str (.-message e))})))))
 
