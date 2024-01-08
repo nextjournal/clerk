@@ -190,17 +190,18 @@
   (field hash)
   (constructor [this ^js props]
                (super props)
-               (set! (.-state this) #js {:error nil :hash (j/get props :hash)})
+               (set! (.-state this) #js {:error nil :hash (j/get props :hash)
+                                         :errorView (j/get props :errorView error-view)})
                (set! hash (j/get props :hash))
                (set! handle-error (fn [error]
                                     (set! (.-state this) #js {:error error}))))
 
   Object
   (render [this ^js props]
-          (j/let [^js {{:keys [error]} :state
+          (j/let [^js {{:keys [error errorView]} :state
                        {:keys [children]} :props} this]
             (if error
-              (r/as-element [error-view error])
+              (r/as-element [errorView error])
               children))))
 
 (j/!set ErrorBoundary
@@ -902,10 +903,14 @@
          [:div.plotly {:ref ref-fn}]]
         default-loading-view))))
 
-(defn render-katex [tex-string {:keys [inline?]}]
-  (let [katex (hooks/use-d3-require "katex@0.16.4")]
+(defn render-katex-inner [katex tex-string {:keys [inline?]}]
+  [:span {:dangerouslySetInnerHTML {:__html (.renderToString katex tex-string (j/obj :displayMode (not inline?)
+                                                                                     :output "html"))}}])
+(defn render-katex [tex-string opts]
+  (let [katex (hooks/use-d3-require "katex@0.16.9")]
     (if katex
-      [:span {:dangerouslySetInnerHTML {:__html (.renderToString katex tex-string (j/obj :displayMode (not inline?)))}}]
+      [:> ErrorBoundary {:error-view (fn error-view [e] [:span.text-red-500.font-sans (.-message e)])}
+       [render-katex-inner katex tex-string opts]]
       default-loading-view)))
 
 (defn render-mathjax [value]

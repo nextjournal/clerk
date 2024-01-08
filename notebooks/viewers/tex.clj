@@ -18,6 +18,11 @@
 
 $${\\frac{d}{d t} \\frac{∂ L}{∂ \\dot{q}}}-\\frac{∂ L}{∂ q}=0.$$")
 
+;; ## Errors
+;; This is a parse error in prose $\phi\crash$ while this is in a result
+
+(clerk/tex "\\phi\\crash")
+
 ;; ## MathJax
 
 (v/with-viewer v/mathjax-viewer
