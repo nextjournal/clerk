@@ -18,6 +18,13 @@
 
 $${\\frac{d}{d t} \\frac{∂ L}{∂ \\dot{q}}}-\\frac{∂ L}{∂ q}=0.$$")
 
+;; ## Errors
+;; Katex will try to render as much as possible of the latex source, highlighting in red broken commands, like in $\phi\crash\psi$. The same happens cell results
+
+(clerk/tex "\\phi\\crash\\psi")
+
+;; Certain classes of errors get some extra information by hovering over the broken source: $\phi x^^2 \psi$.
+
 ;; ## MathJax
 
 (v/with-viewer v/mathjax-viewer

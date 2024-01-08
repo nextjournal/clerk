@@ -905,7 +905,7 @@
 (defn render-katex [tex-string {:keys [inline?]}]
   (let [katex (hooks/use-d3-require "katex@0.16.4")]
     (if katex
-      [:span {:dangerouslySetInnerHTML {:__html (.renderToString katex tex-string (j/obj :displayMode (not inline?)))}}]
+      [:span {:dangerouslySetInnerHTML {:__html (.renderToString katex tex-string (j/obj :displayMode (not inline?) :throwOnError false))}}]
       default-loading-view)))
 
 (defn render-mathjax [value]
