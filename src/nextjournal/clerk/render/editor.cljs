@@ -20,13 +20,15 @@
             [sci.ctx-store]
             [shadow.esm]))
 
+(def editor-state (atom {}))
+
 (defn eval-string
-  ([source] (sci/eval-string* (sci.ctx-store/get-ctx) source))
+  ([source] (eval-string (sci.ctx-store/get-ctx) source))
   ([ctx source]
    (when-some [code (not-empty (str/trim source))]
-     (try {:result (sci/eval-string* ctx code)}
-          (catch js/Error e
-            {:error (str (.-message e))})))))
+     (let [{:keys [val ns]} (sci/eval-string+ ctx code @editor-state)]
+       (swap! editor-state assoc :ns ns)
+       val))))
 
 (j/defn eval-at-cursor [on-result ^:js {:keys [state]}]
   (some->> (eval-region/cursor-node-string state)
