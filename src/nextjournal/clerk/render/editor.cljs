@@ -20,14 +20,12 @@
             [sci.ctx-store]
             [shadow.esm]))
 
-(def editor-state (atom {}))
-
 (defn eval-string
   ([source] (eval-string (sci.ctx-store/get-ctx) source))
   ([ctx source]
    (when-some [code (not-empty (str/trim source))]
-     (let [{:keys [val ns]} (sci/eval-string+ ctx code @editor-state)]
-       (swap! editor-state assoc :ns ns)
+     (let [{:keys [val ns]} (sci/eval-string+ ctx code)]
+       (sci/alter-var-root sci/ns (constantly ns))
        val))))
 
 (j/defn eval-at-cursor [on-result ^:js {:keys [state]}]
