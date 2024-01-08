@@ -51,6 +51,8 @@ Changes can be:
 
 * 🐞 Fixes an issue in fragments which showed definitions as vars instead of their values
 
+* 🐞 Fix issue with ns state in client side editor, fixes [#601](https://github.com/nextjournal/clerk/issues/601) @borkdude
+
 ## 0.15.957 (2023-09-28)
 
 * 🔌 Offline support
