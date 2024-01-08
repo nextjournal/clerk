@@ -49,7 +49,9 @@ Changes can be:
 
 * 🐞  Swallow git errors in shell-out-str instead of printing them to stdout/err
 
-* 🐞 Fixes an issue in fragments which showed definitions as vars instead of their values
+* 🐞 Fix an issue in fragments which showed definitions as vars instead of their values
+
+* 🐞 Fix blank page when notebook contains latex errors in prose [#571](https://github.com/nextjournal/clerk/issues/571) @titonbarua and [#603](https://github.com/nextjournal/clerk/issues/603) @teodorlu
 
 ## 0.15.957 (2023-09-28)
 
