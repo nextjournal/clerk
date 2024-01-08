@@ -909,7 +909,11 @@
 (defn render-katex [tex-string opts]
   (let [katex (hooks/use-d3-require "katex@0.16.9")]
     (if katex
-      [:> ErrorBoundary {:error-view (fn error-view [e] [:span.text-red-500.font-sans (.-message e)])}
+      [:> ErrorBoundary
+       {:error-view (fn [e]
+                      (if (instance? (.-ParseError katex) e)
+                        [:span.text-red-500.font-sans (.-message e)]
+                        [error-view e]))}
        [render-katex-inner katex tex-string opts]]
       default-loading-view)))
 
