@@ -246,7 +246,7 @@
   (if var var id))
 
 (defn ->ana-keys [{:as analyzed :keys [form vars id]}]
-  (concat vars [(->key analyzed)]))
+  (conj (set vars) (->key analyzed)))
 
 #_(->> (nextjournal.clerk.eval/eval-string "(rand-int 100) (rand-int 100) (rand-int 100)") :blocks (mapv #(-> % :result :nextjournal/value)))
 
