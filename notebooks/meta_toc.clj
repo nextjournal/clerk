@@ -34,12 +34,13 @@
 
 (def toc-viewer
   (update v/toc-viewer
-          :transform-fn (fn [original-transform]
-                          (fn [{:as wrapped-value doc :nextjournal/value}]
-                            (-> wrapped-value
-                                original-transform
-                                (assoc :nextjournal/render-opts {:expandable-toc? true})
-                                (assoc :nextjournal/value (meta-toc (:file doc) notebooks)))))))
+          :transform-fn
+          (fn [original-transform]
+            (fn transform-fn [{:as wrapped-value doc :nextjournal/value}]
+              (-> wrapped-value
+                  original-transform
+                  (assoc :nextjournal/render-opts {:expandable-toc? true})
+                  (assoc :nextjournal/value (meta-toc (:file doc) notebooks)))))))
 
 (clerk/add-viewers! [toc-viewer])
 
