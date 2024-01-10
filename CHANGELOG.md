@@ -22,6 +22,8 @@ Changes can be:
 
 * 💫 Introduce client-side routing for static builds to make page transitions smoother by default. In addition, the option `:bundle?` for `clerk/build!` is now deprecated in favour of setting a new option `:package` to `:single-file` (the default for it being `:directory`).
 
+* 💫 Introduce a toc viewer for allowing customization of the table of contents
+
 * 🛠 Bump depdendencies
 
   * `com.taoensso/nippy` to `3.4.0-beta1`
