@@ -32,20 +32,19 @@
                       (partial parser/parse-file {:doc? true})))
         paths))
 
-(def book-viewer
-  (update v/notebook-viewer
+(def toc-viewer
+  (update v/toc-viewer
           :transform-fn (fn [original-transform]
-                          (fn [wrapped-value]
+                          (fn [{:as wrapped-value doc :nextjournal/value}]
                             (-> wrapped-value
                                 original-transform
                                 (assoc :nextjournal/render-opts {:expandable-toc? true})
-                                (assoc-in [:nextjournal/value :toc]
-                                          (meta-toc (:file (v/->value wrapped-value)) notebooks)))))))
+                                (assoc :nextjournal/value (meta-toc (:file doc) notebooks)))))))
 
-(clerk/add-viewers! [book-viewer])
+(clerk/add-viewers! [toc-viewer])
 
 (comment
   ;; Test actual cross-doc toc
-  (viewer/reset-viewers! :default (viewer/add-viewers [book-viewer]))
+  (viewer/reset-viewers! :default (viewer/add-viewers [toc-viewer]))
   (viewer/reset-viewers! :default (viewer/get-default-viewers))
   (clerk/build! {:render-router :fetch-edn :paths notebooks}))
