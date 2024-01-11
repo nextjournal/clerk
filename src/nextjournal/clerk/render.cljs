@@ -117,14 +117,14 @@
                                                           (catch js/Error _
                                                             (js/console.warn (str "Clerk render-notebook, invalid hash: "
                                                                                   (.-hash js/location))))))]
-                                 (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))
-               _ (swap! !expanded-at merge (navbar/->toc-expanded-at toc toc-visibility))]
+                                 (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
+
     [:div.flex
      {:ref root-ref-fn}
      [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
       [dark-mode-toggle]]
      (when (and toc toc-visibility)
-       [navbar/view toc (assoc render-opts :set-hash? (not= :single-file package) :toc-visibility toc-visibility)])
+       [inspect-presented render-opts toc])
      [:div.flex-auto.w-screen.scroll-container
       (into
        [:> (.-div motion)

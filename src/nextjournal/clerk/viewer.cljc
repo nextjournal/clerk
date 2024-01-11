@@ -1235,7 +1235,20 @@
            :path (str "#" (:id attrs))
            :items (md-toc->navbar-items node)}) children))
 
+(defn transform-toc [{:as wrapped-value doc :nextjournal/value}]
+  (let [{:keys [toc-visibility package]} doc]
+    (-> wrapped-value
+        mark-presented
+        (update :nextjournal/value (comp md-toc->navbar-items :toc))
+        (update :nextjournal/render-opts assoc
+                :toc-visibility toc-visibility :set-hash? (not= :single-file package)))))
+
 (comment #?(:clj (nextjournal.clerk/recompute!)))
+
+(def toc-viewer
+  {:name `toc-viewer
+   :transform-fn transform-toc
+   :render-fn 'nextjournal.clerk.render.navbar/view})
 
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc
@@ -1246,7 +1259,7 @@
       (assoc :header (present (with-viewers viewers (with-viewer `header-viewer doc))))
       #_(assoc :footer (present (footer doc)))
 
-      (update :toc md-toc->navbar-items)
+      (assoc :toc (present (with-viewers viewers (with-viewer `toc-viewer doc))))
       (update :file str)
 
       (select-keys [:atom-var-name->state
@@ -1296,6 +1309,7 @@
 (def default-viewers
   ;; maybe make this a sorted-map
   [header-viewer
+   toc-viewer
    char-viewer
    string-viewer
    number-viewer
