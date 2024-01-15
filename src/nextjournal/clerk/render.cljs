@@ -109,6 +109,9 @@
 
 (defn render-notebook [{:as doc xs :blocks :keys [package doc-css-class sidenotes? toc toc-visibility header footer]}
                        {:as render-opts :keys [!expanded-at expandable-toc?]}]
+  (hooks/use-effect (fn []
+                      (swap! !expanded-at merge (navbar/->toc-expanded-at toc toc-visibility)))
+                    [toc toc-visibility])
   (r/with-let [!mobile-toc? (r/atom (navbar/mobile?))
                root-ref-fn (fn [el]
                              (when (and el (exists? js/document))
@@ -119,14 +122,13 @@
                                                             (js/console.warn (str "Clerk render-notebook, invalid hash: "
                                                                                   (.-hash js/location))))))]
                                  (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
-
     [:div.flex
      {:ref root-ref-fn}
      [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
       [dark-mode-toggle]]
      (when (and toc toc-visibility)
        (let [render-opts' (assoc render-opts :!mobile-toc? !mobile-toc?)]
-         [navbar/layout (:nextjournal/value toc) render-opts'
+         [navbar/layout render-opts'
           [inspect-presented render-opts' toc]]))
      [:div.flex-auto.w-screen.scroll-container
       (into
