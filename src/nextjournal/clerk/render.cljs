@@ -126,7 +126,7 @@
       [dark-mode-toggle]]
      (when (and toc toc-visibility)
        (let [render-opts' (assoc render-opts :!mobile-toc? !mobile-toc?)]
-         [navbar/view (:nextjournal/value toc) render-opts'
+         [navbar/layout (:nextjournal/value toc) render-opts'
           [inspect-presented render-opts' toc]]))
      [:div.flex-auto.w-screen.scroll-container
       (into

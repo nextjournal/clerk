@@ -158,7 +158,7 @@
               (map (juxt identity some?))
               (keep #(when (and (map? %) (:expanded? %)) (:path %)) (tree-seq coll? not-empty toc)))})
 
-(defn view [toc {:as render-opts :keys [!mobile-toc? !expanded-at toc-visibility]} children]
+(defn layout [toc {:as render-opts :keys [!mobile-toc? !expanded-at toc-visibility]} children]
   (hooks/use-effect (fn [] (swap! !expanded-at merge (->toc-expanded-at toc toc-visibility)))
                     [toc toc-visibility])
   (r/with-let [handle-resize #(reset! !mobile-toc? (mobile?))
