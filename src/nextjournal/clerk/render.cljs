@@ -107,24 +107,31 @@
 
 (declare clerk-eval)
 
-(defn render-notebook [{:as doc xs :blocks :keys [package doc-css-class sidenotes? toc toc-visibility header footer]}
-                       {:as render-opts :keys [!expanded-at expandable-toc?]}]
-  (r/with-let [root-ref-fn (fn [el]
-                             (when (and el (exists? js/document))
-                               (code/setup-dark-mode!)
-                               (when-some [heading (when (and (exists? js/location) (not= :single-file package))
-                                                     (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
-                                                          (catch js/Error _
-                                                            (js/console.warn (str "Clerk render-notebook, invalid hash: "
-                                                                                  (.-hash js/location))))))]
-                                 (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))]
+(defn scroll-to-location-hash! []
+  (when-some [heading (when (exists? js/location)
+                        (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
+                             (catch js/Error _
+                               (js/console.warn (str "Clerk render-notebook, invalid hash: "
+                                                     (.-hash js/location))))))]
+    (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading))))
 
+(defn render-notebook [{xs :blocks :keys [package doc-css-class sidenotes? toc toc-visibility header footer]}
+                       {:as render-opts :keys [!expanded-at]}]
+  (hooks/use-effect #(swap! !expanded-at merge (navbar/->toc-expanded-at toc toc-visibility)) [toc toc-visibility])
+  (let [!mobile-toc? (hooks/use-state (navbar/mobile?))
+        root-ref-fn (hooks/use-callback (fn [el]
+                                          (when (and el (exists? js/document))
+                                            (code/setup-dark-mode!)
+                                            (when (not= :single-file package)
+                                              (scroll-to-location-hash!)))))]
     [:div.flex
      {:ref root-ref-fn}
      [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
       [dark-mode-toggle]]
      (when (and toc toc-visibility)
-       [inspect-presented render-opts toc])
+       (let [render-opts' (assoc render-opts :!mobile-toc? !mobile-toc?)]
+         [navbar/container render-opts'
+          [inspect-presented render-opts' toc]]))
      [:div.flex-auto.w-screen.scroll-container
       (into
        [:> (.-div motion)

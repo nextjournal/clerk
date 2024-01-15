@@ -1248,7 +1248,7 @@
 (def toc-viewer
   {:name `toc-viewer
    :transform-fn transform-toc
-   :render-fn 'nextjournal.clerk.render.navbar/view})
+   :render-fn 'nextjournal.clerk.render.navbar/render-items})
 
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc
