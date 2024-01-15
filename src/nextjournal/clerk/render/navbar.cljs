@@ -46,12 +46,13 @@
           (.pushState js/history #js {} "" anchor))
         (scroll-to-anchor! anchor)))))
 
-(defn render-items [items {:as render-opts :keys [!expanded-at mobile-toc?]}]
+(defn render-items [items {:as render-opts :keys [!expanded-at !mobile-toc?]}]
   (into
    [:div]
    (map-indexed
     (fn [i {:as item :keys [href css-class emoji path title items]}]
-      (let [label (or title (str/capitalize (last (str/split path #"/"))))
+      (let [mobile-toc? @!mobile-toc?
+            label (or title (str/capitalize (last (str/split path #"/"))))
             expanded? (get-in @!expanded-at [:toc path])
             {:keys [expandable-toc?]} (merge render-opts item)]
         [:div.text-base.leading-normal.dark:text-white
@@ -149,25 +150,6 @@
 (def width 220)
 (def mobile-width 300)
 
-(defn toc-panel [toc {:as render-opts :keys [!expanded-at mobile-toc?]}]
-  [:> (.-div motion)
-   (let [inset-or-x (if mobile-toc? :x :margin-left)
-         w (if mobile-toc? mobile-width width)]
-     {:key "toc-panel"
-      :style {:width w}
-      :class (str "fixed h-screen z-10 flex-shrink-0 bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900 "
-                  (when mobile-toc? "shadow-xl"))
-      :initial {inset-or-x (* w -1)}
-      :animate {inset-or-x 0}
-      :exit {inset-or-x (* w -1)}
-      :transition spring})
-   [close-button render-opts]
-   [:div.absolute.left-0.top-0.w-full.h-full.overflow-x-hidden.overflow-y-auto.py-3
-    [:div.px-3.mb-1.mt-1.md:mt-0.text-xs.uppercase.tracking-wider.text-slate-500.dark:text-slate-400.font-medium.px-3.mb-1.leading-none
-     {:class "md:text-[12px]"}
-     "TOC"]
-    [render-items toc render-opts]]])
-
 (defn ->toc-expanded-at [toc toc-visibility]
   {:toc-open? (if-some [stored-open? (localstorage/get-item local-storage-key)]
                 stored-open?
@@ -176,11 +158,10 @@
               (map (juxt identity some?))
               (keep #(when (and (map? %) (:expanded? %)) (:path %)) (tree-seq coll? not-empty toc)))})
 
-(defn view [toc {:as render-opts :keys [!expanded-at toc-visibility]}]
+(defn view [toc {:as render-opts :keys [!mobile-toc? !expanded-at toc-visibility]} children]
   (hooks/use-effect (fn [] (swap! !expanded-at merge (->toc-expanded-at toc toc-visibility)))
                     [toc toc-visibility])
-  (r/with-let [!mobile-toc? (r/atom (mobile?))
-               handle-resize #(reset! !mobile-toc? (mobile?))
+  (r/with-let [handle-resize #(reset! !mobile-toc? (mobile?))
                ref-fn #(if %
                          (js/addEventListener "resize" handle-resize)
                          (js/removeEventListener "resize" handle-resize))]
@@ -193,4 +174,20 @@
        [:> AnimatePresence
         {:initial false}
         (when toc-open?
-          [toc-panel toc (assoc render-opts :mobile-toc? mobile-toc?)])]])))
+          [:> (.-div motion)
+           (let [inset-or-x (if mobile-toc? :x :margin-left)
+                 w (if mobile-toc? mobile-width width)]
+             {:key "toc-panel"
+              :style {:width w}
+              :class (str "fixed h-screen z-10 flex-shrink-0 bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900 "
+                          (when mobile-toc? "shadow-xl"))
+              :initial {inset-or-x (* w -1)}
+              :animate {inset-or-x 0}
+              :exit {inset-or-x (* w -1)}
+              :transition spring})
+           [close-button render-opts]
+           [:div.absolute.left-0.top-0.w-full.h-full.overflow-x-hidden.overflow-y-auto.py-3
+            [:div.px-3.mb-1.mt-1.md:mt-0.text-xs.uppercase.tracking-wider.text-slate-500.dark:text-slate-400.font-medium.px-3.mb-1.leading-none
+             {:class "md:text-[12px]"}
+             "TOC"]
+            children]])]])))

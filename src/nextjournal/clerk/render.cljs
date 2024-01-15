@@ -109,7 +109,8 @@
 
 (defn render-notebook [{:as doc xs :blocks :keys [package doc-css-class sidenotes? toc toc-visibility header footer]}
                        {:as render-opts :keys [!expanded-at expandable-toc?]}]
-  (r/with-let [root-ref-fn (fn [el]
+  (r/with-let [!mobile-toc? (r/atom (navbar/mobile?))
+               root-ref-fn (fn [el]
                              (when (and el (exists? js/document))
                                (code/setup-dark-mode!)
                                (when-some [heading (when (and (exists? js/location) (not= :single-file package))
@@ -124,7 +125,9 @@
      [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
       [dark-mode-toggle]]
      (when (and toc toc-visibility)
-       [inspect-presented render-opts toc])
+       (let [render-opts' (assoc render-opts :!mobile-toc? !mobile-toc?)]
+         [navbar/view (:nextjournal/value toc) render-opts'
+          [inspect-presented render-opts' toc]]))
      [:div.flex-auto.w-screen.scroll-container
       (into
        [:> (.-div motion)
