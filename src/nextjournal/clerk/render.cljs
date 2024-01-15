@@ -108,7 +108,7 @@
 (declare clerk-eval)
 
 (defn scroll-to-location-hash! []
-  (when-some [heading (when (and (exists? js/location))
+  (when-some [heading (when (exists? js/location)
                         (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
                              (catch js/Error _
                                (js/console.warn (str "Clerk render-notebook, invalid hash: "

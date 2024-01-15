@@ -2,7 +2,6 @@
   (:require ["framer-motion" :as framer-motion :refer [motion AnimatePresence]]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
-            [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clerk.render.localstorage :as localstorage]
             [reagent.core :as r]))
 
