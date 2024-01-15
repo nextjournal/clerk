@@ -157,7 +157,7 @@
               (map (juxt identity some?))
               (keep #(when (and (map? %) (:expanded? %)) (:path %)) (tree-seq coll? not-empty toc)))})
 
-(defn layout [{:as render-opts :keys [!mobile-toc? !expanded-at]} children]
+(defn container [{:as render-opts :keys [!mobile-toc? !expanded-at]} children]
   (r/with-let [handle-resize #(reset! !mobile-toc? (mobile?))
                ref-fn #(if %
                          (js/addEventListener "resize" handle-resize)

@@ -130,7 +130,7 @@
       [dark-mode-toggle]]
      (when (and toc toc-visibility)
        (let [render-opts' (assoc render-opts :!mobile-toc? !mobile-toc?)]
-         [navbar/layout render-opts'
+         [navbar/container render-opts'
           [inspect-presented render-opts' toc]]))
      [:div.flex-auto.w-screen.scroll-container
       (into
