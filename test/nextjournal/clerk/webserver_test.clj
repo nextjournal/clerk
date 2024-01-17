@@ -10,12 +10,6 @@
   (is (= 'nextjournal.clerk.tap (webserver/->file-or-ns "'nextjournal.clerk.tap")))
   (is (= "notebooks/rule_30.clj" (webserver/->file-or-ns "notebooks/rule_30.clj"))))
 
-(defn stream-equal? [s1 s2]
-  (let [x1 (.read s1) x2 (.read s2)]
-    (if (and (not= -1 x1) (not= -1 x2))
-      (if (= x1 x2) (recur s1 s2) false)
-      (= x1 x2))))
-
 (deftest serve-blob
   (testing "lazy loading of simple range"
     (let [doc (let [doc (eval/eval-string "(range 100)")]
@@ -57,8 +51,7 @@
                   (with-meta doc (view/doc->viewer doc)))
             {:nextjournal/keys [presented fetch-opts]} (-> doc meta :nextjournal/value :blocks second :nextjournal/value second :nextjournal/value)
             {:nextjournal/keys [value]} presented
-            {elision-fetch-opts :nextjournal/value v :nextjournal/viewer} (peek value)
-            ]
+            {elision-fetch-opts :nextjournal/value v :nextjournal/viewer} (peek value)]
         (is (= (:name viewer/elision-viewer) (:name v)))
         (let [{:keys [body]} (webserver/serve-blob doc (merge fetch-opts {:fetch-opts elision-fetch-opts}))
               {expanded-value :nextjournal/value}
