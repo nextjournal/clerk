@@ -908,13 +908,17 @@
    :transform-fn (comp mark-presented (update-val (comp demunge-ex-data
                                                         datafy/datafy)))})
 
+#?(:clj
+   (defn buffered-image->bytes [^BufferedImage image]
+     (.. (PngEncoder.)
+         (withBufferedImage image)
+         (withCompressionLevel 1)
+         (toBytes))))
+
 (def image-viewer
   {#?@(:clj [:pred #(instance? BufferedImage %)
              :transform-fn (fn [{image :nextjournal/value}]
-                             (-> {:nextjournal/value (.. (PngEncoder.)
-                                                         (withBufferedImage image)
-                                                         (withCompressionLevel 1)
-                                                         (toBytes))
+                             (-> {:nextjournal/value (buffered-image->bytes image)
                                   :nextjournal/content-type "image/png"
                                   :nextjournal/width (image-width image)}
                                  mark-presented))])
