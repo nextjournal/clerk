@@ -90,3 +90,6 @@
  [:div
   [:h3 "Configuring budget inside " [:span.font-mono "clerk/html"]]
   {:nextjournal/value (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))}])
+
+;; images displayed correctly when expanding elided data
+(concat (range 20) (list (clerk/image "trees.png")))
