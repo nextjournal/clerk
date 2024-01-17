@@ -25,7 +25,6 @@
         ["cards"
          "cherry"
          "controlling_width"
-         "docs"
          "document_linking"
          "editor"
          "hello"

@@ -3,6 +3,7 @@
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [matcher-combinators.test]
+            [nextjournal.clerk.builder :as builder]
             [nextjournal.clerk.paths :as paths]))
 
 (def test-paths ["boo*.clj"])
@@ -58,3 +59,23 @@
                 (paths/expand-paths {:paths-fn 'clojure.core/+})))
     (is (match? {:error "`:index` must be either an instance of java.net.URL or a string and point to an existing file"}
                 (paths/expand-paths {:index ["book.clj"]})))))
+
+(deftest index-paths
+  (testing "when called with no arguments, reads `:exec-args` from the `:nextjournal/clerk` alias in deps.edn"
+    (is (= builder/clerk-docs
+           (:paths (paths/index-paths)))))
+
+  (testing "respects options found in *build-opts* dynamic var"
+    (let [paths ["notebooks/hello.clj" "notebooks/markdown.md"]]
+      (is (= paths
+             (binding [paths/*build-opts* {:paths paths}]
+               (:paths (paths/index-paths))))))
+
+    (testing "it is resilient to garbage in *build-opts*"
+      (is (= builder/clerk-docs
+             (binding [paths/*build-opts* {:this 'should-just-be-ignored}]
+               (:paths (paths/index-paths)))))))
+
+  (testing "when called with missing options, hints at how to setup a static build"
+    (is (match? {:error #"must set either `:paths`, `:paths-fn` or `:index`"}
+                (paths/index-paths {})))))
