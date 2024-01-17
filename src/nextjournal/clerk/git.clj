@@ -31,6 +31,7 @@
 
 (defn read-git-attrs []
   (try {:git/sha (shell-out-str "git rev-parse HEAD")
+        :git/prefix (shell-out-str "git rev-parse --show-prefix")
         :git/url (let [branch (shell-out-str "git symbolic-ref --short HEAD")
                        remote (shell-out-str "git" "config" (str "branch." branch ".remote"))
                        remote-url (shell-out-str "git" "remote" "get-url" remote)]

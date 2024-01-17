@@ -263,7 +263,7 @@
                               file-or-ns))]
         (do
           (try (show! (merge {:skip-history? true}
-                             (select-keys opts [:expanded-paths :index :git/sha :git/url]))
+                             (select-keys opts [:expanded-paths :index :git/sha :git/url :git/prefix]))
                       file-or-ns)
                (catch Exception _))
           {:status 200
