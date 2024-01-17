@@ -82,7 +82,27 @@
 
   (testing "elision inside html"
     (let [value (v/html [:div [:ul [:li {:nextjournal/value (range 30)}]]])]
-      (is (= (v/->value value) (v/->value (v/desc->values (resolve-elision (v/present value)))))))))
+      (is (= (v/->value value) (v/->value (v/desc->values (resolve-elision (v/present value))))))))
+
+  (testing "resolving elided blobs"
+    (let [{:nextjournal/keys [presented blob-id]}
+          (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.elision-and-images
+                             (:require [nextjournal.clerk :as clerk]))
+                           (clerk/image \"trees.png\")")
+                     view/doc->viewer
+                     :nextjournal/value
+                     :blocks second :nextjournal/value second
+                     :nextjournal/value)]
+
+      ;; n.c.viewer/process-blobs replaces bytes with an elision containing path and blob-id
+      (is (= {:blob-id blob-id :path [1]} (:nextjournal/value presented)))
+      (is (= "image/png" (:nextjournal/content-type presented)))
+
+      ;; this is the mechanism that let image contents be resolved via n.c.webserver/serve-blob
+      ;; see also n.c.render/url-for
+      (is (bytes? (:nextjournal/value
+                   ((:present-elision-fn (meta presented))
+                    (select-keys (:nextjournal/value presented) [:path]))))))))
 
 (deftest default-viewers
   (testing "viewers have names matching vars"
