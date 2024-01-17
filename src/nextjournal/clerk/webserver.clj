@@ -76,7 +76,7 @@
       (if (contains? desc :nextjournal/content-type)
         {:body (v/->value desc)
          :content-type (:nextjournal/content-type desc)}
-        {:body (v/->edn desc)}))
+        {:body (v/->edn (v/process-blobs {:blob-mode :lazy-load :blob-id blob-id} desc))}))
     {:status 404}))
 
 (defn extract-blob-opts [{:as _req :keys [uri query-string]}]
