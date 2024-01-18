@@ -60,21 +60,26 @@
     (is (match? {:error "`:index` must be either an instance of java.net.URL or a string and point to an existing file"}
                 (paths/expand-paths {:index ["book.clj"]})))))
 
+(defn c=
+  "Checks paths in collection are equal regardless of OS filesystem representation"
+  [xs ys]
+  (= (map fs/canonicalize xs) (map fs/canonicalize ys)))
+
 (deftest index-paths
   (testing "when called with no arguments, reads `:exec-args` from the `:nextjournal/clerk` alias in deps.edn"
-    (is (= builder/clerk-docs
-           (:paths (paths/index-paths)))))
+    (is (c= builder/clerk-docs
+            (:paths (paths/index-paths)))))
 
   (testing "respects options found in *build-opts* dynamic var"
     (let [paths ["notebooks/hello.clj" "notebooks/markdown.md"]]
-      (is (= paths
-             (binding [paths/*build-opts* {:paths paths}]
-               (:paths (paths/index-paths))))))
+      (is (c= paths
+              (binding [paths/*build-opts* {:paths paths}]
+                (:paths (paths/index-paths))))))
 
     (testing "it is resilient to garbage in *build-opts*"
-      (is (= builder/clerk-docs
-             (binding [paths/*build-opts* {:this 'should-just-be-ignored}]
-               (:paths (paths/index-paths)))))))
+      (is (c= builder/clerk-docs
+              (binding [paths/*build-opts* {:this 'should-just-be-ignored}]
+                (:paths (paths/index-paths)))))))
 
   (testing "when called with missing options, hints at how to setup a static build"
     (is (match? {:error #"must set either `:paths`, `:paths-fn` or `:index`"}
