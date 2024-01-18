@@ -7,6 +7,7 @@
             [clojure.string :as str]
             [editscript.core :as editscript]
             [nextjournal.clerk.config :as config]
+            [nextjournal.clerk.git :as git]
             [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
@@ -173,10 +174,22 @@
 
 (declare present+reset!)
 
-(defn get-build-opts []
-  (paths/process-paths @!server))
+(defn get-build-opts
+  ([] (get-build-opts @!server))
+  ([{:as opts :keys [paths paths-fn index]}]
+    (-> (if (or paths paths-fn index)
+             (paths/expand-paths opts)
+             opts)
+        (select-keys [:index :paths :expanded-paths :error])
+        (merge (git/read-git-attrs)))))
 
 #_(get-build-opts)
+#_(get-build-opts {:paths ["notebooks/rule_30.clj"]})
+#_(get-build-opts {:paths ["notebooks/rule_30.clj"] :index "notebooks/links.md"})
+#_(get-build-opts {:paths ["notebooks/no_rule_30.clj"]})
+#_(v/route-index? (get-build-opts @!server))
+#_(route-index (get-build-opts @!server) "")
+#_(route-index (get-build-opts {:index "notebooks/rule_30.clj"}) "")
 
 (defn ->nav-path [file-or-ns]
   (cond (or (= 'nextjournal.clerk.index file-or-ns)
@@ -247,7 +260,7 @@
 (defn prefetch-request? [req] (= "prefetch" (-> req :headers (get "purpose"))))
 
 (defn serve-notebook [{:as req :keys [uri]}]
-  (let [opts (paths/process-paths @!server)
+  (let [opts (get-build-opts)
         nav-path (maybe-route-index opts (subs uri 1))]
     (cond
       (prefetch-request? req)

@@ -2,8 +2,7 @@
   "Clerk's paths expansion and paths-fn handling."
   (:require [babashka.fs :as fs]
             [clojure.edn :as edn]
-            [clojure.string :as str]
-            [nextjournal.clerk.git :as git])
+            [clojure.string :as str])
   (:import [java.net URL]))
 
 (defn ^:private ensure-not-empty [build-opts {:as opts :keys [error expanded-paths]}]
@@ -122,19 +121,6 @@
 #_(index-paths)
 #_(index-paths {:paths ["CHANGELOG.md"]})
 #_(index-paths {:paths-fn "boom"})
-
-(defn process-paths [{:as opts :keys [paths paths-fn index]}]
-  (merge (if (or paths paths-fn index)
-           (expand-paths opts)
-           opts)
-         (git/read-git-attrs)))
-
-#_(process-paths {:paths ["notebooks/rule_30.clj"]})
-#_(process-paths {:paths ["notebooks/rule_30.clj"] :index "notebooks/links.md"})
-#_(process-paths {:paths ["notebooks/no_rule_30.clj"]})
-#_(v/route-index? (process-paths @!server))
-#_(route-index (process-paths @!server) "")
-
 
 (defn path-in-cwd
   "Turns `file` into a unixified (forward slashed) path if the is in the cwd,
