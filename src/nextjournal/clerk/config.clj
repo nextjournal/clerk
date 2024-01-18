@@ -41,9 +41,9 @@
          (println (format "WARN: Failed parsing value %s for %s. Using default %s." val path default))
          default)))))
 
-(def cache-dir (get-config [:cache-dir] ".clerk/cache"))
+(defn cache-dir [] (get-config [:cache-dir] ".clerk/cache"))
 
-(def cache-disabled? (get-config [:disable-cache] false))
+(defn cache-disabled? [] (get-config [:disable-cache] false))
 
 (def resource-manifest-from-props (get-config [:resource-manifest] nil {:parse read-string}))
 

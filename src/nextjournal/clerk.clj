@@ -561,14 +561,14 @@
   * the form of an anonymous expression"
   ([]
    (swap! webserver/!doc dissoc :blob->result)
-   (if (fs/exists? config/cache-dir)
-     (do (fs/delete-tree config/cache-dir)
-         (prn :cache-dir/deleted config/cache-dir))
-     (prn :cache-dir/does-not-exist config/cache-dir)))
+   (if (fs/exists? (config/cache-dir))
+     (do (fs/delete-tree (config/cache-dir))
+         (prn :cache-dir/deleted (config/cache-dir)))
+     (prn :cache-dir/does-not-exist (config/cache-dir))))
   ([sym-or-form]
    (if-let [{:as block :keys [id result]} (first (analyzer/find-blocks @webserver/!doc sym-or-form))]
      (let [{:nextjournal/keys [blob-id]} result
-           cache-file (fs/file config/cache-dir (str "@" blob-id))
+           cache-file (fs/file (config/cache-dir) (str "@" blob-id))
            cached-in-memory? (contains? (:blob->result @webserver/!doc) blob-id)
            cached-on-fs? (fs/exists? cache-file)]
        (if-not (or cached-in-memory? cached-on-fs?)

@@ -26,7 +26,7 @@
 #_(-> [(clojure.java.io/file "notebooks") (find-ns 'user)] nippy/freeze nippy/thaw)
 
 (defn ->cache-file [hash]
-  (str config/cache-dir fs/file-separator hash))
+  (str (config/cache-dir) fs/file-separator hash))
 
 (defn wrapped-with-metadata [value hash]
   (cond-> {:nextjournal/value value}
@@ -135,7 +135,7 @@
           no-cache? (or ns-effect?
                         no-cache?
                         (boolean (seq @!interned-vars))
-                        config/cache-disabled?)]
+                        (config/cache-disabled?))]
       (when (and (not no-cache?)
                  (not ns-effect?)
                  freezable?
@@ -187,7 +187,7 @@
                           cas-hash :no-cas-file
                           :else :no-digest-file)
            :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
-    (fs/create-dirs config/cache-dir)
+    (fs/create-dirs (config/cache-dir))
     (cond-> (or (when (and cached-result? cached-result-in-memory)
                   (wrapped-with-metadata (:nextjournal/value cached-result-in-memory) hash))
                 (when (and cached-result? freezable?)
