@@ -461,6 +461,7 @@
                                       :coerce :boolean}}
                       :order [:host :port :browse :watch-paths :show-filter-fn :paths :paths-fn :index]}}
   [config]
+  (config/load! config)
   (if (:help config)
     (if-let [format-opts (and (started-via-bb-cli? config) (requiring-resolve 'babashka.cli/format-opts))]
       (println "Start the Clerk webserver with an optional a file watcher.\n\nOptions:"
@@ -535,6 +536,7 @@
                              :git/url {:desc "Git url to use for the backlink."}}
                       :order [:paths :paths-fn :index :browse :dashbaord :compile-css :ssr :bundle :out-path :git/sha :git/url]}}
   [build-opts]
+  (config/load! build-opts)
   (if (:help build-opts)
     (if-let [format-opts (and (started-via-bb-cli? build-opts) (requiring-resolve 'babashka.cli/format-opts))]
       (println "Start the Clerk webserver with an optional a file watcher.\n\nOptions:"

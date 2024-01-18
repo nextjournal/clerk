@@ -3,18 +3,49 @@
             [clojure.java.io :as io]
             [clojure.string :as str]))
 
-(def cache-dir
-  (or (System/getProperty "clerk.cache_dir")
-      ".clerk/cache"))
+(defonce ^:private config (atom {}))
 
-(def cache-disabled?
-  (when-let [prop (System/getProperty "clerk.disable_cache")]
-    (not= "false" prop)))
+(defn load! [c]
+  (reset! config c))
 
-(def resource-manifest-from-props
-  (when-let [prop (System/getProperty "clerk.resource_manifest")]
-    (when-not (str/blank? prop)
-      (read-string prop))))
+(defn- kebab->snake-case [s]
+  (str/replace s "-" "_"))
+
+(defn- path->property-name [path]
+  (str "clerk." (str/join "." (map (comp kebab->snake-case name) path))))
+
+(defn- path->env-name [path]
+  (str "CLERK_" (str/join "__" (map (comp kebab->snake-case name) path))))
+
+(defn get-config
+  ([path]
+   (get-config path nil))
+  ([path default]
+   (get-config path default {}))
+  ([path default {:keys [valid? parse]
+                  :or {valid? (constantly true)
+                       parse identity}}]
+   (let [val (let [x (get-in @config path ::not-found)]
+               (if (not= ::not-found x)
+                 x
+                 (or (System/getProperty (path->property-name path))
+                     (System/getenv (path->env-name path)))))]
+     (try
+       (let [parsed-val (parse val)]
+         (if (valid? parsed-val)
+           parsed-val
+           (do
+             (println (format "WARN: Invalid value %s for %s. Using default %s." parsed-val path default))
+             default)))
+       (catch Exception _
+         (println (format "WARN: Failed parsing value %s for %s. Using default %s." val path default))
+         default)))))
+
+(def cache-dir (get-config [:cache-dir] ".clerk/cache"))
+
+(def cache-disabled? (get-config [:disable-cache] false))
+
+(def resource-manifest-from-props (get-config [:resource-manifest] nil {:parse read-string}))
 
 (def !asset-map
   ;; In mvn releases, the asset map is available in the artifact
@@ -40,9 +71,7 @@
 (def ^:dynamic *in-clerk* false)
 
 (def ^:dynamic *bounded-count-limit*
-  (or (let [limit (System/getProperty "clerk.bounded-count-limit")]
-        (try
-          (some-> limit not-empty Integer/parseInt)
-          (catch Exception _
-            (throw (ex-info "Invalid value for property `clerk.bounded-count-limit`, must be integer." {:value limit})))))
-      1000000))
+  (get-config [:bounded-count-limit]
+              1000000
+              {:parse parse-long
+               :valid? int?}))
