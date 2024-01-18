@@ -12,7 +12,7 @@
 #_(shell-out-str "zonk")
 
 (defn ->github-project [remote-url]
-  (second (re-find #"^git@github\.com:(.*)\.git$" remote-url)))
+  (second (re-find #"^git@github\.com:(.*)(\.git)?$" remote-url)))
 
 (defn ->https-git-url
   "Takes a git `remote-url` and tries to convert it into a https url for
@@ -31,6 +31,7 @@
 
 (defn read-git-attrs []
   (try {:git/sha (shell-out-str "git rev-parse HEAD")
+        :git/prefix (shell-out-str "git rev-parse --show-prefix")
         :git/url (let [branch (shell-out-str "git symbolic-ref --short HEAD")
                        remote (shell-out-str "git" "config" (str "branch." branch ".remote"))
                        remote-url (shell-out-str "git" "remote" "get-url" remote)]
