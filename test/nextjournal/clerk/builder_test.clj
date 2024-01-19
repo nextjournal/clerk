@@ -46,7 +46,7 @@
       (builder/build-static-app! {:index "notebooks/hello.clj"
                                   :git/url "https://github.com/some/project"
                                   :git/sha "SHASHASHA"
-                                  :git/prefix "prefix"
+                                  :git/prefix "prefix/"
                                   :out-path temp-dir
                                   :report-fn identity})
 
@@ -56,7 +56,7 @@
                          :nextjournal/value :header :nextjournal/value
                          (get-in [1 3 3 2]))]
 
-        (is (= "https://github.com/some/project/blob/SHASHASHA/prefixnotebooks/hello.clj"
+        (is (= "https://github.com/some/project/blob/SHASHASHA/prefix/notebooks/hello.clj"
                (get-in backlink [1 :href])))
         (is (= "notebooks/hello.clj" (get backlink 2)))
         (is (= [:<> "@" [:span.tabular-nums "SHASHAS"]] (get backlink 3))))))
