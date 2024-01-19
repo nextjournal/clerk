@@ -4,7 +4,8 @@
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [matcher-combinators.test]
-            [nextjournal.clerk.builder :as builder])
+            [nextjournal.clerk.builder :as builder]
+            [nextjournal.clerk.viewer :as viewer])
   (:import (clojure.lang ExceptionInfo)
            (java.io File)))
 
@@ -39,6 +40,27 @@
                                                                                     :report-fn identity})))
     (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index "not/existing/notebook.clj"
                                                                                     :report-fn identity}))))
+
+  (testing "backlink to source"
+    (fs/with-temp-dir [temp-dir {}]
+      (builder/build-static-app! {:index "notebooks/hello.clj"
+                                  :git/url "https://github.com/some/project"
+                                  :git/sha "SHASHASHA"
+                                  :git/prefix "prefix"
+                                  :out-path temp-dir
+                                  :report-fn identity})
+
+      (is (fs/exists? (fs/file temp-dir "index.edn")))
+      (let [backlink (-> (binding [*data-readers* viewer/data-readers]
+                           (read-string (slurp (fs/file temp-dir "index.edn"))))
+                         :nextjournal/value :header :nextjournal/value
+                         (get-in [1 3 3 2]))]
+
+        (is (= "https://github.com/some/project/blob/SHASHASHA/prefixnotebooks/hello.clj"
+               (get-in backlink [1 :href])))
+        (is (= "notebooks/hello.clj" (get backlink 2)))
+        (is (= [:<> "@" [:span.tabular-nums "SHASHAS"]] (get backlink 3))))))
+
   (testing "image is saved to _data dir"
     (is (fs/with-temp-dir [temp-dir {}]
           (builder/build-static-app! {:index "notebooks/viewers/single_image.clj"
