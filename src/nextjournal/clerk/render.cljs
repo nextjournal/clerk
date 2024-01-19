@@ -740,7 +740,7 @@
       (set-state! {:doc doc}))))
 
 (defn handle-anchor-click [^js e]
-  (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
+  (when-some [url (some-> e .-target closest-anchor-parent .-href not-empty ->URL)]
     (when-not (ignore-anchor-click? e url)
       (.preventDefault e)
       (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
