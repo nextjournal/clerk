@@ -957,6 +957,17 @@
 (def mathjax-viewer
   {:name `mathjax-viewer :render-fn 'nextjournal.clerk.render/render-mathjax :transform-fn mark-presented})
 
+(def meta-viewer
+  {:name `meta-viewer
+   :pred (comp (some-fn fn? map?) :nextjournal.clerk/viewer meta)
+   :transform-fn
+   (update-val
+    (fn [v]
+      (let [viewer (-> v meta :nextjournal.clerk/viewer)]
+        (if (fn? viewer)
+          (viewer v)
+          (with-viewer viewer v)))))})
+
 (defn ->opts [wrapped-value]
   (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/render-opts
                               :nextjournal/render-evaluator
@@ -1344,6 +1355,7 @@
    elision-viewer
    katex-viewer
    mathjax-viewer
+   meta-viewer
    html-viewer
    plotly-viewer
    vega-lite-viewer
