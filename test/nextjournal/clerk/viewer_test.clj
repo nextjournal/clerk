@@ -143,7 +143,6 @@
   (binding [*data-readers* v/data-readers]
     (is (-> (eval-test/eval+extract-doc-blocks "(fn boom [x] x)")
             second :nextjournal/value :nextjournal/presented
-            #_#_
             v/->edn
             read-string))))
 
