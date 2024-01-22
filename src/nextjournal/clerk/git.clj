@@ -12,7 +12,7 @@
 #_(shell-out-str "zonk")
 
 (defn ->github-project [remote-url]
-  (second (re-find #"^git@github\.com:(.*)(\.git)?$" remote-url)))
+  (second (re-find #"^git@github\.com:(.*?)(\.git)?$" remote-url)))
 
 (defn ->https-git-url
   "Takes a git `remote-url` and tries to convert it into a https url for
