@@ -31,6 +31,8 @@ Changes can be:
 
 * 🐜 Fix blank screen caused by react unmounting when an exception occurs during `clerk/show!`, fixes [#586](https://github.com/nextjournal/clerk/issues/586) @elken
 
+* 🐜 Fix crash using file watcher with `:show-filter-fn` in notebooks with exceptions, fixes [#616](https://github.com/nextjournal/clerk/issues/616).
+
 * 🐜 Make edn transmission resilient to symbols and keywords containing multiple slashes like `foo/bar/baz`. Those can be read by `read-string` but not in ClojureScript which is based on `tools.reader`.
 
 * 🐞 Fix `:nextjournal.clerk/page-size` option throwing when set on string values, fixes [#584][https://github.com/nextjournal/clerk/issues/584]
