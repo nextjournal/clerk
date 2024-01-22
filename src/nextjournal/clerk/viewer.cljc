@@ -901,12 +901,36 @@
    :transform-fn (comp #?(:cljs var->symbol :clj symbol) ->value)
    :render-fn '(fn [x] [:span.inspected-value [:span.cmt-meta "#'" (str x)]])})
 
+(defn ->opts [wrapped-value]
+  (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/render-opts
+                              :nextjournal/render-evaluator
+                              :!budget :store!-wrapped-value :present-elision-fn :path :offset]))
+
+(defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
+  (-> (ensure-wrapped-with-viewers viewers value)
+      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :present-elision-fn :nextjournal/budget :path]))
+      (update :path (fnil conj []) path-segment)))
+
+(defn present-ex-data [parent throwable-map]
+  (update-if throwable-map :via
+             (fn [exs]
+               (mapv (fn [i ex]
+                       (update-if ex :data
+                                  (fn [data]
+                                    (present (inherit-opts parent data i)))))
+                     (range (count exs))
+                     exs))))
+
 (def throwable-viewer
   {:name `throwable-viewer
    :render-fn 'nextjournal.clerk.render/render-throwable
    :pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
-   :transform-fn (comp mark-presented (update-val (comp demunge-ex-data
-                                                        datafy/datafy)))})
+   :transform-fn (fn [wrapped-value]
+                   (-> wrapped-value
+                       mark-presented
+                       (update :nextjournal/value (comp demunge-ex-data
+                                                        (partial present-ex-data wrapped-value)
+                                                        datafy/datafy))))})
 
 #?(:clj
    (defn buffered-image->bytes [^BufferedImage image]
@@ -956,17 +980,6 @@
 
 (def mathjax-viewer
   {:name `mathjax-viewer :render-fn 'nextjournal.clerk.render/render-mathjax :transform-fn mark-presented})
-
-(defn ->opts [wrapped-value]
-  (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/render-opts
-                              :nextjournal/render-evaluator
-                              :!budget :store!-wrapped-value :present-elision-fn :path :offset]))
-
-(defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
-  (-> (ensure-wrapped-with-viewers viewers value)
-      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :present-elision-fn :nextjournal/budget :path]))
-      (update :path (fnil conj []) path-segment)))
-
 
 (defn transform-html [{:as wrapped-value :keys [path]}]
   (let [!path-idx (atom -1)]

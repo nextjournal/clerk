@@ -491,7 +491,7 @@
           [:div.font-bold "Unhandled " type])
         [:div.font-bold.mt-1 message]
         (when data
-          [:div.mt-1 [inspect (viewer/inspect-wrapped-values data)]])])
+          [:div.mt-1 [inspect-presented data]])])
      via))
    [:div.py-6.overflow-x-auto
     [:table.w-full
