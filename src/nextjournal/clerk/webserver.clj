@@ -180,7 +180,6 @@
     (-> (if (or paths paths-fn index)
              (paths/expand-paths opts)
              opts)
-        (select-keys [:index :paths :expanded-paths :error])
         (merge (git/read-git-attrs)))))
 
 #_(get-build-opts)
