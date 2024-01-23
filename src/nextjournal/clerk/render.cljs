@@ -480,7 +480,7 @@
      [:div.overflow-x-auto.overflow-y-hidden.w-full.shadow.sticky-table-header
       [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-clone-ref :style {:margin 0}}]]]))
 
-(defn throwable-view [{:keys [via trace]}]
+(defn throwable-view [{:keys [via trace]} opts]
   [:div.bg-white.max-w-6xl.mx-auto.text-xs.monospace.not-prose
    (into
     [:div]
@@ -491,7 +491,7 @@
           [:div.font-bold "Unhandled " type])
         [:div.font-bold.mt-1 message]
         (when data
-          [:div.mt-1 [inspect-presented data]])])
+          [:div.mt-1 [inspect-presented opts data]])])
      via))
    [:div.py-6.overflow-x-auto
     [:table.w-full
@@ -503,10 +503,10 @@
                    [:td.py-1.pr-6 call]]))
            trace)]]])
 
-(defn render-throwable [ex]
+(defn render-throwable [ex opts]
   (if (or (:stack ex) (instance? js/Error ex))
     [error-view ex]
-    [throwable-view ex]))
+    [throwable-view ex opts]))
 
 (defn render-tagged-value
   ([tag value] (render-tagged-value {:space? true} tag value))
@@ -560,6 +560,16 @@
 
 #_(show-panel :test {:content [:div "Test"] :width 600 :height 600})
 
+(defn with-fetch-fn [{:nextjournal/keys [presented blob-id]} body-fn]
+  ;; TODO: unify with result-viewer
+  (let [!presented-value (hooks/use-state presented)
+        body-fn* (hooks/use-callback body-fn)]
+    [view-context/provide
+     {:fetch-fn (fn [elision]
+                  (.then (fetch! {:blob-id blob-id} elision)
+                         (fn [more] (swap! !presented-value viewer/merge-presentations more elision))))}
+     [body-fn* @!presented-value]]))
+
 (defn root []
   [:<>
    [:div.fixed.w-full.z-20.top-0.left-0.w-full
@@ -567,9 +577,12 @@
       [connection-status status])
     (when-let [status (:status @!doc)]
       [exec-status status])]
-   (when-let [error (get-in @!doc [:nextjournal/value :error])]
-     [:div.fixed.top-0.left-0.w-full.h-full
-      [inspect-presented error]])
+   (when-let [wrapped-value (get-in @!doc [:nextjournal/value :error])]
+     (let [!expanded-at (r/atom {})]
+       [with-fetch-fn wrapped-value
+        (fn [presented-value]
+          [:div.fixed.top-0.left-0.w-full.h-full
+           [inspect-presented {:!expanded-at !expanded-at} presented-value]])]))
    (when (:nextjournal/value @!doc)
      [inspect-presented @!doc])
    (into [:<>]

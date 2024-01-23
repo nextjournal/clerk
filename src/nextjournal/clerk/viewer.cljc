@@ -1267,6 +1267,10 @@
    :transform-fn transform-toc
    :render-fn 'nextjournal.clerk.render.navbar/render-items})
 
+(defn present-error [error]
+  {:nextjournal/presented (present error)
+   :nextjournal/blob-id (str "exception:" (hash error))})
+
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc
       (assoc :atom-var-name->state (atom-var-name->state doc))
@@ -1291,7 +1295,7 @@
                     :toc-visibility
                     :header
                     :footer])
-      (update-if :error present)
+      (update-if :error present-error)
       (assoc :sidenotes? (boolean (seq (:footnotes doc))))
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
 
