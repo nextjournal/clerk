@@ -177,10 +177,10 @@
 (defn get-build-opts
   ([] (get-build-opts @!server))
   ([{:as opts :keys [paths paths-fn index]}]
-   (-> (if (or paths paths-fn index)
-         (paths/expand-paths opts)
-         opts)
-       (merge (git/read-git-attrs)))))
+   (merge (git/read-git-attrs)
+          (if (or paths paths-fn index)
+            (paths/expand-paths opts)
+            opts))))
 
 #_(get-build-opts)
 #_(get-build-opts {:paths ["notebooks/rule_30.clj"]})
