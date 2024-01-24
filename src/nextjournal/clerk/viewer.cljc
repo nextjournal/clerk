@@ -912,14 +912,13 @@
       (update :path (fnil conj []) path-segment)))
 
 (defn present-ex-data [parent throwable-map]
-  (update-if throwable-map :via
-             (fn [exs]
-               (mapv (fn [i ex]
-                       (update-if ex :data
-                                  (fn [data]
-                                    (present (inherit-opts parent data i)))))
-                     (range (count exs))
-                     exs))))
+  (let [present-child (fn [idx data] (present (inherit-opts parent data idx)))]
+    (-> throwable-map
+        (update-if :data (partial present-child 0))
+        (update-if :via (fn [exs]
+                          (mapv (fn [i ex] (update-if ex :data (partial present-child (inc i))))
+                                (range (count exs))
+                                exs))))))
 
 (def throwable-viewer
   {:name `throwable-viewer
