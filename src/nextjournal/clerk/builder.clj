@@ -293,11 +293,7 @@
                                                                             paths/*build-opts* opts
                                                                             viewer/doc-url (partial doc-url opts file)]
                                                                     (let [doc (eval/eval-analyzed-doc doc)]
-                                                                      (assoc doc :viewer (view/doc->viewer (assoc opts
-                                                                                                                  :nav-path (if (instance? java.net.URL file)
-                                                                                                                              (str "'" (:ns doc))
-                                                                                                                              (str file)))
-                                                                                                           doc))))
+                                                                      (assoc doc :viewer (view/doc->viewer (assoc opts :file-path (str file)) doc))))
                                                                   (catch Exception e
                                                                     {:error e})))]
                         (report-fn (merge {:stage :built :duration duration :idx idx}
