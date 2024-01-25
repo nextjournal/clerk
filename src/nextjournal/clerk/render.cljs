@@ -113,7 +113,7 @@
                              (catch js/Error _
                                (js/console.warn (str "Clerk render-notebook, invalid hash: "
                                                      (.-hash js/location))))))]
-    (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading))))
+    (js/requestAnimationFrame #(.scrollIntoView heading))))
 
 (defn render-notebook [{xs :blocks :keys [package doc-css-class sidenotes? toc toc-visibility header footer]}
                        {:as render-opts :keys [!expanded-at]}]
