@@ -93,3 +93,10 @@
 
 ;; Images are displayed correctly when expanding elided data:
 (concat (range 20) (list (clerk/image "trees.png")))
+
+;; Elisions in exception data are fetched correctly:
+(ex-info "Boink 💥"
+         {:boom (fn boom [x] x)
+          :range (range 30)
+          :image (clerk/image "trees.png")}
+         (RuntimeException. "no way"))

@@ -75,7 +75,7 @@
          (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
          (webserver/update-doc! result))
        (catch Exception e
-         (webserver/update-doc! (assoc (-> e ex-data ::doc) :error e))
+         (webserver/update-doc! (-> e ex-data ::doc (assoc :error e) (update :ns #(or % (find-ns 'user)))))
          (throw e))))))
 
 #_(show! "notebooks/exec_status.clj")

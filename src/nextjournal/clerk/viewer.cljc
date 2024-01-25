@@ -901,12 +901,35 @@
    :transform-fn (comp #?(:cljs var->symbol :clj symbol) ->value)
    :render-fn '(fn [x] [:span.inspected-value [:span.cmt-meta "#'" (str x)]])})
 
+(defn ->opts [wrapped-value]
+  (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/render-opts
+                              :nextjournal/render-evaluator
+                              :!budget :store!-wrapped-value :present-elision-fn :path :offset]))
+
+(defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
+  (-> (ensure-wrapped-with-viewers viewers value)
+      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :present-elision-fn :nextjournal/budget :path]))
+      (update :path (fnil conj []) path-segment)))
+
+(defn present-ex-data [parent throwable-map]
+  (let [present-child (fn [idx data] (present (inherit-opts parent data idx)))]
+    (-> throwable-map
+        (update-if :data (partial present-child 0))
+        (update-if :via (fn [exs]
+                          (mapv (fn [i ex] (update-if ex :data (partial present-child (inc i))))
+                                (range (count exs))
+                                exs))))))
+
 (def throwable-viewer
   {:name `throwable-viewer
    :render-fn 'nextjournal.clerk.render/render-throwable
    :pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
-   :transform-fn (comp mark-presented (update-val (comp demunge-ex-data
-                                                        datafy/datafy)))})
+   :transform-fn (fn [wrapped-value]
+                   (-> wrapped-value
+                       mark-presented
+                       (update :nextjournal/value (comp demunge-ex-data
+                                                        (partial present-ex-data wrapped-value)
+                                                        datafy/datafy))))})
 
 #?(:clj
    (defn buffered-image->bytes [^BufferedImage image]
@@ -956,17 +979,6 @@
 
 (def mathjax-viewer
   {:name `mathjax-viewer :render-fn 'nextjournal.clerk.render/render-mathjax :transform-fn mark-presented})
-
-(defn ->opts [wrapped-value]
-  (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/render-opts
-                              :nextjournal/render-evaluator
-                              :!budget :store!-wrapped-value :present-elision-fn :path :offset]))
-
-(defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
-  (-> (ensure-wrapped-with-viewers viewers value)
-      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :present-elision-fn :nextjournal/budget :path]))
-      (update :path (fnil conj []) path-segment)))
-
 
 (defn transform-html [{:as wrapped-value :keys [path]}]
   (let [!path-idx (atom -1)]
@@ -1254,6 +1266,10 @@
    :transform-fn transform-toc
    :render-fn 'nextjournal.clerk.render.navbar/render-items})
 
+(defn present-error [error]
+  {:nextjournal/presented (present error)
+   :nextjournal/blob-id (str (gensym "error"))})
+
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc
       (assoc :atom-var-name->state (atom-var-name->state doc))
@@ -1278,7 +1294,7 @@
                     :toc-visibility
                     :header
                     :footer])
-      (update-if :error present)
+      (update-if :error present-error)
       (assoc :sidenotes? (boolean (seq (:footnotes doc))))
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
 

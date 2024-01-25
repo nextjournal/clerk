@@ -132,6 +132,28 @@
     (is (= :full
            (:nextjournal/width (v/apply-viewers (v/table {:nextjournal.clerk/width :full} {:a [1] :b [2] :c [3]})))))))
 
+(deftest present-exceptions
+  (testing "can represent ex-data in a readable way"
+    (binding [*data-readers* v/data-readers]
+
+      (is (-> (eval-test/eval+extract-doc-blocks "(ex-info \"💥\"  {:foo 123 :boom (fn boom [x] x)})")
+              second :nextjournal/value :nextjournal/presented
+              v/->edn
+              read-string))
+
+      (is (-> (eval-test/eval+extract-doc-blocks "(ex-info \"💥\"  {:foo 123 :boom (fn boom [x] x)} (RuntimeException. \"no way\"))")
+              second :nextjournal/value :nextjournal/presented
+              v/->edn
+              read-string)))))
+
+(deftest present-functions
+  (testing "can represent functions in a readable way"
+    (binding [*data-readers* v/data-readers]
+      (is (-> (eval-test/eval+extract-doc-blocks "(fn boom [x] x)")
+              second :nextjournal/value :nextjournal/presented
+              v/->edn
+              read-string)))))
+
 (deftest datafy-scope
   (is (= (ns-name *ns*)
          (v/datafy-scope *ns*)
