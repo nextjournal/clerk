@@ -1268,7 +1268,7 @@
 
 (defn present-error [error]
   {:nextjournal/presented (present error)
-   :nextjournal/blob-id (str "exception:" (hash error))})
+   :nextjournal/blob-id (str (gensym "error"))})
 
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc

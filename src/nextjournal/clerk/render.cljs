@@ -577,8 +577,9 @@
       [connection-status status])
     (when-let [status (:status @!doc)]
       [exec-status status])]
-   (when-let [wrapped-value (get-in @!doc [:nextjournal/value :error])]
+   (when-let [{:as wrapped-value :nextjournal/keys [blob-id]} (get-in @!doc [:nextjournal/value :error])]
      (let [!expanded-at (r/atom {})]
+       ^{:key blob-id}
        [with-fetch-fn wrapped-value
         (fn [presented-value]
           [:div.fixed.top-0.left-0.w-full.h-full
