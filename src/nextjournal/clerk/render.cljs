@@ -784,7 +784,7 @@
                {:ok false :error e}))))
 
 (defn click->fetch [e]
-  (when-some [url (some-> ^js e .-target closest-anchor-parent .-href ->URL)]
+  (when-some [url (some-> ^js e .-target closest-anchor-parent .-href not-empty ->URL)]
     (when-not (ignore-anchor-click? e url)
       (.preventDefault e)
       (let [path (.-pathname url)

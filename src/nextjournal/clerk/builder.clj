@@ -9,6 +9,7 @@
             [nextjournal.clerk.builder-ui :as builder-ui]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.eval :as eval]
+            [nextjournal.clerk.git :as git]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.view :as view]
@@ -135,6 +136,7 @@
           :render-router :fetch-edn
           :browse? false
           :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
+         (git/read-git-attrs)
          (let [opts+index (cond-> opts
                             index (assoc :index (str index)))
                {:as opts' :keys [expanded-paths]} (cond-> opts+index
@@ -364,6 +366,4 @@
                               "notebooks/how_clerk_works.clj"
                               "notebooks/markdown.md"
                               "notebooks/viewers/html.clj"
-                              "notebooks/viewers/image.clj"]
-                      :git/sha "d60f5417"
-                      :git/url "https://github.com/nextjournal/clerk"}))
+                              "notebooks/viewers/image.clj"]}))
