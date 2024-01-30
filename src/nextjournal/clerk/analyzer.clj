@@ -230,11 +230,14 @@
 (defn- circular-dependency-error? [e]
   (-> e ex-data :reason #{::dep/circular-dependency}))
 
-(defn- analyze-circular-dependency [state vars form dep {:keys [node dependency]}]
+(defn- analyze-circular-dependency [state vars form dep {:as _data :keys [node dependency]}]
   (let [rec-form (concat '(do) [form (get-in state [:->analysis-info dependency :form])])
         rec-var (symbol (str/join "+" (sort (conj vars dep))))
         var (first vars)] ;; TODO: reduce below
+    (when (not= dep dependency) (println :dep-mismatch dep dependency))
+    (when (not= var node) (println :node-mismatch var node))
     (-> state
+        (update :fixed-circular-deps assoc var rec-var dep rec-var)
         (update :graph #(-> %
                             (dep/remove-edge dependency node)
                             (dep/depend var rec-var)
@@ -243,25 +246,40 @@
 
 
 (defn ->key [{:as codeblock :keys [var id]}]
-  (if var var id))
+  ;; TODO: remove calls
+  #_(if var var id)
+  id)
 
 (defn ->ana-keys [{:as analyzed :keys [form vars id]}]
-  (if (seq vars) vars [(->key analyzed)]))
+  ;; TODO: remove calls
+  #_(if (seq vars) vars [(->key analyzed)])
+  [(->key analyzed)])
 
 #_(->> (nextjournal.clerk.eval/eval-string "(rand-int 100) (rand-int 100) (rand-int 100)") :blocks (mapv #(-> % :result :nextjournal/value)))
 
-(defn- analyze-deps [{:as analyzed :keys [form vars]} state dep]
-  (try (reduce (fn [state _var] ;; TODO: check if `_var` needs to be used
-                 (update state :graph #(dep/depend % (->key analyzed) dep)))
-               state
-               (->ana-keys analyzed))
-       (catch Exception e
-         (if (circular-dependency-error? e)
-           (analyze-circular-dependency state vars form dep (ex-data e))
-           (throw e)))))
+(defn dep->keys
+  "Inverse key-lookup from deps to key in analysis-info"
+  [{:keys [->analysis-info]} dep]
+  (or (not-empty
+       (keep (fn [[key {:keys [var vars]}]]
+               (when (contains? (cond-> (set vars) var (conj var)) dep)
+                 key)) ->analysis-info))
+      (when-not (deref? dep)
+        ;; TODO: check it is ok to remove deref deps
+        (list dep))))
 
+(defn- analyze-deps [{:as analyzed :keys [form vars]} state dep]
+  (try (reduce (fn [state k]
+                 (update state :graph dep/depend (->key analyzed) k))
+               state
+               (dep->keys state dep))
+       (catch Exception e
+      (if (circular-dependency-error? e)
+        (analyze-circular-dependency state vars form dep (ex-data e))
+        (throw e)))))
 
 (defn make-deps-inherit-no-cache [state {:as analyzed :keys [no-cache? vars deps ns-effect?]}]
+  ;; TODO: check wrt new keys
   (if no-cache?
     state
     (let [no-cache-deps? (boolean (some (fn [dep] (get-in state [:->analysis-info dep :no-cache?])) deps))]
@@ -287,7 +305,7 @@
   [sym]
   (str/includes? (name sym) ".proxy$"))
 
-(defn throw-if-dep-is-missing [{:keys [blocks ns error-on-missing-vars ->analysis-info file]}]
+(defn throw-if-dep-is-missing [{:as doc :keys [blocks ns error-on-missing-vars ->analysis-info file]}]
   (when (= :on error-on-missing-vars)
     (let [block-ids (into #{} (keep :id) blocks)
           ;; only take current blocks into account
@@ -297,12 +315,13 @@
       (doseq [{:keys [form deps]} (vals current-analyis)]
         (when (seq deps)
           (when-some [missing-dep (first (set/difference (into #{}
-                                                               (comp (filter #(and (symbol? %) (= (-> ns ns-name name) (namespace %))))
+                                                               (comp (mapcat (partial dep->keys doc))
+                                                                     (filter #(and (symbol? %) (= (-> ns ns-name name) (namespace %))))
                                                                      (remove internal-proxy-name?))
                                                                deps)
                                                          defined))]
             (throw (ex-info (str "The var `#'" missing-dep "` is being referenced, but Clerk can't find it in the namespace's source code. Did you remove it? This validation can fail when the namespace is mutated programmatically (e.g. using `clojure.core/intern` or side-effecting macros). You can turn off this check by adding `{:nextjournal.clerk/error-on-missing-vars :off}` to the namespace metadata.")
-                            {:var-name missing-dep :form form :file file #_#_:defined defined }))))))))
+                            {:var-name missing-dep :form form :file file #_#_:defined defined}))))))))
 
 (defn ns-resolver [notebook-ns]
   (if notebook-ns
@@ -310,11 +329,25 @@
     identity))
 #_ (ns-resolver *ns*)
 
+(defn analyze-doc-deps [{:as doc :keys [blocks ->analysis-info]}]
+  ;; fixes several issues concerning anonymous forms (e.g. non defs) and the dependency graph
+  #_ (def doc doc)
+  (reduce (fn [doc {:as info :keys [deps]}]
+            (reduce (partial analyze-deps info) doc deps))
+          doc
+          (keep (comp #(get ->analysis-info %) :id)
+                (filter (comp #{:code} :type)
+                        blocks))))
+#_
+(-> (analyze-doc-deps doc)
+    :graph dep/nodes)
+
 (defn analyze-doc
   ([doc]
    (analyze-doc {:doc? true :graph (dep/graph)} doc))
   ([{:as state :keys [doc?]} doc]
    (binding [*ns* *ns*]
+     ;; TODO: make !id->count part of reduce state
      (let [!id->count (atom {})]
        (cond-> (reduce (fn [{:as state notebook-ns :ns} i]
                          (let [{:as block :keys [type text loc]} (get-in doc [:blocks i])]
@@ -331,8 +364,8 @@
                                               (instance? clojure.lang.IObj form)
                                               (vary-meta merge (cond-> loc
                                                                  (:file doc) (assoc :clojure.core/eval-file (str (:file doc))))))
-                                   {:as analyzed :keys [deps ns-effect?]} (cond-> (analyze form+loc)
-                                                                            (:file doc) (assoc :file (:file doc)))
+                                   {:as analyzed :keys [ns-effect?]} (cond-> (analyze form+loc)
+                                                                       (:file doc) (assoc :file (:file doc)))
                                    _ (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
                                        (eval form))
                                    block-id (get-block-id !id->count (merge analyzed block))
@@ -346,16 +379,32 @@
                                            doc? (assoc-in [:blocks i :text-without-meta]
                                                           (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))
                                            (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))]
+                               state
+                               ;; TODO: restore make-deps-inherit-no-cache
+                               #_
                                (if (and (:graph state) (seq deps))
-                                 (-> (reduce (partial analyze-deps analyzed) state deps)
-                                     (make-deps-inherit-no-cache analyzed))
+                                 (do
+                                   (println (format "form '%s' (key: '%s')\n depends on: %s\n\n"
+                                                    form (->key analyzed) (pr-str deps)))
+
+                                   (-> (reduce (partial analyze-deps analyzed) state deps)
+                                       (make-deps-inherit-no-cache analyzed)))
                                  state)))))
                        (cond-> state
                          doc? (merge doc))
                        (-> doc :blocks count range))
+         ;; deps need to be analyzed at a later step in order to catch forward declarations
+         true analyze-doc-deps
          doc? (-> parser/add-block-settings
                   parser/add-open-graph-metadata
                   parser/filter-code-blocks-without-form))))))
+
+(comment
+  (ex-data *e)
+  (-> (nextjournal.clerk.parser/parse-file {:doc? true} "notebooks/scratch/debug.clj")
+      build-graph
+
+      hash :->hash))
 
 #_(let [parsed (nextjournal.clerk.parser/parse-clojure-string "clojure.core/dec")]
     (build-graph (analyze-doc parsed)))
@@ -559,22 +608,49 @@
                            (vary-meta dissoc :type)))
                  form))
 
-(defn hash-codeblock [->hash {:as codeblock :keys [hash form id deps vars]}]
-  (when (and (seq deps) (not (ifn? ->hash)))
-    (throw (ex-info "`->hash` must be `ifn?`" {:->hash ->hash :codeblock codeblock})))
-  (let [hashed-deps (into #{} (map ->hash) deps)]
+(defn hash-codeblock [->hash {:as state :keys [fixed-circular-deps]} {:as codeblock :keys [hash form id deps vars]}]
+  (doseq [dep deps
+          k (dep->keys state dep)]
+    (when (and (not (contains? ->hash k))
+               ;; there's no dependency (hence no sorting) among fixed nodes, need to consider synthetic var
+               (not (get fixed-circular-deps k)))
+      (throw (ex-info (format "Dependency '%s' should have been hashed as a dependency of the form '%s' (key: '%s', ns: %s)."
+                              k form id (ns-name (:ns state)))
+                      {:->hash ->hash
+                       :dep dep :dep-key k
+                       :codeblock codeblock
+                       :state state}))))
+  (let [hashed-deps (into #{}
+                          (comp (mapcat (partial dep->keys state))
+                                (map #(get fixed-circular-deps % %))
+                                (map ->hash))
+                          deps)
+        #_ (assert (every? some? hashed-deps)
+                  (str "Missing fixed deps: "
+                       (some #(when-not (contains? ->hash %) %)
+                             (map #(get fixed-circular-deps % %)
+                                  (mapcat (partial dep->keys state)
+                                          deps)))
+                       " - (deps: " deps ")"))
+        ;; TODO: fix missing hash in case of fixed deps
+        hashed-deps (remove nil? hashed-deps)]
     (sha1-base58 (binding [*print-length* nil]
                    (pr-str (set/union (conj hashed-deps (if form (remove-type-meta form) hash))
                                       vars))))))
 
 (defn hash
   ([{:as analyzed-doc :keys [graph]}] (hash analyzed-doc (dep/topo-sort graph)))
-  ([{:as analyzed-doc :keys [->analysis-info graph]} deps]
+  ([{:as analyzed-doc :keys [->analysis-info fixed-circular-deps]} deps]
+   (prn :analyzer/sorted-keys (map #(cond-> % (instance? clojure.lang.Named %) name) deps))
    (update analyzed-doc
            :->hash
            (partial reduce (fn [->hash k]
+                             #_
+                             (when-some [rec-var (get fixed-circular-deps k)]
+                               (assert (contains? ->hash rec-var)
+                                       (format "Missing hash for var '%s' (fixing '%s')." rec-var k)))
                              (if-let [codeblock (get ->analysis-info k)]
-                               (assoc ->hash k (hash-codeblock ->hash codeblock))
+                               (assoc ->hash k (hash-codeblock ->hash analyzed-doc codeblock))
                                ->hash)))
            deps)))
 
@@ -625,6 +701,7 @@
 #_(->hash-str (range))
 
 (defn hash-deref-deps [{:as analyzed-doc :keys [graph ->hash blocks visibility]} {:as cell :keys [deps deref-deps hash-fn var form]}]
+  ;; TODO: fix wrt new keys
   (if (seq deref-deps)
     (let [topo-comp (dep/topo-comparator graph)
           deref-deps-to-eval (set/difference deref-deps (-> ->hash keys set))
