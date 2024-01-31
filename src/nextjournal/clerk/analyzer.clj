@@ -273,23 +273,25 @@
   "Inverse key-lookup from deps to key in analysis-info"
   [{:keys [->analysis-info]} dep] (dep->keys* ->analysis-info dep))
 
-(defn- analyze-deps [{:as analyzed :keys [form vars]} state dep]
+(defn deps->keys [state {:as ana-info :keys [deps]}]
+  (into #{} (mapcat (partial dep->keys state)) deps))
+
+(defn- analyze-deps [{:as _info :keys [id form vars]} state dep]
   (try (reduce (fn [state k]
-                 (update state :graph dep/depend (->key analyzed) k))
+                 (update state :graph dep/depend id k))
                state
                (dep->keys state dep))
        (catch Exception e
-      (if (circular-dependency-error? e)
-        (analyze-circular-dependency state vars form dep (ex-data e))
-        (throw e)))))
+         (if (circular-dependency-error? e)
+           (analyze-circular-dependency state vars form dep (ex-data e))
+           (throw e)))))
 
-(defn make-deps-inherit-no-cache [state {:as analyzed :keys [no-cache? vars deps ns-effect?]}]
-  ;; TODO: check wrt new keys
+(defn make-deps-inherit-no-cache [state {:as analyzed :keys [id no-cache?]}]
   (if no-cache?
     state
-    (let [no-cache-deps? (boolean (some (fn [dep] (get-in state [:->analysis-info dep :no-cache?])) deps))]
-      (reduce (fn [state k]
-                (assoc-in state [:->analysis-info k :no-cache?] no-cache-deps?)) state (->ana-keys analyzed)))))
+    (assoc-in state [:->analysis-info id :no-cache?]
+              (boolean (some (fn [k] (get-in state [:->analysis-info k :no-cache?]))
+                             (deps->keys state analyzed))))))
 
 (defn get-block-id [!id->count {:as block :keys [var form type doc]}]
   (let [id->count @!id->count
@@ -337,8 +339,10 @@
 (defn analyze-doc-deps [{:as doc :keys [blocks ->analysis-info]}]
   ;; fixes several issues concerning anonymous forms (e.g. non defs) and the dependency graph
   #_ (def doc doc)
-  (reduce (fn [doc {:as info :keys [deps]}]
-            (reduce (partial analyze-deps info) doc deps))
+  (reduce (fn [state {:as info :keys [deps]}]
+            (reduce (partial analyze-deps info)
+                    (make-deps-inherit-no-cache state info)
+                    deps))
           doc
           (keep (comp #(get ->analysis-info %) :id)
                 (filter (comp #{:code} :type)
@@ -375,10 +379,9 @@
                                        (eval form))
                                    block-id (get-block-id !id->count (merge analyzed block))
                                    analyzed (assoc analyzed :id block-id)
-                                   state (cond-> (reduce (fn [state ana-key]
-                                                           (assoc-in state [:->analysis-info ana-key] analyzed))
-                                                         (dissoc state :doc?)
-                                                         (->ana-keys analyzed))
+                                   state (cond-> (-> state
+                                                     (assoc-in [:->analysis-info block-id] analyzed)
+                                                     (dissoc :doc?))
                                            (parser/ns? form) (assoc-in [:blocks i :ns?] true)
                                            doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
                                            doc? (assoc-in [:blocks i :text-without-meta]
@@ -388,12 +391,8 @@
                                ;; TODO: restore make-deps-inherit-no-cache
                                #_
                                (if (and (:graph state) (seq deps))
-                                 (do
-                                   (println (format "form '%s' (key: '%s')\n depends on: %s\n\n"
-                                                    form (->key analyzed) (pr-str deps)))
-
-                                   (-> (reduce (partial analyze-deps analyzed) state deps)
-                                       (make-deps-inherit-no-cache analyzed)))
+                                 (-> (reduce (partial analyze-deps analyzed) state deps)
+                                     (make-deps-inherit-no-cache analyzed))
                                  state)))))
                        (cond-> state
                          doc? (merge doc))
@@ -540,7 +539,8 @@
   (reduce (fn [s {:as analyzed :keys [deps]}]
             (if (seq deps)
               (-> (reduce (partial analyze-deps analyzed) s deps)
-                  (make-deps-inherit-no-cache analyzed))
+                  ;; TODO: do we need no-cache from deps in foreign files?
+                  #_ (make-deps-inherit-no-cache analyzed))
               s))
           (update state :->analysis-info merge ->analysis-info)
           (vals ->analysis-info)))
