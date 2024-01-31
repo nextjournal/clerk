@@ -261,6 +261,14 @@
 (def dep->keys*
   (memoize
    (fn [->analysis-info dep]
+     ;; TODO: do with a reverse lookup map
+     ;; this reverse lookup is needed in case vars are produced by "anonymous" forms, since only block ids are allowed as graph nodes
+     ;; we can have multiple keys for a single dep in case of forward declarations
+     ;; TODO: adjust for cases like
+     ;;  (def a 1)
+     ;;  (inc a)
+     ;;  (def a 2)
+     ;;  (inc a)
      (or (not-empty
           (keep (fn [[key {:keys [var vars]}]]
                   (when (contains? (cond-> (set vars) var (conj var)) dep)
