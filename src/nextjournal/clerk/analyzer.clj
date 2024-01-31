@@ -617,33 +617,23 @@
                            (vary-meta dissoc :type)))
                  form))
 
-(defn hash-codeblock [->hash {:as state :keys [fixed-circular-deps]} {:as codeblock :keys [hash form id deps vars]}]
-  (doseq [dep deps
-          k (dep->keys state dep)]
-    (when (and (not (contains? ->hash k))
-               (not (deref? k))
-               ;; there's no dependency (hence no sorting) among fixed nodes, need to consider synthetic var
-               (not (get fixed-circular-deps k)))
-      (throw (ex-info (format "Dependency '%s' should have been hashed as a dependency of the form '%s' (key: '%s', ns: %s)."
-                              k form id (ns-name (:ns state)))
-                      {:->hash ->hash
-                       :dep dep :dep-key k
-                       :codeblock codeblock
-                       :state state}))))
+(defn hash-codeblock [->hash {:as state :keys [ns graph ->analysis-info]} {:as _codeblock :keys [hash form id vars]}]
   (let [hashed-deps (into #{}
-                          (comp (mapcat (partial dep->keys state))
-                                (map #(get fixed-circular-deps % %))
-                                (map ->hash))
-                          deps)
-        #_ (assert (every? some? hashed-deps)
-                  (str "Missing fixed deps: "
-                       (some #(when-not (contains? ->hash %) %)
-                             (map #(get fixed-circular-deps % %)
-                                  (mapcat (partial dep->keys state)
-                                          deps)))
-                       " - (deps: " deps ")"))
-        ;; TODO: fix missing hash in case of fixed deps
-        hashed-deps (remove nil? hashed-deps)]
+                          ;; TODO: investigate why the 2 txd do not behave the same (see test failure in n.c.analyzer-test/hash-deref-deps)
+                          ;; assuming that the only missing hashes are those for deref-nodes
+                          #_ (comp (remove deref?) (map ->hash))
+                          (keep ->hash)
+                          (dep/immediate-dependencies graph id))]
+
+    #_ (prn :hashed-deps hashed-deps)
+    ;; all but deref-nodes must be hashed
+    #_
+    (when (contains? hashed-deps nil)
+      (let [missing-hash-id (some #(when-not (->hash %) %)
+                                  (remove deref? (dep/immediate-dependencies graph id)))]
+        (throw (ex-info (format "Missing hash for dependency '%s' of the form: '%s'" missing-hash-id form)
+                        {:id id :form form :missing-hash-id missing-hash-id
+                         :graph graph :->hash ->hash}))))
     (sha1-base58 (binding [*print-length* nil]
                    (pr-str (set/union (conj hashed-deps (if form (remove-type-meta form) hash))
                                       vars))))))
