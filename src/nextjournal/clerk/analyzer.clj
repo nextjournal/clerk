@@ -244,7 +244,6 @@
                             (dep/depend dep rec-var)))
         (assoc-in [:->analysis-info rec-var :form] rec-form))))
 
-
 (defn ->key [{:as codeblock :keys [var id]}]
   ;; TODO: remove calls
   #_(if var var id)
@@ -256,7 +255,6 @@
   [(->key analyzed)])
 
 #_(->> (nextjournal.clerk.eval/eval-string "(rand-int 100) (rand-int 100) (rand-int 100)") :blocks (mapv #(-> % :result :nextjournal/value)))
-
 
 (def dep->keys*
   (memoize
@@ -273,9 +271,8 @@
           (keep (fn [[key {:keys [var vars]}]]
                   (when (contains? (cond-> (set vars) var (conj var)) dep)
                     key)) ->analysis-info))
-         (when-not (deref? dep)
-           ;; TODO: check it is ok to remove deref deps
-           (list dep))))))
+         ;; this will introduce also deref-deps as nodes in the graph
+         (list dep)))))
 
 (defn dep->keys
   "Inverse key-lookup from deps to key in analysis-info"
@@ -625,6 +622,7 @@
   (doseq [dep deps
           k (dep->keys state dep)]
     (when (and (not (contains? ->hash k))
+               (not (deref? k))
                ;; there's no dependency (hence no sorting) among fixed nodes, need to consider synthetic var
                (not (get fixed-circular-deps k)))
       (throw (ex-info (format "Dependency '%s' should have been hashed as a dependency of the form '%s' (key: '%s', ns: %s)."
