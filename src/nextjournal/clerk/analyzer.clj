@@ -230,14 +230,13 @@
 (defn- circular-dependency-error? [e]
   (-> e ex-data :reason #{::dep/circular-dependency}))
 
-(defn- analyze-circular-dependency [state vars form dep {:as _data :keys [node dependency]}]
+(defn- analyze-circular-dependency [state vars form dep {:keys [node dependency]}]
   (let [rec-form (concat '(do) [form (get-in state [:->analysis-info dependency :form])])
         rec-var (symbol (str/join "+" (sort (conj vars dep))))
         var (first vars)] ;; TODO: reduce below
     (when (not= dep dependency) (println :dep-mismatch dep dependency))
     (when (not= var node) (println :node-mismatch var node))
     (-> state
-        (update :fixed-circular-deps assoc var rec-var dep rec-var)
         (update :graph #(-> %
                             (dep/remove-edge dependency node)
                             (dep/depend var rec-var)
