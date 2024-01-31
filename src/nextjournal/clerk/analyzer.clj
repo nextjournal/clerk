@@ -244,16 +244,6 @@
                             (dep/depend dep rec-var)))
         (assoc-in [:->analysis-info rec-var :form] rec-form))))
 
-(defn ->key [{:as codeblock :keys [var id]}]
-  ;; TODO: remove calls
-  #_(if var var id)
-  id)
-
-(defn ->ana-keys [{:as analyzed :keys [form vars id]}]
-  ;; TODO: remove calls
-  #_(if (seq vars) vars [(->key analyzed)])
-  [(->key analyzed)])
-
 #_(->> (nextjournal.clerk.eval/eval-string "(rand-int 100) (rand-int 100) (rand-int 100)") :blocks (mapv #(-> % :result :nextjournal/value)))
 
 (def dep->keys*

@@ -164,11 +164,12 @@
     (update :nextjournal/viewers eval)))
 
 (defn read+eval-cached [{:as doc :keys [blob->result ->analysis-info ->hash]} codeblock]
-  (let [{:keys [form _vars var]} codeblock
-        {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info (analyzer/->key codeblock))
+  (let [{:keys [id form _vars var]} codeblock
+        _ (assert id (format "Missing id on codeblock: '%s'." (pr-str codeblock)))
+        {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info id)
         no-cache?      (or ns-effect? no-cache?)
-        hash           (when-not no-cache? (or (get ->hash (analyzer/->key codeblock))
-                                               (prn :hash/key-missing (analyzer/->key codeblock))
+        hash           (when-not no-cache? (or (get ->hash id)
+                                               (prn :hash/key-missing id)
                                                (analyzer/hash-codeblock ->hash doc codeblock)))
         digest-file    (when hash (->cache-file (str "@" hash)))
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
