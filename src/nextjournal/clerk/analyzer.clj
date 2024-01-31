@@ -268,9 +268,8 @@
      ;;  (def a 2)
      ;;  (inc a)
      (or (not-empty
-          (keep (fn [[key {:keys [var vars]}]]
-                  (when (contains? (cond-> (set vars) var (conj var)) dep)
-                    key)) ->analysis-info))
+          (keep (fn [[key {:keys [vars]}]]
+                  (when (contains? vars dep) key)) ->analysis-info))
          ;; this will introduce also deref-deps as nodes in the graph
          (list dep)))))
 
