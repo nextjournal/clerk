@@ -248,14 +248,15 @@
 (def dep->keys*
   (memoize
    (fn [->analysis-info dep]
-     ;; TODO: do with a reverse lookup map
      ;; this reverse lookup is needed in case vars are produced by "anonymous" forms, since only block ids are allowed as graph nodes
      ;; we can have multiple keys for a single dep in case of forward declarations
+     ;; TODO: do with a reverse lookup map and drop memoize
      ;; TODO: adjust for cases like
      ;;  (def a 1)
      ;;  (inc a)
      ;;  (def a 2)
      ;;  (inc a)
+     ;; TODO: ensure we need more than one key (e.g. forward declarations)
      (or (not-empty
           (keep (fn [[key {:keys [vars]}]]
                   (when (contains? vars dep) key)) ->analysis-info))
@@ -280,6 +281,7 @@
            (throw e)))))
 
 (defn make-deps-inherit-no-cache [state {:as analyzed :keys [id no-cache?]}]
+  ;; TODO: probably more suited for the graph
   (if no-cache?
     state
     (assoc-in state [:->analysis-info id :no-cache?]
@@ -330,8 +332,6 @@
 #_ (ns-resolver *ns*)
 
 (defn analyze-doc-deps [{:as doc :keys [blocks ->analysis-info]}]
-  ;; fixes several issues concerning anonymous forms (e.g. non defs) and the dependency graph
-  #_ (def doc doc)
   (reduce (fn [state {:as info :keys [deps]}]
             (reduce (partial analyze-deps info)
                     (make-deps-inherit-no-cache state info)
@@ -340,9 +340,6 @@
           (keep (comp #(get ->analysis-info %) :id)
                 (filter (comp #{:code} :type)
                         blocks))))
-#_
-(-> (analyze-doc-deps doc)
-    :graph dep/nodes)
 
 (defn analyze-doc
   ([doc]
@@ -368,40 +365,26 @@
                                                                  (:file doc) (assoc :clojure.core/eval-file (str (:file doc))))))
                                    {:as analyzed :keys [ns-effect?]} (cond-> (analyze form+loc)
                                                                        (:file doc) (assoc :file (:file doc)))
-                                   _ (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
+                                   _ (when ns-effect?       ;; needs to run before setting doc `:ns` via `*ns*`
                                        (eval form))
                                    block-id (get-block-id !id->count (merge analyzed block))
-                                   analyzed (assoc analyzed :id block-id)
-                                   state (cond-> (-> state
-                                                     (assoc-in [:->analysis-info block-id] analyzed)
-                                                     (dissoc :doc?))
-                                           (parser/ns? form) (assoc-in [:blocks i :ns?] true)
-                                           doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
-                                           doc? (assoc-in [:blocks i :text-without-meta]
-                                                          (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))
-                                           (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))]
-                               state
-                               ;; TODO: restore make-deps-inherit-no-cache
-                               #_
-                               (if (and (:graph state) (seq deps))
-                                 (-> (reduce (partial analyze-deps analyzed) state deps)
-                                     (make-deps-inherit-no-cache analyzed))
-                                 state)))))
+                                   analyzed (assoc analyzed :id block-id)]
+                               (cond-> (-> state
+                                           (assoc-in [:->analysis-info block-id] analyzed)
+                                           (dissoc :doc?))
+                                 (parser/ns? form) (assoc-in [:blocks i :ns?] true)
+                                 doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
+                                 doc? (assoc-in [:blocks i :text-without-meta]
+                                                (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))
+                                 (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))))))
                        (cond-> state
                          doc? (merge doc))
                        (-> doc :blocks count range))
-         ;; deps need to be analyzed at a later step in order to catch forward declarations
+         ;; TODO: check if we need to process deps in a second pass (e.g. to catch forward declarations)
          true analyze-doc-deps
          doc? (-> parser/add-block-settings
                   parser/add-open-graph-metadata
                   parser/filter-code-blocks-without-form))))))
-
-(comment
-  (ex-data *e)
-  (-> (nextjournal.clerk.parser/parse-file {:doc? true} "notebooks/scratch/debug.clj")
-      build-graph
-
-      hash :->hash))
 
 #_(let [parsed (nextjournal.clerk.parser/parse-clojure-string "clojure.core/dec")]
     (build-graph (analyze-doc parsed)))
@@ -532,7 +515,7 @@
   (reduce (fn [s {:as analyzed :keys [deps]}]
             (if (seq deps)
               (-> (reduce (partial analyze-deps analyzed) s deps)
-                  ;; TODO: do we need no-cache from deps in foreign files?
+                  ;; TODO: ensure no-cache inheritance is working cross-file
                   #_ (make-deps-inherit-no-cache analyzed))
               s))
           (update state :->analysis-info merge ->analysis-info)
@@ -629,15 +612,10 @@
 
 (defn hash
   ([{:as analyzed-doc :keys [graph]}] (hash analyzed-doc (dep/topo-sort graph)))
-  ([{:as analyzed-doc :keys [->analysis-info fixed-circular-deps]} deps]
-   #_(prn :analyzer/sorted-keys (map #(cond-> % (instance? clojure.lang.Named %) name) deps))
+  ([{:as analyzed-doc :keys [->analysis-info]} deps]
    (update analyzed-doc
            :->hash
            (partial reduce (fn [->hash k]
-                             #_
-                             (when-some [rec-var (get fixed-circular-deps k)]
-                               (assert (contains? ->hash rec-var)
-                                       (format "Missing hash for var '%s' (fixing '%s')." rec-var k)))
                              (if-let [codeblock (get ->analysis-info k)]
                                (assoc ->hash k (hash-codeblock ->hash analyzed-doc codeblock))
                                ->hash)))
@@ -690,7 +668,6 @@
 #_(->hash-str (range))
 
 (defn hash-deref-deps [{:as analyzed-doc :keys [graph ->hash blocks visibility]} {:as cell :keys [deps deref-deps hash-fn var form]}]
-  ;; TODO: fix wrt new keys
   (if (seq deref-deps)
     (let [topo-comp (dep/topo-comparator graph)
           deref-deps-to-eval (set/difference deref-deps (-> ->hash keys set))
