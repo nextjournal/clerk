@@ -257,16 +257,21 @@
 
 #_(->> (nextjournal.clerk.eval/eval-string "(rand-int 100) (rand-int 100) (rand-int 100)") :blocks (mapv #(-> % :result :nextjournal/value)))
 
+
+(def dep->keys*
+  (memoize
+   (fn [->analysis-info dep]
+     (or (not-empty
+          (keep (fn [[key {:keys [var vars]}]]
+                  (when (contains? (cond-> (set vars) var (conj var)) dep)
+                    key)) ->analysis-info))
+         (when-not (deref? dep)
+           ;; TODO: check it is ok to remove deref deps
+           (list dep))))))
+
 (defn dep->keys
   "Inverse key-lookup from deps to key in analysis-info"
-  [{:keys [->analysis-info]} dep]
-  (or (not-empty
-       (keep (fn [[key {:keys [var vars]}]]
-               (when (contains? (cond-> (set vars) var (conj var)) dep)
-                 key)) ->analysis-info))
-      (when-not (deref? dep)
-        ;; TODO: check it is ok to remove deref deps
-        (list dep))))
+  [{:keys [->analysis-info]} dep] (dep->keys* ->analysis-info dep))
 
 (defn- analyze-deps [{:as analyzed :keys [form vars]} state dep]
   (try (reduce (fn [state k]
@@ -641,7 +646,7 @@
 (defn hash
   ([{:as analyzed-doc :keys [graph]}] (hash analyzed-doc (dep/topo-sort graph)))
   ([{:as analyzed-doc :keys [->analysis-info fixed-circular-deps]} deps]
-   (prn :analyzer/sorted-keys (map #(cond-> % (instance? clojure.lang.Named %) name) deps))
+   #_(prn :analyzer/sorted-keys (map #(cond-> % (instance? clojure.lang.Named %) name) deps))
    (update analyzed-doc
            :->hash
            (partial reduce (fn [->hash k]
