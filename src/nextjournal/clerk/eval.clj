@@ -70,7 +70,8 @@
 
                            :else
                            (throw (ex-info "Unable to resolve into a variable" {:data var})))]
-    {:nextjournal.clerk/var-from-def resolved-var}))
+    {:nextjournal.clerk/var-from-def resolved-var
+     :nextjournal.clerk/var-snapshot @resolved-var}))
 
 (defn ^:private lookup-cached-result [introduced-var hash cas-hash]
   (when-let [cached-value (try (thaw-from-cas cas-hash)
@@ -169,7 +170,6 @@
         {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info id)
         no-cache?      (or ns-effect? no-cache?)
         hash           (when-not no-cache? (or (get ->hash id)
-                                               (prn :hash/key-missing id)
                                                (analyzer/hash-codeblock ->hash doc codeblock)))
         digest-file    (when hash (->cache-file (str "@" hash)))
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))

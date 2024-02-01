@@ -183,6 +183,7 @@
                                        (when-not (= op :the-var)
                                          (list `deref (symbol var))))))
                          nodes)
+        ;; TODO: check case '(def a (inc a)) deps are empty for this which is wrong
         deps (set/union (set/difference (into #{} (map (comp symbol var->protocol)) @!deps) vars)
                         deref-deps
                         (class-deps analyzed)
@@ -280,7 +281,6 @@
   ;; since only block ids are allowed as graph nodes, like
   ;; (do :foo (def x 1) :bar)
 
-  ;; TODO: do with a reverse lookup map and drop memoize
   ;; TODO: adjust for cases like
   ;;  (def a 1)
   ;;  (inc a)
@@ -401,9 +401,18 @@
                                (cond-> (-> state
                                            (dissoc :doc?)
                                            (assoc-in [:->analysis-info block-id] analyzed)
+                                           ;; TODO: do an SSA pass keeping in state a map
+                                           ;;  m : { var-sym -> current-block-id }
+                                           ;; (map m deps)
+                                           ;; e.g. for the case
+                                           ;; (def a 1)
+                                           ;; (inc a)
+                                           ;; (do (def a 22) :foo)
+                                           ;; (inc a)
+                                           ;;
                                            (update :var->block-id
                                                    ;; TODO: chose one of the two:
-                                                   ;; allow deps to lookup variables defs in more than one block (SSA pass?)
+                                                   ;; allow deps to lookup variables defs in more than one block
                                                    #_ (partial reduce (fn [m v] (update m v (fnil conj #{}) block-id)))
                                                    ;; last definition wins, drop set value if we settle on this
                                                    (partial reduce (fn [m v] (assoc m v #{block-id})))

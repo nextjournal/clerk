@@ -1,7 +1,6 @@
 (ns user
   (:require [clj-async-profiler.core :as prof]
             [clojure.java.io :as io]
-            [clojure.string :as str]
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.eval :as eval]
@@ -76,8 +75,7 @@
           (eval/time-ms
            (dotimes [_i times]
              (doseq [doc (shuffle test-docs)]
-               (-> (analyzer/build-graph doc) analyzer/hash))
-             (prn :done _i)))
+               (-> (analyzer/build-graph doc) analyzer/hash))))
           mean (/ time-ms (* times (count test-docs)))]
       (println (format "Elapsed mean time: %f msec" mean)))))
 
