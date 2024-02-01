@@ -591,21 +591,10 @@
 
 (defn hash-codeblock [->hash {:as state :keys [ns graph ->analysis-info]} {:as _codeblock :keys [hash form id vars]}]
   (let [hashed-deps (into #{}
-                          ;; TODO: investigate why the 2 txd do not behave the same (see test failure in n.c.analyzer-test/hash-deref-deps)
-                          ;; assuming that the only missing hashes are those for deref-nodes
-                          #_ (comp (remove deref?) (map ->hash))
                           (keep ->hash)
+                          ;; NOTE: on a first static pass deref-nodes do not have a hash yet
+                          ;; their hash will be computed at runtime (see `hash-deref-deps` above)
                           (dep/immediate-dependencies graph id))]
-
-    #_ (prn :hashed-deps hashed-deps)
-    ;; all but deref-nodes must be hashed
-    #_
-    (when (contains? hashed-deps nil)
-      (let [missing-hash-id (some #(when-not (->hash %) %)
-                                  (remove deref? (dep/immediate-dependencies graph id)))]
-        (throw (ex-info (format "Missing hash for dependency '%s' of the form: '%s'" missing-hash-id form)
-                        {:id id :form form :missing-hash-id missing-hash-id
-                         :graph graph :->hash ->hash}))))
     (sha1-base58 (binding [*print-length* nil]
                    (pr-str (set/union (conj hashed-deps (if form (remove-type-meta form) hash))
                                       vars))))))
