@@ -1,6 +1,11 @@
 (ns user
-  (:require [clojure.string :as str]
-            [nextjournal.clerk :as clerk]))
+  (:require [clj-async-profiler.core :as prof]
+            [clojure.java.io :as io]
+            [clojure.string :as str]
+            [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.analyzer :as analyzer]
+            [nextjournal.clerk.eval :as eval]
+            [nextjournal.clerk.parser :as parser]))
 
 (comment
   ;; start without file watcher & open browser
@@ -43,4 +48,41 @@
 
   (do (require 'kaocha.repl)
       (kaocha.repl/run :unit))
-  )
+
+  (require '[clj-async-profiler.core :as prof]
+           'nextjournal.clerk.eval-test
+           'nextjournal.clerk.viewer-test
+           'nextjournal.clerk.analyzer-test)
+  (prof/profile
+   (time (clojure.test/run-tests 'nextjournal.clerk.eval-test
+                                 'nextjournal.clerk.viewer-test
+                                 'nextjournal.clerk.analyzer-test)))
+  ;; ~16.6s
+  (prof/serve-ui 8080))
+
+(defmacro with-ex-data [sym body do-block]
+  `(try ~body
+        (catch Exception e#
+          (let [~sym (ex-data e#)]
+            ~do-block))))
+
+(defmulti profile :phase)
+
+(defmethod profile :analysis [_opts]
+  (let [test-docs [(parser/parse-file {:doc? true} (io/resource "clojure/core.clj"))
+                   #_ more?]
+        times 5]
+    (let [{:keys [time-ms]}
+          (eval/time-ms
+           (dotimes [_i times]
+             (doseq [doc (shuffle test-docs)]
+               (-> (analyzer/build-graph doc) analyzer/hash))
+             (prn :done _i)))
+          mean (/ time-ms (* times (count test-docs)))]
+      (println (format "Elapsed mean time: %f msec" mean)))))
+
+;; clj -X:dev:profile :phase :analysis
+;; Elapsed mean time: 4300,223637 msec (main)
+;; Elapsed mean time: 4866,353578 msec (analyzer-improvements)
+;; Elapsed mean time: 4594,642337 msec (analyzer-improvements - dep reverse map lookup)
+;; Elapsed mean time: 3784,830730 msec (analyzer-improvements - dep reverse map lookup / single entry last wins)
