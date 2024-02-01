@@ -143,6 +143,21 @@
   (or (:protocol (meta v))
       v))
 
+(defn get-vars+forward-declarations [nodes]
+  (reduce (fn reduce-vars [{:as acc seen :vars} {:as _node v :var m :meta}]
+            (let [sym (symbol v)
+                  acc' (update acc :vars conj sym)
+                  declared? (-> m :val :declared)]
+              (cond
+                (and (not (seen sym)) declared?)
+                (update acc' :declared conj sym)
+                (and (seen sym) (not declared?))
+                (update acc' :declared disj sym)
+                :else acc')))
+          {:vars #{} :declared #{}}
+          (filter (every-pred (comp #{:def} :op) :var)
+                  nodes)))
+
 (defn analyze [form]
   (let [!deps      (atom #{})
         mexpander (fn [form env]
@@ -153,12 +168,8 @@
                     (ana-jvm/macroexpand-1 form env))
         analyzed (analyze-form {#'ana/macroexpand-1 mexpander} (rewrite-defcached form))
         nodes (ana-ast/nodes analyzed)
-        vars (into #{}
-                   (comp (filter (comp #{:def} :op))
-                         (keep :var)
-                         (map symbol))
-                   nodes)
-
+        {:keys [vars declared]} (get-vars+forward-declarations nodes)
+        vars- (set/difference vars declared)
         var (when (and (= 1 (count vars))
                        (parser/deflike? form))
               (first vars))
@@ -188,7 +199,14 @@
       (seq deps) (assoc :deps deps)
       (seq deref-deps) (assoc :deref-deps deref-deps)
       (seq vars) (assoc :vars vars)
+      (seq vars-) (assoc :vars- vars-)
+      (seq declared) (assoc :declared declared)
       var (assoc :var var))))
+
+#_(:vars     (analyze '(do (declare x y) (def x 0) (def z) (def w 0)))) ;=> x y z w
+#_(:vars-    (analyze '(do (def x 0) (declare x y) (def z) (def w 0)))) ;=> x z w
+#_(:vars-    (analyze '(do (declare x y) (def x 0) (def z) (def w 0)))) ;=> x z w
+#_(:declared (analyze '(do (declare x y) (def x 0) (def z) (def w 0)))) ;=> y
 
 #_(:vars (analyze '(do (def a 41) (def b (inc a)))))
 #_(:vars (analyze '(defrecord Node [v l r])))
@@ -245,36 +263,44 @@
 
 #_(->> (nextjournal.clerk.eval/eval-string "(rand-int 100) (rand-int 100) (rand-int 100)") :blocks (mapv #(-> % :result :nextjournal/value)))
 
-(def dep->keys*
+(def dep->block-id*
   (memoize
    (fn [->analysis-info dep]
-     ;; this reverse lookup is needed in case vars are produced by "anonymous" forms, since only block ids are allowed as graph nodes
-     ;; we can have multiple keys for a single dep in case of forward declarations
-     ;; TODO: do with a reverse lookup map and drop memoize
-     ;; TODO: adjust for cases like
-     ;;  (def a 1)
-     ;;  (inc a)
-     ;;  (def a 2)
-     ;;  (inc a)
-     ;; TODO: ensure we need more than one key (e.g. forward declarations)
      (or (not-empty
-          (keep (fn [[key {:keys [vars]}]]
-                  (when (contains? vars dep) key)) ->analysis-info))
+          (keep (fn [[key {:keys [vars-]}]]
+                  (when (contains? vars- dep) key)) ->analysis-info))
          ;; this will introduce also deref-deps as nodes in the graph
          (list dep)))))
 
-(defn dep->keys
+(defn dep->block-ids
   "Inverse key-lookup from deps to key in analysis-info"
-  [{:keys [->analysis-info]} dep] (dep->keys* ->analysis-info dep))
+  [{:keys [_var->block-id ->analysis-info]} dep]
 
-(defn deps->keys [state {:as ana-info :keys [deps]}]
-  (into #{} (mapcat (partial dep->keys state)) deps))
+  ;; this reverse lookup is needed in case vars are introduced by "anonymous" forms (e.g. macros),
+  ;; since only block ids are allowed as graph nodes, like
+  ;; (do :foo (def x 1) :bar)
+
+  ;; TODO: do with a reverse lookup map and drop memoize
+  ;; TODO: adjust for cases like
+  ;;  (def a 1)
+  ;;  (inc a)
+  ;;  (def a 2)
+  ;;  (inc a)
+
+  ;; as an alternative we can do direct lookup against
+  #_
+  (or (get _var->block-id dep) #{dep})
+
+  (dep->block-id* ->analysis-info dep))
+
+(defn deps->block-ids [state {:as ana-info :keys [deps]}]
+  (into #{} (mapcat (partial dep->block-ids state)) deps))
 
 (defn- analyze-deps [{:as _info :keys [id form vars]} state dep]
   (try (reduce (fn [state k]
                  (update state :graph dep/depend id k))
                state
-               (dep->keys state dep))
+               (dep->block-ids state dep))
        (catch Exception e
          (if (circular-dependency-error? e)
            (analyze-circular-dependency state vars form dep (ex-data e))
@@ -286,7 +312,7 @@
     state
     (assoc-in state [:->analysis-info id :no-cache?]
               (boolean (some (fn [k] (get-in state [:->analysis-info k :no-cache?]))
-                             (deps->keys state analyzed))))))
+                             (deps->block-ids state analyzed))))))
 
 (defn get-block-id [!id->count {:as block :keys [var form type doc]}]
   (let [id->count @!id->count
@@ -317,7 +343,7 @@
       (doseq [{:keys [form deps]} (vals current-analyis)]
         (when (seq deps)
           (when-some [missing-dep (first (set/difference (into #{}
-                                                               (comp (mapcat (partial dep->keys doc))
+                                                               (comp (mapcat (partial dep->block-ids doc))
                                                                      (filter #(and (symbol? %) (= (-> ns ns-name name) (namespace %))))
                                                                      (remove internal-proxy-name?))
                                                                deps)
@@ -363,15 +389,25 @@
                                               (instance? clojure.lang.IObj form)
                                               (vary-meta merge (cond-> loc
                                                                  (:file doc) (assoc :clojure.core/eval-file (str (:file doc))))))
-                                   {:as analyzed :keys [ns-effect?]} (cond-> (analyze form+loc)
-                                                                       (:file doc) (assoc :file (:file doc)))
+                                   {:as analyzed :keys [vars- ns-effect?]} (cond-> (analyze form+loc)
+                                                                             (:file doc) (assoc :file (:file doc)))
                                    _ (when ns-effect?       ;; needs to run before setting doc `:ns` via `*ns*`
                                        (eval form))
                                    block-id (get-block-id !id->count (merge analyzed block))
                                    analyzed (assoc analyzed :id block-id)]
+
+                               ;; `->analysis-info` :: { BlockId => Map }
+                               ;; `var->block-id`   :: { Sym => Set<BlockId> }
                                (cond-> (-> state
+                                           (dissoc :doc?)
                                            (assoc-in [:->analysis-info block-id] analyzed)
-                                           (dissoc :doc?))
+                                           (update :var->block-id
+                                                   ;; TODO: chose one of the two:
+                                                   ;; allow deps to lookup variables defs in more than one block (SSA pass?)
+                                                   #_ (partial reduce (fn [m v] (update m v (fnil conj #{}) block-id)))
+                                                   ;; last definition wins, drop set value if we settle on this
+                                                   (partial reduce (fn [m v] (assoc m v #{block-id})))
+                                                   vars-))
                                  (parser/ns? form) (assoc-in [:blocks i :ns?] true)
                                  doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
                                  doc? (assoc-in [:blocks i :text-without-meta]

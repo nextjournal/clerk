@@ -332,3 +332,24 @@ my-uuid")]
           runtime-hash (get-in runtime-doc [:->hash 'nextjournal.clerk.test.deref-dep/foo+2])]
       (is (match? {:deref-deps #{`(deref nextjournal.clerk.test.deref-dep/!state)}} block-with-deref-dep))
       (is (not= static-hash runtime-hash)))))
+
+(deftest forms-do-not-depend-on-forward-declaration-forms
+  (let [ana-1 (-> "(ns nextjournal.clerk.analyzer-test.forward-declarations)
+
+(declare x)
+(defn foo [] (inc (x)))
+(defn x [] 0)
+"
+                  analyze-string ana/hash)
+        block-3-id (-> ana-1 :blocks (nth 2) :id)
+        hash-1 (-> ana-1 :->hash block-3-id)
+        ana-2 (-> "(ns nextjournal.clerk.analyzer-test.forward-declarations)
+
+(declare x y)
+(defn foo [] (inc (x)))
+(defn x [] 0)
+"
+                  analyze-string ana/hash)
+        hash-2 (-> ana-2 :->hash block-3-id)]
+
+    (is (= hash-1 hash-2))))
