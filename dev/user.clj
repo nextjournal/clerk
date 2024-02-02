@@ -69,13 +69,16 @@
 
 (defmethod profile :analysis [_opts]
   (let [test-docs [(parser/parse-file {:doc? true} (io/resource "clojure/core.clj"))
+                   (parser/parse-file {:doc? true} (io/resource "nextjournal/clerk/analyzer.clj"))
+                   (parser/parse-file {:doc? true} (io/resource "nextjournal/clerk.clj"))
                    #_ more?]
         times 5]
     (let [{:keys [time-ms]}
           (eval/time-ms
            (dotimes [_i times]
              (doseq [doc (shuffle test-docs)]
-               (-> (analyzer/build-graph doc) analyzer/hash))))
+               (-> (analyzer/build-graph doc) analyzer/hash))
+             (prn :done/pass _i)))
           mean (/ time-ms (* times (count test-docs)))]
       (println (format "Elapsed mean time: %f msec" mean)))))
 
