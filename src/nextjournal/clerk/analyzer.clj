@@ -374,58 +374,61 @@
    (binding [*ns* *ns*]
      ;; TODO: make !id->count part of reduce state
      (let [!id->count (atom {})]
-       (cond-> (reduce (fn [{:as state notebook-ns :ns} i]
-                         (let [{:as block :keys [type text loc]} (get-in doc [:blocks i])]
-                           (if (not= type :code)
-                             (assoc-in state [:blocks i :id] (get-block-id !id->count block))
-                             (let [form (try (read-string text)
-                                             (catch Exception e
-                                               (throw (ex-info (str "Clerk analysis failed reading block: "
-                                                                    (ex-message e))
-                                                               {:block block
-                                                                :file (:file doc)}
-                                                               e))))
-                                   form+loc (cond-> form
-                                              (instance? clojure.lang.IObj form)
-                                              (vary-meta merge (cond-> loc
-                                                                 (:file doc) (assoc :clojure.core/eval-file (str (:file doc))))))
-                                   {:as analyzed :keys [vars- ns-effect?]} (cond-> (analyze form+loc)
-                                                                             (:file doc) (assoc :file (:file doc)))
-                                   _ (when ns-effect?       ;; needs to run before setting doc `:ns` via `*ns*`
-                                       (eval form))
-                                   block-id (get-block-id !id->count (merge analyzed block))
-                                   analyzed (assoc analyzed :id block-id)]
+       (cond-> (reduce (fn [{:as state notebook-ns :ns} {:as block :keys [type text loc]}]
+                         (if (not= type :code)
+                           (update state :blocks conj (assoc block :id (get-block-id !id->count block)))
+                           (let [form (try (read-string text)
+                                           (catch Exception e
+                                             (throw (ex-info (str "Clerk analysis failed reading block: "
+                                                                  (ex-message e))
+                                                             {:block block
+                                                              :file (:file doc)}
+                                                             e))))
+                                 form+loc (cond-> form
+                                            (instance? clojure.lang.IObj form)
+                                            (vary-meta merge (cond-> loc
+                                                               (:file doc) (assoc :clojure.core/eval-file (str (:file doc))))))
+                                 {:as analyzed :keys [vars- ns-effect?]} (cond-> (analyze form+loc)
+                                                                           (:file doc) (assoc :file (:file doc)))
+                                 _ (when ns-effect?         ;; needs to run before setting doc `:ns` via `*ns*`
+                                     (eval form))
+                                 block-id (get-block-id !id->count (merge analyzed block))
+                                 analyzed (assoc analyzed :id block-id)]
 
-                               ;; `->analysis-info` :: { BlockId => Map }
-                               ;; `var->block-id`   :: { Sym => Set<BlockId> }
-                               (cond-> (-> state
-                                           (dissoc :doc?)
-                                           (assoc-in [:->analysis-info block-id] analyzed)
-                                           ;; TODO: do an SSA pass keeping in state a map
-                                           ;;  m : { var-sym -> current-block-id }
-                                           ;; (map m deps)
-                                           ;; e.g. for the case
-                                           ;; (def a 1)
-                                           ;; (inc a)
-                                           ;; (do (def a 22) :foo)
-                                           ;; (inc a)
-                                           ;;
-                                           (update :var->block-id
-                                                   ;; TODO: chose one of the two:
-                                                   ;; allow deps to lookup variables defs in more than one block
-                                                   #_ (partial reduce (fn [m v] (update m v (fnil conj #{}) block-id)))
-                                                   ;; last definition wins, drop set value if we settle on this
-                                                   (partial reduce (fn [m v] (assoc m v #{block-id})))
-                                                   vars-))
-                                 (parser/ns? form) (assoc-in [:blocks i :ns?] true)
-                                 doc? (update-in [:blocks i] merge (dissoc analyzed :deps :no-cache? :ns-effect?))
-                                 doc? (assoc-in [:blocks i :text-without-meta]
-                                                (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))
-                                 (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))))))
-                       (cond-> state
-                         doc? (merge doc))
-                       (-> doc :blocks count range))
-         ;; TODO: check if we need to process deps in a second pass (e.g. to catch forward declarations)
+                             ;; `->analysis-info` :: { BlockId => Map }
+                             ;; `var->block-id`   :: { Sym => Set<BlockId> }
+                             (cond-> (-> state
+                                         (dissoc :doc?)
+                                         (assoc-in [:->analysis-info block-id] analyzed)
+                                         ;; TODO: do an SSA pass keeping in state a map
+                                         ;;  m : { var-sym -> current-block-id }
+                                         ;; (map m deps)
+                                         ;; e.g. for the case
+                                         ;; (def a 1)
+                                         ;; (inc a)
+                                         ;; (do (def a 22) :foo)
+                                         ;; (inc a)
+                                         ;;
+                                         (update :var->block-id
+                                                 ;; TODO: chose one of the two:
+                                                 ;; allow deps to lookup variables defs in more than one block
+                                                 #_(partial reduce (fn [m v] (update m v (fnil conj #{}) block-id)))
+                                                 ;; last definition wins, drop set value if we settle on this
+                                                 (partial reduce (fn [m v] (assoc m v #{block-id})))
+                                                 vars-)
+                                         (update :blocks conj (-> block
+                                                                  (merge analyzed)
+                                                                  (dissoc :deps :no-cache? :ns-effect?)
+                                                                  (cond->
+                                                                    (parser/ns? form) (assoc :ns? true)
+                                                                    doc? (assoc :text-without-meta (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))))))
+
+
+                               (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*})))))
+
+                       (-> state (merge doc) (dissoc :doc?) (assoc :blocks []))
+                       (:blocks doc))
+
          true analyze-doc-deps
          doc? (-> parser/add-block-settings
                   parser/add-open-graph-metadata
