@@ -279,13 +279,18 @@
            (analyze-circular-dependency state vars form dep (ex-data e))
            (throw e)))))
 
-(defn make-deps-inherit-no-cache [state {:as analyzed :keys [id no-cache?]}]
-  ;; TODO: probably more suited for the graph
-  (if no-cache?
-    state
-    (assoc-in state [:->analysis-info id :no-cache?]
-              (boolean (some (fn [k] (get-in state [:->analysis-info k :no-cache?]))
-                             (deps->block-ids state analyzed))))))
+(defn make-deps-inherit-no-cache [{:as doc :keys [blocks graph ->analysis-info]}]
+  (reduce (fn [state {:keys [id no-cache? deps]}]
+            (if (or no-cache? (empty? deps))
+              state
+              (if (some (fn [dep] (:no-cache? (->analysis-info dep)))
+                        (dep/transitive-dependencies graph id))
+                (assoc-in state [:->analysis-info id :no-cache?] true)
+                state)))
+          doc
+          (keep (comp ->analysis-info :id)
+                (filter (comp #{:code} :type)
+                        blocks))))
 
 (defn get-block-id [!id->count {:as block :keys [var form type doc]}]
   (let [id->count @!id->count
@@ -332,9 +337,7 @@
 
 (defn analyze-doc-deps [{:as doc :keys [blocks ->analysis-info]}]
   (reduce (fn [state {:as info :keys [deps]}]
-            (reduce (partial analyze-deps info)
-                    (make-deps-inherit-no-cache state info)
-                    deps))
+            (reduce (partial analyze-deps info) state deps))
           doc
           (keep (comp #(get ->analysis-info %) :id)
                 (filter (comp #{:code} :type)
@@ -374,7 +377,7 @@
                                          (dissoc :doc?)
                                          (assoc-in [:->analysis-info block-id] analyzed)
                                          (update :var->block-id
-                                                 ;; TODO: do an SSA pass keeping in state a map
+                                                 ;; TODO: do an SSA pass keeping in state a map with redefinitions
                                                  ;; (a var which is defined twice will point at the latest block ftm)
                                                  (partial reduce (fn [m v] (assoc m v block-id)))
                                                  vars-)
@@ -526,9 +529,7 @@
 (defn ^:private merge-analysis-info [state {:as analyzed-doc :keys [->analysis-info]}]
   (reduce (fn [s {:as analyzed :keys [deps]}]
             (if (seq deps)
-              (-> (reduce (partial analyze-deps analyzed) s deps)
-                  ;; TODO: ensure no-cache inheritance is working cross-file
-                  #_ (make-deps-inherit-no-cache analyzed))
+              (reduce (partial analyze-deps analyzed) s deps)
               s))
           (update state :->analysis-info merge ->analysis-info)
           (vals ->analysis-info)))
@@ -567,7 +568,9 @@
                            state
                            loc->syms)
                    (update :counter inc)))
-        (dissoc state :analyzed-file-set :counter)))))
+        (-> state
+            (dissoc state :analyzed-file-set :counter)
+            make-deps-inherit-no-cache)))))
 
 (comment
   (def parsed (parser/parse-file {:doc? true} "src/nextjournal/clerk/webserver.clj"))

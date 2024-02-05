@@ -359,8 +359,16 @@ my-uuid")]
 
   (testing "should establish dependencies across files"
     (let [{:keys [graph]} (analyze-string (slurp "src/nextjournal/clerk.clj"))]
-      (is (dep/depends? graph 'nextjournal.clerk/show! 'nextjournal.clerk.analyzer/hash)))))
+      (is (dep/depends? graph 'nextjournal.clerk/show! 'nextjournal.clerk.analyzer/hash))))
 
+  (testing "The :no-cache option propagates through dependencies across files"
+    (is (-> (analyze-string "(ns no-cache-propagation (:require [nextjournal.clerk.home :as home]))
+
+(def notebooks (deref home/!notebooks))
+")
+            :->analysis-info
+            (get 'no-cache-propagation/notebooks)
+            :no-cache?))))
 
 (deftest ->hash
   (testing "notices change in depedency namespace"
