@@ -84,4 +84,4 @@
 
 ;; clj -X:dev:profile :phase :analysis
 ;; Elapsed mean time: 1700 msec (main)
-;; Elapsed mean time: 2200 msec (analyzer-improvements)
+;; Elapsed mean time: 1575 msec (analyzer-improvements)

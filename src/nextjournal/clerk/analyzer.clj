@@ -264,43 +264,16 @@
 
 #_(->> (nextjournal.clerk.eval/eval-string "(rand-int 100) (rand-int 100) (rand-int 100)") :blocks (mapv #(-> % :result :nextjournal/value)))
 
-(def dep->block-id*
-  (memoize
-   (fn [->analysis-info dep]
-     (or (not-empty
-          (keep (fn [[key {:keys [vars-]}]]
-                  (when (contains? vars- dep) key)) ->analysis-info))
-         ;; this will introduce also deref-deps as nodes in the graph
-         (list dep)))))
+(defn dep->block-id
+  "Inverse key-lookup from deps to block ids"
+  [{:keys [var->block-id]} dep]
+  (or (get var->block-id dep) dep))
 
-(defn dep->block-ids
-  "Inverse key-lookup from deps to key in analysis-info"
-  [{:keys [_var->block-id ->analysis-info]} dep]
-
-  ;; this reverse lookup is needed in case vars are introduced by "anonymous" forms (e.g. macros),
-  ;; since only block ids are allowed as graph nodes, like
-  ;; (do :foo (def x 1) :bar)
-
-  ;; TODO: adjust for cases like
-  ;;  (def a 1)
-  ;;  (inc a)
-  ;;  (def a 2)
-  ;;  (inc a)
-
-  ;; as an alternative we can do direct lookup against
-  #_
-  (or (get _var->block-id dep) #{dep})
-
-  (dep->block-id* ->analysis-info dep))
-
-(defn deps->block-ids [state {:as ana-info :keys [deps]}]
-  (into #{} (mapcat (partial dep->block-ids state)) deps))
+(defn deps->block-ids [state {:as _info :keys [deps]}]
+  (into #{} (map (partial dep->block-id state)) deps))
 
 (defn- analyze-deps [{:as _info :keys [id form vars]} state dep]
-  (try (reduce (fn [state k]
-                 (update state :graph dep/depend id k))
-               state
-               (dep->block-ids state dep))
+  (try (update state :graph dep/depend id (dep->block-id state dep))
        (catch Exception e
          (if (circular-dependency-error? e)
            (analyze-circular-dependency state vars form dep (ex-data e))
@@ -343,7 +316,7 @@
       (doseq [{:keys [form deps]} (vals current-analyis)]
         (when (seq deps)
           (when-some [missing-dep (first (set/difference (into #{}
-                                                               (comp (mapcat (partial dep->block-ids doc))
+                                                               (comp (map (partial dep->block-id doc))
                                                                      (filter #(and (symbol? %) (= (-> ns ns-name name) (namespace %))))
                                                                      (remove internal-proxy-name?))
                                                                deps)
@@ -400,21 +373,10 @@
                              (cond-> (-> state
                                          (dissoc :doc?)
                                          (assoc-in [:->analysis-info block-id] analyzed)
-                                         ;; TODO: do an SSA pass keeping in state a map
-                                         ;;  m : { var-sym -> current-block-id }
-                                         ;; (map m deps)
-                                         ;; e.g. for the case
-                                         ;; (def a 1)
-                                         ;; (inc a)
-                                         ;; (do (def a 22) :foo)
-                                         ;; (inc a)
-                                         ;;
                                          (update :var->block-id
-                                                 ;; TODO: chose one of the two:
-                                                 ;; allow deps to lookup variables defs in more than one block
-                                                 #_(partial reduce (fn [m v] (update m v (fnil conj #{}) block-id)))
-                                                 ;; last definition wins, drop set value if we settle on this
-                                                 (partial reduce (fn [m v] (assoc m v #{block-id})))
+                                                 ;; TODO: do an SSA pass keeping in state a map
+                                                 ;; (a var which is defined twice will point at the latest block ftm)
+                                                 (partial reduce (fn [m v] (assoc m v block-id)))
                                                  vars-)
                                          (update :blocks conj (-> block
                                                                   (merge analyzed)
@@ -426,7 +388,9 @@
 
                                (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*})))))
 
-                       (-> state (merge doc) (assoc :blocks []))
+                       (-> state
+                           (assoc :blocks [])
+                           (cond-> doc? (merge doc)))
                        (:blocks doc))
 
          true analyze-doc-deps

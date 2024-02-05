@@ -1,5 +1,5 @@
 (ns nextjournal.clerk.graph-visualizer
-  {:no-doc true}
+  {:no-doc true :nextjournal.clerk/no-cache true}
   (:require [arrowic.core :as arrowic]
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.analyzer :as analyzer]

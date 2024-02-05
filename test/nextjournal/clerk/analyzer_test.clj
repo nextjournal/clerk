@@ -9,7 +9,8 @@
             [nextjournal.clerk :as clerk :refer [defcached]]
             [nextjournal.clerk.analyzer :as ana]
             [nextjournal.clerk.config :as config]
-            [nextjournal.clerk.parser :as parser])
+            [nextjournal.clerk.parser :as parser]
+            [weavejester.dependency :as dep])
   (:import (clojure.lang ExceptionInfo)))
 
 (defmacro with-ns-binding [ns-sym & body]
@@ -218,7 +219,54 @@
   (declare b)
   (def a 1))
 
-(inc a)") ana/hash))))
+(inc a)") ana/hash)))
+
+  (testing "expressions do not depend on forward declarations"
+    (let [ana-1 (-> "(ns nextjournal.clerk.analyzer-test.forward-declarations)
+
+(declare x)
+(defn foo [] (inc (x)))
+(defn x [] 0)
+"
+                    analyze-string ana/hash)
+          block-3-id (-> ana-1 :blocks (nth 2) :id)
+          hash-1 (-> ana-1 :->hash block-3-id)
+          ana-2 (-> "(ns nextjournal.clerk.analyzer-test.forward-declarations)
+
+(declare x y)
+(defn foo [] (inc (x)))
+(defn x [] 0)
+"
+                    analyze-string ana/hash)
+          hash-2 (-> ana-2 :->hash block-3-id)]
+
+      (is hash-1) (is hash-2)
+      (is (= hash-1 hash-2))))
+
+  (testing "forms depending on anonymous forms"
+    (let [ana-1 (-> "(ns nextjournal.clerk.analyzer-test.dependency-on-anon-forms)
+(do
+  :something
+  (def x 0))
+
+(inc x)
+"
+                    analyze-string ana/hash)
+          block-id (-> ana-1 :blocks second :id)
+          hash-1 (-> ana-1 :->hash block-id)
+          ana-2 (-> "(ns nextjournal.clerk.analyzer-test.dependency-on-anon-forms)
+(do
+  :something
+  (def x 1))
+
+(inc x)
+"
+                    analyze-string ana/hash)
+          block-id (-> ana-2 :blocks second :id)
+          hash-2 (-> ana-2 :->hash block-id)]
+
+      (is hash-1) (is hash-2)
+      (is (not= hash-1 hash-2)))))
 
 (deftest analyze-doc
   (testing "reading a bad block shows block and file info in raised exception"
@@ -307,7 +355,11 @@ my-uuid")]
     (prn :find-location (ana/find-location 'weavejester.dependency/graph))
     (let [{:keys [->analysis-info]} (analyze-string "(ns foo (:require [weavejester.dependency :as dep])) (dep/graph)")]
       (is (empty? (ana/unhashed-deps ->analysis-info)))
-      (is (match? {:jar string?} (->analysis-info 'weavejester.dependency/graph))))))
+      (is (match? {:jar string?} (->analysis-info 'weavejester.dependency/graph)))))
+
+  (testing "should establish dependencies across files"
+    (let [{:keys [graph]} (analyze-string (slurp "src/nextjournal/clerk.clj"))]
+      (is (dep/depends? graph 'nextjournal.clerk/show! 'nextjournal.clerk.analyzer/hash)))))
 
 
 (deftest ->hash
@@ -339,24 +391,3 @@ my-uuid")]
           runtime-hash (get-in runtime-doc [:->hash 'nextjournal.clerk.test.deref-dep/foo+2])]
       (is (match? {:deref-deps #{`(deref nextjournal.clerk.test.deref-dep/!state)}} block-with-deref-dep))
       (is (not= static-hash runtime-hash)))))
-
-(deftest forms-do-not-depend-on-forward-declaration-forms
-  (let [ana-1 (-> "(ns nextjournal.clerk.analyzer-test.forward-declarations)
-
-(declare x)
-(defn foo [] (inc (x)))
-(defn x [] 0)
-"
-                  analyze-string ana/hash)
-        block-3-id (-> ana-1 :blocks (nth 2) :id)
-        hash-1 (-> ana-1 :->hash block-3-id)
-        ana-2 (-> "(ns nextjournal.clerk.analyzer-test.forward-declarations)
-
-(declare x y)
-(defn foo [] (inc (x)))
-(defn x [] 0)
-"
-                  analyze-string ana/hash)
-        hash-2 (-> ana-2 :->hash block-3-id)]
-
-    (is (= hash-1 hash-2))))
