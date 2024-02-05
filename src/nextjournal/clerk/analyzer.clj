@@ -389,8 +389,8 @@
                                (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*})))))
 
                        (-> state
-                           (assoc :blocks [])
-                           (cond-> doc? (merge doc)))
+                           (cond-> doc? (merge doc))
+                           (assoc :blocks []))
                        (:blocks doc))
 
          true analyze-doc-deps
