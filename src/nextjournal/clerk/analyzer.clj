@@ -253,8 +253,8 @@
   (let [rec-form (concat '(do) [form (get-in state [:->analysis-info dependency :form])])
         rec-var (symbol (str/join "+" (sort (conj vars dep))))
         var (first vars)] ;; TODO: reduce below
-    (when (not= dep dependency) (println :dep-mismatch dep dependency))
-    (when (not= var node) (println :node-mismatch var node))
+    ;;(when (not= dep dependency) (println :dep-mismatch dep dependency))
+    ;;(when (not= var node) (println :node-mismatch var node))
     (-> state
         (update :graph #(-> %
                             (dep/remove-edge dependency node)

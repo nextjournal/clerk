@@ -221,6 +221,20 @@
     (intern (create-ns 'existing-var) 'foo :bar)
     (is (eval/eval-string "(in-ns 'existing-var) foo"))))
 
+(deftest eval+cache!
+  (testing "edge case where some form is not evaluated"
+    (is (eval+extract-doc-blocks "(ns repro-crash-when-not-all-forms-are-evaluated
+  {:nextjournal.clerk/no-cache true})
+
+(do
+  (def b 2)
+  (declare a))
+
+(def a 1)
+
+(+ a b)
+"))))
+
 (clerk/defcached my-expansive-thing
   (do (Thread/sleep 1 #_10000) 42))
 

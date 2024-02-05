@@ -210,7 +210,15 @@
          {:jar
           #"repository/weavejester/dependency/0.2.1/dependency-0.2.1.jar",
           :hash "5dsZiMRBpbMfWTafMoHEaNdGfEYxpx"}
-         (ana/hash-jar (ana/find-location 'weavejester.dependency/graph))))))
+         (ana/hash-jar (ana/find-location 'weavejester.dependency/graph)))))
+
+  (testing "an edge-case with a particular sorting of the graph nodes"
+    (is (-> (analyze-string "
+(do
+  (declare b)
+  (def a 1))
+
+(inc a)") ana/hash))))
 
 (deftest analyze-doc
   (testing "reading a bad block shows block and file info in raised exception"
@@ -314,7 +322,6 @@ my-uuid")]
           analyzed-after (ana/hash (analyze-string test-string))]
       (is (not= (get-in analyzed-before [:->hash test-var])
                 (get-in analyzed-after [:->hash test-var]))))))
-
 
 (deftest hash-deref-deps
   (testing "transitive dep gets new hash"

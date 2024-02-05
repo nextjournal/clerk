@@ -83,7 +83,5 @@
       (println (format "Elapsed mean time: %f msec" mean)))))
 
 ;; clj -X:dev:profile :phase :analysis
-;; Elapsed mean time: 4300,223637 msec (main)
-;; Elapsed mean time: 4866,353578 msec (analyzer-improvements)
-;; Elapsed mean time: 4594,642337 msec (analyzer-improvements - dep reverse map lookup)
-;; Elapsed mean time: 3784,830730 msec (analyzer-improvements - dep reverse map lookup / single entry last wins)
+;; Elapsed mean time: 1700 msec (main)
+;; Elapsed mean time: 2200 msec (analyzer-improvements)
