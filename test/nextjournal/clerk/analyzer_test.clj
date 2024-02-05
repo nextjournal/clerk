@@ -266,6 +266,31 @@
           hash-2 (-> ana-2 :->hash block-id)]
 
       (is hash-1) (is hash-2)
+      (is (not= hash-1 hash-2))))
+
+  (testing "redefinitions are tracked correctly"
+    (let [ana-1 (-> "(ns nextjournal.clerk.analyzer-test.redefs)
+(def a 0)
+(inc a)
+(def a 1)
+(def b (inc a))
+(def a 2)
+"
+                    analyze-string ana/hash)
+          consumer-block-id (-> ana-1 :blocks (nth 4) :id)
+          hash-1 (-> ana-1 :->hash consumer-block-id)
+          ana-2 (-> "(ns nextjournal.clerk.analyzer-test.redefs)
+(def a 0)
+(inc a)
+(def a 3)
+(def b (inc a))
+(def a 2)
+"
+                    analyze-string ana/hash)
+          hash-2 (-> ana-2 :->hash consumer-block-id)]
+      (is (-> ana-1 :graph (dep/depends? 'nextjournal.clerk.analyzer-test.redefs/b 'nextjournal.clerk.analyzer-test.redefs/a#2)))
+      (is (-> ana-2 :graph (dep/depends? 'nextjournal.clerk.analyzer-test.redefs/b 'nextjournal.clerk.analyzer-test.redefs/a#2)))
+      (is hash-1) (is hash-2)
       (is (not= hash-1 hash-2)))))
 
 (deftest analyze-doc

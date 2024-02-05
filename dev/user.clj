@@ -48,15 +48,7 @@
   (do (require 'kaocha.repl)
       (kaocha.repl/run :unit))
 
-  (require '[clj-async-profiler.core :as prof]
-           'nextjournal.clerk.eval-test
-           'nextjournal.clerk.viewer-test
-           'nextjournal.clerk.analyzer-test)
-  (prof/profile
-   (time (clojure.test/run-tests 'nextjournal.clerk.eval-test
-                                 'nextjournal.clerk.viewer-test
-                                 'nextjournal.clerk.analyzer-test)))
-  ;; ~16.6s
+  (prof/profile (profile {:phase :analysis}))
   (prof/serve-ui 8080))
 
 (defmacro with-ex-data [sym body do-block]
@@ -82,6 +74,9 @@
           mean (/ time-ms (* times (count test-docs)))]
       (println (format "Elapsed mean time: %f msec" mean)))))
 
+#_ (profile {:phase :analysis})
+
 ;; clj -X:dev:profile :phase :analysis
 ;; Elapsed mean time: 1700 msec (main)
-;; Elapsed mean time: 1800 msec (analyzer-improvements)
+;; Elapsed mean time: 1800 msec (analyzer-improvements, ~200ms inherit :no-cache)
+;; Elapsed mean time: 2170 msec (analyzer-improvements, ~200ms inherit :no-cache, ~300 SSA form)
