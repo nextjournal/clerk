@@ -267,10 +267,7 @@
 (defn dep->block-id
   "Inverse key-lookup from deps to block ids"
   [{:keys [var->block-id]} dep]
-  (or (get var->block-id dep) dep))
-
-(defn deps->block-ids [state {:as _info :keys [deps]}]
-  (into #{} (map (partial dep->block-id state)) deps))
+  (get var->block-id dep dep))
 
 (defn- analyze-deps [{:as _info :keys [id form vars]} state dep]
   (try (update state :graph dep/depend id (dep->block-id state dep))
@@ -384,9 +381,6 @@
                                      (eval form))
                                  block-id (get-block-id !id->count (merge analyzed block))
                                  analyzed (assoc analyzed :id block-id)]
-
-                             ;; `->analysis-info` :: { BlockId => Map }
-                             ;; `var->block-id`   :: { Sym => Set<BlockId> }
                              (cond-> (-> state
                                          (assoc-in [:->analysis-info block-id] analyzed)
                                          (track-var->block+redefs analyzed)
@@ -406,8 +400,7 @@
                                   :var->block-id {}
                                   :var->current-version {}))
                        (:blocks doc))
-         ;; TODO: refactor this
-         true analyze-doc-deps
+         (:graph state) analyze-doc-deps
          true (dissoc :doc?)
          doc? (-> parser/add-block-settings
                   parser/add-open-graph-metadata
