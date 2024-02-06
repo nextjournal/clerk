@@ -1,6 +1,5 @@
 (ns nextjournal.clerk.analyzer-test
   (:require [babashka.fs :as fs]
-            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [matcher-combinators.matchers :as m]
@@ -358,10 +357,8 @@ my-uuid")]
 
 
 (deftest circular-dependency
-  (is (match? {:graph {:dependencies {'circular/b (partial set/subset? #{'clojure.core/str (symbol "circular/a+circular/b")})
-                                      ;; 👆the block (def b …) depends on a, the var a originates from _both_
-                                      ;; * the anonymous block (declare a)
-                                      ;; * and the actual definition (def a …)
+  (is (match? {:graph {:dependencies {'circular/b #{'clojure.core/str
+                                                    (symbol "circular/a+circular/b")}
                                       'circular/a #{#_'clojure.core/declare 'clojure.core/str (symbol "circular/a+circular/b")}}}
                :->analysis-info {'circular/a any?
                                  'circular/b any?
