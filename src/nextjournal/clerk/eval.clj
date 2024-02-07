@@ -127,7 +127,7 @@
           {:keys [result]} (time-ms (binding [config/*in-clerk* true]
                                       (assert form "form must be set")
                                       (with-redefs [clojure.core/intern (partial intern+record !interned-vars)]
-                                        (eval form))))
+                                        (eval (or (:ssa-form form-info) form)))))
           result (if (and (nil? result) var (= 'defonce (first form)))
                    (find-var var)
                    result)

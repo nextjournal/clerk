@@ -11,6 +11,7 @@
             [clojure.tools.analyzer :as ana]
             [clojure.tools.analyzer.ast :as ana-ast]
             [clojure.tools.analyzer.jvm :as ana-jvm]
+            [clojure.tools.analyzer.passes.jvm.emit-form :as ana-jvm.emit-form]
             [clojure.tools.analyzer.utils :as ana-utils]
             [clojure.walk :as walk]
             [multiformats.base.b58 :as b58]
@@ -189,20 +190,22 @@
                         (class-deps analyzed)
                         (when (var? form) #{(symbol form)}))
         hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
-    (cond-> {#_#_:analyzed analyzed
-             :form form
-             :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
-             :freezable? (and (not (some #{'clojure.core/intern} deps))
-                              (<= (count vars) 1)
-                              (if (seq vars) (= var (first vars)) true))
-             :no-cache? (no-cache? form (-> def-node :form second) *ns*)}
-      hash-fn (assoc :hash-fn hash-fn)
-      (seq deps) (assoc :deps deps)
-      (seq deref-deps) (assoc :deref-deps deref-deps)
-      (seq vars) (assoc :vars vars)
-      (seq vars-) (assoc :vars- vars-)
-      (seq declared) (assoc :declared declared)
-      var (assoc :var var))))
+    (with-meta
+     (cond-> {#_#_:analyzed analyzed
+              :form form
+              :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
+              :freezable? (and (not (some #{'clojure.core/intern} deps))
+                               (<= (count vars) 1)
+                               (if (seq vars) (= var (first vars)) true))
+              :no-cache? (no-cache? form (-> def-node :form second) *ns*)}
+       hash-fn (assoc :hash-fn hash-fn)
+       (seq deps) (assoc :deps deps)
+       (seq deref-deps) (assoc :deref-deps deref-deps)
+       (seq vars) (assoc :vars vars)
+       (seq vars-) (assoc :vars- vars-)
+       (seq declared) (assoc :declared declared)
+       var (assoc :var var))
+     {:analyzed analyzed})))
 
 #_(:vars     (analyze '(do (declare x y) (def x 0) (def z) (def w 0)))) ;=> x y z w
 #_(:vars-    (analyze '(do (def x 0) (declare x y) (def z) (def w 0)))) ;=> x z w
@@ -342,7 +345,39 @@
 
 (defn get-or [m] (fn [x] (get m x x)))
 
-(defn track-var->block+redefs [{:as state :keys [var->current-version var->block-id]} {:keys [id deps vars-]}]
+(defn ssa-rewrite [{:as info :keys [vars- deps form]} current-redefs current-usages]
+  (when (or (seq (set/intersection vars- (set (keys current-redefs))))
+            (seq (set/intersection deps (set (keys current-usages)))))
+    #_ (prn :ssa-rewrite/id (:id info) :form form)
+    (-> info meta :analyzed (doto assert)
+        (ana-ast/postwalk (fn [{:as node :keys [op var]}]
+                            (cond
+                              (= :def op)
+                              (if-some [new-name (some-> current-redefs (get (symbol var)) name symbol)]
+                                (assoc node :name new-name)
+                                node)
+                              (= :var op)
+                              #_ (do (prn :op-var node))
+                              (if-some [new-var (some-> current-usages (get (symbol var)) name symbol)]
+                                #_ (do (prn :new-var new-var))
+                                (assoc node :form new-var)
+                                node)
+                              :else
+                              node)))
+        ana-jvm.emit-form/emit-form)))
+
+
+#_(-> (parser/parse-clojure-string
+       "(ns bingo)
+  (def a 1)
+  (inc a)
+  (def a 2)
+  (use a)
+  ")
+      analyze-doc
+      :->analysis-info (->> (filter (comp #{"bingo"} namespace key))))
+
+(defn track-var->block+redefs [{:as state :keys [var->current-version var->block-id]} {:as info :keys [id deps vars-]}]
   ;; static single-assignment form
   (let [new-var-versions (into {} (comp (filter var->block-id)
                                         (map (juxt identity gensym))) vars-)]
@@ -350,6 +385,7 @@
         (assoc-in [:->analysis-info id :versioned-deps]
                   (into #{} (map (get-or var->current-version)) deps))
         (update :var->current-version merge new-var-versions)
+        (assoc-in [:->analysis-info id :ssa-form] (ssa-rewrite info new-var-versions var->current-version))
         (update :var->block-id
                 (partial reduce (fn [m v] (assoc m v id)))
                 (map (get-or new-var-versions) vars-)))))
