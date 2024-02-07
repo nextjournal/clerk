@@ -332,9 +332,14 @@
     identity))
 #_ (ns-resolver *ns*)
 
-(defn analyze-doc-deps [{:as doc :keys [blocks ->analysis-info]}]
-  (reduce (fn [state {:as info :keys [versioned-deps]}]
-            (reduce (partial analyze-deps info) state versioned-deps))
+(defn analyze-doc-deps [{:as doc :keys [blocks ->analysis-info redefs]}]
+  (reduce (fn [state {:as info :keys [id deps vars- no-cache?]}]
+            (reduce (partial analyze-deps info)
+                    (cond-> state
+                      ;; redefinitions are never cached
+                      (and (not no-cache?) (seq (set/intersection vars- redefs)))
+                      (assoc-in [:->analysis-info id :no-cache?] true))
+                    deps))
           doc
           (keep (comp #(get ->analysis-info %) :id)
                 (filter (comp #{:code} :type)
@@ -342,17 +347,10 @@
 
 (defn get-or [m] (fn [x] (get m x x)))
 
-(defn track-var->block+redefs [{:as state :keys [var->current-version var->block-id]} {:keys [id deps vars-]}]
-  ;; static single-assignment form
-  (let [new-var-versions (into {} (comp (filter var->block-id)
-                                        (map (juxt identity gensym))) vars-)]
-    (-> state
-        (assoc-in [:->analysis-info id :versioned-deps]
-                  (into #{} (map (get-or var->current-version)) deps))
-        (update :var->current-version merge new-var-versions)
-        (update :var->block-id
-                (partial reduce (fn [m v] (assoc m v id)))
-                (map (get-or new-var-versions) vars-)))))
+(defn track-var->block+redefs [{:as state seen :var->block-id} {:keys [id vars-]}]
+  (-> state
+      (update :var->block-id (partial reduce (fn [m v] (assoc m v id))) vars-)
+      (update :redefs into (set/intersection vars- (set (keys seen))))))
 
 (defn analyze-doc
   ([doc]
@@ -398,7 +396,7 @@
                            (cond-> doc? (merge doc))
                            (assoc :blocks []
                                   :var->block-id {}
-                                  :var->current-version {}))
+                                  :redefs #{}))
                        (:blocks doc))
          (:graph state) analyze-doc-deps
          true (dissoc :doc?)
