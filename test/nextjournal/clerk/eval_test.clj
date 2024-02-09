@@ -10,6 +10,11 @@
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.clerk.webserver :as webserver]))
 
+(defn result= [x y]
+  (every? true? (mapv =
+                      (-> x :blocks (->> (mapv (comp :nextjournal/value :result))))
+                      (-> y :blocks (->> (mapv (comp :nextjournal/value :result)))))))
+
 (deftest eval-string
   (testing "hello 42"
     (is (match? {:blocks [{:type :code,
@@ -56,13 +61,13 @@
         (is (= 99 @(find-var 'my-test-ns/some-var))))))
 
   (testing "random expression gets cached"
-    (is (= (eval/eval-string "(ns my-random-test-ns-1) (rand-int 1000000)")
-           (eval/eval-string "(ns my-random-test-ns-1) (rand-int 1000000)"))))
+    (is (result= (eval/eval-string "(ns my-random-test-ns-1) (rand-int 1000000)")
+                 (eval/eval-string "(ns my-random-test-ns-1) (rand-int 1000000)"))))
 
   (testing "random expression that cannot be serialized in nippy gets cached in memory"
     (let [{:as result :keys [blob->result]} (eval/eval-string "(ns my-random-test-ns-2) {inc (java.util.UUID/randomUUID)}")]
-      (is (= result
-             (eval/eval-string blob->result "(ns my-random-test-ns-2) {inc (java.util.UUID/randomUUID)}")))))
+      (is (result= result
+                   (eval/eval-string blob->result "(ns my-random-test-ns-2) {inc (java.util.UUID/randomUUID)}")))))
 
   (testing "side-effecting expression returning nil gets cached in memory"
     (let [code "(ns my-random-test-ns-2) (do (clojure.lang.Var/intern (the-ns 'my-random-test-ns-2) 'ruuid (java.util.UUID/randomUUID)) nil)"
@@ -257,10 +262,14 @@
   (testing "image is cachable"
     (is (eval/cachable? (javax.imageio.ImageIO/read (io/file "trees.png"))))))
 
+;; TODO: clojure 1.11, but lint complains
+(defn update-values [m f] (into {} (map (fn [[k v]] [k (f v)])) m))
+
 (deftest show!-test
   (testing "in-memory cache is preserved when exception is thrown (#549)"
     (let [code "{:f inc :n (rand-int 100000)}"
-          get-result #(:blob->result @webserver/!doc)]
+          get-result #(-> @webserver/!doc :blob->result (update-values (fn [m] (select-keys m [:nextjournal/value :nextjournal/blob-id]))))]
+      (clerk/clear-cache!)
       (clerk/show! (java.io.StringReader. code))
       (let [result-first-run (get-result)]
         (try (clerk/show! (java.io.StringReader. (str code " (throw (ex-info \"boom\" {}))")))

@@ -124,10 +124,10 @@
 (defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
   (try
     (let [!interned-vars (atom #{})
-          {:keys [result]} (time-ms (binding [config/*in-clerk* true]
-                                      (assert form "form must be set")
-                                      (with-redefs [clojure.core/intern (partial intern+record !interned-vars)]
-                                        (eval form))))
+          {:keys [result time-ms]} (time-ms (binding [config/*in-clerk* true]
+                                              (assert form "form must be set")
+                                              (with-redefs [clojure.core/intern (partial intern+record !interned-vars)]
+                                                (eval form))))
           result (if (and (nil? result) var (= 'defonce (first form)))
                    (find-var var)
                    result)
@@ -149,7 +149,7 @@
             result (if var-from-def?
                      (var-from-def var)
                      result)]
-        (cond-> (wrapped-with-metadata result blob-id)
+        (cond-> (assoc (wrapped-with-metadata result blob-id) :nextjournal/exec-time-ms time-ms)
           (seq @!interned-vars)
           (assoc :nextjournal/interned @!interned-vars))))
     (catch Throwable t
@@ -232,9 +232,13 @@
                     (set-status-fn (->eval-status analyzed-doc (count (filter parser/code? (:blocks state))) cell)))
                   (let [cell+info (merge cell (get ->analysis-info id))
                         state-with-deref-deps-evaluated (analyzer/hash-deref-deps state cell+info)
-                        {:as result :nextjournal/keys [blob-id]} (when (parser/code? cell+info)
-                                                                   (read+eval-cached state-with-deref-deps-evaluated cell+info))]
-                    (cond-> (update state-with-deref-deps-evaluated :blocks conj (cond-> cell+info result (assoc :result result)))
+                        {:as result :nextjournal/keys [blob-id interned]}
+                        (when (parser/code? cell+info)
+                          (read+eval-cached state-with-deref-deps-evaluated cell+info))]
+                    (cond-> (update state-with-deref-deps-evaluated :blocks conj
+                                    (cond-> cell+info
+                                      result (assoc :result result)
+                                      interned (assoc :no-cache? :interned-vars)))
                       blob-id (update :blob-ids conj blob-id)
                       blob-id (assoc-in [:blob->result blob-id] result))))
                 (-> analyzed-doc
