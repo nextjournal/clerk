@@ -618,7 +618,10 @@
   (with-viewer (if (= :fold (-> cell :settings :nextjournal.clerk/visibility :code))
                  `folded-code-block-viewer
                  `code-block-viewer)
-    {:nextjournal/render-opts (-> cell (select-keys [:loc]) (assoc :id (processed-block-id (str id "-code"))))}
+    {:nextjournal/render-opts (-> cell
+                                  (select-keys [:loc :no-cache?])
+                                  (assoc :id (processed-block-id (str id "-code")))
+                                  (merge (select-keys (:result cell) [:nextjournal/exec-time-ms])))}
     (dissoc cell ::doc :result)))
 
 (defn maybe-wrap-var-from-def [val form]

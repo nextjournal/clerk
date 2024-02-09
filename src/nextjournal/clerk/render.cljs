@@ -949,9 +949,24 @@
   [:svg {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :width 12 :height 12}
    [:path {:fill-rule "evenodd" :d "M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" :clip-rule "evenodd"}]])
 
+(defn exec-info [{:keys [no-cache?]}]
+  (when no-cache?
+    [:div.group.font-sans.text-slate-400.text-xs
+     [:span.absolute.right-0.bottom-0.font-mono.mb-1.mr-2.cursor-help "ⓘ"]
+     [:span.absolute.right-0.bottom-0.invisible.group-hover:visible
+      {:class "mb-[-20px]"}
+      [:span.font-medium "not cached"]
+      (case no-cache?
+        :inherited " (dependencies are skipping cache)"
+        :interned-vars " (vars interned at runtime)"
+        :redef " (var is being redefined)"
+        nil)]]))
+
 (defn render-code-block [code-string {:as opts :keys [id]}]
-  [:div.viewer.code-viewer.w-full.max-w-wide {:data-block-id id}
-   [code/render-code code-string (assoc opts :language "clojure")]])
+  [:div.w-full.max-w-wide.relative {:data-block-id id}
+   [exec-info opts]
+   [:div.viewer.code-viewer
+    [code/render-code code-string (assoc opts :language "clojure")]]])
 
 (defn render-folded-code-block [code-string {:as opts :keys [id]}]
   (let [!hidden? (hooks/use-state true)]
