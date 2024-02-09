@@ -355,8 +355,10 @@
            (->> "(ns foo {:nextjournal.clerk/visibility {:code :fold}}) (def bar :baz) (def bar :baz) (rand-int 42) (rand-int 42)"
                 analyze-string :blocks (mapv :id))))))
 
-(deftest no-cache-dep
-  (is (match? [{:no-cache? true} {:no-cache? true} {:no-cache? true}]
+(def truthy? (comp true? boolean))
+
+(deftest no-cache-is-inherited-by-deps
+  (is (match? [{:no-cache? truthy?} {:no-cache? truthy?} {:no-cache? truthy?}]
               (let [{:keys [blocks ->analysis-info]} (analyze-string "(def ^:nextjournal.clerk/no-cache my-uuid
   (java.util.UUID/randomUUID))
 (str my-uuid)

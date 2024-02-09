@@ -282,7 +282,7 @@
               state
               (if (some (fn [dep] (:no-cache? (->analysis-info dep)))
                         (dep/transitive-dependencies graph id))
-                (assoc-in state [:->analysis-info id :no-cache?] true)
+                (assoc-in state [:->analysis-info id :no-cache?] :inherited)
                 state)))
           doc
           (keep (comp ->analysis-info :id)
@@ -338,7 +338,7 @@
                     (cond-> state
                       ;; redefinitions are never cached
                       (and (not no-cache?) (seq (set/intersection vars- redefs)))
-                      (assoc-in [:->analysis-info id :no-cache?] true))
+                      (assoc-in [:->analysis-info id :no-cache?] :redef))
                     deps))
           doc
           (keep (comp #(get ->analysis-info %) :id)
