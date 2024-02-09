@@ -383,12 +383,10 @@
                                          (assoc-in [:->analysis-info block-id] analyzed)
                                          (track-var->block+redefs analyzed)
                                          (update :blocks conj (-> block
-                                                                  (merge analyzed)
-                                                                  (dissoc :deps :no-cache? :ns-effect?)
+                                                                  (merge (dissoc analyzed :deps :no-cache? :ns-effect?))
                                                                   (cond->
                                                                     (parser/ns? form) (assoc :ns? true)
                                                                     doc? (assoc :text-without-meta (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))))))
-
 
                                (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*})))))
 
@@ -404,8 +402,7 @@
                   parser/add-open-graph-metadata
                   parser/filter-code-blocks-without-form))))))
 
-#_(let [parsed (nextjournal.clerk.parser/parse-clojure-string "clojure.core/dec")]
-    (build-graph (analyze-doc parsed)))
+#_(analyze-doc (nextjournal.clerk.parser/parse-clojure-string "clojure.core/dec"))
 
 (defonce !file->analysis-cache
   (atom {}))

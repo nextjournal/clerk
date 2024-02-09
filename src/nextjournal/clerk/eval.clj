@@ -164,13 +164,10 @@
     viewers
     (update :nextjournal/viewers eval)))
 
-(defn read+eval-cached [{:as doc :keys [blob->result ->analysis-info ->hash]} codeblock]
-  (let [{:keys [id form _vars var]} codeblock
-        _ (assert id (format "Missing id on codeblock: '%s'." (pr-str codeblock)))
-        {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info id)
-        no-cache?      (or ns-effect? no-cache?)
+(defn read+eval-cached [{:as doc :keys [blob->result ->hash]} {:as form-info :keys [id form var ns-effect? no-cache? freezable?]}]
+  (let [no-cache?      (or ns-effect? no-cache?)
         hash           (when-not no-cache? (or (get ->hash id)
-                                               (analyzer/hash-codeblock ->hash doc codeblock)))
+                                               (analyzer/hash-codeblock ->hash doc form-info)))
         digest-file    (when hash (->cache-file (str "@" hash)))
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
         cached-result-in-memory (get blob->result hash)
@@ -226,16 +223,18 @@
 
 #_(nextjournal.clerk/show! "notebooks/exec_status.clj")
 
-(defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks set-status-fn]}]
+(defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks set-status-fn ->analysis-info]}]
   (let [deref-forms (into #{} (filter analyzer/deref?) (keys ->hash))
         {:as evaluated-doc :keys [blob-ids]}
-        (reduce (fn [state cell]
+        (reduce (fn [state {:as cell :keys [id]}]
+                  (assert id (format "Missing id on codeblock: '%s'." (pr-str cell)))
                   (when (and (parser/code? cell) set-status-fn)
                     (set-status-fn (->eval-status analyzed-doc (count (filter parser/code? (:blocks state))) cell)))
-                  (let [state-with-deref-deps-evaluated (analyzer/hash-deref-deps state cell)
-                        {:as result :nextjournal/keys [blob-id]} (when (parser/code? cell)
-                                                                   (read+eval-cached state-with-deref-deps-evaluated cell))]
-                    (cond-> (update state-with-deref-deps-evaluated :blocks conj (cond-> cell result (assoc :result result)))
+                  (let [cell+info (merge cell (get ->analysis-info id))
+                        state-with-deref-deps-evaluated (analyzer/hash-deref-deps state cell+info)
+                        {:as result :nextjournal/keys [blob-id]} (when (parser/code? cell+info)
+                                                                   (read+eval-cached state-with-deref-deps-evaluated cell+info))]
+                    (cond-> (update state-with-deref-deps-evaluated :blocks conj (cond-> cell+info result (assoc :result result)))
                       blob-id (update :blob-ids conj blob-id)
                       blob-id (assoc-in [:blob->result blob-id] result))))
                 (-> analyzed-doc
