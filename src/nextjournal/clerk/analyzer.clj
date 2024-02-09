@@ -345,8 +345,6 @@
                 (filter (comp #{:code} :type)
                         blocks))))
 
-(defn get-or [m] (fn [x] (get m x x)))
-
 (defn track-var->block+redefs [{:as state seen :var->block-id} {:keys [id vars-]}]
   (-> state
       (update :var->block-id (partial reduce (fn [m v] (assoc m v id))) vars-)
@@ -604,9 +602,9 @@
                            (vary-meta dissoc :type)))
                  form))
 
-(defn hash-codeblock [->hash {:as state :keys [ns graph ->analysis-info]} {:as _codeblock :keys [hash form id vars]}]
+(defn hash-codeblock [->hash {:keys [graph]} {:as _codeblock :keys [hash form id vars]}]
   (let [hashed-deps (into #{}
-                          (keep ->hash)
+                          (keep #(get ->hash %))
                           ;; NOTE: on a first static pass deref-nodes do not have a hash yet
                           ;; their hash will be computed at runtime (see `hash-deref-deps` above)
                           (dep/immediate-dependencies graph id))]

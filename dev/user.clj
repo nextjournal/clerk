@@ -51,12 +51,6 @@
   (prof/profile (profile {:phase :analysis}))
   (prof/serve-ui 8080))
 
-(defmacro with-ex-data [sym body do-block]
-  `(try ~body
-        (catch Exception e#
-          (let [~sym (ex-data e#)]
-            ~do-block))))
-
 (defmulti profile :phase)
 
 (defmethod profile :analysis [_opts]

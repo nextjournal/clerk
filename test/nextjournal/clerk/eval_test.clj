@@ -262,7 +262,6 @@
   (testing "image is cachable"
     (is (eval/cachable? (javax.imageio.ImageIO/read (io/file "trees.png"))))))
 
-;; TODO: clojure 1.11, but lint complains
 (defn update-values [m f] (into {} (map (fn [[k v]] [k (f v)])) m))
 
 (deftest show!-test
