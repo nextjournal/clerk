@@ -350,12 +350,15 @@
       (update :var->block-id (partial reduce (fn [m v] (assoc m v id))) vars-)
       (update :redefs into (set/intersection vars- (set (keys seen))))))
 
+(defn ana-keys [{:keys [id vars-]}] #_ [id] (cons id vars-))
+
+(defn assoc-new [m k v] (cond-> m (not (contains? m k)) (assoc k v)))
+
 (defn analyze-doc
   ([doc]
    (analyze-doc {:doc? true :graph (dep/graph)} doc))
   ([{:as state :keys [doc?]} doc]
    (binding [*ns* *ns*]
-     ;; TODO: make !id->count part of reduce state
      (let [!id->count (atom {})]
        (cond-> (reduce (fn [{:as state notebook-ns :ns} {:as block :keys [type text loc]}]
                          (if (not= type :code)
@@ -377,8 +380,9 @@
                                      (eval form))
                                  block-id (get-block-id !id->count (merge analyzed block))
                                  analyzed (assoc analyzed :id block-id)]
-                             (cond-> (-> state
-                                         (assoc-in [:->analysis-info block-id] analyzed)
+                             (cond-> (-> (reduce #(update %1 :->analysis-info assoc-new %2 analyzed)
+                                                 state
+                                                 (ana-keys analyzed))
                                          (track-var->block+redefs analyzed)
                                          (update :blocks conj (-> block
                                                                   (merge (dissoc analyzed :deps :no-cache? :ns-effect?))
@@ -394,7 +398,6 @@
                                   :var->block-id {}
                                   :redefs #{}))
                        (:blocks doc))
-         (:graph state) analyze-doc-deps
          true (dissoc :doc?)
          doc? (-> parser/add-block-settings
                   parser/add-open-graph-metadata
@@ -524,12 +527,14 @@
   (memoize (fn [f]
              {:jar f :hash (sha1-base58 (io/input-stream f))})))
 
-(defn ^:private merge-analysis-info [state {:as analyzed-doc :keys [->analysis-info]}]
+(defn ^:private merge-analysis-info [state {:keys [->analysis-info var->block-id]}]
   (reduce (fn [s {:as analyzed :keys [deps]}]
             (if (seq deps)
               (reduce (partial analyze-deps analyzed) s deps)
               s))
-          (update state :->analysis-info merge ->analysis-info)
+          (-> state
+              (update :->analysis-info merge ->analysis-info)
+              (update :var->block-id merge var->block-id))
           (vals ->analysis-info)))
 
 #_(merge-analysis-info {:->analysis-info {:a :b}} {:->analysis-info {:c :d}})
@@ -567,8 +572,9 @@
                            loc->syms)
                    (update :counter inc)))
         (-> state
-            (dissoc state :analyzed-file-set :counter)
-            make-deps-inherit-no-cache)))))
+            analyze-doc-deps
+            make-deps-inherit-no-cache
+            (dissoc state :analyzed-file-set :counter))))))
 
 (comment
   (def parsed (parser/parse-file {:doc? true} "src/nextjournal/clerk/webserver.clj"))
@@ -602,12 +608,20 @@
                            (vary-meta dissoc :type)))
                  form))
 
-(defn hash-codeblock [->hash {:keys [graph]} {:as _codeblock :keys [hash form id vars]}]
-  (let [hashed-deps (into #{}
+(defn hash-codeblock [->hash {:keys [graph ns]} {:as _codeblock :keys [hash form id vars]}]
+  (let [immediate-deps (dep/immediate-dependencies graph id)
+        hashed-deps (into #{}
                           (keep #(get ->hash %))
-                          ;; NOTE: on a first static pass deref-nodes do not have a hash yet
+                          ;; on a first static pass deref-nodes do not have a hash yet
                           ;; their hash will be computed at runtime (see `hash-deref-deps` above)
-                          (dep/immediate-dependencies graph id))]
+                          immediate-deps)]
+    (when-some [dep-with-missing-hash
+                (some (fn [dep]
+                        (when-not (get ->hash dep)
+                          (when-not (deref? dep)
+                            dep))) immediate-deps)]
+      (println (format "Hash is missing for dependency %s of %s (%s)"
+                       dep-with-missing-hash form ns)))
     (sha1-base58 (binding [*print-length* nil]
                    (pr-str (set/union (conj hashed-deps (if form (remove-type-meta form) hash))
                                       vars))))))
