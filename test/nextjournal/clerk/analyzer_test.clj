@@ -266,7 +266,17 @@
           hash-2 (-> ana-2 :->hash block-id)]
 
       (is hash-1) (is hash-2)
-      (is (not= hash-1 hash-2)))))
+      (is (not= hash-1 hash-2))))
+
+  (testing "redefinitions (and their dependents) are never cached"
+    (let [{:keys [->analysis-info]} (analyze-string "(ns nextjournal.clerk.analyzer-test.redefs)
+(def a 0)
+(def b (inc a))
+(def a 1)
+")]
+      (is (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/a)))
+      (is (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/b)))
+      (is (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/a#2))))))
 
 (deftest analyze-doc
   (testing "reading a bad block shows block and file info in raised exception"

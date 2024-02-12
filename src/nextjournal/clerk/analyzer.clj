@@ -337,13 +337,23 @@
     identity))
 #_ (ns-resolver *ns*)
 
-(defn analyze-doc-deps [{:as doc :keys [blocks ->analysis-info]}]
-  (reduce (fn [state {:as info :keys [deps]}]
-            (reduce (partial analyze-deps info) state deps))
+(defn analyze-doc-deps [{:as doc :keys [redefs blocks ->analysis-info]}]
+  (reduce (fn [state {:as info :keys [id deps vars- no-cache?]}]
+            (reduce (partial analyze-deps info)
+                    (cond-> state
+                      ;; redefinitions are never cached
+                      (and (not no-cache?) (seq (set/intersection vars- redefs)))
+                      (assoc-in [:->analysis-info id :no-cache?] true))
+                    deps))
           doc
           (keep (comp #(get ->analysis-info %) :id)
                 (filter (comp #{:code} :type)
                         blocks))))
+
+(defn track-var->block+redefs [{:as state seen :var->block-id} {:keys [id vars-]}]
+  (-> state
+      (update :var->block-id (partial reduce (fn [m v] (assoc m v id))) vars-)
+      (update :redefs into (set/intersection vars- (set (keys seen))))))
 
 (defn analyze-doc
   ([doc]
@@ -366,8 +376,8 @@
                                             (instance? clojure.lang.IObj form)
                                             (vary-meta merge (cond-> loc
                                                                (:file doc) (assoc :clojure.core/eval-file (str (:file doc))))))
-                                 {:as analyzed :keys [vars- ns-effect?]} (cond-> (analyze form+loc)
-                                                                           (:file doc) (assoc :file (:file doc)))
+                                 {:as analyzed :keys [ns-effect?]} (cond-> (analyze form+loc)
+                                                                     (:file doc) (assoc :file (:file doc)))
                                  _ (when ns-effect?         ;; needs to run before setting doc `:ns` via `*ns*`
                                      (eval form))
                                  block-id (get-block-id !id->count (merge analyzed block))
@@ -377,12 +387,9 @@
                              ;; `var->block-id`   :: { Sym => Set<BlockId> }
                              (cond-> (-> state
                                          (dissoc :doc?)
+
                                          (assoc-in [:->analysis-info block-id] analyzed)
-                                         (update :var->block-id
-                                                 ;; TODO: do an SSA pass keeping in state a map
-                                                 ;; (a var which is defined twice will point at the latest block ftm)
-                                                 (partial reduce (fn [m v] (assoc m v block-id)))
-                                                 vars-)
+                                         (track-var->block+redefs analyzed)
                                          (update :blocks conj (-> block
                                                                   (merge analyzed)
                                                                   (dissoc :deps :no-cache? :ns-effect?)
@@ -395,7 +402,9 @@
 
                        (-> state
                            (cond-> doc? (merge doc))
-                           (assoc :blocks []))
+                           (assoc :var->block-id {}
+                                  :redefs #{}
+                                  :blocks []))
                        (:blocks doc))
          doc? (-> parser/add-block-settings
                   parser/add-open-graph-metadata
