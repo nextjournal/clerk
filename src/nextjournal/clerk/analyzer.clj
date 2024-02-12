@@ -386,8 +386,6 @@
                              ;; `->analysis-info` :: { BlockId => Map }
                              ;; `var->block-id`   :: { Sym => Set<BlockId> }
                              (cond-> (-> state
-                                         (dissoc :doc?)
-
                                          (assoc-in [:->analysis-info block-id] analyzed)
                                          (track-var->block+redefs analyzed)
                                          (update :blocks conj (-> block
@@ -406,6 +404,8 @@
                                   :redefs #{}
                                   :blocks []))
                        (:blocks doc))
+
+         true (dissoc :doc?)
          doc? (-> parser/add-block-settings
                   parser/add-open-graph-metadata
                   parser/filter-code-blocks-without-form))))))
