@@ -72,5 +72,4 @@
 
 ;; clj -X:dev:profile :phase :analysis
 ;; Elapsed mean time: 1700 msec (main)
-;; Elapsed mean time: 1800 msec (analyzer-improvements, ~200ms inherit :no-cache)
-;; Elapsed mean time: 2170 msec (analyzer-improvements, ~200ms inherit :no-cache, ~300 SSA form)
+;; Elapsed mean time: 1900 msec (analyzer-improvements, ~200ms inherit :no-cache)
