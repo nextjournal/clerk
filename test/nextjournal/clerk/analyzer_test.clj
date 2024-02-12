@@ -47,7 +47,8 @@
   (testing "is evaluating namespace set to no-cache?"
     (is (not (ana/no-cache? '(rand-int 10) (find-ns 'nextjournal.clerk.analyzer-test))))
 
-    (is (nextjournal.clerk.analyzer/no-cache? '(rand-int 10) (find-ns 'nextjournal.clerk.analyzer)))))
+    (require 'document-linking)
+    (is (nextjournal.clerk.analyzer/no-cache? '(rand-int 10) (find-ns 'document-linking)))))
 
 (deftest exceeds-bounded-count-limit?
   (is (ana/exceeds-bounded-count-limit? (range config/*bounded-count-limit*)))
