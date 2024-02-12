@@ -953,11 +953,11 @@
   (when no-cache?
     [:div.group.font-sans.text-slate-400.text-xs
      [:span.absolute.right-0.bottom-0.font-mono.mb-1.mr-2.cursor-help "ⓘ"]
-     [:span.absolute.right-0.bottom-0.invisible.group-hover:visible
+     [:span.absolute.right-0.bottom-0.z-10.invisible.group-hover:visible
       {:class "mb-[-20px]"}
       [:span.font-medium "not cached"]
       (case no-cache?
-        :inherited " (dependencies are skipping cache)"
+        :inherited " (dependencies are not cached)"
         :interned-vars " (vars interned at runtime)"
         :redef " (var is being redefined)"
         nil)]]))
