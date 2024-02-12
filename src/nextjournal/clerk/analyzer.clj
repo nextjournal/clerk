@@ -279,13 +279,20 @@
            (analyze-circular-dependency state vars form dep (ex-data e))
            (throw e)))))
 
-(defn make-deps-inherit-no-cache [state {:as analyzed :keys [id no-cache?]}]
-  ;; TODO: probably more suited for the graph
-  (if no-cache?
-    state
-    (assoc-in state [:->analysis-info id :no-cache?]
-              (boolean (some (fn [k] (get-in state [:->analysis-info k :no-cache?]))
-                             (deps->block-ids state analyzed))))))
+(defn make-deps-inherit-no-cache [{:as doc :keys [ns ->analysis-info blocks]}]
+  (let [nsname (when ns (str (ns-name ns)))]
+    (reduce (fn no-cache-inheritance-rf [state {:as analyzed :keys [id no-cache?]}]
+              (if no-cache?
+                state
+                (assoc-in state [:->analysis-info id :no-cache?]
+                          (boolean (some (fn [k]
+                                           (and ns (symbol? k) (= nsname (namespace k))
+                                                (get-in state [:->analysis-info k :no-cache?])))
+                                         (deps->block-ids state analyzed))))))
+            doc
+            (keep (comp #(get ->analysis-info %) :id)
+                  (filter (comp #{:code} :type)
+                          blocks)))))
 
 (defn get-block-id [!id->count {:as block :keys [var form type doc]}]
   (let [id->count @!id->count
@@ -332,9 +339,7 @@
 
 (defn analyze-doc-deps [{:as doc :keys [blocks ->analysis-info]}]
   (reduce (fn [state {:as info :keys [deps]}]
-            (reduce (partial analyze-deps info)
-                    (make-deps-inherit-no-cache state info)
-                    deps))
+            (reduce (partial analyze-deps info) state deps))
           doc
           (keep (comp #(get ->analysis-info %) :id)
                 (filter (comp #{:code} :type)
@@ -392,8 +397,6 @@
                            (cond-> doc? (merge doc))
                            (assoc :blocks []))
                        (:blocks doc))
-
-         true analyze-doc-deps
          doc? (-> parser/add-block-settings
                   parser/add-open-graph-metadata
                   parser/filter-code-blocks-without-form))))))
@@ -526,9 +529,7 @@
 (defn ^:private merge-analysis-info [state {:as analyzed-doc :keys [->analysis-info]}]
   (reduce (fn [s {:as analyzed :keys [deps]}]
             (if (seq deps)
-              (-> (reduce (partial analyze-deps analyzed) s deps)
-                  ;; TODO: ensure no-cache inheritance is working cross-file
-                  #_ (make-deps-inherit-no-cache analyzed))
+              (reduce (partial analyze-deps analyzed) s deps)
               s))
           (update state :->analysis-info merge ->analysis-info)
           (vals ->analysis-info)))
@@ -567,7 +568,10 @@
                            state
                            loc->syms)
                    (update :counter inc)))
-        (dissoc state :analyzed-file-set :counter)))))
+        (-> state
+            analyze-doc-deps
+            make-deps-inherit-no-cache
+            (dissoc :analyzed-file-set :counter))))))
 
 (comment
   (def parsed (parser/parse-file {:doc? true} "src/nextjournal/clerk/webserver.clj"))
