@@ -1,5 +1,4 @@
 (ns nextjournal.clerk.analyzer
-  {:nextjournal.clerk/no-cache true}
   (:refer-clojure :exclude [hash read-string])
   (:require [babashka.fs :as fs]
             [edamame.core :as edamame]
