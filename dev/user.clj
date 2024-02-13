@@ -48,15 +48,14 @@
   (do (require 'kaocha.repl)
       (kaocha.repl/run :unit))
 
-  (require '[clj-async-profiler.core :as prof]
-           'nextjournal.clerk.eval-test
-           'nextjournal.clerk.viewer-test
-           'nextjournal.clerk.analyzer-test)
-  (prof/profile
-   (time (clojure.test/run-tests 'nextjournal.clerk.eval-test
-                                 'nextjournal.clerk.viewer-test
-                                 'nextjournal.clerk.analyzer-test)))
-  ;; ~16.6s
+  (do
+    (clerk/clear-cache!)
+    (reset! analyzer/!file->analysis-cache {})
+    (prof/profile
+      (-> (parser/parse-file {:doc? true} "book.clj")
+              analyzer/build-graph
+              analyzer/hash))
+    nil)
   (prof/serve-ui 8080))
 
 (defmacro with-ex-data [sym body do-block]
@@ -84,4 +83,4 @@
 
 ;; clj -X:dev:profile :phase :analysis
 ;; Elapsed mean time: ~1700 msec (iMac i9, main)
-;; Elapsed mean time: ~1700 msec (iMac i9, analyzer-improvements)
+;; Elapsed mean time: ~1670 msec (iMac i9, analyzer-improvements)
