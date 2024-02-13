@@ -355,7 +355,6 @@
       (update :var->block-id (partial reduce (fn [m v] (assoc m v id))) vars-)
       (update :redefs into (set/intersection vars- (set (keys seen))))))
 
-
 (defn info-store-keys [{:keys [id vars-]}] (cons id vars-))
 
 (defn assoc-new [m k v] (cond-> m (not (contains? m k)) (assoc k v)))
@@ -366,11 +365,11 @@
           (info-store-keys info)))
 
 (defn analyze-doc
+  "Goes through `:blocks` of `doc`, reads and analyzes block forms, populates `:->analysis-info`"
   ([doc]
-   (analyze-doc {:doc? true :graph (dep/graph)} doc))
+   (analyze-doc {:doc? true} doc))
   ([{:as state :keys [doc?]} doc]
    (binding [*ns* *ns*]
-     ;; TODO: make !id->count part of reduce state
      (let [!id->count (atom {})]
        (cond-> (reduce (fn [{:as state notebook-ns :ns} {:as block :keys [type text loc]}]
                          (if (not= type :code)
@@ -393,17 +392,17 @@
                                  block-id (get-block-id !id->count (merge analyzed block))
                                  analyzed (assoc analyzed :id block-id)]
 
-                             (cond-> (-> state
-                                         (store-info analyzed)
-                                         (track-var->block+redefs analyzed)
-                                         (update :blocks conj (-> block
-                                                                  (merge (dissoc analyzed :deps :no-cache? :ns-effect?))
-                                                                  (cond->
-                                                                    (parser/ns? form) (assoc :ns? true)
-                                                                    doc? (assoc :text-without-meta (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))))))
-
-
-                               (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*})))))
+                             (-> state
+                                 (store-info analyzed)
+                                 (track-var->block+redefs analyzed)
+                                 (update :blocks conj (-> block
+                                                          (merge (dissoc analyzed :deps :no-cache? :ns-effect?))
+                                                          (cond->
+                                                            (parser/ns? form) (assoc :ns? true)
+                                                            doc? (assoc :text-without-meta (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns))))))
+                                 (cond->
+                                   (and doc? (not (contains? state :ns)))
+                                   (merge (parser/->doc-settings form) {:ns *ns*}))))))
 
                        (-> state
                            (cond-> doc? (merge doc))
@@ -431,16 +430,11 @@
      (or (when-let [{:as cached-analysis :keys [file-sha]} (@!file->analysis-cache file)]
            (when (= file-sha current-file-sha)
              cached-analysis))
-         (let [analysis (analyze-doc {:file-sha current-file-sha :graph (dep/graph)} (parser/parse-file {} file))]
+         (let [analysis (analyze-doc {:file-sha current-file-sha} (parser/parse-file {} file))]
            (swap! !file->analysis-cache assoc file analysis)
            analysis))))
   ([state file]
    (analyze-doc state (parser/parse-file {} file))))
-
-#_(:graph (analyze-file {:graph (dep/graph)} "notebooks/elements.clj"))
-#_(analyze-file {:graph (dep/graph)} "notebooks/rule_30.clj")
-#_(analyze-file {:graph (dep/graph)} "notebooks/recursive.clj")
-#_(analyze-file {:graph (dep/graph)} "notebooks/hello.clj")
 
 (defn unhashed-deps [->analysis-info]
   (remove deref? (set/difference (into #{}
@@ -563,11 +557,11 @@
   "
   [doc]
   (loop [{:as state :keys [->analysis-info analyzed-file-set counter]}
-
-         (-> (cond-> doc
-               (not (:graph doc)) analyze-doc)
-             (assoc :analyzed-file-set (cond-> #{} (:file doc) (conj (:file doc))))
-             (assoc :counter 0))]
+         (-> doc
+             analyze-doc
+             (assoc :analyzed-file-set (cond-> #{} (:file doc) (conj (:file doc)))
+                    :counter 0
+                    :graph (dep/graph)))]
     (let [unhashed (unhashed-deps ->analysis-info)
           loc->syms (apply dissoc
                            (group-by find-location unhashed)

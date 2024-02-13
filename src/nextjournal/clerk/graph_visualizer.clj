@@ -3,6 +3,7 @@
   (:require [arrowic.core :as arrowic]
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.analyzer :as analyzer]
+            [nextjournal.clerk.parser :as parser]
             [weavejester.dependency :as dep]))
 
 (defn dep-svg [{:keys [graph ->analysis-info]}]
@@ -17,15 +18,14 @@
                        (vars->verticies dep))
               (arrowic/insert-edge! (vars->verticies var) (vars->verticies dep))))))))))
 
+(defn file->graph [file] (analyzer/build-graph (parser/parse-file file)))
 
 (defn graph-file
   ([file] (graph-file {} file))
-  ([{:keys [key-filter-fn] :or {key-filter-fn identity}} file]
-   (-> (analyzer/analyze-file {:graph (dep/graph)} file)
-       analyzer/build-graph
-       (update :->analysis-info
-               (partial into {}
-                        (filter (comp key-filter-fn key))))
+  ([{:keys [key-filter-fn]} file]
+   (-> (file->graph file)
+       (cond-> (ifn? key-filter-fn)
+         (update :->analysis-info (partial into {} (filter (comp key-filter-fn key)))))
        dep-svg)))
 
 ^{::clerk/width :full}

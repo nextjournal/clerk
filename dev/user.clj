@@ -83,5 +83,5 @@
       (println (format "Elapsed mean time: %f msec" mean)))))
 
 ;; clj -X:dev:profile :phase :analysis
-;; Elapsed mean time: 1700 msec (main)
-;; Elapsed mean time: 1575 msec (analyzer-improvements)
+;; Elapsed mean time: ~1700 msec (iMac i9, main)
+;; Elapsed mean time: ~1700 msec (iMac i9, analyzer-improvements)

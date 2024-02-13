@@ -201,7 +201,6 @@
 
 (defn analyze-string [s]
   (-> (parser/parse-clojure-string {:doc? true} s)
-      ana/analyze-doc
       ana/build-graph))
 
 (deftest hash-test
