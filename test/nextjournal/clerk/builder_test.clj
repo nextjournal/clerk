@@ -11,8 +11,8 @@
 
 (deftest url-canonicalize
   (testing "canonicalization of file components into url components"
-    (let [dice (str/join (File/separator) ["notebooks" "dice.clj"])]
-      (is (= (#'builder/path-to-url-canonicalize dice) (str/replace dice  (File/separator) "/"))))))
+    (let [dice (str/join File/separator ["notebooks" "dice.clj"])]
+      (is (= (#'builder/path-to-url-canonicalize dice) (str/replace dice File/separator "/"))))))
 
 (deftest static-app
   (let [url* (volatile! nil)
@@ -21,8 +21,8 @@
                                                    (vreset! url* path))]
       (testing "browser receives canonical url in this system arch"
         (fs/with-temp-dir [temp {}]
-          (let [expected (-> (str/join (java.io.File/separator) [(.toString temp) "index.html"])
-                             (str/replace (java.io.File/separator) "/"))]
+          (let [expected (-> (str/join File/separator [(.toString temp) "index.html"])
+                             (str/replace File/separator "/"))]
             (builder/build-static-app! {:browse? true
                                         :paths ["notebooks/hello.clj"]
                                         :out-path temp})
