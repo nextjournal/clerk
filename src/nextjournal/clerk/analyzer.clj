@@ -535,12 +535,14 @@
   (memoize (fn [f]
              {:jar f :hash (sha1-base58 (io/input-stream f))})))
 
-(defn ^:private merge-analysis-info [state {:as analyzed-doc :keys [->analysis-info]}]
+(defn ^:private merge-analysis-info [state {:as _analyzed-doc :keys [->analysis-info var->block-id]}]
   (reduce (fn [s {:as analyzed :keys [deps]}]
             (if (seq deps)
               (reduce (partial analyze-deps analyzed) s deps)
               s))
-          (update state :->analysis-info merge ->analysis-info)
+          (-> state
+              (update :->analysis-info merge ->analysis-info)
+              (update :var->block-id merge var->block-id))
           (vals ->analysis-info)))
 
 #_(merge-analysis-info {:->analysis-info {:a :b}} {:->analysis-info {:c :d}})
