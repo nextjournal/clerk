@@ -70,7 +70,8 @@
 
                            :else
                            (throw (ex-info "Unable to resolve into a variable" {:data var})))]
-    {:nextjournal.clerk/var-from-def resolved-var}))
+    {:nextjournal.clerk/var-from-def resolved-var
+     :nextjournal.clerk/var-snapshot @resolved-var}))
 
 (defn ^:private lookup-cached-result [introduced-var hash cas-hash]
   (when-let [cached-value (try (thaw-from-cas cas-hash)
@@ -163,12 +164,13 @@
     viewers
     (update :nextjournal/viewers eval)))
 
-(defn read+eval-cached [{:as _doc :keys [blob->result ->analysis-info ->hash]} codeblock]
-  (let [{:keys [form vars var]} codeblock
-        {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info (if (seq vars) (first vars) (analyzer/->key codeblock)))
+(defn read+eval-cached [{:as doc :keys [blob->result ->analysis-info ->hash]} codeblock]
+  (let [{:keys [id form _vars var]} codeblock
+        _ (assert id (format "Missing id on codeblock: '%s'." (pr-str codeblock)))
+        {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info id)
         no-cache?      (or ns-effect? no-cache?)
-        hash           (when-not no-cache? (or (get ->hash (analyzer/->key codeblock))
-                                               (analyzer/hash-codeblock ->hash codeblock)))
+        hash           (when-not no-cache? (or (get ->hash id)
+                                               (analyzer/hash-codeblock ->hash doc codeblock)))
         digest-file    (when hash (->cache-file (str "@" hash)))
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
         cached-result-in-memory (get blob->result hash)

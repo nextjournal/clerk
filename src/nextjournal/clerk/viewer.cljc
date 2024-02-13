@@ -411,7 +411,8 @@
 (def var-from-def-viewer
   {:name `var-from-def-viewer
    :pred var-from-def?
-   :transform-fn (update-val (comp deref :nextjournal.clerk/var-from-def))})
+   :transform-fn (update-val (some-fn :nextjournal.clerk/var-snapshot
+                                      (comp deref :nextjournal.clerk/var-from-def)))})
 
 (defn apply-viewer-unwrapping-var-from-def
   "Applies the `viewer` (if set) to the given result `result`. In case

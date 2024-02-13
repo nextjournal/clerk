@@ -135,7 +135,14 @@
                 (eval/eval-string "{:a (range)}"))))
 
   (testing "can handle failing hash computation for deref-dep"
-    (eval/eval-string "(ns test-deref-hash (:require [nextjournal.clerk :as clerk])) (defonce !state (atom [(clerk/md \"_hi_\")])) @!state")))
+    (eval/eval-string "(ns test-deref-hash (:require [nextjournal.clerk :as clerk])) (defonce !state (atom [(clerk/md \"_hi_\")])) @!state"))
+
+  (testing "won't eval forward declarations"
+    (is (thrown? Exception
+                 (eval/eval-string "(ns test-forward-declarations {:nextjournal.clerk/no-cache true})
+(declare delayed-def)
+(inc delayed-def)
+(def delayed-def 123)")))))
 
 (defn eval+extract-doc-blocks [code-str]
   (-> code-str
@@ -213,6 +220,20 @@
   (testing "should not fail on var present at runtime if there's no ns form"
     (intern (create-ns 'existing-var) 'foo :bar)
     (is (eval/eval-string "(in-ns 'existing-var) foo"))))
+
+(deftest eval+cache!
+  (testing "edge case where some form is not evaluated"
+    (is (eval+extract-doc-blocks "(ns repro-crash-when-not-all-forms-are-evaluated
+  {:nextjournal.clerk/no-cache true})
+
+(do
+  (def b 2)
+  (declare a))
+
+(def a 1)
+
+(+ a b)
+"))))
 
 (clerk/defcached my-expansive-thing
   (do (Thread/sleep 1 #_10000) 42))

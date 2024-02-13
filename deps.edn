@@ -52,6 +52,10 @@
                  :main-opts ["-m" "shadow.cljs.devtools.cli"]
                  :exec-fn nextjournal.clerk.dev-launcher/start}
 
+           :profile {:exec-fn user/profile
+                     :exec-args {:phase :analysis}
+                     :jvm-opts ["-Dclojure.main.report=stdout"]}
+
            :test {:extra-deps {nubank/matcher-combinators {:mvn/version "3.5.1"}
                                org.clojure/test.check {:mvn/version "1.1.1"}
                                lambdaisland/kaocha {:mvn/version "1.66.1034"}

@@ -1,6 +1,10 @@
 (ns user
-  (:require [clojure.string :as str]
-            [nextjournal.clerk :as clerk]))
+  (:require [clj-async-profiler.core :as prof]
+            [clojure.java.io :as io]
+            [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.analyzer :as analyzer]
+            [nextjournal.clerk.eval :as eval]
+            [nextjournal.clerk.parser :as parser]))
 
 (comment
   ;; start without file watcher & open browser
@@ -43,4 +47,40 @@
 
   (do (require 'kaocha.repl)
       (kaocha.repl/run :unit))
-  )
+
+  (do
+    (clerk/clear-cache!)
+    (reset! analyzer/!file->analysis-cache {})
+    (prof/profile
+      (-> (parser/parse-file {:doc? true} "book.clj")
+              analyzer/build-graph
+              analyzer/hash))
+    nil)
+  (prof/serve-ui 8080))
+
+(defmacro with-ex-data [sym body do-block]
+  `(try ~body
+        (catch Exception e#
+          (let [~sym (ex-data e#)]
+            ~do-block))))
+
+(defmulti profile :phase)
+
+(defmethod profile :analysis [_opts]
+  (let [test-docs [(parser/parse-file {:doc? true} (io/resource "clojure/core.clj"))
+                   (parser/parse-file {:doc? true} (io/resource "nextjournal/clerk/analyzer.clj"))
+                   (parser/parse-file {:doc? true} (io/resource "nextjournal/clerk.clj"))
+                   #_ more?]
+        times 5]
+    (let [{:keys [time-ms]}
+          (eval/time-ms
+           (dotimes [_i times]
+             (doseq [doc (shuffle test-docs)]
+               (-> (analyzer/build-graph doc) analyzer/hash))
+             (prn :done/pass _i)))
+          mean (/ time-ms (* times (count test-docs)))]
+      (println (format "Elapsed mean time: %f msec" mean)))))
+
+;; clj -X:dev:profile :phase :analysis
+;; Elapsed mean time: ~1700 msec (iMac i9, main)
+;; Elapsed mean time: ~1670 msec (iMac i9, analyzer-improvements)
