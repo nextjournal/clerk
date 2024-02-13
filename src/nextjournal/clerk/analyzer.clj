@@ -355,6 +355,16 @@
       (update :var->block-id (partial reduce (fn [m v] (assoc m v id))) vars-)
       (update :redefs into (set/intersection vars- (set (keys seen))))))
 
+
+(defn info-store-keys [{:keys [id vars-]}] (cons id vars-))
+
+(defn assoc-new [m k v] (cond-> m (not (contains? m k)) (assoc k v)))
+
+(defn store-info [state info]
+  (reduce #(update %1 :->analysis-info assoc-new %2 info)
+          state
+          (info-store-keys info)))
+
 (defn analyze-doc
   ([doc]
    (analyze-doc {:doc? true :graph (dep/graph)} doc))
@@ -383,14 +393,11 @@
                                  block-id (get-block-id !id->count (merge analyzed block))
                                  analyzed (assoc analyzed :id block-id)]
 
-                             ;; `->analysis-info` :: { BlockId => Map }
-                             ;; `var->block-id`   :: { Sym => Set<BlockId> }
                              (cond-> (-> state
-                                         (assoc-in [:->analysis-info block-id] analyzed)
+                                         (store-info analyzed)
                                          (track-var->block+redefs analyzed)
                                          (update :blocks conj (-> block
-                                                                  (merge analyzed)
-                                                                  (dissoc :deps :no-cache? :ns-effect?)
+                                                                  (merge (dissoc analyzed :deps :no-cache? :ns-effect?))
                                                                   (cond->
                                                                     (parser/ns? form) (assoc :ns? true)
                                                                     doc? (assoc :text-without-meta (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))))))
@@ -616,12 +623,16 @@
                            (vary-meta dissoc :type)))
                  form))
 
-(defn hash-codeblock [->hash {:as state :keys [ns graph ->analysis-info]} {:as _codeblock :keys [hash form id vars]}]
-  (let [hashed-deps (into #{}
-                          (keep ->hash)
-                          ;; NOTE: on a first static pass deref-nodes do not have a hash yet
-                          ;; their hash will be computed at runtime (see `hash-deref-deps` above)
-                          (dep/immediate-dependencies graph id))]
+(defn hash-codeblock [->hash {:keys [ns graph]} {:as codeblock :keys [hash form id vars]}]
+  (let [deps (dep/immediate-dependencies graph id)
+        hashed-deps (into #{} (keep ->hash) deps)]
+    (when-some [dep-with-missing-hash
+                (some (fn [dep]
+                        (when-not (get ->hash dep)
+                          (when-not (deref? dep)            ;; on a first pass deref-nodes do not have a hash yet
+                            dep))) deps)]
+      (throw (ex-info (format "Hash is missing on dependency '%s' of the form '%s' in %s" dep-with-missing-hash form ns)
+                      {:dep dep-with-missing-hash :codeblock codeblock :ns ns})))
     (sha1-base58 (binding [*print-length* nil]
                    (pr-str (set/union (conj hashed-deps (if form (remove-type-meta form) hash))
                                       vars))))))
