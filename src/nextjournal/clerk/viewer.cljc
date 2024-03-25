@@ -1327,6 +1327,11 @@
                     [nextjournal.clerk.render/inspect [(symbol (pr-str (type x))) @x]]]
                    [nextjournal.clerk.render/inspect x]))})
 
+(def wrapped-value-viewer
+  {:name `wrapped-value-viewer
+   :pred wrapped-value?
+   :transform-fn (update-val (get-safe :nextjournal/value))})
+
 (def default-viewers
   ;; maybe make this a sorted-map
   [header-viewer
@@ -1348,6 +1353,7 @@
    viewer-eval-viewer
    cell-viewer
    result-viewer
+   wrapped-value-viewer
    map-viewer
    var-viewer
    throwable-viewer
