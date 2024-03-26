@@ -141,7 +141,11 @@
   (testing "present is invariant on wrapped values"
     (is (= (v/present (v/with-viewer v/number-viewer 123))
            (v/present {:nextjournal/value (v/with-viewer v/number-viewer 123)})
-           (v/present {:nextjournal/value {:nextjournal/value (v/with-viewer v/number-viewer 123)}})))))
+           (v/present {:nextjournal/value {:nextjournal/value (v/with-viewer v/number-viewer 123)}})))
+
+    (is (= (v/present (v/with-viewer v/html-viewer [:h1 "ahoi"]))
+           (v/present {:nextjournal/value (v/with-viewer v/html-viewer [:h1 "ahoi"])})
+           (v/present {:nextjournal/value {:nextjournal/value (v/with-viewer v/html-viewer [:h1 "ahoi"])}})))))
 
 (deftest present-exceptions
   (testing "can represent ex-data in a readable way"
