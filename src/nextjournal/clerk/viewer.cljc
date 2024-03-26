@@ -1450,7 +1450,7 @@
 #_(ensure-wrapped-with-viewers 42)
 #_(ensure-wrapped-with-viewers {:nextjournal/value 42 :nextjournal/viewers [:boo]})
 
-(defn apply-viewers* [wrapped-value]
+(defn apply-viewers** [wrapped-value]
   (when (empty? (->viewers wrapped-value))
     (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
   (let [viewers (->viewers wrapped-value)
@@ -1470,8 +1470,28 @@
           (assoc :nextjournal/viewer viewer)
           (merge (->opts wrapped-value))))))
 
+(defn flatten-wrapper [x]
+  (if (and (wrapped-value? x)
+           (wrapped-value? (get-safe x :nextjournal/value)))
+    (merge-with (fn [v1 v2] (if (vector? v2) (concat v2 v1) v2)) ;; preserve :nextjournal/viewers
+                x (flatten-wrapper (get-safe x :nextjournal/value)))
+    x))
+
+#_(flatten-wrapper {:nextjournal/value {:nextjournal/value 1}})
+#_(flatten-wrapper {:nextjournal/value {:nextjournal/value {:nextjournal/value 1}}
+                    :nextjournal/viewer "V"})
+#_(flatten-wrapper {:nextjournal/value {:nextjournal/value {:nextjournal/value 1} :nextjournal/viewer "V"}})
+#_(flatten-wrapper {:nextjournal/value {:nextjournal/value {:nextjournal/value 1
+                                                            :nextjournal/viewers [:inner]} :nextjournal/viewer "V"} :nextjournal/viewers [:outer]})
+
+(defn apply-viewers* [x]
+  (apply-viewers** (flatten-wrapper x)))
+
 (defn apply-viewers [x]
   (apply-viewers* (ensure-wrapped-with-viewers x)))
+
+#_(= (apply-viewers {:nextjournal/value (with-viewer number-viewer 123)})
+     (apply-viewers {:nextjournal/value {:nextjournal/value (with-viewer number-viewer 123)}}))
 
 #_(apply-viewers 42)
 #_(apply-viewers {:one :two})
