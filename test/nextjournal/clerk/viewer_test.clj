@@ -132,6 +132,21 @@
     (is (= :full
            (:nextjournal/width (v/apply-viewers (v/table {:nextjournal.clerk/width :full} {:a [1] :b [2] :c [3]})))))))
 
+(deftest presenting-wrapped-values
+  (testing "apply-viewers is invariant on wrapped values"
+    (is (= (v/apply-viewers (v/with-viewer v/number-viewer 123))
+           (v/apply-viewers {:nextjournal/value (v/with-viewer v/number-viewer 123)})
+           (v/apply-viewers {:nextjournal/value {:nextjournal/value (v/with-viewer v/number-viewer 123)}}))))
+
+  (testing "present is invariant on wrapped values"
+    (is (= (v/present (v/with-viewer v/number-viewer 123))
+           (v/present {:nextjournal/value (v/with-viewer v/number-viewer 123)})
+           (v/present {:nextjournal/value {:nextjournal/value (v/with-viewer v/number-viewer 123)}})))
+
+    (is (= (v/present (v/with-viewer v/html-viewer [:h1 "ahoi"]))
+           (v/present {:nextjournal/value (v/with-viewer v/html-viewer [:h1 "ahoi"])})
+           (v/present {:nextjournal/value {:nextjournal/value (v/with-viewer v/html-viewer [:h1 "ahoi"])}})))))
+
 (deftest present-exceptions
   (testing "can represent ex-data in a readable way"
     (binding [*data-readers* v/data-readers]
