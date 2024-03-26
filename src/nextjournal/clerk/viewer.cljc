@@ -1473,7 +1473,7 @@
 (defn flatten-wrapper [x]
   (if (and (wrapped-value? x)
            (wrapped-value? (get-safe x :nextjournal/value)))
-    (merge-with (fn [v1 v2] (if (vector? v2) (concat v2 v1) v2)) ;; preserve :nextjournal/viewers
+    (merge-with (fn [v1 v2] (if (vector? v2) (vec (concat v2 v1)) v2)) ;; preserve :nextjournal/viewers
                 x (flatten-wrapper (get-safe x :nextjournal/value)))
     x))
 
