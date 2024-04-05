@@ -22,7 +22,9 @@
 ;; ## Sorting Maps
 
 {2 \"bar\" 1 \"foo\"}
-")
+
+\"multi
+line\"")
 
 (deftest parse-clojure-string
   (testing "is returning blocks with types and markdown structure attached"
@@ -32,13 +34,16 @@
                                                                                  {:type :paragraph}]}}
                                     {:type :code, :text "#{3 1 2}"}
                                     {:type :markdown, :doc {:type :doc :content [{:type :heading}]}}
-                                    {:type :code, :text "{2 \"bar\" 1 \"foo\"}"},]
+                                    {:type :code, :text "{2 \"bar\" 1 \"foo\"}"},
+                                    {:type :code, :text "\"multi
+line\""}]
                            :title "📶 Sorting",
                            :footnotes []
                            :toc {:type :toc,
                                  :children [{:type :toc :children [{:type :toc}
                                                                    {:type :toc}]}]}})
                 (parser/parse-clojure-string {:doc? true} notebook)))))
+
 
 (deftest parse-inline-comments
   (is (match? {:blocks [{:doc {:content [{:content [{:text "text before"}]}]}}
