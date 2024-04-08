@@ -1450,13 +1450,20 @@
 #_(ensure-wrapped-with-viewers 42)
 #_(ensure-wrapped-with-viewers {:nextjournal/value 42 :nextjournal/viewers [:boo]})
 
-(defn apply-viewers** [wrapped-value]
+(defn hoist-nested-wrapped-value [x]
+  (if (and (wrapped-value? x)
+           (wrapped-value? (get-safe x :nextjournal/value)))
+    (merge x (hoist-nested-wrapped-value (get-safe x :nextjournal/value)))
+    x))
+
+(defn apply-viewers* [wrapped-value]
   (when (empty? (->viewers wrapped-value))
     (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
-  (let [viewers (->viewers wrapped-value)
-        {:as viewer viewers-to-add :add-viewers :keys [render-fn transform-fn]} (viewer-for viewers wrapped-value)
+  (let [hoisted-wrapped-value (hoist-nested-wrapped-value wrapped-value)
+        viewers (->viewers hoisted-wrapped-value)
+        {:as viewer viewers-to-add :add-viewers :keys [render-fn transform-fn]} (viewer-for viewers hoisted-wrapped-value)
         transformed-value (cond-> (ensure-wrapped-with-viewers viewers
-                                                               (cond-> (-> wrapped-value
+                                                               (cond-> (-> hoisted-wrapped-value
                                                                            (dissoc :nextjournal/viewer)
                                                                            (assoc :nextjournal/applied-viewer viewer))
                                                                  transform-fn transform-fn))
@@ -1469,22 +1476,6 @@
       (-> wrapped-value'
           (assoc :nextjournal/viewer viewer)
           (merge (->opts wrapped-value))))))
-
-(defn flatten-wrapper [x]
-  (if (and (wrapped-value? x)
-           (wrapped-value? (get-safe x :nextjournal/value)))
-    (merge x (flatten-wrapper (get-safe x :nextjournal/value)))
-    x))
-
-#_(flatten-wrapper {:nextjournal/value {:nextjournal/value 1}})
-#_(flatten-wrapper {:nextjournal/value {:nextjournal/value {:nextjournal/value 1}}
-                    :nextjournal/viewer "V"})
-#_(flatten-wrapper {:nextjournal/value {:nextjournal/value {:nextjournal/value 1} :nextjournal/viewer "V"}})
-#_(flatten-wrapper {:nextjournal/value {:nextjournal/value {:nextjournal/value 1
-                                                            :nextjournal/viewers [:inner]} :nextjournal/viewer "V"} :nextjournal/viewers [:outer]})
-
-(defn apply-viewers* [x]
-  (apply-viewers** (flatten-wrapper x)))
 
 (defn apply-viewers [x]
   (apply-viewers* (ensure-wrapped-with-viewers x)))
