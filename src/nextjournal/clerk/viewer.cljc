@@ -1457,10 +1457,10 @@
     x))
 
 (defn apply-viewers* [wrapped-value]
-  (when (empty? (->viewers wrapped-value))
-    (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
   (let [hoisted-wrapped-value (hoist-nested-wrapped-value wrapped-value)
         viewers (->viewers hoisted-wrapped-value)
+        _ (when (empty? viewers)
+            (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
         {:as viewer viewers-to-add :add-viewers :keys [render-fn transform-fn]} (viewer-for viewers hoisted-wrapped-value)
         transformed-value (cond-> (ensure-wrapped-with-viewers viewers
                                                                (cond-> (-> hoisted-wrapped-value
