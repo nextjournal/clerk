@@ -7,6 +7,8 @@
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]))
 
+(def x (clerk/with-viewer `v/table-viewer [{:a 1} {:a 2} {:b 3}]))
+
 ;; ## SQL Queries
 (def query-results
   (let [_run-at #inst "2021-05-20T08:28:29.445-00:00"
