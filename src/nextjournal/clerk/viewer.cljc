@@ -526,7 +526,7 @@
         opts-from-block (-> settings
                             (select-keys (keys viewer-opts-normalization))
                             (set/rename-keys viewer-opts-normalization))
-        {:as to-present :nextjournal/keys [auto-expand-results?]} (merge (dissoc (->opts wrapped-value) :!budget :nextjournal/budget)
+        {:as to-present :nextjournal/keys [auto-expand-results?]} (merge (dissoc (->opts wrapped-value) ::!budget :nextjournal/budget)
                                                                          (dissoc cell :result ::doc) ;; TODO: reintroduce doc once we know why it OOMs the static build on CI (some walk issue probably)
                                                                          opts-from-block
                                                                          (ensure-wrapped-with-viewers (or viewers (get-viewers (get-*ns*))) value))
@@ -905,11 +905,11 @@
 (defn ->opts [wrapped-value]
   (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/render-opts
                               :nextjournal/render-evaluator
-                              :!budget :store!-wrapped-value :present-elision-fn :path :offset]))
+                              ::!budget ::store!-wrapped-value ::present-elision-fn :path :offset]))
 
 (defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
   (-> (ensure-wrapped-with-viewers viewers value)
-      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :present-elision-fn :nextjournal/budget :path]))
+      (merge (select-keys (->opts wrapped-value) [::!budget ::store!-wrapped-value ::present-elision-fn :nextjournal/budget :path]))
       (update :path (fnil conj []) path-segment)))
 
 (defn present-ex-data [parent throwable-map]
@@ -1499,7 +1499,7 @@
   "Helper function to walk a given `x` and replace the viewers with their counts. Useful for debugging."
   [x]
   (w/postwalk #(if (wrapped-value? %)
-                 (cond-> (dissoc % :!budget)
+                 (cond-> (dissoc % ::!budget)
                    (:nextjournal/viewers %)
                    (-> #_%
                        (update :nextjournal/viewers count)
@@ -1566,12 +1566,12 @@
   (into [:path :offset :n :nextjournal/content-type :nextjournal/value]
         (-> viewer-opts-normalization vals set (disj :nextjournal/viewers))))
 
-(defn process-wrapped-value [{:as wrapped-value :keys [present-elision-fn path]}]
+(defn process-wrapped-value [{:as wrapped-value ::keys [present-elision-fn] :keys [path]}]
   (cond-> (-> wrapped-value
               (select-keys processed-keys)
               (dissoc :nextjournal/budget)
               (update :nextjournal/viewer process-viewer wrapped-value))
-    present-elision-fn (vary-meta assoc :present-elision-fn present-elision-fn)))
+    present-elision-fn (vary-meta assoc ::present-elision-fn present-elision-fn)))
 
 #_(process-wrapped-value (apply-viewers 42))
 
@@ -1600,7 +1600,7 @@
 #_(get-elision (present "abc"))
 #_(get-elision (present (str/join (repeat 1000 "abc"))))
 
-(defn present+paginate-children [{:as wrapped-value :nextjournal/keys [budget viewers preserve-keys?] :keys [!budget]}]
+(defn present+paginate-children [{:as wrapped-value :nextjournal/keys [budget viewers preserve-keys?] ::keys [!budget]}]
   (let [{:as fetch-opts :keys [offset n]} (->fetch-opts wrapped-value)
         xs (->value wrapped-value)
         paginate? (and (number? n) (not preserve-keys?))
@@ -1638,7 +1638,7 @@
 (defn make-!budget-opts [opts]
   (let [budget (->budget opts)]
     (cond-> {:nextjournal/budget budget}
-      budget (assoc :!budget (atom budget)))))
+      budget (assoc ::!budget (atom budget)))))
 
 #_(make-!budget-opts {})
 #_(make-!budget-opts {:nextjournal/budget 42})
@@ -1652,7 +1652,8 @@
 
 
 (defn ^:private present* [{:as wrapped-value
-                           :keys [path !budget store!-wrapped-value]
+                           ::keys [!budget store!-wrapped-value]
+                           :keys [path]
                            :nextjournal/keys [viewers]}]
   (when (empty? viewers)
     (throw (ex-info "cannot present* with empty viewers" {:wrapped-value wrapped-value})))
@@ -1664,7 +1665,7 @@
     (when (and !budget (not presented?))
       (swap! !budget #(max (dec %) 0)))
     (-> (merge (->opts wrapped-value-applied)
-               (when (empty? path) (select-keys wrapped-value [:present-elision-fn]))
+               (when (empty? path) (select-keys wrapped-value [::present-elision-fn]))
                (with-viewer (->viewer wrapped-value-applied)
                  (cond presented?
                        wrapped-value-applied
@@ -1757,9 +1758,9 @@
                (->opts (normalize-viewer-opts x)))
         !path->wrapped-value (atom {})]
     (-> (ensure-wrapped-with-viewers x)
-        (merge {:store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
-                                        (swap! !path->wrapped-value assoc path wrapped-value))
-                :present-elision-fn (partial present-elision* !path->wrapped-value)
+        (merge {::store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
+                                         (swap! !path->wrapped-value assoc path wrapped-value))
+                ::present-elision-fn (partial present-elision* !path->wrapped-value)
                 :path (:path opts [])}
                (make-!budget-opts opts)
                opts)

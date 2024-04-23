@@ -72,7 +72,7 @@
   (when-not ns
     (throw (ex-info "namespace must be set" {:doc doc})))
   (if-some [root-desc (get (blob->presented (meta doc)) blob-id)]
-    (let [{:keys [present-elision-fn]} (meta root-desc)
+    (let [{::v/keys [present-elision-fn]} (meta root-desc)
           desc (present-elision-fn fetch-opts)]
       (if (contains? desc :nextjournal/content-type)
         {:body (v/->value desc)
