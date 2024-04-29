@@ -59,6 +59,8 @@ Changes can be:
 
 * 🐞 Fix displaying images when expanding elided data [#612](https://github.com/nextjournal/clerk/issues/612) @a1exsh
 
+* 🐞 Elide end-location metadata from forms which otherwise crashes `honey.sql/format` [#646](https://github.com/nextjournal/clerk/issues/646) @borkdude
+
 ## 0.15.957 (2023-09-28)
 
 * 🔌 Offline support
