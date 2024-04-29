@@ -314,6 +314,11 @@
                                        ;; take only new nodes, keep context intact
                                        (update :content subvec (inc index)))}))))
 
+(comment
+  (n/string (rewrite-clj.parser/parse-string "(+ 1 2 3)"))
+
+  )
+
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
   ([{:as opts :keys [doc?]} s]
@@ -333,7 +338,7 @@
                                           :loc (-> (meta node)
                                                    (set/rename-keys {:row :line :end-row :end-line
                                                                      :col :column :end-col :end-column})
-                                                   (select-keys [:line :end-line :column :end-column]))}))
+                                                   (select-keys [:line #_:end-line :column #_:end-column]))}))
 
                 (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
                 (-> state

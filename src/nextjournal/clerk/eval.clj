@@ -121,7 +121,15 @@
   ([store ns name] (record-interned-symbol store ns name) (core-intern ns name))
   ([store ns name val] (record-interned-symbol store ns name) (core-intern ns name val)))
 
+(defn ^:private eval2 [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
+  #_(def args [form-info hash digest-file])
+  (let [!interned-vars (atom #{})
+        {:keys [result]} {:result (eval form)}
+        ]
+    result))
+
 (defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
+  (def f form-info)
   (try
     (let [!interned-vars (atom #{})
           {:keys [result]} (time-ms (binding [config/*in-clerk* true]
@@ -157,6 +165,26 @@
         (throw (ex-info (main/ex-str triaged)
                         (merge triaged (analyzer/form->ex-data form))))))))
 
+(comment
+  (binding [*ns* (the-ns  'table-stats)]
+    #_(eval '(def query-results (let
+                                 [_run-at
+                                  #inst "2021-05-20T08:28:29.445-00:00"
+                                  ds
+                                  (jdbc/get-datasource {:dbtype "sqlite", :dbname "chinook.db"})]
+                               (with-open
+                                 [conn (jdbc/get-connection ds)]
+                                 (jdbc/execute!
+                                  conn
+                                  (sql/format
+                                   {:select [:AlbumId :Bytes :Name :TrackID :UnitPrice], :from :tracks}))))) #_(:form (first args)))
+    #_(apply eval2 #_eval+cache! (update-in args [0] select-keys [:form]))
+    (eval (get-in args [0 :form])))
+
+  (binding [*print-meta* true]
+    (pr-str (get-in args [0 :form])))
+  )
+
 (defn maybe-eval-viewers [{:as opts :nextjournal/keys [viewer viewers]}]
   (cond-> opts
     viewer
@@ -164,8 +192,15 @@
     viewers
     (update :nextjournal/viewers eval)))
 
+(comment
+  (binding [*print-meta* true]
+    (pr-str my-f))
+  )
+
 (defn read+eval-cached [{:as doc :keys [blob->result ->analysis-info ->hash]} codeblock]
   (let [{:keys [id form _vars var]} codeblock
+        ;; already here is the form containing the extra metadataz
+        _ (def my-f form)
         _ (assert id (format "Missing id on codeblock: '%s'." (pr-str codeblock)))
         {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info id)
         no-cache?      (or ns-effect? no-cache?)

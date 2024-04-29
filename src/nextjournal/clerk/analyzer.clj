@@ -96,12 +96,17 @@
 
 (defn read-string [s]
   (edamame/parse-string s {:all true
-                           :syntax-quote {:resolve-symbol tools.reader/resolve-symbol}
-                           :readers *data-readers*
-                           :read-cond :allow
-                           :regex #(list `re-pattern %)
-                           :features #{:clj}
-                           :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))}))
+                              :syntax-quote {:resolve-symbol tools.reader/resolve-symbol}
+                              :readers *data-readers*
+                              :read-cond :allow
+                              :regex #(list `re-pattern %)
+                              :features #{:clj}
+                              :end-location false
+                              :row-key :line
+                              :col-key :column
+                              :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))}))
+
+(def x 1)
 
 #_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
 
@@ -374,7 +379,8 @@
        (cond-> (reduce (fn [{:as state notebook-ns :ns} {:as block :keys [type text loc]}]
                          (if (not= type :code)
                            (update state :blocks conj (assoc block :id (get-block-id !id->count block)))
-                           (let [form (try (read-string text)
+                           (let [_ (def my-t text)
+                                 form (try (read-string text)
                                            (catch Exception e
                                              (throw (ex-info (str "Clerk analysis failed reading block: "
                                                                   (ex-message e))
