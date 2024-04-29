@@ -96,17 +96,15 @@
 
 (defn read-string [s]
   (edamame/parse-string s {:all true
-                              :syntax-quote {:resolve-symbol tools.reader/resolve-symbol}
-                              :readers *data-readers*
-                              :read-cond :allow
-                              :regex #(list `re-pattern %)
-                              :features #{:clj}
-                              :end-location false
-                              :row-key :line
-                              :col-key :column
-                              :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))}))
-
-(def x 1)
+                           :syntax-quote {:resolve-symbol tools.reader/resolve-symbol}
+                           :readers *data-readers*
+                           :read-cond :allow
+                           :regex #(list `re-pattern %)
+                           :features #{:clj}
+                           :end-location false
+                           :row-key :line
+                           :col-key :column
+                           :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))}))
 
 #_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
 
