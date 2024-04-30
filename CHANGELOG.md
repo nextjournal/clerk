@@ -26,7 +26,7 @@ Changes can be:
 
 * 🛠 Bump depdendencies
 
-  * `com.taoensso/nippy` to `3.4.0-beta1`
+  * `com.taoensso/nippy` to `3.4.0`
   * `io.github.nextjournal/markdown` to `0.5.146`
 
 * 🐜 Fix blank screen caused by react unmounting when an exception occurs during `clerk/show!`, fixes [#586](https://github.com/nextjournal/clerk/issues/586) @elken
