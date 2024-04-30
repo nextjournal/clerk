@@ -13,7 +13,7 @@
         babashka/process {:mvn/version "0.4.16"}
         io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
 
-        com.taoensso/nippy {:mvn/version "3.4.0-beta1"}
+        com.taoensso/nippy {:mvn/version "3.4.0"}
 
         mvxcvi/multiformats {:mvn/version "0.3.107"}
         com.pngencoder/pngencoder {:mvn/version "0.13.1"}
