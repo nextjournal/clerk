@@ -320,11 +320,11 @@
 
 (deftest add-block-ids
   (testing "assigns block ids"
-    (is (= '[foo/anon-expr-5dsqeQCPdUXN4CaMN4KNCYhLVqD2KC
+    (is (= '[foo/anon-expr-5drCkCGrPisMxHpJVeyoWwviSU3pfm
              foo/bar
              foo/bar#2
-             foo/anon-expr-5dtM8j4ZT5EYQTELupET45yg4rawHc
-             foo/anon-expr-5dtM8j4ZT5EYQTELupET45yg4rawHc#2]
+             foo/anon-expr-5dsbEK7B7yDZqzyteqsY2ndKVE9p3G
+             foo/anon-expr-5dsbEK7B7yDZqzyteqsY2ndKVE9p3G#2]
            (->> "(ns foo {:nextjournal.clerk/visibility {:code :fold}}) (def bar :baz) (def bar :baz) (rand-int 42) (rand-int 42)"
                 analyze-string :blocks (mapv :id))))))
 
