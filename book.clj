@@ -60,7 +60,7 @@
 ;; To use Clerk in your project, add the following dependency to your `deps.edn`:
 
 ;; ```edn
-;; {:deps {io.github.nextjournal/clerk {:mvn/version "0.15.1016"}}}
+;; {:deps {io.github.nextjournal/clerk {:mvn/version "0.16.1016"}}}
 ;; ```
 
 ;; Require and start Clerk as part of your system start, e.g. in `user.clj`:
