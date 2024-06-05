@@ -8,11 +8,13 @@ Changes can be:
 
 ## Unreleased
 
-* 🌟 The whole cell context (e.g. its form, code text etc.) is now passed to viewer functions along with the wrapped result. In addition, a new cell-viewer has been added to possibly transform a cell's properties prior to presentation. This can be used, for instance, to alter a cell's visibility programmatically ([#575](https://github.com/nextjournal/clerk/issues/575)). 
+* 🥡 The whole cell context (e.g. its form, code text etc.) is now passed to viewer functions along with the wrapped result. In addition, a new cell-viewer has been added to possibly transform a cell's properties prior to presentation. This can be used, for instance, to alter a cell's visibility programmatically ([#575](https://github.com/nextjournal/clerk/issues/575)). 
 
-* 💫 Allow to disable welcome page in `serve!`
+* 🪬 Allow viewer predicate functions to opt into recieving more context (the form with metadata, code text, etc) by providing putting the predicate function as value in a map with a `:wrapped` key, e.g. `{:pred {:wrapped (fn [x] ,,,)} ,,,}`. This makes Clerk's form metadata viewer selection extensible.
 
-* 💫 Add `clerk/comment` that behaves like `clojure.core/comment` outside of Clerk but shows the results like regular top-level forms in Clerk.
+* 💬 Add `clerk/comment` that behaves like `clojure.core/comment` outside of Clerk but shows the results like regular top-level forms in Clerk.
+
+* 💫 Allow to disable welcome page in `serve!` by specifying `:paths` or `:paths-fn`.
 
 * 💫 Support using Markdown syntax in `clerk/caption` text
 
@@ -30,7 +32,6 @@ Changes can be:
   * `http-kit/http-kit` to `3.8.0`
   * `io.github.nextjournal/markdown` to `0.5.146`
   * `hiccup/hiccup` to `2.0.0-RC3`
-
 
 * 🐜 Fix blank screen caused by react unmounting when an exception occurs during `clerk/show!`, fixes [#586](https://github.com/nextjournal/clerk/issues/586) @elken
 
@@ -54,7 +55,7 @@ Changes can be:
 
 * 🐞 Fix image embedding regression in static build introduced in 424bf35040a266f71d00d8a581ba7cdfcfcd4a75
 
-* 🐞  Swallow git errors in shell-out-str instead of printing them to stdout/err
+* 🐞 Swallow git errors in shell-out-str instead of printing them to stdout/err
 
 * 🐞 Fix an issue in fragments which showed definitions as vars instead of their values
 
