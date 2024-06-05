@@ -32,7 +32,12 @@
                       :connection "scm:git:git://github.com/nextjournal/clerk.git"
                       :developerConnection "scm:git:ssh://git@github.com/nextjournal/clerk.git"
                       :tag (str "v" version)}
-                :src-dirs ["src"]})
+                :src-dirs ["src"]
+                :pom-data
+                [[:licenses
+                  [:license
+                   [:name "ISC License"]
+                   [:url "https://opensource.org/license/isc-license-txt"]]]]})
   (b/copy-dir {:src-dirs ["src" "resources"]
                :target-dir class-dir
                :replace {}})
