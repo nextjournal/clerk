@@ -8,6 +8,14 @@ Changes can be:
 
 ## Unreleased
 
+...
+
+## 0.16.1016 (2024-06-05)
+
+...
+
+## 0.15.1016 (2024-06-05)
+
 * 🥡 The whole cell context (e.g. its form, code text etc.) is now passed to viewer functions along with the wrapped result. In addition, a new cell-viewer has been added to possibly transform a cell's properties prior to presentation. This can be used, for instance, to alter a cell's visibility programmatically ([#575](https://github.com/nextjournal/clerk/issues/575)). 
 
 * 🪬 Allow viewer predicate functions to opt into recieving more context (the form with metadata, code text, etc) by providing putting the predicate function as value in a map with a `:wrapped` key, e.g. `{:pred {:wrapped (fn [x] ,,,)} ,,,}`. This makes Clerk's form metadata viewer selection extensible.
