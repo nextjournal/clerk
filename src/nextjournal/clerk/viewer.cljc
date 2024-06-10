@@ -471,7 +471,7 @@
 
 #?(:clj
    (defn process-blobs [{:as doc+blob-opts :keys [blob-mode blob-id]} presented-result]
-     (w/postwalk #(if-some [content-type (get % :nextjournal/content-type)]
+     (w/postwalk #(if-some [content-type (get-safe % :nextjournal/content-type)]
                     (case blob-mode
                       :lazy-load (assoc % :nextjournal/value {:blob-id blob-id :path (:path %)})
                       :inline (update % :nextjournal/value data-uri-base64-encode content-type)
