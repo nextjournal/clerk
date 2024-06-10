@@ -361,6 +361,7 @@
 
   ;; test doc-url links
   (build-static-app! {:index "notebooks/document_linking.clj"
+                      :package :single-file
                       :paths ["CHANGELOG.md"
                               "notebooks/rule_30.clj"
                               "notebooks/how_clerk_works.clj"

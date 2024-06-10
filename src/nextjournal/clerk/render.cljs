@@ -749,7 +749,8 @@
 
 (defn handle-hashchange [{:keys [url->path path->doc]} ^js e]
   ;; used for navigation in static bundle build
-  (let [url (some-> e .-event_ .-newURL path-from-url-hash)]
+  (let [[url fragment] (str/split (some-> e .-event_ .-newURL path-from-url-hash) #":")]
+    (js/console.log :url url fragment)
     (when-some [doc (get path->doc url)]
       (set-state! {:doc doc}))))
 
