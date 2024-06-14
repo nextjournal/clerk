@@ -390,7 +390,9 @@
                                                                (:file doc) (assoc :clojure.core/eval-file (str (:file doc))))))
                                  {:as analyzed :keys [ns-effect?]} (cond-> (analyze form+loc)
                                                                      (:file doc) (assoc :file (:file doc)))
-                                 _ (when ns-effect?         ;; needs to run before setting doc `:ns` via `*ns*`
+                                 ;; needs to run before setting doc `:ns` via `*ns*`
+                                 ;; TODO: skip analysis altogether when evaluating with SCI
+                                 _ (when (and ns-effect? (not= :sci (:nextjournal.clerk/eval (parser/parse-global-block-settings form))))
                                      (eval form))
                                  block-id (get-block-id !id->count (merge analyzed block))
                                  analyzed (assoc analyzed :id block-id)]
