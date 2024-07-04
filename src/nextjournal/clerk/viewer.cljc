@@ -515,7 +515,8 @@
                                    (str "-" (str/join "-" path))))))
 
 (defn transform-result [{:as wrapped-value :keys [path]}]
-  (let [{:as cell :keys [form id settings result] ::keys [fragment-item? doc]} (:nextjournal/value wrapped-value)
+  (let [{:as cell :keys [form id settings result] ::keys [result fragment-item? doc]} (:nextjournal/value wrapped-value)
+        _ (prn :cell form id result)
         {:keys [package]} doc
         {:nextjournal/keys [value blob-id viewers]} result
         blob-mode (cond
@@ -642,6 +643,9 @@
 (defn cell->result-viewer [cell]
   (-> cell
       (update-if :result apply-viewer-unwrapping-var-from-def)
+      (set/rename-keys {:result ::result})
+      ensure-wrapped
+      #_#_
       fragment-seq
       (->> (mapv (partial with-viewer
                           (cond-> result-viewer
@@ -654,7 +658,7 @@
       code?
       (conj (cell->code-block-viewer cell))
       result?
-      (into (cell->result-viewer cell)))))
+      (conj (cell->result-viewer cell)))))
 
 (def cell-viewer
   {:name `cell-viewer
@@ -1156,8 +1160,21 @@
 
 (def result-viewer
   {:name `result-viewer
+   :pred #(get-safe % ::result)
    :render-fn 'nextjournal.clerk.render/render-result
    :transform-fn transform-result})
+
+(def fragment-viewer
+  {:name `fragment-viewer
+   :pred (some-fn #_ (get-safe :nextjournal.clerk/fragment)
+          ;; FIXME: 👆this stack-overflows
+          ;; is needed for values produced after transform-result
+                  #(some-> % (get-safe ::result) (get-safe :nextjournal/value) (get-safe :nextjournal.clerk/fragment)))
+   :render-fn '(fn [xs opts] (into [:<>] (nextjournal.clerk.render/inspect-children opts) xs))
+   :transform-fn (update-val (fn [x]
+                               (mapv #(assoc-in x [::result :nextjournal/value] %)
+                                     #_ (or (:nextjournal.clerk/fragment x))
+                                     (get-in x [::result :nextjournal/value :nextjournal.clerk/fragment]))))})
 
 #?(:clj
    (defn edn-roundtrippable? [x]
@@ -1347,6 +1364,7 @@
    sequential-viewer
    viewer-eval-viewer
    cell-viewer
+   fragment-viewer
    result-viewer
    map-viewer
    var-viewer
