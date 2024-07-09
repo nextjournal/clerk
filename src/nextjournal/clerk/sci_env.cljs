@@ -11,6 +11,7 @@
             [applied-science.js-interop :as j]
             [cljs.math]
             [cljs.reader]
+            [clojure.edn :as edn]
             [clojure.string :as str]
             [edamame.core :as edamame]
             [goog.object]
@@ -33,6 +34,7 @@
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
             [sci.ctx-store]
+            [sci.nrepl.completions :refer [completions]]
             [shadow.esm]))
 
 (def legacy-ns-aliases
@@ -199,6 +201,56 @@
 
 (defn reconnect-timeout [failed-connection-attempts]
   (get [0 0 100 500 5000] failed-connection-attempts 10000))
+
+(defonce !last-ns (volatile! @sci/ns))
+
+(defn nrepl-websocket []
+  (.-ws_nrepl js/window))
+
+(defn eval-string [s]
+  (sci/binding [sci/ns @!last-ns]
+    (let [rdr (sci/reader s)]
+      (loop [res nil]
+        (let [form (sci/parse-next (sci.ctx-store/get-ctx) rdr)]
+          (if (= :sci.core/eof form)
+            (do
+              (vreset! !last-ns @sci/ns)
+              res)
+            (recur (eval-form form))))))))
+
+(defn nrepl-reply [{:keys [id session]} payload]
+  (.send (nrepl-websocket)
+         (str (assoc payload :id id :session session :ns (str @!last-ns)))))
+
+(defn handle-nrepl-eval [{:keys [code] :as msg}]
+  (let [[kind val] (try [::success (eval-string code)]
+                        (catch :default e
+                          [::error (str e)]))]
+    (case kind
+      ::success
+      (do (nrepl-reply msg {:value (pr-str val)})
+          (nrepl-reply msg {:status ["done"]}))
+      ::error
+      (do
+        (nrepl-reply msg {:err (pr-str val)})
+        (nrepl-reply msg {:ex (pr-str val)
+                          :status ["error" "done"]})))))
+
+(defn handle-nrepl-message [msg]
+  (case (:op msg)
+    :eval (handle-nrepl-eval msg)
+    :complete (nrepl-reply msg (completions (assoc msg :ctx (sci.ctx-store/get-ctx))))))
+
+(defn ^:export connect-render-nrepl [ws-url]
+  (let [ws (js/WebSocket. ws-url)]
+    (prn :connect-render-nrepl ws-url)
+    (set! (.-ws_nrepl js/window) ws)
+    (set! (.-onmessage ws)
+          (fn [event]
+            (handle-nrepl-message (edn/read-string (.-data event)))))
+    (set! (.-onerror ws)
+          (fn [event]
+            (js/console.log event)))))
 
 (defn ^:export connect [ws-url]
   (when (::failed-attempts @render/!doc)
