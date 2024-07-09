@@ -35,6 +35,7 @@
                                :jvm-opts ["-Dclojure.main.report=stdout"]
                                :nextjournal.clerk/aliases [:demo]}
 
+           
            :sci {:extra-deps {io.github.nextjournal/clerk.render {:local/root "render"}}}
 
            :dev {:extra-deps {org.clojure/clojure {:mvn/version "1.12.0-beta1"} ;; for `:as-alias` & `add-lib` support but only in dev
@@ -46,7 +47,7 @@
                               io.github.nextjournal/cas-client {:git/sha "22ef8360689cd3938e43a3223023ab1b9711818f"}
                               org.slf4j/slf4j-nop {:mvn/version "2.0.7"}
                               org.babashka/cli {:mvn/version "0.5.40"}
-                              io.github.babashka/sci.nrepl {:git/sha "070264fcde99180b116c4bc85391122231774d0e"}}
+                              io.github.babashka/sci.nrepl {:git/sha "75f379c685bbd58c3e23f531339eb144e104937d"}}
                  :extra-paths ["dev" "notebooks"]
                  :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}"
                             "-Dclerk.render_repl={}"

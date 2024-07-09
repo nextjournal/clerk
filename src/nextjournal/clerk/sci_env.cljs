@@ -28,13 +28,13 @@
             [nextjournal.clojure-mode.commands]
             [nextjournal.clojure-mode.extensions.eval-region]
             [nextjournal.clojure-mode.keymap]
-            [nextjournal.clerk.sci-env.nrepl :as nrepl]
             [reagent.dom.server :as dom-server]
             [reagent.ratom :as ratom]
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
             [sci.ctx-store]
+            [sci.nrepl.server :as nrepl]
             [shadow.esm]))
 
 (def legacy-ns-aliases
@@ -203,12 +203,13 @@
   (get [0 0 100 500 5000] failed-connection-attempts 10000))
 
 (defn ^:export connect-render-nrepl [ws-url]
-  (let [ws (js/WebSocket. ws-url)]
+  (let [ws (js/WebSocket. ws-url)
+        send-fn (fn [data]
+                  (.send ws (str data)))]
     (prn :connect-render-nrepl ws-url)
-    (set! (.-ws_nrepl js/window) ws)
     (set! (.-onmessage ws)
           (fn [event]
-            (nrepl/handle-nrepl-message (edn/read-string (.-data event)))))
+            (nrepl/handle-nrepl-message (assoc (edn/read-string (.-data event)) :send-fn send-fn))))
     (set! (.-onerror ws)
           (fn [event]
             (js/console.log event)))))
