@@ -53,28 +53,28 @@
 
 (defn ->html [{:as state :keys [conn-ws? current-path html exclude-js?]}]
   (hiccup/html5
-      [:head
-       [:meta {:charset "UTF-8"}]
-       [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-       (when conn-ws?
-         [:script {:type "text/javascript"}
-          "if ('serviceWorker' in navigator) {
+   [:head
+    [:meta {:charset "UTF-8"}]
+    [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
+    (when conn-ws?
+      [:script {:type "text/javascript"}
+       "if ('serviceWorker' in navigator) {
           navigator.serviceWorker
             .register('/clerk_service_worker.js')
             //.then(function() { console.log('Service Worker: Registered') })
             .catch(function(error) { console.log('Service Worker: Error', error) })
         }"])
-       (when current-path (v/open-graph-metas (-> state :path->doc (get current-path) v/->value :open-graph)))
-       (if exclude-js?
-         (include-viewer-css state)
-         (include-css+js state))]
-    [:body.dark:bg-gray-900
-     [:div#clerk html]
-     (when-not exclude-js?
-       [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
+    (when current-path (v/open-graph-metas (-> state :path->doc (get current-path) v/->value :open-graph)))
+    (if exclude-js?
+      (include-viewer-css state)
+      (include-css+js state))]
+   [:body.dark:bg-gray-900
+    [:div#clerk html]
+    (when-not exclude-js?
+      [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
 let state = " (-> state v/->edn escape-closing-script-tag pr-str) ".replaceAll('nextjournal.clerk.view/escape-closing-script-tag', 'script')
 viewer.init(viewer.read_string(state))\n"
-        (when conn-ws?
-          "viewer.connect(document.location.origin.replace(/^http/, 'ws') + '/_ws')\n")
-        (when-let [port (and conn-ws? (:websocket-port @config/render-repl-config))]
-          (format "viewer.connect_render_nrepl('ws://localhost:%s/_nrepl')\n" port))])]))
+       (when conn-ws?
+         "viewer.connect(document.location.origin.replace(/^http/, 'ws') + '/_ws')\n")
+       (when-let [port (and conn-ws? (:websocket-port @config/render-repl-config))]
+         (format "viewer.connect_render_nrepl('ws://localhost:%s/_nrepl')\n" port))])]))
