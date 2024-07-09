@@ -476,8 +476,10 @@
         (reset! !watcher {:paths watch-paths
                           :watcher (apply beholder/watch #(file-event %) watch-paths)}))
       (when browse?
-        (let [{:keys [host port]} @webserver/!server]
-          (browse/browse-url (format "http://%s:%s" host port))))))
+        (try
+          (let [{:keys [host port]} @webserver/!server]
+            (browse/browse-url (format "http://%s:%s" host port))))
+        (catch Exception e (str "Caught exception trying to launch browser: " e)))))
   config)
 
 #_(serve! (with-meta {:help true} {:org.babashka/cli {}}))
