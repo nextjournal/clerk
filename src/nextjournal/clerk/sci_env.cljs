@@ -35,7 +35,6 @@
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
             [sci.ctx-store]
-            [sci.nrepl.completions :refer [completions]]
             [shadow.esm]))
 
 (def legacy-ns-aliases

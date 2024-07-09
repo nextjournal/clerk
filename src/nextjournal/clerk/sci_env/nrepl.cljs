@@ -1,6 +1,5 @@
 (ns nextjournal.clerk.sci-env.nrepl
-  (:require [clojure.edn :as edn]
-            [sci.core :as sci]
+  (:require [sci.core :as sci]
             [sci.ctx-store :as store]
             [sci.nrepl.completions :refer [completions]]
             [sci.nrepl.info :refer [info]]))
