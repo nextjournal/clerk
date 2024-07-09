@@ -10,7 +10,7 @@
             [nextjournal.clerk.render.code :as code]
             [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clerk.render.panel :as panel]
-            [nextjournal.clerk.sci-env.completions :as sci-completions]
+            [sci.nrepl.completions :as sci-completions]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clojure-mode.extensions.eval-region :as eval-region]
             [nextjournal.clojure-mode.keymap :as clojure-mode.keymap]
