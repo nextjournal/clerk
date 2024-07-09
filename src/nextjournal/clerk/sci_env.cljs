@@ -11,6 +11,7 @@
             [applied-science.js-interop :as j]
             [cljs.math]
             [cljs.reader]
+            [clojure.edn :as edn]
             [clojure.string :as str]
             [edamame.core :as edamame]
             [goog.object]
@@ -33,6 +34,7 @@
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
             [sci.ctx-store]
+            [sci.nrepl.server :as nrepl]
             [shadow.esm]))
 
 (def legacy-ns-aliases
@@ -199,6 +201,18 @@
 
 (defn reconnect-timeout [failed-connection-attempts]
   (get [0 0 100 500 5000] failed-connection-attempts 10000))
+
+(defn ^:export connect-render-nrepl [ws-url]
+  (let [ws (js/WebSocket. ws-url)
+        send-fn (fn [data]
+                  (.send ws (str data)))]
+    (prn :connect-render-nrepl ws-url)
+    (set! (.-onmessage ws)
+          (fn [event]
+            (nrepl/handle-nrepl-message (assoc (edn/read-string (.-data event)) :send-fn send-fn))))
+    (set! (.-onerror ws)
+          (fn [event]
+            (js/console.log event)))))
 
 (defn ^:export connect [ws-url]
   (when (::failed-attempts @render/!doc)
