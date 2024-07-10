@@ -475,7 +475,11 @@
         (reset! !watcher {:paths watch-paths
                           :watcher (apply beholder/watch #(file-event %) watch-paths)}))
       (when browse?
-        (webserver/browse!))))
+        (try
+          (webserver/browse!)
+          (catch UnsupportedOperationException e
+            (binding [*out* *err*]
+              (println "Clerk could not open the browser:" (.getMessage e))))))))
   config)
 
 #_(serve! (with-meta {:help true} {:org.babashka/cli {}}))
