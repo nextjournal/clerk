@@ -117,8 +117,8 @@
   (when (= stage :init)
     (builder-ui/reset-build-state!)
     ((resolve 'nextjournal.clerk/show!) (find-ns 'nextjournal.clerk.builder-ui))
-    (when-let [{:keys [port]} (and (get-in build-event [:build-opts :browse]) @webserver/!server)]
-      (browse/browse-url (str "http://localhost:" port))))
+    (when (get-in build-event [:build-opts :browse])
+      (webserver/browse!)))
   (stdout-reporter build-event)
   (builder-ui/add-build-event! build-event)
   (binding [*out* (java.io.StringWriter.)]
@@ -208,8 +208,8 @@
                                           (cond-> ssr? ssr!)
                                           cleanup))))))
     (when browse?
-      (browse/browse-url (if-let [{:keys [port]} (and (= out-path "public/build") @webserver/!server)]
-                           (str "http://localhost:" port "/build/")
+      (browse/browse-url (if-let [server-url (and (= out-path "public/build") (webserver/server-url))]
+                           (str server-url "/build/")
                            (-> index-html fs/absolutize .toString path-to-url-canonicalize))))
     {:docs docs
      :index-html index-html

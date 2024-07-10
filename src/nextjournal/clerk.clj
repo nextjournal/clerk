@@ -2,7 +2,6 @@
   "Clerk's Public API."
   (:refer-clojure :exclude [comment])
   (:require [babashka.fs :as fs]
-            [clojure.java.browse :as browse]
             [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.string :as str]
@@ -476,8 +475,7 @@
         (reset! !watcher {:paths watch-paths
                           :watcher (apply beholder/watch #(file-event %) watch-paths)}))
       (when browse?
-        (let [{:keys [host port]} @webserver/!server]
-          (browse/browse-url (format "http://%s:%s" host port))))))
+        (webserver/browse!))))
   config)
 
 #_(serve! (with-meta {:help true} {:org.babashka/cli {}}))

@@ -173,6 +173,7 @@
                                       'system-time (sci/copy-var system-time core-ns)}}
                       (sci-copy-nss
                        'cljs.math
+                       'cljs.repl
                        'nextjournal.clerk.parser
                        'nextjournal.clerk.render
                        'nextjournal.clerk.render.code
@@ -187,11 +188,26 @@
                       sci.configs.js-interop/namespaces
                       sci.configs.reagent/namespaces)})
 
-(defn ^:export onmessage [ws-msg]
-  (render/dispatch (read-string (.-data ws-msg))))
-
 (defn ^:export eval-form [f]
   (sci/eval-form (sci.ctx-store/get-ctx) f))
+
+(defn render-eval [{:keys [form]}]
+  (eval-form form))
+
+(def message-type->fn
+  {:patch-state! render/patch-state!
+   :set-state! render/set-state!
+   :eval-reply render/process-eval-reply!
+   :render-eval render-eval})
+
+(defn ^:export onmessage [ws-msg]
+  (let [{:as msg :keys [type]} (read-string (.-data ws-msg))
+        dispatch-fn (get message-type->fn
+                         type
+                         (fn [_]
+                           (js/console.warn (str "no on-message dispatch for type `" type "`"))))]
+    #_(js/console.log :<= type := msg)
+    (dispatch-fn msg)))
 
 (def ^:export init render/init)
 

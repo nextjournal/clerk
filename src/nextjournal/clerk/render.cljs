@@ -689,16 +689,6 @@
         (if error (reject error) (resolve reply)))
     (js/console.warn :process-eval-reply!/not-found :eval-id eval-id :keys (keys @!pending-clerk-eval-replies))))
 
-(defn ^:export dispatch [{:as msg :keys [type]}]
-  (let [dispatch-fn (get {:patch-state! patch-state!
-                          :set-state! set-state!
-                          :eval-reply process-eval-reply!}
-                         type
-                         (fn [_]
-                           (js/console.warn (str "no on-message dispatch for type `" type "`"))))]
-    #_(js/console.log :<= type := msg)
-    (dispatch-fn msg)))
-
 (defonce container-el
   (and (exists? js/document) (js/document.getElementById "clerk")))
 

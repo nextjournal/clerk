@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.webserver
   (:require [babashka.fs :as fs]
             [clojure.edn :as edn]
+            [clojure.java.browse :as browse]
             [clojure.java.io :as io]
             [clojure.pprint :as pprint]
             [clojure.set :as set]
@@ -25,6 +26,20 @@
 
 (def ^:dynamic *sender-ch* nil)
 
+(defn server-url []
+  (when-let [{:keys [host port]} @!server]
+    (format "http://%s:%s" host port)))
+
+(defn ex-server-not-running []
+  (Exception. "no server running, please run `(nextjournal.clerk/serve! {})` and try again."))
+
+(defn browse! []
+  (if-let [server-url (server-url)]
+    (browse/browse-url server-url)
+    (throw (ex-server-not-running))))
+
+#_(browse!)
+
 (defn send! [ch msg]
   (httpkit/send! ch (v/->edn msg)))
 
@@ -36,7 +51,18 @@
     (httpkit/send! ch (v/->edn msg)))
   (reset! !last-sender-ch *sender-ch*))
 
-#_(broadcast! [{:random (rand-int 10000) :range (range 100)}])
+#_(broadcast! [])
+
+(defn render-eval
+  "Evaluates the given `form` in Clerk's render environment in the browser."
+  [form]
+  (if-let [client (first @!clients)]
+    (send! client {:type :render-eval :form form})
+    (if (server-url)
+      (throw (ex-info (format "no client connected, please open %s in a browser and try again." (server-url)) {:clients @!clients}))
+      (throw (ex-server-not-running)))))
+
+#_(render-eval '(js/console.log :foo))
 
 (defn ^:private percent-decode [s]
   (java.net.URLDecoder/decode s java.nio.charset.StandardCharsets/UTF_8))
