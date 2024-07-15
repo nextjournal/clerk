@@ -2,6 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [nextjournal.clerk.eval :as eval]
+            [nextjournal.clerk.viewer :as viewer]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.webserver :as webserver]))
 
@@ -13,13 +14,53 @@
   (testing "lazy loading of simple range"
     (let [doc (let [doc (eval/eval-string "(range 100)")]
                 (with-meta doc (view/doc->viewer doc)))
-          {:nextjournal/keys [presented fetch-opts]} (-> doc view/doc->viewer :nextjournal/value :blocks second :nextjournal/value)
+          {:nextjournal/keys [presented fetch-opts]} (-> doc meta :nextjournal/value :blocks first :nextjournal/value second :nextjournal/value)
           {:nextjournal/keys [value]} presented
           {elision-viewer :nextjournal/viewer elision-fetch-opts :nextjournal/value} (peek value)
           {:keys [body]} (webserver/serve-blob doc (merge fetch-opts {:fetch-opts elision-fetch-opts}))]
       (is (= `nextjournal.clerk.viewer/elision-viewer (:name elision-viewer)))
       (is body)
-      (is (= (-> body webserver/read-msg :nextjournal/value first :nextjournal/value) 20)))))
+      (is (= (-> body webserver/read-msg :nextjournal/value first :nextjournal/value) 20))))
+
+  (testing "lazy loading of images"
+    (let [doc (let [doc (eval/eval-string "(ns nextjournal.clerk.webserver-test.lazy-load-image
+  {:nextjournal.clerk/no-cache true}
+  (:require [nextjournal.clerk :as clerk]))
+
+(clerk/image \"trees.png\")
+")]
+                (with-meta doc (view/doc->viewer doc)))
+          {:nextjournal/keys [presented fetch-opts]} (-> doc meta :nextjournal/value :blocks second :nextjournal/value second :nextjournal/value)
+          {:nextjournal/keys [value]} presented]
+      (is (= "image/png" (:nextjournal/content-type presented)))
+      (is (= (:blob-id fetch-opts) (:blob-id (:nextjournal/value presented))))
+      ;; the presented image has been processed to only contain their blob-id in the value
+      ;; serve blob resolve their original contents via the elision mechanism
+      (let [response-body (:body (webserver/serve-blob doc (merge fetch-opts {:fetch-opts value})))]
+        (is (bytes? response-body))
+        (is (= (seq (viewer/buffered-image->bytes (viewer/read-image "trees.png")))
+               (seq response-body)))))
+
+    (testing "lazy loading of elided images"
+      (let [doc (let [doc (eval/eval-string "(ns nextjournal.clerk.webserver-test.lazy-load-image
+  {:nextjournal.clerk/no-cache true}
+  (:require [nextjournal.clerk :as clerk]))
+
+(concat (range 20)
+        (list (clerk/image \"trees.png\")))")]
+                  (with-meta doc (view/doc->viewer doc)))
+            {:nextjournal/keys [presented fetch-opts]} (-> doc meta :nextjournal/value :blocks second :nextjournal/value second :nextjournal/value)
+            {:nextjournal/keys [value]} presented
+            {elision-fetch-opts :nextjournal/value v :nextjournal/viewer} (peek value)]
+        (is (= (:name viewer/elision-viewer) (:name v)))
+        (let [{:keys [body]} (webserver/serve-blob doc (merge fetch-opts {:fetch-opts elision-fetch-opts}))
+              {expanded-value :nextjournal/value}
+              (binding [*data-readers* (assoc viewer/data-readers 'object (fn [_v] [:__object__]))]
+                (read-string body))]
+          (is (= "image/png" (-> expanded-value first :nextjournal/content-type)))
+          ;; blobs contained inside fetched elisions are being processed
+          (is (= {:blob-id (:blob-id fetch-opts) :path [1 20]}
+                 (-> expanded-value first :nextjournal/value))))))))
 
 (deftest serve-file-test
   (testing "serving a file resource"

@@ -4,14 +4,15 @@
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [matcher-combinators.test]
-            [nextjournal.clerk.builder :as builder])
+            [nextjournal.clerk.builder :as builder]
+            [nextjournal.clerk.viewer :as viewer])
   (:import (clojure.lang ExceptionInfo)
            (java.io File)))
 
 (deftest url-canonicalize
   (testing "canonicalization of file components into url components"
-    (let [dice (str/join (File/separator) ["notebooks" "dice.clj"])]
-      (is (= (#'builder/path-to-url-canonicalize dice) (str/replace dice  (File/separator) "/"))))))
+    (let [dice (str/join File/separator ["notebooks" "dice.clj"])]
+      (is (= (#'builder/path-to-url-canonicalize dice) (str/replace dice File/separator "/"))))))
 
 (deftest static-app
   (let [url* (volatile! nil)
@@ -20,8 +21,8 @@
                                                    (vreset! url* path))]
       (testing "browser receives canonical url in this system arch"
         (fs/with-temp-dir [temp {}]
-          (let [expected (-> (str/join (java.io.File/separator) [(.toString temp) "index.html"])
-                             (str/replace (java.io.File/separator) "/"))]
+          (let [expected (-> (str/join File/separator [(.toString temp) "index.html"])
+                             (str/replace File/separator "/"))]
             (builder/build-static-app! {:browse? true
                                         :paths ["notebooks/hello.clj"]
                                         :out-path temp})
@@ -30,67 +31,42 @@
       (testing "*ns* isn't changed (#506)"
         (is (= original-*ns* *ns*))))))
 
-(def test-paths ["boo*.clj"])
-(def test-paths-fn (fn [] ["boo*.clj"]))
-
-(deftest expand-paths
-  (testing "expands glob patterns"
-    (let [{paths :expanded-paths} (builder/expand-paths {:paths ["notebooks/*clj"]})]
-      (is (> (count paths) 25))
-      (is (every? #(str/ends-with? % ".clj") paths))))
-
-  (testing "supports index"
-    (is (= {:expanded-paths ["book.clj"]}
-           (builder/expand-paths {:index "book.clj"}))))
-
-  (testing "supports paths"
-    (is (= {:expanded-paths ["book.clj"]}
-           (builder/expand-paths {:paths ["book.clj"]}))))
-
-  (testing "supports paths-fn"
-    (is (= {:expanded-paths ["book.clj"]}
-           (builder/expand-paths {:paths-fn `test-paths})))
-    (is (= {:expanded-paths ["book.clj"]}
-           (builder/expand-paths {:paths-fn `test-paths-fn}))))
-
-  (testing "deduplicates index + paths"
-    (is (= {:expanded-paths [(str (fs/file "notebooks" "rule_30.clj"))]}
-           (builder/expand-paths {:paths ["notebooks/rule_**.clj"]
-                                  :index (str (fs/file "notebooks" "rule_30.clj"))}))))
-
-  (testing "supports absolute paths (#504)"
-    (is (= {:expanded-paths [(str (fs/file (fs/cwd) "book.clj"))]}
-           (builder/expand-paths {:paths [(str (fs/file (fs/cwd) "book.clj"))]}))))
-
-  (testing "invalid args"
-    (is (match? {:error #"must set either"}
-                (builder/expand-paths {})))
-    (is (match? {:error #"must be a qualified symbol pointing at an existing var"}
-                (builder/expand-paths {:paths-fn :foo})))
-    (is (match? {:error #"must be a qualified symbol pointing at an existing var"}
-                (builder/expand-paths {:paths-fn 'foo})))
-    (is (match? {:error #"must be a qualified symbol pointing at an existing var"}
-                (builder/expand-paths {:paths-fn 'clerk.test.non-existant-name-space/bar})))
-    (is (match? {:error #"must be a qualified symbol pointing at an existing var"}
-                (builder/expand-paths {:paths-fn 'clojure.core/non-existant-var})))
-    (is (match? {:error #"must be a qualified symbol pointing at an existing var"}
-                (builder/expand-paths {:paths-fn "hi"})))
-    (is (match? {:error #"nothing to build"}
-                (builder/expand-paths {:paths []})))
-    (is (match? {:error #"An error occured invoking"}
-                (builder/expand-paths {:paths-fn 'clojure.core/inc})))
-    (is (match? {:error #"must compute to a sequential value."}
-                (builder/expand-paths {:paths-fn 'clojure.core/+})))
-    (is (match? {:error "`:index` must be either an instance of java.net.URL or a string and point to an existing file"}
-                (builder/expand-paths {:index ["book.clj"]})))))
-
 (deftest build-static-app!
   (testing "error when paths are empty (issue #339)"
-    (is (thrown-with-msg? ExceptionInfo #"nothing to build" (builder/build-static-app! {:paths []}))))
-
+    (is (thrown-with-msg? ExceptionInfo #"nothing to build" (builder/build-static-app! {:paths []
+                                                                                        :report-fn identity}))))
   (testing "error when index is of the wrong type"
-    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index 0})))
-    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index "not/existing/notebook.clj"})))))
+    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index 0
+                                                                                    :report-fn identity})))
+    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index "not/existing/notebook.clj"
+                                                                                    :report-fn identity}))))
+
+  (testing "backlink to source"
+    (fs/with-temp-dir [temp-dir {}]
+      (builder/build-static-app! {:index "notebooks/hello.clj"
+                                  :git/url "https://github.com/some/project"
+                                  :git/sha "SHASHASHA"
+                                  :git/prefix "prefix/"
+                                  :out-path temp-dir
+                                  :report-fn identity})
+
+      (is (fs/exists? (fs/file temp-dir "index.edn")))
+      (let [backlink (-> (binding [*data-readers* viewer/data-readers]
+                           (read-string (slurp (fs/file temp-dir "index.edn"))))
+                         :nextjournal/value :header :nextjournal/value
+                         (get-in [1 3 3 2]))]
+
+        (is (= "https://github.com/some/project/blob/SHASHASHA/prefix/notebooks/hello.clj"
+               (get-in backlink [1 :href])))
+        (is (= "notebooks/hello.clj" (get backlink 2)))
+        (is (= [:<> "@" [:span.tabular-nums "SHASHAS"]] (get backlink 3))))))
+
+  (testing "image is saved to _data dir"
+    (is (fs/with-temp-dir [temp-dir {}]
+          (builder/build-static-app! {:index "notebooks/viewers/single_image.clj"
+                                      :out-path temp-dir
+                                      :report-fn identity})
+          (first (map fs/file-name (fs/list-dir (fs/file temp-dir "_data") "**.png")))))))
 
 (deftest process-build-opts
   (testing "assigns index when only one path is given"
@@ -98,8 +74,13 @@
            (:index (builder/process-build-opts {:paths ["notebooks/rule_30.clj"] :expand-paths? true})))))
 
   (testing "coerces index symbol arg and adds it to expanded-paths"
-    (is (= ["book.clj"] (:expanded-paths (builder/process-build-opts {:index 'book.clj :expand-paths? true}))))))
+    (is (= ["book.clj"] (:expanded-paths (builder/process-build-opts {:index 'book.clj :expand-paths? true})))))
 
+  (testing "package option default"
+    (is (match? {:package :directory :render-router :fetch-edn}
+                (builder/process-build-opts {})))
+    (is (match? {:package :single-file :render-router :bundle}
+                (builder/process-build-opts {:package :single-file})))))
 
 (deftest doc-url
   (testing "link to same dir unbundled"
@@ -109,20 +90,20 @@
     ;; ----------------------------------------------------
     ;; path/to/notebook.clj |  path/to/notebok/[index.html]
     (is (= "./../../notebooks/rule_30" ;; NOTE: could also be just "rule_30.html"
-           (builder/doc-url {:bundle? false} "notebooks/viewer_api.clj" "notebooks/rule_30"))))
+           (builder/doc-url {} "notebooks/viewer_api.clj" "notebooks/rule_30"))))
 
   (testing "respects the mapped index"
     (is (= "./notebooks/rule_30"
-           (builder/doc-url {:bundle? false} "index.clj" "notebooks/rule_30")))
+           (builder/doc-url {} "index.clj" "notebooks/rule_30")))
 
     (is (= "./notebooks/rule_30"
-           (builder/doc-url {:bundle? false :index "notebooks/path/to/notebook.clj"}
+           (builder/doc-url { :index "notebooks/path/to/notebook.clj"}
                             "notebooks/path/to/notebook.clj" "notebooks/rule_30")))
 
     (is (= "./../../../../notebooks/rule_30"
-           (builder/doc-url {:bundle? false}
+           (builder/doc-url {}
                             "notebooks/path/to/notebook.clj" "notebooks/rule_30"))))
 
   (testing "bundle case"
     (is (= "#/notebooks/rule_30"
-           (builder/doc-url {:bundle? true} "index.clj" "notebooks/rule_30")))))
+           (builder/doc-url {:package :single-file} "index.clj" "notebooks/rule_30")))))

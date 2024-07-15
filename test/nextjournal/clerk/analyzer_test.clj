@@ -8,7 +8,8 @@
             [nextjournal.clerk :as clerk :refer [defcached]]
             [nextjournal.clerk.analyzer :as ana]
             [nextjournal.clerk.config :as config]
-            [nextjournal.clerk.parser :as parser])
+            [nextjournal.clerk.parser :as parser]
+            [weavejester.dependency :as dep])
   (:import (clojure.lang ExceptionInfo)))
 
 (defmacro with-ns-binding [ns-sym & body]
@@ -200,7 +201,6 @@
 
 (defn analyze-string [s]
   (-> (parser/parse-clojure-string {:doc? true} s)
-      ana/analyze-doc
       ana/build-graph))
 
 (deftest hash-test
@@ -209,7 +209,72 @@
          {:jar
           #"repository/weavejester/dependency/0.2.1/dependency-0.2.1.jar",
           :hash "5dsZiMRBpbMfWTafMoHEaNdGfEYxpx"}
-         (ana/hash-jar (ana/find-location 'weavejester.dependency/graph))))))
+         (ana/hash-jar (ana/find-location 'weavejester.dependency/graph)))))
+
+  (testing "an edge-case with a particular sorting of the graph nodes"
+    (is (-> (analyze-string "
+(do
+  (declare b)
+  (def a 1))
+
+(inc a)") ana/hash)))
+
+  (testing "expressions do not depend on forward declarations"
+    (let [ana-1 (-> "(ns nextjournal.clerk.analyzer-test.forward-declarations)
+
+(declare x)
+(defn foo [] (inc (x)))
+(defn x [] 0)
+"
+                    analyze-string ana/hash)
+          block-3-id (-> ana-1 :blocks (nth 2) :id)
+          hash-1 (-> ana-1 :->hash block-3-id)
+          ana-2 (-> "(ns nextjournal.clerk.analyzer-test.forward-declarations)
+
+(declare x y)
+(defn foo [] (inc (x)))
+(defn x [] 0)
+"
+                    analyze-string ana/hash)
+          hash-2 (-> ana-2 :->hash block-3-id)]
+
+      (is hash-1) (is hash-2)
+      (is (= hash-1 hash-2))))
+
+  (testing "forms depending on anonymous forms"
+    (let [ana-1 (-> "(ns nextjournal.clerk.analyzer-test.dependency-on-anon-forms)
+(do
+  :something
+  (def x 0))
+
+(inc x)
+"
+                    analyze-string ana/hash)
+          block-id (-> ana-1 :blocks second :id)
+          hash-1 (-> ana-1 :->hash block-id)
+          ana-2 (-> "(ns nextjournal.clerk.analyzer-test.dependency-on-anon-forms)
+(do
+  :something
+  (def x 1))
+
+(inc x)
+"
+                    analyze-string ana/hash)
+          block-id (-> ana-2 :blocks second :id)
+          hash-2 (-> ana-2 :->hash block-id)]
+
+      (is hash-1) (is hash-2)
+      (is (not= hash-1 hash-2))))
+
+  (testing "redefinitions (and their dependents) are never cached"
+    (let [{:keys [->analysis-info]} (analyze-string "(ns nextjournal.clerk.analyzer-test.redefs)
+(def a 0)
+(def b (inc a))
+(def a 1)
+")]
+      (is (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/a)))
+      (is (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/b)))
+      (is (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/a#2))))))
 
 (deftest analyze-doc
   (testing "reading a bad block shows block and file info in raised exception"
@@ -255,11 +320,11 @@
 
 (deftest add-block-ids
   (testing "assigns block ids"
-    (is (= '[foo/anon-expr-5dtWXL41Ee4Yz8oTFQbUqiXhcj3prd
+    (is (= '[foo/anon-expr-5drCkCGrPisMxHpJVeyoWwviSU3pfm
              foo/bar
              foo/bar#2
-             foo/anon-expr-5dqqrgB1pptKQdEw2L1k2mHBKHRw4P
-             foo/anon-expr-5dqqrgB1pptKQdEw2L1k2mHBKHRw4P#2]
+             foo/anon-expr-5dsbEK7B7yDZqzyteqsY2ndKVE9p3G
+             foo/anon-expr-5dsbEK7B7yDZqzyteqsY2ndKVE9p3G#2]
            (->> "(ns foo {:nextjournal.clerk/visibility {:code :fold}}) (def bar :baz) (def bar :baz) (rand-int 42) (rand-int 42)"
                 analyze-string :blocks (mapv :id))))))
 
@@ -273,6 +338,7 @@ my-uuid")]
 
 (deftest can-analyze-proxy-macro
   (is (analyze-string "(ns proxy-example-notebook) (proxy [clojure.lang.ISeq][] (seq [] '(this is a test seq)))")))
+
 
 (deftest circular-dependency
   (is (match? {:graph {:dependencies {'circular/b #{'clojure.core/str
@@ -295,7 +361,11 @@ my-uuid")]
     (prn :find-location (ana/find-location 'weavejester.dependency/graph))
     (let [{:keys [->analysis-info]} (analyze-string "(ns foo (:require [weavejester.dependency :as dep])) (dep/graph)")]
       (is (empty? (ana/unhashed-deps ->analysis-info)))
-      (is (match? {:jar string?} (->analysis-info 'weavejester.dependency/graph))))))
+      (is (match? {:jar string?} (->analysis-info 'weavejester.dependency/graph)))))
+
+  (testing "should establish dependencies across files"
+    (let [{:keys [graph]} (analyze-string (slurp "src/nextjournal/clerk.clj"))]
+      (is (dep/depends? graph 'nextjournal.clerk/show! 'nextjournal.clerk.analyzer/hash)))))
 
 
 (deftest ->hash
@@ -310,7 +380,6 @@ my-uuid")]
           analyzed-after (ana/hash (analyze-string test-string))]
       (is (not= (get-in analyzed-before [:->hash test-var])
                 (get-in analyzed-after [:->hash test-var]))))))
-
 
 (deftest hash-deref-deps
   (testing "transitive dep gets new hash"

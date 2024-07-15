@@ -2,7 +2,6 @@
   (:require ["framer-motion" :as framer-motion :refer [motion AnimatePresence]]
             [applied-science.js-interop :as j]
             [clojure.string :as str]
-            [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clerk.render.localstorage :as localstorage]
             [reagent.core :as r]))
 
@@ -36,23 +35,25 @@
 (defn navigate-or-scroll! [event {:as item :keys [path]} {:keys [set-hash?]}]
   (let [[path-name search] (.split path "?")
         current-path-name (.-pathname js/location)
-        anchor-only? (str/starts-with? path-name "#")
+        anchor-only? (str/starts-with? path "#")
         [_ hash] (some-> search (.split "#"))]
     (when (or (and search hash (= path-name current-path-name)) anchor-only?)
-      (let [anchor (if anchor-only? path-name (str "#" hash))]
+      (let [anchor (if anchor-only? path (str "#" hash))]
         (.stopPropagation event)
         (.preventDefault event)
         (when set-hash?
           (.pushState js/history #js {} "" anchor))
         (scroll-to-anchor! anchor)))))
 
-(defn render-items [items {:as render-opts :keys [!expanded-at expandable-toc? mobile-toc?]}]
+(defn render-items [items {:as render-opts :keys [!expanded-at !mobile-toc?]}]
   (into
    [:div]
    (map-indexed
-    (fn [i {:as item :keys [emoji path title items]}]
-      (let [label (or title (str/capitalize (last (str/split path #"/"))))
-            expanded? (get-in @!expanded-at [:toc path])]
+    (fn [i {:as item :keys [href css-class emoji path title items]}]
+      (let [mobile-toc? @!mobile-toc?
+            label (or title (str/capitalize (last (str/split path #"/"))))
+            expanded? (get-in @!expanded-at [:toc path])
+            {:keys [expandable-toc?]} (merge render-opts item)]
         [:div.text-base.leading-normal.dark:text-white
          {:class "md:text-[14px]"}
          (if (seq items)
@@ -70,7 +71,7 @@
                  :class (if expanded? "rotate-90" "rotate-0")}
                 [:path {:stroke-linecap "round" :stroke-linejoin "round" :d "M8.25 4.5l7.5 7.5-7.5 7.5"}]]])
             [:a.py-1.flex.flex-auto.gap-1.group-hover:text-indigo-700.dark:group-hover:text-white.hover:underline.decoration-indigo-300.dark:decoration-slate-400.underline-offset-2
-             {:href path
+             {:href (or href path)
               :class (when (and expandable-toc? expanded?) "font-medium")
               :on-click (fn [event]
                           (navigate-or-scroll! event item render-opts)
@@ -78,20 +79,20 @@
                             (swap! !expanded-at assoc :toc-open? false)))}
              (when emoji
                [:span.flex-shrink-0 emoji])
-             [:span label]]
+             [:span {:class css-class} label]]
             (when (and expandable-toc? expanded?)
               [:span.absolute.bottom-0.border-l.border-slate-300.dark:border-slate-600
                {:class "top-[25px] left-[10px]"}])]
            [:a.flex.flex-auto.gap-1.py-1.rounded.hover:bg-slate-200.dark:hover:bg-slate-900.hover:text-indigo-700.dark:hover:text-white.hover:underline.decoration-indigo-300.dark:decoration-slate-400.underline-offset-2.transition
             {:class "px-[6px] ml-[8px] mr-[4px]"
-             :href path
+             :href (or href path)
              :on-click (fn [event]
                          (navigate-or-scroll! event item render-opts)
                          (when mobile-toc?
                            (swap! !expanded-at assoc :toc-open? false)))}
             (when emoji
               [:span.flex-shrink-0 emoji])
-            [:span label]])
+            [:span {:class css-class} label]])
          (when (and (seq items) (or (not expandable-toc?) (and expandable-toc? expanded?)))
            [:div.relative
             {:class (str (if expandable-toc? "ml-[16px] " "ml-[19px] ")
@@ -100,6 +101,7 @@
               [:span.absolute.top-0.border-l.border-slate-300.dark:border-slate-600
                {:class "left-[2px] bottom-[8px]"}])
             [render-items items render-opts]])]))
+
     items)))
 
 (def local-storage-key "clerk-navbar")
@@ -147,25 +149,6 @@
 (def width 220)
 (def mobile-width 300)
 
-(defn toc-panel [toc {:as render-opts :keys [!expanded-at mobile-toc?]}]
-  [:> (.-div motion)
-   (let [inset-or-x (if mobile-toc? :x :margin-left)
-         w (if mobile-toc? mobile-width width)]
-     {:key "toc-panel"
-      :style {:width w}
-      :class (str "fixed h-screen z-10 flex-shrink-0 bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900 "
-                  (when mobile-toc? "shadow-xl"))
-      :initial {inset-or-x (* w -1)}
-      :animate {inset-or-x 0}
-      :exit {inset-or-x (* w -1)}
-      :transition spring})
-   [close-button render-opts]
-   [:div.absolute.left-0.top-0.w-full.h-full.overflow-x-hidden.overflow-y-auto.py-3
-    [:div.px-3.mb-1.mt-1.md:mt-0.text-xs.uppercase.tracking-wider.text-slate-500.dark:text-slate-400.font-medium.px-3.mb-1.leading-none
-     {:class "md:text-[12px]"}
-     "TOC"]
-    [render-items toc render-opts]]])
-
 (defn ->toc-expanded-at [toc toc-visibility]
   {:toc-open? (if-some [stored-open? (localstorage/get-item local-storage-key)]
                 stored-open?
@@ -174,11 +157,8 @@
               (map (juxt identity some?))
               (keep #(when (and (map? %) (:expanded? %)) (:path %)) (tree-seq coll? not-empty toc)))})
 
-(defn view [toc {:as render-opts :keys [!expanded-at toc-visibility]}]
-  (hooks/use-effect (fn [] (swap! !expanded-at merge (->toc-expanded-at toc toc-visibility)))
-                    [toc toc-visibility])
-  (r/with-let [!mobile-toc? (r/atom (mobile?))
-               handle-resize #(reset! !mobile-toc? (mobile?))
+(defn container [{:as render-opts :keys [!mobile-toc? !expanded-at]} children]
+  (r/with-let [handle-resize #(reset! !mobile-toc? (mobile?))
                ref-fn #(if %
                          (js/addEventListener "resize" handle-resize)
                          (js/removeEventListener "resize" handle-resize))]
@@ -191,4 +171,20 @@
        [:> AnimatePresence
         {:initial false}
         (when toc-open?
-          [toc-panel toc (assoc render-opts :mobile-toc? mobile-toc?)])]])))
+          [:> (.-div motion)
+           (let [inset-or-x (if mobile-toc? :x :margin-left)
+                 w (if mobile-toc? mobile-width width)]
+             {:key "toc-panel"
+              :style {:width w}
+              :class (str "fixed h-screen z-10 flex-shrink-0 bg-slate-100 dark:bg-gray-800 font-sans border-r dark:border-slate-900 "
+                          (when mobile-toc? "shadow-xl"))
+              :initial {inset-or-x (* w -1)}
+              :animate {inset-or-x 0}
+              :exit {inset-or-x (* w -1)}
+              :transition spring})
+           [close-button render-opts]
+           [:div.absolute.left-0.top-0.w-full.h-full.overflow-x-hidden.overflow-y-auto.py-3
+            [:div.px-3.mb-1.mt-1.md:mt-0.text-xs.uppercase.tracking-wider.text-slate-500.dark:text-slate-400.font-medium.px-3.mb-1.leading-none
+             {:class "md:text-[12px]"}
+             "TOC"]
+            children]])]])))

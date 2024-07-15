@@ -1,9 +1,9 @@
 (ns nextjournal.clerk.home
   {:nextjournal.clerk/visibility {:code :hide :result :hide}}
-  (:require [clojure.string :as str]
-            [babashka.fs :as fs]
+  (:require [babashka.fs :as fs]
+            [clojure.string :as str]
             [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.builder :as builder]
+            [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.viewer :as v]))
 
 (defn glob-notebooks []
@@ -192,7 +192,7 @@
    (when-not (seq (:query @!filter))
      [:div {:class "w-1/2 pt-6 pl-6"}
       [:h4.text-lg "Static Build Index"]
-      (let [{:keys [paths error]} (builder/index-paths)]
+      (let [{:keys [paths error]} (paths/index-paths)]
         (cond
           error [:div {:class "-mx-8"} (clerk/md error)]
           paths (let [{:keys [query]} @!filter]

@@ -19,15 +19,19 @@
                (into [:div.flex.items-center.font-sans.text-xs.mb-3 [:span.text-slate-500.mr-2 "View-as:"]]
                      (map (fn [choice]
                             [:button.px-3.py-1.font-medium.hover:bg-indigo-50.rounded-full.hover:text-indigo-600.transition
-                             {:class (if (= @!view choice) "bg-indigo-100 text-indigo-600" "text-slate-500")
-                              :on-click #(reset! !view choice)}
+                             {:class (if (= choice (:kind @!view)) "bg-indigo-100 text-indigo-600" "text-slate-500")
+                              :on-click #(swap! !view assoc :kind choice)}
                              choice]) choices))
-               [:button.text-xs.rounded-full.px-3.py-1.border-2.font-sans.hover:bg-slate-100.cursor-pointer
-                {:on-click #(nextjournal.clerk.render/clerk-eval `(reset-taps!))} "Clear"]]))))
+               [:div
+                [:button.text-xs.rounded-full.px-3.py-1.border-2.font-sans.hover:bg-slate-100.cursor-pointer.mr-1
+                 {:class (when (:auto-expand-results? @!view) "bg-indigo-100 text-indigo-600 border-indigo-200")
+                  :on-click #(swap! !view update :auto-expand-results? not)} "Auto Expand"]
+                [:button.text-xs.rounded-full.px-3.py-1.border-2.font-sans.hover:bg-slate-100.cursor-pointer
+                 {:on-click #(nextjournal.clerk.render/clerk-eval `(reset-taps!))} "Clear"]]]))))
 
 ^{::clerk/sync true ::clerk/viewer switch-view ::clerk/visibility {:result :show}}
-(defonce !view (atom :stream))
-
+(defonce !view (atom {:kind :stream
+                      :auto-expand-results? false}))
 
 (defonce !taps (atom ()))
 
@@ -48,19 +52,20 @@
                  [:div.border-t.relative.py-3.mt-2
                   [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
                    {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
-                  [:div.overflow-x-auto [nextjournal.clerk.render/inspect-presented val]]])
+                  [:div.overflow-x-auto [nextjournal.clerk.render/inspect-presented (select-keys opts [:!expanded-at]) val]]])
+
    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
                    (-> wrapped-value
                        v/mark-preserve-keys
                        (merge (v/->opts (v/ensure-wrapped (::val value)))) ;; preserve opts like ::clerk/width and ::clerk/css-class
                        (assoc-in [:nextjournal/render-opts :id] (::key value)) ;; assign custom react key
+                       (cond-> (:auto-expand-results? @!view) (assoc-in [:nextjournal/render-opts :auto-expand-results?] true))
                        (update-in [:nextjournal/value ::tapped-at] inst->local-time-str)))})
-
 
 ^{::clerk/visibility {:result :show}
   ::clerk/viewers (v/add-viewers [tap-viewer])}
 (clerk/fragment (cond->> @!taps
-                  (= :latest @!view) (take 1)))
+                  (= :latest (:kind @!view)) (take 1)))
 
 (comment
   (last @!taps)
@@ -77,5 +82,8 @@
       (tap> (clerk/with-viewers (clerk/add-viewers rule-30/viewers) rule-30/rule-30)))
   (tap> (clerk/with-viewers (clerk/add-viewers rule-30/viewers) rule-30/board))
   (tap> (clerk/html [:h1 "Fin. 👋"]))
+
+  (tap> (map (comp #(map (constantly '🌮) %) range) (range 1 100)))
+
   (tap> (reduce (fn [acc _] (vector acc)) :fin (range 200)))
   (reset-taps!))

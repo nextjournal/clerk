@@ -33,8 +33,6 @@ c
   (ns-unmap *ns* 'variable)
   (ns-unmap (find-ns 'foreign) 'variable)
 
-  (reset! nextjournal.clerk.webserver/!doc nextjournal.clerk.webserver/help-doc)
-
   ;; inspect recorded interns
   (-> @nextjournal.clerk.webserver/!doc
       :blocks (->> (mapcat (comp :nextjournal/interned :result))))

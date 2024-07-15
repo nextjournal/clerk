@@ -3,7 +3,8 @@
             [matcher-combinators.matchers :as m]
             [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk.analyzer-test :refer [analyze-string]]
-            [nextjournal.clerk.parser :as parser]))
+            [nextjournal.clerk.parser :as parser]
+            [nextjournal.clerk.view :as view]))
 
 (defmacro with-ns-binding [ns-sym & body]
   `(binding [*ns* (find-ns ~ns-sym)]
@@ -21,7 +22,9 @@
 ;; ## Sorting Maps
 
 {2 \"bar\" 1 \"foo\"}
-")
+
+\"multi
+line\"")
 
 (deftest parse-clojure-string
   (testing "is returning blocks with types and markdown structure attached"
@@ -31,13 +34,16 @@
                                                                                  {:type :paragraph}]}}
                                     {:type :code, :text "#{3 1 2}"}
                                     {:type :markdown, :doc {:type :doc :content [{:type :heading}]}}
-                                    {:type :code, :text "{2 \"bar\" 1 \"foo\"}"},]
+                                    {:type :code, :text "{2 \"bar\" 1 \"foo\"}"},
+                                    {:type :code, :text "\"multi
+line\""}]
                            :title "📶 Sorting",
                            :footnotes []
                            :toc {:type :toc,
                                  :children [{:type :toc :children [{:type :toc}
                                                                    {:type :toc}]}]}})
                 (parser/parse-clojure-string {:doc? true} notebook)))))
+
 
 (deftest parse-inline-comments
   (is (match? {:blocks [{:doc {:content [{:content [{:text "text before"}]}]}}
@@ -156,3 +162,16 @@ par two"))))
   (testing "unreadable forms"
     (is (= (parser/text-with-clerk-metadata-removed "^{:un :balanced :map} (do nothing)" clerk-ns-alias)
            "^{:un :balanced :map} (do nothing)"))))
+
+(deftest presenting-a-parsed-document
+  (testing "presenting a parsed document doesn't produce garbage"
+    (is (match? [{:nextjournal/viewer {:name 'nextjournal.clerk.viewer/cell-viewer}
+                  :nextjournal/value [{:nextjournal/viewer {:name 'nextjournal.clerk.viewer/code-block-viewer}}]}
+                 {:nextjournal/viewer {:name 'nextjournal.clerk.viewer/cell-viewer}
+                  :nextjournal/value [{:nextjournal/viewer {:name 'nextjournal.clerk.viewer/code-block-viewer}}]}
+                 {:nextjournal/viewer {:name 'nextjournal.clerk.viewer/cell-viewer}
+                  :nextjournal/value [{:nextjournal/viewer {:name 'nextjournal.clerk.viewer/code-block-viewer}}]}]
+                (-> (parser/parse-clojure-string {:doc? true} "(ns testing-presented-parsed) 123 :ahoi")
+                    view/doc->viewer
+                    :nextjournal/value
+                    :blocks)))))

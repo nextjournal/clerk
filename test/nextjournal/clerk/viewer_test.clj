@@ -7,6 +7,7 @@
             [nextjournal.clerk.builder :as builder]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.eval :as eval]
+            [nextjournal.clerk.eval-test :as eval-test]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]))
 
@@ -81,12 +82,32 @@
 
   (testing "elision inside html"
     (let [value (v/html [:div [:ul [:li {:nextjournal/value (range 30)}]]])]
-      (is (= (v/->value value) (v/->value (v/desc->values (resolve-elision (v/present value)))))))))
+      (is (= (v/->value value) (v/->value (v/desc->values (resolve-elision (v/present value))))))))
+
+  (testing "resolving elided blobs"
+    (let [{:nextjournal/keys [presented blob-id]}
+          (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.elision-and-images
+                             (:require [nextjournal.clerk :as clerk]))
+                           (clerk/image \"trees.png\")")
+                     view/doc->viewer
+                     :nextjournal/value
+                     :blocks second :nextjournal/value second
+                     :nextjournal/value)]
+
+      ;; n.c.viewer/process-blobs replaces bytes with an elision containing path and blob-id
+      (is (= {:blob-id blob-id :path [1]} (:nextjournal/value presented)))
+      (is (= "image/png" (:nextjournal/content-type presented)))
+
+      ;; this is the mechanism that let image contents be resolved via n.c.webserver/serve-blob
+      ;; see also n.c.render/url-for
+      (is (bytes? (:nextjournal/value
+                   ((:present-elision-fn (meta presented))
+                    (select-keys (:nextjournal/value presented) [:path]))))))))
 
 (deftest default-viewers
   (testing "viewers have names matching vars"
     (doseq [[viewer-name viewer] (into {}
-                                       (map (juxt :name (comp deref resolve :name))) 
+                                       (map (juxt :name (comp deref resolve :name)))
                                        v/default-viewers)]
       (is (= viewer-name (:name viewer))))))
 
@@ -110,6 +131,43 @@
   (testing "table viewer (with :transform-fn) width can be overriden"
     (is (= :full
            (:nextjournal/width (v/apply-viewers (v/table {:nextjournal.clerk/width :full} {:a [1] :b [2] :c [3]})))))))
+
+(deftest presenting-wrapped-values
+  (testing "apply-viewers is invariant on wrapped values"
+    (is (= (v/apply-viewers (v/with-viewer v/number-viewer 123))
+           (v/apply-viewers {:nextjournal/value (v/with-viewer v/number-viewer 123)})
+           (v/apply-viewers {:nextjournal/value {:nextjournal/value (v/with-viewer v/number-viewer 123)}}))))
+
+  (testing "present is invariant on wrapped values"
+    (is (= (v/present (v/with-viewer v/number-viewer 123))
+           (v/present {:nextjournal/value (v/with-viewer v/number-viewer 123)})
+           (v/present {:nextjournal/value {:nextjournal/value (v/with-viewer v/number-viewer 123)}})))
+
+    (is (= (v/present (v/with-viewer v/html-viewer [:h1 "ahoi"]))
+           (v/present {:nextjournal/value (v/with-viewer v/html-viewer [:h1 "ahoi"])})
+           (v/present {:nextjournal/value {:nextjournal/value (v/with-viewer v/html-viewer [:h1 "ahoi"])}})))))
+
+(deftest present-exceptions
+  (testing "can represent ex-data in a readable way"
+    (binding [*data-readers* v/data-readers]
+
+      (is (-> (eval-test/eval+extract-doc-blocks "(ex-info \"💥\"  {:foo 123 :boom (fn boom [x] x)})")
+              second :nextjournal/value :nextjournal/presented
+              v/->edn
+              read-string))
+
+      (is (-> (eval-test/eval+extract-doc-blocks "(ex-info \"💥\"  {:foo 123 :boom (fn boom [x] x)} (RuntimeException. \"no way\"))")
+              second :nextjournal/value :nextjournal/presented
+              v/->edn
+              read-string)))))
+
+(deftest present-functions
+  (testing "can represent functions in a readable way"
+    (binding [*data-readers* v/data-readers]
+      (is (-> (eval-test/eval+extract-doc-blocks "(fn boom [x] x)")
+              second :nextjournal/value :nextjournal/presented
+              v/->edn
+              read-string)))))
 
 (deftest datafy-scope
   (is (= (ns-name *ns*)
@@ -259,23 +317,21 @@
     (let [test-doc (eval/eval-string ";; Some inline image ![alt](trees.png) here.")]
       (is (not-empty (tree-re-find (view/doc->viewer test-doc) #"_fs/trees.png")))))
 
-  (testing "Local images are inlined in bundled static builds"
+  (testing "Local images are inlined in single-file static builds"
     (let [test-doc (eval/eval-string ";; Some inline image ![alt](trees.png) here.")]
-      (is (not-empty (tree-re-find (view/doc->viewer {:bundle? true} test-doc) #"data:image/png;base64")))))
+      (is (not-empty (tree-re-find (view/doc->viewer {:package :single-file} test-doc) #"data:image/png;base64")))))
 
-  (testing "Local images are content addressed for unbundled static builds"
+  (testing "Local images are content addressed for default static builds"
     (let [test-doc (eval/eval-string ";; Some inline image ![alt](trees.png) here.")]
-      (is (not-empty (tree-re-find (view/doc->viewer {:bundle? false :out-path (str (fs/temp-dir))} test-doc) #"_data/.+\.png")))))
+      (is (not-empty (tree-re-find (view/doc->viewer {:package :directory :out-path (str (fs/temp-dir))} test-doc) #"_data/.+\.png")))))
 
   (testing "Doc options are propagated to blob processing"
     (let [test-doc (eval/eval-string "(java.awt.image.BufferedImage. 20 20 1)")]
-      (is (not-empty (tree-re-find (view/doc->viewer {:static-build? true
-                                                      :bundle? true
+      (is (not-empty (tree-re-find (view/doc->viewer {:package :single-file
                                                       :out-path builder/default-out-path} test-doc)
                                    #"data:image/png;base64")))
 
-      (is (not-empty (tree-re-find (view/doc->viewer {:static-build? true
-                                                      :bundle? false
+      (is (not-empty (tree-re-find (view/doc->viewer {:package :directory
                                                       :out-path builder/default-out-path} test-doc)
                                    #"_data/.+\.png")))))
 
@@ -286,43 +342,43 @@
 
   (testing "Setting custom options on results via metadata"
     (is (= :full
-           (-> (eval/eval-string "^{:nextjournal.clerk/width :full} (nextjournal.clerk/html [:div])")
-               view/doc->viewer v/->value :blocks second
-               v/->value :nextjournal/presented :nextjournal/width)))
+           (-> (eval-test/eval+extract-doc-blocks "^{:nextjournal.clerk/width :full} (nextjournal.clerk/html [:div])")
+               second v/->value :nextjournal/presented :nextjournal/width)))
+
     (is (= [:rounded :bg-indigo-600 :font-bold]
-           (-> (eval/eval-string "^{:nextjournal.clerk/css-class [:rounded :bg-indigo-600 :font-bold]} (nextjournal.clerk/table [[1 2][3 4]])")
-               view/doc->viewer v/->value :blocks second
+           (-> (eval-test/eval+extract-doc-blocks "^{:nextjournal.clerk/css-class [:rounded :bg-indigo-600 :font-bold]} (nextjournal.clerk/table [[1 2][3 4]])")
+               second
                v/->value :nextjournal/presented :nextjournal/css-class))))
 
   (testing "Setting custom options on results via viewer API"
     (is (= :full
-           (-> (eval/eval-string "(nextjournal.clerk/html {:nextjournal.clerk/width :full} [:div])")
-               view/doc->viewer v/->value :blocks second
+           (-> (eval-test/eval+extract-doc-blocks "(nextjournal.clerk/html {:nextjournal.clerk/width :full} [:div])")
+               second
                v/->value :nextjournal/presented :nextjournal/width)))
     (is (= [:rounded :bg-indigo-600 :font-bold]
-           (-> (eval/eval-string "(nextjournal.clerk/table {:nextjournal.clerk/css-class [:rounded :bg-indigo-600 :font-bold]} [[1 2][3 4]])")
-               view/doc->viewer v/->value :blocks second
+           (-> (eval-test/eval+extract-doc-blocks "(nextjournal.clerk/table {:nextjournal.clerk/css-class [:rounded :bg-indigo-600 :font-bold]} [[1 2][3 4]])")
+               second
                v/->value :nextjournal/presented :nextjournal/css-class))))
 
   (testing "Settings propagation from ns to form"
     (is (= :full
-           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) (nextjournal.clerk/html [:div])")
-               view/doc->viewer v/->value :blocks (nth 2)
+           (-> (eval-test/eval+extract-doc-blocks "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) (nextjournal.clerk/html [:div])")
+               (nth 2)
                v/->value :nextjournal/presented :nextjournal/width)))
 
     (is (= :wide
-           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) (nextjournal.clerk/html {:nextjournal.clerk/width :wide} [:div])")
-               view/doc->viewer v/->value :blocks (nth 2)
+           (-> (eval-test/eval+extract-doc-blocks "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) (nextjournal.clerk/html {:nextjournal.clerk/width :wide} [:div])")
+               (nth 2)
                v/->value :nextjournal/presented :nextjournal/width)))
 
     (is (= :wide
-           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) ^{:nextjournal.clerk/width :wide} (nextjournal.clerk/html [:div])")
-               view/doc->viewer v/->value :blocks (nth 2)
+           (-> (eval-test/eval+extract-doc-blocks "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) ^{:nextjournal.clerk/width :wide} (nextjournal.clerk/html [:div])")
+               (nth 2)
                v/->value :nextjournal/presented :nextjournal/width)))
 
     (is (= :wide
-           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) {:nextjournal.clerk/width :wide} (nextjournal.clerk/html [:div])")
-               view/doc->viewer v/->value :blocks (nth 2)
+           (-> (eval-test/eval+extract-doc-blocks "(ns nextjournal.clerk.viewer-test.settings {:nextjournal.clerk/width :full}) {:nextjournal.clerk/width :wide} (nextjournal.clerk/html [:div])")
+               (nth 2)
                v/->value :nextjournal/presented :nextjournal/width))))
 
   (testing "Presented doc (with fragments) has unambiguous ids assigned to results"
@@ -338,6 +394,30 @@
       (is (= 5 (count ids)))
       (is (every? (every-pred not-empty string?) ids))
       (is (distinct? ids))))
+
+  (testing "Clerk fragments and comments render values from def vars"
+    (is (= 3
+           (-> (eval-test/eval+extract-doc-blocks "(ns nextjournal.clerk.viewer-test.fragments (:require [nextjournal.clerk :as clerk]))
+(clerk/fragment
+ 1 2 (def x 3))")
+               last :nextjournal/value :nextjournal/presented :nextjournal/value)))
+    (is (= 3
+           (-> (eval-test/eval+extract-doc-blocks "(ns nextjournal.clerk.viewer-test.fragments (:require [nextjournal.clerk :as clerk]))
+(clerk/comment
+ 1 2 (def x 3))")
+               last :nextjournal/value :nextjournal/presented :nextjournal/value)))
+
+    (is (= 4
+           (-> (eval-test/eval+extract-doc-blocks "(ns nextjournal.clerk.viewer-test.fragments (:require [nextjournal.clerk :as clerk]))
+(clerk/comment
+ 1 2 (clerk/comment 3 (def x 4)))")
+               last :nextjournal/value :nextjournal/presented :nextjournal/value)))
+
+    (is (= 4
+           (-> (eval-test/eval+extract-doc-blocks "(ns nextjournal.clerk.viewer-test.fragments (:require [nextjournal.clerk :as clerk]))
+(clerk/fragment
+ 1 (clerk/comment 2 (clerk/fragment 3 (def x 4))))")
+               last :nextjournal/value :nextjournal/presented :nextjournal/value))))
 
   (testing "Fragments emit distinct results for all of their (nested) children"
     (is (= 6
@@ -386,6 +466,12 @@
     (is (= "#viewer-eval (symbol \"~\")"
            (pr-str (symbol "~")))))
 
+  (testing "symbols and keywords with two slashes readable by `read-string` but not `tools.reader/read-string` print as viewer-eval"
+    (is (= "#viewer-eval (symbol \"foo\" \"bar/baz\")"
+           (pr-str (read-string "foo/bar/baz"))))
+    (is (= "#viewer-eval (keyword \"foo\" \"bar/baz\")"
+           (pr-str (read-string ":foo/bar/baz")))))
+
   (testing "splicing reader conditional prints normally (issue #338)"
     (is (= "?@" (pr-str (symbol "?@")))))
 
@@ -395,6 +481,14 @@
 
 (deftest removed-metadata
   (is (= "(do 'this)"
-         (-> (eval/eval-string "(ns test.removed-metadata\n(:require [nextjournal.clerk :as c]))\n\n^::c/no-cache (do 'this)")
-             view/doc->viewer
-             v/->value :blocks second v/->value))))
+         (-> (eval-test/eval+extract-doc-blocks "(ns test.removed-metadata\n(:require [nextjournal.clerk :as c]))\n\n^::c/no-cache (do 'this)")
+             second v/->value))))
+
+(deftest col-viewer-map-args
+  (testing "extracts first arg as viewer-opts"
+    (is (= [{:foo :bar}]
+           (v/->value (v/col {:nextjournal.clerk/width :wide} {:foo :bar})))))
+
+  (testing "doesn't treat plain map as viewer-opts"
+    (is (= [{:foo :bar} {:bar :baz}]
+           (v/->value (v/col {:foo :bar} {:bar :baz}))))))

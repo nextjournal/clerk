@@ -90,3 +90,13 @@
  [:div
   [:h3 "Configuring budget inside " [:span.font-mono "clerk/html"]]
   {:nextjournal/value (reduce (fn [acc i] (vector i acc)) :fin (range 15 0 -1))}])
+
+;; Images are displayed correctly when expanding elided data:
+(concat (range 20) (list (clerk/image "trees.png")))
+
+;; Elisions in exception data are fetched correctly:
+(ex-info "Boink 💥"
+         {:boom (fn boom [x] x)
+          :range (range 30)
+          :image (clerk/image "trees.png")}
+         (RuntimeException. "no way"))

@@ -1,7 +1,7 @@
 (ns nextjournal.clerk
   "Clerk's Public API."
+  (:refer-clojure :exclude [comment])
   (:require [babashka.fs :as fs]
-            [clojure.java.browse :as browse]
             [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.string :as str]
@@ -11,6 +11,7 @@
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
+            [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]))
 
@@ -23,11 +24,13 @@
 
   Accepts ns using a quoted symbol or a `clojure.lang.Namespace`, calls `slurp` on all other arguments, e.g.:
 
+  ```clj
   (nextjournal.clerk/show! \"notebooks/vega.clj\")
   (nextjournal.clerk/show! 'nextjournal.clerk.tap)
   (nextjournal.clerk/show! (find-ns 'nextjournal.clerk.tap))
   (nextjournal.clerk/show! \"https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj\")
   (nextjournal.clerk/show! (java.io.StringReader. \";; # Notebook from String 👋\n(+ 41 1)\"))
+  ```
   "
   ([file-or-ns] (show! {} file-or-ns))
   ([opts file-or-ns]
@@ -49,7 +52,10 @@
 
                     :else
                     file-or-ns)
-             doc (try (merge opts
+             doc (try (merge (webserver/get-build-opts)
+                             opts
+                             (when-let [path (paths/path-in-cwd file-or-ns)]
+                               {:file-path path})
                              {:nav-path (webserver/->nav-path file-or-ns)}
                              (parser/parse-file {:doc? true} file))
                       (catch java.io.FileNotFoundException _e
@@ -61,13 +67,14 @@
                                         e))))
              _ (reset! !last-file file)
              {:keys [blob->result]} @webserver/!doc
-             {:keys [result time-ms]} (try (eval/time-ms (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!)))
+             {:keys [result time-ms]} (try (eval/time-ms (binding [paths/*build-opts* (webserver/get-build-opts)]
+                                                           (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!))))
                                            (catch Exception e
                                              (throw (ex-info (str "`nextjournal.clerk/show!` encountered an eval error with: `" (pr-str file-or-ns) "`") {::doc (assoc doc :blob->result blob->result)} e))))]
          (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
          (webserver/update-doc! result))
        (catch Exception e
-         (webserver/update-doc! (assoc (-> e ex-data ::doc) :error e))
+         (webserver/update-doc! (-> e ex-data ::doc (assoc :error e) (update :ns #(or % (find-ns 'user)))))
          (throw e))))))
 
 #_(show! "notebooks/exec_status.clj")
@@ -382,6 +389,14 @@
 
 (defn doc-url [& args] (apply v/doc-url args))
 
+(defmacro comment
+  "Evaluates the expressions in `body` showing the results in Clerk.
+
+  Does nothing outside of Clerk, like `clojure.core/comment`."
+  [& body]
+  (when nextjournal.clerk.config/*in-clerk*
+    `(nextjournal.clerk/fragment ~(vec body))))
+
 (defmacro example
   "Evaluates the expressions in `body` showing code next to results in Clerk.
 
@@ -399,9 +414,16 @@
     (beholder/stop watcher)
     (reset! !watcher nil)))
 
+(defn deprecate+migrate-opts [{:as opts :keys [bundle?]}]
+  (when (contains? opts :bundle?)
+    (println "\nThe `:bundle(?)` option is deprecated and will be dropped in 1.0.0. Use `:package :single-file` instead.\n"))
+  (-> opts (dissoc :bundle?)
+      (cond-> bundle?
+        (assoc :package :single-page))))
+
 (defn ^:private normalize-opts [opts]
-  (set/rename-keys opts #_(into {} (map (juxt identity #(keyword (str (name %) "?")))) [:bundle :browse :dashboard])
-                   {:bundle :bundle?, :browse :browse?, :dashboard :dashboard? :compile-css :compile-css? :ssr :ssr? :exclude-js :exclude-js?}))
+  (deprecate+migrate-opts
+   (set/rename-keys opts {:bundle :bundle?, :browse :browse?, :dashboard :dashboard? :compile-css :compile-css? :ssr :ssr? :exclude-js :exclude-js?})))
 
 (defn ^:private started-via-bb-cli? [opts]
   (contains? (meta opts) :org.babashka/cli))
@@ -409,26 +431,34 @@
 (defn serve!
   "Main entrypoint to Clerk taking an configurations map.
 
-  Will obey the following optional configuration entries:
+  Options:
+  - `:host` for the webserver to listen on, defaulting to `\"localhost\"`
+  - `:port` for the webserver to listen on, defaulting to `7777`
+  - `:browse` will open Clerk in the default browser after it's been started
+  - `:watch-paths` that Clerk will watch for file system events and show any changed file
+  - `:show-filter-fn` to restrict when to re-evaluate or show a notebook as a result of file system event. Useful for e.g. pinning a notebook. Will be called with the string path of the changed file.
+  - `:paths`     - restricts serving to the given paths, supports glob patterns. Will disable Clerk's homepage when set.
+  - `:paths-fn`  - a symbol resolving to a 0-arity function returning computed paths.
+  - `:index`     - path to a file to override Clerk's default index, will be added to paths.
 
-  * a `:host` for the webserver to listen on, defaulting to `\"localhost\"`
-  * a `:port` for the webserver to listen on, defaulting to `7777`
-  * `:browse?` will open Clerk in a browser after it's been started
-  * a sequence of `:watch-paths` that Clerk will watch for file system events and show any changed file
-  * a `:show-filter-fn` to restrict when to re-evaluate or show a notebook as a result of file system event. Useful for e.g. pinning a notebook. Will be called with the string path of the changed file.
+  When both `:paths` and `:paths-fn` are given, `:paths` takes precendence.
 
   Can be called multiple times and Clerk will happily serve you according to the latest config."
   {:org.babashka/cli {:spec {:watch-paths {:desc "Paths on which to watch for changes and show a changed document."
                                            :coerce []}
-                             :host {:desc "Host or ip for the webserver to listen on, defaults to \"locahost\"."
-                                    :coerce :string}
+                             :paths {:desc "Restricts serving to the given paths, supports glob patterns. Will disable Clerk's homepage when set."
+                                     :coerce []}
+                             :paths-fn {:desc "Symbol resolving to a 0-arity function returning computed paths."
+                                        :coerce :symbol}
+                             :host {:desc "Host or ip for the webserver to listen on, defaults to \"locahost\"."}
                              :port {:desc "Port number for the webserver to listen on, defaults to 7777."
                                     :coerce :number}
+                             :index {:desc "Override the name of the index file (default \"index.clj|md\", will be added to paths."}
                              :show-filter-fn {:desc "Symbol resolving to a fn to restrict when to show a notebook as a result of file system event."
                                               :coerce :symbol}
                              :browse {:desc "Opens the browser on boot when set."
                                       :coerce :boolean}}
-                      :order [:watch-paths :port :show-filter-fn :browse]}}
+                      :order [:host :port :browse :watch-paths :show-filter-fn :paths :paths-fn :index]}}
   [config]
   (if (:help config)
     (if-let [format-opts (and (started-via-bb-cli? config) (requiring-resolve 'babashka.cli/format-opts))]
@@ -445,8 +475,11 @@
         (reset! !watcher {:paths watch-paths
                           :watcher (apply beholder/watch #(file-event %) watch-paths)}))
       (when browse?
-        (let [{:keys [host port]} @webserver/!server]
-          (browse/browse-url (format "http://%s:%s" host port))))))
+        (try
+          (webserver/browse!)
+          (catch UnsupportedOperationException e
+            (binding [*out* *err*]
+              (println "Clerk could not open the browser:" (.getMessage e))))))))
   config)
 
 #_(serve! (with-meta {:help true} {:org.babashka/cli {}}))
@@ -468,26 +501,32 @@
   "Creates a static html build from a collection of notebooks.
 
   Options:
-  - `:paths`     - a vector of relative paths to notebooks to include in the build
-  - `:paths-fn`  - a symbol resolving to a 0-arity function returning computed paths
-  - `:index`     - a string allowing to override the name of the index file, will be added to `:paths`
+  - `:paths`     a vector of relative paths to notebooks to include in the build
+  - `:paths-fn`  a symbol resolving to a 0-arity function returning computed paths
+  - `:index`     a string allowing to override the name of the index file, will be added to `:paths`
 
-  Passing at least one of the above is required. When both `:paths`
-  and `:paths-fn` are given, `:paths` takes precendence.
+  Passing at least one of the above is required. When both `:paths` and `:paths-fn` are given, `:paths` takes precendence.
 
-  - `:bundle`      - if true results in a single self-contained html file including inlined images
-  - `:compile-css` - if true compiles css file containing only the used classes
-  - `:ssr`         - if true runs react server-side-rendering and includes the generated markup in the html
-  - `:browse`      - if true will open browser with the built file on success
-  - `:dashboard`   - if true will start a server and show a rich build report in the browser (use with `:bundle` to open browser)
-  - `:out-path`  - a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
-  - `:git/sha`, `:git/url` - when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
+  - `:package`     a keyword to specify how the static build should be bundled:
+    - `:directory` (default) constructs a distinct html file for each document in `:paths`
+    - `:single-file` bundles all documents into a single html file
+  - `:bundle`      [DEPRECATED use :pacakge :single-page instead] if true results in a single self-contained html file including inlined images
+  - `:compile-css` if true compiles css file containing only the used classes
+  - `:ssr`         if true runs react server-side-rendering and includes the generated markup in the html
+  - `:browse`      if true will open browser with the built file on success
+  - `:dashboard`   if true will start a server and show a rich build report in the browser (use with `:bundle` to open browser)
+  - `:out-path`    a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
+  - `:git/sha`, `:git/url` when both present, each page displays a link to `(str url \"blob\" sha path-to-notebook)`
   "
   {:org.babashka/cli {:spec {:paths {:desc "Paths to notebooks toc include in the build, supports glob patterns."
                                      :coerce []}
                              :paths-fn {:desc "Symbol resolving to a 0-arity function returning computed paths."
                                         :coerce :symbol}
                              :index {:desc "Override the name of the index file (default `index.clj|md`), will be added to paths."}
+                             :package {:desc "Indicates how the static build should be packaged"
+                                       :coerce :keyword
+                                       :default :directory
+                                       :validate #{:directory :single-file}}
                              :bundle {:desc "Flag to build a self-contained html file inlcuding inlined images"}
                              :browse {:desc "Opens the browser on boot when set."}
                              :dashboard {:desc "Flag to serve a dashboard with the build progress."}

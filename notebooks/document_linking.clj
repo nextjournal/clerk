@@ -1,13 +1,14 @@
 ;; # 🖇️ Document Linking
 (ns document-linking
-  {:nextjournal.clerk/toc true}
+  {:nextjournal.clerk/no-cache true
+   :nextjournal.clerk/toc true}
   (:require [nextjournal.clerk :as clerk]))
 
 ;; ## `clerk/doc-url` helper
 ;; The helper `clerk/doc-url` allows to reference notebooks by path. We currently support relative paths with respect to the directory which started the Clerk application. An optional trailing hash fragment can appended to the path in order for the page to be scrolled up to the indicated identifier.
 (clerk/html
  [:ol
-  [:li [:a {:href (clerk/doc-url "notebooks/viewers/html")} "HTML"]]
+  [:li [:a {:href (clerk/doc-url "notebooks/viewers/html" "page-bottom")} "HTML"]]
   [:li [:a {:href (clerk/doc-url "notebooks/viewers/image")} "Images"]]
   [:li [:a {:href (clerk/doc-url "notebooks/markdown" "appendix")} "Markdown / Appendix"]]
   [:li [:a {:href (clerk/doc-url "notebooks/how_clerk_works" "step-3:-analyzer")} "Clerk Analyzer"]]

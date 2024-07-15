@@ -11,6 +11,7 @@
             [applied-science.js-interop :as j]
             [cljs.math]
             [cljs.reader]
+            [clojure.edn :as edn]
             [clojure.string :as str]
             [edamame.core :as edamame]
             [goog.object]
@@ -34,6 +35,7 @@
             [sci.core :as sci]
             [sci.async :as sci-async]
             [sci.ctx-store]
+            [sci.nrepl.server :as nrepl]
             [shadow.esm]))
 
 (def legacy-ns-aliases
@@ -172,6 +174,7 @@
                                       'system-time (sci/copy-var system-time core-ns)}}
                       (sci-copy-nss
                        'cljs.math
+                       'cljs.repl
                        'nextjournal.clerk.parser
                        'nextjournal.clerk.render
                        'nextjournal.clerk.render.code
@@ -186,10 +189,6 @@
                       sci.configs.js-interop/namespaces
                       sci.configs.reagent/namespaces)})
 
-(defn ^:export onmessage [ws-msg]
-  (-> (render/await-render-fns (read-string (.-data ws-msg)))
-      (.then #(render/dispatch %))))
-
 (defn ^:export eval-form [f]
   (sci-async/eval-form (sci.ctx-store/get-ctx) f))
 
@@ -197,12 +196,42 @@
   (-> (render/await-render-fns state)
       (.then #(render/init %))))
 
+(defn render-eval [{:keys [form]}]
+  (eval-form form))
+
+(def message-type->fn
+  {:patch-state! render/patch-state!
+   :set-state! render/set-state!
+   :eval-reply render/process-eval-reply!
+   :render-eval render-eval})
+
+(defn ^:export onmessage [ws-msg]
+  (let [{:as msg :keys [type]} (read-string (.-data ws-msg))
+        dispatch-fn (get message-type->fn
+                         type
+                         (fn [_]
+                           (js/console.warn (str "no on-message dispatch for type `" type "`"))))]
+    #_(js/console.log :<= type := msg)
+    (dispatch-fn msg)))
+
 (defn ^:export ssr [state-str]
   (init (read-string state-str))
   (dom-server/render-to-string [render/root]))
 
 (defn reconnect-timeout [failed-connection-attempts]
   (get [0 0 100 500 5000] failed-connection-attempts 10000))
+
+(defn ^:export connect-render-nrepl [ws-url]
+  (let [ws (js/WebSocket. ws-url)
+        send-fn (fn [data]
+                  (.send ws (str data)))]
+    (prn :connect-render-nrepl ws-url)
+    (set! (.-onmessage ws)
+          (fn [event]
+            (nrepl/handle-nrepl-message (assoc (edn/read-string (.-data event)) :send-fn send-fn))))
+    (set! (.-onerror ws)
+          (fn [event]
+            (js/console.log event)))))
 
 (defn ^:export connect [ws-url]
   (when (::failed-attempts @render/!doc)

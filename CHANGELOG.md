@@ -8,6 +8,75 @@ Changes can be:
 
 ## Unreleased
 
+...
+
+## 0.16.1016 (2024-06-05)
+
+* 🥡 The whole cell context (e.g. its form, code text etc.) is now passed to viewer functions along with the wrapped result. In addition, a new cell-viewer has been added to possibly transform a cell's properties prior to presentation. This can be used, for instance, to alter a cell's visibility programmatically ([#575](https://github.com/nextjournal/clerk/issues/575)). 
+
+* 🪬 Allow viewer predicate functions to opt into recieving more context (the form with metadata, code text, etc) by providing putting the predicate function as value in a map with a `:wrapped` key, e.g. `{:pred {:wrapped (fn [x] ,,,)} ,,,}`. This makes Clerk's form metadata viewer selection extensible.
+
+* 💬 Add `clerk/comment` that behaves like `clojure.core/comment` outside of Clerk but shows the results like regular top-level forms in Clerk.
+
+* 💫 Allow to disable welcome page in `serve!` by specifying `:paths` or `:paths-fn`.
+
+* 💫 Support using Markdown syntax in `clerk/caption` text
+
+* 💫 Support toggling auto-expansion of results in tap viewer
+
+* 💫 Redesign examples viewer to be more readable and in a way that doesn't force `display: flex` onto contents.
+
+* 💫 Introduce client-side routing for static builds to make page transitions smoother by default. In addition, the option `:bundle?` for `clerk/build!` is now deprecated in favour of setting a new option `:package` to `:single-file` (the default for it being `:directory`).
+
+* 💫 Introduce a toc viewer for allowing customization of the table of contents
+
+* 🛠 Bump depdendencies
+
+  * `com.taoensso/nippy` to `3.4.2`
+  * `http-kit/http-kit` to `3.8.0`
+  * `io.github.nextjournal/markdown` to `0.5.146`
+  * `hiccup/hiccup` to `2.0.0-RC3`
+
+* 🐜 Fix blank screen caused by react unmounting when an exception occurs during `clerk/show!`, fixes [#586](https://github.com/nextjournal/clerk/issues/586) @elken
+
+* 🐜 Fix browser crashing when file watcher is used with `:show-filter-fn` option in notebooks with exceptions, fixes [#616](https://github.com/nextjournal/clerk/issues/616).
+
+* 🐜 Make edn transmission resilient to symbols and keywords containing multiple slashes like `foo/bar/baz`. Those can be read by `read-string` but not in ClojureScript which is based on `tools.reader`.
+
+* 🐞 Fix `:nextjournal.clerk/page-size` option throwing when set on string values, fixes [#584][https://github.com/nextjournal/clerk/issues/584]
+
+* 🐞 Fix caching behaviour of `clerk/image` and support overriding image-viewer by name
+
+* 🐞 Fix tap viewer keeping open/collapsed state [#543](https://github.com/nextjournal/clerk/issues/543) @teodorlu
+
+* 🐞  Fix `serve!` `:browse` option for default host & port
+
+* 🐞 Fix `unquote` in experimental cljs Clerk editor, fixes [#576](https://github.com/nextjournal/clerk/issues/576) @sritchie
+
+* 🐞 Fix `row` and `col` viewers not showing a first map argument, fixes [#567](https://github.com/nextjournal/clerk/issues/567) @teodorlu
+
+* 🐞 Fix long sidenotes overlapping with subsequent content, fixes [#564](https://github.com/nextjournal/clerk/issues/564) @hlship
+
+* 🐞 Fix image embedding regression in static build introduced in 424bf35040a266f71d00d8a581ba7cdfcfcd4a75
+
+* 🐞 Swallow git errors in shell-out-str instead of printing them to stdout/err
+
+* 🐞 Fix an issue in fragments which showed definitions as vars instead of their values
+
+* 🐞 Fix blank page when notebook contains latex errors in prose [#571](https://github.com/nextjournal/clerk/issues/571) @titonbarua and [#603](https://github.com/nextjournal/clerk/issues/603) @teodorlu
+
+* 🐞 Fix displaying images when expanding elided data [#612](https://github.com/nextjournal/clerk/issues/612) @a1exsh
+
+* 🐞 Elide end-location metadata from forms which otherwise crashes `honey.sql/format` [#646](https://github.com/nextjournal/clerk/issues/646) @borkdude
+
+## 0.15.957 (2023-09-28)
+
+* 🔌 Offline support
+
+  Support working fully offline by adding a ServiceWorker to intercept and cache network requests to remote assets in the browser. It works for Clerk's js bundle, its tailwind css script, fonts and as well as javascript dynamically loaded using d3-require like Clerk's Vega and Plotly viewers.
+
+  To use it, you need to open Clerk in the browser when online to populate the cache. Viewers that are dynamically loaded (e.g. Vega or Plotly) need to be used once while offline to be cached. We're considering loading them on worker init in a follow up.
+
 * 👁️ Improve viewer customization
 
     * Simplify customization of number of rows displayed for table viewer using viewer-opts, e.g. `(clerk/table {::clerk/page-size 7})`. Pass `{::clerk/page-size nil}` to display elisions. Can also be passed a form metadata. Fixes [#406](https://github.com/nextjournal/clerk/issues/406).
@@ -46,6 +115,8 @@ Changes can be:
 * 🛠 Upgrade `framer-motion` dep to `10.12.16`.
 
 * 💫 Assign `:name` to every viewer in `default-viewers`
+
+* 🐜 Ensure `var->location` returns a string path location fixing `Cannot open <#object[sun.nio.fs.UnixPath ,,,> as an InputStream` errors
 
 * 🐞 Don't run existing files through `fs/glob`, fixes [#504](https://github.com/nextjournal/clerk/issues/504). Also improves performance of homepage.
 

@@ -188,6 +188,12 @@
 #_(->doc-settings '(ns foo {:nextjournal.clerk/budget nil :nextjournal.clerk/width :full}))
 #_(->doc-settings '^{:nextjournal.clerk/toc :boom} (ns foo)) ;; TODO: error
 
+(defn deflike? [form]
+  (and (seq? form) (symbol? (first form)) (str/starts-with? (name (first form)) "def")))
+
+#_(deflike? '(defonce foo :bar))
+#_(deflike? '(rdef foo :bar))
+
 (defn markdown? [{:as block :keys [type]}]
   (contains? #{:markdown} type))
 
@@ -213,7 +219,7 @@
       (dissoc :block-settings)))
 
 (def code-tags
-  #{:deref :map :meta :list :quote :syntax-quote :reader-macro :set :token :var :vector})
+  #{:deref :map :meta :multi-line :list :quote :syntax-quote :reader-macro :set :token :var :vector})
 
 (def whitespace-on-line-tags
   #{:comment :whitespace :comma})
@@ -236,7 +242,7 @@
 (defn root-location [zloc] (last (take-while some? (iterate z/up zloc))))
 
 (defn remove-clerk-keys
-  "Takes a map zipper location, returns a new location representing the input map node with all ::clerk namespaced keys removed.
+  "Takes a map zipper location, returns a new location representing the input map node with all `::clerk` namespaced keys removed.
    Whitespace is preserved when possible."
   [map-loc]
   (loop [loc (z/down map-loc) parent map-loc]

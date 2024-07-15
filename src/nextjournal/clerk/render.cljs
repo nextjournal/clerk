@@ -89,7 +89,7 @@
      status]]
    (when cell-progress
      [:div.w-full.bg-sky-100.dark:bg-purple-900.rounded.z-20 {:class "h-[2px] mt-[0.5px]"}
-      [:div.bg-sky-500.dark:bg-purple-400 {:class "h-[2px]" :style {:width (str (* cell-progress 100) "%")}}]])])5
+      [:div.bg-sky-500.dark:bg-purple-400 {:class "h-[2px]" :style {:width (str (* cell-progress 100) "%")}}]])])
 
 (defn connection-status [status]
   [:div.absolute.text-red-600.dark:text-white.text-xs.font-sans.ml-1.bg-white.dark:bg-red-800.rounded-full.shadow.z-30.font-bold.px-2.border.border-red-400
@@ -107,24 +107,31 @@
 
 (declare clerk-eval)
 
-(defn render-notebook [{:as doc xs :blocks :keys [bundle? doc-css-class sidenotes? toc toc-visibility header footer]}
-                       {:as render-opts :keys [!expanded-at expandable-toc?]}]
-  (r/with-let [root-ref-fn (fn [el]
-                             (when (and el (exists? js/document))
-                               (code/setup-dark-mode!)
-                               (when-some [heading (when (and (exists? js/location) (not bundle?))
-                                                     (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
-                                                          (catch js/Error _
-                                                            (js/console.warn (str "Clerk render-notebook, invalid hash: "
-                                                                                  (.-hash js/location))))))]
-                                 (js/requestAnimationFrame #(.scrollIntoViewIfNeeded heading)))))
-               _ (swap! !expanded-at merge (navbar/->toc-expanded-at toc toc-visibility))]
+(defn scroll-to-location-hash! []
+  (when-some [heading (when (exists? js/location)
+                        (try (some-> js/location .-hash not-empty js/decodeURI (subs 1) js/document.getElementById)
+                             (catch js/Error _
+                               (js/console.warn (str "Clerk render-notebook, invalid hash: "
+                                                     (.-hash js/location))))))]
+    (js/requestAnimationFrame #(.scrollIntoView heading))))
+
+(defn render-notebook [{xs :blocks :keys [package doc-css-class sidenotes? toc toc-visibility header footer]}
+                       {:as render-opts :keys [!expanded-at]}]
+  (hooks/use-effect #(swap! !expanded-at merge (navbar/->toc-expanded-at toc toc-visibility)) [toc toc-visibility])
+  (let [!mobile-toc? (hooks/use-state (navbar/mobile?))
+        root-ref-fn (hooks/use-callback (fn [el]
+                                          (when (and el (exists? js/document))
+                                            (code/setup-dark-mode!)
+                                            (when (not= :single-file package)
+                                              (scroll-to-location-hash!)))))]
     [:div.flex
      {:ref root-ref-fn}
      [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
       [dark-mode-toggle]]
      (when (and toc toc-visibility)
-       [navbar/view toc (assoc render-opts :set-hash? (not bundle?) :toc-visibility toc-visibility)])
+       (let [render-opts' (assoc render-opts :!mobile-toc? !mobile-toc?)]
+         [navbar/container render-opts'
+          [inspect-presented render-opts' toc]]))
      [:div.flex-auto.w-screen.scroll-container
       (into
        [:> (.-div motion)
@@ -473,7 +480,7 @@
      [:div.overflow-x-auto.overflow-y-hidden.w-full.shadow.sticky-table-header
       [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-clone-ref :style {:margin 0}}]]]))
 
-(defn throwable-view [{:keys [via trace]}]
+(defn throwable-view [{:keys [via trace]} opts]
   [:div.bg-white.max-w-6xl.mx-auto.text-xs.monospace.not-prose
    (into
     [:div]
@@ -484,7 +491,7 @@
           [:div.font-bold "Unhandled " type])
         [:div.font-bold.mt-1 message]
         (when data
-          [:div.mt-1 [inspect data]])])
+          [:div.mt-1 [inspect-presented opts data]])])
      via))
    [:div.py-6.overflow-x-auto
     [:table.w-full
@@ -496,10 +503,10 @@
                    [:td.py-1.pr-6 call]]))
            trace)]]])
 
-(defn render-throwable [ex]
+(defn render-throwable [ex opts]
   (if (or (:stack ex) (instance? js/Error ex))
     [error-view ex]
-    [throwable-view ex]))
+    [throwable-view ex opts]))
 
 (defn render-tagged-value
   ([tag value] (render-tagged-value {:space? true} tag value))
@@ -561,17 +568,32 @@
 
 #_(show-panel :test {:content [:div "Test"] :width 600 :height 600})
 
+(defn with-fetch-fn [{:nextjournal/keys [presented blob-id]} body-fn]
+  ;; TODO: unify with result-viewer
+  (let [!presented-value (hooks/use-state presented)
+        body-fn* (hooks/use-callback body-fn)]
+    [view-context/provide
+     {:fetch-fn (fn [elision]
+                  (.then (fetch! {:blob-id blob-id} elision)
+                         (fn [more] (swap! !presented-value viewer/merge-presentations more elision))))}
+     [body-fn* @!presented-value]]))
+
 (defn root []
   [:<>
-   [inspect-presented @!doc]
    [:div.fixed.w-full.z-20.top-0.left-0.w-full
     (when-let [status (:nextjournal.clerk.sci-env/connection-status @!doc)]
       [connection-status status])
     (when-let [status (:status @!doc)]
       [exec-status status])]
-   (when-let [error (get-in @!doc [:nextjournal/value :error])]
-     [:div.fixed.top-0.left-0.w-full.h-full
-      [inspect-presented error]])
+   (when-let [{:as wrapped-value :nextjournal/keys [blob-id]} (get-in @!doc [:nextjournal/value :error])]
+     (let [!expanded-at (r/atom {})]
+       ^{:key blob-id}
+       [with-fetch-fn wrapped-value
+        (fn [presented-value]
+          [:div.fixed.top-0.left-0.w-full.h-full
+           [inspect-presented {:!expanded-at !expanded-at} presented-value]])]))
+   (when (:nextjournal/value @!doc)
+     [inspect-presented @!doc])
    (into [:<>]
          (map (fn [[id state]]
                 ^{:key id}
@@ -686,16 +708,6 @@
         (if error (reject error) (resolve reply)))
     (js/console.warn :process-eval-reply!/not-found :eval-id eval-id :keys (keys @!pending-clerk-eval-replies))))
 
-(defn ^:export dispatch [{:as msg :keys [type]}]
-  (let [dispatch-fn (get {:patch-state! patch-state!
-                          :set-state! set-state!
-                          :eval-reply process-eval-reply!}
-                         type
-                         (fn [_]
-                           (js/console.warn (str "no on-message dispatch for type `" type "`"))))]
-    #_(js/console.log :<= type := msg)
-    (dispatch-fn msg)))
-
 (defonce container-el
   (and (exists? js/document) (js/document.getElementById "clerk")))
 
@@ -717,9 +729,6 @@
 (defn path-from-url-hash [url]
   (-> url ->URL .-hash (subs 2)))
 
-(defn static-app? [state]
-  (contains? state :path->doc))
-
 (defn ->doc-url [url]
   (let [path (js/decodeURI (.-pathname url))
         doc-path (js/decodeURI (.-pathname (.-location js/document)))]
@@ -729,10 +738,11 @@
 
 (defn ignore-anchor-click?
   [e ^js url]
-  (let [current-origin (when (exists? js/location)
-                         (.-origin js/location))
+  (let [[current-origin current-path] (when (exists? js/location)
+                                        [(.-origin js/location) (.-pathname js/location)])
         ^js dataset (some-> e .-target closest-anchor-parent .-dataset)]
     (or (not= current-origin (.-origin url))
+        (= current-path (.-pathname url))
         (.-altKey e)
         (some-> dataset .-ignoreAnchorClick some?))))
 
@@ -753,7 +763,7 @@
       (set-state! {:doc doc}))))
 
 (defn handle-anchor-click [^js e]
-  (when-some [url (some-> e .-target closest-anchor-parent .-href ->URL)]
+  (when-some [url (some-> e .-target closest-anchor-parent .-href not-empty ->URL)]
     (when-not (ignore-anchor-click? e url)
       (.preventDefault e)
       (clerk-eval (list 'nextjournal.clerk.webserver/navigate!
@@ -764,18 +774,85 @@
 (defn handle-initial-load [^js _e]
   (history-push-state {:path (subs js/location.pathname 1) :replace? true}))
 
-(defn setup-router! [state]
+(defn utf8-decode [bytes]
+  (.decode (js/TextDecoder. "utf-8") bytes))
+
+(defn delay-resolve [v] (new js/Promise (fn [res] (js/setTimeout #(res v) 100))))
+
+(defn read-response+show-progress [{:as state :keys [reader buffer content-length]}]
+  (swap! !doc assoc :status {:progress (if (zero? (count buffer)) 0.2 (/ (count buffer) content-length))})
+  (.. reader read
+      ;; delay a bit for progress bar to be visible
+      (then delay-resolve)
+      (then (fn [ret]
+              (if (.-done ret)
+                buffer
+                (read-response+show-progress (update state :buffer str (utf8-decode (.-value ret)))))))))
+
+(defn fetch+set-state [edn-path]
+  (.. ^js (js/fetch edn-path)
+      (then (fn handle-response [r]
+              (if (.-ok r)
+                {:buffer ""
+                 :reader (.. r -body getReader)
+                 :content-length (js/Number. (.. r -headers (get "content-length")))}
+                (throw (ex-info (.-statusText r) {:url (.-url r)
+                                                  :status (.-status r)
+                                                  :headers (.-headers r)})))))
+      (then read-response+show-progress)
+      (then (fn [edn] (set-state! {:doc (read-string edn)}) {:ok true}))
+      (catch (fn [e] (js/console.error "Fetch failed" e)
+               (set-state! {:doc {:nextjournal/viewer {:render-fn (constantly [:<>])} ;; FIXME: make :error top level on state
+                                  :nextjournal/value {:error (viewer/present e)}}})
+               {:ok false :error e}))))
+
+(defn click->fetch [e]
+  (when-some [url (some-> ^js e .-target closest-anchor-parent .-href not-empty ->URL)]
+    (when-not (ignore-anchor-click? e url)
+      (.preventDefault e)
+      (let [path (.-pathname url)
+            edn-path (str path (when (str/ends-with? path "/") "index") ".edn")]
+        (.pushState js/history #js {:edn_path edn-path} ""
+                    (str (cond-> path
+                           (not (str/ends-with? path "/"))
+                           (str "/")) (.-hash url))) ;; a trailing slash is needed to make relative paths work
+        (fetch+set-state edn-path)))))
+
+(defn load->fetch [{:keys [current-path]} _e]
+  ;; TODO: consider fixing this discrepancy via writing EDN one step deeper in directory
+  (let [edn-path (-> (.-pathname js/document.location)
+                     (str/replace #"/(index.html)?$" "")
+                     (cond->
+                       (empty? current-path)
+                       (str "/index.edn")
+                       (seq current-path)
+                       (str ".edn")))]
+    (.pushState js/history #js {:edn_path edn-path} "" nil)
+    (fetch+set-state edn-path)))
+
+(defn popstate->fetch [^js e]
+  (when-some [edn-path (when (.-state e) (.. e -state -edn_path))]
+    (.preventDefault e)
+    (fetch+set-state edn-path)))
+
+(defn setup-router! [{:as state :keys [render-router]}]
   (when (and (exists? js/document) (exists? js/window))
     (doseq [listener (:listeners @!router)]
       (gevents/unlistenByKey listener))
     (reset! !router
-            (assoc state :listeners
-                   (cond (and (static-app? state) (:bundle? state))
-                         [(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)]
-                         (not (static-app? state))
-                         [(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
-                          (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
-                          (gevents/listen js/window gevents/EventType.LOAD handle-initial-load false)])))))
+            (when render-router
+              (assoc state :listeners
+                     (case render-router
+                       :bundle
+                       [(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)]
+                       :fetch-edn
+                       [(gevents/listen js/document gevents/EventType.CLICK click->fetch false)
+                        (gevents/listen js/window gevents/EventType.POPSTATE popstate->fetch false)
+                        (gevents/listen js/window gevents/EventType.LOAD (partial load->fetch state) false)]
+                       :serve
+                       [(gevents/listen js/document gevents/EventType.CLICK handle-anchor-click false)
+                        (gevents/listen js/window gevents/EventType.POPSTATE handle-history-popstate false)
+                        (gevents/listen js/window gevents/EventType.LOAD handle-initial-load false)]))))))
 
 
 (defn ^:export mount []
@@ -787,14 +864,12 @@
       (.then #(do (reset! !doc %)
                   (mount)))))
 
-(defn ^:export init [{:as state :keys [bundle? path->doc path->url current-path]}]
+(defn ^:export init [{:as state :keys [render-router path->doc]}]
   (setup-router! state)
-  (set-state! (if (static-app? state)
-                {:doc (get path->doc (or (if bundle?
-                                           (path-from-url-hash (->URL (.-href js/location)))
-                                           current-path)
-                                         ""))}
-                state))
+  (when (contains? #{:bundle :serve} render-router)
+    (set-state! (case render-router
+                  :bundle {:doc (get path->doc (or (path-from-url-hash (->URL (.-href js/location))) ""))}
+                  :serve state)))
   (mount))
 
 
@@ -861,7 +936,7 @@
 (defn render-katex [tex-string {:keys [inline?]}]
   (let [katex (hooks/use-d3-require "katex@0.16.4")]
     (if katex
-      [:span {:dangerouslySetInnerHTML {:__html (.renderToString katex tex-string (j/obj :displayMode (not inline?)))}}]
+      [:span {:dangerouslySetInnerHTML {:__html (.renderToString katex tex-string (j/obj :displayMode (not inline?) :throwOnError false))}}]
       default-loading-view)))
 
 (defn render-mathjax [value]
@@ -891,7 +966,7 @@
 (defn render-folded-code-block [code-string {:as opts :keys [id]}]
   (let [!hidden? (hooks/use-state true)]
     (if @!hidden?
-      [:div.relative.pl-12.font-sans.text-slate-400.cursor-pointer.flex.overflow-y-hidden.group
+      [:div.relative.font-sans.text-slate-400.cursor-pointer.flex.overflow-y-hidden.group
        [:span.hover:text-slate-500
         {:class "text-[10px]"
          :on-click #(swap! !hidden? not)}

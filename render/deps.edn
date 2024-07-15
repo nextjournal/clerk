@@ -2,8 +2,7 @@
  :deps {applied-science/js-interop {:mvn/version "0.3.3"}
         binaryage/devtools {:mvn/version "1.0.3"}
         cider/cider-nrepl {:mvn/version "0.28.3"}
-        org.babashka/sci {:git/url "https://github.com/babashka/sci"
-                          :git/sha "6d8f440610f934bf4dee3502d52f997540c08c9f"}
+        org.babashka/sci {:mvn/version "0.8.41"}
         reagent/reagent {:mvn/version "1.2.0"}
         io.github.babashka/sci.configs {:git/sha "0702ea5a21ad92e6d7cca6d36de84271083ea68f"}
         io.github.nextjournal/clojure-mode {:git/sha "1f55406087814a0dda6806396aa596dbe13ea302"}

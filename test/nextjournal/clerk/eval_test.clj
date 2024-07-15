@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.eval-test
-  (:require [clojure.string :as str]
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk :as clerk]
@@ -134,14 +135,22 @@
                 (eval/eval-string "{:a (range)}"))))
 
   (testing "can handle failing hash computation for deref-dep"
-    (eval/eval-string "(ns test-deref-hash (:require [nextjournal.clerk :as clerk])) (defonce !state (atom [(clerk/md \"_hi_\")])) @!state")))
+    (eval/eval-string "(ns test-deref-hash (:require [nextjournal.clerk :as clerk])) (defonce !state (atom [(clerk/md \"_hi_\")])) @!state"))
+
+  (testing "won't eval forward declarations"
+    (is (thrown? Exception
+                 (eval/eval-string "(ns test-forward-declarations {:nextjournal.clerk/no-cache true})
+(declare delayed-def)
+(inc delayed-def)
+(def delayed-def 123)")))))
 
 (defn eval+extract-doc-blocks [code-str]
   (-> code-str
       eval/eval-string
       view/doc->viewer
       :nextjournal/value
-      :blocks))
+      :blocks
+      (->> (mapcat :nextjournal/value))))
 
 (deftest eval-string+doc->viewer
   (testing "assigns correct width from viewer function opts"
@@ -179,6 +188,11 @@
                                       :nextjournal/hash string?}}]
                 (eval+extract-doc-blocks "(range)"))))
 
+  (testing "Skipping pagination for strings"
+    (is (= "012345678910111213141516171819202122232425262728293031323334353637383940414243444546474849"
+           (-> (eval+extract-doc-blocks "^{:nextjournal.clerk/page-size nil} (apply str (range 50))")
+               second :nextjournal/value :nextjournal/presented :nextjournal/value))))
+
   (testing "assigns folded visibility"
     (is (match? [{:nextjournal/viewer {:name `viewer/folded-code-block-viewer}
                   :nextjournal/value "{:some :map}"}
@@ -207,6 +221,20 @@
     (intern (create-ns 'existing-var) 'foo :bar)
     (is (eval/eval-string "(in-ns 'existing-var) foo"))))
 
+(deftest eval+cache!
+  (testing "edge case where some form is not evaluated"
+    (is (eval+extract-doc-blocks "(ns repro-crash-when-not-all-forms-are-evaluated
+  {:nextjournal.clerk/no-cache true})
+
+(do
+  (def b 2)
+  (declare a))
+
+(def a 1)
+
+(+ a b)
+"))))
+
 (clerk/defcached my-expansive-thing
   (do (Thread/sleep 1 #_10000) 42))
 
@@ -219,15 +247,15 @@
 
 (deftest cacheable-value?-test
   (testing "finite sequence is cacheable"
-    (is (#'eval/cachable-value? (vec (range 100)))))
-  (testing "nippy doesn't know how to freeze instances of clojure.lang.Iterate"
-    (is (not (#'eval/cachable-value? (range 100)))))
+    (is (eval/cachable? (vec (range 100)))))
   (testing "infinite sequences can't be cached"
-    (is (not (#'eval/cachable-value? (range))))
-    (is (not (#'eval/cachable-value? (map inc (range))))))
+    (is (not (eval/cachable? (range))))
+    (is (not (eval/cachable? (map inc (range))))))
   (testing "class is not cachable"
-    (is (not (#'eval/cachable-value? java.lang.String)))
-    (is (not (#'eval/cachable-value? {:foo java.lang.String})))))
+    (is (not (eval/cachable? java.lang.String)))
+    (is (not (eval/cachable? {:foo java.lang.String}))))
+  (testing "image is cachable"
+    (is (eval/cachable? (javax.imageio.ImageIO/read (io/file "trees.png"))))))
 
 (deftest show!-test
   (testing "in-memory cache is preserved when exception is thrown (#549)"
@@ -239,4 +267,3 @@
              (catch Exception _ nil))
         (clerk/show! (java.io.StringReader. code))
         (is (= result-first-run (get-result)))))))
-

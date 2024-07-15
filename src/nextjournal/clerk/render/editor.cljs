@@ -10,7 +10,7 @@
             [nextjournal.clerk.render.code :as code]
             [nextjournal.clerk.render.hooks :as hooks]
             [nextjournal.clerk.render.panel :as panel]
-            [nextjournal.clerk.sci-env.completions :as sci-completions]
+            [sci.nrepl.completions :as sci-completions]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clojure-mode.extensions.eval-region :as eval-region]
             [nextjournal.clojure-mode.keymap :as clojure-mode.keymap]
@@ -21,12 +21,12 @@
             [shadow.esm]))
 
 (defn eval-string
-  ([source] (sci/eval-string* (sci.ctx-store/get-ctx) source))
+  ([source] (eval-string (sci.ctx-store/get-ctx) source))
   ([ctx source]
    (when-some [code (not-empty (str/trim source))]
-     (try {:result (sci/eval-string* ctx code)}
-          (catch js/Error e
-            {:error (str (.-message e))})))))
+     (let [{:keys [val ns]} (sci/eval-string+ ctx code)]
+       (sci/alter-var-root sci/ns (constantly ns))
+       val))))
 
 (j/defn eval-at-cursor [on-result ^:js {:keys [state]}]
   (some->> (eval-region/cursor-node-string state)
@@ -147,9 +147,9 @@
   (update doc :blocks (partial map (fn [{:as cell :keys [type text var form]}]
                                      (cond-> cell
                                        (= :code type)
-                                       (assoc :result                                                
-                                              {:nextjournal/value (cond->> (eval form)
-                                                                    var (hash-map :nextjournal.clerk/var-from-def))}))))))
+                                       (assoc :result {:nextjournal/value
+                                                       (cond->> (eval-string text)
+                                                         var (hash-map :nextjournal.clerk/var-from-def))}))))))
 
 (defn eval-notebook [code]
   (->> code

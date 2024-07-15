@@ -4,22 +4,22 @@
         org.clojure/tools.analyzer {:mvn/version "1.1.0"}
         org.clojure/tools.analyzer.jvm {:mvn/version "1.1.0"}
         babashka/fs {:mvn/version "0.2.14"}
-        borkdude/edamame {:mvn/version "1.0.16"}
+        borkdude/edamame {:mvn/version "1.4.24"}
         weavejester/dependency {:mvn/version "0.2.1"}
         com.nextjournal/beholder {:mvn/version "1.0.2"}
         org.flatland/ordered {:mvn/version "1.15.11"}
 
-        io.github.nextjournal/markdown {:mvn/version "0.5.144"}
+        io.github.nextjournal/markdown {:mvn/version "0.5.148"}
         babashka/process {:mvn/version "0.4.16"}
         io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
 
-        com.taoensso/nippy {:mvn/version "3.2.0"}
+        com.taoensso/nippy {:mvn/version "3.4.2"}
 
         mvxcvi/multiformats {:mvn/version "0.3.107"}
         com.pngencoder/pngencoder {:mvn/version "0.13.1"}
 
-        http-kit/http-kit {:mvn/version "2.6.0"}
-        hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
+        http-kit/http-kit {:mvn/version "2.8.0"}
+        hiccup/hiccup {:mvn/version "2.0.0-RC3"}
 
         rewrite-clj/rewrite-clj {:mvn/version "1.1.45"}
 
@@ -35,22 +35,30 @@
                                :jvm-opts ["-Dclojure.main.report=stdout"]
                                :nextjournal.clerk/aliases [:demo]}
 
+           
            :sci {:extra-deps {io.github.nextjournal/clerk.render {:local/root "render"}}}
 
-           :dev {:extra-deps {org.clojure/clojure {:mvn/version "1.12.0-alpha3"} ;; for `:as-alias` & `add-lib` support but only in dev
+           :dev {:extra-deps {org.clojure/clojure {:mvn/version "1.12.0-beta1"} ;; for `:as-alias` & `add-lib` support but only in dev
                               arrowic/arrowic {:mvn/version "0.1.1"}
                               binaryage/devtools {:mvn/version "1.0.3"}
-                              cider/cider-nrepl {:mvn/version "0.29.0"}
+                              cider/cider-nrepl {:mvn/version "0.49.0"}
+                              nrepl/nrepl {:mvn/version "1.2.0"}
                               com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.0.3"}
-                              io.github.nextjournal/cas-client {:git/sha "84ab35c3321c1e51a589fddbeee058aecd055bf8"}
+                              io.github.nextjournal/cas-client {:git/sha "22ef8360689cd3938e43a3223023ab1b9711818f"}
                               org.slf4j/slf4j-nop {:mvn/version "2.0.7"}
-                              org.babashka/cli {:mvn/version "0.5.40"}}
+                              org.babashka/cli {:mvn/version "0.5.40"}
+                              io.github.babashka/sci.nrepl {:git/sha "75f379c685bbd58c3e23f531339eb144e104937d"}}
                  :extra-paths ["dev" "notebooks"]
                  :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}"
+                            "-Dclerk.render_repl={}"
                             "-Dpolyglot.engine.WarnInterpreterOnly=false" "-XX:-OmitStackTraceInFastThrow"
                             "-Djdk.attach.allowAttachSelf"]
                  :main-opts ["-m" "shadow.cljs.devtools.cli"]
                  :exec-fn nextjournal.clerk.dev-launcher/start}
+
+           :profile {:exec-fn user/profile
+                     :exec-args {:phase :analysis}
+                     :jvm-opts ["-Dclojure.main.report=stdout"]}
 
            :test {:extra-deps {nubank/matcher-combinators {:mvn/version "3.5.1"}
                                org.clojure/test.check {:mvn/version "1.1.1"}
@@ -66,6 +74,7 @@
            :demo {:extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
                                io.github.applied-science/shapes {:git/sha "da44031cf79a649932cb502f17388db23f2b8ace"}
                                org.xerial/sqlite-jdbc {:mvn/version "3.34.0"}
+                               com.github.seancorfield/honeysql {:mvn/version "2.6.1126"}
                                org.clojure/data.csv {:mvn/version "1.0.0"}
                                hickory/hickory {:mvn/version "0.7.1"}
                                sicmutils/sicmutils {:mvn/version "0.20.0" :exclusions [org.babashka/sci]}
@@ -73,9 +82,13 @@
                                                                  :exclusions [org.babashka/sci]}
                                io.github.nextjournal/clerk-slideshow {:git/sha "11a83fea564da04b9d17734f2031a4921d917893"}}}
 
+           :nextjournal/garden {:exec-fn nextjournal.clerk/serve!
+                                :exec-args {:index "book.clj"}
+                                :nextjournal.garden/aliases [:demo]}
+
            :build {:deps {io.github.nextjournal/clerk {:local/root "."}
-                          io.github.nextjournal/cas-client {:git/sha "84ab35c3321c1e51a589fddbeee058aecd055bf8"}
-                          io.github.clojure/tools.build {:git/tag "v0.6.1" :git/sha "515b334"}
+                          io.github.nextjournal/cas-client {:git/sha "22ef8360689cd3938e43a3223023ab1b9711818f"}
+                          io.github.clojure/tools.build {:git/tag "v0.10.3" :git/sha "15ead66"}
                           io.github.slipset/deps-deploy {:git/sha "b4359c5d67ca002d9ed0c4b41b710d7e5a82e3bf"}}
                    :extra-paths ["bb" "src" "resources"] ;; for loading lookup-url in build
                    :ns-default build}

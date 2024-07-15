@@ -1,37 +1,44 @@
 (ns nextjournal.clerk.webserver
   (:require [babashka.fs :as fs]
             [clojure.edn :as edn]
+            [clojure.java.browse :as browse]
+            [clojure.java.io :as io]
             [clojure.pprint :as pprint]
             [clojure.set :as set]
             [clojure.string :as str]
-            [clojure.java.io :as io]
             [editscript.core :as editscript]
             [nextjournal.clerk.config :as config]
+            [nextjournal.clerk.git :as git]
+            [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [org.httpkit.server :as httpkit])
   (:import (java.nio.file Files)))
 
-(defn help-hiccup []
-  [:p "Call " [:span.code "nextjournal.clerk/show!"] " from your REPL"
-   (when-let [watch-paths (seq (:paths @@(resolve 'nextjournal.clerk/!watcher)))]
-     (into [:<> " or save a file in "]
-           (interpose " or " (map #(vector :span.code %) watch-paths))))
-   " to make your notebook appear…"])
-
-(defn help-doc []
-  {:blocks [{:type :code
-             :visibility {:code :hide, :result :show}
-             :result {:nextjournal/value (v/html (help-hiccup))}}]})
-
 (defonce !clients (atom #{}))
 (defonce !doc (atom nil))
 (defonce !last-sender-ch (atom nil))
+
+(defonce !server (atom nil))
 
 #_(view/doc->viewer @!doc)
 #_(reset! !doc nil)
 
 (def ^:dynamic *sender-ch* nil)
+
+(defn server-url []
+  (when-let [{:keys [host port]} @!server]
+    (format "http://%s:%s" host port)))
+
+(defn ex-server-not-running []
+  (Exception. "no server running, please run `(nextjournal.clerk/serve! {})` and try again."))
+
+(defn browse! []
+  (if-let [server-url (server-url)]
+    (browse/browse-url server-url)
+    (throw (ex-server-not-running))))
+
+#_(browse!)
 
 (defn send! [ch msg]
   (httpkit/send! ch (v/->edn msg)))
@@ -44,7 +51,18 @@
     (httpkit/send! ch (v/->edn msg)))
   (reset! !last-sender-ch *sender-ch*))
 
-#_(broadcast! [{:random (rand-int 10000) :range (range 100)}])
+#_(broadcast! [])
+
+(defn render-eval
+  "Evaluates the given `form` in Clerk's render environment in the browser."
+  [form]
+  (if-let [client (first @!clients)]
+    (send! client {:type :render-eval :form form})
+    (if (server-url)
+      (throw (ex-info (format "no client connected, please open %s in a browser and try again." (server-url)) {:clients @!clients}))
+      (throw (ex-server-not-running)))))
+
+#_(render-eval '(js/console.log :foo))
 
 (defn ^:private percent-decode [s]
   (java.net.URLDecoder/decode s java.nio.charset.StandardCharsets/UTF_8))
@@ -85,7 +103,7 @@
       (if (contains? desc :nextjournal/content-type)
         {:body (v/->value desc)
          :content-type (:nextjournal/content-type desc)}
-        {:body (v/->edn desc)}))
+        {:body (v/->edn (v/process-blobs {:blob-mode :lazy-load :blob-id blob-id} desc))}))
     {:status 404}))
 
 (defn extract-blob-opts [{:as _req :keys [uri query-string]}]
@@ -182,19 +200,35 @@
 
 (declare present+reset!)
 
+(defn get-build-opts
+  ([] (get-build-opts @!server))
+  ([{:as opts :keys [paths paths-fn index]}]
+   (merge (git/read-git-attrs)
+          (if (or paths paths-fn index)
+            (paths/expand-paths opts)
+            opts))))
+
+#_(get-build-opts)
+#_(get-build-opts {:paths ["notebooks/rule_30.clj"]})
+#_(get-build-opts {:paths ["notebooks/rule_30.clj"] :index "notebooks/links.md"})
+#_(get-build-opts {:paths ["notebooks/no_rule_30.clj"]})
+#_(v/route-index? (get-build-opts @!server))
+#_(route-index (get-build-opts @!server) "")
+#_(route-index (get-build-opts {:index "notebooks/rule_30.clj"}) "")
+
 (defn ->nav-path [file-or-ns]
-  (cond (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
+  (cond (or (= 'nextjournal.clerk.index file-or-ns)
+            (= (:index (get-build-opts)) file-or-ns))
+        ""
+
+        (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
         (str "'" file-or-ns)
 
         (string? file-or-ns)
-        (when (fs/exists? file-or-ns)
-          (fs/unixify (cond->> (fs/strip-ext file-or-ns)
-                        (and (fs/absolute? file-or-ns)
-                             (not (str/starts-with? (fs/relativize (fs/cwd) file-or-ns) "..")))
-                        (fs/relativize (fs/cwd)))))
+        (paths/drop-extension (or (paths/path-in-cwd file-or-ns) file-or-ns))))
 
-        :else (str file-or-ns)))
-
+#_(->nav-path (str (fs/file (fs/cwd) "notebooks/rule_30.clj")))
+#_(->nav-path 'nextjournal.clerk.index)
 #_(->nav-path "notebooks/rule_30.clj")
 #_(->nav-path 'nextjournal.clerk.home)
 
@@ -207,11 +241,13 @@
                (and (fs/exists? nav-path)
                     (not (fs/directory? nav-path)))))
     nav-path
-    (find-first-existing-file (map #(str (fs/file nav-path) "." %) ["md" "clj" "cljc"]))))
+    (or (find-first-existing-file (map #(str (fs/file nav-path) "." %) ["md" "clj" "cljc"]))
+        nav-path)))
 
 #_(maybe-add-extension "notebooks/rule_30")
 #_(maybe-add-extension "notebooks/rule_30.clj")
 #_(maybe-add-extension "notebooks/markdown")
+#_(maybe-add-extension "asdf")
 #_(maybe-add-extension "'nextjournal.clerk.home")
 
 (defn ->file-or-ns [nav-path]
@@ -220,16 +256,37 @@
         (str/starts-with? nav-path "'") (symbol (subs nav-path 1))
         (re-find #"\.(cljc?|md)$" nav-path) nav-path))
 
+(defn forbidden-path? [file-or-ns]
+  (if-let [expanded-paths (:expanded-paths (get-build-opts))]
+    (not (contains? (conj (set expanded-paths) 'nextjournal.clerk.index) file-or-ns))
+    false))
+
 (defn show! [opts file-or-ns]
-  ((resolve 'nextjournal.clerk/show!) opts file-or-ns))
+  (when-not (forbidden-path? file-or-ns)
+    ((resolve 'nextjournal.clerk/show!) opts file-or-ns)))
+
+(defn route-index
+  "A routing function"
+  [{:as opts :keys [index expanded-paths]} nav-path]
+  (if (str/blank? nav-path)
+    (or index
+        (get (set expanded-paths) (maybe-add-extension "index"))
+        "'nextjournal.clerk.index")
+    nav-path))
+
+(defn maybe-route-index [opts path]
+  (cond->> path
+    (v/route-index? opts) (route-index opts)))
 
 (defn navigate! [{:as opts :keys [nav-path]}]
-  (show! opts (->file-or-ns (maybe-add-extension nav-path))))
+  (let [route-opts (get-build-opts)]
+    (show! (merge route-opts opts) (->file-or-ns (maybe-add-extension (maybe-route-index route-opts nav-path))))))
 
 (defn prefetch-request? [req] (= "prefetch" (-> req :headers (get "purpose"))))
 
 (defn serve-notebook [{:as req :keys [uri]}]
-  (let [nav-path (subs uri 1)]
+  (let [opts (get-build-opts)
+        nav-path (maybe-route-index opts (subs uri 1))]
     (cond
       (prefetch-request? req)
       {:status 404}
@@ -239,14 +296,20 @@
        :headers {"Location" (or (:nav-path @!doc)
                                 (->nav-path 'nextjournal.clerk.home))}}
       :else
-      (if-let [file-or-ns (->file-or-ns (maybe-add-extension nav-path))]
-        (do (try (show! {:skip-history? true} file-or-ns)
-                 (catch Exception _))
-            {:status 200
-             :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
-             :body (view/->html {:doc (view/doc->viewer @!doc)
-                                 :resource->url @config/!resource->url
-                                 :conn-ws? true})})
+      (if-let [file-or-ns (let [file-or-ns (->file-or-ns (maybe-add-extension nav-path))]
+                            (when-not (forbidden-path? file-or-ns)
+                              file-or-ns))]
+        (do
+          (try (show! (merge {:skip-history? true}
+                             (select-keys opts [:expanded-paths :index :git/sha :git/url :git/prefix]))
+                      file-or-ns)
+               (catch Exception _))
+          {:status 200
+           :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
+           :body (view/->html {:doc (view/doc->viewer @!doc)
+                               :resource->url @config/!resource->url
+                               :render-router :serve
+                               :conn-ws? true})})
         {:status 404
          :headers {"Content-Type" "text/plain"}
          :body (format "Could not find notebook at %s." (pr-str nav-path))}))))
@@ -285,7 +348,7 @@
     (broadcast-status! status)))
 
 (defn set-status! [status]
-  (swap! !doc (fn [doc] (-> (or doc (help-doc))
+  (swap! !doc (fn [doc] (-> (or doc {})
                             (vary-meta assoc :status status)
                             (vary-meta update ::!send-status-future broadcast-status-debounced! status)))))
 
@@ -295,8 +358,6 @@
 ;; * load notebook without results
 ;; * allow page reload
 
-(defonce !server (atom nil))
-
 (defn halt! []
   (when-let [{:keys [port instance]} @!server]
     @(httpkit/server-stop! instance)
@@ -305,10 +366,13 @@
 
 #_(halt!)
 
-(defn serve! [{:keys [host port] :or {host "localhost" port 7777}}]
+(defn serve! [{:as opts :keys [host port] :or {host "localhost" port 7777}}]
   (halt!)
   (try
-    (reset! !server {:host host :port port :instance (httpkit/run-server #'app {:ip host :port port :legacy-return-value? false})})
+    (reset! !server (assoc opts
+                           :host host
+                           :port port
+                           :instance (httpkit/run-server #'app {:ip host :port port :legacy-return-value? false})))
     (println (format "Clerk webserver started on http://%s:%s ..." host port ))
     (catch java.net.BindException e
       (let [msg (format "Clerk webserver could not be started because port %d is not available. Stop what's running on port %d or specify a different port." port port)]
@@ -317,4 +381,9 @@
         (throw (ex-info msg {:port port} e))))))
 
 #_(serve! {:port 7777})
+#_(serve! {:port 7777 :paths ["notebooks/rule_30.clj"]})
+#_(serve! {:port 7777 :paths ["notebooks/rule_30.clj" "notebooks/links.md"]})
+#_(serve! {:port 7777 :paths ["notebooks/rule_30.clj"] :index "notebooks/links.md"})
+#_(serve! {:port 7777 :paths ["notebooks/rule_30.clj" "book.clj"]})
+#_(serve! {:port 7777 :paths ["notebooks/rule_30.clj" "notebooks/links.md" "notebooks/markdown.md" "index.clj"]})
 #_(serve! {:port 7777 :host "0.0.0.0"})

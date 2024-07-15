@@ -8,6 +8,7 @@
             [flatland.ordered.map :refer [ordered-map]]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
+                      [clojure.tools.reader :as tools.reader]
                       [editscript.edit]
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.analyzer :as analyzer]]
@@ -213,7 +214,9 @@
 (defn with-viewer-extracting-opts [viewer & opts+items]
   ;; TODO: maybe support sequantial & viewer-opts?
   (cond
-    (and (map? (first opts+items)) (not (wrapped-value? (first opts+items))))
+    (and (map? (first opts+items))
+         (not (wrapped-value? (first opts+items)))
+         (seq (set/intersection parser/block-settings (set (keys (first opts+items))) )))
     (with-viewer viewer (first opts+items) (rest opts+items))
 
     (and (sequential? (first opts+items)) (= 1 (count opts+items)))
@@ -231,6 +234,10 @@
   (-> x
       ensure-wrapped
       (assoc :nextjournal/viewers viewers)))
+
+(def ^:dynamic *viewers* nil)
+
+(defmacro with-viewers* [vs & body] `(binding [*viewers* ~vs] ~@body))
 
 #_(->> "x^2" (with-viewer `latex-viewer) (with-viewers [{:name `latex-viewer :render-fn `mathjax-viewer}]))
 
@@ -331,6 +338,15 @@
       (throw (ex-info "no type given for with-md-viewer" {:wrapped-value wrapped-value})))
     (with-viewer (keyword "nextjournal.markdown" (name type)) wrapped-value)))
 
+(defn apply-viewers-to-md [viewers doc x]
+  (-> (ensure-wrapped-with-viewers viewers (assoc x ::doc doc))
+      (with-md-viewer)
+      (apply-viewers)
+      (as-> w
+          (if (= `markdown-node-viewer (:name (->viewer w)))
+            (->value w)
+            [(inspect-fn) (process-wrapped-value w)]))))
+
 (defn into-markup [markup]
   (fn [{:as wrapped-value :nextjournal/keys [viewers render-opts]}]
     (-> (with-viewer {:name `markdown-node-viewer :render-fn 'identity} wrapped-value)
@@ -339,14 +355,7 @@
                 (fn [{:as node :keys [text content] ::keys [doc]}]
                   (into (cond-> markup (fn? markup) (apply [(merge render-opts node)]))
                         (cond text [text]
-                              content (mapv #(-> (ensure-wrapped-with-viewers viewers (assoc % ::doc doc))
-                                                 (with-md-viewer)
-                                                 (apply-viewers)
-                                                 (as-> w
-                                                     (if (= `markdown-node-viewer (:name (->viewer w)))
-                                                       (->value w)
-                                                       [(inspect-fn) (process-wrapped-value w)])))
-                                            content))))))))
+                              content (mapv (partial apply-viewers-to-md viewers doc) content))))))))
 
 ;; A hack for making Clerk not fail in the precense of
 ;; programmatically generated keywords or symbols that cannot be read.
@@ -357,7 +366,7 @@
 
 #?(:clj (defn roundtrippable? [x]
           (try
-            (= x (-> x str read-string))
+            (= x (-> x str tools.reader/read-string))
             (catch Exception _e false))))
 
 #?(:clj
@@ -371,7 +380,7 @@
 #?(:clj
    (defmethod print-method clojure.lang.Symbol [o w]
      (if (or (roundtrippable? o)
-             (= (name o) "?@")) ;; splicing reader conditional, see issue #338
+             (= (name o) "?@"))  ;; splicing reader conditional, see issue #338
        (print-simple o w)
        (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
                                           (list 'symbol ns (name o))
@@ -402,7 +411,8 @@
 (def var-from-def-viewer
   {:name `var-from-def-viewer
    :pred var-from-def?
-   :transform-fn (update-val (comp deref :nextjournal.clerk/var-from-def))})
+   :transform-fn (update-val (some-fn :nextjournal.clerk/var-snapshot
+                                      (comp deref :nextjournal.clerk/var-from-def)))})
 
 (defn apply-viewer-unwrapping-var-from-def
   "Applies the `viewer` (if set) to the given result `result`. In case
@@ -457,12 +467,11 @@
                    (store+get-cas-url! (assoc doc+blob-opts :ext image-type) value)))
        result)))
 
-#_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" "notebooks/image.clj" "notebooks/viewers/image.clj"] :bundle? false :browse? false})
 #_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" "notebooks/image.clj" "notebooks/viewers/image.clj"] :browse? false})
 
 #?(:clj
    (defn process-blobs [{:as doc+blob-opts :keys [blob-mode blob-id]} presented-result]
-     (w/postwalk #(if-some [content-type (get % :nextjournal/content-type)]
+     (w/postwalk #(if-some [content-type (get-safe % :nextjournal/content-type)]
                     (case blob-mode
                       :lazy-load (assoc % :nextjournal/value {:blob-id blob-id :path (:path %)})
                       :inline (update % :nextjournal/value data-uri-base64-encode content-type)
@@ -488,6 +497,7 @@
   ([scope] (get-viewers scope nil))
   ([scope value]
    (or (when value (->viewers value))
+       *viewers*
        (when scope (@!viewers (datafy-scope scope)))
        (get-default-viewers))))
 
@@ -504,20 +514,20 @@
                                             (not= [0] path))
                                    (str "-" (str/join "-" path))))))
 
-
 (defn transform-result [{:as wrapped-value :keys [path]}]
-  (let [{:as _cell :keys [form id settings] ::keys [result doc]} (:nextjournal/value wrapped-value)
-        {:keys [static-build? bundle?]} doc
+  (let [{:as cell :keys [form id settings result] ::keys [fragment-item? doc]} (:nextjournal/value wrapped-value)
+        {:keys [package]} doc
         {:nextjournal/keys [value blob-id viewers]} result
         blob-mode (cond
-                    (and (not static-build?) blob-id) :lazy-load
-                    bundle? :inline ;; TODO: provide a separte setting for this
-                    :else :file)
+                    (= :single-file package) :inline
+                    (= :directory package) :file
+                    blob-id :lazy-load)
         #?(:clj blob-opts :cljs _) (assoc doc :blob-mode blob-mode :blob-id blob-id)
         opts-from-block (-> settings
                             (select-keys (keys viewer-opts-normalization))
                             (set/rename-keys viewer-opts-normalization))
         {:as to-present :nextjournal/keys [auto-expand-results?]} (merge (dissoc (->opts wrapped-value) :!budget :nextjournal/budget)
+                                                                         (dissoc cell :result ::doc) ;; TODO: reintroduce doc once we know why it OOMs the static build on CI (some walk issue probably)
                                                                          opts-from-block
                                                                          (ensure-wrapped-with-viewers (or viewers (get-viewers (get-*ns*))) value))
         presented-result (-> (present to-present)
@@ -525,7 +535,7 @@
                                      (fn [{:as opts existing-id :id}]
                                        (cond-> opts
                                          auto-expand-results? (assoc :auto-expand-results? auto-expand-results?)
-                                         (seq path) (assoc :fragment-item? true)
+                                         fragment-item? (assoc :fragment-item? true)
                                          (not existing-id) (assoc :id (processed-block-id (str id "-result") path)))))
                              #?(:clj (->> (process-blobs blob-opts))))
         viewer-eval-result? (-> presented-result :nextjournal/value viewer-eval?)]
@@ -549,29 +559,34 @@
 (def hide-result-viewer
   {:name `hide-result-viewer :transform-fn (fn [_] nil)})
 
-(defn ->display [{:as code-cell :keys [result settings]}]
+(defn ->visibility [{:as cell :keys [settings]}]
   (let [{:keys [code result]} (:nextjournal.clerk/visibility settings)]
-    {:result? (not= :hide result)
-     :fold? (= code :fold)
-     :code? (not= :hide code)}))
+    {:code? (not= :hide code)
+     :result? (and (:result cell)
+                   (or (not= :hide result)
+                       (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)))}))
 
-#_(->display {:settings {:nextjournal.clerk/visibility {:code :show :result :show}}})
-#_(->display {:settings {:nextjournal.clerk/visibility {:code :fold :result :show}}})
-#_(->display {:settings {:nextjournal.clerk/visibility {:code :fold :result :hide}}})
+(defn hidden-viewer-eval-result? [{:keys [settings result]}]
+  (and (= :hide (-> settings :nextjournal.clerk/visibility :result))
+       (viewer-eval? (-> result :nextjournal/value (get-safe :nextjournal/value)))))
+
+#_(->visibility {:settings {:nextjournal.clerk/visibility {:code :show :result :show}}})
+#_(->visibility {:settings {:nextjournal.clerk/visibility {:code :fold :result :show}}})
+#_(->visibility {:settings {:nextjournal.clerk/visibility {:code :fold :result :hide}}})
 
 (defn process-sidenotes [cell-doc {:keys [footnotes]}]
   (if (seq footnotes)
     (md.parser/insert-sidenote-containers (assoc cell-doc :footnotes footnotes))
     cell-doc))
 
-(defn process-image-source [src {:as doc :keys [file bundle?]}]
+(defn process-image-source [src {:as doc :keys [file package]}]
   #?(:cljs src
      :clj  (cond
              (not (fs/exists? src)) src
-             (false? bundle?) (str (relative-root-prefix-from (map-index doc file))
-                                   (store+get-cas-url! (assoc doc :ext (fs/extension src))
-                                                       (fs/read-all-bytes src)))
-             bundle? (data-uri-base64-encode (fs/read-all-bytes src) (Files/probeContentType (fs/path src)))
+             (= :directory package) (str (relative-root-prefix-from (map-index doc file))
+                                         (store+get-cas-url! (assoc doc :ext (fs/extension src))
+                                                             (fs/read-all-bytes src)))
+             (= :single-file package) (data-uri-base64-encode (fs/read-all-bytes src) (Files/probeContentType (fs/path src)))
              :else (str "/_fs/" src))))
 
 #?(:clj
@@ -594,16 +609,57 @@
     [:div.flex.flex-col.items-center.not-prose.mb-4
      [:img (update attrs :src process-image-source doc)]]))
 
-(def fragment-viewer
-  {:name `fragment-viewer
-   :pred #(some-> % (get-safe ::result) (get-safe :nextjournal/value) (get-safe :nextjournal.clerk/fragment))
-   :render-fn '(fn [xs opts] (into [:<>] (nextjournal.clerk.render/inspect-children opts) xs))
-   :transform-fn (update-val (fn [x]
-                               (mapv #(assoc-in x [::result :nextjournal/value] %)
-                                     (get-in x [::result :nextjournal/value :nextjournal.clerk/fragment]))))})
-
-
 #_(present @nextjournal.clerk.webserver/!doc)
+
+(defn update-if [m k f] (if (k m) (update m k f) m))
+#_(update-if {:n "42"} :n #(Integer/parseInt %))
+
+(defn cell->code-block-viewer [{:as cell :keys [id]}]
+  (with-viewer (if (= :fold (-> cell :settings :nextjournal.clerk/visibility :code))
+                 `folded-code-block-viewer
+                 `code-block-viewer)
+    {:nextjournal/render-opts (-> cell (select-keys [:loc]) (assoc :id (processed-block-id (str id "-code"))))}
+    (dissoc cell ::doc :result)))
+
+(defn maybe-wrap-var-from-def [val form]
+  (cond->> val
+    (and (var? val) (parser/deflike? form))
+    (hash-map :nextjournal.clerk/var-from-def)))
+
+(defn fragment-seq
+  ([cell] (fragment-seq (:form cell) cell))
+  ([form {:as cell :keys [result]}]
+   (if-some [fragment (-> result :nextjournal/value (get-safe :nextjournal.clerk/fragment))]
+     (mapcat (fn [r i]
+               (fragment-seq
+                (when (list? form) (get (vec form) (inc i)))
+                (-> cell
+                    (assoc ::fragment-item? true)
+                    (assoc-in [:result :nextjournal/value] r))))
+             fragment (range (count fragment)))
+     (list (update-in cell [:result :nextjournal/value] maybe-wrap-var-from-def form)))))
+
+(defn cell->result-viewer [cell]
+  (-> cell
+      (update-if :result apply-viewer-unwrapping-var-from-def)
+      fragment-seq
+      (->> (mapv (partial with-viewer
+                          (cond-> result-viewer
+                            (hidden-viewer-eval-result? cell)
+                            (assoc :render-fn '(fn [_ _] [:<>]))))))))
+
+(defn transform-cell [cell]
+  (let [{:keys [code? result?]} (->visibility cell)]
+    (cond-> []
+      code?
+      (conj (cell->code-block-viewer cell))
+      result?
+      (into (cell->result-viewer cell)))))
+
+(def cell-viewer
+  {:name `cell-viewer
+   :transform-fn (update-val transform-cell)
+   :render-fn '(fn [xs opts] (into [:<>] (nextjournal.clerk.render/inspect-children opts) xs))})
 
 (defn with-block-viewer [doc {:as cell :keys [type id]}]
   (case type
@@ -618,19 +674,7 @@
                                                    ::doc doc} doc))]))
                         (partition-by (comp #{:image} :type) content)))
 
-    :code (let [cell (update cell :result apply-viewer-unwrapping-var-from-def)
-                {:keys [code? result? fold?]} (->display cell)
-                eval? (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)]
-            (cond-> []
-              code?
-              (conj (with-viewer (if fold? `folded-code-block-viewer `code-block-viewer)
-                      {:nextjournal/render-opts (assoc (select-keys cell [:loc])
-                                                       :id (processed-block-id (str id "-code")))}
-                      (dissoc cell :result)))
-              (or result? eval?)
-              (conj (cond-> (ensure-wrapped (-> cell (assoc ::doc doc) (set/rename-keys {:result ::result})))
-                      (and eval? (not result?))
-                      (assoc :nextjournal/viewer (assoc result-viewer :render-fn '(fn [_] [:<>])))))))))
+    :code [(with-viewer `cell-viewer (assoc cell ::doc doc))]))
 
 #_(:blocks (:nextjournal/value (nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)))
 
@@ -778,7 +822,17 @@
    {:name :nextjournal.markdown/toc :transform-fn (into-markup [:div.toc])}
 
    ;; sidenotes
-   {:name :nextjournal.markdown/sidenote-container :transform-fn (into-markup [:div.sidenote-container])}
+   {:name :nextjournal.markdown/sidenote-container
+    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers render-opts]}]
+                    (-> (with-viewer {:name `markdown-node-viewer :render-fn 'identity} wrapped-value)
+                        mark-presented
+                        (update :nextjournal/value
+                                (fn [{:as node :keys [text content] ::keys [doc]}]
+                                  [:div.sidenote-container
+                                   (into [:div.sidenote-main-col]
+                                         (map (partial apply-viewers-to-md viewers doc))
+                                         (drop-last content))
+                                   (apply-viewers-to-md viewers doc (last content))]))))}
    {:name :nextjournal.markdown/sidenote-column :transform-fn (into-markup [:div.sidenote-column])}
    {:name :nextjournal.markdown/sidenote
     :transform-fn (into-markup (fn [{:keys [ref]}]
@@ -848,19 +902,47 @@
    :transform-fn (comp #?(:cljs var->symbol :clj symbol) ->value)
    :render-fn '(fn [x] [:span.inspected-value [:span.cmt-meta "#'" (str x)]])})
 
+(defn ->opts [wrapped-value]
+  (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/render-opts
+                              :nextjournal/render-evaluator
+                              :!budget :store!-wrapped-value :present-elision-fn :path :offset]))
+
+(defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
+  (-> (ensure-wrapped-with-viewers viewers value)
+      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :present-elision-fn :nextjournal/budget :path]))
+      (update :path (fnil conj []) path-segment)))
+
+(defn present-ex-data [parent throwable-map]
+  (let [present-child (fn [idx data] (present (inherit-opts parent data idx)))]
+    (-> throwable-map
+        (update-if :data (partial present-child 0))
+        (update-if :via (fn [exs]
+                          (mapv (fn [i ex] (update-if ex :data (partial present-child (inc i))))
+                                (range (count exs))
+                                exs))))))
+
 (def throwable-viewer
   {:name `throwable-viewer
    :render-fn 'nextjournal.clerk.render/render-throwable
    :pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
-   :transform-fn (comp mark-presented (update-val (comp demunge-ex-data datafy/datafy)))})
+   :transform-fn (fn [wrapped-value]
+                   (-> wrapped-value
+                       mark-presented
+                       (update :nextjournal/value (comp demunge-ex-data
+                                                        (partial present-ex-data wrapped-value)
+                                                        datafy/datafy))))})
+
+#?(:clj
+   (defn buffered-image->bytes [^BufferedImage image]
+     (.. (PngEncoder.)
+         (withBufferedImage image)
+         (withCompressionLevel 1)
+         (toBytes))))
 
 (def image-viewer
   {#?@(:clj [:pred #(instance? BufferedImage %)
              :transform-fn (fn [{image :nextjournal/value}]
-                             (-> {:nextjournal/value (.. (PngEncoder.)
-                                                         (withBufferedImage image)
-                                                         (withCompressionLevel 1)
-                                                         (toBytes))
+                             (-> {:nextjournal/value (buffered-image->bytes image)
                                   :nextjournal/content-type "image/png"
                                   :nextjournal/width (image-width image)}
                                  mark-presented))])
@@ -898,17 +980,6 @@
 
 (def mathjax-viewer
   {:name `mathjax-viewer :render-fn 'nextjournal.clerk.render/render-mathjax :transform-fn mark-presented})
-
-(defn ->opts [wrapped-value]
-  (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/render-opts
-                              :nextjournal/render-evaluator
-                              :!budget :store!-wrapped-value :present-elision-fn :path :offset]))
-
-(defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
-  (-> (ensure-wrapped-with-viewers viewers value)
-      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :present-elision-fn :nextjournal/budget :path]))
-      (update :path (fnil conj []) path-segment)))
-
 
 (defn transform-html [{:as wrapped-value :keys [path]}]
   (let [!path-idx (atom -1)]
@@ -1085,13 +1156,12 @@
 
 (def result-viewer
   {:name `result-viewer
-   :pred #(some? (get-safe % ::result))
    :render-fn 'nextjournal.clerk.render/render-result
    :transform-fn transform-result})
 
 #?(:clj
    (defn edn-roundtrippable? [x]
-     (= x (-> x ->edn read-string))))
+     (= x (-> x ->edn tools.reader/read-string))))
 
 #?(:clj
    (defn throw-if-sync-var-is-invalid [var]
@@ -1122,34 +1192,33 @@
                (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote))))
                (extract-sync-atom-vars doc)))))
 
-(defn update-if [m k f]
-  (if (k m)
-    (update m k f)
-    m))
-
-#_(update-if {:n "42"} :n #(Integer/parseInt %))
-
 (declare html doc-url)
 
 (defn home? [{:keys [nav-path]}]
   (contains? #{"src/nextjournal/home.clj" "'nextjournal.clerk.home"} nav-path))
 
-(defn index? [{:as opts :keys [nav-path index]}]
-  (when nav-path
-    (or (= "'nextjournal.clerk.index" nav-path)
-        (= (str index) nav-path)
-        (re-matches #"(^|.*/)(index\.(clj|cljc|md))$" nav-path))))
+(defn route-index?
+  "Should the index router be enabled?"
+  [{:keys [expanded-paths]}]
+  (boolean (seq expanded-paths)))
 
-(defn index-path [{:keys [static-build? index]}]
+
+(defn index? [{:as opts :keys [file index ns]}]
+  (or (= (some-> ns ns-name) 'nextjournal.clerk.index)
+      (some->> file str (re-matches #"(^|.*/)(index\.(clj|cljc|md))$"))
+      (and index (= file index))))
+
+(defn index-path [{:as opts :keys [index]}]
   #?(:cljs ""
-     :clj (if static-build?
+     :clj (if (route-index? opts)
             ""
             (if (fs/exists? "index.clj") "index.clj" "'nextjournal.clerk.index"))))
 
-(defn header [{:as opts :keys [nav-path static-build?] :git/keys [url sha]}]
+(defn header [{:as opts :keys [file-path nav-path package ns] :git/keys [url prefix sha]}]
   (html [:div.viewer.w-full.max-w-prose.px-8.not-prose.mt-3
          [:div.mb-8.text-xs.sans-serif.text-slate-400
-          (when (and (not static-build?) (not (home? opts)))
+          (when (and (not (route-index? opts))
+                     (not (home? opts)))
             [:<>
              [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
               {:href (doc-url "'nextjournal.clerk.home")} "Home"]
@@ -1160,15 +1229,17 @@
               {:href (doc-url (index-path opts))} "Index"]
              [:span.mx-2 "•"]])
           [:span
-           (if static-build? "Generated with " "Served from ")
+           (if package "Generated with " "Served from ")
            [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
             {:href "https://clerk.vision"} "Clerk"]
-           " from "
-           (let [default-index? (str/ends-with? (str nav-path) "src/nextjournal/clerk/index.clj")]
-             [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
-              {:href (when (and url sha) (if default-index? (str url "/tree/" sha) (str url "/blob/" sha "/" nav-path)))}
-              (if (and url default-index?) #?(:clj (subs (.getPath (URL. url)) 1) :cljs url) nav-path)
-              (when sha [:<> "@" [:span.tabular-nums (subs sha 0 7)]])])]]]))
+           (let [default-index? (= 'nextjournal.clerk.index (some-> ns ns-name))]
+             (when (or file-path default-index? url)
+               [:<>
+                " from "
+                [:a.font-medium.border-b.border-dotted.border-slate-300.hover:text-indigo-500.hover:border-indigo-500.dark:border-slate-500.dark:hover:text-white.dark:hover:border-white.transition
+                 {:href (when (and url sha) (if default-index? (str url "/tree/" sha) (str url "/blob/" sha "/" prefix file-path)))}
+                 (if (and url default-index?) #?(:clj (subs (.getPath (URL. url)) 1) :cljs url) (or file-path nav-path))
+                 (when sha [:<> "@" [:span.tabular-nums (subs sha 0 7)]])]]))]]]))
 
 (def header-viewer
   {:name `header-viewer
@@ -1181,7 +1252,24 @@
            :path (str "#" (:id attrs))
            :items (md-toc->navbar-items node)}) children))
 
+(defn transform-toc [{:as wrapped-value doc :nextjournal/value}]
+  (let [{:keys [toc-visibility package]} doc]
+    (-> wrapped-value
+        mark-presented
+        (update :nextjournal/value (comp md-toc->navbar-items :toc))
+        (update :nextjournal/render-opts assoc
+                :toc-visibility toc-visibility :set-hash? (not= :single-file package)))))
+
 (comment #?(:clj (nextjournal.clerk/recompute!)))
+
+(def toc-viewer
+  {:name `toc-viewer
+   :transform-fn transform-toc
+   :render-fn 'nextjournal.clerk.render.navbar/render-items})
+
+(defn present-error [error]
+  {:nextjournal/presented (present error)
+   :nextjournal/blob-id (str (gensym "error"))})
 
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc
@@ -1192,11 +1280,11 @@
       (assoc :header (present (with-viewers viewers (with-viewer `header-viewer doc))))
       #_(assoc :footer (present (footer doc)))
 
-      (update :toc md-toc->navbar-items)
+      (assoc :toc (present (with-viewers viewers (with-viewer `toc-viewer doc))))
       (update :file str)
 
       (select-keys [:atom-var-name->state
-                    :blocks :bundle?
+                    :blocks :package
                     :doc-css-class
                     :error
                     :file
@@ -1207,7 +1295,7 @@
                     :toc-visibility
                     :header
                     :footer])
-      (update-if :error present)
+      (update-if :error present-error)
       (assoc :sidenotes? (boolean (seq (:footnotes doc))))
       #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
 
@@ -1242,6 +1330,7 @@
 (def default-viewers
   ;; maybe make this a sorted-map
   [header-viewer
+   toc-viewer
    char-viewer
    string-viewer
    number-viewer
@@ -1257,7 +1346,7 @@
    set-viewer
    sequential-viewer
    viewer-eval-viewer
-   fragment-viewer
+   cell-viewer
    result-viewer
    map-viewer
    var-viewer
@@ -1336,9 +1425,12 @@
               (throw (ex-info (str "cannot find viewer named " selected-viewer)
                               {:selected-viewer selected-viewer :viewers viewers})))
           selected-viewer))
-      (find-viewer viewers (let [v (->value x)]
-                             (fn [{:keys [pred]}]
-                               (and (ifn? pred) (pred v)))))
+      (find-viewer viewers (fn [{:keys [pred]}]
+                             (and (ifn? pred) (if-let [wrapped-pred (and (map? pred)
+                                                                         (ifn? (:wrapped pred))
+                                                                         (:wrapped pred))]
+                                                (wrapped-pred x)
+                                                (pred (->value x))))))
       (throw (ex-info (str "cannot find matching viewer for value")
                       {:value (->value x) :viewers viewers :x x}))))
 
@@ -1358,13 +1450,20 @@
 #_(ensure-wrapped-with-viewers 42)
 #_(ensure-wrapped-with-viewers {:nextjournal/value 42 :nextjournal/viewers [:boo]})
 
+(defn hoist-nested-wrapped-value [x]
+  (if (and (wrapped-value? x)
+           (wrapped-value? (get-safe x :nextjournal/value)))
+    (merge x (hoist-nested-wrapped-value (get-safe x :nextjournal/value)))
+    x))
+
 (defn apply-viewers* [wrapped-value]
-  (when (empty? (->viewers wrapped-value))
-    (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
-  (let [viewers (->viewers wrapped-value)
-        {:as viewer viewers-to-add :add-viewers :keys [render-fn transform-fn]} (viewer-for viewers wrapped-value)
+  (let [hoisted-wrapped-value (hoist-nested-wrapped-value wrapped-value)
+        viewers (->viewers hoisted-wrapped-value)
+        _ (when (empty? viewers)
+            (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
+        {:as viewer viewers-to-add :add-viewers :keys [render-fn transform-fn]} (viewer-for viewers hoisted-wrapped-value)
         transformed-value (cond-> (ensure-wrapped-with-viewers viewers
-                                                               (cond-> (-> wrapped-value
+                                                               (cond-> (-> hoisted-wrapped-value
                                                                            (dissoc :nextjournal/viewer)
                                                                            (assoc :nextjournal/applied-viewer viewer))
                                                                  transform-fn transform-fn))
@@ -1380,6 +1479,9 @@
 
 (defn apply-viewers [x]
   (apply-viewers* (ensure-wrapped-with-viewers x)))
+
+#_(= (apply-viewers {:nextjournal/value (with-viewer number-viewer 123)})
+     (apply-viewers {:nextjournal/value {:nextjournal/value (with-viewer number-viewer 123)}}))
 
 #_(apply-viewers 42)
 #_(apply-viewers {:one :two})
@@ -1491,14 +1593,12 @@
 
 (defn get-elision [wrapped-value]
   (let [{:as fetch-opts :keys [n]} (->fetch-opts wrapped-value)]
-    (merge fetch-opts (bounded-count-opts n (->value wrapped-value)))))
+    (when (number? n)
+      (merge fetch-opts (bounded-count-opts n (->value wrapped-value))))))
 
 #_(get-elision (present (range)))
 #_(get-elision (present "abc"))
 #_(get-elision (present (str/join (repeat 1000 "abc"))))
-
-(defn get-fetch-opts-n [wrapped-value]
-  (-> wrapped-value ->fetch-opts :n))
 
 (defn present+paginate-children [{:as wrapped-value :nextjournal/keys [budget viewers preserve-keys?] :keys [!budget]}]
   (let [{:as fetch-opts :keys [offset n]} (->fetch-opts wrapped-value)
@@ -1521,10 +1621,9 @@
       (conj (let [fetch-opts (assoc elision :offset new-offset)]
               (make-elision viewers fetch-opts))))))
 
-(defn present+paginate-string [{:as wrapped-value :nextjournal/keys [viewers viewer value]}]
-  (let [{:as elision :keys [n total path offset]} (and (:page-size viewer)
-                                                       (get-elision wrapped-value))]
-    (if (and n (< n total))
+(defn present+paginate-string [{:as wrapped-value :nextjournal/keys [viewers value]}]
+  (let [{:as elision :keys [n total path offset]} (get-elision wrapped-value)]
+    (if (and elision n (< n total))
       (let [new-offset (min (+ (or offset 0) n) total)]
         (cond-> [(subs value (or offset 0) new-offset)]
           (pos? (- total new-offset)) (conj (let [fetch-opts (-> elision
@@ -1621,9 +1720,10 @@
                                   (contains? #{:map-entry} prev-type) (or content-length 0)
                                   (vector? value) 2
                                   :else 1)))]
-    (if (vector? value)
-      (reduce compute-expanded-at state' value)
-      state')))
+    (reduce compute-expanded-at state' (cond
+                                         (vector? value) value
+                                         (map? value) (vals value)))))
+
 
 (defn collect-expandable-paths [state wrapped-value]
   (if-let [{:nextjournal/keys [value] :keys [path]} (when (wrapped-value? wrapped-value)
@@ -1761,13 +1861,13 @@
 (defn image
   ([image-or-url] (image {} image-or-url))
   ([viewer-opts image-or-url]
-   (with-viewer image-viewer viewer-opts
+   (with-viewer (:name image-viewer) viewer-opts
      #?(:cljs image-or-url :clj (read-image image-or-url)))))
 
 (defn caption [text content]
   (col
    content
-   (html [:figcaption.text-xs.text-slate-500.text-center.mt-1 text])))
+   (html [:figcaption.text-center.mt-1 (md text)])))
 
 (defn ^:dynamic doc-url
   ([path] (doc-url path nil))
@@ -1782,7 +1882,7 @@
             (prn "`hide-result` has been deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead."))))
 
 (defn hide-result
-  "Deprecated, please put ^{:nextjournal.clerk/visibility {:result :hide}} metadata on the form instead."
+  "Deprecated, please put `^{:nextjournal.clerk/visibility {:result :hide}}` metadata on the form instead."
   {:deprecated "0.10"}
   ([x] (print-hide-result-deprecation-warning) (with-viewer hide-result-viewer {} x))
   ([viewer-opts x] (print-hide-result-deprecation-warning) (with-viewer hide-result-viewer viewer-opts x)))
@@ -1834,23 +1934,25 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; examples
 (def example-viewer
-  {:transform-fn (fn [wrapped-value]
+  {:name `example-viewer
+   :transform-fn (fn [wrapped-value]
                    (-> wrapped-value
                        mark-preserve-keys
                        (assoc :nextjournal/viewer {:render-fn '(fn [{:keys [form val]} opts]
-                                                                 [:div.flex.flex-wrap
-                                                                  {:class "py-[7px]"}
-                                                                  [:div [:div.bg-slate-100.px-2.rounded
-                                                                         (nextjournal.clerk.render/inspect-presented opts form)]]
-                                                                  [:div.flex.mt-1
-                                                                   [:div.mx-2.font-sans.text-xs.text-slate-500 {:class "mt-[2px]"} "⇒"]
+                                                                 [:div.mb-3.last:mb-0
+                                                                  [:div.bg-slate-100.dark:bg-slate-800.px-4.py-2.border-l-2.border-slate-200.dark:border-slate-700
+                                                                   (nextjournal.clerk.render/inspect-presented opts form)]
+                                                                  [:div.pt-2.px-4.border-l-2.border-transparent
                                                                    (nextjournal.clerk.render/inspect-presented opts val)]])})
+                       (update-in [:nextjournal/value :val] maybe-wrap-var-from-def (get-in wrapped-value [:nextjournal/value :form]))
                        (update-in [:nextjournal/value :form] code)))})
 
 (def examples-viewer
-  {:transform-fn (update-val (fn [examples]
+  {:name `examples-viewer
+   :transform-fn (update-val (fn [examples]
                                (mapv (partial with-viewer example-viewer) examples)))
    :render-fn '(fn [examples opts]
-                 (into [:div.border-l-2.border-slate-300.pl-4
-                        [:div.uppercase.tracking-wider.text-xs.font-sans.text-slate-500.mt-4.mb-2 "Examples"]]
-                       (nextjournal.clerk.render/inspect-children opts) examples))})
+                 [:div
+                  [:div.uppercase.tracking-wider.text-xs.font-sans.font-bold.text-slate-500.dark:text-white.mb-2.mt-3 "Examples"]
+                  (into [:div]
+                        (nextjournal.clerk.render/inspect-children opts) examples)])})

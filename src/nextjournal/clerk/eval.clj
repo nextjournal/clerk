@@ -25,7 +25,6 @@
 
 #_(-> [(clojure.java.io/file "notebooks") (find-ns 'user)] nippy/freeze nippy/thaw)
 
-
 (defn ->cache-file [hash]
   (str config/cache-dir fs/file-separator hash))
 
@@ -71,7 +70,8 @@
 
                            :else
                            (throw (ex-info "Unable to resolve into a variable" {:data var})))]
-    {:nextjournal.clerk/var-from-def resolved-var}))
+    {:nextjournal.clerk/var-from-def resolved-var
+     :nextjournal.clerk/var-snapshot @resolved-var}))
 
 (defn ^:private lookup-cached-result [introduced-var hash cas-hash]
   (when-let [cached-value (try (thaw-from-cas cas-hash)
@@ -87,7 +87,7 @@
                            hash)))
 
 
-(defn ^:private cachable-value? [value]
+(defn cachable? [value]
   (and (some? value)
        (try
          (and (not (analyzer/exceeds-bounded-count-limit? value))
@@ -97,10 +97,12 @@
          (catch Exception _
            false))))
 
-#_(cachable-value? (vec (range 100)))
-#_(cachable-value? (range))
-#_(cachable-value? (map inc (range)))
-#_(cachable-value? [{:hello (map inc (range))}])
+#_(cachable? (vec (range 100)))
+#_(cachable? (range))
+#_(cachable? java.lang.String)
+#_(cachable? (map inc (range)))
+#_(cachable? [{:hello (map inc (range))}])
+#_(cachable? {:foo (javax.imageio.ImageIO/read (clojure.java.io/file "trees.png"))})
 
 
 (defn ^:private cache! [digest-file var-value]
@@ -138,7 +140,7 @@
       (when (and (not no-cache?)
                  (not ns-effect?)
                  freezable?
-                 (cachable-value? var-value)
+                 (cachable? var-value)
                  (or (not var) var-from-def?))
         (cache! digest-file var-value))
       (let [blob-id (cond no-cache? (analyzer/->hash-str var-value)
@@ -162,12 +164,13 @@
     viewers
     (update :nextjournal/viewers eval)))
 
-(defn read+eval-cached [{:as _doc :keys [blob->result ->analysis-info ->hash]} codeblock]
-  (let [{:keys [form vars var]} codeblock
-        {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info (if (seq vars) (first vars) (analyzer/->key codeblock)))
+(defn read+eval-cached [{:as doc :keys [blob->result ->analysis-info ->hash]} codeblock]
+  (let [{:keys [id form _vars var]} codeblock
+        _ (assert id (format "Missing id on codeblock: '%s'." (pr-str codeblock)))
+        {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info id)
         no-cache?      (or ns-effect? no-cache?)
-        hash           (when-not no-cache? (or (get ->hash (analyzer/->key codeblock))
-                                               (analyzer/hash-codeblock ->hash codeblock)))
+        hash           (when-not no-cache? (or (get ->hash id)
+                                               (analyzer/hash-codeblock ->hash doc codeblock)))
         digest-file    (when hash (->cache-file (str "@" hash)))
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
         cached-result-in-memory (get blob->result hash)
