@@ -77,7 +77,7 @@
                                com.github.seancorfield/honeysql {:mvn/version "2.6.1126"}
                                org.clojure/data.csv {:mvn/version "1.0.0"}
                                hickory/hickory {:mvn/version "0.7.1"}
-                               sicmutils/sicmutils {:mvn/version "0.20.0"}
+                               sicmutils/sicmutils {:mvn/version "0.20.0" :exclusions [org.babashka/sci]}
                                io.github.mentat-collective/emmy {:git/sha "b98fef51d80d3edcff3100562b929f9980ff34d7"
                                                                  :exclusions [org.babashka/sci]}
                                io.github.nextjournal/clerk-slideshow {:git/sha "11a83fea564da04b9d17734f2031a4921d917893"}}}

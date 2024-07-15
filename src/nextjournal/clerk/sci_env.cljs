@@ -33,6 +33,7 @@
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
+            [sci.async :as sci-async]
             [sci.ctx-store]
             [sci.nrepl.server :as nrepl]
             [shadow.esm]))
@@ -189,7 +190,11 @@
                       sci.configs.reagent/namespaces)})
 
 (defn ^:export eval-form [f]
-  (sci/eval-form (sci.ctx-store/get-ctx) f))
+  (sci-async/eval-form (sci.ctx-store/get-ctx) f))
+
+(defn ^:export init [state]
+  (-> (render/await-render-fns state)
+      (.then #(render/init %))))
 
 (defn render-eval [{:keys [form]}]
   (eval-form form))
@@ -208,8 +213,6 @@
                            (js/console.warn (str "no on-message dispatch for type `" type "`"))))]
     #_(js/console.log :<= type := msg)
     (dispatch-fn msg)))
-
-(def ^:export init render/init)
 
 (defn ^:export ssr [state-str]
   (init (read-string state-str))
