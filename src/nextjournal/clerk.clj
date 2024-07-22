@@ -13,16 +13,26 @@
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.viewer :as v]
-            [nextjournal.clerk.webserver :as webserver]))
+            [nextjournal.clerk.webserver :as webserver]
+            [flatland.ordered.set :as oset]))
 
 (defonce ^:private !show-filter-fn (atom nil))
 (defonce ^:private !last-file (atom nil))
 (defonce ^:private !watcher (atom nil))
 
-(def sci-snippet-registry (atom []))
-(defn reg-sci-snippet! [s]
-  (swap! sci-snippet-registry conj s)
+(defonce sci-snippet-registry (atom {:vars {}
+                                     :order (oset/ordered-set)}))
+
+(defn intern-sci-var [ns-name var-name s]
+  (swap! sci-snippet-registry (fn [state]
+                                (-> state
+                                    (update :vars assoc-in [ns-name var-name] s)
+                                    (update :order conj [ns-name var-name]))))
   nil)
+
+(clojure.core/comment
+  @sci-snippet-registry
+  )
 
 (defn show!
   "Evaluates the Clojure source in `file-or-ns` and makes Clerk show it in the browser.
@@ -65,7 +75,7 @@
                                  (parser/parse-file {:doc? true} file))
                           (update :blocks (fn [blocks]
                                             (cons {:type :code
-                                                   :text (format "(nextjournal.clerk/eval-cljs-str \"%s\")" (first @sci-snippet-registry))}
+                                                   :text (format "(nextjournal.clerk/eval-cljs-str \"%s\")" (last @sci-snippet-registry))}
                                                   blocks))))
                       (catch java.io.FileNotFoundException _e
                         (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")

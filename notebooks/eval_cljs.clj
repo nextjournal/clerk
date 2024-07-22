@@ -25,5 +25,6 @@
                 :repeat 12345
                 :repeatType "reverse"}})
 
+^{::clerk/no-cache true}
 (clerk/with-viewer wcs/my-cool-viewer
   [1 2 3])
