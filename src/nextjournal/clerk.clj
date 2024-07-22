@@ -19,6 +19,11 @@
 (defonce ^:private !last-file (atom nil))
 (defonce ^:private !watcher (atom nil))
 
+(def sci-snippet-registry (atom []))
+(defn reg-sci-snippet! [s]
+  (swap! sci-snippet-registry conj s)
+  nil)
+
 (defn show!
   "Evaluates the Clojure source in `file-or-ns` and makes Clerk show it in the browser.
 
@@ -40,7 +45,7 @@
        (webserver/set-status! {:progress 0 :status "Parsing…"})
        (let [file (cond
                     (nil? file-or-ns)
-                    (throw (ex-info (str "`nextjournal.clerk/show!` cannot show `nil`.")
+                    (throw (ex-info "`nextjournal.clerk/show!` cannot show `nil`."
                                     {:file-or-ns file-or-ns}))
 
                     (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
@@ -52,12 +57,16 @@
 
                     :else
                     file-or-ns)
-             doc (try (merge (webserver/get-build-opts)
-                             opts
-                             (when-let [path (paths/path-in-cwd file-or-ns)]
-                               {:file-path path})
-                             {:nav-path (webserver/->nav-path file-or-ns)}
-                             (parser/parse-file {:doc? true} file))
+             doc (try (-> (merge (webserver/get-build-opts)
+                                 opts
+                                 (when-let [path (paths/path-in-cwd file-or-ns)]
+                                   {:file-path path})
+                                 {:nav-path (webserver/->nav-path file-or-ns)}
+                                 (parser/parse-file {:doc? true} file))
+                          (update :blocks (fn [blocks]
+                                            (cons {:type :code
+                                                   :text (format "(nextjournal.clerk/eval-cljs-str \"%s\")" (first @sci-snippet-registry))}
+                                                  blocks))))
                       (catch java.io.FileNotFoundException _e
                         (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
                                         {:file-or-ns file-or-ns})))
