@@ -14,8 +14,7 @@
             [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]
-            [flatland.ordered.set :as oset]
-            [nextjournal.clerk.viewer :as viewer]))
+            [flatland.ordered.set :as oset]))
 
 (defonce ^:private !show-filter-fn (atom nil))
 (defonce ^:private !last-file (atom nil))
