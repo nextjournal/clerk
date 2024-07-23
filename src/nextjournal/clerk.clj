@@ -20,18 +20,19 @@
 (defonce ^:private !last-file (atom nil))
 (defonce ^:private !watcher (atom nil))
 
-(defonce sci-snippet-registry (atom {:vars {}
-                                     :order (oset/ordered-set)}))
+(defonce ^:private sci-interned-vars
+  (atom {:vars {}
+         :order (oset/ordered-set)}))
 
 (defn intern-sci-var [ns-name var-name s]
-  (swap! sci-snippet-registry (fn [state]
+  (swap! sci-interned-vars (fn [state]
                                 (-> state
                                     (update :vars assoc-in [ns-name var-name] s)
                                     (update :order conj [ns-name var-name]))))
   nil)
 
 (clojure.core/comment
-  @sci-snippet-registry
+  @sci-interned-vars
   )
 
 (defn show!
@@ -75,7 +76,7 @@
                                  (parser/parse-file {:doc? true} file))
                           (update :blocks (fn [blocks]
                                             (concat
-                                             (let [{:keys [order vars]} @sci-snippet-registry]
+                                             (let [{:keys [order vars]} @sci-interned-vars]
                                                (map (fn [var]
                                                       {:type :code
                                                        :text (format "(nextjournal.clerk/eval-cljs '(do
