@@ -6,9 +6,18 @@
  'my-already-defined-function
  '(fn [x]
     [:div
+     "Inspected value:"
+     [:div [nextjournal.clerk/inspect x]]]))
+
+(clerk/intern-sci-var
+ 'viewers.viewer-with-cljs-source
+ 'my-already-defined-function2
+ `(fn [x#]
+    [:div
      [:p "This is a custom pre-defined viewer function!"]
-     [nextjournal.clerk.render/inspect x]]))
+     [:div
+      [my-already-defined-function x#]]]))
 
 (def my-cool-viewer
-  {:render-fn `my-already-defined-function
+  {:render-fn `my-already-defined-function2
    :transform-fn (fn [x] x)})
