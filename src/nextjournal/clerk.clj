@@ -14,7 +14,8 @@
             [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]
-            [flatland.ordered.set :as oset]))
+            [flatland.ordered.set :as oset]
+            [nextjournal.clerk.viewer :as viewer]))
 
 (defonce ^:private !show-filter-fn (atom nil))
 (defonce ^:private !last-file (atom nil))
@@ -74,9 +75,15 @@
                                  {:nav-path (webserver/->nav-path file-or-ns)}
                                  (parser/parse-file {:doc? true} file))
                           (update :blocks (fn [blocks]
-                                            (cons {:type :code
-                                                   :text (format "(nextjournal.clerk/eval-cljs-str \"%s\")" (last @sci-snippet-registry))}
-                                                  blocks))))
+                                            (concat
+                                             (let [{:keys [order vars]} @sci-snippet-registry]
+                                               (map (fn [var]
+                                                      {:type :code
+                                                       :text (format "(nextjournal.clerk/eval-cljs-str \"(create-ns '%s) (intern '%s '%s %s)\")"
+                                                                     (first var) (first var) (second var)
+                                                                     (get-in vars var))})
+                                                    order))
+                                             blocks))))
                       (catch java.io.FileNotFoundException _e
                         (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
                                         {:file-or-ns file-or-ns})))
