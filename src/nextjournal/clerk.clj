@@ -78,7 +78,9 @@
                                              (let [{:keys [order vars]} @sci-snippet-registry]
                                                (map (fn [var]
                                                       {:type :code
-                                                       :text (format "(nextjournal.clerk/eval-cljs-str \"(create-ns '%s) (intern '%s '%s %s)\")"
+                                                       :text (format "(nextjournal.clerk/eval-cljs '(do
+                                                                                                      (create-ns '%s)
+                                                                                                      (intern '%s '%s %s)))"
                                                                      (first var) (first var) (second var)
                                                                      (get-in vars var))})
                                                     order))

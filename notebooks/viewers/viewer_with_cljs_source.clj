@@ -5,9 +5,9 @@
  'viewers.viewer-with-cljs-source
  'my-already-defined-function
  '(fn [x]
-    (prn :x x)
-    (prn :> (nextjournal.clerk/->value x))
-    [nextjournal.clerk.render/inspect x]))
+    [:div
+     [:p "This is a custom pre-defined viewer function!"]
+     [nextjournal.clerk.render/inspect x]]))
 
 (def my-cool-viewer
   {:render-fn `my-already-defined-function
