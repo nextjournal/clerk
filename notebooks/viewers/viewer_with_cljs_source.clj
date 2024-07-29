@@ -1,15 +1,17 @@
 (ns viewers.viewer-with-cljs-source
   (:require [nextjournal.clerk :as clerk]))
 
-(clerk/intern-sci-var
+(clerk/require-cljs 'viewers.viewer-with-cljs-source)
+
+#_(clerk/intern-sci-var
  'viewers.viewer-with-cljs-source
  'my-already-defined-function
  '(fn [x]
     [:div
-     "Inspected value:"
+     "Inspected value!!!!!!"
      [:div [nextjournal.clerk/inspect x]]]))
 
-(clerk/intern-sci-var
+#_(clerk/intern-sci-var
  'viewers.viewer-with-cljs-source
  'my-already-defined-function2
  `(fn [x#]

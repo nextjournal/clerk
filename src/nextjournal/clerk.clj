@@ -31,6 +31,17 @@
                                     (update :order conj [ns-name var-name]))))
   nil)
 
+(def required-cljs-files (atom []))
+
+(defn require-cljs [ns]
+  (let [cljs-file (io/resource (-> (namespace-munge ns)
+                                   (str/replace "." "/")
+                                   (str ".cljs")))]
+    ;; TODO: namespace dependency analysis ;-)
+    (swap! required-cljs-files conj cljs-file)
+    nil
+    ))
+
 (clojure.core/comment
   @sci-interned-vars
   )
@@ -76,15 +87,12 @@
                                  (parser/parse-file {:doc? true} file))
                           (update :blocks (fn [blocks]
                                             (concat
-                                             (let [{:keys [order vars]} @sci-interned-vars]
-                                               (map (fn [var]
-                                                      {:type :code
-                                                       :text (format "(nextjournal.clerk/eval-cljs '(do
-                                                                                                      (create-ns '%s)
-                                                                                                      (intern '%s '%s %s)))"
-                                                                     (first var) (first var) (second var)
-                                                                     (get-in vars var))})
-                                                    order))
+                                             (let [resources @required-cljs-files]
+                                               (map (fn [resource]
+                                                      (let [code-str (slurp resource)]
+                                                        {:type :code
+                                                         :text (pr-str `(nextjournal.clerk/eval-cljs-str ~code-str))}))
+                                                    resources))
                                              blocks))))
                       (catch java.io.FileNotFoundException _e
                         (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
