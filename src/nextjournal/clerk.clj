@@ -14,22 +14,22 @@
             [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]
-            [flatland.ordered.set :as oset]))
+            [clojure.tools.namespace.dependency :as tnsd]
+            [clojure.tools.namespace.parse :as tnsp]))
+
+(clojure.core/comment
+  (let [graph (tnsd/graph)
+        ns-decl '(ns foo (:require [dude :as a]))
+        nom (tnsp/name-from-ns-decl ns-decl)
+        deps (tnsp/deps-from-ns-decl ns-decl)
+        graph (tnsd/depend graph nom (first deps))]
+    (tnsd/transitive-dependencies graph 'foo))
+  )
+
 
 (defonce ^:private !show-filter-fn (atom nil))
 (defonce ^:private !last-file (atom nil))
 (defonce ^:private !watcher (atom nil))
-
-(defonce ^:private sci-interned-vars
-  (atom {:vars {}
-         :order (oset/ordered-set)}))
-
-(defn intern-sci-var [ns-name var-name s]
-  (swap! sci-interned-vars (fn [state]
-                                (-> state
-                                    (update :vars assoc-in [ns-name var-name] s)
-                                    (update :order conj [ns-name var-name]))))
-  nil)
 
 (def required-cljs-files (atom []))
 
@@ -44,10 +44,6 @@
 
 ;; TODO:
 ;; Analyze namespace dependencies, dedupe and load based on that order
-
-(clojure.core/comment
-  @sci-interned-vars
-  )
 
 (defn show!
   "Evaluates the Clojure source in `file-or-ns` and makes Clerk show it in the browser.
