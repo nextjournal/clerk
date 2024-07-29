@@ -42,6 +42,9 @@
     nil
     ))
 
+;; TODO:
+;; Analyze namespace dependencies, dedupe and load based on that order
+
 (clojure.core/comment
   @sci-interned-vars
   )
