@@ -16,7 +16,7 @@
             [nextjournal.clerk.webserver :as webserver]
             [clojure.tools.namespace.dependency :as tnsd]
             [clojure.tools.namespace.parse :as tnsp]
-            [edamame.core :as e]))
+            [nextjournal.clerk.cljs-libs :as cljs-libs]))
 
 (clojure.core/comment
   (let [graph (tnsd/graph)
@@ -35,32 +35,8 @@
 (defonce ^:private !last-file (atom nil))
 (defonce ^:private !watcher (atom nil))
 
-(def ^:private cljs-graph (atom (tnsd/graph)))
-
-(defn- ns->resource [ns]
-  (io/resource (-> (namespace-munge ns)
-                   (str/replace "." "/")
-                   (str ".cljs"))))
-
 (defn require-cljs [ns]
-  (let [cljs-file (ns->resource ns)
-        ns-decl (with-open [rdr (e/reader (io/reader cljs-file))]
-                  (tnsp/read-ns-decl rdr))
-        nom (tnsp/name-from-ns-decl ns-decl)
-        deps (tnsp/deps-from-ns-decl ns-decl)]
-    (run! require-cljs deps)
-    (swap! cljs-graph (fn [graph]
-                        (reduce (fn [acc dep]
-                                  (tnsd/depend acc nom dep))
-                                graph deps)))
-    nil))
-
-(clojure.core/comment
-  (require-cljs 'viewers.viewer-with-cljs-source
-                )
-  @cljs-graph
-  (tnsd/topo-sort @cljs-graph)
-  )
+  (cljs-libs/require-cljs ns))
 
 ;; TODO:
 ;; Make static bundle work
@@ -104,15 +80,7 @@
                                    {:file-path path})
                                  {:nav-path (webserver/->nav-path file-or-ns)}
                                  (parser/parse-file {:doc? true} file))
-                          (update :blocks (fn [blocks]
-                                            (concat
-                                             (let [resources (map ns->resource (tnsd/topo-sort @cljs-graph))]
-                                               (map (fn [resource]
-                                                      (let [code-str (slurp resource)]
-                                                        {:type :code
-                                                         :text (pr-str `(nextjournal.clerk/eval-cljs-str ~code-str))}))
-                                                    resources))
-                                             blocks))))
+                          (cljs-libs/update-blocks))
                       (catch java.io.FileNotFoundException _e
                         (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
                                         {:file-or-ns file-or-ns})))
@@ -603,6 +571,8 @@
       (builder/build-static-app! build-opts-normalized))))
 
 #_(build! (with-meta {:help true} {:org.babashka/cli {}}))
+
+#_(build! {:paths ["notebooks/eval_cljs.clj"]})
 
 (defn build-static-app! {:deprecated "0.11"} [build-opts]
   (binding [*out* *err*] (println "`build-static-app!` has been deprecated, please use `build!` instead."))
