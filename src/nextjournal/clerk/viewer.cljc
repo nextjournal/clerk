@@ -294,6 +294,7 @@
     (and (map? data) (sequential? (first (vals data)))) (normalize-map-of-seq data)
     (and (sequential? data) (map? (first data))) (normalize-seq-of-map data)
     (and (sequential? data) (sequential? (first data))) (normalize-seq-of-seq data)
+    (empty? data) {:rows []}
     :else nil))
 
 (defn demunge-ex-data [ex-data]
