@@ -15,15 +15,19 @@
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]
             [clojure.tools.namespace.dependency :as tnsd]
-            [clojure.tools.namespace.parse :as tnsp]))
+            [clojure.tools.namespace.parse :as tnsp]
+            [edamame.core :as e]))
 
 (clojure.core/comment
   (let [graph (tnsd/graph)
-        ns-decl '(ns foo (:require [dude :as a]))
+        ns-decl '(ns foo (:require [dude :as a] [dade :as b]))
         nom (tnsp/name-from-ns-decl ns-decl)
         deps (tnsp/deps-from-ns-decl ns-decl)
-        graph (tnsd/depend graph nom (first deps))]
+        graph (reduce (fn [acc dep]
+                        (tnsd/depend acc nom dep))
+                      graph deps)]
     (tnsd/transitive-dependencies graph 'foo))
+
   )
 
 
@@ -31,16 +35,29 @@
 (defonce ^:private !last-file (atom nil))
 (defonce ^:private !watcher (atom nil))
 
-(def required-cljs-files (atom []))
+(def cljs-graph (atom (tnsd/graph)))
 
 (defn require-cljs [ns]
   (let [cljs-file (io/resource (-> (namespace-munge ns)
                                    (str/replace "." "/")
-                                   (str ".cljs")))]
-    ;; TODO: namespace dependency analysis ;-)
-    (swap! required-cljs-files conj cljs-file)
-    nil
-    ))
+                                   (str ".cljs")))
+        ns-decl (with-open [rdr (e/reader (io/reader cljs-file))]
+                  (tnsp/read-ns-decl rdr))
+        nom (tnsp/name-from-ns-decl ns-decl)
+        deps (tnsp/deps-from-ns-decl ns-decl)]
+    (run! require-cljs deps)
+    (swap! cljs-graph (fn [graph]
+                        (reduce (fn [acc dep]
+                                  (tnsd/depend acc nom dep))
+                                graph deps)))
+    nil))
+
+(clojure.core/comment
+  (require-cljs 'viewers.viewer-with-cljs-source
+                )
+  @cljs-graph
+  (tnsd/topo-sort @cljs-graph)
+  )
 
 ;; TODO:
 ;; Analyze namespace dependencies, dedupe and load based on that order

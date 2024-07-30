@@ -1,18 +1,15 @@
-(ns viewers.viewer-with-cljs-source)
-
-(comment
-  (nextjournal.clerk.render/re-render)
-  )
-
-(defn my-already-defined-function [x]
-  [:div
-   "Inspected value >>>>>>>>>>>>>>>"
-   [:div [nextjournal.clerk/inspect x]]] )
+(ns viewers.viewer-with-cljs-source
+  (:require [viewers.viewer-lib :as lib]))
 
 (defn my-already-defined-function2 [x#]
   [:div
    [:p "This is a custom pre-defined viewer function!"]
    [:div
-    [my-already-defined-function x#]]])
+    [lib/my-already-defined-function x#]]])
 
+;;;; Scratch
+
+(comment
+  (nextjournal.clerk.render/re-render)
+  )
 
