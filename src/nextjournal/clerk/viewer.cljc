@@ -1069,6 +1069,8 @@
    table-body-viewer
    table-row-viewer])
 
+(declare html doc-url)
+
 (def table-viewer
   {:name `table-viewer
    :add-viewers table-viewers
@@ -1077,19 +1079,21 @@
                    (if-let [{:keys [head rows]} (normalize-table-data (->value wrapped-value))]
                      (-> wrapped-value
                          (assoc :nextjournal/viewer `table-markup-viewer)
-                         (update :nextjournal/width #(or % :wide))
+                         (update :nextjournal/width #(or % (when-not (empty? rows) :wide)))
                          (update :nextjournal/render-opts merge {:num-cols (count (or head (first rows)))
                                                                  :number-col? (into #{}
                                                                                     (comp (map-indexed vector)
                                                                                           (keep #(when (number? (second %)) (first %))))
                                                                                     (not-empty (first rows)))})
-                         (assoc :nextjournal/value (cond->> []
-                                                     (seq rows) (cons (with-viewer `table-body-viewer (merge (-> applied-viewer
-                                                                                                                 (select-keys [:page-size])
-                                                                                                                 (set/rename-keys {:page-size :nextjournal/page-size}))
-                                                                                                             (select-keys wrapped-value [:nextjournal/page-size]))
-                                                                        (map (partial with-viewer `table-row-viewer) rows)))
-                                                     head (cons (with-viewer (:name table-head-viewer table-head-viewer) head)))))
+                         (assoc :nextjournal/value (if (empty? rows)
+                                                     (html [:span.italic "no data"])
+                                                     (cond->> []
+                                                       (seq rows) (cons (with-viewer `table-body-viewer (merge (-> applied-viewer
+                                                                                                                   (select-keys [:page-size])
+                                                                                                                   (set/rename-keys {:page-size :nextjournal/page-size}))
+                                                                                                               (select-keys wrapped-value [:nextjournal/page-size]))
+                                                                          (map (partial with-viewer `table-row-viewer) rows)))
+                                                       head (cons (with-viewer (:name table-head-viewer table-head-viewer) head))))))
                      (-> wrapped-value
                          mark-presented
                          (assoc :nextjournal/width :wide)
@@ -1192,8 +1196,6 @@
          (into {}
                (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote))))
                (extract-sync-atom-vars doc)))))
-
-(declare html doc-url)
 
 (defn home? [{:keys [nav-path]}]
   (contains? #{"src/nextjournal/home.clj" "'nextjournal.clerk.home"} nav-path))
