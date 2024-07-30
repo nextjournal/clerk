@@ -35,12 +35,15 @@
 (defonce ^:private !last-file (atom nil))
 (defonce ^:private !watcher (atom nil))
 
-(def cljs-graph (atom (tnsd/graph)))
+(def ^:private cljs-graph (atom (tnsd/graph)))
+
+(defn- ns->resource [ns]
+  (io/resource (-> (namespace-munge ns)
+                   (str/replace "." "/")
+                   (str ".cljs"))))
 
 (defn require-cljs [ns]
-  (let [cljs-file (io/resource (-> (namespace-munge ns)
-                                   (str/replace "." "/")
-                                   (str ".cljs")))
+  (let [cljs-file (ns->resource ns)
         ns-decl (with-open [rdr (e/reader (io/reader cljs-file))]
                   (tnsp/read-ns-decl rdr))
         nom (tnsp/name-from-ns-decl ns-decl)
@@ -103,7 +106,7 @@
                                  (parser/parse-file {:doc? true} file))
                           (update :blocks (fn [blocks]
                                             (concat
-                                             (let [resources @required-cljs-files]
+                                             (let [resources (map ns->resource (tnsd/topo-sort @cljs-graph))]
                                                (map (fn [resource]
                                                       (let [code-str (slurp resource)]
                                                         {:type :code
