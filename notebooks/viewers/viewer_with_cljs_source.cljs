@@ -3,9 +3,11 @@
 
 (defn my-already-defined-function2 [x#]
   [:div
-   [:p "This is a custom pre-defined viewer function!"]
+   [:p "This is a custom pre-defined viewer function! :)"]
    [:div
     [lib/my-already-defined-function x#]]])
+
+(prn :dude)
 
 ;;;; Scratch
 

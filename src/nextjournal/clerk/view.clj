@@ -3,14 +3,24 @@
             [clojure.string :as str]
             [hiccup.page :as hiccup]
             [nextjournal.clerk.config :as config]
-            [nextjournal.clerk.viewer :as v])
+            [nextjournal.clerk.viewer :as v]
+            [nextjournal.clerk.cljs-libs :as cljs-libs])
   (:import (java.net URI)))
+
+(def x (atom nil))
+
+(comment
+  @x
+  (:blocks @x)
+  (nextjournal.clerk/eval-cljs-str "(prn :x)")
+  )
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns file]}]
+   (reset! x doc)
    (binding [*ns* ns]
-     (-> (merge doc opts) v/notebook v/present))))
+     (-> (merge doc opts) cljs-libs/update-blocks  v/notebook v/present))))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
