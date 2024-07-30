@@ -63,7 +63,7 @@
   )
 
 ;; TODO:
-;; Analyze namespace dependencies, dedupe and load based on that order
+;; Make static bundle work
 
 (defn show!
   "Evaluates the Clojure source in `file-or-ns` and makes Clerk show it in the browser.
