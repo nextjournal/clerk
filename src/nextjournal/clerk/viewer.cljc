@@ -1085,15 +1085,14 @@
                                                                                     (comp (map-indexed vector)
                                                                                           (keep #(when (number? (second %)) (first %))))
                                                                                     (not-empty (first rows)))})
-                         (assoc :nextjournal/value (if (empty? rows)
-                                                     (html [:span.italic "no data"])
-                                                     (cond->> []
-                                                       (seq rows) (cons (with-viewer `table-body-viewer (merge (-> applied-viewer
-                                                                                                                   (select-keys [:page-size])
-                                                                                                                   (set/rename-keys {:page-size :nextjournal/page-size}))
-                                                                                                               (select-keys wrapped-value [:nextjournal/page-size]))
-                                                                          (map (partial with-viewer `table-row-viewer) rows)))
-                                                       head (cons (with-viewer (:name table-head-viewer table-head-viewer) head))))))
+                         (assoc :nextjournal/value (cond->> [(with-viewer `table-body-viewer (merge (-> applied-viewer
+                                                                                                        (select-keys [:page-size])
+                                                                                                        (set/rename-keys {:page-size :nextjournal/page-size}))
+                                                                                                    (select-keys wrapped-value [:nextjournal/page-size]))
+                                                               (if (seq rows)
+                                                                 (map (partial with-viewer `table-row-viewer) rows)
+                                                                 [(html [:span.italic "this table has no rows"])]))]
+                                                     head (cons (with-viewer (:name table-head-viewer table-head-viewer) head)))))
                      (-> wrapped-value
                          mark-presented
                          (assoc :nextjournal/width :wide)
