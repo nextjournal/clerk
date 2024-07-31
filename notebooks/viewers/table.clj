@@ -8,6 +8,10 @@
             [nextjournal.clerk.viewer :as v]
             [honey.sql :as sql]))
 
+;; ## Empty table
+
+(clerk/table [])
+
 ;; ## SQL Queries
 (def query-results
   (let [_run-at #inst "2021-05-20T08:28:29.445-00:00"
