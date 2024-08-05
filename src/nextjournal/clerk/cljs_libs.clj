@@ -4,7 +4,8 @@
    [clojure.string :as str]
    [clojure.tools.namespace.dependency :as tnsd]
    [clojure.tools.namespace.parse :as tnsp]
-   [edamame.core :as e]))
+   [edamame.core :as e]
+   [nextjournal.clerk.viewer :as v]))
 
 (defonce ^:private cljs-graph (atom (tnsd/graph)))
 
@@ -33,6 +34,12 @@
                            (map (fn [resource]
                                   (let [code-str (slurp resource)]
                                     {:type :code
-                                     :text (pr-str `(nextjournal.clerk/eval-cljs-str ~code-str))}))
+                                     :text (pr-str `(nextjournal.clerk/eval-cljs-str ~code-str))
+                                     :result {:nextjournal/value (v/eval-cljs-str code-str)}
+                                     :settings #:nextjournal.clerk{:visibility {:code :hide, :result :hide}}}))
                                 resources))
                          blocks))))
+
+(comment
+  (nextjournal.clerk/eval-cljs-str "(+ 1 2 3)")
+  )

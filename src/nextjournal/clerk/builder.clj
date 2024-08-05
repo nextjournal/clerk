@@ -273,7 +273,6 @@
             (report-fn {:stage :parsed :error error :build-opts opts})
             (throw (if-not (string? error) error (ex-info error (dissoc opts :report-fn)))))
         {state :result duration :time-ms} (eval/time-ms (mapv (comp (partial parser/parse-file {:doc? true}) :file) state))
-        state (map cljs-libs/update-blocks state)
         _ (report-fn {:stage :parsed :state state :duration duration})
         {state :result duration :time-ms} (eval/time-ms (reduce (fn [state doc]
                                                                   (try (conj state (-> doc analyzer/build-graph analyzer/hash))

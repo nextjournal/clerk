@@ -2,5 +2,5 @@
 
 (defn my-already-defined-function [x]
   [:div
-   "Inspected value >>>>>>>>>>>>>>>"
+   "Inspected value :)"
    [:div [nextjournal.clerk/inspect x]]] )

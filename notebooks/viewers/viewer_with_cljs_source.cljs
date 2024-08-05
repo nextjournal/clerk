@@ -7,8 +7,6 @@
    [:div
     [lib/my-already-defined-function x#]]])
 
-(prn :dude)
-
 ;;;; Scratch
 
 (comment
