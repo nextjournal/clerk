@@ -55,7 +55,8 @@
         (swap! cljs-graph (fn [graph]
                             (reduce (fn [acc dep]
                                       (tnsd/depend acc nom dep))
-                                    graph deps)))
+                                    graph (or (seq deps)
+                                              [::orphan]))))
         nil)
       (binding [*out* *err*]
         (println "[clerk] Could not require CLJS namespace:" ns)))))
@@ -66,7 +67,7 @@
 (defn update-blocks [doc]
   (update doc :blocks (fn [blocks]
                         (concat
-                         (let [resources (map ns->resource (tnsd/topo-sort @cljs-graph))]
+                         (let [resources (map ns->resource (remove #(= ::orphan %) (tnsd/topo-sort @cljs-graph)))]
                            (map (fn [resource]
                                   (let [code-str (slurp resource)]
                                     {:type :code

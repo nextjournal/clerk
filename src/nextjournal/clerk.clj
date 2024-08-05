@@ -647,4 +647,5 @@
 
   ;; Clear cache
   (clear-cache!)
+  (halt!)
   )
