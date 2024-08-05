@@ -1,6 +1,8 @@
-(ns viewers.viewer-lib)
+(ns viewers.viewer-lib
+  (:require [nextjournal.clerk :as clerk]))
 
 (defn my-already-defined-function [x]
   [:div
    "Inspected value :)"
-   [:div [nextjournal.clerk/inspect x]]] )
+   [:div [clerk/inspect x]]])
+

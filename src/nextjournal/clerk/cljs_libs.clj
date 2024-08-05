@@ -7,6 +7,11 @@
    [edamame.core :as e]
    [nextjournal.clerk.viewer :as v]))
 
+
+(def ^:private already-loaded-sci-namespaces '#{user clojure.core clojure.set clojure.edn clojure.repl
+                                                clojure.string clojure.walk clojure.template
+                                                nextjournal.clerk})
+
 (defonce ^:private cljs-graph (atom (tnsd/graph)))
 
 (defn- ns->resource [ns]
@@ -15,17 +20,24 @@
                    (str ".cljs"))))
 
 (defn require-cljs [ns]
-  (let [cljs-file (ns->resource ns)
-        ns-decl (with-open [rdr (e/reader (io/reader cljs-file))]
-                  (tnsp/read-ns-decl rdr))
-        nom (tnsp/name-from-ns-decl ns-decl)
-        deps (tnsp/deps-from-ns-decl ns-decl)]
-    (run! require-cljs deps)
-    (swap! cljs-graph (fn [graph]
-                        (reduce (fn [acc dep]
-                                  (tnsd/depend acc nom dep))
-                                graph deps)))
-    nil))
+  (when-not (contains? already-loaded-sci-namespaces ns)
+    (if-let [cljs-file (ns->resource ns)]
+      (let [ns-decl (with-open [rdr (e/reader (io/reader cljs-file))]
+                      (tnsp/read-ns-decl rdr))
+            nom (tnsp/name-from-ns-decl ns-decl)
+            deps (remove already-loaded-sci-namespaces
+                         (tnsp/deps-from-ns-decl ns-decl))]
+        (run! require-cljs deps)
+        (swap! cljs-graph (fn [graph]
+                            (reduce (fn [acc dep]
+                                      (tnsd/depend acc nom dep))
+                                    graph deps)))
+        nil)
+      (binding [*out* *err*]
+        (println "[clerk] Could not require CLJS namespace:" ns)))))
+
+(defn clear-cljs! []
+  (reset! cljs-graph (tnsd/graph)))
 
 (defn update-blocks [doc]
   (update doc :blocks (fn [blocks]
@@ -42,4 +54,6 @@
 
 (comment
   (nextjournal.clerk/eval-cljs-str "(+ 1 2 3)")
+  (slurp (io/resource "clojure/string.cljs"))
+  (clear-cljs!)
   )
