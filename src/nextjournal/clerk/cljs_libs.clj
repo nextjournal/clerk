@@ -8,9 +8,31 @@
    [nextjournal.clerk.viewer :as v]))
 
 
-(def ^:private already-loaded-sci-namespaces '#{user clojure.core clojure.set clojure.edn clojure.repl
-                                                clojure.string clojure.walk clojure.template
-                                                nextjournal.clerk})
+(def ^:private already-loaded-sci-namespaces
+  '#{user
+     nextjournal.clerk.render
+     nextjournal.clojure-mode.commands
+     reagent.ratom
+     nextjournal.clerk
+     reagent.core
+     nextjournal.clerk.parser
+     nextjournal.clerk.viewer
+     clojure.core clojure.set
+     cljs.math
+     clojure.edn
+     nextjournal.clojure-mode.keymap
+     reagent.debug
+     cljs.repl
+     clojure.repl
+     applied-science.js-interop
+     nextjournal.clerk.render.navbar
+     clojure.string
+     nextjournal.clojure-mode.extensions.eval-region
+     clojure.walk
+     nextjournal.clerk.render.editor
+     nextjournal.clerk.render.hooks
+     nextjournal.clerk.render.code
+     clojure.template})
 
 (defonce ^:private cljs-graph (atom (tnsd/graph)))
 
@@ -20,6 +42,8 @@
                    (str ".cljs"))))
 
 (defn require-cljs [ns]
+  #_(binding [*out* *err*]
+    (println "[clerk] Loading CLJS namespace:" ns))
   (when-not (contains? already-loaded-sci-namespaces ns)
     (if-let [cljs-file (ns->resource ns)]
       (let [ns-decl (with-open [rdr (e/reader (io/reader cljs-file))]
@@ -54,6 +78,11 @@
 
 (comment
   (nextjournal.clerk/eval-cljs-str "(+ 1 2 3)")
-  (slurp (io/resource "clojure/string.cljs"))
+  ;; [nextjournal.clerk.render.hooks :as hooks]
+  (def decl (tnsp/read-ns-decl (edamame.core/reader (java.io.StringReader. (slurp (io/resource "nextjournal/clerk/render/hooks.cljs"))))))
+  (tnsp/name-from-ns-decl decl)
+  (tnsp/deps-from-ns-decl decl)
+
   (clear-cljs!)
+  @cljs-graph
   )
