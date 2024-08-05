@@ -14,8 +14,7 @@
             [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as viewer]
-            [nextjournal.clerk.webserver :as webserver]
-            [nextjournal.clerk.cljs-libs :as cljs-libs]))
+            [nextjournal.clerk.webserver :as webserver]))
 
 (def clerk-docs
   (into ["CHANGELOG.md"
