@@ -53,7 +53,7 @@
       (when as
         (alias as ns))
       (when-not (contains? already-loaded-sci-namespaces libspec)
-        (if-let [cljs-file (ns->resource ns)]
+        (when-let [cljs-file (ns->resource ns)]
           (let [ns-decl (with-open [rdr (e/reader (io/reader cljs-file))]
                           (tnsp/read-ns-decl rdr))
                 nom (tnsp/name-from-ns-decl ns-decl)
@@ -66,9 +66,7 @@
                                         (tnsd/remove-node graph ns)
                                         (or (seq deps)
                                             [::orphan]))))
-            nil)
-          (binding [*out* *err*]
-            (println "[clerk] Could not require CLJS namespace:" ns)))))))
+            nil))))))
 
 (defn all-ns []
   (remove #(= ::orphan %) (tnsd/topo-sort @cljs-graph)))
