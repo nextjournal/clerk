@@ -13,11 +13,18 @@
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.viewer :as v]
-            [nextjournal.clerk.webserver :as webserver]))
+            [nextjournal.clerk.webserver :as webserver]
+            [nextjournal.clerk.cljs-libs :as cljs-libs]))
 
 (defonce ^:private !show-filter-fn (atom nil))
 (defonce ^:private !last-file (atom nil))
 (defonce ^:private !watcher (atom nil))
+
+(defn require-cljs [& nss]
+  (apply cljs-libs/require-cljs nss))
+
+;; TODO:
+;; Make static bundle work
 
 (defn show!
   "Evaluates the Clojure source in `file-or-ns` and makes Clerk show it in the browser.
@@ -40,7 +47,7 @@
        (webserver/set-status! {:progress 0 :status "Parsing…"})
        (let [file (cond
                     (nil? file-or-ns)
-                    (throw (ex-info (str "`nextjournal.clerk/show!` cannot show `nil`.")
+                    (throw (ex-info "`nextjournal.clerk/show!` cannot show `nil`."
                                     {:file-or-ns file-or-ns}))
 
                     (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
@@ -549,6 +556,8 @@
 
 #_(build! (with-meta {:help true} {:org.babashka/cli {}}))
 
+#_(build! {:paths ["notebooks/eval_cljs.clj"]})
+
 (defn build-static-app! {:deprecated "0.11"} [build-opts]
   (binding [*out* *err*] (println "`build-static-app!` has been deprecated, please use `build!` instead."))
   (build! build-opts))
@@ -623,4 +632,5 @@
 
   ;; Clear cache
   (clear-cache!)
+  (halt!)
   )

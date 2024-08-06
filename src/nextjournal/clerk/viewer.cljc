@@ -93,7 +93,7 @@
    (extend-type ViewerEval
      IPrintWithWriter
      (-pr-writer [obj w _opts]
-       (-write w (str "#viewer-eval "))
+       (-write w "#viewer-eval ")
        (-write w (pr-str (:form obj))))))
 
 (def data-readers
