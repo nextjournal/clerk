@@ -7,18 +7,9 @@
             [nextjournal.clerk.cljs-libs :as cljs-libs])
   (:import (java.net URI)))
 
-(def x (atom nil))
-
-(comment
-  @x
-  (:blocks @x)
-  (nextjournal.clerk/eval-cljs-str "(prn :x)")
-  )
-
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns file]}]
-   (reset! x doc)
    (binding [*ns* ns]
      (-> (merge doc opts) cljs-libs/update-blocks v/notebook v/present))))
 
