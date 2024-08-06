@@ -14,22 +14,7 @@
             [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]
-            [clojure.tools.namespace.dependency :as tnsd]
-            [clojure.tools.namespace.parse :as tnsp]
             [nextjournal.clerk.cljs-libs :as cljs-libs]))
-
-(clojure.core/comment
-  (let [graph (tnsd/graph)
-        ns-decl '(ns foo (:require [dude :as a] [dade :as b]))
-        nom (tnsp/name-from-ns-decl ns-decl)
-        deps (tnsp/deps-from-ns-decl ns-decl)
-        graph (reduce (fn [acc dep]
-                        (tnsd/depend acc nom dep))
-                      graph deps)]
-    (tnsd/transitive-dependencies graph 'foo))
-
-  )
-
 
 (defonce ^:private !show-filter-fn (atom nil))
 (defonce ^:private !last-file (atom nil))
