@@ -20,8 +20,8 @@
 (defonce ^:private !last-file (atom nil))
 (defonce ^:private !watcher (atom nil))
 
-(defn require-cljs [ns]
-  (cljs-libs/require-cljs ns))
+(defn require-cljs [& nss]
+  (apply cljs-libs/require-cljs nss))
 
 ;; TODO:
 ;; Make static bundle work

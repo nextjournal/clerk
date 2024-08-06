@@ -1,4 +1,5 @@
 (ns nextjournal.clerk.cljs-libs
+  (:refer-clojure :exclude [remove-ns all-ns])
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -6,7 +7,6 @@
    [clojure.tools.namespace.parse :as tnsp]
    [edamame.core :as e]
    [nextjournal.clerk.viewer :as v]))
-
 
 (def ^:private already-loaded-sci-namespaces
   '#{user
@@ -37,37 +37,52 @@
 (defonce ^:private cljs-graph (atom (tnsd/graph)))
 
 (defn- ns->resource [ns]
-  (io/resource (-> (namespace-munge ns)
-                   (str/replace "." "/")
-                   (str ".cljs"))))
-
-(defn require-cljs [ns]
-  #_(binding [*out* *err*]
-    (println "[clerk] Loading CLJS namespace:" ns))
-  (when-not (contains? already-loaded-sci-namespaces ns)
-    (if-let [cljs-file (ns->resource ns)]
-      (let [ns-decl (with-open [rdr (e/reader (io/reader cljs-file))]
-                      (tnsp/read-ns-decl rdr))
-            nom (tnsp/name-from-ns-decl ns-decl)
-            deps (remove already-loaded-sci-namespaces
-                         (tnsp/deps-from-ns-decl ns-decl))]
-        (run! require-cljs deps)
-        (swap! cljs-graph (fn [graph]
-                            (reduce (fn [acc dep]
-                                      (tnsd/depend acc nom dep))
-                                    graph (or (seq deps)
-                                              [::orphan]))))
-        nil)
+  (or (io/resource (-> (namespace-munge ns)
+                       (str/replace "." "/")
+                       (str ".cljs")))
       (binding [*out* *err*]
-        (println "[clerk] Could not require CLJS namespace:" ns)))))
+        (println "[clerk] Could not find source for CLJS namespace:" ns))))
 
-(defn clear-cljs! []
-  (reset! cljs-graph (tnsd/graph)))
+(defn require-cljs [& nss]
+  (doseq [libspec nss]
+    (let [[ns {:keys [as]}] (if (symbol? libspec)
+                              [libspec]
+                              (let [ns (first libspec)
+                                    opts (apply hash-map (rest libspec))]
+                                [ns opts]))]
+      (when as
+        (alias as ns))
+      (when-not (contains? already-loaded-sci-namespaces libspec)
+        (if-let [cljs-file (ns->resource ns)]
+          (let [ns-decl (with-open [rdr (e/reader (io/reader cljs-file))]
+                          (tnsp/read-ns-decl rdr))
+                nom (tnsp/name-from-ns-decl ns-decl)
+                deps (remove already-loaded-sci-namespaces
+                             (tnsp/deps-from-ns-decl ns-decl))]
+            (run! require-cljs deps)
+            (swap! cljs-graph (fn [graph]
+                                (reduce (fn [acc dep]
+                                          (tnsd/depend acc nom dep))
+                                        (tnsd/remove-node graph ns)
+                                        (or (seq deps)
+                                            [::orphan]))))
+            nil)
+          (binding [*out* *err*]
+            (println "[clerk] Could not require CLJS namespace:" ns)))))))
+
+(defn all-ns []
+  (remove #(= ::orphan %) (tnsd/topo-sort @cljs-graph)))
+
+(defn remove-ns [ns]
+  (swap! cljs-graph (fn [graph]
+                      (-> graph
+                          (tnsd/remove-all ns))))
+  nil)
 
 (defn update-blocks [doc]
   (update doc :blocks (fn [blocks]
                         (concat
-                         (let [resources (map ns->resource (remove #(= ::orphan %) (tnsd/topo-sort @cljs-graph)))]
+                         (let [resources (keep ns->resource (all-ns))]
                            (map (fn [resource]
                                   (let [code-str (slurp resource)]
                                     {:type :code
@@ -83,7 +98,9 @@
   (def decl (tnsp/read-ns-decl (edamame.core/reader (java.io.StringReader. (slurp (io/resource "nextjournal/clerk/render/hooks.cljs"))))))
   (tnsp/name-from-ns-decl decl)
   (tnsp/deps-from-ns-decl decl)
-
-  (clear-cljs!)
   @cljs-graph
-  )
+
+  (-> (tnsd/graph)
+      (tnsd/depend 'foo 'bar)
+      (tnsd/remove-node 'foo)
+      (tnsd/topo-sort)))
