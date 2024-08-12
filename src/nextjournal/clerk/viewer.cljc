@@ -1060,9 +1060,18 @@
                             "text-gray-400 text-slate-500")
                    :on-click (fn [_] (when (fn? fetch-fn)
                                        (fetch-fn fetch-opts)))}
-                  [:span.sticky
-                   {:style {:left "min(50vw, 50%)"} :class "-translate-x-1/2"}
-                   (- total offset) (when unbounded? "+") (if (fn? fetch-fn) " more…" " more elided")]]])]))
+                  (let [label [:<>
+                               (- total offset)
+                               (when unbounded? "+")
+                               (if (fn? fetch-fn)
+                                 [:span " more" [:span.absolute "..."]]
+                                 " more elided")]]
+                    [:<>
+                     [:span.invisible.pointer-events-none
+                      label]
+                     [:span.sticky.inline-block
+                      {:class "left-1/2 -translate-x-1/2"}
+                      label]])]])]))
    table-missing-viewer
    table-markup-viewer
    table-head-viewer
