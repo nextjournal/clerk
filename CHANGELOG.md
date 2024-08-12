@@ -8,6 +8,7 @@ Changes can be:
 
 ## Unreleased
 
+* 💫 Make `clerk/table` work with empty tables.
 ...
 
 ## 0.16.1016 (2024-06-05)
