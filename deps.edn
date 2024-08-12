@@ -46,7 +46,7 @@
                               io.github.nextjournal/cas-client {:git/sha "22ef8360689cd3938e43a3223023ab1b9711818f"}
                               org.slf4j/slf4j-nop {:mvn/version "2.0.7"}
                               org.babashka/cli {:mvn/version "0.5.40"}
-                              io.github.babashka/sci.nrepl {:git/sha "75f379c685bbd58c3e23f531339eb144e104937d"}}
+                              io.github.babashka/sci.nrepl {:git/sha "630062b76a4a9ca7d2565fd494d7baaf3460554b"}}
                  :extra-paths ["dev" "notebooks"]
                  :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}"
                             "-Dclerk.render_repl={}"

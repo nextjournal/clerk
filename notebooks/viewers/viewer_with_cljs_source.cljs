@@ -8,16 +8,16 @@
   (let [state (hooks/use-state 0)
         [native-state set-state!] (React/useState 0)]
     [:div
-     [:p "This is a custom pre-defined viewer function! :)"]
+     [:p "This is a custom pre-defined viewer function!"]
      [:div
       [:div "str:" (str/join "," (range 10))]
       [lib/my-already-defined-function x]
       [:div
-       [:button.bg-sky-600 {:on-click #(swap! state inc)}
+       [:button.bg-sky-700 {:on-click #(swap! state inc)}
         "Click me: " @state]]
       [:div
-       [:button.bg-sky-600 {:on-click #(set-state! (inc native-state))}
-        "Click me: " native-state]]]]))
+       [:button.bg-sky-500 {:on-click #(set-state! (inc native-state))}
+        "Click me:" native-state]]]]))
 
 ;;;; Scratch
 
