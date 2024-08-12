@@ -475,7 +475,9 @@
                                  (let [sticky (sticky-table-header/StickyTableHeader. @!table-ref @!table-clone-ref #js{:max 0})]
                                    (fn [] (.destroy sticky))))))
     [:div
-     [:div.overflow-x-auto.overflow-y-hidden.w-full
+     [:div.overflow-x-auto.overflow-y-hidden
+      {:style {:width "max-content"
+               :max-width "100%"}}
       (into [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-ref}] children)]
      [:div.overflow-x-auto.overflow-y-hidden.w-full.shadow.sticky-table-header
       [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-clone-ref :style {:margin 0}}]]]))
