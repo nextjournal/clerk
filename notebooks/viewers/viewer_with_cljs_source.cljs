@@ -23,5 +23,8 @@
 
 (comment
   (nextjournal.clerk.render/re-render)
+  (add-watch #'my-already-defined-function2 ::my-already-defined-function2
+             (fn [_ _ _ _]
+               (nextjournal.clerk.render/re-render)))
   )
 
