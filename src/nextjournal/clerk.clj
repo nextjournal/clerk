@@ -20,13 +20,6 @@
 (defonce ^:private !last-file (atom nil))
 (defonce ^:private !watcher (atom nil))
 
-(defn require-cljs
-  "Load (SCI) cljs code from namespaces and transitive dependencies on the
-  classpath. Calling this allows you to refer to functions by symbols in `:render-fn`.
-  This is an EXPERIMENTAL feature and its API is subject to change."
-  [& nss]
-  (apply cljs-libs/require-cljs nss))
-
 (defn show!
   "Evaluates the Clojure source in `file-or-ns` and makes Clerk show it in the browser.
 

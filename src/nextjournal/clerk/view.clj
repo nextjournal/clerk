@@ -11,7 +11,7 @@
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns file]}]
    (binding [*ns* ns]
-     (-> (merge doc opts) cljs-libs/update-blocks v/notebook v/present))))
+     (-> (merge doc opts) v/notebook v/present cljs-libs/update-blocks))))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/test.clj")

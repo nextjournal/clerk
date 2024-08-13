@@ -1,8 +1,6 @@
-(ns viewers.viewer-with-cljs-source
-  (:require [nextjournal.clerk :as clerk]))
-
-(clerk/require-cljs '[viewers.viewer-with-cljs-source :as cljs-view])
+(ns viewers.viewer-with-cljs-source)
 
 (def my-cool-viewer
-  {:render-fn `cljs-view/my-already-defined-function2
+  {:render-fn 'viewers.viewer-with-cljs-source/my-already-defined-function2
+   :require-cljs 'viewers.viewer-with-cljs-source
    :transform-fn (fn [x] x)})

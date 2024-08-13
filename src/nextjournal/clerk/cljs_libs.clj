@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.tools.namespace.dependency :as tnsd]
    [clojure.tools.namespace.parse :as tnsp]
+   [clojure.walk :as w]
    [edamame.core :as e]
    [nextjournal.clerk.viewer :as v]))
 
@@ -34,7 +35,8 @@
      nextjournal.clerk.render.code
      clojure.template})
 
-(defonce ^:private cljs-graph (atom (tnsd/graph)))
+(defn- new-graph []
+  (atom (tnsd/graph)))
 
 (defn- ns->resource [ns]
   (or (io/resource (-> (namespace-munge ns)
@@ -43,7 +45,7 @@
       (binding [*out* *err*]
         (println "[clerk] Could not find source for CLJS namespace:" ns))))
 
-(defn require-cljs [& nss]
+(defn require-cljs* [cljs-graph & nss]
   (doseq [libspec nss]
     (let [[ns {:keys [as]}] (if (symbol? libspec)
                               [libspec]
@@ -59,7 +61,7 @@
                 nom (tnsp/name-from-ns-decl ns-decl)
                 deps (remove already-loaded-sci-namespaces
                              (tnsp/deps-from-ns-decl ns-decl))]
-            (run! require-cljs deps)
+            (run! require-cljs* deps)
             (swap! cljs-graph (fn [graph]
                                 (reduce (fn [acc dep]
                                           (tnsd/depend acc nom dep))
@@ -68,27 +70,27 @@
                                             [::orphan]))))
             nil))))))
 
-(defn all-ns []
+(defn all-ns [cljs-graph]
   (remove #(= ::orphan %) (tnsd/topo-sort @cljs-graph)))
 
-(defn remove-ns [ns]
-  (swap! cljs-graph (fn [graph]
-                      (-> graph
-                          (tnsd/remove-all ns))))
-  nil)
-
 (defn update-blocks [doc]
-  (update doc :blocks (fn [blocks]
-                        (concat
-                         (let [resources (keep ns->resource (all-ns))]
-                           (map (fn [resource]
-                                  (let [code-str (slurp resource)]
-                                    {:type :code
-                                     :text (pr-str `(nextjournal.clerk/eval-cljs-str ~code-str))
-                                     :result {:nextjournal/value (v/eval-cljs-str code-str)}
-                                     :settings #:nextjournal.clerk{:visibility {:code :hide, :result :hide}}}))
-                                resources))
-                         blocks))))
+  (let [g (new-graph)]
+    (w/postwalk (fn [v]
+                  (when-let [cljs-ns (some-> v :nextjournal/viewer :require-cljs)]
+                    (require-cljs* g cljs-ns ))
+                  v)
+                doc)
+    (update doc :blocks (fn [blocks]
+                          (concat
+                           (let [resources (keep ns->resource (all-ns g))]
+                             (map (fn [resource]
+                                    (let [code-str (slurp resource)]
+                                      {:type :code
+                                       :text (pr-str `(nextjournal.clerk/eval-cljs-str ~code-str))
+                                       :result {:nextjournal/value (v/eval-cljs-str code-str)}
+                                       :settings #:nextjournal.clerk{:visibility {:code :hide, :result :hide}}}))
+                                  resources))
+                           blocks)))))
 
 (comment
   (nextjournal.clerk/eval-cljs-str "(+ 1 2 3)")
@@ -96,7 +98,6 @@
   (def decl (tnsp/read-ns-decl (edamame.core/reader (java.io.StringReader. (slurp (io/resource "nextjournal/clerk/render/hooks.cljs"))))))
   (tnsp/name-from-ns-decl decl)
   (tnsp/deps-from-ns-decl decl)
-  @cljs-graph
 
   (-> (tnsd/graph)
       (tnsd/depend 'foo 'bar)
