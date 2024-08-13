@@ -22,7 +22,8 @@
 
 (defn require-cljs
   "Load (SCI) cljs code from namespaces and transitive dependencies on the
-  classpath. Calling this allows you to refer to functions by symbols in `:render-fn`"
+  classpath. Calling this allows you to refer to functions by symbols in `:render-fn`.
+  This is an EXPERIMENTAL feature and its API is subject to change."
   [& nss]
   (apply cljs-libs/require-cljs nss))
 
