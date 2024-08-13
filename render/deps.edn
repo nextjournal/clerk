@@ -2,10 +2,13 @@
  :deps {applied-science/js-interop {:mvn/version "0.3.3"}
         binaryage/devtools {:mvn/version "1.0.3"}
         cider/cider-nrepl {:mvn/version "0.28.3"}
-        org.babashka/sci {:mvn/version "0.8.41"}
+        org.babashka/sci {:git/url "https://github.com/babashka/sci"
+                          :git/sha "c556f4474303c61da72e7a07eef496dcbf66a56e"}
         reagent/reagent {:mvn/version "1.2.0"}
-        io.github.babashka/sci.configs {:git/sha "0702ea5a21ad92e6d7cca6d36de84271083ea68f"}
+        io.github.babashka/sci.configs {:git/sha "0702ea5a21ad92e6d7cca6d36de84271083ea68f"
+                                        :exclusions [org.babashka/sci]}
         io.github.nextjournal/clojure-mode {:git/sha "1f55406087814a0dda6806396aa596dbe13ea302"}
         thheller/shadow-cljs {:mvn/version "2.23.1"}
         io.github.squint-cljs/cherry {;; :local/root "/Users/borkdude/dev/cherry"
-                                      :git/sha "ac89d93f136ee8fab91f62949de5b5822ba08b3c"}}}
+                                      :git/sha "ac89d93f136ee8fab91f62949de5b5822ba08b3c"
+                                      :exclusions [org.babashka/sci]}}}
