@@ -7,8 +7,7 @@
    [clojure.tools.namespace.parse :as tnsp]
    [clojure.walk :as w]
    [edamame.core :as e]
-   [nextjournal.clerk.viewer :as v]
-   [flatland.ordered.map :as omap]))
+   [nextjournal.clerk.viewer :as v]))
 
 (def ^:private already-loaded-sci-namespaces
   '#{user
