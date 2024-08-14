@@ -36,8 +36,9 @@
      nextjournal.clerk.render.code
      clojure.template})
 
-(defn- new-graph []
-  (atom (tnsd/graph)))
+(defn- new-cljs-state []
+  (atom {:graph (tnsd/graph)
+         :loaded-libs #{}}))
 
 (defn- ns->resource [ns]
   (or (io/resource (-> (namespace-munge ns)
@@ -46,42 +47,49 @@
       (binding [*out* *err*]
         (println "[clerk] Could not find source for CLJS namespace:" ns))))
 
-(defn require-cljs* [cljs-graph & nss]
-  (doseq [libspec nss]
-    (let [[ns {:keys [as]}] (if (symbol? libspec)
-                              [libspec]
-                              (let [ns (first libspec)
-                                    opts (apply hash-map (rest libspec))]
-                                [ns opts]))]
-      (when as
-        (alias as ns))
-      (when-not (contains? already-loaded-sci-namespaces libspec)
-        (when-let [cljs-file (ns->resource ns)]
-          (let [ns-decl (with-open [rdr (e/reader (io/reader cljs-file))]
-                          (tnsp/read-ns-decl rdr))
-                nom (tnsp/name-from-ns-decl ns-decl)
-                deps (remove already-loaded-sci-namespaces
-                             (tnsp/deps-from-ns-decl ns-decl))]
-            (run! require-cljs* deps)
-            (swap! cljs-graph (fn [graph]
-                                (reduce (fn [acc dep]
-                                          (tnsd/depend acc nom dep))
-                                        (tnsd/remove-node graph ns)
-                                        (or (seq deps)
-                                            [::orphan]))))
-            nil))))))
+(defn require-cljs* [state & nss]
+  (doseq [ns nss]
+    (when-not (or (contains? already-loaded-sci-namespaces ns)
+                  (contains? (:loaded-libs @state) ns))
+      (when-let [cljs-file (ns->resource ns)]
+        (let [ns-decl (with-open [rdr (e/reader (io/reader cljs-file))]
+                        (tnsp/read-ns-decl rdr))
+              nom (tnsp/name-from-ns-decl ns-decl)
+              deps (remove already-loaded-sci-namespaces
+                           (tnsp/deps-from-ns-decl ns-decl))]
+          (apply require-cljs* state deps)
+          (swap! state (fn [state]
+                              (-> state
+                                  (update :graph
+                                          (fn [graph]
+                                            (reduce (fn [acc dep]
+                                                      (tnsd/depend acc nom dep))
+                                                    (tnsd/remove-node graph ns)
+                                                    (or (seq deps)
+                                                        [::orphan]))))
+                                  (update :loaded-libs conj ns))))
+          nil)))))
 
-(defn all-ns [cljs-graph]
-  (remove #(= ::orphan %) (tnsd/topo-sort @cljs-graph)))
+(defn all-ns [cljs-state]
+  (remove #(= ::orphan %) (tnsd/topo-sort (:graph @cljs-state))))
 
 (defn prepend-required-cljs [doc]
-  (let [g (new-graph)]
+  (let [state (new-cljs-state)]
     (w/postwalk (fn [v]
-                  (when-let [cljs-ns (some-> v :nextjournal/viewer :require-cljs)]
-                    (require-cljs* g cljs-ns))
+                  (when-let [viewer (v/get-safe v :nextjournal/viewer)]
+                    (when-let [r (:require-cljs viewer)]
+                      (let [cljs-ns
+                            (if (true? r)
+                              (->
+                               viewer :render-fn
+                               ;; at this point, the render-fn has been transformed to a ViewerEval, which contains a :form
+                               :form
+                               namespace symbol)
+                              r)]
+                        (require-cljs* state cljs-ns))))
                   v)
                 doc)
-    (into (omap/ordered-map :effects (let [resources (keep ns->resource (all-ns g))]
+    (into (omap/ordered-map :effects (let [resources (keep ns->resource (all-ns state))]
                                        (mapv (fn [resource]
                                                (let [code-str (slurp resource)]
                                                  (v/->ViewerEval `(load-string ~code-str))))

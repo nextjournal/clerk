@@ -99,7 +99,8 @@
 (def data-readers
   {'viewer-fn ->viewer-fn
    'viewer-eval ->viewer-eval
-   'ordered/map omap/ordered-map-reader-clj})
+   'ordered/map #?(:clj omap/ordered-map-reader-clj
+                   :cljs  omap/ordered-map-reader-cljs)})
 
 #_(binding [*data-readers* {'viewer-fn ->viewer-fn}]
     (read-string (pr-str (->viewer-fn '(fn [x] x)))))
