@@ -89,14 +89,17 @@
                         (require-cljs* state cljs-ns))))
                   v)
                 doc)
-    (apply aam/always-array-map
-           :cljs-libs ;; make sure :cljs-libs is the first key, so these are read + evaluated first
-           (let [resources (keep ns->resource (all-ns state))]
-             (mapv (fn [resource]
-                     (let [code-str (slurp resource)]
-                       (v/->ViewerEval `(load-string ~code-str))))
-                   resources))
-           (interleave (keys doc) (vals doc)))))
+    (let [cljs-libs (let [resources (keep ns->resource (all-ns state))]
+                      (-> (mapv (fn [resource]
+                                  (let [code-str (slurp resource)]
+                                    (v/->ViewerEval `(load-string ~code-str))))
+                                resources)
+                          not-empty))]
+      (if cljs-libs
+        ;; make sure :cljs-libs is the first key, so these are read + evaluated first
+        (aam/assoc-before doc :cljs-libs
+                          cljs-libs)
+        doc))))
 
 (comment
   ;; [nextjournal.clerk.render.hooks :as hooks]
