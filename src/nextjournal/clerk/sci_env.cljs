@@ -35,7 +35,8 @@
             [sci.core :as sci]
             [sci.ctx-store]
             [sci.nrepl.server :as nrepl]
-            [shadow.esm]))
+            [shadow.esm]
+            [flatland.ordered.map :as omap]))
 
 (def legacy-ns-aliases
   {"j" "applied-science.js-interop"
@@ -73,6 +74,9 @@
          (js/console.error "error in viewer-eval" e form)
          (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))
 
+(defn ordered-map-reader-cljs [coll]
+  (omap/ordered-map (vec coll)))
+
 (defonce !edamame-opts
   (atom {:all true
          :row-key :line
@@ -86,7 +90,8 @@
                (get {'viewer-fn ->viewer-fn-with-error
                      'viewer-fn/cherry cherry-env/->viewer-fn-with-error
                      'viewer-eval ->viewer-eval-with-error
-                     'viewer-eval/cherry cherry-env/->viewer-eval-with-error} tag)
+                     'viewer-eval/cherry cherry-env/->viewer-eval-with-error
+                     'ordered/map ordered-map-reader-cljs} tag)
                (fn [value]
                  (viewer/with-viewer `viewer/tagged-value-viewer
                    {:tag tag

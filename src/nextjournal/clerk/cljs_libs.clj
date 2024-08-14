@@ -7,7 +7,8 @@
    [clojure.tools.namespace.parse :as tnsp]
    [clojure.walk :as w]
    [edamame.core :as e]
-   [nextjournal.clerk.viewer :as v]))
+   [nextjournal.clerk.viewer :as v]
+   [flatland.ordered.map :as omap]))
 
 (def ^:private already-loaded-sci-namespaces
   '#{user
@@ -73,32 +74,25 @@
 (defn all-ns [cljs-graph]
   (remove #(= ::orphan %) (tnsd/topo-sort @cljs-graph)))
 
-(defn update-blocks [doc]
+(defn prepend-required-cljs [doc]
   (let [g (new-graph)]
     (w/postwalk (fn [v]
                   (when-let [cljs-ns (some-> v :nextjournal/viewer :require-cljs)]
-                    (require-cljs* g cljs-ns ))
+                    (require-cljs* g cljs-ns))
                   v)
                 doc)
-    (update doc :blocks (fn [blocks]
-                          (concat
-                           (let [resources (keep ns->resource (all-ns g))]
-                             (map (fn [resource]
-                                    (let [code-str (slurp resource)]
-                                      {:type :code
-                                       :text (pr-str `(nextjournal.clerk/eval-cljs-str ~code-str))
-                                       :result {:nextjournal/value (v/eval-cljs-str code-str)}
-                                       :settings #:nextjournal.clerk{:visibility {:code :hide, :result :hide}}}))
-                                  resources))
-                           blocks)))))
+    (into (omap/ordered-map :effects (let [resources (keep ns->resource (all-ns g))]
+                                       (mapv (fn [resource]
+                                               (let [code-str (slurp resource)]
+                                                 (v/->ViewerEval `(load-string ~code-str))))
+                                             resources)))
+          doc)))
 
 (comment
-  (nextjournal.clerk/eval-cljs-str "(+ 1 2 3)")
   ;; [nextjournal.clerk.render.hooks :as hooks]
   (def decl (tnsp/read-ns-decl (edamame.core/reader (java.io.StringReader. (slurp (io/resource "nextjournal/clerk/render/hooks.cljs"))))))
   (tnsp/name-from-ns-decl decl)
   (tnsp/deps-from-ns-decl decl)
-
   (-> (tnsd/graph)
       (tnsd/depend 'foo 'bar)
       (tnsd/remove-node 'foo)
