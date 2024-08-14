@@ -96,11 +96,11 @@
        (-write w "#viewer-eval ")
        (-write w (pr-str (:form obj))))))
 
-(def data-readers
-  {'viewer-fn ->viewer-fn
-   'viewer-eval ->viewer-eval
-   'ordered/map #?(:clj omap/ordered-map-reader-clj
-                   :cljs  omap/ordered-map-reader-cljs)})
+#?(:clj
+   (def data-readers
+     {'viewer-fn ->viewer-fn
+      'viewer-eval ->viewer-eval
+      'ordered/map omap/ordered-map-reader-clj}))
 
 #_(binding [*data-readers* {'viewer-fn ->viewer-fn}]
     (read-string (pr-str (->viewer-fn '(fn [x] x)))))
