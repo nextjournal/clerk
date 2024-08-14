@@ -5,7 +5,7 @@
             [clojure.datafy :as datafy]
             [clojure.set :as set]
             [clojure.walk :as w]
-            [flatland.ordered.map :refer [ordered-map]]
+            [flatland.ordered.map :as omap :refer [ordered-map]]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
                       [clojure.tools.reader :as tools.reader]
@@ -96,9 +96,11 @@
        (-write w "#viewer-eval ")
        (-write w (pr-str (:form obj))))))
 
-(def data-readers
-  {'viewer-fn ->viewer-fn
-   'viewer-eval ->viewer-eval})
+#?(:clj
+   (def data-readers
+     {'viewer-fn ->viewer-fn
+      'viewer-eval ->viewer-eval
+      'ordered/map omap/ordered-map-reader-clj}))
 
 #_(binding [*data-readers* {'viewer-fn ->viewer-fn}]
     (read-string (pr-str (->viewer-fn '(fn [x] x)))))
@@ -1472,7 +1474,8 @@
         viewers (->viewers hoisted-wrapped-value)
         _ (when (empty? viewers)
             (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
-        {:as viewer viewers-to-add :add-viewers :keys [render-fn transform-fn]} (viewer-for viewers hoisted-wrapped-value)
+        {:as viewer viewers-to-add :add-viewers :keys [render-fn transform-fn]}
+        (viewer-for viewers hoisted-wrapped-value)
         transformed-value (cond-> (ensure-wrapped-with-viewers viewers
                                                                (cond-> (-> hoisted-wrapped-value
                                                                            (dissoc :nextjournal/viewer)
