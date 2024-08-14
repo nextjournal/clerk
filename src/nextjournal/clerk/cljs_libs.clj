@@ -89,11 +89,12 @@
                         (require-cljs* state cljs-ns))))
                   v)
                 doc)
-    (into (omap/ordered-map :effects (let [resources (keep ns->resource (all-ns state))]
-                                       (mapv (fn [resource]
-                                               (let [code-str (slurp resource)]
-                                                 (v/->ViewerEval `(load-string ~code-str))))
-                                             resources)))
+    (into (omap/ordered-map :cljs-libs
+                            (let [resources (keep ns->resource (all-ns state))]
+                              (mapv (fn [resource]
+                                      (let [code-str (slurp resource)]
+                                        (v/->ViewerEval `(load-string ~code-str))))
+                                    resources)))
           doc)))
 
 (comment
