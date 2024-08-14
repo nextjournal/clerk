@@ -13,8 +13,7 @@
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.viewer :as v]
-            [nextjournal.clerk.webserver :as webserver]
-            [nextjournal.clerk.cljs-libs :as cljs-libs]))
+            [nextjournal.clerk.webserver :as webserver]))
 
 (defonce ^:private !show-filter-fn (atom nil))
 (defonce ^:private !last-file (atom nil))
