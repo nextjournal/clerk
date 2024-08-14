@@ -7,7 +7,8 @@
    [clojure.tools.namespace.parse :as tnsp]
    [clojure.walk :as w]
    [edamame.core :as e]
-   [nextjournal.clerk.viewer :as v]))
+   [nextjournal.clerk.viewer :as v]
+   [nextjournal.clerk.always-array-map :as aam]))
 
 (def ^:private already-loaded-sci-namespaces
   '#{user
@@ -51,7 +52,7 @@
     (when-not (or (contains? already-loaded-sci-namespaces ns)
                   (contains? (:loaded-libs @state) ns))
       (when-let [cljs-file (ns->resource ns)]
-        (let [ns-decl (with-open [rdr (e/reader (io/reader cljs-file))]
+        (let [ns-decl (with-open [^java.io.Closeable rdr (e/reader (io/reader cljs-file))]
                         (tnsp/read-ns-decl rdr))
               nom (tnsp/name-from-ns-decl ns-decl)
               deps (remove already-loaded-sci-namespaces
@@ -88,7 +89,7 @@
                         (require-cljs* state cljs-ns))))
                   v)
                 doc)
-    (apply array-map
+    (apply aam/always-array-map
            :cljs-libs ;; make sure :cljs-libs is the first key, so these are read + evaluated first
            (let [resources (keep ns->resource (all-ns state))]
              (mapv (fn [resource]
