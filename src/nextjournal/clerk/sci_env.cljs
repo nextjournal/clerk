@@ -8,6 +8,7 @@
             ["@nextjournal/lang-clojure" :as lang-clojure]
             ["framer-motion" :as framer-motion]
             ["react" :as react]
+            ["react-dom" :as react-dom]
             [applied-science.js-interop :as j]
             [cljs.math]
             [cljs.reader]
@@ -168,7 +169,8 @@
              "@lezer/highlight" lezer-highlight
              "@nextjournal/lang-clojure" lang-clojure
              "framer-motion" framer-motion
-             "react" react}
+             "react" react
+             "react-dom" react-dom}
    :ns-aliases '{clojure.math cljs.math}
    :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
                        'nextjournal.clerk viewer-namespace ;; TODO: expose cljs variant of `nextjournal.clerk` with docstrings
