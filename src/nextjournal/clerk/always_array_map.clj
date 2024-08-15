@@ -65,14 +65,15 @@
 (defmethod print-method AlwaysArrayMap
   [v ^java.io.Writer writer]
   (.write writer "{")
-  (let [end-idx (dec (count v))]
-    (dorun (map-indexed (fn [i [k v]]
-                          (.write writer (pr-str k))
-                          (.write writer " ")
-                          (.write writer (pr-str v))
-                          (when-not (= end-idx i)
-                            (.write writer ", ")))
-                        v)))
+  (let [write-kv! (fn [k v]
+              (.write writer (pr-str k))
+              (.write writer " ")
+              (.write writer (pr-str v)))]
+    (doseq [[k v] (butlast v)]
+      (write-kv! k v)
+      (.write writer ", "))
+    (let [[k v] (last v)]
+      (write-kv! k v)))
   (.write writer "}"))
 
 (comment
