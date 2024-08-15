@@ -4,7 +4,10 @@
 
 (set! *warn-on-reflection* true)
 
-(declare assoc-before assoc-after)
+(declare assoc-before)
+
+(defn- assoc-after [aam k v]
+  (apply array-map (concat (interleave (keys aam) (vals aam)) [k v])))
 
 (deftype AlwaysArrayMap [^clojure.lang.PersistentArrayMap the-map]
   clojure.lang.ILookup
@@ -17,13 +20,15 @@
 
   clojure.lang.IPersistentMap
   (assoc [_ k v]
-    (assoc-after the-map k v))
+    (if (< (count the-map) 8)
+      (->AlwaysArrayMap (assoc the-map k v))
+      (->AlwaysArrayMap (assoc-after the-map k v))))
 
   (assocEx [_ _k _v]
     (throw (ex-info "Not implemented" {})))
 
-  (without [_ _k]
-    (throw (ex-info "Not implemented" {})))
+  (without [_ k]
+    (->AlwaysArrayMap (dissoc the-map k)))
 
   clojure.lang.Associative
   (containsKey [_ k]
@@ -39,15 +44,20 @@
   (iterator [_]
     (.iterator the-map))
 
+  clojure.lang.IMeta
+  (meta [_]
+    (meta the-map))
+
+  clojure.lang.IObj
+  (withMeta [_ meta]
+    (->AlwaysArrayMap (with-meta the-map meta)))
+
   Object
   (toString [_]
     "<always-array-map>"))
 
 (defn assoc-before [aam k v]
-  (apply array-map (list* k v (interleave (keys aam) (vals aam)))))
-
-(defn assoc-after [aam k v]
-  (apply array-map (concat (interleave (keys aam) (vals aam)) [k v])))
+  (->AlwaysArrayMap (apply array-map (list* k v (interleave (keys aam) (vals aam))))))
 
 (defn always-array-map [& kvs]
   (->AlwaysArrayMap (apply array-map kvs)))
@@ -55,12 +65,17 @@
 (defmethod print-method AlwaysArrayMap
   [v ^java.io.Writer writer]
   (.write writer "{")
-  (doseq [[k v] v]
-    (.write writer (pr-str k))
-    (.write writer " ")
-    (.write writer (pr-str v)))
+  (let [end-idx (dec (count v))]
+    (dorun (map-indexed (fn [i [k v]]
+                          (.write writer (pr-str k))
+                          (.write writer " ")
+                          (.write writer (pr-str v))
+                          (when-not (= end-idx i)
+                            (.write writer ", ")))
+                        v)))
   (.write writer "}"))
 
 (comment
   (pr-str (always-array-map 1 2))
+  (type (assoc (always-array-map 0 0 1 1 2 2 3 3 4 4 5 5 6 6) :a 1 :b 2 :c 3))
   )
