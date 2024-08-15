@@ -4,10 +4,10 @@
 
 (set! *warn-on-reflection* true)
 
-(declare assoc-before)
-
 (defn- assoc-after [aam k v]
   (apply array-map (concat (interleave (keys aam) (vals aam)) [k v])))
+
+(declare ->AlwaysArrayMap)
 
 (deftype AlwaysArrayMap [^clojure.lang.PersistentArrayMap the-map]
   clojure.lang.ILookup
