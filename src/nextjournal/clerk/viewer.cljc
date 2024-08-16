@@ -21,7 +21,7 @@
                        [applied-science.js-interop :as j]])
             [nextjournal.clerk.parser :as parser]
             [nextjournal.markdown :as md]
-            [nextjournal.markdown.parser :as md.parser]
+            [nextjournal.markdown.utils :as md.utils]
             [nextjournal.markdown.transform :as md.transform])
   #?(:clj (:import (com.pngencoder PngEncoder)
                    (clojure.lang IDeref IAtom)
@@ -579,7 +579,7 @@
 
 (defn process-sidenotes [cell-doc {:keys [footnotes]}]
   (if (seq footnotes)
-    (md.parser/insert-sidenote-containers (assoc cell-doc :footnotes footnotes))
+    (md.utils/insert-sidenote-containers (assoc cell-doc :footnotes footnotes))
     cell-doc))
 
 (defn process-image-source [src {:as doc :keys [file package]}]
