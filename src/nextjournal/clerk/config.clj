@@ -49,12 +49,12 @@
 
 
 (defonce render-repl-config
-  (delay (when-some [config (let [prop (System/getProperty "clerk.render_repl")]
-                              (when-not (str/blank? prop)
-                                (merge {:nrepl-port 1339
-                                        :websocket-port 1340}
-                                       (edn/read-string prop))))]
-           (when-some [start! (requiring-resolve 'sci.nrepl.browser-server/start!)]
+  (delay (when-let [config (let [prop (System/getProperty "clerk.render_repl")]
+                             (when-not (str/blank? prop)
+                               (merge {:nrepl-port 1339
+                                       :websocket-port 1340}
+                                      (edn/read-string prop))))]
+           (let [start! (requiring-resolve 'sci.nrepl.browser-server/start!)]
              (doto config
                start!)))))
 
