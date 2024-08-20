@@ -540,14 +540,9 @@
              {:jar f :hash (sha1-base58 (io/input-stream f))})))
 
 (defn ^:private merge-analysis-info [state {:as _analyzed-doc :keys [->analysis-info var->block-id]}]
-  (reduce (fn [s {:as analyzed :keys [deps]}]
-            (if (seq deps)
-              (reduce (partial analyze-deps analyzed) s deps)
-              s))
-          (-> state
-              (update :->analysis-info merge ->analysis-info)
-              (update :var->block-id merge var->block-id))
-          (vals ->analysis-info)))
+  (-> state
+      (update :->analysis-info merge ->analysis-info)
+      (update :var->block-id merge var->block-id)))
 
 #_(merge-analysis-info {:->analysis-info {:a :b}} {:->analysis-info {:c :d}})
 
@@ -584,11 +579,25 @@
                            loc->syms)
                    (update :counter inc)))
         (-> state
+            ((fn [{:as state :keys [->analysis-info]}]
+               (reduce (fn [state [_ {:as info :keys [deps]}]]
+                         (reduce (fn [s dep] (analyze-deps info s dep))
+                                 state deps))
+                       state ->analysis-info)))
+            #_
             analyze-doc-deps
             make-deps-inherit-no-cache
             (dissoc :analyzed-file-set :counter))))))
 
 (comment
+  (try
+    (reset! !file->analysis-cache {})
+    (nextjournal.clerk.eval/eval-string "(ns ahoi (:require [nextjournal.clerk :as clerk])) (clerk/html [:div])")
+    :ok
+    (catch Throwable t
+      (prn (ex-message t))
+      (ex-data t)))
+
   (def parsed (parser/parse-file {:doc? true} "src/nextjournal/clerk/webserver.clj"))
   (def analysis (time (-> parsed analyze-doc build-graph)))
   (-> analysis :->analysis-info keys set)
@@ -620,7 +629,7 @@
                            (vary-meta dissoc :type)))
                  form))
 
-(defn hash-codeblock [->hash {:keys [ns graph]} {:as codeblock :keys [hash form id vars]}]
+(defn hash-codeblock [->hash {:keys [ns graph]} {:as codeblock :keys [hash form id vars graph-key]}]
   (let [deps (dep/immediate-dependencies graph id)
         hashed-deps (into #{} (keep ->hash) deps)]
     (when-some [dep-with-missing-hash
@@ -628,20 +637,24 @@
                         (when-not (get ->hash dep)
                           (when-not (deref? dep)            ;; on a first pass deref-nodes do not have a hash yet
                             dep))) deps)]
-      (throw (ex-info (format "Hash is missing on dependency '%s' of the form '%s' in %s" dep-with-missing-hash form ns)
+      (throw (ex-info (format "Hash is missing on dependency '%s' of the form '%s' in %s (id: %s, key: %s)" dep-with-missing-hash form ns id graph-key)
                       {:dep dep-with-missing-hash :codeblock codeblock :ns ns})))
     (sha1-base58 (binding [*print-length* nil]
                    (pr-str (set/union (conj hashed-deps (if form (remove-type-meta form) hash))
                                       vars))))))
 
+(defn safe-compare [a b]
+  (try (compare (str a) (str b))
+       (catch Throwable _ 0)))
+
 (defn hash
-  ([{:as analyzed-doc :keys [graph]}] (hash analyzed-doc (dep/topo-sort graph)))
+  ([{:as analyzed-doc :keys [graph]}] (def g graph) (hash analyzed-doc (dep/topo-sort safe-compare graph)))
   ([{:as analyzed-doc :keys [->analysis-info]} deps]
    (update analyzed-doc
            :->hash
            (partial reduce (fn [->hash k]
                              (if-let [codeblock (get ->analysis-info k)]
-                               (assoc ->hash k (hash-codeblock ->hash analyzed-doc codeblock))
+                               (assoc ->hash k (hash-codeblock ->hash analyzed-doc (assoc codeblock :graph-key k)))
                                ->hash)))
            deps)))
 

@@ -10,6 +10,7 @@
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns file]}]
+   #_ (def d :doo)
    (binding [*ns* ns]
      (-> (merge doc opts) v/notebook v/present cljs-libs/prepend-required-cljs))))
 
