@@ -339,14 +339,13 @@ my-uuid")]
 (deftest can-analyze-proxy-macro
   (is (analyze-string "(ns proxy-example-notebook) (proxy [clojure.lang.ISeq][] (seq [] '(this is a test seq)))")))
 
-
 (deftest circular-dependency
   (is (match? {:graph {:dependencies {'circular/b #{'clojure.core/str
                                                     (symbol "circular/a+circular/b")}
                                       'circular/a #{#_'clojure.core/declare 'clojure.core/str (symbol "circular/a+circular/b")}}}
                :->analysis-info {'circular/a any?
                                  'circular/b any?
-                                 (symbol "circular/a+circular/b") {:form '(do (def a (str "boom " b)) (def b (str a " boom")))}}}
+                                 (symbol "circular/a+circular/b") {:form '(do (def b (str a " boom"))   (def a (str "boom " b)))}}}
               (analyze-string "(ns circular)
 (declare a)
 (def b (str a \" boom\"))

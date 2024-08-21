@@ -590,13 +590,6 @@
 
 (comment
   (reset! !file->analysis-cache {})
-  (try
-    (reset! !file->analysis-cache {})
-    (nextjournal.clerk.eval/eval-string "(ns ahoi (:require [nextjournal.clerk :as clerk])) (clerk/html [:div])")
-    :ok
-    (catch Throwable t
-      (prn (ex-message t))
-      (ex-data t)))
 
   (def parsed (parser/parse-file {:doc? true} "src/nextjournal/clerk/webserver.clj"))
   (def analysis (time (-> parsed analyze-doc build-graph)))
