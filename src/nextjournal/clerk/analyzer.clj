@@ -340,18 +340,11 @@
     identity))
 #_ (ns-resolver *ns*)
 
-(defn analyze-doc-deps [{:as doc :keys [redefs blocks ->analysis-info]}]
-  (reduce (fn [state {:as info :keys [id deps vars- no-cache?]}]
-            (reduce (partial analyze-deps info)
-                    (cond-> state
-                      ;; redefinitions are never cached
-                      (and (not no-cache?) (seq (set/intersection vars- redefs)))
-                      (assoc-in [:->analysis-info id :no-cache?] true))
-                    deps))
+(defn analyze-doc-deps [{:as doc :keys [->analysis-info]}]
+  (reduce (fn [state {:as info :keys [deps]}]
+            (reduce (partial analyze-deps info) state deps))
           doc
-          (keep (comp #(get ->analysis-info %) :id)
-                (filter (comp #{:code} :type)
-                        blocks))))
+          (vals ->analysis-info)))
 
 (defn track-var->block+redefs [{:as state seen :var->block-id} {:keys [id vars-]}]
   (-> state
@@ -548,6 +541,17 @@
 
 #_(hash-jar (find-location `dep/depend))
 
+(defn set-no-cache-on-redefs [{:as doc :keys [redefs blocks ->analysis-info]}]
+  (reduce (fn [state {:as _info :keys [id vars- no-cache?]}]
+            (cond-> state
+              ;; redefinitions are never cached
+              (and (not no-cache?) (seq (set/intersection vars- redefs)))
+              (assoc-in [:->analysis-info id :no-cache?] true)))
+          doc
+          (keep (comp #(get ->analysis-info %) :id)
+                (filter (comp #{:code} :type)
+                        blocks))))
+
 (defn build-graph
   "Analyzes the forms in the given file and builds a dependency graph of the vars.
 
@@ -579,13 +583,8 @@
                            loc->syms)
                    (update :counter inc)))
         (-> state
-            ((fn [{:as state :keys [->analysis-info]}]
-               (reduce (fn [state [_ {:as info :keys [deps]}]]
-                         (reduce (fn [s dep] (analyze-deps info s dep))
-                                 state deps))
-                       state ->analysis-info)))
-            #_
             analyze-doc-deps
+            set-no-cache-on-redefs
             make-deps-inherit-no-cache
             (dissoc :analyzed-file-set :counter))))))
 
