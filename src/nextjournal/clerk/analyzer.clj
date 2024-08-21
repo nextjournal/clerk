@@ -589,6 +589,7 @@
             (dissoc :analyzed-file-set :counter))))))
 
 (comment
+  (reset! !file->analysis-cache {})
   (try
     (reset! !file->analysis-cache {})
     (nextjournal.clerk.eval/eval-string "(ns ahoi (:require [nextjournal.clerk :as clerk])) (clerk/html [:div])")
@@ -647,7 +648,7 @@
        (catch Throwable _ 0)))
 
 (defn hash
-  ([{:as analyzed-doc :keys [graph]}] (def g graph) (hash analyzed-doc (dep/topo-sort safe-compare graph)))
+  ([{:as analyzed-doc :keys [graph]}] (hash analyzed-doc (dep/topo-sort safe-compare graph)))
   ([{:as analyzed-doc :keys [->analysis-info]} deps]
    (update analyzed-doc
            :->hash
