@@ -627,18 +627,24 @@
                  form))
 
 (defn hash-codeblock [->hash {:keys [ns graph]} {:as codeblock :keys [hash form id vars graph-key]}]
-  (let [deps (dep/immediate-dependencies graph id)
+  (let [deps (when id (dep/immediate-dependencies graph id))
         hashed-deps (into #{} (keep ->hash) deps)]
-    (when-some [dep-with-missing-hash
-                (some (fn [dep]
-                        (when-not (get ->hash dep)
-                          (when-not (deref? dep)            ;; on a first pass deref-nodes do not have a hash yet
-                            dep))) deps)]
-      (throw (ex-info (format "Hash is missing on dependency '%s' of the form '%s' in %s (id: %s, key: %s)" dep-with-missing-hash form ns id graph-key)
-                      {:dep dep-with-missing-hash :codeblock codeblock :ns ns})))
+    ;; NOTE: we cannot throw here, some dependencies are interned at runtime
+    ;; https://github.com/nextjournal/clerk/issues/660
+    #_(when-some [dep-with-missing-hash
+                  (some (fn [dep]
+                          (when-not (get ->hash dep)
+                            (when-not (deref? dep)          ;; on a first pass deref-nodes do not have a hash yet
+                              dep))) deps)]
+        (throw (ex-info (format "Hash is missing on dependency '%s' of the form '%s' in %s (id: %s, key: %s)" dep-with-missing-hash form ns id graph-key)
+                        {:dep dep-with-missing-hash :codeblock codeblock :ns ns})))
     (sha1-base58 (binding [*print-length* nil]
                    (pr-str (set/union (conj hashed-deps (if form (remove-type-meta form) hash))
                                       vars))))))
+
+#_(hash-codeblock {} {:graph (dep/graph)} {:hash "foo"})
+#_(hash-codeblock {} {:graph (dep/graph)} {:id 'foo})
+#_(hash-codeblock {'bar "dep-hash"} {:graph (dep/depend (dep/graph) 'foo 'bar)} {:id 'foo})
 
 (defn hash
   ([{:as analyzed-doc :keys [graph]}] (hash analyzed-doc (dep/topo-sort graph)))
