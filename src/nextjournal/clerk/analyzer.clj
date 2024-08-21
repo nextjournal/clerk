@@ -636,12 +636,8 @@
                    (pr-str (set/union (conj hashed-deps (if form (remove-type-meta form) hash))
                                       vars))))))
 
-(defn safe-compare [a b]
-  (try (compare (str a) (str b))
-       (catch Throwable _ 0)))
-
 (defn hash
-  ([{:as analyzed-doc :keys [graph]}] (hash analyzed-doc (dep/topo-sort safe-compare graph)))
+  ([{:as analyzed-doc :keys [graph]}] (hash analyzed-doc (dep/topo-sort graph)))
   ([{:as analyzed-doc :keys [->analysis-info]} deps]
    (update analyzed-doc
            :->hash
@@ -651,6 +647,11 @@
                                ->hash)))
            deps)))
 
+#_(:time-ms
+   (nextjournal.clerk.eval/time-ms
+    (-> (parser/parse-file "src/nextjournal/clerk.clj")
+        build-graph
+        hash)))
 #_(hash (build-graph (parser/parse-clojure-string "^{:nextjournal.clerk/hash-fn (fn [x] \"abc\")}(def contents (slurp \"notebooks/hello.clj\"))")))
 #_(hash (build-graph (parser/parse-clojure-string (slurp "notebooks/hello.clj"))))
 
