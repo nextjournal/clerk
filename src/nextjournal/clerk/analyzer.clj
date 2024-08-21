@@ -575,7 +575,11 @@
                                    gitlib-hash (and (not jar?)
                                                     (second (re-find #".gitlibs/libs/.*/(\b[0-9a-f]{5,40}\b)/" (fs/unixify source))))]
                                (if (or jar? gitlib-hash)
-                                 (update g :->analysis-info merge (into {} (map (juxt identity (constantly (if source (or gitlib-hash (hash-jar source)) {})))) symbols))
+                                 (update g :->analysis-info merge (into {} (map (juxt identity
+                                                                                      (constantly (if source
+                                                                                                    (or (when gitlib-hash {:hash gitlib-hash})
+                                                                                                        (hash-jar source))
+                                                                                                    {})))) symbols))
                                  (-> g
                                      (update :analyzed-file-set conj source)
                                      (merge-analysis-info (analyze-file source))))))
