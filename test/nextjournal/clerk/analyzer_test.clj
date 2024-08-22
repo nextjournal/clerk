@@ -276,7 +276,17 @@
 ")]
       (is (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/a)))
       (is (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/b)))
-      (is (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/a#2))))))
+      (is (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/a#2)))))
+
+  (testing "declared vars don't count as redefinition"
+    (let [{:keys [->analysis-info]} (analyze-string "(ns nextjournal.clerk.analyzer-test.declares)
+(declare a)
+(defn b [] (inc a))
+(def a 1)
+")]
+      (is (not (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/a))))
+      (is (not (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/b))))
+      (is (not (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/a#2)))))))
 
 (deftest analyze-doc
   (testing "reading a bad block shows block and file info in raised exception"
