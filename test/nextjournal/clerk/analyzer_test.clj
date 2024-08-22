@@ -389,7 +389,41 @@ my-uuid")]
                       'nextjournal.clerk.analyzer-test.graph-nodes/some-dependent-var
                       'nextjournal.clerk.git/read-git-attrs))
     (is (not (contains? (dep/nodes (:graph analyzed))
-                        'nextjournal.clerk.fixtures.dep-a/some-function-with-defs-inside)))))
+                        'nextjournal.clerk.fixtures.dep-a/some-function-with-defs-inside)))
+
+    (is (empty? (let [!missing-hash-store (atom [])]
+                  (-> analyzed
+                      (assoc :record-missing-hash-fn (fn [report-entry] (swap! !missing-hash-store conj report-entry)))
+                      ana/hash)
+                  (deref !missing-hash-store))))))
+
+(deftest missing-hashes
+  (testing "should not have missing hashes on any form deps"
+    (is (empty?
+         (let [!missing-hash-store (atom [])]
+           (reset! ana/!file->analysis-cache {})
+           (-> (parser/parse-file {:doc? true} "src/nextjournal/clerk.clj")
+               ana/build-graph
+               (assoc :record-missing-hash-fn (fn [report-entry] (swap! !missing-hash-store conj report-entry)))
+               ana/hash)
+           (deref !missing-hash-store)))))
+
+  (testing "known cases where missing hashes occur"
+    (def specter-repro-analysis
+      (-> (parser/parse-file {:doc? true} "test/nextjournal/clerk/fixtures/issue_660_specter_repro.clj")
+          ana/build-graph))
+
+    (let [!missing-hash-store (atom [])]
+      (reset! ana/!file->analysis-cache {})
+      (-> specter-repro-analysis
+          (assoc :record-missing-hash-fn (fn [report-entry] (swap! !missing-hash-store conj report-entry)))
+          ana/hash)
+
+      (def missing-hash-report (first (deref !missing-hash-store)))
+
+      (is (= 'nextjournal.clerk.fixtures.issue-660-specter-repro/sample-specter-fn
+             (:id missing-hash-report)))
+      (is (:dep-with-missing-hash missing-hash-report)))))
 
 (deftest ->hash
   (testing "notices change in depedency namespace"
