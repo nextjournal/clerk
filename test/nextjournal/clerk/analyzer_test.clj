@@ -8,6 +8,8 @@
             [nextjournal.clerk :as clerk :refer [defcached]]
             [nextjournal.clerk.analyzer :as ana]
             [nextjournal.clerk.config :as config]
+            [nextjournal.clerk.fixtures.dep-a]
+            [nextjournal.clerk.fixtures.dep-b]
             [nextjournal.clerk.parser :as parser]
             [weavejester.dependency :as dep])
   (:import (clojure.lang ExceptionInfo)))
@@ -274,7 +276,17 @@
 ")]
       (is (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/a)))
       (is (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/b)))
-      (is (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/a#2))))))
+      (is (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/a#2)))))
+
+  (testing "declared vars don't count as redefinition"
+    (let [{:keys [->analysis-info]} (analyze-string "(ns nextjournal.clerk.analyzer-test.declares)
+(declare a)
+(defn b [] (inc a))
+(def a 1)
+")]
+      (is (not (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/a))))
+      (is (not (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/b))))
+      (is (not (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/a#2)))))))
 
 (deftest analyze-doc
   (testing "reading a bad block shows block and file info in raised exception"
@@ -339,14 +351,13 @@ my-uuid")]
 (deftest can-analyze-proxy-macro
   (is (analyze-string "(ns proxy-example-notebook) (proxy [clojure.lang.ISeq][] (seq [] '(this is a test seq)))")))
 
-
 (deftest circular-dependency
   (is (match? {:graph {:dependencies {'circular/b #{'clojure.core/str
                                                     (symbol "circular/a+circular/b")}
                                       'circular/a #{#_'clojure.core/declare 'clojure.core/str (symbol "circular/a+circular/b")}}}
                :->analysis-info {'circular/a any?
                                  'circular/b any?
-                                 (symbol "circular/a+circular/b") {:form '(do (def a (str "boom " b)) (def b (str a " boom")))}}}
+                                 (symbol "circular/a+circular/b") {:form '(do (def b (str a " boom"))   (def a (str "boom " b)))}}}
               (analyze-string "(ns circular)
 (declare a)
 (def b (str a \" boom\"))
@@ -367,6 +378,52 @@ my-uuid")]
     (let [{:keys [graph]} (analyze-string (slurp "src/nextjournal/clerk.clj"))]
       (is (dep/depends? graph 'nextjournal.clerk/show! 'nextjournal.clerk.analyzer/hash)))))
 
+(deftest graph-nodes-with-anonymous-ids
+  (testing "nodes with \"anonymous ids\" from dependencies in foreign files respect graph dependencies"
+
+    (def analyzed (analyze-string "(ns nextjournal.clerk.analyzer-test.graph-nodes
+(:require [nextjournal.clerk.fixtures.dep-b :as dep-b]))
+(def some-dependent-var (dep-b/thing))"))
+
+    (is (dep/depends? (:graph analyzed)
+                      'nextjournal.clerk.analyzer-test.graph-nodes/some-dependent-var
+                      'nextjournal.clerk.git/read-git-attrs))
+    (is (not (contains? (dep/nodes (:graph analyzed))
+                        'nextjournal.clerk.fixtures.dep-a/some-function-with-defs-inside)))
+
+    (is (empty? (let [!missing-hash-store (atom [])]
+                  (-> analyzed
+                      (assoc :record-missing-hash-fn (fn [report-entry] (swap! !missing-hash-store conj report-entry)))
+                      ana/hash)
+                  (deref !missing-hash-store))))))
+
+(deftest missing-hashes
+  (testing "should not have missing hashes on any form deps"
+    (is (empty?
+         (let [!missing-hash-store (atom [])]
+           (reset! ana/!file->analysis-cache {})
+           (-> (parser/parse-file {:doc? true} "src/nextjournal/clerk.clj")
+               ana/build-graph
+               (assoc :record-missing-hash-fn (fn [report-entry] (swap! !missing-hash-store conj report-entry)))
+               ana/hash)
+           (deref !missing-hash-store)))))
+
+  (testing "known cases where missing hashes occur"
+    (def specter-repro-analysis
+      (-> (parser/parse-file {:doc? true} "test/nextjournal/clerk/fixtures/issue_660_repro.clj")
+          ana/build-graph))
+
+    (let [!missing-hash-store (atom [])]
+      (reset! ana/!file->analysis-cache {})
+      (-> specter-repro-analysis
+          (assoc :record-missing-hash-fn (fn [report-entry] (swap! !missing-hash-store conj report-entry)))
+          ana/hash)
+
+      (def missing-hash-report (first (deref !missing-hash-store)))
+
+      (is (= 'nextjournal.clerk.fixtures.issue-660-repro/nonsense
+             (:id missing-hash-report)))
+      (is (:dep-with-missing-hash missing-hash-report)))))
 
 (deftest ->hash
   (testing "notices change in depedency namespace"

@@ -8,7 +8,11 @@ Changes can be:
 
 ## Unreleased
 
+* 🐜 Analyzer fixes
+* 🐞 Catch exception when browse is not supported, closes #657
+* 💫 Added 'react-dom' to SCI context
 * 💫 Make `clerk/table` work with empty tables.
+* 🛠 Update clojure, nrepl & cider-nrepl dev deps
 ...
 
 ## 0.16.1016 (2024-06-05)

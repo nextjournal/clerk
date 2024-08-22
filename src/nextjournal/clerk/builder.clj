@@ -276,12 +276,14 @@
         {state :result duration :time-ms} (eval/time-ms (reduce (fn [state doc]
                                                                   (try (conj state (-> doc analyzer/build-graph analyzer/hash))
                                                                        (catch Exception e
-                                                                         (reduced {:error e}))))
+                                                                         (reduced {:error e :file (:file doc)}))))
                                                                 []
                                                                 state))
         _ (if-let [error (:error state)]
             (do (report-fn {:stage :analyzed :error error :duration duration})
-                (throw error))
+                (throw (ex-info (format "Clerk analysis failed on '%s'" (:file state))
+                                {:file (:file state)}
+                                error)))
             (report-fn {:stage :analyzed :state state :duration duration}))
         _ (when download-cache-fn
             (report-fn {:stage :downloading-cache})
