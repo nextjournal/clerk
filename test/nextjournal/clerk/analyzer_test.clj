@@ -8,6 +8,8 @@
             [nextjournal.clerk :as clerk :refer [defcached]]
             [nextjournal.clerk.analyzer :as ana]
             [nextjournal.clerk.config :as config]
+            [nextjournal.clerk.fixtures.dep-a]
+            [nextjournal.clerk.fixtures.dep-b]
             [nextjournal.clerk.parser :as parser]
             [weavejester.dependency :as dep])
   (:import (clojure.lang ExceptionInfo)))
@@ -366,6 +368,18 @@ my-uuid")]
     (let [{:keys [graph]} (analyze-string (slurp "src/nextjournal/clerk.clj"))]
       (is (dep/depends? graph 'nextjournal.clerk/show! 'nextjournal.clerk.analyzer/hash)))))
 
+(deftest graph-nodes-with-anonymous-ids
+  (testing "nodes with \"anonymous ids\" from dependencies in foreign files respect graph dependencies"
+
+    (def analyzed (analyze-string "(ns nextjournal.clerk.analyzer-test.graph-nodes
+(:require [nextjournal.clerk.fixtures.dep-b :as dep-b]))
+(def some-dependent-var (dep-b/thing))"))
+
+    (is (dep/depends? (:graph analyzed)
+                      'nextjournal.clerk.analyzer-test.graph-nodes/some-dependent-var
+                      'nextjournal.clerk.git/read-git-attrs))
+    (is (not (contains? (dep/nodes (:graph analyzed))
+                        'nextjournal.clerk.fixtures.dep-a/some-function-with-defs-inside)))))
 
 (deftest ->hash
   (testing "notices change in depedency namespace"
