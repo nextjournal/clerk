@@ -30,6 +30,17 @@
 
 (def nbsp (gstring/unescapeEntities "&nbsp;"))
 
+(defonce !state
+  (r/atom {:eval-counter 0
+           :doc nil
+           :viewers viewer/!viewers
+           :panels {}}))
+
+(defonce !eval-counter (r/cursor !state [:eval-counter]))
+(defonce !doc (r/cursor !state [:doc]))
+(defonce !viewers (r/cursor !state [:viewers]))
+(defonce !panels (r/cursor !state [:panels]))
+
 (defn reagent-atom? [x]
   (satisfies? ratom/IReactiveAtom x))
 
@@ -77,8 +88,6 @@
           [:circle {:cx "20.9101" :cy "17.1436" :r "1.71143" :transform "rotate(-60 20.9101 17.1436)" :fill "currentColor"}]
           [:circle {:cx "20.9101" :cy "6.8555" :r "1.71143" :transform "rotate(-120 20.9101 6.8555)" :fill "currentColor"}]
           [:circle {:cx "12" :cy "1.71143" :r "1.71143" :fill "currentColor"}]]])]]))
-
-(defonce !eval-counter (r/atom 0))
 
 (defn exec-status [{:keys [progress cell-progress status]}]
   [:<>
@@ -515,10 +524,6 @@
   ([{:keys [space?]} tag value]
    [:span.inspected-value.whitespace-nowrap
     [:span.cmt-meta tag] (when space? nbsp) value]))
-
-(defonce !doc (ratom/atom nil))
-(defonce !viewers viewer/!viewers)
-(defonce !panels (ratom/atom {}))
 
 (defn set-viewers! [scope viewers]
   #_(js/console.log :set-viewers! {:scope scope :viewers viewers})
