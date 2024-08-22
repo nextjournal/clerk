@@ -61,8 +61,7 @@
            :test {:extra-deps {nubank/matcher-combinators {:mvn/version "3.5.1"}
                                org.clojure/test.check {:mvn/version "1.1.1"}
                                lambdaisland/kaocha {:mvn/version "1.66.1034"}
-                               io.github.cognitect-labs/test-runner {:git/tag "v0.5.1" :git/sha "dfb30dd"}
-                               com.rpl/specter {:mvn/version "1.1.4"}}
+                               io.github.cognitect-labs/test-runner {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
                   :extra-paths ["test"]
                   :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}"]
                   :exec-fn kaocha.runner/exec-fn

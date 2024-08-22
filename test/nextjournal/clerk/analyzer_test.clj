@@ -410,7 +410,7 @@ my-uuid")]
 
   (testing "known cases where missing hashes occur"
     (def specter-repro-analysis
-      (-> (parser/parse-file {:doc? true} "test/nextjournal/clerk/fixtures/issue_660_specter_repro.clj")
+      (-> (parser/parse-file {:doc? true} "test/nextjournal/clerk/fixtures/issue_660_repro.clj")
           ana/build-graph))
 
     (let [!missing-hash-store (atom [])]
@@ -421,7 +421,7 @@ my-uuid")]
 
       (def missing-hash-report (first (deref !missing-hash-store)))
 
-      (is (= 'nextjournal.clerk.fixtures.issue-660-specter-repro/sample-specter-fn
+      (is (= 'nextjournal.clerk.fixtures.issue-660-repro/nonsense
              (:id missing-hash-report)))
       (is (:dep-with-missing-hash missing-hash-report)))))
 
