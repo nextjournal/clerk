@@ -264,7 +264,7 @@
 ;;
 ;; Clerk handles conversion from EDN to JSON for you.
 ;; The official Vega-Lite examples are in JSON, but a Clojure/EDN version is available:
-;; [Carsten Behring's Vega gallery in EDN](https://github.clerk.garden/behrica/vl-galery/).
+;; [Carsten Behring's Vega gallery in EDN](https://vlgalleryedn.happytree-bf95e0f8.westeurope.azurecontainerapps.io/).
 
 ;; ### 🎼 Code
 
