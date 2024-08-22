@@ -3,5 +3,6 @@
 
 ;; this fn will be stored in analyzer info map with an anonymous id
 (defn some-function-with-defs-inside []
+  #_:clj-kondo/ignore
   (def inline-def 123)
   (:git/sha (git/read-git-attrs)))
