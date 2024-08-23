@@ -652,13 +652,15 @@
   (-exceeds-bounded-count-limit? [x limit]))
 
 (extend-protocol BoundedCountCheck
-  nil (-exceeds-bounded-count-limit? [_ _] false)
-  Object (-exceeds-bounded-count-limit? [_ _] false)
-  clojure.lang.IPersistentCollection (-exceeds-bounded-count-limit? [x limit]
-                                       (or (some #(-exceeds-bounded-count-limit? % limit) x) false))
-  clojure.lang.ISeq (-exceeds-bounded-count-limit? [xs limit]
-                      (or (<= limit (bounded-count limit xs))
-                          (some #(-exceeds-bounded-count-limit? % limit) xs))))
+  nil
+  (-exceeds-bounded-count-limit? [_ _] false)
+  Object
+  (-exceeds-bounded-count-limit? [_ _] false)
+  clojure.lang.IPersistentCollection
+  (-exceeds-bounded-count-limit? [xs limit]
+    (or (<= limit (bounded-count limit xs))
+        (some #(-exceeds-bounded-count-limit? % limit) xs)
+        false)))
 
 (defn exceeds-bounded-count-limit? [x]
   (-exceeds-bounded-count-limit? x config/*bounded-count-limit*))
