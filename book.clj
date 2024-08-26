@@ -14,7 +14,7 @@
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.analyzer :as ana]
             [nextjournal.clerk.viewer :as v]
-            [emmy.env :as sicm]
+            [emmy.env :as emmy]
             [emmy.expression]
             [weavejester.dependency :as dep])
   (:import (javax.imageio ImageIO)
@@ -627,7 +627,7 @@ v/table-viewer
 ;; using `clerk/html` on the JVM. When you want to run code in the
 ;; browser where Clerk's viewers are rendered, reach for
 ;; `:render-fn`. As an example, we'll write a multiviewer for a
-;; sicmutils literal expression that will compute two alternative
+;; emmy literal expression that will compute two alternative
 ;; representations and let the user switch between them in the
 ;; browser.
 
@@ -636,8 +636,8 @@ v/table-viewer
 ;; original form.
 
 (defn transform-literal [expr]
-  {:TeX (-> expr sicm/->TeX clerk/tex)
-   :original (clerk/code (with-out-str (sicm/print-expression (sicm/freeze expr))))})
+  {:TeX (-> expr emmy/->TeX clerk/tex)
+   :original (clerk/code (with-out-str (emmy/print-expression (emmy/freeze expr))))})
 
 ;; Our `literal-viewer` calls this `transform-literal` function and
 ;; also calls `clerk/mark-preserve-keys`. This tells Clerk to leave
@@ -671,8 +671,8 @@ v/table-viewer
 ;; representation!
 
 ^{::clerk/viewer literal-viewer}
-(sicm/+ (sicm/square (sicm/sin 'x))
-        (sicm/square (sicm/cos 'x)))
+(emmy/+ (emmy/square (emmy/sin 'x))
+        (emmy/square (emmy/cos 'x)))
 
 ;; #### 🥇 Selection
 
@@ -697,8 +697,8 @@ v/table-viewer
 
 ;; As you can see we now get this viewer automatically, without
 ;; needing to explicitly select it.
-(sicm/+ (sicm/square (sicm/sin 'x))
-        (sicm/square (sicm/cos 'x)))
+(emmy/+ (emmy/square (emmy/sin 'x))
+        (emmy/square (emmy/cos 'x)))
 
 ;; #### 🔓 Elisions
 
