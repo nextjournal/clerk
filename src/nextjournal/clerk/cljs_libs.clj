@@ -3,8 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.namespace.dependency :as tnsd]
-   [clojure.tools.namespace.parse :as tnsp]
+   [weavejester.dependency :as tnsd]
    [clojure.walk :as w]
    [edamame.core :as e]
    [nextjournal.clerk.viewer :as v]
@@ -37,6 +36,27 @@
      reagent.ratom
      user})
 
+(defn- ns-decl?
+  "Returns true if form is a (ns ...) declaration."
+  [form]
+  (and (list? form) (= 'ns (first form))))
+
+(defn- read-ns-decl
+  ([rdr]
+   (let [opts {:eof ::eof}]
+     (loop []
+       (let [form (e/parse-next rdr opts)]
+         (cond
+           (ns-decl? form) form
+           (= ::eof form) nil
+           :else (recur)))))))
+
+(defn deps-from-ns-decl [parsed-ns-decl]
+  (filter symbol? (map :lib (:requires parsed-ns-decl))))
+
+(defn name-from-ns-decl [parsed-ns-decl]
+  (:current parsed-ns-decl))
+
 (defn- new-cljs-state []
   (atom {:graph (tnsd/graph)
          :loaded-libs #{}}))
@@ -54,10 +74,11 @@
                   (contains? (:loaded-libs @state) ns))
       (when-let [cljs-file (ns->resource ns)]
         (let [ns-decl (with-open [^java.io.Closeable rdr (e/reader (io/reader cljs-file))]
-                        (tnsp/read-ns-decl rdr))
-              nom (tnsp/name-from-ns-decl ns-decl)
+                        (read-ns-decl rdr))
+              ns-decl (e/parse-ns-form ns-decl)
+              nom (name-from-ns-decl ns-decl)
               deps (remove already-loaded-sci-namespaces
-                           (tnsp/deps-from-ns-decl ns-decl))]
+                           (deps-from-ns-decl ns-decl))]
           (apply require-cljs* state deps)
           (swap! state (fn [state]
                               (-> state
@@ -102,12 +123,7 @@
                           cljs-libs)
         doc))))
 
+;;;; Scratch
+
 (comment
-  ;; [nextjournal.clerk.render.hooks :as hooks]
-  (def decl (tnsp/read-ns-decl (edamame.core/reader (java.io.StringReader. (slurp (io/resource "nextjournal/clerk/render/hooks.cljs"))))))
-  (tnsp/name-from-ns-decl decl)
-  (tnsp/deps-from-ns-decl decl)
-  (-> (tnsd/graph)
-      (tnsd/depend 'foo 'bar)
-      (tnsd/remove-node 'foo)
-      (tnsd/topo-sort)))
+  )
