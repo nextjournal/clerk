@@ -11,30 +11,31 @@
    [nextjournal.clerk.always-array-map :as aam]))
 
 (def ^:private already-loaded-sci-namespaces
-  '#{user
-     nextjournal.clerk.render
-     nextjournal.clojure-mode.commands
-     reagent.ratom
-     nextjournal.clerk
-     reagent.core
-     nextjournal.clerk.parser
-     nextjournal.clerk.viewer
-     clojure.core clojure.set
+  '#{applied-science.js-interop
      cljs.math
-     clojure.edn
-     nextjournal.clojure-mode.keymap
-     reagent.debug
      cljs.repl
+     clojure.core
+     clojure.edn
      clojure.repl
-     applied-science.js-interop
-     nextjournal.clerk.render.navbar
+     clojure.set
      clojure.string
-     nextjournal.clojure-mode.extensions.eval-region
+     clojure.template
      clojure.walk
+     nextjournal.clerk
+     nextjournal.clerk.parser
+     nextjournal.clerk.render
+     nextjournal.clerk.render.code
      nextjournal.clerk.render.editor
      nextjournal.clerk.render.hooks
-     nextjournal.clerk.render.code
-     clojure.template})
+     nextjournal.clerk.render.navbar
+     nextjournal.clerk.viewer
+     nextjournal.clojure-mode.commands
+     nextjournal.clojure-mode.extensions.eval-region
+     nextjournal.clojure-mode.keymap
+     reagent.core
+     reagent.debug
+     reagent.ratom
+     user})
 
 (defn- new-cljs-state []
   (atom {:graph (tnsd/graph)
