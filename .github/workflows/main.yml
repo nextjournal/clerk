@@ -275,6 +275,9 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.NEXTJOURNAL_CI_SSH_KEY }}
 
+      - name: Test Jar
+        run: bb ci:test-jar
+
       - name: Publish to clojars
         env:
           CLOJARS_USERNAME: mkvlr

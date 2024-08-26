@@ -95,6 +95,19 @@
                        :out
                        str/trim)
 
+  ci:test-jar {:doc "Builds and tests jar building"
+               :task (do
+                       ;; TODO: reuse jar from publish
+                       (run 'update-meta)
+                       (run 'jar)
+                       (prn (t/version))
+                       (clojure (str "-Sforce -Srepro -Sdeps '"
+                                  (pr-str {:deps {'io.github.nextjournal/clerk {:local/root (str "./target/clerk-" (t/version) ".jar")}}
+                                           :aliases {:test-jar {:jvm-opts ["-Dclojure.main.report=stdout"]
+                                                                :exec-fn 'nextjournal.clerk/build!
+                                                                :exec-args {:paths ["notebooks/hello.clj"]}}}})
+                                  "' -T:test-jar")))}
+
   ci:publish {:doc "Publish task which will be run on CI"
               :depends [-current-tag -current-branch]
               :task (do
