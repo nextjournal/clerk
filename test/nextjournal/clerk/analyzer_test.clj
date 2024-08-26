@@ -53,9 +53,10 @@
 
 (deftest exceeds-bounded-count-limit?
   (is (ana/exceeds-bounded-count-limit? (range config/*bounded-count-limit*)))
-  (is (not (ana/exceeds-bounded-count-limit? (range (dec config/*bounded-count-limit*)))))
+  (is (ana/exceeds-bounded-count-limit? (vec (range config/*bounded-count-limit*))))
   (is (ana/exceeds-bounded-count-limit? (map inc (range))))
-  (is (ana/exceeds-bounded-count-limit? {:a-range (range)})))
+  (is (ana/exceeds-bounded-count-limit? {:a-range (range)}))
+  (is (not (ana/exceeds-bounded-count-limit? (range (dec config/*bounded-count-limit*))))))
 
 (deftest deps
   (is (match? #{'clojure.string/includes?
