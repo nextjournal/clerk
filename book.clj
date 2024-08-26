@@ -14,7 +14,8 @@
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.analyzer :as ana]
             [nextjournal.clerk.viewer :as v]
-            [sicmutils.env :as sicm]
+            [emmy.env :as sicm]
+            [emmy.expression]
             [weavejester.dependency :as dep])
   (:import (javax.imageio ImageIO)
            (java.net URL)))
@@ -650,7 +651,7 @@ v/table-viewer
 ;; `wrapped-value` that ran through `v/present` and show it.
 
 (def literal-viewer
-  {:pred sicmutils.expression/literal?
+  {:pred emmy.expression/literal?
    :transform-fn (comp clerk/mark-preserve-keys
                        (clerk/update-val transform-literal))
    :render-fn '(fn [label->val]
