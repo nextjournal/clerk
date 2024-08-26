@@ -99,8 +99,8 @@
             :task (do
                     (println (str "Testing jar: 'clerk-" (t/version) ".jar'"))
                     (clojure (str "-Sforce -Srepro -Sdeps '"
-                               (pr-str {:deps {'io.github.nextjournal/clerk {:local/root (str "./target/clerk-" (t/version) ".jar")}}
-                                        :aliases {:test-jar {:jvm-opts ["-Dclojure.main.report=stdout"]
+                               (pr-str {:aliases {:test-jar {:jvm-opts ["-Dclojure.main.report=stdout"]
+                                                             :deps {'io.github.nextjournal/clerk {:local/root (str "./target/clerk-" (t/version) ".jar")}}
                                                              :exec-fn 'nextjournal.clerk/build!
                                                              :exec-args {:paths ["notebooks/hello.clj"]}}}})
                                "' -T:test-jar")))}
