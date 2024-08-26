@@ -2,9 +2,9 @@
   (:require [clojure.walk :as w]
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as viewer]
-            [sicmutils.env :refer :all]
-            [sicmutils.expression :as e]
-            [sicmutils.value :as v]))
+            [emmy.env :refer :all]
+            [emmy.expression :as e]
+            [emmy.value :as v]))
 
 (defn ->formatted-str [expr]
   (let [form (v/freeze expr)]

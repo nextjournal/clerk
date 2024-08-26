@@ -11,7 +11,7 @@
   (:refer-clojure
    :exclude [+ - * / partial ref zero? numerator denominator compare = run!])
   (:require [nextjournal.clerk :as clerk]
-            [sicmutils.env :as e :refer :all]))
+            [emmy.env :as e :refer :all]))
 
 ;; ## Lagrangian
 ;;
