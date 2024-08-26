@@ -95,9 +95,8 @@
                        :out
                        str/trim)
 
-  test-jar {:doc "Tests current jar, expects update meta to have been run"
+  test-jar {:doc "Tests current jar"
             :task (do
-                    ;; TODO: reuse jar from publish
                     (println (str "Testing jar: 'clerk-" (t/version) ".jar'"))
                     (clojure (str "-Sforce -Srepro -Sdeps '"
                                (pr-str {:deps {'io.github.nextjournal/clerk {:local/root (str "./target/clerk-" (t/version) ".jar")}}
