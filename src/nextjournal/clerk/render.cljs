@@ -649,6 +649,7 @@
     (reset! !synced-atom-vars vars-in-use)))
 
 (defn remount? [doc-or-patch]
+  (prn :re-mount? (some #(= % :nextjournal.clerk/remount) (tree-seq coll? seq doc-or-patch)))
   (true? (some #(= % :nextjournal.clerk/remount) (tree-seq coll? seq doc-or-patch))))
 
 (defn re-eval-viewer-fns [doc]
@@ -672,6 +673,8 @@
   (editscript/patch x (editscript/edits->script patch)))
 
 (defn patch-state! [{:keys [patch]}]
+  (prn :patch)
+  (prn patch)
   (if (remount? patch)
     (do (swap! !doc #(re-eval-viewer-fns (apply-patch % patch)))
         ;; TODO: figure out why it doesn't work without `js/setTimeout`

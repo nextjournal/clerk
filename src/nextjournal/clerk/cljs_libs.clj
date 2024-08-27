@@ -115,7 +115,7 @@
                               sources (map slurp resources)
                               hash (valuehash :sha1 sources)]
                           #_(def h hash)
-                          (assoc v :nextjournal.clerk/remount hash)))
+                          (assoc-in v [:nextjournal/viewer :nextjournal.clerk/remount] hash)))
                       v)
                     v))
                 doc)
