@@ -4,7 +4,6 @@
         cider/cider-nrepl {:mvn/version "0.28.3"}
         org.babashka/sci {:git/url "https://github.com/babashka/sci"
                           :git/sha "c556f4474303c61da72e7a07eef496dcbf66a56e"}
-        io.github.babashka/sci.nrepl {:git/sha "630062b76a4a9ca7d2565fd494d7baaf3460554b"}
         reagent/reagent {:mvn/version "1.2.0"}
         io.github.babashka/sci.configs {:git/sha "0702ea5a21ad92e6d7cca6d36de84271083ea68f"
                                         :exclusions [org.babashka/sci]}
