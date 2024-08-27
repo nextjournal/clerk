@@ -1,13 +1,11 @@
 (ns multiviewer
-  (:require [clojure.walk :as w]
-            [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as viewer]
+  (:require [nextjournal.clerk :as clerk]
             [emmy.env :refer :all]
             [emmy.expression :as e]
-            [emmy.value :as v]))
+            [emmy.generic :as g]))
 
 (defn ->formatted-str [expr]
-  (let [form (v/freeze expr)]
+  (let [form (g/freeze expr)]
     (with-out-str (e/print-expression form))))
 
 (defn transform-literal [literal]
