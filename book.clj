@@ -687,15 +687,14 @@ v/table-viewer
    :transform-fn (comp clerk/mark-preserve-keys
                        (clerk/update-val transform-literal))
    :require-cljs true
-   :render-fn 'nextjournal.clerk.book/my-render-fn})
+   :render-fn 'nextjournal.clerk.book/render-literal})
 
 ^{::clerk/viewer literal-viewer2}
 (emmy/+ (emmy/square (emmy/sin 'x))
         (emmy/square (emmy/cos 'x)))
 
 ;; When using `:require-cljs` the `:render-fn` is expected to live in a
-;; ClojureScript namespace on the classpath. In this case, the file is located
-;; in clerk's repo at `resources/nextjournal/clerk/book.cljs`.
+;; ClojureScript namespace on the classpath.
 
 ;; #### 🥇 Selection
 
