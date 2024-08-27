@@ -101,35 +101,20 @@
     (w/postwalk (fn [v]
                   (if-let [viewer (v/get-safe v :nextjournal/viewer)]
                     (if-let [r (:require-cljs viewer)]
-                      (let [cljs-ns
-                            (if (true? r)
-                              (->
-                               viewer :render-fn
-                               ;; at this point, the render-fn has been transformed to a ViewerEval, which contains a :form
-                               :form
-                               namespace symbol)
-                              r)]
-                        (require-cljs* state cljs-ns)
-                        (let [transitives (cons cljs-ns (seq (tnsd/transitive-dependencies (:graph @state) cljs-ns)))
-                              resources (keep ns->resource transitives)
-                              sources (map slurp resources)
-                              hash (valuehash :sha1 sources)]
-                          #_(def h hash)
-                          (assoc-in v [:nextjournal/viewer :nextjournal.clerk/remount] hash)))
+                      (let [cljs-ns (if (true? r)
+                                      ;; at this point, the render-fn has been transformed to a `ViewerFn`, which contains a :form
+                                      (-> viewer :render-fn :form namespace symbol)
+                                      r)]
+                        (require-cljs* state cljs-ns))
                       v)
                     v))
                 doc)
-    (let [cljs-libs (let [resources (keep ns->resource (all-ns state))]
-                      (-> (mapv (fn [resource]
-                                  (let [code-str (slurp resource)]
-                                    (v/->ViewerEval `(load-string ~code-str))))
-                                resources)
-                          not-empty))]
-      (if cljs-libs
-        ;; make sure :cljs-libs is the first key, so these are read + evaluated first
-        (aam/assoc-before doc :cljs-libs
-                          cljs-libs)
-        doc))))
+    (if-let [cljs-sources (not-empty (mapv slurp (keep ns->resource (all-ns state))))]
+      (-> doc
+          ;; make sure :cljs-libs is the first key, so these are read + evaluated first          
+          (aam/assoc-before :cljs-libs (mapv (fn [code-str] (v/->ViewerEval `(load-string ~code-str))) cljs-sources))
+          (aam/assoc-before :nextjournal.clerk/remount (valuehash :sha1 cljs-sources)))        
+      doc)))
 
 ;;;; Scratch
 
