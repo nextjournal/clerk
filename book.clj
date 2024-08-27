@@ -682,14 +682,12 @@ v/table-viewer
 ;; why you can write your render functions using `:require-cljs` as well. Let's
 ;; replace our above render function with a fully qualified symbol:
 
-(def literal-viewer2
-  {:pred emmy.expression/literal?
-   :transform-fn (comp clerk/mark-preserve-keys
-                       (clerk/update-val transform-literal))
-   :require-cljs true
-   :render-fn 'nextjournal.clerk.book/render-literal})
+(def literal-viewer-require-cljs
+  (assoc literal-viewer
+         :require-cljs true
+         :render-fn 'nextjournal.clerk.book/render-literal))
 
-^{::clerk/viewer literal-viewer2}
+^{::clerk/viewer literal-viewer-require-cljs}
 (emmy/+ (emmy/square (emmy/sin 'x))
         (emmy/square (emmy/cos 'x)))
 
