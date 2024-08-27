@@ -128,11 +128,11 @@ jobs:
             ~/.deps.clj
           key: ${{ runner.os }}-maven-build-${{ hashFiles('deps.edn') }}
 
-      # - name: 🗝 Clerk Cache
-      #   uses: actions/cache@v2
-      #   with:
-      #     path: .clerk
-      #     key: ${{ runner.os }}-clerk-cache
+      - name: 🗝 Clerk Cache
+        uses: actions/cache@v2
+        with:
+          path: .clerk
+          key: ${{ runner.os }}-clerk-cache
 
       - name: 🔐 Google Auth
         uses: google-github-actions/auth@v0
