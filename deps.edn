@@ -75,9 +75,11 @@
                                com.github.seancorfield/honeysql {:mvn/version "2.6.1126"}
                                org.clojure/data.csv {:mvn/version "1.0.0"}
                                hickory/hickory {:mvn/version "0.7.1"}
-                               sicmutils/sicmutils {:mvn/version "0.20.0"}
-                               io.github.mentat-collective/emmy {:git/sha "b98fef51d80d3edcff3100562b929f9980ff34d7"
-                                                                 :exclusions [org.babashka/sci]}
+                               org.mentat/emmy {:mvn/version "0.32.0"
+                                                :exclusions [org.babashka/sci]}
+                               ;; emmy needs SCI, here we use the same version as in render:
+                               org.babashka/sci {:git/url "https://github.com/babashka/sci"
+                                                 :git/sha "c556f4474303c61da72e7a07eef496dcbf66a56e"}
                                io.github.nextjournal/clerk-slideshow {:git/sha "11a83fea564da04b9d17734f2031a4921d917893"}}}
 
            :nextjournal/garden {:exec-fn nextjournal.clerk/serve!
