@@ -7,7 +7,8 @@
    [clojure.walk :as w]
    [edamame.core :as e]
    [nextjournal.clerk.viewer :as v]
-   [nextjournal.clerk.always-array-map :as aam]))
+   [nextjournal.clerk.always-array-map :as aam]
+   [nextjournal.clerk.analyzer :refer [valuehash]]))
 
 (def ^:private already-loaded-sci-namespaces
   '#{applied-science.js-interop
@@ -98,8 +99,8 @@
 (defn prepend-required-cljs [doc]
   (let [state (new-cljs-state)]
     (w/postwalk (fn [v]
-                  (when-let [viewer (v/get-safe v :nextjournal/viewer)]
-                    (when-let [r (:require-cljs viewer)]
+                  (if-let [viewer (v/get-safe v :nextjournal/viewer)]
+                    (if-let [r (:require-cljs viewer)]
                       (let [cljs-ns
                             (if (true? r)
                               (->
@@ -108,8 +109,15 @@
                                :form
                                namespace symbol)
                               r)]
-                        (require-cljs* state cljs-ns))))
-                  v)
+                        (require-cljs* state cljs-ns)
+                        (let [transitives (cons cljs-ns (seq (tnsd/transitive-dependencies (:graph @state) cljs-ns)))
+                              resources (keep ns->resource transitives)
+                              sources (map slurp resources)
+                              hash (valuehash :sha1 sources)]
+                          #_(def h hash)
+                          (assoc v :nextjournal.clerk/remount hash)))
+                      v)
+                    v))
                 doc)
     (let [cljs-libs (let [resources (keep ns->resource (all-ns state))]
                       (-> (mapv (fn [resource]
@@ -126,4 +134,9 @@
 ;;;; Scratch
 
 (comment
+  (-> (:graph @(new-cljs-state))
+      (tnsd/depend 'foo 'bar)
+      (tnsd/transitive-dependencies 'foo))
+  
+  
   )

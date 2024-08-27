@@ -687,7 +687,7 @@ v/table-viewer
    :require-cljs true
    :render-fn 'nextjournal.clerk.book/my-render-fn})
 
-^{::clerk/viewer literal-viewer2 ::clerk/no-cache true}
+^{::clerk/viewer literal-viewer2}
 (emmy/+ (emmy/square (emmy/sin 'x))
         (emmy/square (emmy/cos 'x)))
 
