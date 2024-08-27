@@ -95,6 +95,16 @@
                        :out
                        str/trim)
 
+  test-jar {:doc "Tests current jar"
+            :task (do
+                    (println (str "Testing jar: 'clerk-" (t/version) ".jar'"))
+                    (clojure (str "-Sforce -Srepro -Sdeps '"
+                               (pr-str {:aliases {:test-jar {:jvm-opts ["-Dclojure.main.report=stdout"]
+                                                             :deps {'io.github.nextjournal/clerk {:local/root (str "./target/clerk-" (t/version) ".jar")}}
+                                                             :exec-fn 'nextjournal.clerk/build!
+                                                             :exec-args {:paths ["notebooks/hello.clj"]}}}})
+                               "' -T:test-jar")))}
+
   ci:publish {:doc "Publish task which will be run on CI"
               :depends [-current-tag -current-branch]
               :task (do
@@ -102,12 +112,16 @@
                       (prn :current-branch -current-branch)
                       (if (and -current-tag (= "main" -current-branch))
                         (do
+                          (println "Building jar")
+                          (clojure "-T:build jar")
+                          (run 'test-jar)
                           (println "Deploying to clojars")
                           (clojure "-T:build deploy"))
                         ;; still build jar with updated commit count for artifact upload
                         (do
                           (run 'update-meta)
-                          (run 'jar))))}
+                          (run 'jar)
+                          (run 'test-jar))))}
 
   uninstall-git-hooks {:doc "Uninstall git hooks we installed previously and no longer need"
                        :task (fs/delete-if-exists ".git/hooks/pre-commit")}
