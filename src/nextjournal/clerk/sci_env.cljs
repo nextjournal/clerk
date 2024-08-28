@@ -150,6 +150,9 @@
 
 (def core-ns (sci/create-ns 'clojure.core nil))
 
+(def pst-stub
+  (fn [_] (throw (js/Error. "`clojure.repl/pst` is not yet implemented"))))
+
 (defn ^:sci/macro time [_ _ expr]
   `(let [start# (system-time)
          ret# ~expr]
@@ -177,7 +180,8 @@
                        'clojure.core {'read-string read-string
                                       'implements? (sci/copy-var implements?* core-ns)
                                       'time (sci/copy-var time core-ns)
-                                      'system-time (sci/copy-var system-time core-ns)}}
+                                      'system-time (sci/copy-var system-time core-ns)}
+                       'clojure.repl {'pst pst-stub}}
                       (sci-copy-nss
                        'cljs.math
                        'cljs.repl
