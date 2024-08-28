@@ -12,7 +12,6 @@
             [applied-science.js-interop :as j]
             [cljs.math]
             [cljs.reader]
-            [clojure.edn :as edn]
             [clojure.string :as str]
             [edamame.core :as edamame]
             [goog.object]
@@ -201,11 +200,18 @@
 (defn render-eval [{:keys [form]}]
   (eval-form form))
 
+(defn nrepl-send! [msg]
+  (render/ws-send! {:type :nrepl :msg msg}))
+
+(defn handle-nrepl [{:keys [msg]}]
+  (nrepl/handle-nrepl-message (assoc msg :send-fn nrepl-send!)))
+
 (def message-type->fn
   {:patch-state! render/patch-state!
    :set-state! render/set-state!
    :eval-reply render/process-eval-reply!
-   :render-eval render-eval})
+   :render-eval render-eval
+   :nrepl handle-nrepl})
 
 (defn ^:export onmessage [ws-msg]
   (let [{:as msg :keys [type]} (read-string (.-data ws-msg))
@@ -224,18 +230,6 @@
 
 (defn reconnect-timeout [failed-connection-attempts]
   (get [0 0 100 500 5000] failed-connection-attempts 10000))
-
-(defn ^:export connect-render-nrepl [ws-url]
-  (let [ws (js/WebSocket. ws-url)
-        send-fn (fn [data]
-                  (.send ws (str data)))]
-    (prn :connect-render-nrepl ws-url)
-    (set! (.-onmessage ws)
-          (fn [event]
-            (nrepl/handle-nrepl-message (assoc (edn/read-string (.-data event)) :send-fn send-fn))))
-    (set! (.-onerror ws)
-          (fn [event]
-            (js/console.log event)))))
 
 (defn ^:export connect [ws-url]
   (when (::failed-attempts @render/!doc)
