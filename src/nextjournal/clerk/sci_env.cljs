@@ -12,7 +12,6 @@
             [applied-science.js-interop :as j]
             [cljs.math]
             [cljs.reader]
-            [clojure.edn :as edn]
             [clojure.string :as str]
             [edamame.core :as edamame]
             [goog.object]
