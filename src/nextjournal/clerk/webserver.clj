@@ -378,7 +378,7 @@
   (when-let [config (let [prop (System/getProperty "clerk.render_repl")]
                       (when-not (str/blank? prop)
                         (merge {:port 1339
-                                :send! send-nrepl!}
+                                :send-fn send-nrepl!}
                                (edn/read-string prop))))]
     (sci.nrepl/start-nrepl-server! config)))
 
