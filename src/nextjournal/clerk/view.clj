@@ -76,6 +76,4 @@
 let state = " (-> state v/->edn escape-closing-script-tag pr-str) ".replaceAll('nextjournal.clerk.view/escape-closing-script-tag', 'script')
 viewer.init(viewer.read_string(state))\n"
        (when conn-ws?
-         "viewer.connect(document.location.origin.replace(/^http/, 'ws') + '/_ws')\n")
-       (when-let [port (and conn-ws? (:websocket-port @config/render-repl-config))]
-         (format "viewer.connect_render_nrepl('ws://localhost:%s/_nrepl')\n" port))])]))
+         "viewer.connect(document.location.origin.replace(/^http/, 'ws') + '/_ws')\n")])]))

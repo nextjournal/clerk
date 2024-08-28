@@ -12,7 +12,8 @@
             [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
-            [org.httpkit.server :as httpkit])
+            [org.httpkit.server :as httpkit]
+            [sci.nrepl.browser-server :as sci.nrepl])
   (:import (java.nio.file Files)))
 
 (defonce !clients (atom #{}))
@@ -42,6 +43,9 @@
 
 (defn send! [ch msg]
   (httpkit/send! ch (v/->edn msg)))
+
+(defn send-nrepl! [msg]
+  (send! (first @!clients) {:type :nrepl :msg msg}))
 
 (defn broadcast! [msg]
   (doseq [ch @!clients]
@@ -192,7 +196,10 @@
                                   (binding [*sender-ch* sender-ch]
                                     (apply swap! @var (eval (:args msg))))
                                   (catch Exception ex
-                                    (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) update-error!)))))))))})
+                                    (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) update-error!)))))
+                       :nrepl (sci.nrepl/send-response (-> (:msg msg)
+                                                           (select-keys [:id :session])
+                                                           (assoc :response (dissoc (:msg msg) :id :session))))))))})
 
 #_(do
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
@@ -362,9 +369,18 @@
   (when-let [{:keys [port instance]} @!server]
     @(httpkit/server-stop! instance)
     (println (str "Webserver running on " port ", stopped."))
-    (reset! !server nil)))
+    (reset! !server nil)
+    (sci.nrepl/stop-nrepl-server!)))
 
 #_(halt!)
+
+(defn serve-sci-nrepl! [opts]
+  (when-let [config (let [prop (System/getProperty "clerk.render_repl")]
+                      (when-not (str/blank? prop)
+                        (merge {:port 1339
+                                :send! send-nrepl!}
+                               (edn/read-string prop))))]
+    (sci.nrepl/start-nrepl-server! config)))
 
 (defn serve! [{:as opts :keys [host port] :or {host "localhost" port 7777}}]
   (halt!)
@@ -374,6 +390,7 @@
                            :port port
                            :instance (httpkit/run-server #'app {:ip host :port port :legacy-return-value? false})))
     (println (format "Clerk webserver started on http://%s:%s ..." host port ))
+    (serve-sci-nrepl! opts)
     (catch java.net.BindException e
       (let [msg (format "Clerk webserver could not be started because port %d is not available. Stop what's running on port %d or specify a different port." port port)]
         (binding [*out* *err*]

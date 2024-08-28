@@ -201,11 +201,18 @@
 (defn render-eval [{:keys [form]}]
   (eval-form form))
 
+(defn nrepl-send! [msg]
+  (render/ws-send! {:type :nrepl :msg msg}))
+
+(defn handle-nrepl [{:keys [msg]}]
+  (nrepl/handle-nrepl-message (assoc msg :send-fn nrepl-send!)))
+
 (def message-type->fn
   {:patch-state! render/patch-state!
    :set-state! render/set-state!
    :eval-reply render/process-eval-reply!
-   :render-eval render-eval})
+   :render-eval render-eval
+   :nrepl handle-nrepl})
 
 (defn ^:export onmessage [ws-msg]
   (let [{:as msg :keys [type]} (read-string (.-data ws-msg))
