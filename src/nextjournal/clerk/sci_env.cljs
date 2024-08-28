@@ -170,7 +170,8 @@
              "framer-motion" framer-motion
              "react" react
              "react-dom" react-dom}
-   :ns-aliases '{clojure.math cljs.math}
+   :ns-aliases '{clojure.math cljs.math
+                 cljs.repl clojure.repl}
    :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
                        'nextjournal.clerk viewer-namespace ;; TODO: expose cljs variant of `nextjournal.clerk` with docstrings
                        'clojure.core {'read-string read-string
