@@ -2,7 +2,6 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [hiccup.page :as hiccup]
-            [nextjournal.clerk.config :as config]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.cljs-libs :as cljs-libs])
   (:import (java.net URI)))
