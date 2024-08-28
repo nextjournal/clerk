@@ -49,11 +49,12 @@
                               org.babashka/cli {:mvn/version "0.5.40"}}
                  :extra-paths ["dev" "notebooks"]
                  :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}"
-                            "-Dclerk.render_repl={}"
-                            "-Dpolyglot.engine.WarnInterpreterOnly=false" "-XX:-OmitStackTraceInFastThrow"
-                            "-Djdk.attach.allowAttachSelf"]
+                            "-Dpolyglot.engine.WarnInterpreterOnly=false"
+                            "-Djdk.attach.allowAttachSelf"
+                            "-XX:-OmitStackTraceInFastThrow"]
                  :main-opts ["-m" "shadow.cljs.devtools.cli"]
-                 :exec-fn nextjournal.clerk.dev-launcher/start}
+                 :exec-fn nextjournal.clerk.dev-launcher/start
+                 :exec-args {:render-nrepl {}}}
 
            :profile {:exec-fn user/profile
                      :exec-args {:phase :analysis}
