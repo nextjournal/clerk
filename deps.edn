@@ -41,9 +41,9 @@
            :dev {:extra-deps {org.clojure/clojure {:mvn/version "1.12.0-beta1"} ;; for `:as-alias` & `add-lib` support but only in dev
                               arrowic/arrowic {:mvn/version "0.1.1"}
                               binaryage/devtools {:mvn/version "1.0.3"}
-                              cider/cider-nrepl {:mvn/version "0.49.0"}
-                              nrepl/nrepl {:mvn/version "1.2.0"}
-                              com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.0.3"}
+                              cider/cider-nrepl {:mvn/version "0.49.3"}
+                              nrepl/nrepl {:mvn/version "1.3.0"}
+                              com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.2.2"}
                               io.github.nextjournal/cas-client {:git/sha "22ef8360689cd3938e43a3223023ab1b9711818f"}
                               org.slf4j/slf4j-nop {:mvn/version "2.0.7"}
                               org.babashka/cli {:mvn/version "0.5.40"}}
