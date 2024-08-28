@@ -232,18 +232,6 @@
 (defn reconnect-timeout [failed-connection-attempts]
   (get [0 0 100 500 5000] failed-connection-attempts 10000))
 
-(defn ^:export connect-render-nrepl [ws-url]
-  (let [ws (js/WebSocket. ws-url)
-        send-fn (fn [data]
-                  (.send ws (str data)))]
-    (prn :connect-render-nrepl ws-url)
-    (set! (.-onmessage ws)
-          (fn [event]
-            (nrepl/handle-nrepl-message (assoc (edn/read-string (.-data event)) :send-fn send-fn))))
-    (set! (.-onerror ws)
-          (fn [event]
-            (js/console.log event)))))
-
 (defn ^:export connect [ws-url]
   (when (::failed-attempts @render/!doc)
     (swap! render/!doc assoc ::connection-status "Reconnecting…"))
