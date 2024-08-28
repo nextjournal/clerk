@@ -12,7 +12,7 @@
         io.github.nextjournal/markdown {:mvn/version "0.5.148"}
         babashka/process {:mvn/version "0.4.16"}
         io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
-        io.github.babashka/sci.nrepl {:git/sha "1d865bc5ec66ba32683d29475623293eea6506a6"}
+        io.github.babashka/sci.nrepl {:mvn/version "0.0.2"}
 
         com.taoensso/nippy {:mvn/version "3.4.2"}
 
