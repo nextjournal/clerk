@@ -44,7 +44,9 @@
 
 (defn- read-ns-decl
   ([rdr]
-   (let [opts {:eof ::eof}]
+   (let [opts {:eof ::eof
+               :read-cond :allow
+               :features #{:cljs}}]
      (loop []
        (let [form (e/parse-next rdr opts)]
          (cond
@@ -63,11 +65,18 @@
          :loaded-libs #{}}))
 
 (defn- ns->resource [ns]
-  (or (io/resource (-> (namespace-munge ns)
-                       (str/replace "." "/")
-                       (str ".cljs")))
-      (binding [*out* *err*]
-        (println "[clerk] Could not find source for CLJS namespace:" ns))))
+  (let [prefix (-> (namespace-munge ns)
+                   (str/replace "." "/"))
+        exts ["cljs" "cljc"]]
+    (or (some #(io/resource (str prefix "." %))
+              exts)
+        (binding [*out* *err*]
+          (println "[clerk] Could not find source for CLJS namespace:" ns)))))
+
+(comment
+  (ns->resource 'viewers.viewer-with-cljs-source)
+  (ns->resource 'viewers.viewer-lib)
+  )
 
 (defn require-cljs* [state & nss]
   (doseq [ns nss]
