@@ -674,25 +674,29 @@ v/table-viewer
 (emmy/+ (emmy/square (emmy/sin 'x))
         (emmy/square (emmy/cos 'x)))
 
-;; ##### :require-cljs
+;; #### 📚 Require CLJS
 
-;; Sometimes `:render-fn`s get a little too big to deal with as quoted anonymous
-;; functions. Writing a render function from a regular `.cljs` file often works
-;; better with IDE-tooling like linters, syntax highlighting and a REPL. This is
-;; why you can write your render functions using `:require-cljs` as well. Let's
-;; replace our above render function with a fully qualified symbol:
+;; Writing `:render-fn`s inline as quoted forms is fine when they're
+;; small and independent. For more complex needs, Clerk supports
+;; loading ClojureScript files from the classpath.
+
+;; To opt into this, use a fully qualified symbol as the `:render-fn`
+;; and set `:require-cljs` set to `true`. This way you tell Clerk to
+;; load this ClojureScript file (along with it's deps) into Clerk's
+;; SCI environment in the browser to make it useable there.
 
 (def literal-viewer-require-cljs
   (assoc literal-viewer
          :require-cljs true
          :render-fn 'nextjournal.clerk.book/render-literal))
 
+;; Writing a render function in regular `.cljs` file often works
+;; better with IDE-tooling like linters, REPLs and makes reusing
+;; existing ClojureScript code easier.
+
 ^{::clerk/viewer literal-viewer-require-cljs}
 (emmy/+ (emmy/square (emmy/sin 'x))
         (emmy/square (emmy/cos 'x)))
-
-;; When using `:require-cljs` the `:render-fn` is expected to live in a
-;; ClojureScript namespace on the classpath.
 
 ;; #### 🥇 Selection
 
