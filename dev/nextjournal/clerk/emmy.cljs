@@ -1,4 +1,4 @@
-(ns nextjournal.clerk.book
+(ns nextjournal.clerk.emmy
   (:require [reagent.core :as r]
             [nextjournal.clerk.render :as render]))
 

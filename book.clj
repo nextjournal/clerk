@@ -688,7 +688,7 @@ v/table-viewer
 (def literal-viewer-require-cljs
   (assoc literal-viewer
          :require-cljs true
-         :render-fn 'nextjournal.clerk.book/render-literal))
+         :render-fn 'nextjournal.clerk.emmy/render-literal))
 
 ;; Writing a render function in regular `.cljs` file often works
 ;; better with IDE-tooling like linters, REPLs and makes reusing
