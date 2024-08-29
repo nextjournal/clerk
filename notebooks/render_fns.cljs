@@ -5,6 +5,4 @@
 (defn motion-div [props]
   [:> (.-div motion) props])
 
-
-
 (js/console.log :foo!!)

@@ -3,6 +3,8 @@
   (:require [nextjournal.clerk :as clerk]
             [viewers.viewer-with-cljs-source :as wcs]))
 
+;; > ⚠️ Please see [require_cljs.clj](/notebooks/require_cljs.clj) for a much easier way to do the same thing.
+
 ;; Let's load some .cljs code from a file!
 ;; Because we want to re-render this notebook when the .cljs code changes, we use `::clerk/no-cache`
 ;; and set `clerk/code` as the viewer so we can see the code:
@@ -24,7 +26,3 @@
    :transition {:duration 2
                 :repeat 12345
                 :repeatType "reverse"}})
-
-^{::clerk/no-cache true}
-(clerk/with-viewer wcs/my-cool-viewer
-  [1 2 3 4])
