@@ -956,6 +956,24 @@ v/table-viewer
 
 ^{::clerk/budget nil ::clerk/auto-expand-results? true} rows
 
+
+;; ## ⚛️ Clerk Sync
+
+;; Clerk Sync is a way to support lightweight interactivity between
+;; Clerk's render display running in the browser and the JVM. By
+;; flagging a form defining an atom with `::clerk/sync` metadata,
+;; Clerk will sync this atom to Clerk's render environment. It will
+;; also watch recompute the notebook whenever the value inside the
+;; atom changes.
+
+^{::clerk/sync true}
+(defonce !counter (atom 0))
+
+(clerk/with-viewer {:render-fn '(fn [] [:button.bg-sky-500.hover:bg-sky-700.text-white.rounded-xl.px-2.py-1
+                                        {:on-click #(swap! !counter inc)}
+                                        "Increment Counter"])}
+  {})
+
 ;; ## 🚰 Tap Inspector
 
 ;; Clerk comes with an inspector notebook for Clojure's tap system. Use the following form from your REPL to show it.
@@ -970,7 +988,7 @@ v/table-viewer
 ;;(tap> (clerk/html [:h1 "Hello 🚰 Tap Inspector 👋"]))
 ;;```
 
-;; ## 🧱 Static Building
+;; ## 👷‍♀️ Static Building
 
 ;; Clerk can make a static HTML build from a collection of notebooks.
 ;; The entry point for this is the `nextjournal.clerk/build!`
@@ -1004,7 +1022,7 @@ v/table-viewer
 ;;                :index "notebooks/welcome.clj"})
 ;; ```
 
-;; ## ⚡️ Incremental Computation
+;; ## 🤖 How Clerk Works
 
 ;; ### 🔖 Parsing
 
