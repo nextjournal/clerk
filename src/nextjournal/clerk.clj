@@ -434,6 +434,7 @@
   Options:
   - `:host` for the webserver to listen on, defaulting to `\"localhost\"`
   - `:port` for the webserver to listen on, defaulting to `7777`
+  - `:render-nrepl` opt into starting a render nREPL server into Clerk's render environment running in the browser, pass `{}` to start it on the default port or pass a custom `:port` number.
   - `:browse` will open Clerk in the default browser after it's been started
   - `:watch-paths` that Clerk will watch for file system events and show any changed file
   - `:show-filter-fn` to restrict when to re-evaluate or show a notebook as a result of file system event. Useful for e.g. pinning a notebook. Will be called with the string path of the changed file.

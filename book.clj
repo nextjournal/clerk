@@ -1022,6 +1022,34 @@ v/table-viewer
 ;;                :index "notebooks/welcome.clj"})
 ;; ```
 
+;; ## ⚡️ Render nREPL
+
+;; For interactive development of `:render-fn`s, Clerk comes with a
+;; Render nREPL server. To enable it, pass the `:render-nrepl` option
+;; to `serve!`. You can change the default port `1339` by passing a
+;; different `:port` number.
+
+;;    (nextjournal.clerk/serve! {:render-nrepl {}})
+
+;; > nREPL server started on port 1339...
+
+;; ⚠️ **Editor Connection Tips**
+
+;; Cider
+
+;; 1. Run `M-x` `cider-connect-cljs`
+;; 2. Select `localhost`
+;; 3. Enter `1339` for the port
+;; 4. Select `nbb` repl type
+;; 5. Open a ClojureScript buffer and run `M-x` `sesman-link-with-buffer` selecting the newly connected repl.
+
+
+;; Calva
+
+;;   1. Connect to a Running REPL Server, not in the Project
+;;   2. Select `nbb` for Project Type/Connect Sequence
+;;   3. Enter `localhost:1339` (or the custom port)
+
 ;; ## 🤖 How Clerk Works
 
 ;; ### 🔖 Parsing
