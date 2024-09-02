@@ -107,47 +107,41 @@
 (defn all-ns [cljs-state]
   (remove #(= ::orphan %) (tnsd/topo-sort (:graph @cljs-state))))
 
-(defn attach-branch* [node lang]
-  (vary-meta node assoc :branch lang))
+;;;; Selection of reader conditionals, borrowed from clj-kondo.impl.utils
 
-(defn attach-branch [node lang splice?]
-  (cond-> (attach-branch* node lang)
-    splice? (update :children (fn [children]
-                                (map #(attach-branch* % lang) children)))))
+(defn first-non-whitespace [nodes]
+  (some #(when (and (not (rnode/whitespace-or-comment? %))
+                    (not= :uneval (rnode/tag %)))
+           %)
+        nodes))
 
-;; TODO: whitespace
-
-(defn process-reader-conditional [node lang splice?]
+(defn process-reader-conditional [node langs splice?]
   (if (and node
            (= :reader-macro (rnode/tag node))
            (let [sv (-> node :children first :string-value)]
              (str/starts-with? sv "?")))
     (let [children (-> node :children last :children)]
-      (loop [[k v & ts] children
+      (loop [[k & ts] children
              default nil]
         (let [kw (:k k)
               default (or default
                           (when (= :default kw)
-                            v))]
-          (if (= lang kw)
-            (attach-branch v lang splice?)
+                            (first-non-whitespace ts)))]
+          (if (contains? langs kw)
+            (first-non-whitespace ts)
             (if (seq ts)
               (recur ts default)
               default)))))
     node))
 
-(comment
-  (process-reader-conditional (rparse/parse-string "#?(:clj 1 :cljs 2 :default 3)") :clj false)
-  )
-
 (declare select-lang)
 
-(defn select-lang-children [node lang]
+(defn select-lang-children [node langs]
   (if-let [children (:children node)]
     (let [new-children (reduce
                         (fn [acc node]
                           (let [splice? (= "?@" (some-> node :children first :string-value))]
-                            (if-let [processed (select-lang node lang splice?)]
+                            (if-let [processed (select-lang node langs splice?)]
                               (if splice?
                                 (into acc (:children processed))
                                 (conj acc processed))
@@ -158,22 +152,20 @@
              new-children))
     node))
 
-(defn select-lang
-  ([node lang] (select-lang node lang nil))
-  ([node lang splice?]
-   (when-let [processed (process-reader-conditional node lang splice?)]
-     (select-lang-children processed lang))))
+(defn select-langs
+  ([node langs] (select-lang node langs nil))
+  ([node langs splice?]
+   (when-let [processed (process-reader-conditional node langs splice?)]
+     (select-lang-children processed langs))))
 
-(comment
-  (def node (rparse/parse-string-all "(ns foo) 1 #?(:clj 1 :cljs 2 :default 3)"))
-  (select-lang (rparse/parse-string-all "#?(:clj 1 :cljs 2 :default 3)") :clj)
-  (str (select-lang node :clj))
-
-  )
+;;;; End selection of reader conditionals
 
 (defn slurp-resource [resource]
   (if (str/ends-with? (str resource) ".cljc")
-    ;; TODO: take only the relevant branches using rewrite-clj?
+    (-> (slurp resource)
+        (rparse/parse-string-all)
+        (select-lang  #{:cljs})
+        str)
     (slurp resource)))
 
 (defn prepend-required-cljs [doc]
@@ -202,6 +194,5 @@
   (-> (:graph @(new-cljs-state))
       (tnsd/depend 'foo 'bar)
       (tnsd/transitive-dependencies 'foo))
-  
-  
+  (slurp-resource (io/resource "viewers/viewer_lib.cljc"))
   )

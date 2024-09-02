@@ -5,5 +5,3 @@
           [:div
            "Inspected value :)"
            [:div [clerk/inspect x]]]))
-
-(prn :foo111)
