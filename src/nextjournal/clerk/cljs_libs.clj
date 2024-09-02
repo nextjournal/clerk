@@ -134,14 +134,14 @@
               default)))))
     node))
 
-(declare select-lang)
+(declare select-langs)
 
 (defn select-lang-children [node langs]
   (if-let [children (:children node)]
     (let [new-children (reduce
                         (fn [acc node]
                           (let [splice? (= "?@" (some-> node :children first :string-value))]
-                            (if-let [processed (select-lang node langs splice?)]
+                            (if-let [processed (select-langs node langs splice?)]
                               (if splice?
                                 (into acc (:children processed))
                                 (conj acc processed))
@@ -153,7 +153,7 @@
     node))
 
 (defn select-langs
-  ([node langs] (select-lang node langs nil))
+  ([node langs] (select-langs node langs nil))
   ([node langs splice?]
    (when-let [processed (process-reader-conditional node langs splice?)]
      (select-lang-children processed langs))))
@@ -164,7 +164,7 @@
   (if (str/ends-with? (str resource) ".cljc")
     (-> (slurp resource)
         (rparse/parse-string-all)
-        (select-lang  #{:cljs})
+        (select-langs #{:cljs})
         str)
     (slurp resource)))
 
