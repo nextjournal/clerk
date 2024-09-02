@@ -13,6 +13,7 @@
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.viewer :as v]
+            [nextjournal.clerk.presenter]
             [nextjournal.clerk.webserver :as webserver]))
 
 (defonce ^:private !show-filter-fn (atom nil))
@@ -94,6 +95,17 @@
       (webserver/update-doc! result))))
 
 #_(recompute!)
+
+(defn present!
+  "Shows the given value `x` in Clerk. Returns the presented value of
+  `x` that's sent to the browser."
+  [x]
+  (reset! nextjournal.clerk.presenter/!val x)
+  (if (= (the-ns 'nextjournal.clerk.presenter)
+         (:ns @webserver/!doc))
+    (recompute!)
+    (show! 'nextjournal.clerk.presenter))
+  (-> @webserver/!doc meta :nextjournal/value :blocks peek :nextjournal/value first :nextjournal/value :nextjournal/presented))
 
 (defn ^:private supported-file?
   "Returns whether `path` points to a file that should be shown."
