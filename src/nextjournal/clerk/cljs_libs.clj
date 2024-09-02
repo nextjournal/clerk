@@ -8,7 +8,9 @@
    [edamame.core :as e]
    [nextjournal.clerk.viewer :as v]
    [nextjournal.clerk.always-array-map :as aam]
-   [nextjournal.clerk.analyzer :refer [valuehash]]))
+   [nextjournal.clerk.analyzer :refer [valuehash]]
+   [rewrite-clj.node :as rnode]
+   [rewrite-clj.parser :as rparse]))
 
 (def ^:private already-loaded-sci-namespaces
   '#{applied-science.js-interop
@@ -105,6 +107,75 @@
 (defn all-ns [cljs-state]
   (remove #(= ::orphan %) (tnsd/topo-sort (:graph @cljs-state))))
 
+(defn attach-branch* [node lang]
+  (vary-meta node assoc :branch lang))
+
+(defn attach-branch [node lang splice?]
+  (cond-> (attach-branch* node lang)
+    splice? (update :children (fn [children]
+                                (map #(attach-branch* % lang) children)))))
+
+;; TODO: whitespace
+
+(defn process-reader-conditional [node lang splice?]
+  (if (and node
+           (= :reader-macro (rnode/tag node))
+           (let [sv (-> node :children first :string-value)]
+             (str/starts-with? sv "?")))
+    (let [children (-> node :children last :children)]
+      (loop [[k v & ts] children
+             default nil]
+        (let [kw (:k k)
+              default (or default
+                          (when (= :default kw)
+                            v))]
+          (if (= lang kw)
+            (attach-branch v lang splice?)
+            (if (seq ts)
+              (recur ts default)
+              default)))))
+    node))
+
+(comment
+  (process-reader-conditional (rparse/parse-string "#?(:clj 1 :cljs 2 :default 3)") :clj false)
+  )
+
+(declare select-lang)
+
+(defn select-lang-children [node lang]
+  (if-let [children (:children node)]
+    (let [new-children (reduce
+                        (fn [acc node]
+                          (let [splice? (= "?@" (some-> node :children first :string-value))]
+                            (if-let [processed (select-lang node lang splice?)]
+                              (if splice?
+                                (into acc (:children processed))
+                                (conj acc processed))
+                              acc)))
+                        []
+                        children)]
+      (assoc node :children
+             new-children))
+    node))
+
+(defn select-lang
+  ([node lang] (select-lang node lang nil))
+  ([node lang splice?]
+   (when-let [processed (process-reader-conditional node lang splice?)]
+     (select-lang-children processed lang))))
+
+(comment
+  (def node (rparse/parse-string-all "(ns foo) 1 #?(:clj 1 :cljs 2 :default 3)"))
+  (select-lang (rparse/parse-string-all "#?(:clj 1 :cljs 2 :default 3)") :clj)
+  (str (select-lang node :clj))
+
+  )
+
+(defn slurp-resource [resource]
+  (if (str/ends-with? (str resource) ".cljc")
+    ;; TODO: take only the relevant branches using rewrite-clj?
+    (slurp resource)))
+
 (defn prepend-required-cljs [doc]
   (let [state (new-cljs-state)]
     (w/postwalk (fn [v]
@@ -118,7 +189,7 @@
                       v)
                     v))
                 doc)
-    (if-let [cljs-sources (not-empty (mapv slurp (keep ns->resource (all-ns state))))]
+    (if-let [cljs-sources (not-empty (mapv slurp-resource (keep ns->resource (all-ns state))))]
       (-> doc
           ;; make sure :cljs-libs is the first key, so these are read + evaluated first
           (aam/assoc-before :cljs-libs (mapv (fn [code-str] (v/->ViewerEval `(load-string ~code-str))) cljs-sources))
