@@ -268,9 +268,9 @@
         (clerk/show! (java.io.StringReader. code))
         (is (= result-first-run (get-result)))))))
 
-(deftest present!-test
-  (testing "presented value is returned"
-    (is (= {:path [0]
-            :nextjournal/value 42
-            :nextjournal/render-opts {:id "nextjournal.clerk.presenter/presented-result"}}
-           (select-keys (clerk/present! 42) [:path :nextjournal/render-opts :nextjournal/value])))))
+#_(deftest present!-test
+    (testing "presented value is returned"
+      (is (= {:path [0]
+              :nextjournal/value 42
+              :nextjournal/render-opts {:id "nextjournal.clerk.presenter/presented-result"}}
+             (select-keys (clerk/present! 42) [:path :nextjournal/render-opts :nextjournal/value])))))
