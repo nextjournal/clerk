@@ -46,7 +46,7 @@
 
                     (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
                     (or (some (fn [ext]
-                                (io/resource (str (str/replace (namespace-munge file-or-ns) "." "/") ext)))
+                                (io/resource (str (str/replace (namespace-munge file-or-ns) "." fs/file-separator) ext)))
                               [".clj" ".cljc"])
                         (throw (ex-info (str "`nextjournal.clerk/show!` could not find a resource on the classpath for: `" (pr-str file-or-ns) "`")
                                         {:file-or-ns file-or-ns})))
