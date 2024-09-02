@@ -4,8 +4,6 @@
             [nextjournal.clerk.render.hooks :as hooks]
             ["react" :as React]))
 
-(prn (ns-publics 'viewers.viewer-lib))
-
 (defn my-already-defined-function2 [x]
   (let [state (hooks/use-state 0)
         [native-state set-state!] (React/useState 0)]
