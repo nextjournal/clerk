@@ -12,32 +12,32 @@
    [rewrite-clj.node :as rnode]
    [rewrite-clj.parser :as rparse]))
 
-(def ^:private already-loaded-sci-namespaces
-  '#{applied-science.js-interop
-     cljs.math
-     cljs.repl
-     clojure.core
-     clojure.edn
-     clojure.repl
-     clojure.set
-     clojure.string
-     clojure.template
-     clojure.walk
-     nextjournal.clerk
-     nextjournal.clerk.parser
-     nextjournal.clerk.render
-     nextjournal.clerk.render.code
-     nextjournal.clerk.render.editor
-     nextjournal.clerk.render.hooks
-     nextjournal.clerk.render.navbar
-     nextjournal.clerk.viewer
-     nextjournal.clojure-mode.commands
-     nextjournal.clojure-mode.extensions.eval-region
-     nextjournal.clojure-mode.keymap
-     reagent.core
-     reagent.debug
-     reagent.ratom
-     user})
+(def already-loaded-sci-namespaces
+  (atom '#{applied-science.js-interop
+          cljs.math
+          cljs.repl
+          clojure.core
+          clojure.edn
+          clojure.repl
+          clojure.set
+          clojure.string
+          clojure.template
+          clojure.walk
+          nextjournal.clerk
+          nextjournal.clerk.parser
+          nextjournal.clerk.render
+          nextjournal.clerk.render.code
+          nextjournal.clerk.render.editor
+          nextjournal.clerk.render.hooks
+          nextjournal.clerk.render.navbar
+          nextjournal.clerk.viewer
+          nextjournal.clojure-mode.commands
+          nextjournal.clojure-mode.extensions.eval-region
+          nextjournal.clojure-mode.keymap
+          reagent.core
+          reagent.debug
+          reagent.ratom
+          user}))
 
 (defn- ns-decl?
   "Returns true if form is a (ns ...) declaration."
@@ -80,16 +80,16 @@
   (ns->resource 'viewers.viewer-lib)
   )
 
-(defn require-cljs* [state & nss]
+(defn- require-cljs* [state & nss]
   (doseq [ns nss]
-    (when-not (or (contains? already-loaded-sci-namespaces ns)
+    (when-not (or (contains? @already-loaded-sci-namespaces ns)
                   (contains? (:loaded-libs @state) ns))
       (when-let [cljs-file (ns->resource ns)]
         (let [ns-decl (with-open [^java.io.Closeable rdr (e/reader (io/reader cljs-file))]
                         (read-ns-decl rdr))
               ns-decl (e/parse-ns-form ns-decl)
               nom (name-from-ns-decl ns-decl)
-              deps (remove already-loaded-sci-namespaces
+              deps (remove @already-loaded-sci-namespaces
                            (deps-from-ns-decl ns-decl))]
           (apply require-cljs* state deps)
           (swap! state (fn [state]
@@ -109,13 +109,13 @@
 
 ;;;; Selection of reader conditionals, borrowed from clj-kondo.impl.utils
 
-(defn first-non-whitespace [nodes]
+(defn- first-non-whitespace [nodes]
   (some #(when (and (not (rnode/whitespace-or-comment? %))
                     (not= :uneval (rnode/tag %)))
            %)
         nodes))
 
-(defn process-reader-conditional [node langs splice?]
+(defn- process-reader-conditional [node langs]
   (if (and node
            (= :reader-macro (rnode/tag node))
            (let [sv (-> node :children first :string-value)]
@@ -136,12 +136,12 @@
 
 (declare select-langs)
 
-(defn select-lang-children [node langs]
+(defn- select-lang-children [node langs]
   (if-let [children (:children node)]
     (let [new-children (reduce
                         (fn [acc node]
                           (let [splice? (= "?@" (some-> node :children first :string-value))]
-                            (if-let [processed (select-langs node langs splice?)]
+                            (if-let [processed (select-langs node langs)]
                               (if splice?
                                 (into acc (:children processed))
                                 (conj acc processed))
@@ -152,15 +152,14 @@
              new-children))
     node))
 
-(defn select-langs
-  ([node langs] (select-langs node langs nil))
-  ([node langs splice?]
-   (when-let [processed (process-reader-conditional node langs splice?)]
+(defn- select-langs
+  ([node langs]
+   (when-let [processed (process-reader-conditional node langs)]
      (select-lang-children processed langs))))
 
 ;;;; End selection of reader conditionals
 
-(defn slurp-resource [resource]
+(defn- slurp-resource [resource]
   (if (str/ends-with? (str resource) ".cljc")
     (-> (slurp resource)
         (rparse/parse-string-all)
