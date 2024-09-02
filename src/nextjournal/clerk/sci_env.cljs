@@ -100,7 +100,7 @@
                              (and (vector? value) (number? (second value)))
                              (update 1 (fn [memory-address]
                                          (viewer/with-viewer `viewer/number-hex-viewer memory-address))))}))))
-         :features #{:clj}}))
+         :features #{:cljs}}))
 
 (defn ^:export read-string [s]
   (edamame/parse-string s @!edamame-opts))
