@@ -72,7 +72,9 @@
         exts ["cljs" "cljc"]]
     (or (some #(io/resource (str prefix "." %))
               exts)
-        (throw (ex-info (str "[clerk] Could not find source for CLJS namespace: " ns) {})))))
+        (throw (ex-info (str "Could not find source for CLJS namespace: " ns)
+                        {:ns ns
+                         :already-loaded-sci-namespaces @already-loaded-sci-namespaces})))))
 
 (comment
   (ns->resource 'viewers.viewer-with-cljs-source)
