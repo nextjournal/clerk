@@ -1,0 +1,3 @@
+(ns require-cljs-test
+  ())
+
