@@ -3,7 +3,7 @@
             [clojure.string :as str]
             [nextjournal.clerk.render.hooks :as hooks]
             ["react" :as React]))
-x
+
 (defn my-already-defined-function2 [x]
   (let [state (hooks/use-state 0)
         [native-state set-state!] (React/useState 0)]
