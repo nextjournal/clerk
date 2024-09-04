@@ -1,7 +1,6 @@
 ;; # 📑 Eval CLJS
 (ns eval-cljs
-  (:require [nextjournal.clerk :as clerk]
-            [viewers.viewer-with-cljs-source :as wcs]))
+  (:require [nextjournal.clerk :as clerk]))
 
 ;; > ⚠️ Please see [require_cljs.clj](/notebooks/require_cljs.clj) for a much easier way to do the same thing.
 

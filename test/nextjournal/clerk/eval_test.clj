@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.eval-test
-  (:require [clojure.java.io :as io]
+  (:require [babashka.fs :as fs]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [matcher-combinators.test :refer [match?]]
@@ -274,3 +275,11 @@
             :nextjournal/value 42
             :nextjournal/render-opts {:id "nextjournal.clerk.presenter/presented-result"}}
            (select-keys (clerk/present! 42) [:path :nextjournal/render-opts :nextjournal/value])))))
+
+(deftest file-var-metadata-test
+  (testing "show with file string arg"
+    (clerk/show! "test/nextjournal/clerk/fixtures/hello.clj")
+    (is (fs/exists? (:file (meta (resolve 'nextjournal.clerk.fixtures.hello/answer))))))
+  (testing "show with ns arg"
+    (clerk/show! 'nextjournal.clerk.fixtures.hello)
+    (is (fs/exists? (:file (meta (resolve 'nextjournal.clerk.fixtures.hello/answer)))))))

@@ -428,10 +428,10 @@ my-uuid")]
 
 (deftest ->hash
   (testing "notices change in depedency namespace"
-    (let [test-var 'nextjournal.clerk.fixtures.my-test-ns/hello
-          test-string "(ns test (:require [nextjournal.clerk.fixtures.my-test-ns :as my-test-ns])) (str my-test-ns/hello)"
+    (let [test-var 'nextjournal.clerk.fixtures.generated.my-test-ns/hello
+          test-string "(ns test (:require [nextjournal.clerk.fixtures.generated.my-test-ns :as my-test-ns])) (str my-test-ns/hello)"
           spit-with-value #(spit (format "test%s%s.clj" fs/file-separator (str/replace (namespace-munge (namespace test-var)) "." fs/file-separator ))
-                                 (format "(ns nextjournal.clerk.fixtures.my-test-ns) (def hello %s)" %))
+                                 (format "(ns nextjournal.clerk.fixtures.generated.my-test-ns) (def hello %s)" %))
           _ (spit-with-value :hello)
           analyzed-before (ana/hash (analyze-string test-string))
           _ (spit-with-value :world)
