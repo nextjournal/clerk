@@ -19,7 +19,6 @@
       [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-clone-ref :style {:margin 0}}]]]))
 
 (defn render-table-markup [head+body opts]
-  [head+body opts]
   [:div
    (into [render-table-with-sticky-header]
          (render/inspect-children opts)
@@ -34,19 +33,19 @@
                                       value)]
                           [:th.pl-6.pr-2.py-1.align-bottom.font-medium.top-0.z-10.bg-white.dark:bg-slate-900.border-b.border-gray-300.dark:border-slate-700
                            (cond-> {:class (when (and (ifn? number-col?) (number-col? i)) "text-right")} title (assoc :title title))
-                           (nextjournal.clerk.render/inspect-presented opts header-cell)]))) header-row)])
+                           (render/inspect-presented opts header-cell)]))) header-row)])
 
 (defn render-table-body [rows opts]
-  (into [:tbody] (map-indexed (fn [idx row] (nextjournal.clerk.render/inspect-presented (update opts :path conj idx) row))) rows))
+  (into [:tbody] (map-indexed (fn [idx row] (render/inspect-presented (update opts :path conj idx) row))) rows))
 
 (defn render-table-row [row {:as opts :keys [path number-col?]}]
   (into [:tr.hover:bg-gray-200.dark:hover:bg-slate-700
          {:class (if (even? (peek path)) "bg-black/5 dark:bg-gray-800" "bg-white dark:bg-gray-900")}]
-        (map-indexed (fn [idx cell] [:td.pl-6.pr-2.py-1 (when (and (ifn? number-col?) (number-col? idx)) {:class "text-right"}) (nextjournal.clerk.render/inspect-presented opts cell)])) row))
+        (map-indexed (fn [idx cell] [:td.pl-6.pr-2.py-1 (when (and (ifn? number-col?) (number-col? idx)) {:class "text-right"}) (render/inspect-presented opts cell)])) row))
 
 
 (defn render-table-elision [{:as fetch-opts :keys [total offset unbounded?]} {:keys [num-cols]}]
-  [nextjournal.clerk.render/consume-view-context
+  [render/consume-view-context
    :fetch-fn
    (fn [fetch-fn]
      [:tr.border-t.dark:border-slate-700
