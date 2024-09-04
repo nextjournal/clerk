@@ -315,8 +315,14 @@
 (defn mark-presented [wrapped-value]
   (assoc wrapped-value :nextjournal/presented? true))
 
-(defn mark-preserve-keys [wrapped-value]
-  (assoc wrapped-value :nextjournal/preserve-keys? true))
+(defn mark-preserve-keys
+  ([wrapped-value]
+   (mark-preserve-keys #{} wrapped-value))
+  ([preserve-keys-fn wrapped-value]
+   (assoc wrapped-value :nextjournal/preserve-keys-fn preserve-keys-fn)))
+
+(defn preserve-keys [preserve-keys-fn]
+  (partial mark-preserve-keys preserve-keys-fn))
 
 (defn inspect-wrapped-values
   "Takes `x` and modifies it such that Clerk will show raw
@@ -1580,15 +1586,20 @@
 #_(get-elision (present "abc"))
 #_(get-elision (present (str/join (repeat 1000 "abc"))))
 
-(defn present+paginate-children [{:as wrapped-value :nextjournal/keys [budget viewers preserve-keys?] :keys [!budget]}]
+(defn present+paginate-children [{:as wrapped-value :nextjournal/keys [budget viewers preserve-keys-fn] :keys [!budget]}]
   (let [{:as fetch-opts :keys [offset n]} (->fetch-opts wrapped-value)
         xs (->value wrapped-value)
-        paginate? (and (number? n) (not preserve-keys?))
+        paginate? (and (number? n) (not preserve-keys-fn))
         fetch-opts' (cond-> fetch-opts
                       (and paginate? !budget (not (map-entry? xs)))
                       (update :n min @!budget))
-        children (if preserve-keys?
-                   (into {} (map (fn [[k v]] [k (present* (inherit-opts wrapped-value v k))])) xs)
+        children (if preserve-keys-fn
+                   (into {}
+                         (map (fn [[k v]]
+                                [k (if (preserve-keys-fn k)
+                                     v
+                                     (present* (inherit-opts wrapped-value v k)))]))
+                         xs)
                    (into []
                          (comp (if paginate? (drop+take-xf fetch-opts') identity)
                                (map-indexed (fn [i x] (present* (inherit-opts wrapped-value x (+ i (or offset 0))))))

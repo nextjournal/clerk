@@ -213,11 +213,19 @@
   [wrapped-value]
   (v/mark-presented wrapped-value))
 
-
 (defn mark-preserve-keys
   "Marks the given `wrapped-value` so that the keys will be passed unmodified to the browser."
-  [wrapped-value]
-  (v/mark-preserve-keys wrapped-value))
+  ([wrapped-value]
+   (v/mark-preserve-keys wrapped-value))
+  ([preserve-keys-fn wrapped-value]
+   (v/mark-preserve-keys preserve-keys-fn wrapped-value)))
+
+(defn preserve-keys
+  "Takes a `preserve-keys-fn` (normally a set) and returns a function
+  usabable as a `:transform-fn` that preserves all keys and values for
+  which `(preserve-keys-fn k)` returns a truthy value."
+  [preserve-keys-fn]
+  (v/preserve-keys preserve-keys-fn))
 
 (defn resolve-aliases
   "Resolves aliases in `form` using the aliases from `*ns*`. Meant to be used on `:render-fn`s."

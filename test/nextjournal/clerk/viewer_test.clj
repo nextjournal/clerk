@@ -257,6 +257,37 @@
            (v/desc->values (v/present {:nextjournal/budget 3, :nextjournal/value (range 10)}))
            (v/desc->values (v/present {:nextjournal/budget 3, :nextjournal/value (range 10)}))))))
 
+(deftest mark-preserved
+  (testing "leaves values unmodified"
+    (let [val {:foo :bar :bar (range 3)}]
+      (is (= val
+             (v/->value (v/present (v/with-viewer {:transform-fn v/mark-presented} val))))))))
+
+(deftest mark-preserve-keys
+  (let [x {:foo :bar :bar [1 2 3] :third (range 3)}
+        presented-x (v/->value (v/present (v/with-viewer {:transform-fn v/mark-preserve-keys} x)))]
+    (testing "leaves keys unmodified"
+      (is (= (keys x)
+             (keys presented-x))))
+    (testing "presents all values"
+      (is (every? v/wrapped-value? (vals presented-x))))))
+
+(defn find-presented-keys [presented-val]
+  (into #{}
+        (keep (fn [[k v]] (when (v/wrapped-value? v) k)))
+        presented-val))
+
+(deftest preserve-keys
+  (let [x {:foo :bar :bar [1 2 3] :third (range 3)}
+        presented-x (v/->value (v/present (v/with-viewer {:transform-fn (v/preserve-keys #{:foo :bar})} x)))]
+    (testing "leaves keys unmodified"
+      (is (= (keys x)
+             (keys presented-x))))
+    (testing "presents some values"
+      (is (= #{:third}
+             (find-presented-keys presented-x)
+             (find-presented-keys (v/->value (v/present (v/with-viewer {:transform-fn (v/preserve-keys (complement #{:third}))} x)))))))))
+
 (defn path-to-value [path]
   (conj (interleave path (repeat :nextjournal/value)) :nextjournal/value))
 
