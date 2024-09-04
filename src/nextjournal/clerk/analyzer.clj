@@ -366,7 +366,7 @@
   [^java.net.URL resource]
   (case (.getProtocol resource)
     "file" (str (.getFile resource))
-    "jar" (str (.getJarEntry (.openConnection resource)))))
+    "jar" (str (.getJarEntry ^java.net.JarURLConnection (.openConnection resource)))))
 
 #_(extract-file (io/resource "clojure/core.clj"))
 #_(extract-file (io/resource "nextjournal/clerk.clj"))
