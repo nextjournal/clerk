@@ -360,6 +360,17 @@
           state
           (info-store-keys info)))
 
+(defn extract-file
+  [file]
+  (if (instance? java.net.URL file)
+    (case (.getProtocol file)
+      "file" (str (.getFile file))
+      "jar" (str (.getJarEntry (.openConnection file))))
+    (str file)))
+
+#_(extract-file (io/resource "clojure/core.clj"))
+#_(extract-file (io/resource "nextjournal/clerk.clj"))
+
 (defn analyze-doc
   "Goes through `:blocks` of `doc`, reads and analyzes block forms, populates `:->analysis-info`"
   ([doc]
@@ -380,10 +391,10 @@
                                  form+loc (cond-> form
                                             (instance? clojure.lang.IObj form)
                                             (vary-meta merge (cond-> loc
-                                                               (:file doc) (assoc :clojure.core/eval-file (str (:file doc))))))
+                                                               (:file doc) (assoc :clojure.core/eval-file (extract-file (:file doc))))))
                                  {:as analyzed :keys [ns-effect?]} (cond-> (analyze form+loc)
                                                                      (:file doc) (assoc :file (:file doc)))
-                                 _ (when ns-effect?         ;; needs to run before setting doc `:ns` via `*ns*`
+                                 _ (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
                                      (eval form))
                                  block-id (get-block-id !id->count (merge analyzed block))
                                  analyzed (assoc analyzed :id block-id)]
@@ -394,10 +405,10 @@
                                  (update :blocks conj (-> block
                                                           (merge (dissoc analyzed :deps :no-cache? :ns-effect?))
                                                           (cond->
-                                                            (parser/ns? form) (assoc :ns? true)
-                                                            doc? (assoc :text-without-meta (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns))))))
+                                                              (parser/ns? form) (assoc :ns? true)
+                                                              doc? (assoc :text-without-meta (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns))))))
                                  (cond->
-                                   (and doc? (not (contains? state :ns)))
+                                     (and doc? (not (contains? state :ns)))
                                    (merge (parser/->doc-settings form) {:ns *ns*}))))))
 
                        (-> state
