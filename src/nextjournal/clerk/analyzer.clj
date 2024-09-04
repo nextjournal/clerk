@@ -361,12 +361,14 @@
           (info-store-keys info)))
 
 (defn extract-file
-  [file]
-  (if (instance? java.net.URL file)
-    (case (.getProtocol file)
-      "file" (str (.getFile file))
-      "jar" (str (.getJarEntry (.openConnection file))))
-    (str file)))
+  "Extracts the string file path from the given `file-or-resource` to
+  for usage on the `:clojure.core/eval-file` form meta key."
+  [file-or-resource]
+  (if [file-or-resource (instance? java.net.URL file-or-resource)]
+    (case (.getProtocol file-or-resource)
+      "file" (str (.getFile file-or-resource))
+      "jar" (str (.getJarEntry (.openConnection file-or-resource))))
+    (str file-or-resource)))
 
 #_(extract-file (io/resource "clojure/core.clj"))
 #_(extract-file (io/resource "nextjournal/clerk.clj"))
