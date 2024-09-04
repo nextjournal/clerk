@@ -659,6 +659,10 @@
       result?
       (into (cell->result-viewer cell)))))
 
+(defn cell-visible? [cell]
+  (let [{:keys [code? result?]} (->visibility cell)]
+    (or code? result?)))
+
 (def cell-viewer
   {:name `cell-viewer
    :transform-fn (update-val transform-cell)
@@ -677,7 +681,9 @@
                                                    ::doc doc} doc))]))
                         (partition-by (comp #{:image} :type) content)))
 
-    :code [(with-viewer `cell-viewer (assoc cell ::doc doc))]))
+    :code (if (cell-visible? cell)
+            [(with-viewer `cell-viewer (assoc cell ::doc doc))]
+            [])))
 
 #_(:blocks (:nextjournal/value (nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)))
 

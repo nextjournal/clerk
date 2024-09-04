@@ -8,12 +8,17 @@ Changes can be:
 
 ## Unreleased
 
+* ⭐️ Add `clerk/present!` which will show the given value through Clerk and return the presented value. Useful for interactive development & debugging of complex viewers.
+
 * 🐜 Analyzer fixes
+
 * 🐞 Catch exception when browse is not supported, closes #657
+
 * 💫 Added 'react-dom' to SCI context
+
 * 💫 Make `clerk/table` work with empty tables.
+
 * 🛠 Update clojure, nrepl & cider-nrepl dev deps
-...
 
 ## 0.16.1016 (2024-06-05)
 

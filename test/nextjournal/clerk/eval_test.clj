@@ -269,6 +269,13 @@
         (clerk/show! (java.io.StringReader. code))
         (is (= result-first-run (get-result)))))))
 
+(deftest present!-test
+  (testing "presented value is returned"
+    (is (= {:path [0]
+            :nextjournal/value 42
+            :nextjournal/render-opts {:id "nextjournal.clerk.presenter/presented-result"}}
+           (select-keys (clerk/present! 42) [:path :nextjournal/render-opts :nextjournal/value])))))
+
 (deftest file-var-metadata-test
   (testing "show with file string arg"
     (clerk/show! "test/nextjournal/clerk/fixtures/hello.clj")

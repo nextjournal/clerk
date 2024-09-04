@@ -95,6 +95,17 @@
 
 #_(recompute!)
 
+(defn present!
+  "Shows the given value `x` in Clerk. Returns the presented value of
+  `x` that's sent to the browser."
+  [x]
+  (reset! @(requiring-resolve 'nextjournal.clerk.presenter/!val) x)
+  (if (= (the-ns 'nextjournal.clerk.presenter)
+         (:ns @webserver/!doc))
+    (recompute!)
+    (show! 'nextjournal.clerk.presenter))
+  (-> @webserver/!doc meta :nextjournal/value :blocks peek :nextjournal/value first :nextjournal/value :nextjournal/presented))
+
 (defn ^:private supported-file?
   "Returns whether `path` points to a file that should be shown."
   [path]
