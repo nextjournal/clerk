@@ -28,6 +28,11 @@
   lint {:doc "Lints project using clj-kondo"
         :task (apply shell "clj-kondo --lint src test" *command-line-args*)}
 
+  lint:copy-configs {:doc "Copies clj-kondo configs from deps"
+                     :task (println "clj-kondo --lint"
+                                    (-> (shell {:out :string} "clojure -Spath") :out str/trim)
+                                    "--dependencies --copy-configs --skip-lint")}
+
   build:static-app {:doc "Builds a static app with default notebooks"
                     :task (apply clojure "-X:demo:nextjournal/clerk" *command-line-args*)}
 
@@ -99,11 +104,11 @@
             :task (do
                     (println (str "Testing jar: 'clerk-" (t/version) ".jar'"))
                     (clojure (str "-Sforce -Srepro -Sdeps '"
-                               (pr-str {:aliases {:test-jar {:jvm-opts ["-Dclojure.main.report=stdout"]
-                                                             :deps {'io.github.nextjournal/clerk {:local/root (str "./target/clerk-" (t/version) ".jar")}}
-                                                             :exec-fn 'nextjournal.clerk/build!
-                                                             :exec-args {:paths ["notebooks/hello.clj"]}}}})
-                               "' -T:test-jar")))}
+                                  (pr-str {:aliases {:test-jar {:jvm-opts ["-Dclojure.main.report=stdout"]
+                                                                :deps {'io.github.nextjournal/clerk {:local/root (str "./target/clerk-" (t/version) ".jar")}}
+                                                                :exec-fn 'nextjournal.clerk/build!
+                                                                :exec-args {:paths ["notebooks/hello.clj"]}}}})
+                                  "' -T:test-jar")))}
 
   ci:publish {:doc "Publish task which will be run on CI"
               :depends [-current-tag -current-branch]
