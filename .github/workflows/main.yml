@@ -288,7 +288,7 @@ jobs:
           CLERK_VERSION=$(bb clerk-version)
           echo "##[set-output name=version;]${CLERK_VERSION}"
 
-      - uses: actions/upload-artifact@v1
+      - uses: actions/upload-artifact@v4
         with:
           name: clerk-${{ steps.clerk-version.outputs.version }}.jar
           path: target/clerk-${{ steps.clerk-version.outputs.version }}.jar
