@@ -734,34 +734,19 @@
 
 (def table-markup-viewer
   {:name `table-markup-viewer
-   :render-fn '(fn [head+body opts]
-                 [:div
-                  (into [nextjournal.clerk.render/render-table-with-sticky-header]
-                        (nextjournal.clerk.render/inspect-children opts)
-                        head+body)])})
+   :render-fn 'nextjournal.clerk.render.table/render-table-markup})
 
 (def table-head-viewer
   {:name `table-head-viewer
-   :render-fn '(fn [header-row {:as opts :keys [path number-col?]}]
-                 [:thead
-                  (into [:tr]
-                        (map-indexed (fn [i {:as header-cell :nextjournal/keys [value]}]
-                                       (let [title (when (or (string? value) (keyword? value) (symbol? value))
-                                                     value)]
-                                         [:th.pl-6.pr-2.py-1.align-bottom.font-medium.top-0.z-10.bg-white.dark:bg-slate-900.border-b.border-gray-300.dark:border-slate-700
-                                          (cond-> {:class (when (and (ifn? number-col?) (number-col? i)) "text-right")} title (assoc :title title))
-                                          (nextjournal.clerk.render/inspect-presented opts header-cell)]))) header-row)])})
+   :render-fn 'nextjournal.clerk.render.table/render-table-head})
 
 (def table-body-viewer
   {:name `table-body-viewer
-   :render-fn '(fn [rows opts] (into [:tbody] (map-indexed (fn [idx row] (nextjournal.clerk.render/inspect-presented (update opts :path conj idx) row))) rows))})
+   :render-fn 'nextjournal.clerk.render.table/render-table-body})
 
 (def table-row-viewer
   {:name `table-row-viewer
-   :render-fn '(fn [row {:as opts :keys [path number-col?]}]
-                 (into [:tr.hover:bg-gray-200.dark:hover:bg-slate-700
-                        {:class (if (even? (peek path)) "bg-black/5 dark:bg-gray-800" "bg-white dark:bg-gray-900")}]
-                       (map-indexed (fn [idx cell] [:td.pl-6.pr-2.py-1 (when (and (ifn? number-col?) (number-col? idx)) {:class "text-right"}) (nextjournal.clerk.render/inspect-presented opts cell)])) row))})
+   :render-fn 'nextjournal.clerk.render.table/render-table-row})
 
 #?(:clj (def utc-date-format ;; from `clojure.instant/thread-local-utc-date-format`
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
@@ -1053,33 +1038,8 @@
   [(-> string-viewer
        (dissoc :closing-paren :opening-paren)
        (assoc :render-fn 'nextjournal.clerk.render/render-string))
-   (assoc number-viewer :render-fn '(fn [x] [:span.tabular-nums (if (js/Number.isNaN x) "NaN" (str x))]))
-   (assoc elision-viewer
-          :render-fn
-          '(fn [{:as fetch-opts :keys [total offset unbounded?]} {:keys [num-cols]}]
-             [nextjournal.clerk.render/consume-view-context
-              :fetch-fn
-              (fn [fetch-fn]
-                [:tr.border-t.dark:border-slate-700
-                 [:td.py-1.relative
-                  {:col-span num-cols
-                   :class (if (fn? fetch-fn)
-                            "bg-indigo-50 hover:bg-indigo-100 dark:bg-gray-800 dark:hover:bg-slate-700 cursor-pointer"
-                            "text-gray-400 text-slate-500")
-                   :on-click (fn [_] (when (fn? fetch-fn)
-                                       (fetch-fn fetch-opts)))}
-                  (let [label [:<>
-                               (- total offset)
-                               (when unbounded? "+")
-                               (if (fn? fetch-fn)
-                                 [:span " more" [:span.absolute "..."]]
-                                 " more elided")]]
-                    [:<>
-                     [:span.invisible.pointer-events-none
-                      label]
-                     [:span.sticky.inline-block
-                      {:class "left-1/2 -translate-x-1/2"}
-                      label]])]])]))
+   (assoc number-viewer :render-fn 'nextjournal.clerk.render.table/render-table-number)
+   (assoc elision-viewer :render-fn 'nextjournal.clerk.render.table/render-table-elision)
    table-missing-viewer
    table-markup-viewer
    table-head-viewer
@@ -1087,6 +1047,9 @@
    table-row-viewer])
 
 (declare html doc-url)
+
+(def table-error-viewer
+  {:name `table-error-viewer :render-fn 'nextjournal.clerk.render.table/render-table-error})
 
 (def table-viewer
   {:name `table-viewer
@@ -1114,10 +1077,7 @@
                          mark-presented
                          (assoc :nextjournal/width :wide)
                          (assoc :nextjournal/value [(present wrapped-value)])
-                         (assoc :nextjournal/viewer {:render-fn 'nextjournal.clerk.render/render-table-error}))))})
-
-(def table-error-viewer
-  {:name `table-error-viewer :render-fn 'nextjournal.clerk.render/render-table-error :page-size 1})
+                         (assoc :nextjournal/viewer (:name table-error-viewer)))))})
 
 (def code-block-viewer
   {:name `code-block-viewer
