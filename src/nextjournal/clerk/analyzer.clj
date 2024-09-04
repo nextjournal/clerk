@@ -361,14 +361,12 @@
           (info-store-keys info)))
 
 (defn extract-file
-  "Extracts the string file path from the given `file-or-resource` to
-  for usage on the `:clojure.core/eval-file` form meta key."
-  [file-or-resource]
-  (if (instance? java.net.URL file-or-resource)
-    (case (.getProtocol file-or-resource)
-      "file" (str (.getFile file-or-resource))
-      "jar" (str (.getJarEntry (.openConnection file-or-resource))))
-    (str file-or-resource)))
+  "Extracts the string file path from the given `resource` to for usage
+  on the `:clojure.core/eval-file` form meta key."
+  [^java.net.URL resource]
+  (case (.getProtocol resource)
+    "file" (str (.getFile resource))
+    "jar" (str (.getJarEntry (.openConnection resource)))))
 
 #_(extract-file (io/resource "clojure/core.clj"))
 #_(extract-file (io/resource "nextjournal/clerk.clj"))
@@ -393,7 +391,9 @@
                                  form+loc (cond-> form
                                             (instance? clojure.lang.IObj form)
                                             (vary-meta merge (cond-> loc
-                                                               (:file doc) (assoc :clojure.core/eval-file (extract-file (:file doc))))))
+                                                               (:file doc) (assoc :clojure.core/eval-file
+                                                                                  (str (cond-> (:file doc)
+                                                                                         (instance? java.net.URL (:file doc)) extract-file))))))
                                  {:as analyzed :keys [ns-effect?]} (cond-> (analyze form+loc)
                                                                      (:file doc) (assoc :file (:file doc)))
                                  _ (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
