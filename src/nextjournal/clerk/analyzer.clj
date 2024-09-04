@@ -364,7 +364,7 @@
   "Extracts the string file path from the given `file-or-resource` to
   for usage on the `:clojure.core/eval-file` form meta key."
   [file-or-resource]
-  (if [file-or-resource (instance? java.net.URL file-or-resource)]
+  (if (instance? java.net.URL file-or-resource)
     (case (.getProtocol file-or-resource)
       "file" (str (.getFile file-or-resource))
       "jar" (str (.getJarEntry (.openConnection file-or-resource))))
