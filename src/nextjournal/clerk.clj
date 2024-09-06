@@ -530,7 +530,7 @@
   - `:package`     a keyword to specify how the static build should be bundled:
     - `:directory` (default) constructs a distinct html file for each document in `:paths`
     - `:single-file` bundles all documents into a single html file
-  - `:bundle`      [DEPRECATED use :pacakge :single-page instead] if true results in a single self-contained html file including inlined images
+  - `:bundle`      [DEPRECATED use :pacakge :single-file instead] if true results in a single self-contained html file including inlined images
   - `:compile-css` if true compiles css file containing only the used classes
   - `:ssr`         if true runs react server-side-rendering and includes the generated markup in the html
   - `:browse`      if true will open browser with the built file on success
