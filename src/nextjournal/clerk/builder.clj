@@ -130,6 +130,9 @@
 (def builtin-index
   (io/resource "nextjournal/clerk/index.clj"))
 
+(def valid-package-opts
+  #{:single-file :directory})
+
 (defn process-build-opts [{:as opts :keys [package index expand-paths?]}]
   (merge {:out-path default-out-path
           :package :directory
@@ -137,6 +140,9 @@
           :browse? false
           :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
          (git/read-git-attrs)
+         (when (and (contains? opts :package)
+                    (not (contains? valid-package-opts package)))
+           (throw (ex-info (str "Invalid :package option: " package) {:package package :valid-options valid-package-opts})))
          (let [opts+index (cond-> opts
                             index (assoc :index (str index)))
                {:as opts' :keys [expanded-paths]} (cond-> opts+index
