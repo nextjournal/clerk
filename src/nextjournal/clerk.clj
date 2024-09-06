@@ -436,9 +436,10 @@
 (defn deprecate+migrate-opts [{:as opts :keys [bundle?]}]
   (when (contains? opts :bundle?)
     (println "\nThe `:bundle(?)` option is deprecated and will be dropped in 1.0.0. Use `:package :single-file` instead.\n"))
-  (-> opts (dissoc :bundle?)
+  (-> opts
+      (dissoc :bundle?)
       (cond-> bundle?
-        (assoc :package :single-page))))
+        (assoc :package :single-file))))
 
 (defn ^:private normalize-opts [opts]
   (deprecate+migrate-opts
@@ -530,7 +531,7 @@
   - `:package`     a keyword to specify how the static build should be bundled:
     - `:directory` (default) constructs a distinct html file for each document in `:paths`
     - `:single-file` bundles all documents into a single html file
-  - `:bundle`      [DEPRECATED use :pacakge :single-page instead] if true results in a single self-contained html file including inlined images
+  - `:bundle`      [DEPRECATED use :package :single-file instead] if true results in a single self-contained html file including inlined images
   - `:compile-css` if true compiles css file containing only the used classes
   - `:ssr`         if true runs react server-side-rendering and includes the generated markup in the html
   - `:browse`      if true will open browser with the built file on success
