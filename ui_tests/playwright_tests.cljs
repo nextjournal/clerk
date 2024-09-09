@@ -49,7 +49,8 @@
 (defn test-notebook [page link]
   (println "Visiting" link)
   (p/do (goto page link)
-        (p/delay 500)
+        (prn :done :gotoing)
+        (p/delay 50000)
         (p/let [loc (.locator page "div")
                 loc (.first loc #js {:timeout 10000})
                 visible? (.isVisible loc #js {:timeout 10000})]
@@ -67,22 +68,22 @@
                 _ (.on page "pageerror"
                        (fn [msg]
                          (swap! console-errors conj {:msg msg :notebook (.url page)})))]
-          (if-let [index (:index @!opts)]
-            (-> (p/let [_ (goto page index)
-                        _ (is (-> (.locator page "h1:has-text(\"Clerk\")")
-                                  (.isVisible #js {:timeout 10000})))
-                        links (-> (.locator page "text=/.*\\.clj$/i")
-                                  (.allInnerTexts))
-                        _ (is (pos? (count links)))
-                        links (map (fn [link]
-                                     (str index "#/" link)) links)
-                        links (filter (fn [link]
-                                        (str/includes? link "cherry")) links)]
-                  (p/run! #(test-notebook page %) links)
-                  )
-                )
-            (test-notebook page (:url @!opts)))
-          (p/delay 30000)
+          (let [{:keys [index url]} (:index @!opts)]
+            (if (false? index)
+              (test-notebook page url)
+              (let [url (:url @!opts)]
+                (-> (p/let [_ (goto page url)
+                            _ (is (-> (.locator page "h1:has-text(\"Clerk\")")
+                                      (.isVisible #js {:timeout 10000})))
+                            links (-> (.locator page "text=/.*\\.clj$/i")
+                                      (.allInnerTexts))
+                            _ (is (pos? (count links)))
+                            links (map (fn [link]
+                                         (str url "#/" link)) links)
+                            #_#_links (filter (fn [link]
+                                            (str/includes? link "cherry")) links)]
+                      (p/run! #(test-notebook page %) links))))))
+          #_(p/delay 30000)
           (is (zero? (count @console-errors))
               (str/join "\n" (map (fn [{:keys [msg notebook]}]
                                     [(.text msg) (.location msg) notebook])
