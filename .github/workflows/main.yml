@@ -153,6 +153,7 @@ jobs:
       - name: 📠 Copy book & static build to bucket under SHA
         run: |
           gsutil cp -r public/build gs://nextjournal-snapshots/clerk/build/${{ github.sha }}
+
       - name: ✅ Add success status to report with link to snapshot
         uses: Sibz/github-status-action@v1
         with:
@@ -246,6 +247,7 @@ jobs:
       - name: Run Playwright tests against static assets
         run: |
           bb test:static-app ${{ github.sha }}
+          bb test:static-app :url https://snapshots.nextjournal.com/clerk/build/${{ github.sha }}/book/index.html :index false
 
   deploy:
     needs: [build-and-upload-viewer-resources, test]

@@ -7,7 +7,7 @@
             [nbb.core :refer [await]]
             [promesa.core :as p]))
 
-(defonce !index (atom nil))
+(defonce !opts (atom nil))
 
 (def browser (atom nil))
 
@@ -26,18 +26,18 @@
   {:before
    (fn []
      (async done
-            (->
-             (launch-browser)
-             (.catch js/console.log)
-             (.finally done))))
+       (->
+        (launch-browser)
+        (.catch js/console.log)
+        (.finally done))))
    :after
    (fn []
      (async done
-            (if close-browser
-              (p/do
-                (.close @browser)
-                (done))
-              (done))))})
+       (if close-browser
+         (p/do
+           (.close @browser)
+           (done))
+         (done))))})
 
 (defn goto [page url]
   (.goto page url #js{:waitUntil "networkidle"}))
@@ -57,36 +57,40 @@
 
 (deftest index-page-test
   (async done
-         (-> (p/let [page (.newPage @browser)
-                     _ (.on page "console"
-                            (fn [msg]
-                              (when (and (= "error" (.type msg))
-                                         (not (str/ends-with?
-                                               (.-url (.location msg)) "favicon.ico")))
-                                (swap! console-errors conj {:msg msg :notebook (.url page)}))))
-                     _ (.on page "pageerror"
-                            (fn [msg]
-                              (swap! console-errors conj {:msg msg :notebook (.url page)})))
-                     _ (goto page @!index)
-                     _ (is (-> (.locator page "h1:has-text(\"Clerk\")")
-                               (.isVisible #js {:timeout 10000})))
-                     links (-> (.locator page "text=/.*\\.clj$/i")
-                               (.allInnerTexts))
-                     _ (is (pos? (count links)))
-                     links (map (fn [link]
-                                  (str @!index "#/" link)) links)
-                     links (filter (fn [link]
-                                     (str/includes? link "cherry")) links)]
-               (p/run! #(test-notebook page %) links)
-               (p/delay 30000)
-               (is (zero? (count @console-errors))
-                   (str/join "\n" (map (fn [{:keys [msg notebook]}]
-                                         [(.text msg) (.location msg) notebook])
-                                       @console-errors))))
-             (.catch (fn [err]
-                       (js/console.log err)
-                       (is false)))
-             (.finally done))))
+    (-> (p/let [page (.newPage @browser)
+                _ (.on page "console"
+                       (fn [msg]
+                         (when (and (= "error" (.type msg))
+                                    (not (str/ends-with?
+                                          (.-url (.location msg)) "favicon.ico")))
+                           (swap! console-errors conj {:msg msg :notebook (.url page)}))))
+                _ (.on page "pageerror"
+                       (fn [msg]
+                         (swap! console-errors conj {:msg msg :notebook (.url page)})))]
+          (if-let [index (:index @!opts)]
+            (-> (p/let [_ (goto page index)
+                        _ (is (-> (.locator page "h1:has-text(\"Clerk\")")
+                                  (.isVisible #js {:timeout 10000})))
+                        links (-> (.locator page "text=/.*\\.clj$/i")
+                                  (.allInnerTexts))
+                        _ (is (pos? (count links)))
+                        links (map (fn [link]
+                                     (str index "#/" link)) links)
+                        links (filter (fn [link]
+                                        (str/includes? link "cherry")) links)]
+                  (p/run! #(test-notebook page %) links)
+                  )
+                )
+            (test-notebook page (:url @!opts)))
+          (p/delay 30000)
+          (is (zero? (count @console-errors))
+              (str/join "\n" (map (fn [{:keys [msg notebook]}]
+                                    [(.text msg) (.location msg) notebook])
+                                  @console-errors))))
+        (.catch (fn [err]
+                  (js/console.log err)
+                  (is false)))
+        (.finally done))))
 
 (defmethod t/report [:cljs.test/default :begin-test-var] [m]
   (println "===" (-> m :var meta :name))
@@ -110,14 +114,20 @@
        vals
        (filter (comp :test meta))))
 
-(defn args-map->index [{:keys [sha url]}]
-  (cond
-    sha (str/replace "https://snapshots.nextjournal.com/clerk/build/{{sha}}/index.html" "{{sha}}" sha)
-    url url))
+(defn args-map->index [{:keys [sha url] :as opts}]
+  (assoc opts
+         :url
+         (cond
+           sha (str/replace "https://snapshots.nextjournal.com/clerk/build/{{sha}}/index.html" "{{sha}}" sha)
+           url url)))
 
 (defn -main [args-map-str]
-  (prn :url (reset! !index (args-map->index (edn/read-string args-map-str))))
-  (t/test-vars (get-test-vars)))
+  (let [opts (edn/read-string args-map-str)
+        opts (args-map->index opts)]
+    (reset! !opts opts)
+    (prn opts)
+    (prn :url (:url @!opts))
+    (t/test-vars (get-test-vars))))
 
 (comment
   (await (launch-browser))
