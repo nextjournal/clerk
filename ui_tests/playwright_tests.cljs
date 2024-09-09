@@ -1,6 +1,7 @@
 (ns playwright-tests
   {:clj-kondo/config '{:skip-comments false}}
   (:require ["playwright$default" :refer [chromium]]
+            ["@playwright/test$default" :refer [expect]]
             [clojure.edn :as edn]
             [clojure.string :as str]
             [clojure.test :as t :refer [deftest is async use-fixtures]]
@@ -50,9 +51,12 @@
   ([page url]
    (println "Visiting" url)
    (p/do (goto page url)
-         (p/let [loc (.locator page "div")
+         (.waitForLoadState page "networkidle")
+         (p/let [selector (or (:selector @!opts) "div")
+                 loc (.locator page selector)
                  loc (.first loc #js {:timeout 10000})
-                 visible? (.isVisible loc #js {:timeout 10000})]
+                 visible? (.toBeVisible (expect loc) #js {:timeout 10000})]
+           (prn visible?)
            (is visible?))))
   ([page url link]
    (p/let [txt (.innerText link)]

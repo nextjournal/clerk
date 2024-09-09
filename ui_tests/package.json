@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "nbb": "^1.1.147",
-    "playwright": "^1.33.0"
+    "@playwright/test": "^1.47.0",
+    "nbb": "^1.2.192"
   }
 }
