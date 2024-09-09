@@ -50,7 +50,7 @@
   (println "Visiting" link)
   (p/do (goto page link)
         (prn :done :gotoing)
-        (p/delay 50000)
+        #_(p/delay 50000)
         (p/let [loc (.locator page "div")
                 loc (.first loc #js {:timeout 10000})
                 visible? (.isVisible loc #js {:timeout 10000})]
