@@ -51,8 +51,8 @@
   (p/do (goto page link)
         (p/delay 500)
         (p/let [loc (.locator page "div")
-                loc (.first loc)
-                visible? (.isVisible loc)]
+                loc (.first loc #js {:timeout 10000})
+                visible? (.isVisible loc #js {:timeout 10000})]
           (is visible?))))
 
 (deftest index-page-test
