@@ -147,12 +147,16 @@ jobs:
           cp notebooks/editor.clj editor.clj
           clojure -J-Dclojure.main.report=stderr -X:dev:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :paths '["book.clj" "CHANGELOG.md" "editor.clj"]'
 
+      - name: 📠 Copy book to bucket under SHA
+        run: |
+          gsutil cp -r public/build gs://nextjournal-snapshots/clerk/book/${{ github.sha }}
+
       - name: 🏗 Build Clerk Static App with default Notebooks
         run: clojure -J-Dclojure.main.report=stderr -X:demo:nextjournal/clerk :package :single-file
 
-      - name: 📠 Copy book & static build to bucket under SHA
+      - name: 📠 Copy static build to bucket under SHA
         run: |
-          gsutil cp -r public/build gs://nextjournal-snapshots/clerk/build-book/${{ github.sha }}
+          gsutil cp -r public/build gs://nextjournal-snapshots/clerk/build/${{ github.sha }}
 
       - name: ✅ Add success status to report with link to snapshot
         uses: Sibz/github-status-action@v1
@@ -162,7 +166,7 @@ jobs:
           description: 'Ready'
           state: 'success'
           sha: ${{github.event.pull_request.head.sha || github.sha}}
-          target_url: https://snapshots.nextjournal.com/clerk/build-book/${{ github.sha }}
+          target_url: https://snapshots.nextjournal.com/clerk/build/${{ github.sha }}
 
   ssr:
     name: SSR smoke test build
@@ -247,7 +251,7 @@ jobs:
       - name: Run Playwright tests against static assets
         run: |
           bb test:static-app ${{ github.sha }}
-          bb test:static-app :url https://snapshots.nextjournal.com/clerk/build-book/${{ github.sha }}/book/index.html :index false
+          bb test:static-app :url https://snapshots.nextjournal.com/clerk/book/${{ github.sha }}/book/index.html :index false
 
   deploy:
     needs: [build-and-upload-viewer-resources, test]
