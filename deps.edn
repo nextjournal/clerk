@@ -71,7 +71,8 @@
                   ;; clj -M:test -v nextjournal.clerk.analyzer-test/analyze-doc
                   :main-opts ["-m" "cognitect.test-runner"]}
 
-           :demo {:extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
+           :demo {:extra-paths ["dev"] ;; include emmy SCI viewer .cljs file
+                  :extra-deps {com.github.seancorfield/next.jdbc {:mvn/version "1.2.659"}
                                io.github.applied-science/shapes {:git/sha "da44031cf79a649932cb502f17388db23f2b8ace"}
                                org.xerial/sqlite-jdbc {:mvn/version "3.34.0"}
                                com.github.seancorfield/honeysql {:mvn/version "2.6.1126"}
