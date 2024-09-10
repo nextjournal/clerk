@@ -260,7 +260,7 @@ jobs:
           key: ${{ runner.os }}-npx-playwright-${{ env.PLAYWRIGHT_VERSION }}
 
       - name: yarn install
-        run: yarn install
+        run: cd ui_tests; yarn install
 
       - name: playwright install
         run: bb playwright:install
