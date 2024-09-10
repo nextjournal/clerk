@@ -49,22 +49,17 @@
                       :task (print (get-in (json/parse-string (->> "ui_tests/package-lock.json" slurp) true)
                                            [:packages :node_modules/playwright-core :version]))}
 
-  playwright:install {:task (shell {:dir "ui_tests"} "yarn playwright install --with-deps chromium")}
-
   test:static-app {:doc "Run UI tests for current SHA. Provide SHA as command line arg."
                    :task (do (shell {:dir "ui_tests"} "yarn install")
-                             (let [args (not-empty (cli/parse-opts *command-line-args*))]
-                               (if-not (:skip-install args)
-                                 (run 'playwright:install)
-                                 (println "Skipping playwright install"))
-                               (shell {:dir "ui_tests"} "yarn nbb -m playwright-tests"
-                                      (or (when args
-                                            (cond-> args
-                                              (contains? args :file)
-                                              (assoc :url (str "file://" (fs/cwd) fs/file-separator (:file args)))))
-                                          {:sha (-> (shell {:out :string} "git rev-parse HEAD")
-                                                    :out
-                                                    str/trim)}))))}
+                             (shell {:dir "ui_tests"} "yarn playwright install --with-deps chromium")
+                             (shell {:dir "ui_tests"} "yarn nbb -m playwright-tests"
+                                    (or (when-let [args (not-empty (cli/parse-opts *command-line-args*))]
+                                          (cond-> args
+                                            (contains? args :file)
+                                            (assoc :url (str "file://" (fs/cwd) fs/file-separator (:file args)))))
+                                        {:sha (-> (shell {:out :string} "git rev-parse HEAD")
+                                                  :out
+                                                  str/trim)})))}
 
   update-meta {:doc "Updates meta.edn with current version (based on commit count currently)."
                :task (t/update-meta)}

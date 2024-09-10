@@ -259,14 +259,10 @@ jobs:
             ~/.cache/ms-playwright
           key: ${{ runner.os }}-npx-playwright-${{ env.PLAYWRIGHT_VERSION }}
 
-      - name: playwright install
-        run: bb playwright:install
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-
       - name: Run Playwright tests against static assets
         run: |
-          bb test:static-app ${{ github.sha }} :skip-install
-          bb test:static-app :skip-install :url https://snapshots.nextjournal.com/clerk/book/${{ github.sha }}/book/index.html :index false :selector "span:has-text(\"Book of Clerk\")"
+          bb test:static-app ${{ github.sha }}
+          bb test:static-app :url https://snapshots.nextjournal.com/clerk/book/${{ github.sha }}/book/index.html :index false :selector "span:has-text(\"Book of Clerk\")"
 
   deploy:
     needs: [build-and-upload-viewer-resources, test]
