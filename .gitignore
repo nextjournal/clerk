@@ -26,3 +26,4 @@ clerk.iml
 .secrets.env
 report.html
 editor.clj
+package.json
