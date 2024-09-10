@@ -1,7 +1,6 @@
 (ns playwright-tests
   {:clj-kondo/config '{:skip-comments false}}
   (:require ["playwright$default" :refer [chromium]]
-            ["@playwright/test$default" :refer [expect]]
             [clojure.edn :as edn]
             [clojure.string :as str]
             [clojure.test :as t :refer [deftest is async use-fixtures]]
@@ -54,10 +53,8 @@
          (.waitForLoadState page "networkidle")
          (p/let [selector (or (:selector @!opts) "div")
                  loc (.locator page selector)
-                 loc (.first loc #js {:timeout 20000})
-                 visible? (.toBeVisible (expect loc) #js {:timeout 20000})]
-           (prn visible?)
-           (is visible?))))
+                 loc (.first loc #js {:timeout 10000})]
+           (is (.isVisible loc #js {:timeout 10000})))))
   ([page url link]
    (p/let [txt (.innerText link)]
      (println "Visiting" (str url "#/" txt))
@@ -155,5 +152,13 @@
   (await (.click (second links)))
   (def links (map (fn [link]
                     (str url "#/" link)) links))
-  (goto p "https://snapshots.nextjournal.com/clerk/build/c617e6fae2734a75ef4c53b5c410a76cc0a52160/index.html#/notebooks/cards.clj")
+  (goto p "https://snapshots.nextjournal.com/clerk/book/39b8e38e26c11555fedc7e3bcc678a1d82354c91/book/index.html")
+  (def page p)
+  (await (p/let [selector "a[href$='#book-of-clerk']"
+                loc (.locator page selector)
+                 _ (def x loc)]
+           (.isVisible loc #js {:timeout 20000})
+           ))
+  x
+  (await (.innerText x))
   )
