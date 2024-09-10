@@ -1114,5 +1114,3 @@ v/table-viewer
         ds (next.jdbc/get-datasource {:dbtype "sqlite" :dbname "chinook.db"})]
     (with-open [conn (next.jdbc/get-connection ds)]
       (clerk/table (next.jdbc/execute! conn ["SELECT AlbumId, Bytes, Name, TrackID, UnitPrice FROM tracks"])))))
-
-(clerk/eval-cljs-str "(assoc :x nil 1)")
