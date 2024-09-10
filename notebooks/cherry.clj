@@ -135,4 +135,4 @@
 ;; force error to fail ui tests
 (clerk/with-viewer
   '(fn [_]
-     (assoc nil :foo :bar)) nil)
+     (assoc :foo :bar :baz)) nil)
