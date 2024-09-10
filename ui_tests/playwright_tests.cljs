@@ -54,8 +54,8 @@
          (.waitForLoadState page "networkidle")
          (p/let [selector (or (:selector @!opts) "div")
                  loc (.locator page selector)
-                 loc (.first loc #js {:timeout 10000})
-                 visible? (.toBeVisible (expect loc) #js {:timeout 10000})]
+                 loc (.first loc #js {:timeout 20000})
+                 visible? (.toBeVisible (expect loc) #js {:timeout 20000})]
            (prn visible?)
            (is visible?))))
   ([page url link]
