@@ -89,7 +89,7 @@
                                               (str/includes? link "cherry")) links)]
                     (p/run! #(p/do (test-notebook page url %)
                                    (.goBack page)) links)))))
-          #_(p/delay 30000)
+          (p/delay 30000) ;; allow errors to be logged to console
           (is (zero? (count @console-errors))
               (str/join "\n" (map (fn [{:keys [msg notebook]}]
                                     [(.text msg) (.location msg) notebook])
