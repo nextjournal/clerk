@@ -25,3 +25,4 @@ clerk.iml
 .clj-kondo/nextjournal/clerk
 .secrets.env
 report.html
+editor.clj
