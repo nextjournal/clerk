@@ -131,8 +131,3 @@
 ;; Test reverting the default option via metadata:
 ^{::clerk/render-evaluator :sci}
 (clerk/with-viewer '(fn [_] (load-string "[:h1 \"Ahoi\"]")) nil)
-
-;; force error to fail ui tests
-(clerk/with-viewer
-  '(fn [_]
-     (assoc :foo :bar :baz)) nil)
