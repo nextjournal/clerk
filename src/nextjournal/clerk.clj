@@ -95,6 +95,17 @@
 
 #_(recompute!)
 
+(defn present!
+  "Shows the given value `x` in Clerk. Returns the presented value of
+  `x` that's sent to the browser."
+  [x]
+  (reset! @(requiring-resolve 'nextjournal.clerk.presenter/!val) x)
+  (if (= (the-ns 'nextjournal.clerk.presenter)
+         (:ns @webserver/!doc))
+    (recompute!)
+    (show! 'nextjournal.clerk.presenter))
+  (-> @webserver/!doc meta :nextjournal/value :blocks peek :nextjournal/value first :nextjournal/value :nextjournal/presented))
+
 (defn ^:private supported-file?
   "Returns whether `path` points to a file that should be shown."
   [path]
@@ -202,11 +213,19 @@
   [wrapped-value]
   (v/mark-presented wrapped-value))
 
-
 (defn mark-preserve-keys
   "Marks the given `wrapped-value` so that the keys will be passed unmodified to the browser."
-  [wrapped-value]
-  (v/mark-preserve-keys wrapped-value))
+  ([wrapped-value]
+   (v/mark-preserve-keys wrapped-value))
+  ([preserve-keys-fn wrapped-value]
+   (v/mark-preserve-keys preserve-keys-fn wrapped-value)))
+
+(defn preserve-keys
+  "Takes a `preserve-keys-fn` (normally a set) and returns a function
+  usabable as a `:transform-fn` that preserves all keys and values for
+  which `(preserve-keys-fn k)` returns a truthy value."
+  [preserve-keys-fn]
+  (v/preserve-keys preserve-keys-fn))
 
 (defn resolve-aliases
   "Resolves aliases in `form` using the aliases from `*ns*`. Meant to be used on `:render-fn`s."
@@ -417,9 +436,10 @@
 (defn deprecate+migrate-opts [{:as opts :keys [bundle?]}]
   (when (contains? opts :bundle?)
     (println "\nThe `:bundle(?)` option is deprecated and will be dropped in 1.0.0. Use `:package :single-file` instead.\n"))
-  (-> opts (dissoc :bundle?)
+  (-> opts
+      (dissoc :bundle?)
       (cond-> bundle?
-        (assoc :package :single-page))))
+        (assoc :package :single-file))))
 
 (defn ^:private normalize-opts [opts]
   (deprecate+migrate-opts
@@ -511,7 +531,7 @@
   - `:package`     a keyword to specify how the static build should be bundled:
     - `:directory` (default) constructs a distinct html file for each document in `:paths`
     - `:single-file` bundles all documents into a single html file
-  - `:bundle`      [DEPRECATED use :pacakge :single-page instead] if true results in a single self-contained html file including inlined images
+  - `:bundle`      [DEPRECATED use :package :single-file instead] if true results in a single self-contained html file including inlined images
   - `:compile-css` if true compiles css file containing only the used classes
   - `:ssr`         if true runs react server-side-rendering and includes the generated markup in the html
   - `:browse`      if true will open browser with the built file on success

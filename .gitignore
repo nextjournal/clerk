@@ -2,7 +2,9 @@
 .cache/
 .clerk/
 .cpcache/
+.calva/
 .lsp/
+.lock
 node_modules
 /scratch
 notebooks/scratch*
@@ -13,7 +15,7 @@ notebooks/scratch*
 clerk.iml
 /public/girouette.css
 /public/images/
-/test/nextjournal/clerk/fixtures/
+/test/nextjournal/clerk/fixtures/generated/
 *~
 .work
 /build
@@ -23,3 +25,5 @@ clerk.iml
 .clj-kondo/nextjournal/clerk
 .secrets.env
 report.html
+/editor.clj
+package.json
