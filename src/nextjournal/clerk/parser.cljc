@@ -403,9 +403,10 @@
 #?(:clj
    (defn parse-file
      ([file] (parse-file {} file))
-     ([opts file] (-> (if (str/ends-with? file ".md")
-                        (parse-markdown-string opts (slurp file))
-                        (parse-clojure-string opts (slurp file)))
+     ([opts file] (-> (cond
+                        (str/ends-with? file ".md") (parse-markdown-string opts (slurp file))
+                        (str/ends-with? file ".py") nil
+                        :else (parse-clojure-string opts (slurp file)))
                       (assoc :file file)))))
 
 #_(parse-file {:doc? true} "notebooks/visibility.clj")
