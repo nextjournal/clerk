@@ -19,7 +19,7 @@ jobs:
         uses: DeLaGuardo/setup-clojure@master
         with:
           cli: '1.10.3.943'
-          bb: '1.3.186'
+          bb: latest
           clj-kondo: latest
 
       - name: 🗝 maven cache
