@@ -188,6 +188,8 @@
 
 (defn write-static-app!
   [opts docs]
+  ;; TODO: inspect docs keys
+  (prn :keys (map keys docs))
   (let [{:keys [package out-path browse? ssr?]} opts
         index-html (str out-path fs/file-separator "index.html")
         {:as static-app-opts :keys [path->doc]} (build-static-app-opts opts docs)]
