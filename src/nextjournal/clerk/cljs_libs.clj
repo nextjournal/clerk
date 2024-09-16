@@ -185,12 +185,15 @@
                            (filter #(or (not dedupe-cljs)
                                         (when-not (contains? @dedupe-cljs %)
                                           (swap! dedupe-cljs conj %)
+                                          (prn :->>>>)
                                           true))
                                    (mapv slurp-resource (keep ns->resource (all-ns state)))))]
-      (-> doc
-          ;; make sure :cljs-libs is the first key, so these are read + evaluated first
-          (aam/assoc-before :cljs-libs (mapv (fn [code-str] (v/->ViewerEval `(load-string ~code-str))) cljs-sources))
-          (aam/assoc-before :nextjournal.clerk/remount (valuehash :sha1 cljs-sources)))
+      (do
+        (prn cljs-sources)
+        (-> doc
+            ;; make sure :cljs-libs is the first key, so these are read + evaluated first
+            (aam/assoc-before :cljs-libs (mapv (fn [code-str] (v/->ViewerEval `(load-string ~code-str))) cljs-sources))
+            (aam/assoc-before :nextjournal.clerk/remount (valuehash :sha1 cljs-sources))))
       doc)))
 
 ;;;; Scratch
