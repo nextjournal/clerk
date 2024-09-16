@@ -168,7 +168,7 @@
         str)
     (slurp resource)))
 
-(defn prepend-required-cljs [doc]
+(defn prepend-required-cljs [doc {:keys [dedupe-cljs]}]
   (let [state (new-cljs-state)]
     (w/postwalk (fn [v]
                   (if-let [viewer (v/get-safe v :nextjournal/viewer)]
@@ -181,7 +181,12 @@
                       v)
                     v))
                 doc)
-    (if-let [cljs-sources (not-empty (mapv slurp-resource (keep ns->resource (all-ns state))))]
+    (if-let [cljs-sources (not-empty
+                           (filter #(or (not dedupe-cljs)
+                                        (when-not (contains? @dedupe-cljs %)
+                                          (swap! dedupe-cljs conj %)
+                                          true))
+                                   (mapv slurp-resource (keep ns->resource (all-ns state)))))]
       (-> doc
           ;; make sure :cljs-libs is the first key, so these are read + evaluated first
           (aam/assoc-before :cljs-libs (mapv (fn [code-str] (v/->ViewerEval `(load-string ~code-str))) cljs-sources))
