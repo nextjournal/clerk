@@ -14,4 +14,6 @@
   (clerk/build! {:paths ["test/nextjournal/clerk/fixtures/require_cljs_bundle_dedupe_1.clj"
                          "test/nextjournal/clerk/fixtures/require_cljs_bundle_dedupe_2.clj"]
                  :package :single-file})
+  (def build (slurp "public/build/index.html"))
+  (= 1 (re-find #"(prn ::identity)" build))
   )

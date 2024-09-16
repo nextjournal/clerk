@@ -1,4 +1,5 @@
-(ns nextjournal.clerk.fixtures.render-fns)
+(ns nextjournal.clerk.fixtures.render-fns
+  (:require [nextjournal.clerk]))
 
 (prn ::identity)
 
