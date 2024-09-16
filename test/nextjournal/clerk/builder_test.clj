@@ -69,14 +69,13 @@
           (first (map fs/file-name (fs/list-dir (fs/file temp-dir "_data") "**.png"))))))
   (testing "SCI .cljs sources are deduplicated"
     (fs/with-temp-dir [temp-dir {}]
-      (let [temp-dir "/tmp"]
-        (builder/build-static-app! {:paths ["test/nextjournal/clerk/fixtures/require_cljs_bundle_dedupe_1.clj"
-                                            "test/nextjournal/clerk/fixtures/require_cljs_bundle_dedupe_2.clj"]
-                                    :package :single-file
-                                    :out-path temp-dir
-                                    :report-fn identity})
-        (let [build (slurp (fs/file temp-dir "index.html"))]
-          (is (= 1 (count (re-seq #"\(prn ::identity\)" build)))))))))
+      (builder/build-static-app! {:paths ["test/nextjournal/clerk/fixtures/require_cljs_bundle_dedupe_1.clj"
+                                          "test/nextjournal/clerk/fixtures/require_cljs_bundle_dedupe_2.clj"]
+                                  :package :single-file
+                                  :out-path temp-dir
+                                  :report-fn identity})
+      (let [build (slurp (fs/file temp-dir "index.html"))]
+        (is (= 1 (count (re-seq #"\(prn ::identity\)" build))))))))
 
 (deftest process-build-opts
   (testing "assigns index when only one path is given"
