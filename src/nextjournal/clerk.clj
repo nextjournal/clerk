@@ -95,6 +95,13 @@
 
 #_(recompute!)
 
+(defn present
+  "Presents the given value `x`.
+
+  Transparently handles wrapped values and supports customization this way."
+  [x]
+  (v/present x))
+
 (defn present!
   "Shows the given value `x` in Clerk. Returns the presented value of
   `x` that's sent to the browser."

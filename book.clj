@@ -518,7 +518,7 @@ v/default-viewers
 ;; `wrapped-value`.
 
 ^{::clerk/viewer v/inspect-wrapped-values ::clerk/auto-expand-results? true}
-(v/present 1)
+(clerk/present 1)
 
 ;; This data structure is sent over Clerk's websocket to the
 ;; browser, where it will be displayed using the `:render-fn` found in
@@ -527,7 +527,7 @@ v/default-viewers
 ;; Now onto something slightly more complex, `#{1 2 3}`.
 
 ^{::clerk/viewer v/inspect-wrapped-values ::clerk/auto-expand-results? true}
-(v/present #{1 2 3})
+(clerk/present #{1 2 3})
 
 
 ;; Here, we're giving it a set with 1, 2, 3 in it. In its generalized
@@ -554,7 +554,7 @@ v/default-viewers
 
 ;; When writing your own viewer, the first extension point you should reach for is `:transform-fn`.
 
-#_ "exercise: wrap this in `v/present` and call it at the REPL"
+#_ "exercise: wrap this in `clerk/present` and call it at the REPL"
 (v/with-viewer {:transform-fn v/inspect-wrapped-values}
   "Exploring the viewer api")
 
@@ -574,10 +574,10 @@ v/default-viewers
 (v/with-viewer greet-viewer
   "James Clerk Maxwell")
 
-;; The `:transform-fn` runs on the JVM, which means you can explore what it does at your REPL by calling `v/present` on such a value.
+;; The `:transform-fn` runs on the JVM, which means you can explore what it does at your REPL by calling `clerk/present` on such a value.
 ^{::clerk/viewer v/inspect-wrapped-values}
-(v/present (v/with-viewer greet-viewer
-             "James Clerk Maxwell"))
+(clerk/present (v/with-viewer greet-viewer
+                 "James Clerk Maxwell"))
 
 
 ;; **Passing modified viewers down the tree**
@@ -606,9 +606,9 @@ v/table-viewer
 ;; below in which `[1 2 3]` appears unaltered with what you see above.
 
 ^{::clerk/viewer v/inspect-wrapped-values}
-(v/present (clerk/with-viewer {:transform-fn clerk/mark-presented
-                               :render-fn '(fn [x] [:pre (pr-str x)])}
-             [1 2 3]))
+(clerk/present (clerk/with-viewer {:transform-fn clerk/mark-presented
+                                   :render-fn '(fn [x] [:pre (pr-str x)])}
+                 [1 2 3]))
 
 ;; Clerk's presentation will also transform maps into sequences in
 ;; order to paginate large maps. When you're dealing with a map that
@@ -617,8 +617,8 @@ v/table-viewer
 ;; paginate) the values of the map, but leave the keys unaltered.
 
 ^{::clerk/viewer v/inspect-wrapped-values ::clerk/auto-expand-results? true}
-(v/present (clerk/with-viewer {:transform-fn clerk/mark-preserve-keys}
-             {:hello 42}))
+(clerk/present (clerk/with-viewer {:transform-fn clerk/mark-preserve-keys}
+                 {:hello 42}))
 
 
 ;; #### 🔬 Render
@@ -648,7 +648,7 @@ v/table-viewer
 ;; form to the browser for evaluation. There it will create a `reagent/atom`
 ;; that holds the selection state. Lastly,
 ;; `nextjournal.clerk.render/inspect-presented` is a component that takes a
-;; `wrapped-value` that ran through `v/present` and show it.
+;; `wrapped-value` that ran through `clerk/present` and show it.
 
 (def literal-viewer
   {:pred emmy.expression/literal?

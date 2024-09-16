@@ -274,7 +274,9 @@
     (is (= {:path [0]
             :nextjournal/value 42
             :nextjournal/render-opts {:id "nextjournal.clerk.presenter/presented-result"}}
-           (select-keys (clerk/present! 42) [:path :nextjournal/render-opts :nextjournal/value])))))
+           (select-keys (clerk/present! 42) [:path :nextjournal/render-opts :nextjournal/value]))))
+  (testing "present"
+    (is (= 42 (:nextjournal/value (clerk/present 42))))))
 
 (deftest file-var-metadata-test
   (testing "show with file string arg"
