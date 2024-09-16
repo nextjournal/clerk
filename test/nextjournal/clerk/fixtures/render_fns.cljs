@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.fixtures.render-fns)
 
+(prn ::identity)
+
 (defn id [x]
-  (prn :identity)
   [:pre (nextjournal.clerk/inspect x)])
 

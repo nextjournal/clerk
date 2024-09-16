@@ -13,5 +13,5 @@
   (fs/exists? "test/nextjournal/clerk/fixtures/require_cljs_bundle_dedupe_1.clj")
   (clerk/build! {:paths ["test/nextjournal/clerk/fixtures/require_cljs_bundle_dedupe_1.clj"
                          "test/nextjournal/clerk/fixtures/require_cljs_bundle_dedupe_2.clj"]
-                 :single-file true})
+                 :package :single-file})
   )

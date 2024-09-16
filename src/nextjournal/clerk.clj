@@ -536,7 +536,7 @@
   Passing at least one of the above is required. When both `:paths` and `:paths-fn` are given, `:paths` takes precendence.
 
   - `:package`     a keyword to specify how the static build should be bundled:
-    - `:directory` (default) constructs a distinct html file for each document in `:paths`
+    - `:Director` (default) constructs a distinct html file for each document in `:paths`
     - `:single-file` bundles all documents into a single html file
   - `:bundle`      [DEPRECATED use :package :single-file instead] if true results in a single self-contained html file including inlined images
   - `:compile-css` if true compiles css file containing only the used classes
