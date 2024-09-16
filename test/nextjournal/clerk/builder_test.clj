@@ -76,7 +76,7 @@
                                     :out-path temp-dir
                                     :report-fn identity})
         (let [build (slurp (fs/file temp-dir "index.html"))]
-          (is (= 1 (count (re-find #"(prn ::identity)" build)))))))))
+          (is (= 1 (count (re-seq #"\(prn ::identity\)" build)))))))))
 
 (deftest process-build-opts
   (testing "assigns index when only one path is given"
