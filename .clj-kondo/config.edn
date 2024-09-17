@@ -34,4 +34,5 @@
                                                                                    clojure.string
                                                                                    clojure.set
                                                                                    clojure.walk]}}}
+                  clojure.test/deftest {:linters {:inline-def {:level :off}}}
                   shadow.cljs.modern/defclass {:linters {:redefined-var {:level :off}}}}}

@@ -7,7 +7,7 @@
             [nbb.core :refer [await]]
             [promesa.core :as p]))
 
-(defonce !index (atom nil))
+(defonce !opts (atom nil))
 
 (def browser (atom nil))
 
@@ -26,18 +26,18 @@
   {:before
    (fn []
      (async done
-            (->
-             (launch-browser)
-             (.catch js/console.log)
-             (.finally done))))
+       (->
+        (launch-browser)
+        (.catch js/console.log)
+        (.finally done))))
    :after
    (fn []
      (async done
-            (if close-browser
-              (p/do
-                (.close @browser)
-                (done))
-              (done))))})
+       (if close-browser
+         (p/do
+           (.close @browser)
+           (done))
+         (done))))})
 
 (defn goto [page url]
   (.goto page url #js{:waitUntil "networkidle"}))
@@ -46,47 +46,58 @@
 
 (def console-errors (atom []))
 
-(defn test-notebook [page link]
-  (println "Visiting" link)
-  (p/do (goto page link)
-        (p/delay 500)
-        (p/let [loc (.locator page "div")
-                loc (.first loc)
-                visible? (.isVisible loc)]
-          (is visible?))))
+(defn test-notebook
+  ([page url]
+   (println "Visiting" url)
+   (p/do (goto page url)
+         (.waitForLoadState page "networkidle")
+         (p/let [selector (or (:selector @!opts) "div")
+                 loc (.locator page selector)
+                 loc (.first loc #js {:timeout 10000})]
+           (is (.isVisible loc #js {:timeout 10000})))))
+  ([page url link]
+   (p/let [txt (.innerText link)]
+     (println "Visiting" (str url "#/" txt))
+     (p/do (.click link)
+           (p/let [loc (.locator page "div")
+                   loc (.first loc #js {:timeout 10000})
+                   visible? (.isVisible loc #js {:timeout 10000})]
+             (is visible?))))))
 
 (deftest index-page-test
   (async done
-         (-> (p/let [page (.newPage @browser)
-                     _ (.on page "console"
-                            (fn [msg]
-                              (when (and (= "error" (.type msg))
-                                         (not (str/ends-with?
-                                               (.-url (.location msg)) "favicon.ico")))
-                                (swap! console-errors conj {:msg msg :notebook (.url page)}))))
-                     _ (.on page "pageerror"
-                            (fn [msg]
-                              (swap! console-errors conj {:msg msg :notebook (.url page)})))
-                     _ (goto page @!index)
-                     _ (is (-> (.locator page "h1:has-text(\"Clerk\")")
-                               (.isVisible #js {:timeout 10000})))
-                     links (-> (.locator page "text=/.*\\.clj$/i")
-                               (.allInnerTexts))
-                     _ (is (pos? (count links)))
-                     links (map (fn [link]
-                                  (str @!index "#/" link)) links)
-                     links (filter (fn [link]
-                                     (str/includes? link "cherry")) links)]
-               (p/run! #(test-notebook page %) links)
-               (p/delay 30000)
-               (is (zero? (count @console-errors))
-                   (str/join "\n" (map (fn [{:keys [msg notebook]}]
-                                         [(.text msg) (.location msg) notebook])
-                                       @console-errors))))
-             (.catch (fn [err]
-                       (js/console.log err)
-                       (is false)))
-             (.finally done))))
+    (-> (p/let [page (.newPage @browser)
+                _ (.on page "console"
+                       (fn [msg]
+                         (when (and (= "error" (.type msg))
+                                    (not (str/ends-with?
+                                          (.-url (.location msg)) "favicon.ico")))
+                           (swap! console-errors conj {:msg msg :notebook (.url page)}))))
+                _ (.on page "pageerror"
+                       (fn [msg]
+                         (swap! console-errors conj {:msg msg :notebook (.url page)})))]
+          (let [{:keys [index url]} @!opts]
+            (if (false? index)
+              (test-notebook page url)
+              (-> (p/let [_ (goto page url)
+                          _ (is (-> (.locator page "h1:has-text(\"Clerk\")")
+                                    (.isVisible #js {:timeout 10000})))
+                          links (-> (.locator page "text=/.*\\.clj$/i")
+                                    (.all))
+                          _ (is (pos? (count links)))
+                          #_#_links (filter (fn [link]
+                                              (str/includes? link "cherry")) links)]
+                    (p/run! #(p/do (test-notebook page url %)
+                                   (.goBack page)) links)))))
+          (p/delay 30000) ;; allow errors to be logged to console
+          (is (zero? (count @console-errors))
+              (str/join "\n" (map (fn [{:keys [msg notebook]}]
+                                    [(.text msg) (.location msg) notebook])
+                                  @console-errors))))
+        (.catch (fn [err]
+                  (js/console.log err)
+                  (is false)))
+        (.finally done))))
 
 (defmethod t/report [:cljs.test/default :begin-test-var] [m]
   (println "===" (-> m :var meta :name))
@@ -110,14 +121,20 @@
        vals
        (filter (comp :test meta))))
 
-(defn args-map->index [{:keys [sha url]}]
-  (cond
-    sha (str/replace "https://snapshots.nextjournal.com/clerk/build/{{sha}}/index.html" "{{sha}}" sha)
-    url url))
+(defn args-map->index [{:keys [sha url] :as opts}]
+  (assoc opts
+         :url
+         (cond
+           sha (str/replace "https://snapshots.nextjournal.com/clerk/build/{{sha}}/index.html" "{{sha}}" sha)
+           url url)))
 
 (defn -main [args-map-str]
-  (prn :url (reset! !index (args-map->index (edn/read-string args-map-str))))
-  (t/test-vars (get-test-vars)))
+  (let [opts (edn/read-string args-map-str)
+        opts (args-map->index opts)]
+    (reset! !opts opts)
+    (prn opts)
+    (prn :url (:url @!opts))
+    (t/test-vars (get-test-vars))))
 
 (comment
   (await (launch-browser))
@@ -125,7 +142,23 @@
   (.on p "console" (fn [msg]
                      (when (= "error" (.type msg))
                        (swap! console-errors conj msg))))
-  (await (goto p "https://snapshots.nextjournal.com/clerk/build/549f9956870c69ef0951ca82d55a8e5ec2e49ed4/index.html"))
+  (def url "https://snapshots.nextjournal.com/clerk/build/c617e6fae2734a75ef4c53b5c410a76cc0a52160/index.html")
+  (await (goto p url))
   (def loc (.first (.locator p "text=Clerk")))
   (await (.isVisible loc #js {:timeout 1000}))
+  (def links (await (-> (.locator p "text=/.*\\.clj$/i")
+                        #_(.allInnerTexts)
+                        (.all))))
+  (await (.click (second links)))
+  (def links (map (fn [link]
+                    (str url "#/" link)) links))
+  (goto p "https://snapshots.nextjournal.com/clerk/book/39b8e38e26c11555fedc7e3bcc678a1d82354c91/book/index.html")
+  (def page p)
+  (await (p/let [selector "a[href$='#book-of-clerk']"
+                loc (.locator page selector)
+                 _ (def x loc)]
+           (.isVisible loc #js {:timeout 20000})
+           ))
+  x
+  (await (.innerText x))
   )

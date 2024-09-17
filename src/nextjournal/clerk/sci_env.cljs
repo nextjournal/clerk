@@ -12,7 +12,6 @@
             [applied-science.js-interop :as j]
             [cljs.math]
             [cljs.reader]
-            [clojure.edn :as edn]
             [clojure.string :as str]
             [edamame.core :as edamame]
             [goog.object]
@@ -24,6 +23,7 @@
             [nextjournal.clerk.render.editor]
             [nextjournal.clerk.render.hooks]
             [nextjournal.clerk.render.navbar]
+            [nextjournal.clerk.render.table]
             [nextjournal.clerk.trim-image]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.clojure-mode.commands]
@@ -101,7 +101,7 @@
                              (and (vector? value) (number? (second value)))
                              (update 1 (fn [memory-address]
                                          (viewer/with-viewer `viewer/number-hex-viewer memory-address))))}))))
-         :features #{:clj}}))
+         :features #{:cljs}}))
 
 (defn ^:export read-string [s]
   (edamame/parse-string s @!edamame-opts))
@@ -151,6 +151,9 @@
 
 (def core-ns (sci/create-ns 'clojure.core nil))
 
+(def pst-stub
+  (fn [_] (throw (js/Error. "`clojure.repl/pst` is not yet implemented"))))
+
 (defn ^:sci/macro time [_ _ expr]
   `(let [start# (system-time)
          ret# ~expr]
@@ -171,13 +174,15 @@
              "framer-motion" framer-motion
              "react" react
              "react-dom" react-dom}
-   :ns-aliases '{clojure.math cljs.math}
+   :ns-aliases '{clojure.math cljs.math
+                 cljs.repl clojure.repl}
    :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
                        'nextjournal.clerk viewer-namespace ;; TODO: expose cljs variant of `nextjournal.clerk` with docstrings
                        'clojure.core {'read-string read-string
                                       'implements? (sci/copy-var implements?* core-ns)
                                       'time (sci/copy-var time core-ns)
-                                      'system-time (sci/copy-var system-time core-ns)}}
+                                      'system-time (sci/copy-var system-time core-ns)}
+                       'clojure.repl {'pst pst-stub}}
                       (sci-copy-nss
                        'cljs.math
                        'cljs.repl
@@ -187,6 +192,7 @@
                        'nextjournal.clerk.render.editor
                        'nextjournal.clerk.render.hooks
                        'nextjournal.clerk.render.navbar
+                       'nextjournal.clerk.render.table
 
                        'nextjournal.clojure-mode.keymap
                        'nextjournal.clojure-mode.commands
@@ -201,11 +207,18 @@
 (defn render-eval [{:keys [form]}]
   (eval-form form))
 
+(defn nrepl-send! [msg]
+  (render/ws-send! {:type :nrepl :msg msg}))
+
+(defn handle-nrepl [{:keys [msg]}]
+  (nrepl/handle-nrepl-message (assoc msg :send-fn nrepl-send!)))
+
 (def message-type->fn
   {:patch-state! render/patch-state!
    :set-state! render/set-state!
    :eval-reply render/process-eval-reply!
-   :render-eval render-eval})
+   :render-eval render-eval
+   :nrepl handle-nrepl})
 
 (defn ^:export onmessage [ws-msg]
   (let [{:as msg :keys [type]} (read-string (.-data ws-msg))
@@ -224,18 +237,6 @@
 
 (defn reconnect-timeout [failed-connection-attempts]
   (get [0 0 100 500 5000] failed-connection-attempts 10000))
-
-(defn ^:export connect-render-nrepl [ws-url]
-  (let [ws (js/WebSocket. ws-url)
-        send-fn (fn [data]
-                  (.send ws (str data)))]
-    (prn :connect-render-nrepl ws-url)
-    (set! (.-onmessage ws)
-          (fn [event]
-            (nrepl/handle-nrepl-message (assoc (edn/read-string (.-data event)) :send-fn send-fn))))
-    (set! (.-onerror ws)
-          (fn [event]
-            (js/console.log event)))))
 
 (defn ^:export connect [ws-url]
   (when (::failed-attempts @render/!doc)

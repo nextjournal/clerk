@@ -46,20 +46,3 @@
           (catch Exception _
             (throw (ex-info "Invalid value for property `clerk.bounded-count-limit`, must be integer." {:value limit})))))
       1000000))
-
-
-(defonce render-repl-config
-  (delay (when-let [config (let [prop (System/getProperty "clerk.render_repl")]
-                             (when-not (str/blank? prop)
-                               (merge {:nrepl-port 1339
-                                       :websocket-port 1340}
-                                      (edn/read-string prop))))]
-           (let [start! (requiring-resolve 'sci.nrepl.browser-server/start!)]
-             (doto config
-               start!)))))
-
-;;; Scratch
-
-(comment
-  @render-repl-config
-  )

@@ -147,12 +147,17 @@ jobs:
           cp notebooks/editor.clj editor.clj
           clojure -J-Dclojure.main.report=stderr -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :paths '["book.clj" "CHANGELOG.md" "editor.clj"]'
 
+      - name: 📠 Copy book to bucket under SHA
+        run: |
+          gsutil cp -r public/build gs://nextjournal-snapshots/clerk/book/${{ github.sha }}
+
       - name: 🏗 Build Clerk Static App with default Notebooks
         run: clojure -J-Dclojure.main.report=stderr -X:demo:nextjournal/clerk :package :single-file
 
-      - name: 📠 Copy book & static build to bucket under SHA
+      - name: 📠 Copy static build to bucket under SHA
         run: |
           gsutil cp -r public/build gs://nextjournal-snapshots/clerk/build/${{ github.sha }}
+
       - name: ✅ Add success status to report with link to snapshot
         uses: Sibz/github-status-action@v1
         with:
@@ -242,10 +247,29 @@ jobs:
             ~/.deps.clj
           key: ${{ runner.os }}-maven-ui-tests-${{ hashFiles('deps.edn') }}
 
+      - name: Get installed playwright version
+        id: playwright-version
+        run: echo "PLAYWRIGHT_VERSION=$(bb playwright:version)" >> "$GITHUB_ENV"
+
+      - name: Cache playwright binaries
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: |
+            ~/.cache/ms-playwright
+          key: ${{ runner.os }}-npx-playwright-${{ env.PLAYWRIGHT_VERSION }}
+
+      - name: yarn install
+        run: cd ui_tests; yarn install
+
+      - name: playwright install
+        run: bb playwright:install
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
 
       - name: Run Playwright tests against static assets
         run: |
-          bb test:static-app ${{ github.sha }}
+          bb test:static-app :sha ${{ github.sha }} :skip-install true
+          bb test:static-app :skip-install true :url https://snapshots.nextjournal.com/clerk/book/${{ github.sha }}/book/index.html :index false :selector "span:has-text(\"Book of Clerk\")"
 
   deploy:
     needs: [build-and-upload-viewer-resources, test]
@@ -288,7 +312,7 @@ jobs:
           CLERK_VERSION=$(bb clerk-version)
           echo "##[set-output name=version;]${CLERK_VERSION}"
 
-      - uses: actions/upload-artifact@v1
+      - uses: actions/upload-artifact@v4
         with:
           name: clerk-${{ steps.clerk-version.outputs.version }}.jar
           path: target/clerk-${{ steps.clerk-version.outputs.version }}.jar

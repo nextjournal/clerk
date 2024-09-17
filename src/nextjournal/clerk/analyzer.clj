@@ -340,18 +340,11 @@
     identity))
 #_ (ns-resolver *ns*)
 
-(defn analyze-doc-deps [{:as doc :keys [redefs blocks ->analysis-info]}]
-  (reduce (fn [state {:as info :keys [id deps vars- no-cache?]}]
-            (reduce (partial analyze-deps info)
-                    (cond-> state
-                      ;; redefinitions are never cached
-                      (and (not no-cache?) (seq (set/intersection vars- redefs)))
-                      (assoc-in [:->analysis-info id :no-cache?] true))
-                    deps))
+(defn analyze-doc-deps [{:as doc :keys [->analysis-info]}]
+  (reduce (fn [state {:as info :keys [deps]}]
+            (reduce (partial analyze-deps info) state deps))
           doc
-          (keep (comp #(get ->analysis-info %) :id)
-                (filter (comp #{:code} :type)
-                        blocks))))
+          (vals ->analysis-info)))
 
 (defn track-var->block+redefs [{:as state seen :var->block-id} {:keys [id vars-]}]
   (-> state
@@ -366,6 +359,17 @@
   (reduce #(update %1 :->analysis-info assoc-new %2 info)
           state
           (info-store-keys info)))
+
+(defn extract-file
+  "Extracts the string file path from the given `resource` to for usage
+  on the `:clojure.core/eval-file` form meta key."
+  [^java.net.URL resource]
+  (case (.getProtocol resource)
+    "file" (str (.getFile resource))
+    "jar" (str (.getJarEntry ^java.net.JarURLConnection (.openConnection resource)))))
+
+#_(extract-file (io/resource "clojure/core.clj"))
+#_(extract-file (io/resource "nextjournal/clerk.clj"))
 
 (defn analyze-doc
   "Goes through `:blocks` of `doc`, reads and analyzes block forms, populates `:->analysis-info`"
@@ -387,10 +391,12 @@
                                  form+loc (cond-> form
                                             (instance? clojure.lang.IObj form)
                                             (vary-meta merge (cond-> loc
-                                                               (:file doc) (assoc :clojure.core/eval-file (str (:file doc))))))
+                                                               (:file doc) (assoc :clojure.core/eval-file
+                                                                                  (str (cond-> (:file doc)
+                                                                                         (instance? java.net.URL (:file doc)) extract-file))))))
                                  {:as analyzed :keys [ns-effect?]} (cond-> (analyze form+loc)
                                                                      (:file doc) (assoc :file (:file doc)))
-                                 _ (when ns-effect?         ;; needs to run before setting doc `:ns` via `*ns*`
+                                 _ (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
                                      (eval form))
                                  block-id (get-block-id !id->count (merge analyzed block))
                                  analyzed (assoc analyzed :id block-id)]
@@ -401,10 +407,10 @@
                                  (update :blocks conj (-> block
                                                           (merge (dissoc analyzed :deps :no-cache? :ns-effect?))
                                                           (cond->
-                                                            (parser/ns? form) (assoc :ns? true)
-                                                            doc? (assoc :text-without-meta (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns))))))
+                                                              (parser/ns? form) (assoc :ns? true)
+                                                              doc? (assoc :text-without-meta (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns))))))
                                  (cond->
-                                   (and doc? (not (contains? state :ns)))
+                                     (and doc? (not (contains? state :ns)))
                                    (merge (parser/->doc-settings form) {:ns *ns*}))))))
 
                        (-> state
@@ -540,18 +546,24 @@
              {:jar f :hash (sha1-base58 (io/input-stream f))})))
 
 (defn ^:private merge-analysis-info [state {:as _analyzed-doc :keys [->analysis-info var->block-id]}]
-  (reduce (fn [s {:as analyzed :keys [deps]}]
-            (if (seq deps)
-              (reduce (partial analyze-deps analyzed) s deps)
-              s))
-          (-> state
-              (update :->analysis-info merge ->analysis-info)
-              (update :var->block-id merge var->block-id))
-          (vals ->analysis-info)))
+  (-> state
+      (update :->analysis-info merge ->analysis-info)
+      (update :var->block-id merge var->block-id)))
 
 #_(merge-analysis-info {:->analysis-info {:a :b}} {:->analysis-info {:c :d}})
 
 #_(hash-jar (find-location `dep/depend))
+
+(defn set-no-cache-on-redefs [{:as doc :keys [redefs blocks ->analysis-info]}]
+  (reduce (fn [state {:as _info :keys [id vars- no-cache?]}]
+            (cond-> state
+              ;; redefinitions are never cached
+              (and (not no-cache?) (seq (set/intersection vars- redefs)))
+              (assoc-in [:->analysis-info id :no-cache?] true)))
+          doc
+          (keep (comp #(get ->analysis-info %) :id)
+                (filter (comp #{:code} :type)
+                        blocks))))
 
 (defn build-graph
   "Analyzes the forms in the given file and builds a dependency graph of the vars.
@@ -576,7 +588,11 @@
                                    gitlib-hash (and (not jar?)
                                                     (second (re-find #".gitlibs/libs/.*/(\b[0-9a-f]{5,40}\b)/" (fs/unixify source))))]
                                (if (or jar? gitlib-hash)
-                                 (update g :->analysis-info merge (into {} (map (juxt identity (constantly (if source (or gitlib-hash (hash-jar source)) {})))) symbols))
+                                 (update g :->analysis-info merge (into {} (map (juxt identity
+                                                                                      (constantly (if source
+                                                                                                    (or (when gitlib-hash {:hash gitlib-hash})
+                                                                                                        (hash-jar source))
+                                                                                                    {})))) symbols))
                                  (-> g
                                      (update :analyzed-file-set conj source)
                                      (merge-analysis-info (analyze-file source))))))
@@ -585,10 +601,13 @@
                    (update :counter inc)))
         (-> state
             analyze-doc-deps
+            set-no-cache-on-redefs
             make-deps-inherit-no-cache
             (dissoc :analyzed-file-set :counter))))))
 
 (comment
+  (reset! !file->analysis-cache {})
+
   (def parsed (parser/parse-file {:doc? true} "src/nextjournal/clerk/webserver.clj"))
   (def analysis (time (-> parsed analyze-doc build-graph)))
   (-> analysis :->analysis-info keys set)
@@ -620,19 +639,27 @@
                            (vary-meta dissoc :type)))
                  form))
 
-(defn hash-codeblock [->hash {:keys [ns graph]} {:as codeblock :keys [hash form id vars]}]
-  (let [deps (dep/immediate-dependencies graph id)
+(defn hash-codeblock [->hash {:keys [ns graph record-missing-hash-fn]} {:as codeblock :keys [hash form id vars graph-node]}]
+  (let [deps (when id (dep/immediate-dependencies graph id))
         hashed-deps (into #{} (keep ->hash) deps)]
-    (when-some [dep-with-missing-hash
-                (some (fn [dep]
-                        (when-not (get ->hash dep)
-                          (when-not (deref? dep)            ;; on a first pass deref-nodes do not have a hash yet
-                            dep))) deps)]
-      (throw (ex-info (format "Hash is missing on dependency '%s' of the form '%s' in %s" dep-with-missing-hash form ns)
-                      {:dep dep-with-missing-hash :codeblock codeblock :ns ns})))
+    ;; NOTE: missing hashes on deps might occur e.g. when some dependencies are interned at runtime
+    (when record-missing-hash-fn
+      (when-some [dep-with-missing-hash
+                  (some (fn [dep]
+                          (when-not (get ->hash dep)
+                            (when-not (deref? dep)          ;; on a first pass deref-nodes do not have a hash yet
+                              dep))) deps)]
+        (record-missing-hash-fn (assoc codeblock
+                                       :dep-with-missing-hash dep-with-missing-hash
+                                       :graph-node graph-node :ns ns))))
     (sha1-base58 (binding [*print-length* nil]
                    (pr-str (set/union (conj hashed-deps (if form (remove-type-meta form) hash))
                                       vars))))))
+
+#_(hash-codeblock {} {:graph (dep/graph)} {})
+#_(hash-codeblock {} {:graph (dep/graph)} {:hash "foo"})
+#_(hash-codeblock {} {:graph (dep/graph)} {:id 'foo})
+#_(hash-codeblock {'bar "dep-hash"} {:graph (dep/depend (dep/graph) 'foo 'bar)} {:id 'foo})
 
 (defn hash
   ([{:as analyzed-doc :keys [graph]}] (hash analyzed-doc (dep/topo-sort graph)))
@@ -641,10 +668,15 @@
            :->hash
            (partial reduce (fn [->hash k]
                              (if-let [codeblock (get ->analysis-info k)]
-                               (assoc ->hash k (hash-codeblock ->hash analyzed-doc codeblock))
+                               (assoc ->hash k (hash-codeblock ->hash analyzed-doc (assoc codeblock :graph-node k)))
                                ->hash)))
            deps)))
 
+#_(:time-ms
+   (nextjournal.clerk.eval/time-ms
+    (-> (parser/parse-file "src/nextjournal/clerk.clj")
+        build-graph
+        hash)))
 #_(hash (build-graph (parser/parse-clojure-string "^{:nextjournal.clerk/hash-fn (fn [x] \"abc\")}(def contents (slurp \"notebooks/hello.clj\"))")))
 #_(hash (build-graph (parser/parse-clojure-string (slurp "notebooks/hello.clj"))))
 
@@ -652,13 +684,15 @@
   (-exceeds-bounded-count-limit? [x limit]))
 
 (extend-protocol BoundedCountCheck
-  nil (-exceeds-bounded-count-limit? [_ _] false)
-  Object (-exceeds-bounded-count-limit? [_ _] false)
-  clojure.lang.IPersistentCollection (-exceeds-bounded-count-limit? [x limit]
-                                       (or (some #(-exceeds-bounded-count-limit? % limit) x) false))
-  clojure.lang.ISeq (-exceeds-bounded-count-limit? [xs limit]
-                      (or (<= limit (bounded-count limit xs))
-                          (some #(-exceeds-bounded-count-limit? % limit) xs))))
+  nil
+  (-exceeds-bounded-count-limit? [_ _] false)
+  Object
+  (-exceeds-bounded-count-limit? [_ _] false)
+  clojure.lang.IPersistentCollection
+  (-exceeds-bounded-count-limit? [xs limit]
+    (or (<= limit (bounded-count limit xs))
+        (some #(-exceeds-bounded-count-limit? % limit) xs)
+        false)))
 
 (defn exceeds-bounded-count-limit? [x]
   (-exceeds-bounded-count-limit? x config/*bounded-count-limit*))

@@ -14,7 +14,8 @@
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.analyzer :as ana]
             [nextjournal.clerk.viewer :as v]
-            [sicmutils.env :as sicm]
+            [emmy.env :as emmy]
+            [emmy.expression]
             [weavejester.dependency :as dep])
   (:import (javax.imageio ImageIO)
            (java.net URL)))
@@ -246,7 +247,9 @@
 ;; Clerk also has built-in support for Plotly's low-ceremony plotting.
 ;; See [Plotly's JavaScript docs](https://plotly.com/javascript/) for more examples and [options](https://plotly.com/javascript/configuration-options/).
 (clerk/plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]
-               :layout {:margin {:l 20 :r 0 :b 20 :t 20}}
+               :layout {:margin {:l 20 :r 0 :b 20 :t 20}
+                        :paper_bgcolor "transparent"
+                        :plot_bgcolor "transparent"}
                :config {:displayModeBar false
                         :displayLogo false}})
 
@@ -258,13 +261,14 @@
            :transform [{:lookup "id" :from {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
                                             :key "id" :fields ["rate"]}}]
            :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}
+           :background "transparent"
            :embed/opts {:actions false}})
 
 ;; You can provide a map of [embed options](https://github.com/vega/vega-embed#embed) to the vega viewer via the `:embed/opts` key.
 ;;
 ;; Clerk handles conversion from EDN to JSON for you.
 ;; The official Vega-Lite examples are in JSON, but a Clojure/EDN version is available:
-;; [Carsten Behring's Vega gallery in EDN](https://github.clerk.garden/behrica/vl-galery/).
+;; [Carsten Behring's Vega gallery in EDN](https://vlgalleryedn.happytree-bf95e0f8.westeurope.azurecontainerapps.io/).
 
 ;; ### 🎼 Code
 
@@ -514,7 +518,7 @@ v/default-viewers
 ;; `wrapped-value`.
 
 ^{::clerk/viewer v/inspect-wrapped-values ::clerk/auto-expand-results? true}
-(v/present 1)
+(clerk/present 1)
 
 ;; This data structure is sent over Clerk's websocket to the
 ;; browser, where it will be displayed using the `:render-fn` found in
@@ -523,7 +527,7 @@ v/default-viewers
 ;; Now onto something slightly more complex, `#{1 2 3}`.
 
 ^{::clerk/viewer v/inspect-wrapped-values ::clerk/auto-expand-results? true}
-(v/present #{1 2 3})
+(clerk/present #{1 2 3})
 
 
 ;; Here, we're giving it a set with 1, 2, 3 in it. In its generalized
@@ -550,7 +554,7 @@ v/default-viewers
 
 ;; When writing your own viewer, the first extension point you should reach for is `:transform-fn`.
 
-#_ "exercise: wrap this in `v/present` and call it at the REPL"
+#_ "exercise: wrap this in `clerk/present` and call it at the REPL"
 (v/with-viewer {:transform-fn v/inspect-wrapped-values}
   "Exploring the viewer api")
 
@@ -570,10 +574,10 @@ v/default-viewers
 (v/with-viewer greet-viewer
   "James Clerk Maxwell")
 
-;; The `:transform-fn` runs on the JVM, which means you can explore what it does at your REPL by calling `v/present` on such a value.
+;; The `:transform-fn` runs on the JVM, which means you can explore what it does at your REPL by calling `clerk/present` on such a value.
 ^{::clerk/viewer v/inspect-wrapped-values}
-(v/present (v/with-viewer greet-viewer
-             "James Clerk Maxwell"))
+(clerk/present (v/with-viewer greet-viewer
+                 "James Clerk Maxwell"))
 
 
 ;; **Passing modified viewers down the tree**
@@ -602,9 +606,9 @@ v/table-viewer
 ;; below in which `[1 2 3]` appears unaltered with what you see above.
 
 ^{::clerk/viewer v/inspect-wrapped-values}
-(v/present (clerk/with-viewer {:transform-fn clerk/mark-presented
-                               :render-fn '(fn [x] [:pre (pr-str x)])}
-             [1 2 3]))
+(clerk/present (clerk/with-viewer {:transform-fn clerk/mark-presented
+                                   :render-fn '(fn [x] [:pre (pr-str x)])}
+                 [1 2 3]))
 
 ;; Clerk's presentation will also transform maps into sequences in
 ;; order to paginate large maps. When you're dealing with a map that
@@ -613,8 +617,8 @@ v/table-viewer
 ;; paginate) the values of the map, but leave the keys unaltered.
 
 ^{::clerk/viewer v/inspect-wrapped-values ::clerk/auto-expand-results? true}
-(v/present (clerk/with-viewer {:transform-fn clerk/mark-preserve-keys}
-             {:hello 42}))
+(clerk/present (clerk/with-viewer {:transform-fn clerk/mark-preserve-keys}
+                 {:hello 42}))
 
 
 ;; #### 🔬 Render
@@ -623,7 +627,7 @@ v/table-viewer
 ;; using `clerk/html` on the JVM. When you want to run code in the
 ;; browser where Clerk's viewers are rendered, reach for
 ;; `:render-fn`. As an example, we'll write a multiviewer for a
-;; sicmutils literal expression that will compute two alternative
+;; emmy literal expression that will compute two alternative
 ;; representations and let the user switch between them in the
 ;; browser.
 
@@ -632,8 +636,8 @@ v/table-viewer
 ;; original form.
 
 (defn transform-literal [expr]
-  {:TeX (-> expr sicm/->TeX clerk/tex)
-   :original (clerk/code (with-out-str (sicm/print-expression (sicm/freeze expr))))})
+  {:TeX (-> expr emmy/->TeX clerk/tex)
+   :original (clerk/code (with-out-str (emmy/print-expression (emmy/freeze expr))))})
 
 ;; Our `literal-viewer` calls this `transform-literal` function and
 ;; also calls `clerk/mark-preserve-keys`. This tells Clerk to leave
@@ -644,10 +648,10 @@ v/table-viewer
 ;; form to the browser for evaluation. There it will create a `reagent/atom`
 ;; that holds the selection state. Lastly,
 ;; `nextjournal.clerk.render/inspect-presented` is a component that takes a
-;; `wrapped-value` that ran through `v/present` and show it.
+;; `wrapped-value` that ran through `clerk/present` and show it.
 
 (def literal-viewer
-  {:pred sicmutils.expression/literal?
+  {:pred emmy.expression/literal?
    :transform-fn (comp clerk/mark-preserve-keys
                        (clerk/update-val transform-literal))
    :render-fn '(fn [label->val]
@@ -667,8 +671,32 @@ v/table-viewer
 ;; representation!
 
 ^{::clerk/viewer literal-viewer}
-(sicm/+ (sicm/square (sicm/sin 'x))
-        (sicm/square (sicm/cos 'x)))
+(emmy/+ (emmy/square (emmy/sin 'x))
+        (emmy/square (emmy/cos 'x)))
+
+;; #### 📚 Require CLJS
+
+;; Writing `:render-fn`s inline as quoted forms is fine when they're
+;; small and independent. For more complex needs, Clerk supports
+;; loading ClojureScript files from the classpath.
+
+;; To opt into this, use a fully qualified symbol as the `:render-fn`
+;; and set `:require-cljs` set to `true`. This way you tell Clerk to
+;; load this ClojureScript file (along with it's deps) into Clerk's
+;; SCI environment in the browser to make it useable there.
+
+(def literal-viewer-require-cljs
+  (assoc literal-viewer
+         :require-cljs true
+         :render-fn 'nextjournal.clerk.emmy/render-literal))
+
+;; Writing a render function in regular `.cljs` file often works
+;; better with IDE-tooling like linters, REPLs and makes reusing
+;; existing ClojureScript code easier.
+
+^{::clerk/viewer literal-viewer-require-cljs}
+(emmy/+ (emmy/square (emmy/sin 'x))
+        (emmy/square (emmy/cos 'x)))
 
 ;; #### 🥇 Selection
 
@@ -693,8 +721,8 @@ v/table-viewer
 
 ;; As you can see we now get this viewer automatically, without
 ;; needing to explicitly select it.
-(sicm/+ (sicm/square (sicm/sin 'x))
-        (sicm/square (sicm/cos 'x)))
+(emmy/+ (emmy/square (emmy/sin 'x))
+        (emmy/square (emmy/cos 'x)))
 
 ;; #### 🔓 Elisions
 
@@ -928,6 +956,24 @@ v/table-viewer
 
 ^{::clerk/budget nil ::clerk/auto-expand-results? true} rows
 
+
+;; ## ⚛️ Clerk Sync
+
+;; Clerk Sync is a way to support lightweight interactivity between
+;; Clerk's render display running in the browser and the JVM. By
+;; flagging a form defining an atom with `::clerk/sync` metadata,
+;; Clerk will sync this atom to Clerk's render environment. It will
+;; also watch recompute the notebook whenever the value inside the
+;; atom changes.
+
+^{::clerk/sync true}
+(defonce !counter (atom 0))
+
+(clerk/with-viewer {:render-fn '(fn [] [:button.bg-sky-500.hover:bg-sky-700.text-white.rounded-xl.px-2.py-1
+                                        {:on-click #(swap! !counter inc)}
+                                        "Increment Counter"])}
+  {})
+
 ;; ## 🚰 Tap Inspector
 
 ;; Clerk comes with an inspector notebook for Clojure's tap system. Use the following form from your REPL to show it.
@@ -942,7 +988,7 @@ v/table-viewer
 ;;(tap> (clerk/html [:h1 "Hello 🚰 Tap Inspector 👋"]))
 ;;```
 
-;; ## 🧱 Static Building
+;; ## 👷‍♀️ Static Building
 
 ;; Clerk can make a static HTML build from a collection of notebooks.
 ;; The entry point for this is the `nextjournal.clerk/build!`
@@ -976,7 +1022,35 @@ v/table-viewer
 ;;                :index "notebooks/welcome.clj"})
 ;; ```
 
-;; ## ⚡️ Incremental Computation
+;; ## ⚡️ Render nREPL
+
+;; For interactive development of `:render-fn`s, Clerk comes with a
+;; Render nREPL server. To enable it, pass the `:render-nrepl` option
+;; to `serve!`. You can change the default port `1339` by passing a
+;; different `:port` number.
+
+;;    (nextjournal.clerk/serve! {:render-nrepl {}})
+
+;; > nREPL server started on port 1339...
+
+;; ⚠️ **Editor Connection Tips**
+
+;; Cider
+
+;; 1. Run `M-x` `cider-connect-cljs`
+;; 2. Select `localhost`
+;; 3. Enter `1339` for the port
+;; 4. Select `nbb` repl type
+;; 5. Open a ClojureScript buffer and run `M-x` `sesman-link-with-buffer` selecting the newly connected repl.
+
+
+;; Calva
+
+;;   1. Connect to a Running REPL Server, not in the Project
+;;   2. Select `nbb` for Project Type/Connect Sequence
+;;   3. Enter `localhost:1339` (or the custom port)
+
+;; ## 🤖 How Clerk Works
 
 ;; ### 🔖 Parsing
 

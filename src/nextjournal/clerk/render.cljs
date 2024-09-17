@@ -2,7 +2,6 @@
   (:require ["framer-motion" :refer [motion]]
             ["react" :as react]
             ["react-dom/client" :as react-client]
-            ["vh-sticky-table-header" :as sticky-table-header]
             [applied-science.js-interop :as j]
             [cljs.reader]
             [clojure.set :as set]
@@ -29,6 +28,17 @@
 (declare inspect inspect-presented html html-viewer)
 
 (def nbsp (gstring/unescapeEntities "&nbsp;"))
+
+(defonce !state
+  (r/atom {:eval-counter 0
+           :doc nil
+           :viewers viewer/!viewers
+           :panels {}}))
+
+(defonce !eval-counter (r/cursor !state [:eval-counter]))
+(defonce !doc (r/cursor !state [:doc]))
+(defonce !viewers (r/cursor !state [:viewers]))
+(defonce !panels (r/cursor !state [:panels]))
 
 (defn reagent-atom? [x]
   (satisfies? ratom/IReactiveAtom x))
@@ -77,8 +87,6 @@
           [:circle {:cx "20.9101" :cy "17.1436" :r "1.71143" :transform "rotate(-60 20.9101 17.1436)" :fill "currentColor"}]
           [:circle {:cx "20.9101" :cy "6.8555" :r "1.71143" :transform "rotate(-120 20.9101 6.8555)" :fill "currentColor"}]
           [:circle {:cx "12" :cy "1.71143" :r "1.71143" :fill "currentColor"}]]])]]))
-
-(defonce !eval-counter (r/atom 0))
 
 (defn exec-status [{:keys [progress cell-progress status]}]
   [:<>
@@ -434,54 +442,6 @@
                                     (if (= sort-order :asc) #(compare %1 %2) #(compare %2 %1)))
                            vec))))
 
-(def x-icon
-  [:svg.h-4.w-4 {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor"}
-   [:path {:fill-rule "evenodd" :d "M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" :clip-rule "evenodd"}]])
-
-(def check-icon
-  [:svg.h-4.w-4 {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor"}
-   [:path {:fill-rule "evenodd" :d "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" :clip-rule "evenodd"}]])
-
-(defn render-table-error [[data]]
-  ;; currently boxing the value in a vector to retain the type info
-  ;; TODO: find a better way to do this
-  [:div.bg-red-100.dark:bg-gray-800.px-6.py-4.rounded-md.text-xs.dark:border-2.dark:border-red-400.not-prose
-   [:h4.mt-0.uppercase.text-xs.dark:text-red-400.tracking-wide "Table Error"]
-   [:p.mt-4.font-medium "Clerk’s table viewer does not recognize the format of your data:"]
-   [:div.mt-2.flex
-    [:div.text-red-500.mr-2 x-icon]
-    [inspect-presented data]]
-   [:p.mt-4.font-medium "Currently, the following formats are supported:"]
-   [:div.mt-2.flex.items-center
-    [:div.text-green-500.mr-2 check-icon]
-    [inspect {:column-1 [1 2]
-              :column-2 [3 4]}]]
-   [:div.mt-2.flex.items-center
-    [:div.text-green-500.mr-2 check-icon]
-    [inspect [{:column-1 1 :column-2 3} {:column-1 2 :column-2 4}]]]
-   [:div.mt-2.flex.items-center
-    [:div.text-green-500.mr-2 check-icon]
-    [inspect [[1 3] [2 4]]]]
-   [:div.mt-2.flex.items-center
-    [:div.text-green-500.mr-2 check-icon]
-    [inspect {:head [:column-1 :column-2]
-              :rows [[1 3] [2 4]]}]]])
-
-(defn render-table-with-sticky-header [& children]
-  (let [!table-ref (hooks/use-ref nil)
-        !table-clone-ref (hooks/use-ref nil)]
-    (hooks/use-layout-effect (fn []
-                               (when (and @!table-ref (.querySelector @!table-ref "thead") @!table-clone-ref)
-                                 (let [sticky (sticky-table-header/StickyTableHeader. @!table-ref @!table-clone-ref #js{:max 0})]
-                                   (fn [] (.destroy sticky))))))
-    [:div
-     [:div.overflow-x-auto.overflow-y-hidden
-      {:style {:width "max-content"
-               :max-width "100%"}}
-      (into [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-ref}] children)]
-     [:div.overflow-x-auto.overflow-y-hidden.w-full.shadow.sticky-table-header
-      [:table.text-xs.sans-serif.text-gray-900.dark:text-white.not-prose {:ref !table-clone-ref :style {:margin 0}}]]]))
-
 (defn throwable-view [{:keys [via trace]} opts]
   [:div.bg-white.max-w-6xl.mx-auto.text-xs.monospace.not-prose
    (into
@@ -515,10 +475,6 @@
   ([{:keys [space?]} tag value]
    [:span.inspected-value.whitespace-nowrap
     [:span.cmt-meta tag] (when space? nbsp) value]))
-
-(defonce !doc (ratom/atom nil))
-(defonce !viewers viewer/!viewers)
-(defonce !panels (ratom/atom {}))
 
 (defn set-viewers! [scope viewers]
   #_(js/console.log :set-viewers! {:scope scope :viewers viewers})

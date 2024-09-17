@@ -262,9 +262,18 @@
      (str (viewer/relative-root-prefix-from (viewer/map-index opts file)) path
           (when fragment (str "#" fragment))))))
 
+(def valid-package-opts
+  #{:single-file :directory})
+
+(defn validate-build-opts! [{:as opts :keys [package]}]
+  (when (and (contains? opts :package)
+             (not (contains? valid-package-opts package)))
+    (throw (ex-info (str "Invalid :package option: " package) {:package package :valid-options valid-package-opts}))))
+
 (defn build-static-app! [opts]
   (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css? expanded-paths error]}
-        (process-build-opts (assoc opts :expand-paths? true))
+        (doto (process-build-opts (assoc opts :expand-paths? true))
+          validate-build-opts!)
         start (System/nanoTime)
         state (mapv #(hash-map :file %) expanded-paths)
         _ (report-fn {:stage :init :state state :build-opts opts})
@@ -276,12 +285,14 @@
         {state :result duration :time-ms} (eval/time-ms (reduce (fn [state doc]
                                                                   (try (conj state (-> doc analyzer/build-graph analyzer/hash))
                                                                        (catch Exception e
-                                                                         (reduced {:error e}))))
+                                                                         (reduced {:error e :file (:file doc)}))))
                                                                 []
                                                                 state))
         _ (if-let [error (:error state)]
             (do (report-fn {:stage :analyzed :error error :duration duration})
-                (throw error))
+                (throw (ex-info (format "Clerk analysis failed on '%s'" (:file state))
+                                {:file (:file state)}
+                                error)))
             (report-fn {:stage :analyzed :state state :duration duration}))
         _ (when download-cache-fn
             (report-fn {:stage :downloading-cache})
