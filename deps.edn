@@ -10,7 +10,7 @@
         com.nextjournal/beholder {:mvn/version "1.0.2"}
         org.flatland/ordered {:mvn/version "1.15.12"}
 
-        io.github.nextjournal/markdown {:git/sha "f8c6848a6bec9a81f4d946ffc406d6ff9337f42f"}
+        io.github.nextjournal/markdown {:git/sha "75f4200961485d1db8fa36eaf6cb85fb67cfc51c"}
         babashka/process {:mvn/version "0.4.16"}
         io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
         io.github.babashka/sci.nrepl {:mvn/version "0.0.2"}
