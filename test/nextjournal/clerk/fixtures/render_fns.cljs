@@ -1,6 +1,8 @@
 (ns nextjournal.clerk.fixtures.render-fns
-  (:require [non-existing-namespace :as s]))
+  (:require [nextjournal.clerk.render]))
 
-(defn foobar []
-  (s/dude))
+(prn ::identity)
+
+(defn id [x]
+  [:pre (nextjournal.clerk.render/inspect x)])
 
