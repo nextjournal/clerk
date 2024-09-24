@@ -101,8 +101,8 @@
       :building (str "🔨 Building \"" (:file doc) "\"… ")
       :compiling-css "🎨 Compiling CSS… "
       :ssr "🧱 Server Side Rendering… "
-      :downloading-cache (str "⏬ Downloading distributed cache… ")
-      :uploading-cache (str "⏫ Uploading distributed cache… ")
+      :downloading-cache "⏬ Downloading distributed cache… "
+      :uploading-cache "⏫ Uploading distributed cache… "
       :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n"))))
 
 (defn ^:private print+flush [x]
@@ -298,6 +298,8 @@
             (report-fn {:stage :downloading-cache})
             (let [{duration :time-ms} (eval/time-ms (download-cache-fn state))]
               (report-fn {:stage :done :duration duration})))
+        single-file? (= :single-file (:package opts))
+        dedupe-cljs (when single-file? (atom #{}))
         state (mapv (fn [{:as doc :keys [file]} idx]
                       (report-fn {:stage :building :doc doc :idx idx})
                       (let [{result :result duration :time-ms} (eval/time-ms
@@ -306,7 +308,9 @@
                                                                             paths/*build-opts* opts
                                                                             viewer/doc-url (partial doc-url opts file)]
                                                                     (let [doc (eval/eval-analyzed-doc doc)]
-                                                                      (assoc doc :viewer (view/doc->viewer (assoc opts :file-path (str file)) doc))))
+                                                                      (assoc doc :viewer (view/doc->viewer (assoc opts
+                                                                                                                  :file-path (str file)
+                                                                                                                  :dedupe-cljs dedupe-cljs) doc))))
                                                                   (catch Exception e
                                                                     {:error e})))]
                         (report-fn (merge {:stage :built :duration duration :idx idx}
