@@ -1542,7 +1542,7 @@
     (-> viewer
         (cond-> (and (not (:render-evaluator viewer)) render-evaluator)
           (assoc :render-evaluator render-evaluator))
-        (dissoc :pred :transform-fn :update-viewers-fn)
+        (dissoc :add-viewers :pred :transform-fn :update-viewers-fn)
         (as-> viewer (assoc viewer :hash (hash-sha1 viewer)))
         (process-render-fn))))
 

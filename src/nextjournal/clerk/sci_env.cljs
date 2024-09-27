@@ -1,19 +1,23 @@
 (ns nextjournal.clerk.sci-env
   (:refer-clojure :exclude [time])
   (:require-macros [nextjournal.clerk.render.macros :refer [sci-copy-nss]])
-  (:require ["@codemirror/language" :as codemirror-language]
+  (:require ["@codemirror/lang-markdown" :as lang-markdown]
+            ["@codemirror/language" :as codemirror-language]
             ["@codemirror/state" :as codemirror-state]
             ["@codemirror/view" :as codemirror-view]
             ["@lezer/highlight" :as lezer-highlight]
             ["@nextjournal/lang-clojure" :as lang-clojure]
             ["framer-motion" :as framer-motion]
+            ["katex" :as katex]
             ["react" :as react]
             ["react-dom" :as react-dom]
+            ["w3c-keyname" :as w3c-keyname]
             [applied-science.js-interop :as j]
             [cljs.math]
             [cljs.reader]
             [clojure.string :as str]
             [edamame.core :as edamame]
+            [flatland.ordered.map :as omap]
             [goog.object]
             [nextjournal.clerk.cherry-env :as cherry-env]
             [nextjournal.clerk.parser]
@@ -29,6 +33,8 @@
             [nextjournal.clojure-mode.commands]
             [nextjournal.clojure-mode.extensions.eval-region]
             [nextjournal.clojure-mode.keymap]
+            [nextjournal.markdown]
+            [nextjournal.markdown.transform]
             [reagent.dom.server :as dom-server]
             [reagent.ratom :as ratom]
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
@@ -36,8 +42,7 @@
             [sci.core :as sci]
             [sci.ctx-store]
             [sci.nrepl.server :as nrepl]
-            [shadow.esm]
-            [flatland.ordered.map :as omap]))
+            [shadow.esm]))
 
 (def legacy-ns-aliases
   {"j" "applied-science.js-interop"
@@ -166,14 +171,17 @@
   {:classes {'js (j/assoc! goog/global "import" shadow.esm/dynamic-import)
              'framer-motion framer-motion
              :allow :all}
-   :js-libs {"@codemirror/language" codemirror-language
+   :js-libs {"@codemirror/lang-markdown" lang-markdown
+             "@codemirror/language" codemirror-language
              "@codemirror/state" codemirror-state
              "@codemirror/view" codemirror-view
              "@lezer/highlight" lezer-highlight
              "@nextjournal/lang-clojure" lang-clojure
              "framer-motion" framer-motion
+             "katex" katex
              "react" react
-             "react-dom" react-dom}
+             "react-dom" react-dom
+             "w3c-keyname" w3c-keyname}
    :ns-aliases '{clojure.math cljs.math
                  cljs.repl clojure.repl}
    :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
@@ -193,10 +201,12 @@
                        'nextjournal.clerk.render.hooks
                        'nextjournal.clerk.render.navbar
                        'nextjournal.clerk.render.table
-
+                       'nextjournal.clojure-mode
                        'nextjournal.clojure-mode.keymap
                        'nextjournal.clojure-mode.commands
-                       'nextjournal.clojure-mode.extensions.eval-region)
+                       'nextjournal.clojure-mode.extensions.eval-region
+                       'nextjournal.markdown
+                       'nextjournal.markdown.transform)
 
                       sci.configs.js-interop/namespaces
                       sci.configs.reagent/namespaces)})
