@@ -4,7 +4,6 @@
             [clojure.string :as str]
             [clojure.zip]
             [nextjournal.markdown :as markdown]
-            [nextjournal.markdown.parser :as markdown.parser]
             [nextjournal.markdown.transform :as markdown.transform]
             [rewrite-clj.node :as n]
             [rewrite-clj.parser :as p]
@@ -291,33 +290,17 @@
 #_(text-with-clerk-metadata-removed "(def ^::clerk/no-cache random-thing (rand-int 1000))" {'clerk 'nextjournal.clerk})
 #_(text-with-clerk-metadata-removed "^::clerk/bar [] ;; keep me" {'clerk 'nextjournal.clerk})
 
-(defn markdown-context []
-  (update markdown.parser/empty-doc
-          :text-tokenizers (partial map markdown.parser/normalize-tokenizer)))
-
-#_(markdown-context)
-
-(defn parse-markdown
-  "Like `n.markdown.parser/parse` but allows to reuse the same context in successive calls"
-  [ctx md]
-  (markdown.parser/apply-tokens ctx (markdown/tokenize md)))
-
 (defn update-markdown-blocks [{:as state :keys [md-context]} md]
-  (let [{::markdown.parser/keys [path]} md-context
-        doc (parse-markdown md-context md)
-        [_ index] path]
+  (let [doc (markdown/parse* (assoc md-context :content []) md)]
     (-> state
         (assoc :md-context doc)
         (update :blocks conj {:type :markdown
-                              :doc (-> doc
-                                       (select-keys [:type :content :footnotes])
-                                       ;; take only new nodes, keep context intact
-                                       (update :content subvec (inc index)))}))))
+                              :doc (select-keys doc [:type :content :footnotes])}))))
 
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
   ([{:as opts :keys [doc?]} s]
-   (let [doc (parse-clojure-string opts {:blocks [] :md-context (markdown-context)} s)]
+   (let [doc (parse-clojure-string opts {:blocks [] :md-context markdown/empty-doc} s)]
      (select-keys (cond-> doc doc? (merge (:md-context doc)))
                   [:blocks :title :toc :footnotes])))
   ([{:as _opts :keys [doc?]} initial-state s]
@@ -382,7 +365,7 @@
   (update doc :blocks #(filterv (some-fn :form (complement code?)) %)))
 
 (defn parse-markdown-string [{:as opts :keys [doc?]} s]
-  (let [{:as ctx :keys [content]} (parse-markdown (markdown-context) s)]
+  (let [{:as ctx :keys [content]} (markdown/parse* markdown/empty-doc s)]
     (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes content :md-context ctx}]
       (if-some [node (first nodes)]
         (recur

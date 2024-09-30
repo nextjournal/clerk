@@ -21,7 +21,7 @@
                        [applied-science.js-interop :as j]])
             [nextjournal.clerk.parser :as parser]
             [nextjournal.markdown :as md]
-            [nextjournal.markdown.parser :as md.parser]
+            [nextjournal.markdown.utils :as md.utils]
             [nextjournal.markdown.transform :as md.transform])
   #?(:clj (:import (com.pngencoder PngEncoder)
                    (clojure.lang IDeref IAtom)
@@ -585,7 +585,7 @@
 
 (defn process-sidenotes [cell-doc {:keys [footnotes]}]
   (if (seq footnotes)
-    (md.parser/insert-sidenote-containers (assoc cell-doc :footnotes footnotes))
+    (md.utils/insert-sidenote-containers (assoc cell-doc :footnotes footnotes))
     cell-doc))
 
 (defn process-image-source [src {:as doc :keys [file package]}]
@@ -674,6 +674,14 @@
    :transform-fn (update-val transform-cell)
    :render-fn '(fn [xs opts] (into [:<>] (nextjournal.clerk.render/inspect-children opts) xs))})
 
+(defn lift-block-images
+  "Lift an image node to top-level when it is the only child of a paragraph."
+  [md-nodes]
+  (map (fn [{:as node :keys [type content]}]
+         (if (and (= :paragraph type) (= 1 (count content)) (= :image (:type (first content))))
+           (first content)
+           node)) md-nodes))
+
 (defn with-block-viewer [doc {:as cell :keys [type id]}]
   (case type
     :markdown (let [{:keys [content]} (:doc cell)
@@ -685,7 +693,8 @@
                                (process-sidenotes {:type :doc
                                                    :content (vec fragment)
                                                    ::doc doc} doc))]))
-                        (partition-by (comp #{:image} :type) content)))
+                        (partition-by (comp #{:image} :type)
+                                      (lift-block-images content))))
 
     :code (if (cell-visible? cell)
             [(with-viewer `cell-viewer (assoc cell ::doc doc))]
