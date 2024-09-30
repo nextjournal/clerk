@@ -13,6 +13,7 @@ This notebook demoes feeding Clerk with markdown files. We currently make no ass
 Nextjournal Markdown library is able to ingest a markdown string
 
 ```clojure
+^{::clerk/visibility {:code :fold :result :hide}}
 (def markdown-syntax
   "Markdown: Syntax
 ================
