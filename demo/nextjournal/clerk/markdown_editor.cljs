@@ -50,15 +50,16 @@
                                         (.of keymap clojure-mode/complete-keymap)
                                         (.theme EditorView theme)]
 
-                                 #_#_#_#_#_#_on-change
+                                 on-change
                                  (conj (on-change-ext on-change))
 
                                  (= :clojure lang)
                                  (conj (.-extension clojure-lang))
 
-                                 (= :markdown lang)
-                                 (conj (markdown #js {:base markdownLanguage
-                                                      :defaultCodeLanguage clojure-lang}))))]
+                                 ;; (= :markdown lang)
+                                 ;; (conj (markdown #js {:base markdownLanguage
+                                 ;;                      :defaultCodeLanguage clojure-lang}))
+                                 ))]
     (hooks/use-effect
      (fn []
        (let [editor-view* (code/make-view (code/make-state doc extensions) @!editor-el)]
