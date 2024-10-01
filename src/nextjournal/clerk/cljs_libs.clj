@@ -93,6 +93,7 @@
   (doseq [ns nss]
     (when-not (or (contains? @already-loaded-sci-namespaces ns)
                   (contains? (:loaded-libs @state) ns))
+      (prn :ns ns)
       (when-let [cljs-file (ns->resource ns)]
         (let [ns-decl (with-open [^java.io.Closeable rdr (e/reader (io/reader cljs-file))]
                         (read-ns-decl rdr))

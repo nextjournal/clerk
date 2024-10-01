@@ -5,7 +5,7 @@
 
 (def markdown-editor
   {:require-cljs true
-   :render-fn 'nextjournal.clerk.markdown-editor/editor
+   :render-fn 'nextjournal.clerk.markdown-editor/markdown-editor
    ::clerk/width :full
    ::clerk/visibility {:code :fold}})
 
