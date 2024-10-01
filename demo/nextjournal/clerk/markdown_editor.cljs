@@ -4,7 +4,7 @@
    ["@codemirror/language" :refer [defaultHighlightStyle syntaxHighlighting LanguageSupport]]
    ["@codemirror/state" :refer [EditorState]]
    ["@codemirror/view" :refer [EditorView keymap]]
-   ["@codemirror/lang-markdown" :as MD :refer [markdown markdownLanguage]]
+   #_["@codemirror/lang-markdown" :as MD :refer [markdown markdownLanguage]]
    ["react" :as react]
    [nextjournal.markdown :as md]
    [nextjournal.clerk.viewer :as v]

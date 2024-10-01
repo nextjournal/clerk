@@ -1,5 +1,5 @@
 ;; # ✏️ Nextjournal Markdown Live Demo
-(ns try
+(ns markdown-try
   {:nextjournal.clerk/visibility {:code :hide}}
   (:require [nextjournal.clerk :as clerk]))
 
