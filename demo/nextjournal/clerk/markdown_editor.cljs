@@ -33,7 +33,7 @@
             (when (.-docChanged tr) (f (.. tr -state sliceDoc)))
             #js {}))))
 
-
+(js/console.log "lang-markdown" markdown)
 
 (defn eval-string [source]
   (when-some [code (not-empty (str/trim source))]
@@ -56,10 +56,9 @@
                                  (= :clojure lang)
                                  (conj (.-extension clojure-lang))
 
-                                 ;; (= :markdown lang)
-                                 ;; (conj (markdown #js {:base markdownLanguage
-                                 ;;                      :defaultCodeLanguage clojure-lang}))
-                                 ))]
+                                 (= :markdown lang)
+                                 (conj (markdown #js {:base markdownLanguage
+                                                      :defaultCodeLanguage clojure-lang}))))]
     (hooks/use-effect
      (fn []
        (let [editor-view* (code/make-view (code/make-state doc extensions) @!editor-el)]
