@@ -918,7 +918,7 @@
 
 (defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
   (-> (ensure-wrapped-with-viewers viewers value)
-      (merge (select-keys wrapped-value [:!budget :store!-wrapped-value :present-elision-fn :nextjournal/budget :path]))
+      (merge (select-keys wrapped-value [:!budget :store!-wrapped-value :present-elision-fn :nextjournal/budget :path :sync-state]))
       (update :path (fnil conj []) path-segment)))
 
 (defn present-ex-data [parent throwable-map]
