@@ -806,6 +806,7 @@
 
 (defn ^:export init [{:as state :keys [render-router path->doc]}]
   (setup-router! state)
+  (add-watch !sync-state 'nextjournal.clerk.webserver/!sync-state atom-changed)
   (when (contains? #{:bundle :serve} render-router)
     (set-state! (case render-router
                   :bundle {:doc (get path->doc (or (path-from-url-hash (->URL (.-href js/location))) ""))}
