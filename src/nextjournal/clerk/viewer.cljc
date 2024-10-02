@@ -1265,8 +1265,15 @@
   {:nextjournal/presented (present error)
    :nextjournal/blob-id (str (gensym "error"))})
 
+(defn sync-state []
+  (->viewer-eval
+   (list 'reset!
+         'nextjournal.clerk.render/!sync-state
+         @@(resolve 'nextjournal.clerk.webserver/!sync-state))))
+
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc
+      (assoc :sync-state (sync-state))
       (assoc :atom-var-name->state (atom-var-name->state doc))
       (assoc :ns (->viewer-eval (list 'ns (if ns (ns-name ns) 'user))))
       (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer (dissoc doc :error)))
@@ -1278,13 +1285,15 @@
       (update :file str)
 
       (select-keys [:atom-var-name->state
-                    :blocks :package
+                    :blocks
+                    :package
                     :doc-css-class
                     :error
                     :file
                     :open-graph
                     :ns
                     :title
+                    :sync-state
                     :toc
                     :toc-visibility
                     :header

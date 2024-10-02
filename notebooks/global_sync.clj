@@ -11,7 +11,8 @@
                         [:button
                          {:on-click #(swap! nextjournal.clerk.render/!sync-state assoc :foo (rand-int 1000))}
                          "clickme"]
-                        (nextjournal.clerk.render/inspect @nextjournal.clerk.render/!sync-state)])}
+                        (pr-str @nextjournal.clerk.render/!sync-state)
+                        #_(nextjournal.clerk.render/inspect @nextjournal.clerk.render/!sync-state)])}
   {})
 
 #_(swap! nextjournal.clerk.webserver/!sync-state assoc :foo (rand-int 1000))
