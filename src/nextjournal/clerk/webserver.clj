@@ -16,8 +16,12 @@
             [sci.nrepl.browser-server :as sci.nrepl])
   (:import (java.nio.file Files)))
 
+(defn sync-atom-changed [key atom old-state new-state]
+  (eval '(nextjournal.clerk/recompute!)))
+
 (defonce !clients (atom #{}))
-(defonce !sync-state (atom {}))
+(defonce !sync-state (doto (atom {})
+                       (add-watch `!sync-state sync-atom-changed)))
 (defonce !doc (atom nil))
 (defonce !last-sender-ch (atom nil))
 
@@ -133,9 +137,6 @@
     (assoc :headers {"Content-Type" "text/javascript"})))
 
 #_(serve-resource (io/resource "public/clerk_service_worker.js"))
-
-(defn sync-atom-changed [key atom old-state new-state]
-  (eval '(nextjournal.clerk/recompute!)))
 
 (defn maybe-cancel-send-status-future [doc]
   (when-let [scheduled-send-status-future (-> doc meta ::!send-status-future)]
