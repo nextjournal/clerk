@@ -17,6 +17,7 @@
   (:import (java.nio.file Files)))
 
 (defonce !clients (atom #{}))
+(defonce !sync-state (atom {}))
 (defonce !doc (atom nil))
 (defonce !last-sender-ch (atom nil))
 

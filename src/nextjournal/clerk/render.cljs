@@ -33,10 +33,12 @@
   (r/atom {:eval-counter 0
            :doc nil
            :viewers viewer/!viewers
-           :panels {}}))
+           :panels {}
+           :sync {}}))
 
 (defonce !eval-counter (r/cursor !state [:eval-counter]))
 (defonce !doc (r/cursor !state [:doc]))
+(defonce !sync-state (r/cursor !state [:sync]))
 (defonce !viewers (r/cursor !state [:viewers]))
 (defonce !panels (r/cursor !state [:panels]))
 
