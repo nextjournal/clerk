@@ -914,11 +914,11 @@
 (defn ->opts [wrapped-value]
   (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/render-opts
                               :nextjournal/render-evaluator
-                              :!budget :store!-wrapped-value :present-elision-fn :path :offset]))
+                              :!budget :store!-wrapped-value :sync-state :present-elision-fn :path :offset]))
 
 (defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
   (-> (ensure-wrapped-with-viewers viewers value)
-      (merge (select-keys wrapped-value [:!budget :store!-wrapped-value :present-elision-fn :nextjournal/budget :path :sync-state]))
+      (merge (select-keys wrapped-value [:!budget :store!-wrapped-value :sync-state :present-elision-fn :nextjournal/budget :path]))
       (update :path (fnil conj []) path-segment)))
 
 (defn present-ex-data [parent throwable-map]
@@ -1772,7 +1772,8 @@
         (merge {:store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
                                         (swap! !path->wrapped-value assoc path wrapped-value))
                 :present-elision-fn (partial present-elision* !path->wrapped-value)
-                :path (:path opts [])}
+                :path (:path opts [])
+                :sync-state @!sync-state}
                (make-!budget-opts opts)
                opts)
         present*
