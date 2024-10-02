@@ -33,12 +33,10 @@
   (r/atom {:eval-counter 0
            :doc nil
            :viewers viewer/!viewers
-           :panels {}
-           :sync {}}))
+           :panels {}}))
 
 (defonce !eval-counter (r/cursor !state [:eval-counter]))
 (defonce !doc (r/cursor !state [:doc]))
-(defonce !sync-state (r/cursor !state [:sync]))
 (defonce !viewers (r/cursor !state [:viewers]))
 (defonce !panels (r/cursor !state [:panels]))
 
@@ -806,7 +804,7 @@
 
 (defn ^:export init [{:as state :keys [render-router path->doc]}]
   (setup-router! state)
-  (add-watch !sync-state 'nextjournal.clerk.webserver/!sync-state atom-changed)
+  (add-watch viewer/!sync-state `viewer/!sync-state atom-changed)
   (when (contains? #{:bundle :serve} render-router)
     (set-state! (case render-router
                   :bundle {:doc (get path->doc (or (path-from-url-hash (->URL (.-href js/location))) ""))}

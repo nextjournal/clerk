@@ -20,8 +20,8 @@
   (eval '(nextjournal.clerk/recompute!)))
 
 (defonce !clients (atom #{}))
-(defonce !sync-state (doto (atom {})
-                       (add-watch `!sync-state sync-atom-changed)))
+(defonce watch-sync
+  (add-watch v/!sync-state `v/!sync-state sync-atom-changed))
 (defonce !doc (atom nil))
 (defonce !last-sender-ch (atom nil))
 

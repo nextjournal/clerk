@@ -1265,11 +1265,14 @@
   {:nextjournal/presented (present error)
    :nextjournal/blob-id (str (gensym "error"))})
 
+(defonce !sync-state
+  (#?(:clj atom :cljs ratom/atom) {}))
+
 (defn sync-state []
   (->viewer-eval
    (list 'reset!
-         'nextjournal.clerk.render/!sync-state
-         @@(resolve 'nextjournal.clerk.webserver/!sync-state))))
+         `!sync-state
+         @!sync-state)))
 
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc

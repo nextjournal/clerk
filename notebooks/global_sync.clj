@@ -1,6 +1,7 @@
 ;; # ⚡️ Global Sync
 (ns global-sync
-  (:require [nextjournal.clerk :as clerk]))
+  (:require [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.viewer :as viewer]))
 
 ^::clerk/no-cache
 (shuffle (range 100))
@@ -9,10 +10,12 @@
                     '(fn [_ opts]
                        [:div
                         [:button
-                         {:on-click #(swap! nextjournal.clerk.render/!sync-state assoc :foo (rand-int 1000))}
+                         {:on-click #(swap! nextjournal.clerk.viewer/!sync-state assoc :foo (rand-int 1000))}
                          "clickme"]
-                        (pr-str @nextjournal.clerk.render/!sync-state)
+                        [nextjournal.clerk.render/inspect @nextjournal.clerk.viewer/!sync-state]
                         #_(nextjournal.clerk.render/inspect @nextjournal.clerk.render/!sync-state)])}
   {})
 
-#_(swap! nextjournal.clerk.webserver/!sync-state assoc :foo (rand-int 1000))
+@viewer/!sync-state
+
+#_(swap! nextjournal.clerk.viewer/!sync-state assoc :foo (rand-int 1000))
