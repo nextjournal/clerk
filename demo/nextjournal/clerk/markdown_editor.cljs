@@ -4,7 +4,7 @@
    ["@codemirror/language" :refer [defaultHighlightStyle syntaxHighlighting LanguageSupport]]
    ["@codemirror/state" :refer [EditorState]]
    ["@codemirror/view" :refer [EditorView keymap]]
-   #_["@codemirror/lang-markdown" :as MD :refer [markdown markdownLanguage]]
+   ["@codemirror/lang-markdown" :as MD :refer [markdown markdownLanguage]]
    ["react" :as react]
    [nextjournal.markdown :as md]
    [nextjournal.clerk.viewer :as v]
@@ -54,7 +54,7 @@
                                  (= :clojure lang)
                                  (conj (.-extension clojure-lang))
 
-                                 #_#_(= :markdown lang)
+                                 (= :markdown lang)
                                  (conj (markdown #js {:base markdownLanguage
                                                       :defaultCodeLanguage clojure-lang}))))]
     (hooks/use-effect
