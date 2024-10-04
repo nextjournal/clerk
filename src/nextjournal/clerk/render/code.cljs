@@ -111,7 +111,7 @@
                   (concat [(.sliceString text pos to)]))))))))
 
 (defn import-matching-language-parser [language]
-  (.. (shadow.esm/dynamic-import "https://cdn.skypack.dev/@codemirror/language-data@6.1.0")
+  (.. (shadow.esm/dynamic-import "https://cdn.skypack.dev/@codemirror/language-data@6.5.1")
       (then (fn [^js mod]
               (when-some [langs (.-languages mod)]
                 (when-some [^js matching (or (.matchLanguageName LanguageDescription langs language)
