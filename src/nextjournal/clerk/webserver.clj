@@ -136,6 +136,9 @@
 (defn sync-atom-changed [key atom old-state new-state]
   (eval '(nextjournal.clerk/recompute!)))
 
+(defonce watch-sync
+  (add-watch v/!sync-state `v/!sync-state sync-atom-changed))
+
 (defn maybe-cancel-send-status-future [doc]
   (when-let [scheduled-send-status-future (-> doc meta ::!send-status-future)]
     (future-cancel scheduled-send-status-future)))

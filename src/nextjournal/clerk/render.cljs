@@ -269,6 +269,9 @@
          :nested-prose "w-full max-w-prose"
          "w-full max-w-prose px-8")])))
 
+(def swap-sync-state!
+  (partial swap! viewer/!sync-state))
+
 (defn render-result [{:nextjournal/keys [fetch-opts hash presented]} {:keys [id auto-expand-results?]}]
   (let [!desc (hooks/use-state-with-deps presented [hash])
         !expanded-at (hooks/use-state-with-deps (when (map? @!desc) (->expanded-at auto-expand-results? @!desc)) [hash])
@@ -298,7 +301,7 @@
          [:div.relative
           [:div.overflow-x-auto
            {:ref ref-fn}
-           [inspect-presented {:!expanded-at !expanded-at} @!desc]]]]]])))
+           [inspect-presented {:!expanded-at !expanded-at :swap-sync-state! swap-sync-state! :!sync-state viewer/!sync-state} @!desc]]]]]])))
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
@@ -804,6 +807,7 @@
 
 (defn ^:export init [{:as state :keys [render-router path->doc]}]
   (setup-router! state)
+  (add-watch viewer/!sync-state `viewer/!sync-state atom-changed)
   (when (contains? #{:bundle :serve} render-router)
     (set-state! (case render-router
                   :bundle {:doc (get path->doc (or (path-from-url-hash (->URL (.-href js/location))) ""))}
