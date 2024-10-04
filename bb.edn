@@ -50,9 +50,12 @@
   test:clj {:doc "Run clojure tests"
             :task (apply clojure "-X:test" *command-line-args*)}
 
-  playwright:version {:doc "Print used playwright version from ui_tests/package-lock.json"
-                      :task (print (get-in (json/parse-string (->> "ui_tests/package-lock.json" slurp) true)
-                                           [:packages :node_modules/playwright-core :version]))}
+  playwright:version {:doc "Print used playwright version from ui_tests/yarn.json"
+                      :task (print (->> (babashka.process/shell {:out :string} "grep -E 'playwright-core \"(.*)\"' ui_tests/yarn.lock")
+                                        :out
+                                        str/trim
+                                        (re-find (re-pattern "playwright-core \"(.*)\""))
+                                        second))}
 
   playwright:install {:task (shell {:dir "ui_tests"} "yarn playwright install --with-deps chromium")}
 
