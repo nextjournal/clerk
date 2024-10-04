@@ -523,6 +523,9 @@
                                             (not= [0] path))
                                    (str "-" (str/join "-" path))))))
 
+(defonce !sync-state
+  (#?(:clj atom :cljs ratom/atom) {}))
+
 (defn transform-result [{:as wrapped-value :keys [path]}]
   (let [{:as cell :keys [form id settings result] ::keys [fragment-item? doc]} (:nextjournal/value wrapped-value)
         {:keys [package]} doc
@@ -538,7 +541,8 @@
         {:as to-present :nextjournal/keys [auto-expand-results?]} (merge (dissoc (->opts wrapped-value) :!budget :nextjournal/budget)
                                                                          (dissoc cell :result ::doc) ;; TODO: reintroduce doc once we know why it OOMs the static build on CI (some walk issue probably)
                                                                          opts-from-block
-                                                                         (ensure-wrapped-with-viewers (or viewers (get-viewers (get-*ns*))) value))
+                                                                         (ensure-wrapped-with-viewers (or viewers (get-viewers (get-*ns*))) value)
+                                                                         {:sync-state @!sync-state})
         presented-result (-> (present to-present)
                              (update :nextjournal/render-opts
                                      (fn [{:as opts existing-id :id}]
@@ -1264,9 +1268,6 @@
 (defn present-error [error]
   {:nextjournal/presented (present error)
    :nextjournal/blob-id (str (gensym "error"))})
-
-(defonce !sync-state
-  (#?(:clj atom :cljs ratom/atom) {}))
 
 (defn sync-state []
   (->viewer-eval

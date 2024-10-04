@@ -6,12 +6,12 @@
 ^::clerk/no-cache
 (shuffle (range 100))
 
-(clerk/with-viewer {:render-fn '(fn [_ {:as opts :keys [path swap-sync-state!]}]
+(clerk/with-viewer {:render-fn '(fn [_ {:as opts :keys [id path swap-sync-state! !sync-state]}]
                                   [:div
                                    [:button
-                                    {:on-click #(swap-sync-state! assoc path (rand-int 1000))}
+                                    {:on-click #(swap-sync-state! assoc (into [id] path) (rand-int 1000))}
                                     "clickme"]
-                                   [nextjournal.clerk.render/inspect @nextjournal.clerk.viewer/!sync-state]])}
+                                   [nextjournal.clerk.render/inspect @!sync-state]])}
   {})
 
 @viewer/!sync-state

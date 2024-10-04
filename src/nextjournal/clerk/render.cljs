@@ -301,7 +301,7 @@
          [:div.relative
           [:div.overflow-x-auto
            {:ref ref-fn}
-           [inspect-presented {:!expanded-at !expanded-at :swap-sync-state! swap-sync-state!} @!desc]]]]]])))
+           [inspect-presented {:!expanded-at !expanded-at :swap-sync-state! swap-sync-state! :!sync-state viewer/!sync-state} @!desc]]]]]])))
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
