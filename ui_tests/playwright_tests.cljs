@@ -92,7 +92,7 @@
           (p/delay 30000) ;; allow errors to be logged to console
           (is (zero? (count @console-errors))
               (str/join "\n" (map (fn [{:keys [msg notebook]}]
-                                    [(.text msg) (.location msg) notebook])
+                                    [(some-> msg .text) (.location msg) notebook])
                                   @console-errors))))
         (.catch (fn [err]
                   (js/console.log err)
