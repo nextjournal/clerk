@@ -37,6 +37,7 @@
 
 (defonce !eval-counter (r/cursor !state [:eval-counter]))
 (defonce !doc (r/cursor !state [:doc]))
+(defonce !render-errors (r/cursor !state [:render-errors]))
 (defonce !viewers (r/cursor !state [:viewers]))
 (defonce !panels (r/cursor !state [:panels]))
 
@@ -534,12 +535,15 @@
      [body-fn* @!presented-value]]))
 
 (defn root []
+  (js/console.log "root" @!render-errors)
   [:> ErrorBoundary {:hash @!doc}
    [:div.fixed.w-full.z-20.top-0.left-0.w-full
     (when-let [status (:nextjournal.clerk.sci-env/connection-status @!doc)]
       [connection-status status])
     (when-let [status (:status @!doc)]
       [exec-status status])]
+   (when-let [errors (not-empty @!render-errors)]
+     [error-view (first errors)])
    (when-let [{:as wrapped-value :nextjournal/keys [blob-id]} (get-in @!doc [:nextjournal/value :error])]
      (let [!expanded-at (r/atom {})]
        ^{:key blob-id}

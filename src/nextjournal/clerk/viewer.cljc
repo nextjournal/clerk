@@ -1279,6 +1279,7 @@
   (-> doc
       (assoc :sync-state (sync-state))
       (assoc :atom-var-name->state (atom-var-name->state doc))
+      (assoc :reset-render-errors (->viewer-eval '(reset! nextjournal.clerk.render/!render-errors [])))
       (assoc :ns (->viewer-eval (list 'ns (if ns (ns-name ns) 'user))))
       (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer (dissoc doc :error)))
                                              (map (comp present (partial ensure-wrapped-with-viewers viewers))))))
