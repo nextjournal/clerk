@@ -88,10 +88,11 @@
 (defn recompute!
   "Recomputes the currently visible doc, without parsing it."
   []
-  (binding [*ns* (:ns @webserver/!doc)]
-    (let [{:keys [result time-ms]} (eval/time-ms (eval/eval-analyzed-doc @webserver/!doc))]
-      (println (str "Clerk recomputed '" @!last-file "' in " time-ms "ms."))
-      (webserver/update-doc! result))))
+  (when-not (eval/cljs? @webserver/!doc)
+    (binding [*ns* (:ns @webserver/!doc)]
+      (let [{:keys [result time-ms]} (eval/time-ms (eval/eval-analyzed-doc @webserver/!doc))]
+        (println (str "Clerk recomputed '" @!last-file "' in " time-ms "ms."))
+        (webserver/update-doc! result)))))
 
 #_(recompute!)
 
@@ -643,6 +644,7 @@
   (show! "notebooks/onwards.md")
   (show! "notebooks/pagination.clj")
   (show! "notebooks/how_clerk_works.clj")
+  (show! "notebooks/hello_clojurescript.cljs")
   (show! "notebooks/conditional_read.cljc")
   (show! "src/nextjournal/clerk/analyzer.clj")
   (show! "src/nextjournal/clerk.clj")

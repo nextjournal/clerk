@@ -246,16 +246,32 @@
               (update :blob->result select-keys blob-ids)
               (dissoc :blob-ids)) analyzer/throw-if-dep-is-missing)))
 
+(defn process-cljs [{:as doc :keys [->hash blocks set-status-fn]}]
+  (reduce (fn [state cell]
+            (update state :blocks conj (cond-> cell
+                                         (parser/code? cell)
+                                         (assoc :result (v/eval-cljs-str (:text cell))))))
+          (assoc doc :blocks [])
+          blocks))
+
+(defn cljs? [doc]
+  (boolean (and (string? (:file doc))
+                (str/ends-with? (:file doc) ".cljs"))))
+
 (defn +eval-results
   "Evaluates the given `parsed-doc` using the `in-memory-cache` and augments it with the results."
   [in-memory-cache {:as parsed-doc :keys [set-status-fn]}]
-  (when set-status-fn (set-status-fn {:progress 0.10 :status "Analyzing…"}))
-  (let [{:as analyzed-doc :keys [ns]} (analyzer/build-graph
-                                       (assoc parsed-doc :blob->result in-memory-cache))]
-    (binding [*ns* ns]
-      (-> analyzed-doc
-          analyzer/hash
-          eval-analyzed-doc))))
+  (if (cljs? parsed-doc)
+    (process-cljs parsed-doc)
+    (do
+      (when set-status-fn
+        (set-status-fn {:progress 0.10 :status "Analyzing…"}))
+      (let [{:as analyzed-doc :keys [ns]} (analyzer/build-graph
+                                           (assoc parsed-doc :blob->result in-memory-cache))]
+        (binding [*ns* ns]
+          (-> analyzed-doc
+              analyzer/hash
+              eval-analyzed-doc))))))
 
 (defn eval-doc
   "Evaluates the given `doc`."

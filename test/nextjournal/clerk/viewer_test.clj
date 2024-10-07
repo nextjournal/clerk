@@ -145,7 +145,11 @@
 
     (is (= (v/present (v/with-viewer v/html-viewer [:h1 "ahoi"]))
            (v/present {:nextjournal/value (v/with-viewer v/html-viewer [:h1 "ahoi"])})
-           (v/present {:nextjournal/value {:nextjournal/value (v/with-viewer v/html-viewer [:h1 "ahoi"])}})))))
+           (v/present {:nextjournal/value {:nextjournal/value (v/with-viewer v/html-viewer [:h1 "ahoi"])}}))))
+
+  (testing "invalid `:render-fn` throws error"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (v/present (v/with-viewer {:render-fn (fn [x] [:h1 x])} "Mike"))))))
 
 (deftest present-exceptions
   (testing "can represent ex-data in a readable way"
