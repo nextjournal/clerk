@@ -1556,7 +1556,7 @@
              (.digest hasher))))
 
 (defn validate-viewer! [{:as viewer :keys [render-fn]}]
-  #?(:clj (when (and render-fn (not (or (list? render-fn)
+  #?(:clj (when (and render-fn (not (or (seq? render-fn)
                                         (symbol? render-fn))))
             (throw (ex-info (str "`:render-fn` must to be a quoted form or symbol, got a "
                                  (if (fn? render-fn) "function" (type render-fn))
