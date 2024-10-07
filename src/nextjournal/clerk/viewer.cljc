@@ -1936,14 +1936,14 @@
                     (update :transform-fn comp maybe-rewrite-cljs-form-for-cherry)
                     (assoc :nextjournal.clerk/remount (hash-sha1 form)))
      viewer-opts
-     (->viewer-eval (list 'binding '[*ns* *ns*] form)))))
+     (->viewer-eval form))))
 
 (defn eval-cljs-str
   ([code-string] (eval-cljs-str {} code-string))
   ([opts code-string]
    ;; NOTE: this relies on implementation details on how SCI code is evaluated
    ;; and will change in a future version of Clerk
-   (eval-cljs opts (list 'load-string code-string))))
+   (eval-cljs opts (list 'nextjournal.clerk.sci-env/load-string+ code-string))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; examples

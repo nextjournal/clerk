@@ -6,7 +6,11 @@
 (ns hello-clojurescript
   (:require [nextjournal.clerk.viewer :as v]))
 
-(.-location js/window)
+(ns-name *ns*)
 
-;; TODO: support ns requires
-#_(v/html [:h1 "🐍"])
+;; (.-location js/window)
+
+
+
+;; ;; TODO: support ns requires
+;; (v/html [:h1 "🐍"])
