@@ -73,8 +73,8 @@
                                              (throw (ex-info (str "`nextjournal.clerk/show!` encountered an eval error with: `" (pr-str file-or-ns) "`") {::doc (assoc doc :blob->result blob->result)} e))))]
          (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
          (webserver/update-doc! result))
-       (catch Exception e
-         (webserver/update-doc! (-> e ex-data ::doc (assoc :error e) (update :ns #(or % (find-ns 'user)))))
+       (catch clojure.lang.ExceptionInfo e
+         (webserver/update-doc! (-> e ex-data ::doc (assoc :error (or (ex-cause e) e)) (update :ns #(or % (find-ns 'user)))))
          (throw e))))))
 
 #_(show! "notebooks/exec_status.clj")
