@@ -1558,8 +1558,9 @@
 (defn validate-viewer! [{:as viewer :keys [render-fn]}]
   (when (and render-fn (not (or (list? render-fn)
                                 (symbol? render-fn))))
-    (throw (ex-info (format "`:render-fn` must to be a quoted form or symbol, got a %s instead." (if (fn? render-fn)
-                                                                                                   "function" (type render-fn)))
+    (throw (ex-info (str "`:render-fn` must to be a quoted form or symbol, got a "
+                         (if (fn? render-fn) "function" (type render-fn))
+                         " instead.")
                     {:viewer viewer
                      :render-fn-type (type render-fn)}))))
 
