@@ -170,13 +170,9 @@
 (def last-ns (atom (sci/create-ns 'user)))
 
 (defn load-string+ [s]
-  (println ">>>>> load-string")
   (let [{:keys [ns val]} (sci.core/eval-string+ (sci.ctx-store/get-ctx) s)]
-    (prn :s s)
-    (prn :nss (str ns))
     (reset! last-ns ns)
-    (sci/alter-var-root sci/ns (constantly ns))
-    (println "<<<<< load-string")
+    (sci/set! sci/ns ns)
     val))
 
 (def initial-sci-opts
@@ -228,13 +224,8 @@
 
 (defn ^:export eval-form [f]
   (sci/binding [sci/ns @last-ns]
-    (println ">>>>>> eval-form")
-    (prn :form f)
-    (prn :ns-before (str @sci/ns))
     (let [v (sci/eval-form (sci.ctx-store/get-ctx) f)]
-      (prn :ns-after (str @sci/ns))
       (reset! last-ns @sci/ns)
-      (println "<<<<<< eval-form")
       v)))
 
 (defn render-eval [{:keys [form]}]

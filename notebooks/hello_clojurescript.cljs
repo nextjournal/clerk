@@ -8,9 +8,7 @@
 
 (ns-name *ns*)
 
-;; (.-location js/window)
+(.-location js/window)
 
-
-
-;; ;; TODO: support ns requires
-;; (v/html [:h1 "🐍"])
+;; TODO: support ns requires
+(v/html [:h1 "🐍"])
