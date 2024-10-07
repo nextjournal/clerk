@@ -1555,13 +1555,23 @@
              (.update hasher (goog.crypt/stringToUtf8ByteArray (pr-str x)))
              (.digest hasher))))
 
+(defn validate-viewer! [{:as viewer :keys [render-fn]}]
+  #?(:clj (when (and render-fn (not (or (list? render-fn)
+                                        (symbol? render-fn))))
+            (throw (ex-info (str "`:render-fn` must to be a quoted form or symbol, got a "
+                                 (if (fn? render-fn) "function" (type render-fn))
+                                 " instead.")
+                            {:viewer viewer
+                             :render-fn-type (type render-fn)})))))
+
 (defn process-viewer [viewer {:nextjournal/keys [render-evaluator]}]
   ;; TODO: drop wrapped-value arg here and handle this elsewhere by
   ;; passing modified viewer stack
   ;; `(clerk/update-viewers viewers {:render-fn #(assoc % :render-evaluator :cherry)})`
   (if-not (map? viewer)
     viewer
-    (-> viewer
+    (-> (doto viewer
+          validate-viewer!)
         (cond-> (and (not (:render-evaluator viewer)) render-evaluator)
           (assoc :render-evaluator render-evaluator))
         (dissoc :add-viewers :pred :transform-fn :update-viewers-fn)

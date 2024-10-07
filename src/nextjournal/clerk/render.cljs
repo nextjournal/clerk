@@ -495,13 +495,15 @@
   ([opts x]
    (if (valid-react-element? x)
      x
-     (let [{:nextjournal/keys [value viewer] :keys [path]} x]
+     (let [{:nextjournal/keys [value viewer] :keys [path]} x
+           hash (str (:hash viewer) "@" (peek (:path opts)))]
        #_(prn :inspect-presented value :valid-element? (react/isValidElement value) :viewer viewer)
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
-       ^{:key (str (:hash viewer) "@" (peek (:path opts)))}
-       [(:render-fn viewer) value (merge opts
-                                         (:nextjournal/render-opts x)
-                                         {:viewer viewer :path path})]))))
+       ^{:key hash}
+       [:> ErrorBoundary {:hash hash}
+        [(:render-fn viewer) value (merge opts
+                                          (:nextjournal/render-opts x)
+                                          {:viewer viewer :path path})]]))))
 
 (defn inspect [value]
   (r/with-let [!state (r/atom nil)]
@@ -532,7 +534,7 @@
      [body-fn* @!presented-value]]))
 
 (defn root []
-  [:<>
+  [:> ErrorBoundary {:hash @!doc}
    [:div.fixed.w-full.z-20.top-0.left-0.w-full
     (when-let [status (:nextjournal.clerk.sci-env/connection-status @!doc)]
       [connection-status status])
