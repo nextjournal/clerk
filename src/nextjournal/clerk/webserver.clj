@@ -251,7 +251,7 @@
                (and (fs/exists? nav-path)
                     (not (fs/directory? nav-path)))))
     nav-path
-    (or (find-first-existing-file (map #(str (fs/file nav-path) "." %) ["md" "clj" "cljc"]))
+    (or (find-first-existing-file (map #(str (fs/file nav-path) "." %) ["md" "clj" "cljc" "cljs"]))
         nav-path)))
 
 #_(maybe-add-extension "notebooks/rule_30")
@@ -264,7 +264,7 @@
   (cond (str/blank? nav-path) (or (maybe-add-extension "index")
                                   'nextjournal.clerk.index)
         (str/starts-with? nav-path "'") (symbol (subs nav-path 1))
-        (re-find #"\.(cljc?|md)$" nav-path) nav-path))
+        (re-find #"\.(clj(c|s)?|md)$" nav-path) nav-path))
 
 (defn forbidden-path? [file-or-ns]
   (if-let [expanded-paths (:expanded-paths (get-build-opts))]
