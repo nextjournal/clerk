@@ -645,7 +645,7 @@
    (if-some [fragment (-> result :nextjournal/value (get-safe :nextjournal.clerk/fragment))]
      (mapcat (fn [r i]
                (fragment-seq
-                (when (list? form) (get (vec form) (inc i)))
+                (when (seq? form) (get (vec form) (inc i)))
                 (-> cell
                     (assoc ::fragment-item? true)
                     (assoc-in [:result :nextjournal/value] r))))
@@ -1906,7 +1906,7 @@
   * dropping the `(binding [*ns* *ns*] ,,,)`
   * rewriting `load-string`"
   [form]
-  (if (and (list? form) (= 'nextjournal.clerk.sci-env/load-string+ (first form)))
+  (if (and (seq? form) (= 'nextjournal.clerk.sci-env/load-string+ (first form)))
     (list 'js/global_eval (list 'nextjournal.clerk.cherry-env/cherry-compile-string (second form)))
     form))
 
