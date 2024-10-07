@@ -167,6 +167,14 @@
                          " msecs"))
      ret#))
 
+(def last-ns (atom (sci/create-ns 'user)))
+
+(defn load-string+ [s]
+  (let [{:keys [ns val]} (sci.core/eval-string+ (sci.ctx-store/get-ctx) s)]
+    (reset! last-ns ns)
+    (sci/set! sci/ns ns)
+    val))
+
 (def initial-sci-opts
   {:classes {'js (j/assoc! goog/global "import" shadow.esm/dynamic-import)
              'framer-motion framer-motion
@@ -186,6 +194,9 @@
                  cljs.repl clojure.repl}
    :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
                        'nextjournal.clerk viewer-namespace ;; TODO: expose cljs variant of `nextjournal.clerk` with docstrings
+                       'nextjournal.clerk.sci-env {'load-string+
+
+                                                   load-string+}
                        'clojure.core {'read-string read-string
                                       'implements? (sci/copy-var implements?* core-ns)
                                       'time (sci/copy-var time core-ns)
@@ -212,7 +223,10 @@
                       sci.configs.reagent/namespaces)})
 
 (defn ^:export eval-form [f]
-  (sci/eval-form (sci.ctx-store/get-ctx) f))
+  (sci/binding [sci/ns @last-ns]
+    (let [v (sci/eval-form (sci.ctx-store/get-ctx) f)]
+      (reset! last-ns @sci/ns)
+      v)))
 
 (defn render-eval [{:keys [form]}]
   (eval-form form))

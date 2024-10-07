@@ -645,7 +645,7 @@
    (if-some [fragment (-> result :nextjournal/value (get-safe :nextjournal.clerk/fragment))]
      (mapcat (fn [r i]
                (fragment-seq
-                (when (list? form) (get (vec form) (inc i)))
+                (when (seq? form) (get (vec form) (inc i)))
                 (-> cell
                     (assoc ::fragment-item? true)
                     (assoc-in [:result :nextjournal/value] r))))
@@ -1556,7 +1556,7 @@
              (.digest hasher))))
 
 (defn validate-viewer! [{:as viewer :keys [render-fn]}]
-  #?(:clj (when (and render-fn (not (or (list? render-fn)
+  #?(:clj (when (and render-fn (not (or (seq? render-fn)
                                         (symbol? render-fn))))
             (throw (ex-info (str "`:render-fn` must to be a quoted form or symbol, got a "
                                  (if (fn? render-fn) "function" (type render-fn))
@@ -1916,10 +1916,9 @@
   * dropping the `(binding [*ns* *ns*] ,,,)`
   * rewriting `load-string`"
   [form]
-  (let [form-without-binding (last form)]
-    (if (and (list? form-without-binding) (= 'load-string (first form-without-binding)))
-      (list 'js/global_eval (list 'nextjournal.clerk.cherry-env/cherry-compile-string (second form-without-binding)))
-      form-without-binding)))
+  (if (and (seq? form) (= 'nextjournal.clerk.sci-env/load-string+ (first form)))
+    (list 'js/global_eval (list 'nextjournal.clerk.cherry-env/cherry-compile-string (second form)))
+    form))
 
 #_(rewrite-for-cherry '(binding [*ns* *ns*] (prn :foo)))
 #_(rewrite-for-cherry '(binding [*ns* *ns*] (load-string "(prn :foo)")))
@@ -1946,14 +1945,14 @@
                     (update :transform-fn comp maybe-rewrite-cljs-form-for-cherry)
                     (assoc :nextjournal.clerk/remount (hash-sha1 form)))
      viewer-opts
-     (->viewer-eval (list 'binding '[*ns* *ns*] form)))))
+     (->viewer-eval form))))
 
 (defn eval-cljs-str
   ([code-string] (eval-cljs-str {} code-string))
   ([opts code-string]
    ;; NOTE: this relies on implementation details on how SCI code is evaluated
    ;; and will change in a future version of Clerk
-   (eval-cljs opts (list 'load-string code-string))))
+   (eval-cljs opts (list 'nextjournal.clerk.sci-env/load-string+ code-string))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; examples

@@ -4,9 +4,10 @@
 ;; that's evaluated in Clerk's render env (using SCI).
 
 (ns hello-clojurescript
-  (:require [nextjournal.clerk.viewer :as v]))
+  (:require [nextjournal.clerk :as clerk]))
+
+(ns-name *ns*)
 
 (.-location js/window)
 
-;; TODO: support ns requires
-#_(v/html [:h1 "🐍"])
+(clerk/html [:h1 "🐍"])

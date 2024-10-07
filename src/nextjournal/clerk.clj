@@ -648,6 +648,7 @@
   (show! "notebooks/conditional_read.cljc")
   (show! "src/nextjournal/clerk/analyzer.clj")
   (show! "src/nextjournal/clerk.clj")
+  (show! "notebooks/cherry.clj")
 
   (show! "notebooks/test.clj")
 
