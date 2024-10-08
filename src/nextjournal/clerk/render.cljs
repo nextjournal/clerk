@@ -583,18 +583,24 @@
                          (fn [more] (swap! !presented-value viewer/merge-presentations more elision))))}
      [body-fn* @!presented-value]]))
 
+(defn exception-overlay [title & content]
+  (into
+   [:div.fixed.bottom-0.left-0.font-mono.w-screen.z-20
+    [:div.text-4xl.absolute.left-1
+     {:style {:transform "rotate(-15deg)"
+              :text-shadow "0 2px 5px rgba(0,0,0,.1)"
+              :z-index 1
+              :top -5}}
+     (rand-nth ["😩" "😬" "😑" "😖"])]
+    [:div.flex.ml-7
+     [:div.pl-4.pr-3.pt-1.rounded-t.bg-red-100.text-red-600.text-sm.font-bold.relative.border-t.border-l.border-r.border-red-200
+      {:style {:bottom -1}}
+      title]]]
+   content))
+
 (defn render-errors-overlay [errors]
-  [:div.fixed.bottom-0.left-0.font-mono.w-screen.z-20
-   [:div.text-4xl.absolute.left-1
-    {:style {:transform "rotate(-15deg)"
-             :text-shadow "0 2px 5px rgba(0,0,0,.1)"
-             :z-index 1
-             :top -5}}
-    (rand-nth ["😩" "😬" "😑" "😖"])]
-   [:div.flex.ml-7
-    [:div.pl-4.pr-3.pt-1.rounded-t.bg-red-100.text-red-600.text-sm.font-bold.relative.border-t.border-l.border-r.border-red-200
-     {:style {:bottom -1}}
-     "Render Errors"]]
+  [exception-overlay
+   "Render Errors"
    (into [:div]
          (map (fn [e]
                 [throwable-view e]))
@@ -602,17 +608,8 @@
 
 (defn clojure-exception-overlay [presented-value]
   (let [!expanded-at (r/atom {})]
-    [:div.fixed.bottom-0.left-0.font-mono.w-screen.z-20
-     [:div.text-4xl.absolute.left-1
-      {:style {:transform "rotate(-15deg)"
-               :text-shadow "0 2px 5px rgba(0,0,0,.1)"
-               :z-index 1
-               :top -5}}
-      (rand-nth ["😩" "😬" "😑" "😖"])]
-     [:div.flex.ml-7
-      [:div.pl-4.pr-3.pt-1.rounded-t.bg-red-100.text-red-600.text-sm.font-bold.relative.border-t.border-l.border-r.border-red-200
-       {:style {:bottom -1}}
-       "Errors"]]
+    [exception-overlay
+     "Errors"
      [inspect-presented {:!expanded-at !expanded-at} presented-value]]))
 
 (defn root []
