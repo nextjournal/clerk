@@ -78,7 +78,7 @@
   (try (*eval* form)
        (catch js/Error e
          (js/console.error "error in viewer-eval" e form)
-         (swap! render/!render-errors conj (Throwable->map e))
+         (swap! render/!render-errors conj #_:clj-kondo/ignore (Throwable->map e))
          e)))
 
 (defn ordered-map-reader-cljs [coll]
