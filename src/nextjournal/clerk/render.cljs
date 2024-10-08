@@ -585,7 +585,6 @@
 
 (defn render-errors-overlay [errors]
   (let [!expanded-at (r/atom {})]
-    (js/console.log errors)
     [:div.fixed.bottom-0.left-0.font-mono.w-screen.z-20
      [:div.text-4xl.absolute.left-1
       {:style {:transform "rotate(-15deg)"
@@ -596,8 +595,11 @@
      [:div.flex.ml-7
       [:div.pl-4.pr-3.pt-1.rounded-t.bg-red-100.text-red-600.text-sm.font-bold.relative.border-t.border-l.border-r.border-red-200
        {:style {:bottom -1}}
-       "Errors"]]
-     (map throwable-view errors)]))
+       "Render Errors"]]
+     (into [:div]
+           (map (fn [e]
+                  [throwable-view e]))
+           errors)]))
 
 (defn clojure-exception-overlay [presented-value]
   (let [!expanded-at (r/atom {})]
@@ -621,11 +623,10 @@
       [connection-status status])
     (when-let [status (:status @!doc)]
       [exec-status status])]
-   (when-let [render-errors (not-empty @!render-errors)]
-     [render-errors-overlay render-errors])
-   (when-let [{:as wrapped-value :nextjournal/keys [blob-id]} (get-in @!doc [:nextjournal/value :error])]
-     ^{:key blob-id}
-     [with-fetch-fn wrapped-value clojure-exception-overlay])
+   (if-let [{:as wrapped-value :nextjournal/keys [blob-id]} (get-in @!doc [:nextjournal/value :error])]
+     ^{:key blob-id} [with-fetch-fn wrapped-value clojure-exception-overlay]
+     (when-let [render-errors (not-empty @!render-errors)]
+       [render-errors-overlay render-errors]))
    (when (:nextjournal/value @!doc)
      [inspect-presented @!doc])
    (into [:<>]
