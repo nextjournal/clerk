@@ -78,7 +78,8 @@
   (try (*eval* form)
        (catch js/Error e
          (js/console.error "error in viewer-eval" e form)
-         (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))
+         (swap! render/!render-errors conj (Throwable->map e))
+         e)))
 
 (defn ordered-map-reader-cljs [coll]
   (omap/ordered-map (vec coll)))
@@ -245,6 +246,7 @@
    :nrepl handle-nrepl})
 
 (defn ^:export onmessage [ws-msg]
+  (reset! render/!render-errors []) ;; need to reset here since `->viewer-eval` runs on read
   (let [{:as msg :keys [type]} (read-string (.-data ws-msg))
         dispatch-fn (get message-type->fn
                          type
