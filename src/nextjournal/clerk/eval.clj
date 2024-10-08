@@ -232,12 +232,14 @@
         (reduce (fn [state cell]
                   (when (and (parser/code? cell) set-status-fn)
                     (set-status-fn (->eval-status analyzed-doc (count (filter parser/code? (:blocks state))) cell)))
-                  (let [state-with-deref-deps-evaluated (analyzer/hash-deref-deps state cell)
-                        {:as result :nextjournal/keys [blob-id]} (when (parser/code? cell)
-                                                                   (read+eval-cached state-with-deref-deps-evaluated cell))]
-                    (cond-> (update state-with-deref-deps-evaluated :blocks conj (cond-> cell result (assoc :result result)))
-                      blob-id (update :blob-ids conj blob-id)
-                      blob-id (assoc-in [:blob->result blob-id] result))))
+                  (try (let [state-with-deref-deps-evaluated (analyzer/hash-deref-deps state cell)
+                             {:as result :nextjournal/keys [blob-id]} (when (parser/code? cell)
+                                                                        (read+eval-cached state-with-deref-deps-evaluated cell))]
+                         (cond-> (update state-with-deref-deps-evaluated :blocks conj (cond-> cell result (assoc :result result)))
+                           blob-id (update :blob-ids conj blob-id)
+                           blob-id (assoc-in [:blob->result blob-id] result)))
+                       (catch Throwable e
+                         (reduced (assoc state :error e)))))
                 (-> analyzed-doc
                     (assoc :blocks [] :blob-ids #{})
                     (update :->hash (fn [h] (apply dissoc h deref-forms))))

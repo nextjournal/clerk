@@ -139,8 +139,8 @@
     (eval/eval-string "(ns test-deref-hash (:require [nextjournal.clerk :as clerk])) (defonce !state (atom [(clerk/md \"_hi_\")])) @!state"))
 
   (testing "won't eval forward declarations"
-    (is (thrown? Exception
-                 (eval/eval-string "(ns test-forward-declarations {:nextjournal.clerk/no-cache true})
+    (is (:error
+         (eval/eval-string "(ns test-forward-declarations {:nextjournal.clerk/no-cache true})
 (declare delayed-def)
 (inc delayed-def)
 (def delayed-def 123)")))))
