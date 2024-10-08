@@ -64,18 +64,21 @@
                                         e)))
                       (catch Exception e
                         (throw (ex-info (str "`nextjournal.clerk/show!` could not not parse the file: `" (pr-str file-or-ns) "`")
-                                        {::doc {:file file-or-ns}}
+                                        {:file file-or-ns}
                                         e))))
              _ (reset! !last-file file)
              {:keys [blob->result]} @webserver/!doc
-             {:keys [result time-ms]} (try (eval/time-ms (binding [paths/*build-opts* (webserver/get-build-opts)]
-                                                           (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!))))
-                                           (catch Exception e
-                                             (throw (ex-info (str "`nextjournal.clerk/show!` encountered an eval error with: `" (pr-str file-or-ns) "`") {::doc (assoc doc :blob->result blob->result)} e))))]
-         (println (str "Clerk evaluated '" file "' in " time-ms "ms."))
-         (webserver/update-doc! result))
+             {:keys [result time-ms]} (eval/time-ms (binding [paths/*build-opts* (webserver/get-build-opts)]
+                                                      (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!))))]
+         (if (:error result)
+           (println (str "Clerk encountered an error evaluating '" file "' after " time-ms "ms."))
+           (println (str "Clerk evaluated '" file "' in " time-ms "ms.")))
+         (webserver/update-doc! result)
+         (when-let [error (and (not (::skip-throw opts))
+                               (:error result))]
+           (throw error)))
        (catch Exception e
-         (webserver/update-doc! (-> e ex-data ::doc (assoc :error e) (update :ns #(or % (find-ns 'user)))))
+         (webserver/update-doc! (-> @webserver/!doc (assoc :error e) (update :ns #(or % (find-ns 'user)))))
          (throw e))))))
 
 #_(show! "notebooks/exec_status.clj")
@@ -84,7 +87,7 @@
 #_(show! 'nextjournal.clerk.tap)
 #_(show! (do (require 'clojure.inspector) (find-ns 'clojure.inspector)))
 #_(show! "https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj")
-#_(show! (java.io.StringReader. ";; # In Memory Notebook 👋\n(+ 41 1)"))
+#_(show! (java.io.StringReader. ";; # In Memory Notebook 👋\n(+ 41 1) (/ 1 0)"))
 
 (defn recompute!
   "Recomputes the currently visible doc, without parsing it."
@@ -137,8 +140,8 @@
             show-file? (or (not @!show-filter-fn)
                            (@!show-filter-fn rel-path))]
         (cond
-          show-file? (nextjournal.clerk/show! rel-path)
-          @!last-file (nextjournal.clerk/show! @!last-file))))))
+          show-file? (show! {::skip-throw true} rel-path)
+          @!last-file (show! {::skip-throw true} @!last-file))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
