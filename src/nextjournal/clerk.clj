@@ -58,9 +58,10 @@
                                {:file-path path})
                              {:nav-path (webserver/->nav-path file-or-ns)}
                              (parser/parse-file {:doc? true} file))
-                      (catch java.io.FileNotFoundException _e
+                      (catch java.io.FileNotFoundException e
                         (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
-                                        {:file-or-ns file-or-ns})))
+                                        {:file-or-ns file-or-ns}
+                                        e)))
                       (catch Exception e
                         (throw (ex-info (str "`nextjournal.clerk/show!` could not not parse the file: `" (pr-str file-or-ns) "`")
                                         {::doc {:file file-or-ns}}

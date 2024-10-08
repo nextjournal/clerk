@@ -33,12 +33,14 @@
   (r/atom {:eval-counter 0
            :doc nil
            :viewers viewer/!viewers
-           :panels {}}))
+           :panels {}
+           :render-errors []}))
 
 (defonce !eval-counter (r/cursor !state [:eval-counter]))
 (defonce !doc (r/cursor !state [:doc]))
 (defonce !viewers (r/cursor !state [:viewers]))
 (defonce !panels (r/cursor !state [:panels]))
+(defonce !render-errors (r/cursor !state [:render-errors]))
 
 (defn reagent-atom? [x]
   (satisfies? ratom/IReactiveAtom x))
@@ -468,34 +470,52 @@
      :fill-rule "evenodd"
      :clip-rule "evenodd"}]])
 
-(defn throwable-view [{:as error :keys [via trace]} opts]
-  (let [!stack-expanded? (nextjournal.clerk.render.hooks/use-state false)]
+(defn throwable-view [{:as _error :keys [via trace]} opts]
+  (let [!stack-expanded? (nextjournal.clerk.render.hooks/use-state false)
+        !caused-by-expanded? (nextjournal.clerk.render.hooks/use-state false)
+        unhandled (first via)]
     [:div.bg-red-100.text-sm.w-full.border-t.border-red-200.overflow-auto.font-mono
      {:style {:max-height "60vh"}}
-     (map-indexed
-      (fn [i {:as _ex :keys [type message data _trace]}]
-        [:div.px-5.py-4.border-t.border-red-200.first:border-t-0
-         (when type
-           [:div.font-bold.text-red-600 "Unhandled " type])
-         [:div.font-bold.mt-1 message]
-         (when data
-           [:div.mt-1
-            [nextjournal.clerk.render/inspect data]])])
-      via)
-     [:div.border-t.border-red-200.text-xs.px-5.py-3
-      [:div.text-xs.text-red-600.font-bold.hover:underline.cursor-pointer.flex.items-center.gap-2
-       {:on-click #(swap! !stack-expanded? not)}
-       (if @!stack-expanded? eye-icon eye-closed-icon)
-       (if @!stack-expanded? "Hide" "Show") " stacktrace"]
-      (when @!stack-expanded?
-        [:table.w-full.not-prose
-         (into [:tbody]
-               (map (fn [[call _x file line]]
-                      [:tr.hover:bg-red-100.leading-tight
-                       [:td.text-right.px-6 file ":"]
-                       [:td.text-right.pr-6 line]
-                       [:td.py-1.pr-6 call]]))
-               trace)])]]))
+     [:div.px-5.py-4.border-t.border-red-200.first:border-t-0
+      (when (:type unhandled)
+        [:div.font-bold.text-red-600 "Unhandled " (:type unhandled)])
+      [:div.font-bold.mt-1 (:message unhandled)]
+      (when (:data unhandled)
+        [:div.mt-1
+         [nextjournal.clerk.render/inspect (:data unhandled)]])]
+     (when-let [caused-by (not-empty (rest via))]
+       [:div.border-t.border-red-200.text-xs.px-5.py-2.first:border-t-0
+        [:div.text-xs.text-red-600.font-bold.hover:underline.cursor-pointer.flex.items-center.gap-2
+         {:on-click #(swap! !caused-by-expanded? not)}
+         (if @!caused-by-expanded? eye-icon eye-closed-icon)
+         (if @!caused-by-expanded? "Hide" "Show") " causes (" (count caused-by) ")"]
+        (when @!caused-by-expanded?
+          (into [:div]
+                (map
+                 (fn [{:as _ex :keys [type message data _trace]}]
+                   [:div.px-5.mt-3 {:class "ml-[1px]"}
+                    (when type
+                      [:div.font-bold.text-red-600 "Caused by " type])
+                    [:div.font-bold.mt-1 message]
+                    (when data
+                      [:div.mt-1
+                       [nextjournal.clerk.render/inspect data]])]))
+                caused-by))])
+     (when trace
+       [:div.border-t.border-red-200.text-xs.px-5.py-2.first:border-t-0
+        [:div.text-xs.text-red-600.font-bold.hover:underline.cursor-pointer.flex.items-center.gap-2
+         {:on-click #(swap! !stack-expanded? not)}
+         (if @!stack-expanded? eye-icon eye-closed-icon)
+         (if @!stack-expanded? "Hide" "Show") " stacktrace"]
+        (when @!stack-expanded?
+          [:table.w-full.not-prose
+           (into [:tbody]
+                 (map (fn [[call _x file line]]
+                        [:tr.hover:bg-red-100.leading-tight
+                         [:td.text-right.px-6 file ":"]
+                         [:td.text-right.pr-6 line]
+                         [:td.py-1.pr-6 call]]))
+                 trace)])])]))
 
 (defn render-throwable [ex opts]
   (if (or (:stack ex) (instance? js/Error ex))
@@ -563,9 +583,25 @@
                          (fn [more] (swap! !presented-value viewer/merge-presentations more elision))))}
      [body-fn* @!presented-value]]))
 
-(defn error-overlay [presented-value]
+(defn render-errors-overlay [errors]
   (let [!expanded-at (r/atom {})]
-    [:div.fixed.bottom-0.left-0.font-mono.w-screen
+    (js/console.log errors)
+    [:div.fixed.bottom-0.left-0.font-mono.w-screen.z-20
+     [:div.text-4xl.absolute.left-1
+      {:style {:transform "rotate(-15deg)"
+               :text-shadow "0 2px 5px rgba(0,0,0,.1)"
+               :z-index 1
+               :top -5}}
+      (rand-nth ["😩" "😬" "😑" "😖"])]
+     [:div.flex.ml-7
+      [:div.pl-4.pr-3.pt-1.rounded-t.bg-red-100.text-red-600.text-sm.font-bold.relative.border-t.border-l.border-r.border-red-200
+       {:style {:bottom -1}}
+       "Errors"]]
+     (map throwable-view errors)]))
+
+(defn clojure-exception-overlay [presented-value]
+  (let [!expanded-at (r/atom {})]
+    [:div.fixed.bottom-0.left-0.font-mono.w-screen.z-20
      [:div.text-4xl.absolute.left-1
       {:style {:transform "rotate(-15deg)"
                :text-shadow "0 2px 5px rgba(0,0,0,.1)"
@@ -585,9 +621,11 @@
       [connection-status status])
     (when-let [status (:status @!doc)]
       [exec-status status])]
+   (when-let [render-errors (not-empty @!render-errors)]
+     [render-errors-overlay render-errors])
    (when-let [{:as wrapped-value :nextjournal/keys [blob-id]} (get-in @!doc [:nextjournal/value :error])]
      ^{:key blob-id}
-     [with-fetch-fn wrapped-value error-overlay])
+     [with-fetch-fn wrapped-value clojure-exception-overlay])
    (when (:nextjournal/value @!doc)
      [inspect-presented @!doc])
    (into [:<>]

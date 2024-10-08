@@ -78,7 +78,8 @@
   (try (*eval* form)
        (catch js/Error e
          (js/console.error "error in viewer-eval" e form)
-         (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))
+         (swap! render/!render-errors conj (Throwable->map e))
+         e)))
 
 (defn ordered-map-reader-cljs [coll]
   (omap/ordered-map (vec coll)))
