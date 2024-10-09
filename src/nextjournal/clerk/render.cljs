@@ -302,7 +302,10 @@
          [:div.relative
           [:div.overflow-x-auto
            {:ref ref-fn}
-           [inspect-presented {:!expanded-at !expanded-at :swap-sync-state! swap-sync-state! :!sync-state viewer/!sync-state} @!desc]]]]]])))
+           [inspect-presented {:!expanded-at !expanded-at
+                               :swap-sync-state! swap-sync-state!
+                               :!sync-state viewer/!sync-state}
+            @!desc]]]]]])))
 
 (defn toggle-expanded [!expanded-at path event]
   (.preventDefault event)
@@ -547,25 +550,27 @@
      x
      (let [{:nextjournal/keys [value viewer] :keys [path]} x
            hash (str (:hash viewer) "@" (peek (:path opts)))]
-       #_(prn :inspect-presented value :valid-element? (react/isValidElement value) :viewer viewer)
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
        ^{:key hash}
        [:> ErrorBoundary {:hash hash}
-        [(:render-fn viewer) value (merge opts
-                                          (:nextjournal/render-opts x)
-                                          {:viewer viewer :path path})]]))))
+        [(:f (:render-fn viewer)) value (merge opts
+                                               (:nextjournal/render-opts x)
+                                               {:viewer viewer :path path})]]))))
 
 (defn inspect [value]
-  (r/with-let [!state (r/atom nil)]
+  (r/with-let [!state   (r/atom nil)
+               fetch-fn (fn [fetch-opts]
+                          (let [{:keys [present-elision-fn]} (-> !state deref :desc meta)]
+                            (-> js/Promise
+                                (.resolve (present-elision-fn fetch-opts))
+                                (.then
+                                 (fn [more]
+                                   (swap! !state update :desc viewer/merge-presentations more fetch-opts))))))]
     (when (not= (:value @!state ::not-found) value)
       (swap! !state assoc
              :value value
              :desc (viewer/present value)))
-    [view-context/provide {:fetch-fn (fn [fetch-opts]
-                                       (.then (let [{:keys [present-elision-fn]} (-> !state deref :desc meta)]
-                                                (.resolve js/Promise (present-elision-fn fetch-opts)))
-                                              (fn [more]
-                                                (swap! !state update :desc viewer/merge-presentations more fetch-opts))))}
+    [view-context/provide {:fetch-fn fetch-fn}
      [inspect-presented (:desc @!state)]]))
 
 (defn show-panel [panel-id panel]
@@ -576,11 +581,14 @@
 (defn with-fetch-fn [{:nextjournal/keys [presented blob-id]} body-fn]
   ;; TODO: unify with result-viewer
   (let [!presented-value (hooks/use-state presented)
-        body-fn* (hooks/use-callback body-fn)]
+        body-fn* (hooks/use-callback body-fn)
+        fetch-fn (hooks/use-callback
+                  (fn [elision]
+                    (-> (fetch! {:blob-id blob-id} elision)
+                        (.then (fn [more]
+                                 (swap! !presented-value viewer/merge-presentations more elision))))))]
     [view-context/provide
-     {:fetch-fn (fn [elision]
-                  (.then (fetch! {:blob-id blob-id} elision)
-                         (fn [more] (swap! !presented-value viewer/merge-presentations more elision))))}
+     {:fetch-fn fetch-fn}
      [body-fn* @!presented-value]]))
 
 (defn exception-overlay [title & content]

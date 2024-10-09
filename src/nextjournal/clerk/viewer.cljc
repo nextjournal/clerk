@@ -36,8 +36,8 @@
 
 (defrecord ViewerFn [form #?(:cljs f)]
   #?@(:cljs [IFn
-             (-invoke [this x] ((:f this) x))
-             (-invoke [this x y] ((:f this) x y))]))
+             (-invoke [_ x] (f x))
+             (-invoke [_ x y] (f x y))]))
 
 ;; Make sure `ViewerFn` and `ViewerEval` is changed atomically
 #?(:clj
@@ -65,10 +65,11 @@
   #?(:clj ([form] (resolve-aliases (ns-aliases *ns*) form)))
   ([aliases form] (w/postwalk #(cond->> % (qualified-symbol? %) (resolve-symbol-alias aliases)) form)))
 
-(defn ->viewer-fn
-  [form]
-  (map->ViewerFn {:form form
-                  #?@(:cljs [:f (*eval* form)])}))
+(def ->viewer-fn
+  (memoize
+   (fn [form]
+     (map->ViewerFn {:form form
+                     #?@(:cljs [:f (*eval* form)])}))))
 
 (defn ->viewer-eval [form]
   (map->ViewerEval {:form form}))
@@ -1829,11 +1830,26 @@
 #_(desc->values (present (table (mapv vector (range 30)))))
 #_(desc->values (present (with-viewer `table-viewer (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))))
 
+(defn- postwalk-colls
+  "A variant of postwalk that doesn’t go into records"
+  [f form]
+  (cond
+    (list? form)      (f (apply list (map #(postwalk-colls f %) form)))
+    (map-entry? form) (let [k (postwalk-colls f (key form))
+                            v (postwalk-colls f (val form))]
+                        (f #?(:clj  (clojure.lang.MapEntry/create k v)
+                              :cljs (cljs.core.MapEntry. k v nil))))
+    (seq? form)       (f (doall (map #(postwalk-colls f %) form)))
+    (record? form)    (f form)
+    (coll? form)      (f (into (empty form) (map #(postwalk-colls f %) form)))
+    :else             (f form)))
+
 (defn merge-presentations [root more elision]
-  (clojure.walk/postwalk (fn [x] (if (some #(= elision (:nextjournal/value %)) (when (coll? x) x))
-                                   (into (pop x) (:nextjournal/value more))
-                                   x))
-                         root))
+  (postwalk-colls
+   (fn [x] (if (some #(= elision (:nextjournal/value %)) (when (coll? x) x))
+             (into (pop x) (:nextjournal/value more))
+             x))
+   root))
 
 (defn assign-closing-parens
   ([node] (assign-closing-parens '() node))
