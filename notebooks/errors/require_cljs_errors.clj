@@ -1,13 +1,11 @@
-;; # 😩 Errors
+;; # 💣 Render Errors
 
-(ns boundaries
+(ns require-cljs-errors
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]))
 
-#_boom
-
-#_(clerk/with-viewer {:require-cljs true
-                      :render-fn 'errors.render/test} 1)
+(clerk/with-viewer {:require-cljs true
+                    :render-fn 'errors.render-botched/test} 1)
 
 #_(try (/ 1 0) (catch Exception e (throw (ex-info "boom!" {:foo :bar} e))))
 
