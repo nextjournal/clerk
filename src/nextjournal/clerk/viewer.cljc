@@ -658,7 +658,7 @@
       (->> (mapv (partial with-viewer
                           (cond-> result-viewer
                             (hidden-viewer-eval-result? cell)
-                            (assoc :render-fn '(fn [_ _] [:<>]))))))))
+                            (assoc :render-fn 'nextjournal.clerk.render/render-empty-fragment)))))))
 
 (defn transform-cell [cell]
   (let [{:keys [code? result?]} (->visibility cell)]
@@ -675,7 +675,7 @@
 (def cell-viewer
   {:name `cell-viewer
    :transform-fn (update-val transform-cell)
-   :render-fn '(fn [xs opts] (into [:<>] (nextjournal.clerk.render/inspect-children opts) xs))})
+   :render-fn 'nextjournal.clerk.render/render-children})
 
 (defn lift-block-images
   "Lift an image node to top-level when it is the only child of a paragraph."
@@ -748,7 +748,7 @@
 (def table-missing-viewer
   {:name `table-missing-viewer
    :pred #{:nextjournal/missing}
-   :render-fn '(fn [x] [:<>])})
+   :render-fn 'nextjournal.clerk.render/render-empty-fragment})
 
 (def table-markup-viewer
   {:name `table-markup-viewer
@@ -807,7 +807,7 @@
    ;; formulas
    {:name :nextjournal.markdown/formula
     :transform-fn (comp :text ->value)
-    :render-fn '(fn [tex] (nextjournal.clerk.render/render-katex tex {:inline? true}))}
+    :render-fn 'nextjournal.clerk.render/render-katex-inline}
    {:name :nextjournal.markdown/block-formula
     :transform-fn (comp :text ->value)
     :render-fn 'nextjournal.clerk.render/render-katex}
@@ -853,7 +853,7 @@
     :transform-fn (fn [wrapped-value] (with-viewer `html-viewer [:sup.sidenote-ref (-> wrapped-value ->value :ref inc)]))}])
 
 (def char-viewer
-  {:name `char-viewer :pred char? :render-fn '(fn [c] [:span.cmt-string.inspected-value "\\" c])})
+  {:name `char-viewer :pred char? :render-fn 'nextjournal.clerk.render/char-viewer})
 
 (def string-viewer
   {:name `string-viewer
@@ -872,27 +872,25 @@
                                               (instance? clojure.lang.BigInt %)) pr-str))])})
 
 (def number-hex-viewer
-  {:name `number-hex-viewer :render-fn '(fn [num] (nextjournal.clerk.render/render-number (str "0x" (.toString (js/Number. num) 16))))})
+  {:name `number-hex-viewer :render-fn 'nextjournal.clerk.render/render-hex-number})
 
 (def symbol-viewer
-  {:name `symbol-viewer :pred symbol? :render-fn '(fn [x] [:span.cmt-keyword.inspected-value (str x)])})
+  {:name `symbol-viewer :pred symbol? :render-fn 'nextjournal.clerk.render/render-symbol})
 
 (def keyword-viewer
-  {:name `keyword-viewer :pred keyword? :render-fn '(fn [x] [:span.cmt-atom.inspected-value (str x)])})
+  {:name `keyword-viewer :pred keyword? :render-fn 'nextjournal.clerk.render/render-keyword})
 
 (def nil-viewer
-  {:name `nil-viewer :pred nil? :render-fn '(fn [_] [:span.cmt-default.inspected-value "nil"])})
+  {:name `nil-viewer :pred nil? :render-fn 'nextjournal.clerk.render/render-nil})
 
 (def boolean-viewer
-  {:name `boolean-viewer :pred boolean? :render-fn '(fn [x] [:span.cmt-bool.inspected-value (str x)])})
+  {:name `boolean-viewer :pred boolean? :render-fn 'nextjournal.clerk.render/render-boolean})
 
 (def map-entry-viewer
-  {:name `map-entry-viewer :pred map-entry? :render-fn '(fn [xs opts] (into [:<>] (comp (nextjournal.clerk.render/inspect-children opts) (interpose " ")) xs)) :page-size 2})
+  {:name `map-entry-viewer :pred map-entry? :render-fn 'nextjournal.clerk.render/render-map-entry :page-size 2})
 
 (def read+inspect-viewer
-  {:name `read+inspect-viewer :render-fn '(fn [x] (try [nextjournal.clerk.render/inspect (nextjournal.clerk.viewer/read-string-without-tag-table x)]
-                                                       (catch js/Error _e
-                                                         (nextjournal.clerk.render/render-unreadable-edn x))))})
+  {:name `read+inspect-viewer :render-fn 'nextjournal.clerk.render/render-read+inspect})
 
 (def vector-viewer
   {:name `vector-viewer :pred vector? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "[" :closing-paren "]" :page-size 20})
@@ -912,7 +910,7 @@
   {:name `var-viewer
    :pred var?
    :transform-fn (comp #?(:cljs var->symbol :clj symbol) ->value)
-   :render-fn '(fn [x] [:span.inspected-value [:span.cmt-meta "#'" (str x)]])})
+   :render-fn 'nextjournal.clerk.render/render-var})
 
 (defn ->opts [wrapped-value]
   (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/render-opts
@@ -959,9 +957,7 @@
                                   :nextjournal/width (image-width image)}
                                  mark-presented))])
    :name `image-viewer
-   :render-fn '(fn [blob-or-url] [:div.flex.flex-col.items-center.not-prose
-                                  [:img {:src #?(:clj  (nextjournal.clerk.render/url-for blob-or-url)
-                                                 :cljs blob-or-url)}]])})
+   :render-fn 'nextjournal.clerk.render/render-image})
 
 (def ideref-viewer
   {:name `ideref-viewer
@@ -1036,21 +1032,10 @@
                        (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))})
 
 (def row-viewer
-  {:name `row-viewer :render-fn '(fn [items opts]
-                                   (let [item-count (count items)]
-                                     (into [:div {:class "md:flex md:flex-row md:gap-4 not-prose"
-                                                  :style opts}]
-                                           (map (fn [item]
-                                                  [:div.flex.items-center.justify-center.flex-auto
-                                                   (nextjournal.clerk.render/inspect-presented opts item)])) items)))})
+  {:name `row-viewer :render-fn 'nextjournal.clerk.render/render-row})
 
 (def col-viewer
-  {:name `col-viewer :render-fn '(fn [items opts]
-                                   (into [:div {:class "md:flex md:flex-col md:gap-4 clerk-grid not-prose"
-                                                :style opts}]
-                                         (map (fn [item]
-                                                [:div.flex.items-center.justify-center
-                                                 (nextjournal.clerk.render/inspect-presented opts item)])) items))})
+  {:name `col-viewer :render-fn 'nextjournal.clerk.render/render-col})
 
 (def table-viewers
   [(-> string-viewer
@@ -1109,13 +1094,8 @@
 
 (def tagged-value-viewer
   {:name `tagged-value-viewer
-   :render-fn '(fn [{:keys [tag value space?]} opts]
-                 (nextjournal.clerk.render/render-tagged-value
-                  {:space? (:nextjournal/value space?)}
-                  (str "#" (:nextjournal/value tag))
-                  [nextjournal.clerk.render/inspect-presented value]))
+   :render-fn 'nextjournal.clerk.render/render-tagged-value
    :transform-fn mark-preserve-keys})
-
 
 #?(:cljs
    (def js-promise-viewer
@@ -1127,9 +1107,7 @@
       :pred goog/isObject
       :page-size 20
       :opening-paren "{" :closing-paren "}"
-      :render-fn '(fn [v opts] (nextjournal.clerk.render/render-tagged-value {:space? true}
-                                                                             "#js"
-                                                                             (nextjournal.clerk.render/render-map v opts)))
+      :render-fn 'nextjournal.clerk.render/render-js-object
       :transform-fn (update-val (fn [^js o]
                                   (into {}
                                         (comp (remove (fn [k] (identical? "function" (goog/typeOf (j/get o k)))))
@@ -1146,10 +1124,7 @@
      {:name `js-array-viewer
       :pred js-iterable?
       :transform-fn (update-val seq)
-      :render-fn '(fn [v opts]
-                    (nextjournal.clerk.render/render-tagged-value {:space? true}
-                                                                  "#js"
-                                                                  (nextjournal.clerk.render/render-coll v opts)))
+      :render-fn 'nextjournal.clerk.render/render-js-array
       :opening-paren "[" :closing-paren "]"
       :page-size 20}))
 
@@ -1975,12 +1950,7 @@
    :transform-fn (fn [wrapped-value]
                    (-> wrapped-value
                        mark-preserve-keys
-                       (assoc :nextjournal/viewer {:render-fn '(fn [{:keys [form val]} opts]
-                                                                 [:div.mb-3.last:mb-0
-                                                                  [:div.bg-slate-100.dark:bg-slate-800.px-4.py-2.border-l-2.border-slate-200.dark:border-slate-700
-                                                                   (nextjournal.clerk.render/inspect-presented opts form)]
-                                                                  [:div.pt-2.px-4.border-l-2.border-transparent
-                                                                   (nextjournal.clerk.render/inspect-presented opts val)]])})
+                       (assoc :nextjournal/viewer {:render-fn 'nextjournal.clerk.render/render-example})
                        (update-in [:nextjournal/value :val] maybe-wrap-var-from-def (get-in wrapped-value [:nextjournal/value :form]))
                        (update-in [:nextjournal/value :form] code)))})
 
@@ -1988,8 +1958,4 @@
   {:name `examples-viewer
    :transform-fn (update-val (fn [examples]
                                (mapv (partial with-viewer example-viewer) examples)))
-   :render-fn '(fn [examples opts]
-                 [:div
-                  [:div.uppercase.tracking-wider.text-xs.font-sans.font-bold.text-slate-500.dark:text-white.mb-2.mt-3 "Examples"]
-                  (into [:div]
-                        (nextjournal.clerk.render/inspect-children opts) examples)])})
+   :render-fn 'nextjournal.clerk.render/render-examples})
