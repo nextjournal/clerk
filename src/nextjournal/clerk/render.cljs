@@ -1085,23 +1085,23 @@
 (defn render-examples [examples opts]
   [:div
    [:div.uppercase.tracking-wider.text-xs.font-sans.font-bold.text-slate-500.dark:text-white.mb-2.mt-3 "Examples"]
-   (into [:div]
-         (inspect-children opts) examples)])
+   (into [:div] (inspect-children opts) examples)])
 
 (defn render-row [items opts]
-  (let [item-count (count items)]
-    (into [:div {:class "md:flex md:flex-row md:gap-4 not-prose"
-                 :style opts}]
-          (map (fn [item]
-                 [:div.flex.items-center.justify-center.flex-auto
-                  (inspect-presented opts item)])) items)))
+  (into [:div {:class "md:flex md:flex-row md:gap-4 not-prose"
+               :style opts}]
+        (map (fn [item]
+               [:div.flex.items-center.justify-center.flex-auto
+                [inspect-presented opts item]]))
+        items))
 
 (defn render-col [items opts]
   (into [:div {:class "md:flex md:flex-col md:gap-4 clerk-grid not-prose"
                :style opts}]
         (map (fn [item]
                [:div.flex.items-center.justify-center
-                (inspect-presented opts item)])) items))
+                [inspect-presented opts item]]))
+        items))
 
 (defn render-empty-fragment [_ _] [:<>])
 
