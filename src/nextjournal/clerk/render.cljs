@@ -557,20 +557,20 @@
 
 
 (defn render-tagged-value [{:keys [tag value space?]} opts]
-  (render-tagged-value
+  [render-tagged-value
    {:space? (:nextjournal/value space?)}
    (str "#" (:nextjournal/value tag))
-   [nextjournal.clerk.render/inspect-presented value]))
+   [nextjournal.clerk.render/inspect-presented value]])
 
 (defn render-js-object [v opts]
-  (render-tagged-value* {:space? true}
-                        "#js"
-                        (nextjournal.clerk.render/render-map v opts)))
+  [render-tagged-value* {:space? true}
+   "#js"
+   [nextjournal.clerk.render/render-map v opts]])
 
 (defn render-js-array [v opts]
-  (render-tagged-value* {:space? true}
-                        "#js"
-                        (nextjournal.clerk.render/render-coll v opts)))
+  [render-tagged-value* {:space? true}
+   "#js"
+   [nextjournal.clerk.render/render-coll v opts]])
 
 
 (defn set-viewers! [scope viewers]
