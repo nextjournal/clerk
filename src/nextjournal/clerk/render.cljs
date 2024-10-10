@@ -172,6 +172,14 @@
 (defn render-unreadable-edn [edn]
   [:span.inspected-value.whitespace-nowrap.cmt-default edn])
 
+(def !read-string-without-tag-table
+  (delay (eval 'nextjournal.clerk.viewer/read-string-without-tag-table)))
+
+(defn render-read+inspect
+  [x] (try [inspect @!read-string-without-tag-table]
+           (catch js/Error _e
+             (render-unreadable-edn x))))
+
 (defn error-badge [& content]
   [:div.bg-red-50.rounded-sm.text-xs.text-red-400.px-2.py-1.items-center.sans-serif.inline-flex
    [:svg.h-4.w-4.text-red-400 {:xmlns "http://www.w3.org/2000/svg" :viewBox "0 0 20 20" :fill "currentColor" :aria-hidden "true"}
@@ -333,6 +341,9 @@
                  (get-in x [:nextjournal/render-opts :id])
                  (with-meta {:key (str (get-in x [:nextjournal/render-opts :id]) "@" @!eval-counter)})))))
 
+(defn render-children [xs opts]
+  (into [:<>] (nextjournal.clerk.render/inspect-children opts) xs))
+
 (def expand-style
   ["cursor-pointer"
    "bg-indigo-50"
@@ -435,6 +446,18 @@
   [:span.cmt-number.inspected-value
    (if (js/Number.isNaN num) "NaN" (str num))])
 
+(defn render-hex-number [num] (render-number (str "0x" (.toString (js/Number. num) 16))))
+
+(defn render-map-entry [xs opts]
+  (into [:<>] (comp (nextjournal.clerk.render/inspect-children opts) (interpose " ")) xs))
+
+(defn render-symbol [x] [:span.cmt-keyword.inspected-value (str x)])
+(defn render-keyword [x] [:span.cmt-atom.inspected-value (str x)])
+(defn render-nil [_] [:span.cmt-default.inspected-value "nil"])
+(defn render-boolean [x] [:span.cmt-bool.inspected-value (str x)])
+(defn render-char [c] [:span.cmt-string.inspected-value "\\" c])
+(defn render-var [x] [:span.inspected-value [:span.cmt-meta "#'" (str x)]])
+
 (defn sort! [!sort i k]
   (let [{:keys [sort-key sort-order]} @!sort]
     (reset! !sort {:sort-index i
@@ -526,11 +549,29 @@
     [:div.rounded.border.border-red-200.border-t-0.overflow-hidden
      [throwable-view ex opts]]))
 
-(defn render-tagged-value
-  ([tag value] (render-tagged-value {:space? true} tag value))
+(defn render-tagged-value*
+  ([tag value] (render-tagged-value* {:space? true} tag value))
   ([{:keys [space?]} tag value]
    [:span.inspected-value.whitespace-nowrap
     [:span.cmt-meta tag] (when space? nbsp) value]))
+
+
+(defn render-tagged-value [{:keys [tag value space?]} opts]
+  (render-tagged-value
+   {:space? (:nextjournal/value space?)}
+   (str "#" (:nextjournal/value tag))
+   [nextjournal.clerk.render/inspect-presented value]))
+
+(defn render-js-object [v opts]
+  (render-tagged-value* {:space? true}
+                        "#js"
+                        (nextjournal.clerk.render/render-map v opts)))
+
+(defn render-js-array [v opts]
+  (render-tagged-value* {:space? true}
+                        "#js"
+                        (nextjournal.clerk.render/render-coll v opts)))
+
 
 (defn set-viewers! [scope viewers]
   #_(js/console.log :set-viewers! {:scope scope :viewers viewers})
@@ -695,12 +736,16 @@
   (let [re-eval (fn [{:keys [form]}] (viewer/->viewer-fn form))]
     (w/postwalk (fn [x] (cond-> x (viewer/viewer-fn? x) re-eval)) doc)))
 
+(defn replace-viewer-fns [{:as doc :keys [name->viewer]}]
+  (assoc (w/postwalk-replace name->viewer doc)
+         :name->viewer name->viewer))
+
 (defn ^:export set-state! [{:as state :keys [doc]}]
   (when (contains? state :doc)
     (when (exists? js/window)
       ;; TODO: can we restore the scroll position when navigating back?
       (.scrollTo js/window #js {:top 0}))
-    (reset! !doc doc))
+    (reset! !doc (replace-viewer-fns doc)))
   ;; (when (and error (contains? @!doc :status))
   ;;   (swap! !doc dissoc :status))
   (when (remount? doc)
@@ -713,7 +758,7 @@
 
 (defn patch-state! [{:keys [patch]}]
   (if (remount? patch)
-    (do (swap! !doc #(re-eval-viewer-fns (apply-patch % patch)))
+    (do (swap! !doc #(re-eval-viewer-fns (replace-viewer-fns (apply-patch % patch))))
         ;; TODO: figure out why it doesn't work without `js/setTimeout`
         (js/setTimeout #(swap! !eval-counter inc) 10))
     (swap! !doc apply-patch patch)))
@@ -967,6 +1012,9 @@
       [:span {:dangerouslySetInnerHTML {:__html (.renderToString katex tex-string (j/obj :displayMode (not inline?) :throwOnError false))}}]
       default-loading-view)))
 
+(defn render-katex-inline [tex opts]
+  (nextjournal.clerk.render/render-katex tex (assoc opts :inline? true)))
+
 (defn render-mathjax [value]
   (let [mathjax (hooks/use-d3-require "https://run.nextjournalusercontent.com/data/QmQadTUYtF4JjbwhUFzQy9BQiK52ace3KqVHreUqL7ohoZ?filename=es5/tex-svg-full.js&content-type=application/javascript")
         ref-fn (react/useCallback (fn [el]
@@ -1027,10 +1075,44 @@
         [render-code code-string (assoc opts :language "clojure")]]])))
 
 
+(defn render-example [{:keys [form val]} opts]
+  [:div.mb-3.last:mb-0
+   [:div.bg-slate-100.dark:bg-slate-800.px-4.py-2.border-l-2.border-slate-200.dark:border-slate-700
+    (inspect-presented opts form)]
+   [:div.pt-2.px-4.border-l-2.border-transparent
+    (inspect-presented opts val)]])
+
+(defn render-examples [examples opts]
+  [:div
+   [:div.uppercase.tracking-wider.text-xs.font-sans.font-bold.text-slate-500.dark:text-white.mb-2.mt-3 "Examples"]
+   (into [:div]
+         (inspect-children opts) examples)])
+
+(defn render-row [items opts]
+  (let [item-count (count items)]
+    (into [:div {:class "md:flex md:flex-row md:gap-4 not-prose"
+                 :style opts}]
+          (map (fn [item]
+                 [:div.flex.items-center.justify-center.flex-auto
+                  (inspect-presented opts item)])) items)))
+
+(defn render-col [items opts]
+  (into [:div {:class "md:flex md:flex-col md:gap-4 clerk-grid not-prose"
+               :style opts}]
+        (map (fn [item]
+               [:div.flex.items-center.justify-center
+                (inspect-presented opts item)])) items))
+
+(defn render-empty-fragment [_ _] [:<>])
+
 (defn url-for [{:as src :keys [blob-id]}]
   (if (string? src)
     src
     (str "/_blob/" blob-id (when-let [opts (seq (dissoc src :blob-id))]
                              (str "?" (opts->query opts))))))
+
+(defn render-image [blob-or-url]
+  [:div.flex.flex-col.items-center.not-prose
+   [:img {:src (url-for blob-or-url)}]])
 
 (def consume-view-context view-context/consume)
