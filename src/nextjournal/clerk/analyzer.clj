@@ -12,12 +12,12 @@
             [clojure.tools.analyzer.ast :as ana-ast]
             [clojure.tools.analyzer.jvm :as ana-jvm]
             [clojure.tools.analyzer.utils :as ana-utils]
-            [clojure.walk :as walk]
             [multiformats.base.b58 :as b58]
             [multiformats.hash :as hash]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.classpath :as cp]
             [nextjournal.clerk.config :as config]
+            [nextjournal.clerk.walk :as walk]
             [taoensso.nippy :as nippy]
             [weavejester.dependency :as dep]))
 

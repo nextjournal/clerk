@@ -4,11 +4,11 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [weavejester.dependency :as tnsd]
-   [clojure.walk :as w]
    [edamame.core :as e]
    [nextjournal.clerk.viewer :as v]
    [nextjournal.clerk.always-array-map :as aam]
    [nextjournal.clerk.analyzer :refer [valuehash]]
+   [nextjournal.clerk.walk :as w]
    [rewrite-clj.node :as rnode]
    [rewrite-clj.parser :as rparse]))
 

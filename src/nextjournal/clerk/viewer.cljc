@@ -4,7 +4,6 @@
             [clojure.pprint :as pprint]
             [clojure.datafy :as datafy]
             [clojure.set :as set]
-            [clojure.walk :as w]
             [flatland.ordered.map :as omap :refer [ordered-map]]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
@@ -20,6 +19,7 @@
                        [sci.lang]
                        [applied-science.js-interop :as j]])
             [nextjournal.clerk.parser :as parser]
+            [nextjournal.clerk.walk :as w]
             [nextjournal.markdown :as md]
             [nextjournal.markdown.utils :as md.utils]
             [nextjournal.markdown.transform :as md.transform])
@@ -323,16 +323,17 @@
 (defn preserve-keys [preserve-keys-fn]
   (partial mark-preserve-keys preserve-keys-fn))
 
-(defn inspect-wrapped-values
-  "Takes `x` and modifies it such that Clerk will show raw
+;; exploits the fact that that our keyword renderer doesn't show spaces
+(let [kw (keyword "nextjournal/value ")]
+  (defn inspect-wrapped-values
+    "Takes `x` and modifies it such that Clerk will show raw
   wrapped-values. Useful for inspecting the inner workings of the
   viewer api. Also useable as a `:transform-fn`.
 
   Will eagerly walk the whole data structure so unsuited for infinite
   sequences."
-  [x]
-  ;; exploits the fact that that our keyword renderer doesn't show spaces
-  (w/postwalk-replace {:nextjournal/value (keyword "nextjournal/value ")} x))
+    [x]
+    (w/postwalk-replace {:nextjournal/value kw} x)))
 
 (defn fetch-all [_opts _xs]
   (throw (ex-info "`fetch-all` is deprecated, please use a `:transform-fn` with `mark-presented` instead." {})))
@@ -1828,22 +1829,8 @@
 #_(desc->values (present (table (mapv vector (range 30)))))
 #_(desc->values (present (with-viewer `table-viewer (normalize-table-data (repeat 60 ["Adelie" "Biscoe" 50 30 200 5000 :female])))))
 
-(defn- postwalk-colls
-  "A variant of postwalk that doesn’t go into records"
-  [f form]
-  (cond
-    (list? form)      (f (apply list (map #(postwalk-colls f %) form)))
-    (map-entry? form) (let [k (postwalk-colls f (key form))
-                            v (postwalk-colls f (val form))]
-                        (f #?(:clj  (clojure.lang.MapEntry/create k v)
-                              :cljs (cljs.core.MapEntry. k v nil))))
-    (seq? form)       (f (doall (map #(postwalk-colls f %) form)))
-    (record? form)    (f form)
-    (coll? form)      (f (into (empty form) (map #(postwalk-colls f %) form)))
-    :else             (f form)))
-
 (defn merge-presentations [root more elision]
-  (postwalk-colls
+  (w/postwalk
    (fn [x] (if (some #(= elision (:nextjournal/value %)) (when (coll? x) x))
              (into (pop x) (:nextjournal/value more))
              x))
