@@ -65,11 +65,9 @@
   #?(:clj ([form] (resolve-aliases (ns-aliases *ns*) form)))
   ([aliases form] (w/postwalk #(cond->> % (qualified-symbol? %) (resolve-symbol-alias aliases)) form)))
 
-(def ->viewer-fn
-  (memoize
-   (fn [form]
-     (map->ViewerFn {:form form
-                     #?@(:cljs [:f (*eval* form)])}))))
+(defn ->viewer-fn [form]
+  (map->ViewerFn {:form form
+                  #?@(:cljs [:f (*eval* form)])}))
 
 (defn ->viewer-eval [form]
   (map->ViewerEval {:form form}))
