@@ -110,6 +110,8 @@
          :features #{:cljs}}))
 
 (defn ^:export read-string [s]
+  ;; TODO: restore refs
+  (prn :s s)
   (edamame/parse-string s @!edamame-opts))
 
 (defn read-string-without-tag-table [s]

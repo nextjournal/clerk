@@ -1488,7 +1488,9 @@
                                           (if (contains? viewer->id viewer)
                                             viewer->id
                                             (let [id (gensym "viewer-")]
-                                              (assoc viewer->id viewer id)))))
+                                              (assoc viewer->id (dissoc viewer
+                                                                        ;; TODO: where is this normally elided?
+                                                                        :transform-fn) id)))))
                              viewer))]
         (-> wrapped-value'
             (assoc :nextjournal/viewer (if viewer-id
@@ -1787,21 +1789,19 @@
 
   Transparently handles wrapped values and supports customization this way."
   [x]
-  (binding [*viewer->id* (atom {})]
-    (let [opts (when (wrapped-value? x)
-                 (->opts (normalize-viewer-opts x)))
-          !path->wrapped-value (atom {})]
-      (-> (ensure-wrapped-with-viewers x)
-          (merge {:store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
-                                          (swap! !path->wrapped-value assoc path wrapped-value))
-                  :present-elision-fn (partial present-elision* !path->wrapped-value)
-                  :path (:path opts [])
-                  :sync-state @!sync-state}
-                 (make-!budget-opts opts)
-                 opts)
-          present*
-          assign-closing-parens
-          (assoc :nextjournal/refs (clojure.set/map-invert @*viewer->id*))))))
+  (let [opts (when (wrapped-value? x)
+               (->opts (normalize-viewer-opts x)))
+        !path->wrapped-value (atom {})]
+    (-> (ensure-wrapped-with-viewers x)
+        (merge {:store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
+                                        (swap! !path->wrapped-value assoc path wrapped-value))
+                :present-elision-fn (partial present-elision* !path->wrapped-value)
+                :path (:path opts [])
+                :sync-state @!sync-state}
+               (make-!budget-opts opts)
+               opts)
+        present*
+        assign-closing-parens)))
 
 (comment
   (present [\a \b])

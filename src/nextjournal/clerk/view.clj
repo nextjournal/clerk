@@ -6,11 +6,23 @@
             [nextjournal.clerk.cljs-libs :as cljs-libs])
   (:import (java.net URI)))
 
+(def m (atom nil))
+(comment
+  @m
+  )
+
+(defn present [x]
+  (binding [v/*viewer->id* (atom {})]
+    (let [x (v/present x)]
+      (reset! m x)
+      (-> x
+          #_(assoc :nextjournal/refs (clojure.set/map-invert @v/*viewer->id*))))))
+
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns file]}]
    (binding [*ns* ns]
-     (-> (merge doc opts) v/notebook v/present (cljs-libs/prepend-required-cljs opts)))))
+     (-> (merge doc opts) v/notebook present (cljs-libs/prepend-required-cljs opts)))))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
