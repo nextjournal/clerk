@@ -1463,6 +1463,8 @@
     (merge x (hoist-nested-wrapped-value (get-safe x :nextjournal/value)))
     x))
 
+(def ^:dynamic *viewer->id* nil)
+
 (defn apply-viewers* [wrapped-value]
   (let [hoisted-wrapped-value (hoist-nested-wrapped-value wrapped-value)
         viewers (->viewers hoisted-wrapped-value)
@@ -1481,9 +1483,18 @@
                          (merge (->value transformed-value)))]
     (if (and transform-fn (not render-fn))
       (recur wrapped-value')
-      (-> wrapped-value'
-          (assoc :nextjournal/viewer viewer)
-          (merge (->opts wrapped-value))))))
+      (let [viewer-id (when-let [atm *viewer->id*]
+                        (get (swap! atm (fn [viewer->id]
+                                          (if (contains? viewer->id viewer)
+                                            viewer->id
+                                            (let [id (gensym "viewer-")]
+                                              (assoc viewer->id viewer id)))))
+                             viewer))]
+        (-> wrapped-value'
+            (assoc :nextjournal/viewer (if viewer-id
+                                         {:nextjournal/ref viewer-id}
+                                         viewer))
+            (merge (->opts wrapped-value)))))))
 
 (defn apply-viewers [x]
   (apply-viewers* (ensure-wrapped-with-viewers x)))
@@ -1776,19 +1787,21 @@
 
   Transparently handles wrapped values and supports customization this way."
   [x]
-  (let [opts (when (wrapped-value? x)
-               (->opts (normalize-viewer-opts x)))
-        !path->wrapped-value (atom {})]
-    (-> (ensure-wrapped-with-viewers x)
-        (merge {:store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
-                                        (swap! !path->wrapped-value assoc path wrapped-value))
-                :present-elision-fn (partial present-elision* !path->wrapped-value)
-                :path (:path opts [])
-                :sync-state @!sync-state}
-               (make-!budget-opts opts)
-               opts)
-        present*
-        assign-closing-parens)))
+  (binding [*viewer->id* (atom {})]
+    (let [opts (when (wrapped-value? x)
+                 (->opts (normalize-viewer-opts x)))
+          !path->wrapped-value (atom {})]
+      (-> (ensure-wrapped-with-viewers x)
+          (merge {:store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
+                                          (swap! !path->wrapped-value assoc path wrapped-value))
+                  :present-elision-fn (partial present-elision* !path->wrapped-value)
+                  :path (:path opts [])
+                  :sync-state @!sync-state}
+                 (make-!budget-opts opts)
+                 opts)
+          present*
+          assign-closing-parens
+          (assoc :nextjournal/refs (clojure.set/map-invert @*viewer->id*))))))
 
 (comment
   (present [\a \b])
