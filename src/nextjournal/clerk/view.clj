@@ -4,21 +4,36 @@
             [hiccup.page :as hiccup]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.cljs-libs :as cljs-libs]
-            [clojure.set])
+            [clojure.set]
+            [nextjournal.clerk.walk :as w])
   (:import (java.net URI)))
 
 ;; TODO: postwalk and replace viewers by id
 
+(defn cache-viewers [doc]
+  (let [cache (atom {})]
+    [(w/postwalk
+      (fn [node]
+        (if-let [v (:nexjournal/viewer node)]
+          (let [id
+                (get (swap! cache (fn [cache]
+                                    (if (contains? cache v)
+                                      cache
+                                      (assoc cache v (gensym "viewer")))))
+                     v)]
+            (assoc v :nextjournal/viewer {:ref id}))
+          node))
+      doc)
+     @cache]))
+
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns file]}]
-   (binding [*ns* ns
-             v/*viewer->id* (atom {})]
-     (let [doc (-> (merge doc opts) v/notebook v/present (cljs-libs/prepend-required-cljs opts)
-                   (assoc :nextjournal/refs (clojure.set/map-invert @v/*viewer->id*)))]
-       (def m doc)
+   (binding [*ns* ns]
+     (let [[doc cache] (-> (merge doc opts) v/notebook v/present (cljs-libs/prepend-required-cljs opts)
+                           cache-viewers)]
        (-> doc
-           (assoc :nextjournal/refs (clojure.set/map-invert @v/*viewer->id*)))))))
+           (assoc :nextjournal/refs (clojure.set/map-invert @cache)))))))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
