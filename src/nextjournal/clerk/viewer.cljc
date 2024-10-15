@@ -1483,20 +1483,9 @@
                          (merge (->value transformed-value)))]
     (if (and transform-fn (not render-fn))
       (recur wrapped-value')
-      (let [viewer-id (when-let [atm *viewer->id*]
-                        (get (swap! atm (fn [viewer->id]
-                                          (if (contains? viewer->id viewer)
-                                            viewer->id
-                                            (let [id (gensym "viewer-")]
-                                              (assoc viewer->id (dissoc viewer
-                                                                        ;; TODO: where is this normally elided?
-                                                                        :transform-fn) id)))))
-                             viewer))]
-        (-> wrapped-value'
-            (assoc :nextjournal/viewer (if viewer-id
-                                         {:nextjournal/ref viewer-id}
-                                         viewer))
-            (merge (->opts wrapped-value)))))))
+      (-> wrapped-value'
+          (assoc :nextjournal/viewer viewer)
+          (merge (->opts wrapped-value))))))
 
 (defn apply-viewers [x]
   (apply-viewers* (ensure-wrapped-with-viewers x)))

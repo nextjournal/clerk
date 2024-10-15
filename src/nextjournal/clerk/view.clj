@@ -3,26 +3,22 @@
             [clojure.string :as str]
             [hiccup.page :as hiccup]
             [nextjournal.clerk.viewer :as v]
-            [nextjournal.clerk.cljs-libs :as cljs-libs])
+            [nextjournal.clerk.cljs-libs :as cljs-libs]
+            [clojure.set])
   (:import (java.net URI)))
 
-(def m (atom nil))
-(comment
-  @m
-  )
-
-(defn present [x]
-  (binding [v/*viewer->id* (atom {})]
-    (let [x (v/present x)]
-      (reset! m x)
-      (-> x
-          #_(assoc :nextjournal/refs (clojure.set/map-invert @v/*viewer->id*))))))
+;; TODO: postwalk and replace viewers by id
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns file]}]
-   (binding [*ns* ns]
-     (-> (merge doc opts) v/notebook present (cljs-libs/prepend-required-cljs opts)))))
+   (binding [*ns* ns
+             v/*viewer->id* (atom {})]
+     (let [doc (-> (merge doc opts) v/notebook v/present (cljs-libs/prepend-required-cljs opts)
+                   (assoc :nextjournal/refs (clojure.set/map-invert @v/*viewer->id*)))]
+       (def m doc)
+       (-> doc
+           (assoc :nextjournal/refs (clojure.set/map-invert @v/*viewer->id*)))))))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
