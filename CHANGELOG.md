@@ -8,19 +8,23 @@ Changes can be:
 
 ## Unreleased
 
+...
+
+## 0.17.1100 (2024-10-17)
+
 * 🌿 Switch underlying markdown implementation to a parser based on commonmark-java
 
    This upgrades `nextjournal/markdown` library to `{:mvn/version 0.6.157}` switching markdown parsing from `markdown-it` via GraalJS to `commonmark-java` yielding an ~10x performance improvement. Restores compatibility with Java 22 or later ([#642](https://github.com/nextjournal/clerk/issues/642)).
 
 * ⚡️ Render REPL
 
-    For interactive development of `:render-fn`s, Clerk comes with a Render nREPL server. To enable it, pass the `:render-nrepl` option to `serve!`. You can change the default port `1339` by passing a different `:port` number.
+    For interactive development of `:render-fn`s, Clerk now comes with a Render nREPL server. To enable it, pass the `:render-nrepl` option to `serve!`. You can change the default port `1339` by passing a different `:port` number.
     
-* 🗃️ Support `:require-cljs` viewer key for loading `:render-fn` from a separate ClojureScript file
+* 🗃️ Support `:require-cljs` viewer key for loading `:render-fn`s from a separate ClojureScript file
 
 * 💥 Better Errors
 
-  Improve Clerk's handling and display of errors moving them to a redesigned overlay at the bottom of the screen.
+  Improve Clerk's handling and display of errors by moving them to a redesigned overlay at the bottom of the screen.
 
     * flattening the error hierarchy by not catching and rethrowing eval errors
     * not having the whole doc on the exception again which doesn't help and looks strange when custom viewers are used
@@ -28,7 +32,7 @@ Changes can be:
     * not throwing during `clerk/show!` when triggered through the file watcher
     * add react error boundaries for root and inspect-presented ([#698](https://github.com/nextjournal/clerk/issues/698))
     
-* 🔭 Show render errors the error overlay
+* 🔭 Show render errors in the error overlay
 
 * 🎡 First cut `clerk/show!` support for .cljs files. They are evaluated via Clerk's render sci environment.
 
