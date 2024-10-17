@@ -523,9 +523,6 @@
                                             (not= [0] path))
                                    (str "-" (str/join "-" path))))))
 
-(defonce !sync-state
-  (#?(:clj atom :cljs ratom/atom) {}))
-
 (defn transform-result [{:as wrapped-value :keys [path]}]
   (let [{:as cell :keys [form id settings result] ::keys [fragment-item? doc]} (:nextjournal/value wrapped-value)
         {:keys [package]} doc
@@ -541,8 +538,7 @@
         {:as to-present :nextjournal/keys [auto-expand-results?]} (merge (dissoc (->opts wrapped-value) :!budget :nextjournal/budget)
                                                                          (dissoc cell :result ::doc) ;; TODO: reintroduce doc once we know why it OOMs the static build on CI (some walk issue probably)
                                                                          opts-from-block
-                                                                         (ensure-wrapped-with-viewers (or viewers (get-viewers (get-*ns*))) value)
-                                                                         {:!sync-state !sync-state})
+                                                                         (ensure-wrapped-with-viewers (or viewers (get-viewers (get-*ns*))) value))
         presented-result (-> (present to-present)
                              (update :nextjournal/render-opts
                                      (fn [{:as opts existing-id :id}]
@@ -918,11 +914,11 @@
 (defn ->opts [wrapped-value]
   (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/render-opts
                               :nextjournal/render-evaluator
-                              :!budget :store!-wrapped-value :sync-state :present-elision-fn :path :offset]))
+                              :!budget :store!-wrapped-value :present-elision-fn :path :offset]))
 
 (defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
   (-> (ensure-wrapped-with-viewers viewers value)
-      (merge (select-keys wrapped-value [:!budget :store!-wrapped-value :sync-state :present-elision-fn :nextjournal/budget :path]))
+      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :present-elision-fn :nextjournal/budget :path]))
       (update :path (fnil conj []) path-segment)))
 
 (defn present-ex-data [parent throwable-map]
@@ -1269,15 +1265,8 @@
   {:nextjournal/presented (present error)
    :nextjournal/blob-id (str (gensym "error"))})
 
-(defn sync-state []
-  (->viewer-eval
-   (list 'reset!
-         `!sync-state
-         @!sync-state)))
-
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc
-      (assoc :sync-state (sync-state))
       (assoc :atom-var-name->state (atom-var-name->state doc))
       (assoc :ns (->viewer-eval (list 'ns (if ns (ns-name ns) 'user))))
       (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer (dissoc doc :error)))
@@ -1289,15 +1278,13 @@
       (update :file str)
 
       (select-keys [:atom-var-name->state
-                    :blocks
-                    :package
+                    :blocks :package
                     :doc-css-class
                     :error
                     :file
                     :open-graph
                     :ns
                     :title
-                    :sync-state
                     :toc
                     :toc-visibility
                     :header
@@ -1783,8 +1770,7 @@
         (merge {:store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
                                         (swap! !path->wrapped-value assoc path wrapped-value))
                 :present-elision-fn (partial present-elision* !path->wrapped-value)
-                :path (:path opts [])
-                :sync-state @!sync-state}
+                :path (:path opts [])}
                (make-!budget-opts opts)
                opts)
         present*
