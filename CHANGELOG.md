@@ -10,6 +10,10 @@ Changes can be:
 
 ...
 
+## 0.17.1102 (2024-10-17)
+
+...
+
 ## 0.17.1100 (2024-10-17)
 
 * 🌿 Switch underlying markdown implementation to a parser based on commonmark-java
@@ -38,7 +42,9 @@ Changes can be:
 
 * ⭐️ Add `clerk/present!` which will show the given value through Clerk and return the presented value. Useful for interactive development & debugging of complex viewers.
 
-* 🐜 Fix an issue where updating a notebook would invalidate the entire react tree
+* 🐜 Fix an issue where updating a notebook would invalidate the react tree and cause excessive re-rendering
+  
+* 🐜 Fix an issue where updating a notebook could cause a `no protocol method IEditableCollection` render error
 
 * 🐜 Analyzer fixes
 

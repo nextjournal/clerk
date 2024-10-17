@@ -46,7 +46,7 @@ To use Clerk in your project, you'll need Java 11+ and [`clojure`](https://cloju
 following dependency to your `deps.edn`:
 
 ```edn
-{:deps {io.github.nextjournal/clerk {:mvn/version "0.17.1100"}}}
+{:deps {io.github.nextjournal/clerk {:mvn/version "0.17.1102"}}}
 ```
 
 Require and start Clerk as part of your system start, e.g. in `user.clj`:
