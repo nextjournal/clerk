@@ -84,7 +84,7 @@
         form form)
        (outer)))
 
-    (vector? form)
+    (and (vector? form) (editable? form))
     (->
      (reduce-kv
       (fn [v idx el]
@@ -95,6 +95,17 @@
       (transient form) form)
      (persistent!)
      (with-meta (meta form))
+     (outer))
+
+    (vector? form)
+    (->
+     (reduce-kv
+      (fn [v idx el]
+        (let [el' (inner el)]
+          (if (identical? el' el)
+            v
+            (assoc v idx el'))))
+      form form)
      (outer))
 
     #?(:clj (instance? clojure.lang.IRecord form)
