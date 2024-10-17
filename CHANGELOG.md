@@ -6,15 +6,7 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
-## Unreleased
-
-...
-
 ## 0.17.1102 (2024-10-17)
-
-...
-
-## 0.17.1100 (2024-10-17)
 
 * 🌿 Switch underlying markdown implementation to a parser based on commonmark-java
 
