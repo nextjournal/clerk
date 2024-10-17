@@ -8,15 +8,54 @@ Changes can be:
 
 ## Unreleased
 
+* 🌿 Switch underlying markdown implementation to a parser based on commonmark-java
+
+   This upgrades `nextjournal/markdown` library to `{:mvn/version 0.6.157}` switching markdown parsing from `markdown-it` via GraalJS to `commonmark-java` yielding an ~10x performance improvement. Restores compatibility with Java 22 or later ([#642](https://github.com/nextjournal/clerk/issues/642)).
+
+* ⚡️ Render REPL
+
+    For interactive development of `:render-fn`s, Clerk comes with a Render nREPL server. To enable it, pass the `:render-nrepl` option to `serve!`. You can change the default port `1339` by passing a different `:port` number.
+    
+* 🗃️ Support `:require-cljs` viewer key for loading `:render-fn` from a separate ClojureScript file
+
+* 💥 Better Errors
+
+  Improve Clerk's handling and display of errors moving them to a redesigned overlay at the bottom of the screen.
+
+    * flattening the error hierarchy by not catching and rethrowing eval errors
+    * not having the whole doc on the exception again which doesn't help and looks strange when custom viewers are used
+    * updating the in-memory cache when evaluation fails halfway through a notebook
+    * not throwing during `clerk/show!` when triggered through the file watcher
+    * add react error boundaries for root and inspect-presented ([#698](https://github.com/nextjournal/clerk/issues/698))
+    
+* 🔭 Show render errors the error overlay
+
+* 🎡 First cut `clerk/show!` support for .cljs files. They are evaluated via Clerk's render sci environment.
+
 * ⭐️ Add `clerk/present!` which will show the given value through Clerk and return the presented value. Useful for interactive development & debugging of complex viewers.
+
+* 🐜 Fix an issue where updating a notebook would invalidate the entire react tree
 
 * 🐜 Analyzer fixes
 
-* 🐞 Catch exception when browse is not supported, closes #657
+* 🐞 Catch exception when browse is not supported, closes [#657](https://github.com/nextjournal/clerk/issues/657)
 
-* 💫 Added 'react-dom' to SCI context
+* 💫 Expose more classes and namespaces through sci env
+
+    * `"react-dom"`
+    * `goog.object`
+    * `goog.string`
+    * `goog.string.format`
+    * `goog.array`
+    * `nextjournal.clojure-mode`
+    * `nextjournal.markdown`
+    * `nextjournal.markdown.transform`
 
 * 💫 Make `clerk/table` work with empty tables.
+
+* 🛠 Bump depdendencies
+
+  * `juji/editscript` to `0.6.4
 
 * 🛠 Update clojure, nrepl & cider-nrepl dev deps
 
