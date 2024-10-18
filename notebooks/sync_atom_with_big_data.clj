@@ -1,4 +1,4 @@
-(ns scratch
+(ns sync-atom-with-big-data
   (:require [nextjournal.clerk :as clerk]))
 
 ;; # Clerk synced atoms and large data
