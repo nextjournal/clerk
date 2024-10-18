@@ -14,7 +14,7 @@
 * [x] Move away from doing stuff on read, use qualified symbol to tag a value in plain data and eval in postwalk
 * [x] Restore try/catch to not fail update when render-fn can't be evaluated
 * [x] Restore cherry evaluator support
-* [ ] Drop cherry data readers / writers
+* [x] Drop cherry data readers / writers
 * [ ] Consider dropping or keeping viewer fn data readers for unreadable edn, or move to more specific `#clerk/unreadable-edn-atom` tag?
 * [ ] Restore `rewrite-for-cherry`
 * [ ] Drop `ViewerEval` type

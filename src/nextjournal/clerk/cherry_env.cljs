@@ -53,21 +53,6 @@
 
 (declare eval-form)
 
-(defn ->viewer-fn-with-error [form]
-  (try (binding [*eval* eval-form]
-         (viewer/->viewer-fn form))
-       (catch js/Error e
-         (viewer/map->ViewerFn
-          {:form form
-           :f (fn [_]
-                [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)])}))))
-
-(defn ->viewer-eval-with-error [form]
-  (try (eval-form form)
-       (catch js/Error e
-         (js/console.error "error in viewer-eval" e)
-         (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))
-
 (defn ^:export cherry-compile-string [s]
   (cherry/compile-string
    s
