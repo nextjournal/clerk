@@ -670,9 +670,12 @@
 (defonce ^:dynamic *reset-sync-atoms?* true)
 (defn set-reset-sync-atoms! [new-val] (set! *reset-sync-atoms?* new-val))
 
-(defn intern-atoms! [atom-var-name->state]
-  (let [vars-in-use (into #{} (keys atom-var-name->state))
+(defn intern-atoms! [doc]
+  (let [atom-var-name->state (:atom-var-name->state (:nextjournal/value doc))
+        vars-in-use (into #{} (keys atom-var-name->state))
         vars-interned @!synced-atom-vars]
+    (when-not (map? atom-var-name->state)
+      (throw (ex-info "expected map for :atom-var-name->state, got" {:atom-var-name->state atom-var-name->state :doc doc})))
     (doseq [var-name-to-unmap (set/difference vars-interned vars-in-use)]
       (sci-ns-unmap! (symbol (namespace var-name-to-unmap)) (symbol (name var-name-to-unmap))))
     (doseq [[var-name value] atom-var-name->state]
@@ -690,12 +693,24 @@
   (let [re-eval (fn [{:keys [form]}] (viewer/->viewer-fn form))]
     (w/postwalk (fn [x] (cond-> x (viewer/viewer-fn? x) re-eval)) doc)))
 
+(defn eval-viewer-fns [doc]
+  (intern-atoms! doc)
+  (w/postwalk (fn [x] (if (viewer/render-eval? x)
+                        (do
+                          (prn :=> ((get viewer/viewer-fn-tag->instance (first x))
+                                    (second x)))
+                          ((get viewer/viewer-fn-tag->instance (first x))
+                           (second x)))
+                        x))
+              doc))
+
+
 (defn ^:export set-state! [{:as state :keys [doc]}]
   (when (contains? state :doc)
     (when (exists? js/window)
       ;; TODO: can we restore the scroll position when navigating back?
       (.scrollTo js/window #js {:top 0}))
-    (reset! !doc doc))
+    (reset! !doc (eval-viewer-fns doc)))
   ;; (when (and error (contains? @!doc :status))
   ;;   (swap! !doc dissoc :status))
   (when (remount? doc)
@@ -704,7 +719,7 @@
     (set! (.-title js/document) title)))
 
 (defn apply-patch [x patch]
-  (editscript/patch x (editscript/edits->script patch)))
+  (eval-viewer-fns (editscript/patch x (editscript/edits->script patch))))
 
 (defn patch-state! [{:keys [patch]}]
   (if (remount? patch)
@@ -891,7 +906,7 @@
   (when (contains? #{:bundle :serve} render-router)
     (set-state! (case render-router
                   :bundle {:doc (get path->doc (or (path-from-url-hash (->URL (.-href js/location))) ""))}
-                  :serve state)))
+                  :serve (update state :doc eval-viewer-fns))))
   (mount))
 
 

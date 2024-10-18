@@ -77,17 +77,22 @@
         (map (fn [[prop content]] [:meta {:property (str "og:" (name prop)) :content content}]))
         open-graph-properties))
 
+(def viewer-fn-tag->instance
+  {`viewer-fn ->viewer-fn
+   `viewer-eval eval})
+
+(defn render-eval? [x]
+  (and (vector? x)
+       (= 2 (count x))
+       (contains? viewer-fn-tag->instance (first x))))
+
 #?(:clj
    (defmethod print-method ViewerFn [v ^java.io.Writer w]
-     (.write w (str "#viewer-fn" (when (= :cherry (:render-evaluator v))
-                                   "/cherry")
-                    " " (pr-str (:form v))))))
+     (.write w (str [`viewer-fn (:form v)]))))
 
 #?(:clj
    (defmethod print-method ViewerEval [v ^java.io.Writer w]
-     (.write w (str "#viewer-eval" (when (= :cherry (:render-evaluator v))
-                                     "/cherry")
-                    " " (pr-str (:form v)))))
+     (.write w (str [`viewer-eval (:form v)])))
    :cljs
    (extend-type ViewerEval
      IPrintWithWriter
@@ -1182,11 +1187,11 @@
         blocks))
 
 (defn atom-var-name->state [doc]
-  (->viewer-eval
-   (list 'nextjournal.clerk.render/intern-atoms!
-         (into {}
-               (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote))))
-               (extract-sync-atom-vars doc)))))
+  (into {}
+        (map (fn [sync-atom-var]
+               [(symbol sync-atom-var)
+                (->> sync-atom-var deref deref)]))
+        (extract-sync-atom-vars doc)))
 
 (defn home? [{:keys [nav-path]}]
   (contains? #{"src/nextjournal/home.clj" "'nextjournal.clerk.home"} nav-path))
