@@ -183,7 +183,7 @@
                     (if-let [r (:require-cljs viewer)]
                       (let [cljs-ns (if (true? r)
                                       ;; at this point, the render-fn has been transformed to a `ViewerFn`, which contains a :form
-                                      (-> viewer :render-fn :form namespace symbol)
+                                      (-> viewer :render-fn peek namespace symbol)
                                       r)]
                         (require-cljs* state cljs-ns))
                       v)
