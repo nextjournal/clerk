@@ -338,9 +338,7 @@
     (is (not-empty (-> (view/doc->viewer (eval/eval-string "(ns nextjournal.clerk.test.sync-vars (:require [nextjournal.clerk :as clerk]))
                                      ^::clerk/sync (def sync-me (atom {:a ['b 'c 3]}))"))
                        :nextjournal/value
-                       :atom-var-name->state
-                       :form
-                       second)))
+                       :atom-var-name->state)))
 
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -468,21 +466,21 @@
             (->> (eval/eval-string "^{:nextjournal.clerk/budget 5}(reduce (fn [acc _i] (vector acc)) :fin (range 100 0 -1))")
                  view/doc->viewer v/->value :blocks
                  (tree-seq coll? seq)
-                 (filter (every-pred map? (comp #{'nextjournal.clerk.render/render-coll} :form :render-fn)))))))
+                 (filter (every-pred map? (comp #{(v/tag-viewer-fn {} 'nextjournal.clerk.render/render-coll)} :render-fn)))))))
 
     (is (= 5
            (count
             (->> (eval/eval-string "(nextjournal.clerk/with-viewer {} {:nextjournal.clerk/budget 5} (reduce (fn [acc i] (vector acc)) :fin (range 15 0 -1)))")
                  view/doc->viewer v/->value :blocks
                  (tree-seq coll? seq)
-                 (filter (every-pred map? (comp #{'nextjournal.clerk.render/render-coll} :form :render-fn)))))))
+                 (filter (every-pred map? (comp #{(v/tag-viewer-fn {} 'nextjournal.clerk.render/render-coll)} :render-fn)))))))
 
     (is (= 101
            (count
             (->> (eval/eval-string "^{:nextjournal.clerk/budget nil}(reduce (fn [acc i] (vector i acc)) :fin (range 101 0 -1))")
                  view/doc->viewer v/->value :blocks
                  (tree-seq coll? seq)
-                 (filter (every-pred map? (comp #{'nextjournal.clerk.render/render-coll} :form :render-fn)))))))))
+                 (filter (every-pred map? (comp #{(v/tag-viewer-fn {} 'nextjournal.clerk.render/render-coll)} :render-fn)))))))))
 
 (deftest ->edn
   (testing "normal symbols and keywords"
