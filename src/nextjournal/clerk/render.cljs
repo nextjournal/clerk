@@ -696,8 +696,9 @@
 (defn eval-viewer-fns [doc]
   (intern-atoms! doc)
   (w/postwalk (fn [x] (if (viewer/render-eval? x)
-                        ((get viewer/viewer-fn-tag->instance (first x))
-                         (peek x))
+                        ;; TODO: pass this down from init instead of doing resolve
+                        ((resolve 'nextjournal.clerk.sci-env/eval-render-fn)
+                         x)
                         x))
               doc))
 

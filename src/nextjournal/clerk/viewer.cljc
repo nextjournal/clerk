@@ -66,9 +66,7 @@
   ([aliases form] (w/postwalk #(cond->> % (qualified-symbol? %) (resolve-symbol-alias aliases)) form)))
 
 (defn ->render-eval [tag opts form]
-  (if opts
-    [tag opts form]
-    [tag form]))
+  [tag (or opts {}) form])
 
 (defn tag-viewer-fn [opts form]
   (->render-eval `viewer-fn opts form))

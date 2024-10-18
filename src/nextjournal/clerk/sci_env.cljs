@@ -75,7 +75,7 @@
                     [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)])})))))
 
 (defn ->viewer-eval-with-error [form]
-  (try (*eval* form)
+  (try (eval form)
        (catch js/Error e
          (js/console.error "error in viewer-eval" e form)
          (swap! render/!render-errors conj (Throwable->map e))
@@ -228,6 +228,22 @@
     (let [v (sci/eval-form (sci.ctx-store/get-ctx) f)]
       (reset! last-ns @sci/ns)
       v)))
+
+(defn eval-render-fn [tagged-render-fn]
+  (let [[tag opts form] tagged-render-fn]
+    (binding [*eval* (let [render-evaluator (get opts :render-evaluator :sci)]
+                       (case render-evaluator
+                         :sci eval-form
+                         :cherry cherry-env/eval-form
+                         (throw (ex-info "unsupported render evaluator"
+                                         {:render-evaluator render-evaluator
+                                          :tagged-render-fn tagged-render-fn}))))]
+      (case tag 
+        nextjournal.clerk.viewer/viewer-fn (->viewer-fn-with-error form )
+        nextjournal.clerk.viewer/viewer-eval (->viewer-eval-with-error form)
+        (throw (ex-info "unsupported render fn tag"
+                        {:tag tag
+                         :tagged-render-fn tagged-render-fn}))))))
 
 (defn render-eval [{:keys [form]}]
   (eval-form form))
