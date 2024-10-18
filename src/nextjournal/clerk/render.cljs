@@ -648,7 +648,7 @@
 (defn atom-changed [var-name _atom _old-state new-state]
   (when *sync*
     ;; TODO: for now sending whole state but could also diff
-    (ws-send! {:type :swap! :var-name var-name :args [(list 'fn ['_] (list 'quote new-state))]})))
+    (ws-send! {:type :sync! :var-name var-name :new-state new-state})))
 
 (defn intern-atom! [var-name state]
   (assert (sci.ctx-store/get-ctx) "sci-ctx must be set")
