@@ -200,7 +200,6 @@
                        :reset! (when-let [var (resolve (:var-name msg))]
                                  (try
                                    (binding [*sender-ch* sender-ch]
-                                     (def xy (:args msg))
                                      (apply reset! @var (:args msg)))
                                    (catch Exception ex
                                      (throw (doto (ex-info (str "Clerk cannot `reset!` synced var `" (:var-name msg) "`.") msg ex) update-error!)))))
