@@ -99,11 +99,15 @@
 
 #?(:clj
    (defmethod print-method ViewerFn [v ^java.io.Writer w]
-     (.write w (str [`viewer-fn (:form v)]))))
+     (.write w (str "#viewer-fn" (when (= :cherry (:render-evaluator v))
+                                   "/cherry")
+                    " " (pr-str (:form v))))))
 
 #?(:clj
    (defmethod print-method ViewerEval [v ^java.io.Writer w]
-     (.write w (str [`viewer-eval (:form v)])))
+     (.write w (str "#viewer-eval" (when (= :cherry (:render-evaluator v))
+                                     "/cherry")
+                    " " (pr-str (:form v)))))
    :cljs
    (extend-type ViewerEval
      IPrintWithWriter
