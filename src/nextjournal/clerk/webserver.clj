@@ -197,6 +197,13 @@
                                     (apply swap! @var (eval (:args msg))))
                                   (catch Exception ex
                                     (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) update-error!)))))
+                       :reset! (when-let [var (resolve (:var-name msg))]
+                                 (try
+                                   (binding [*sender-ch* sender-ch]
+                                     (def xy (:args msg))
+                                     (apply reset! @var (:args msg)))
+                                   (catch Exception ex
+                                     (throw (doto (ex-info (str "Clerk cannot `reset!` synced var `" (:var-name msg) "`.") msg ex) update-error!)))))
                        :nrepl (sci.nrepl/send-response (-> (:msg msg)
                                                            (select-keys [:id :session])
                                                            (assoc :response (dissoc (:msg msg) :id :session))))))))})
@@ -402,3 +409,4 @@
 #_(serve! {:port 7777 :paths ["notebooks/rule_30.clj" "book.clj"]})
 #_(serve! {:port 7777 :paths ["notebooks/rule_30.clj" "notebooks/links.md" "notebooks/markdown.md" "index.clj"]})
 #_(serve! {:port 7777 :host "0.0.0.0"})
+#_(halt!)
