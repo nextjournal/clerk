@@ -645,10 +645,11 @@
     (js/ws_send (pr-str msg))
     (js/console.warn "Clerk can't send websocket message in static build, skipping...")))
 
-(defn atom-changed [var-name _atom _old-state new-state]
+(defn atom-changed [var-name _atom old-state new-state]
   (when *sync*
-    ;; TODO: for now sending whole state but could also diff
-    (ws-send! {:type :sync! :var-name var-name :new-state new-state})))
+    (ws-send! {:type :sync!
+               :var-name var-name
+               :patch (editscript/get-edits (editscript/diff old-state new-state {:algo :quick}))})))
 
 (defn intern-atom! [var-name state]
   (assert (sci.ctx-store/get-ctx) "sci-ctx must be set")

@@ -191,12 +191,16 @@
                                                                 {:error (Throwable->map e)}))))
                                  (when recompute?
                                    (eval '(nextjournal.clerk/recompute!))))
-                       :sync! (when-let [var (resolve (:var-name msg))]
+                       :sync! (if-let [var (resolve (:var-name msg))]
                                 (try
                                   (binding [*sender-ch* sender-ch]
-                                    (reset! @var (:new-state msg)))
+                                    (swap! @var editscript/patch (editscript/edits->script (:patch msg))))
                                   (catch Exception ex
-                                    (throw (doto (ex-info (str "Clerk cannot `swap!` synced var `" (:var-name msg) "`.") msg ex) update-error!)))))
+                                    (throw (doto (ex-info (str "Clerk cannot update synced var `" (:var-name msg) "`.") msg ex)
+                                             update-error!))))
+                                (throw (doto (ex-info (str "Clerk cannot resolve synced var `" (:var-name msg) "`")
+                                                      (select-keys msg [:var-name]))
+                                         update-error!)))
                        :nrepl (sci.nrepl/send-response (-> (:msg msg)
                                                            (select-keys [:id :session])
                                                            (assoc :response (dissoc (:msg msg) :id :session))))))))})
