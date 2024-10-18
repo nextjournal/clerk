@@ -696,11 +696,8 @@
 (defn eval-viewer-fns [doc]
   (intern-atoms! doc)
   (w/postwalk (fn [x] (if (viewer/render-eval? x)
-                        (do
-                          (prn :=> ((get viewer/viewer-fn-tag->instance (first x))
-                                    (second x)))
-                          ((get viewer/viewer-fn-tag->instance (first x))
-                           (second x)))
+                        ((get viewer/viewer-fn-tag->instance (first x))
+                         (peek x))
                         x))
               doc))
 

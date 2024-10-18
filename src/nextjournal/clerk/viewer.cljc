@@ -65,6 +65,17 @@
   #?(:clj ([form] (resolve-aliases (ns-aliases *ns*) form)))
   ([aliases form] (w/postwalk #(cond->> % (qualified-symbol? %) (resolve-symbol-alias aliases)) form)))
 
+(defn ->render-eval [tag opts form]
+  (if opts
+    [tag opts form]
+    [tag form]))
+
+(defn tag-viewer-fn [opts form]
+  (->render-eval `viewer-fn opts form))
+
+(defn tag-viewer-eval [opts form]
+  (->render-eval `viewer-eval opts form))
+
 (defn ->viewer-fn [form]
   (map->ViewerFn {:form form
                   #?@(:cljs [:f (*eval* form)])}))
@@ -83,7 +94,7 @@
 
 (defn render-eval? [x]
   (and (vector? x)
-       (= 2 (count x))
+       (<= 2 (count x) 3)
        (contains? viewer-fn-tag->instance (first x))))
 
 #?(:clj
@@ -1537,9 +1548,11 @@
 (defn process-render-fn [{:as viewer :keys [render-fn render-evaluator]}]
   (cond-> viewer
     (and render-fn (not (viewer-fn? render-fn)))
-    (update :render-fn (fn [rf]
-                         (assoc (->viewer-fn rf)
-                                :render-evaluator (or render-evaluator :sci))))))
+    (update :render-fn (fn [render-form]
+                         (tag-viewer-fn
+                          (when render-evaluator
+                            {:render-evaluator render-evaluator})
+                          render-form)))))
 
 (defn hash-sha1 [x]
   #?(:clj (analyzer/valuehash :sha1 x)
