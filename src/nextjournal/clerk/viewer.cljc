@@ -396,18 +396,20 @@
    (defmethod print-method clojure.lang.Keyword [o w]
      (if (roundtrippable? o)
        (print-simple o w)
-       (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
-                                          (list 'keyword ns (name o))
-                                          (list 'keyword (name o)))))))))
+       (.write w (str "#clerk/unreadable-edn "
+                      (pr-str (if-let [ns (namespace o)]
+                                (list 'keyword ns (name o))
+                                (list 'keyword (name o)))))))))
 
 #?(:clj
    (defmethod print-method clojure.lang.Symbol [o w]
      (if (or (roundtrippable? o)
              (= (name o) "?@"))  ;; splicing reader conditional, see issue #338
        (print-simple o w)
-       (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
-                                          (list 'symbol ns (name o))
-                                          (list 'symbol (name o)))))))))
+       (.write w (str "#clerk/unreadable-edn "
+                      (pr-str (if-let [ns (namespace o)]
+                                (list 'symbol ns (name o))
+                                (list 'symbol (name o)))))))))
 
 #?(:clj
    (defn ->edn [x]

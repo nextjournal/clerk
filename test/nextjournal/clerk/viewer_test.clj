@@ -490,21 +490,21 @@
     (is (= ":namespaced/keyword" (pr-str :namespaced/keyword))))
 
   (testing "unreadable symbols and keywords print as viewer-eval"
-    (is (= "#viewer-eval (keyword \"with spaces\")"
+    (is (= "#clerk/unreadable-edn (keyword \"with spaces\")"
            (pr-str (keyword "with spaces"))))
-    (is (= "#viewer-eval (keyword \"with ns\" \"and spaces\")"
+    (is (= "#clerk/unreadable-edn (keyword \"with ns\" \"and spaces\")"
            (pr-str (keyword "with ns" "and spaces"))))
-    (is (= "#viewer-eval (symbol \"with spaces\")"
+    (is (= "#clerk/unreadable-edn (symbol \"with spaces\")"
            (pr-str (symbol "with spaces"))))
-    (is (= "#viewer-eval (symbol \"with ns\" \"and spaces\")"
+    (is (= "#clerk/unreadable-edn (symbol \"with ns\" \"and spaces\")"
            (pr-str (symbol "with ns" "and spaces"))))
-    (is (= "#viewer-eval (symbol \"~\")"
+    (is (= "#clerk/unreadable-edn (symbol \"~\")"
            (pr-str (symbol "~")))))
 
   (testing "symbols and keywords with two slashes readable by `read-string` but not `tools.reader/read-string` print as viewer-eval"
-    (is (= "#viewer-eval (symbol \"foo\" \"bar/baz\")"
+    (is (= "#clerk/unreadable-edn (symbol \"foo\" \"bar/baz\")"
            (pr-str (read-string "foo/bar/baz"))))
-    (is (= "#viewer-eval (keyword \"foo\" \"bar/baz\")"
+    (is (= "#clerk/unreadable-edn (keyword \"foo\" \"bar/baz\")"
            (pr-str (read-string ":foo/bar/baz")))))
 
   (testing "splicing reader conditional prints normally (issue #338)"

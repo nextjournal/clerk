@@ -15,7 +15,7 @@
 * [x] Restore try/catch to not fail update when render-fn can't be evaluated
 * [x] Restore cherry evaluator support
 * [x] Drop cherry data readers / writers
-* [ ] Consider dropping or keeping viewer fn data readers for unreadable edn, or move to more specific `#clerk/unreadable-edn-atom` tag?
+* [x] Move to more specific `#clerk/unreadable-edn` tag for unreadable keywords and symbols
 * [ ] Restore `rewrite-for-cherry`
 * [ ] Drop `ViewerEval` type
 

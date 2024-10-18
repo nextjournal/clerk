@@ -84,6 +84,15 @@
 (defn ordered-map-reader-cljs [coll]
   (omap/ordered-map (vec coll)))
 
+(defn unreadable-edn
+  "Reader fn for unreadable edn atoms. Currently only used for symbols
+  and keywords. Same usages
+  (symbol \"foo bar\")
+  (keyword \"foo bar\")
+  (keyword \"my-ns\" \"foo bar\")"
+  [form]
+  (eval form))
+
 (defonce !edamame-opts
   (atom {:all true
          :row-key :line
@@ -94,7 +103,8 @@
          :readers
          (fn [tag]
            (or (get @cljs.reader/*tag-table* tag)
-               (get {'viewer-fn ->viewer-fn-with-error
+               (get {'clerk/unreadable-edn unreadable-edn
+                     'viewer-fn ->viewer-fn-with-error
                      'viewer-eval ->viewer-eval-with-error
                      'ordered/map ordered-map-reader-cljs} tag)
                (fn [value]
