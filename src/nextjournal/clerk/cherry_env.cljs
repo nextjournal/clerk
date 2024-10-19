@@ -51,14 +51,6 @@
 
 (def cherry-macros {'reagent.core {'with-let sci.configs.reagent/with-let}})
 
-(declare eval-form)
-
-(defn ->viewer-eval-with-error [form]
-  (try (eval-form form)
-       (catch js/Error e
-         (js/console.error "error in viewer-eval" e)
-         (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))
-
 (defn ^:export cherry-compile-string [s]
   (cherry/compile-string
    s

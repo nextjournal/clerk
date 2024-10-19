@@ -87,13 +87,6 @@
 (defn ->viewer-fn-with-error [form]
   (->viewer-fn+opts-with-error [{} form]))
 
-(defn ->viewer-eval-with-error [form]
-  (prn :->viewer-eval-with-error form)
-  (try (*eval* form)
-       (catch js/Error e
-         (js/console.error "error in viewer-eval" e form)
-         (swap! render/!render-errors conj (Throwable->map e))
-         e)))
 
 (defn ordered-map-reader-cljs [coll]
   (omap/ordered-map (vec coll)))
@@ -110,8 +103,6 @@
            (or (get @cljs.reader/*tag-table* tag)
                (get {'viewer-fn ->viewer-fn-with-error
                      'viewer-fn+opts ->viewer-fn+opts-with-error
-                     'viewer-eval ->viewer-eval-with-error
-                     'viewer-eval/cherry cherry-env/->viewer-eval-with-error
                      'ordered/map ordered-map-reader-cljs} tag)
                (fn [value]
                  (viewer/with-viewer `viewer/tagged-value-viewer
