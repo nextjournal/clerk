@@ -154,10 +154,10 @@
 (deftest viewer-fn-edn
   (testing "can be round-tripped to edn"
     (binding [*data-readers* v/data-readers]
-      (let [viewer-fn (v/->viewer-fn 'foo)]
+      (let [viewer-fn (v/->viewer-fn #:clj-kondo/ignore 'foo)]
         (is (= viewer-fn
                (read-string (pr-str viewer-fn)))))
-      (let [viewer-fn+ (v/->viewer-fn+opts {:render-evaluator :cherry} 'foo)]
+      (let [viewer-fn+ (v/->viewer-fn+opts {:render-evaluator :cherry} #:clj-kondo/ignore 'foo)]
         (is (= viewer-fn+
                (read-string (pr-str viewer-fn+))))))))
 

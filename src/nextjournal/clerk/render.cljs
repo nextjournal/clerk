@@ -687,11 +687,8 @@
   (true? (some #(= % :nextjournal.clerk/remount) (tree-seq coll? seq doc-or-patch))))
 
 (defn re-eval-viewer-fns [doc]
-  (js/console.log :re-eval-viewer-fns)
-  doc
-  #_
   (let [re-eval (fn [{:keys [form]}] (viewer/->viewer-fn form))]
-    (w/postwalk (fn [x] (cond-> x (viewer/viewer-fn? x) re-eval)) doc)))
+    (w/postwalk (fn [x] (cond-> x (and (viewer/viewer-fn? x) (not (:eval x))) re-eval)) doc)))
 
 (defn ^:export set-state! [{:as state :keys [doc]}]
   (when (contains? state :doc)
