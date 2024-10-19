@@ -36,8 +36,8 @@
 
 (defrecord ViewerFn [form #?(:cljs f)]
   #?@(:cljs [IFn
-             (-invoke [_ x] (f x))
-             (-invoke [_ x y] (f x y))]))
+             (-invoke [_ x] (@f x))
+             (-invoke [_ x y] (@f x y))]))
 
 ;; Make sure `ViewerFn` and `ViewerEval` is changed atomically
 #?(:clj
@@ -67,7 +67,8 @@
 
 (defn ->viewer-fn [form]
   (map->ViewerFn {:form form
-                  #?@(:cljs [:f (*eval* form)])}))
+                  #?@(:cljs [:f (let [bound-eval *eval*]
+                                  (delay (bound-eval form)))])}))
 
 (defn ->viewer-eval [form]
   (map->ViewerEval {:form form}))

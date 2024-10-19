@@ -547,9 +547,9 @@
        ;; each view function must be called in its own 'functional component' so that it gets its own hook state.
        ^{:key hash}
        [:> ErrorBoundary {:hash hash}
-        [(:f (:render-fn viewer)) value (merge opts
-                                               (:nextjournal/render-opts x)
-                                               {:viewer viewer :path path})]]))))
+        [(:render-fn viewer) value (merge opts
+                                          (:nextjournal/render-opts x)
+                                          {:viewer viewer :path path})]]))))
 
 (defn inspect [value]
   (r/with-let [!state   (r/atom nil)

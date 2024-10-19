@@ -61,9 +61,9 @@
                (sci/resolve (sci.ctx-store/get-ctx) (resolve-legacy-alias unresolved-sym)))
       (viewer/map->ViewerFn
        {:form form
-        :f (fn [] [render/error-view (ex-info (str "We now require `:render-fn`s to use fully-qualified symbols, and we have removed the old aliases from Clerk. "
-                                                   "Please change `" unresolved-sym "` to `" (resolve-legacy-alias unresolved-sym) "` in your `:render-fn` to resolve this issue.")
-                                              {:render-fn form} e)])}))))
+        :f (delay (fn [] [render/error-view (ex-info (str "We now require `:render-fn`s to use fully-qualified symbols, and we have removed the old aliases from Clerk. "
+                                                          "Please change `" unresolved-sym "` to `" (resolve-legacy-alias unresolved-sym) "` in your `:render-fn` to resolve this issue.")
+                                                     {:render-fn form} e)]))}))))
 
 (defn ->viewer-fn-with-error [form]
   (try (viewer/->viewer-fn form)
@@ -71,8 +71,8 @@
          (or (maybe-handle-legacy-alias-error form e)
              (viewer/map->ViewerFn
               {:form form
-               :f (fn [_]
-                    [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)])})))))
+               :f (delay (fn [_]
+                           [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)]))})))))
 
 (defn ->viewer-eval-with-error [form]
   (try (*eval* form)
