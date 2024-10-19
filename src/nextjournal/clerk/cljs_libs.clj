@@ -18,6 +18,7 @@
            cljs.repl
            clojure.core
            clojure.edn
+           clojure.math
            clojure.repl
            clojure.set
            clojure.string
