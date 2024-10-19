@@ -65,14 +65,22 @@
                                                           "Please change `" unresolved-sym "` to `" (resolve-legacy-alias unresolved-sym) "` in your `:render-fn` to resolve this issue.")
                                                      {:render-fn form} e)]))}))))
 
+(defn ->viewer-fn+opts-with-error [[opts form]]
+  (binding [*eval* (case (:render-evaluator opts)
+                     :cherry cherry-env/eval-form
+                     (nil :sci) *eval*
+                     (throw (ex-info (str "unsupported render-evaluator: " (:render-evaluator opts))
+                                     {:opts opts :form form})))]
+    (try (viewer/->viewer-fn+opts opts form)
+         (catch js/Error e
+           (or (maybe-handle-legacy-alias-error form e)
+               (viewer/map->ViewerFn
+                {:form form
+                 :f (delay (fn [_]
+                             [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)]))}))))))
+
 (defn ->viewer-fn-with-error [form]
-  (try (viewer/->viewer-fn form)
-       (catch js/Error e
-         (or (maybe-handle-legacy-alias-error form e)
-             (viewer/map->ViewerFn
-              {:form form
-               :f (delay (fn [_]
-                           [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)]))})))))
+  (->viewer-fn+opts-with-error [{} form]))
 
 (defn ->viewer-eval-with-error [form]
   (try (*eval* form)
@@ -95,7 +103,7 @@
          (fn [tag]
            (or (get @cljs.reader/*tag-table* tag)
                (get {'viewer-fn ->viewer-fn-with-error
-                     'viewer-fn/cherry cherry-env/->viewer-fn-with-error
+                     'viewer-fn+opts ->viewer-fn+opts-with-error
                      'viewer-eval ->viewer-eval-with-error
                      'viewer-eval/cherry cherry-env/->viewer-eval-with-error
                      'ordered/map ordered-map-reader-cljs} tag)

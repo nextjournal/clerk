@@ -53,15 +53,6 @@
 
 (declare eval-form)
 
-(defn ->viewer-fn-with-error [form]
-  (try (binding [*eval* eval-form]
-         (viewer/->viewer-fn form))
-       (catch js/Error e
-         (viewer/map->ViewerFn
-          {:form form
-           :f (delay (fn [_]
-                       [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)]))}))))
-
 (defn ->viewer-eval-with-error [form]
   (try (eval-form form)
        (catch js/Error e
