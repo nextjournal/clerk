@@ -67,7 +67,8 @@
 
 (defn ->viewer-fn [form]
   (map->ViewerFn {:form form
-                  #?@(:cljs [:f (delay (eval form))])}))
+                  #?@(:cljs [:f (let [bound-eval *eval*]
+                                  (delay (bound-eval form)))])}))
 
 (defn ->viewer-eval [form]
   (map->ViewerEval {:form form}))
