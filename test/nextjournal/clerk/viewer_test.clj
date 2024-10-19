@@ -151,6 +151,16 @@
     (is (thrown? clojure.lang.ExceptionInfo
                  (v/present (v/with-viewer {:render-fn (fn [x] [:h1 x])} "Mike"))))))
 
+(deftest viewer-fn-edn
+  (testing "can be round-tripped to edn"
+    (binding [*data-readers* v/data-readers]
+      (let [viewer-fn (v/->viewer-fn 'foo)]
+        (is (= viewer-fn
+               (read-string (pr-str viewer-fn)))))
+      (let [viewer-fn+ (v/->viewer-fn+opts {:render-evaluator :cherry} 'foo)]
+        (is (= viewer-fn+
+               (read-string (pr-str viewer-fn+))))))))
+
 (deftest present-exceptions
   (testing "can represent ex-data in a readable way"
     (binding [*data-readers* v/data-readers]

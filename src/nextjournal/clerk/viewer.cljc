@@ -70,6 +70,11 @@
                   #?@(:cljs [:f (let [bound-eval *eval*]
                                   (delay (bound-eval form)))])}))
 
+(defn ->viewer-fn+opts
+  ([opts+form] (->viewer-fn+opts (first opts+form) (second opts+form)))
+  ([opts form]
+   (merge (->viewer-fn form) (dissoc opts :form))))
+
 (defn ->viewer-eval [form]
   (map->ViewerEval {:form form}))
 
@@ -80,9 +85,9 @@
 
 #?(:clj
    (defmethod print-method ViewerFn [v ^java.io.Writer w]
-     (.write w (str "#viewer-fn" (when (= :cherry (:render-evaluator v))
-                                   "/cherry")
-                    " " (pr-str (:form v))))))
+     (.write w (if-let [opts (not-empty (dissoc (into {} v) :f :form))]
+                 (str "#viewer-fn+opts " [opts (:form v)])
+                 (str "#viewer-fn " (:form v))))))
 
 #?(:clj
    (defmethod print-method ViewerEval [v ^java.io.Writer w]
@@ -99,6 +104,7 @@
 #?(:clj
    (def data-readers
      {'viewer-fn ->viewer-fn
+      'viewer-fn+opts ->viewer-fn+opts
       'viewer-eval ->viewer-eval
       'ordered/map omap/ordered-map-reader-clj}))
 
