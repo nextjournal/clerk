@@ -73,10 +73,13 @@
                      (throw (ex-info (str "unsupported render-evaluator: " (:render-evaluator opts))
                                      {:opts opts :form form})))]
     (try (let [viewer-fn (viewer/->viewer-fn+opts opts form)]
-           (when (:eval opts)
+           (if (:eval opts)
              ;; force immediate evaluation to keep things working for now
-             (viewer-fn))
-           viewer-fn)
+             (try (viewer-fn)
+                  (catch js/Error e
+                    (js/console.error "error in viewer-eval" e form)
+                    (swap! render/!render-errors conj (Throwable->map e))))
+             viewer-fn))
          (catch js/Error e
            (or (maybe-handle-legacy-alias-error form e)
                (viewer/map->ViewerFn
