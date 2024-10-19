@@ -92,7 +92,7 @@
 (def data-readers
   {'viewer-fn ->viewer-fn
    'viewer-fn+opts ->viewer-fn+opts
-   'clerk/unreadble-edn eval
+   'clerk/unreadable-edn eval
    'ordered/map #?(:clj omap/ordered-map-reader-clj
                    :cljs ordered-map-reader-cljs)})
 
