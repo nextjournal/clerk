@@ -245,7 +245,7 @@
     (is (match? {:nextjournal/value nil, :nextjournal/viewer {:name `v/html-viewer}}
                 (v/present (v/html nil)))))
 
-  (testing "big ints and ratios are represented as strings (issue #335)"
+  (testing "big ints and ratios are represented as strings (issue 335)"
     (is (match? {:nextjournal/value "1142497398145249635243N"}
                 (v/present 1142497398145249635243N)))
     (is (match? {:nextjournal/value "10/33"}
