@@ -85,13 +85,16 @@
      (.write w (if-let [opts (not-empty (dissoc (into {} v) :f :form))]
                  (str "#viewer-fn+opts " [opts (:form v)])
                  (str "#viewer-fn " (:form v))))))
+#?(:cljs
+   (defn ordered-map-reader-cljs [coll]
+     (omap/ordered-map (vec coll))))
 
 (def data-readers
   {'viewer-fn ->viewer-fn
    'viewer-fn+opts ->viewer-fn+opts
    'clerk/unreadble-edn eval
    'ordered/map #?(:clj omap/ordered-map-reader-clj
-                   :cljs omap/ordered-map-reader-cljs)})
+                   :cljs ordered-map-reader-cljs)})
 
 #_(binding [*data-readers* {'viewer-fn ->viewer-fn}]
     (read-string (pr-str (->viewer-fn '(fn [x] x)))))
