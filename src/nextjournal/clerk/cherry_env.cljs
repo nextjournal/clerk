@@ -59,8 +59,8 @@
        (catch js/Error e
          (viewer/map->ViewerFn
           {:form form
-           :f (fn [_]
-                [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)])}))))
+           :f (delay (fn [_]
+                       [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)]))}))))
 
 (defn ->viewer-eval-with-error [form]
   (try (eval-form form)
