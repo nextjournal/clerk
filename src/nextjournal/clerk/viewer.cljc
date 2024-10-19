@@ -86,11 +86,12 @@
                  (str "#viewer-fn+opts " [opts (:form v)])
                  (str "#viewer-fn " (:form v))))))
 
-#?(:clj
-   (def data-readers
-     {'viewer-fn ->viewer-fn
-      'viewer-fn+opts ->viewer-fn+opts
-      'ordered/map omap/ordered-map-reader-clj}))
+(def data-readers
+  {'viewer-fn ->viewer-fn
+   'viewer-fn+opts ->viewer-fn+opts
+   'clerk/unreadble-edn eval
+   'ordered/map #?(:clj omap/ordered-map-reader-clj
+                   :cljs omap/ordered-map-reader-cljs)})
 
 #_(binding [*data-readers* {'viewer-fn ->viewer-fn}]
     (read-string (pr-str (->viewer-fn '(fn [x] x)))))
@@ -373,18 +374,20 @@
    (defmethod print-method clojure.lang.Keyword [o w]
      (if (roundtrippable? o)
        (print-simple o w)
-       (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
-                                          (list 'keyword ns (name o))
-                                          (list 'keyword (name o)))))))))
+       (.write w (str "#clerk/unreadable-edn "
+                      (pr-str (if-let [ns (namespace o)]
+                                (list 'keyword ns (name o))
+                                (list 'keyword (name o)))))))))
 
 #?(:clj
    (defmethod print-method clojure.lang.Symbol [o w]
      (if (or (roundtrippable? o)
              (= (name o) "?@"))  ;; splicing reader conditional, see issue #338
        (print-simple o w)
-       (.write w (pr-str (->viewer-eval (if-let [ns (namespace o)]
-                                          (list 'symbol ns (name o))
-                                          (list 'symbol (name o)))))))))
+       (.write w (str "#clerk/unreadable-edn "
+                      (pr-str (if-let [ns (namespace o)]
+                                (list 'symbol ns (name o))
+                                (list 'symbol (name o)))))))))
 
 #?(:clj
    (defn ->edn [x]

@@ -17,7 +17,6 @@
             [cljs.reader]
             [clojure.string :as str]
             [edamame.core :as edamame]
-            [flatland.ordered.map :as omap]
             [goog.object]
             [nextjournal.clerk.cherry-env :as cherry-env]
             [nextjournal.clerk.parser]
@@ -91,9 +90,6 @@
   (->viewer-fn+opts-with-error [{} form]))
 
 
-(defn ordered-map-reader-cljs [coll]
-  (omap/ordered-map (vec coll)))
-
 (defonce !edamame-opts
   (atom {:all true
          :row-key :line
@@ -105,8 +101,8 @@
          (fn [tag]
            (or (get @cljs.reader/*tag-table* tag)
                (get {'viewer-fn ->viewer-fn-with-error
-                     'viewer-fn+opts ->viewer-fn+opts-with-error
-                     'ordered/map ordered-map-reader-cljs} tag)
+                     'viewer-fn+opts ->viewer-fn+opts-with-error} tag)
+               (get viewer/data-readers tag)
                (fn [value]
                  (viewer/with-viewer `viewer/tagged-value-viewer
                    {:tag tag
