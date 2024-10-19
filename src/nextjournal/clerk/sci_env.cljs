@@ -66,12 +66,17 @@
                                                      {:render-fn form} e)]))}))))
 
 (defn ->viewer-fn+opts-with-error [[opts form]]
+  (prn :->viewer-fn+opts-with-error opts form)
   (binding [*eval* (case (:render-evaluator opts)
                      :cherry cherry-env/eval-form
                      (nil :sci) *eval*
                      (throw (ex-info (str "unsupported render-evaluator: " (:render-evaluator opts))
                                      {:opts opts :form form})))]
-    (try (viewer/->viewer-fn+opts opts form)
+    (try (let [viewer-fn (viewer/->viewer-fn+opts opts form)]
+           (when (:eval opts)
+             ;; force immediate evaluation to keep things working for now
+             (viewer-fn))
+           viewer-fn)
          (catch js/Error e
            (or (maybe-handle-legacy-alias-error form e)
                (viewer/map->ViewerFn
@@ -83,6 +88,7 @@
   (->viewer-fn+opts-with-error [{} form]))
 
 (defn ->viewer-eval-with-error [form]
+  (prn :->viewer-eval-with-error form)
   (try (*eval* form)
        (catch js/Error e
          (js/console.error "error in viewer-eval" e form)

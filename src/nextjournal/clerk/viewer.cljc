@@ -32,27 +32,24 @@
                    (java.nio.file Files StandardOpenOption)
                    (javax.imageio ImageIO))))
 
-(defrecord ViewerEval [form])
-
 (defrecord ViewerFn [form #?(:cljs f)]
   #?@(:cljs [IFn
+             (-invoke [_] (@f))
              (-invoke [_ x] (@f x))
              (-invoke [_ x y] (@f x y))]))
 
-;; Make sure `ViewerFn` and `ViewerEval` is changed atomically
+;; Make sure `ViewerFn` is changed atomically
 #?(:clj
    (extend-protocol editscript.edit/IType
      ViewerFn
-     (get-type [_] :val)
-
-     ViewerEval
      (get-type [_] :val)))
 
 (defn viewer-fn? [x]
   (instance? ViewerFn x))
 
 (defn viewer-eval? [x]
-  (instance? ViewerEval x))
+  (and (viewer-fn? x)
+       (some? (:eval x))))
 
 (defn resolve-symbol-alias [aliases sym]
   (if-let [full-ns (some->> sym namespace symbol (get aliases) str)]
@@ -76,7 +73,7 @@
    (merge (->viewer-fn form) (dissoc opts :form))))
 
 (defn ->viewer-eval [form]
-  (map->ViewerEval {:form form}))
+  (->viewer-fn+opts {:eval true} (list 'fn [] form)))
 
 (defn open-graph-metas [open-graph-properties]
   (into (list [:meta {:name "twitter:card" :content "summary_large_image"}])
@@ -90,22 +87,9 @@
                  (str "#viewer-fn " (:form v))))))
 
 #?(:clj
-   (defmethod print-method ViewerEval [v ^java.io.Writer w]
-     (.write w (str "#viewer-eval" (when (= :cherry (:render-evaluator v))
-                                     "/cherry")
-                    " " (pr-str (:form v)))))
-   :cljs
-   (extend-type ViewerEval
-     IPrintWithWriter
-     (-pr-writer [obj w _opts]
-       (-write w "#viewer-eval ")
-       (-write w (pr-str (:form obj))))))
-
-#?(:clj
    (def data-readers
      {'viewer-fn ->viewer-fn
       'viewer-fn+opts ->viewer-fn+opts
-      'viewer-eval ->viewer-eval
       'ordered/map omap/ordered-map-reader-clj}))
 
 #_(binding [*data-readers* {'viewer-fn ->viewer-fn}]
@@ -1320,13 +1304,14 @@
                                 (symbol? x) (->viewer-eval x)
                                 (var? x) (->viewer-eval (list 'resolve (list 'quote (symbol x))))
                                 (var-from-def? x) (recur (-> x :nextjournal.clerk/var-from-def symbol))))))
-   :render-fn '(fn [x opts]
-                 (if (nextjournal.clerk.render/reagent-atom? x)
-                   ;; special atoms handling to support reactivity
-                   [nextjournal.clerk.render/render-tagged-value {:space? false}
-                    "#object"
-                    [nextjournal.clerk.render/inspect [(symbol (pr-str (type x))) @x]]]
-                   [nextjournal.clerk.render/inspect x]))})
+   :render-fn '(fn [get-x-fn opts]
+                 (let [x (get-x-fn)]
+                   (if (nextjournal.clerk.render/reagent-atom? x)
+                     ;; special atoms handling to support reactivity
+                     [nextjournal.clerk.render/render-tagged-value {:space? false}
+                      "#object"
+                      [nextjournal.clerk.render/inspect [(symbol (pr-str (type x))) @x]]]
+                     [nextjournal.clerk.render/inspect x])))})
 
 (def default-viewers
   ;; maybe make this a sorted-map
