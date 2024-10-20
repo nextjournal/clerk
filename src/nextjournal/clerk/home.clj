@@ -90,7 +90,7 @@
                                                                              (str/join fs/file-separator (butlast (fs/path path)))) paths))))))})
 
 (def filter-input-viewer
-  (assoc v/viewer-eval-viewer
+  (assoc v/render-eval-viewer
          :var-from-def true
          :render-fn '(fn [!state]
                        (let [!input-el (nextjournal.clerk.render.hooks/use-ref nil)]

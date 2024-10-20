@@ -198,7 +198,7 @@
                                    (mapv slurp-resource (keep ns->resource (all-ns state)))))]
       (-> doc
           ;; make sure :cljs-libs is the first key, so these are read + evaluated first
-          (aam/assoc-before :cljs-libs (mapv (fn [code-str] (v/->viewer-eval `(load-string ~code-str))) cljs-sources))
+          (aam/assoc-before :cljs-libs (mapv (fn [code-str] (v/->render-eval `(load-string ~code-str))) cljs-sources))
           (aam/assoc-before :nextjournal.clerk/remount (valuehash :sha1 cljs-sources)))
       doc)))
 

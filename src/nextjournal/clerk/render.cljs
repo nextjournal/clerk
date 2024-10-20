@@ -686,17 +686,17 @@
 (defn remount? [doc-or-patch]
   (true? (some #(= % :nextjournal.clerk/remount) (tree-seq coll? seq doc-or-patch))))
 
-(defn re-eval-viewer-fns [doc]
-  (let [re-eval (fn [{:keys [form]}] (viewer/->viewer-fn form))]
-    (w/postwalk (fn [x] (cond-> x (and (viewer/viewer-fn? x) (not (:eval x))) re-eval)) doc)))
+(defn re-eval-render-fns [doc]
+  (let [re-eval (fn [{:keys [form]}] (viewer/->render-fn form))]
+    (w/postwalk (fn [x] (cond-> x (and (viewer/render-fn? x) (not (:eval x))) re-eval)) doc)))
 
 (defn eval-cljs-evals [doc]
   (reset! !render-errors [])
   (w/postwalk (fn [x]
-                (if (viewer/viewer-eval? x)
+                (if (viewer/render-eval? x)
                   (try (deref (:f x))
                        (catch js/Error e
-                         (js/console.error "error in viewer-eval" e (:form x))
+                         (js/console.error "error in render-eval" e (:form x))
                          (swap! !render-errors conj (Throwable->map e))))
                   x))
               doc))
@@ -725,7 +725,7 @@
 (defn patch-state! [{:keys [patch effects]}]
   (run-effects! effects)
   (if (remount? patch)
-    (do (swap! !doc #(re-eval-viewer-fns (apply-patch % patch)))
+    (do (swap! !doc #(re-eval-render-fns (apply-patch % patch)))
         ;; TODO: figure out why it doesn't work without `js/setTimeout`
         (js/setTimeout #(swap! !eval-counter inc) 10))
     (swap! !doc apply-patch patch)))
@@ -903,7 +903,7 @@
     (.render react-root (r/as-element [root]))))
 
 (defn ^:dev/after-load ^:after-load re-render []
-  (swap! !doc re-eval-viewer-fns)
+  (swap! !doc re-eval-render-fns)
   (mount))
 
 (defn ^:export init [{:as state :keys [render-router path->doc]}]

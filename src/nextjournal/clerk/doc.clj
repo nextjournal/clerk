@@ -58,7 +58,7 @@
   [:div.mt-1
    [:div.hover:underline.cursor-pointer.hover:text-indigo-600.dark:hover:text-white.whitespace-nowrap
     {:class (when (= @!active-ns name) "font-bold")
-     :on-click (viewer/->viewer-eval `(fn []
+     :on-click (viewer/->render-eval `(fn []
                                         (reset! !active-ns ~name)
                                         (reset! !ns-query "")))} name]
    (when (and vars (= @!active-ns name))
@@ -66,7 +66,7 @@
       (into [:div.text-xs.font-sans.mt-1.ml-3.mb-3]
             (map (fn [var]
                    [:div.mt-1.hover:text-indigo-600.dark:hover:text-white.cursor-pointer.hover:underline
-                    {:on-click (viewer/->viewer-eval `(fn []
+                    {:on-click (viewer/->render-eval `(fn []
                                                         (when-some [el (js/document.getElementById ~(str var))]
                                                           (.scrollIntoView el))))}
                     var]))
@@ -127,7 +127,7 @@
      [:div.border-r.dark:border-slate-800.flex-shrink-0.flex.flex-col {:class "w-[300px]"}
       [:div.px-3.py-3.border-b.dark:border-slate-800
        (clerk/with-viewer {:render-fn render-input
-                           :transform-fn clerk/mark-presented} (viewer/->viewer-eval `!ns-query))
+                           :transform-fn clerk/mark-presented} (viewer/->render-eval `!ns-query))
        (when (= matches :error)
          [:div.text-red-600.dark:text-red-400.mt-2.font-sans.px-2.text-xs
           "😖 Invalid or incomplete Regex pattern."])]
@@ -153,12 +153,12 @@
                 [:div.tracking-wider.uppercase.text-slate-500.dark:text-slate-400.px-5.font-sans.text-xs.mt-5.mb-2 "Nav"]
                 (when-some [ns-name (some-> (str/join "." (butlast (str/split @!active-ns #"\."))) symbol find-ns ns-name str)]
                   [:div.px-5.font-sans.text-xs.mt-1.hover:text-indigo-600.dark:hover:text-white.hover:underline.cursor-pointer
-                   {:on-click (viewer/->viewer-eval `(fn []
+                   {:on-click (viewer/->render-eval `(fn []
                                                        (reset! !active-ns ~ns-name)
                                                        (reset! !ns-query "")))}
                    "One level up"])
                 [:div.px-5.font-sans.text-xs.mt-1.hover:text-indigo-600.dark:hover:text-white.hover:underline.cursor-pointer
-                 {:on-click (viewer/->viewer-eval `(fn []
+                 {:on-click (viewer/->render-eval `(fn []
                                                      (reset! !active-ns :all)
                                                      (reset! !ns-query "")))}
                  "All namespaces"]]
@@ -184,7 +184,7 @@
                        (into [:div.mt-2]
                              (map (fn [ns-str]
                                     [:div.pt-5.mt-5.border-t.dark:border-slate-800.hover:text-indigo-600.cursor-pointer.group
-                                     {:on-click (viewer/->viewer-eval `(fn []
+                                     {:on-click (viewer/->render-eval `(fn []
                                                                          (reset! !active-ns ~ns-str)
                                                                          (reset! !ns-query "")))}
                                      [:div.font-sans.text-base.font-bold.group-hover:underline

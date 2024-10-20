@@ -32,23 +32,23 @@
                    (java.nio.file Files StandardOpenOption)
                    (javax.imageio ImageIO))))
 
-(defrecord ViewerFn [form #?(:cljs f)]
+(defrecord RenderFn [form #?(:cljs f)]
   #?@(:cljs [IFn
              (-invoke [_] (@f))
              (-invoke [_ x] (@f x))
              (-invoke [_ x y] (@f x y))]))
 
-;; Make sure `ViewerFn` is changed atomically
+;; Make sure `RenderFn` is changed atomically
 #?(:clj
    (extend-protocol editscript.edit/IType
-     ViewerFn
+     RenderFn
      (get-type [_] :val)))
 
-(defn viewer-fn? [x]
-  (instance? ViewerFn x))
+(defn render-fn? [x]
+  (instance? RenderFn x))
 
-(defn viewer-eval? [x]
-  (and (viewer-fn? x)
+(defn render-eval? [x]
+  (and (render-fn? x)
        (some? (:eval x))))
 
 (defn resolve-symbol-alias [aliases sym]
@@ -62,18 +62,22 @@
   #?(:clj ([form] (resolve-aliases (ns-aliases *ns*) form)))
   ([aliases form] (w/postwalk #(cond->> % (qualified-symbol? %) (resolve-symbol-alias aliases)) form)))
 
-(defn ->viewer-fn [form]
-  (map->ViewerFn {:form form
+(defn ->render-fn [form]
+  (map->RenderFn {:form form
                   #?@(:cljs [:f (let [bound-eval *eval*]
                                   (delay (bound-eval form)))])}))
 
-(defn ->viewer-fn+opts
-  ([opts+form] (->viewer-fn+opts (first opts+form) (second opts+form)))
+(defn ->render-fn+opts
+  ([opts+form] (->render-fn+opts (first opts+form) (second opts+form)))
   ([opts form]
-   (merge (->viewer-fn form) (dissoc opts :form))))
+   (merge (->render-fn form) (dissoc opts :form))))
 
-(defn ->viewer-eval [form]
-  (->viewer-fn+opts {:eval true} form))
+(defn ->render-eval [form]
+  (->render-fn+opts {:eval true} form))
+
+(def ^{:deprecated "0.18"} ->viewer-eval
+  "Use `->render-eval` instead."
+  ->render-eval)
 
 (defn open-graph-metas [open-graph-properties]
   (into (list [:meta {:name "twitter:card" :content "summary_large_image"}])
@@ -81,28 +85,28 @@
         open-graph-properties))
 
 #?(:clj
-   (defmethod print-method ViewerFn [v ^java.io.Writer w]
+   (defmethod print-method RenderFn [v ^java.io.Writer w]
      (.write w (if-let [opts (not-empty (dissoc (into {} v) :f :form))]
-                 (str "#viewer-fn+opts " [opts (:form v)])
-                 (str "#viewer-fn " (:form v))))))
+                 (str "#clerk/render-fn+opts " [opts (:form v)])
+                 (str "#clerk/render-fn " (:form v))))))
 #?(:cljs
    (defn ordered-map-reader-cljs [coll]
      (omap/ordered-map (vec coll))))
 
 (def data-readers
-  {'viewer-fn ->viewer-fn
-   'viewer-fn+opts ->viewer-fn+opts
+  {'clerk/render-fn ->render-fn
+   'clerk/render-fn+opts ->render-fn+opts
    'clerk/unreadable-edn eval
    'ordered/map #?(:clj omap/ordered-map-reader-clj
                    :cljs ordered-map-reader-cljs)})
 
-#_(binding [*data-readers* {'viewer-fn ->viewer-fn}]
-    (read-string (pr-str (->viewer-fn '(fn [x] x)))))
-#_(binding [*data-readers* {'viewer-fn ->viewer-fn}]
-    (read-string (pr-str (->viewer-fn 'number?))))
+#_(binding [*data-readers* {'render-fn ->render-fn}]
+    (read-string (pr-str (->render-fn '(fn [x] x)))))
+#_(binding [*data-readers* {'render-fn ->render-fn}]
+    (read-string (pr-str (->render-fn 'number?))))
 
 (comment
-  (def num? (->viewer-fn 'number?))
+  (def num? (->render-fn 'number?))
   (num? 42)
   (:form num?)
   (pr-str num?))
@@ -303,7 +307,7 @@
 (declare present present* !viewers apply-viewers apply-viewers* ensure-wrapped-with-viewers process-viewer process-wrapped-value default-viewers find-named-viewer)
 
 (defn inspect-fn []
-  #?(:clj (->viewer-eval 'nextjournal.clerk.render/inspect-presented)
+  #?(:clj (->render-eval 'nextjournal.clerk.render/inspect-presented)
      :cljs (eval 'nextjournal.clerk.render/inspect-presented)))
 
 (defn mark-presented [wrapped-value]
@@ -544,13 +548,13 @@
                                          fragment-item? (assoc :fragment-item? true)
                                          (not existing-id) (assoc :id (processed-block-id (str id "-result") path)))))
                              #?(:clj (->> (process-blobs blob-opts))))
-        viewer-eval-result? (-> presented-result :nextjournal/value viewer-eval?)]
-    #_(prn :presented-result viewer-eval? presented-result)
+        render-eval-result? (-> presented-result :nextjournal/value render-eval?)]
+    #_(prn :presented-result render-eval? presented-result)
     (-> wrapped-value
         mark-presented
         (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result :nextjournal/blob-id blob-id}
-                                     viewer-eval-result?
-                                     (assoc ::viewer-eval-form (-> presented-result :nextjournal/value :form))
+                                     render-eval-result?
+                                     (assoc ::render-eval-form (-> presented-result :nextjournal/value :form))
 
                                      (-> form meta :nextjournal.clerk/open-graph :image)
                                      (assoc :nextjournal/open-graph-image-capture true)
@@ -570,11 +574,11 @@
     {:code? (not= :hide code)
      :result? (and (:result cell)
                    (or (not= :hide result)
-                       (-> cell :result :nextjournal/value (get-safe :nextjournal/value) viewer-eval?)))}))
+                       (-> cell :result :nextjournal/value (get-safe :nextjournal/value) render-eval?)))}))
 
-(defn hidden-viewer-eval-result? [{:keys [settings result]}]
+(defn hidden-render-eval-result? [{:keys [settings result]}]
   (and (= :hide (-> settings :nextjournal.clerk/visibility :result))
-       (viewer-eval? (-> result :nextjournal/value (get-safe :nextjournal/value)))))
+       (render-eval? (-> result :nextjournal/value (get-safe :nextjournal/value)))))
 
 #_(->visibility {:settings {:nextjournal.clerk/visibility {:code :show :result :show}}})
 #_(->visibility {:settings {:nextjournal.clerk/visibility {:code :fold :result :show}}})
@@ -651,7 +655,7 @@
       fragment-seq
       (->> (mapv (partial with-viewer
                           (cond-> result-viewer
-                            (hidden-viewer-eval-result? cell)
+                            (hidden-render-eval-result? cell)
                             (assoc :render-fn '(fn [_ _] [:<>]))))))))
 
 (defn transform-cell [cell]
@@ -1179,7 +1183,7 @@
         blocks))
 
 (defn atom-var-name->state [doc]
-  (->viewer-eval
+  (->render-eval
    (list 'nextjournal.clerk.render/intern-atoms!
          (into {}
                (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote))))
@@ -1265,7 +1269,7 @@
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (-> doc
       (assoc :atom-var-name->state (atom-var-name->state doc))
-      (assoc :ns (->viewer-eval (list 'ns (if ns (ns-name ns) 'user))))
+      (assoc :ns (->render-eval (list 'ns (if ns (ns-name ns) 'user))))
       (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer (dissoc doc :error)))
                                              (map (comp present (partial ensure-wrapped-with-viewers viewers))))))
       (assoc :header (present (with-viewers viewers (with-viewer `header-viewer doc))))
@@ -1298,17 +1302,17 @@
                        (update :nextjournal/value (partial process-blocks viewers))
                        mark-presented))})
 
-(def viewer-eval-viewer
-  {:name `viewer-eval-viewer
-   :pred viewer-eval?
+(def render-eval-viewer
+  {:name `render-eval-viewer
+   :pred render-eval?
    :var-from-def? true
    :transform-fn (comp mark-presented
                        (update-val
                         (fn [x]
-                          (cond (viewer-eval? x) x
-                                (seq? x) (->viewer-eval x)
-                                (symbol? x) (->viewer-eval x)
-                                (var? x) (->viewer-eval (list 'resolve (list 'quote (symbol x))))
+                          (cond (render-eval? x) x
+                                (seq? x) (->render-eval x)
+                                (symbol? x) (->render-eval x)
+                                (var? x) (->render-eval (list 'resolve (list 'quote (symbol x))))
                                 (var-from-def? x) (recur (-> x :nextjournal.clerk/var-from-def symbol))))))
    :render-fn '(fn [x opts]
                  (if (nextjournal.clerk.render/reagent-atom? x)
@@ -1317,6 +1321,11 @@
                     "#object"
                     [nextjournal.clerk.render/inspect [(symbol (pr-str (type x))) @x]]]
                    [nextjournal.clerk.render/inspect x]))})
+
+(def ^{:deprecated "0.18"}
+  viewer-eval-viewer
+  "Use `render-eval-viewer` instead."
+  render-eval-viewer)
 
 (def default-viewers
   ;; maybe make this a sorted-map
@@ -1336,7 +1345,7 @@
    vector-viewer
    set-viewer
    sequential-viewer
-   viewer-eval-viewer
+   render-eval-viewer
    cell-viewer
    result-viewer
    map-viewer
@@ -1528,9 +1537,9 @@
 
 (defn process-render-fn [{:as viewer :keys [render-fn render-evaluator]}]
   (cond-> viewer
-    (and render-fn (not (viewer-fn? render-fn)))
+    (and render-fn (not (render-fn? render-fn)))
     (update :render-fn (fn [rf]
-                         (assoc (->viewer-fn rf)
+                         (assoc (->render-fn rf)
                                 :render-evaluator (or render-evaluator :sci))))))
 
 (defn hash-sha1 [x]
@@ -1912,19 +1921,19 @@
   (cond-> wrapped-value
     (= :cherry render-evaluator)
     (update :nextjournal/value
-            (fn [{:as viewer-eval :keys [form]}]
-              (-> viewer-eval
+            (fn [{:as render-eval :keys [form]}]
+              (-> render-eval
                   (assoc :render-evaluator render-evaluator)
                   (update :form rewrite-for-cherry))))))
 
 (defn eval-cljs
   ([form] (eval-cljs {} form))
   ([viewer-opts form]
-   (with-viewer (-> viewer-eval-viewer
+   (with-viewer (-> render-eval-viewer
                     (update :transform-fn comp maybe-rewrite-cljs-form-for-cherry)
                     (assoc :nextjournal.clerk/remount (hash-sha1 form)))
      viewer-opts
-     (->viewer-eval form))))
+     (->render-eval form))))
 
 (defn eval-cljs-str
   ([code-string] (eval-cljs-str {} code-string))
