@@ -74,7 +74,7 @@
     (try (let [viewer-fn (viewer/->viewer-fn+opts opts form)]
            (if (:eval opts)
              ;; force immediate evaluation to keep things working for now
-             (try (viewer-fn)
+             (try (deref (:f viewer-fn))
                   (catch js/Error e
                     (js/console.error "error in viewer-eval" e form)
                     (swap! render/!render-errors conj (Throwable->map e))))

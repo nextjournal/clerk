@@ -350,7 +350,6 @@
                        :nextjournal/value
                        :atom-var-name->state
                        :form
-                       (nth 2)
                        second)))
 
     (is (thrown-with-msg?

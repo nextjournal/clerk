@@ -73,7 +73,7 @@
    (merge (->viewer-fn form) (dissoc opts :form))))
 
 (defn ->viewer-eval [form]
-  (->viewer-fn+opts {:eval true} (list 'fn [] form)))
+  (->viewer-fn+opts {:eval true} form))
 
 (defn open-graph-metas [open-graph-properties]
   (into (list [:meta {:name "twitter:card" :content "summary_large_image"}])
@@ -1900,15 +1900,13 @@
   * rewriting `nextjournal.clerk.sci-env/load-string+`"
   [form]
   (if (and (seq? form)
-           (= 3 (count form))
-           (= '(fn []) (take 2 form))
-           (= 'nextjournal.clerk.sci-env/load-string+ (first (nth form 2))))
-    (list 'fn [] (list 'js/global_eval (list 'nextjournal.clerk.cherry-env/cherry-compile-string (second (nth form 2)))))
+           (= 'nextjournal.clerk.sci-env/load-string+ (first form)))
+    (list 'js/global_eval (list 'nextjournal.clerk.cherry-env/cherry-compile-string (second form)))
     form))
 
 #_(rewrite-for-cherry '(binding [*ns* *ns*] (prn :foo)))
 #_(rewrite-for-cherry '(binding [*ns* *ns*] (load-string "(prn :foo)")))
-#_(rewrite-for-cherry '(fn [] (nextjournal.clerk.sci-env/load-string+ "(this-as foo)")))
+#_(rewrite-for-cherry '(nextjournal.clerk.sci-env/load-string+ "(this-as foo)"))
 
 (defn ^:private maybe-rewrite-cljs-form-for-cherry [{:as wrapped-value :nextjournal/keys [render-evaluator]}]
   (cond-> wrapped-value
