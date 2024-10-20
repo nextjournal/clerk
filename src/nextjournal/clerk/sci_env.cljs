@@ -43,44 +43,18 @@
             [sci.nrepl.server :as nrepl]
             [shadow.esm]))
 
-(def legacy-ns-aliases
-  {"j" "applied-science.js-interop"
-   "reagent" "reagent.core"
-   "render" "nextjournal.clerk.render"
-   "v" "nextjournal.clerk.viewer"
-   "p" "nextjournal.clerk.parser"})
-
-(defn resolve-legacy-alias [sym]
-  (symbol (get legacy-ns-aliases (namespace sym) (namespace sym))
-          (name sym)))
-
-(defn maybe-handle-legacy-alias-error [form e]
-  (when-let [unresolved-sym (some-> (re-find #"^Could not resolve symbol: (.*)$" (ex-message e)) second symbol)]
-    (when (and (contains? legacy-ns-aliases (namespace unresolved-sym))
-               (sci/resolve (sci.ctx-store/get-ctx) (resolve-legacy-alias unresolved-sym)))
-      (viewer/map->ViewerFn
-       {:form form
-        :f (delay (fn [] [render/error-view (ex-info (str "We now require `:render-fn`s to use fully-qualified symbols, and we have removed the old aliases from Clerk. "
-                                                          "Please change `" unresolved-sym "` to `" (resolve-legacy-alias unresolved-sym) "` in your `:render-fn` to resolve this issue.")
-                                                     {:render-fn form} e)]))}))))
-
-(defn ->viewer-fn+opts-with-error [[opts form]]
-  (binding [*eval* (case (:render-evaluator opts)
-                     :cherry cherry-env/eval-form
-                     (nil :sci) *eval*
-                     (throw (ex-info (str "unsupported render-evaluator: " (:render-evaluator opts))
-                                     {:opts opts :form form})))]
-    (try (viewer/->viewer-fn+opts opts form)
-         (catch js/Error e
-           (or (maybe-handle-legacy-alias-error form e)
-               (viewer/map->ViewerFn
-                {:form form
-                 :f (delay (fn [_]
-                             [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)]))}))))))
-
-(defn ->viewer-fn-with-error [form]
-  (->viewer-fn+opts-with-error [{} form]))
-
+(defn ->viewer-fn+opts-with-*eval*-binding
+  "Establishes the `*eval*` binding to support alternative
+  evaluators (currently only `:cherry`) and calls
+  `viewer/->viewer-fn+opts`."
+  [opts+form]
+  (binding [*eval* (let [render-evaluator (:render-evaluator (first opts+form))]
+                     (case render-evaluator
+                       :cherry cherry-env/eval-form
+                       (nil :sci) *eval*
+                       (throw (ex-info (str "unsupported render-evaluator: " render-evaluator)
+                                       opts+form))))]
+    (viewer/->viewer-fn+opts opts+form)))
 
 (defonce !edamame-opts
   (atom {:all true
@@ -92,8 +66,8 @@
          :readers
          (fn [tag]
            (or (get @cljs.reader/*tag-table* tag)
-               (get {'viewer-fn ->viewer-fn-with-error
-                     'viewer-fn+opts ->viewer-fn+opts-with-error} tag)
+               (when (= tag 'viewer-fn+opts)
+                 ->viewer-fn+opts-with-*eval*-binding)
                (get viewer/data-readers tag)
                (fn [value]
                  (viewer/with-viewer `viewer/tagged-value-viewer
