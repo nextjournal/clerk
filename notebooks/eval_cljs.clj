@@ -1,6 +1,5 @@
 ;; # 📑 Eval CLJS
 (ns eval-cljs
-  {:nextjournal.clerk/no-cache true}
   (:require [nextjournal.clerk :as clerk]))
 
 ;; > ⚠️ Please see [require_cljs.clj](/notebooks/require_cljs.clj) for a much easier way to do the same thing.
