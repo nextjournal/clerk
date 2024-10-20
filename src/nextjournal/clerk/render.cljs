@@ -690,12 +690,23 @@
   (let [re-eval (fn [{:keys [form]}] (viewer/->viewer-fn form))]
     (w/postwalk (fn [x] (cond-> x (and (viewer/viewer-fn? x) (not (:eval x))) re-eval)) doc)))
 
+(defn eval-cljs-evals [doc]
+  (reset! !render-errors [])
+  (w/postwalk (fn [x]
+                (if (viewer/viewer-eval? x)
+                  (try (deref (:f x))
+                       (catch js/Error e
+                         (js/console.error "error in viewer-eval" e (:form x))
+                         (swap! !render-errors conj (Throwable->map e))))
+                  x))
+              doc))
+
 (defn ^:export set-state! [{:as state :keys [doc]}]
   (when (contains? state :doc)
     (when (exists? js/window)
       ;; TODO: can we restore the scroll position when navigating back?
       (.scrollTo js/window #js {:top 0}))
-    (reset! !doc doc))
+    (reset! !doc (eval-cljs-evals doc)))
   ;; (when (and error (contains? @!doc :status))
   ;;   (swap! !doc dissoc :status))
   (when (remount? doc)
@@ -704,7 +715,7 @@
     (set! (.-title js/document) title)))
 
 (defn apply-patch [x patch]
-  (editscript/patch x (editscript/edits->script patch)))
+  (eval-cljs-evals (editscript/patch x (editscript/edits->script patch))))
 
 (defn patch-state! [{:keys [patch]}]
   (if (remount? patch)
@@ -728,7 +739,10 @@
 (defn process-eval-reply! [{:keys [eval-id reply error]}]
   (if-let [{:keys [resolve reject]} (get @!pending-clerk-eval-replies eval-id)]
     (do (swap! !pending-clerk-eval-replies dissoc eval-id)
-        (if error (reject error) (resolve reply)))
+        (if error
+          (do (swap! !render-errors conj error)
+              (reject error))
+          (resolve reply)))
     (js/console.warn :process-eval-reply!/not-found :eval-id eval-id :keys (keys @!pending-clerk-eval-replies))))
 
 (defonce container-el

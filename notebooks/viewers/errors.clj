@@ -30,3 +30,8 @@
                                                          (.catch handle-error))))]
                                           [:h3 {:ref ref} (str x)]))}
   42)
+
+(clerk/with-viewer {:render-fn '(fn [_]
+                                  [:button.bg-red-500.rounded-xl.p-2 {:on-click (fn [_] (nextjournal.clerk.render/clerk-eval '(boom {})))}
+                                   "Tigger clerk-eval error 💣"])}
+  {})

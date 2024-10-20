@@ -188,7 +188,9 @@
                        :eval (do (send! sender-ch (merge {:type :eval-reply :eval-id (:eval-id msg)}
                                                          (try {:reply (eval (:form msg))}
                                                               (catch Exception e
-                                                                {:error (Throwable->map e)}))))
+                                                                {:error (Throwable->map (ex-info (str "An error occured during clerk-eval: " (ex-message e))
+                                                                                                 (dissoc msg :type :eval-id)
+                                                                                                 e))}))))
                                  (when recompute?
                                    (eval '(nextjournal.clerk/recompute!))))
                        :sync! (if-let [var (resolve (:var-name msg))]
