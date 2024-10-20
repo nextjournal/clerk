@@ -31,7 +31,7 @@
   `:max` maximum value (100)
   `:step` increment (1)"
   ([!state] (slider {} !state))
-  ([opts !state] (viewer/with-viewer (assoc viewer/viewer-eval-viewer :render-fn (render-slider opts)) !state)))
+  ([opts !state] (viewer/with-viewer (assoc viewer/render-eval-viewer :render-fn (render-slider opts)) !state)))
 
 
 (defn render-text-input
@@ -47,5 +47,5 @@
 
 (defn text-input
   ([!state] (text-input {} !state))
-  ([opts !state] (viewer/with-viewer (assoc viewer/viewer-eval-viewer :render-fn (render-text-input opts)) !state)))
+  ([opts !state] (viewer/with-viewer (assoc viewer/render-eval-viewer :render-fn (render-text-input opts)) !state)))
 

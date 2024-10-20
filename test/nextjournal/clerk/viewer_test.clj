@@ -151,15 +151,15 @@
     (is (thrown? clojure.lang.ExceptionInfo
                  (v/present (v/with-viewer {:render-fn (fn [x] [:h1 x])} "Mike"))))))
 
-(deftest viewer-fn-edn
+(deftest render-fn-edn
   (testing "can be round-tripped to edn"
     (binding [*data-readers* v/data-readers]
-      (let [viewer-fn (v/->viewer-fn 'inc)]
-        (is (= viewer-fn
-               (read-string (pr-str viewer-fn)))))
-      (let [viewer-fn+ (v/->viewer-fn+opts {:render-evaluator :cherry} 'inc)]
-        (is (= viewer-fn+
-               (read-string (pr-str viewer-fn+))))))))
+      (let [render-fn (v/->render-fn 'inc)]
+        (is (= render-fn
+               (read-string (pr-str render-fn)))))
+      (let [render-fn+ (v/->render-fn+opts {:render-evaluator :cherry} 'inc)]
+        (is (= render-fn+
+               (read-string (pr-str render-fn+))))))))
 
 (deftest present-exceptions
   (testing "can represent ex-data in a readable way"
@@ -499,7 +499,7 @@
     (is (= "normal-symbol" (pr-str 'normal-symbol)))
     (is (= ":namespaced/keyword" (pr-str :namespaced/keyword))))
 
-  (testing "unreadable symbols and keywords print as viewer-eval"
+  (testing "unreadable symbols and keywords print as clerk/undreadable-edn"
     (is (= "#clerk/unreadable-edn (keyword \"with spaces\")"
            (pr-str (keyword "with spaces"))))
     (is (= "#clerk/unreadable-edn (keyword \"with ns\" \"and spaces\")"

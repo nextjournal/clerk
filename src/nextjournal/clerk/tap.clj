@@ -11,7 +11,7 @@
   {::val x ::tapped-at (Instant/now) ::key (str (gensym))})
 
 (def switch-view
-  (assoc v/viewer-eval-viewer
+  (assoc v/render-eval-viewer
          :render-fn
          '(fn [!view]
             (let [choices [:stream :latest]]

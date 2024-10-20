@@ -43,10 +43,10 @@
             [sci.nrepl.server :as nrepl]
             [shadow.esm]))
 
-(defn ->viewer-fn+opts-with-*eval*-binding
+(defn ->render-fn+opts-with-*eval*-binding
   "Establishes the `*eval*` binding to support alternative
   evaluators (currently only `:cherry`) and calls
-  `viewer/->viewer-fn+opts`."
+  `viewer/->render-fn+opts`."
   [opts+form]
   (binding [*eval* (let [render-evaluator (:render-evaluator (first opts+form))]
                      (case render-evaluator
@@ -54,7 +54,7 @@
                        (nil :sci) *eval*
                        (throw (ex-info (str "unsupported render-evaluator: " render-evaluator)
                                        opts+form))))]
-    (viewer/->viewer-fn+opts opts+form)))
+    (viewer/->render-fn+opts opts+form)))
 
 (defonce !edamame-opts
   (atom {:all true
@@ -66,8 +66,8 @@
          :readers
          (fn [tag]
            (or (get @cljs.reader/*tag-table* tag)
-               (when (= tag 'viewer-fn+opts)
-                 ->viewer-fn+opts-with-*eval*-binding)
+               (when (= tag 'render-fn+opts)
+                 ->render-fn+opts-with-*eval*-binding)
                (get viewer/data-readers tag)
                (fn [value]
                  (viewer/with-viewer `viewer/tagged-value-viewer

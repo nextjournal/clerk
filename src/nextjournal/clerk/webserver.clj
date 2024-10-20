@@ -51,7 +51,7 @@
   (doseq [ch @!clients]
     (when (not= @!last-sender-ch *sender-ch*)
       (send! ch {:type :patch-state! :patch []
-                 :effects [(v/->viewer-eval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-ch* ch)))]}))
+                 :effects [(v/->render-eval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-ch* ch)))]}))
     (httpkit/send! ch (v/->edn msg)))
   (reset! !last-sender-ch *sender-ch*))
 
@@ -158,7 +158,7 @@
                 (cond-> {:type :set-state!
                          :doc (present+reset! doc)}
                   (and nav-path (not skip-history?))
-                  (assoc :effects [(v/->viewer-eval (list 'nextjournal.clerk.render/history-push-state
+                  (assoc :effects [(v/->render-eval (list 'nextjournal.clerk.render/history-push-state
                                                           (cond-> {:path nav-path} fragment (assoc :fragment fragment))))])))))
 
 #_(update-doc! (help-doc))
@@ -175,7 +175,7 @@
                                  {:message s} ex)
                     update-error!))))))
 
-#_(pr-str (read-msg "#viewer-eval (resolve 'clojure.core/inc)"))
+#_(pr-str (read-msg "#render-eval (resolve 'clojure.core/inc)"))
 
 (def ws-handlers
   {:on-open (fn [ch] (swap! !clients conj ch))
