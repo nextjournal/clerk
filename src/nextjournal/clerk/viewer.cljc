@@ -87,15 +87,15 @@
 #?(:clj
    (defmethod print-method RenderFn [v ^java.io.Writer w]
      (.write w (if-let [opts (not-empty (dissoc (into {} v) :f :form))]
-                 (str "#render-fn+opts " [opts (:form v)])
-                 (str "#render-fn " (:form v))))))
+                 (str "#clerk/render-fn+opts " [opts (:form v)])
+                 (str "#clerk/render-fn " (:form v))))))
 #?(:cljs
    (defn ordered-map-reader-cljs [coll]
      (omap/ordered-map (vec coll))))
 
 (def data-readers
-  {'render-fn ->render-fn
-   'render-fn+opts ->render-fn+opts
+  {'clerk/render-fn ->render-fn
+   'clerk/render-fn+opts ->render-fn+opts
    'clerk/unreadable-edn eval
    'ordered/map #?(:clj omap/ordered-map-reader-clj
                    :cljs ordered-map-reader-cljs)})

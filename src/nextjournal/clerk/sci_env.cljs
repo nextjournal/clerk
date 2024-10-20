@@ -66,7 +66,7 @@
          :readers
          (fn [tag]
            (or (get @cljs.reader/*tag-table* tag)
-               (when (= tag 'render-fn+opts)
+               (when (= tag 'clerk/render-fn+opts)
                  ->render-fn+opts-with-*eval*-binding)
                (get viewer/data-readers tag)
                (fn [value]
