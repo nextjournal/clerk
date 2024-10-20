@@ -1920,12 +1920,6 @@
 (defn eval-cljs
   ([form] (eval-cljs {} form))
   ([viewer-opts form]
-   ;; because ViewerEval's are evaluated at read time we can no longer
-   ;; check after read if there was any in the doc. Thus we set the
-   ;; `:nextjournal.clerk/remount` attribute to a hash of the code (so
-   ;; it changes when the code changes and shows up in the doc patch.
-   ;; TODO: simplify, maybe by applying Clerk's analysis to the cljs
-   ;; part as well
    (with-viewer (-> viewer-eval-viewer
                     (update :transform-fn comp maybe-rewrite-cljs-form-for-cherry)
                     (assoc :nextjournal.clerk/remount (hash-sha1 form)))

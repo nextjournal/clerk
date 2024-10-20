@@ -70,14 +70,7 @@
                      (nil :sci) *eval*
                      (throw (ex-info (str "unsupported render-evaluator: " (:render-evaluator opts))
                                      {:opts opts :form form})))]
-    (try (let [viewer-fn (viewer/->viewer-fn+opts opts form)]
-           (if (:eval opts)
-             ;; force immediate evaluation to keep things working for now
-             (try (deref (:f viewer-fn))
-                  (catch js/Error e
-                    (js/console.error "error in viewer-eval" e form)
-                    (swap! render/!render-errors conj (Throwable->map e))))
-             viewer-fn))
+    (try (viewer/->viewer-fn+opts opts form)
          (catch js/Error e
            (or (maybe-handle-legacy-alias-error form e)
                (viewer/map->ViewerFn
@@ -249,7 +242,6 @@
    :nrepl handle-nrepl})
 
 (defn ^:export onmessage [ws-msg]
-  (reset! render/!render-errors []) ;; need to reset here since `->viewer-fn` evaluates on read for `:eval`s currently
   (let [{:as msg :keys [type]} (read-string (.-data ws-msg))
         dispatch-fn (get message-type->fn
                          type
