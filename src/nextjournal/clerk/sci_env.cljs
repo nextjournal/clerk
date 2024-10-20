@@ -250,7 +250,7 @@
    :nrepl handle-nrepl})
 
 (defn ^:export onmessage [ws-msg]
-  (reset! render/!render-errors []) ;; need to reset here since `->viewer-eval` runs on read
+  (reset! render/!render-errors []) ;; need to reset here since `->viewer-fn` evaluates on read for `:eval`s currently
   (let [{:as msg :keys [type]} (read-string (.-data ws-msg))
         dispatch-fn (get message-type->fn
                          type
