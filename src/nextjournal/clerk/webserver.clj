@@ -51,7 +51,7 @@
   (doseq [ch @!clients]
     (when (not= @!last-sender-ch *sender-ch*)
       (send! ch {:type :patch-state! :patch []
-                 :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-ch* ch)))]}))
+                 :effects [(v/->viewer-eval (list 'nextjournal.clerk.render/set-reset-sync-atoms! (not= *sender-ch* ch)))]}))
     (httpkit/send! ch (v/->edn msg)))
   (reset! !last-sender-ch *sender-ch*))
 
@@ -158,8 +158,8 @@
                 (cond-> {:type :set-state!
                          :doc (present+reset! doc)}
                   (and nav-path (not skip-history?))
-                  (assoc :effects [(v/->ViewerEval (list 'nextjournal.clerk.render/history-push-state
-                                                         (cond-> {:path nav-path} fragment (assoc :fragment fragment))))])))))
+                  (assoc :effects [(v/->viewer-eval (list 'nextjournal.clerk.render/history-push-state
+                                                          (cond-> {:path nav-path} fragment (assoc :fragment fragment))))])))))
 
 #_(update-doc! (help-doc))
 

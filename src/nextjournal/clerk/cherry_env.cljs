@@ -7,12 +7,12 @@
             [clojure.string :as str]
             [goog.object]
             [nextjournal.clerk.parser]
-            [nextjournal.clerk.render :as render]
+            [nextjournal.clerk.render]
             [nextjournal.clerk.render.code]
             [nextjournal.clerk.render.hooks]
             [nextjournal.clerk.render.navbar]
             [nextjournal.clerk.trim-image]
-            [nextjournal.clerk.viewer :as viewer]
+            [nextjournal.clerk.viewer]
             [nextjournal.clojure-mode.commands]
             [nextjournal.clojure-mode.extensions.eval-region]
             [nextjournal.clojure-mode.keymap]
@@ -50,23 +50,6 @@
                                        (js/eval.apply js/globalThis #js [x])))
 
 (def cherry-macros {'reagent.core {'with-let sci.configs.reagent/with-let}})
-
-(declare eval-form)
-
-(defn ->viewer-fn-with-error [form]
-  (try (binding [*eval* eval-form]
-         (viewer/->viewer-fn form))
-       (catch js/Error e
-         (viewer/map->ViewerFn
-          {:form form
-           :f (delay (fn [_]
-                       [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)]))}))))
-
-(defn ->viewer-eval-with-error [form]
-  (try (eval-form form)
-       (catch js/Error e
-         (js/console.error "error in viewer-eval" e)
-         (ex-info (str "error in viewer-eval: " (.-message e)) {:form form} e))))
 
 (defn ^:export cherry-compile-string [s]
   (cherry/compile-string

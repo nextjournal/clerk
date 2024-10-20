@@ -17,7 +17,6 @@
             [cljs.reader]
             [clojure.string :as str]
             [edamame.core :as edamame]
-            [flatland.ordered.map :as omap]
             [goog.object]
             [nextjournal.clerk.cherry-env :as cherry-env]
             [nextjournal.clerk.parser]
@@ -65,24 +64,30 @@
                                                           "Please change `" unresolved-sym "` to `" (resolve-legacy-alias unresolved-sym) "` in your `:render-fn` to resolve this issue.")
                                                      {:render-fn form} e)]))}))))
 
+(defn ->viewer-fn+opts-with-error [[opts form]]
+  (binding [*eval* (case (:render-evaluator opts)
+                     :cherry cherry-env/eval-form
+                     (nil :sci) *eval*
+                     (throw (ex-info (str "unsupported render-evaluator: " (:render-evaluator opts))
+                                     {:opts opts :form form})))]
+    (try (let [viewer-fn (viewer/->viewer-fn+opts opts form)]
+           (if (:eval opts)
+             ;; force immediate evaluation to keep things working for now
+             (try (deref (:f viewer-fn))
+                  (catch js/Error e
+                    (js/console.error "error in viewer-eval" e form)
+                    (swap! render/!render-errors conj (Throwable->map e))))
+             viewer-fn))
+         (catch js/Error e
+           (or (maybe-handle-legacy-alias-error form e)
+               (viewer/map->ViewerFn
+                {:form form
+                 :f (delay (fn [_]
+                             [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)]))}))))))
+
 (defn ->viewer-fn-with-error [form]
-  (try (viewer/->viewer-fn form)
-       (catch js/Error e
-         (or (maybe-handle-legacy-alias-error form e)
-             (viewer/map->ViewerFn
-              {:form form
-               :f (delay (fn [_]
-                           [render/error-view (ex-info (str "error in render-fn: " (.-message e)) {:render-fn form} e)]))})))))
+  (->viewer-fn+opts-with-error [{} form]))
 
-(defn ->viewer-eval-with-error [form]
-  (try (*eval* form)
-       (catch js/Error e
-         (js/console.error "error in viewer-eval" e form)
-         (swap! render/!render-errors conj (Throwable->map e))
-         e)))
-
-(defn ordered-map-reader-cljs [coll]
-  (omap/ordered-map (vec coll)))
 
 (defonce !edamame-opts
   (atom {:all true
@@ -95,10 +100,8 @@
          (fn [tag]
            (or (get @cljs.reader/*tag-table* tag)
                (get {'viewer-fn ->viewer-fn-with-error
-                     'viewer-fn/cherry cherry-env/->viewer-fn-with-error
-                     'viewer-eval ->viewer-eval-with-error
-                     'viewer-eval/cherry cherry-env/->viewer-eval-with-error
-                     'ordered/map ordered-map-reader-cljs} tag)
+                     'viewer-fn+opts ->viewer-fn+opts-with-error} tag)
+               (get viewer/data-readers tag)
                (fn [value]
                  (viewer/with-viewer `viewer/tagged-value-viewer
                    {:tag tag
@@ -246,7 +249,7 @@
    :nrepl handle-nrepl})
 
 (defn ^:export onmessage [ws-msg]
-  (reset! render/!render-errors []) ;; need to reset here since `->viewer-eval` runs on read
+  (reset! render/!render-errors []) ;; need to reset here since `->viewer-fn` evaluates on read for `:eval`s currently
   (let [{:as msg :keys [type]} (read-string (.-data ws-msg))
         dispatch-fn (get message-type->fn
                          type

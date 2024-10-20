@@ -97,14 +97,14 @@
 ;; async functions need `^:async`, we use a plain string.
 
 
-(clerk/eval-cljs
- '(defn emoji-picker
-    {:async true}
-    []
-    (js/await (js/import "https://cdn.skypack.dev/emoji-picker-element"))
-    (nextjournal.clerk.viewer/html [:div
-                                    [:p "My cool emoji picker:"]
-                                    [:emoji-picker]])))
+(clerk/eval-cljs-str
+ "(defn emoji-picker
+   {:async true}
+   []
+   (js/await (js/import \"https://cdn.skypack.dev/emoji-picker-element\"))
+   (nextjournal.clerk.viewer/html [:div
+                                   [:p \"My cool emoji picker:\"]
+                                   [:emoji-picker]]))")
 
 ;; In the next block we call it:
 
@@ -115,12 +115,12 @@
 
 ;; ## 🧩 Macros
 
-(clerk/eval-cljs
- '(defn clicks []
-    (reagent.core/with-let [!s (reagent.core/atom 0)]
-      [:button.bg-teal-500.hover:bg-teal-700.text-white.font-bold.py-2.px-4.rounded.rounded-full.font-sans
-       {:on-click (fn [] (swap! !s inc))}
-       "Clicks: " @!s])))
+(clerk/eval-cljs-str
+ "(defn clicks []
+   (reagent.core/with-let [!s (reagent.core/atom 0)]
+     [:button.bg-teal-500.hover:bg-teal-700.text-white.font-bold.py-2.px-4.rounded.rounded-full.font-sans
+      {:on-click (fn [] (swap! !s inc))}
+      \"Clicks: \" @!s]))")
 
 (clerk/with-viewer '(fn [_] (this-as this [clicks])) nil)
 
