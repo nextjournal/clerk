@@ -701,7 +701,12 @@
                   x))
               doc))
 
-(defn ^:export set-state! [{:as state :keys [doc]}]
+(defn run-effects! [effects]
+  (doseq [effect effects]
+    (deref (:f effect))))
+
+(defn ^:export set-state! [{:as state :keys [doc effects]}]
+  (run-effects! effects)
   (when (contains? state :doc)
     (when (exists? js/window)
       ;; TODO: can we restore the scroll position when navigating back?
@@ -717,7 +722,8 @@
 (defn apply-patch [x patch]
   (eval-cljs-evals (editscript/patch x (editscript/edits->script patch))))
 
-(defn patch-state! [{:keys [patch]}]
+(defn patch-state! [{:keys [patch effects]}]
+  (run-effects! effects)
   (if (remount? patch)
     (do (swap! !doc #(re-eval-viewer-fns (apply-patch % patch)))
         ;; TODO: figure out why it doesn't work without `js/setTimeout`
