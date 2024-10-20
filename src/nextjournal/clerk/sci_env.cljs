@@ -65,7 +65,6 @@
                                                      {:render-fn form} e)]))}))))
 
 (defn ->viewer-fn+opts-with-error [[opts form]]
-  (prn :->viewer-fn+opts-with-error opts form)
   (binding [*eval* (case (:render-evaluator opts)
                      :cherry cherry-env/eval-form
                      (nil :sci) *eval*
