@@ -17,6 +17,7 @@
            cljs.math
            cljs.repl
            clojure.core
+           cljs.core
            clojure.edn
            clojure.math
            clojure.repl
