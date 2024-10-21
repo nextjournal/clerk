@@ -38,6 +38,7 @@
             [reagent.ratom :as ratom]
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
+            [sci.configs.cljs.pprint :as sci.configs.pprint]
             [sci.core :as sci]
             [sci.ctx-store]
             [sci.nrepl.server :as nrepl]
@@ -162,7 +163,8 @@
              "react-dom" react-dom
              "w3c-keyname" w3c-keyname}
    :ns-aliases '{clojure.math cljs.math
-                 cljs.repl clojure.repl}
+                 cljs.repl clojure.repl
+                 clojure.pprint cljs.pprint}
    :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
                        'nextjournal.clerk viewer-namespace ;; TODO: expose cljs variant of `nextjournal.clerk` with docstrings
                        'nextjournal.clerk.sci-env {'load-string+
@@ -191,7 +193,8 @@
                        'nextjournal.markdown.transform)
 
                       sci.configs.js-interop/namespaces
-                      sci.configs.reagent/namespaces)})
+                      sci.configs.reagent/namespaces
+                      sci.configs.pprint/namespaces)})
 
 (defn ^:export eval-form [f]
   (sci/binding [sci/ns @last-ns]

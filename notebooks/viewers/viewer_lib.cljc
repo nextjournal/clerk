@@ -3,7 +3,8 @@
                      [foo.bar :as-alias foo]
                      [cljs.core :as c]
                      [clojure.math :as math1]
-                     [cljs.math :as math2])))
+                     [cljs.math :as math2]
+                     [clojure.pprint :as pp])))
 
 #?(:cljs `foo/x)
 
@@ -11,4 +12,5 @@
           [:div
            "Inspected value :)"
            (str (cljs.core/inc (math2/floor (math1/floor 1.2))))
-           [:div [clerk/inspect x]]]))
+           [:div [clerk/inspect x]]
+           [:div (with-out-str (pp/pprint (range 20)))]]))
