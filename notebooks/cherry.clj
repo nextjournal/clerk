@@ -92,10 +92,7 @@
 ;; ## 🚦Async/await works cherry
 
 ;; Here we dynamically import a module, await its value and then pull out the
-;; default function, which we expose as a global function. Because s-expressions
-;; serialized to the client currently don't preserve metadata in clerk, and
-;; async functions need `^:async`, we use a plain string.
-
+;; default function, which we expose as a global function.
 
 (clerk/eval-cljs
  '(defn emoji-picker
