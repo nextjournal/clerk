@@ -66,7 +66,13 @@
            :else (recur)))))))
 
 (defn deps-from-ns-decl [parsed-ns-decl]
-  (filter symbol? (map :lib (:requires parsed-ns-decl))))
+  (keep (fn [req]
+          (when-not (:as-alias req)
+            (let [lib (:lib req)]
+              (when (symbol? lib)
+                lib)))) (:requires parsed-ns-decl)))
+
+#_(deps-from-ns-decl (e/parse-ns-form '(ns foo (:require [foo] [bar :as-alias dude]))))
 
 (defn name-from-ns-decl [parsed-ns-decl]
   (:current parsed-ns-decl))
