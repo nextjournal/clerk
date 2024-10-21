@@ -17,6 +17,7 @@
            cljs.math
            cljs.repl
            clojure.core
+           cljs.core
            clojure.edn
            clojure.math
            clojure.repl
@@ -46,7 +47,9 @@
            reagent.core
            reagent.debug
            reagent.ratom
-           user}))
+           user
+           clojure.pprint
+           cljs.pprint}))
 
 (defn- ns-decl?
   "Returns true if form is a (ns ...) declaration."
