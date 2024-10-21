@@ -92,35 +92,33 @@
 ;; ## 🚦Async/await works cherry
 
 ;; Here we dynamically import a module, await its value and then pull out the
-;; default function, which we expose as a global function. Because s-expressions
-;; serialized to the client currently don't preserve metadata in clerk, and
-;; async functions need `^:async`, we use a plain string.
+;; default function, which we expose as a global function.
 
-
-(clerk/eval-cljs-str
- "(defn emoji-picker
+(clerk/eval-cljs
+ '(defn emoji-picker
    {:async true}
    []
-   (js/await (js/import \"https://cdn.skypack.dev/emoji-picker-element\"))
+   (js/await (js/import "https://cdn.skypack.dev/emoji-picker-element"))
    (nextjournal.clerk.viewer/html [:div
-                                   [:p \"My cool emoji picker:\"]
-                                   [:emoji-picker]]))")
+                                   [:p "My cool emoji picker:"]
+                                   [:emoji-picker]])))
 
 ;; In the next block we call it:
 
 (clerk/with-viewer
   '(fn [_]
      [nextjournal.clerk.render/render-promise
-      (emoji-picker)]) nil)
+      (emoji-picker)])
+  nil)
 
 ;; ## 🧩 Macros
 
-(clerk/eval-cljs-str
- "(defn clicks []
-   (reagent.core/with-let [!s (reagent.core/atom 0)]
+(clerk/eval-cljs
+ '(defn clicks []
+    (reagent.core/with-let [!s (reagent.core/atom 0)]
      [:button.bg-teal-500.hover:bg-teal-700.text-white.font-bold.py-2.px-4.rounded.rounded-full.font-sans
       {:on-click (fn [] (swap! !s inc))}
-      \"Clicks: \" @!s]))")
+      "Clicks: " @!s])))
 
 (clerk/with-viewer '(fn [_] (this-as this [clicks])) nil)
 
