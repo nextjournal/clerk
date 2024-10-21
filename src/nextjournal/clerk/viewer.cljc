@@ -1183,11 +1183,10 @@
         blocks))
 
 (defn atom-var-name->state [doc]
-  (->render-eval
-   (list 'nextjournal.clerk.render/intern-atoms!
-         (into {}
-               (map (juxt #(list 'quote (symbol %)) #(->> % deref deref (list 'quote))))
-               (extract-sync-atom-vars doc)))))
+  (into {}
+        (map (fn [sync-var]
+               [(symbol sync-var) @@sync-var]))
+        (extract-sync-atom-vars doc)))
 
 (defn home? [{:keys [nav-path]}]
   (contains? #{"src/nextjournal/home.clj" "'nextjournal.clerk.home"} nav-path))

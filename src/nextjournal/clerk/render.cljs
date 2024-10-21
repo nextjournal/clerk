@@ -687,11 +687,15 @@
   (true? (some #(= % :nextjournal.clerk/remount) (tree-seq coll? seq doc-or-patch))))
 
 (defn re-eval-render-fns [doc]
+  ;; TODO: `intern-atoms!` is currently called twice in case of a
+  ;; remount patch-state! event
+  (intern-atoms! (-> doc :nextjournal/value :atom-var-name->state))
   (let [re-eval (fn [{:keys [form]}] (viewer/->render-fn form))]
     (w/postwalk (fn [x] (cond-> x (and (viewer/render-fn? x) (not (:eval x))) re-eval)) doc)))
 
 (defn eval-cljs-evals [doc]
   (reset! !render-errors [])
+  (intern-atoms! (-> doc :nextjournal/value :atom-var-name->state))
   (w/postwalk (fn [x]
                 (if (viewer/render-eval? x)
                   (try (deref (:f x))
