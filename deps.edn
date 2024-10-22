@@ -47,7 +47,8 @@
                               com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.3.0"}
                               io.github.nextjournal/cas-client {:git/sha "d9f838937ebc8b645fe5764949e72a6df8e344de"}
                               org.slf4j/slf4j-nop {:mvn/version "2.0.7"}
-                              org.babashka/cli {:mvn/version "0.5.40"}}
+                              org.babashka/cli {:mvn/version "0.5.40"}
+                              eu.formsandlines/formform {:mvn/version "0.1.0"}}
                  :extra-paths ["dev" "notebooks"]
                  :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}"
                             "-Dpolyglot.engine.WarnInterpreterOnly=false"

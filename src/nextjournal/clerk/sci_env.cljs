@@ -38,6 +38,7 @@
             [reagent.ratom :as ratom]
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
+            [sci.configs.cljs.spec.alpha :as sci.configs.spec]
             [sci.core :as sci]
             [sci.ctx-store]
             [sci.nrepl.server :as nrepl]
@@ -162,7 +163,9 @@
              "react-dom" react-dom
              "w3c-keyname" w3c-keyname}
    :ns-aliases '{clojure.math cljs.math
-                 cljs.repl clojure.repl}
+                 cljs.repl clojure.repl
+                 clojure.spec.alpha cljs.spec.alpha
+                 clojure.spec.gen.alpha cljs.spec.gen.alpha}
    :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
                        'nextjournal.clerk viewer-namespace ;; TODO: expose cljs variant of `nextjournal.clerk` with docstrings
                        'nextjournal.clerk.sci-env {'load-string+
@@ -171,7 +174,9 @@
                        'clojure.core {'read-string read-string
                                       'implements? (sci/copy-var implements?* core-ns)
                                       'time (sci/copy-var time core-ns)
-                                      'system-time (sci/copy-var system-time core-ns)}
+                                      'system-time (sci/copy-var system-time core-ns)
+                                      'infinite? (sci/copy-var infinite? core-ns)
+                                      'update-vals (sci/copy-var update-vals core-ns)}
                        'clojure.repl {'pst pst-stub}}
                       (sci-copy-nss
                        'cljs.math
@@ -191,7 +196,8 @@
                        'nextjournal.markdown.transform)
 
                       sci.configs.js-interop/namespaces
-                      sci.configs.reagent/namespaces)})
+                      sci.configs.reagent/namespaces
+                      sci.configs.spec/namespaces)})
 
 (defn ^:export eval-form [f]
   (sci/binding [sci/ns @last-ns]

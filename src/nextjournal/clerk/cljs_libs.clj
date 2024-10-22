@@ -47,7 +47,12 @@
            reagent.core
            reagent.debug
            reagent.ratom
-           user}))
+           user
+           clojure.spec.alpha
+           cljs.spec.alpha
+           clojure.spec.gen.alpha
+           cljs.spec.gen.alpha
+           }))
 
 (defn- ns-decl?
   "Returns true if form is a (ns ...) declaration."
