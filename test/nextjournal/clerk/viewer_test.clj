@@ -348,9 +348,7 @@
     (is (not-empty (-> (view/doc->viewer (eval/eval-string "(ns nextjournal.clerk.test.sync-vars (:require [nextjournal.clerk :as clerk]))
                                      ^::clerk/sync (def sync-me (atom {:a ['b 'c 3]}))"))
                        :nextjournal/value
-                       :atom-var-name->state
-                       :form
-                       second)))
+                       :atom-var-name->state)))
 
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
