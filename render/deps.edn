@@ -7,7 +7,8 @@
         org.clojure/clojurescript {:mvn/version "1.11.132"}
         io.github.babashka/sci.nrepl {:mvn/version "0.0.2"}
         reagent/reagent {:mvn/version "1.2.0"}
-        io.github.babashka/sci.configs {:local/root "../../sci.configs" #_#_:git/sha "0702ea5a21ad92e6d7cca6d36de84271083ea68f"
+        io.github.babashka/sci.configs {#_#_:local/root "../../sci.configs"
+                                        :git/sha "30a15585134405cec183eaa56e528a674be58701"
                                         :exclusions [org.babashka/sci]}
         io.github.nextjournal/clojure-mode {:git/sha "1f55406087814a0dda6806396aa596dbe13ea302"}
         thheller/shadow-cljs {:mvn/version "2.23.1"}
