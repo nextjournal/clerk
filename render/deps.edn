@@ -8,7 +8,7 @@
         io.github.babashka/sci.nrepl {:mvn/version "0.0.2"}
         reagent/reagent {:mvn/version "1.2.0"}
         io.github.babashka/sci.configs {;; :local/root "../../sci.configs"
-                                        :git/sha "ef4b90dea4c9986784649f8eaef285a4b5d303f6"
+                                        :git/sha "eb1fcaacf6f98c27adf22002173d40ae4f9cfcb0"
                                         :exclusions [org.babashka/sci]}
         io.github.nextjournal/clojure-mode {:git/sha "1f55406087814a0dda6806396aa596dbe13ea302"}
         thheller/shadow-cljs {:mvn/version "2.23.1"}
