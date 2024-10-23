@@ -49,7 +49,11 @@
            reagent.ratom
            user
            clojure.pprint
-           cljs.pprint}))
+           cljs.pprint
+           clojure.spec.alpha
+           cljs.spec.alpha
+           clojure.spec.gen.alpha
+           cljs.spec.gen.alpha}))
 
 (defn- ns-decl?
   "Returns true if form is a (ns ...) declaration."
