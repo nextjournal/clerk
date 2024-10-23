@@ -177,10 +177,10 @@
                                       'system-time (sci/copy-var system-time core-ns)
                                       'infinite? (sci/copy-var infinite? core-ns)
                                       'update-vals (sci/copy-var update-vals core-ns)}
-                       'clojure.repl {'pst pst-stub}}
+                       'clojure.repl {'pst pst-stub}
+                       'cljs.repl {}}
                       (sci-copy-nss
                        'cljs.math
-                       'cljs.repl
                        'nextjournal.clerk.parser
                        'nextjournal.clerk.render
                        'nextjournal.clerk.render.code
