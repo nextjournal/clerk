@@ -48,7 +48,9 @@
                               io.github.nextjournal/cas-client {:git/sha "d9f838937ebc8b645fe5764949e72a6df8e344de"}
                               org.slf4j/slf4j-nop {:mvn/version "2.0.7"}
                               org.babashka/cli {:mvn/version "0.5.40"}
-                              eu.formsandlines/formform {:mvn/version "0.1.0"}}
+                              eu.formsandlines/formform {#_#_#_#_:git/url "https://github.com/formsandlines/formform"
+                                                         :git/sha "0caa931ae42e6fd87b6917e88ceab49cb21174c8"
+                                                         :local/root "/tmp/formform"}}
                  :extra-paths ["dev" "notebooks"]
                  :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}"
                             "-Dpolyglot.engine.WarnInterpreterOnly=false"
@@ -87,7 +89,7 @@
                                                 :exclusions [org.babashka/sci]}
                                ;; emmy needs SCI, here we use the same version as in render:
                                org.babashka/sci {:git/url "https://github.com/babashka/sci"
-                                                 :git/sha "c556f4474303c61da72e7a07eef496dcbf66a56e"}
+                                                 :git/sha "6d9380f55b3038769d5856fc67e7d7939ac981ef"}
                                io.github.nextjournal/clerk-slideshow {:git/sha "11a83fea564da04b9d17734f2031a4921d917893"}}}
 
            :nextjournal/garden {:exec-fn nextjournal.clerk/serve!
