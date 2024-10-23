@@ -48,9 +48,8 @@
                               io.github.nextjournal/cas-client {:git/sha "d9f838937ebc8b645fe5764949e72a6df8e344de"}
                               org.slf4j/slf4j-nop {:mvn/version "2.0.7"}
                               org.babashka/cli {:mvn/version "0.5.40"}
-                              eu.formsandlines/formform {#_#_#_#_:git/url "https://github.com/formsandlines/formform"
-                                                         :git/sha "0caa931ae42e6fd87b6917e88ceab49cb21174c8"
-                                                         :local/root "/tmp/formform"}}
+                              eu.formsandlines/formform {:git/url "https://github.com/formsandlines/formform"
+                                                         :git/sha "0caa931ae42e6fd87b6917e88ceab49cb21174c8"}}
                  :extra-paths ["dev" "notebooks"]
                  :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}"
                             "-Dpolyglot.engine.WarnInterpreterOnly=false"
