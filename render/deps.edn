@@ -3,11 +3,11 @@
         binaryage/devtools {:mvn/version "1.0.3"}
         cider/cider-nrepl {:mvn/version "0.28.3"}
         org.babashka/sci {:git/url "https://github.com/babashka/sci"
-                          :git/sha "c556f4474303c61da72e7a07eef496dcbf66a56e"}
+                          :git/sha "6d9380f55b3038769d5856fc67e7d7939ac981ef"}
         org.clojure/clojurescript {:mvn/version "1.11.132"}
         io.github.babashka/sci.nrepl {:mvn/version "0.0.2"}
         reagent/reagent {:mvn/version "1.2.0"}
-        io.github.babashka/sci.configs {:git/sha "8253c69a537bcc82e8ff122e5f905fe9d1e303f0"
+        io.github.babashka/sci.configs {:git/sha "eb1fcaacf6f98c27adf22002173d40ae4f9cfcb0"
                                         :exclusions [org.babashka/sci]}
         io.github.nextjournal/clojure-mode {:git/sha "1f55406087814a0dda6806396aa596dbe13ea302"}
         thheller/shadow-cljs {:mvn/version "2.23.1"}

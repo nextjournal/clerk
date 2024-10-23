@@ -86,7 +86,7 @@
                                                 :exclusions [org.babashka/sci]}
                                ;; emmy needs SCI, here we use the same version as in render:
                                org.babashka/sci {:git/url "https://github.com/babashka/sci"
-                                                 :git/sha "c556f4474303c61da72e7a07eef496dcbf66a56e"}
+                                                 :git/sha "6d9380f55b3038769d5856fc67e7d7939ac981ef"}
                                io.github.nextjournal/clerk-slideshow {:git/sha "11a83fea564da04b9d17734f2031a4921d917893"}}}
 
            :nextjournal/garden {:exec-fn nextjournal.clerk/serve!
