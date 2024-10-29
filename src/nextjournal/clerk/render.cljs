@@ -847,7 +847,12 @@
                                                   :status (.-status r)
                                                   :headers (.-headers r)})))))
       (then read-response+show-progress)
-      (then (fn [edn] (set-state! {:doc (read-string edn)}) {:ok true}))
+      (then (fn [edn]
+              (binding [*print-fn* *print-err-fn*]
+                (println "EDN!!!!")
+                (println edn)
+                (println "---"))
+              (set-state! {:doc (read-string edn)}) {:ok true}))
       (catch (fn [e] (js/console.error "Fetch failed" e)
                (set-state! {:doc {:nextjournal/viewer {:render-fn (constantly [:<>])} ;; FIXME: make :error top level on state
                                   :nextjournal/value {:error (viewer/present e)}}})
