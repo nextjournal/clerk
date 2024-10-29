@@ -183,6 +183,14 @@
                           "--input-type=module"
                           "--trace-warnings"))
         {:keys [out err exit]} result]
+    (println "Static app Opts")
+    (println "---")
+    (prn static-app-opts)
+    (println "---")
+    (println "SSR output")
+    (println "---")
+    (println result)
+    (println "---")
     (if (= 0 exit)
       (do
         (report-fn {:stage :done :duration duration})
