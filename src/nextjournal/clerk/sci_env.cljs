@@ -177,7 +177,7 @@
                        'clojure.repl {'pst pst-stub}}
                       (sci-copy-nss
                        'cljs.math
-                       'cljs.repl
+                       #_'cljs.repl
                        'nextjournal.clerk.parser
                        'nextjournal.clerk.render
                        'nextjournal.clerk.render.code
