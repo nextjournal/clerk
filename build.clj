@@ -7,13 +7,13 @@
    [shared]))
 
 (def lib 'io.github.nextjournal/clerk)
-(def class-dir "target/classes")
+(def class-dir "build/classes")
 
 (def basis (-> (b/create-basis {:project "deps.edn"})
                (update :libs dissoc 'io.github.nextjournal/dejavu)))
 
 (def version (shared/version))
-(def jar-file (format "target/%s-%s.jar" (name lib) version))
+(def jar-file (format "build/%s-%s.jar" (name lib) version))
 
 (defn package-clerk-asset-map [{:as opts :keys [target-dir]}]
   (when-not target-dir
@@ -22,7 +22,7 @@
     (spit (str target-dir java.io.File/separator "clerk-asset-map.edn") asset-map)))
 
 (defn jar [_]
-  (b/delete {:path "target"})
+  (b/delete {:path "build"})
   (println "Producing jar:" jar-file)
   (b/write-pom {:class-dir class-dir
                 :lib lib

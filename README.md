@@ -151,3 +151,8 @@ You can use the following BibTeX citation:
   year         = 2023
 }
 ```
+
+## Directories
+
+* `build`: Directory for build outputs.
+* `scripts`: Directory for utility scripts.
