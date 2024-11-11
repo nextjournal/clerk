@@ -163,6 +163,25 @@
            :path->doc path->doc
            :paths (vec (keys path->doc)))))
 
+(defn- node-ssr!
+  [{:keys [viewer-js state]
+    :or {viewer-js
+         ;; for local REPL testing
+         "./public/js/viewer.js"}}]
+  (sh {:in (str "import '" viewer-js "';"
+                "globalThis.CLERK_SSR = true;"
+                "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state)) "))")}
+      "node"
+      "--abort-on-uncaught-exception"
+      "--experimental-network-imports"
+      "--input-type=module"
+      "--trace-warnings"))
+
+(comment
+  (declare so) ;; captured in REPL in ssr! function
+  (node-ssr! {:state so})
+  )
+
 (defn ssr!
   "Shells out to node to generate server-side-rendered html."
   [{:as static-app-opts :keys [report-fn resource->url]}]
@@ -172,16 +191,9 @@
                             (dissoc :path->doc)
                             (assoc :render-router :serve))
         {duration :time-ms :keys [result]}
-        (eval/time-ms (sh {:in (str "import '" (resource->url "/js/viewer.js") "';"
-                                    "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str static-app-opts)) "))")}
-                          "node"
-                          "--abort-on-uncaught-exception"
-                          "--experimental-network-imports"
-                          "--input-type=module"
-                          "--trace-warnings"))
+        (eval/time-ms (node-ssr! {:viewer-js (resource->url "/js/viewer.js")
+                                  :state static-app-opts}))
         {:keys [out err exit]} result]
-    #_(def s static-app-opts)
-    #_(prn static-app-opts)
     (if (= 0 exit)
       (do
         (report-fn {:stage :done :duration duration})

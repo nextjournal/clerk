@@ -58,8 +58,6 @@
   (WrappedState. (react/useState init)))
 
 (defn- specify-atom! [ref-obj]
-  #_(js/console.log "ref" ref-obj (js/Object.isFrozen ref-obj))
-  #_(prn :ref ref-obj)
   (specify! ref-obj
     IDeref
     (-deref [^js this] (.-current this))
@@ -74,12 +72,12 @@
       ([o f a b] (reset! o (f o a b)))
       ([o f a b xs] (reset! o (apply f o a b xs))))))
 
-#_(prn :specify (specify-atom! (doto #js {} (js/Object.freeze))))
-
 (defn use-ref
   "React hook: useRef. Can also be used like an atom."
   ([] (use-ref nil))
-  ([init] (specify-atom! (react/useRef init))))
+  ([init] (if js/CLERK_SSR
+            (atom init)
+            (specify-atom! (react/useRef init)))))
 
 (defn ^:private eval-fn
   "Invoke (f x) if f is a function, otherwise return f"
