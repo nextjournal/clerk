@@ -75,7 +75,7 @@
 (defn use-ref
   "React hook: useRef. Can also be used like an atom."
   ([] (use-ref nil))
-  ([init] (if js/CLERK_SSR
+  ([init] (if (unchecked-get js/globalThis "CLERK_SSR")
             (atom init)
             (specify-atom! (react/useRef init)))))
 
