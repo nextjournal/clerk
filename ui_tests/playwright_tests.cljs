@@ -52,9 +52,11 @@
    (p/do (goto page url)
          (.waitForLoadState page "networkidle")
          (p/let [selector (or (:selector @!opts) "div")
+                 _ (prn :selector selector)
                  loc (.locator page selector)
-                 loc (.first loc #js {:timeout 10000})]
-           (is (.isVisible loc #js {:timeout 10000})))))
+                 loc (.first loc #js {:timeout 10000})
+                 visible? (.isVisible loc #js {:timeout 10000})]
+           (is visible?))))
   ([page url link]
    (p/let [txt (.innerText link)]
      (println "Visiting" (str url "#/" txt))
