@@ -167,7 +167,11 @@
   "Shells out to node to generate server-side-rendered html."
   [{:as static-app-opts :keys [report-fn resource->url]}]
   (report-fn {:stage :ssr})
-  (let [{duration :time-ms :keys [result]}
+  (let [doc (get (:path->doc static-app-opts) (:current-path static-app-opts))
+        static-app-opts (-> (assoc static-app-opts :doc doc)
+                            (dissoc :path->doc)
+                            (assoc :render-router :serve))
+        {duration :time-ms :keys [result]}
         (eval/time-ms (sh {:in (str "import '" (resource->url "/js/viewer.js") "';"
                                     "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str static-app-opts)) "))")}
                           "node"
@@ -176,14 +180,8 @@
                           "--input-type=module"
                           "--trace-warnings"))
         {:keys [out err exit]} result]
-    (println "Static app Opts")
-    (println "---")
-    (prn static-app-opts)
-    (println "---")
-    (println "SSR output")
-    (println "---")
-    (println result)
-    (println "---")
+    #_(def s static-app-opts)
+    #_(prn static-app-opts)
     (if (= 0 exit)
       (do
         (report-fn {:stage :done :duration duration})
@@ -210,10 +208,11 @@
           (fs/create-dirs (fs/parent out-html))
           (spit (fs/file out-path (str (or (not-empty path) "index") ".edn"))
                 (viewer/->edn doc))
+          (prn :p path)
           (spit out-html (view/->html (-> static-app-opts
-                                          (dissoc :path->doc)
                                           (assoc :current-path path)
                                           (cond-> ssr? ssr!)
+                                          (dissoc :path->doc)
                                           cleanup))))))
     (when browse?
       (browse/browse-url (if-let [server-url (and (= out-path "public/build") (webserver/server-url))]
@@ -363,6 +362,7 @@
                       ;; test against cljs release `bb build:js`
                       :resource->url {"/js/viewer.js" "./build/viewer.js"}
                       :index "notebooks/rule_30.clj"})
+  (spit "/tmp/foo.edn" s)
 
   (build-static-app! {:ssr? true
                       :compile-css? true
