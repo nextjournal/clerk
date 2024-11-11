@@ -15,6 +15,7 @@
             [applied-science.js-interop :as j]
             [cljs.math]
             [cljs.reader]
+            [cljs.repl]
             [clojure.string :as str]
             [edamame.core :as edamame]
             [goog.object]
@@ -177,7 +178,7 @@
                        'clojure.repl {'pst pst-stub}}
                       (sci-copy-nss
                        'cljs.math
-                       #_'cljs.repl
+                       'cljs.repl
                        'nextjournal.clerk.parser
                        'nextjournal.clerk.render
                        'nextjournal.clerk.render.code
