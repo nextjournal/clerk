@@ -374,7 +374,6 @@
                       ;; test against cljs release `bb build:js`
                       :resource->url {"/js/viewer.js" "./build/viewer.js"}
                       :index "notebooks/rule_30.clj"})
-  (spit "/tmp/foo.edn" s)
 
   (build-static-app! {:ssr? true
                       :compile-css? true
