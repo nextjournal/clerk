@@ -75,7 +75,9 @@
 (defn use-ref
   "React hook: useRef. Can also be used like an atom."
   ([] (use-ref nil))
-  ([init] (specify-atom! (react/useRef init))))
+  ([init] (if (unchecked-get js/globalThis "CLERK_SSR")
+            (atom init)
+            (specify-atom! (react/useRef init)))))
 
 (defn ^:private eval-fn
   "Invoke (f x) if f is a function, otherwise return f"

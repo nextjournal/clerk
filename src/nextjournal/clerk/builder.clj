@@ -163,18 +163,36 @@
            :path->doc path->doc
            :paths (vec (keys path->doc)))))
 
+(defn- node-ssr!
+  [{:keys [viewer-js state]
+    :or {viewer-js
+         ;; for local REPL testing
+         "./public/js/viewer.js"}}]
+  (sh {:in (str "import '" viewer-js "';"
+                "globalThis.CLERK_SSR = true;"
+                "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state)) "))")}
+      "node"
+      "--abort-on-uncaught-exception"
+      "--experimental-network-imports"
+      "--input-type=module"
+      "--trace-warnings"))
+
+(comment
+  (declare so) ;; captured in REPL in ssr! function
+  (node-ssr! {:state so})
+  )
+
 (defn ssr!
   "Shells out to node to generate server-side-rendered html."
   [{:as static-app-opts :keys [report-fn resource->url]}]
   (report-fn {:stage :ssr})
-  (let [{duration :time-ms :keys [result]}
-        (eval/time-ms (sh {:in (str "import '" (resource->url "/js/viewer.js") "';"
-                                    "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str static-app-opts)) "))")}
-                          "node"
-                          "--abort-on-uncaught-exception"
-                          "--experimental-network-imports"
-                          "--input-type=module"
-                          "--trace-warnings"))
+  (let [doc (get (:path->doc static-app-opts) (:current-path static-app-opts))
+        static-app-opts (-> (assoc static-app-opts :doc doc)
+                            (dissoc :path->doc)
+                            (assoc :render-router :serve))
+        {duration :time-ms :keys [result]}
+        (eval/time-ms (node-ssr! {:viewer-js (resource->url "/js/viewer.js")
+                                  :state static-app-opts}))
         {:keys [out err exit]} result]
     (if (= 0 exit)
       (do
@@ -203,9 +221,9 @@
           (spit (fs/file out-path (str (or (not-empty path) "index") ".edn"))
                 (viewer/->edn doc))
           (spit out-html (view/->html (-> static-app-opts
-                                          (dissoc :path->doc)
                                           (assoc :current-path path)
                                           (cond-> ssr? ssr!)
+                                          (dissoc :path->doc)
                                           cleanup))))))
     (when browse?
       (browse/browse-url (if-let [server-url (and (= out-path "public/build") (webserver/server-url))]
