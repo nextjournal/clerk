@@ -53,9 +53,10 @@
          (.waitForLoadState page "networkidle")
          (p/let [selector (or (:selector @!opts) "div")
                  _ (prn :selector selector)
-                 loc (.locator page selector)
+                 loc (.locator page selector #js {:timeout 10000})
                  loc (.first loc #js {:timeout 10000})
-                 visible? (.isVisible loc #js {:timeout 10000})]
+                 _ (.waitFor loc #js {:state "visible"})
+                 visible? (.isVisible loc)]
            (is visible?))))
   ([page url link]
    (p/let [txt (.innerText link)]
@@ -63,7 +64,8 @@
      (p/do (.click link)
            (p/let [loc (.locator page "div")
                    loc (.first loc #js {:timeout 10000})
-                   visible? (.isVisible loc #js {:timeout 10000})]
+                   _ (.waitFor loc #js {:state "visible"})
+                   visible? (.isVisible loc)]
              (is visible?))))))
 
 (deftest index-page-test
