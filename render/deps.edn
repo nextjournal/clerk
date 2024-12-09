@@ -3,7 +3,7 @@
         binaryage/devtools {:mvn/version "1.0.3"}
         cider/cider-nrepl {:mvn/version "0.28.3"}
         org.babashka/sci {:git/url "https://github.com/babashka/sci"
-                          :git/sha "c556f4474303c61da72e7a07eef496dcbf66a56e"}
+                          :git/sha "1e15f0f6a129ef7512351efc65f7475209d8cc4c"}
         org.clojure/clojurescript {:mvn/version "1.11.132"}
         io.github.babashka/sci.nrepl {:mvn/version "0.0.2"}
         reagent/reagent {:mvn/version "1.2.0"}
