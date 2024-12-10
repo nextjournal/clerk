@@ -145,7 +145,7 @@ jobs:
       - name: 📓 Build Clerk Book
         run: |
           cp notebooks/editor.clj editor.clj
-          clojure -J-Dclojure.main.report=stderr -X:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :paths '["book.clj" "CHANGELOG.md" "editor.clj"]'
+          clojure -J-Dclojure.main.report=stderr -X:sci:demo:nextjournal/clerk :git/sha '"${{ github.sha }}"' :git/url '"https://github.com/nextjournal/clerk"' :paths '["book.clj" "CHANGELOG.md" "editor.clj"]'
 
       - name: 📠 Copy book to bucket under SHA
         run: |
