@@ -152,7 +152,7 @@ jobs:
           gsutil cp -r public/build gs://nextjournal-snapshots/clerk/book/${{ github.sha }}
 
       - name: 🏗 Build Clerk Static App with default Notebooks
-        run: clojure -J-Dclojure.main.report=stderr -X:demo:nextjournal/clerk :package :single-file
+        run: clojure -J-Dclojure.main.report=stderr -X:sci:demo:nextjournal/clerk :package :single-file
 
       - name: 📠 Copy static build to bucket under SHA
         run: |
