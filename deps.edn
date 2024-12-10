@@ -2,7 +2,9 @@
  :deps {org.clojure/clojure {:mvn/version "1.10.3"}
         org.clojure/java.classpath {:mvn/version "1.0.0"}
         org.clojure/tools.analyzer {:mvn/version "1.2.0"}
-        org.clojure/tools.analyzer.jvm {:mvn/version "1.3.0"}
+        org.clojure/tools.analyzer.jvm {:git/url "https://github.com/borkude/tools.analyzer.jvm"
+                                        :git/sha "f8f44e023a05ff86f35a38086722da352afae2f6"}
+        #_{:mvn/version "1.3.0"}
         babashka/fs {:mvn/version "0.5.22"}
         borkdude/edamame {:mvn/version "1.4.24"}
         weavejester/dependency {:mvn/version "0.2.1"}
