@@ -2,8 +2,8 @@
  :deps {org.clojure/clojure {:mvn/version "1.10.3"}
         org.clojure/java.classpath {:mvn/version "1.0.0"}
         org.clojure/tools.analyzer {:mvn/version "1.2.0"}
-        org.clojure/tools.analyzer.jvm {:git/url "https://github.com/borkude/tools.analyzer.jvm"
-                                        :git/sha "f8f44e023a05ff86f35a38086722da352afae2f6"}
+        org.clojure/tools.analyzer.jvm {:git/url "https://github.com/borkdude/tools.analyzer.jvm"
+                                        :git/sha "86e7d1f6f1aa048b468d42ed9a596b6104012416"}
         #_{:mvn/version "1.3.0"}
         babashka/fs {:mvn/version "0.5.22"}
         borkdude/edamame {:mvn/version "1.4.24"}
@@ -29,7 +29,7 @@
 
         juji/editscript {:mvn/version "0.6.4"}}
 
- :aliases {:nextjournal/clerk {:extra-deps {org.clojure/clojure {:mvn/version "1.11.1"} ;; for `:as-alias` support in static build
+ :aliases {:nextjournal/clerk {:extra-deps {org.clojure/clojure {:mvn/version "1.12.0"}
                                             org.slf4j/slf4j-nop {:mvn/version "2.0.7"}
                                             org.babashka/cli {:mvn/version "0.7.52"}}
                                :extra-paths ["notebooks"]
@@ -85,7 +85,8 @@
                                org.clojure/data.csv {:mvn/version "1.0.0"}
                                hickory/hickory {:mvn/version "0.7.1"}
                                org.mentat/emmy {:mvn/version "0.32.0"
-                                                :exclusions [org.babashka/sci]
+                                                :exclusions [org.babashka/sci
+                                                             org.clojure/tools.analyzer.jvm]
                                                 ;; use :sci alias in addition to this
                                                 }
                                io.github.nextjournal/clerk-slideshow {:git/sha "11a83fea564da04b9d17734f2031a4921d917893"}}}
@@ -96,7 +97,9 @@
 
            :build {:deps {io.github.nextjournal/clerk {:local/root "."}
                           io.github.nextjournal/cas-client {:git/sha "d9f838937ebc8b645fe5764949e72a6df8e344de"}
-                          io.github.clojure/tools.build {:git/tag "v0.10.3" :git/sha "15ead66"}
+                          io.github.clojure/tools.build {:git/tag "v0.10.3" :git/sha "15ead66"
+                                                         :exclusions [org.babashka/sci
+                                                                      org.clojure/tools.analyzer.jvm]}
                           io.github.slipset/deps-deploy {:git/sha "b4359c5d67ca002d9ed0c4b41b710d7e5a82e3bf"}}
                    :extra-paths ["bb" "src" "resources"] ;; for loading lookup-url in build
                    :ns-default build}
