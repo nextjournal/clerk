@@ -85,7 +85,7 @@
                                org.mentat/emmy {:mvn/version "0.32.0"
                                                 :exclusions [org.babashka/sci]}
                                ;; emmy needs SCI, here we use the same version as in render:
-                               org.babashka/sci {:git/url "https://github.com/babashka/sci"
+                               #_#_org.babashka/sci {:git/url "https://github.com/babashka/sci"
                                                  :git/sha "c556f4474303c61da72e7a07eef496dcbf66a56e"}
                                io.github.nextjournal/clerk-slideshow {:git/sha "11a83fea564da04b9d17734f2031a4921d917893"}}}
 
