@@ -2,7 +2,6 @@
  :deps {applied-science/js-interop {:mvn/version "0.3.3"}
         binaryage/devtools {:mvn/version "1.0.3"}
         cider/cider-nrepl {:mvn/version "0.28.3"}
-        ;; WIP: somehow doing this doesn't pick up the local SCI...
         org.babashka/sci #_{:local/root "../../babashka/sci"}
         {:git/url "https://github.com/babashka/sci"
          :git/sha "1e15f0f6a129ef7512351efc65f7475209d8cc4c"}
