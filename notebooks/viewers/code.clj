@@ -1,6 +1,5 @@
 ;; # 👔 Code Viewer
 (ns viewers.code
-  {:nextjournal.clerk/no-cache true}
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as viewer]))
 
@@ -81,8 +80,10 @@ fn main() {
             (map + fib (rest fib))))")
 
 (def editor-sync-viewer
-  (assoc viewer/viewer-eval-viewer :render-fn '(fn [!code _]
-                                                 [:div.bg-neutral-50 [nextjournal.clerk.render.code/editor !code]])))
+  (assoc viewer/render-eval-viewer
+         :render-fn
+         '(fn [!code _]
+            [:div.bg-neutral-50 [nextjournal.clerk.render.code/editor !code]])))
 
 ^{::clerk/sync true ::clerk/viewer editor-sync-viewer}
 (defonce editable-code (atom "(def fib
