@@ -129,7 +129,7 @@ jobs:
           key: ${{ runner.os }}-maven-build-${{ hashFiles('deps.edn') }}
 
       - name: 🗝 Clerk Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: .clerk
           key: ${{ runner.os }}-clerk-cache
