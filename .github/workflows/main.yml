@@ -197,7 +197,7 @@ jobs:
           key: ${{ runner.os }}-maven-ssr-${{ hashFiles('deps.edn') }}
 
       - name: 🎨 Setup Tailwindcss
-        run: yarn global add @tailwindcss/cli tailwindcss @tailwindcss/typography
+        run: yarn global add tailwindcss@3.4.17 @tailwindcss/typography
 
       - name: 🧶 Yarn Global
         run: echo $(yarn global dir)/node_modules
