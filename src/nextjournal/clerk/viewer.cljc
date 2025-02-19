@@ -1403,9 +1403,8 @@
   (cond
     (sorted? xs) xs
     (map? xs) (sort-by first resilient-compare xs)
-    (set? xs) (sort resilient-compare xs)
+    (set? xs) (sort resilient-compare (seq xs))
     :else xs))
-
 
 (defn find-viewer [viewers select-fn]
   (first (filter select-fn viewers)))
