@@ -129,7 +129,7 @@ jobs:
           key: ${{ runner.os }}-maven-build-${{ hashFiles('deps.edn') }}
 
       - name: 🗝 Clerk Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: .clerk
           key: ${{ runner.os }}-clerk-cache
@@ -197,7 +197,7 @@ jobs:
           key: ${{ runner.os }}-maven-ssr-${{ hashFiles('deps.edn') }}
 
       - name: 🎨 Setup Tailwindcss
-        run: yarn global add tailwindcss @tailwindcss/typography
+        run: yarn global add tailwindcss@3.4.17 @tailwindcss/typography
 
       - name: 🧶 Yarn Global
         run: echo $(yarn global dir)/node_modules
