@@ -101,6 +101,8 @@
                 (ana/analyze '(do inc))))
     (is (empty? (:deps (ana/analyze '(do 'inc))))))
 
+  (ana/analyze `(let [a# 1]))
+
   (testing "locals that shadow existing vars shouldn't show up in the deps"
     (is (= #{'clojure.core/let} (:deps (ana/analyze '(let [+ 2] +))))))
 

@@ -122,6 +122,7 @@
   ([store ns name val] (record-interned-symbol store ns name) (core-intern ns name val)))
 
 (defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
+  (prn :form form)
   (try
     (let [!interned-vars (atom #{})
           {:keys [result]} (time-ms (binding [config/*in-clerk* true]

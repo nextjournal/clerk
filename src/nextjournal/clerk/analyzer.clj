@@ -445,6 +445,10 @@
   ([state file]
    (analyze-doc state (parser/parse-file {} file))))
 
+(comment
+  (analyze-file *file*)
+  )
+
 (defn unhashed-deps [->analysis-info]
   (remove deref? (set/difference (into #{}
                                        (mapcat :deps)
