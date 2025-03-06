@@ -42,8 +42,12 @@ line\""}]
                            :toc {:type :toc,
                                  :children [{:type :toc :children [{:type :toc}
                                                                    {:type :toc}]}]}})
-                (parser/parse-clojure-string {:doc? true} notebook)))))
+                (parser/parse-clojure-string {:doc? true} notebook))))
 
+  (testing "reading a bad block shows block and file info in raised exception"
+    (is (thrown-match? clojure.lang.ExceptionInfo
+                       {:file string?}
+                       (parser/parse-clojure-string {:doc? true :file "foo.clj"} "##boom")))))
 
 (deftest parse-inline-comments
   (is (match? {:blocks [{:doc {:content [{:content [{:text "text before"}]}]}}
@@ -185,3 +189,22 @@ par two"))))
                     view/doc->viewer
                     :nextjournal/value
                     :blocks)))))
+
+(deftest add-block-ids
+  (testing "assigns block ids"
+    (is (= '[foo/anon-expr-5drCkCGrPisMxHpJVeyoWwviSU3pfm
+             foo/bar
+             foo/bar#2
+             foo/anon-expr-5dsbEK7B7yDZqzyteqsY2ndKVE9p3G
+             foo/anon-expr-5dsbEK7B7yDZqzyteqsY2ndKVE9p3G#2]
+           (->> "(ns foo {:nextjournal.clerk/visibility {:code :fold}}) (def bar :baz) (def bar :baz) (rand-int 42) (rand-int 42)"
+                parser/parse-clojure-string :blocks (mapv :id))))))
+
+(deftest parse-file-test
+  (testing "parsing a Clojure file"
+    (is (match?
+         {:file "test/nextjournal/clerk/fixtures/hello.clj"
+          :blocks [{:type :code}
+                   {:type :code
+                    :id 'nextjournal.clerk.fixtures.hello/answer}]}
+         (parser/parse-file {:doc? true} "test/nextjournal/clerk/fixtures/hello.clj")))))
