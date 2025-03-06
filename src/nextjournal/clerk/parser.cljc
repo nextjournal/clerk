@@ -340,7 +340,7 @@
 
 (defn guess-var
   "An best guess to say if the given `form` defines a var without running
-  macroexpansion."
+  macroexpansion. Will be refined during analysis."
   [form]
   (when (and (sequential? form)
              (simple-symbol? (first form))
@@ -354,8 +354,10 @@
 
 (defn get-block-id [!id->count {:as block :keys [form type doc]}]
   (let [id->count @!id->count
-        id (if-let [guessed-var (guess-var form)]
-             guessed-var
+        id (if-let [var (if (contains? block :vars)
+                          (:var block)
+                          (guess-var form))]
+             var
              (let [hash-fn (fn [x]
                              #?(:clj (-> x nippy/fast-freeze sha1-base58)
                                 :cljs (throw (ex-info "hash-fn cljs not implemented for cljs yet" {}))))]
@@ -389,7 +391,7 @@
 #_(extract-file (clojure.java.io/resource "nextjournal/clerk.clj"))
 
 (defn add-loc [{:as opts :keys [file]} loc form]
-  #?(:cljs (throw "not yet implemented for cljs" {})
+  #?(:cljs (throw (ex-info "not yet implemented for cljs" {}))
      :clj (cond-> form
             (instance? clojure.lang.IObj form)
             (vary-meta merge (cond-> loc
