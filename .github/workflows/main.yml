@@ -18,7 +18,7 @@ jobs:
       - name: 🔧 Install clojure
         uses: DeLaGuardo/setup-clojure@master
         with:
-          cli: '1.10.3.943'
+          cli: '1.12.0.1530'
           bb: latest
           clj-kondo: latest
 
@@ -85,7 +85,7 @@ jobs:
       - name: 🔧 Install clojure
         uses: DeLaGuardo/setup-clojure@master
         with:
-          cli: '1.10.3.943'
+          cli: '1.12.0.1530'
           bb: latest
 
       - name: 🗝 maven cache
@@ -116,7 +116,7 @@ jobs:
       - name: 🔧 Install clojure
         uses: DeLaGuardo/setup-clojure@master
         with:
-          cli: '1.10.3.943'
+          cli: '1.12.0.1530'
           bb: latest
 
       - name: 🗝 maven cache
@@ -185,7 +185,7 @@ jobs:
       - name: 🔧 Install clojure
         uses: DeLaGuardo/setup-clojure@master
         with:
-          cli: '1.10.3.943'
+          cli: '1.12.0.1530'
 
       - name: 🗝 maven cache
         uses: actions/cache@v3
