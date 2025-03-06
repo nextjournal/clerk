@@ -352,10 +352,7 @@
                                  (track-var->block+redefs block+analysis)
                                  (update :blocks conj (cond-> (dissoc block+analysis :deps :no-cache? :ns-effect?)
                                                         (parser/ns? form) (assoc :ns? true)
-                                                        doc? (assoc :text-without-meta (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))))
-                                 (cond-> #_doc
-                                   (not (contains? state :ns))
-                                   (assoc :ns *ns*))))))
+                                                        doc? (assoc :text-without-meta (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))))))))
 
                        (-> state
                            (cond-> doc? (merge doc))
