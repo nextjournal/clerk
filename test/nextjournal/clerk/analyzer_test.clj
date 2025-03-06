@@ -287,7 +287,16 @@
 ")]
       (is (not (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/a))))
       (is (not (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/b))))
-      (is (not (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/a#2)))))))
+      (is (not (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/a#2))))))
+
+
+  (testing "hashing is determistics for splicing reader macros"
+    (let [hash-single-form (fn [form]
+                             (ana/hash-codeblock {} {:graph (dep/graph)} (ana/analyze form)))]
+      (is (= (hash-single-form `(let [a# 1]
+                                  (inc a#)))
+             (hash-single-form `(let [a# 1]
+                                  (inc a#))))))))
 
 (deftest analyze-doc
   (testing "reading a bad block shows block and file info in raised exception"

@@ -639,6 +639,23 @@
                            (vary-meta dissoc :type)))
                  form))
 
+
+(defn ^:private canonicalize-form
+  "Undoes the non-deterministic transformations done by the splicing
+  reader macro."
+  [form]
+  (walk/postwalk (fn [f]
+                   (if-let [orig-name (and (simple-symbol? f)
+                                           (second (re-matches #"(.*)__\d+__auto__" (name f))))]
+                     (symbol (str orig-name "#"))
+                     f))
+                 form))
+
+(comment
+  (canonicalize-form `foo-bar###)
+  (canonicalize-form `(let [a# 1]
+                        (inc a#))))
+
 (defn hash-codeblock [->hash {:keys [ns graph record-missing-hash-fn]} {:as codeblock :keys [hash form id vars graph-node]}]
   (let [deps (when id (dep/immediate-dependencies graph id))
         hashed-deps (into #{} (keep ->hash) deps)]
@@ -653,7 +670,7 @@
                                        :dep-with-missing-hash dep-with-missing-hash
                                        :graph-node graph-node :ns ns))))
     (sha1-base58 (binding [*print-length* nil]
-                   (pr-str (set/union (conj hashed-deps (if form (remove-type-meta form) hash))
+                   (pr-str (set/union (conj hashed-deps (if form (-> form remove-type-meta canonicalize-form) hash))
                                       vars))))))
 
 #_(hash-codeblock {} {:graph (dep/graph)} {})
