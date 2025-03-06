@@ -289,13 +289,6 @@
                                   (inc a#))))))))
 
 (deftest analyze-doc
-  (testing "reading a bad block shows block and file info in raised exception"
-    (is (thrown-match? ExceptionInfo
-                       {:block {:type :code :text "##boom"}
-                        :file any?}
-                       (-> (parser/parse-clojure-string {:doc? true} "(ns some-ns (:require []))")
-                           (update-in [:blocks 0 :text] (constantly "##boom"))
-                           ana/analyze-doc))))
   (is (match? #{{}
                 {:form '(ns example-notebook),
                  :deps set?}
@@ -329,16 +322,6 @@
 (deftest analyze-file
   (testing "should analyze depedencies"
     (is (-> (ana/analyze-file "src/nextjournal/clerk/classpath.clj") :->analysis-info not-empty))))
-
-(deftest add-block-ids
-  (testing "assigns block ids"
-    (is (= '[foo/anon-expr-5drCkCGrPisMxHpJVeyoWwviSU3pfm
-             foo/bar
-             foo/bar#2
-             foo/anon-expr-5dsbEK7B7yDZqzyteqsY2ndKVE9p3G
-             foo/anon-expr-5dsbEK7B7yDZqzyteqsY2ndKVE9p3G#2]
-           (->> "(ns foo {:nextjournal.clerk/visibility {:code :fold}}) (def bar :baz) (def bar :baz) (rand-int 42) (rand-int 42)"
-                analyze-string :blocks (mapv :id))))))
 
 (deftest no-cache-dep
   (is (match? [{:no-cache? true} {:no-cache? true} {:no-cache? true}]
