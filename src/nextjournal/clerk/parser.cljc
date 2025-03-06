@@ -423,7 +423,7 @@
          add-doc-settings
          add-block-settings)))
   ([{:as opts :keys [skip-doc?]} initial-state s]
-   (binding [*ns* *ns*]
+   (binding [*ns* (or *ns* (create-ns 'user))]
      (loop [{:as state :keys [nodes blocks add-comment-on-line? add-block-id]}
 
             (assoc initial-state
@@ -436,48 +436,49 @@
                                                             e)))))
                    :add-block-id (partial add-block-id (atom {})))]
        (if-let [node (first nodes)]
-         (do (prn :node (first nodes) :comment? (n/comment? node) :both (and (not skip-doc?) (n/comment? node)))
-             (recur (cond
-                      (code-tags (n/tag node))
-                      (-> state
-                          (assoc :add-comment-on-line? true)
-                          (update :nodes rest)
-                          (update :blocks conj (add-block-id
-                                                (let [form (try (read-string (n/string node))
-                                                                (catch Exception e
-                                                                  (throw (ex-info (str "Clerk failed reading block: "
-                                                                                       (ex-message e)
-                                                                                       e)
-                                                                                  (cond-> {:code (n/string node)}
-                                                                                    (:file opts) (assoc :file (:file opts)))
-                                                                                  e))))
-                                                      loc (-> (meta node)
-                                                              (set/rename-keys {:row :line :end-row :end-line
-                                                                                :col :column :end-col :end-column})
-                                                              (select-keys [:line :end-line :column :end-column]))]
-                                                  (when (ns? form)
-                                                    (eval form))
-                                                  {:type :code
-                                                   :text (n/string node)
-                                                   :form (add-loc opts loc form)
-                                                   :loc loc}))))
+         (recur (cond
+                  (code-tags (n/tag node))
+                  (cond-> (-> state
+                              (assoc :add-comment-on-line? true)
+                              (update :nodes rest)
+                              (update :blocks conj (add-block-id
+                                                    (let [form (try (read-string (n/string node))
+                                                                    (catch Exception e
+                                                                      (throw (ex-info (str "Clerk failed reading block: "
+                                                                                           (ex-message e)
+                                                                                           e)
+                                                                                      (cond-> {:code (n/string node)}
+                                                                                        (:file opts) (assoc :file (:file opts)))
+                                                                                      e))))
+                                                          loc (-> (meta node)
+                                                                  (set/rename-keys {:row :line :end-row :end-line
+                                                                                    :col :column :end-col :end-column})
+                                                                  (select-keys [:line :end-line :column :end-column]))]
+                                                      (when (ns? form)
+                                                        (eval form))
+                                                      {:type :code
+                                                       :text (n/string node)
+                                                       :form (add-loc opts loc form)
+                                                       :loc loc}))))
+                    (not (contains? state :ns))
+                    (assoc :ns *ns*))
 
-                      (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
-                      (-> state
-                          (assoc :add-comment-on-line? (not (n/comment? node)))
-                          (update :nodes rest)
-                          (update-in [:blocks (dec (count blocks)) :text] str (-> node n/string str/trim-newline)))
+                  (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
+                  (-> state
+                      (assoc :add-comment-on-line? (not (n/comment? node)))
+                      (update :nodes rest)
+                      (update-in [:blocks (dec (count blocks)) :text] str (-> node n/string str/trim-newline)))
 
-                      (and (not skip-doc?) (n/comment? node))
-                      (-> state
-                          (assoc :add-comment-on-line? false)
-                          (assoc :nodes (drop-while (some-fn n/comment? n/linebreak?) nodes))
-                          (update-markdown-blocks (apply str (map (comp remove-leading-semicolons n/string)
-                                                                  (take-while (some-fn n/comment? n/linebreak?) nodes)))))
-                      :else
-                      (-> state
-                          (assoc :add-comment-on-line? false)
-                          (update :nodes rest)))))
+                  (and (not skip-doc?) (n/comment? node))
+                  (-> state
+                      (assoc :add-comment-on-line? false)
+                      (assoc :nodes (drop-while (some-fn n/comment? n/linebreak?) nodes))
+                      (update-markdown-blocks (apply str (map (comp remove-leading-semicolons n/string)
+                                                              (take-while (some-fn n/comment? n/linebreak?) nodes)))))
+                  :else
+                  (-> state
+                      (assoc :add-comment-on-line? false)
+                      (update :nodes rest))))
          state)))))
 
 #_(parse-clojure-string "'code ;; foo\n;; bar")
