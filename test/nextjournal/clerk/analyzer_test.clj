@@ -371,6 +371,7 @@ my-uuid")]
     (is (dep/depends? (:graph analyzed)
                       'nextjournal.clerk.analyzer-test.graph-nodes/some-dependent-var
                       'nextjournal.clerk.git/read-git-attrs))
+    #_ FIXME
     (is (not (contains? (dep/nodes (:graph analyzed))
                         'nextjournal.clerk.fixtures.dep-a/some-function-with-defs-inside)))
 
