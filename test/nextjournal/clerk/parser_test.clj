@@ -1,6 +1,5 @@
 (ns nextjournal.clerk.parser-test
   (:require [clojure.test :refer [deftest is testing]]
-            [matcher-combinators.matchers :as m]
             [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk.analyzer-test :refer [analyze-string]]
             [nextjournal.clerk.parser :as parser]
@@ -28,20 +27,20 @@ line\"")
 
 (deftest parse-clojure-string
   (testing "is returning blocks with types and markdown structure attached"
-    (is (match? (m/equals {:blocks [{:type :code, :text "^:nextjournal.clerk/no-cache ^:nextjournal.clerk/toc (ns example-notebook)"}
-                                    {:type :markdown, :doc {:type :doc :content [{:type :heading}
-                                                                                 {:type :heading}
-                                                                                 {:type :paragraph}]}}
-                                    {:type :code, :text "#{3 1 2}"}
-                                    {:type :markdown, :doc {:type :doc :content [{:type :heading}]}}
-                                    {:type :code, :text "{2 \"bar\" 1 \"foo\"}"},
-                                    {:type :code, :text "\"multi
+    (is (match? {:blocks [{:type :code, :text "^:nextjournal.clerk/no-cache ^:nextjournal.clerk/toc (ns example-notebook)"}
+                          {:type :markdown, :doc {:type :doc :content [{:type :heading}
+                                                                       {:type :heading}
+                                                                       {:type :paragraph}]}}
+                          {:type :code, :text "#{3 1 2}"}
+                          {:type :markdown, :doc {:type :doc :content [{:type :heading}]}}
+                          {:type :code, :text "{2 \"bar\" 1 \"foo\"}"},
+                          {:type :code, :text "\"multi
 line\""}]
-                           :title "📶 Sorting",
-                           :footnotes []
-                           :toc {:type :toc,
-                                 :children [{:type :toc :children [{:type :toc}
-                                                                   {:type :toc}]}]}})
+                 :title "📶 Sorting",
+                 :footnotes []
+                 :toc {:type :toc,
+                       :children [{:type :toc :children [{:type :toc}
+                                                         {:type :toc}]}]}}
                 (parser/parse-clojure-string {:doc? true} notebook))))
 
   (testing "reading a bad block shows block and file info in raised exception"
