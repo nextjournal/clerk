@@ -353,9 +353,9 @@
                                  (update :blocks conj (cond-> (dissoc block+analysis :deps :no-cache? :ns-effect?)
                                                         (parser/ns? form) (assoc :ns? true)
                                                         doc? (assoc :text-without-meta (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))))
-                                 (cond->
-                                     (and doc? (not (contains? state :ns)))
-                                   (merge (parser/->doc-settings form) {:ns *ns*}))))))
+                                 (cond-> #_doc
+                                   (not (contains? state :ns))
+                                   (assoc :ns *ns*))))))
 
                        (-> state
                            (cond-> doc? (merge doc))
@@ -365,9 +365,7 @@
                        (:blocks doc))
 
          true (dissoc :doc?)
-         doc? (-> parser/add-block-settings
-                  parser/add-open-graph-metadata
-                  parser/filter-code-blocks-without-form))))))
+         doc? parser/filter-code-blocks-without-form)))))
 
 #_(let [parsed (parser/parse-clojure-string "clojure.core/dec")]
     (build-graph (analyze-doc parsed)))

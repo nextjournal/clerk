@@ -155,13 +155,14 @@
     (if (ns? first-form) :on :off)))
 
 (defn ->open-graph [{:keys [title blocks]}]
-  (merge {:type "article:clerk"
-          :title title
-          :description (first (sequence
-                               (comp (keep :doc)
-                                     (mapcat :content)
-                                     (filter (comp #{:paragraph} :type))
-                                     (map markdown.transform/->text)) blocks))}
+  (merge (let [desc (first (sequence
+                            (comp (keep :doc)
+                                  (mapcat :content)
+                                  (filter (comp #{:paragraph} :type))
+                                  (map markdown.transform/->text)) blocks))]
+           (cond-> {:type "article:clerk"}
+             title (assoc :title title)
+             desc (assoc :description desc)))
          (some #(get-doc-setting (:form %) :nextjournal.clerk/open-graph) blocks)))
 
 #_(->open-graph
@@ -239,7 +240,8 @@
 
 #_(merge-settings {:nextjournal.clerk/visibility {:code :show :result :show}} {:nextjournal.clerk/visibility {:code :fold}})
 
-(defn add-block-settings [{:as analyzed-doc :keys [blocks]}]
+(defn add-block-settings [{:as parsed-doc :keys [blocks]}]
+  ;; TODO: move this to parsing
   (-> (reduce (fn [{:as state :keys [block-settings]} {:as block :keys [form]}]
                 (let [next-block-settings (merge-settings block-settings (parse-global-block-settings form))]
                   (cond-> (update state :blocks conj
@@ -247,7 +249,7 @@
                                     (code? block)
                                     (assoc :settings (merge-settings next-block-settings (parse-local-block-settings form)))))
                     (code? block) (assoc :block-settings next-block-settings))))
-              (assoc analyzed-doc :blocks [])
+              (assoc parsed-doc :blocks [])
               blocks)
       (dissoc :block-settings)))
 
@@ -326,6 +328,7 @@
 
 (defn update-markdown-blocks [{:as state :keys [md-context]} md]
   (let [doc (markdown/parse* (assoc md-context :content []) md)]
+    (prn :update-md md :parsed doc)
     (-> state
         (assoc :md-context doc)
         (update :blocks conj {:type :markdown
@@ -399,73 +402,85 @@
                                                    (str (cond-> (:file opts)
                                                           (instance? java.net.URL (:file opts)) extract-file))))))))
 
+(defn add-doc-settings [{:as doc :keys [blocks]}]
+  (if-let [first-form (some :form blocks)]
+    (merge doc (->doc-settings first-form))
+    doc))
+
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
-  ([{:as opts :keys [doc?]} s]
+  ([{:as opts :keys [skip-doc?]} s]
    (let [parsed-doc (parse-clojure-string opts
                                           (cond-> {:blocks []
                                                    :md-context markdown/empty-doc}
                                             (:file opts)
-                                            (assoc :file (:file opts))) s)]
-     (select-keys (cond-> parsed-doc
-                    doc? (merge (:md-context parsed-doc)))
-                  [:file :blocks :title :toc :footnotes])))
-  ([{:as opts :keys [doc?]} initial-state s]
+                                            (assoc :file (:file opts)))
+                                          s)]
+     (-> (select-keys (cond-> parsed-doc
+                        (not skip-doc?) (merge (:md-context parsed-doc)))
+                      [:file :blocks :title :toc :footnotes])
+         add-open-graph-metadata
+         add-doc-settings
+         add-block-settings)))
+  ([{:as opts :keys [skip-doc?]} initial-state s]
    (binding [*ns* *ns*]
-     (loop [{:as state :keys [nodes blocks add-comment-on-line? add-block-id]} (assoc initial-state
-                                                                                      :nodes (:children (try (p/parse-string-all s)
-                                                                                                             (catch Exception e
-                                                                                                               (throw (ex-info (str "Clerk failed parsing: "
-                                                                                                                                    (ex-message e))
-                                                                                                                               (cond-> {:string s}
-                                                                                                                                 (:file opts) (assoc :file (:file opts)))
-                                                                                                                               e)))))
-                                                                                      :add-block-id (partial add-block-id (atom {})))]
+     (loop [{:as state :keys [nodes blocks add-comment-on-line? add-block-id]}
+
+            (assoc initial-state
+                   :nodes (:children (try (p/parse-string-all s)
+                                          (catch Exception e
+                                            (throw (ex-info (str "Clerk failed parsing: "
+                                                                 (ex-message e))
+                                                            (cond-> {:string s}
+                                                              (:file opts) (assoc :file (:file opts)))
+                                                            e)))))
+                   :add-block-id (partial add-block-id (atom {})))]
        (if-let [node (first nodes)]
-         (recur (cond
-                  (code-tags (n/tag node))
-                  (-> state
-                      (assoc :add-comment-on-line? true)
-                      (update :nodes rest)
-                      (update :blocks conj (add-block-id
-                                            (let [form (try (read-string (n/string node))
-                                                            (catch Exception e
-                                                              (throw (ex-info (str "Clerk failed reading block: "
-                                                                                   (ex-message e)
-                                                                                   e)
-                                                                              (cond-> {:code (n/string node)}
-                                                                                (:file opts) (assoc :file (:file opts)))
-                                                                              e))))
-                                                  loc (-> (meta node)
-                                                          (set/rename-keys {:row :line :end-row :end-line
-                                                                            :col :column :end-col :end-column})
-                                                          (select-keys [:line :end-line :column :end-column]))]
-                                              (when (ns? form)
-                                                (eval form))
-                                              {:type :code
-                                               :text (n/string node)
-                                               :form (add-loc opts loc form)
-                                               :loc loc}))))
+         (do (prn :node (first nodes) :comment? (n/comment? node) :both (and (not skip-doc?) (n/comment? node)))
+             (recur (cond
+                      (code-tags (n/tag node))
+                      (-> state
+                          (assoc :add-comment-on-line? true)
+                          (update :nodes rest)
+                          (update :blocks conj (add-block-id
+                                                (let [form (try (read-string (n/string node))
+                                                                (catch Exception e
+                                                                  (throw (ex-info (str "Clerk failed reading block: "
+                                                                                       (ex-message e)
+                                                                                       e)
+                                                                                  (cond-> {:code (n/string node)}
+                                                                                    (:file opts) (assoc :file (:file opts)))
+                                                                                  e))))
+                                                      loc (-> (meta node)
+                                                              (set/rename-keys {:row :line :end-row :end-line
+                                                                                :col :column :end-col :end-column})
+                                                              (select-keys [:line :end-line :column :end-column]))]
+                                                  (when (ns? form)
+                                                    (eval form))
+                                                  {:type :code
+                                                   :text (n/string node)
+                                                   :form (add-loc opts loc form)
+                                                   :loc loc}))))
 
-                  (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
-                  (-> state
-                      (assoc :add-comment-on-line? (not (n/comment? node)))
-                      (update :nodes rest)
-                      (update-in [:blocks (dec (count blocks)) :text] str (-> node n/string str/trim-newline)))
+                      (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
+                      (-> state
+                          (assoc :add-comment-on-line? (not (n/comment? node)))
+                          (update :nodes rest)
+                          (update-in [:blocks (dec (count blocks)) :text] str (-> node n/string str/trim-newline)))
 
-                  (and doc? (n/comment? node))
-                  (-> state
-                      (assoc :add-comment-on-line? false)
-                      (assoc :nodes (drop-while (some-fn n/comment? n/linebreak?) nodes))
-                      (update-markdown-blocks (apply str (map (comp remove-leading-semicolons n/string)
-                                                              (take-while (some-fn n/comment? n/linebreak?) nodes)))))
-                  :else
-                  (-> state
-                      (assoc :add-comment-on-line? false)
-                      (update :nodes rest))))
+                      (and (not skip-doc?) (n/comment? node))
+                      (-> state
+                          (assoc :add-comment-on-line? false)
+                          (assoc :nodes (drop-while (some-fn n/comment? n/linebreak?) nodes))
+                          (update-markdown-blocks (apply str (map (comp remove-leading-semicolons n/string)
+                                                                  (take-while (some-fn n/comment? n/linebreak?) nodes)))))
+                      :else
+                      (-> state
+                          (assoc :add-comment-on-line? false)
+                          (update :nodes rest)))))
          state)))))
 
-#_(parse-clojure-string {:doc? true} "'code ;; foo\n;; bar")
+#_(parse-clojure-string "'code ;; foo\n;; bar")
 #_(parse-clojure-string "'code , ;; foo\n;; bar")
 #_(parse-clojure-string "'code\n;; foo\n;; bar")
 #_(keys (parse-clojure-string {:doc? true} (slurp "notebooks/viewer_api.clj")))
