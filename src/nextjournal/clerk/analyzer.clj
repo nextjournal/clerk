@@ -1,13 +1,11 @@
 (ns nextjournal.clerk.analyzer
   {:nextjournal.clerk/no-cache true}
-  (:refer-clojure :exclude [hash read-string])
+  (:refer-clojure :exclude [hash])
   (:require [babashka.fs :as fs]
-            [edamame.core :as edamame]
             [clojure.core :as core]
             [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.string :as str]
-            [clojure.tools.reader :as tools.reader]
             [clojure.tools.analyzer :as ana]
             [clojure.tools.analyzer.ast :as ana-ast]
             [clojure.tools.analyzer.jvm :as ana-jvm]
@@ -84,29 +82,6 @@
     form))
 
 #_(rewrite-defcached '(nextjournal.clerk/defcached foo :bar))
-
-(defn auto-resolves [ns]
-  (as-> (ns-aliases ns) $
-    (assoc $ :current (ns-name *ns*))
-    (zipmap (keys $)
-            (map ns-name (vals $)))))
-
-#_(auto-resolves (find-ns 'nextjournal.clerk.parser))
-#_(auto-resolves (find-ns 'cards))
-
-(defn read-string [s]
-  (edamame/parse-string s {:all true
-                           :syntax-quote {:resolve-symbol tools.reader/resolve-symbol}
-                           :readers *data-readers*
-                           :read-cond :allow
-                           :regex #(list `re-pattern %)
-                           :features #{:clj}
-                           :end-location false
-                           :row-key :line
-                           :col-key :column
-                           :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))}))
-
-#_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
 
 (defn unresolvable-symbol-handler [ns sym ast-node]
   ast-node)
@@ -381,7 +356,7 @@
        (cond-> (reduce (fn [{:as state notebook-ns :ns} {:as block :keys [type text loc]}]
                          (if (not= type :code)
                            (update state :blocks conj (assoc block :id (get-block-id !id->count block)))
-                           (let [form (try (read-string text)
+                           (let [form (try (parser/read-string text)
                                            (catch Exception e
                                              (throw (ex-info (str "Clerk analysis failed reading block: "
                                                                   (ex-message e))

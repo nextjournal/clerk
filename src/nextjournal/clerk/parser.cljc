@@ -1,13 +1,44 @@
 (ns nextjournal.clerk.parser
   "Clerk's Parser turns Clojure & Markdown files and strings into Clerk documents."
+  (:refer-clojure :exclude [read-string])
   (:require [clojure.set :as set]
             [clojure.string :as str]
+            #?(:clj [clojure.tools.reader :as tools.reader])
             [clojure.zip]
+            [edamame.core :as edamame]
             [nextjournal.markdown :as markdown]
             [nextjournal.markdown.transform :as markdown.transform]
             [rewrite-clj.node :as n]
             [rewrite-clj.parser :as p]
             [rewrite-clj.zip :as z]))
+
+
+
+#?(:clj
+   (defn auto-resolves [ns]
+     (as-> (ns-aliases ns) $
+       (assoc $ :current (ns-name *ns*))
+       (zipmap (keys $)
+               (map ns-name (vals $))))))
+
+#_(auto-resolves (find-ns 'nextjournal.clerk.parser))
+#_(auto-resolves (find-ns 'cards))
+
+
+(defn read-string [s]
+  (edamame/parse-string s {:all true
+                           :read-cond :allow
+                           :regex #(list `re-pattern %)
+                           :features #{:clj}
+                           :end-location false
+                           :row-key :line
+                           :col-key :column
+                           #?@(:clj [:readers *data-readers*
+                                     :syntax-quote {:resolve-symbol tools.reader/resolve-symbol}
+                                     :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))])}))
+
+#_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
+
 
 (defn ns? [form]
   (and (seq? form) (= 'ns (first form))))
