@@ -296,6 +296,6 @@
   "Evaluated the given `code-string` using the optional `in-memory-cache` map."
   ([code-string] (eval-string {} code-string))
   ([in-memory-cache code-string]
-   (eval-doc in-memory-cache (parser/parse-clojure-string {:doc? true} code-string))))
+   (eval-doc in-memory-cache (parser/parse-clojure-string code-string))))
 
 #_(eval-string "(+ 39 3)")
