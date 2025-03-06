@@ -163,6 +163,16 @@ par two"))))
     (is (= (parser/text-with-clerk-metadata-removed "^{:un :balanced :map} (do nothing)" clerk-ns-alias)
            "^{:un :balanced :map} (do nothing)"))))
 
+(deftest read-string-tests
+  (testing "read-string should read regex's such that value equalility is preserved"
+    (is (= '(fn [x] (clojure.string/split x (clojure.core/re-pattern "/")))
+           (parser/read-string "(fn [x] (clojure.string/split x #\"/\"))"))))
+
+  (testing "read-string can handle syntax quote"
+    (is (match? '['nextjournal.clerk.parser-test/foo 'nextjournal.clerk.view/foo 'nextjournal.clerk/foo]
+                (binding [*ns* (find-ns 'nextjournal.clerk.parser-test)]
+                  (parser/read-string "[`foo `view/foo `nextjournal.clerk/foo]"))))))
+
 (deftest presenting-a-parsed-document
   (testing "presenting a parsed document doesn't produce garbage"
     (is (match? [{:nextjournal/viewer {:name 'nextjournal.clerk.viewer/cell-viewer}
