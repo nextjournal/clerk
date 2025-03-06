@@ -1431,7 +1431,7 @@
                                                                          (:wrapped pred))]
                                                 (wrapped-pred x)
                                                 (pred (->value x))))))
-      (throw (ex-info (str "cannot find matching viewer for value")
+      (throw (ex-info "cannot find matching viewer for value"
                       {:value (->value x) :viewers viewers :x x}))))
 
 #_(viewer-for default-viewers [1 2 3])

@@ -50,7 +50,7 @@
                            (if error
                              opts
                              (if-not (sequential? paths)
-                               {:error (str "`:paths-fn` must compute to a sequential value.")
+                               {:error "`:paths-fn` must compute to a sequential value."
                                 :paths-fn paths-fn :resolved-paths paths}
                                {:resolved-paths paths})))
                          {:error ex-msg :paths-fn paths-fn})))
@@ -99,9 +99,9 @@
     (let [deps-edn (edn/read-string (slurp "deps.edn"))]
       (if-some [clerk-alias (get-in deps-edn [:aliases :nextjournal/clerk])]
         (get clerk-alias :exec-args
-             {:error (str "No `:exec-args` found in `:nextjournal/clerk` alias.")})
-        {:error (str "No `:nextjournal/clerk` alias found in `deps.edn`.")}))
-    {:error (str "No `deps.edn` found in project.")}))
+             {:error "No `:exec-args` found in `:nextjournal/clerk` alias."})
+        {:error "No `:nextjournal/clerk` alias found in `deps.edn`."}))
+    {:error "No `deps.edn` found in project."}))
 
 (def ^:dynamic *build-opts* nil)
 
