@@ -202,10 +202,11 @@ par two"))))
   (testing "parsing a Clojure file"
     (is (match?
          {:file "test/nextjournal/clerk/fixtures/hello.clj"
+          :no-cache true
           :blocks [{:type :code}
                    {:type :code
                     :id 'nextjournal.clerk.fixtures.hello/answer}]}
-         (parser/parse-file {:doc? true} "test/nextjournal/clerk/fixtures/hello.clj"))))
+         (parser/parse-file "test/nextjournal/clerk/fixtures/hello.clj"))))
 
   (testing "parsing a markdown file"
     (is (match?

@@ -211,6 +211,12 @@
                                                                (merge (-> first-form second meta)
                                                                       (first (filter map? first-form)))))))
                                  false)
+             :no-cache (boolean
+                        (:nextjournal.clerk/no-cache
+                         (or (when (map? first-form)
+                               first-form)
+                             (when (ns? first-form)
+                               (first (filter map? first-form))))))
              :block-settings (merge-with merge
                                          {:nextjournal.clerk/visibility {:code :show :result :show}}
                                          (parse-global-block-settings first-form))}
@@ -554,3 +560,7 @@
   (parse-file "notebooks/elements.clj")
   (parse-file "notebooks/rule_30.clj")
   (parse-file "notebooks/src/demo/lib.cljc"))
+
+#_(select-keys 
+   (parse-file "test/nextjournal/clerk/fixtures/hello.clj")
+   [:file :no-cache])
