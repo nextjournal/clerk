@@ -408,6 +408,8 @@
     (merge doc (->doc-settings first-form))
     doc))
 
+(def md-context-keys-to-select
+  [:footnotes :title :toc])
 
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
@@ -421,7 +423,7 @@
      (-> (cond-> parsed-doc
            (not skip-doc?)
            (merge (select-keys (:md-context parsed-doc)
-                               [:footnotes :text->id+emoji-fn :toc :title])))
+                               md-context-keys-to-select)))
          (dissoc :md-context)
          add-open-graph-metadata
          add-doc-settings
@@ -492,9 +494,9 @@
   (keys (parse-clojure-string (slurp "notebooks/viewer_api.clj")))
   (parse-clojure-string ";; # Hello\n;; ## 👋 Section\n(do 123)\n;; ## 🤚🏽 Section"))
 
-(defn parse-markdown-cell [{:as state :keys [nodes]} opts]
-  (assoc (parse-clojure-string opts state (markdown.transform/->text (first nodes)))
-         :nodes (rest nodes)
+(defn parse-markdown-cell [state opts]
+  (assoc (parse-clojure-string opts state (markdown.transform/->text (first (:nodes state))))
+         :nodes (rest (:nodes state))
          ::md-slice []))
 
 (defn runnable-code-block? [{:as block :keys [info language]}]
@@ -514,22 +516,25 @@
 (defn filter-code-blocks-without-form [doc]
   (update doc :blocks #(filterv (some-fn :form (complement code?)) %)))
 
-(defn parse-markdown-string [{:as opts :keys [doc?]} s]
-  (let [{:as ctx :keys [content]} (markdown/parse* markdown/empty-doc s)]
-    (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes content :md-context ctx}]
-      (if-some [node (first nodes)]
-        (recur
-         (if (runnable-code-block? node)
+(defn parse-markdown-string
+  ([s] (parse-markdown-string {} s))
+  ([opts s]
+   (binding [*ns* *ns*]
+     (let [{:as ctx :keys [content]} (markdown/parse* markdown/empty-doc s)]
+       (loop [{:as state :keys [nodes] ::keys [md-slice]} (-> {:blocks [] ::md-slice [] :nodes content :md-context ctx}
+                                                              (merge (select-keys opts [:file])))]
+         (if-some [node (first nodes)]
+           (recur
+            (if (runnable-code-block? node)
+              (-> state
+                  (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
+                  (parse-markdown-cell opts))
+              (-> state (update :nodes rest) (update ::md-slice conj node))))
+
            (-> state
                (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
-               (parse-markdown-cell opts))
-           (-> state (update :nodes rest) (cond-> doc? (update ::md-slice conj node)))))
-
-        (-> state
-            (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
-            (select-keys [:blocks :visibility])
-            (merge (when doc?
-                     (select-keys ctx [:footnotes :title :toc]))))))))
+               (dissoc ::md-slice :md-context)
+               (merge (select-keys ctx md-context-keys-to-select)))))))))
 
 #_(parse-markdown-string "# Hello\n```\n1\n;; # 1️⃣ Hello\n2\n\n```\nhey\n```\n3\n;; # 2️⃣ Hello\n4\n```\n")
 
@@ -541,9 +546,11 @@
             (parse-markdown-string (assoc opts :file file) (slurp file))
             (parse-clojure-string (assoc opts :file file) (slurp file)))))))
 
-#_(parse-file "notebooks/visibility.clj")
-#_(parse-file {:skip-doc? true} "notebooks/visibility.clj")
-#_(parse-file "notebooks/elements.clj")
-#_(parse-file "notebooks/markdown.md")
-#_(parse-file "notebooks/rule_30.clj")
-#_(parse-file "notebooks/src/demo/lib.cljc")
+(comment
+  (parse-file "notebooks/hello.clj")
+  (parse-file "notebooks/hello.md")
+  (parse-file "notebooks/visibility.clj")
+  (parse-file {:skip-doc? true} "notebooks/visibility.clj")
+  (parse-file "notebooks/elements.clj")
+  (parse-file "notebooks/rule_30.clj")
+  (parse-file "notebooks/src/demo/lib.cljc"))

@@ -270,6 +270,9 @@
         (set-status-fn {:progress 0.10 :status "Analyzing…"}))
       (let [{:as analyzed-doc :keys [ns]} (analyzer/build-graph
                                            (assoc parsed-doc :blob->result in-memory-cache))]
+        (when (and (not-empty (:var->block-id analyzed-doc))
+                   (not ns))
+          (throw (ex-info "namespace must be set" (select-keys analyzed-doc [:file :ns]))))
         (binding [*ns* ns]
           (-> analyzed-doc
               analyzer/hash

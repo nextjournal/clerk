@@ -205,4 +205,14 @@ par two"))))
           :blocks [{:type :code}
                    {:type :code
                     :id 'nextjournal.clerk.fixtures.hello/answer}]}
-         (parser/parse-file {:doc? true} "test/nextjournal/clerk/fixtures/hello.clj")))))
+         (parser/parse-file {:doc? true} "test/nextjournal/clerk/fixtures/hello.clj"))))
+
+  (testing "parsing a markdown file"
+    (is (match?
+         {:file "notebooks/hello.md"
+          :ns (create-ns 'hello-markdown)
+          :blocks [{:type :markdown}
+                   {:type :code}
+                   {:type :markdown}
+                   {:type :code}]}
+         (parser/parse-file "notebooks/hello.md")))))
