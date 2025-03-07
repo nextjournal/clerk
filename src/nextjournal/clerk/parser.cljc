@@ -418,12 +418,12 @@
                                           s)]
      (-> (select-keys (cond-> parsed-doc
                         (not skip-doc?) (merge (:md-context parsed-doc)))
-                      [:file :blocks :title :toc :footnotes])
+                      [:file :blocks :title :toc :footnotes :ns])
          add-open-graph-metadata
          add-doc-settings
          add-block-settings)))
   ([{:as opts :keys [skip-doc?]} initial-state s]
-   (binding [*ns* (or *ns* (create-ns 'user))]
+   (binding [*ns* *ns*]
      (loop [{:as state :keys [nodes blocks add-comment-on-line? add-block-id]}
 
             (assoc initial-state

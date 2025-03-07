@@ -193,7 +193,7 @@
     (is (re-find #"dependency-.*\.jar" (ana/find-location 'weavejester.dependency/graph)))))
 
 (defn analyze-string [s]
-  (-> (parser/parse-clojure-string {:doc? true} s)
+  (-> (parser/parse-clojure-string s)
       ana/build-graph))
 
 (deftest hash-test
