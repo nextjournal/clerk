@@ -215,7 +215,7 @@ par two"))))
           :ns (create-ns 'hello-markdown)
           :no-cache true
           :blocks [{:type :markdown}
-                   {:type :code}
+                   {:type :code :settings {:nextjournal.clerk/visibility {:code :fold, :result :hide}}}
                    {:type :markdown}
-                   {:type :code}]}
+                   {:type :code :settings {:nextjournal.clerk/visibility {:code :fold, :result :show}}}]}
          (parser/parse-file "notebooks/hello.md")))))

@@ -114,34 +114,31 @@
   ([{:as state :keys [doc?]} doc]
    (binding [*ns* *ns*]
      (let [!id->count (atom {})]
-       (cond-> (reduce (fn [{:as state notebook-ns :ns :keys [ns-aliases]} i]
-                         (let [{:as block :keys [type text]} (get-in doc [:blocks i])]
-                           (if (not= type :code)
-                             (assoc-in state [:blocks i :id] (get-block-id !id->count block))
-                             (let [node (p/parse-string text)
-                                   form (try (n/sexpr node (when ns-aliases {:auto-resolve ns-aliases}))
-                                             (catch js/Error e
-                                               (throw (ex-info (str "Clerk analysis failed reading block: "
-                                                                    (ex-message e))
-                                                               {:block block
-                                                                :file (:file doc)}
-                                                               e))))
-                                   analyzed (cond-> (analyze form)
-                                              (:file doc) (assoc :file (:file doc)))
-                                   block-id (get-block-id !id->count (merge analyzed block))
-                                   analyzed (assoc analyzed :id block-id)]
-                               (cond-> state
-                                 (and (not ns-aliases) (parser/ns? form)) (assoc :ns-aliases (parse-ns-aliases form))
-                                 doc? (update-in [:blocks i] merge analyzed)
-                                 doc? (assoc-in [:blocks i :text-without-meta]
-                                                (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))
-                                 (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))))))
+       (reduce (fn [{:as state notebook-ns :ns :keys [ns-aliases]} i]
+                 (let [{:as block :keys [type text]} (get-in doc [:blocks i])]
+                   (if (not= type :code)
+                     (assoc-in state [:blocks i :id] (get-block-id !id->count block))
+                     (let [node (p/parse-string text)
+                           form (try (n/sexpr node (when ns-aliases {:auto-resolve ns-aliases}))
+                                     (catch js/Error e
+                                       (throw (ex-info (str "Clerk analysis failed reading block: "
+                                                            (ex-message e))
+                                                       {:block block
+                                                        :file (:file doc)}
+                                                       e))))
+                           analyzed (cond-> (analyze form)
+                                      (:file doc) (assoc :file (:file doc)))
+                           block-id (get-block-id !id->count (merge analyzed block))
+                           analyzed (assoc analyzed :id block-id)]
                        (cond-> state
-                         doc? (merge doc))
-                       (-> doc :blocks count range))
-         doc? (-> parser/add-block-settings
-                  parser/add-open-graph-metadata
-                  parser/filter-code-blocks-without-form))))))
+                         (and (not ns-aliases) (parser/ns? form)) (assoc :ns-aliases (parse-ns-aliases form))
+                         doc? (update-in [:blocks i] merge analyzed)
+                         doc? (assoc-in [:blocks i :text-without-meta]
+                                        (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))
+                         (and doc? (not (contains? state :ns))) (merge (parser/->doc-settings form) {:ns *ns*}))))))
+               (cond-> state
+                 doc? (merge doc))
+               (-> doc :blocks count range))))))
 
 (defn eval-blocks [doc]
   (update doc :blocks (partial map (fn [{:as cell :keys [type text var form]}]

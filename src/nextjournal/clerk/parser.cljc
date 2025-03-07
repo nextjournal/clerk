@@ -247,19 +247,6 @@
 
 #_(merge-settings {:nextjournal.clerk/visibility {:code :show :result :show}} {:nextjournal.clerk/visibility {:code :fold}})
 
-(defn add-block-settings [{:as parsed-doc :keys [blocks]}]
-  ;; TODO: move this to parsing
-  (-> (reduce (fn [{:as state :keys [block-settings]} {:as block :keys [form]}]
-                (let [next-block-settings (merge-settings block-settings (parse-global-block-settings form))]
-                  (cond-> (update state :blocks conj
-                                  (cond-> block
-                                    (code? block)
-                                    (assoc :settings (merge-settings next-block-settings (parse-local-block-settings form)))))
-                    (code? block) (assoc :block-settings next-block-settings))))
-              (assoc parsed-doc :blocks [])
-              blocks)
-      (dissoc :block-settings)))
-
 (def code-tags
   #{:deref :map :meta :multi-line :list :quote :syntax-quote :reader-macro :set :token :var :vector})
 
@@ -421,7 +408,8 @@
   ([{:as opts :keys [skip-doc?]} s]
    (let [parsed-doc (parse-clojure-string opts
                                           (cond-> {:blocks []
-                                                   :md-context markdown/empty-doc}
+                                                   :md-context markdown/empty-doc
+                                                   :block-settings {:nextjournal.clerk/visibility {:code :show :result :show}}}
                                             (:file opts)
                                             (assoc :file (:file opts)))
                                           s)]
@@ -431,11 +419,10 @@
                                md-context-keys-to-select)))
          (dissoc :md-context)
          add-open-graph-metadata
-         add-doc-settings
-         add-block-settings)))
+         add-doc-settings)))
   ([{:as opts :keys [skip-doc?]} initial-state s]
    (binding [*ns* *ns*]
-     (loop [{:as state :keys [nodes blocks add-comment-on-line? add-block-id]}
+     (loop [{:as state :keys [nodes blocks block-settings add-comment-on-line? add-block-id]}
 
             (assoc initial-state
                    :nodes (:children (try (p/parse-string-all s)
@@ -449,30 +436,33 @@
        (if-let [node (first nodes)]
          (recur (cond
                   (code-tags (n/tag node))
-                  (cond-> (-> state
-                              (assoc :add-comment-on-line? true)
-                              (update :nodes rest)
-                              (update :blocks conj (add-block-id
-                                                    (let [form (try (read-string (n/string node))
-                                                                    (catch Exception e
-                                                                      (throw (ex-info (str "Clerk failed reading block: "
-                                                                                           (ex-message e)
-                                                                                           e)
-                                                                                      (cond-> {:code (n/string node)}
-                                                                                        (:file opts) (assoc :file (:file opts)))
-                                                                                      e))))
-                                                          loc (-> (meta node)
-                                                                  (set/rename-keys {:row :line :end-row :end-line
-                                                                                    :col :column :end-col :end-column})
-                                                                  (select-keys [:line :end-line :column :end-column]))]
-                                                      (when (ns? form)
-                                                        (eval form))
-                                                      {:type :code
-                                                       :text (n/string node)
-                                                       :form (add-loc opts loc form)
-                                                       :loc loc}))))
-                    (not (contains? state :ns))
-                    (assoc :ns *ns*))
+                  (let [form (try (read-string (n/string node))
+                                  (catch Exception e
+                                    (throw (ex-info (str "Clerk failed reading block: "
+                                                         (ex-message e)
+                                                         e)
+                                                    (cond-> {:code (n/string node)}
+                                                      (:file opts) (assoc :file (:file opts)))
+                                                    e))))
+                        loc (-> (meta node)
+                                (set/rename-keys {:row :line :end-row :end-line
+                                                  :col :column :end-col :end-column})
+                                (select-keys [:line :end-line :column :end-column]))
+                        next-block-settings (merge-settings (:block-settings state) (parse-global-block-settings form))
+                        code-block {:type :code
+                                    :settings (merge-settings next-block-settings (parse-local-block-settings form))
+                                    :text (n/string node)
+                                    :form (add-loc opts loc form)
+                                    :loc loc}]
+                    (when (ns? form)
+                      (eval form))
+                    (cond-> (-> state
+                                (assoc :add-comment-on-line? true)
+                                (update :nodes rest)
+                                (assoc :block-settings next-block-settings)
+                                (update :blocks conj (add-block-id code-block)))
+                      (not (contains? state :ns))
+                      (assoc :ns *ns*)))
 
                   (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
                   (-> state
@@ -526,8 +516,13 @@
   ([opts s]
    (binding [*ns* *ns*]
      (let [{:as ctx :keys [content]} (markdown/parse* markdown/empty-doc s)]
-       (loop [{:as state :keys [nodes] ::keys [md-slice]} (-> {:blocks [] ::md-slice [] :nodes content :md-context ctx}
-                                                              (merge (select-keys opts [:file])))]
+       (loop [{:as state :keys [nodes] ::keys [md-slice]} (merge
+                                                           {:blocks []
+                                                            :block-settings {:nextjournal.clerk/visibility {:code :show :result :show}}
+                                                            ::md-slice []
+                                                            :nodes content
+                                                            :md-context ctx}
+                                                           (select-keys opts [:file]))]
          (if-some [node (first nodes)]
            (recur
             (if (runnable-code-block? node)
@@ -541,8 +536,7 @@
                (dissoc ::md-slice :md-context)
                (merge (select-keys ctx md-context-keys-to-select))
                add-open-graph-metadata
-               add-doc-settings
-               add-block-settings)))))))
+               add-doc-settings)))))))
 
 #_(parse-markdown-string "# Hello\n```\n1\n;; # 1️⃣ Hello\n2\n\n```\nhey\n```\n3\n;; # 2️⃣ Hello\n4\n```\n")
 
@@ -562,3 +556,4 @@
   (parse-file "notebooks/elements.clj")
   (parse-file "notebooks/rule_30.clj")
   (parse-file "notebooks/src/demo/lib.cljc"))
+
