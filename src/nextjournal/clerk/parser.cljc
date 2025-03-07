@@ -200,6 +200,7 @@
 #_(parse-local-block-settings '^{:nextjournal.clerk/budget nil
                                  :nextjournal.clerk/visibility {:code :fold}}(inc 1))
 
+
 (defn ->doc-settings [first-form]
   (let [doc-css-class (when (ns? first-form)
                         (:nextjournal.clerk/doc-css-class (first (filter map? first-form))))]
@@ -216,10 +217,7 @@
                          (or (when (map? first-form)
                                first-form)
                              (when (ns? first-form)
-                               (first (filter map? first-form))))))
-             :block-settings (merge-with merge
-                                         {:nextjournal.clerk/visibility {:code :show :result :show}}
-                                         (parse-global-block-settings first-form))}
+                               (first (filter map? first-form))))))}
       doc-css-class (assoc :doc-css-class (cond-> doc-css-class
                                             (or (keyword? doc-css-class) (string? doc-css-class))
                                             vector) ))))
@@ -408,8 +406,7 @@
   ([{:as opts :keys [skip-doc?]} s]
    (let [parsed-doc (parse-clojure-string opts
                                           (cond-> {:blocks []
-                                                   :md-context markdown/empty-doc
-                                                   :block-settings {:nextjournal.clerk/visibility {:code :show :result :show}}}
+                                                   :md-context markdown/empty-doc}
                                             (:file opts)
                                             (assoc :file (:file opts)))
                                           s)]
@@ -448,7 +445,12 @@
                                 (set/rename-keys {:row :line :end-row :end-line
                                                   :col :column :end-col :end-column})
                                 (select-keys [:line :end-line :column :end-column]))
-                        next-block-settings (merge-settings (:block-settings state) (parse-global-block-settings form))
+                        next-block-settings (merge-settings
+                                             (or (:block-settings state)
+                                                 (merge-with merge
+                                                             {:nextjournal.clerk/visibility {:code :show :result :show}}
+                                                             (parse-global-block-settings form)))
+                                             (parse-global-block-settings form))
                         code-block {:type :code
                                     :settings (merge-settings next-block-settings (parse-local-block-settings form))
                                     :text (n/string node)
@@ -518,7 +520,6 @@
      (let [{:as ctx :keys [content]} (markdown/parse* markdown/empty-doc s)]
        (loop [{:as state :keys [nodes] ::keys [md-slice]} (merge
                                                            {:blocks []
-                                                            :block-settings {:nextjournal.clerk/visibility {:code :show :result :show}}
                                                             ::md-slice []
                                                             :nodes content
                                                             :md-context ctx}
