@@ -335,7 +335,6 @@
 
 (defn update-markdown-blocks [{:as state :keys [md-context]} md]
   (let [doc (markdown/parse* (assoc md-context :content []) md)]
-    (prn :update-md md :parsed doc)
     (-> state
         (assoc :md-context doc)
         (update :blocks conj {:type :markdown
