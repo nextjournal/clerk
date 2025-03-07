@@ -167,7 +167,9 @@
 (defn read+eval-cached [{:as doc :keys [blob->result ->analysis-info ->hash]} codeblock]
   (let [{:keys [id form _vars var]} codeblock
         _ (assert id (format "Missing id on codeblock: '%s'." (pr-str codeblock)))
-        {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info id)
+        {:as form-info :keys [ns-effect? no-cache? freezable?]} (if (:no-cache doc)
+                                                                  (assoc codeblock :no-cache? true)
+                                                                  (->analysis-info id))
         no-cache?      (or ns-effect? no-cache?)
         hash           (when-not no-cache? (or (get ->hash id)
                                                (analyzer/hash-codeblock ->hash doc codeblock)))
@@ -262,21 +264,25 @@
 
 (defn +eval-results
   "Evaluates the given `parsed-doc` using the `in-memory-cache` and augments it with the results."
-  [in-memory-cache {:as parsed-doc :keys [set-status-fn]}]
+  [in-memory-cache {:as parsed-doc :keys [set-status-fn no-cache]}]
   (if (cljs? parsed-doc)
     (process-cljs parsed-doc)
-    (do
-      (when set-status-fn
-        (set-status-fn {:progress 0.10 :status "Analyzing…"}))
-      (let [{:as analyzed-doc :keys [ns]} (analyzer/build-graph
-                                           (assoc parsed-doc :blob->result in-memory-cache))]
-        (when (and (not-empty (:var->block-id analyzed-doc))
-                   (not ns))
-          (throw (ex-info "namespace must be set" (select-keys analyzed-doc [:file :ns]))))
-        (binding [*ns* ns]
-          (-> analyzed-doc
-              analyzer/hash
-              eval-analyzed-doc))))))
+    (let [{:as analyzed-doc :keys [ns]}
+
+          (if no-cache
+            parsed-doc
+            (do
+              (when set-status-fn
+                (set-status-fn {:progress 0.10 :status "Analyzing…"}))
+              (-> parsed-doc
+                  (assoc :blob->result in-memory-cache)        
+                  analyzer/build-graph
+                  analyzer/hash)))]
+      (when (and (not-empty (:var->block-id analyzed-doc))
+                 (not ns))
+        (throw (ex-info "namespace must be set" (select-keys analyzed-doc [:file :ns]))))
+      (binding [*ns* ns]
+        (eval-analyzed-doc analyzed-doc)))))
 
 (defn eval-doc
   "Evaluates the given `doc`."
@@ -302,3 +308,6 @@
    (eval-doc in-memory-cache (parser/parse-clojure-string code-string))))
 
 #_(eval-string "(+ 39 3)")
+
+#_(nextjournal.clerk/show! "notebooks/hello.md")
+
