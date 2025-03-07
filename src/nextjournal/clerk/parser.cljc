@@ -540,7 +540,10 @@
            (-> state
                (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
                (dissoc ::md-slice :md-context)
-               (merge (select-keys ctx md-context-keys-to-select)))))))))
+               (merge (select-keys ctx md-context-keys-to-select))
+               add-open-graph-metadata
+               add-doc-settings
+               add-block-settings)))))))
 
 #_(parse-markdown-string "# Hello\n```\n1\n;; # 1️⃣ Hello\n2\n\n```\nhey\n```\n3\n;; # 2️⃣ Hello\n4\n```\n")
 
@@ -560,7 +563,3 @@
   (parse-file "notebooks/elements.clj")
   (parse-file "notebooks/rule_30.clj")
   (parse-file "notebooks/src/demo/lib.cljc"))
-
-#_(select-keys 
-   (parse-file "test/nextjournal/clerk/fixtures/hello.clj")
-   [:file :no-cache])

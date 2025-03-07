@@ -202,6 +202,7 @@ par two"))))
   (testing "parsing a Clojure file"
     (is (match?
          {:file "test/nextjournal/clerk/fixtures/hello.clj"
+          :ns (create-ns 'nextjournal.clerk.fixtures.hello)
           :no-cache true
           :blocks [{:type :code}
                    {:type :code
@@ -212,6 +213,7 @@ par two"))))
     (is (match?
          {:file "notebooks/hello.md"
           :ns (create-ns 'hello-markdown)
+          :no-cache true
           :blocks [{:type :markdown}
                    {:type :code}
                    {:type :markdown}
