@@ -159,7 +159,8 @@
                             (comp (keep :doc)
                                   (mapcat :content)
                                   (filter (comp #{:paragraph} :type))
-                                  (map markdown.transform/->text)) blocks))]
+                                  (map markdown.transform/->text))
+                            blocks))]
            (cond-> {:type "article:clerk"}
              title (assoc :title title)
              desc (assoc :description desc)))
@@ -167,7 +168,7 @@
 
 #_(->open-graph
    (nextjournal.clerk.analyzer/analyze-doc
-    (parse-file {:doc? true} "notebooks/open_graph.clj")))
+    (parse-file "notebooks/open_graph.clj")))
 
 (defn add-open-graph-metadata [doc]
   (assoc doc :open-graph (->open-graph doc)))
@@ -407,6 +408,7 @@
     (merge doc (->doc-settings first-form))
     doc))
 
+
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
   ([{:as opts :keys [skip-doc?]} s]
@@ -416,9 +418,11 @@
                                             (:file opts)
                                             (assoc :file (:file opts)))
                                           s)]
-     (-> (select-keys (cond-> parsed-doc
-                        (not skip-doc?) (merge (:md-context parsed-doc)))
-                      [:file :blocks :title :toc :footnotes :ns])
+     (-> (cond-> parsed-doc
+           (not skip-doc?)
+           (merge (select-keys (:md-context parsed-doc)
+                               [:footnotes :text->id+emoji-fn :toc :title])))
+         (dissoc :md-context)
          add-open-graph-metadata
          add-doc-settings
          add-block-settings)))
@@ -479,13 +483,14 @@
                   (-> state
                       (assoc :add-comment-on-line? false)
                       (update :nodes rest))))
-         state)))))
+         (dissoc state :add-block-id :nodes :add-comment-on-line?))))))
 
-#_(parse-clojure-string "'code ;; foo\n;; bar")
-#_(parse-clojure-string "'code , ;; foo\n;; bar")
-#_(parse-clojure-string "'code\n;; foo\n;; bar")
-#_(keys (parse-clojure-string {:doc? true} (slurp "notebooks/viewer_api.clj")))
-#_(parse-clojure-string {:doc? true} ";; # Hello\n;; ## 👋 Section\n(do 123)\n;; ## 🤚🏽 Section")
+(comment
+  (parse-clojure-string {:file "foo.clj"} "'code ;; foo\n;; bar")
+  (parse-clojure-string "'code , ;; foo\n;; bar")
+  (parse-clojure-string "'code\n;; foo\n;; bar")
+  (keys (parse-clojure-string (slurp "notebooks/viewer_api.clj")))
+  (parse-clojure-string ";; # Hello\n;; ## 👋 Section\n(do 123)\n;; ## 🤚🏽 Section"))
 
 (defn parse-markdown-cell [{:as state :keys [nodes]} opts]
   (assoc (parse-clojure-string opts state (markdown.transform/->text (first nodes)))
@@ -526,7 +531,7 @@
             (merge (when doc?
                      (select-keys ctx [:footnotes :title :toc]))))))))
 
-#_(parse-markdown-string {:doc? true} "# Hello\n```\n1\n;; # 1️⃣ Hello\n2\n\n```\nhey\n```\n3\n;; # 2️⃣ Hello\n4\n```\n")
+#_(parse-markdown-string "# Hello\n```\n1\n;; # 1️⃣ Hello\n2\n\n```\nhey\n```\n3\n;; # 2️⃣ Hello\n4\n```\n")
 
 #?(:clj
    (defn parse-file
@@ -536,9 +541,9 @@
             (parse-markdown-string (assoc opts :file file) (slurp file))
             (parse-clojure-string (assoc opts :file file) (slurp file)))))))
 
-#_(parse-file {:doc? true} "notebooks/visibility.clj")
 #_(parse-file "notebooks/visibility.clj")
+#_(parse-file {:skip-doc? true} "notebooks/visibility.clj")
 #_(parse-file "notebooks/elements.clj")
 #_(parse-file "notebooks/markdown.md")
-#_(parse-file {:doc? true} "notebooks/rule_30.clj")
+#_(parse-file "notebooks/rule_30.clj")
 #_(parse-file "notebooks/src/demo/lib.cljc")
