@@ -4,7 +4,9 @@
   (:require #?@(:clj [[clojure.tools.reader :as tools.reader]
                       [taoensso.nippy :as nippy]
                       [multiformats.base.b58 :as b58]
-                      [multiformats.hash :as hash]])
+                      [multiformats.hash :as hash]]
+                :cljs [[goog.crypt]
+                       [goog.crypt.Sha1]])
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.zip]
@@ -333,6 +335,12 @@
    (defn sha1-base58 [s]
      (->> s hash/sha1 hash/encode b58/format-btc)))
 
+#?(:cljs
+   (defn hash-sha1 [x]
+     (let [hasher (goog.crypt.Sha1.)]
+       (.update hasher (goog.crypt/stringToUtf8ByteArray (pr-str x)))
+       (.digest hasher))))
+
 (defn guess-var
   "An best guess to say if the given `form` defines a var without running
   macroexpansion. Will be refined during analysis."
@@ -347,6 +355,10 @@
   (guess-var '(def my-range (range 500)))
   (guess-var '(defonce !state (atom {}))))
 
+(defn supports-meta? [x]
+  #?(:clj (instance? clojure.lang.IObj x)
+     :cljs (satisfies? IMeta x)))
+
 (defn get-block-id [!id->count {:as block :keys [form type doc]}]
   (let [id->count @!id->count
         id (if-let [var (if (contains? block :vars)
@@ -355,12 +367,11 @@
              var
              (let [hash-fn (fn [x]
                              #?(:clj (-> x nippy/fast-freeze sha1-base58)
-                                :cljs (throw (ex-info "hash-fn cljs not implemented for cljs yet" {}))))]
+                                :cljs (hash-sha1 x)))]
                (symbol (str *ns*)
                        (case type
                          :code (str "anon-expr-" (hash-fn (cond-> form
-                                                            #?(:clj (instance? clojure.lang.IObj form)
-                                                               :cljs (throw (ex-info "hash-fn cljs not implemented for cljs yet" {})))
+                                                            (supports-meta? form)
                                                             (with-meta {}))))
                          :markdown (str "markdown-" (hash-fn doc))))))]
     (swap! !id->count update id (fnil inc 0))
@@ -385,11 +396,9 @@
 #_(extract-file (clojure.java.io/resource "clojure/core.clj"))
 #_(extract-file (clojure.java.io/resource "nextjournal/clerk.clj"))
 
-
 (defn add-loc [{:as opts :keys [file]} loc form]
   (cond-> form
-    #?(:clj (instance? clojure.lang.IObj form)
-       :cljs (satisfies? cljs.core.IMeta form))
+    (supports-meta? form)
     (vary-meta merge (cond-> loc
                        (:file opts) (assoc :clojure.core/eval-file
                                            (str #?(:clj (cond-> (:file opts)

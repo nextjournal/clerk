@@ -648,7 +648,7 @@
   (show! "notebooks/onwards.md")
   (show! "notebooks/pagination.clj")
   (show! "notebooks/how_clerk_works.clj")
-  (show! "notebooks/hello_clojurescript.cljs")
+  (show! "notebooks/hello.cljs")
   (show! "notebooks/conditional_read.cljc")
   (show! "src/nextjournal/clerk/analyzer.clj")
   (show! "src/nextjournal/clerk.clj")
