@@ -85,6 +85,7 @@
   #{:nextjournal.clerk/auto-expand-results?
     :nextjournal.clerk/budget
     :nextjournal.clerk/css-class
+    :nextjournal.clerk/no-cache
     :nextjournal.clerk/render-opts
     :nextjournal.clerk/page-size
     :nextjournal.clerk/render-evaluator
@@ -418,7 +419,7 @@
          add-open-graph-metadata
          add-doc-settings)))
   ([{:as opts :keys [skip-doc?]} initial-state s]
-   (binding [*ns* *ns*]
+   (binding [*ns* (:ns initial-state *ns*)]
      (loop [{:as state :keys [nodes blocks block-settings add-comment-on-line? add-block-id]}
 
             (assoc initial-state
