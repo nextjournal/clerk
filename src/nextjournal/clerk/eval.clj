@@ -268,8 +268,14 @@
     (process-cljs parsed-doc)
     (let [{:as analyzed-doc :keys [ns]}
 
-          (if no-cache
+          (cond
+            no-cache
             parsed-doc
+
+            config/cache-disabled?
+            (assoc parsed-doc :no-cache true)
+
+            :else
             (do
               (when set-status-fn
                 (set-status-fn {:progress 0.10 :status "Analyzing…"}))
@@ -286,11 +292,7 @@
 (defn eval-doc
   "Evaluates the given `doc`."
   ([doc] (eval-doc {} doc))
-  ([in-memory-cache doc]
-   (+eval-results in-memory-cache
-                  (cond-> doc
-                    config/cache-disabled?
-                    (assoc :no-cache true)))))
+  ([in-memory-cache doc] (+eval-results in-memory-cache doc)))
 
 (defn eval-file
   "Reads given `file` (using `slurp`) and evaluates it."
@@ -313,4 +315,3 @@
 #_(eval-string "(+ 39 3)")
 
 #_(nextjournal.clerk/show! "notebooks/hello.md")
-
